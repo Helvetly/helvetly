@@ -40,7 +40,7 @@ func (q Q) SetPeriodQuantityProrated(ctx context.Context, periodID string, quant
 }
 
 // AddNotice records n unless that period already has that kind (for draft_created: for that invoice);
-// false when it did. Relies on the unique index of migration 00018.
+// false when it did. Relies on its unique index (00001_init).
 func (q Q) AddNotice(ctx context.Context, n EngagementNotice) (bool, error) {
 	tag, err := q.db.Exec(ctx, `INSERT INTO engagement_notices (id, engagement_id, period_id, kind, invoice_id, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,

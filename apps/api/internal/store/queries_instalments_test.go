@@ -31,7 +31,7 @@ func exec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
 }
 
 func TestInstalmentsRoundTrip(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "inv", "invoice", "draft", 900, "2026-12-31", 0)
 	got, err := q.Invoice(ctx, "wsp_a", "inv", "2026-11-07", false)
@@ -84,7 +84,7 @@ func TestInstalmentsRoundTrip(t *testing.T) {
 }
 
 func TestOverdueByInstalment(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	const today = "2026-11-07"
 	cases := []struct {
@@ -156,7 +156,7 @@ func seedPlan(t *testing.T, q Q, pool *pgxpool.Pool, id string, issueOn []string
 }
 
 func TestMarkPlanItemIssuedOnce(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedPlan(t, q, pool, "pln_1", []string{"2026-11-05", "2026-12-05"})
 	seedPlan(t, q, pool, "pln_paused", []string{"2026-11-01", "2026-12-01"})
@@ -215,7 +215,7 @@ func TestMarkPlanItemIssuedOnce(t *testing.T) {
 }
 
 func TestLogReminderOnce(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "inv", "invoice", "open", 900, "2026-12-31", 0)
 	r := ReminderTarget{WorkspaceID: "wsp_a", InvoiceID: "inv", Seq: 1, Kind: "before", OffsetDays: 5}
@@ -232,7 +232,7 @@ func TestLogReminderOnce(t *testing.T) {
 }
 
 func TestDueRemindersOffsets(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	exec(t, pool, `INSERT INTO client_contacts (id, client_id, workspace_id, name, email, is_primary, created_at, updated_at)
 		VALUES ('con_1', 'cli_1', 'wsp_a', 'Ann', 'ann@example.com', true, now(), now())`)
@@ -298,7 +298,7 @@ func TestDueRemindersOffsets(t *testing.T) {
 }
 
 func TestDigestRows(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	// today 2026-11-07: A1 overdue, A2 due in 3 days, A3 far off; D the partial of pln_1 item 1, 3 days late and issued
 	// within the last 24 hours; pln_2 item 1 not issued although its day came; pln_2 item 2 not due yet.
@@ -339,39 +339,5 @@ func TestDigestRows(t *testing.T) {
 	exec(t, pool, `INSERT INTO engagement_settings (workspace_id, digest, updated_at) VALUES ('wsp_a', false, now())`)
 	if ws, err := q.InstalmentDigestWorkspaces(ctx, typesNow); err != nil || len(ws) != 0 {
 		t.Fatalf("digest off = %+v, %v", ws, err)
-	}
-}
-
-func TestInstalmentsMigrationKeepsExistingRows(t *testing.T) {
-	ctx := context.Background()
-	up, pool := migrationProvider(t)
-	if _, err := up.UpTo(ctx, 22); err != nil {
-		t.Fatal(err)
-	}
-	exec(t, pool, `INSERT INTO workspaces (id, name, timezone, created_at) VALUES ('wsp_a', 'A', 'UTC', now())`)
-	exec(t, pool, `INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at) VALUES ('cli_1', 'wsp_a', 1, 'One', now(), now())`)
-	seedInvoice(t, pool, "inv_1", "invoice", "open", 1000, "2026-10-31", 0)
-	exec(t, pool, `INSERT INTO invoice_lines (id, invoice_id, position, description, quantity, unit_price, discount_percent, vat_category,
-		vat_rate, amount) VALUES ('lin_1', 'inv_1', 0, 'Work', 1000, 1000, 0, 'S', 810, 1000)`)
-	if _, err := up.UpTo(ctx, 23); err != nil {
-		t.Fatal(err)
-	}
-	// Read with schema-23 columns only: q.Invoice follows the latest schema, which later migrations extend.
-	var reminders, noSchedule, noPlan, overdue bool
-	var lines, unexempt int
-	err := pool.QueryRow(ctx, `SELECT i.reminders_enabled, i.instalment_interval IS NULL, i.plan_id IS NULL, `+fmt.Sprintf(isOverdue, 1)+`,
-			(SELECT count(*) FROM invoice_lines l WHERE l.invoice_id = i.id),
-			(SELECT count(*) FROM invoice_lines l WHERE l.invoice_id = i.id AND l.vat_exemption_code IS NULL)
-		FROM invoices i WHERE i.id = 'inv_1'`, "2026-11-07").Scan(&reminders, &noSchedule, &noPlan, &overdue, &lines, &unexempt)
-	if err != nil || !reminders || !noSchedule || !noPlan || !overdue || lines != 1 || unexempt != 1 {
-		t.Fatalf("after 23: reminders %v, no schedule %v, no plan %v, overdue %v, lines %d (%d without exemption), %v",
-			reminders, noSchedule, noPlan, overdue, lines, unexempt, err)
-	}
-	if _, err := up.DownTo(ctx, 22); err != nil {
-		t.Fatal(err)
-	}
-	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM invoices i JOIN invoice_lines l ON l.invoice_id = i.id WHERE i.id = 'inv_1'`).Scan(&n); err != nil || n != 1 {
-		t.Fatalf("after down = %d, %v", n, err)
 	}
 }

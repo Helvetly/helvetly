@@ -3,7 +3,7 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, LimitKey } from '@/lib/billing'
 
 const GB = 2 ** 30
-// The limits seeded in apps/api/internal/store/migrations/00026_plan_limits.sql and 00049_ai_token_limits.sql.
+// The limits seeded in apps/api/internal/store/migrations/00001_init.sql (plan_limits).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 50,
