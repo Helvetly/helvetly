@@ -71,7 +71,11 @@ type Stripe struct {
 	WebhookSecret string
 	// AutomaticTax turns on Stripe Tax in Checkout (Swiss VAT taken out of VAT-inclusive prices).
 	AutomaticTax bool
-	APIBase      string // https://api.stripe.com, or stripe-mock / a fake in tests
+	// ManagedPayments (STRIPE_MANAGED_PAYMENTS) sends Checkout through Stripe Managed Payments: Stripe (through Link)
+	// is the merchant of record and handles tax, the customer's invoices, fraud and disputes. The account must have
+	// it enabled in the dashboard and the products need an eligible tax code (txcd_10103001, SaaS).
+	ManagedPayments bool
+	APIBase         string // https://api.stripe.com, or stripe-mock / a fake in tests
 }
 
 func (c Config) BillingEnabled() bool { return c.Stripe.SecretKey != "" }
@@ -316,7 +320,7 @@ func Load() (Config, error) {
 	}
 
 	c.Stripe = Stripe{SecretKey: env("STRIPE_SECRET_KEY", ""), WebhookSecret: env("STRIPE_WEBHOOK_SECRET", ""),
-		AutomaticTax: boolean("STRIPE_AUTOMATIC_TAX", true), APIBase: env("STRIPE_API_BASE", "https://api.stripe.com")}
+		AutomaticTax: boolean("STRIPE_AUTOMATIC_TAX", true), ManagedPayments: boolean("STRIPE_MANAGED_PAYMENTS", false), APIBase: env("STRIPE_API_BASE", "https://api.stripe.com")}
 	if c.Stripe.SecretKey != "" {
 		if !strings.HasPrefix(c.Stripe.SecretKey, "sk_") && !strings.HasPrefix(c.Stripe.SecretKey, "rk_") {
 			fail("STRIPE_SECRET_KEY must be a Stripe secret or restricted key (sk_… or rk_…)")

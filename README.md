@@ -146,6 +146,12 @@ account by lookup key `helvetly_<basic|pro|business>_<month|year>`: recurring, p
 `helvetly_pricing=per_seat`. Create those prices in your own Stripe account; the plan limits live in the
 `plan_limits` table. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
 
+Optional extra AI tokens: one-time prices of the product `helvetly_ai_tokens`, each with the metadata
+`helvetly_ai_tokens=<tokens>`. A workspace on a plan buys one through Checkout; once paid, its tokens add to the
+plan's monthly AI allowance for the month (in the workspace's time zone) and lapse with it. With
+`STRIPE_MANAGED_PAYMENTS=true`, Checkout uses Stripe Managed Payments (Stripe is the merchant of record); the
+products then need an eligible tax code such as `txcd_10103001`.
+
 ## Known limitations
 
 - Not released: no published images or packages, no upgrade guarantees yet.

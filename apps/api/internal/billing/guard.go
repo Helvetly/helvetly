@@ -132,8 +132,8 @@ func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Sessio
 	return s.AllowResource(ctx, q, sess.Workspace.ID, string(Storage), add)
 }
 
-// AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's, none without a plan,
-// and unlimited (-1) when billing is off.
+// AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's plus the AI token
+// packs bought this month (in its time zone), none without a plan, and unlimited (-1) when billing is off.
 func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	if !s.enabled {
 		return Unlimited, nil
@@ -142,10 +142,20 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if err != nil {
 		return 0, err
 	}
-	if plan := PlanOf(b); plan != "" {
-		return s.plans.of(plan, AITokens), nil
+	plan := PlanOf(b)
+	if plan == "" {
+		return 0, nil
 	}
-	return 0, nil
+	monthly := s.plans.of(plan, AITokens)
+	if monthly == Unlimited {
+		return Unlimited, nil
+	}
+	w, err := q.AdmissionWorkspace(ctx, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	bought, err := q.AITokenPacks(ctx, workspaceID, s.now().In(w.Location()).Format("2006-01"))
+	return monthly + bought, err
 }
 
 // AllowResource is injected into Store's canonical writes before requests and jobs start.
@@ -248,7 +258,7 @@ func limitMessage(plan string, limit Limit, max int64) string {
 	case Signatures:
 		return fmt.Sprintf("The %s plan includes %d signature requests a month. Upgrade the workspace to send more.", name, max)
 	case AITokens:
-		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Upgrade the workspace to use more.", name, max)
+		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Buy an AI token pack or upgrade the workspace to use more.", name, max)
 	}
 	return fmt.Sprintf("The %s plan includes %s of storage. Upgrade the workspace or remove files to upload more.", name, bytesText(max))
 }

@@ -62,6 +62,8 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
   period_start: '2026-11-01',
   discount: null,
   usage: [],
+  ai_tokens_bought: 0,
+  ai_packs: [],
   plans: [
     { id: 'basic', name: 'Basic', limits: basic, prices: prices(1900) },
     { id: 'pro', name: 'Pro', limits: pro, prices: prices(4900) },

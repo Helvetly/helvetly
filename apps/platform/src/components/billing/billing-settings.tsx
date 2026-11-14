@@ -22,6 +22,7 @@ import {
   useSyncBilling,
 } from '@/lib/billing'
 
+import { AITokenPacks } from './ai-token-packs'
 import { BillingCard } from './billing-card'
 import { PaymentCard } from './card-brand'
 import { PlanSummary } from './plan-summary'
@@ -74,6 +75,7 @@ export function BillingSettings() {
             )}
             <PlanSummary billing={data} onPortal={openPortal} portalPending={portal.isPending} />
             {data.usage.length > 0 && <UsageOverview billing={data} />}
+            <AITokenPacks billing={data} />
             {payments && (
               <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                 <PaymentMethod onPortal={openPortal} portalPending={portal.isPending} />
@@ -87,7 +89,7 @@ export function BillingSettings() {
   )
 }
 
-/** Back from Checkout (?checkout=success|canceled): read the subscription now, then tidy the URL. */
+/** Back from Checkout (?checkout=success|canceled|ai_tokens): read the subscription now, then tidy the URL. */
 function useCheckoutReturn() {
   const params = useSearchParams()
   const router = useRouter()
@@ -102,6 +104,10 @@ function useCheckoutReturn() {
     router.replace(pathname)
     if (outcome === 'canceled') {
       toast('Checkout cancelled. Nothing was charged.')
+      return
+    }
+    if (outcome === 'ai_tokens') {
+      toast.success('Payment received. The AI tokens are added in a moment.')
       return
     }
     sync.mutate(undefined, {

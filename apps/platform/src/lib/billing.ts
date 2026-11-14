@@ -69,7 +69,13 @@ export type Billing = {
   discount: Discount | null
   usage: UsageItem[]
   plans: Plan[]
+  /** AI tokens bought this month; they add to the plan's monthly allowance and lapse with the month. */
+  ai_tokens_bought: number
+  /** The AI token packs on sale (empty without a plan, or for someone who cannot manage billing). */
+  ai_packs: AIPack[]
 }
+/** A one-time AI token pack: tokens for a price incl. VAT. */
+export type AIPack = { tokens: number; amount: number; currency: string }
 export type BillingInvoice = {
   id: string
   number: string
@@ -114,6 +120,20 @@ export function useCheckout() {
   >({
     mutationFn: (input) => request('/billing/checkout', { method: 'POST', json: input }),
   })
+}
+
+/** Opens Checkout for one AI token pack; the answer is Checkout's URL. */
+export function useBuyAITokens() {
+  return useMutation<{ url: string }, ApiError, { tokens: number }>({
+    mutationFn: (input) => request('/billing/ai-tokens', { method: 'POST', json: input }),
+  })
+}
+
+/** "1 M", "500 k", "900" tokens. */
+export function formatTokens(tokens: number): string {
+  if (tokens >= 1_000_000) return `${+(tokens / 1_000_000).toFixed(1)} M`
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)} k`
+  return `${tokens}`
 }
 
 /** Checks a promotion code; a bad one is a 422 `promotion_code_invalid`. */

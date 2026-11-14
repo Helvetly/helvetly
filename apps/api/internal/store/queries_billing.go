@@ -204,3 +204,19 @@ func (q Q) DeleteWorkspace(ctx context.Context, workspaceID string, now time.Tim
 		DELETE FROM workspace_members WHERE workspace_id = $1`, workspaceID, now)
 	return err
 }
+
+// AddAITokenPack records a paid AI token pack for the workspace's month period; false when this Checkout Session was
+// recorded before (Stripe delivers at least once).
+func (q Q) AddAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens int64, now time.Time) (bool, error) {
+	tag, err := q.db.Exec(ctx, `INSERT INTO ai_token_packs (checkout_session_id, workspace_id, period, tokens, created_at)
+		VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, sessionID, workspaceID, period, tokens, now)
+	return tag.RowsAffected() == 1, err
+}
+
+// AITokenPacks is the tokens the workspace bought for the month period (YYYY-MM).
+func (q Q) AITokenPacks(ctx context.Context, workspaceID, period string) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, `SELECT coalesce(sum(tokens), 0) FROM ai_token_packs WHERE workspace_id = $1 AND period = $2`,
+		workspaceID, period).Scan(&n)
+	return n, err
+}
