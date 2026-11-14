@@ -94,16 +94,16 @@ client portal) and passes the `Host` header through.
 
 ### The container image
 
-| Item           | Value                                                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
-| Process        | `/usr/local/bin/helvetly`, uid 65532, no shell; needs no writable path except `/tmp` (give it a volume) |
-| Listen         | `HTTP_ADDR`, default `:3333`, plain HTTP behind your TLS proxy                                          |
-| Hosts          | `PORTAL_URL`'s host gets the client portal, any other host the platform; `/api/*` is the API on both    |
+| Item           | Value                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| Process        | `/usr/local/bin/helvetly`, uid 65532, no shell; needs no writable path except `/tmp` (give it a volume)   |
+| Listen         | `HTTP_ADDR`, default `:3333`, plain HTTP behind your TLS proxy                                            |
+| Hosts          | `PORTAL_URL`'s host gets the client portal, any other host the platform; `/api/*` is the API on both      |
 | Health         | `GET /api/health` (process), `GET /api/ready` (also the database); `helvetly healthcheck [ready\|health]` |
-| Settings       | environment only, validated at start; a bad value stops the start with a message naming it              |
-| Migrations     | applied at start, forward only                                                                          |
-| Stop           | SIGTERM drains requests and background work within 15 s; allow at least 30 s                            |
-| Client address | `X-Forwarded-For` is believed only from `TRUSTED_PROXY_CIDRS` (set it to your proxy)                    |
+| Settings       | environment only, validated at start; a bad value stops the start with a message naming it                |
+| Migrations     | applied at start, forward only                                                                            |
+| Stop           | SIGTERM drains requests and background work within 15 s; allow at least 30 s                              |
+| Client address | `X-Forwarded-For` is believed only from `TRUSTED_PROXY_CIDRS` (set it to your proxy)                      |
 
 Production needs at least `DATABASE_URL`, `PUBLIC_URL`, `PORTAL_URL` (another host), `SECRET_KEY`
 (`openssl rand -base64 32`; keep a backup), `SMTP_*`, `MAIL_FROM` and the five `S3_*` settings; never set

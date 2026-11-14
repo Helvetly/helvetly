@@ -17,16 +17,16 @@ are the reference.
 
 ## 2. Layout
 
-| Path                         | Package                       | What it is                                                 |
-| ---------------------------- | ----------------------------- | ---------------------------------------------------------- |
-| `apps/api`                   | `@helvetly/api`               | Go HTTP API; builds the single `helvetly` binary           |
-| `apps/platform`              | `@helvetly/platform`          | Next.js app for signed-in users, static export             |
-| `apps/portal`                | `@helvetly/portal`            | Next.js client portal (own host), static export            |
-| `apps/web`                   | `@helvetly/web`               | Next.js public website, static export                      |
-| `packages/ui`                | `@helvetly/ui`                | shadcn/ui components, theme, `globals.css`, `cn`           |
-| `packages/typescript-config` | `@helvetly/typescript-config` | `base.json`, `nextjs.json`                                 |
-| `packages/vitest-config`     | `@helvetly/vitest-config`     | Shared Vitest config and test setup                        |
-| `e2e`                        | `@helvetly/e2e`               | Playwright E2E and visual tests against the real API       |
+| Path                         | Package                       | What it is                                           |
+| ---------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `apps/api`                   | `@helvetly/api`               | Go HTTP API; builds the single `helvetly` binary     |
+| `apps/platform`              | `@helvetly/platform`          | Next.js app for signed-in users, static export       |
+| `apps/portal`                | `@helvetly/portal`            | Next.js client portal (own host), static export      |
+| `apps/web`                   | `@helvetly/web`               | Next.js public website, static export                |
+| `packages/ui`                | `@helvetly/ui`                | shadcn/ui components, theme, `globals.css`, `cn`     |
+| `packages/typescript-config` | `@helvetly/typescript-config` | `base.json`, `nextjs.json`                           |
+| `packages/vitest-config`     | `@helvetly/vitest-config`     | Shared Vitest config and test setup                  |
+| `e2e`                        | `@helvetly/e2e`               | Playwright E2E and visual tests against the real API |
 
 ## 3. Architecture
 
