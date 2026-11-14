@@ -87,7 +87,7 @@ export function Welcome() {
 }
 
 /**
- * The welcome at /welcome, ported from staqly: a full-screen page shown once per new workspace, the
+ * The welcome at /welcome: a full-screen page shown once per new workspace, the
  * steps on the left, a live invoice on the right. Finishing it, skipping it or pressing Esc ends
  * it for good (POST /session/onboarded) and goes on to where the person was going. Each step saves
  * what it has before moving on, so nothing typed is lost. Only a new workspace's owner gets here

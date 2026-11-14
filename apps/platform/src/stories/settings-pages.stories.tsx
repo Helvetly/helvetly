@@ -424,7 +424,7 @@ export const InvoicesNotes: Story = {
               vat_registered: false,
               default_vat_mode: 'none',
               revolut_enabled: true,
-              revolut_username: 'mits87',
+              revolut_username: 'anna-muster',
             }),
           }),
         ),
@@ -457,12 +457,12 @@ export const InvoicesNotes: Story = {
 
     const payment = canvas.getByRole('region', { name: 'Payment methods' })
     const test = within(payment).getByRole('link', { name: 'Test the link' })
-    await expect(test).toHaveAttribute('href', 'https://revolut.me/mits87')
+    await expect(test).toHaveAttribute('href', 'https://revolut.me/anna-muster')
     await expect(test).toHaveAttribute('target', '_blank')
     await expect(within(payment).queryByText(/^Test revolut\.me/)).toBeNull()
     await userEvent.hover(test)
     await expect(
-      await within(document.body).findByRole('tooltip', { name: /revolut\.me\/mits87/ }),
+      await within(document.body).findByRole('tooltip', { name: /revolut\.me\/anna-muster/ }),
     ).toBeInTheDocument()
   },
 }
