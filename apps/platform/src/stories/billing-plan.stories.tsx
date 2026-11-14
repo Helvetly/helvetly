@@ -232,7 +232,10 @@ export const ActiveMonthly: Story = {
     ).toHaveAttribute('href', '#in_3.pdf')
     await userEvent.click(payment.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(portalRequest).toHaveBeenCalledTimes(1))
-    await userEvent.click(summary.getByRole('button', { name: 'Manage billing' }))
+    // The portal buttons stay disabled until the first request has answered.
+    const manage = summary.getByRole('button', { name: 'Manage billing' })
+    await waitFor(() => expect(manage).toBeEnabled())
+    await userEvent.click(manage)
     await waitFor(() => expect(portalRequest).toHaveBeenCalledTimes(2))
   },
 }
