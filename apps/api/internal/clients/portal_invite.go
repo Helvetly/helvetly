@@ -1,0 +1,89 @@
+package clients
+
+import (
+	"context"
+	"fmt"
+	"html"
+	"net/http"
+	"strings"
+
+	"helvetly.com/api/internal/auth"
+	mailer "helvetly.com/api/internal/mail"
+	"helvetly.com/api/internal/store"
+)
+
+// Mailer is what the portal invitation needs of internal/mail.
+type Mailer interface {
+	Send(ctx context.Context, m mailer.Message) error
+}
+
+// SetMailer turns portal invitations on; without one, turning the portal on sends nothing.
+func (s *Service) SetMailer(m Mailer, portalURL string) { s.mail, s.portalURL = m, portalURL }
+
+// PortalLogin is the address a client signs in to the portal with: its email, else its billing email ("" for none).
+func PortalLogin(c store.Client) string {
+	for _, a := range []*string{c.Email, c.BillingEmail} {
+		if a != nil && *a != "" {
+			return strings.ToLower(*a)
+		}
+	}
+	return ""
+}
+
+// invitePortal mails the client the portal link after the change is saved and records when. A failure is logged,
+// never returned.
+func (s *Service) invitePortal(ctx context.Context, sess store.Session, c store.Client) {
+	if s.mail == nil || PortalLogin(c) == "" {
+		return
+	}
+	if err := s.sendPortalInvite(ctx, sess, c); err != nil {
+		s.log.WarnContext(ctx, "portal invitation not sent", "client", c.ID, "error", err)
+	}
+}
+
+var (
+	errPortalOff     = auth.Error(http.StatusConflict, "portal_off", "Turn the client portal on first.", nil)
+	errNoPortalLogin = auth.Error(http.StatusConflict, "no_portal_address", "Add an email to let this client sign in.", nil)
+	errNoMailer      = auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up, so the invitation cannot be sent.", nil)
+	errInviteFailed  = auth.Error(http.StatusBadGateway, "mail_failed", "The invitation could not be sent. Try again in a moment.", nil)
+)
+
+// resendPortalInvite sends the portal invitation again on request (POST /clients/{id}/portal-invitation).
+func (s *Service) resendPortalInvite(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	c, err := s.db.Q.Client(r.Context(), sess.Workspace.ID, r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	switch {
+	case !c.PortalEnabled:
+		return errPortalOff
+	case PortalLogin(c) == "":
+		return errNoPortalLogin
+	case s.mail == nil:
+		return errNoMailer
+	}
+	if err := s.sendPortalInvite(r.Context(), sess, c); err != nil {
+		s.log.WarnContext(r.Context(), "portal invitation not sent", "client", c.ID, "error", err)
+		return errInviteFailed
+	}
+	return s.get(w, r, sess)
+}
+
+// sendPortalInvite mails the invitation to the client's portal address and records when.
+func (s *Service) sendPortalInvite(ctx context.Context, sess store.Session, c store.Client) error {
+	to := PortalLogin(c)
+	link := s.portalURL + "/"
+	text := fmt.Sprintf("Hello %s,\n\n%s now gives you access to their client portal, where you can see your invoices, "+
+		"engagements and shared documents:\n\n%s\n\nEnter this email address and we send you a code to sign in: there is no password.\n",
+		c.Name, sess.Workspace.Name, link)
+	body := fmt.Sprintf(`<p>Hello %s,</p><p><strong>%s</strong> now gives you access to their client portal, where you can see your invoices, engagements and shared documents:</p>
+<p><a href="%s">%s</a></p><p>Enter this email address and we send you a code to sign in: there is no password.</p>`,
+		html.EscapeString(c.Name), html.EscapeString(sess.Workspace.Name), html.EscapeString(link), html.EscapeString(link))
+	if err := s.mail.Send(ctx, mailer.Message{To: []string{to}, Subject: sess.Workspace.Name + " invited you to their client portal", Text: text, HTML: body}); err != nil {
+		return fmt.Errorf("send portal invitation: %w", err)
+	}
+	if err := s.db.Q.MarkPortalInvited(ctx, c.ID, s.now()); err != nil {
+		return fmt.Errorf("record portal invitation: %w", err)
+	}
+	return nil
+}

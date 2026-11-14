@@ -1,0 +1,124 @@
+package signpdf
+
+import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/png"
+	"testing"
+	"time"
+
+	"codeberg.org/go-pdf/fpdf"
+
+	"helvetly.com/api/internal/pdffont/pdffonttest"
+)
+
+// samplePDF: an A4 document of n pages, written by fpdf like the invoice PDFs.
+func samplePDF(t *testing.T, n int) []byte {
+	t.Helper()
+	pdf := fpdf.New("P", "mm", "A4", "")
+	for i := range n {
+		pdf.AddPage()
+		pdf.SetFont("Helvetica", "", 14)
+		pdf.Text(20, 30, "Contract page "+string(rune('1'+i)))
+	}
+	var b bytes.Buffer
+	if err := pdf.Output(&b); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func samplePNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewNRGBA(image.Rect(0, 0, 300, 100))
+	for x := range 300 {
+		img.Set(x, 50+x%20, color.NRGBA{A: 255})
+	}
+	var b bytes.Buffer
+	if err := png.Encode(&b, img); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func TestPageCount(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input []byte
+		pages int
+		fails bool
+	}{
+		{"one page", samplePDF(t, 1), 1, false},
+		{"three pages", samplePDF(t, 3), 3, false},
+		{"not a pdf", []byte("hello"), 0, true},
+		{"truncated", samplePDF(t, 2)[:200], 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			n, err := PageCount(tc.input)
+			if (err != nil) != tc.fails || n != tc.pages {
+				t.Fatalf("PageCount = %d, %v; want %d, fails=%v", n, err, tc.pages, tc.fails)
+			}
+		})
+	}
+}
+
+func TestStampAppendsCertificate(t *testing.T) {
+	sig := samplePNG(t)
+	now := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	out, err := Stamp(samplePDF(t, 3), []Field{
+		{Page: 1, Kind: "signature", X: 0.1, Y: 0.8, W: 0.3, H: 0.06, Image: sig},
+		{Page: 3, Kind: "date", X: 0.6, Y: 0.8, W: 0.2, H: 0.03, Value: "06.11.2026"},
+		{Page: 3, Kind: "name", X: 0.6, Y: 0.85, W: 0.2, H: 0.03, Value: "Zoë Müller"},
+		{Page: 2, Kind: "signature", X: 0.1, Y: 0.1, W: 0.3, H: 0.06, Image: []byte("not a png")},
+	}, Certificate{RequestID: "sig_1", Title: "Consulting – 2026", Sender: "Anna", Workspace: "Acme AG", Zone: time.UTC,
+		OriginalSHA256: "ab", AuditHash: "cd", Consent: "I agree.", Created: now, Completed: now,
+		Signers: []Signer{{Name: "Zoë", Email: "z@example.com", IP: "127.0.0.1", UserAgent: "Test", Method: "drawn", Viewed: now, Signed: now}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, err := PageCount(out); err != nil || n != 4 {
+		t.Fatalf("finished PDF has %d pages (%v), want 3 + the certificate", n, err)
+	}
+}
+
+func TestFillDrawsLines(t *testing.T) {
+	original := samplePDF(t, 1)
+	box := Text{Page: 1, X: 0.1, Y: 0.1, W: 0.05, H: 0.02, Value: "A rather long line that has to shrink\nand a second line"}
+	filled, err := Fill(original, []Text{box}, "Agreement")
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty, err := Fill(original, []Text{{Page: 1, X: 0.1, Y: 0.1, W: 0.5, H: 0.05}}, "Agreement")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pages, err := PageCount(filled); err != nil || pages != 1 || len(filled) <= len(empty) {
+		t.Fatalf("filled: %d pages, %v, %d vs %d bytes", pages, err, len(filled), len(empty))
+	}
+	if _, err := Fill([]byte("not a pdf"), nil, "x"); err == nil {
+		t.Fatal("a damaged PDF is an error")
+	}
+}
+
+func TestAnyScript(t *testing.T) {
+	var texts []Text
+	for i, s := range pdffonttest.Samples {
+		texts = append(texts, Text{Page: 1, X: 0.1, Y: 0.05 + 0.05*float64(i), W: 0.8, H: 0.04, Value: s.Name + ": " + s.Text})
+	}
+	filled, err := Fill(samplePDF(t, 1), texts, "Vertrag – Zażółć 契約")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pdffonttest.Fonts(t, filled)
+
+	now := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	stamped, err := Stamp(samplePDF(t, 1), []Field{{Page: 1, Kind: "name", X: 0.1, Y: 0.8, W: 0.4, H: 0.03, Value: pdffonttest.All()}},
+		Certificate{RequestID: "sig_1", Title: "Umowa – Zażółć", Sender: "Ștefan", Workspace: "株式会社", Zone: time.UTC,
+			Consent: "Zgadzam się.", Created: now, Completed: now,
+			Signers: []Signer{{Name: "Łukasz 김민준 محمد", Email: "łukasz@例え.jp", Method: "typed", Viewed: now, Signed: now}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pdffonttest.Fonts(t, stamped)
+}

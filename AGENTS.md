@@ -1,0 +1,176 @@
+# AGENTS.md
+
+Rules for coding agents (and people) working in this repository. If the code and this file disagree, the code wins;
+fix this file in the same change.
+
+## 1. What this is
+
+Helvetly is business-management software for small companies: workspaces and sign-in, clients, quotes and invoices
+(Swiss QR bills, e-invoice XML), expenses, documents, e-signatures, a client portal, books and VAT exports,
+optional Stripe subscription billing and optional AI features. See README.md for the feature list and limits.
+
+This repository holds the application only. Deployment of any particular installation (servers, DNS, credentials)
+is not part of it, and nothing here may depend on a private checkout or a secret beyond the CI run's own token.
+This repository has no `docs/` folder and gets none: design notes, plans, reports and agents' working documents live
+in the maintainers' separate documentation repository. Comments that cite `docs/…` refer to it; here the code and tests
+are the reference.
+
+## 2. Layout
+
+| Path                         | Package                       | What it is                                                 |
+| ---------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `apps/api`                   | `@helvetly/api`               | Go HTTP API; builds the single `helvetly` binary           |
+| `apps/platform`              | `@helvetly/platform`          | Next.js app for signed-in users, static export             |
+| `apps/portal`                | `@helvetly/portal`            | Next.js client portal (own host), static export            |
+| `apps/web`                   | `@helvetly/web`               | Next.js public website, static export                      |
+| `packages/ui`                | `@helvetly/ui`                | shadcn/ui components, theme, `globals.css`, `cn`           |
+| `packages/typescript-config` | `@helvetly/typescript-config` | `base.json`, `nextjs.json`                                 |
+| `packages/vitest-config`     | `@helvetly/vitest-config`     | Shared Vitest config and test setup                        |
+| `e2e`                        | `@helvetly/e2e`               | Playwright E2E and visual tests against the real API       |
+
+## 3. Architecture
+
+- **One binary.** `apps/api` embeds the static exports of `apps/platform` and `apps/portal`
+  (`apps/api/internal/platform`, `go:embed`). `/api/*` is the JSON API on every host; other paths are served from
+  the portal's files for `PORTAL_URL`'s host and from the platform's for any other. `Dockerfile` builds the image.
+- **No server runtime in the frontends.** Platform and portal are `output: 'export'`: no route handlers, server
+  actions, middleware or request-time rendering, no dynamic routes without `generateStaticParams`. Data comes from
+  the Go API via relative `fetch('/api/...')`; in development `next dev` rewrites `/api/*` to `API_URL`.
+- **Website.** `apps/web` is its own static export (every route known at build time); `build` also runs the internal
+  link check (`scripts/check-links.mjs`). It renders the legal texts in `apps/web/content/legal`.
+- **API mocks** (`src/mocks` in platform and portal) are test fixtures only: Vitest (`msw/node`) and Storybook.
+- **Go API**: standard library first (`net/http`, `log/slog`, `embed`); `cmd/helvetly` wires, `internal/<area>` is
+  one package per concern; handlers depend on interfaces passed in from `main`. PostgreSQL through `internal/store`
+  (pgx, hand-written SQL, goose migrations embedded and applied at start). Files through `internal/storage` (any
+  S3 API). Money only through the pure calculators (`internal/invoicecalc`, `vatcalc`, `ledgercalc`, `instalcalc`,
+  `dunningcalc`), PDFs through `internal/invoicepdf` and `internal/pdffont`.
+- **Auth** (`internal/auth`): passwordless (Google OIDC, email code, passkeys), sessions bound to one workspace,
+  `SignedIn` wraps signed-in routes and requires `X-CSRF-Token` on non-GET requests; personal API tokens
+  (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
+- **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
+  log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
+- **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
+  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget).
+
+## 4. Where code goes (DRY)
+
+- A UI component, hook or style used by both apps → `packages/ui`. Used by one app → that app's
+  `src/components`. Do not copy a component between apps; move it to `packages/ui`.
+- Add shadcn components from the app you are working in, e.g.
+  `pnpm --filter @helvetly/platform dlx shadcn@latest add dialog`; the `ui` alias in
+  `components.json` places them in `packages/ui`.
+- Import shared code as `@helvetly/ui/components/<name>`, `@helvetly/ui/lib/utils`. App-local code
+  as `@/...`.
+- A dependency version used by more than one workspace lives in the `catalog` in
+  `pnpm-workspace.yaml` and is referenced as `"catalog:"`.
+- Shared tool config lives in exactly one place: TS in `packages/typescript-config`, tests in
+  `packages/vitest-config`, lint in `.oxlintrc.json`, format in `.oxfmtrc.json` (both root, never
+  per workspace).
+
+## 5. Toolchain
+
+- Node 26 (`.nvmrc`), **pnpm 12 only** (`packageManager`), Turborepo, TypeScript 7.
+- Go 1.27 (`apps/api/go.mod`). Go is formatted by `gofmt` and checked by `go vet`.
+- Next.js 16 changed many APIs: read the guides in `node_modules/next/dist/docs/` before relying
+  on older knowledge.
+- Next.js 16, React 19, Tailwind CSS 4, shadcn/ui (`radix-nova` style), Vitest 5 + Testing Library.
+- Lint: oxlint. Format: oxfmt (imports, `package.json` and Tailwind classes are sorted by it).
+
+## 6. Commands
+
+```bash
+pnpm install
+cp .env.example .env     # once
+pnpm infra:up            # postgres, MaxIOFS (S3) + bucket, mailpit, stripe-cli listener
+pnpm dev                 # api :3333, platform :8000, web :8001, portal :8002
+pnpm dev:tunnel          # the same on public https hostnames of your own Cloudflare tunnel (scripts/dev-tunnel.sh)
+pnpm build               # web, platform, portal, then the api binary at apps/api/bin/helvetly
+pnpm check               # format:check, lint, typecheck, test, build: the full gate
+pnpm format              # fix formatting
+pnpm --filter <package> <script>   # one workspace, e.g. pnpm --filter @helvetly/api test
+```
+
+Local services (all bound to 127.0.0.1, ports set in `.env`): Postgres `5433`, S3 API `9300`,
+MaxIOFS console `9301` (`admin` / `admin`), Mailpit SMTP `1025` and inbox `8026`. `stripe` needs `STRIPE_SECRET_KEY` (test mode) and
+exits immediately without it; `docker compose logs stripe` prints the webhook signing secret.
+`pnpm --filter @helvetly/api dev` loads the root `.env`. Go tests need Postgres: each test gets
+its own database, cloned from a template migrated once per set of migrations (`helvetly_template_<hash>`),
+on the server of `HELVETLY_TEST_DATABASE_URL` (default: the compose database), dropped afterwards.
+
+## 7. Quality gate
+
+`pnpm check` must pass before a change is finished. CI (`.github/workflows/ci.yml`) selects checks
+by PR scope after a quick gate; drafts run only that gate. Ready-for-review, manual, merge-group
+and push-to-`main` runs select the full suite; `CI required` is the one required check.
+Selected tests run in parallel jobs (unit and Storybook tests once, through `pnpm test:coverage`;
+E2E specs sharded with `HELVETLY_E2E_SHARD`). The build job uploads the `helvetly` binary as an
+artifact. A step added to `check` goes into a CI job too. Rules:
+
+- Fix the cause, never silence it: no `any`, no unchecked `as`, no `oxlint-disable`,
+  no `@ts-expect-error`, no skipped tests, no lowered thresholds.
+- New logic gets a test next to it: `*.test.ts(x)` in `src/` for TS, `*_test.go` for Go
+  (table-driven, `httptest` for handlers).
+- A test that was red before your change: report it, do not delete or skip it.
+
+### UI, browser coverage and uploads
+
+- Shared controls use `packages/ui` variants, sizes and semantic tokens. The same action role has
+  the same appearance across screens; do not override button height, radius or colours per page
+  when a shared variant already represents that role. Review keyboard focus, mobile and dark mode.
+- Frontend behaviour is verified with Storybook stories and `play` interactions in Chromium,
+  including relevant loading, empty, error, permission, validation and pending-write states.
+  Keep pure unit/API tests; Storybook does not replace real end-to-end integration tests.
+- Real E2E tests use the Go API,
+  a disposable PostgreSQL schema and a disposable local S3 bucket with MSW disabled. Cover retry,
+  concurrent submissions, navigation/refresh, authentication, roles and workspace isolation.
+- `pnpm check` also builds Storybook and runs browser stories and E2E. Install Chromium once with
+  `pnpm --filter @helvetly/e2e exec playwright install chromium`; start local Postgres and S3 first (`pnpm infra:up`,
+  for the Go tests). E2E starts its own disposable Postgres and S3 from `compose.e2e.yml` (`pnpm e2e:down` removes them). `pnpm test:coverage`
+  measures unit and browser-story coverage together. Report actual gaps; do not equate a passing
+  suite or a high line percentage with exhaustive coverage.
+- `pnpm check` runs pinned official KoSIT validation of synthetic XRechnung XML through
+  `pnpm test:einvoice` (Docker, curl, unzip, shasum; no host JRE). Tools are downloaded and hash-checked,
+  while validation itself has no network access. Keep the supported/unsupported profile boundaries
+  and historical-data limits explicit in `scripts/validate-einvoice.sh`.
+- Every user-upload entry point checks SHA-256 computed from the actual bytes before adding a new
+  stored file, with a server-side concurrency guard scoped to the workspace. A changed filename or
+  MIME header does not make different content. Check same-batch, repeated and simultaneous uploads,
+  cross-entry-point duplicates, tenant boundaries and legacy files without hashes. Preserve deliberate
+  document copies, historical financial records and references; never deduplicate across tenants.
+
+## 8. Code style
+
+- Small, single-purpose modules and functions; names that make comments unnecessary. Comment only
+  the _why_.
+- No speculative abstractions, options or "for later" code. Three similar lines beat a premature
+  helper; the third copy across files is the signal to extract.
+- Validate at trust boundaries (HTTP input, env, third-party responses); trust internal calls.
+- Errors: Go returns wrapped errors (`fmt.Errorf("...: %w", err)`) and handles them once at the
+  edge; TS throws `Error` with context and handles it at the UI boundary.
+- Keep diffs scoped to one concern; no drive-by refactors.
+
+## 9. Secrets and environment
+
+- `.env` is ignored; `.env.example` is the tracked list of every setting. A new setting goes into
+  `.env.example`, then into the app's config layer (`apps/api/internal/config` for Go).
+- Never print a secret into a log, commit, PR description or chat reply.
+- The API validates its settings at startup and refuses to start on a bad one: `DATABASE_URL`,
+  `PUBLIC_URL` (platform origin: Google redirect, passkey RP ID), `PORTAL_URL` (the portal's origin, another host), `DOCS_URL` (the docs' origin, whose API playground gets CORS on the public catalogue, bearer only; default `http://localhost:8003` next to a local `PUBLIC_URL`, else off), `SECRET_KEY` (base64, 32 bytes;
+  empty only with `AUTH_DEV_SIGNIN`), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (both or neither),
+  `SMTP_*` and `MAIL_FROM` (email sign-in needs `SMTP_HOST` or `AUTH_DEV_SIGNIN`), `SESSION_TTL`,
+  `COOKIE_SECURE`, `TRUSTED_PROXY_CIDRS` (CIDRs of reverse proxies whose `X-Forwarded-For` is believed; empty = the TCP peer), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`/`S3_SECRET_KEY` (required), `S3_ADDRESSING` (path or virtual), `S3_OBJECT_LOCK_DAYS`/`S3_OBJECT_LOCK_MODE` (0 = protection off; > 0 requires a bucket with Object Lock or the API refuses to start), `S3_PROXY_DOWNLOADS` (default false: downloads redirect to presigned S3 URLs; true streams them through the API, for a bucket the browser cannot reach, such as localhost behind `pnpm dev:tunnel`, which sets it), `KSEF_API_URL` (https, optional; empty = no KSeF API). With `STRIPE_SECRET_KEY`: `STRIPE_WEBHOOK_SECRET`. `AUTH_DEV_SIGNIN` is never set in production. On a public (non-localhost) host the API refuses a plain-http
+  `PUBLIC_URL`/`PORTAL_URL` and `COOKIE_SECURE=false`; database dials time out after 10 s unless the URL sets
+  `connect_timeout`.
+
+## 9a. Operations
+
+- `GET /api/health` answers while the process runs; `GET /api/ready` also pings the database (503 when down).
+- Background loops run under a supervisor in `cmd/helvetly/jobs.go` (a panic restarts the loop after a minute);
+  SIGTERM drains requests, then waits for ticks in flight within the 15 s budget.
+- Self-hosting: README, "Self-hosting" (image contract, settings, releases, PostgreSQL, object storage).
+
+## 10. Git
+
+[CONTRIBUTING.md](CONTRIBUTING.md) is the source of truth for branches, commits, pull requests and validation.
+Conventional Commits, short kebab-case branches, `main` only through merged pull requests, no AI attribution in
+commits or pull requests.

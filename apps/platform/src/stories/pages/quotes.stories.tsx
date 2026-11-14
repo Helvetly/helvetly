@@ -1,0 +1,280 @@
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { delay, http, HttpResponse, type RequestHandler } from 'msw'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
+
+import { ClientsPage } from '@/components/clients/clients-page'
+import { QuotesPage } from '@/components/quotes/quotes-page'
+import { quoteHandlers, resetQuotesMock } from '@/mocks/quotes'
+
+import { sessionHandler, unavailable } from '../screen-fixtures'
+import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+
+/** The quotes page with the stateful quote fake behind it; `handlers` answer first. */
+const quotes = (query: Record<string, string> = {}, handlers: RequestHandler[] = []) =>
+  pageParameters('/quotes', query, [...handlers, ...quoteHandlers])
+
+const meta = {
+  title: 'Pages/Quotes',
+  beforeEach: () => {
+    closeHeidi()
+    resetQuotesMock()
+  },
+  parameters: quotes(),
+  render: () => (
+    <Frame>
+      <QuotesPage />
+    </Frame>
+  ),
+  globals: desktop,
+} satisfies Meta
+export default meta
+type Story = StoryObj<typeof meta>
+
+const page = (canvasElement: HTMLElement) => within(canvasElement.ownerDocument.body)
+const wait = { timeout: 8000 }
+/** Drawers, dialogs and empty states fade in: wait until one is shown. */
+const seen = (element: HTMLElement) => waitFor(() => expect(element).toBeVisible())
+/** A toast; one from an earlier story may still be on screen with the same words. */
+const toasted = (canvasElement: HTMLElement, text: string | RegExp) =>
+  waitFor(() =>
+    expect(
+      page(canvasElement)
+        .getAllByText(text)
+        .some((node) => node.checkVisibility()),
+    ).toBe(true),
+  )
+
+export const List: Story = { play: shows('Keller Holzbau AG', 'Expired') }
+export const ListDark = dark(List)
+export const ListPhone = phone(List)
+
+export const Loading: Story = {
+  parameters: quotes({}, [http.get('/api/v1/quotes', () => delay('infinite'))]),
+  play: async ({ canvasElement }) => {
+    const loaders = await page(canvasElement).findAllByRole('status', { name: 'Loading' }, wait)
+    await expect(loaders.length).toBeGreaterThan(0)
+  },
+}
+
+export const Empty: Story = {
+  parameters: quotes({}, [http.get('/api/v1/quotes', () => HttpResponse.json({ data: [] }))]),
+  play: async (context) => {
+    await shows('No quotes yet')?.(context)
+    // The header's button and the empty state's own.
+    await expect(
+      page(context.canvasElement).getAllByRole('button', { name: 'New quote' }),
+    ).toHaveLength(2)
+  },
+}
+
+export const LoadError: Story = {
+  parameters: quotes({}, [http.get('/api/v1/quotes', unavailable)]),
+  play: async (context) => {
+    await shows('Couldn’t load quotes')?.(context)
+    await seen(page(context.canvasElement).getByRole('button', { name: 'Try again' }))
+  },
+}
+
+/** The Expired view: a sent quote past its date reads as expired, muted like a declined one. */
+export const ExpiredView: Story = {
+  parameters: quotes({ status: 'expired' }),
+  play: async (context) => {
+    await shows('Q-2026-001 (Rev. 2)', 'Expired')?.(context)
+    const body = page(context.canvasElement)
+    await expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0)
+    const badge = body.getAllByText('Expired').find((node) => node.closest('td'))
+    await expect(badge?.className).toContain('text-muted-foreground')
+  },
+}
+
+export const Detail: Story = {
+  parameters: quotes({ id: 'quo_sent' }),
+  play: shows('Valid until 27 Nov 2026'),
+}
+export const DetailDark = dark(Detail)
+export const DetailPhone = phone(Detail)
+
+/** A new quote needs a client; once chosen, the draft is saved with its lines. */
+export const CreateDraft: Story = {
+  parameters: quotes({ new: '1' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    const editor = await body.findByRole('form', { name: 'New quote' }, wait)
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save draft' }))
+    await seen(await within(editor).findByText('Choose who this quote is for.'))
+
+    await userEvent.click(within(editor).getByRole('button', { name: 'Client' }))
+    await userEvent.click(await body.findByRole('option', { name: /Sophie Meier/ }))
+    await userEvent.type(
+      within(editor).getByRole('textbox', { name: 'Line 1 description' }),
+      'Website relaunch',
+    )
+    await userEvent.type(within(editor).getByRole('textbox', { name: 'Line 1 price' }), '4800')
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save draft' }))
+    await toasted(canvasElement, 'Draft quote created.')
+  },
+}
+export const CreateDraftPhone = phone(CreateDraft)
+
+/** A draft is edited in the same drawer and its new reference shows once saved. */
+export const EditDraft: Story = {
+  parameters: quotes({ id: 'quo_draft' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Edit' }, wait))
+    const editor = await body.findByRole('form', { name: 'Edit draft quote' })
+    await userEvent.type(within(editor).getByRole('textbox', { name: /Reference/ }), 'PO 4711')
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save changes' }))
+    await toasted(canvasElement, 'Quote saved.')
+    await seen(await body.findByText('PO 4711'))
+  },
+}
+export const EditDraftDark = dark(EditDraft)
+
+/** Send checks the address; without email set up it says so, and marking it sent still works. */
+export const SendValidation: Story = {
+  parameters: quotes({ id: 'quo_draft' }, [
+    http.post('/api/v1/quotes/:id/send', async ({ request }) => {
+      const body: unknown = await request.clone().json()
+      if (typeof body === 'object' && body !== null && 'email' in body) return undefined
+      return HttpResponse.json(
+        { error: { code: 'mail_unavailable', message: 'Email is not set up on this server.' } },
+        { status: 503 },
+      )
+    }),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Send' }, wait))
+    const dialog = await body.findByRole('dialog', { name: 'Send quote' })
+    const to = within(dialog).getByRole('textbox', { name: /To/ })
+    await waitFor(() => expect(to).toHaveValue('hello@alpenglow.ch'))
+    await userEvent.clear(to)
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
+    await seen(within(dialog).getByText('Add at least one email address.'))
+    await userEvent.type(to, 'not-an-address')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
+    await seen(within(dialog).getByText('“not-an-address” isn’t an email address.'))
+
+    await userEvent.clear(to)
+    await userEvent.type(to, 'anna@alpenglow.ch')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
+    await seen(await within(dialog).findByText(/Email isn’t set up on this server/))
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Mark as sent without email' }),
+    )
+    await toasted(canvasElement, /marked as sent/)
+    await seen(await body.findByText('Valid until 3 Dec 2026'))
+  },
+}
+
+/** Staff record the client's yes with a note; the drawer then offers the invoice. */
+export const AcceptWithNote: Story = {
+  parameters: quotes({ id: 'quo_sent' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Accept' }, wait))
+    const dialog = await body.findByRole('dialog', { name: /Accept Quote Q-2026-004/ })
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: /Note/ }),
+      'Confirmed by phone',
+    )
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Accept quote' }))
+    await toasted(canvasElement, 'Quote Q-2026-004 accepted.')
+    await seen(await body.findByText('“Confirmed by phone”'))
+    await seen(await body.findByRole('button', { name: 'Create invoice' }, wait))
+  },
+}
+
+export const Decline: Story = {
+  parameters: quotes({ id: 'quo_sent' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'More actions' }, wait))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Decline' }))
+    const dialog = await body.findByRole('dialog', { name: /Decline Quote Q-2026-004/ })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Decline quote' }))
+    await toasted(canvasElement, 'Quote Q-2026-004 declined.')
+    await seen(await body.findByRole('button', { name: 'Revise' }, wait))
+  },
+}
+
+/** A declined quote becomes a draft again, revision 2, and opens in the editor. */
+export const Revise: Story = {
+  parameters: quotes({ id: 'quo_declined' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Revise' }, wait))
+    const confirm = await body.findByRole('dialog', { name: /Revise Quote Q-2026-002/ })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Revise' }))
+    await toasted(canvasElement, /is a draft again/)
+    await seen(await body.findByRole('form', { name: 'Edit Q-2026-002 (Rev. 2)' }))
+  },
+}
+
+export const CreateInvoice: Story = {
+  parameters: quotes({ id: 'quo_accepted' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Create invoice' }, wait))
+    const confirm = await body.findByRole('dialog', { name: /Create an invoice from/ })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Create invoice' }))
+    await toasted(canvasElement, 'Draft invoice created from Quote Q-2026-003.')
+  },
+}
+
+/** Converted elsewhere in the meantime: the 409 says so in words, not as a code. */
+export const CreateInvoiceTwice: Story = {
+  parameters: quotes({ id: 'quo_accepted' }, [
+    http.post('/api/v1/quotes/:id/invoice', () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'quote_invoiced',
+            message: 'An invoice was already made from this quote.',
+          },
+        },
+        { status: 409 },
+      ),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Create invoice' }, wait))
+    const confirm = await body.findByRole('dialog', { name: /Create an invoice from/ })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Create invoice' }))
+    await toasted(canvasElement, /delete that draft to make a new one/)
+  },
+}
+
+/** A member who may only view invoices sees quotes, but no way to change them. */
+export const ReadOnlyMember: Story = {
+  parameters: quotes({ id: 'quo_sent' }, [sessionHandler({ role: 'member', scopes: ['read:*'] })]),
+  play: async (context) => {
+    await shows('Valid until 27 Nov 2026')?.(context)
+    const body = page(context.canvasElement)
+    await seen(body.getByRole('link', { name: 'Download PDF' }))
+    await expect(body.queryByRole('button', { name: 'Accept' })).toBeNull()
+    await expect(body.queryByRole('button', { name: 'Edit' })).toBeNull()
+    await expect(body.queryByRole('button', { name: /New quote/ })).toBeNull()
+  },
+}
+
+/** The client's Quotes tab lists its quotes; "New quote" opens the editor for that client in place. */
+export const ClientTab: Story = {
+  parameters: pageParameters('/clients', { id: 'cli_3' }, quoteHandlers),
+  render: () => (
+    <Frame>
+      <ClientsPage />
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('tab', { name: 'Quotes' }, wait))
+    await seen(await body.findByText('Q-2026-003'))
+    await userEvent.click(body.getByRole('button', { name: 'New quote' }))
+    const editor = await body.findByRole('form', { name: 'New quote' })
+    await seen(await within(editor).findByText('Sophie Meier'))
+  },
+}

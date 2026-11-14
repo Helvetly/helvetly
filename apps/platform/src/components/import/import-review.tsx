@@ -1,0 +1,338 @@
+'use client'
+
+import { Badge } from '@helvetly/ui/components/badge'
+import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { cn } from '@helvetly/ui/lib/utils'
+import { ArrowLeft, Check, Pencil } from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
+
+import { inputClass } from '@/components/clients/fields'
+import { errorMessage } from '@/lib/api'
+import {
+  displayValue,
+  isSettled,
+  recordChanges,
+  usePatchImportRecord,
+  type CommitResult,
+  type ImportKindConfig,
+  type ImportRecord,
+} from '@/lib/imports'
+
+import { ImportClientField } from './import-client-field'
+
+const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
+  displayValue(record.data[config.labelKey ?? 'name']) || `row ${index + 1}`
+const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
+
+/** The records read from the files: tick the ones to create, fix the flagged ones first. */
+export function ReviewTable({
+  config,
+  records,
+  selected,
+  results,
+  onSelect,
+  onEdit,
+}: {
+  config: ImportKindConfig
+  records: ImportRecord[]
+  selected: ReadonlySet<string>
+  results: ReadonlyMap<string, CommitResult>
+  onSelect: (selected: Set<string>) => void
+  onEdit: (id: string) => void
+}) {
+  const open = records.filter((record) => !isSettled(record))
+  const ticked = open.filter((record) => selected.has(record.id)).length
+  const toggle = (id: string, on: boolean) => {
+    const next = new Set(selected)
+    if (on) next.add(id)
+    else next.delete(id)
+    onSelect(next)
+  }
+
+  if (!records.length)
+    return (
+      <p className="rounded-lg border border-dashed px-4 py-8 text-center text-[13px] text-muted-foreground">
+        No {config.label.toLowerCase()} were found in these files. Try other files, or check that
+        they contain names and details.
+      </p>
+    )
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <table aria-label="Records found" className="w-full min-w-[640px] text-left text-[13px]">
+        <thead className="border-b bg-muted/40 text-[12px] text-muted-foreground">
+          <tr>
+            <th scope="col" className="w-10 px-3 py-2">
+              <Checkbox
+                aria-label="Select all"
+                disabled={!open.length}
+                checked={ticked === 0 ? false : ticked === open.length ? true : 'indeterminate'}
+                onCheckedChange={(on) =>
+                  onSelect(on === true ? new Set(open.map((record) => record.id)) : new Set())
+                }
+              />
+            </th>
+            {config.columns.map((field) => (
+              <th key={field} scope="col" className="px-2 py-2 font-medium">
+                {config.fields[field]}
+              </th>
+            ))}
+            <th scope="col" className="px-2 py-2 font-medium">
+              Notes
+            </th>
+            <th scope="col" className="w-10 px-2 py-2">
+              <span className="sr-only">Edit</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {records.map((record, index) => {
+            const name = rowName(config, record, index)
+            const created = record.status === 'created'
+            const skipped = record.status === 'skipped'
+            const issues = Object.keys(record.issues)
+            const otherIssues = issues.filter((field) => !config.columns.includes(field))
+            const result = results.get(record.id)
+            return (
+              <tr
+                key={record.id}
+                className={cn('align-top', (created || skipped) && 'text-muted-foreground')}
+              >
+                <td className="px-3 py-2">
+                  {created ? (
+                    <Check aria-label="Created" className="size-4 text-success-solid" />
+                  ) : skipped ? null : (
+                    <Checkbox
+                      aria-label={`Select ${name}`}
+                      aria-describedby={
+                        issues.length
+                          ? issues.map((field) => issueId(record, field)).join(' ')
+                          : undefined
+                      }
+                      checked={selected.has(record.id)}
+                      onCheckedChange={(on) => toggle(record.id, on === true)}
+                    />
+                  )}
+                </td>
+                {config.columns.map((field) => {
+                  const value = displayValue(record.data[field])
+                  return (
+                    <td key={field} className="max-w-48 px-2 py-2">
+                      <span className={cn('block truncate', !value && 'text-muted-foreground')}>
+                        {value || '—'}
+                      </span>
+                      {record.issues[field] && (
+                        <span
+                          id={issueId(record, field)}
+                          className="block text-[11.5px] text-destructive"
+                        >
+                          {record.issues[field]}
+                        </span>
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="min-w-44 px-2 py-2">
+                  <div className="grid justify-items-start gap-1">
+                    {created && record.entity_id && (
+                      <span className="flex items-center gap-1.5">
+                        <Badge variant="secondary">Created</Badge>
+                        <Link
+                          href={config.entityHref(record.entity_id)}
+                          className="text-[12px] underline underline-offset-2"
+                        >
+                          Open
+                        </Link>
+                      </span>
+                    )}
+                    {skipped && <Badge variant="outline">Skipped</Badge>}
+                    {record.duplicate && !created && !skipped && (
+                      <Badge variant="outline" className="h-auto text-left whitespace-normal">
+                        Possible duplicate: {record.duplicate.label} ({record.duplicate.reason})
+                      </Badge>
+                    )}
+                    {otherIssues.map((field) => (
+                      <span
+                        key={field}
+                        id={issueId(record, field)}
+                        className="text-[11.5px] text-destructive"
+                      >
+                        {config.fields[field] ?? field}: {record.issues[field]}
+                      </span>
+                    ))}
+                    {record.status === 'failed' && record.error && (
+                      <span className="text-[11.5px] text-destructive">
+                        {record.error}
+                        {result?.error?.code === 'limit_reached' && (
+                          <>
+                            {' '}
+                            <Link
+                              href="/settings/billing/plans"
+                              className="underline underline-offset-2"
+                            >
+                              See plans
+                            </Link>
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5">
+                  {!created && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Edit ${name}`}
+                          onClick={() => onEdit(record.id)}
+                        >
+                          <Pencil />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** Fixes one record in place of the table; saving re-checks it on the server. */
+export function EditRecord({
+  config,
+  batchId,
+  record,
+  onDone,
+}: {
+  config: ImportKindConfig
+  batchId: string
+  record: ImportRecord
+  onDone: (record: ImportRecord | null) => void
+}) {
+  const patch = usePatchImportRecord(batchId)
+  const [values, setValues] = useState(() =>
+    Object.fromEntries(
+      [...config.editable, ...(config.pickClient ? ['client_name'] : [])].map((field) => [
+        field,
+        displayValue(record.data[field]),
+      ]),
+    ),
+  )
+  const toggles = config.toggles ?? []
+  const save = () => {
+    const changes = recordChanges(record.data, values, toggles)
+    if (!Object.keys(changes).length) return onDone(null)
+    patch.mutate(
+      { recordId: record.id, data: changes },
+      { onSuccess: (saved) => !Object.keys(saved.issues).length && onDone(saved) },
+    )
+  }
+
+  return (
+    <form
+      noValidate
+      aria-label="Edit record"
+      className="grid gap-5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        save()
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={() => onDone(null)}>
+          <ArrowLeft /> Back to the list
+        </Button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {config.editable.map((field) => {
+          const id = `import-${record.id}-${field}`
+          const error = record.issues[field]
+          if (config.pickClient && field === 'client_id')
+            return (
+              <ImportClientField
+                key={field}
+                id={id}
+                clientId={values.client_id ?? ''}
+                clientName={values.client_name ?? ''}
+                error={error}
+                onPick={(client) =>
+                  setValues((current) => ({
+                    ...current,
+                    client_id: client.id,
+                    client_name: client.name,
+                  }))
+                }
+              />
+            )
+          if (toggles.includes(field))
+            return (
+              <FormField
+                key={field}
+                id={id}
+                label={config.fields[field] ?? field}
+                error={error}
+                tip={config.tips?.[field]}
+              >
+                <span className="flex h-9 items-center">
+                  <Checkbox
+                    {...describedBy(id, error)}
+                    checked={values[field] === 'Yes'}
+                    onCheckedChange={(on) =>
+                      setValues((current) => ({ ...current, [field]: on === true ? 'Yes' : 'No' }))
+                    }
+                  />
+                </span>
+              </FormField>
+            )
+          return (
+            <FormField
+              key={field}
+              id={id}
+              label={config.fields[field] ?? field}
+              error={error}
+              tip={config.tips?.[field]}
+            >
+              <input
+                {...describedBy(id, error)}
+                value={values[field] ?? ''}
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, [field]: event.target.value }))
+                }
+                className={inputClass}
+              />
+            </FormField>
+          )
+        })}
+      </div>
+      {record.duplicate && (
+        <p className="text-[12.5px] text-muted-foreground">
+          Possible duplicate: {record.duplicate.label} ({record.duplicate.reason}).
+        </p>
+      )}
+      {patch.error && (
+        <p role="alert" className="text-[12.5px] text-destructive">
+          {errorMessage(patch.error)}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={() => onDone(null)}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={patch.isPending}>
+          {patch.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </form>
+  )
+}

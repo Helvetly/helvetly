@@ -1,0 +1,752 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+@source "../../../apps/**/*.{ts,tsx}";
+@source "../../../components/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-placeholder: var(--placeholder);
+  --color-link: var(--link);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-border: var(--warning-border);
+  --color-success: var(--success);
+  --color-success-solid: var(--success-solid);
+  --color-success-surface: var(--success-surface);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-info: var(--info);
+  --color-info-solid: var(--info-solid);
+  --color-info-surface: var(--info-surface);
+  --color-logo-from: var(--logo-from);
+  --color-logo-to: var(--logo-to);
+  --color-toggle: var(--toggle);
+  --color-toggle-surface: var(--toggle-surface);
+  --color-toggle-border: var(--toggle-border);
+  --color-section-icon: var(--section-icon);
+  --color-section-icon-surface: var(--section-icon-surface);
+  --color-brand: var(--brand);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-surface: var(--brand-surface);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-panel: var(--panel);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --font-sans: var(--font-sans);
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --color-heidi: var(--heidi);
+  --color-heidi-soft: var(--heidi-soft);
+  --color-heidi-ink: var(--heidi-ink);
+  --color-heidi-from: var(--heidi-from);
+  --color-heidi-via: var(--heidi-via);
+  --color-heidi-to: var(--heidi-to);
+  /* The type scale: use these instead of text-[Npx]. */
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-title-sm: 15px;
+  --text-title-sm--line-height: 22px;
+  --text-title: 18px;
+  --text-title--line-height: 26px;
+  --text-page: 22px;
+  --text-page--line-height: 28px;
+  --text-display: 32px;
+  --text-display--line-height: 36px;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-orb: orb 9s ease-in-out infinite;
+  --animate-twinkle: twinkle 2.8s ease-in-out infinite;
+}
+
+/* The glints: mostly lit, a quick dim, then a bright catch of light with a quarter turn. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+  36% {
+    opacity: 0.4;
+    scale: 0.7;
+  }
+  46% {
+    opacity: 1;
+    scale: 1.25;
+    rotate: 45deg;
+  }
+  58% {
+    opacity: 0.9;
+    scale: 1;
+    rotate: 90deg;
+  }
+}
+
+/* Heidi's status line: a soft highlight sweeping across the text. */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Heidi's orb: two blurred lights slowly drifting and breathing. */
+@keyframes orb {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(6%, -5%) scale(1.08);
+  }
+  66% {
+    transform: translate(-5%, 4%) scale(0.95);
+  }
+}
+
+:root {
+  --background: #efeef1;
+  --foreground: #39393b;
+  --card: oklch(1 0 0);
+  --card-foreground: #39393b;
+  --popover: oklch(1 0 0);
+  --popover-foreground: #39393b;
+  --primary: oklch(0.21 0.006 286);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286);
+  --secondary-foreground: oklch(0.21 0.006 286);
+  --muted: #f2f2f2;
+  --muted-foreground: #66656c;
+  --placeholder: #c4c3c9;
+  /* The leading accent: a fresh teal from the logo's mountain, bluer than --toggle's and the
+     money states' green so the three never read as one. --brand (text, icons) is ≥ 5:1 on
+     --brand-surface, the background and white; --brand-solid (dots, bars, rings) is ≥ 3:1 on white. */
+  --brand: #0b7268;
+  --brand-solid: #0e9a86;
+  --brand-surface: #dcf4ee;
+  --link: var(--brand);
+  /* The app icon's tile: the brand teal in both themes, so the white mark always reads. */
+  --logo-from: #0e9a86;
+  --logo-to: #0b7268;
+  /* Status tones. Text tokens are ≥ 4.9:1 (AA) on their surface, the background and white, in
+     both themes; the -solid tokens (dots, bars, icons) are ≥ 3:1 on the card. */
+  --warning: #9a5413;
+  --warning-solid: #dd7b26;
+  --warning-surface: #fbf0e3;
+  --warning-border: #f0dcc5;
+  /* Done, paid, saved, switched on. */
+  --success: #11733a;
+  --success-solid: #17a052;
+  --success-surface: #dcf5e3;
+  /* A neutral notice: sent, scheduled. */
+  --info: #2650b8;
+  --info-solid: #3b74f2;
+  --info-surface: #ecf2ff;
+  /* A switched-on setting is a success, in the vivid solid (the white thumb is ≥ 3:1 on it). */
+  --toggle: var(--success-solid);
+  --toggle-surface: var(--success-surface);
+  --toggle-border: #bfe8cc;
+  /* A card's title icon: a brand tile, so it never reads as one of the card's own rows. */
+  --section-icon: var(--brand);
+  --section-icon-surface: var(--brand-surface);
+  --accent: oklch(0.94 0.002 286);
+  --accent-foreground: oklch(0.21 0.006 286);
+  --destructive: #ba2038;
+  --destructive-surface: #f4e0e0;
+  --border: #ebebed;
+  --input: #e2e2e5;
+  --ring: var(--brand-solid);
+  --chart-1: oklch(0.21 0.006 286);
+  --chart-2: oklch(0.705 0.015 286);
+  --chart-3: oklch(0.53 0.12 164);
+  --chart-4: oklch(0.68 0.12 230);
+  --chart-5: oklch(0.78 0.14 75);
+  /* Heidi: electric violet into bright magenta; --heidi is the solid for text and rings. */
+  --heidi: #7b3dff;
+  --heidi-soft: #f0e9ff;
+  --heidi-ink: #4a1fc2;
+  --heidi-from: #7b3dff;
+  --heidi-via: #b23dff;
+  --heidi-to: #e93dff;
+  --panel: #f7f7f7;
+  --radius: 0.5rem;
+  /* The app window: the panel floats on the canvas with a hairline and a whisper of shadow. */
+  --elevation-1: 0 0 0 1px oklch(0.21 0.006 286 / 0.07), 0 1px 2px oklch(0.21 0.006 286 / 0.05);
+  --elevation-2:
+    0 12px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.03);
+  --sidebar: var(--background);
+  --sidebar-foreground: #6d6b75;
+  --sidebar-primary: oklch(0.21 0.006 286);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #e7e6eb;
+  --sidebar-accent-foreground: #2a2a2d;
+  --sidebar-border: #ebebed;
+  --sidebar-ring: var(--ring);
+}
+
+.dark {
+  --background: oklch(0.17 0.004 286);
+  --foreground: oklch(0.96 0.002 286);
+  --card: oklch(0.21 0.005 286);
+  --card-foreground: oklch(0.96 0.002 286);
+  --popover: oklch(0.23 0.005 286);
+  --popover-foreground: oklch(0.96 0.002 286);
+  --primary: oklch(0.94 0.004 286);
+  --primary-foreground: oklch(0.21 0.006 286);
+  --secondary: oklch(0.26 0.005 286);
+  --secondary-foreground: oklch(0.96 0.002 286);
+  --muted: oklch(0.25 0.005 286);
+  --muted-foreground: oklch(0.7 0.012 286);
+  --placeholder: oklch(0.45 0.01 286);
+  --brand: #5fe0c8;
+  --brand-solid: #22c3a9;
+  --brand-surface: #123a35;
+  --link: var(--brand);
+  --warning: oklch(0.85 0.12 70);
+  --warning-solid: oklch(0.76 0.15 58);
+  --warning-surface: oklch(0.769 0.188 70.08 / 15%);
+  --warning-border: oklch(0.4 0.06 85);
+  --success: oklch(0.8 0.16 150);
+  --success-solid: oklch(0.72 0.18 150);
+  --success-surface: oklch(0.28 0.06 150);
+  --info: oklch(0.84 0.08 262);
+  --info-solid: oklch(0.7 0.15 262);
+  --info-surface: oklch(0.29 0.06 264);
+  --toggle: var(--success-solid);
+  --toggle-surface: var(--success-surface);
+  --toggle-border: oklch(0.4 0.09 150);
+  --section-icon: var(--brand);
+  --section-icon-surface: var(--brand-surface);
+  --accent: oklch(0.27 0.006 286);
+  --accent-foreground: oklch(0.96 0.002 286);
+  --destructive: oklch(0.7 0.17 20);
+  --destructive-surface: oklch(0.27 0.05 20);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: var(--brand-solid);
+  --chart-1: oklch(0.93 0.004 286);
+  --chart-2: oklch(0.55 0.012 286);
+  --chart-3: oklch(0.72 0.14 163);
+  --chart-4: oklch(0.68 0.12 230);
+  --chart-5: oklch(0.78 0.14 75);
+  --elevation-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 2px oklch(0 0 0 / 0.3);
+  --elevation-2: 0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -8px oklch(0 0 0 / 0.55);
+  --heidi: #a593ff;
+  --heidi-soft: oklch(0.3 0.08 292);
+  --heidi-ink: #e2dbff;
+  --heidi-from: #a77bff;
+  --heidi-via: #c97bff;
+  --heidi-to: #f27aff;
+  --panel: oklch(0.2 0.004 286);
+  --sidebar: var(--background);
+  --sidebar-foreground: oklch(0.82 0.004 286);
+  --sidebar-primary: oklch(0.94 0.004 286);
+  --sidebar-primary-foreground: oklch(0.21 0.006 286);
+  --sidebar-accent: oklch(0.24 0.005 286);
+  --sidebar-accent-foreground: oklch(0.96 0.002 286);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: var(--ring);
+}
+
+/* Toasts are inverted (dark on a light page, light on a dark one), so their icons take the other
+   theme's solids. */
+.toaster {
+  --success-solid: oklch(0.72 0.18 150);
+  --info-solid: oklch(0.7 0.15 262);
+  --warning-solid: oklch(0.76 0.15 58);
+  --destructive: oklch(0.7 0.17 20);
+}
+.dark .toaster {
+  --success-solid: #17a052;
+  --info-solid: #3b74f2;
+  --warning-solid: #dd7b26;
+  --destructive: #ba2038;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Inter: straight-legged l, open digits, round quotes; amounts line up everywhere. */
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+  /* An app, not a page: no rubber-band bounce at the ends of the window or of any vertical scroller
+     (main content, Heidi, drawers, lists), and a scroller at its end does not drag the page along.
+     Vertical only, so a horizontal table scroller still passes a vertical wheel to the page; a
+     scroller with nothing to scroll chains as usual. */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  :where([class*='overflow-y-auto'], [class*='overflow-auto'], [class*='overflow-y-scroll']) {
+    overscroll-behavior-y: none;
+  }
+  /* The browser's search clear button, redrawn as a quiet x in the text colour of hints. */
+  input[type='search']::-webkit-search-cancel-button {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    background-color: var(--muted-foreground);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E")
+      center / 14px no-repeat;
+    transition: background-color 150ms;
+  }
+  input[type='search']::-webkit-search-cancel-button:hover {
+    background-color: var(--foreground);
+  }
+  /* Tailwind 4 resets buttons to the default cursor; everything clickable gets the pointer. */
+  :is(
+    button,
+    [role='button'],
+    [role='tab'],
+    [role='menuitem'],
+    [role='menuitemcheckbox'],
+    [role='menuitemradio'],
+    [role='option'],
+    [role='switch'],
+    [role='checkbox'],
+    summary,
+    select,
+    a[href],
+    label[for],
+    label:has(> input:is([type='radio'], [type='checkbox']))
+  ):not(:disabled, [aria-disabled='true'], [data-disabled]) {
+    cursor: pointer;
+  }
+}
+
+/* Buttons side by side breathe, app-wide and set once: a drawer toolbar, page header, dialog or section
+   footer whose row of buttons includes a labelled one gets 10 px between them, whatever small gap the
+   row was written with. Icon-only clusters (row actions, editor toolbars) stay dense; columns are
+   untouched. Unlayered on purpose: it must beat the row's own `gap-*` utility. */
+:is(.gap-1, .gap-1\.5, .gap-2, .gap-x-1, .gap-x-1\.5, .gap-x-2):has(
+    > [data-slot='button'] ~ [data-slot='button']
+  ):has(> [data-slot='button']:not([data-size^='icon'])) {
+  column-gap: 0.625rem;
+}
+
+/* Icon micro-motions, defined once for the whole app: an icon inside anything clickable moves by its
+   meaning on hover, keyboard focus or press. Icons are matched by lucide's own class names, so a new
+   button gets its motion for free. Transforms only (no layout shift), nothing with reduced motion;
+   in `components` so an icon's own utilities (`animate-spin`, `rotate-180`) still win.
+   - Arrows and chevrons nudge the way they point, once per hover (the sort button's arrows).
+   - Plus and X turn 90°, the Settings cog turns, Search grows, Pencil tilts to write.
+   - Upload/Download/External link nudge only their arrow; Copy's sheets part; the Trash lid lifts;
+     ListFilter/SlidersHorizontal lines slide; Refresh and Rotate spin once.
+   - File up/down, Log in/out and the two-way arrows nudge only their arrows; Undo/Redo swing back/on.
+   - Every other icon (documents, charts, coins…) grows a touch, so no clickable icon stays dead.
+   - A tab's icon pops once when the tab becomes the selected one.
+   Child shapes move in the icon's own 24-unit grid (2 units ≈ 1.3 px at 16 px). */
+@keyframes nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: var(--nudge);
+  }
+}
+@keyframes icon-pop {
+  50% {
+    scale: 1.18;
+  }
+}
+@keyframes icon-spin {
+  from {
+    rotate: 0deg;
+  }
+  to {
+    rotate: var(--spin);
+  }
+}
+@layer components {
+  @media (prefers-reduced-motion: no-preference) {
+    :is(
+      button,
+      a[href],
+      [role='button'],
+      [role='menuitem'],
+      [role='menuitemcheckbox'],
+      [role='menuitemradio'],
+      [role='tab']
+    ):not(:disabled, [aria-disabled='true'], [data-disabled]) {
+      /* A shape moved past the 24-unit grid must not be cut off by the svg box. */
+      & .lucide {
+        overflow: visible;
+      }
+      & .lucide,
+      & .lucide > * {
+        transition:
+          rotate 200ms ease-out,
+          scale 200ms ease-out,
+          translate 200ms ease-out;
+      }
+      & :is([class*='lucide-arrow-left'], [class*='lucide-chevron-left']) {
+        --nudge: -3px 0;
+      }
+      & :is([class*='lucide-arrow-right'], [class*='lucide-chevron-right']) {
+        --nudge: 3px 0;
+      }
+      & :is([class*='lucide-arrow-up'], [class*='lucide-chevron-up']) {
+        --nudge: 0 -3px;
+      }
+      & :is([class*='lucide-arrow-down'], [class*='lucide-chevron-down'], .lucide-funnel) {
+        --nudge: 0 3px;
+      }
+      & :is([class*='lucide-arrow-up-right'], [class*='lucide-move-up-right'], .lucide-send) {
+        --nudge: 2px -2px;
+      }
+      & .lucide-upload > :nth-child(-n + 2) {
+        --nudge: 0 -3px;
+      }
+      & .lucide-download > :is(:nth-child(1), :nth-child(3)) {
+        --nudge: 0 3px;
+      }
+      &
+        :is(
+          .lucide-external-link > :nth-child(-n + 2),
+          .lucide-square-arrow-out-up-right > :nth-child(n + 2)
+        ) {
+        --nudge: 3px -3px;
+      }
+      & .lucide-list-filter > :nth-child(2) {
+        --nudge: -3px 0;
+      }
+      & .lucide-list-filter > :nth-child(3) {
+        --nudge: 3px 0;
+      }
+      & .lucide-sliders-horizontal > :is(:nth-child(3), :nth-child(4)) {
+        --nudge: -3px 0;
+      }
+      & .lucide-sliders-horizontal > :nth-child(8) {
+        --nudge: 3px 0;
+      }
+      & :is(.lucide-undo, .lucide-undo-2) {
+        --nudge: -3px 0;
+      }
+      & :is(.lucide-redo, .lucide-redo-2) {
+        --nudge: 3px 0;
+      }
+      & .lucide-file-up > :nth-child(n + 3) {
+        --nudge: 0 -3px;
+      }
+      & .lucide-file-down > :nth-child(n + 3) {
+        --nudge: 0 3px;
+      }
+      & :is(.lucide-log-in, .lucide-log-out) > :nth-child(-n + 2) {
+        --nudge: 3px 0;
+      }
+      /* The two-way arrows stay put as a whole; each arrow slides its own way. */
+      & :is(.lucide-arrow-left-right, .lucide-arrow-right-left) {
+        --nudge: 0 0;
+      }
+      & .lucide-arrow-left-right > :nth-child(-n + 2),
+      & .lucide-arrow-right-left > :nth-child(n + 3) {
+        --nudge: -3px 0;
+      }
+      & .lucide-arrow-left-right > :nth-child(n + 3),
+      & .lucide-arrow-right-left > :nth-child(-n + 2) {
+        --nudge: 3px 0;
+      }
+      & .lucide-refresh-cw {
+        --spin: 180deg;
+      }
+      & .lucide-refresh-ccw {
+        --spin: -180deg;
+      }
+      & .lucide-rotate-cw {
+        --spin: 360deg;
+      }
+      & .lucide-rotate-ccw {
+        --spin: -360deg;
+      }
+      /* The lid and its handle hinge on the lid's right end. */
+      & .lucide-trash > :is(:nth-child(4), :nth-child(5)) {
+        transform-origin: 21px 6px;
+      }
+
+      /* Low specificity, so a hovered tab's own motion wins over the pop. */
+      &:where([role='tab'][aria-selected='true'], [aria-current='page']) .lucide {
+        animation: icon-pop 350ms ease-out;
+      }
+
+      &:is(:hover, :focus-visible, :active, [data-highlighted]) {
+        &
+          :is(
+            [class*='lucide-arrow-'],
+            [class*='lucide-chevron-'],
+            [class*='lucide-move-up-right'],
+            .lucide-send,
+            .lucide-funnel,
+            .lucide-undo,
+            .lucide-undo-2,
+            .lucide-redo,
+            .lucide-redo-2
+          ),
+        &
+          :is(
+            .lucide-file-up,
+            .lucide-file-down,
+            .lucide-log-in,
+            .lucide-log-out,
+            .lucide-arrow-left-right,
+            .lucide-arrow-right-left,
+            .lucide-upload,
+            .lucide-download,
+            .lucide-external-link,
+            .lucide-square-arrow-out-up-right,
+            .lucide-list-filter,
+            .lucide-sliders-horizontal
+          )
+          > * {
+          animation: nudge 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        & :is(.lucide-refresh-cw, .lucide-refresh-ccw, .lucide-rotate-cw, .lucide-rotate-ccw) {
+          animation: icon-spin 450ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        & :is(.lucide-plus, .lucide-circle-plus, .lucide-x) {
+          rotate: 90deg;
+        }
+        & .lucide-settings {
+          rotate: 60deg;
+        }
+        & .lucide-search {
+          scale: 1.15;
+        }
+        & :is(.lucide-pencil, .lucide-pen, .lucide-pencil-line) {
+          rotate: -12deg;
+        }
+        & .lucide-trash > :is(:nth-child(4), :nth-child(5)) {
+          rotate: 12deg;
+          translate: 0 -1.5px;
+        }
+        & .lucide-copy > :nth-child(1) {
+          translate: 1.5px 1.5px;
+        }
+        & .lucide-copy > :nth-child(2) {
+          translate: -1.5px -1.5px;
+        }
+        /* The fallback: any icon without a motion of its own. Indicators (a menu's check or radio
+           dot, a spinner) are state, not an action, and stay still. */
+        &
+          .lucide:not(
+            [class*='lucide-arrow-'],
+            [class*='lucide-chevron'],
+            [class*='lucide-move-'],
+            [class*='lucide-loader'],
+            [class*='lucide-undo'],
+            [class*='lucide-redo'],
+            .lucide-send,
+            .lucide-funnel,
+            .lucide-upload,
+            .lucide-download,
+            .lucide-file-up,
+            .lucide-file-down,
+            .lucide-log-in,
+            .lucide-log-out,
+            .lucide-external-link,
+            .lucide-square-arrow-out-up-right,
+            .lucide-list-filter,
+            .lucide-sliders-horizontal,
+            .lucide-refresh-cw,
+            .lucide-refresh-ccw,
+            .lucide-rotate-cw,
+            .lucide-rotate-ccw,
+            .lucide-plus,
+            .lucide-circle-plus,
+            .lucide-x,
+            .lucide-settings,
+            .lucide-search,
+            .lucide-pencil,
+            .lucide-pen,
+            .lucide-pencil-line,
+            .lucide-trash,
+            .lucide-copy,
+            .lucide-check,
+            .lucide-circle
+          ) {
+          scale: 1.12;
+        }
+      }
+    }
+  }
+}
+
+/* Heidi's orb: a glossy sphere of her colours. The swirl turns inside it, the gloss sits on top, and
+   the halo glows behind the large one. `heidi-orb-alive` sets it in motion. */
+.heidi-orb {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 70% 78%, #ff5cf4 0%, transparent 55%),
+    radial-gradient(circle at 25% 75%, #5b4dff 0%, transparent 60%),
+    radial-gradient(circle at 50% 40%, #b04dff 0%, #8a3dff 100%);
+  box-shadow:
+    inset -3px -4px 9px rgb(70 0 140 / 0.45),
+    inset 2px 3px 6px rgb(255 255 255 / 0.35),
+    0 3px 8px -3px rgb(150 60 255 / 0.55);
+}
+
+.heidi-orb-lg {
+  box-shadow:
+    inset -8px -10px 22px rgb(70 0 140 / 0.45),
+    inset 5px 6px 14px rgb(255 255 255 / 0.35),
+    0 14px 30px -8px rgb(150 60 255 / 0.6);
+}
+
+.heidi-orb-swirl {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 30% 30%, rgb(255 92 244 / 0.95), transparent 45%),
+    radial-gradient(circle at 72% 65%, rgb(80 90 255 / 0.9), transparent 45%),
+    radial-gradient(circle at 40% 80%, rgb(255 255 255 / 0.35), transparent 35%);
+  filter: blur(5px);
+  opacity: 0.85;
+}
+
+.heidi-orb-gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at 32% 26%,
+      rgb(255 255 255 / 0.95) 0%,
+      rgb(255 255 255 / 0.5) 9%,
+      transparent 26%
+    ),
+    radial-gradient(circle at 70% 85%, rgb(255 255 255 / 0.25) 0%, transparent 30%);
+}
+
+.heidi-orb-halo {
+  position: absolute;
+  inset: -45%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    rgb(176 77 255 / 0.32),
+    rgb(255 92 244 / 0.12) 55%,
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .heidi-orb-alive {
+    animation: heidi-float 4.5s ease-in-out infinite;
+  }
+  .heidi-orb-alive .heidi-orb-swirl {
+    animation: heidi-swirl 5s linear infinite;
+  }
+  .heidi-orb-alive .heidi-orb-gloss {
+    animation: heidi-gloss 4.5s ease-in-out infinite;
+  }
+  .heidi-orb-halo {
+    animation: heidi-halo 4.5s ease-in-out infinite;
+  }
+}
+
+/* Floating: a gentle rise and swell, then back. */
+@keyframes heidi-float {
+  0%,
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+  50% {
+    translate: 0 -7%;
+    scale: 1.06;
+  }
+}
+
+/* The colours inside turn round, so the light inside the sphere keeps moving. */
+@keyframes heidi-swirl {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* The highlight drifts a little across the top, as if the light moved. */
+@keyframes heidi-gloss {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 8% 5%;
+  }
+}
+
+@keyframes heidi-halo {
+  0%,
+  100% {
+    opacity: 0.6;
+    scale: 0.9;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.18;
+  }
+}
+
+/* Reduced motion, app-wide (WCAG 2.3.3): drawers, dialogs, menus, the sidebar and meters appear in place
+   instead of sliding, fading or growing. Spinners stop as well; Loader still says what it is doing. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

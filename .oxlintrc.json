@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y", "nextjs", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "settings": {
+    "next": {
+      "rootDir": ["apps/platform", "apps/web"]
+    }
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "error",
+    "import/no-cycle": "error",
+    "jsx-a11y/no-noninteractive-tabindex": [
+      "error",
+      { "roles": ["tabpanel"], "tags": ["section"] }
+    ],
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css", "@testing-library/jest-dom/vitest"]
+      }
+    ]
+  },
+  "ignorePatterns": ["**/.next/**", "**/out/**", "**/dist/**", "**/next-env.d.ts"],
+  "overrides": [
+    {
+      "files": ["**/scripts/**", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/platform/src/components/invoices/instalments-section.tsx",
+        "apps/platform/src/components/templates/fill-drawer.tsx"
+      ],
+      "rules": {
+        "react/no-array-index-key": "off"
+      }
+    }
+  ]
+}

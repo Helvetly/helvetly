@@ -1,0 +1,143 @@
+import { Logo } from '@helvetly/ui/components/logo'
+import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
+import Link from 'next/link'
+
+import { Cta } from '@/components/cta'
+import { Ridge } from '@/components/ridge'
+import { Container } from '@/components/section'
+import { TRIAL_DAYS } from '@/lib/plans'
+import { FOOTER, START_URL } from '@/lib/site'
+
+// The page is built ahead of time, so the year is the build's.
+const YEAR = new Date().getFullYear()
+
+// What a Friday looks like with Helvetly: three things that got done on their own.
+const DONE: { icon: LucideIcon; title: string; meta: string; tone: string; tilt: string }[] = [
+  {
+    icon: CircleCheck,
+    title: 'Invoice 2026-0418 paid',
+    meta: 'Alpenglühn GmbH · CHF 4’860.00',
+    tone: 'from-mint-solid to-sky-solid',
+    tilt: '-rotate-3 sm:translate-x-6',
+  },
+  {
+    icon: Bell,
+    title: 'First reminder sent',
+    meta: 'Rhein Consulting AG · with QR bill',
+    tone: 'from-peach-solid to-rose-solid',
+    tilt: 'rotate-2 sm:-translate-x-4',
+  },
+  {
+    icon: Landmark,
+    title: 'VAT return ready',
+    meta: 'Q4 2026 · eCH-0217 file for the ePortal',
+    tone: 'from-lilac-solid to-heidi-to',
+    tilt: '-rotate-1 sm:translate-x-10',
+  },
+]
+
+/** The finale on every page: the invitation, then the site's links, in one night-sky card. */
+export function SiteFooter() {
+  return (
+    <footer className="relative mt-32 sm:mt-48">
+      <Ridge edge="rise" />
+      <div className="dark night relative overflow-hidden text-white">
+        <div aria-hidden className="grid-lines absolute inset-0 mask-t-from-70% opacity-30" />
+        <div aria-hidden className="beams beam absolute -top-1/2 -right-1/4 size-[60rem]" />
+        {/* The sky starts flat where the dusk ends, so the two never show a seam. */}
+        <div
+          aria-hidden
+          className="from-night-2 absolute inset-x-0 top-0 h-40 bg-linear-to-b to-transparent"
+        />
+
+        <Container className="relative grid items-center gap-14 pt-20 pb-16 lg:grid-cols-[1.2fr_1fr] lg:pt-24">
+          <div data-reveal className="flex flex-col items-start">
+            <h2 className="text-subhero font-semibold text-balance">
+              Spend Friday on your business,{' '}
+              <span className="accent ink-gradient pr-2">not on paperwork.</span>
+            </h2>
+            <p className="text-lead mt-6 max-w-xl text-balance text-white/70">
+              Start with a {TRIAL_DAYS}-day trial, bring your data with the AI import and send your
+              first QR invoice today.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Cta href={START_URL}>Start your free trial</Cta>
+              <Cta
+                href="/pricing"
+                variant="outline"
+                className="border-white/15 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
+              >
+                Compare plans
+              </Cta>
+            </div>
+            <p className="mt-5 text-body-sm text-white/50">
+              {TRIAL_DAYS}-day trial · Cancel any time · Prices in CHF, incl. VAT
+            </p>
+          </div>
+
+          <ul
+            aria-label="Done on its own"
+            className="relative mx-auto grid w-full max-w-sm gap-4 py-4"
+          >
+            {DONE.map(({ icon: Icon, title, meta, tone, tilt }, i) => (
+              <li key={title} data-reveal style={{ ['--d' as string]: `${150 + i * 150}ms` }}>
+                <div
+                  style={{ animationDelay: `${-i * 2}s` }}
+                  className={`animate-float flex items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.07] p-3.5 backdrop-blur-xl ${tilt}`}
+                >
+                  <span
+                    className={`inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br text-white ${tone}`}
+                  >
+                    <Icon aria-hidden className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-body font-semibold">{title}</span>
+                    <span className="block truncate text-body-sm text-white/60">{meta}</span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Container>
+
+        <Container className="relative border-t border-white/10 py-10">
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-[1.3fr_repeat(5,1fr)]">
+            <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
+              <Link href="/" className="flex w-fit items-center gap-2">
+                <Logo className="size-7" />
+                <span className="text-title-sm font-semibold">Helvetly</span>
+              </Link>
+              <p className="max-w-xs text-body-sm text-white/55">
+                The calm back office for Swiss companies, with Heidi at your side.
+              </p>
+            </div>
+            {FOOTER.map((group) => (
+              <nav key={group.title} aria-label={group.title} className="flex flex-col gap-2">
+                <h2 className="text-body-sm font-medium text-white">{group.title}</h2>
+                {group.links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="w-fit text-body-sm text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            ))}
+          </div>
+          <div className="mt-10 flex flex-col gap-2 text-body-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
+            <p>© {YEAR} Helvetly</p>
+            <p className="inline-flex items-center gap-2">
+              <svg aria-hidden viewBox="0 0 32 32" className="size-4 rounded-[3px]">
+                <rect width="32" height="32" fill="#d52b1e" />
+                <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
+              </svg>
+              Made for Switzerland
+            </p>
+          </div>
+        </Container>
+      </div>
+    </footer>
+  )
+}

@@ -1,0 +1,396 @@
+'use client'
+
+import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
+import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { Loader } from '@helvetly/ui/components/loader'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { formatDate } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, History, X, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { useEffect, useState, type ReactNode } from 'react'
+
+import { CONSENT_TEXT } from '@/components/heidi/ai-consent'
+import { usageKey } from '@/components/heidi/use-heidi'
+import { errorMessage } from '@/lib/api'
+import { heidiApi } from '@/lib/heidi'
+import {
+  commitSummary,
+  conflictsOf,
+  defaultSelection,
+  IMPORT_KINDS,
+  importProblem,
+  isClean,
+  isSettled,
+  resumable,
+  useCommitImport,
+  useDiscardImport,
+  useImportBatch,
+  useImportBatches,
+  useUploadImport,
+  type CommitResult,
+  type ImportKind,
+  type Resolution,
+} from '@/lib/imports'
+import { useSession } from '@/lib/queries'
+
+import { clearHandOff, peekHandOff } from './hand-off'
+import { ImportConflicts, type Conflict } from './import-conflicts'
+import { DropZone, FileProgress } from './import-files'
+import { EditRecord, ReviewTable } from './import-review'
+
+/**
+ * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
+ * content follows the batch. Closing keeps the batch; the next open offers to continue it.
+ */
+export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () => void }) {
+  const config = IMPORT_KINDS[kind]
+  const noun = config.label.toLowerCase()
+  const [files, setFiles] = useState(() => peekHandOff(kind))
+  const [batchId, setBatchId] = useState<string | null>(null)
+  // Set once the person chose: continue the unfinished batch, or start over.
+  const [fresh, setFresh] = useState(false)
+  const [picked, setPicked] = useState<Set<string> | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [results, setResults] = useState<ReadonlyMap<string, CommitResult>>(new Map())
+  const [summary, setSummary] = useState<string | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [conflicts, setConflicts] = useState<Conflict[]>([])
+  useEffect(clearHandOff, [])
+
+  const list = useImportBatches(kind)
+  const batch = useImportBatch(batchId)
+  const upload = useUploadImport(kind)
+  const commit = useCommitImport(kind, batchId ?? '')
+  const discard = useDiscardImport(kind)
+
+  const records = batch.data?.records ?? []
+  const open = records.filter((record) => !isSettled(record))
+  const selected = picked ?? defaultSelection(records)
+  const chosen = open.filter((record) => selected.has(record.id)).map((record) => record.id)
+  const resume = !fresh && batchId === null ? resumable(list.data ?? []) : null
+  const editingRecord = records.find((record) => record.id === editing)
+
+  const read = () =>
+    upload.mutate(files, {
+      onSuccess: (created) => {
+        setBatchId(created.id)
+        setFresh(true)
+        setFiles([])
+      },
+    })
+  const reset = () => {
+    setBatchId(null)
+    setFresh(true)
+    setPicked(null)
+    setEditing(null)
+    setResults(new Map())
+    setSummary(null)
+    setConflicts([])
+    upload.reset()
+    commit.reset()
+  }
+  const runDiscard = () => {
+    if (batchId) discard.mutate(batchId, { onSuccess: reset })
+  }
+  const runCommit = (recordIds: string[], resolutions?: Record<string, Resolution>) =>
+    commit.mutate(
+      { recordIds, resolutions },
+      {
+        onSuccess: (answer) => {
+          const merged = new Map(results)
+          for (const result of answer.results) merged.set(result.id, result)
+          setResults(merged)
+          setSummary(commitSummary([...merged.values()]))
+          setConflicts(conflictsOf(answer.results))
+          const settled = new Set(
+            answer.results
+              .filter((result) => result.status === 'created' || result.status === 'skipped')
+              .map((result) => result.id),
+          )
+          setPicked(new Set([...selected].filter((id) => !settled.has(id))))
+        },
+      },
+    )
+
+  const recordsPerFile = new Map<string, number>()
+  for (const record of records)
+    recordsPerFile.set(record.file_id, (recordsPerFile.get(record.file_id) ?? 0) + 1)
+  const filesDone = batch.data?.files.filter(
+    (file) => file.status === 'done' || file.status === 'failed',
+  ).length
+
+  let body: ReactNode
+  let status: ReactNode = null
+  let error: string | null = null
+  let actions: ReactNode = null
+  if (batchId === null || upload.isPending) {
+    body = (
+      <div className="grid gap-4">
+        {resume && !upload.isPending && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted px-4 py-3 text-[13px]">
+            <History className="size-4 shrink-0 stroke-[1.75] text-muted-foreground" />
+            <p className="min-w-0 flex-1">
+              You have an unfinished import from {formatDate(resume.created_at)}.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => setFresh(true)}>
+              Start a new one
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setBatchId(resume.id)
+                setFresh(true)
+              }}
+            >
+              Continue the import from {formatDate(resume.created_at)}
+            </Button>
+          </div>
+        )}
+        {upload.error && <Problem error={upload.error} onRetry={read} />}
+        <DropZone files={files} disabled={upload.isPending} onChange={setFiles} />
+        <p className="text-[12.5px] text-pretty text-muted-foreground">
+          Heidi’s AI reads the files and suggests {noun}. You check and fix them first: nothing is
+          created until you choose rows and press Import. The files are kept in Documents.
+        </p>
+      </div>
+    )
+    status = upload.isPending
+      ? 'Uploading…'
+      : files.length
+        ? `${files.length} ${files.length === 1 ? 'file' : 'files'} chosen`
+        : 'No files chosen yet'
+    actions = (
+      <Button disabled={!files.length || upload.isPending} onClick={read}>
+        {upload.isPending ? 'Uploading…' : 'Read files'}
+      </Button>
+    )
+  } else if (!batch.data) {
+    body = batch.error ? (
+      <Problem error={batch.error} onRetry={() => void batch.refetch()} />
+    ) : (
+      <Loader className="min-h-52" />
+    )
+  } else if (batch.data.status === 'extracting') {
+    body = (
+      <div className="grid gap-3">
+        <p className="text-[13px] text-muted-foreground">
+          Reading your files. This can take a minute for long spreadsheets; you can close this and
+          come back later.
+        </p>
+        <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
+      </div>
+    )
+    status = `Read ${filesDone} of ${batch.data.files.length} files…`
+    actions = (
+      <Button variant="destructive-ghost" onClick={() => setConfirmDiscard(true)}>
+        <Trash2 /> Discard
+      </Button>
+    )
+  } else if (editingRecord) {
+    body = (
+      <EditRecord
+        key={editingRecord.id}
+        config={config}
+        batchId={batch.data.id}
+        record={editingRecord}
+        onDone={(saved) => {
+          setEditing(null)
+          if (saved && isClean(saved))
+            setPicked((current) => current && new Set(current).add(saved.id))
+        }}
+      />
+    )
+    status = 'Editing a row'
+  } else {
+    body = (
+      <div className="grid gap-4">
+        <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
+        {open.some((record) => record.data.issued_elsewhere === true) && <DeclaredVatNote />}
+        <ReviewTable
+          config={config}
+          records={records}
+          selected={selected}
+          results={results}
+          onSelect={setPicked}
+          onEdit={setEditing}
+        />
+      </div>
+    )
+    status = summary ?? `${chosen.length} of ${open.length} selected`
+    error = commit.error ? errorMessage(commit.error) : null
+    actions = (
+      <>
+        <Button
+          variant={open.length ? 'destructive-ghost' : 'outline'}
+          disabled={discard.isPending || commit.isPending}
+          onClick={() => (open.length ? setConfirmDiscard(true) : runDiscard())}
+        >
+          {open.length ? (
+            <>
+              <Trash2 /> Discard
+            </>
+          ) : (
+            'Start a new import'
+          )}
+        </Button>
+        {open.length > 0 || !summary ? (
+          <Button disabled={!chosen.length || commit.isPending} onClick={() => runCommit(chosen)}>
+            {commit.isPending ? 'Importing…' : `Import ${chosen.length}`}
+          </Button>
+        ) : (
+          <Button onClick={onClose}>Done</Button>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <Sheet open onOpenChange={(next) => !next && !upload.isPending && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
+      >
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
+          <div className="grid min-w-0 gap-0.5">
+            <SheetTitle className="truncate text-lg font-semibold">Import {noun}</SheetTitle>
+            <SheetDescription className="text-[13px] text-pretty text-muted-foreground">
+              From spreadsheets, PDFs, photos or Word files, read by AI and checked by you.
+            </SheetDescription>
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close"
+                disabled={upload.isPending}
+                onClick={onClose}
+              >
+                <X />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-8">{body}</div>
+
+        <footer className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-t px-5 py-2.5 md:px-7">
+          <p
+            role={error ? 'alert' : 'status'}
+            className={cn(
+              'min-w-0 flex-1 truncate text-[13px]',
+              error ? 'text-destructive' : 'text-muted-foreground',
+            )}
+          >
+            {error ?? status}
+          </p>
+          {actions}
+        </footer>
+
+        {conflicts.length > 0 && (
+          <ImportConflicts
+            key={conflicts.map((entry) => entry.id).join()}
+            config={config}
+            records={records}
+            conflicts={conflicts}
+            pending={commit.isPending}
+            onConfirm={(resolutions) =>
+              runCommit(
+                conflicts.map((entry) => entry.id),
+                resolutions,
+              )
+            }
+            onCancel={() => setConflicts([])}
+          />
+        )}
+
+        {confirmDiscard && (
+          <ConfirmDialog
+            tone="destructive"
+            title="Discard this import?"
+            body={`The ${noun} not created yet are dropped. Created ${noun} and the files in Documents stay.`}
+            confirmLabel="Discard"
+            cancelLabel="Keep"
+            onDecide={(approved) => {
+              setConfirmDiscard(false)
+              if (approved) runDiscard()
+            }}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/** Invoices issued elsewhere count in the VAT return: months the old system declared must be closed first. */
+function DeclaredVatNote() {
+  return (
+    <Callout role="note" tone="warning" title="Already declared for VAT?">
+      <p>
+        Invoices issued elsewhere count in Helvetly&apos;s VAT return for their date. If your old
+        system already declared those months, close them in{' '}
+        <Link href="/settings/periods" className="underline underline-offset-2">
+          Settings → Closing
+        </Link>{' '}
+        first: invoices dated in a closed month are not imported, so nothing is counted twice.
+      </p>
+    </Callout>
+  )
+}
+
+/** Why the upload or the read failed, and the one thing that helps. */
+function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const problem = importProblem(error)
+  return (
+    <div
+      role="alert"
+      className="grid gap-2 rounded-lg bg-destructive/10 px-4 py-3 text-[13px] dark:bg-destructive/20"
+    >
+      <p className="flex items-center gap-2 font-medium text-destructive">
+        <AlertCircle className="size-4 shrink-0" /> {problem.title}
+      </p>
+      <p className="text-pretty text-foreground">{problem.message}</p>
+      {problem.kind === 'consent' && <AllowAI onAllowed={onRetry} />}
+      {problem.kind === 'plan' && (
+        <Button asChild size="sm" variant="outline" className="w-fit">
+          <Link href="/settings/billing/plans">See plans</Link>
+        </Button>
+      )}
+      {problem.kind === 'retry' && (
+        <Button size="sm" variant="outline" className="w-fit" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/** Owners and admins can allow it right here, with the same consent as Heidi's panel. */
+function AllowAI({ onAllowed }: { onAllowed: () => void }) {
+  const queryClient = useQueryClient()
+  const role = useSession().data?.role
+  const allow = useMutation({
+    mutationFn: () => heidiApi.setConsent(true),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: usageKey })
+      onAllowed()
+    },
+  })
+  if (role !== 'owner' && role !== 'admin')
+    return <p className="text-muted-foreground">Ask an owner or admin of this workspace.</p>
+  return (
+    <div className="grid gap-2">
+      <p className="text-[12.5px] text-pretty text-muted-foreground">{CONSENT_TEXT}</p>
+      <Button size="sm" className="w-fit" disabled={allow.isPending} onClick={() => allow.mutate()}>
+        {allow.isPending ? 'Allowing…' : 'Allow OpenAI'}
+      </Button>
+      {allow.error && <p className="text-destructive">{errorMessage(allow.error)}</p>}
+    </div>
+  )
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", "!internal/platform/dist/**", "!**/*_test.go"],
+      "outputs": ["bin/**"]
+    },
+    "test": {
+      "passThroughEnv": ["HELVETLY_TEST_DATABASE_URL"]
+    }
+  }
+}

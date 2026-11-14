@@ -1,0 +1,141 @@
+import { Toaster } from '@helvetly/ui/components/sonner'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { http, HttpResponse } from 'msw'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
+
+import { portalHandlers } from '@/mocks/portal'
+
+import { PortalLogin } from './portal-login'
+
+const signedOut = http.get('/api/v1/public/portal/session', () =>
+  HttpResponse.json({ error: { code: 'unauthenticated', message: 'Sign in.' } }, { status: 401 }),
+)
+
+const meta = {
+  title: 'Portal/Login',
+  component: PortalLogin,
+  // Signed out by default: the sign-in page sends a signed-in client home instead.
+  parameters: { msw: { handlers: [signedOut, ...portalHandlers] } },
+} satisfies Meta<typeof PortalLogin>
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const EmailThenCode: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await expect(await canvas.findByText('Check your email')).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /Resend code in/ })).toBeDisabled()
+  },
+}
+
+export const WrongCodeShowsTriesLeft: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        http.post('/api/v1/public/portal/auth/verify', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'code_invalid',
+                message: 'Wrong code.',
+                details: { attempts_left: 2 },
+              },
+            },
+            { status: 400 },
+          ),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await userEvent.type(await canvas.findByLabelText('Code'), '123456')
+    await waitFor(() => expect(canvas.getByText(/2 tries left/)).toBeVisible())
+  },
+}
+
+export const SignedInShowsNoForm: Story = {
+  parameters: { msw: { handlers: portalHandlers } },
+  play: async ({ canvasElement }) => {
+    // A client who is already signed in is sent home; the form never shows.
+    await waitFor(() => expect(canvasElement.querySelector('[aria-busy]')).not.toBeNull())
+    await expect(within(canvasElement).queryByLabelText('Email')).toBeNull()
+  },
+}
+
+export const ResendShowsAToast: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/v1/public/portal/auth/start', () =>
+          HttpResponse.json({ resend_in: 0, expires_in: 600 }, { status: 202 }),
+        ),
+        signedOut,
+        ...portalHandlers,
+      ],
+    },
+  },
+  render: () => (
+    <>
+      <PortalLogin />
+      <Toaster />
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await userEvent.click(await canvas.findByRole('button', { name: 'Resend code' }))
+    await expect(await canvas.findByText('New code sent')).toBeInTheDocument() // the toast
+    await expect(canvas.getByText('The previous one no longer works.')).toBeInTheDocument()
+  },
+}
+
+const phone = {
+  viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
+}
+
+/** The trust line under the card: no password, a one-time code by email. */
+export const Welcome: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('heading', { name: 'Client portal' })).toBeVisible()
+    await expect(canvas.getByText('No password — we email you a one-time code.')).toBeVisible()
+  },
+}
+
+export const WelcomeDark: Story = { ...Welcome, parameters: { ...meta.parameters, dark: true } }
+
+export const WelcomePhone: Story = {
+  parameters: { ...meta.parameters, ...phone },
+  globals: { viewport: { value: 'phone' } },
+  play: async (context) => {
+    await Welcome.play?.(context)
+    await expect(window.innerWidth).toBe(390)
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+  },
+}
+
+export const CodeStepDark: Story = {
+  parameters: { ...meta.parameters, dark: true },
+  play: EmailThenCode.play,
+}
+
+/** On a phone the six code boxes fit without pushing the page sideways. */
+export const CodeStepPhone: Story = {
+  parameters: { ...meta.parameters, ...phone },
+  globals: { viewport: { value: 'phone' } },
+  play: async (context) => {
+    await EmailThenCode.play?.(context)
+    await expect(window.innerWidth).toBe(390)
+    await waitFor(() =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
+    )
+  },
+}

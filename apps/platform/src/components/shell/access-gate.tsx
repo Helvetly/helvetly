@@ -1,0 +1,42 @@
+'use client'
+
+import { Button } from '@helvetly/ui/components/button'
+import { Lock } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import type { ReactNode } from 'react'
+
+import { State } from '@/components/data/table-page'
+import { can, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
+
+import { NAV } from './nav'
+import { PageHeader } from './page-header'
+
+// The page's sidebar icon, so the tab looks the same as when access is granted.
+const iconOf = (resource: string) =>
+  NAV.flatMap((group) => group.items).find(
+    (item) => item.href && resourceForPath(item.href) === resource,
+  )?.icon ?? Lock
+
+/** A page opened by its URL without `read:<resource>` shows this instead of a failing list. */
+export function AccessGate({ children }: { children: ReactNode }) {
+  const scopes = useScopes()
+  const resource = resourceForPath(usePathname() ?? '')
+  if (!resource || can(scopes, `read:${resource}`)) return children
+  const what = labelOf(resource).toLowerCase()
+  return (
+    <>
+      <PageHeader tabs={[labelOf(resource)]} tabIcons={[iconOf(resource)]} savedViews={false} />
+      <State
+        icon={<Lock />}
+        title={`You don't have access to ${what}`}
+        text="Ask an owner or admin of this workspace to change your access."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/">Back to the dashboard</Link>
+          </Button>
+        }
+      />
+    </>
+  )
+}

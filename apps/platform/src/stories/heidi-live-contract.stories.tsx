@@ -1,0 +1,371 @@
+import { Button } from '@helvetly/ui/components/button'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { http, HttpResponse } from 'msw'
+import { useState } from 'react'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+
+import { HeidiPanel } from '@/components/heidi/heidi-panel'
+import { HeidiProvider, useHeidi } from '@/components/heidi/heidi-provider'
+
+import { screenHandlers, sessionHandler } from './screen-fixtures'
+
+const scope = 'storybook:workspace'
+const usage = {
+  period: '2026-11',
+  tokens_used: 0,
+  tokens_included: 0,
+  tokens_purchased: 0,
+  tokens_remaining: 0,
+  mode: 'local',
+  usage_uncertain: false,
+  can_purchase: false,
+}
+const confirmed = fn()
+const fakeApi = [
+  ...screenHandlers,
+  http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage)),
+  http.get('/api/v1/heidi/suggestions', () =>
+    HttpResponse.json({
+      data: [{ title: 'Overdue invoices', prompt: 'Which invoices are overdue?' }],
+    }),
+  ),
+  http.post(
+    '/api/v1/heidi/chat',
+    () =>
+      new HttpResponse(
+        'data: {"type":"text","value":"No overdue invoices."}\n\ndata: {"type":"done","usage":{"tokens":0}}\n\n',
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+  ),
+]
+
+function Open() {
+  const heidi = useHeidi()
+  return <Button onClick={() => heidi?.setOpen(true)}>Open assistant</Button>
+}
+function Panel({ workspace = scope }: { workspace?: string }) {
+  return (
+    <HeidiProvider key={workspace} scope={workspace}>
+      <Open />
+      <HeidiPanel />
+    </HeidiProvider>
+  )
+}
+function SwitchingPanel() {
+  const [workspace, setWorkspace] = useState(scope)
+  return (
+    <>
+      <Button variant="outline" onClick={() => setWorkspace('storybook:other-workspace')}>
+        Switch workspace
+      </Button>
+      <Panel workspace={workspace} />
+    </>
+  )
+}
+
+const meta = {
+  title: 'Heidi/Live contract',
+  parameters: { msw: { handlers: fakeApi } },
+  beforeEach: () => {
+    confirmed.mockClear()
+    for (const key of [
+      'helvetly:heidi:panel',
+      `helvetly:heidi:conversation:${scope}`,
+      'helvetly:heidi:conversation:storybook:other-workspace',
+    ])
+      localStorage.removeItem(key)
+  },
+} satisfies Meta
+export default meta
+type Story = StoryObj<typeof meta>
+
+export const LocalFactsAndHonestUsage: Story = {
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await waitFor(() => expect(canvas.getByText(/Local assistance/)).toBeVisible())
+    await expect(canvas.queryByRole('button', { name: 'Buy more' })).not.toBeInTheDocument()
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Which invoices are overdue?' }),
+    )
+    const log = await canvas.findByRole('log', { name: 'Conversation' })
+    // The answer fades in from opacity 0, so wait until it has, not just until it exists.
+    await waitFor(() => expect(within(log).getByText('No overdue invoices.')).toBeVisible())
+  },
+}
+
+const refusal =
+  'I can only help with Helvetly and your business: invoices, clients, expenses, VAT and the like. Try asking:\n\n- Which invoices are overdue?\n- Summarize this month’s expenses'
+const offTopicApi = [
+  http.post(
+    '/api/v1/heidi/chat',
+    () =>
+      new HttpResponse(
+        `data: ${JSON.stringify({ type: 'text', value: refusal })}\n\ndata: {"type":"actions","actions":[{"id":"list_overdue_invoices","label":"Show overdue invoices"}]}\n\ndata: {"type":"done","usage":{"tokens":0}}\n\n`,
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+  ),
+]
+
+/** Heidi stays on Helvetly and the business: the composer says so, and an off-topic question gets a normal answer that points back. */
+export const OffTopicRefusal: Story = {
+  parameters: { msw: { handlers: [...offTopicApi, ...fakeApi] } },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const box = await canvas.findByRole('textbox', { name: 'Message Heidi' })
+    await expect(box).toHaveAttribute(
+      'placeholder',
+      'Ask Heidi about your invoices, clients, expenses…',
+    )
+    await expect(box.getAttribute('placeholder')).not.toMatch(/anything else/)
+    await userEvent.type(box, 'Write C++ code for Fibonacci{Enter}')
+    const log = await canvas.findByRole('log', { name: 'Conversation' })
+    // The answer fades in as it streams; wait for it to settle.
+    await waitFor(() =>
+      expect(
+        within(log).getByText(/I can only help with Helvetly and your business/),
+      ).toBeVisible(),
+    )
+    await waitFor(() => expect(within(log).getByText('Which invoices are overdue?')).toBeVisible())
+    await expect(within(log).getByRole('button', { name: 'Show overdue invoices' })).toBeVisible()
+  },
+}
+
+let consent = { granted: false, changed_at: null as string | null, changed_by: '' }
+const consentPut = fn()
+const consentApi = [
+  http.get('/api/v1/heidi/usage', () =>
+    HttpResponse.json({
+      ...usage,
+      mode: consent.granted ? 'openai' : 'local',
+      provider_available: true,
+      consent,
+    }),
+  ),
+  http.put('/api/v1/heidi/consent', async ({ request }) => {
+    const body = (await request.json()) as { granted: boolean }
+    consentPut(body)
+    consent = {
+      granted: body.granted,
+      changed_at: '2026-11-09T10:00:00Z',
+      changed_by: 'Anna Muster',
+    }
+    return HttpResponse.json({ data: consent })
+  }),
+]
+
+/** No content reaches OpenAI until an owner or admin allows it; the notice names the recipient and what is sent. */
+export const ConsentBeforeOpenAI: Story = {
+  beforeEach: () => {
+    consent = { granted: false, changed_at: null, changed_by: '' }
+    consentPut.mockClear()
+  },
+  parameters: { msw: { handlers: [...consentApi, ...fakeApi] } },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const note = await canvas.findByRole('note')
+    await expect(note).toHaveTextContent('AI answers are off.')
+    await expect(note).toHaveTextContent('OpenAI (USA)')
+    await userEvent.click(within(note).getByRole('button', { name: 'Allow OpenAI' }))
+    await waitFor(() => expect(consentPut).toHaveBeenCalledWith({ granted: true }))
+    await waitFor(() => expect(canvas.queryByRole('note')).not.toBeInTheDocument())
+  },
+}
+
+/** A member sees why answers are local but cannot allow OpenAI. */
+export const ConsentForMembers: Story = {
+  beforeEach: () => {
+    consent = { granted: false, changed_at: null, changed_by: '' }
+  },
+  parameters: {
+    msw: { handlers: [sessionHandler({ role: 'member' }), ...consentApi, ...fakeApi] },
+  },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const note = await canvas.findByRole('note')
+    await expect(note).toHaveTextContent('An owner or admin can allow it.')
+    await expect(within(note).queryByRole('button')).not.toBeInTheDocument()
+  },
+}
+
+export const UnknownModelUsage: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/heidi/usage', () =>
+          HttpResponse.json({ ...usage, mode: 'openai', usage_uncertain: true }),
+        ),
+        ...fakeApi,
+      ],
+    },
+  },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await waitFor(() => expect(canvas.getByText(/Model usage needs reconciliation/)).toBeVisible())
+    await expect(canvas.queryByText(/% of model token budget/)).not.toBeInTheDocument()
+  },
+}
+
+export const ReloadedConfirmation: Story = {
+  beforeEach: () =>
+    localStorage.setItem(
+      `helvetly:heidi:conversation:${scope}`,
+      JSON.stringify({ id: 'paused', at: Date.now() }),
+    ),
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/heidi/conversations/paused', () =>
+          HttpResponse.json({
+            data: [
+              { id: 'question', role: 'user', text: 'Log 2 hours for Müller' },
+              {
+                id: 'answer',
+                role: 'assistant',
+                text: 'Review this entry before writing.',
+                confirmation: {
+                  type: 'confirmation',
+                  id: 'cnf_story',
+                  title: 'Log 2 hours for Müller?',
+                  body: 'Record two hours on Lessons, dated today.',
+                  confirm_label: 'Log it',
+                  tone: 'default',
+                },
+              },
+            ],
+          }),
+        ),
+        http.post('/api/v1/heidi/chat/confirm', () => {
+          confirmed()
+          return new HttpResponse(
+            'data: {"type":"status","label":"Recorded engagement entry"}\n\ndata: {"type":"text","value":"Recorded 2 hours."}\n\ndata: {"type":"done","usage":{"tokens":0}}\n\n',
+            { headers: { 'Content-Type': 'text/event-stream' } },
+          )
+        }),
+        ...fakeApi,
+      ],
+    },
+  },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const body = within(document.body)
+    const dialog = await body.findByRole('dialog', { name: 'Log 2 hours for Müller?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Log it' }))
+    await waitFor(() => expect(confirmed).toHaveBeenCalledOnce())
+    await waitFor(() => expect(canvas.getByText(/Recorded 2 hours\./)).toBeVisible())
+    await expect(
+      body.queryByRole('dialog', { name: 'Log 2 hours for Müller?' }),
+    ).not.toBeInTheDocument()
+  },
+}
+
+export const WorkspaceSwitchClearsDraft: Story = {
+  render: () => <SwitchingPanel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: 'Message Heidi' }),
+      'Private first-workspace draft',
+    )
+    await userEvent.click(canvas.getByRole('button', { name: 'Switch workspace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await expect(canvas.getByRole('textbox', { name: 'Message Heidi' })).toHaveValue('')
+    await expect(canvas.queryByText('Private first-workspace draft')).not.toBeInTheDocument()
+  },
+}
+
+let releaseStep = () => {}
+let releaseText = () => {}
+const frame = (event: object) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`)
+
+/** Until text streams in, the answer shows that Heidi is thinking, then the running step. */
+export const ThinkingUntilText: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post(
+          '/api/v1/heidi/chat',
+          () =>
+            new HttpResponse(
+              new ReadableStream({
+                async start(controller) {
+                  await new Promise<void>((resolve) => (releaseStep = resolve))
+                  controller.enqueue(frame({ type: 'status', label: 'Looking up invoices' }))
+                  await new Promise<void>((resolve) => (releaseText = resolve))
+                  controller.enqueue(frame({ type: 'text', value: 'No overdue invoices.' }))
+                  controller.enqueue(frame({ type: 'done', usage: { tokens: 0 } }))
+                  controller.close()
+                },
+              }),
+              { headers: { 'Content-Type': 'text/event-stream' } },
+            ),
+        ),
+        ...fakeApi,
+      ],
+    },
+  },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Message Heidi' }), 'hi{Enter}')
+    const log = await canvas.findByRole('log', { name: 'Conversation' })
+    const thinking = await within(log).findByRole('status', { name: 'Heidi is thinking' })
+    await expect(thinking).toHaveTextContent('Thinking…')
+    releaseStep()
+    await waitFor(() => expect(thinking).toHaveTextContent('Looking up invoices…'))
+    releaseText()
+    // The answer fades in from opacity 0, so wait until it has, not just until it exists.
+    await waitFor(() => expect(within(log).getByText('No overdue invoices.')).toBeVisible())
+    await waitFor(() => expect(within(log).queryByRole('status')).not.toBeInTheDocument())
+    // Afterwards a muted "Worked for …" above the answer opens the steps Heidi took.
+    const worked = within(log).getByRole('button', { name: /^Worked for / })
+    await userEvent.click(worked)
+    await expect(worked).toHaveAttribute('aria-expanded', 'true')
+    await expect(within(log).getByRole('list', { name: 'Steps' })).toHaveTextContent(
+      'Looking up invoices',
+    )
+  },
+}
+
+/** Selecting part of an answer offers "Quote"; the next message quotes it, shown above the question. */
+export const ReplyQuotesSelectedText: Story = {
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Which invoices are overdue?' }),
+    )
+    const log = await canvas.findByRole('log', { name: 'Conversation' })
+    const answer = await within(log).findByText('No overdue invoices.')
+    await waitFor(() => expect(answer.closest('[data-answer]')).not.toBeNull())
+    const range = document.createRange()
+    range.selectNodeContents(answer)
+    document.getSelection()?.removeAllRanges()
+    document.getSelection()?.addRange(range)
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Quote' }))
+    await expect(canvas.getByText('Replying to')).toBeVisible()
+    const box = canvas.getByRole('textbox', { name: 'Message Heidi' })
+    await expect(box).toHaveFocus()
+    await userEvent.type(box, 'Since when?{Enter}')
+
+    const quote = await within(log).findByRole('blockquote')
+    await expect(quote).toHaveTextContent('No overdue invoices.')
+    await expect(within(log).getByText('Since when?')).toBeVisible()
+    await expect(canvas.queryByText('Replying to')).not.toBeInTheDocument()
+  },
+}

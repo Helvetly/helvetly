@@ -1,0 +1,167 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { toast } from 'sonner'
+
+import { FILE_TYPES, MAX_FILE_BYTES, MAX_FILES, type HeidiPage } from '@/lib/heidi'
+import { useShortcut } from '@/lib/shortcuts'
+
+import { useHeidiChat, type HeidiChat } from './use-heidi'
+
+/** The page Heidi is asked from, and how to name it in a sentence. */
+const PAGES: Record<string, [HeidiPage, string]> = {
+  '': ['dashboard', 'your dashboard'],
+  clients: ['clients', 'your clients'],
+  invoices: ['invoices', 'your invoices'],
+  expenses: ['expenses', 'your expenses'],
+  engagements: ['engagements', 'your engagements'],
+  documents: ['documents', 'your documents'],
+  products: ['products', 'your products and services'],
+  members: ['members', 'your team'],
+  settings: ['settings', 'your settings'],
+  'settings/billing': ['billing', 'your plan and billing'],
+}
+
+export function pageOf(pathname: string): { page: HeidiPage; name: string } {
+  const [, section = '', sub = ''] = pathname.split('/')
+  const [page, name] = PAGES[`${section}/${sub}`] ??
+    PAGES[section] ?? ['dashboard', 'your dashboard']
+  return { page, name }
+}
+
+const STORAGE = 'helvetly:heidi:panel'
+export const MIN_WIDTH = 320
+const DEFAULT_WIDTH = 420
+
+type PanelState = { open: boolean; width: number }
+
+function loadPanel(): PanelState {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(STORAGE) ?? 'null')
+    if (typeof stored === 'object' && stored !== null) {
+      const { open, width } = stored as Record<string, unknown>
+      return {
+        // On phones Heidi is a full-screen sheet: it never reopens by itself on load.
+        open: open === true && window.matchMedia('(min-width: 768px)').matches,
+        width: typeof width === 'number' ? width : DEFAULT_WIDTH,
+      }
+    }
+  } catch {}
+  return { open: false, width: DEFAULT_WIDTH }
+}
+
+type HeidiContextValue = {
+  open: boolean
+  max: boolean
+  width: number
+  page: HeidiPage
+  draft: string
+  files: File[]
+  chat: HeidiChat
+  setOpen: (open: boolean) => void
+  setMax: (max: boolean) => void
+  setWidth: (width: number) => void
+  setDraft: (draft: string) => void
+  addFiles: (files: File[]) => void
+  removeFile: (file: File) => void
+  clearFiles: () => void
+  /** Opens the panel, optionally with a question ready in the composer. */
+  ask: (prompt?: string) => void
+}
+
+const HeidiContext = createContext<HeidiContextValue | null>(null)
+
+/** Heidi's state lives here, above the pages, so the conversation survives navigation and collapse. */
+export function HeidiProvider({ children, scope }: { children: ReactNode; scope: string }) {
+  const { page, name } = pageOf(usePathname())
+  const chat = useHeidiChat(page, scope)
+  const [panel, setPanel] = useState(loadPanel)
+  const [max, setMaxState] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const returnFocus = useRef<HTMLElement | null>(null)
+
+  const persist = useCallback((next: PanelState) => {
+    setPanel(next)
+    try {
+      localStorage.setItem(STORAGE, JSON.stringify(next))
+    } catch {}
+  }, [])
+
+  const setOpen = useCallback(
+    (open: boolean) => {
+      if (open && !panel.open && document.activeElement instanceof HTMLElement)
+        returnFocus.current = document.activeElement
+      if (!open) {
+        setMaxState(false)
+        // Focus goes back where it was before Heidi opened.
+        requestAnimationFrame(() => returnFocus.current?.focus())
+      }
+      persist({ ...panel, open })
+    },
+    [panel, persist],
+  )
+
+  const setMax = useCallback(
+    (next: boolean) => {
+      setMaxState(next)
+      // Max mode on a page starts with a brief about it, ready to send.
+      if (next && !draft.trim()) setDraft(`Brief me on ${name}`)
+    },
+    [draft, name],
+  )
+
+  const addFiles = useCallback((incoming: File[]) => {
+    const accepted = incoming.filter(
+      (file) => FILE_TYPES.includes(file.type) && file.size <= MAX_FILE_BYTES,
+    )
+    if (accepted.length < incoming.length) toast.error('Heidi reads images and PDFs up to 8 MB.')
+    setFiles((current) => {
+      const next = [...current, ...accepted]
+      if (next.length > MAX_FILES) toast.error(`Up to ${MAX_FILES} files per message.`)
+      return next.slice(0, MAX_FILES)
+    })
+  }, [])
+
+  useShortcut('heidi', () => setOpen(!panel.open))
+
+  const value = useMemo<HeidiContextValue>(
+    () => ({
+      open: panel.open,
+      max,
+      width: panel.width,
+      page,
+      draft,
+      files,
+      chat,
+      setOpen,
+      setMax,
+      setWidth: (width) => persist({ ...panel, width }),
+      setDraft,
+      addFiles,
+      removeFile: (file) => setFiles((current) => current.filter((entry) => entry !== file)),
+      clearFiles: () => setFiles([]),
+      ask: (prompt) => {
+        if (prompt) setDraft(prompt)
+        if (!panel.open) setOpen(true)
+      },
+    }),
+    [panel, max, page, draft, files, chat, setOpen, setMax, persist, addFiles],
+  )
+
+  return <HeidiContext.Provider value={value}>{children}</HeidiContext.Provider>
+}
+
+/** Heidi's panel and conversation; null outside the signed-in area (and in isolated tests). */
+export function useHeidi() {
+  return useContext(HeidiContext)
+}

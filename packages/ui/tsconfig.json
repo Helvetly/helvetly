@@ -1,0 +1,7 @@
+{
+  "extends": "@helvetly/typescript-config/base.json",
+  "compilerOptions": {
+    "paths": { "@helvetly/ui/*": ["./src/*"] }
+  },
+  "include": ["src", "*.ts"]
+}

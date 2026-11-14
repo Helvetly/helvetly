@@ -1,0 +1,106 @@
+'use client'
+
+import { Input } from '@helvetly/ui/components/input'
+import { Loader } from '@helvetly/ui/components/loader'
+import { formatSize } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
+import { useQuery } from '@tanstack/react-query'
+import { FolderOpen, Search, SearchX } from 'lucide-react'
+import { useState } from 'react'
+
+import { civilToday, sharedText } from '@/lib/dates'
+import { listPortalDocuments, portalDocumentUrl, portalKeys } from '@/lib/portal'
+
+import {
+  cardClass,
+  DownloadLink,
+  EmptyState,
+  FileTile,
+  PageHeader,
+  RetryAlert,
+} from './portal-bits'
+
+/** Above this many documents a search box helps. */
+const SEARCH_FROM = 7
+
+export function PortalDocuments() {
+  const query = useQuery({ queryKey: portalKeys.documents, queryFn: listPortalDocuments })
+  const [search, setSearch] = useState('')
+  const today = civilToday()
+
+  const body = () => {
+    if (query.isPending) return <Loader className={cn(cardClass, 'min-h-28')} />
+    if (query.error)
+      return (
+        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+          <RetryAlert what="Your documents" onRetry={() => void query.refetch()} />
+        </div>
+      )
+    if (query.data.length === 0)
+      return (
+        <div className={cardClass}>
+          <EmptyState icon={FolderOpen} title="Nothing has been shared with you yet">
+            Contracts, reports and other files appear here when they are shared with you.
+          </EmptyState>
+        </div>
+      )
+    const needle = search.trim().toLowerCase()
+    const shown = query.data.filter((doc) => doc.name.toLowerCase().includes(needle))
+    return (
+      <>
+        {query.data.length >= SEARCH_FROM && (
+          <div className="relative sm:max-w-xs">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              aria-label="Search documents"
+              placeholder="Search documents"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="bg-card pl-8"
+            />
+          </div>
+        )}
+        {shown.length === 0 ? (
+          <div className={cardClass}>
+            <EmptyState icon={SearchX} title="No matching documents">
+              Try another name.
+            </EmptyState>
+          </div>
+        ) : (
+          <ul className={cn(cardClass, 'grid divide-y overflow-hidden')}>
+            {shown.map((doc) => (
+              <li key={doc.id} className="flex items-center gap-3 px-3 py-3 sm:px-4">
+                <FileTile contentType={doc.content_type} />
+                <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
+                  <span className="truncate text-body font-medium">{doc.name}</span>
+                  <span className="truncate text-body-sm text-muted-foreground">
+                    <span className="max-sm:hidden">{formatSize(doc.size)} · </span>
+                    {sharedText(doc.shared_at, today)}
+                  </span>
+                </span>
+                <DownloadLink
+                  href={portalDocumentUrl(doc.id)}
+                  label={`Download ${doc.name}`}
+                  text="Download"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <div className="grid gap-5 sm:gap-6">
+      <PageHeader title="Documents">
+        Files shared with you. Download any of them at any time.
+      </PageHeader>
+      {body()}
+    </div>
+  )
+}

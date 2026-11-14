@@ -1,0 +1,4 @@
+# Pinned official files: their SHA-256 is checked, so git must never convert their line endings.
+apps/api/internal/vatreturn/testdata/ech0217/** -text
+apps/api/internal/ksef/testdata/** -text
+apps/api/internal/einvoice/testdata/cius-ro/** -text

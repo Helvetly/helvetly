@@ -1,0 +1,218 @@
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+
+import type { Session } from '@/lib/api'
+import { queryKeys } from '@/lib/queries'
+
+import { ClientForm } from './client-form'
+import { bulkActions } from './clients-page'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn<() => void>(), push: vi.fn<() => void>() }),
+  usePathname: () => '/clients',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+afterEach(() => vi.unstubAllGlobals())
+
+const renderForm = (queryClient = new QueryClient()) => {
+  const onSaved = vi.fn<() => void>()
+  render(
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ClientForm onClose={vi.fn<() => void>()} onSaved={onSaved} />
+      </TooltipProvider>
+    </QueryClientProvider>,
+  )
+  return { onSaved }
+}
+
+test('the server’s field errors land on their fields, and the first one gets focus', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
+    init?.method !== 'POST'
+      ? Response.json({ data: [] })
+      : Response.json(
+          {
+            error: {
+              code: 'validation_failed',
+              message: 'Check the highlighted fields.',
+              details: {
+                fields: { email: 'This email is already used by #4.', vat_number: 'Unknown UID.' },
+              },
+            },
+          },
+          { status: 422 },
+        ),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const { onSaved } = renderForm()
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'Company name' }),
+    'Konditorei Muster AG',
+  )
+  await userEvent.type(screen.getByLabelText('Email'), 'info@konditorei-muster.ch')
+  await userEvent.click(screen.getByRole('button', { name: 'Add client' }))
+
+  expect(await screen.findByText('This email is already used by #4.')).toBeInTheDocument()
+  expect(screen.getByText('Unknown UID.')).toBeInTheDocument()
+  expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true')
+  await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus())
+  expect(onSaved).not.toHaveBeenCalled()
+
+  const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
+  const body: unknown = JSON.parse(String(post?.[1]?.body))
+  expect(body).toMatchObject({
+    name: 'Konditorei Muster AG',
+    email: 'info@konditorei-muster.ch',
+    phone: null,
+  })
+})
+
+test('⌘Enter submits, but nothing is sent while the form has errors of its own', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ data: [] }))
+  vi.stubGlobal('fetch', fetch)
+  renderForm()
+
+  await userEvent.click(screen.getByLabelText('Email'))
+  await userEvent.keyboard('{Control>}{Enter}{/Control}')
+
+  // Ctrl/⌘+Enter submits from any field, and the form's own check stops it.
+  expect(screen.getByText('Enter the company name.')).toBeInTheDocument()
+  expect(fetch.mock.calls.filter(([, init]) => init?.method === 'POST')).toEqual([])
+})
+
+test('what the address still needs sits behind the (?) next to Address', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof globalThis.fetch>(async () => Response.json({ data: [] })),
+  )
+  renderForm()
+  await userEvent.hover(screen.getByRole('button', { name: 'About Address' }))
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(
+    'Draft until the address is complete: add street, number, ZIP and city.',
+  )
+})
+
+test('repeated save shortcuts create one client while the request is pending', async () => {
+  const pending = Promise.withResolvers<Response>()
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
+    init?.method === 'POST' ? pending.promise : Response.json({ data: [] }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const { onSaved } = renderForm()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Company name' }), 'Only once AG')
+  await userEvent.keyboard('{Meta>}{Enter}{Enter}{/Meta}')
+  const writes = fetch.mock.calls.filter(([, init]) => init?.method === 'POST')
+  pending.resolve(Response.json({ data: { id: 'cli_once', name: 'Only once AG', number: 1 } }))
+  expect(writes).toHaveLength(1)
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+})
+
+test('save shortcuts cannot resubmit a successful form while its route is closing', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
+    init?.method === 'POST'
+      ? Response.json({ data: { id: 'cli_once', name: 'Only once AG', number: 1 } })
+      : Response.json({ data: [] }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const { onSaved } = renderForm()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Company name' }), 'Only once AG')
+  await userEvent.keyboard('{Control>}{Enter}{/Control}')
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+  await userEvent.keyboard('{Control>}{Enter}{/Control}')
+  expect(fetch.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+})
+
+test('closing while a save is pending keeps the drawer, so a refusal still reaches its fields', async () => {
+  const answer = Promise.withResolvers<Response>()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof globalThis.fetch>((_, init) =>
+      init?.method !== 'POST' ? Promise.resolve(Response.json({ data: [] })) : answer.promise,
+    ),
+  )
+  const onClose = vi.fn<() => void>()
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <TooltipProvider>
+        <ClientForm onClose={onClose} onSaved={vi.fn<() => void>()} />
+      </TooltipProvider>
+    </QueryClientProvider>,
+  )
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'Company name' }),
+    'Konditorei Muster AG',
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Add client' }))
+  await userEvent.keyboard('{Escape}')
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(onClose).not.toHaveBeenCalled()
+  answer.resolve(
+    Response.json(
+      {
+        error: {
+          code: 'validation_failed',
+          message: 'Check the highlighted fields.',
+          details: { fields: { name: 'Already a client.' } },
+        },
+      },
+      { status: 422 },
+    ),
+  )
+  expect(await screen.findByText('Already a client.')).toBeInTheDocument()
+})
+
+test('members get the bulk bar without Delete', () => {
+  const run = {
+    activate: vi.fn<() => void>(),
+    deactivate: vi.fn<() => void>(),
+    exportCsv: vi.fn<() => void>(),
+    remove: vi.fn<() => void>(),
+  }
+  expect(bulkActions(false, run).map((action) => action.label)).toEqual([
+    'Activate',
+    'Deactivate',
+    'Export CSV',
+  ])
+  expect(bulkActions(true, run).map((action) => action.label)).toContain('Delete')
+})
+
+test('a learned country stays when a phone from another country is typed', async () => {
+  const session: Session = {
+    user: { id: 'usr_1', email: 'a@b.ch', name: 'Anna', avatar_url: null },
+    workspace: { id: 'ws_1', name: 'Studio' },
+    role: 'owner',
+    onboarded: true,
+    csrf_token: 'csrf',
+  }
+  localStorage.setItem(
+    'helvetly.habits.usr_1.ws_1',
+    JSON.stringify({ 'client.country': { DE: { s: 2, at: Date.now() } } }),
+  )
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
+    init?.method === 'POST'
+      ? Response.json({ data: { id: 'cli_1', name: 'Konditorei Muster AG' } }, { status: 201 })
+      : Response.json({ data: [] }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const queryClient = new QueryClient()
+  queryClient.setQueryData(queryKeys.session, session)
+  renderForm(queryClient)
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'Company name' }),
+    'Konditorei Muster AG',
+  )
+  await userEvent.type(screen.getByLabelText('Phone'), '+41 44 123 45 67')
+  await userEvent.click(screen.getByRole('button', { name: 'Add client' }))
+
+  await waitFor(() =>
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true),
+  )
+  const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
+  expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ country: 'DE' })
+  localStorage.clear()
+})

@@ -1,0 +1,14 @@
+{
+  "name": "@helvetly/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "node scripts/run-e2e.mjs",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@helvetly/typescript-config": "workspace:*",
+    "@playwright/test": "1.65.0"
+  }
+}

@@ -1,0 +1,396 @@
+'use client'
+
+import { Button } from '@helvetly/ui/components/button'
+import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { formatDate } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CreditCard,
+  ExternalLink,
+  Info,
+  Lock,
+  Tag,
+  Zap,
+} from 'lucide-react'
+import Link from 'next/link'
+import type { ReactNode } from 'react'
+
+import {
+  billingPeriod,
+  describeDiscount,
+  formatPrice,
+  nextCharge,
+  nextPlan,
+  people,
+  planTotal,
+  seatPrice,
+  trialDaysLeft,
+  type Billing,
+} from '@/lib/billing'
+
+import { Countdown } from './countdown'
+
+const BADGES = {
+  past_due: { tone: 'red', label: 'Past due' },
+  cancels: { tone: 'amber', label: 'Cancels' },
+  trialing: { tone: 'blue', label: 'Trial' },
+  active: { tone: 'green', label: 'Active' },
+} satisfies Record<string, { tone: Tone; label: string }>
+
+const badgeOf = (billing: Billing) =>
+  BADGES[
+    billing.status === 'past_due'
+      ? 'past_due'
+      : billing.cancel_at_period_end
+        ? 'cancels'
+        : billing.status === 'trialing'
+          ? 'trialing'
+          : 'active'
+  ]
+
+const PLANS_PAGE = '/settings/billing/plans'
+
+/**
+ * The head of Plan & billing: the plan's name, status and total with the ways to change it on the
+ * left; on the right (under it on a narrow card) what happens next as a countdown: the trial's days,
+ * the period until renewal or the end, or what needs doing (a failed payment, no plan).
+ */
+export function PlanSummary({
+  billing,
+  onPortal,
+  portalPending,
+}: {
+  billing: Billing
+  onPortal: () => void
+  portalPending: boolean
+}) {
+  const plan = billing.plans.find((entry) => entry.id === billing.plan)
+  const badge = badgeOf(billing)
+  const notes = notesOf(billing)
+  return (
+    <section
+      aria-label="Current plan"
+      data-slot="plan-summary"
+      className="@container overflow-hidden rounded-2xl bg-card shadow-elevation-1"
+    >
+      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(19rem,24rem)]">
+        <div className="grid content-start gap-6 p-5 @lg:p-7">
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
+            <div className="grid min-w-0 gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-caption font-medium text-muted-foreground">Current plan</span>
+                {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
+              </div>
+              <h2 className="text-display font-semibold tracking-[-0.035em]">
+                {plan ? plan.name : 'No plan'}
+              </h2>
+              <p className="text-body-sm text-muted-foreground">
+                {!plan
+                  ? 'This workspace is read-only until it has a plan.'
+                  : `${billing.interval === 'year' ? 'Billed yearly' : 'Billed monthly'} · incl. Swiss VAT`}
+              </p>
+            </div>
+            {plan && <Price billing={billing} />}
+          </div>
+          <Actions billing={billing} onPortal={onPortal} portalPending={portalPending} />
+        </div>
+        <NextStep billing={billing} onPortal={onPortal} portalPending={portalPending} />
+      </div>
+      {notes}
+    </section>
+  )
+}
+
+/** The total in large type, with how it adds up (per person × people) or the legacy flat price. */
+function Price({ billing }: { billing: Billing }) {
+  const perSeat = seatPrice(billing)
+  const total = planTotal(billing)
+  if (!total) return null
+  const interval = billing.interval || 'month'
+  return (
+    <div data-slot="plan-price" className="grid gap-1 tabular-nums @lg:border-l @lg:pl-10">
+      <p className="text-body-sm text-muted-foreground">
+        {perSeat ? (
+          `${formatPrice(perSeat)} per person × ${people(billing.seats)}`
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            Flat price for the workspace
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About the flat price"
+                  className="rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <Info className="size-3.5" aria-hidden />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64 text-pretty">
+                An earlier flat price for the whole workspace. It moves to per-person pricing with
+                the next change of plan or billing interval.
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        )}
+      </p>
+      <p className="flex items-baseline gap-1.5">
+        <span className="text-display font-semibold tracking-[-0.035em]">{formatPrice(total)}</span>
+        <span className="text-body text-muted-foreground">/ {interval}</span>
+      </p>
+    </div>
+  )
+}
+
+/** What comes next, by state: the trial's countdown, the renewal or end, a failed payment, no plan. */
+function NextStep({
+  billing,
+  onPortal,
+  portalPending,
+}: {
+  billing: Billing
+  onPortal: () => void
+  portalPending: boolean
+}) {
+  if (!billing.enabled) return null
+  if (billing.plan === '')
+    return (
+      <Panel tone="muted" label="Read-only" icon={<Lock aria-hidden />} title="Read-only">
+        {billing.trial_available
+          ? `Start Basic free for ${billing.trial_days} days; until then nothing can be changed.`
+          : 'Choose a plan; until then nothing can be changed.'}
+      </Panel>
+    )
+  if (billing.status === 'past_due')
+    return (
+      <Panel
+        tone="danger"
+        label="Payment failed"
+        icon={<AlertTriangle aria-hidden />}
+        title="Payment failed"
+        action={
+          billing.can_manage && (
+            <Button size="sm" variant="outline" disabled={portalPending} onClick={onPortal}>
+              <CreditCard aria-hidden /> Update payment method
+            </Button>
+          )
+        }
+      >
+        The last charge didn’t go through. Stripe retries the card;{' '}
+        {billing.can_manage
+          ? 'update it to keep the plan running. The plan can change again once it is paid.'
+          : 'an owner or admin can update it.'}
+      </Panel>
+    )
+  const next = nextCharge(billing)
+  const amount =
+    next && next.kind !== 'ends' && next.amount ? (
+      <span className="font-medium text-foreground tabular-nums">{formatPrice(next.amount)}</span>
+    ) : null
+  if (billing.status === 'trialing' && billing.trial_end) {
+    const left = trialDaysLeft(billing.trial_end)
+    const days = Math.max(billing.trial_days, left)
+    return (
+      <CountdownPanel
+        countdown={<Countdown value={days - left} max={days} left={left} label="Trial days used" />}
+        title={
+          left === 0 ? 'Your trial ends today' : `Trial ends on ${formatDate(billing.trial_end)}`
+        }
+        detail={`Day ${Math.min(days, days - left + 1)} of ${days}`}
+      >
+        {amount && (
+          <>
+            Then {amount} is charged{billing.discount ? ', with the discount' : ''}.
+          </>
+        )}
+      </CountdownPanel>
+    )
+  }
+  const period = billingPeriod(billing)
+  if (!period || !billing.current_period_end) return null
+  const end = formatDate(billing.current_period_end)
+  const ends = billing.cancel_at_period_end
+  return (
+    <CountdownPanel
+      countdown={
+        <Countdown
+          value={period.days - period.left}
+          max={period.days}
+          left={period.left}
+          label="Billing period elapsed"
+          tone={ends ? 'muted' : 'brand'}
+        />
+      }
+      title={ends ? `Ends on ${end}` : `Renews on ${end}`}
+      detail={ends ? 'Then the workspace is read-only.' : 'The plan renews automatically.'}
+    >
+      {ends ? 'Nothing more is charged.' : amount && <>Next charge {amount}.</>}
+    </CountdownPanel>
+  )
+}
+
+const PANEL_TONES = {
+  brand: 'bg-brand-surface/45',
+  muted: 'bg-muted/60',
+  danger: 'bg-destructive-surface/60 [&_[data-slot=panel-icon]]:text-destructive',
+}
+
+/** The right-hand side of the hero: a tinted panel, under a hairline when it stacks. */
+function PanelShell({
+  tone,
+  label,
+  children,
+}: {
+  tone: keyof typeof PANEL_TONES
+  label?: string
+  children: ReactNode
+}) {
+  return (
+    <section
+      aria-label={label}
+      data-slot="plan-next"
+      className={cn(
+        'flex items-center gap-5 border-t p-5 @lg:px-7 @3xl:border-t-0 @3xl:border-l',
+        PANEL_TONES[tone],
+      )}
+    >
+      {children}
+    </section>
+  )
+}
+
+function CountdownPanel({
+  countdown,
+  title,
+  detail,
+  children,
+}: {
+  countdown: ReactNode
+  title: string
+  detail: string
+  children: ReactNode
+}) {
+  return (
+    <PanelShell tone="brand">
+      {countdown}
+      <div className="grid min-w-0 gap-1">
+        <p className="text-body font-semibold text-pretty">{title}</p>
+        <p className="text-body-sm text-muted-foreground tabular-nums">{detail}</p>
+        {children && <p className="text-body-sm text-pretty text-muted-foreground">{children}</p>}
+      </div>
+    </PanelShell>
+  )
+}
+
+function Panel({
+  tone,
+  label,
+  icon,
+  title,
+  action,
+  children,
+}: {
+  tone: 'muted' | 'danger'
+  label: string
+  icon: ReactNode
+  title: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <PanelShell tone={tone} label={label}>
+      <div className="grid gap-3">
+        <p className="flex items-center gap-2 text-body font-semibold">
+          <span
+            data-slot="panel-icon"
+            className="text-muted-foreground [&>svg]:size-4 [&>svg]:shrink-0"
+          >
+            {icon}
+          </span>
+          {title}
+        </p>
+        <p className="text-body-sm text-pretty text-muted-foreground">{children}</p>
+        {action && <div>{action}</div>}
+      </div>
+    </PanelShell>
+  )
+}
+
+/** Quiet lines under the hero: a running discount, who may change the plan. */
+function notesOf(billing: Billing): ReactNode[] | null {
+  const lines: ReactNode[] = []
+  if (billing.discount)
+    lines.push(
+      <Note key="discount" icon={<Tag aria-hidden />}>
+        <span className="font-medium text-foreground">{billing.discount.code}</span>{' '}
+        {describeDiscount(billing.discount)}
+        {billing.discount.ends_at && ` until ${formatDate(billing.discount.ends_at)}`}
+      </Note>,
+    )
+  if (billing.enabled && !billing.can_manage && billing.plan !== '')
+    lines.push(
+      <Note key="manage" icon={<Lock aria-hidden />}>
+        Only an owner or admin can change the workspace’s plan.
+      </Note>,
+    )
+  return lines.length > 0 ? lines : null
+}
+
+function Note({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <p className="flex items-start gap-2.5 border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground @lg:px-7 [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
+      {icon}
+      <span>{children}</span>
+    </p>
+  )
+}
+
+/**
+ * The ways out of the plan: the next plan up as the primary action while there is one, the plans
+ * page, and Stripe's portal.
+ */
+function Actions({
+  billing,
+  onPortal,
+  portalPending,
+}: {
+  billing: Billing
+  onPortal: () => void
+  portalPending: boolean
+}) {
+  if (!billing.enabled) return null
+  const portal = billing.has_customer && billing.can_manage
+  const canChange = billing.can_manage && billing.status !== 'past_due'
+  const upgrade = canChange && !billing.cancel_at_period_end ? nextPlan(billing) : undefined
+  return (
+    // A narrow card: the buttons share its width.
+    <div className="flex w-full flex-wrap items-center gap-2 *:flex-1 @lg:*:flex-none">
+      {upgrade ? (
+        <>
+          <Button asChild>
+            <Link href={PLANS_PAGE}>
+              <Zap aria-hidden /> Upgrade to {upgrade.name}
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={PLANS_PAGE}>Compare plans</Link>
+          </Button>
+        </>
+      ) : (
+        <Button asChild variant={canChange ? 'default' : 'outline'}>
+          <Link href={PLANS_PAGE}>
+            {!canChange ? 'Compare plans' : billing.plan === '' ? 'Choose a plan' : 'Change plan'}
+            {canChange && <ArrowRight data-icon="inline-end" aria-hidden />}
+          </Link>
+        </Button>
+      )}
+      {portal && (
+        <Button variant="ghost" disabled={portalPending} onClick={onPortal}>
+          <ExternalLink aria-hidden /> Manage billing
+        </Button>
+      )}
+    </div>
+  )
+}

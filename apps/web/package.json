@@ -1,0 +1,35 @@
+{
+  "name": "@helvetly/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Helvetly home page and landing pages (Next.js, static export)",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 8001",
+    "build": "next build && node ../../scripts/check-links.mjs out",
+    "preview": "pnpm dlx serve@latest out -l 8001",
+    "typecheck": "next typegen && tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@helvetly/ui": "workspace:*",
+    "cn": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-markdown": "catalog:",
+    "remark-gfm": "catalog:"
+  },
+  "devDependencies": {
+    "@helvetly/typescript-config": "workspace:*",
+    "@helvetly/vitest-config": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "vitest": "catalog:"
+  }
+}

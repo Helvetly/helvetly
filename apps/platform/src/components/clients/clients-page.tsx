@@ -1,0 +1,1081 @@
+'use client'
+
+import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { Segmented } from '@helvetly/ui/components/segmented'
+import { formatDate } from '@helvetly/ui/lib/format'
+import { displayPhone } from '@helvetly/ui/lib/phone'
+import { cn } from '@helvetly/ui/lib/utils'
+import {
+  ArrowDown,
+  ArrowUp,
+  AtSign,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  CloudOff,
+  Copy,
+  Download,
+  FileUp,
+  ListFilter,
+  MapPin,
+  PanelRightOpen,
+  Pencil,
+  Phone,
+  Power,
+  PowerOff,
+  Search,
+  SearchX,
+  SlidersHorizontal,
+  Trash2,
+  UserPlus,
+  X,
+  Users,
+} from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
+import { toast } from 'sonner'
+
+import { toastError } from '@/components/billing/upgrade-prompt'
+import {
+  dropdownKit,
+  PageContextMenu,
+  RowContextMenu,
+  RowMenuButton,
+  type MenuKit,
+  type RowMenuSpec,
+} from '@/components/data/menus'
+import { DetailsPopover } from '@/components/data/row-details'
+import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { useImportDrawer } from '@/components/import/import-button'
+import { ImportDrawer } from '@/components/import/import-drawer'
+import { Initials } from '@/components/initials'
+import { PageHeader } from '@/components/shell/page-header'
+import { errorMessage } from '@/lib/api'
+import {
+  canDeleteClients,
+  exportIdsUrl,
+  exportUrl,
+  listParamsToQuery,
+  parseListParams,
+  STATUS_VIEWS,
+  statusView,
+  useBulkClients,
+  useClientList,
+  useClientStatusCounts,
+  useClientTags,
+  useDeleteClient,
+  clientQuery,
+  useSaveClient,
+  type Client,
+  type ClientStatus,
+  type ListParams,
+  type SortField,
+} from '@/lib/clients'
+import { useCan } from '@/lib/permissions'
+import { usePrefetch, useSession } from '@/lib/queries'
+import { setUrlQuery } from '@/lib/url-query'
+import { useStableCallback } from '@/lib/use-stable-callback'
+
+import { ChangesPendingBadge, ClientStatusBadge, ClientTypeBadge } from './client-bits'
+import { ClientDetail, type ClientCommand } from './client-detail'
+import { ClientForm } from './client-form'
+import { countryName } from './client-form-model'
+import { Combobox, COUNTRY_OPTIONS } from './fields'
+
+type ColumnId = 'number' | 'name' | 'type' | 'phone' | 'city' | 'tags' | 'status' | 'created'
+type ColumnDef = {
+  /** Only from a wide panel (≥72rem), where there is room. */
+  wide?: boolean
+  id: ColumnId
+  label: string
+  width: string
+  sort?: SortField
+  /** Shown until switched off in Customize. */
+  visible: boolean
+  cell: (client: Client) => ReactNode
+}
+
+const COLUMNS: ColumnDef[] = [
+  {
+    id: 'number',
+    label: 'No.',
+    width: 'w-[76px]',
+    sort: 'number',
+    visible: true,
+    cell: (client) => <span className="text-muted-foreground tabular-nums">#{client.number}</span>,
+  },
+  { id: 'name', label: 'Name', width: 'w-[30%]', sort: 'name', visible: true, cell: () => null },
+  {
+    id: 'type',
+    label: 'Type',
+    width: 'w-[110px]',
+    visible: true,
+    cell: (client) => <ClientTypeBadge company={client.is_company} />,
+  },
+  {
+    id: 'phone',
+    wide: true,
+    label: 'Phone',
+    width: 'w-[15%]',
+    visible: true,
+    cell: (client) =>
+      client.phone ? (
+        <span className="tabular-nums">{displayPhone(client.phone)}</span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  {
+    id: 'city',
+    label: 'City',
+    width: 'w-[15%]',
+    sort: 'city',
+    visible: true,
+    cell: (client) =>
+      client.city || client.country ? (
+        <span>
+          {client.city}
+          {client.country && (
+            <span className="ml-1.5 text-xs text-muted-foreground">{client.country}</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+  },
+  {
+    id: 'tags',
+    label: 'Tags',
+    width: 'w-[14%]',
+    visible: false,
+    cell: (client) => (
+      <span className="flex gap-1 overflow-hidden">
+        {client.tags.map((tag) => (
+          <span
+            key={tag}
+            className="h-5 shrink-0 rounded-[4px] px-1.5 text-[12px] leading-5 text-muted-foreground ring-1 ring-border ring-inset"
+          >
+            {tag}
+          </span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    id: 'status',
+    label: 'Status',
+    width: 'w-[100px]',
+    visible: true,
+    cell: (client) => <ClientStatusBadge client={client} />,
+  },
+  {
+    id: 'created',
+    wide: true,
+    label: 'Added',
+    width: 'w-[120px]',
+    sort: 'created_at',
+    visible: true,
+    cell: (client) => (
+      <span className="text-muted-foreground">{formatDate(client.created_at)}</span>
+    ),
+  },
+]
+
+const COLUMNS_KEY = 'helvetly:clients:columns'
+
+/** Which columns show: a per-browser choice, so storage may be missing. */
+function useColumns() {
+  const [hidden, setHidden] = useState<ColumnId[]>(() => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
+      if (Array.isArray(stored))
+        return stored.filter((id): id is ColumnId => typeof id === 'string')
+    } catch {}
+    return COLUMNS.filter((column) => !column.visible).map((column) => column.id)
+  })
+  const toggle = (id: ColumnId) => {
+    const next = hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id]
+    setHidden(next)
+    try {
+      localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
+    } catch {}
+  }
+  const visible = useMemo(() => COLUMNS.filter((column) => !hidden.includes(column.id)), [hidden])
+  return { visible, hidden, toggle }
+}
+
+const toggleIn = <T,>(list: T[], value: T) =>
+  list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
+
+/** The clients list: server-side search, filters, sort and paging, all kept in the URL. */
+export function ClientsPage() {
+  const pathname = usePathname()
+  const query = useSearchParams()
+  const params = parseListParams(query)
+  const openId = query.get('id')
+  const role = useSession().data?.role
+  const canWrite = useCan('write:clients')
+  const canDelete = canWrite && canDeleteClients(role)
+  const importDrawer = useImportDrawer()
+
+  const [search, setSearch] = useState(params.search)
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const [form, setForm] = useState<{ client?: Client; focus?: 'address' } | null>(null)
+  const [deleting, setDeleting] = useState<Client[] | null>(null)
+  const columns = useColumns()
+
+  const list = useClientList(params)
+  const save = useSaveClient()
+  const remove = useDeleteClient()
+  const bulk = useBulkClients()
+  const prefetch = usePrefetch(clientQuery)
+
+  const navigate = (next: URLSearchParams) => {
+    setUrlQuery(pathname, next)
+  }
+  const update = (change: Partial<ListParams>) =>
+    navigate(listParamsToQuery({ ...params, page: 1, ...change }, query))
+  const openClient = (id: string | null) => {
+    const next = new URLSearchParams(query)
+    if (id) next.set('id', id)
+    else next.delete('id')
+    navigate(next)
+  }
+
+  // Search waits for a pause in typing, then goes to the URL (and so to the server).
+  useEffect(() => {
+    if (search === params.search) return
+    const timer = setTimeout(() => update({ search }), 300)
+    return () => clearTimeout(timer)
+  })
+
+  // "New client" from Quick Actions arrives as ?new=1, which stays until the form closes.
+  const isNew = query.get('new') === '1'
+  const formState = form ?? (isNew ? {} : null)
+  const closeForm = () => {
+    setForm(null)
+    if (!isNew) return
+    const next = new URLSearchParams(query)
+    next.delete('new')
+    navigate(next)
+  }
+
+  const rows = list.data?.data ?? []
+  const meta = list.data?.meta
+  const filtered =
+    Boolean(params.search) ||
+    params.status.length > 0 ||
+    params.type !== null ||
+    params.tags.length > 0 ||
+    params.countries.length > 0
+  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
+  const toggleRow = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+
+  const setActive = (client: Client, active: boolean) =>
+    save.mutate(
+      { id: client.id, input: { is_active: active } },
+      {
+        onSuccess: () => toast.success(`${client.name} ${active ? 'activated' : 'deactivated'}.`),
+        onError: toastError,
+      },
+    )
+
+  const command = (name: ClientCommand, client: Client) => {
+    if (name === 'edit') setForm({ client })
+    if (name === 'complete') setForm({ client, focus: 'address' })
+    if (name === 'toggle') setActive(client, !client.is_active)
+    if (name === 'delete') setDeleting([client])
+  }
+
+  const runBulk = (action: 'activate' | 'deactivate') =>
+    bulk.mutate(
+      { ids: [...selected], action },
+      {
+        onSuccess: ({ data }) => {
+          toast.success(`${data.updated} ${data.updated === 1 ? 'client' : 'clients'} ${action}d.`)
+          setSelected(new Set())
+        },
+        onError: toastError,
+      },
+    )
+
+  const confirmDelete = (approved: boolean) => {
+    const targets = deleting ?? []
+    setDeleting(null)
+    if (!approved) return
+    const done = () => {
+      toast.success(
+        targets.length === 1
+          ? `${targets[0]?.name} deleted.`
+          : `${targets.length} clients deleted.`,
+      )
+      setSelected(new Set())
+      if (targets.some((client) => client.id === openId)) openClient(null)
+    }
+    if (targets.length === 1 && targets[0])
+      remove.mutate(targets[0].id, { onSuccess: done, onError: toastError })
+    else
+      bulk.mutate(
+        { ids: targets.map((client) => client.id), action: 'delete' },
+        { onSuccess: done, onError: toastError },
+      )
+  }
+
+  const sortBy = (field: SortField) =>
+    update({ sort: field, desc: params.sort === field ? !params.desc : field === 'created_at' })
+
+  const selection = {
+    count: selected.size,
+    actions: bulkActions(canDelete, {
+      activate: () => runBulk('activate'),
+      deactivate: () => runBulk('deactivate'),
+      exportCsv: () => window.location.assign(exportIdsUrl([...selected])),
+      remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
+    }),
+  }
+  const pageItems = ({ Item }: MenuKit) => (
+    <>
+      {canWrite && (
+        <Item onSelect={importDrawer.open}>
+          <FileUp /> Import
+        </Item>
+      )}
+      <Item asChild>
+        <a href={exportUrl(params)} download>
+          <Download /> Export CSV{filtered ? ' (filtered)' : ''}
+        </a>
+      </Item>
+    </>
+  )
+  const access = useMemo(() => ({ canWrite, canDelete }), [canWrite, canDelete])
+  const open = useStableCallback(openClient)
+  const toggle = useStableCallback(toggleRow)
+  const run = useStableCallback(command)
+  const act = useMemo<RowActions>(
+    () => ({ open, toggle, prefetch, command: run }),
+    [open, toggle, prefetch, run],
+  )
+
+  return (
+    <>
+      <PageHeader
+        tabs={['Clients']}
+        tabIcons={[Users]}
+        savedViews={false}
+        primary="New client"
+        onPrimary={() => setForm({})}
+        menu={pageItems(dropdownKit)}
+      />
+      {importDrawer.isOpen && <ImportDrawer kind="clients" onClose={importDrawer.close} />}
+      <PageContextMenu
+        title="Clients"
+        primary={{ label: 'New client', onSelect: () => setForm({}) }}
+        items={pageItems}
+        selectAll={
+          rows.length && !allSelected
+            ? { onSelect: () => setSelected(new Set(rows.map((row) => row.id))) }
+            : undefined
+        }
+        onRefresh={() => void list.refetch()}
+      >
+        <div className="relative flex flex-1 flex-col">
+          <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-1 gap-y-2 border-b px-2 py-2 md:px-3">
+            <StatusViews params={params} onChange={update} />
+            <Filters params={params} onChange={update} />
+            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
+              <Search className="size-4 shrink-0 stroke-[1.5]" />
+              <input
+                type="search"
+                aria-label="Search clients"
+                placeholder="Search name, email, city, VAT or #number"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
+              />
+            </label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+                  <SlidersHorizontal className="stroke-[1.5]" />
+                  <span className="max-sm:sr-only">Customize</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 gap-1 p-2">
+                <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">Columns</p>
+                {COLUMNS.filter((column) => column.id !== 'name').map((column) => (
+                  <label
+                    key={column.id}
+                    className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      checked={!columns.hidden.includes(column.id)}
+                      onCheckedChange={() => columns.toggle(column.id)}
+                    />
+                    {column.label === 'No.' ? 'Number' : column.label}
+                  </label>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
+          <ActiveFilters params={params} onChange={update} />
+
+          {list.error ? (
+            <State
+              icon={<CloudOff />}
+              title="Couldn’t load clients"
+              text={errorMessage(list.error)}
+              action={
+                <Button variant="outline" size="sm" onClick={() => void list.refetch()}>
+                  Try again
+                </Button>
+              }
+            />
+          ) : !list.data ? (
+            <LoadingRows />
+          ) : rows.length === 0 ? (
+            filtered ? (
+              <State
+                icon={<SearchX />}
+                title={
+                  params.search ? `No clients match “${params.search}”` : 'No clients in this view'
+                }
+                text="Try another search or clear the filters."
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('')
+                      navigate(listParamsToQuery({ ...parseListParams(new URLSearchParams()) }))
+                    }}
+                  >
+                    Clear search and filters
+                  </Button>
+                }
+              />
+            ) : (
+              <State
+                icon={<UserPlus />}
+                title="No clients yet"
+                text="Add the people and companies you work for — the name is enough to start."
+                action={
+                  canWrite && (
+                    <Button size="sm" onClick={() => setForm({})}>
+                      Add your first client
+                    </Button>
+                  )
+                }
+              />
+            )
+          ) : (
+            <div
+              className={cn(
+                'transition-opacity duration-150',
+                list.isPlaceholderData && 'opacity-60',
+              )}
+            >
+              <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+                <thead>
+                  <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
+                    <th className="w-12 pl-5">
+                      <Checkbox
+                        aria-label="Select all clients on this page"
+                        className="bg-card"
+                        checked={allSelected}
+                        onCheckedChange={(checked) =>
+                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
+                        }
+                      />
+                    </th>
+                    {columns.visible.map((column) => {
+                      const sorted = column.sort === params.sort
+                      return (
+                        <th
+                          key={column.id}
+                          aria-sort={
+                            sorted ? (params.desc ? 'descending' : 'ascending') : undefined
+                          }
+                          className={cn(
+                            'px-3 font-medium',
+                            column.width,
+                            column.wide && 'hidden @6xl:table-cell',
+                          )}
+                        >
+                          {column.sort ? (
+                            <button
+                              type="button"
+                              onClick={() => column.sort && sortBy(column.sort)}
+                              className={cn(
+                                'inline-flex items-center gap-1 uppercase hover:text-foreground',
+                                sorted && 'text-foreground',
+                              )}
+                            >
+                              {column.label}
+                              {sorted &&
+                                (params.desc ? (
+                                  <ArrowDown className="size-3.5" />
+                                ) : (
+                                  <ArrowUp className="size-3.5" />
+                                ))}
+                            </button>
+                          ) : (
+                            column.label
+                          )}
+                        </th>
+                      )
+                    })}
+                    <th className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((client) => (
+                    <ClientRow
+                      key={client.id}
+                      client={client}
+                      columns={columns.visible}
+                      selected={selected.has(client.id)}
+                      bulk={selected.has(client.id) ? selection : undefined}
+                      access={access}
+                      act={act}
+                    />
+                  ))}
+                </tbody>
+              </table>
+
+              <ul className="divide-y divide-border/70 @4xl:hidden">
+                {rows.map((client) => (
+                  <ClientItem
+                    key={client.id}
+                    client={client}
+                    selected={selected.has(client.id)}
+                    bulk={selected.has(client.id) ? selection : undefined}
+                    access={access}
+                    act={act}
+                  />
+                ))}
+              </ul>
+
+              {meta && (
+                <nav
+                  aria-label="Pages"
+                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
+                >
+                  <span className="tabular-nums">
+                    {(meta.page - 1) * meta.page_size + 1}–
+                    {Math.min(meta.page * meta.page_size, meta.total)} of {meta.total}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Previous page"
+                      disabled={meta.page <= 1}
+                      onClick={() => update({ page: meta.page - 1 })}
+                    >
+                      <ChevronLeft />
+                    </Button>
+                    <span className="tabular-nums">
+                      Page {meta.page} of {Math.max(meta.total_pages, 1)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Next page"
+                      disabled={meta.page >= meta.total_pages}
+                      onClick={() => update({ page: meta.page + 1 })}
+                    >
+                      <ChevronRight />
+                    </Button>
+                  </span>
+                </nav>
+              )}
+            </div>
+          )}
+
+          {selected.size > 0 && (
+            <BulkBar
+              count={selected.size}
+              onClear={() => setSelected(new Set())}
+              actions={selection.actions}
+            />
+          )}
+        </div>
+      </PageContextMenu>
+
+      {openId && (
+        <ClientDetail
+          key={`detail:${openId}`}
+          id={openId}
+          canDelete={canDelete}
+          onClose={() => openClient(null)}
+          onCommand={command}
+        />
+      )}
+      {formState && (
+        <ClientForm
+          client={formState.client}
+          focus={formState.focus}
+          onClose={closeForm}
+          onSaved={(client, created) => {
+            setForm(null)
+            if (!created) return
+            const next = new URLSearchParams(query)
+            next.delete('new')
+            next.set('id', client.id)
+            navigate(next)
+          }}
+        />
+      )}
+      {deleting && deleting.length > 0 && (
+        <ConfirmDialog
+          title={
+            deleting.length === 1
+              ? `Delete ${deleting[0]?.name}?`
+              : `Delete ${deleting.length} clients?`
+          }
+          body="Invoices and documents that mention them keep their copy of the details. This can’t be undone here."
+          confirmLabel={
+            deleting.length === 1 ? 'Delete client' : `Delete ${deleting.length} clients`
+          }
+          tone="destructive"
+          onDecide={confirmDelete}
+        />
+      )}
+    </>
+  )
+}
+
+/** The bulk bar's buttons; deleting only for those allowed to. */
+export function bulkActions(
+  canDelete: boolean,
+  run: { activate: () => void; deactivate: () => void; exportCsv: () => void; remove: () => void },
+) {
+  return [
+    { label: 'Activate', icon: <Power />, onClick: run.activate, write: true },
+    { label: 'Deactivate', icon: <PowerOff />, onClick: run.deactivate, write: true },
+    { label: 'Export CSV', icon: <Download />, onClick: run.exportCsv },
+    ...(canDelete
+      ? [{ label: 'Delete', icon: <Trash2 />, onClick: run.remove, destructive: true, write: true }]
+      : []),
+  ]
+}
+
+function NameCell({ client, onOpen }: { client: Client; onOpen: () => void }) {
+  return (
+    <DetailsPopover
+      onAction={onOpen}
+      details={{
+        name: client.name,
+        action: 'Open',
+        drafts: [],
+        fields: [
+          { icon: CircleDot, label: 'Status', value: <ClientStatusBadge client={client} /> },
+          { icon: Building2, label: 'Type', value: client.is_company ? 'Company' : 'Person' },
+          { icon: AtSign, label: 'Email', value: client.email ?? '—' },
+          { icon: Phone, label: 'Phone', value: client.phone ? displayPhone(client.phone) : '—' },
+          {
+            icon: MapPin,
+            label: 'City',
+            value:
+              [client.city, client.country && countryName(client.country)]
+                .filter(Boolean)
+                .join(', ') || '—',
+          },
+        ],
+      }}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <Initials name={client.name} />
+        <span className="grid min-w-0 leading-tight">
+          <span className="truncate">{client.name}</span>
+          {client.email && (
+            <span className="truncate text-[13px] text-muted-foreground">{client.email}</span>
+          )}
+        </span>
+        <span className="ml-auto shrink-0">
+          <ChangesPendingBadge client={client} />
+        </span>
+      </span>
+    </DetailsPopover>
+  )
+}
+
+/** A client's actions, for its "…" button and its right-click menu. */
+function clientMenu(
+  client: Client,
+  can: { canWrite: boolean; canDelete: boolean },
+  onOpen: () => void,
+  onCommand: (command: ClientCommand, client: Client) => void,
+): RowMenuSpec {
+  return {
+    title: `#${client.number} · ${client.name}`,
+    items: ({ Item, Separator }) => (
+      <>
+        <Item onSelect={onOpen}>
+          <PanelRightOpen /> Open details
+        </Item>
+        {can.canWrite && (
+          <Item onSelect={() => onCommand('edit', client)}>
+            <Pencil /> Edit
+          </Item>
+        )}
+        {client.email && (
+          <Item
+            onSelect={() =>
+              void navigator.clipboard
+                .writeText(client.email ?? '')
+                .then(() => toast('Email copied.'))
+            }
+          >
+            <Copy /> Copy email
+          </Item>
+        )}
+        {can.canWrite && (
+          <>
+            <Separator />
+            <Item onSelect={() => onCommand('toggle', client)}>
+              {client.is_active ? <PowerOff /> : <Power />}
+              {client.is_active ? 'Deactivate' : 'Activate'}
+            </Item>
+          </>
+        )}
+        {can.canDelete && (
+          <Item variant="destructive" onSelect={() => onCommand('delete', client)}>
+            <Trash2 /> Delete
+          </Item>
+        )}
+      </>
+    ),
+  }
+}
+
+const STATUS_LABELS: Record<ClientStatus, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+  draft: 'Draft',
+  complete: 'Complete address',
+}
+
+/** Chips under the toolbar for every filter in use, each with its own ×, and "Clear all". */
+function ActiveFilters({
+  params,
+  onChange,
+}: {
+  params: ListParams
+  onChange: (change: Partial<ListParams>) => void
+}) {
+  const chips: { label: string; clear: Partial<ListParams> }[] = [
+    ...(params.type
+      ? [{ label: params.type === 'company' ? 'Companies' : 'People', clear: { type: null } }]
+      : []),
+    // A quick view shows in the toolbar; only another combination (from a link) needs chips.
+    ...(statusView(params.status) === null
+      ? params.status.map((status) => ({
+          label: STATUS_LABELS[status],
+          clear: { status: params.status.filter((entry) => entry !== status) },
+        }))
+      : []),
+    ...params.tags.map((tag) => ({
+      label: `Tag: ${tag}`,
+      clear: { tags: params.tags.filter((entry) => entry !== tag) },
+    })),
+    ...params.countries.map((code) => ({
+      label: countryName(code),
+      clear: { countries: params.countries.filter((entry) => entry !== code) },
+    })),
+  ]
+  if (chips.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-2 md:px-4">
+      {chips.map((chip) => (
+        <span
+          key={chip.label}
+          className="flex h-7 items-center gap-1 rounded-md bg-muted pr-1 pl-2.5 text-body-sm"
+        >
+          {chip.label}
+          <button
+            type="button"
+            aria-label={`Remove filter ${chip.label}`}
+            onClick={() => onChange(chip.clear)}
+            className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground"
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      {chips.length > 1 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 text-body-sm font-normal text-muted-foreground"
+          onClick={() =>
+            onChange({
+              ...(statusView(params.status) === null && { status: [] }),
+              type: null,
+              tags: [],
+              countries: [],
+            })
+          }
+        >
+          Clear all
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/** All, Active, Drafts, Inactive: the status quick views, each with how many clients it holds. */
+function StatusViews({
+  params,
+  onChange,
+}: {
+  params: ListParams
+  onChange: (change: Partial<ListParams>) => void
+}) {
+  const counts = useClientStatusCounts(params).data
+  return (
+    <div className="max-sm:order-last max-sm:w-full">
+      <Segmented
+        label="Status"
+        value={statusView(params.status)}
+        options={STATUS_VIEWS.map((view) => ({
+          value: view.value,
+          label: view.label,
+          count: counts?.get(view.value),
+        }))}
+        onChange={(value) =>
+          onChange({
+            status: [...(STATUS_VIEWS.find((view) => view.value === value)?.status ?? [])],
+          })
+        }
+      />
+    </div>
+  )
+}
+
+function Filters({
+  params,
+  onChange,
+}: {
+  params: ListParams
+  onChange: (change: Partial<ListParams>) => void
+}) {
+  const tags = useClientTags()
+  const count = (params.type ? 1 : 0) + params.tags.length + params.countries.length
+  const option =
+    'flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted [&_[role=checkbox]]:bg-card'
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+          <ListFilter className="stroke-[1.5]" /> Filters
+          {count > 0 && (
+            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
+              {count}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="grid max-h-[70svh] w-72 gap-3 overflow-y-auto p-3">
+        <fieldset className="grid gap-0.5">
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">Type</legend>
+          {(['company', 'person'] as const).map((type) => (
+            <label key={type} className={option}>
+              <Checkbox
+                checked={params.type === type}
+                onCheckedChange={(on) => onChange({ type: on ? type : null })}
+              />
+              {type === 'company' ? 'Companies' : 'People'}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="grid gap-0.5">
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">Tags</legend>
+          {tags.data?.length ? (
+            tags.data.map((tag) => (
+              <label key={tag.name} className={option}>
+                <Checkbox
+                  checked={params.tags.includes(tag.name)}
+                  onCheckedChange={() => onChange({ tags: toggleIn(params.tags, tag.name) })}
+                />
+                <span className="truncate">{tag.name}</span>
+                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                  {tag.count}
+                </span>
+              </label>
+            ))
+          ) : (
+            <p className="px-2 text-[13px] text-muted-foreground">No tags yet.</p>
+          )}
+        </fieldset>
+        <fieldset className="grid gap-1.5">
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">Country</legend>
+          {params.countries.length > 0 && (
+            <div className="flex flex-wrap gap-1 px-1">
+              {params.countries.map((code) => (
+                <span
+                  key={code}
+                  className="flex h-6 items-center gap-1 rounded-[5px] bg-muted pr-0.5 pl-2 text-[13px]"
+                >
+                  {countryName(code)}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${countryName(code)}`}
+                    onClick={() =>
+                      onChange({ countries: params.countries.filter((entry) => entry !== code) })
+                    }
+                    className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <Combobox
+            value=""
+            label="Add a country"
+            options={COUNTRY_OPTIONS.filter((country) => !params.countries.includes(country.value))}
+            placeholder="Add a country…"
+            onChange={(code) => onChange({ countries: [...params.countries, code] })}
+          />
+        </fieldset>
+        {count > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-self-start text-muted-foreground"
+            onClick={() => onChange({ type: null, tags: [], countries: [] })}
+          >
+            Clear filters
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+type RowProps = {
+  client: Client
+  selected: boolean
+  bulk: ComponentProps<typeof RowContextMenu>['bulk']
+  access: { canWrite: boolean; canDelete: boolean }
+  act: RowActions
+}
+
+/** Stable across the page's renders, so opening a drawer re-renders no row. */
+type RowActions = {
+  open: (id: string) => void
+  toggle: (id: string) => void
+  prefetch: (id: string) => void
+  command: (name: ClientCommand, client: Client) => void
+}
+
+const ClientRow = memo(function ClientRow({
+  client,
+  columns,
+  selected,
+  bulk,
+  access,
+  act,
+}: RowProps & { columns: ColumnDef[] }) {
+  const menu = clientMenu(client, access, () => act.open(client.id), act.command)
+  return (
+    <RowContextMenu menu={menu} bulk={bulk}>
+      <tr
+        data-selected={selected || undefined}
+        onPointerEnter={() => act.prefetch(client.id)}
+        onClick={(event) => {
+          // Clicks on the row's own controls do their own thing, and so do clicks in portalled
+          // menus and dialogs, which React bubbles up to here although they're elsewhere.
+          const target = event.target
+          if (
+            !(target instanceof Element) ||
+            !event.currentTarget.contains(target) ||
+            target.closest('button, a, [role=checkbox], input')
+          )
+            return
+          act.open(client.id)
+        }}
+        className="h-[54px] cursor-pointer transition-colors duration-150 hover:bg-card/70 data-selected:bg-card data-selected:shadow-[0_0_0_1px_var(--color-border),0_1px_2px_oklch(0_0_0/0.04)]"
+      >
+        <td className="pl-5">
+          <Checkbox
+            aria-label={`Select ${client.name}`}
+            className="bg-card"
+            checked={selected}
+            onCheckedChange={() => act.toggle(client.id)}
+          />
+        </td>
+        {columns.map((column) => (
+          <td
+            key={column.id}
+            className={cn('truncate px-3', column.wide && 'hidden @6xl:table-cell')}
+          >
+            {column.id === 'name' ? (
+              <NameCell client={client} onOpen={() => act.open(client.id)} />
+            ) : (
+              column.cell(client)
+            )}
+          </td>
+        ))}
+        <td className="pr-3 text-right">
+          <RowMenuButton label={`Actions for ${client.name}`} menu={menu} />
+        </td>
+      </tr>
+    </RowContextMenu>
+  )
+})
+
+const ClientItem = memo(function ClientItem({ client, selected, bulk, access, act }: RowProps) {
+  const menu = clientMenu(client, access, () => act.open(client.id), act.command)
+  return (
+    <RowContextMenu menu={menu} bulk={bulk}>
+      <li
+        data-selected={selected || undefined}
+        onPointerEnter={() => act.prefetch(client.id)}
+        className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
+      >
+        <Checkbox
+          aria-label={`Select ${client.name}`}
+          className="bg-card"
+          checked={selected}
+          onCheckedChange={() => act.toggle(client.id)}
+        />
+        <button
+          type="button"
+          onClick={() => act.open(client.id)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className="grid min-w-0 flex-1 leading-snug">
+            <span className="truncate text-[15px]">
+              {client.name}{' '}
+              <span className="text-[13px] text-muted-foreground tabular-nums">
+                #{client.number}
+              </span>
+            </span>
+            <span className="truncate text-[13px] text-muted-foreground">
+              {[client.email, client.city].filter(Boolean).join(' · ') || 'No contact details'}
+            </span>
+          </span>
+          <span className="flex shrink-0 flex-wrap justify-end gap-1">
+            <ChangesPendingBadge client={client} />
+            <ClientStatusBadge client={client} />
+          </span>
+        </button>
+      </li>
+    </RowContextMenu>
+  )
+})

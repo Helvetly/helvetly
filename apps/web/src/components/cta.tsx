@@ -1,0 +1,52 @@
+import { ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import type { ReactNode } from 'react'
+
+import { cn } from '@/lib/cn'
+
+// The website's call-to-action pill: larger and rounder than the app's buttons, one role per variant.
+const variants = {
+  // The brand's teal, lit from above; hover deepens it (no lift, no shadow change).
+  primary:
+    'bg-linear-to-b from-mint-solid to-brand text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_8px_24px_-10px_var(--mint-solid)] hover:from-brand hover:to-brand',
+  outline:
+    // A solid surface with a clear edge, so it reads on the hero's pale grid in both themes.
+    'border border-foreground/15 bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06)] backdrop-blur hover:border-lilac-solid/40 hover:bg-lilac',
+  light: 'bg-white text-black hover:bg-white/90',
+}
+
+export function Cta({
+  href,
+  children,
+  variant = 'primary',
+  arrow = variant === 'primary',
+  className,
+}: {
+  href: string
+  children: ReactNode
+  variant?: keyof typeof variants
+  arrow?: boolean
+  className?: string
+}) {
+  const external = href.startsWith('http')
+  const classes = cn(
+    'inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-body font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+    variants[variant],
+    className,
+  )
+  const content = (
+    <>
+      {children}
+      {arrow && <ArrowRight aria-hidden className="size-4" />}
+    </>
+  )
+  return external ? (
+    <a href={href} className={classes}>
+      {content}
+    </a>
+  ) : (
+    <Link href={href} className={classes}>
+      {content}
+    </Link>
+  )
+}

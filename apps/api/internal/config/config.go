@@ -1,0 +1,355 @@
+// Package config reads the process configuration from the environment and validates it.
+package config
+
+import (
+	"crypto/sha256"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"net/mail"
+	"net/netip"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Config struct {
+	Addr            string
+	ShutdownTimeout time.Duration
+	DatabaseURL     string
+	// PublicURL is the platform origin the browser sees (no trailing slash).
+	PublicURL string
+	// PortalURL is the client portal's origin (no trailing slash): its own host, served by the same binary.
+	PortalURL string
+	// DocsURL is the developer docs' origin (DOCS_URL): its API playground may call the public catalogue with a
+	// bearer token (CORS, no credentials). Empty = no cross-origin access.
+	DocsURL string
+	// SecretKey seals the Google sign-in cookie and keys the client-address HMAC (32 bytes).
+	SecretKey []byte
+	// DevSecretKey: SECRET_KEY was empty and a fixed development key is in use.
+	DevSecretKey       bool
+	GoogleClientID     string
+	GoogleClientSecret string
+	SMTP               SMTP
+	SessionTTL         time.Duration
+	CookieSecure       bool
+	// TrustedProxies: reverse proxies whose X-Forwarded-For names the client (TRUSTED_PROXY_CIDRS); none = the TCP peer.
+	TrustedProxies []netip.Prefix
+	S3             S3
+	// DocumentsMaxUpload: the largest file Documents accepts, in bytes (DOCUMENTS_MAX_UPLOAD_MB).
+	DocumentsMaxUpload int64
+	// DevSignIn exposes sign-in codes at /api/v1/auth/email/dev-code (development and tests only).
+	DevSignIn bool
+	Stripe    Stripe
+	// KSeFAPI: the Polish KSeF 2.0 API root (KSEF_API_URL), e.g. https://api-test.ksef.mf.gov.pl/v2; empty = off.
+	KSeFAPI string
+	AI      AI
+	// FeedbackEmail receives Help & feedback reports (FEEDBACK_EMAIL); empty = reports are stored only.
+	FeedbackEmail string
+}
+
+// AI is the model behind Heidi and the AI import; opt-in. No key means Heidi's factual local commands only. The monthly
+// token allowance is a plan limit (ai_tokens_per_month), not a setting.
+type AI struct {
+	OpenAIKey string
+	// OpenAIBaseURL is the OpenAI-compatible API root (OPENAI_BASE_URL), e.g. https://api.openai.com/v1.
+	OpenAIBaseURL string
+	Model         string
+	// FakeImportModel reads import files with aimodel.Fake instead of OpenAI (HELVETLY_E2E_FAKE_AI, set by the
+	// end-to-end server): refused unless AUTH_DEV_SIGNIN is on a local origin.
+	FakeImportModel bool
+}
+
+// Stripe: subscription billing (docs/billing-contract.md); off when SecretKey is empty, and then no plan limit applies.
+type Stripe struct {
+	SecretKey     string
+	WebhookSecret string
+	// AutomaticTax turns on Stripe Tax in Checkout (Swiss VAT taken out of VAT-inclusive prices).
+	AutomaticTax bool
+	APIBase      string // https://api.stripe.com, or stripe-mock / a fake in tests
+}
+
+func (c Config) BillingEnabled() bool { return c.Stripe.SecretKey != "" }
+
+// S3: the object storage files go to: any service with the S3 API (README, "Object storage"). Nothing here names a
+// provider; behaviour differs only by these settings.
+type S3 struct {
+	Endpoint  string // URL of the S3 API, scheme and host only, e.g. http://localhost:9300
+	Region    string
+	Bucket    string
+	AccessKey string
+	SecretKey string
+	// ObjectLockDays > 0 keeps booked receipts and issued invoice PDFs undeletable for that many days (S3 Object
+	// Lock, GeBüV); 0 is off. The bucket must have Object Lock enabled.
+	ObjectLockDays int
+	ObjectLockMode string // GOVERNANCE or COMPLIANCE
+	// VirtualHosted addresses the bucket as <bucket>.<endpoint host> (S3_ADDRESSING=virtual) instead of
+	// <endpoint>/<bucket> (path, the default), for a service that only accepts one of them.
+	VirtualHosted bool
+	// ProxyDownloads streams downloads through the API instead of redirecting to a presigned URL, for a bucket the
+	// browser cannot reach (the dev tunnel, where S3_ENDPOINT is localhost).
+	ProxyDownloads bool
+}
+
+type SMTP struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	TLS      string // starttls, tls or none
+	From     string
+}
+
+// EmailSignIn: sign-in codes can reach people (by mail, or by the dev-code endpoint).
+func (c Config) EmailSignIn() bool { return c.MailConfigured() || c.DevSignIn }
+
+// MailConfigured: the server can send mail.
+func (c Config) MailConfigured() bool { return c.SMTP.Host != "" && c.SMTP.From != "" }
+
+func (c Config) GoogleSignIn() bool { return c.GoogleClientID != "" }
+
+func Load() (Config, error) {
+	var errs []error
+	fail := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
+	boolean := func(key string, fallback bool) bool {
+		v := env(key, "")
+		if v == "" {
+			return fallback
+		}
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			fail("%s must be true or false, got %q", key, v)
+		}
+		return b
+	}
+
+	c := Config{
+		Addr:               env("HTTP_ADDR", ":3333"),
+		ShutdownTimeout:    15 * time.Second,
+		DatabaseURL:        env("DATABASE_URL", "postgres://helvetly:helvetly@localhost:5433/helvetly?sslmode=disable"),
+		PublicURL:          env("PUBLIC_URL", "http://localhost:8000"),
+		PortalURL:          env("PORTAL_URL", "http://localhost:8002"),
+		GoogleClientID:     env("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: env("GOOGLE_CLIENT_SECRET", ""),
+		SMTP: SMTP{
+			Host:     env("SMTP_HOST", ""),
+			Username: env("SMTP_USERNAME", ""),
+			Password: env("SMTP_PASSWORD", ""),
+			TLS:      env("SMTP_TLS", "none"),
+			From:     env("MAIL_FROM", "Helvetly <no-reply@helvetly.local>"),
+		},
+		S3: S3{
+			Endpoint:       env("S3_ENDPOINT", "http://localhost:9300"),
+			Region:         env("S3_REGION", "us-east-1"),
+			Bucket:         env("S3_BUCKET", "helvetly"),
+			AccessKey:      env("S3_ACCESS_KEY", ""),
+			SecretKey:      env("S3_SECRET_KEY", ""),
+			ObjectLockMode: env("S3_OBJECT_LOCK_MODE", "COMPLIANCE"),
+			ProxyDownloads: boolean("S3_PROXY_DOWNLOADS", false),
+		},
+		DevSignIn: boolean("AUTH_DEV_SIGNIN", false),
+		AI: AI{OpenAIKey: env("OPENAI_API_KEY", ""), OpenAIBaseURL: strings.TrimSuffix(env("OPENAI_BASE_URL", "https://api.openai.com/v1"), "/"),
+			Model: env("OPENAI_MODEL", "gpt-6-astra"), FakeImportModel: boolean("HELVETLY_E2E_FAKE_AI", false)},
+		FeedbackEmail: env("FEEDBACK_EMAIL", ""),
+	}
+	if c.FeedbackEmail != "" {
+		if a, err := mail.ParseAddress(c.FeedbackEmail); err != nil || a.Name != "" {
+			fail("FEEDBACK_EMAIL must be one plain address such as feedback@helvetly.com, got %q", c.FeedbackEmail)
+		}
+	}
+	for old, now := range map[string]string{"HEIDI_OPENAI_API_KEY": "OPENAI_API_KEY", "HEIDI_OPENAI_MODEL": "OPENAI_MODEL",
+		"HEIDI_MONTHLY_TOKENS": "the plan limit ai_tokens_per_month", "AI_FAKE_PROVIDER": "HELVETLY_E2E_FAKE_AI"} {
+		if os.Getenv(old) != "" { // a renamed setting must not be dropped silently
+			fail("%s is no longer read: use %s", old, now)
+		}
+	}
+	if strings.ContainsAny(c.AI.OpenAIKey, " \t\r\n") {
+		fail("OPENAI_API_KEY must not contain whitespace")
+	}
+	if u, err := url.Parse(c.AI.OpenAIBaseURL); err != nil || u.Host == "" || u.RawQuery != "" || u.Fragment != "" ||
+		(u.Scheme != "https" && (u.Scheme != "http" || !localHost(u.Hostname()))) {
+		fail("OPENAI_BASE_URL must be an https URL such as https://api.openai.com/v1 (http only on a local host), got %q", c.AI.OpenAIBaseURL)
+	}
+	if c.AI.Model == "" || len(c.AI.Model) > 128 || strings.ContainsAny(c.AI.Model, " \t\r\n") {
+		fail("OPENAI_MODEL must be a nonempty model identifier without whitespace")
+	}
+
+	u, err := url.Parse(c.PublicURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || (u.Path != "" && u.Path != "/") ||
+		u.RawQuery != "" || u.Fragment != "" {
+		fail("PUBLIC_URL must be an origin such as https://app.helvetly.com, got %q", c.PublicURL)
+	} else {
+		c.PublicURL = u.Scheme + "://" + u.Host
+	}
+	p, err := url.Parse(c.PortalURL)
+	switch {
+	case err != nil || (p.Scheme != "http" && p.Scheme != "https") || p.Host == "" || (p.Path != "" && p.Path != "/") ||
+		p.RawQuery != "" || p.Fragment != "":
+		fail("PORTAL_URL must be an origin such as https://portal.helvetly.com, got %q", c.PortalURL)
+		p = nil
+	case u != nil && strings.EqualFold(p.Host, u.Host):
+		fail("PORTAL_URL must be on another host than PUBLIC_URL, got %q for both", p.Host)
+	case u != nil && !localHost(u.Hostname()) && localHost(p.Hostname()):
+		fail("PORTAL_URL is required with a public PUBLIC_URL; it is still the local %q", c.PortalURL)
+	default:
+		c.PortalURL = p.Scheme + "://" + p.Host
+	}
+	// The docs' playground: on by default only next to a local platform (pnpm dev); a public deployment names it.
+	docsDefault := ""
+	if u != nil && localHost(u.Hostname()) {
+		docsDefault = "http://localhost:8003"
+	}
+	if c.DocsURL = env("DOCS_URL", docsDefault); c.DocsURL != "" {
+		d, err := url.Parse(c.DocsURL)
+		switch {
+		case err != nil || (d.Scheme != "http" && d.Scheme != "https") || d.Host == "" || (d.Path != "" && d.Path != "/") ||
+			d.RawQuery != "" || d.Fragment != "" || d.User != nil:
+			fail("DOCS_URL must be an origin such as https://docs.helvetly.com, got %q", c.DocsURL)
+		case u != nil && !localHost(u.Hostname()) && (d.Scheme != "https" || localHost(d.Hostname())):
+			fail("DOCS_URL must be a public https origin with a public PUBLIC_URL, got %q", c.DocsURL)
+		default:
+			c.DocsURL = d.Scheme + "://" + strings.ToLower(d.Host)
+		}
+	}
+	c.CookieSecure = boolean("COOKIE_SECURE", u != nil && u.Scheme == "https")
+	// Session cookies must never travel in clear text where real users sign in.
+	if u != nil && !localHost(u.Hostname()) {
+		if u.Scheme != "https" {
+			fail("PUBLIC_URL must be https on a public host, got %q", c.PublicURL)
+		} else if !c.CookieSecure {
+			fail("COOKIE_SECURE=false is for local development only; PUBLIC_URL %q is https", c.PublicURL)
+		}
+	}
+	if p != nil && !localHost(p.Hostname()) && p.Scheme != "https" {
+		fail("PORTAL_URL must be https on a public host, got %q", c.PortalURL)
+	}
+	// Dev sign-in hands out anyone's sign-in code: refuse it on an origin real users could reach.
+	if c.DevSignIn && u != nil && !localHost(u.Hostname()) {
+		fail("AUTH_DEV_SIGNIN is for local development only; PUBLIC_URL %q is not a local origin", c.PublicURL)
+	}
+	if c.DevSignIn && p != nil && !localHost(p.Hostname()) {
+		fail("AUTH_DEV_SIGNIN is for local development only; PORTAL_URL %q is not a local origin", c.PortalURL)
+	}
+	if c.AI.FakeImportModel && !c.DevSignIn {
+		fail("HELVETLY_E2E_FAKE_AI is for tests and local development only: it needs AUTH_DEV_SIGNIN on a local origin")
+	}
+
+	switch key := env("SECRET_KEY", ""); {
+	case key == "" && c.DevSignIn:
+		sum := sha256.Sum256([]byte("helvetly development secret key"))
+		c.SecretKey, c.DevSecretKey = sum[:], true
+	case key == "":
+		fail("SECRET_KEY is required: generate one with `openssl rand -base64 32`")
+	default:
+		c.SecretKey, err = base64.StdEncoding.DecodeString(key)
+		if err != nil || len(c.SecretKey) != 32 {
+			fail("SECRET_KEY must be 32 bytes in base64 (`openssl rand -base64 32`)")
+		}
+	}
+
+	if (c.GoogleClientID == "") != (c.GoogleClientSecret == "") {
+		fail("set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither")
+	}
+
+	if c.SMTP.Port, err = strconv.Atoi(env("SMTP_PORT", "1025")); err != nil || c.SMTP.Port < 1 || c.SMTP.Port > 65535 {
+		fail("SMTP_PORT must be a port number, got %q", env("SMTP_PORT", ""))
+	}
+	if c.SMTP.TLS != "starttls" && c.SMTP.TLS != "tls" && c.SMTP.TLS != "none" {
+		fail("SMTP_TLS must be starttls, tls or none, got %q", c.SMTP.TLS)
+	}
+	if c.SMTP.From != "" {
+		if _, err := mail.ParseAddress(c.SMTP.From); err != nil {
+			fail("MAIL_FROM must be an address such as \"Helvetly <no-reply@helvetly.com>\", got %q", c.SMTP.From)
+		}
+	}
+
+	if s3, err := url.Parse(c.S3.Endpoint); err != nil || (s3.Scheme != "http" && s3.Scheme != "https") || s3.Host == "" {
+		fail("S3_ENDPOINT must be a URL such as http://localhost:9300, got %q", c.S3.Endpoint)
+	}
+	if s3, err := url.Parse(c.S3.Endpoint); err == nil && (s3.User != nil || strings.Trim(s3.Path, "/") != "" || s3.RawQuery != "") {
+		fail("S3_ENDPOINT takes only a scheme and host (no credentials, path or query): the bucket is S3_BUCKET")
+	}
+	if c.S3.Bucket == "" || c.S3.Region == "" {
+		fail("S3_BUCKET and S3_REGION are required")
+	}
+	if c.S3.AccessKey == "" || c.S3.SecretKey == "" {
+		fail("S3_ACCESS_KEY and S3_SECRET_KEY are required")
+	}
+	switch env("S3_ADDRESSING", "path") {
+	case "path":
+	case "virtual":
+		c.S3.VirtualHosted = true
+	default:
+		fail("S3_ADDRESSING must be path or virtual, got %q", env("S3_ADDRESSING", ""))
+	}
+	if c.S3.ObjectLockDays, err = strconv.Atoi(env("S3_OBJECT_LOCK_DAYS", "0")); err != nil || c.S3.ObjectLockDays < 0 ||
+		c.S3.ObjectLockDays > 36500 {
+		fail("S3_OBJECT_LOCK_DAYS must be a number of days from 0 (off) to 36500, got %q", env("S3_OBJECT_LOCK_DAYS", ""))
+	}
+	if c.S3.ObjectLockMode != "GOVERNANCE" && c.S3.ObjectLockMode != "COMPLIANCE" {
+		fail("S3_OBJECT_LOCK_MODE must be GOVERNANCE or COMPLIANCE, got %q", c.S3.ObjectLockMode)
+	}
+
+	if mb, err := strconv.Atoi(env("DOCUMENTS_MAX_UPLOAD_MB", "100")); err != nil || mb < 1 || mb > 5120 {
+		fail("DOCUMENTS_MAX_UPLOAD_MB must be a whole number of megabytes from 1 to 5120, got %q", env("DOCUMENTS_MAX_UPLOAD_MB", ""))
+	} else {
+		c.DocumentsMaxUpload = int64(mb) << 20
+	}
+
+	c.Stripe = Stripe{SecretKey: env("STRIPE_SECRET_KEY", ""), WebhookSecret: env("STRIPE_WEBHOOK_SECRET", ""),
+		AutomaticTax: boolean("STRIPE_AUTOMATIC_TAX", true), APIBase: env("STRIPE_API_BASE", "https://api.stripe.com")}
+	if c.Stripe.SecretKey != "" {
+		if !strings.HasPrefix(c.Stripe.SecretKey, "sk_") && !strings.HasPrefix(c.Stripe.SecretKey, "rk_") {
+			fail("STRIPE_SECRET_KEY must be a Stripe secret or restricted key (sk_… or rk_…)")
+		}
+		if !strings.HasPrefix(c.Stripe.WebhookSecret, "whsec_") {
+			fail("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY (whsec_…, from `docker compose logs stripe` or the dashboard)")
+		}
+		if u, err := url.Parse(c.Stripe.APIBase); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			fail("STRIPE_API_BASE must be a URL such as https://api.stripe.com, got %q", c.Stripe.APIBase)
+		}
+	}
+
+	for _, v := range strings.Split(env("TRUSTED_PROXY_CIDRS", ""), ",") {
+		if v = strings.TrimSpace(v); v == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(v)
+		if err != nil {
+			addr, aerr := netip.ParseAddr(v)
+			if aerr != nil {
+				fail("TRUSTED_PROXY_CIDRS must be comma-separated CIDRs or addresses such as 10.0.0.0/8, got %q", v)
+				continue
+			}
+			p = netip.PrefixFrom(addr.Unmap(), addr.Unmap().BitLen())
+		}
+		c.TrustedProxies = append(c.TrustedProxies, p.Masked())
+	}
+
+	if c.KSeFAPI = env("KSEF_API_URL", ""); c.KSeFAPI != "" {
+		if u, err := url.Parse(c.KSeFAPI); err != nil || u.Scheme != "https" || u.Host == "" {
+			fail("KSEF_API_URL must be an https URL such as https://api-test.ksef.mf.gov.pl/v2, got %q", c.KSeFAPI)
+		}
+	}
+
+	if c.SessionTTL, err = time.ParseDuration(env("SESSION_TTL", "720h")); err != nil || c.SessionTTL <= 0 {
+		fail("SESSION_TTL must be a positive duration such as 720h, got %q", env("SESSION_TTL", ""))
+	}
+	return c, errors.Join(errs...)
+}
+
+// env treats an empty value like an unset one, so `KEY=` in .env means "use the default".
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// localHost is a machine-local or reserved test name (RFC 6761), never a public deployment.
+func localHost(host string) bool {
+	return host == "localhost" || host == "127.0.0.1" || host == "::1" ||
+		strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".test")
+}

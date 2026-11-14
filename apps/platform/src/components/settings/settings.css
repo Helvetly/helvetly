@@ -1,0 +1,276 @@
+/*
+ * The settings page's shared widths: a section's title column, the form grid beside it (12 columns,
+ * see below) and the two with the 2.5rem gap between them, which page-level notices keep to.
+ */
+[data-slot='settings-page'] {
+  --settings-label: 19rem;
+  --settings-form: 44rem;
+  --settings-content: calc(var(--settings-label) + 2.5rem + var(--settings-form));
+}
+
+[data-slot='settings-notice'] {
+  width: 100%;
+  max-width: var(--settings-form);
+}
+
+@container sections (min-width: 56rem) {
+  [data-slot='settings-notice'] {
+    max-width: var(--settings-content);
+  }
+}
+
+/*
+ * Settings rows (layout.tsx). A [data-slot=settings-fields] container (a section card's body) lays out
+ * its direct children as rows: a field (FormField), a switch (SwitchRow)
+ * or an action (ActionRow), each with a hairline above it, so the first row also separates the card's
+ * title from its rows. In a wide card a field's label sits in a fixed left column and its control,
+ * error and hint on the right (at most 34rem); anything else (notes, previews) lines up under the
+ * controls. A form, a fieldset without a legend or a nested container passes its rows through. Plain
+ * (unlayered) CSS on purpose: it must beat the rows' own utilities, e.g. SwitchRow's card look.
+ */
+
+[data-slot='settings-fields'] {
+  display: grid;
+  align-content: start;
+}
+
+:is(
+    [data-slot='settings-fields'],
+    [data-slot='settings-fields'] > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is(form, fieldset:not(:has(> legend)), [data-slot='settings-fields']) {
+  display: contents;
+}
+
+:is(
+    [data-slot='settings-fields'],
+    [data-slot='settings-fields'] > :is(form, fieldset:not(:has(> legend)))
+  )
+  > * {
+  min-width: 0;
+  margin-block: 0.75rem;
+}
+
+:is(
+    [data-slot='settings-fields'],
+    [data-slot='settings-fields'] > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is([data-slot='form-field'], [data-slot='switch-row'], [data-slot='action-row']) {
+  margin-block: 0;
+  padding-block: 0.875rem;
+  border-top: 1px solid var(--border);
+}
+
+/* A list (sessions, passkeys) is rows too: a hairline above it, its items divide themselves. */
+:is(
+    [data-slot='settings-fields'],
+    [data-slot='settings-fields'] > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is(ul, ol) {
+  margin-block: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* A section's first row starts level with its title: no hairline above it (a boxed row keeps its box). */
+[data-slot='settings-section']
+  [data-slot='settings-fields']
+  > :first-child:not([data-slot='danger-zone']),
+[data-slot='settings-section']
+  [data-slot='settings-fields']
+  > :is(form, fieldset:not(:has(> legend))):first-child
+  > :first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* A switch is a row like the others (label and description left, switch right), not a card. */
+:is(
+    [data-slot='settings-fields'],
+    [data-slot='settings-fields'] > :is(form, fieldset:not(:has(> legend)))
+  )
+  > [data-slot='switch-row'] {
+  border-width: 1px 0 0;
+  border-color: var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+}
+
+/*
+ * Only a wide column outside a section puts a label beside its control. A section's field column
+ * stacks them however wide the page is: its title already sits on the left.
+ */
+@container (min-width: 56rem) {
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > [data-slot='form-field'] {
+    border-top: 1px solid var(--border);
+    padding-block: 0.875rem;
+  }
+
+  [data-slot='settings-fields']:not([data-slot='settings-section'] *) {
+    grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr);
+    column-gap: 2rem;
+  }
+
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > * {
+    grid-column: 2;
+  }
+
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > :is([data-slot='switch-row'], [data-slot='action-row'], ul, ol, table, [data-wide]) {
+    grid-column: 1 / -1;
+  }
+
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > [data-slot='form-field'] {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    column-gap: normal;
+    align-items: start;
+  }
+
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > [data-slot='form-field']
+    > * {
+    grid-column: 2;
+    max-width: 34rem;
+  }
+
+  /* The label, level with the control's text. */
+  :is(
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *),
+      [data-slot='settings-fields']:not([data-slot='settings-section'] *)
+        > :is(form, fieldset:not(:has(> legend)))
+    )
+    > [data-slot='form-field']
+    > :first-child {
+    grid-column: 1;
+    grid-row: 1;
+    padding-top: 0.5rem;
+  }
+}
+
+/*
+ * The settings form grid: inside a section, the field column is ONE grid for every settings form.
+ *
+ *   12 columns of at most 2.75rem with 1rem gutters (44rem in all), then a filler column. A row
+ *   spans the 12 columns unless its FormField names a width, so every form shares its left and
+ *   right edges and fields meet on the same column lines:
+ *
+ *     xs   3 cols  ZIP, house number, apartment, days, a percentage
+ *     sm   4 cols  short codes and numbers: EAS scheme, account numbers, an interval
+ *     md   6 cols  name, email, phone, IBAN, a select (currency, country, time zone)
+ *     lg   8 cols  a long identifier next to an sm field
+ *     full 12 cols (default) company name, street, long text; switches, notes, lists, previews
+ *
+ *   Fields flow left to right and wrap, so "Street md · Number xs · Apt xs" is one row and
+ *   "ZIP xs · City xs · Country md" the next. [data-wide] (tables, month tiles) also takes the
+ *   filler column, the section's whole width.
+ *   Rhythm: 1.25rem between rows, no hairlines between fields or switches; a list (ul/ol) keeps
+ *   the hairline above it. Labels, hints and errors come from FormField only (13px medium label,
+ *   12px hint or error); a choice is a Segmented or a select in a FormField with `group`, and a
+ *   live example of a setting (next number, reminder schedule) is a SettingsPreview.
+ *   On a narrow column (< 34rem) xs takes half a row, every other width the whole row.
+ */
+:where([data-slot='settings-section']) [data-slot='settings-fields'] {
+  grid-template-columns: repeat(12, minmax(0, 2.75rem)) minmax(0, 1fr);
+  column-gap: 1rem;
+  row-gap: 1.25rem;
+}
+
+:is(
+    [data-slot='settings-section'] [data-slot='settings-fields'],
+    [data-slot='settings-section']
+      [data-slot='settings-fields']
+      > :is(form, fieldset:not(:has(> legend)))
+  )
+  > * {
+  grid-column: 1 / 13;
+  margin-block: 0;
+}
+
+:is(
+    [data-slot='settings-section'] [data-slot='settings-fields'],
+    [data-slot='settings-section']
+      [data-slot='settings-fields']
+      > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is([data-slot='form-field'], [data-slot='switch-row'], [data-slot='action-row']) {
+  border-top: 0;
+  padding-block: 0;
+}
+
+:is(
+    [data-slot='settings-section'] [data-slot='settings-fields'],
+    [data-slot='settings-section']
+      [data-slot='settings-fields']
+      > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is(ul, ol) {
+  padding-top: 0.25rem;
+}
+
+:is(
+    [data-slot='settings-section'] [data-slot='settings-fields'],
+    [data-slot='settings-section']
+      [data-slot='settings-fields']
+      > :is(form, fieldset:not(:has(> legend)))
+  )
+  > :is([data-wide], table) {
+  grid-column: 1 / -1;
+}
+
+[data-slot='settings-section'] [data-slot='settings-fields'] [data-width='xs'] {
+  grid-column: auto / span 3;
+}
+[data-slot='settings-section'] [data-slot='settings-fields'] [data-width='sm'] {
+  grid-column: auto / span 4;
+}
+[data-slot='settings-section'] [data-slot='settings-fields'] [data-width='md'] {
+  grid-column: auto / span 6;
+}
+[data-slot='settings-section'] [data-slot='settings-fields'] [data-width='lg'] {
+  grid-column: auto / span 8;
+}
+
+@container (max-width: 34rem) {
+  [data-slot='settings-section'] [data-slot='settings-fields'] {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 0.75rem;
+  }
+  [data-slot='settings-section']
+    [data-slot='settings-fields']
+    :is([data-width='sm'], [data-width='md'], [data-width='lg']) {
+    grid-column: 1 / -1;
+  }
+  [data-slot='settings-section'] [data-slot='settings-fields'] [data-width='xs'] {
+    grid-column: auto / span 6;
+  }
+}
+
+/* One control height in settings: plain inputs match the comboboxes and selects (2.25rem). */
+[data-slot='settings-fields'] [data-slot='input'] {
+  height: 2.25rem;
+}

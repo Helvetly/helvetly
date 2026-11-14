@@ -1,0 +1,38 @@
+package aimodel
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+)
+
+func TestFakeReadsCSVIntoSchemaStringProperties(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{"records": map[string]any{"type": "array",
+		"items": map[string]any{"type": "object", "properties": map[string]any{
+			"name": map[string]any{"type": []string{"string", "null"}}, "email": map[string]any{"type": []string{"string", "null"}},
+			"is_company": map[string]any{"type": []string{"boolean", "null"}},
+		}}}}}
+	reply, err := Fake{}.Answer(context.Background(), Request{Message: "File name: a.csv\n\nName,Email,Is Company,Extra\nAcme AG,a@acme.example,true,x\n", Schema: &Schema{Name: "t", JSON: schema}})
+	if err != nil || reply.Tokens == nil {
+		t.Fatalf("reply=%+v err=%v", reply, err)
+	}
+	var out struct{ Records []map[string]any }
+	if err := json.Unmarshal([]byte(reply.Text), &out); err != nil || len(out.Records) != 1 {
+		t.Fatalf("%s %v", reply.Text, err)
+	}
+	r := out.Records[0]
+	if r["name"] != "Acme AG" || r["email"] != "a@acme.example" || r["is_company"] != nil || r["extra"] != nil || len(r) != 3 {
+		t.Fatalf("record: %v", r)
+	}
+	if text, _ := (Fake{}).Answer(context.Background(), Request{Message: "hi"}); text.Text == "" {
+		t.Fatal("plain answer empty")
+	}
+}
+
+func TestFakeClassifiesHeidiScopeAsInScope(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{"in_scope": map[string]any{"type": "boolean"}, "reason": map[string]any{"type": "string"}}}
+	reply, err := Fake{}.Answer(context.Background(), Request{Message: "What is my VAT?", Schema: &Schema{Name: "heidi_scope", JSON: schema}})
+	if err != nil || reply.Tokens == nil || reply.Text != `{"in_scope":true,"reason":"development model"}` {
+		t.Fatalf("reply=%+v err=%v", reply, err)
+	}
+}

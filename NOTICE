@@ -1,0 +1,25 @@
+Helvetly
+Copyright 2026 Helvetly
+
+Licensing
+* Everything in this repository is licensed under the GNU Affero General Public License, version 3 only
+  (SPDX: AGPL-3.0-only; see LICENSE), except the third-party material listed below, which keeps its own terms.
+* Names and logos of other companies and products (apps/web/public/brands) are trademarks of their owners. They
+  are not licensed under the AGPL and are used only to refer to those products.
+
+Fonts
+* apps/api/internal/pdffont/fonts: Liberation Sans (SIL Open Font License 1.1; LiberationSans-LICENSE.txt) and
+  Noto fonts, some subset or compressed (SIL Open Font License 1.1; Noto-OFL.txt). Details in that folder's README.
+* The web apps download these Google Fonts at build time through next/font and serve them with the static exports:
+  Inter, Geist Mono, Caveat and Dancing Script (SIL Open Font License 1.1), and Homemade Apple (Apache License 2.0).
+
+Schemas, specifications and test data from public authorities (unchanged; their publishers' terms apply)
+* apps/api/internal/ksef/testdata: KSeF FA(3) XML schemas (Ministerstwo Finansów, crd.gov.pl) and the KSeF API 2.0
+  OpenAPI document (Ministerstwo Finansów, MIT License; openapi/LICENSE.txt).
+* apps/api/internal/einvoice/testdata/cius-ro: CIUS-RO validation artefacts (ANAF, mfinante.gov.ro), including
+  OASIS UBL 2.1 schemas (OASIS; notices in the files) and rules compiled with SchXslt.
+* apps/api/internal/vatreturn/testdata/ech0217: eCH-0217 V2.0.0 and the eCH schemas it imports (eCH, ech.ch).
+Each folder's README names the source and download date.
+
+Dependencies
+Packages installed by pnpm and Go modules keep their own licenses, in their package and module files.

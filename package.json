@@ -1,0 +1,41 @@
+{
+  "name": "helvetly",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:tunnel": "bash scripts/dev-tunnel.sh",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:visual": "bash e2e/visual/run.sh",
+    "test:storybook": "pnpm --filter @helvetly/platform exec vitest run --config vitest.storybook.config.ts && pnpm --filter @helvetly/portal exec vitest run --config vitest.storybook.config.ts",
+    "test:e2e": "pnpm --filter @helvetly/e2e e2e",
+    "test:tooling": "for t in scripts/*.test.sh; do bash \"$t\" || exit 1; done; node --test scripts/*.test.mjs",
+    "test:einvoice": "bash scripts/validate-einvoice.sh",
+    "test:xsd": "pnpm --filter @helvetly/api test:xsd",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "build:storybook": "pnpm --filter @helvetly/platform exec storybook build --disable-telemetry && pnpm --filter @helvetly/portal exec storybook build --disable-telemetry",
+    "typecheck": "turbo run typecheck",
+    "lint": "oxlint && turbo run lint",
+    "lint:ui": "bash scripts/ui-guard.sh",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "pnpm format:check && pnpm lint && pnpm lint:ui && pnpm typecheck && pnpm test && pnpm test:tooling && pnpm build && pnpm build:storybook && pnpm test:storybook && pnpm test:visual && pnpm test:e2e && pnpm test:einvoice && pnpm test:xsd",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "e2e:down": "docker compose -f compose.e2e.yml down"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@12.16.1"
+}

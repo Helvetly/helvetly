@@ -1,0 +1,16 @@
+{
+  "name": "@helvetly/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "saved=$(export -p); set -a; [ -f ../../.env ] && . ../../.env; set +a; eval \"$saved\"; exec go run ./cmd/helvetly",
+    "build": "rm -rf internal/platform/dist internal/platform/portal-dist && cp -R ../platform/out internal/platform/dist && cp -R ../portal/out internal/platform/portal-dist && touch internal/platform/dist/.gitkeep internal/platform/portal-dist/.gitkeep && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o bin/helvetly ./cmd/helvetly",
+    "test": "go test -race ./...",
+    "lint": "go vet ./... && test -z \"$(gofmt -l .)\"",
+    "test:xsd": "HELVETLY_TEST_XSD=1 go test -count=1 -run 'ECH0217|ReportXML|XMLExport|FA3' ./internal/vatreturn ./internal/einvoice"
+  },
+  "devDependencies": {
+    "@helvetly/platform": "workspace:*",
+    "@helvetly/portal": "workspace:*"
+  }
+}
