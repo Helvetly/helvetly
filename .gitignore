@@ -24,6 +24,11 @@ Thumbs.db
 .idea/
 *.swp
 dist/
+# The go:embed directories keep a placeholder so the API compiles before the frontends are built (the broad dist/
+# above would otherwise hide the platform's from a fresh `git add`).
+!/apps/api/internal/platform/dist/
+/apps/api/internal/platform/dist/*
+!/apps/api/internal/platform/dist/.gitkeep
 
 
 # Local build output of `go build ./cmd/helvetly` run inside apps/api
