@@ -94,6 +94,49 @@ test('people who cannot manage billing are asked to turn to an owner, with no bu
   )
 })
 
+const lifetime = {
+  code: 'LIFETIME-1',
+  percent_off: 100,
+  amount_off: null,
+  currency: null,
+  duration: 'forever',
+  duration_in_months: null,
+  ends_at: null,
+} as const
+const launch = {
+  ...lifetime,
+  code: 'LAUNCH20',
+  percent_off: 20,
+  duration: 'repeating',
+  duration_in_months: 3,
+} as const
+
+test.each<[string, Partial<Billing>, string]>([
+  [
+    'free forever',
+    { discount: lifetime },
+    'Basic until 16 Nov 2026, then free forever with code LIFETIME-1.',
+  ],
+  ['a partial discount', { discount: launch, pricing: 'flat', interval: 'month' }, 'then CHF'],
+  ['an unknown price', { discount: launch }, 'then code LAUNCH20 (−20 % for 3 months) applies.'],
+  [
+    'a partial discount',
+    { discount: launch, pricing: 'flat', interval: 'month' },
+    'with code LAUNCH20 (−20 % for 3 months).',
+  ],
+])('a trial under a promotion code says what follows: %s', (_, over, text) => {
+  const notice = planNotice({ ...trial, ...over }, NOW)
+  expect(notice?.text).toContain(text)
+  expect(notice?.action).toEqual({ label: 'View plan', href: '/settings/billing' })
+  expect(planNotice({ ...trial, ...over, can_manage: false }, NOW)?.action).toBeNull()
+})
+
+test('a cancelled trial keeps its read-only warning despite a code', () => {
+  expect(
+    planNotice({ ...trial, discount: lifetime, cancel_at_period_end: true }, NOW)?.text,
+  ).toMatch(/turns read-only/)
+})
+
 const renderNotice = (billing: Billing) =>
   render(
     <TooltipProvider>

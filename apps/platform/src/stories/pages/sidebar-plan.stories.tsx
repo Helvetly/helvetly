@@ -87,6 +87,32 @@ export const Trial: Story = {
 export const TrialDark = dark(Trial)
 export const TrialPhone = phone(Trial)
 
+/** A 100%-forever promotion code: the card says the plan stays free instead of asking for an upgrade. */
+export const TrialFreeForever: Story = {
+  parameters: page({
+    ...trialing,
+    discount: {
+      code: 'LIFETIME-135F29',
+      percent_off: 100,
+      amount_off: null,
+      currency: null,
+      duration: 'forever',
+      duration_in_months: null,
+      ends_at: null,
+    },
+  }),
+  play: async ({ canvasElement }) => {
+    const card = await notice(canvasElement)
+    await expect(card.getByText(/then free forever with code LIFETIME-135F29\./)).toBeVisible()
+    await expect(card.queryByRole('link', { name: 'Upgrade' })).toBeNull()
+    await expect(card.getByRole('link', { name: 'View plan' })).toHaveAttribute(
+      'href',
+      '/settings/billing/',
+    )
+  },
+}
+export const TrialFreeForeverPhone = phone(TrialFreeForever)
+
 /** Hidden for the session; it stays hidden when the shell renders again. */
 export const TrialHidden: Story = {
   play: async ({ canvasElement }) => {
