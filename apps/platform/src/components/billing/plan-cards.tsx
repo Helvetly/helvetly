@@ -6,7 +6,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Lock, Minus, Plus, Sparkles, X } from 'lucide-react'
+import { Check, Lock, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -137,14 +137,15 @@ const yearSaving = (plan: Plan): PlanPrice | null => {
 }
 
 /**
- * Basic, Pro and Business side by side, with a monthly / yearly switch and the team's size: the
- * recommended plan lifted, the current one marked, a big price per person, what the team pays in
- * total (live as the size changes), the yearly saving, one way to each plan (a live subscription
+ * Basic, Pro and Business side by side, with a monthly / yearly switch: the recommended plan
+ * lifted, the current one marked, a big price per person, what the workspace's people pay in
+ * total (seats follow the members, nobody picks them), the yearly saving, one way to each plan (a live subscription
  * confirms first) and the limits as short facts with the number first.
  */
 export function PlanCards({ billing }: { billing: Billing }) {
   const [interval, setPeriod] = useState<Interval>(billing.interval || 'month')
-  const [team, setTeam] = useState(Math.max(1, billing.seats))
+  // the subscription bills the workspace's people, kept in step by the API as members join or leave
+  const team = Math.max(1, billing.seats)
   const [confirm, setConfirm] = useState<Plan | null>(null)
   const [promo, setPromo] = useState<Promotion | null>(null)
   const [promoDialog, setPromoDialog] = useState(false)
@@ -163,20 +164,17 @@ export function PlanCards({ billing }: { billing: Billing }) {
 
   return (
     <div className="grid gap-10">
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-        <div className="flex items-center gap-2">
-          <Segmented
-            label="Billing period"
-            value={interval}
-            options={[
-              { value: 'month', label: 'Monthly' },
-              { value: 'year', label: 'Yearly' },
-            ]}
-            onChange={setPeriod}
-          />
-          {saving > 0 && <StatusBadge tone="green">Save {saving} % yearly</StatusBadge>}
-        </div>
-        <TeamSize value={team} onChange={setTeam} />
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Segmented
+          label="Billing period"
+          value={interval}
+          options={[
+            { value: 'month', label: 'Monthly' },
+            { value: 'year', label: 'Yearly' },
+          ]}
+          onChange={setPeriod}
+        />
+        {saving > 0 && <StatusBadge tone="green">Save {saving} % yearly</StatusBadge>}
       </div>
 
       <div className="grid items-stretch gap-4 md:grid-cols-3 lg:gap-5">
@@ -376,40 +374,5 @@ export function PlanCards({ billing }: { billing: Billing }) {
         />
       )}
     </div>
-  )
-}
-
-/** The team's size for the totals on the cards: the workspace's people to start with. */
-function TeamSize({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  const set = (next: number) => onChange(Math.min(999, Math.max(1, next)))
-  return (
-    <fieldset className="flex items-center gap-2.5 text-body-sm">
-      <legend className="sr-only">Team size</legend>
-      <span aria-hidden className="text-muted-foreground">
-        Team size
-      </span>
-      <div className="flex items-center rounded-lg bg-card shadow-elevation-1">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Fewer people"
-          disabled={value <= 1}
-          onClick={() => set(value - 1)}
-        >
-          <Minus aria-hidden />
-        </Button>
-        <span aria-live="polite" className="min-w-16 text-center font-medium tabular-nums">
-          {people(value)}
-        </span>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label="More people"
-          onClick={() => set(value + 1)}
-        >
-          <Plus aria-hidden />
-        </Button>
-      </div>
-    </fieldset>
   )
 }

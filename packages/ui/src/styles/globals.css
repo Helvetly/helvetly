@@ -72,6 +72,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
   --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
   --shadow-elevation-1: var(--elevation-1);
   --shadow-elevation-2: var(--elevation-2);
   --color-heidi: var(--heidi);
@@ -305,6 +306,26 @@
   --info-solid: #3b74f2;
   --warning-solid: #dd7b26;
   --destructive: #ba2038;
+}
+
+/* The serif accent word in headlines. */
+.accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Text painted with the brand's teal into Heidi's violet. */
+/* Every page title's serif accent wears it too, as the home page's does. */
+.ink-gradient,
+h1 .accent {
+  /* Room for the italic's overhang, which background-clip would otherwise cut. */
+  padding-right: 0.08em;
+  background: linear-gradient(100deg, var(--brand-solid), var(--heidi-from) 70%, var(--heidi-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 @layer base {

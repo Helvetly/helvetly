@@ -98,7 +98,8 @@ export function ChoosePlan() {
               </span>
             )}
             <h1 className="text-[32px] leading-[1.1] font-semibold tracking-[-0.035em] text-balance sm:text-[46px]">
-              Choose a plan for {session.workspace.name}
+              Choose a plan for{' '}
+              <span className="accent ink-gradient">{session.workspace.name}</span>
             </h1>
             <p className="max-w-xl text-[15px] text-pretty text-muted-foreground sm:text-[16px]">
               {data.has_customer
