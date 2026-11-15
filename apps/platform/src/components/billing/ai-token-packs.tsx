@@ -13,7 +13,6 @@ import {
   formatPrice,
   formatTokens,
   meterState,
-  type UsageItem,
   useBuyAITokens,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
@@ -154,10 +153,11 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
 const NOTE = {
   near: { text: translate('almostUsedUp'), className: 'text-warning' },
   full: { text: translate('usedUp'), className: 'text-destructive' },
+  off: { text: translate('notIncluded'), className: 'text-muted-foreground' },
 }
 
 /** "1.2 M of 6 M used this month" over the shared meter, and how the allowance is made up. */
-function TokenUsage({ item, bought }: { item: UsageItem; bought: number }) {
+function TokenUsage({ item, bought }: { item: Billing['usage'][number]; bought: number }) {
   const used = formatTokens(item.used)
   const max = item.max === null ? null : formatTokens(item.max)
   const state = meterState(item)

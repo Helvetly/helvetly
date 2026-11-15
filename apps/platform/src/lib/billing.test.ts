@@ -1,4 +1,8 @@
-import { billingFixture, flatBillingFixture } from '@/components/billing/billing-fixture'
+import {
+  billingFixture,
+  entitlementsFixture,
+  flatBillingFixture,
+} from '@/components/billing/billing-fixture'
 import { ApiError } from '@/lib/api'
 
 import {
@@ -16,7 +20,10 @@ import {
   paymentFailed,
   planRequired,
   promoApplies,
+  formatReset,
   meterState,
+  planRefusal,
+  usageItems,
   freeForever,
   nextCharge,
   nextPlan,
@@ -44,9 +51,22 @@ test('limitReached reads a 402 limit_reached and nothing else', () => {
     limit: 'clients',
     used: 10,
     max: 10,
-    plan: 'basic',
+    reset_at: null,
   })
-  expect(limitReached(limitError({ limit: 'seats', used: 1, max: 1, plan: 'basic' }))).toBeNull()
+  // offer v2's body: the key, the cap as `limit` and when it starts again
+  expect(
+    limitReached(
+      limitError({
+        key: 'invoices_per_month',
+        used: 15,
+        reserved: 0,
+        limit: 15,
+        unit: 'count',
+        reset_at: '2026-12-01T00:00:00Z',
+      }),
+    ),
+  ).toEqual({ limit: 'invoices_per_month', used: 15, max: 15, reset_at: '2026-12-01T00:00:00Z' })
+  expect(limitReached(limitError({ key: 'clients', used: 1 }))).toBeNull()
   expect(
     limitReached(limitError({ limit: 'clients', used: '10', max: 10, plan: 'basic' })),
   ).toBeNull()
@@ -57,9 +77,11 @@ test('limitReached reads a 402 limit_reached and nothing else', () => {
 test.each([
   ['clients', 250, '250'],
   ['clients', null, 'Unlimited'],
-  ['storage_bytes', 512 * 2 ** 20, '512 MB'],
-  ['storage_bytes', 10 * 2 ** 30, '10 GB'],
-  ['storage_bytes', 2 ** 40, '1 TB'],
+  ['storage_bytes', 500_000_000, '500 MB'],
+  ['storage_bytes', 10_000_000_000, '10 GB'],
+  ['storage_bytes', 1e12, '1 TB'],
+  ['download_bytes_per_month', 2_000_000_000, '2 GB'],
+  ['invoices_per_month', 1500, "1'500"],
 ] as const)('formatLimit(%s, %s) = %s', (limit, value, text) => {
   expect(formatLimit(limit, value)).toBe(text)
 })
@@ -169,11 +191,11 @@ test('planHighlights lists the main limits as short lines', () => {
   if (!basic || !business) throw new Error('fixture plans missing')
   expect(planHighlights(basic)).toEqual([
     '2 members',
-    '50 clients',
-    '30 invoices a month',
-    '5 signature requests a month',
+    '30 clients',
+    '15 invoices a month',
+    '0 signature requests a month',
   ])
-  expect(planHighlights(business, 2)).toEqual(['Any number of people', 'Unlimited clients'])
+  expect(planHighlights(business, 2)).toEqual(['Any number of people', "1'500 clients"])
   const [perSeat] = billingFixture().plans
   expect(perSeat && planHighlights(perSeat, 1)).toEqual(['Any number of people'])
 })
@@ -341,4 +363,85 @@ test('billing descriptions use count messages and explicit period labels', () =>
   expect(limitFactLabel('invoices_per_month')).toBe('invoices / month')
   expect(comparisonLimitLabel('invoices_per_month')).toBe('Invoices a month')
   expect(comparisonLimitLabel('clients')).toBe('Clients')
+})
+
+test('planRefusal reads 402 plan_required and 403 feature_not_in_plan, and nothing else', () => {
+  expect(planRefusal(new ApiError(402, 'plan_required', 'No plan.'))).toEqual({
+    message: 'No plan.',
+    feature: null,
+    requiredPlan: null,
+  })
+  expect(
+    planRefusal(
+      new ApiError(403, 'feature_not_in_plan', 'Ledger needs Pro.', {
+        feature: 'ledger_exports',
+        plan: 'basic',
+        required_plan: 'pro',
+      }),
+    ),
+  ).toEqual({ message: 'Ledger needs Pro.', feature: 'ledger_exports', requiredPlan: 'pro' })
+  expect(
+    planRefusal(new ApiError(403, 'feature_not_in_plan', 'x', { required_plan: 'gold' }))
+      ?.requiredPlan,
+  ).toBeNull()
+  expect(planRefusal(new ApiError(403, 'forbidden', 'x', { scope: 'write:invoices' }))).toBeNull()
+  expect(planRefusal(new ApiError(402, 'limit_reached', 'x'))).toBeNull()
+  expect(planRefusal(new Error('x'))).toBeNull()
+})
+
+test('usageItems shows the allowances of the entitlements, pooled ones grown by the seats', () => {
+  const [base] = entitlementsFixture('basic')
+  if (!base) throw new Error('fixture has no entitlements')
+  const entitlements = [
+    ...entitlementsFixture('basic', {
+      seats: 2,
+      used: { invoices_per_month: 12, download_bytes_per_month: null },
+      over: {
+        clients: { source: 'workspace', value: 50, expires_at: '2027-01-31T00:00:00Z' },
+        emails_per_month: { state: 'unlimited', value: null },
+      },
+    }),
+    { ...base, key: 'heidi', kind: 'access' as const, state: 'disabled' as const },
+    { ...base, key: 'seats' },
+    { ...base, key: 'max_upload_bytes', kind: 'technical_guard' as const },
+  ]
+  const items = usageItems(billingFixture({ plan: 'basic', entitlements }))
+  expect(items.map((item) => item.limit)).not.toContain('heidi')
+  expect(items.map((item) => item.limit)).not.toContain('seats')
+  expect(items.map((item) => item.limit)).not.toContain('max_upload_bytes')
+  expect(items.find((item) => item.limit === 'invoices_per_month')).toEqual({
+    limit: 'invoices_per_month',
+    used: 12,
+    max: 30,
+    per_seat: true,
+    custom: undefined,
+    reset_at: '2026-12-01T00:00:00Z',
+  })
+  expect(items.find((item) => item.limit === 'clients')).toMatchObject({
+    max: 50,
+    per_seat: false,
+    custom: { expires_at: '2027-01-31T00:00:00Z' },
+    reset_at: null,
+  })
+  expect(items.find((item) => item.limit === 'expenses_per_month')).toMatchObject({ max: 0 })
+  expect(items.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: null })
+  expect(items.find((item) => item.limit === 'download_bytes_per_month')?.used).toBeNull()
+  // no plan, or self-hosted: the earlier usage list
+  const usage = [{ limit: 'clients' as const, used: 3, max: null }]
+  expect(usageItems(billingFixture({ usage, entitlements: null }))).toEqual(usage)
+})
+
+test('meterState: not included at 0, fine while uncounted, near at 12 of 15, full at 15', () => {
+  expect(meterState({ limit: 'expenses_per_month', used: 0, max: 0 })).toBe('off')
+  expect(meterState({ limit: 'emails_per_month', used: null, max: 100 })).toBe('ok')
+  expect(meterState({ limit: 'invoices_per_month', used: 11, max: 15 })).toBe('ok')
+  expect(meterState({ limit: 'invoices_per_month', used: 12, max: 15 })).toBe('near')
+  expect(meterState({ limit: 'invoices_per_month', used: 14, max: 15 })).toBe('near')
+  expect(meterState({ limit: 'invoices_per_month', used: 15, max: 15 })).toBe('full')
+  expect(meterState({ limit: 'invoices_per_month', used: 16, max: 15 })).toBe('full')
+})
+
+test('formatReset names the moment in UTC, whatever the browser zone', () => {
+  expect(formatReset('2026-12-01T00:00:00Z')).toBe('1 Dec, 00:00 UTC')
+  expect(formatReset('2026-11-30T23:00:00Z')).toBe('30 Nov, 23:00 UTC')
 })

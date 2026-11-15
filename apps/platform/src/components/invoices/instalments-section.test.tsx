@@ -86,7 +86,11 @@ const amounts = () =>
     .map((input) => (input instanceof HTMLInputElement ? input.value : ''))
 
 test('section shows the server rows until one is edited', async () => {
-  render(<Harness />)
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <Harness />
+    </QueryClientProvider>,
+  )
   await userEvent.click(screen.getByRole('switch', { name: 'Pay in instalments' }))
   expect(screen.getByRole('textbox', { name: 'Number of instalments' })).toHaveValue('3')
   expect(screen.getByRole('combobox', { name: 'Interval' })).toHaveValue('monthly')

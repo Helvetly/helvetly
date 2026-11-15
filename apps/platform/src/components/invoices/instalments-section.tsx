@@ -5,6 +5,7 @@ import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CalendarRange, RotateCcw } from 'lucide-react'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { translate } from '@/lib/i18n'
 import { formatMoney, INTERVALS, type Interval, type InvoiceSettings } from '@/lib/invoices'
@@ -63,6 +64,9 @@ export function InstalmentsSection({
       items: rows.map((row, i) => (i === index ? { ...row, ...change } : row)),
     })
   const prefersPlan = settings.instalments.mode === 'plan'
+  // a plan without automations keeps a schedule there is, to switch off, but starts none
+  const lock = useFeatureLock('automations')
+  const startLocked = Boolean(lock) && value === null
 
   return (
     <section aria-labelledby="pay-in-instalments" className="grid gap-3 rounded-xl px-1">
@@ -74,6 +78,7 @@ export function InstalmentsSection({
         >
           <CalendarRange className="size-3.5" />
           {translate('payInInstalments')}
+          {lock && <PlanTag lock={lock} className="ml-1" />}
         </label>
         <div className="flex items-center gap-3">
           {onSplit && (
@@ -81,7 +86,7 @@ export function InstalmentsSection({
               type="button"
               variant={prefersPlan ? 'outline' : 'ghost'}
               size="sm"
-              disabled={value !== null}
+              disabled={value !== null || Boolean(lock)}
               title={value ? translate('turnTheScheduleOffToSplitIntoInvoicesInstead') : undefined}
               onClick={onSplit}
             >
@@ -90,6 +95,7 @@ export function InstalmentsSection({
           )}
           <Switch
             id="invoice-instalments"
+            disabled={startLocked}
             checked={value !== null}
             onCheckedChange={(on) => onChange(on ? startInstalments(settings, firstDue) : null)}
           />

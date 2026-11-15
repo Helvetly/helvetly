@@ -5,7 +5,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Lock, Sparkles, X } from 'lucide-react'
+import { Check, Lock, Minus, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -17,9 +17,9 @@ import {
   describeDiscount,
   discounted,
   formatPrice,
+  isLimitKey,
   isUpgrade,
   monthOf,
-  nextPlan,
   paymentFailed,
   people,
   seatsCost,
@@ -31,22 +31,34 @@ import {
   type Billing,
   LIMIT_LABELS,
   limitNoun,
-  limitFactLabel,
+  offerNoun,
   type Interval,
   type LimitKey,
   type Plan,
   type PlanPrice,
   type Promotion,
+  type PublicOffer,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 import { PromoCodeDialog } from './promo-code-dialog'
 
 const TAGLINES: Record<Plan['id'], string> = {
-  basic: translate('forASmallBusinessThatInvoicesEveryWeek'),
-  pro: translate('forTeamsWithManyClientsAndFewCeilings'),
-  business: translate('forLargerTeamsWithNoCeilings'),
+  basic: translate('startInvoicingForFreelancersWithASmallClient'),
+  pro: translate('runYourBusinessWithHeidiExpensesSignaturesAnd'),
+  business: translate('workWithClientsAtScaleTheClientPortal'),
 }
+
+/** A product recommendation, not measured popularity. */
+const RECOMMENDED: Plan['id'] = 'pro'
+
+/** Limits that are one fixed cap for the workspace; every other limit is added by each paid person. */
+const WORKSPACE_LIMITS: ReadonlySet<string> = new Set([
+  'members',
+  'clients',
+  'products',
+  'engagements',
+])
 
 /** A refused change says why; an unpaid one also offers Stripe's page to pay it, and stays until dismissed. */
 const fail = (error: unknown) => {
@@ -63,27 +75,31 @@ const fail = (error: unknown) => {
 
 const textLink = 'underline underline-offset-2 hover:no-underline'
 
-const isLimitKey = (key: string): key is LimitKey => key in LIMIT_LABELS
-
 /** Every limit the app knows, in the order the app lists them. */
 export const LIMIT_ORDER: LimitKey[] = Object.keys(LIMIT_LABELS).filter(isLimitKey)
 
-/** A limit as a plan line: "15 members", "100 invoices a month", "Unlimited clients". */
+const scopeOf = (key: string) => (WORKSPACE_LIMITS.has(key) ? 'workspace' : 'person')
+
+/**
+ * A limit as a plan line: "300 clients per workspace", "150 invoice issues a month per paid person", "Unlimited
+ * clients", "No expenses".
+ */
 export function limitLine(key: LimitKey, value: number | null): string {
-  if (key === 'storage_bytes')
-    return translate('forDocumentsAndReceipts', { value1: formatLimit(key, value) })
-  if (key === 'ai_tokens_per_month')
-    return translate('aiTokensAMonthForHeidiAndImports', { value1: formatLimit(key, value) })
   if (key === 'members' && value === null) return ANY_PEOPLE
   if (key === 'members')
     return translate('besidesTheOwner', {
       value1: formatLimit(key, value),
       value2: limitNoun('members', value ?? 2),
     })
-  const monthly = key.endsWith('_per_month')
-  const noun = limitNoun(key, value ?? 2)
-  if (value === null) return translate('unlimited', { noun: noun })
-  return `${formatLimit(key, value)} ${noun}${monthly ? translate('aMonth2') : ''}`
+  const noun = offerNoun(key, value ?? 2)
+  if (value === null) return translate('unlimited', { noun })
+  if (value === 0) return translate('noLimitNoun', { noun })
+  return translate('planLimitLine', {
+    value: formatLimit(key, value),
+    noun,
+    monthly: String(key.endsWith('_per_month')),
+    scope: scopeOf(key),
+  })
 }
 
 /** What a plan includes, from its limits; with `previous`, only what grows over that plan. */
@@ -152,9 +168,13 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
   return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 
-/** A limit as a short fact with its key number first: "50" clients, "Unlimited" invoices / month. */
+/** A limit as a short fact with its key number first: "300" clients / workspace, "150" invoice issues / person / month. */
 export function planFact(key: LimitKey, value: number | null): { value: string; label: string } {
-  const label = limitFactLabel(key)
+  const label = translate('planFactLabel', {
+    noun: offerNoun(key),
+    scope: scopeOf(key),
+    monthly: String(key.endsWith('_per_month')),
+  })
   if (key === 'members')
     return {
       value: value === null ? translate('anyNumber') : formatLimit(key, value),
@@ -165,6 +185,17 @@ export function planFact(key: LimitKey, value: number | null): { value: string; 
     return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
   return { value: formatLimit(key, value), label }
 }
+
+/** The limits a plan card lists, in this order; the comparison below has the rest. */
+const CARD_LIMITS: LimitKey[] = [
+  'members',
+  'clients',
+  'invoices_per_month',
+  'expenses_per_month',
+  'signatures_per_month',
+  'ai_tokens_per_month',
+  'storage_bytes',
+]
 
 /** What a year saves against twelve months, per person. */
 const yearSaving = (plan: Plan): PlanPrice | null => {
@@ -180,7 +211,7 @@ const yearSaving = (plan: Plan): PlanPrice | null => {
  * total (seats follow the members, nobody picks them), the yearly saving, one way to each plan (a live subscription
  * confirms first) and the limits as short facts with the number first.
  */
-export function PlanCards({ billing }: { billing: Billing }) {
+export function PlanCards({ billing, offer }: { billing: Billing; offer?: PublicOffer }) {
   const [interval, setPeriod] = useState<Interval>(billing.interval || 'month')
   // the subscription bills the workspace's people, kept in step by the API as members join or leave
   const team = Math.max(1, billing.seats)
@@ -197,8 +228,9 @@ export function PlanCards({ billing }: { billing: Billing }) {
   const subscribed = billing.plan !== ''
   const trialing = subscribed && billing.status === 'trialing'
   const pastDue = subscribed && billing.status === 'past_due'
-  const recommended = subscribed ? nextPlan(billing)?.id : 'pro'
-  const keys = LIMIT_ORDER.filter((key) => billing.plans.some((plan) => key in plan.limits))
+  // Pro, unless the workspace already has Pro or more
+  const recommended = isUpgrade(billing.plan, RECOMMENDED) ? RECOMMENDED : undefined
+  const keys = CARD_LIMITS.filter((key) => billing.plans.some((plan) => key in plan.limits))
 
   return (
     <div className="grid gap-10">
@@ -226,12 +258,12 @@ export function PlanCards({ billing }: { billing: Billing }) {
           const onPlan = billing.plan === plan.id
           const current = onPlan && billing.interval === interval
           const price = plan.prices[interval]
-          const offer =
+          const promoted =
             promo && promoApplies(promo, plan.id) && price ? discounted(price, promo) : null
           const highlight = plan.id === recommended
           const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
           const label = choiceLabel(billing, plan, interval)
-          const shown = offer ?? price
+          const shown = promoted ?? price
           const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
           const yearly = yearSaving(plan)
           let note = ''
@@ -284,7 +316,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
                     <span className="text-display font-semibold tracking-[-0.035em]">
                       {shown ? formatPrice(shown) : '—'}
                     </span>
-                    {offer && price && (
+                    {promoted && price && (
                       <s className="text-body text-muted-foreground">{formatPrice(price)}</s>
                     )}
                   </p>
@@ -352,7 +384,10 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   className="mt-4 grid gap-2.5 border-t pt-5 text-body-sm"
                 >
                   {keys.map((key) => {
-                    const fact = planFact(key, plan.limits[key] ?? null)
+                    const value = plan.limits[key] ?? null
+                    // excluded features are listed below
+                    if (value === 0) return null
+                    const fact = planFact(key, value)
                     return (
                       <li key={key} className="flex items-baseline gap-2.5">
                         <Check
@@ -366,6 +401,20 @@ export function PlanCards({ billing }: { billing: Billing }) {
                       </li>
                     )
                   })}
+                  {offer?.comparison
+                    .filter((row) => !row.plans[plan.id])
+                    .map((row) => (
+                      <li
+                        key={row.key}
+                        className="flex items-baseline gap-2.5 text-muted-foreground"
+                      >
+                        <Minus className="size-3.5 shrink-0 translate-y-0.5" aria-hidden />
+                        <span className="min-w-0 text-pretty">
+                          <span className="sr-only">{translate('notIncluded2')}</span>
+                          {row.label}
+                        </span>
+                      </li>
+                    ))}
                 </ul>
               </div>
             </section>

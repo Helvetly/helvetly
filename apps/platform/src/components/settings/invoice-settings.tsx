@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 
+import { useFeatureLock } from '@/components/billing/feature-lock'
 import { formatUid } from '@/components/clients/client-form-model'
 import {
   Combobox,
@@ -651,6 +652,7 @@ const bigInput = cn(inputClass, 'placeholder:text-placeholder')
 
 function SettingsForm({ settings }: { settings: InvoiceSettings }) {
   const canEdit = canManageInvoices(useSession().data?.role)
+  const remindersLock = useFeatureLock('automations')
   const save = useSaveInvoiceSettings()
   // The API has no flag to read up front: the first refused change locks the field.
   const [currencyLocked, setCurrencyLocked] = useState<string | null>(null)
@@ -1462,6 +1464,9 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 id={inputId('dunning_enabled')}
                 label={translate('sendRemindersAutomatically')}
                 description={translate('eachStepGoesOutOnceToTheClientS')}
+                disabledReason={
+                  remindersLock && !values.dunning_enabled ? `${remindersLock.hint}.` : undefined
+                }
                 checked={values.dunning_enabled}
                 onCheckedChange={(on) => set('dunning_enabled', on)}
               />

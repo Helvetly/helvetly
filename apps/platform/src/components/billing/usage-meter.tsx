@@ -7,6 +7,7 @@ import { translate } from '@/lib/i18n'
 const STATE = {
   near: { text: translate('almostAtLimit'), className: 'text-warning' },
   full: { text: translate('limitReached'), className: 'text-destructive' },
+  off: { text: translate('notIncluded'), className: 'text-muted-foreground' },
 }
 
 /**
@@ -23,7 +24,7 @@ export function UsageMeter({
   label: string
   className?: string
 }) {
-  const used = formatLimit(item.limit, item.used)
+  const used = item.used === null ? '—' : formatLimit(item.limit, item.used)
   const state = meterState(item)
   const note = state === 'ok' ? null : STATE[state]
   return (
@@ -47,7 +48,7 @@ export function UsageMeter({
           )}
         </span>
       </div>
-      {item.max === null ? (
+      {item.max === null || item.max === 0 || item.used === null ? (
         <div aria-hidden className="h-1.5 rounded-full bg-muted" />
       ) : (
         <Meter

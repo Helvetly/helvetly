@@ -26,6 +26,7 @@ import { BookOpen, ChevronDown, Download, ListTree, TriangleAlert } from 'lucide
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
 import { NativeSelect } from '@/components/clients/fields'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { errorMessage } from '@/lib/api'
@@ -100,6 +101,8 @@ const ACCOUNT_FIELDS: { key: Exclude<keyof LedgerAccounts, 'bank'>; label: strin
 
 const RETENTION_YEARS = 10 // GeBüV: books are kept ten years
 
+const DESCRIPTION = translate('theTrialBalanceSaldenlisteFromIssuedInvoicesPaymentsAnd')
+
 export function LedgerPage() {
   const thisYear = Number(today(undefined, useSession().data?.workspace.timezone).slice(0, 4))
   const [picked, setYear] = useState<number>()
@@ -108,17 +111,32 @@ export function LedgerPage() {
   const [open, setOpen] = useState<LedgerBalance | null>(null)
   const [accounts, setAccounts] = useState(false)
   const { from, to } = rangeOf(year, part)
-  const report = useQuery({ queryKey: ['ledger', from, to], queryFn: () => fetchLedger(from, to) })
+  const lock = useFeatureLock('ledger_exports')
+  const report = useQuery({
+    queryKey: ['ledger', from, to],
+    queryFn: () => fetchLedger(from, to),
+    enabled: !lock,
+  })
   const data = report.data
   const none = !data || data.balances.length === 0
+
+  if (lock)
+    return (
+      <>
+        <SettingsHeader />
+        <SettingsPage title={translate('ledger')} description={DESCRIPTION}>
+          <FeatureLockNotice
+            lock={lock}
+            kept={translate('yourInvoicesPaymentsAndExpensesStayAsThey')}
+          />
+        </SettingsPage>
+      </>
+    )
 
   return (
     <>
       <SettingsHeader />
-      <SettingsPage
-        title={translate('ledger')}
-        description={translate('theTrialBalanceSaldenlisteFromIssuedInvoicesPaymentsAnd')}
-      >
+      <SettingsPage title={translate('ledger')} description={DESCRIPTION}>
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect
             aria-label={translate('year')}

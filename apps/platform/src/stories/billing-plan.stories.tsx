@@ -179,7 +179,7 @@ export const Trial: Story = {
     // One nudge for it, to the next plan up.
     const nudge = canvasElement.querySelector<HTMLElement>('[data-slot=usage-nudge]')
     await expect(nudge).toHaveTextContent(
-      'Signature requests: almost at the plan’s limit. Pro includes 50 signature requests a month.',
+      'Signature requests: almost at the plan’s limit. Pro includes 50 signature requests a month per paid person.',
     )
     await expect(
       within(nudge as HTMLElement).getByRole('link', { name: 'See Pro' }),
@@ -461,9 +461,13 @@ export const PlansTrialUpgrade: Story = {
       canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
     ).toHaveTextContent('For 3 peopleCHF 147 / month')
     // Limits read number first.
-    await expect(
-      proCard.getByText(/^1.000$/, { selector: 'strong' }).parentElement,
-    ).toHaveTextContent(/^1.000 clients$/)
+    await expect(proCard.getByText(/clients \/ workspace$/).parentElement).toHaveTextContent(
+      /^300 clients \/ workspace$/,
+    )
+    // Business's own features read as left out of Pro.
+    await expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
+      /Not included: Client portal/,
+    )
     const basic = card(canvas, 'Basic')
     await expect(basic.getByText('Current')).toBeVisible()
     await expect(basic.getByRole('button', { name: 'Current plan' })).toBeDisabled()
@@ -542,10 +546,11 @@ export const PlansProToBusiness: Story = {
     await plansLoaded(canvas)
     await canvas.findByRole('region', { name: 'Business' })
     const businessCard = card(canvas, 'Business')
-    await expect(businessCard.getByText('Recommended')).toBeVisible()
+    // Pro is the recommendation; a workspace already on it sees no badge
+    await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(businessCard.getByText('CHF 99')).toBeVisible()
     await expect(businessCard.getByRole('list', { name: 'Business includes' })).toHaveTextContent(
-      /Unlimited clients/,
+      /1'500 clients \/ workspace/,
     )
     await expect(
       card(canvas, 'Basic').getByRole('button', { name: 'Switch to Basic' }),

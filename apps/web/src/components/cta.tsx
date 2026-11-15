@@ -22,12 +22,15 @@ export function Cta({
   variant = 'primary',
   arrow = variant === 'primary',
   className,
+  disabled = false,
 }: {
   href: string
   children: ReactNode
   variant?: keyof typeof variants
   arrow?: boolean
   className?: string
+  /** Inert: a disabled button in place of the link. */
+  disabled?: boolean
 }) {
   const external = href.startsWith('http')
   const classes = cn(
@@ -41,6 +44,12 @@ export function Cta({
       {arrow && <ArrowRight aria-hidden className="size-4" />}
     </>
   )
+  if (disabled)
+    return (
+      <button type="button" disabled className={cn(classes, 'cursor-not-allowed opacity-50')}>
+        {content}
+      </button>
+    )
   return external ? (
     <a href={localizedHref(href)} className={classes}>
       {content}

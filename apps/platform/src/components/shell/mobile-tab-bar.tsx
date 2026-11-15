@@ -10,11 +10,12 @@ import { useState, type ComponentType, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-import { can, useScopes } from '@/lib/permissions'
+import { useScopes } from '@/lib/permissions'
 
 import { isCurrent, useNavTarget } from './app-sidebar'
-import { CREATE_ACTIONS, visibleNav } from './nav'
+import { startable, visibleNav } from './nav'
 import { usePrimaryAction } from './primary-action'
 
 // The pages a phone user opens daily; everything else is one tap away under Menu.
@@ -123,6 +124,7 @@ function TabButton({
 function CreateSheet({ onClose }: { onClose: () => void }) {
   const router = useRouter()
   const scopes = useScopes()
+  const billing = useBilling().data
   const heidi = useHeidi()
   const go = (action: () => void) => () => {
     onClose()
@@ -147,19 +149,17 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
               {translate('askHeidi')}
             </Row>
           )}
-          {CREATE_ACTIONS.filter(({ need }) => can(scopes, need)).map(
-            ({ label, icon: Icon, href }) => (
-              <Row
-                key={label}
-                icon={<Icon />}
-                onClick={go(() =>
-                  href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
-                )}
-              >
-                {label}
-              </Row>
-            ),
-          )}
+          {startable(scopes, billing).map(({ label, icon: Icon, href }) => (
+            <Row
+              key={label}
+              icon={<Icon />}
+              onClick={go(() =>
+                href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
+              )}
+            >
+              {label}
+            </Row>
+          ))}
         </div>
       </SheetContent>
     </Sheet>

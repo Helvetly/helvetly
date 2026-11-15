@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { MenuKit } from '@/components/data/menus'
 import { errorMessage } from '@/lib/api'
@@ -386,6 +387,8 @@ export function CommandItems({
 }) {
   const available = availableCommands(invoice, canManage)
   const writable = useCan('write:invoices')
+  const corrections = useFeatureLock('invoice_corrections')
+  const instalments = useFeatureLock('automations')
   const show = (command: keyof typeof available) =>
     writable && available[command] && !skip.includes(command)
   return (
@@ -438,9 +441,10 @@ export function CommandItems({
         </Item>
       )}
       {show('plan') && (
-        <Item onSelect={() => run('plan', invoice)}>
+        <Item disabled={Boolean(instalments)} onSelect={() => run('plan', invoice)}>
           <CalendarRange />
           {translate('splitIntoInstalmentInvoices2')}
+          {instalments && <PlanTag lock={instalments} />}
         </Item>
       )}
       {(show('convert_invoice') || show('convert_prepayment')) && <Separator />}
@@ -462,27 +466,35 @@ export function CommandItems({
         show('void') ||
         show('delete')) && <Separator />}
       {show('correct') && (
-        <Item onSelect={() => run('correct', invoice)}>
+        <Item disabled={Boolean(corrections)} onSelect={() => run('correct', invoice)}>
           <FilePen />
           {translate('correct')}
+          {corrections && <PlanTag lock={corrections} />}
         </Item>
       )}
       {show('debit_note') && (
-        <Item onSelect={() => run('debit_note', invoice)}>
+        <Item disabled={Boolean(corrections)} onSelect={() => run('debit_note', invoice)}>
           <FilePlus />
           {translate('debitNote')}
+          {corrections && <PlanTag lock={corrections} />}
         </Item>
       )}
       {show('credit_note') && (
-        <Item onSelect={() => run('credit_note', invoice)}>
+        <Item disabled={Boolean(corrections)} onSelect={() => run('credit_note', invoice)}>
           <FileMinus />
           {translate('createCreditNote')}
+          {corrections && <PlanTag lock={corrections} />}
         </Item>
       )}
       {show('void') && (
-        <Item variant="destructive" onSelect={() => run('void', invoice)}>
+        <Item
+          variant="destructive"
+          disabled={Boolean(corrections)}
+          onSelect={() => run('void', invoice)}
+        >
           <Ban />
           {translate('void3')}
+          {corrections && <PlanTag lock={corrections} />}
         </Item>
       )}
       {show('delete') && (

@@ -33,11 +33,12 @@ import { useOpenNotificationPrefs } from '@/components/notifications/prefs-drawe
 import { useOpenHref } from '@/components/record-link'
 import { ShortcutKeys } from '@/components/shortcuts/shortcut-keys'
 import { nextTheme } from '@/components/shortcuts/theme-shortcut'
+import { useBilling } from '@/lib/billing'
 import { effectiveSearch, useClientSearch } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { can, useScopes } from '@/lib/permissions'
 
-import { CREATE_ACTIONS, visibleNav } from './nav'
+import { startable, visibleNav } from './nav'
 
 /** Quick Actions: jump to any page, start a new record, ask Heidi, switch the theme. */
 export function CommandPalette({
@@ -55,6 +56,7 @@ export function CommandPalette({
   const openPrefs = useOpenNotificationPrefs()
   const openHref = useOpenHref()
   const scopes = useScopes()
+  const billing = useBilling().data
   const { theme, setTheme } = useTheme()
   const heidi = useHeidi()
   const [term, setTerm] = useState('')
@@ -134,7 +136,7 @@ export function CommandPalette({
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading={translate('create')}>
-            {CREATE_ACTIONS.filter(({ need }) => can(scopes, need)).map(({ label, href }) => (
+            {startable(scopes, billing).map(({ label, href }) => (
               <CommandItem
                 key={label}
                 onSelect={run(() =>

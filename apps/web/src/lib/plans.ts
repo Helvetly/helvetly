@@ -3,8 +3,8 @@ import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/pr
 // The one place the website keeps what each plan costs and includes: offer v2's public projection (prices,
 // the business comparison and the commercial allowances). Every page, card, table, FAQ and comparison reads it
 // from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
-// shortcut: these values are copied from the approved offer; once the API serves its public current-offer catalog,
-// load them from there instead and keep only this module's shape.
+// These values are the build-time copy of the offer on sale: lib/offer.ts shows prices only once the API's public
+// offer confirms them, and offer.test.ts ties this module to the API through public-offer.golden.json.
 
 import { translate } from '@/lib/i18n'
 
@@ -27,7 +27,18 @@ export const MAX_SELF_SERVICE_SEATS = 25
  * Monthly pools start again at 00:00 UTC on the first of the month.
  */
 export type Scope = 'workspace' | 'person'
-export type Unit = 'count' | 'bytes' | 'tokens'
+/** What an allowance counts, as the offer names it. */
+export type Unit =
+  | 'client'
+  | 'catalog_item'
+  | 'engagement'
+  | 'issued_document'
+  | 'expense'
+  | 'signature_envelope'
+  | 'byte'
+  | 'recipient_message'
+  | 'token'
+  | 'automation_action'
 
 /** The allowance keys as the API names them. */
 export type LimitKey =
@@ -54,73 +65,73 @@ export const LIMITS: Record<LimitKey, Limit> = {
   clients: {
     label: translate('clients'),
     scope: 'workspace',
-    unit: 'count',
+    unit: 'client',
     values: { basic: 30, pro: 300, business: 1500 },
   },
   products: {
     label: translate('productsAndServices'),
     scope: 'workspace',
-    unit: 'count',
+    unit: 'catalog_item',
     values: { basic: 25, pro: 250, business: 1000 },
   },
   engagements: {
     label: translate('activeEngagements'),
     scope: 'workspace',
-    unit: 'count',
+    unit: 'engagement',
     values: { basic: 3, pro: 20, business: 100 },
   },
   invoices_per_month: {
     label: translate('newInvoiceIssuesAMonth'),
     scope: 'person',
-    unit: 'count',
+    unit: 'issued_document',
     values: { basic: 15, pro: 150, business: 600 },
   },
   expenses_per_month: {
     label: translate('expensesAMonth'),
     scope: 'person',
-    unit: 'count',
+    unit: 'expense',
     values: { basic: null, pro: 300, business: 1200 },
   },
   signatures_per_month: {
     label: translate('signatureRequestsAMonth'),
     scope: 'person',
-    unit: 'count',
+    unit: 'signature_envelope',
     values: { basic: null, pro: 50, business: 200 },
   },
   storage_bytes: {
     label: translate('documentStorage'),
     scope: 'person',
-    unit: 'bytes',
+    unit: 'byte',
     values: { basic: 500 * MB, pro: 5 * GB, business: 20 * GB },
   },
   download_bytes_per_month: {
     label: translate('fileDownloadsAMonth'),
     scope: 'person',
-    unit: 'bytes',
+    unit: 'byte',
     values: { basic: 2 * GB, pro: 20 * GB, business: 100 * GB },
   },
   emails_per_month: {
     label: translate('businessEmailRecipientsAMonth'),
     scope: 'person',
-    unit: 'count',
+    unit: 'recipient_message',
     values: { basic: 100, pro: 1000, business: 5000 },
   },
   email_attachment_bytes_per_month: {
     label: translate('totalEmailAttachmentsAMonth'),
     scope: 'person',
-    unit: 'bytes',
+    unit: 'byte',
     values: { basic: 100 * MB, pro: 1 * GB, business: 5 * GB },
   },
   ai_tokens_per_month: {
     label: translate('aiTokensAMonthForAvailableFunctions'),
     scope: 'person',
-    unit: 'tokens',
+    unit: 'token',
     values: { basic: 250_000, pro: 5_000_000, business: 20_000_000 },
   },
   automation_actions_per_month: {
     label: translate('automationActionsAMonth'),
     scope: 'person',
-    unit: 'count',
+    unit: 'automation_action',
     values: { basic: null, pro: 1500, business: 6000 },
   },
 }
@@ -180,7 +191,7 @@ export function formatLimit(key: LimitKey, plan: PlanId): string | null {
   const { unit, values } = LIMITS[key]
   const amount = values[plan]
   if (amount === null) return null
-  return unit === 'bytes' ? bytes(amount) : count(amount)
+  return unit === 'byte' ? bytes(amount) : count(amount)
 }
 
 function value(key: LimitKey, plan: PlanId): number {
@@ -199,6 +210,8 @@ export type Benefit = {
   key: string
   label: string
   note?: string
+  /** The allowances the row's cells quote. */
+  limitKeys: LimitKey[]
   cell: (plan: PlanId) => string | null
 }
 
@@ -210,19 +223,22 @@ export const BENEFITS: Benefit[] = [
   {
     key: 'invoicing',
     label: translate('invoicesAndQuotes'),
+    limitKeys: ['invoices_per_month'],
     cell: perPerson('invoices_per_month', translate('newInvoiceIssues')),
   },
-  { key: 'swiss_qr', label: translate('swissQRBills'), cell: () => INCLUDED },
+  { key: 'swiss_qr', label: translate('swissQRBills'), limitKeys: [], cell: () => INCLUDED },
   {
     key: 'revolut',
     label: translate('revolutPaymentLink'),
-    note: translate('yourRevolutMeLinkAndQRCodeTheClient'),
+    note: translate('revolutMeLinkAndQRThePayerEntersTheDisplayed'),
+    limitKeys: [],
     cell: () => INCLUDED,
   },
   {
     key: 'engagements',
     label: translate('engagementsAndRetainers'),
-    note: translate('managedByHandInEveryPlanScheduledWorkflowsNeed'),
+    note: translate('manualEngagementManagementInEveryPlanScheduledWorkflows'),
+    limitKeys: ['engagements'],
     cell: (plan) =>
       translate('activePerWorkspace', {
         value1: count(value('engagements', plan)),
@@ -232,11 +248,13 @@ export const BENEFITS: Benefit[] = [
   {
     key: 'automations',
     label: translate('automationsAndPaymentReminders'),
+    limitKeys: ['automation_actions_per_month'],
     cell: perPerson('automation_actions_per_month', 'actions'),
   },
   {
     key: 'heidi',
     label: translate('heidiAIAssistant'),
+    limitKeys: ['ai_tokens_per_month'],
     cell: (plan) =>
       has(plan, 'heidi')
         ? translate('includedSharedAITokensPersonMonth', {
@@ -244,32 +262,42 @@ export const BENEFITS: Benefit[] = [
           })
         : null,
   },
-  { key: 'client_portal', label: translate('clientPortal'), cell: from('client_portal') },
+  {
+    key: 'client_portal',
+    label: translate('clientPortal'),
+    limitKeys: [],
+    cell: from('client_portal'),
+  },
   {
     key: 'expenses',
     label: translate('expensesAndAIReceiptImport'),
+    limitKeys: ['expenses_per_month'],
     cell: perPerson('expenses_per_month', 'expenses'),
   },
   {
     key: 'documents_signatures',
     label: translate('documentTemplatesAndSimpleSignatures'),
+    limitKeys: ['signatures_per_month'],
     cell: perPerson('signatures_per_month', translate('signatureRequests')),
   },
   {
     key: 'corrections_vat',
     label: translate('invoiceCorrectionsAndVATReturns'),
+    limitKeys: [],
     cell: from('corrections_vat'),
   },
   {
     key: 'einvoice_xml',
     label: translate('eInvoiceXMLExport'),
     note: translate('supportedFileFormatsOnlyNoNetworkDelivery'),
+    limitKeys: [],
     cell: from('einvoice_xml'),
   },
   {
     key: 'ledger_exports',
     label: translate('ledgerAndDataExports'),
     note: translate('accountingReportsAndSupportedExportsIncludingClientAndProduct'),
+    limitKeys: [],
     cell: from('ledger_exports'),
   },
 ]

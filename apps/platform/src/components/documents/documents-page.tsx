@@ -69,6 +69,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock, type FeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
@@ -215,6 +216,8 @@ const tabLabel = (tab: PinnedTab) =>
           ? translate('templates')
           : translate('trash')
 export function DocumentsPage() {
+  const templateLock = useFeatureLock('document_templates')
+  const signLock = useFeatureLock('simple_signatures')
   const pathname = usePathname()
   const query = useSearchParams()
   const view = parseView(query)
@@ -638,13 +641,18 @@ export function DocumentsPage() {
         )}
         {canWrite && single && file?.kind === 'pdf' && !file.deleted_at && (
           <>
-            <ContextMenuItem onSelect={() => setEditing({ template: null, document: file })}>
+            <ContextMenuItem
+              disabled={Boolean(templateLock)}
+              onSelect={() => setEditing({ template: null, document: file })}
+            >
               <LayoutTemplate />
               {translate('makeATemplate')}
+              {templateLock && <PlanTag lock={templateLock} />}
             </ContextMenuItem>
-            <ContextMenuItem onSelect={() => setSignFrom(file)}>
+            <ContextMenuItem disabled={Boolean(signLock)} onSelect={() => setSignFrom(file)}>
               <FileSignature />
               {translate('sendForSignature')}
+              {signLock && <PlanTag lock={signLock} />}
             </ContextMenuItem>
           </>
         )}
@@ -857,6 +865,8 @@ export function DocumentsPage() {
         actions={
           canWrite && (
             <CreateMenu
+              templateLock={templateLock}
+              signLock={signLock}
               onTemplate={() => setEditing({ template: null, document: null })}
               onSign={() => setSignFrom(null)}
               onFolder={() => setNewFolderIn(current)}
@@ -941,8 +951,10 @@ export function DocumentsPage() {
                 >
                   {translate('useATemplate')}
                 </Button>
+                {templateLock && <PlanTag lock={templateLock} className="self-center" />}
                 <Button
                   className="cursor-pointer gap-1.5"
+                  disabled={Boolean(templateLock)}
                   onClick={() => setEditing({ template: null, document: null })}
                 >
                   <Plus className="size-4" />
@@ -1767,10 +1779,14 @@ function LoadingTree() {
 
 /** "Create" next to Upload: a template, a PDF for signature, or a folder. */
 function CreateMenu({
+  templateLock,
+  signLock,
   onTemplate,
   onSign,
   onFolder,
 }: {
+  templateLock: FeatureLock
+  signLock: FeatureLock
   onTemplate: () => void
   onSign: () => void
   onFolder: () => void
@@ -1784,7 +1800,11 @@ function CreateMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-60">
-        <DropdownMenuItem onSelect={onTemplate} className="items-start py-2">
+        <DropdownMenuItem
+          disabled={Boolean(templateLock)}
+          onSelect={onTemplate}
+          className="items-start py-2"
+        >
           <LayoutTemplate className="mt-0.5" />
           <span className="grid gap-0.5">
             <span>{translate('template')}</span>
@@ -1792,8 +1812,13 @@ function CreateMenu({
               {translate('aContractOrLetterFilledFromAClient')}
             </span>
           </span>
+          {templateLock && <PlanTag lock={templateLock} />}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onSign} className="items-start py-2">
+        <DropdownMenuItem
+          disabled={Boolean(signLock)}
+          onSelect={onSign}
+          className="items-start py-2"
+        >
           <FileSignature className="mt-0.5" />
           <span className="grid gap-0.5">
             <span>{translate('pdfForSignature')}</span>
@@ -1801,6 +1826,7 @@ function CreateMenu({
               {translate('sendAnyPDFToSignOnline')}
             </span>
           </span>
+          {signLock && <PlanTag lock={signLock} />}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onFolder}>

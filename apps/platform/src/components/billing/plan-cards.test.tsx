@@ -290,14 +290,14 @@ test('features read from the limits', () => {
   const pro = flatBillingFixture().plans[1]
   expect(pro && planFeatures(pro)).toEqual([
     '10 members besides the owner',
-    "1'000 clients",
-    '300 invoices a month',
-    '600 expenses a month',
-    '500 products & services',
-    '50 running engagements',
-    '50 signature requests a month',
-    '100 GB for documents and receipts',
-    "5'000'000 AI tokens a month for Heidi and imports",
+    '300 clients per workspace',
+    '150 invoice issues a month per paid person',
+    '300 expenses a month per paid person',
+    '250 products & services per workspace',
+    '20 active engagements per workspace',
+    '50 signature requests a month per paid person',
+    '5 GB storage per paid person',
+    "5'000'000 AI tokens a month per paid person",
   ])
 })
 
@@ -306,16 +306,17 @@ test('a larger plan lists only what grows over the one before it', () => {
   if (!basic || !pro) throw new Error('fixture has no Basic and Pro')
   const flat = { ...pro, limits: { ...pro.limits, members: basic.limits.members, products: 25 } }
   expect(planFeatures(flat, basic)).toEqual([
-    "1'000 clients",
-    '300 invoices a month',
-    '600 expenses a month',
-    '50 running engagements',
-    '50 signature requests a month',
-    '100 GB for documents and receipts',
-    "5'000'000 AI tokens a month for Heidi and imports",
+    '300 clients per workspace',
+    '150 invoice issues a month per paid person',
+    '300 expenses a month per paid person',
+    '20 active engagements per workspace',
+    '50 signature requests a month per paid person',
+    '5 GB storage per paid person',
+    "5'000'000 AI tokens a month per paid person",
   ])
   expect(limitLine('members', 1)).toBe('1 member besides the owner')
-  expect(limitLine('invoices_per_month', 100)).toBe('100 invoices a month')
+  expect(limitLine('invoices_per_month', 1)).toBe('1 invoice issue a month per paid person')
+  expect(limitLine('expenses_per_month', 0)).toBe('No expenses')
 })
 
 test('a plan the workspace is over is refused with the reason, and Checkout does not open', async () => {
@@ -398,15 +399,18 @@ test('a workspace with no seats counted yet is totalled for one person', () => {
 })
 
 test('limits read as short facts with the key number first', () => {
-  expect(planFact('clients', 50)).toEqual({ value: '50', label: 'clients' })
+  expect(planFact('clients', 30)).toEqual({ value: '30', label: 'clients / workspace' })
   expect(planFact('invoices_per_month', null)).toEqual({
     value: 'Unlimited',
-    label: 'invoices / month',
+    label: 'invoice issues / person / month',
   })
   expect(planFact('members', null)).toEqual({ value: 'Any number', label: 'of people' })
-  expect(planFact('storage_bytes', 5 * 2 ** 30)).toEqual({ value: '5 GB', label: 'storage' })
-  expect(planFact('ai_tokens_per_month', 1_000_000)).toEqual({
-    value: '1M',
-    label: 'AI tokens / month',
+  expect(planFact('storage_bytes', 5_000_000_000)).toEqual({
+    value: '5 GB',
+    label: 'storage / person',
+  })
+  expect(planFact('ai_tokens_per_month', 5_000_000)).toEqual({
+    value: '5M',
+    label: 'AI tokens / person / month',
   })
 })

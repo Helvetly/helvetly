@@ -37,6 +37,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import {
   dropdownKit,
   PageContextMenu,
@@ -369,10 +370,13 @@ export function InvoicesPage() {
   const tabs = INVOICE_KINDS.map((info) => info.plural)
   const active = INVOICE_KINDS.indexOf(kind)
   const selectTab = (index: number) => update({ kind: INVOICE_KINDS[index]?.kind })
+  const exportLock = useFeatureLock('data_export')
   const selection = {
     count: selected.size,
     actions: bulkActions(selectedDrafts.length, {
-      exportCsv: () => window.location.assign(exportIdsUrl([...selected])),
+      exportCsv: unlessLocked(exportLock, () =>
+        window.location.assign(exportIdsUrl([...selected])),
+      ),
       downloadPdfs,
       removeDrafts: () => setDeleting(selectedDrafts),
     }),
@@ -392,13 +396,10 @@ export function InvoicesPage() {
           {translate('import')}
         </Item>
       )}
-      <Item asChild>
-        <a href={localizedHref(exportUrl(params))} download>
-          <Download />
-          {translate('exportCSV2')}
-          {filtered ? ' (filtered)' : ''}
-        </a>
-      </Item>
+      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
+        {translate('exportCSV')}
+        {filtered ? ' (filtered)' : ''}
+      </ExportItem>
       <Item asChild>
         <Link href="/settings/invoices">
           <ReceiptText />

@@ -41,6 +41,7 @@ import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
 import { useClientSearch } from '@/lib/clients'
@@ -97,6 +98,7 @@ export function Preview({
   onClose: () => void
 }) {
   const canWrite = useCan('write:documents')
+  const signLock = useFeatureLock('simple_signatures')
   const query = useDoc(id)
   const file = query.data ?? siblings.find((sibling) => sibling.id === id)
   const index = siblings.findIndex((sibling) => sibling.id === id)
@@ -186,9 +188,13 @@ export function Preview({
               <DropdownMenuContent align="end" className="min-w-52">
                 {file.kind === 'pdf' && (
                   <>
-                    <DropdownMenuItem onSelect={() => commands.sign(file)}>
+                    <DropdownMenuItem
+                      disabled={Boolean(signLock)}
+                      onSelect={() => commands.sign(file)}
+                    >
                       <FileSignature />
                       {translate('sendForSignature')}
+                      {signLock && <PlanTag lock={signLock} />}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>

@@ -5,6 +5,7 @@ import { Hero } from '@/components/home/hero'
 import { Standards } from '@/components/home/standards'
 import { Steps } from '@/components/home/steps'
 import { Trust } from '@/components/home/trust'
+import { OfferProvider } from '@/components/offer-provider'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { GENERAL_FAQ } from '@/lib/faq'
@@ -36,7 +37,9 @@ export default function HomePage() {
             })}
           />
           <div className="mt-12">
-            <PricingCards />
+            <OfferProvider>
+              <PricingCards />
+            </OfferProvider>
           </div>
         </Container>
       </section>

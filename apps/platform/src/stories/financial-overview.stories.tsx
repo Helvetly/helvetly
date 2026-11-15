@@ -499,10 +499,16 @@ export const ChangePlanFullComparison: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
     await expect(canvas.getByRole('heading', { name: 'Compare plans' })).toBeVisible()
-    // A plan feature is a row of its own: a dash where the plan lacks it, a check where it has it.
-    const apiRow = within(canvas.getByRole('row', { name: /^API tokens/ }))
-    await expect(apiRow.getAllByLabelText('Not included')).toHaveLength(1)
-    await expect(apiRow.getAllByLabelText('Included')).toHaveLength(2)
+    // The offer's twelve business rows, then its allowances: "Not included" where the plan lacks a feature.
+    const portal = within(canvas.getByRole('row', { name: /^Client portal/ }))
+    await expect(portal.getAllByText('Not included')).toHaveLength(2)
+    await expect(portal.getAllByLabelText('Included')).toHaveLength(1)
+    const heidi = within(canvas.getByRole('row', { name: /^Heidi AI assistant/ }))
+    await expect(heidi.getByText('5 M')).toBeVisible()
+    await expect(canvas.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent(
+      'Per workspace',
+    )
+    await expect(canvas.queryByRole('row', { name: /^API tokens/ })).toBeNull()
     // The picker ends with the comparison: no feature grid, no questions.
     await expect(
       canvas.queryByRole('heading', { name: 'Every plan includes' }),

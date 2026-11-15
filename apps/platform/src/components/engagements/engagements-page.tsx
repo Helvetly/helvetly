@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  Download,
   FileUp,
   Layers,
   ReceiptText,
@@ -26,6 +25,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+import { ExportItem } from '@/components/billing/feature-lock'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -190,12 +190,9 @@ function useMenu(filters: EngagementQuery) {
           {translate('import')}
         </Item>
       )}
-      <Item asChild>
-        <a href={localizedHref(exportUrl(filters))} download>
-          <Download />
-          {translate('exportCSV2')}
-        </a>
-      </Item>
+      <ExportItem Item={Item} href={localizedHref(exportUrl(filters))}>
+        {translate('exportCSV')}
+      </ExportItem>
       {canManage && (
         <>
           <DropdownMenuSeparator />
