@@ -180,7 +180,12 @@ export function InviteDialog({
               {role === 'member' && (
                 <div className="grid gap-1.5">
                   <span className="text-[13px] font-medium">Access</span>
-                  <AccessEditor value={scopes} onChange={setScopes} error={problem} />
+                  <AccessEditor
+                    value={scopes}
+                    onChange={setScopes}
+                    error={problem}
+                    canChangeHR={actorRole === 'owner'}
+                  />
                 </div>
               )}
             </div>

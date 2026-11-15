@@ -4,6 +4,7 @@ import { ApiError } from './api'
 import {
   can,
   describeAccess,
+  effectiveScopes,
   levelsOf,
   presetOf,
   resourceForPath,
@@ -74,11 +75,55 @@ test.each([
   ['/clients/', 'clients'],
   ['/invoices/new', 'invoices'],
   ['/settings/billing', 'billing'],
+  ['/employees', 'employees'],
+  ['/employees/payroll', 'payroll'],
+  ['/settings/employment', 'employees'],
   ['/account', null],
   ['/', null],
   ['/clientsx', null],
 ] as const)('%s belongs to %s', (path, resource) => {
   expect(resourceForPath(path)).toBe(resource)
+})
+
+// Mirrors apps/api/internal/permissions.Allows: owner all, admin all but HR, a member's "*" never reaches HR.
+test.each([
+  ['owner', undefined, 'write:employees', true],
+  ['owner', undefined, 'write:payroll-approval', true],
+  ['owner', undefined, 'read:payroll-export', true],
+  ['owner', undefined, 'write:invoices', true],
+  ['admin', undefined, 'write:invoices', true],
+  ['admin', undefined, 'read:employees', false],
+  ['admin', undefined, 'read:payroll', false],
+  ['member', ['*:*'], 'read:employees', false],
+  ['member', ['*:*'], 'write:clients', true],
+  ['member', ['read:*'], 'read:payroll', false],
+  ['member', ['read:employees'], 'read:employees', true],
+  ['member', ['read:employees'], 'write:employees', false],
+  ['member', ['write:payroll'], 'read:payroll', true],
+  ['member', ['*:payroll'], 'write:payroll', true],
+  ['member', ['*:payroll'], 'read:employees', false],
+  ['member', undefined, 'read:employees', false],
+] as const)('%s with %j may %s: %s', (role, scopes, need, expected) => {
+  expect(can(effectiveScopes(role, scopes), need)).toBe(expected)
+})
+
+test('HR access is granted row by row, beside the presets', () => {
+  expect(presetOf(['*:*', 'read:employees'])).toBe('full')
+  expect(levelsOf(['*:*']).employees).toBe('none')
+  expect(levelsOf(['write:payroll-approval'])['payroll-approval']).toBe('edit')
+  // Approving is a change: a read scope gives no level.
+  expect(levelsOf(['read:payroll-approval'])['payroll-approval']).toBe('none')
+  expect(scopesFor({ ...levelsOf(['*:*']), 'payroll-approval': 'edit' })).toEqual([
+    '*:*',
+    'write:payroll-approval',
+  ])
+  expect(scopesFor({ ...levelsOf(['read:clients']), payroll: 'view' })).toEqual([
+    'read:clients',
+    'read:payroll',
+  ])
+  expect(describeAccess(['*:*', 'read:employees'])).toBe(
+    'Can view and edit everything; HR: view employees',
+  )
 })
 
 const refusal = (details: Record<string, unknown>) => new ApiError(403, 'forbidden', 'No.', details)

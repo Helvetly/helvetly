@@ -57,6 +57,7 @@ const TITLES: Record<LimitReached['limit'], string> = {
   signatures_per_month: 'Monthly signature limit reached',
   storage_bytes: 'Storage is full',
   ai_tokens_per_month: 'Monthly AI allowance used',
+  employees: 'Employee limit reached',
 }
 
 export function UpgradePrompt() {

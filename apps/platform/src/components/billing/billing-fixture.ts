@@ -14,6 +14,7 @@ const basic: Record<LimitKey, number | null> = {
   signatures_per_month: 5,
   storage_bytes: 5 * GB,
   ai_tokens_per_month: 1_000_000,
+  employees: null,
 }
 const pro: Record<LimitKey, number | null> = {
   members: null,
@@ -25,6 +26,7 @@ const pro: Record<LimitKey, number | null> = {
   signatures_per_month: 50,
   storage_bytes: 100 * GB,
   ai_tokens_per_month: 5_000_000,
+  employees: null,
 }
 const business: Record<LimitKey, number | null> = {
   members: null,
@@ -36,12 +38,13 @@ const business: Record<LimitKey, number | null> = {
   signatures_per_month: null,
   storage_bytes: 1024 * GB,
   ai_tokens_per_month: 20_000_000,
+  employees: null,
 }
 // The features declared in apps/api/internal/billing/features.go.
 const features: Record<PlanId, FeatureKey[]> = {
-  basic: [],
-  pro: ['api_access'],
-  business: ['api_access'],
+  basic: ['employees'],
+  pro: ['api_access', 'employees'],
+  business: ['api_access', 'employees'],
 }
 const prices = (month: number, currency: string) => ({
   month: { amount: month, currency },

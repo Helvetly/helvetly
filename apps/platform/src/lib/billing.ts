@@ -19,9 +19,10 @@ export type LimitKey =
   | 'signatures_per_month'
   | 'storage_bytes'
   | 'ai_tokens_per_month'
+  | 'employees'
 
 /** A capability a plan switches on or off (apps/api/internal/billing/features.go). */
-export type FeatureKey = 'api_access'
+export type FeatureKey = 'api_access' | 'employees'
 
 /** `null` is unlimited. */
 export type UsageItem = { limit: LimitKey; used: number; max: number | null }
@@ -221,6 +222,7 @@ export function useSyncBilling() {
 
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   api_access: 'API tokens',
+  employees: 'Employees and payroll register',
 }
 
 /**
@@ -259,6 +261,7 @@ const LIMIT_KEYS: ReadonlySet<unknown> = new Set<LimitKey>([
   'signatures_per_month',
   'storage_bytes',
   'ai_tokens_per_month',
+  'employees',
 ])
 const PLAN_IDS: ReadonlySet<unknown> = new Set<PlanId>(['basic', 'pro', 'business'])
 const isLimitKey = (value: unknown): value is LimitKey => LIMIT_KEYS.has(value)
@@ -274,6 +277,7 @@ export const LIMIT_LABELS: Record<LimitKey, string> = {
   signatures_per_month: 'Signature requests this month',
   storage_bytes: 'Storage',
   ai_tokens_per_month: 'AI tokens this month',
+  employees: 'Employees',
 }
 
 export function formatBytes(bytes: number): string {
@@ -409,6 +413,7 @@ const HIGHLIGHT_NOUNS: Record<LimitKey, string> = {
   signatures_per_month: 'signature requests a month',
   storage_bytes: 'storage',
   ai_tokens_per_month: 'AI tokens a month',
+  employees: 'employees',
 }
 
 /** A plan's main limits as short lines: "2 members", "50 clients", "30 invoices a month". */

@@ -55,7 +55,7 @@ test('accepts an auto batch with recognised files and refuses an unknown record 
   }
   expect(isImportBatch(batch)).toBe(true)
   expect(
-    isImportBatch({ ...batch, records: [{ ...record('c1', 'clients'), kind: 'payroll' }] }),
+    isImportBatch({ ...batch, records: [{ ...record('c1', 'clients'), kind: 'timesheets' }] }),
   ).toBe(false)
   expect(
     isImportBatch({ ...batch, files: [{ ...batch.files[0], document_type: 'love_letter' }] }),

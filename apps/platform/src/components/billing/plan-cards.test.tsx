@@ -298,6 +298,7 @@ test('features read from the limits', () => {
     '50 signature requests a month',
     '100 GB for documents and receipts',
     "5'000'000 AI tokens a month for Heidi and imports",
+    'Unlimited employees',
   ])
 })
 

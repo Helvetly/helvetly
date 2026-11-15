@@ -52,17 +52,25 @@ import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog
 import { api, setCsrfToken, type Session, type User } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
-import { EVERYTHING } from '@/lib/permissions'
+import { effectiveScopes } from '@/lib/permissions'
 import { useShortcut } from '@/lib/shortcuts'
 
 import { CommandPalette } from './command-palette'
-import { visibleNav } from './nav'
+import { NAV, visibleNav } from './nav'
 import { planLabel, SidebarPlanNotice } from './plan-notice'
 import { ThemeSwitcher } from './theme-switcher'
 
+const NAV_HREFS = NAV.flatMap((group) => group.items.flatMap(({ href }) => (href ? [href] : [])))
+
 export const isCurrent = (pathname: string, href: string) => {
   const path = pathname.replace(/\/$/, '') || '/'
-  return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`)
+  const under = (base: string) =>
+    base === '/' ? path === '/' : path === base || path.startsWith(`${base}/`)
+  // A nested item (Payroll under Employees) takes the mark from its parent.
+  return (
+    under(href) &&
+    !NAV_HREFS.some((other) => other.startsWith(`${href}/`) && href !== '/' && under(other))
+  )
 }
 
 /**
@@ -230,7 +238,7 @@ export function AppSidebar({ session }: { session: Session }) {
         {help && <HelpDialog open={help.open} onOpenChange={(open) => setHelp({ open })} />}
       </SidebarHeader>
       <SidebarContent className="gap-2 px-0 pt-1">
-        {visibleNav(session.scopes ?? EVERYTHING).map((group, index) => (
+        {visibleNav(effectiveScopes(session.role, session.scopes)).map((group, index) => (
           <SidebarGroup
             key={group.label ?? index}
             className={cn('py-1', group.bottom && 'mt-auto')}

@@ -2,6 +2,7 @@
 
 import {
   BookOpen,
+  BriefcaseBusiness,
   Building2,
   CalendarCheck,
   CreditCard,
@@ -17,9 +18,10 @@ import type { ReactNode } from 'react'
 
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
+import { can, useScopes, type Need } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
-type Page = { label: string; href: string; icon: LucideIcon; managers?: true }
+type Page = { label: string; href: string; icon: LucideIcon; managers?: true; need?: Need }
 
 /** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
@@ -33,6 +35,12 @@ export const SETTINGS_PAGES: Page[] = [
   // The books in the order of a month-end: record, declare, post, close, audit.
   { label: 'Closing', href: '/settings/periods', icon: CalendarCheck },
   { label: 'Audit log', href: '/settings/audit-log', icon: ScrollText, managers: true },
+  {
+    label: 'Employment',
+    href: '/settings/employment',
+    icon: BriefcaseBusiness,
+    need: 'read:employees',
+  },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -54,7 +62,10 @@ export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const router = useRouter()
   const guard = useLeaveGuard()
   const manager = isManager(useSession().data?.role)
-  const pages = SETTINGS_PAGES.filter((page) => manager || !page.managers)
+  const scopes = useScopes()
+  const pages = SETTINGS_PAGES.filter(
+    (page) => (manager || !page.managers) && (!page.need || can(scopes, page.need)),
+  )
   const current = settingsPageAt(usePathname() ?? '')
   return (
     <>

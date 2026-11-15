@@ -1,10 +1,12 @@
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
+  Banknote,
   Bell,
   Building2,
   ClipboardCheck,
   FileText,
   FileUp,
+  IdCard,
   LayoutGrid,
   Package,
   ReceiptText,
@@ -43,7 +45,14 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
       { label: 'Documents', icon: FileText, href: '/documents' },
     ],
   },
-  { label: 'Team', items: [{ label: 'Members', icon: Users, href: '/members' }] },
+  {
+    label: 'Team',
+    items: [
+      { label: 'Members', icon: Users, href: '/members' },
+      { label: 'Employees', icon: IdCard, href: '/employees' },
+      { label: 'Payroll', icon: Banknote, href: '/employees/payroll' },
+    ],
+  },
   {
     bottom: true,
     items: [

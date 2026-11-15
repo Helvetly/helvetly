@@ -1,8 +1,10 @@
+import { effectiveScopes } from '@/lib/permissions'
+
 import { visibleNav } from './nav'
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
 
-const labels = (scopes: string[]) =>
+const labels = (scopes: readonly string[]) =>
   visibleNav(scopes).flatMap((group) => group.items.map((item) => item.label))
 
 test('everything is in the menu with full access', () => {
@@ -21,4 +23,15 @@ test('write alone is enough to see a page; the dashboard and Heidi always stay',
   expect(labels(['write:invoices'])).toEqual(
     expect.arrayContaining(['Dashboard', 'Invoices', 'Ask Heidi']),
   )
+})
+
+test('Employees and Payroll need HR scopes, which a member\'s "*" never gives', () => {
+  expect(labels(['*:*'])).not.toContain('Employees')
+  expect(labels(['*:*'])).not.toContain('Payroll')
+  expect(labels(effectiveScopes('admin', undefined))).not.toContain('Employees')
+  expect(labels(effectiveScopes('owner', undefined))).toEqual(
+    expect.arrayContaining(['Members', 'Employees', 'Payroll']),
+  )
+  expect(labels(['read:employees'])).toContain('Employees')
+  expect(labels(['read:employees'])).not.toContain('Payroll')
 })

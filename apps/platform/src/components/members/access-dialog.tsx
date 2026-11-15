@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { scopesProblem, useChangeScopes, type Member } from '@/lib/members'
 import { EVERYTHING } from '@/lib/permissions'
+import { useSession } from '@/lib/queries'
 
 import { AccessEditor } from './access-editor'
 
@@ -23,6 +24,7 @@ export function AccessDialog({ member, onClose }: { member: Member; onClose: () 
   const [scopes, setScopes] = useState<string[]>(member.scopes ?? EVERYTHING)
   const [problem, setProblem] = useState<string | null>(null)
   const change = useChangeScopes()
+  const owner = useSession().data?.role === 'owner'
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -53,7 +55,7 @@ export function AccessDialog({ member, onClose }: { member: Member; onClose: () 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
-          <AccessEditor value={scopes} onChange={setScopes} error={problem} />
+          <AccessEditor value={scopes} onChange={setScopes} error={problem} canChangeHR={owner} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

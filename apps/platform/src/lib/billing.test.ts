@@ -88,6 +88,7 @@ const plan = (month: number, year: number): Plan => ({
     signatures_per_month: 5,
     storage_bytes: 1,
     ai_tokens_per_month: 1_000_000,
+    employees: null,
   },
   features: [],
   prices: { month: { amount: month, currency: 'chf' }, year: { amount: year, currency: 'chf' } },
