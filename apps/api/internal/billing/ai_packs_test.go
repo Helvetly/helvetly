@@ -24,6 +24,7 @@ func TestAITokenPacks(t *testing.T) {
 		t.Fatalf("no plan: %d", code)
 	}
 	e.subscribe(owner.workspace, "price_bm")
+	e.override(owner.workspace, AITokens, StateLimited, n64(1_000_000), nil) // the plan allowance the packs add to
 	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 7}); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a pack not on sale: %d", code)
 	}
