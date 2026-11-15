@@ -39,7 +39,6 @@
 1 pulse apps/platform/src/components/signatures/signing-page.tsx
 2 radius apps/platform/src/app/(app)/layout.tsx
 1 radius apps/platform/src/components/api/api-tokens.tsx
-1 radius apps/platform/src/components/auth-gate.tsx
 1 radius apps/platform/src/components/billing/card-brand.tsx
 2 radius apps/platform/src/components/clients/clients-page.tsx
 2 radius apps/platform/src/components/clients/fields.tsx

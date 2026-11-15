@@ -1,13 +1,12 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { ReactNode } from 'react'
 
 import { ApiError, errorMessage, type Session } from '@/lib/api'
 import { useSession } from '@/lib/queries'
-
-import { PageLoading } from './shell/page-loading'
 
 /**
  * Renders the signed-in area once the session is confirmed. A 401 is turned into a redirect to
@@ -37,14 +36,14 @@ export function AuthGate({ children }: { children: (session: Session) => ReactNo
   return <ShellLoading />
 }
 
-/** The app's frame (sidebar column, white panel) with the page loader while the session loads. */
-function ShellLoading() {
+/**
+ * The whole screen while the app can't tell yet which page it opens: no sidebar frame, since the page may
+ * be one without it (the welcome, the plan picker).
+ */
+export function ShellLoading() {
   return (
-    <div className="flex h-svh bg-background">
-      <div className="hidden w-64 shrink-0 lg:block" />
-      <div className="flex min-w-0 flex-1 flex-col md:my-2 md:mr-2 [&>header~*]:rounded-[14px] [&>header~*]:bg-card">
-        <PageLoading />
-      </div>
+    <div className="flex min-h-svh flex-col bg-background">
+      <Loader size="page" />
     </div>
   )
 }
