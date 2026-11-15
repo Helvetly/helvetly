@@ -52,7 +52,7 @@ func (s *Service) candidates(r *http.Request, q store.Q, sess store.Session, upT
 			c.Blocked = blockInconsistent
 		case p.Currency != d.Currency:
 			c.Blocked = "In " + p.Currency + ", not the base currency " + d.Currency + ": book it in your accounting with the rate you use."
-		case c.Kind == "payment" && !slices.Contains(p.Booked, "accrual") && !accrued[p.ID]:
+		case c.Kind == "payment" && p.SupersededBy == nil && !slices.Contains(p.Booked, "accrual") && !accrued[p.ID]:
 			c.Blocked = "Its accrual is not booked yet."
 		}
 		if c.Kind == "accrual" && c.Blocked == "" {

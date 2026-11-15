@@ -368,7 +368,8 @@ func (q Q) BookingCandidates(ctx context.Context, workspaceID, upTo string) ([]B
 		if p.SupersededBy != nil && booked(p, "accrual") && !booked(p, "reversal") {
 			out = append(out, BookingCandidate{Entry: p, Kind: "reversal", Date: byID[*p.SupersededBy].PeriodEnd})
 		}
-		if p.SupersededBy == nil && p.PaidOn != nil && *p.PaidOn <= upTo && !booked(p, "payment") {
+		// A payment happened even when its entry was corrected later, so it is booked either way.
+		if p.PaidOn != nil && *p.PaidOn <= upTo && !booked(p, "payment") {
 			c := BookingCandidate{Entry: p, Kind: "payment", Date: *p.PaidOn}
 			if p.SupersedesID != nil {
 				if prev, ok := byID[*p.SupersedesID]; ok && prev.PaymentStatus == "paid" && prev.Net != nil {

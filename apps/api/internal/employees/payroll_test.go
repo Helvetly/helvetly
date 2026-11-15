@@ -377,3 +377,36 @@ func TestSimultaneousUploadsStoreOnce(t *testing.T) {
 		t.Fatalf("%d objects left in storage; the refused upload's object must be removed", objects)
 	}
 }
+
+// TestPaymentBeforeCorrectionIsBooked: an entry paid and then corrected before any booking still has its payment
+// booked, and the correction's payment books only the difference, so net pay owed ends at zero.
+func TestPaymentBeforeCorrectionIsBooked(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, anna)
+	original := e.must(owner, 201, "POST", "/api/v1/payroll/entries", october(id))["id"].(string)
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+original+"/approve", map[string]any{"version": 1})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+original+"/payment", map[string]any{"version": 2, "status": "paid", "paid_on": "2026-10-25"})
+	c := e.must(owner, 201, "POST", "/api/v1/payroll/entries/"+original+"/correct", nil)["id"].(string)
+	e.must(owner, 200, "PATCH", "/api/v1/payroll/entries/"+c, map[string]any{"version": 1, "gross": "6100.00", "net": "5280.00"})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+c+"/approve", map[string]any{"version": 2})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+c+"/payment", map[string]any{"version": 3, "status": "paid", "paid_on": "2026-11-05"})
+	b := e.must(owner, 201, "POST", "/api/v1/payroll/bookings", map[string]any{"to": "2026-11-30"})
+	res, body := e.do(owner, "GET", "/api/v1/payroll/bookings/"+b["id"].(string)+"/export?format=csv", nil, "")
+	rows, err := csv.NewReader(strings.NewReader(string(body))).ReadAll()
+	if res.StatusCode != 200 || err != nil {
+		t.Fatalf("journal: %d %v", res.StatusCode, err)
+	}
+	balance := map[string]int{}
+	for _, r := range rows[1:] {
+		var cents int
+		if _, err := fmt.Sscanf(strings.Replace(r[5], ".", "", 1), "%d", &cents); err != nil {
+			t.Fatal(err)
+		}
+		balance[r[3]] += cents
+		balance[r[4]] -= cents
+	}
+	if balance["2279"] != 0 || balance["1020"] != -528000 {
+		t.Fatalf("net pay owed %d, bank %d: %v", balance["2279"], balance["1020"], rows)
+	}
+}
