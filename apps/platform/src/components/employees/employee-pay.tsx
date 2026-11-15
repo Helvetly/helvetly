@@ -50,13 +50,13 @@ export function EmployeePay({ employee }: { employee: Employee }) {
       >
         {adding && <PayTermsForm employee={employee} onDone={() => setAdding(false)} />}
         {query.error ? (
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             {loadProblemText(query.error, 'The pay terms')}
           </p>
         ) : !query.data ? (
           <Loader className="h-16" />
         ) : query.data.length === 0 ? (
-          <p className="text-[13.5px] text-muted-foreground">No pay terms recorded yet.</p>
+          <p className="text-body-sm text-muted-foreground">No pay terms recorded yet.</p>
         ) : (
           <ul className="grid">
             {query.data.map((terms) => (
@@ -64,7 +64,7 @@ export function EmployeePay({ employee }: { employee: Employee }) {
                 key={terms.id}
                 className="grid gap-0.5 border-t border-border/60 py-2.5 first:border-t-0"
               >
-                <span className="flex flex-wrap items-center gap-2 text-[14px]">
+                <span className="flex flex-wrap items-center gap-2 text-body">
                   <span className="font-medium tabular-nums">
                     {formatMoney(terms.amount, terms.currency)}
                   </span>
@@ -74,7 +74,7 @@ export function EmployeePay({ employee }: { employee: Employee }) {
                   </span>
                   {terms.current && <StatusBadge tone="green">Current</StatusBadge>}
                 </span>
-                <span className="text-[13px] text-muted-foreground">
+                <span className="text-body-sm text-muted-foreground">
                   From {formatDate(terms.effective_from)}
                   {terms.note && ` · ${terms.note}`}
                 </span>
@@ -83,7 +83,7 @@ export function EmployeePay({ employee }: { employee: Employee }) {
           </ul>
         )}
       </Panel>
-      <p className="px-1 text-[12.5px] text-muted-foreground">
+      <p className="px-1 text-caption text-muted-foreground">
         Pay terms are a record of what was agreed. Helvetly does not calculate pay from them.
       </p>
     </>

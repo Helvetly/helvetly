@@ -122,7 +122,7 @@ export function PayrollPage() {
               </TooltipTrigger>
               <TooltipContent>Previous month</TooltipContent>
             </Tooltip>
-            <h2 aria-live="polite" className="min-w-36 text-center text-[15px] font-medium">
+            <h2 aria-live="polite" className="min-w-36 text-center text-title-sm font-medium">
               {monthLabel(month)}
             </h2>
             <Tooltip>
@@ -139,11 +139,11 @@ export function PayrollPage() {
               <TooltipContent>Next month</TooltipContent>
             </Tooltip>
           </div>
-          <span className="flex items-center gap-2 text-[13.5px] text-muted-foreground">
+          <span className="flex items-center gap-2 text-body-sm text-muted-foreground">
             <Switch id="show-corrected" checked={superseded} onCheckedChange={setSuperseded} />
             <label htmlFor="show-corrected">Show corrected entries</label>
           </span>
-          <p className="ml-auto flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+          <p className="ml-auto flex items-center gap-1.5 text-caption text-muted-foreground">
             Recording an entry does not certify it. Approved is not paid.
             <HelpTip label="About the payroll register">
               Helvetly records pay that you or your payroll provider computed; it does not calculate
@@ -221,11 +221,11 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
           >
             <h3 className="flex items-center justify-between text-body-sm font-medium text-muted-foreground">
               {total.currency}
-              <span className="text-[12px] font-normal">
+              <span className="text-caption font-normal">
                 {total.entries} {total.entries === 1 ? 'entry' : 'entries'} · {total.drafts} draft
               </span>
             </h3>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13.5px]">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-body-sm">
               {[...AMOUNTS, ['total_cost', 'Total cost'] as const].map(([key, label]) => (
                 <div key={key} className="contents">
                   <dt className="text-muted-foreground">{label}</dt>
@@ -234,7 +234,7 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
               ))}
             </dl>
             {notes.length > 0 && (
-              <ul className="grid gap-0.5 text-[12.5px] text-warning">
+              <ul className="grid gap-0.5 text-caption text-warning">
                 {notes.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
@@ -250,9 +250,9 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
 function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: string) => void }) {
   return (
     <>
-      <table className="hidden w-full table-fixed text-[15px] lg:table">
+      <table className="hidden w-full table-fixed text-title-sm lg:table">
         <thead>
-          <tr className="h-11 border-b bg-muted/50 text-left text-[13px] text-muted-foreground">
+          <tr className="h-11 border-b bg-muted/50 text-left text-body-sm text-muted-foreground">
             <th className="w-[17%] pl-5 font-medium">Employee</th>
             <th className="w-[15%] px-3 font-medium">Period</th>
             {AMOUNTS.map(([key, label]) => (
@@ -279,11 +279,11 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
                   {entry.employee_name}
                 </button>
               </td>
-              <td className="truncate px-3 text-[13.5px] tabular-nums">
+              <td className="truncate px-3 text-body-sm tabular-nums">
                 {entry.period_start.slice(5)} – {entry.period_end.slice(5)}
               </td>
               {AMOUNTS.map(([key]) => (
-                <td key={key} className="truncate px-2 text-right text-[14px] tabular-nums">
+                <td key={key} className="truncate px-2 text-right text-body tabular-nums">
                   {formatPay(entry[key], entry.currency)}
                 </td>
               ))}
@@ -303,8 +303,8 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
               className="flex w-full items-center gap-3 px-4 py-3 text-left"
             >
               <span className="grid min-w-0 flex-1 leading-snug">
-                <span className="truncate text-[15px]">{entry.employee_name}</span>
-                <span className="text-[13px] text-muted-foreground tabular-nums">
+                <span className="truncate text-title-sm">{entry.employee_name}</span>
+                <span className="text-body-sm text-muted-foreground tabular-nums">
                   Gross {formatPay(entry.gross, entry.currency)} · Net{' '}
                   {formatPay(entry.net, entry.currency)}
                 </span>

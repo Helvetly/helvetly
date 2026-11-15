@@ -88,7 +88,7 @@ export function EntrySheet({
           />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-[15px]">This entry couldn’t be loaded.</p>
+            <p className="text-title-sm">This entry couldn’t be loaded.</p>
             <p className="text-sm text-muted-foreground">
               {loadProblemText(query.error, 'This entry')}
             </p>
@@ -107,8 +107,8 @@ export function EntrySheet({
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-0.5 rounded-lg bg-muted/60 px-3 py-2.5">
-      <span className="text-[12px] text-muted-foreground">{label}</span>
-      <span className="text-[15px] font-medium tabular-nums">{value}</span>
+      <span className="text-caption text-muted-foreground">{label}</span>
+      <span className="text-title-sm font-medium tabular-nums">{value}</span>
     </div>
   )
 }
@@ -164,7 +164,7 @@ function EntryView({
       <header className="flex items-start gap-3 border-b px-5 py-4 md:px-6">
         <div className="grid min-w-0 flex-1 gap-1">
           <h2 className="truncate text-lg font-semibold">{entry.employee_name}</h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             {formatDate(entry.period_start)} – {formatDate(entry.period_end)}
             {entry.pay_date && ` · paid out ${formatDate(entry.pay_date)}`}
           </p>
@@ -213,7 +213,7 @@ function EntryView({
           <Figure label="Total cost" value={money(entry.total_cost)} />
         </div>
         {!entry.complete && (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             Some figures are not known yet; a dash means missing, never zero.
           </p>
         )}
@@ -223,10 +223,10 @@ function EntryView({
             {entry.components.map((component) => (
               <li
                 key={`${component.kind}:${component.label}:${component.amount}`}
-                className="flex items-center gap-3 px-3 py-2 text-[14px]"
+                className="flex items-center gap-3 px-3 py-2 text-body"
               >
                 <span className="flex-1 truncate">{component.label}</span>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-caption text-muted-foreground">
                   {COMPONENT_KINDS.find((kind) => kind.value === component.kind)?.label}
                 </span>
                 <span className="tabular-nums">{money(component.amount)}</span>
@@ -235,7 +235,7 @@ function EntryView({
           </ul>
         )}
 
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13.5px]">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body-sm">
           <dt className="text-muted-foreground">Source</dt>
           <dd>
             {entry.source}
@@ -261,7 +261,7 @@ function EntryView({
           )}
         </dl>
 
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
           <span>Recording an entry does not certify it.</span>
           <span>Approved is not paid.</span>
           <HelpTip label="About approval and payment">
@@ -540,7 +540,7 @@ function EntryForm({
     >
       <div className="grid shrink-0 gap-0.5 border-b px-5 py-4 md:px-6">
         <h2 className="text-lg font-semibold">{entry ? 'Edit entry' : 'New entry'}</h2>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body-sm text-muted-foreground">
           Enter the figures your payroll provider computed. Leave a figure empty when it is not
           known.
         </p>
@@ -678,7 +678,7 @@ function EntryForm({
           {field('source_ref', 'Source reference', text('source_ref'))}
           {field('note', 'Note', text('note'))}
         </div>
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           Recording an entry does not certify it.
         </p>
       </div>

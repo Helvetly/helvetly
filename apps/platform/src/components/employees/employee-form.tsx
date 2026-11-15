@@ -186,7 +186,7 @@ export function EmployeeForm({
             <h2 className="truncate text-lg font-semibold">
               {employee ? `Edit ${fullName(employee)}` : title}
             </h2>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body-sm text-muted-foreground">
               A staff record only: it gives no access to Helvetly and adds no paid seat.
             </p>
           </div>
@@ -353,7 +353,7 @@ export function EmployeeForm({
               </div>
               <label
                 htmlFor={fieldId('cross_border')}
-                className="flex items-center gap-2 text-[13.5px]"
+                className="flex items-center gap-2 text-body-sm"
               >
                 <Checkbox
                   id={fieldId('cross_border')}

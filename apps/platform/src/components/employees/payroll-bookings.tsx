@@ -57,7 +57,7 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
                 accounting.
               </HelpTip>
             </h2>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body-sm text-muted-foreground">
               Approved figures only, in the base currency.
             </p>
           </div>
@@ -109,12 +109,12 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
             <ul aria-label="To book" className="divide-y rounded-lg ring-1 ring-border">
               {items.map((item) => (
                 <li key={`${item.entry.id}-${item.kind}`} className="grid gap-1 px-3 py-2.5">
-                  <span className="flex flex-wrap items-center gap-2 text-[14px]">
+                  <span className="flex flex-wrap items-center gap-2 text-body">
                     <span className="min-w-0 flex-1 truncate">{item.entry.employee_name}</span>
                     <StatusBadge tone={item.blocked ? 'amber' : 'green'}>
                       {KIND_LABELS[item.kind]}
                     </StatusBadge>
-                    <span className="text-[13px] text-muted-foreground">
+                    <span className="text-body-sm text-muted-foreground">
                       {formatDate(item.date)}
                     </span>
                     <span className="tabular-nums">
@@ -125,7 +125,7 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
                     </span>
                   </span>
                   {item.blocked && (
-                    <span className="text-[13px] text-warning">Blocked: {item.blocked}</span>
+                    <span className="text-body-sm text-warning">Blocked: {item.blocked}</span>
                   )}
                 </li>
               ))}
@@ -134,13 +134,13 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
         </section>
 
         <section className="grid gap-2 px-5 py-5 md:px-6">
-          <h3 className="text-[15px] font-semibold">Past bookings</h3>
+          <h3 className="text-title-sm font-semibold">Past bookings</h3>
           {past.data?.length === 0 && (
             <p className="text-sm text-muted-foreground">Nothing booked yet.</p>
           )}
           <ul className="divide-y">
             {past.data?.map((booking) => (
-              <li key={booking.id} className="flex flex-wrap items-center gap-2 py-2 text-[14px]">
+              <li key={booking.id} className="flex flex-wrap items-center gap-2 py-2 text-body">
                 <span className="flex-1">
                   Up to {formatDate(booking.up_to)} · {booking.items} lines
                 </span>
@@ -149,7 +149,7 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
                     key={format.value}
                     href={bookingExportUrl(booking.id, format.value)}
                     aria-label={`Download booking up to ${formatDate(booking.up_to)} as ${format.label}`}
-                    className="text-[13px] text-link underline underline-offset-4 hover:no-underline"
+                    className="text-body-sm text-link underline underline-offset-4 hover:no-underline"
                   >
                     {format.label}
                   </a>

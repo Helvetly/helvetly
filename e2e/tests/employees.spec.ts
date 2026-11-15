@@ -58,7 +58,7 @@ test('payroll: two approvals at once, approved is not paid, a correction keeps t
     api.write(`/payroll/entries/${id}/approve`, { version: 1 }),
     api.write(`/payroll/entries/${id}/approve`, { version: 1 }),
   ])
-  expect([a.status(), b.status()].sort()).toEqual([200, 409])
+  expect([a.status(), b.status()].toSorted()).toEqual([200, 409])
   const approved = await api.read(`/payroll/entries/${id}`)
   expect(approved.status).toBe('approved')
   expect(approved.payment_status).toBe('unpaid')
@@ -135,7 +135,7 @@ test('payroll CSV import: read without the AI model, bad rows kept back, the sam
   const commit = await api.save(`/imports/${text(batch.id)}/commit`, { record_ids: ids })
   const results = commit.results
   if (!Array.isArray(results)) throw new Error('Expected results')
-  expect(results.map((r) => object(r).status).sort()).toEqual(['created', 'failed'])
+  expect(results.map((r) => object(r).status).toSorted()).toEqual(['created', 'failed'])
 
   const entries = await rows(api, '/payroll/entries?month=2026-09')
   expect(entries).toHaveLength(1)

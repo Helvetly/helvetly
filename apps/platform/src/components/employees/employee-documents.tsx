@@ -59,13 +59,13 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
       {canWrite && <UploadForm id={employee.id} />}
       <Panel title="Documents">
         {query.error ? (
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             {loadProblemText(query.error, 'The documents')}
           </p>
         ) : !query.data ? (
           <Loader className="h-16" />
         ) : query.data.length === 0 ? (
-          <p className="text-[13.5px] text-muted-foreground">No documents yet.</p>
+          <p className="text-body-sm text-muted-foreground">No documents yet.</p>
         ) : (
           <ul className="grid">
             {query.data.map((doc) => (
@@ -77,11 +77,11 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
                   <div className="grid min-w-0 flex-1 gap-0.5">
                     <a
                       href={documentDownloadUrl(employee.id, doc.id)}
-                      className="truncate text-[14px] underline underline-offset-2"
+                      className="truncate text-body underline underline-offset-2"
                     >
                       {doc.name}
                     </a>
-                    <span className="text-[13px] text-muted-foreground">
+                    <span className="text-body-sm text-muted-foreground">
                       {documentTypeLabel(doc.type)}
                       {doc.document_date && ` · dated ${formatDate(doc.document_date)}`} ·{' '}
                       {formatFileSize(doc.size)}
@@ -107,7 +107,7 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
                       icon(`Delete ${doc.name}`, () => setDeleting(doc), <Trash2 />, true)}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
+                <div className="flex flex-wrap items-center gap-1.5 text-body-sm">
                   {doc.legal_hold && <StatusBadge tone="amber">Legal hold</StatusBadge>}
                   {doc.retention_due && <StatusBadge tone="red">Review for deletion</StatusBadge>}
                   <span className="text-muted-foreground">{retentionText(doc)}</span>
@@ -115,7 +115,7 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
                 {doc.retention_guidance && doc.retention_guidance.length > 0 && (
                   <ul
                     aria-label="Retention guidance"
-                    className="grid gap-1 rounded-md bg-muted/50 px-3 py-2 text-[12.5px]"
+                    className="grid gap-1 rounded-md bg-muted/50 px-3 py-2 text-caption"
                   >
                     {doc.retention_guidance.map((rule) => (
                       <li key={rule.id}>
@@ -140,7 +140,7 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
           </ul>
         )}
       </Panel>
-      <p className="px-1 text-[12.5px] text-muted-foreground">
+      <p className="px-1 text-caption text-muted-foreground">
         Retention dates are guidance from the rules of the place of work. Check them for your case.
       </p>
       {deleting && (

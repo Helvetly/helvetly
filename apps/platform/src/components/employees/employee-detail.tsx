@@ -84,7 +84,7 @@ export function EmployeeDetail({
           <Detail employee={employee} onClose={onClose} onEdit={() => onEdit(employee)} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-[15px]">This employee couldn’t be loaded.</p>
+            <p className="text-title-sm">This employee couldn’t be loaded.</p>
             <p className="text-sm text-muted-foreground">
               {loadProblemText(query.error, 'This employee')}
             </p>
@@ -169,7 +169,7 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {employee.employee_number && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px] text-muted-foreground">
+            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-caption text-muted-foreground">
               {employee.employee_number}
             </span>
           )}
@@ -231,7 +231,7 @@ function Detail({
           </div>
         </div>
         <div className="grid gap-1 px-6 pt-5 pb-3">
-          <h2 className="text-[22px] leading-tight font-medium tracking-[-0.02em] break-words">
+          <h2 className="text-page leading-tight font-medium tracking-[-0.02em] break-words">
             {fullName(employee)}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -239,7 +239,7 @@ function Detail({
             {employee.legal_hold && <StatusBadge tone="amber">Legal hold</StatusBadge>}
             {employee.restricted && <StatusBadge tone="red">Restricted</StatusBadge>}
             {employee.erased_at && <StatusBadge>Erased</StatusBadge>}
-            <span className="text-[13.5px] text-muted-foreground">
+            <span className="text-body-sm text-muted-foreground">
               {[employee.position, employee.department].filter(Boolean).join(' · ')}
             </span>
           </div>
@@ -252,7 +252,7 @@ function Detail({
                 <TabsTrigger
                   key={entry.value}
                   value={entry.value}
-                  className="h-full flex-none px-0 text-[14px] font-normal after:bottom-0! after:h-[2px] after:bg-primary"
+                  className="h-full flex-none px-0 text-body font-normal after:bottom-0! after:h-[2px] after:bg-primary"
                 >
                   {entry.label}
                 </TabsTrigger>
@@ -319,7 +319,7 @@ function Detail({
                 : toast.error('Say why the data must be kept.')
             }
           >
-            <label className="grid gap-1.5 text-[13px] font-medium">
+            <label className="grid gap-1.5 text-body-sm font-medium">
               Reason
               <textarea
                 rows={2}
@@ -338,8 +338,8 @@ function Detail({
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-h-10 items-start gap-3 border-t border-border/60 py-2 first:border-t-0">
-      <span className="w-40 shrink-0 text-[13.5px] text-muted-foreground">{label}</span>
-      <span className="min-w-0 flex-1 text-[14px] break-words">
+      <span className="w-40 shrink-0 text-body-sm text-muted-foreground">{label}</span>
+      <span className="min-w-0 flex-1 text-body break-words">
         {children ?? <span className="text-muted-foreground">—</span>}
       </span>
     </div>
@@ -432,7 +432,7 @@ function JurisdictionPanel({ id }: { id: string }) {
       }
     >
       {resolution ? (
-        <div className="grid gap-3 text-[14px]">
+        <div className="grid gap-3 text-body">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge tone={RESOLUTION[resolution.status].tone}>
               {RESOLUTION[resolution.status].label}
@@ -441,9 +441,9 @@ function JurisdictionPanel({ id }: { id: string }) {
               {resolution.country_name || resolution.jurisdiction}
             </span>
           </div>
-          <p className="text-[13.5px]">Register mode: pay is recorded, not calculated.</p>
+          <p className="text-body-sm">Register mode: pay is recorded, not calculated.</p>
           {resolution.reasons.length > 0 && (
-            <ul className="grid list-disc gap-1 pl-5 text-[13.5px] text-muted-foreground">
+            <ul className="grid list-disc gap-1 pl-5 text-body-sm text-muted-foreground">
               {resolution.reasons.map((reason) => (
                 <li key={reason}>{reason}</li>
               ))}
@@ -451,8 +451,8 @@ function JurisdictionPanel({ id }: { id: string }) {
           )}
           {resolution.blocked.length > 0 && (
             <div className="grid gap-1">
-              <p className="text-[13px] font-medium text-muted-foreground">Not automated</p>
-              <ul className="grid gap-1 text-[13.5px]">
+              <p className="text-body-sm font-medium text-muted-foreground">Not automated</p>
+              <ul className="grid gap-1 text-body-sm">
                 {resolution.blocked.map((block) => (
                   <li key={block.feature}>{block.reason}</li>
                 ))}
@@ -461,7 +461,7 @@ function JurisdictionPanel({ id }: { id: string }) {
           )}
         </div>
       ) : query.error ? (
-        <p className="text-[13.5px] text-muted-foreground">
+        <p className="text-body-sm text-muted-foreground">
           {loadProblemText(query.error, 'The rules')}
         </p>
       ) : (
@@ -503,12 +503,12 @@ function ProtectedPanel({ employee, canReveal }: { employee: Employee; canReveal
       }
     >
       <Row label="Bank account">
-        <span className="font-mono text-[13px]">
+        <span className="font-mono text-body-sm">
           {shown ? shown.bank_account : hint(employee.bank_account_hint)}
         </span>
       </Row>
       <Row label="Tax ID">
-        <span className="font-mono text-[13px]">
+        <span className="font-mono text-body-sm">
           {shown ? shown.tax_id : hint(employee.tax_id_hint)}
         </span>
       </Row>
@@ -520,26 +520,26 @@ function HistoryTab({ id, enabled }: { id: string; enabled: boolean }) {
   const query = useEmployeeHistory(id, enabled)
   if (query.error)
     return (
-      <p className="text-[13.5px] text-muted-foreground">
+      <p className="text-body-sm text-muted-foreground">
         {loadProblemText(query.error, 'The history')}
       </p>
     )
   if (!query.data) return <Loader className="h-24" />
   if (query.data.length === 0)
-    return <p className="text-[13.5px] text-muted-foreground">Nothing recorded yet.</p>
+    return <p className="text-body-sm text-muted-foreground">Nothing recorded yet.</p>
   return (
     <Panel title="History">
       <ol className="grid">
         {query.data.map((event) => (
           <li
             key={`${event.kind}-${event.subject_id}-${event.at}`}
-            className="flex items-baseline justify-between gap-3 border-t border-border/60 py-2 text-[14px] first:border-t-0"
+            className="flex items-baseline justify-between gap-3 border-t border-border/60 py-2 text-body first:border-t-0"
           >
             <span>
               {historyLabel(event.kind)}
               {event.actor && <span className="text-muted-foreground"> · {event.actor}</span>}
             </span>
-            <time dateTime={event.at} className="shrink-0 text-[13px] text-muted-foreground">
+            <time dateTime={event.at} className="shrink-0 text-body-sm text-muted-foreground">
               {formatDate(event.at)}
             </time>
           </li>

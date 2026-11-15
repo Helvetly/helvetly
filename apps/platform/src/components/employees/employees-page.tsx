@@ -93,7 +93,7 @@ export function EmployeesPage() {
               placeholder="Search by name, number or email"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
+              className="w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
             />
           </label>
           <NativeSelect
@@ -127,7 +127,7 @@ export function EmployeesPage() {
               <option key={department}>{department}</option>
             ))}
           </NativeSelect>
-          <span className="flex items-center gap-1 px-1 text-[13px] text-muted-foreground">
+          <span className="flex items-center gap-1 px-1 text-body-sm text-muted-foreground">
             Employees and members
             <HelpTip label="Employees and members">
               Employees are your company’s staff. Members are the people who have access to
@@ -204,9 +204,9 @@ export function EmployeesPage() {
 function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen: (id: string) => void }) {
   return (
     <>
-      <table className="hidden w-full table-fixed text-[15px] lg:table">
+      <table className="hidden w-full table-fixed text-title-sm lg:table">
         <thead>
-          <tr className="h-11 border-b bg-muted/50 text-left text-[13px] text-muted-foreground">
+          <tr className="h-11 border-b bg-muted/50 text-left text-body-sm text-muted-foreground">
             <th className="w-[30%] pl-5 font-medium">Name</th>
             <th className="w-[22%] px-3 font-medium">Position</th>
             <th className="w-[16%] px-3 font-medium">Department</th>
@@ -226,7 +226,7 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen: (id: string)
                   {fullName(employee)}
                 </button>
                 {employee.employee_number && (
-                  <span className="ml-2 font-mono text-[12px] text-muted-foreground">
+                  <span className="ml-2 font-mono text-caption text-muted-foreground">
                     {employee.employee_number}
                   </span>
                 )}
@@ -252,8 +252,8 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen: (id: string)
               className="flex w-full items-center gap-3 px-4 py-3 text-left"
             >
               <span className="grid min-w-0 flex-1 leading-snug">
-                <span className="truncate text-[15px]">{fullName(employee)}</span>
-                <span className="truncate text-[13px] text-muted-foreground">
+                <span className="truncate text-title-sm">{fullName(employee)}</span>
+                <span className="truncate text-body-sm text-muted-foreground">
                   {[employee.position, employee.department].filter(Boolean).join(' · ') || '—'}
                 </span>
               </span>
