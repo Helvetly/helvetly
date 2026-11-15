@@ -22,6 +22,7 @@ import {
   billingPeriod,
   describeDiscount,
   formatPrice,
+  freeForever,
   nextCharge,
   nextPlan,
   people,
@@ -77,7 +78,7 @@ export function PlanSummary({
       data-slot="plan-summary"
       className="@container overflow-hidden rounded-2xl bg-card shadow-elevation-1"
     >
-      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(19rem,24rem)]">
+      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
         <div className="grid content-start gap-6 p-5 @lg:p-7">
           <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
             <div className="grid min-w-0 gap-1">
@@ -201,10 +202,20 @@ function NextStep({
         }
         detail={`Day ${Math.min(days, days - left + 1)} of ${days}`}
       >
-        {amount && (
+        {billing.discount && freeForever(billing) ? (
           <>
-            Then {amount} is charged{billing.discount ? ', with the discount' : ''}.
+            Then free forever with code{' '}
+            <span className="font-medium text-foreground">{billing.discount.code}</span>.
           </>
+        ) : (
+          amount && (
+            <>
+              Then {amount} is charged
+              {billing.discount &&
+                ` with code ${billing.discount.code} (${describeDiscount(billing.discount)})`}
+              .
+            </>
+          )
         )}
       </CountdownPanel>
     )

@@ -18,7 +18,15 @@ import {
 import Link from 'next/link'
 import { useState, useSyncExternalStore } from 'react'
 
-import { trialDaysLeft, type Billing } from '@/lib/billing'
+import {
+  describeDiscount,
+  formatPrice,
+  freeForever,
+  nextCharge,
+  trialDaysLeft,
+  type Billing,
+  type Discount,
+} from '@/lib/billing'
 
 type Tone = 'brand' | 'warning' | 'danger'
 export type PlanNotice = {
@@ -42,6 +50,17 @@ const planName = (billing: Billing) =>
   billing.plans.find((plan) => plan.id === billing.plan)?.name ?? capitalizeId(billing.plan)
 const capitalizeId = (id: string) => id.charAt(0).toUpperCase() + id.slice(1)
 const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`
+
+/** What the trial turns into under the subscription's promotion code: "free forever with code X". */
+function afterDiscount(billing: Billing, discount: Discount): string {
+  if (freeForever(billing)) return `free forever with code ${discount.code}`
+  const charge = nextCharge(billing)
+  const price = charge && 'amount' in charge ? charge.amount : null
+  const terms = `code ${discount.code} (${describeDiscount(discount)})`
+  return price && billing.interval
+    ? `${formatPrice(price)} / ${billing.interval} with ${terms}`
+    : `${terms} applies`
+}
 
 /** The workspace's plan under its name in the switcher: "Pro", "Basic · Trial"; null without billing. */
 export function planLabel(billing: Billing | undefined): string | null {
@@ -92,15 +111,27 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
     const left = trialDaysLeft(billing.trial_end, now)
     const ends = formatDate(billing.trial_end)
     const after = billing.cancel_at_period_end ? 'the workspace turns read-only' : 'billing starts'
+    const title = left === 0 ? 'Trial ends today' : `Trial · ${days(left)} left`
+    const progress = { left, of: Math.max(billing.trial_days, left, 1) }
+    if (billing.discount && !billing.cancel_at_period_end)
+      return {
+        kind: 'trial',
+        tone: 'brand',
+        title,
+        text: `${planName(billing)} until ${ends}, then ${afterDiscount(billing, billing.discount)}.`,
+        action: manage ? { label: 'View plan', href: BILLING } : null,
+        progress,
+        dismissable: true,
+      }
     return {
       kind: 'trial',
       tone: 'brand',
-      title: left === 0 ? 'Trial ends today' : `Trial · ${days(left)} left`,
+      title,
       text: manage
         ? `${planName(billing)} until ${ends}, then ${after}. Pick the plan that fits.`
         : `${planName(billing)} until ${ends}. ${ASK} to pick a plan.`,
       action: manage ? { label: 'Upgrade', href: PLANS } : null,
-      progress: { left, of: Math.max(billing.trial_days, left, 1) },
+      progress,
       dismissable: true,
     }
   }

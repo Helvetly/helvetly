@@ -417,3 +417,11 @@ export function nextCharge(
     date,
   }
 }
+
+/** Whether the subscription's promotion code makes the plan cost nothing for good. */
+export function freeForever(billing: Billing): boolean {
+  const discount = billing.discount
+  if (discount?.duration !== 'forever') return false
+  const charge = nextCharge(billing)
+  return discount.percent_off === 100 || (charge?.kind !== 'ends' && charge?.amount?.amount === 0)
+}

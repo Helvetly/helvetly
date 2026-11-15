@@ -12,6 +12,7 @@ import {
   planRequired,
   promoApplies,
   meterState,
+  freeForever,
   nextCharge,
   nextPlan,
   people,
@@ -265,4 +266,24 @@ test('nextCharge: the total on the trial or period end, discounted, none once ca
   })
   expect(nextCharge({ ...active, current_period_end: null })).toBeNull()
   expect(nextCharge(billingFixture())).toBeNull()
+})
+
+test('freeForever: only a code that leaves nothing to pay, for good', () => {
+  const basic = { plan: 'basic', interval: 'month', pricing: 'per_seat', seats: 1 } as const
+  const billing = billingFixture({ ...basic, status: 'trialing', trial_end: '2026-11-22' })
+  const code = {
+    code: 'X',
+    percent_off: 100,
+    amount_off: null,
+    currency: null,
+    duration: 'forever',
+    duration_in_months: null,
+    ends_at: null,
+  } as const
+  expect(freeForever({ ...billing, discount: code })).toBe(true)
+  expect(freeForever({ ...billing, discount: { ...code, duration: 'once' } })).toBe(false)
+  expect(freeForever({ ...billing, discount: { ...code, percent_off: 50 } })).toBe(false)
+  const fixed = { ...code, percent_off: null, amount_off: 99_900, currency: 'chf' }
+  expect(freeForever({ ...billing, discount: fixed })).toBe(true)
+  expect(freeForever(billing)).toBe(false)
 })
