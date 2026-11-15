@@ -740,6 +740,7 @@ func TestCheckout(t *testing.T) {
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
 		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "7",
 		"tax_id_collection[enabled]": "true", "success_url": "https://helvetly.example.com/settings/billing?checkout=success",
+		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
 	} {
 		if f.Get(k) != want {
 			t.Errorf("checkout %s = %q, want %q", k, f.Get(k), want)
