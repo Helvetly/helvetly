@@ -34,7 +34,6 @@ type Service struct {
 	enabled   bool
 	publicURL string
 	stripe    *StripeClient
-	plans     planLimits
 	log       *slog.Logger
 	now       func() time.Time
 
@@ -49,14 +48,10 @@ type Service struct {
 	customerCurrency sync.Map // Stripe customer id -> the currency Stripe fixed for it
 }
 
-// New reads the plan limits seeded in plan_limits; the server does not start without them.
+// New makes the billing service; plan limits are read from the offer on every check, so a published offer or an
+// operator's override applies without a restart.
 func New(ctx context.Context, db *store.Store, a Auth, cfg config.Config, log *slog.Logger) (*Service, error) {
-	plans, err := loadPlanLimits(ctx, db)
-	if err != nil {
-		return nil, err
-	}
 	return &Service{db: db, auth: a, cfg: cfg.Stripe, enabled: cfg.BillingEnabled(), publicURL: cfg.PublicURL, log: log,
-		plans:  plans,
 		now:    func() time.Time { return time.Now().UTC() },
 		stripe: NewStripeClient(cfg.Stripe.SecretKey, cfg.Stripe.APIBase)}, nil
 }
@@ -86,6 +81,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/billing/portal", true, s.portal)
 	handle("POST /api/v1/billing/sync", true, s.sync)
 	handle("GET /api/v1/billing/pending-payment", true, s.pendingPayment)
+	mux.HandleFunc("GET /api/v1/public/offers/current", s.currentOffer)
 	mux.HandleFunc("POST /api/webhooks/stripe", s.webhook)
 }
 
@@ -169,13 +165,32 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	rights, err := s.entitlementsOf(r.Context(), s.db.Q, sess.Workspace.ID, b)
+	if err != nil {
+		return err
+	}
+	cat, err := currentCatalogue(r.Context(), s.db.Q)
+	if err != nil {
+		return err
+	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
-		max := s.plans.forBilling(b, l, s.now())
+		max := Unlimited // without a plan nothing is capped: the workspace is read-only
+		if plan != "" || rights.SelfHosted {
+			if max, err = rights.capFor(b.PerSeat, l); err != nil {
+				return err
+			}
+		}
 		if l == AITokens && max != Unlimited && plan != "" {
 			max += bought // the packs bought this month count on top of the plan's allowance
 		}
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
+	}
+	features := rights.features()
+	if rights.SelfHosted {
+		if features, err = allFeatures(r.Context(), s.db.Q); err != nil {
+			return err
+		}
 	}
 	prices := s.planPrices(r.Context())
 	cur, err := s.requestCurrency(r, sess, b.CustomerID)
@@ -185,13 +200,14 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
-		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: featuresOf(id),
+		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: cat.featuresOf(id),
 			Prices: map[string]*planPrice{}}
 		for _, l := range limitOrder {
-			p.Limits[l] = maxOf(s.plans.of(id, l))
+			p.Limits[l] = maxOf(cat.limitOf(id, l))
 		}
-		if prices[id+"_month"].perSeat() { // what a new subscription or a plan change gets
-			p.Limits[Members] = nil
+		p.Limits[Members] = nil // what a new subscription or a plan change gets: per seat, or the seats less the owner
+		if seats := cat.limitOf(id, MaxSeats); !prices[id+"_month"].perSeat() && seats != Unlimited {
+			p.Limits[Members] = maxOf(max(seats-1, 0))
 		}
 		for _, interval := range []string{"month", "year"} {
 			if amount, ok := prices[id+"_"+interval].amountIn(cur); ok {
@@ -207,9 +223,13 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"current_period_end": b.CurrentPeriodEnd, "cancel_at_period_end": b.CancelAtPeriodEnd, "trial_end": b.TrialEnd,
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
-		"usage": usage, "features": s.workspaceFeatures(plan), "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
+		"usage": usage, "features": features, "offer_id": nil, "entitlements": nil, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
 		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
 		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
+	}
+	if plan != "" {
+		out["offer_id"] = rights.OfferID
+		out["entitlements"] = entitlementItems(rights, u, monthStart(now, sess.Workspace.Location()).AddDate(0, 1, 0))
 	}
 	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
 		out["ai_packs"] = packsIn(s.aiPacks(r.Context()), cur)
@@ -551,7 +571,30 @@ func (s *Service) fits(ctx context.Context, q store.Q, ws store.Workspace, plan 
 	if err != nil {
 		return err
 	}
-	if over := s.plans.overages(plan, perSeat, u); len(over) > 0 {
+	offer, err := q.WorkspaceOffer(ctx, ws.ID)
+	if err == nil && offer == "" { // a first subscription gets the offer on sale
+		var cur store.OfferVersion
+		cur, err = q.CurrentOffer(ctx)
+		offer = cur.ID
+	}
+	if err != nil {
+		return err
+	}
+	seats := int64(1)
+	if perSeat {
+		if seats, err = q.Seats(ctx, ws.ID); err != nil {
+			return err
+		}
+	}
+	r, err := s.rightsOn(ctx, q, ws.ID, offer, plan, seats)
+	if err != nil {
+		return err
+	}
+	over, err := r.overages(perSeat, u)
+	if err != nil {
+		return err
+	}
+	if len(over) > 0 {
 		return auth.Error(http.StatusConflict, "plan_limits_exceeded", overageMessage(plan, over),
 			map[string]any{"plan": plan, "overages": over})
 	}

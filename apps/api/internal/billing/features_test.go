@@ -11,40 +11,27 @@ import (
 )
 
 func TestIncludes(t *testing.T) {
-	// Every plan and feature, spelled out: a change to planFeatures has to change this table too.
-	want := map[string]map[Feature]bool{
-		"":       {APIAccess: false, EmployeesModule: false},
-		Basic:    {APIAccess: false, EmployeesModule: true},
-		Pro:      {APIAccess: true, EmployeesModule: true},
-		Business: {APIAccess: true, EmployeesModule: true},
+	ctx := context.Background()
+	e := newEnv(t, true)
+	cat, err := currentCatalogue(ctx, e.st.Q)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for plan, features := range want {
-		for _, f := range featureOrder {
-			if got := Includes(plan, f); got != features[f] {
-				t.Errorf("Includes(%q, %s) = %v, want %v", plan, f, got, features[f])
-			}
+	// api_access as offer v2 gives it: a change there has to change this too.
+	for plan, want := range map[string]bool{"": false, Basic: false, Pro: true, Business: true} {
+		if got := cat.includes(plan, APIAccess); got != want {
+			t.Errorf("includes(%q, api_access) = %v, want %v", plan, got, want)
 		}
 	}
-	if got := cheapestWith(APIAccess); got != Pro {
-		t.Fatalf("cheapestWith(api_access) = %q, want pro", got)
-	}
-}
-
-func TestFeaturesAreDeclared(t *testing.T) {
-	for _, plan := range planOrder {
-		if _, ok := planFeatures[plan]; !ok {
-			t.Errorf("plan %s has no feature list", plan)
-		}
-		for _, f := range planFeatures[plan] {
-			if !slices.Contains(featureOrder, f) {
-				t.Errorf("plan %s lists %s, which featureOrder misses", plan, f)
-			}
+	for from, want := range map[string]string{"": Pro, Basic: Pro, Pro: Business, Business: ""} {
+		if got := cat.cheapestWith(APIAccess, from); got != want {
+			t.Errorf("cheapestWith(api_access, %q) = %q, want %q", from, got, want)
 		}
 	}
-	for _, f := range featureOrder {
-		if featureNames[f] == "" {
-			t.Errorf("feature %s has no name", f)
-		}
+	// A newly published offer is the catalogue at once.
+	e.setPlanValue(Pro, Limit(APIAccess), StateDisabled, nil)
+	if cat, err = currentCatalogue(ctx, e.st.Q); err != nil || cat.includes(Pro, APIAccess) || cat.cheapestWith(APIAccess, Basic) != Business {
+		t.Fatalf("pro without api_access in the new offer: %v", err)
 	}
 }
 
@@ -53,7 +40,11 @@ func TestRequire(t *testing.T) {
 	t.Run("billing off allows every feature", func(t *testing.T) {
 		e := newEnv(t, false)
 		ws := e.workspace().workspace
-		for _, f := range featureOrder {
+		all, err := allFeatures(ctx, e.st.Q)
+		if err != nil || len(all) != 37 {
+			t.Fatalf("features: %v %v", all, err)
+		}
+		for _, f := range all {
 			if err := e.svc.Require(ctx, e.st.Q, ws, f); err != nil {
 				t.Fatalf("%s: %v", f, err)
 			}
@@ -72,6 +63,15 @@ func TestRequire(t *testing.T) {
 	err := e.svc.Require(ctx, e.st.Q, basic, APIAccess)
 	if status, code, _, ok := auth.Describe(err); !ok || status != http.StatusPaymentRequired || code != "plan_required" {
 		t.Fatalf("basic: %v", err)
+	}
+	// The workspace's offer is the source of truth: on an offer that switches the values the answer flips at once.
+	e.setPlanValue(Pro, Limit(APIAccess), StateDisabled, nil)
+	e.setPlanValue(Basic, Limit(APIAccess), StateEnabled, nil)
+	if status, _, _, ok := auth.Describe(e.svc.Require(ctx, e.st.Q, pro, APIAccess)); !ok || status != http.StatusPaymentRequired {
+		t.Fatal("pro still has api_access after its value was switched off")
+	}
+	if err := e.svc.Require(ctx, e.st.Q, basic, APIAccess); err != nil {
+		t.Fatalf("basic after its value was switched on: %v", err)
 	}
 }
 
@@ -128,7 +128,7 @@ func TestOverviewFeatures(t *testing.T) {
 	}
 	t.Run("billing off", func(t *testing.T) {
 		e := newEnv(t, false)
-		if own, _ := features(t, e, e.workspace()); len(own) != len(featureOrder) {
+		if own, _ := features(t, e, e.workspace()); len(own) != 37 {
 			t.Fatalf("features without billing: %v", own)
 		}
 	})
@@ -136,10 +136,59 @@ func TestOverviewFeatures(t *testing.T) {
 	b := e.workspace()
 	e.subscribe(b.workspace, "price_bm")
 	own, plans := features(t, e, b)
-	if len(own) != 1 || own[0] != string(EmployeesModule) {
+	cat, err := currentCatalogue(context.Background(), e.st.Q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(own) != len(cat.featuresOf(Basic)) || slices.Contains(own, any(string(APIAccess))) || !slices.Contains(own, any("swiss_qr")) {
 		t.Fatalf("basic workspace features: %v", own)
 	}
-	if len(plans[Basic]) != 1 || len(plans[Pro]) != 2 || plans[Pro][0] != string(APIAccess) {
+	if slices.Contains(plans[Basic], any(string(APIAccess))) || !slices.Contains(plans[Pro], any(string(APIAccess))) ||
+		slices.Contains(plans[Pro], any("client_portal")) || !slices.Contains(plans[Business], any("client_portal")) {
 		t.Fatalf("plan features: %v", plans)
+	}
+}
+
+func TestWorkspaceLimits(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t, true)
+	basic, pro, other := e.workspace(), e.workspace(), e.workspace()
+	e.subscribe(basic.workspace, "price_bm")
+	e.subscribe(pro.workspace, "price_pm")
+	e.subscribe(other.workspace, "price_bm")
+	allowed := func(ws string) bool { return e.svc.Require(ctx, e.st.Q, ws, APIAccess) == nil }
+
+	// A workspace's own value replaces its plan's, for a feature either way.
+	e.override(basic.workspace, Limit(APIAccess), StateEnabled, nil, nil)
+	e.override(pro.workspace, Limit(APIAccess), StateDisabled, nil, nil)
+	if !allowed(basic.workspace) || allowed(pro.workspace) || allowed(other.workspace) {
+		t.Fatalf("feature overrides: basic %v, pro %v, other basic %v", allowed(basic.workspace), allowed(pro.workspace), allowed(other.workspace))
+	}
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/account/tokens", map[string]any{}); code != http.StatusUnprocessableEntity {
+		t.Fatalf("guard ignored the override: %d %v", code, body)
+	}
+
+	// A numeric limit: Basic has 25 catalogue entries; an override of 1 refuses the second, and only here.
+	e.override(basic.workspace, Products, StateLimited, n64(1), nil)
+	e.exec(`INSERT INTO products (id, workspace_id, type, name, price_basis, unit_price, currency, vat_category, vat_rate,
+		created_at, updated_at) VALUES ('prd_w', $1, 'service', 'S', 'net', 100, 'CHF', 'S', 810, now(), now())`, basic.workspace)
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusPaymentRequired {
+		t.Fatalf("numeric override: %d %v", code, body)
+	}
+	e.exec(`INSERT INTO products (id, workspace_id, type, name, price_basis, unit_price, currency, vat_category, vat_rate,
+		created_at, updated_at) VALUES ('prd_o', $1, 'service', 'S', 'net', 100, 'CHF', 'S', 810, now(), now())`, other.workspace)
+	if code, body := e.do(other, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusCreated {
+		t.Fatalf("another workspace got the override: %d %v", code, body)
+	}
+
+	// Cleared, the plan's value applies again.
+	e.clearOverride(basic.workspace, Limit(APIAccess))
+	e.clearOverride(basic.workspace, Products)
+	e.clearOverride(pro.workspace, Limit(APIAccess))
+	if allowed(basic.workspace) || !allowed(pro.workspace) {
+		t.Fatal("clearing the overrides did not fall back to the plans")
+	}
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusCreated {
+		t.Fatalf("after clearing: %d %v", code, body)
 	}
 }

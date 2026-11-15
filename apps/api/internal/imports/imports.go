@@ -32,8 +32,10 @@ type Options struct {
 	// Provider is the AI model; nil when none is configured (uploads answer 409 ai_not_configured).
 	Provider aimodel.Provider
 	// Allowance is the plan's monthly token allowance, shared with Heidi; nil is unlimited.
-	Allowance    aimodel.Allowance
-	AllowStorage func(context.Context, store.Q, store.Session, int64) error
+	Allowance aimodel.Allowance
+	// CostAllowance is the plan's monthly model cost guard in micro-USD, shared with Heidi; nil applies none.
+	CostAllowance aimodel.Allowance
+	AllowStorage  func(context.Context, store.Q, store.Session, int64) error
 }
 
 type Service struct {
@@ -51,7 +53,7 @@ type Service struct {
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger, o Options) *Service {
 	s := &Service{db: db, auth: a, files: files, provider: o.Provider, allowStorage: o.AllowStorage, log: log,
 		now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(20, time.Minute)}
-	s.budget = aimodel.Budget{DB: db, Allowance: o.Allowance, Now: func() time.Time { return s.now() }, Gate: s.gate}
+	s.budget = aimodel.Budget{DB: db, Allowance: o.Allowance, CostAllowance: o.CostAllowance, Now: func() time.Time { return s.now() }, Gate: s.gate}
 	return s
 }
 

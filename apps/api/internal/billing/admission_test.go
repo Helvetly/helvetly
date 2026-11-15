@@ -23,12 +23,10 @@ import (
 
 func setAdmissionLimit(t *testing.T, e *env, key Limit, max int64) {
 	t.Helper()
-	e.exec(`UPDATE plan_limits SET max_value=$2 WHERE plan='basic' AND limit_key=$1`, string(key), max)
-	var err error
-	e.svc.plans, err = loadPlanLimits(context.Background(), e.st)
-	if err != nil {
-		t.Fatal(err)
+	if key == Members { // a flat price allows the self-service seats less the owner
+		key, max = MaxSeats, max+1
 	}
+	e.setPlanValue(Basic, key, StateLimited, &max)
 	e.st.SetAdmission(e.svc.AllowResource)
 }
 

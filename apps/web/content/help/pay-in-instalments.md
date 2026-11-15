@@ -3,10 +3,12 @@ title: Let a client pay in instalments
 description: Give one invoice several due dates with an instalment schedule and optional automatic payment reminders.
 category: Invoices and getting paid
 order: 10
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Spread one invoice over several due dates while keeping a single invoice.
+
+Automatic payment reminders need **Pro** or **Business** and use automation actions.
 
 1. In the invoice editor, turn on **Pay in instalments** below the document.
 2. Set the number of instalments, the interval and the **First due date**. You can adjust the rows.

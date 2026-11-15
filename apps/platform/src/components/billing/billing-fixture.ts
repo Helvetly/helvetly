@@ -3,7 +3,8 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 2 ** 30
-// The limits seeded in apps/api/internal/store/migrations/00001_init.sql (plan_limits).
+// The limits seeded in apps/api/internal/store/migrations before offer v2 (00005); the API's values now come from the
+// published offer (00007).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 50,
@@ -14,7 +15,6 @@ const basic: Record<LimitKey, number | null> = {
   signatures_per_month: 5,
   storage_bytes: 5 * GB,
   ai_tokens_per_month: 1_000_000,
-  employees: null,
 }
 const pro: Record<LimitKey, number | null> = {
   members: null,
@@ -26,7 +26,6 @@ const pro: Record<LimitKey, number | null> = {
   signatures_per_month: 50,
   storage_bytes: 100 * GB,
   ai_tokens_per_month: 5_000_000,
-  employees: null,
 }
 const business: Record<LimitKey, number | null> = {
   members: null,
@@ -38,13 +37,12 @@ const business: Record<LimitKey, number | null> = {
   signatures_per_month: null,
   storage_bytes: 1024 * GB,
   ai_tokens_per_month: 20_000_000,
-  employees: null,
 }
-// The features declared in apps/api/internal/billing/features.go.
+// The features seeded in apps/api/internal/store/migrations/00005_limits.sql.
 const features: Record<PlanId, FeatureKey[]> = {
-  basic: ['employees'],
-  pro: ['api_access', 'employees'],
-  business: ['api_access', 'employees'],
+  basic: [],
+  pro: ['api_access'],
+  business: ['api_access'],
 }
 const prices = (month: number, currency: string) => ({
   month: { amount: month, currency },

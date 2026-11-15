@@ -87,11 +87,13 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 		request.Files = append(request.Files, ProviderFile{Name: f.Name, ContentType: f.Type, Bytes: b})
 	}
-	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, Now: s.now, Gate: consentGate}
+	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now, Gate: consentGate}
+	// One operation per turn: the classifier and the answer share its cost cap.
+	call := aimodel.Call{Kind: "heidi", Operation: auth.NewID("turn"), Caps: aimodel.HeidiCaps}
 	var spent int64
 	if !known {
 		budget.Calling = func() { progress(labelClassify) }
-		in, tokens, ok := classify(ctx, budget, s.provider, sess.Workspace, request.History, message, len(files))
+		in, tokens, ok := classify(ctx, budget, s.provider, sess.Workspace, call, request.History, message, len(files))
 		spent = tokens
 		if ok && !in {
 			t := refusal(sess, message)
@@ -100,12 +102,17 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 	}
 	budget.Calling = func() { progress(answerLabel(files)) }
-	reply, err := budget.Generate(ctx, s.provider, sess.Workspace, request, 4096)
+	call.Step, call.MaxOutput = "answer", 4096
+	reply, err := budget.Generate(ctx, s.provider, sess.Workspace, request, call)
 	switch {
 	case errors.Is(err, aimodel.ErrQuota):
 		return turn{}, auth.Error(403, "quota_exceeded", "This workspace has reached its monthly model token allowance.", nil)
 	case errors.Is(err, aimodel.ErrTooLarge):
 		return turn{}, auth.Error(403, "quota_exceeded", "This input and a response exceed the remaining monthly model token allowance. Start a shorter conversation or reduce attachments.", nil)
+	case errors.Is(err, aimodel.ErrCap):
+		return turn{}, auth.Error(413, "heidi_input_too_large", "This conversation and its attachments are larger than one Heidi answer may read, whatever is left of the monthly allowance. Start a new conversation or attach fewer or smaller files.", nil)
+	case errors.Is(err, aimodel.ErrUnfunded):
+		return turn{}, auth.Error(503, "heidi_provider_unavailable", "Heidi's model answers are paused while the service's AI budget is being updated. Local commands remain available.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
 		return turn{}, auth.Error(503, "heidi_provider_unavailable", "OpenAI could not complete the request. No business operation was performed. Check model configuration or try later; unknown usage must be reconciled before another model call.", nil)
 	case errors.Is(err, aimodel.ErrUncertain):

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/engagements"
 	"helvetly.com/api/internal/store"
@@ -232,6 +233,7 @@ type testProvider struct {
 	classified atomic.Int32
 }
 
+func (p *testProvider) Card() aimodel.RateCard { return aimodel.Cards[aimodel.DefaultModel] }
 func (p *testProvider) InputTokens(context.Context, ProviderRequest) (int64, error) {
 	return p.input, p.countErr
 }

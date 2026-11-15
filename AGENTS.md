@@ -57,7 +57,8 @@ are the reference.
   signed links; nothing HR is a public operation, an MCP tool, a Heidi answer or in the workspace export; the audit
   log gets HR events with empty payloads. Jurisdiction rules are data (`employment/rules.json`), never a calculation.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
-  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget).
+  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget;
+  each call reserves its tokens and rate-card cost first, one call in flight per workspace, see `ai_calls`).
 
 ## 4. Where code goes (DRY)
 

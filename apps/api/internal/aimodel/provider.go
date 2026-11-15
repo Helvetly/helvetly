@@ -32,13 +32,17 @@ type Request struct {
 	MaxOutputTokens int64
 }
 
-// Tokens is nil when the provider outcome cannot be accounted for, including timeouts.
+// Tokens (input + output) is nil when the provider outcome cannot be accounted for, including timeouts. Usage is the
+// breakdown the call is priced by; nil when the provider reported only a total.
 type Reply struct {
 	Text   string
 	Tokens *int64
+	Usage  *Usage
 }
 
 type Provider interface {
 	Answer(context.Context, Request) (Reply, error)
 	InputTokens(context.Context, Request) (int64, error)
+	// Card prices the provider's model; calls are reserved and settled by it.
+	Card() RateCard
 }

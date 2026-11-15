@@ -14,6 +14,8 @@ import (
 
 // cancellingProvider ends the caller's request while generation runs, as a person pressing Stop or closing the tab
 // does; a provider transport bound to a cancelled context loses the reply and its usage.
+func (*cancellingProvider) Card() RateCard { return Cards[DefaultModel] }
+
 type cancellingProvider struct {
 	cancel context.CancelFunc
 	tokens int64
@@ -50,7 +52,7 @@ func TestCancelledRequestStillAccountsAStartedGeneration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	b := Budget{DB: db, Now: func() time.Time { return now }}
-	if _, err := b.Generate(ctx, &cancellingProvider{cancel: cancel, tokens: 42}, ws, Request{Message: "hi"}, 100); err != nil {
+	if _, err := b.Generate(ctx, &cancellingProvider{cancel: cancel, tokens: 42}, ws, Request{Message: "hi"}, testCall); err != nil {
 		t.Fatalf("a generation that completed must not fail because the caller left: %v", err)
 	}
 	u, err := db.HeidiUsage(context.Background(), ws.ID, "2026-11")
@@ -66,7 +68,7 @@ func TestCancelledRequestStartsNoGeneration(t *testing.T) {
 	db, ws := budgetWorkspace(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	p := &countingProvider{onCount: cancel}
-	_, err := Budget{DB: db, Now: time.Now}.Generate(ctx, p, ws, Request{Message: "hi"}, 100)
+	_, err := Budget{DB: db, Now: time.Now}.Generate(ctx, p, ws, Request{Message: "hi"}, testCall)
 	if err == nil || p.answers != 0 {
 		t.Fatalf("err=%v answers=%d: a request cancelled before generation must not start one", err, p.answers)
 	}
@@ -75,6 +77,8 @@ func TestCancelledRequestStartsNoGeneration(t *testing.T) {
 		t.Fatalf("usage = %+v, want zero and certain", u)
 	}
 }
+
+func (*countingProvider) Card() RateCard { return Cards[DefaultModel] }
 
 type countingProvider struct {
 	onCount func()
@@ -90,6 +94,8 @@ func (p *countingProvider) Answer(context.Context, Request) (Reply, error) {
 	n := int64(1)
 	return Reply{Text: "ok", Tokens: &n}, nil
 }
+
+func (*gatedProvider) Card() RateCard { return Cards[DefaultModel] }
 
 type gatedProvider struct {
 	release chan struct{}
@@ -127,7 +133,7 @@ func TestConcurrentCallsCannotOverspendTheAllowance(t *testing.T) {
 	for range 10 {
 		go func() {
 			<-start
-			_, err := b.Generate(context.Background(), p, ws, Request{Message: "hi"}, 100)
+			_, err := b.Generate(context.Background(), p, ws, Request{Message: "hi"}, testCall)
 			errs <- err
 		}()
 	}

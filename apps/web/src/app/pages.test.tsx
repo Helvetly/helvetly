@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { COMPETITORS } from '@/lib/compare'
+import { BENEFITS, LIMITS, USAGE_DETAILS } from '@/lib/plans'
 
 import LegalPage from './[legal]/page'
 import ComparePage from './compare/[slug]/page'
@@ -42,6 +43,12 @@ function inZone(timeZone: string) {
   })
 }
 
+/** The cells of a table's row, by its row header. */
+const cells = (table: HTMLElement, name: string) =>
+  within(within(table).getByRole('rowheader', { name }).closest('tr')!)
+    .getAllByRole('cell')
+    .map((c) => c.textContent)
+
 describe('pricing page', () => {
   beforeEach(() => inZone('Europe/Zurich'))
   afterEach(() => vi.restoreAllMocks())
@@ -77,14 +84,30 @@ describe('pricing page', () => {
     expect(within(pro).getByText('Billed monthly, incl. VAT')).toBeTruthy()
   })
 
-  it('compares every limit per plan', () => {
+  it('compares the twelve benefits and the eleven allowances from lib/plans', () => {
     render(<PricingPage />)
-    const row = screen.getByRole('rowheader', { name: /^Clients$/ }).closest('tr')!
+    const benefits = screen.getByRole('table', { name: 'What each plan includes' })
+    const allowances = screen.getByRole('table', { name: 'Usage allowances of each plan' })
     expect(
-      within(row)
-        .getAllByRole('cell')
-        .map((c) => c.textContent),
-    ).toEqual(['50', '1’000', 'Unlimited'])
+      within(benefits)
+        .getAllByRole('rowheader')
+        .map((r) => r.getAttribute('aria-label')),
+    ).toEqual(BENEFITS.map((b) => b.label))
+    expect(
+      within(allowances)
+        .getAllByRole('rowheader')
+        .map((r) => r.getAttribute('aria-label')),
+    ).toEqual(USAGE_DETAILS.map((k) => LIMITS[k].label))
+    expect(cells(allowances, 'Clients')).toEqual(['30', '300', '1’500'])
+    expect(cells(allowances, 'Document storage')).toEqual(['500 MB', '5 GB', '20 GB'])
+    expect(cells(benefits, 'Heidi AI assistant')[0]).toBe('Not included')
+    expect(cells(benefits, 'Client portal')).toEqual(['Not included', 'Not included', 'Included'])
+  })
+
+  it('recommends Pro without claiming popularity', () => {
+    render(<PricingPage />)
+    expect(within(screen.getAllByRole('article')[1]!).getByText('Recommended')).toBeTruthy()
+    expect(screen.queryByText(/most popular|every feature/i)).toBeNull()
   })
 })
 
@@ -92,9 +115,14 @@ describe('comparison with Magic Heidi', () => {
   it('says where each product is ahead', async () => {
     render(await ComparePage({ params: Promise.resolve({ slug: 'magic-heidi' }) }))
     const portal = screen.getByRole('rowheader', { name: 'Client portal' }).closest('tr')!
-    expect(within(portal).getByText('Yes')).toBeTruthy()
+    expect(within(portal).getByText('In Business')).toBeTruthy()
     expect(within(portal).getByText('Not offered')).toBeTruthy()
     expect(screen.getByText(/as of 11 November 2026/)).toBeTruthy()
+    const cost = screen
+      .getByRole('rowheader', { name: 'A year for 1 and for 3 people' })
+      .closest('tr')!
+    expect(within(cost).getByText(/Pro CHF 471 \/ 1’413/)).toBeTruthy()
+    expect(within(cost).getByText('Pro CHF 299 / 299, incl. VAT')).toBeTruthy()
   })
 
   it.each(COMPETITORS.map((c) => c.slug))('has a page for %s with a dated source', async (slug) => {

@@ -42,31 +42,6 @@ type Usage struct {
 	Products, Engagements, SignaturesThisMonth             int64
 	StorageBytes                                           int64
 	AITokensThisMonth                                      int64 // heidi_usage of the calendar month
-	Employees                                              int64 // employees not archived
-}
-
-// PlanLimit is one cap of one plan (plan_limits); Max nil is unlimited.
-type PlanLimit struct {
-	Plan, Limit string
-	Max         *int64
-}
-
-// PlanLimits are every plan's caps, as seeded in plan_limits.
-func (q Q) PlanLimits(ctx context.Context) ([]PlanLimit, error) {
-	rows, err := q.db.Query(ctx, `SELECT plan, limit_key, max_value FROM plan_limits`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []PlanLimit
-	for rows.Next() {
-		var l PlanLimit
-		if err := rows.Scan(&l.Plan, &l.Limit, &l.Max); err != nil {
-			return nil, err
-		}
-		out = append(out, l)
-	}
-	return out, rows.Err()
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
@@ -102,7 +77,8 @@ func (q Q) SetStripeCustomer(ctx context.Context, workspaceID, customerID string
 	return err
 }
 
-// ApplySubscription records the subscription's state; a trial on it marks the workspace's trial used.
+// ApplySubscription records the subscription's state; a trial on it marks the workspace's trial used. A workspace
+// without an offer is assigned the current one (the offer on sale when its subscription was first recorded).
 func (q Q) ApplySubscription(ctx context.Context, workspaceID, customerID string, s Subscription, now time.Time) error {
 	var discount *string
 	if len(s.Discount) > 0 {
@@ -111,15 +87,16 @@ func (q Q) ApplySubscription(ctx context.Context, workspaceID, customerID string
 	}
 	_, err := q.db.Exec(ctx, `INSERT INTO workspace_billing (workspace_id, stripe_customer_id, stripe_subscription_id, status,
 			plan, billing_interval, current_period_end, trial_end, cancel_at_period_end, trial_used, updated_at, discount,
-			per_seat, seats, plan_expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9, $8::timestamptz IS NOT NULL, $10, $11::jsonb, $12, $13, $14)
+			per_seat, seats, plan_expires_at, offer_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9, $8::timestamptz IS NOT NULL, $10, $11::jsonb, $12, $13, $14,
+			(SELECT id FROM offer_versions ORDER BY published_at DESC, id DESC LIMIT 1))
 		ON CONFLICT (workspace_id) DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id,
 			stripe_subscription_id = EXCLUDED.stripe_subscription_id, status = EXCLUDED.status, plan = EXCLUDED.plan,
 			billing_interval = EXCLUDED.billing_interval, current_period_end = EXCLUDED.current_period_end,
 			trial_end = EXCLUDED.trial_end, cancel_at_period_end = EXCLUDED.cancel_at_period_end,
 			trial_used = workspace_billing.trial_used OR EXCLUDED.trial_used, updated_at = EXCLUDED.updated_at,
 			discount = EXCLUDED.discount, per_seat = EXCLUDED.per_seat, seats = EXCLUDED.seats,
-			plan_expires_at = EXCLUDED.plan_expires_at`,
+			plan_expires_at = EXCLUDED.plan_expires_at, offer_id = coalesce(workspace_billing.offer_id, EXCLUDED.offer_id)`,
 		workspaceID, customerID, s.ID, s.Status, s.Plan, s.Interval, s.CurrentPeriodEnd, s.TrialEnd, s.CancelAtPeriodEnd, now, discount,
 		s.PerSeat, s.Seats, s.PlanExpiresAt)
 	return err
@@ -163,10 +140,9 @@ func (q Q) WorkspaceUsage(ctx context.Context, workspaceID string, monthStart, n
 			(SELECT count(*) FROM signature_requests WHERE workspace_id = $1 AND created_at >= $2),
 			(SELECT coalesce(sum(size), 0) FROM documents WHERE workspace_id = $1)
 			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
-			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period = $4),
-			(SELECT count(*) FROM employees WHERE workspace_id = $1 AND archived_at IS NULL)`,
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period = $4)`,
 		workspaceID, monthStart, today, monthStart.Format("2006-01")).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.Employees)
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth)
 	return u, err
 }
 

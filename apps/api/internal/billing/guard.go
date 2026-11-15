@@ -24,7 +24,6 @@ var guarded = map[string]Limit{
 	"POST /api/v1/expenses/{id}/duplicate": Expenses,
 	"POST /api/v1/products":                Products,
 	"POST /api/v1/products/{id}/duplicate": Products,
-	"POST /api/v1/employees":               Employees,
 	"POST /api/v1/engagements":             Engagements,
 	"POST /api/v1/engagements/{id}/renew":  Engagements,
 	"POST /api/v1/engagements/{id}/resume": Engagements,
@@ -153,20 +152,16 @@ func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Sessio
 // AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's plus the AI token
 // packs bought this month (in its time zone), none without a plan, and unlimited (-1) when billing is off.
 func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
-	if !s.enabled {
-		return Unlimited, nil
+	r, err := s.Entitlements(ctx, q, workspaceID)
+	if err != nil || r.SelfHosted {
+		return Unlimited, err
 	}
-	b, err := q.WorkspaceBilling(ctx, workspaceID)
-	if err != nil {
-		return 0, err
-	}
-	plan := PlanOf(b, s.now())
-	if plan == "" {
+	if r.Plan == "" {
 		return 0, nil
 	}
-	monthly := s.plans.of(plan, AITokens)
-	if monthly == Unlimited {
-		return Unlimited, nil
+	monthly, err := r.Cap(AITokens)
+	if err != nil || monthly == Unlimited {
+		return monthly, err
 	}
 	w, err := q.AdmissionWorkspace(ctx, workspaceID)
 	if err != nil {
@@ -176,13 +171,27 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	return monthly + bought, err
 }
 
+// AICost is the workspace's monthly model cost guard in micro-USD (an aimodel.Allowance): its offer's
+// ai_cost_usd_micros, pooled by paid seats; none without a plan, unlimited (-1) when billing is off. AI token packs
+// add tokens, not cost: a pack's tokens are spent only while this budget lasts.
+func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
+	r, err := s.Entitlements(ctx, q, workspaceID)
+	if err != nil || r.SelfHosted {
+		return Unlimited, err
+	}
+	if r.Plan == "" {
+		return 0, nil
+	}
+	return r.Cap(AICost)
+}
+
 // AllowResource is injected into Store's canonical writes before requests and jobs start.
 func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, resource string, add int64) error {
 	if !s.enabled {
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, Employees}, limit) {
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -199,14 +208,18 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	if err != nil {
 		return err
 	}
-	plan := PlanOf(b, s.now())
-	if plan == "" {
+	r, err := s.entitlementsOf(ctx, q, workspaceID, b)
+	if err != nil {
+		return err
+	}
+	if r.Plan == "" {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
 	}
-	if limit == Employees && !Includes(plan, EmployeesModule) { // the module is a feature; its count a limit
-		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, featureError(plan, EmployeesModule))
+	plan := r.Plan
+	max, err := r.capFor(b.PerSeat, limit)
+	if err != nil {
+		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, err)
 	}
-	max := s.plans.forBilling(b, limit, s.now())
 	if max == Unlimited {
 		return nil
 	}
@@ -248,17 +261,22 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 	if err != nil {
 		return "", 0, 0, false, err
 	}
-	plan = PlanOf(b, s.now())
-	max = s.plans.forBilling(b, limit, s.now())
-	if max == Unlimited {
-		return plan, 0, max, true, nil
+	r, err := s.entitlementsOf(ctx, s.db.Q, ws.ID, b)
+	if err != nil {
+		return "", 0, 0, false, err
+	}
+	if r.Plan == "" { // read-only: the plan guard refuses the change, not a limit
+		return "", 0, Unlimited, true, nil
+	}
+	if max, err = r.capFor(b.PerSeat, limit); err != nil || max == Unlimited {
+		return r.Plan, 0, max, err == nil, err
 	}
 	now := s.now()
 	u, err := s.db.WorkspaceUsage(ctx, ws.ID, monthStart(now, ws.Location()), now)
 	if err != nil {
 		return "", 0, 0, false, err
 	}
-	return plan, used(u, limit), max, fits(used(u, limit), add, max), nil
+	return r.Plan, used(u, limit), max, fits(used(u, limit), add, max), nil
 }
 
 func limitMessage(plan string, limit Limit, max int64) string {
@@ -295,5 +313,5 @@ func bytesText(n int64) string {
 	if n >= gb {
 		return fmt.Sprintf("%g GB", float64(n)/gb)
 	}
-	return fmt.Sprintf("%d MB", n>>20)
+	return fmt.Sprintf("%d MB", n/1_000_000)
 }

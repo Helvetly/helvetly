@@ -4,6 +4,7 @@ import { Languages, type LucideIcon, ShieldCheck, ThumbsUp } from 'lucide-react'
 import { HeidiShowcase } from '@/components/home/heidi-showcase'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
+import { plansWith } from '@/lib/plans'
 
 // What circles the orb: the jobs Heidi does. Both orbits turn together and their chips sit between each
 // other's, so no two ever overlap.
@@ -124,7 +125,9 @@ export function HeidiSection() {
               </h2>
               <p className="text-lead max-w-2xl text-balance text-white/70">
                 Press ⌘J on any page. Heidi knows what is overdue, how many hours are left and what
-                you booked this month, and she does the busywork once you say yes.
+                you booked this month, and she does the busywork once you say yes. Heidi is included
+                in
+                {plansWith('heidi', ' and ')}.
               </p>
             </div>
           </div>

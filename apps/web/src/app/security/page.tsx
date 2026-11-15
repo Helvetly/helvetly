@@ -65,7 +65,7 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
       'Nothing is sent to an AI model until an owner or admin consents for the workspace; every consent is recorded. Until then Heidi answers only from built-in commands.',
       'Heidi reads only what the person asking may read, and changes nothing without their confirmation.',
       'Workspace content is passed to the model as data, not as instructions.',
-      'Each plan has a monthly AI budget enforced on our servers.',
+      'Each plan has a monthly allowance of AI tokens, enforced on our servers.',
     ],
   },
   {

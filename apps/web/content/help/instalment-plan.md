@@ -3,10 +3,12 @@ title: Split an invoice into instalment invoices
 description: Create an instalment plan that issues one partial invoice per instalment on schedule, and pause or cancel it.
 category: Invoices and getting paid
 order: 11
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 An instalment plan issues a separate partial invoice for each instalment, automatically.
+
+An instalment plan issues invoices on its own, so it needs **Pro** or **Business** and uses automation actions.
 
 1. Create a draft invoice with its client and lines. Leave **Pay in instalments** off.
 2. Click **Split into instalment invoices**, either below the document or in the draft's **…** menu.

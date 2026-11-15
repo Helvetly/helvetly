@@ -82,11 +82,11 @@ func TestLoad(t *testing.T) {
 			return !c.BillingEnabled() && c.Stripe.AutomaticTax
 		}},
 		{"no AI model", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool {
-			return c.AI.OpenAIKey == "" && c.AI.OpenAIBaseURL == "https://api.openai.com/v1" && c.AI.Model == "gpt-6-astra"
+			return c.AI.OpenAIKey == "" && c.AI.OpenAIBaseURL == "https://api.openai.com/v1" && c.AI.Model == "gpt-6-luna"
 		}},
-		{"OpenAI", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_API_KEY": "fake-test-key", "OPENAI_MODEL": "configured-model",
+		{"OpenAI", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_API_KEY": "fake-test-key", "OPENAI_MODEL": "gpt-6.1-sol",
 			"OPENAI_BASE_URL": "https://gateway.example/openai/v1/"}, "", func(c Config) bool {
-			return c.AI.OpenAIKey == "fake-test-key" && c.AI.Model == "configured-model" && c.AI.OpenAIBaseURL == "https://gateway.example/openai/v1"
+			return c.AI.OpenAIKey == "fake-test-key" && c.AI.Model == "gpt-6.1-sol" && c.AI.OpenAIBaseURL == "https://gateway.example/openai/v1"
 		}},
 		{"local OpenAI-compatible server", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_BASE_URL": "http://localhost:11434/v1"}, "",
 			func(c Config) bool { return c.AI.OpenAIBaseURL == "http://localhost:11434/v1" }},
@@ -97,6 +97,7 @@ func TestLoad(t *testing.T) {
 		{"fake import model outside development", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_AI": "true"}, "HELVETLY_E2E_FAKE_AI", nil},
 		{"invalid OpenAI key", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_API_KEY": "fake\nkey"}, "OPENAI_API_KEY", nil},
 		{"invalid model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "invalid model"}, "OPENAI_MODEL", nil},
+		{"model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "gpt-6-luna-fast"}, "OPENAI_MODEL", nil},
 		{"feedback email", map[string]string{"AUTH_DEV_SIGNIN": "true", "FEEDBACK_EMAIL": "team@helvetly.test"}, "", func(c Config) bool {
 			return c.FeedbackEmail == "team@helvetly.test"
 		}},

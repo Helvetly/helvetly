@@ -71,6 +71,13 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "offer" { // `helvetly offer …`: validate, diff and publish offers; workspace overrides
+		if err := offerCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		slog.Error("server stopped", "error", err)
 		os.Exit(1)
@@ -185,14 +192,14 @@ func run() error {
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{
-		Provider: model, Allowance: billingSvc.AITokens, AllowStorage: billingSvc.AllowStorage,
+		Provider: model, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
 	})
 	importModel := model
 	if cfg.AI.FakeImportModel {
 		importModel = aimodel.Fake{}
 	}
 	importsSvc := imports.New(db, authSvc, files, slog.Default(), imports.Options{
-		Provider: importModel, Allowance: billingSvc.AITokens, AllowStorage: billingSvc.AllowStorage,
+		Provider: importModel, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
 	})
 	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())

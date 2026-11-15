@@ -53,7 +53,7 @@ var WorkspaceExportTables = []ExportTable{
 	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id
 		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`},
 	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
-		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_token_packs"), own("billing_disputes"),
+		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
 }
 
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,
@@ -167,7 +167,11 @@ var ExportExcluded = map[string]string{
 	"invoice_xml_retention":    "history: the old, unverified mark of an archived XML's object lock",
 	"object_retention":         "storage protection state of the workspace's objects, not business data",
 	"object_versions":          "storage version ids of objects, not business data",
-	"plan_limits":              "global plan configuration, not workspace data",
+	"limits":                   "global plan configuration, not workspace data",
+	"limit_plans":              "global plan configuration, not workspace data",
+	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",
+	"offer_versions":           "global published offers, not workspace data",
+	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
 	"employment_settings":      hrExcluded,
 	"employees":                hrExcluded,

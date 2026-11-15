@@ -9,8 +9,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Employees are not members: adding them changes no seat count, no Stripe quantity and no member limit, and the
-// employees limit (seeded unlimited) is its own.
+// Employees are not members: adding them changes no seat count and no Stripe quantity, and no plan limit counts them.
 func TestEmployeesTakeNoSeat(t *testing.T) {
 	ctx := context.Background()
 	e := newEnv(t, true)
@@ -46,23 +45,7 @@ func TestEmployeesTakeNoSeat(t *testing.T) {
 	}
 	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 	data, _ := body["data"].(map[string]any)
-	usage, _ := data["usage"].([]any)
-	found := false
-	for _, u := range usage {
-		m, _ := u.(map[string]any)
-		switch m["limit"] {
-		case "members":
-			if m["used"] != 0.0 {
-				t.Fatalf("employees counted as members: %v", m)
-			}
-		case "employees":
-			found = true
-			if m["used"] != 5.0 || m["max"] != nil {
-				t.Fatalf("employees limit: %v", m)
-			}
-		}
-	}
-	if !found {
-		t.Fatalf("the employees limit is not reported: %v", usage)
+	if data["seats"] != 1.0 {
+		t.Fatalf("the billing overview counts employees as seats: %v", data["seats"])
 	}
 }

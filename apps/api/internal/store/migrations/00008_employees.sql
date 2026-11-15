@@ -215,10 +215,6 @@ CREATE TABLE payroll_booking_items (
 );
 CREATE INDEX payroll_booking_items_booking ON payroll_booking_items (booking_id);
 
-ALTER TABLE plan_limits DROP CONSTRAINT plan_limits_limit_key_check,
-    ADD CONSTRAINT plan_limits_limit_key_check CHECK ((limit_key = ANY (ARRAY['members'::text, 'clients'::text, 'invoices_per_month'::text, 'expenses_per_month'::text, 'products'::text, 'engagements'::text, 'signatures_per_month'::text, 'storage_bytes'::text, 'ai_tokens_per_month'::text, 'employees'::text])));
-INSERT INTO plan_limits VALUES ('basic', 'employees', NULL), ('pro', 'employees', NULL), ('business', 'employees', NULL);
-
 ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
     ADD CONSTRAINT import_batches_kind_check CHECK ((kind = ANY (ARRAY['clients'::text, 'products'::text, 'expenses'::text, 'invoices'::text, 'engagements'::text, 'auto'::text, 'payroll'::text])));
 
@@ -226,9 +222,6 @@ ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
 DELETE FROM import_batches WHERE kind = 'payroll';
 ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
     ADD CONSTRAINT import_batches_kind_check CHECK ((kind = ANY (ARRAY['clients'::text, 'products'::text, 'expenses'::text, 'invoices'::text, 'engagements'::text, 'auto'::text])));
-DELETE FROM plan_limits WHERE limit_key = 'employees';
-ALTER TABLE plan_limits DROP CONSTRAINT plan_limits_limit_key_check,
-    ADD CONSTRAINT plan_limits_limit_key_check CHECK ((limit_key = ANY (ARRAY['members'::text, 'clients'::text, 'invoices_per_month'::text, 'expenses_per_month'::text, 'products'::text, 'engagements'::text, 'signatures_per_month'::text, 'storage_bytes'::text, 'ai_tokens_per_month'::text])));
 DROP TABLE payroll_booking_items, payroll_bookings, payroll_components, payroll_entries, employee_documents;
 DROP FUNCTION payroll_components_immutable(), payroll_approved_immutable();
 DELETE FROM documents WHERE hr_private;

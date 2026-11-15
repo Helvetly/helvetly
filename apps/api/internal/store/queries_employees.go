@@ -216,23 +216,22 @@ func workingTime(p *invoicecalc.Percent) *int64 {
 	return &v
 }
 
-// CreateEmployee adds an employee under the plan's employees limit (separate from member seats).
+// CreateEmployee adds an employee. Employees are no seats and the current offer sets no employee limit, so nothing
+// is admitted against the plan.
 func (q Q) CreateEmployee(ctx context.Context, workspaceID, userID string, e Employee) error {
-	return q.admitted(ctx, workspaceID, "employees", 1, func(q Q) error {
-		_, err := q.db.Exec(ctx, `INSERT INTO employees (id, workspace_id, member_user_id, employee_number, first_name, last_name,
-			email, phone, street, postal_code, city, address_country, position, department, employment_type,
-			working_time_percent, employment_start, employment_end, employing_entity, work_country, work_region, work_locality,
-			place_of_work, residence_country, cross_border, cross_border_note, bank_account_sealed, bank_account_hint,
-			tax_id_sealed, tax_id_hint, created_by, created_at, updated_at, employer_country, social_security_country)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
-			$24, $25, $26, $27, $28, $29, $30, $31, $32, $32, $33, $34)`,
-			e.ID, workspaceID, e.MemberUserID, e.EmployeeNumber, e.FirstName, e.LastName, e.Email, e.Phone, e.Street,
-			e.PostalCode, e.City, e.AddressCountry, e.Position, e.Department, e.EmploymentType, workingTime(e.WorkingTime),
-			e.EmploymentStart, e.EmploymentEnd, e.EmployingEntity, e.WorkCountry, e.WorkRegion, e.WorkLocality, e.PlaceOfWork,
-			e.ResidenceCountry, e.CrossBorder, e.CrossBorderNote, e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed,
-			e.TaxIDHint, userID, e.CreatedAt, e.EmployerCountry, e.SocialSecurity)
-		return employeeErr(err)
-	})
+	_, err := q.db.Exec(ctx, `INSERT INTO employees (id, workspace_id, member_user_id, employee_number, first_name, last_name,
+		email, phone, street, postal_code, city, address_country, position, department, employment_type,
+		working_time_percent, employment_start, employment_end, employing_entity, work_country, work_region, work_locality,
+		place_of_work, residence_country, cross_border, cross_border_note, bank_account_sealed, bank_account_hint,
+		tax_id_sealed, tax_id_hint, created_by, created_at, updated_at, employer_country, social_security_country)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+		$24, $25, $26, $27, $28, $29, $30, $31, $32, $32, $33, $34)`,
+		e.ID, workspaceID, e.MemberUserID, e.EmployeeNumber, e.FirstName, e.LastName, e.Email, e.Phone, e.Street,
+		e.PostalCode, e.City, e.AddressCountry, e.Position, e.Department, e.EmploymentType, workingTime(e.WorkingTime),
+		e.EmploymentStart, e.EmploymentEnd, e.EmployingEntity, e.WorkCountry, e.WorkRegion, e.WorkLocality, e.PlaceOfWork,
+		e.ResidenceCountry, e.CrossBorder, e.CrossBorderNote, e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed,
+		e.TaxIDHint, userID, e.CreatedAt, e.EmployerCountry, e.SocialSecurity)
+	return employeeErr(err)
 }
 
 // SaveEmployee writes every editable field of e.
@@ -253,7 +252,7 @@ func (q Q) SaveEmployee(ctx context.Context, workspaceID string, e Employee, now
 	return employeeErr(err)
 }
 
-// ArchiveEmployee archives; un-archiving counts against the employees limit again.
+// ArchiveEmployee archives; nothing is deleted.
 func (q Q) ArchiveEmployee(ctx context.Context, workspaceID, id string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE employees SET archived_at = $3, updated_at = $3 WHERE workspace_id = $1 AND id = $2`,
 		workspaceID, id, now)
@@ -261,11 +260,9 @@ func (q Q) ArchiveEmployee(ctx context.Context, workspaceID, id string, now time
 }
 
 func (q Q) UnarchiveEmployee(ctx context.Context, workspaceID, id string, now time.Time) error {
-	return q.admitted(ctx, workspaceID, "employees", 1, func(q Q) error {
-		_, err := q.db.Exec(ctx, `UPDATE employees SET archived_at = NULL, updated_at = $3 WHERE workspace_id = $1 AND id = $2`,
-			workspaceID, id, now)
-		return err
-	})
+	_, err := q.db.Exec(ctx, `UPDATE employees SET archived_at = NULL, updated_at = $3 WHERE workspace_id = $1 AND id = $2`,
+		workspaceID, id, now)
+	return err
 }
 
 // EmployeeHistoryCounts says what an employee has that deleting would lose.
