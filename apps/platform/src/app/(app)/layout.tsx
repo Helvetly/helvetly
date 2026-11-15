@@ -13,7 +13,7 @@ import { RecordDrawers } from '@/components/record-drawers'
 import { AccessGate } from '@/components/shell/access-gate'
 import { AppSidebar } from '@/components/shell/app-sidebar'
 import { MobileTabBar } from '@/components/shell/mobile-tab-bar'
-import { PlanGate } from '@/components/shell/plan-gate'
+import { isChoosePlan, PlanGate } from '@/components/shell/plan-gate'
 import { PrimaryActionProvider } from '@/components/shell/primary-action'
 
 // Tablets get the icon rail; phones (below 768px) get the sheet.
@@ -44,9 +44,12 @@ export default function SignedInLayout({ children }: { children: ReactNode }) {
       return true
     }
   })
-  // The welcome and the plan picker are pages of their own, without the sidebar.
+  // The welcome and the plan pickers are pages of their own, without the sidebar.
   const pathname = usePathname()
-  const bare = isWelcome(pathname) || pathname.replace(/\/$/, '') === '/settings/billing/plans'
+  const bare =
+    isWelcome(pathname) ||
+    isChoosePlan(pathname) ||
+    pathname.replace(/\/$/, '') === '/settings/billing/plans'
   const toggle = (next: boolean) => {
     setOpen(next)
     try {
@@ -66,8 +69,8 @@ export default function SignedInLayout({ children }: { children: ReactNode }) {
             {bare ? (
               children
             ) : (
-              // Without an active plan the whole screen is the plan picker (components/shell/plan-gate).
-              <PlanGate session={session}>
+              // Without an active plan every page sends to the plan picker (components/shell/plan-gate).
+              <PlanGate>
                 {/* Below the smallest phone the page scrolls sideways instead of squeezing. */}
                 <div className="h-svh min-w-[320px] bg-background">
                   <SidebarProvider
