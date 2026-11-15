@@ -13,6 +13,7 @@ import { Kbd } from '@helvetly/ui/components/kbd'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
+import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -217,11 +218,14 @@ export function WelcomePage({ session }: { session: Session }) {
             <Logo className="size-8" />
             Helvetly
           </span>
-          {step !== 'done' && (
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void leave()}>
-              Skip for now
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {step !== 'done' && (
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void leave()}>
+                Skip for now
+              </Button>
+            )}
+          </div>
         </header>
         <main className="mx-auto flex w-full max-w-[34rem] flex-1 flex-col pt-8 sm:pt-14 lg:pt-20">
           <Progress index={index} total={steps.length} />

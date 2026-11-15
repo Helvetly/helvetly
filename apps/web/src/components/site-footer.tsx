@@ -1,4 +1,5 @@
 import { Logo } from '@helvetly/ui/components/logo'
+import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 
@@ -128,13 +129,16 @@ export function SiteFooter() {
           </div>
           <div className="mt-10 flex flex-col gap-2 text-body-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
             <p>© {YEAR} Helvetly</p>
-            <p className="inline-flex items-center gap-2">
-              <svg aria-hidden viewBox="0 0 32 32" className="size-4 rounded-[3px]">
-                <rect width="32" height="32" fill="#d52b1e" />
-                <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
-              </svg>
-              Made for Switzerland
-            </p>
+            <div className="flex items-center justify-between gap-4 sm:justify-end">
+              <p className="inline-flex items-center gap-2">
+                <svg aria-hidden viewBox="0 0 32 32" className="size-4 rounded-[3px]">
+                  <rect width="32" height="32" fill="#d52b1e" />
+                  <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
+                </svg>
+                Made for Switzerland
+              </p>
+              <ThemeToggle className="bg-white/8" />
+            </div>
           </div>
         </Container>
       </div>
