@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
-import { billingKeys, type Billing } from '@/lib/billing'
+import { billingKeys, useBilling, type Billing } from '@/lib/billing'
 import { queryKeys } from '@/lib/queries'
 
 import { ChoosePlan, PlanGate } from './plan-gate'
@@ -108,8 +108,14 @@ test('the picker sends a workspace with a plan home', () => {
   expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
 })
 
+/** A page that reads billing itself, as the sidebar and the usage meters do. */
+function ReadsBilling() {
+  useBilling()
+  return <p>The list</p>
+}
+
 test('billing the person may not read does not hold the page', async () => {
-  const client = new QueryClient()
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   client.setQueryData(queryKeys.session, session)
   server.use(
     http.get('/api/v1/billing', () =>
@@ -119,9 +125,12 @@ test('billing the person may not read does not hold the page', async () => {
   render(
     <QueryClientProvider client={client}>
       <PlanGate>
-        <p>The list</p>
+        <ReadsBilling />
       </PlanGate>
     </QueryClientProvider>,
   )
   expect(await screen.findByText('The list', {}, { timeout: 2000 })).toBeVisible()
+  // The page's own read refetches billing; the gate must not take the page away again.
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  expect(screen.getByText('The list')).toBeVisible()
 })
