@@ -15,6 +15,7 @@ import {
   closedThrough,
   draftsOf,
   endedMonths,
+  monthMatches,
   monthsBefore,
   openThrough,
   PeriodsCard,
@@ -52,6 +53,25 @@ describe('openThrough', () => {
       '2026-08',
     ])
     expect(openThrough(['2026-10', '2026-08'], '2026-06')).toEqual([])
+  })
+})
+
+describe('monthMatches', () => {
+  it.each([
+    ['2026-10', 'oct', true],
+    ['2026-10', 'OCTOBER', true],
+    ['2026-10', '10', true],
+    ['2026-03', '3', true],
+    ['2026-03', '03', true],
+    ['2026-10', '2026', true],
+    ['2026-10', 'oct 2026', true],
+    ['2026-10', '  ', true],
+    ['2026-10', 'oct 2025', false],
+    ['2026-10', 'nov', false],
+    ['2026-11', '10', false],
+    ['2025-10', '2026', false],
+  ])('%s matches %j: %s', (month, query, expected) => {
+    expect(monthMatches(month, query)).toBe(expected)
   })
 })
 
@@ -146,6 +166,51 @@ describe('PeriodsCard', () => {
     await waitFor(() => expect(closed).toHaveLength(10))
     expect(closed[0]).toBe('2025-11')
     expect(closed.at(-1)).toBe('2026-08')
+  })
+
+  it('closes through an earlier month picked by search, grouped by year', async () => {
+    const closed: string[] = []
+    server.use(
+      http.post<never, { month: string }>('/api/v1/periods', async ({ request }) => {
+        const { month } = await request.json()
+        closed.push(month)
+        return HttpResponse.json(
+          { data: { month, closed_at: '2026-11-12T10:00:00Z', closed_by: null } },
+          { status: 201 },
+        )
+      }),
+    )
+    wrap('owner', <PeriodsCard />)
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Close through an earlier month' }),
+    )
+    const picker = await screen.findByRole('dialog')
+    const headings = () =>
+      [...picker.querySelectorAll('[cmdk-group]:not([hidden]) [cmdk-group-heading]')].map(
+        (heading) => heading.textContent,
+      )
+    expect(within(picker).getAllByText('Close every open month through')).not.toHaveLength(0)
+    expect(headings()).toEqual(['2026', '2025'])
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toContain('August 202610 months')
+    const search = within(picker).getByPlaceholderText('Search months…')
+    await userEvent.type(search, 'zzz')
+    expect(within(picker).getByText('No open month matches.')).toBeTruthy()
+    await userEvent.clear(search)
+    await userEvent.type(search, '2025')
+    expect(headings()).toEqual(['2025'])
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['December 20252 months', 'November 20251 month'])
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Close November 2025?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close month' }))
+    await waitFor(() => expect(closed).toEqual(['2025-11']))
   })
 
   it("shows a month's activity and its drafts", async () => {

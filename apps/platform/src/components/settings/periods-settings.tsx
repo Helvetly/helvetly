@@ -1,6 +1,14 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@helvetly/ui/components/command'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
   Dialog,
@@ -14,11 +22,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -71,6 +79,17 @@ export function monthsBefore(month: string, count: number): string {
   const date = utc(month)
   date.setUTCMonth(date.getUTCMonth() - (count - 1))
   return date.toISOString().slice(0, 7)
+}
+
+/** Whether every word of `query` starts a part of `month`: its name ("oct"), year ("2026") or number ("10"). */
+export function monthMatches(month: string, query: string): boolean {
+  const [year = '', number = ''] = month.split('-')
+  const parts = [longName.format(utc(month)).toLowerCase(), year, number, String(Number(number))]
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => parts.some((part) => part.startsWith(word)))
 }
 
 /** The newest closed month: the books are locked through it (earlier months may still be open). */
@@ -317,34 +336,7 @@ function CloseStatus({
               ? `Close ${monthLabel(latest)}`
               : `Close through ${monthLabel(latest)}`}
           </Button>
-          {open.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={busy}
-                  size="icon"
-                  aria-label="Close through an earlier month"
-                  className="rounded-l-none border-l border-primary-foreground/20"
-                >
-                  <ChevronDown aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-64">
-                <DropdownMenuLabel>Close every open month through</DropdownMenuLabel>
-                {open.map((month) => {
-                  const batch = openThrough(open, month)
-                  return (
-                    <DropdownMenuItem key={month} onSelect={() => onClose(batch)}>
-                      <span className="flex-1">{monthLabel(month)}</span>
-                      <span className="text-caption text-muted-foreground tabular-nums">
-                        {batch.length} {batch.length === 1 ? 'month' : 'months'}
-                      </span>
-                    </DropdownMenuItem>
-                  )
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {open.length > 1 && <CloseThroughPicker open={open} disabled={busy} onClose={onClose} />}
         </div>
       )}
       {!manager && (
@@ -354,6 +346,79 @@ function CloseStatus({
         </p>
       )}
     </section>
+  )
+}
+
+/** Picks an earlier month to close through: searchable, grouped by year, newest first. */
+function CloseThroughPicker({
+  open,
+  disabled,
+  onClose,
+}: {
+  open: string[]
+  disabled: boolean
+  onClose: (batch: string[]) => void
+}) {
+  const [shown, setShown] = useState(false)
+  const years = Map.groupBy(open, (month) => month.slice(0, 4))
+  return (
+    <Popover open={shown} onOpenChange={setShown}>
+      <PopoverTrigger asChild>
+        <Button
+          disabled={disabled}
+          size="icon"
+          aria-label="Close through an earlier month"
+          className="rounded-l-none border-l border-primary-foreground/20"
+        >
+          <ChevronDown aria-hidden />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        aria-label="Close every open month through"
+        className="w-[min(18rem,calc(100vw-2rem))] gap-0 p-1"
+      >
+        <p className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">
+          Close every open month through
+        </p>
+        <Command
+          label="Close every open month through"
+          className="p-0"
+          filter={(month, query) => (monthMatches(month, query) ? 1 : 0)}
+        >
+          <CommandInput placeholder="Search months…" />
+          <CommandList className="max-h-[min(18rem,50dvh)]">
+            <CommandEmpty>No open month matches.</CommandEmpty>
+            {[...years].map(([year, months]) => (
+              <CommandGroup key={year} heading={year}>
+                {months.map((month) => {
+                  const batch = openThrough(open, month)
+                  return (
+                    <CommandItem
+                      key={month}
+                      value={month}
+                      className="[&>svg]:hidden"
+                      onSelect={() => {
+                        setShown(false)
+                        onClose(batch)
+                      }}
+                    >
+                      <span className="flex-1">
+                        {longName.format(utc(month))}
+                        <span className="sr-only"> {year}</span>
+                      </span>
+                      <span className="text-caption text-muted-foreground tabular-nums">
+                        {batch.length} {batch.length === 1 ? 'month' : 'months'}
+                      </span>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
 
