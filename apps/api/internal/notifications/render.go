@@ -23,6 +23,7 @@ var actions = map[string]string{
 	"engagement.draft_created": "Review the draft", "engagement.over_committed": "View engagement", "member.invited": "View members",
 	"member.joined": "View members", "member.role_changed": "View members", "member.removed": "View members",
 	"billing.trial_ending": "Choose a plan", "billing.payment_failed": "Update payment method",
+	"billing.payment_disputed":     "View billing",
 	"billing.subscription_changed": "View billing", "billing.limit_near": "Compare plans", "period.closed": "View periods",
 	"period.reopened": "View periods", "vat.return_due": "Open the VAT return", "import.ready": "Review the import",
 	"import.failed": "Open the import", "quote.accepted": "Make the invoice", "quote.declined": "View the quote",
@@ -161,6 +162,13 @@ func words(event string, d data) message {
 	case "billing.payment_failed":
 		return message{title: "A subscription payment failed", body: "Update the payment method to keep the " +
 			or(d.s("plan"), "current") + " plan.", href: "/settings/billing"}
+	case "billing.payment_disputed":
+		what := "the subscription"
+		if d.s("for") == "ai_tokens" {
+			what = "AI tokens"
+		}
+		return message{title: "A payment is disputed", body: "A payment for " + what + " was disputed with the card issuer. " +
+			"The plan keeps working while the dispute is open; if it is lost, what the payment bought ends.", href: "/settings/billing"}
 	case "billing.subscription_changed":
 		return message{title: "The subscription is now " + or(d.s("plan"), "changed"), body: statusWords(d.s("status")),
 			href: "/settings/billing"}

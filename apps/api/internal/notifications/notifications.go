@@ -55,6 +55,7 @@ var Events = []event{
 	{"member.removed", "team", true, false},
 	{"billing.trial_ending", "billing", true, true},
 	{"billing.payment_failed", "billing", true, true},
+	{"billing.payment_disputed", "billing", true, true},
 	{"billing.subscription_changed", "billing", true, false},
 	{"billing.limit_near", "billing", true, true},
 	{"period.closed", "books", true, false},

@@ -118,6 +118,10 @@ func (s *Service) handleEvent(ctx context.Context, ev event) error {
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
 		"customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.trial_will_end":
 		subID = obj.ID
+	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed":
+		return s.dispute(ctx, obj.ID)
+	case "charge.refunded":
+		return s.refund(ctx, obj.ID)
 	}
 	if subID == "" {
 		return nil // not an event billing follows

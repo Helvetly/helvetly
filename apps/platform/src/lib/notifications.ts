@@ -126,6 +126,7 @@ export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
   'member.removed': { label: 'Someone removed', hint: MANAGERS },
   'billing.trial_ending': { label: 'Trial ending', hint: 'For owners' },
   'billing.payment_failed': { label: 'Subscription payment failed', hint: 'For owners' },
+  'billing.payment_disputed': { label: 'Payment disputed', hint: MANAGERS },
   'billing.subscription_changed': { label: 'Subscription changed', hint: 'For owners' },
   'billing.limit_near': { label: 'Plan limit nearly reached', hint: MANAGERS },
   'period.closed': { label: 'Month closed', hint: MANAGERS },
