@@ -3,10 +3,12 @@ title: Prepare the Swiss VAT return
 description: Prepare your MWST return with the effective or net tax rate method and export the eCH-0217 file for the ESTV ePortal.
 category: VAT and books
 order: 1
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Helvetly prepares the figures for your Swiss VAT (MWST) return and the file to import into the ESTV ePortal.
+
+Preparing VAT returns needs **Pro** or **Business**. VAT on invoices is calculated in every plan.
 
 1. Go to **Settings → VAT return**.
 2. In the VAT settings, set the method (**Effective method** or **Net tax rate method**), the period length and the basis (**Agreed** or **Received consideration**), then save. With net tax rates, add your **Approved net tax rates**.

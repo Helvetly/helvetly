@@ -8,6 +8,7 @@ import { Trust } from '@/components/home/trust'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { GENERAL_FAQ } from '@/lib/faq'
+import { YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 
 export default function HomePage() {
   return (
@@ -27,7 +28,7 @@ export default function HomePage() {
                 Simple plans, <span className="accent">one price</span> per person
               </>
             }
-            lead={'One price per person, every feature in every plan. Pay yearly and save 20%.'}
+            lead={`Each team member pays the plan’s price. Start invoicing with Basic, run the whole back office with Pro. Pay yearly and save ${YEARLY_DISCOUNT_PERCENT}%.`}
           />
           <div className="mt-12">
             <PricingCards />

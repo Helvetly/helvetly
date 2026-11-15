@@ -8,6 +8,7 @@ import { Cta } from '@/components/cta'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
 import { type Cell, competitor, COMPETITORS, OURS, ROW_GROUPS } from '@/lib/compare'
+import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
 type Props = { params: Promise<{ slug: string }> }
@@ -82,7 +83,7 @@ export default async function ComparePage({ params }: Props) {
           style={{ ['--d' as string]: '200ms' }}
           className="mt-9 flex flex-col gap-3 sm:flex-row"
         >
-          <Cta href={START_URL}>Try Helvetly free for 7 days</Cta>
+          <Cta href={START_URL}>Try Business free for {TRIAL.days} days</Cta>
           <Cta href="/pricing" variant="outline">
             See pricing
           </Cta>
@@ -198,9 +199,11 @@ export default async function ComparePage({ params }: Props) {
             >
               {new URL(them.url).hostname.replace(/^www\./, '')}
             </a>
-            , as of {them.checked}; a dash means it is not offered or we could not find it there.{' '}
-            {them.name} and its logo are trademarks of their owner, which is not affiliated with
-            Helvetly. Something out of date? Tell us and we will fix it.
+            , as of {them.checked}, and its prices and packages as of {them.pricesChecked}; a dash
+            means it is not offered or we could not find it there. Yearly costs use each product’s
+            package with expenses or the closest match, at its listed price. {them.name} and its
+            logo are trademarks of their owner, which is not affiliated with Helvetly. Something out
+            of date? Tell us and we will fix it.
           </p>
         </Container>
       </section>

@@ -3,10 +3,12 @@ title: Send payment reminders (dunning)
 description: Send automatic reminders for overdue invoices with up to three levels, fees, interest and a QR bill for the total.
 category: Invoices and getting paid
 order: 12
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Let Helvetly chase overdue invoices for you, politely and on time.
+
+Automatic reminders need **Pro** or **Business**; each reminder sent uses one automation action.
 
 1. Go to **Settings → Invoices → Dunning** and turn on **Send reminders automatically**.
 2. Set up to three levels. For each level, set when it is **Sent**, an optional **Fee** and **Own text**. You can also set **Default interest**.

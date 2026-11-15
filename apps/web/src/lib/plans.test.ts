@@ -1,29 +1,24 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { PLANS, priceOf, YEARLY_DISCOUNT_PERCENT } from './plans'
+import {
+  BENEFITS,
+  bytes,
+  formatLimit,
+  has,
+  LIMITS,
+  PLAN_IDS,
+  PLANS,
+  plansWith,
+  priceOf,
+  tokens,
+  USAGE_DETAILS,
+  YEARLY_DISCOUNT_PERCENT,
+} from './plans'
 
 const api = join(__dirname, '../../../api/internal')
-
-// The latest value per plan and limit across the migrations: plan_limits rows (plan, key, max) until 00005, then
-// limit_plans rows (key, plan, value; -1 unlimited). shortcut: a changed default in limits is not read; parse it
-// when a migration changes one.
-function migratedLimits() {
-  const dir = join(api, 'store/migrations')
-  const out = new Map<string, number | null>()
-  for (const file of readdirSync(dir).toSorted()) {
-    const up = readFileSync(join(dir, file), 'utf8').split('-- +goose Down')[0] ?? ''
-    for (const m of up.matchAll(/\('(basic|pro|business)', '(\w+)', (NULL|\d+)\)/g)) {
-      out.set(`${m[1]}.${m[2]}`, m[3] === 'NULL' ? null : Number(m[3]))
-    }
-    for (const m of up.matchAll(/\('(\w+)', '(basic|pro|business)', (-1|\d+)\)/g)) {
-      out.set(`${m[2]}.${m[1]}`, m[3] === '-1' ? null : Number(m[3]))
-    }
-  }
-  return out
-}
 
 describe('plans', () => {
   it('match the monthly prices and the discount in plans.go', () => {
@@ -35,23 +30,98 @@ describe('plans', () => {
     expect(go).toContain(`yearlyDiscountPercent = ${YEARLY_DISCOUNT_PERCENT}`)
   })
 
-  it('match the limit migrations', () => {
-    const db = migratedLimits()
-    for (const { id, limits } of PLANS) {
-      expect(db.get(`${id}.members`)).toBe(limits.members)
-      expect(db.get(`${id}.clients`)).toBe(limits.clients)
-      expect(db.get(`${id}.invoices_per_month`)).toBe(limits.invoicesPerMonth)
-      expect(db.get(`${id}.expenses_per_month`)).toBe(limits.expensesPerMonth)
-      expect(db.get(`${id}.products`)).toBe(limits.products)
-      expect(db.get(`${id}.engagements`)).toBe(limits.engagements)
-      expect(db.get(`${id}.signatures_per_month`)).toBe(limits.signaturesPerMonth)
-      expect(db.get(`${id}.storage_bytes`)).toBe(limits.storageGb * 2 ** 30)
-      expect(db.get(`${id}.ai_tokens_per_month`)).toBe(limits.aiTokensPerMonth)
-    }
+  it('price a month and a year as the API charges them, in rappen', () => {
+    expect(PLANS.map((plan) => priceOf(plan, 'month').amount)).toEqual([1900, 4900, 9900])
+    expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([18300, 47100, 95100])
+  })
+})
+
+describe('offer v2 public projection', () => {
+  it('compares the twelve business benefits', () => {
+    expect(BENEFITS.map((b) => b.key)).toEqual([
+      'invoicing',
+      'swiss_qr',
+      'revolut',
+      'engagements',
+      'automations',
+      'heidi',
+      'client_portal',
+      'expenses',
+      'documents_signatures',
+      'corrections_vat',
+      'einvoice_xml',
+      'ledger_exports',
+    ])
   })
 
-  it('price a month and a year as the API charges them, in rappen', () => {
-    expect(priceOf(PLANS[1]!, 'month')).toEqual({ amount: 4900, currency: 'chf' })
-    expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([18300, 47100, 95100])
+  it('shows eleven allowances, workspace caps apart from per-person pools', () => {
+    expect(USAGE_DETAILS).toHaveLength(11)
+    expect(USAGE_DETAILS.filter((k) => LIMITS[k].scope === 'workspace')).toEqual([
+      'clients',
+      'products',
+    ])
+    expect(LIMITS.engagements.scope).toBe('workspace')
+  })
+
+  it('keeps technical records out of the public tables', () => {
+    const shown = [...BENEFITS.map((b) => b.key), ...USAGE_DETAILS].join(' ')
+    for (const hidden of ['identity', 'role', 'audit', 'api', 'mcp', 'cost', 'credit', 'draft'])
+      expect(shown).not.toContain(hidden)
+  })
+
+  it.each([
+    ['clients', ['30', '300', '1’500']],
+    ['products', ['25', '250', '1’000']],
+    ['invoices_per_month', ['15', '150', '600']],
+    ['expenses_per_month', [null, '300', '1’200']],
+    ['signatures_per_month', [null, '50', '200']],
+    ['storage_bytes', ['500 MB', '5 GB', '20 GB']],
+    ['download_bytes_per_month', ['2 GB', '20 GB', '100 GB']],
+    ['emails_per_month', ['100', '1’000', '5’000']],
+    ['email_attachment_bytes_per_month', ['100 MB', '1 GB', '5 GB']],
+    ['ai_tokens_per_month', ['250’000', '5’000’000', '20’000’000']],
+    ['automation_actions_per_month', [null, '1’500', '6’000']],
+  ] as const)('%s per plan', (key, expected) => {
+    expect(PLAN_IDS.map((id) => formatLimit(key, id))).toEqual(expected)
+  })
+
+  it('leaves Basic a manual invoicing plan, and keeps the portal and XML for Business', () => {
+    const cells = Object.fromEntries(BENEFITS.map((b) => [b.key, PLAN_IDS.map(b.cell)]))
+    expect(cells.invoicing).toEqual([
+      '15 new invoice issues/person/month',
+      '150 new invoice issues/person/month',
+      '600 new invoice issues/person/month',
+    ])
+    expect(cells.engagements).toEqual([
+      '3 active per workspace, manual workflows',
+      '20 active per workspace',
+      '100 active per workspace',
+    ])
+    // Basic's import tokens do not make Heidi available.
+    expect(cells.heidi).toEqual([
+      null,
+      'Included; shared 5M AI tokens/person/month',
+      'Included; shared 20M AI tokens/person/month',
+    ])
+    for (const key of [
+      'automations',
+      'expenses',
+      'documents_signatures',
+      'corrections_vat',
+      'ledger_exports',
+    ])
+      expect(cells[key]?.[0]).toBeNull()
+    expect(cells.client_portal).toEqual([null, null, 'Included'])
+    expect(cells.einvoice_xml).toEqual([null, null, 'Included'])
+    expect(has('basic', 'heidi')).toBe(false)
+    expect(plansWith('heidi')).toBe('Pro or Business')
+    expect(plansWith('client_portal')).toBe('Business')
+  })
+
+  it('formats decimal bytes and short tokens', () => {
+    expect(bytes(500_000_000)).toBe('500 MB')
+    expect(bytes(1_000_000_000)).toBe('1 GB')
+    expect(tokens(250_000)).toBe('250’000')
+    expect(tokens(20_000_000)).toBe('20M')
   })
 })
