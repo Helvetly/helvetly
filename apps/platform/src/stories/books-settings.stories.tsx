@@ -223,6 +223,84 @@ export const PeriodsCloseUpTo: Story = {
   },
 }
 
+// Nothing closed yet: every month of the last year is open, the long list the picker groups.
+const allOpen = endedMonths(today(), 12)
+const yearsOf = (months: string[]) => [...new Set(months.map((month) => month.slice(0, 4)))]
+const visibleHeadings = (picker: HTMLElement) =>
+  [...picker.querySelectorAll('[cmdk-group]:not([hidden]) [cmdk-group-heading]')].map(
+    (heading) => heading.textContent,
+  )
+const openPicker = async (canvasElement: HTMLElement) => {
+  await userEvent.click(
+    await within(canvasElement).findByRole('button', { name: 'Close through an earlier month' }),
+  )
+  return body(canvasElement).findByRole('dialog')
+}
+
+/** The split button's menu: every open month, grouped by year, newest first, with how many it closes. */
+export const PeriodsPicker: Story = {
+  parameters: page('owner'),
+  beforeEach: () => {
+    periods = []
+  },
+  render: Periods.render,
+  play: async ({ canvasElement }) => {
+    const picker = await openPicker(canvasElement)
+    await expect(within(picker).getByPlaceholderText('Search months…')).toHaveFocus()
+    await expect(visibleHeadings(picker)).toEqual(yearsOf(allOpen))
+    const options = within(picker).getAllByRole('option')
+    await expect(options).toHaveLength(12)
+    await expect(options[0]).toHaveTextContent(/12 months$/)
+    await expect(options.at(-1)).toHaveTextContent(/1 month$/)
+  },
+}
+
+export const PeriodsPickerDark: Story = {
+  ...PeriodsPicker,
+  parameters: { ...PeriodsPicker.parameters, dark: true },
+}
+
+export const PeriodsPickerPhone: Story = {
+  ...PeriodsPicker,
+  render: PeriodsPhone.render,
+  play: async (context) => {
+    await PeriodsPicker.play?.(context)
+    const picker = await body(context.canvasElement).findByRole('dialog')
+    const box = picker.getBoundingClientRect()
+    await expect(box.left).toBeGreaterThanOrEqual(0)
+    await expect(box.width).toBeLessThanOrEqual(390)
+  },
+}
+
+/** Search narrows by name, year or number; nothing found says so; picking a month asks to confirm. */
+export const PeriodsPickerSearch: Story = {
+  ...PeriodsPicker,
+  play: async ({ canvasElement }) => {
+    const picker = await openPicker(canvasElement)
+    const search = within(picker).getByPlaceholderText('Search months…')
+    const oldest = allOpen.at(-1) ?? ''
+    const year = oldest.slice(0, 4)
+    await userEvent.type(search, year)
+    await expect(visibleHeadings(picker)).toEqual([year])
+    await expect(within(picker).getAllByRole('option')).toHaveLength(
+      allOpen.filter((month) => month.startsWith(year)).length,
+    )
+    await userEvent.clear(search)
+    await userEvent.type(search, 'zzz')
+    await expect(within(picker).getByText('No open month matches.')).toBeVisible()
+    await userEvent.clear(search)
+    await userEvent.type(search, String(Number(oldest.slice(5))))
+    await userEvent.click(
+      within(picker).getByRole('option', { name: new RegExp(`^${monthLabel(oldest)}`) }),
+    )
+    const dialog = within(
+      await body(canvasElement).findByRole('dialog', { name: `Close ${monthLabel(oldest)}?` }),
+    )
+    await userEvent.click(dialog.getByRole('button', { name: 'Close month' }))
+    await expect(await within(canvasElement).findByText('11 months to close')).toBeVisible()
+  },
+}
+
 /** Events as a timeline by day, each with its icon, reference, person and time. */
 export const AuditLog: Story = {
   parameters: page('owner', auditHandlers(auditEvents)),
