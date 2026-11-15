@@ -8,6 +8,7 @@ architecture, where code belongs and code style, read [AGENTS.md](AGENTS.md). Fo
 
 - For anything larger than a small fix, open an issue first so the approach can be agreed before you invest time.
 - Work in a fork and open a pull request against `main`.
+- By contributing you agree to the [Contributor License Agreement](#contributor-license-agreement).
 
 - Keep a change to one concern. Do not mix refactors, renames or formatting of unrelated code
   into it.
@@ -116,10 +117,25 @@ Real secrets never enter the repository. `.env` is ignored and `.env.example` li
 setting with a safe local default. Never paste a secret into a commit, a pull request or an
 issue.
 
-## License of contributions
+## Contributor License Agreement
 
-Helvetly is licensed under the GNU Affero General Public License v3.0 only. By opening a pull request you agree
-that your contribution is licensed under the same terms. There is no contributor license agreement.
+Helvetly is licensed under the GNU Affero General Public License v3.0 only. Before we can merge your first pull
+request, you accept a Contributor License Agreement, based on the FSFE's Fiduciary License Agreement:
+
+- contributing as an individual: the [Individual agreement (ICLA)](ICLA.md);
+- contributing for a company or other legal entity: the [Entity agreement (CCLA)](CCLA.md), accepted by someone
+  allowed to sign for it, with the people who contribute for it listed in a GitHub issue titled
+  `CCLA: <company name>`.
+
+The CLA check on your pull request asks you to post one comment:
+
+```txt
+I have read the CLA Document and I hereby sign the CLA
+```
+
+You do it once; it covers your later contributions too. The agreement keeps the project's rights in one place, and
+in return promises that Helvetly and your contribution stay available under a free and open source license. Your
+name stays in the history, and you keep the right to use your own contribution as you like.
 
 Comments in the code sometimes cite design documents under `docs/` that the maintainers keep outside this
 repository; the code and its tests are the reference here.
