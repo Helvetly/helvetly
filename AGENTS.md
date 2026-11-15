@@ -6,7 +6,7 @@ fix this file in the same change.
 ## 1. What this is
 
 Helvetly is business-management software for small companies: workspaces and sign-in, clients, quotes and invoices
-(Swiss QR bills, e-invoice XML), expenses, documents, e-signatures, a client portal, books and VAT exports,
+(Swiss QR bills, e-invoice XML), expenses, documents, e-signatures, a client portal, books and VAT exports, employees and a payroll register,
 optional Stripe subscription billing and optional AI features. See README.md for the feature list and limits.
 
 This repository holds the application only. Deployment of any particular installation (servers, DNS, credentials)
@@ -52,6 +52,10 @@ are the reference.
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
+- **Employees** (`internal/employees`, `internal/employment`): own staff, never users. HR scopes are never reached by a
+  `*` resource or by admins; HR files are documents with `hr_private` and never pass `store.Document`, lists, shares or
+  signed links; nothing HR is a public operation, an MCP tool, a Heidi answer or in the workspace export; the audit
+  log gets HR events with empty payloads. Jurisdiction rules are data (`employment/rules.json`), never a calculation.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget).
 
