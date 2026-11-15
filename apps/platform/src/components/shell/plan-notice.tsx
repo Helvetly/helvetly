@@ -21,6 +21,7 @@ import { useState, useSyncExternalStore } from 'react'
 import {
   describeDiscount,
   formatPrice,
+  freeForever,
   nextCharge,
   trialDaysLeft,
   type Billing,
@@ -52,10 +53,9 @@ const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`
 
 /** What the trial turns into under the subscription's promotion code: "free forever with code X". */
 function afterDiscount(billing: Billing, discount: Discount): string {
+  if (freeForever(billing)) return `free forever with code ${discount.code}`
   const charge = nextCharge(billing)
   const price = charge && 'amount' in charge ? charge.amount : null
-  if (discount.duration === 'forever' && (discount.percent_off === 100 || price?.amount === 0))
-    return `free forever with code ${discount.code}`
   const terms = `code ${discount.code} (${describeDiscount(discount)})`
   return price && billing.interval
     ? `${formatPrice(price)} / ${billing.interval} with ${terms}`

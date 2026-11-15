@@ -302,6 +302,33 @@ export const WithDiscount: Story = {
   },
 }
 
+/** A 100 %-forever code in the trial: the panel says the plan stays free, not "CHF 0 is charged". */
+export const TrialFreeForever: Story = {
+  parameters: {
+    msw: {
+      handlers: handlers({
+        ...trialing,
+        discount: {
+          code: 'LIFETIME-135F29',
+          percent_off: 100,
+          amount_off: null,
+          currency: null,
+          duration: 'forever',
+          duration_in_months: null,
+          ends_at: null,
+        },
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('region', { name: 'Current plan' })
+    await expect(nextStep(canvasElement)).toHaveTextContent(
+      'Then free forever with code LIFETIME-135F29.',
+    )
+  },
+}
+
 export const NoCardNoInvoices: Story = {
   parameters: {
     msw: { handlers: handlers(basicMonthly, { payment_method: null, invoices: [] }) },
