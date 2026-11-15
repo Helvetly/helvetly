@@ -184,3 +184,34 @@ func TestHRScopes(t *testing.T) {
 		t.Fatal("full access must hold no HR scope")
 	}
 }
+
+func TestRequiredHR(t *testing.T) {
+	for _, c := range []struct {
+		method, path string
+		want         []string
+	}{
+		{"GET", "/api/v1/employees", []string{"read:employees"}},
+		{"PATCH", "/api/v1/employees/emp_1", []string{"write:employees"}},
+		{"GET", "/api/v1/employment/settings", []string{"read:employees"}},
+		{"GET", "/api/v1/employees/emp_1/pay-terms", []string{"read:employees", "read:payroll"}},
+		{"POST", "/api/v1/employees/emp_1/pay-terms", []string{"read:employees", "write:payroll"}},
+		{"DELETE", "/api/v1/employees/emp_1/pay-terms/pt_1", []string{"read:employees", "write:payroll"}},
+		{"GET", "/api/v1/employees/emp_1/protected", []string{"read:employees", "read:payroll"}},
+		{"GET", "/api/v1/employees/emp_1/documents", []string{"read:employees", "read:employee-documents"}},
+		{"GET", "/api/v1/employees/emp_1/documents/doc_1/download", []string{"read:employees", "read:employee-documents"}},
+		{"DELETE", "/api/v1/employees/emp_1/documents/doc_1", []string{"read:employees", "write:employee-documents"}},
+		{"GET", "/api/v1/payroll/entries", []string{"read:payroll"}},
+		{"POST", "/api/v1/payroll/entries", []string{"write:payroll"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/approve", []string{"read:payroll", "write:payroll-approval"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/payment", []string{"read:payroll", "write:payroll-approval"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/correct", []string{"write:payroll"}},
+		{"GET", "/api/v1/payroll/export", []string{"read:payroll", "read:payroll-export"}},
+		{"GET", "/api/v1/payroll/bookings/preview", []string{"read:payroll", "read:payroll-export"}},
+		{"GET", "/api/v1/payroll/bookings/pb_1/export", []string{"read:payroll", "read:payroll-export"}},
+		{"POST", "/api/v1/payroll/bookings", []string{"read:payroll", "write:payroll-export"}},
+	} {
+		if got := Required(c.method, c.path); !slices.Equal(got, c.want) {
+			t.Errorf("Required(%s %s) = %q, want %q", c.method, c.path, got, c.want)
+		}
+	}
+}

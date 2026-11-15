@@ -225,7 +225,7 @@ func TestUploadGateAndPermissions(t *testing.T) {
 		t.Fatalf("no consent: %d %s", w.Code, w.Body)
 	}
 	e.consent("ws_a", "usr_a")
-	if w := e.upload("payroll", csv); w.Code != 400 {
+	if w := e.upload("timesheets", csv); w.Code != 400 {
 		t.Fatalf("unregistered kind: %d %s", w.Code, w.Body)
 	}
 	if w := e.upload("clients", map[string][]byte{"a.csv": []byte("x,y\n1,2\n"), "b.csv": []byte("x,y\n1,2\n")}); w.Code != 409 || code(w) != "duplicate_file" {

@@ -59,13 +59,19 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
-	for _, scope := range []string{"write:" + kind.Resource, "write:documents"} {
+	scopes := []string{"write:" + kind.Resource, "write:documents"}
+	if kind.Private {
+		scopes = scopes[:1]
+	}
+	for _, scope := range scopes {
 		if err := need(sess, scope); err != nil {
 			return err
 		}
 	}
-	if err := s.gate(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
-		return err
+	if kind.Parse == nil {
+		if err := s.gate(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
+			return err
+		}
 	}
 	headers := form.File["files[]"]
 	if len(headers) == 0 || len(headers) > maxFiles {
@@ -80,6 +86,9 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if err := uploads.CheckBatch(sums, u.sum, u.name); err != nil {
 			return err
+		}
+		if kind.Parse != nil && u.contentType == typeZIP {
+			return invalid(u.name + ": upload the file itself, not a ZIP archive.")
 		}
 		list = append(list, u)
 	}
@@ -134,7 +143,7 @@ func unsupportedFile(err error) error {
 // records the batch. Objects are put between two transactions, so no lock waits on storage; the second transaction
 // repeats the duplicate check under the same locks, which covers simultaneous uploads from any entry point.
 func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list []upload) (b store.ImportBatch, err error) {
-	if err = s.db.Tx(ctx, func(q store.Q) error { return s.admit(ctx, q, sess, list) }); err != nil {
+	if err = s.db.Tx(ctx, func(q store.Q) error { return s.admit(ctx, q, sess, list, kind.Private) }); err != nil {
 		return b, err
 	}
 	defer func() {
@@ -162,12 +171,12 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list
 	}
 	batch := store.ImportBatch{ID: auth.NewID("imp"), WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID, Kind: kind.Name}
 	err = s.db.Tx(ctx, func(q store.Q) error {
-		if err := s.admit(ctx, q, sess, list); err != nil {
+		if err := s.admit(ctx, q, sess, list, kind.Private); err != nil {
 			return err
 		}
 		for _, u := range list {
 			if !u.reused {
-				if err := s.createDocument(ctx, q, sess, u); err != nil {
+				if err := s.createDocument(ctx, q, sess, u, kind.Private); err != nil {
 					return err
 				}
 			}
@@ -181,7 +190,7 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list
 }
 
 // admit locks the uploads' hashes, marks the ones already stored in the workspace as reused and admits the new bytes.
-func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list []upload) error {
+func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list []upload, private bool) error {
 	sums, sizes := []string{}, []int64{}
 	for _, u := range list {
 		sums, sizes = append(sums, u.sum), append(sizes, int64(len(u.data)))
@@ -195,7 +204,7 @@ func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list
 	var add int64
 	for i := range list {
 		u := &list[i]
-		id, key, err := q.ExistingUpload(ctx, sess.Workspace.ID, u.sum)
+		id, key, err := q.ExistingUpload(ctx, sess.Workspace.ID, u.sum, private)
 		switch {
 		case err == nil:
 			u.reused, u.documentID, u.key = true, id, key
@@ -215,8 +224,13 @@ func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list
 	return nil
 }
 
-func (s *Service) createDocument(ctx context.Context, q store.Q, sess store.Session, u upload) error {
+func (s *Service) createDocument(ctx context.Context, q store.Q, sess store.Session, u upload, private bool) error {
 	name := u.name
+	if private { // an HR file has no place among Documents, so no name there to avoid
+		sum := u.sum
+		return q.CreateDocument(ctx, sess.Workspace.ID, sess.User.ID, store.Document{ID: u.documentID, Name: name,
+			Size: int64(len(u.data)), ContentType: u.contentType, SHA256: &sum, ObjectKey: u.key, CreatedAt: s.now(), HRPrivate: true})
+	}
 	taken, err := q.FileNameTaken(ctx, sess.Workspace.ID, nil, name, "")
 	if err != nil {
 		return err

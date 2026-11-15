@@ -308,3 +308,20 @@ func TestRemoveSyncsSeats(t *testing.T) {
 		t.Fatalf("seat syncs %v, want two for %s", e.seats.got, owner.workspace)
 	}
 }
+
+// Access to employees and payroll is an owner's to give: an admin can change a member's other scopes, never the HR
+// ones, and a member's full access never includes them.
+func TestOnlyOwnersChangeHRScopes(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	m, admin := e.join(owner.workspace, "member"), e.join(owner.workspace, "admin")
+	path := "/api/v1/members/" + e.id(m)
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:payroll"}}, 403, "forbidden")
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"read:*"}}, 200, "")
+	raw := e.want(owner, "PATCH", path, map[string]any{"scopes": []string{"read:*", "read:employees", "read:payroll"}}, 200, "")
+	if !strings.Contains(string(raw), `"read:payroll"`) {
+		t.Fatalf("owner grant: %s", raw)
+	}
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:employees", "read:payroll"}}, 200, "") // HR part unchanged
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*"}}, 403, "forbidden")                          // nor withdrawn
+}

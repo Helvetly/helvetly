@@ -586,3 +586,13 @@ func TestAcceptSyncsSeats(t *testing.T) {
 		t.Fatalf("seat syncs %v, want one for %s", e.seats.got, owner.workspace)
 	}
 }
+
+// Only an owner invites someone with access to employees or payroll.
+func TestOnlyOwnersInviteWithHRScopes(t *testing.T) {
+	e := newEnv(t, false)
+	ws := e.newWorkspace()
+	owner, admin := e.join(ws, "owner", "o@example.com"), e.join(ws, "admin", "a@example.com")
+	body := map[string]any{"email": "hr@example.com", "role": "member", "scopes": []string{"read:*", "read:employees"}}
+	e.want(admin, "POST", "/api/v1/members/invitations", body, 403, "forbidden")
+	e.want(owner, "POST", "/api/v1/members/invitations", body, 201, "")
+}

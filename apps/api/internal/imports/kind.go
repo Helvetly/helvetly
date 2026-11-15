@@ -45,6 +45,11 @@ type Kind struct {
 	// Overwrite (with Conflict) replaces the conflicting record id with this one and returns its id, inside the commit's
 	// transaction; it refuses (an auth error under 500) a record that may not be overwritten.
 	Overwrite func(ctx context.Context, q store.Q, sess store.Session, data Data, src Source, id string) (string, error)
+	// Parse (optional) reads the records from the file itself, without the AI model: no AI consent, budget or
+	// provider is involved and the file's content never leaves Helvetly. Its errors are failures shown to the person.
+	Parse func(name, contentType string, data []byte) ([]Data, error)
+	// Private kinds keep their source files as HR files (outside Documents) and need no write:documents.
+	Private bool
 }
 
 // Resolutions a person sends for a record at commit: replace the conflicting record, or leave the record out.
@@ -126,7 +131,7 @@ func rawText(raw json.RawMessage) string {
 func Offered(allows func(resource string) bool) []string {
 	var out []string
 	for _, name := range slices.Sorted(maps.Keys(Kinds)) {
-		if k := Kinds[name]; allows(k.Resource) {
+		if k := Kinds[name]; allows(k.Resource) && !k.Private { // HR imports are never offered by Heidi
 			out = append(out, k.Label)
 		}
 	}

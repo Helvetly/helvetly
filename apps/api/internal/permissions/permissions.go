@@ -112,9 +112,40 @@ var also = []struct{ method, pattern, scope string }{
 	{http.MethodPost, "/api/v1/engagements/*/periods/*/invoice", "write:invoices"},
 }
 
+// instead: routes whose scopes replace their prefix's read/write scope, as path.Match patterns, for reads (GET, HEAD)
+// or writes. HR parts sit under one prefix but need their own scope: pay and documents of an employee, approving
+// payroll without editing it, exporting it.
+var instead = []struct {
+	write   bool
+	pattern string
+	scopes  []string
+}{
+	{false, "/api/v1/employees/*/pay-terms", []string{"read:employees", "read:payroll"}},
+	{true, "/api/v1/employees/*/pay-terms", []string{"read:employees", "write:payroll"}},
+	{true, "/api/v1/employees/*/pay-terms/*", []string{"read:employees", "write:payroll"}},
+	{false, "/api/v1/employees/*/protected", []string{"read:employees", "read:payroll"}},
+	{false, "/api/v1/employees/*/documents", []string{"read:employees", "read:employee-documents"}},
+	{false, "/api/v1/employees/*/documents/*/download", []string{"read:employees", "read:employee-documents"}},
+	{true, "/api/v1/employees/*/documents", []string{"read:employees", "write:employee-documents"}},
+	{true, "/api/v1/employees/*/documents/*", []string{"read:employees", "write:employee-documents"}},
+	{true, "/api/v1/payroll/entries/*/approve", []string{"read:payroll", "write:payroll-approval"}},
+	{true, "/api/v1/payroll/entries/*/payment", []string{"read:payroll", "write:payroll-approval"}},
+	{false, "/api/v1/payroll/export", []string{"read:payroll", "read:payroll-export"}},
+	{false, "/api/v1/payroll/bookings", []string{"read:payroll", "read:payroll-export"}},
+	{false, "/api/v1/payroll/bookings/*", []string{"read:payroll", "read:payroll-export"}},
+	{false, "/api/v1/payroll/bookings/*/export", []string{"read:payroll", "read:payroll-export"}},
+	{true, "/api/v1/payroll/bookings", []string{"read:payroll", "write:payroll-export"}},
+}
+
 // Required is the scopes a request needs: read:<resource> for GET and HEAD, else write:<resource>; nil when the
 // path is not scope-checked.
 func Required(method, p string) []string {
+	write := method != http.MethodGet && method != http.MethodHead
+	for _, in := range instead {
+		if ok, _ := path.Match(in.pattern, p); ok && in.write == write {
+			return in.scopes
+		}
+	}
 	for _, pre := range prefixes {
 		if p != pre.path && !strings.HasPrefix(p, pre.path+"/") {
 			continue

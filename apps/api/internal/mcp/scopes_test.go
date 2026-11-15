@@ -109,6 +109,20 @@ func TestExcludedRoutesRefuseTokens(t *testing.T) {
 		{"PUT", "/api/v1/ledger/settings"},
 		{"PUT", "/api/v1/vat-return/settings"},
 		{"PUT", "/api/v1/engagement-settings"},
+		// Employees and payroll: never a public operation, whatever the token's scopes.
+		{"GET", "/api/v1/employees"},
+		{"POST", "/api/v1/employees"},
+		{"GET", "/api/v1/employees/emp_1"},
+		{"GET", "/api/v1/employees/emp_1/protected"},
+		{"GET", "/api/v1/employees/emp_1/pay-terms"},
+		{"GET", "/api/v1/employees/emp_1/documents"},
+		{"GET", "/api/v1/employees/emp_1/documents/doc_1/download"},
+		{"GET", "/api/v1/employment/settings"},
+		{"GET", "/api/v1/payroll/entries"},
+		{"POST", "/api/v1/payroll/entries/pay_1/approve"},
+		{"GET", "/api/v1/payroll/summary"},
+		{"GET", "/api/v1/payroll/export"},
+		{"GET", "/api/v1/payroll/bookings"},
 	} {
 		if status, code, _ := e.do(token, c.method, c.path); status != http.StatusForbidden || code != "token_not_allowed" {
 			t.Errorf("%s %s: %d %s, want 403 token_not_allowed", c.method, c.path, status, code)
@@ -162,6 +176,17 @@ func TestWriteToolsWithoutBody(t *testing.T) {
 		got := e.call(token, op.ID, args).Content[0].Text
 		if strings.Contains(got, "unsupported_media_type") || strings.Contains(got, "EOF") {
 			t.Errorf("%s: %s", op.ID, got)
+		}
+	}
+}
+
+// TestNoHRTool: MCP offers no tool over employee or payroll data, not even to an owner's full-access token.
+func TestNoHRTool(t *testing.T) {
+	for _, op := range openapi.Operations {
+		for _, word := range []string{"employ", "payroll", "pay-terms", "salary"} {
+			if strings.Contains(strings.ToLower(op.Path+" "+op.ID+" "+op.Tag), word) {
+				t.Errorf("public operation %s %s reaches HR data", op.Method, op.Path)
+			}
 		}
 	}
 }

@@ -33,6 +33,8 @@ type FolderRef struct {
 }
 
 type Document struct {
+	EmployeeID    *string        `json:"-"` // set only on create: an employee's file, private like HRPrivate
+	HRPrivate     bool           `json:"-"` // set only on create: an HR file outside the general document system
 	ID            string         `json:"id"`
 	Name          string         `json:"name"`
 	FolderID      *string        `json:"folder_id"`
@@ -111,7 +113,7 @@ func (q Q) DocumentFolders(ctx context.Context, workspaceID, userID string) ([]F
 		FROM document_folders f LEFT JOIN users u ON u.id = f.created_by
 		LEFT JOIN document_folder_stars st ON st.folder_id = f.id AND st.user_id = $2
 		LEFT JOIN (SELECT folder_id, count(*) AS n, sum(size) AS size FROM documents
-			WHERE workspace_id = $1 AND deleted_at IS NULL GROUP BY folder_id) s ON s.folder_id = f.id
+			WHERE workspace_id = $1 AND deleted_at IS NULL AND NOT hr_private GROUP BY folder_id) s ON s.folder_id = f.id
 		WHERE f.workspace_id = $1 AND f.deleted_at IS NULL ORDER BY lower(f.name), f.id`, workspaceID, userID)
 	if err != nil {
 		return nil, err
@@ -220,7 +222,7 @@ func (q Q) FolderNameTaken(ctx context.Context, workspaceID string, parentID *st
 // FileNameTaken: the id of the live file with this name (case-insensitive) in the folder, or "".
 func (q Q) FileNameTaken(ctx context.Context, workspaceID string, folderID *string, name, exceptID string) (string, error) {
 	return q.taken(ctx, `SELECT id FROM documents WHERE workspace_id = $1 AND folder_id IS NOT DISTINCT FROM $2
-		AND lower(name) = lower($3) AND id <> $4 AND deleted_at IS NULL LIMIT 1`, workspaceID, folderID, name, exceptID)
+		AND lower(name) = lower($3) AND id <> $4 AND deleted_at IS NULL AND NOT hr_private LIMIT 1`, workspaceID, folderID, name, exceptID)
 }
 
 func (q Q) taken(ctx context.Context, sql string, args ...any) (string, error) {
@@ -235,7 +237,7 @@ func (q Q) taken(ctx context.Context, sql string, args ...any) (string, error) {
 // FreeFileName: name, or "name (2).ext", "name (3).ext"… whichever no live file in the folder has.
 func (q Q) FreeFileName(ctx context.Context, workspaceID string, folderID *string, name string) (string, error) {
 	return q.free(ctx, `SELECT lower(name) FROM documents WHERE workspace_id = $1 AND folder_id IS NOT DISTINCT FROM $2
-		AND deleted_at IS NULL`, workspaceID, folderID, name, true)
+		AND deleted_at IS NULL AND NOT hr_private`, workspaceID, folderID, name, true)
 }
 
 // FreeFolderName: as FreeFileName for a folder among its siblings ("Offers (2)").
@@ -420,9 +422,10 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	return d, err
 }
 
-// Document: one file of the workspace, live or in the Trash, with its links.
+// Document: one file of the workspace, live or in the Trash, with its links. HR files (employee documents, payroll
+// import sources) are not documents here: every general reader, share, signature and link goes through this.
 func (q Q) Document(ctx context.Context, workspaceID, id string) (Document, error) {
-	d, err := scanDocument(q.db.QueryRow(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.id = $2`, workspaceID, id))
+	d, err := scanDocument(q.db.QueryRow(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.id = $2 AND NOT d.hr_private`, workspaceID, id))
 	if err != nil {
 		return d, err
 	}
@@ -474,9 +477,9 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 
 func (q Q) createDocument(ctx context.Context, workspaceID, userID string, d Document) error {
 	_, err := q.db.Exec(ctx, `INSERT INTO documents (id, workspace_id, folder_id, name, size, content_type, sha256, object_key,
-			uploaded_by, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, nullif($9, ''), $10, $10)`, d.ID, workspaceID, d.FolderID, d.Name, d.Size, d.ContentType,
-		d.SHA256, d.ObjectKey, userID, d.CreatedAt)
+			uploaded_by, created_at, updated_at, employee_id, hr_private)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, nullif($9, ''), $10, $10, $11, $12)`, d.ID, workspaceID, d.FolderID, d.Name, d.Size,
+		d.ContentType, d.SHA256, d.ObjectKey, userID, d.CreatedAt, d.EmployeeID, d.HRPrivate || d.EmployeeID != nil)
 	return err
 }
 
@@ -490,7 +493,7 @@ func (q Q) UpdateDocument(ctx context.Context, workspaceID, id, name string, fol
 // TrashDocument moves a live file to the Trash unless it is a business record; false when it is.
 func (q Q) TrashDocument(ctx context.Context, workspaceID, id, userID, today string, now time.Time) (bool, error) {
 	tag, err := q.db.Exec(ctx, `UPDATE documents d SET deleted_at = $3, deleted_by = $4, trashed_with = NULL
-		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL AND NOT `+retainedSQL("$5"), workspaceID, id, now, userID, today)
+		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL AND NOT d.hr_private AND NOT `+retainedSQL("$5"), workspaceID, id, now, userID, today)
 	return tag.RowsAffected() > 0, err
 }
 
@@ -525,7 +528,7 @@ var DocumentSorts = map[string]string{"name": "lower(d.name)", "size": "d.size",
 
 // ListDocuments: a page of live files and the total matching.
 func (q Q) ListDocuments(ctx context.Context, workspaceID string, f DocumentFilter, limit, offset int) ([]Document, int, error) {
-	where, args := []string{"d.workspace_id = $1", "d.deleted_at IS NULL"}, []any{workspaceID}
+	where, args := []string{"d.workspace_id = $1", "d.deleted_at IS NULL", "NOT d.hr_private"}, []any{workspaceID}
 	arg := func(v any) string {
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
@@ -606,7 +609,7 @@ func (q Q) Trash(ctx context.Context, workspaceID string) ([]TrashItem, error) {
 			d.deleted_at, u.id, u.name
 		FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = d.deleted_by
-		WHERE d.workspace_id = $1 AND d.deleted_at IS NOT NULL AND d.trashed_with IS NULL
+		WHERE d.workspace_id = $1 AND d.deleted_at IS NOT NULL AND d.trashed_with IS NULL AND NOT d.hr_private
 		UNION ALL
 		SELECT 'folder', g.id, g.name, NULL, coalesce((SELECT sum(size) FROM documents WHERE trashed_with = g.id), 0),
 			(SELECT count(*) FROM documents WHERE trashed_with = g.id) + (SELECT count(*) FROM document_folders WHERE trashed_with = g.id),
@@ -696,7 +699,7 @@ type UsageRow struct {
 // DocumentUsage: the workspace's files grouped by content type and whether they are in the Trash.
 func (q Q) DocumentUsage(ctx context.Context, workspaceID string) ([]UsageRow, error) {
 	rows, err := q.db.Query(ctx, `SELECT content_type, deleted_at IS NOT NULL, count(*), coalesce(sum(size), 0)
-		FROM documents WHERE workspace_id = $1 GROUP BY 1, 2`, workspaceID)
+		FROM documents WHERE workspace_id = $1 AND NOT hr_private GROUP BY 1, 2`, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -710,4 +713,26 @@ func (q Q) DocumentUsage(ctx context.Context, workspaceID string) ([]UsageRow, e
 		out = append(out, u)
 	}
 	return out, rows.Err()
+}
+
+// ---- HR files ----
+
+// DuplicateEmployeeFile: the employee's live file with these bytes.
+func (q Q) DuplicateEmployeeFile(ctx context.Context, workspaceID, employeeID, sum string) (DuplicateUpload, error) {
+	d := DuplicateUpload{Resource: "employee_document"}
+	err := q.db.QueryRow(ctx, `SELECT id, name FROM documents WHERE workspace_id = $1 AND employee_id = $2 AND sha256 = $3
+		AND deleted_at IS NULL LIMIT 1`, workspaceID, employeeID, sum).Scan(&d.ID, &d.Name)
+	return d, err
+}
+
+// HRFile: one HR file of the workspace (never a general document).
+func (q Q) HRFile(ctx context.Context, workspaceID, id string) (Document, error) {
+	return scanDocument(q.db.QueryRow(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.id = $2 AND d.hr_private
+		AND d.deleted_at IS NULL`, workspaceID, id))
+}
+
+// DeleteHRFile removes an HR file's row and returns its object key.
+func (q Q) DeleteHRFile(ctx context.Context, workspaceID, id string) (string, error) {
+	return q.taken(ctx, `DELETE FROM documents WHERE workspace_id = $1 AND id = $2 AND hr_private RETURNING object_key`,
+		workspaceID, id)
 }

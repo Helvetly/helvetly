@@ -338,7 +338,7 @@ func (s *Service) entryDocument(ctx context.Context, q store.Q, sess store.Sessi
 	}
 	sum := sha256.Sum256(b)
 	list := []upload{{name: src.Name, contentType: src.ContentType, data: b, sum: hex.EncodeToString(sum[:])}}
-	if err := s.admit(ctx, q, sess, list); err != nil {
+	if err := s.admit(ctx, q, sess, list, false); err != nil { // private kinds take no ZIP files
 		return "", "", err
 	}
 	u := &list[0]
@@ -357,7 +357,7 @@ func (s *Service) entryDocument(ctx context.Context, q store.Q, sess store.Sessi
 	if err := s.files.Put(ctx, u.key, bytes.NewReader(b), int64(len(b)), u.contentType, u.name); err != nil {
 		return "", u.key, err
 	}
-	return u.documentID, u.key, s.createDocument(ctx, q, sess, *u)
+	return u.documentID, u.key, s.createDocument(ctx, q, sess, *u, false)
 }
 
 func (s *Service) deleteKept(ctx context.Context, keys []string) {

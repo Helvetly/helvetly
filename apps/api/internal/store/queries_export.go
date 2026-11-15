@@ -40,7 +40,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("engagement_entries", "engagements", "engagement_id"), child("engagement_notices", "engagements", "engagement_id"),
 	{"engagement_invoices", `SELECT to_jsonb(c) FROM engagement_invoices c JOIN engagement_periods ep ON ep.id = c.period_id
 		JOIN engagements p ON p.id = ep.engagement_id WHERE p.workspace_id = $1`},
-	own("documents"), own("document_folders"), own("document_links"), own("document_shares"), own("client_change_requests"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"), own("client_change_requests"),
 	{"portal_sessions", `SELECT to_jsonb(t) - 'token_hash' - 'csrf_token' FROM portal_sessions t WHERE t.workspace_id = $1`},
 	own("portal_avatars"),
 	own("signature_requests"),
@@ -49,7 +49,11 @@ var WorkspaceExportTables = []ExportTable{
 	own("templates"),
 	own("closed_periods"), own("financial_events"), own("ledger_settings"),
 	own("workspace_counters"), own("dunning_notices"), own("vat_return_settings"), own("einvoice_transmissions"),
-	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_token_packs"), own("billing_disputes"),
+	{"import_batches", `SELECT to_jsonb(t) FROM import_batches t WHERE t.workspace_id = $1 AND t.kind <> 'payroll'`},
+	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`},
+	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_token_packs"), own("billing_disputes"),
 }
 
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,
@@ -80,7 +84,7 @@ var UserExportTables = []ExportTable{
 type ExportFile struct{ Path, Key string }
 
 // exportFiles: the workspace's stored objects; trashed documents are included while their object exists.
-const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM documents WHERE workspace_id = $1
+const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM documents WHERE workspace_id = $1 AND NOT hr_private
 	UNION ALL SELECT 'receipts/' || id || '-' || name, object_key FROM expense_receipts WHERE workspace_id = $1
 	UNION ALL SELECT 'invoices/' || coalesce(number, id) || '.pdf', pdf_key FROM invoices WHERE workspace_id = $1 AND pdf_key IS NOT NULL
 	UNION ALL SELECT 'e-invoices/' || x.invoice_id || '-' || x.filename, x.object_key FROM invoice_xml_exports x
@@ -146,6 +150,10 @@ func eachJSON(ctx context.Context, tx pgx.Tx, t ExportTable, id string, row func
 	return rows.Err()
 }
 
+// hrExcluded: the workspace export is open to read:settings, which never includes the HR scopes; HR data leaves only
+// through the payroll export (read:payroll-export), audited.
+const hrExcluded = "HR data: only readable with the HR scopes, exported through the audited payroll export"
+
 // ExportExcluded: tables neither export reads, each with the reason. TestExportCoversEveryTable fails on a table
 // that is in no export and not here.
 var ExportExcluded = map[string]string{
@@ -161,4 +169,12 @@ var ExportExcluded = map[string]string{
 	"object_versions":          "storage version ids of objects, not business data",
 	"plan_limits":              "global plan configuration, not workspace data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
+	"employment_settings":      hrExcluded,
+	"employees":                hrExcluded,
+	"employee_pay_terms":       hrExcluded,
+	"employee_documents":       hrExcluded,
+	"payroll_entries":          hrExcluded,
+	"payroll_components":       hrExcluded,
+	"payroll_bookings":         hrExcluded,
+	"payroll_booking_items":    hrExcluded,
 }
