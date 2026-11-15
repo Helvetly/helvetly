@@ -389,11 +389,18 @@ export const NoPermission: Story = {
 }
 
 export const NoPlan: Story = {
-  parameters: { msw: { handlers: handlers(billingFixture()) } },
+  // The API still counts usage without a plan, against no limits.
+  parameters: {
+    msw: {
+      handlers: handlers(billingFixture({ usage: [{ limit: 'clients', used: 0, max: null }] })),
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'No plan' })).toBeVisible()
     await expect(canvas.getByRole('region', { name: 'Read-only' })).toBeVisible()
+    // No limits without a plan, so no "0 of unlimited" tiles.
+    await expect(canvas.queryByRole('heading', { name: 'Usage' })).not.toBeInTheDocument()
     await changePlanLink(canvas, 'Choose a plan')
   },
 }
