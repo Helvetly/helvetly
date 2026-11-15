@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Geist_Mono, Instrument_Serif, Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 
+import { Analytics } from '@/components/analytics'
 import { RevealObserver } from '@/components/reveal-observer'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
@@ -44,6 +45,7 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
           {children}
           <SiteFooter />
           <RevealObserver />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
