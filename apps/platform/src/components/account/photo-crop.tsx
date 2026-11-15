@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -17,6 +16,7 @@ import { useState } from 'react'
 import Cropper from 'react-easy-crop'
 
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -72,10 +72,8 @@ export function PhotoCropDialog({
     <Dialog open onOpenChange={(next) => !next && !busy && onCancel()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Crop your photo</DialogTitle>
-          <DialogDescription>
-            Drag the photo to place it, and zoom with the slider. Your team sees it in a circle.
-          </DialogDescription>
+          <DialogTitle>{translate('cropYourPhoto')}</DialogTitle>
+          <DialogDescription>{translate('dragThePhotoToPlaceItAndZoomWith')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_6rem]">
           <div className="relative h-72 overflow-hidden rounded-lg bg-muted">
@@ -92,12 +90,11 @@ export function PhotoCropDialog({
               onZoomChange={setZoom}
               onCropComplete={(percent, pixels) => setArea({ percent, pixels })}
               mediaProps={{
-                onError: () =>
-                  setProblem('This image can’t be read. Choose a PNG, JPEG or WebP photo.'),
+                onError: () => setProblem(translate('thisImageCanTBeReadChooseAPNG')),
               }}
               cropperProps={{
                 role: 'group',
-                'aria-label': 'Crop area: drag or use the arrow keys to move the photo',
+                'aria-label': translate('cropAreaDragOrUseTheArrowKeysTo'),
               }}
               classes={{ cropAreaClassName: 'focus-visible:ring-3 focus-visible:ring-ring/50' }}
             />
@@ -105,13 +102,15 @@ export function PhotoCropDialog({
           <figure className="flex items-center gap-3 sm:flex-col sm:items-center sm:pt-2">
             <CirclePreview url={url} area={area?.percent} className="size-24" />
             <CirclePreview url={url} area={area?.percent} className="size-10" />
-            <figcaption className="text-body-sm text-muted-foreground">Preview</figcaption>
+            <figcaption className="text-body-sm text-muted-foreground">
+              {translate('preview')}
+            </figcaption>
           </figure>
         </div>
         <div className="flex items-center gap-3">
           <ZoomOut aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <Slider
-            aria-label="Zoom"
+            aria-label={translate('zoom')}
             min={MIN_ZOOM}
             max={MAX_ZOOM}
             step={ZOOM_STEP}
@@ -128,13 +127,13 @@ export function PhotoCropDialog({
         )}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-            Cancel
+            {translate('cancel')}
           </Button>
           <Button type="button" disabled={!area || busy || !!problem} onClick={() => void save()}>
             {busy && (
               <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
             )}
-            {busy ? 'Saving…' : 'Save photo'}
+            {busy ? translate('saving') : translate('savePhoto')}
           </Button>
         </DialogFooter>
       </DialogContent>

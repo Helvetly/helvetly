@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Calendar } from '@helvetly/ui/components/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -7,6 +6,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useState } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { addDays, daysBetween, formatDay } from '@/lib/invoices'
 
 /** A civil date ("2026-11-05") as a local Date for the calendar, and back; no time zone drift. */
@@ -108,7 +108,7 @@ export function DueDateField({
         <button
           id={id}
           type="button"
-          aria-label={`Due date: ${formatDay(value)}`}
+          aria-label={translate('dueDate2', { value1: formatDay(value) })}
           data-invalid={invalid || undefined}
           className={quietValue}
         >
@@ -116,7 +116,11 @@ export function DueDateField({
           <span
             className={cn('text-[12.5px]', days < 0 ? 'text-destructive' : 'text-muted-foreground')}
           >
-            {days < 0 ? 'before the issue date' : days === 0 ? 'on receipt' : `in ${days} days`}
+            {days < 0
+              ? translate('beforeTheIssueDate')
+              : days === 0
+                ? translate('onReceipt2')
+                : translate('inDays2', { days: days })}
           </span>
         </button>
       </PopoverTrigger>
@@ -131,12 +135,13 @@ export function DueDateField({
               onClick={() => choose(addDays(issueDate, term))}
               className="h-7 rounded-md text-[12.5px] text-muted-foreground tabular-nums transition-colors hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-elevation-1"
             >
-              {term} days
+              {term}
+              {translate('days4')}
             </button>
           ))}
         </div>
         <label className="flex h-8 items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
-          Other term
+          {translate('otherTerm')}
           <input
             inputMode="numeric"
             value={custom}
@@ -147,7 +152,7 @@ export function DueDateField({
             placeholder="45"
             className="h-7 w-14 rounded-md border border-input bg-card px-2 text-right text-[12.5px] text-foreground tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           />
-          days
+          {translate('days')}
         </label>
         <Calendar
           mode="single"
@@ -158,8 +163,13 @@ export function DueDateField({
           onSelect={(date) => date && choose(toCivil(date))}
         />
         <p className="border-t border-border/70 pt-2 text-[12.5px] text-muted-foreground">
-          Due <span className="text-foreground">{formatDay(value)}</span>
-          {days > 0 ? ` · in ${days} days` : days === 0 ? ' · on receipt' : ''}
+          {translate('due3')}
+          <span className="text-foreground">{formatDay(value)}</span>
+          {days > 0
+            ? translate('inDays', { days: days })
+            : days === 0
+              ? translate('onReceipt')
+              : ''}
         </p>
       </PopoverContent>
     </Popover>
@@ -193,21 +203,21 @@ export function ServiceField({
         <button
           id={id}
           type="button"
-          aria-label={`Service date: ${label ?? 'none'}`}
+          aria-label={translate('serviceDate', { value1: label ?? translate('none') })}
           data-invalid={invalid || undefined}
           className={cn(quietValue, !label && 'text-muted-foreground/70')}
         >
-          {label ?? 'Add date or period'}
+          {label ?? translate('addDateOrPeriod')}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className={popover}>
         <div className="flex h-8 items-center justify-between gap-2">
           <Segmented
-            label="Service"
+            label={translate('service')}
             value={period ? 'period' : 'day'}
             options={[
-              { value: 'day', label: 'One day' },
-              { value: 'period', label: 'Period' },
+              { value: 'day', label: translate('oneDay') },
+              { value: 'period', label: translate('period') },
             ]}
             onChange={(choice) => {
               setPeriod(choice === 'period')
@@ -224,7 +234,7 @@ export function ServiceField({
                 setOpen(false)
               }}
             >
-              Clear
+              {translate('clear')}
             </Button>
           )}
         </div>

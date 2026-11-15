@@ -1,8 +1,8 @@
 'use client'
-
 import { formatPercent } from '@helvetly/ui/lib/format'
 
 import { Kpi, KpiBand, Sparkline, TickGauge } from '@/components/kpi-band'
+import { translate } from '@/lib/i18n'
 import {
   SUMMARY_PERIODS,
   chartNumber,
@@ -39,24 +39,24 @@ export function InvoiceKpis({ period }: { period?: SummaryPeriod }) {
       {summary && (
         <>
           <Kpi
-            label="Outstanding"
+            label={translate('outstanding')}
             unit={summary.currency}
             value={formatWholeAmount(summary.outstanding.amount)}
-            note={`${summary.outstanding.count} open`}
+            note={translate('open3', { count: summary.outstanding.count })}
             chart={
               <Sparkline values={summary.monthly.map((month) => chartNumber(month.invoiced))} />
             }
           />
           <Kpi
-            label="Overdue"
+            label={translate('overdue3')}
             unit={summary.currency}
             value={formatWholeAmount(summary.overdue.amount)}
-            note={`${summary.overdue.count} ${summary.overdue.count === 1 ? 'invoice' : 'invoices'}`}
+            note={`${summary.overdue.count} ${summary.overdue.count === 1 ? translate('invoice3') : translate('invoices3')}`}
             chart={<TickGauge share={share(summary.overdue.amount, summary.outstanding.amount)} />}
           />
           <Kpi
             trending={hasPrevious && paidChange > 0}
-            label={`Paid ${named?.phrase ?? 'this month'}`}
+            label={translate('paid2', { value1: named?.phrase ?? translate('thisMonth') })}
             unit={summary.currency}
             value={formatWholeAmount((paid ?? summary.paid_this_month).amount)}
             note={
@@ -69,27 +69,27 @@ export function InvoiceKpis({ period }: { period?: SummaryPeriod }) {
           {/* Only while someone is owed money back: it is a to-do, not a figure to watch. */}
           {toCents(summary.refund_due.amount) > 0n && (
             <Kpi
-              label="Refund due"
+              label={translate('refundDue')}
               unit={summary.currency}
               value={formatWholeAmount(summary.refund_due.amount)}
-              note={`${summary.refund_due.count} ${summary.refund_due.count === 1 ? 'invoice' : 'invoices'}`}
+              note={`${summary.refund_due.count} ${summary.refund_due.count === 1 ? translate('invoice3') : translate('invoices3')}`}
               chart={<TickGauge share={1} />}
             />
           )}
           <Kpi
-            label="Avg. days to pay"
+            label={translate('avgDaysToPay')}
             value={avgDays == null ? '—' : String(Math.round(avgDays))}
             note={
               avgDays == null
-                ? 'none fully paid yet'
-                : (named?.label.toLowerCase() ?? 'last 90 days')
+                ? translate('noneFullyPaidYet')
+                : (named?.label.toLowerCase() ?? translate('last90Days'))
             }
             chart={<TickGauge share={(avgDays ?? 0) / 60} />}
           />
           <Kpi
-            label="Collection rate"
+            label={translate('collectionRate')}
             value={collectionRate == null ? '—' : formatPercent(collectionRate)}
-            note={named?.label.toLowerCase() ?? '12 months'}
+            note={named?.label.toLowerCase() ?? translate('message12Months')}
             chart={<TickGauge share={collectionRate ?? 0} />}
           />
         </>

@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
@@ -39,6 +39,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { errorMessage } from '@/lib/api'
 import { booksApi, type ActivitySource, type MonthActivity, type Period } from '@/lib/books'
+import { translate } from '@/lib/i18n'
 import { formatAmount, today } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
 
@@ -50,15 +51,15 @@ const ACTIVITY_KEY = ['books', 'activity'] as const
 const MAX_ACTIVITY_MONTHS = 36
 
 const utc = (month: string) => new Date(`${month}-01T00:00:00Z`)
-const monthName = new Intl.DateTimeFormat('en-GB', {
+const monthName = new Intl.DateTimeFormat(languageTag, {
   month: 'long',
   year: 'numeric',
   timeZone: 'UTC',
 })
 export const monthLabel = (month: string) => monthName.format(utc(month))
-const longName = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' })
-const shortName = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' })
-const closedOn = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
+const longName = new Intl.DateTimeFormat(languageTag, { month: 'long', timeZone: 'UTC' })
+const shortName = new Intl.DateTimeFormat(languageTag, { month: 'short', timeZone: 'UTC' })
+const closedOn = new Intl.DateTimeFormat(languageTag, { day: 'numeric', month: 'short' })
 
 /** The open, ended months up to and including `through`, oldest first: what "Close through" closes. */
 export function openThrough(open: string[], through: string): string[] {
@@ -100,8 +101,8 @@ export function closedThrough(closed: Iterable<string>): string | null {
 /** "2 draft invoices and 1 draft expense", or null when there are none (or they can't be read). */
 export function draftsOf(activity: MonthActivity | undefined): string | null {
   const parts = [
-    count(activity?.invoices?.drafts ?? 0, 'draft invoice'),
-    count(activity?.expenses?.drafts ?? 0, 'draft expense'),
+    count(activity?.invoices?.drafts ?? 0, translate('draftInvoice')),
+    count(activity?.expenses?.drafts ?? 0, translate('draftExpense')),
   ].filter(Boolean)
   return parts.length ? parts.join(' and ') : null
 }
@@ -119,8 +120,8 @@ export function PeriodsSettings() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="Month-end close"
-        description="Close a month once its books are done: nothing dated in it can then be issued, paid, voided or booked. Reopen it, with a reason, to make a correction."
+        title={translate('monthEndClose')}
+        description={translate('closeAMonthOnceItsBooksAreDoneNothing')}
       >
         <PeriodsCard />
       </SettingsPage>
@@ -165,8 +166,11 @@ export function PeriodsCard() {
     onSuccess: (_, batch) => {
       toast.success(
         batch.length === 1
-          ? `${monthLabel(batch[0] ?? '')} closed.`
-          : `${batch.length} months closed, through ${monthLabel(batch.at(-1) ?? '')}.`,
+          ? translate('closed3', { value1: monthLabel(batch[0] ?? '') })
+          : translate('monthsClosedThrough', {
+              length: batch.length,
+              value2: monthLabel(batch.at(-1) ?? ''),
+            }),
       )
     },
     onError: toastError,
@@ -176,7 +180,7 @@ export function PeriodsCard() {
     mutationFn: ({ month, reason }: { month: string; reason: string }) =>
       booksApi.reopen(month, reason),
     onSuccess: (_, { month }) => {
-      toast.success(`${monthLabel(month)} reopened.`)
+      toast.success(translate('reopened', { value1: monthLabel(month) }))
       setReopening(null)
     },
     onError: toastError,
@@ -233,16 +237,21 @@ export function PeriodsCard() {
           tone="default"
           title={
             confirming.length === 1
-              ? `Close ${monthLabel(confirming[0] ?? '')}?`
-              : `Close ${confirming.length} months?`
+              ? translate('close4', { value1: monthLabel(confirming[0] ?? '') })
+              : translate('closeMonths2', { length: confirming.length })
           }
           body={
             confirming.length === 1
-              ? 'Nothing dated in it can then be issued, paid, voided or booked until it is reopened.'
-              : `${monthLabel(confirming[0] ?? '')} through ${monthLabel(confirming.at(-1) ?? '')}: nothing dated in them can then be issued, paid, voided or booked until they are reopened.`
+              ? translate('nothingDatedInItCanThenBeIssuedPaid')
+              : translate('throughNothingDatedInThemCanThenBeIssued', {
+                  value1: monthLabel(confirming[0] ?? ''),
+                  value2: monthLabel(confirming.at(-1) ?? ''),
+                })
           }
-          confirmLabel={confirming.length === 1 ? 'Close month' : 'Close months'}
-          cancelLabel="Not now"
+          confirmLabel={
+            confirming.length === 1 ? translate('closeMonth') : translate('closeMonths')
+          }
+          cancelLabel={translate('notNow')}
           onDecide={(approved) => {
             const batch = confirming
             setConfirming(null)
@@ -286,7 +295,7 @@ function CloseStatus({
   const Icon = done ? Lock : LockOpen
   return (
     <section
-      aria-label="Close status"
+      aria-label={translate('closeStatus')}
       className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-xl border bg-card px-5 py-4"
     >
       <div className="flex min-w-0 flex-1 basis-80 items-center gap-4">
@@ -303,22 +312,22 @@ function CloseStatus({
           <h2 className="text-body font-semibold">
             {done
               ? through
-                ? `Books closed through ${monthLabel(through)}`
-                : 'Nothing to close yet'
+                ? translate('booksClosedThrough', { value1: monthLabel(through) })
+                : translate('nothingToCloseYet')
               : open.length === 1
-                ? '1 month to close'
-                : `${open.length} months to close`}
+                ? translate('message1MonthToClose')
+                : translate('monthsToClose', { length: open.length })}
           </h2>
           <p className="text-body-sm text-pretty text-muted-foreground">
             {done
-              ? 'Every month that has ended is closed.'
-              : `${open.length === 1 ? `${monthLabel(latest ?? '')} has ended and is still open` : `${monthLabel(open.at(-1) ?? '')} to ${monthLabel(latest ?? '')} have ended and are still open`}${through ? `; the latest closed month is ${monthLabel(through)}.` : '.'}`}
+              ? translate('everyMonthThatHasEndedIsClosed')
+              : `${open.length === 1 ? translate('hasEndedAndIsStillOpen', { value1: monthLabel(latest ?? '') }) : translate('toHaveEndedAndAreStillOpen', { value1: monthLabel(open.at(-1) ?? ''), value2: monthLabel(latest ?? '') })}${through ? translate('theLatestClosedMonthIs', { value1: monthLabel(through) }) : '.'}`}
             {withDrafts.length > 0 && (
               <span className="text-warning">
                 {' '}
                 {withDrafts.length === 1
-                  ? `${monthLabel(withDrafts[0] ?? '')} has drafts dated in it.`
-                  : `${withDrafts.length} of them have drafts dated in them.`}
+                  ? translate('hasDraftsDatedInIt', { value1: monthLabel(withDrafts[0] ?? '') })
+                  : translate('ofThemHaveDraftsDatedInThem', { length: withDrafts.length })}
               </span>
             )}
           </p>
@@ -333,16 +342,16 @@ function CloseStatus({
           >
             <Lock aria-hidden />
             {open.length === 1
-              ? `Close ${monthLabel(latest)}`
-              : `Close through ${monthLabel(latest)}`}
+              ? translate('close3', { value1: monthLabel(latest) })
+              : translate('closeThrough', { value1: monthLabel(latest) })}
           </Button>
           {open.length > 1 && <CloseThroughPicker open={open} disabled={busy} onClose={onClose} />}
         </div>
       )}
       {!manager && (
         <p className="flex basis-full items-center gap-2 text-body-sm text-muted-foreground">
-          <Lock className="size-3.5 shrink-0" aria-hidden /> Only an owner or admin can close or
-          reopen a month.
+          <Lock className="size-3.5 shrink-0" aria-hidden />
+          {translate('onlyAnOwnerOrAdminCanCloseOrReopen')}
         </p>
       )}
     </section>
@@ -367,7 +376,7 @@ function CloseThroughPicker({
         <Button
           disabled={disabled}
           size="icon"
-          aria-label="Close through an earlier month"
+          aria-label={translate('closeThroughAnEarlierMonth')}
           className="rounded-l-none border-l border-primary-foreground/20"
         >
           <ChevronDown aria-hidden />
@@ -375,20 +384,20 @@ function CloseThroughPicker({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        aria-label="Close every open month through"
+        aria-label={translate('closeEveryOpenMonthThrough')}
         className="w-[min(18rem,calc(100vw-2rem))] gap-0 p-1"
       >
         <p className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">
-          Close every open month through
+          {translate('closeEveryOpenMonthThrough')}
         </p>
         <Command
-          label="Close every open month through"
+          label={translate('closeEveryOpenMonthThrough')}
           className="p-0"
           filter={(month, query) => (monthMatches(month, query) ? 1 : 0)}
         >
-          <CommandInput placeholder="Search months…" />
+          <CommandInput placeholder={translate('searchMonths')} />
           <CommandList className="max-h-[min(18rem,50dvh)]">
-            <CommandEmpty>No open month matches.</CommandEmpty>
+            <CommandEmpty>{translate('noOpenMonthMatches')}</CommandEmpty>
             {[...years].map(([year, months]) => (
               <CommandGroup key={year} heading={year}>
                 {months.map((month) => {
@@ -437,7 +446,7 @@ function DraftWarnings({
   if (warnings.length === 0) return null
   return (
     <ul
-      aria-label="Drafts in these months"
+      aria-label={translate('draftsInTheseMonths')}
       className="mt-4 grid gap-1.5 rounded-lg bg-warning-surface px-3.5 py-3 text-left text-body-sm text-warning"
     >
       {warnings.map(({ month, drafts }) => (
@@ -448,7 +457,7 @@ function DraftWarnings({
           </span>
         </li>
       ))}
-      <li className="pl-6 text-warning/80">They can’t be issued or booked once closed.</li>
+      <li className="pl-6 text-warning/80">{translate('theyCanTBeIssuedOrBookedOnceClosed')}</li>
     </ul>
   )
 }
@@ -491,8 +500,8 @@ function YearCard({
         </h2>
         <span className="text-body-sm text-muted-foreground tabular-nums">
           {endedInYear.length > 0
-            ? `${closedInYear} of ${endedInYear.length} closed`
-            : 'No month has ended yet'}
+            ? translate('ofClosed', { closedInYear: closedInYear, length: endedInYear.length })
+            : translate('noMonthHasEndedYet')}
         </span>
         <ol aria-hidden className="ml-auto flex items-end gap-1 max-sm:w-full">
           {all.map((month) => {
@@ -503,7 +512,7 @@ function YearCard({
                 className="grid flex-1 justify-items-center gap-1 sm:w-6 sm:flex-none"
               >
                 <span
-                  title={`${monthLabel(month)}: ${state === 'future' ? 'not yet' : state}`}
+                  title={`${monthLabel(month)}: ${state === 'future' ? translate('notYet') : state}`}
                   className={cn('h-1.5 w-full rounded-full', SEGMENT[state])}
                 />
                 <span className="text-caption leading-none text-muted-foreground">
@@ -518,10 +527,10 @@ function YearCard({
         aria-hidden
         className="hidden grid-cols-[minmax(10rem,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_8.5rem_2rem] gap-x-4 border-b border-border/60 bg-muted/30 px-5 py-2 text-caption font-medium text-muted-foreground @3xl/sections:grid"
       >
-        <span>Month</span>
-        <span>Invoices issued</span>
-        <span>Expenses booked</span>
-        <span>Status</span>
+        <span>{translate('month')}</span>
+        <span>{translate('invoicesIssued')}</span>
+        <span>{translate('expensesBooked')}</span>
+        <span>{translate('status')}</span>
         <span />
       </div>
       <ul aria-label={year} className="divide-y divide-border/60">
@@ -581,33 +590,42 @@ function MonthRow({
           <span className="text-body font-medium">{longName.format(utc(month))}</span>
           <span className="truncate text-caption text-muted-foreground">
             {period
-              ? `Closed ${closedOn.format(new Date(period.closed_at))}${period.closed_by ? ` · ${period.closed_by.name}` : ''}`
+              ? translate('closed2', {
+                  value1: closedOn.format(new Date(period.closed_at)),
+                  value2: period.closed_by ? ` · ${period.closed_by.name}` : '',
+                })
               : state === 'current'
-                ? 'Current month'
-                : 'Ended, still open'}
+                ? translate('currentMonth')
+                : translate('endedStillOpen')}
           </span>
         </span>
       </span>
       <span className="flex items-center justify-end gap-1.5 @3xl/sections:order-4 @3xl/sections:justify-start">
         <StatusBadge tone={state === 'closed' ? 'green' : state === 'current' ? 'blue' : 'gray'}>
-          {state === 'closed' ? 'Closed' : state === 'current' ? 'In progress' : 'Open'}
+          {state === 'closed'
+            ? translate('closed')
+            : state === 'current'
+              ? translate('inProgress')
+              : translate('open')}
         </StatusBadge>
         {drafts && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label={`${drafts} dated in ${label}`}
+                aria-label={translate('datedIn2', { drafts: drafts, label: label })}
                 className="inline-flex size-6 items-center justify-center rounded-[4px] bg-warning-surface text-warning outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <TriangleAlert className="size-3.5" aria-hidden />
               </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-64">
-              {drafts} dated in {label}.{' '}
+              {drafts}
+              {translate('datedIn')}
+              {label}.{' '}
               {state === 'closed'
-                ? 'They can’t be issued or booked while it is closed.'
-                : 'Issue, book or delete them before closing it.'}
+                ? translate('theyCanTBeIssuedOrBookedWhileIt')
+                : translate('issueBookOrDeleteThemBeforeClosingIt')}
             </TooltipContent>
           </Tooltip>
         )}
@@ -620,7 +638,7 @@ function MonthRow({
                 variant="ghost"
                 size="icon-sm"
                 disabled={actions.disabled}
-                aria-label={`Actions for ${label}`}
+                aria-label={translate('actionsFor4', { label: label })}
                 className="text-muted-foreground"
               >
                 <MoreHorizontal aria-hidden />
@@ -629,11 +647,15 @@ function MonthRow({
             <DropdownMenuContent align="end">
               {state === 'closed' ? (
                 <DropdownMenuItem onSelect={() => actions.reopen(month)}>
-                  <LockOpen aria-hidden /> Reopen {label}…
+                  <LockOpen aria-hidden />
+                  {translate('reopen2')}
+                  {label}…
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem onSelect={() => actions.close(month)}>
-                  <Lock aria-hidden /> Close {label}
+                  <Lock aria-hidden />
+                  {translate('close2')}
+                  {label}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -644,14 +666,14 @@ function MonthRow({
       </span>
       <span className="col-span-3 grid grid-cols-2 gap-3 pl-7 @3xl/sections:contents">
         <Figures
-          label="Invoices issued"
+          label={translate('invoicesIssued')}
           noun="issued"
           source={activity?.invoices}
           loading={activity === undefined}
           className="@3xl/sections:order-2"
         />
         <Figures
-          label="Expenses booked"
+          label={translate('expensesBooked')}
           noun="booked"
           source={activity?.expenses}
           loading={activity === undefined}
@@ -730,28 +752,30 @@ function ReopenDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Reopen {monthLabel(month)}?</DialogTitle>
+            <DialogTitle>
+              {translate('reopen')}
+              {monthLabel(month)}?
+            </DialogTitle>
             <DialogDescription>
-              Its records can be changed again until you close it. The reason is kept in the audit
-              log.
+              {translate('itsRecordsCanBeChangedAgainUntilYouClose')}
             </DialogDescription>
           </DialogHeader>
-          <FormField id="reopen-reason" required label="Reason">
+          <FormField id="reopen-reason" required label={translate('reason')}>
             <Textarea
               id="reopen-reason"
               rows={3}
               maxLength={500}
-              placeholder="e.g. A supplier invoice for this month arrived late."
+              placeholder={translate('eGASupplierInvoiceForThisMonthArrived')}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={!ready || pending}>
-              <LockOpen aria-hidden /> {pending ? 'Reopening…' : 'Reopen month'}
+              <LockOpen aria-hidden /> {pending ? translate('reopening') : translate('reopenMonth')}
             </Button>
           </DialogFooter>
         </form>

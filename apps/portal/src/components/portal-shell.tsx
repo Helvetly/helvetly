@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { LanguageMenuItems } from '@helvetly/ui/components/language-switcher'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -21,6 +21,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import {
   getPortalSession,
   portalKeys,
@@ -32,11 +33,11 @@ import {
 import { initialsOf, LoginAvatar } from './portal-bits'
 
 const NAV = [
-  { href: '/', label: 'Overview', icon: House },
-  { href: '/invoices', label: 'Invoices', icon: FileText },
-  { href: '/quotes', label: 'Quotes', icon: FilePenLine },
-  { href: '/engagements', label: 'Engagements', icon: Gauge },
-  { href: '/documents', label: 'Documents', icon: FolderOpen },
+  { href: '/', label: translate('overview'), icon: House },
+  { href: '/invoices', label: translate('invoices'), icon: FileText },
+  { href: '/quotes', label: translate('quotes'), icon: FilePenLine },
+  { href: '/engagements', label: translate('engagements'), icon: Gauge },
+  { href: '/documents', label: translate('documents'), icon: FolderOpen },
 ]
 
 const SessionContext = createContext<PortalSession | null>(null)
@@ -44,7 +45,7 @@ const SessionContext = createContext<PortalSession | null>(null)
 /** The signed-in portal session; only valid below `PortalShell`. */
 export function usePortalSession(): PortalSession {
   const session = useContext(SessionContext)
-  if (!session) throw new Error('usePortalSession must be used inside PortalShell')
+  if (!session) throw new Error(translate('useportalsessionMustBeUsedInsidePortalShell'))
   return session
 }
 
@@ -63,7 +64,7 @@ function AccountMenu({
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-10 min-w-0 gap-2 rounded-full pr-1 pl-1 lg:pl-3">
-              <span className="sr-only">Account menu</span>
+              <span className="sr-only">{translate('accountMenu')}</span>
               <span className="max-w-44 truncate font-normal max-lg:hidden">
                 {session.client.name}
               </span>
@@ -71,7 +72,7 @@ function AccountMenu({
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>Account</TooltipContent>
+        <TooltipContent>{translate('account')}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent
         align="end"
@@ -91,7 +92,7 @@ function AccountMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="px-2 pt-1 pb-1 text-xs font-normal text-muted-foreground">
-              Switch client
+              {translate('switchClient')}
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup value={session.client.id} onValueChange={onSwitch}>
               {session.clients.map((client) => (
@@ -112,11 +113,14 @@ function AccountMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/profile">
-            <UserRound /> Profile
+            <UserRound />
+            {translate('profile2')}
           </Link>
         </DropdownMenuItem>
+        <LanguageMenuItems />
         <DropdownMenuItem onSelect={onSignOut}>
-          <LogOut /> Sign out
+          <LogOut />
+          {translate('signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -127,7 +131,7 @@ function AccountMenu({
 function PortalNav({ pathname }: { pathname: string }) {
   return (
     <nav
-      aria-label="Portal"
+      aria-label={translate('portal')}
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:border-0 md:bg-transparent md:pb-0"
     >
       <ul className="grid grid-cols-5 md:flex md:gap-1">
@@ -209,7 +213,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
               </span>
               <span className="grid min-w-0 leading-tight">
                 <span className="truncate text-body font-medium">{session.workspace.name}</span>
-                <span className="truncate text-caption text-muted-foreground">Client portal</span>
+                <span className="truncate text-caption text-muted-foreground">
+                  {translate('clientPortal')}
+                </span>
               </span>
             </div>
             <PortalNav pathname={pathname} />

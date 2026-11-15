@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -8,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { Initials } from '@/components/initials'
+import { translate } from '@/lib/i18n'
 
 /** What clicking a row's name (or tapping the row on a phone) shows about it. */
 export type RowDetails = {
@@ -60,7 +60,7 @@ export function Composer({
   useEffect(() => field.current?.focus(), [])
   const send = () => {
     // shortcut: no messaging backend yet; send through the API once it exists.
-    toast(`Messages to ${to} are coming soon.`)
+    toast(translate('messagesToAreComingSoon', { to: to }))
     onClose()
   }
 
@@ -68,13 +68,14 @@ export function Composer({
     <div className="grid w-full overflow-hidden rounded-2xl bg-card shadow-[0_12px_40px_-8px_rgb(0_0_0/0.16),0_4px_12px_rgb(0_0_0/0.05)] ring-1 ring-black/[0.03] dark:ring-foreground/10">
       <div className="relative">
         <label htmlFor="composer" className="sr-only">
-          Message to {to}
+          {translate('messageTo')}
+          {to}
         </label>
         <textarea
           id="composer"
           ref={field}
           rows={3}
-          placeholder="Write a message"
+          placeholder={translate('writeAMessage')}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => event.key === 'Escape' && onClose()}
@@ -83,7 +84,7 @@ export function Composer({
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label="Close"
+          aria-label={translate('close')}
           className="absolute top-2.5 right-2.5 text-muted-foreground"
           onClick={onClose}
         >
@@ -94,16 +95,16 @@ export function Composer({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Attach a file"
+          aria-label={translate('attachAFile')}
           className="text-muted-foreground"
-          onClick={() => toast('Attachments are coming soon.')}
+          onClick={() => toast(translate('attachmentsAreComingSoon'))}
         >
           <Paperclip className="stroke-[1.5]" />
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Let Heidi write it"
+          aria-label={translate('letHeidiWriteIt')}
           className="text-muted-foreground"
           onClick={() => setText(drafts[0]?.text ?? '')}
         >
@@ -112,30 +113,31 @@ export function Composer({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Open full editor"
+          aria-label={translate('openFullEditor')}
           className="text-muted-foreground"
-          onClick={() => toast('The full editor is coming soon.')}
+          onClick={() => toast(translate('theFullEditorIsComingSoon'))}
         >
           <Maximize2 className="stroke-[1.5]" />
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="More"
+          aria-label={translate('more')}
           className="text-muted-foreground"
-          onClick={() => toast('More options are coming soon.')}
+          onClick={() => toast(translate('moreOptionsAreComingSoon'))}
         >
           <Ellipsis />
         </Button>
         <Button className="ml-auto" disabled={!text.trim()} onClick={send}>
-          Send
+          {translate('send')}
         </Button>
       </div>
       {/* Heidi's drafts only help before anything is written, so they step aside once it is. */}
       {!text && drafts.length > 0 && (
         <div className="grid gap-0.5 border-t px-1.5 py-1.5">
           <p className="flex items-center gap-1.5 px-2 pt-1 pb-0.5 text-[12px] text-muted-foreground">
-            <Sparkle className="size-3.5 stroke-[1.5] text-[#9b5aa0]" /> Draft with Heidi
+            <Sparkle className="size-3.5 stroke-[1.5] text-[#9b5aa0]" />
+            {translate('draftWithHeidi')}
           </p>
           {drafts.map((draft) => (
             <button
@@ -240,7 +242,7 @@ export function DetailsSheet({
         className="gap-0 rounded-t-2xl px-5 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
         <SheetTitle className="sr-only">{details?.name}</SheetTitle>
-        <SheetDescription className="sr-only">Details</SheetDescription>
+        <SheetDescription className="sr-only">{translate('details')}</SheetDescription>
         {details &&
           (composing ? (
             <Composer

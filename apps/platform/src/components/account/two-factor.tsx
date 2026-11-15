@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
@@ -29,6 +29,7 @@ import {
   useStartTwoFactor,
 } from '@/lib/account'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 /** An authenticator app as a second step after every sign-in. */
 export function TwoFactor() {
@@ -44,14 +45,14 @@ export function TwoFactor() {
     <SettingsSection
       id="two-factor"
       icon={ShieldCheck}
-      title="Two-factor authentication"
-      description="After signing in, also ask for a code from an authenticator app such as 1Password, Google Authenticator or Authy."
+      title={translate('twoFactorAuthentication')}
+      description={translate('afterSigningInAlsoAskForACodeFrom')}
     >
       {account.isPending ? (
         <Loader className="min-h-9" />
       ) : account.error || !status ? (
         <LoadError
-          what="two-factor settings"
+          what={translate('twoFactorSettings')}
           error={account.error}
           onRetry={() => account.refetch()}
         />
@@ -61,16 +62,19 @@ export function TwoFactor() {
             icon={status.enabled ? <ShieldCheck className="text-success-solid" /> : <Smartphone />}
             title={
               <>
-                Authenticator app{' '}
+                {translate('authenticatorApp')}{' '}
                 <Badge variant={status.enabled ? 'default' : 'secondary'}>
-                  {status.enabled ? 'On' : 'Off'}
+                  {status.enabled ? translate('on') : translate('off')}
                 </Badge>
               </>
             }
             meta={
               status.enabled
-                ? `${status.recovery_codes_left} recovery ${status.recovery_codes_left === 1 ? 'code' : 'codes'} left`
-                : 'Recommended for owners and admins'
+                ? translate('recoveryLeft', {
+                    recovery_codes_left: status.recovery_codes_left,
+                    value2: status.recovery_codes_left === 1 ? 'code' : 'codes',
+                  })
+                : translate('recommendedForOwnersAndAdmins')
             }
           >
             <Button
@@ -78,7 +82,7 @@ export function TwoFactor() {
               variant={status.enabled ? 'outline' : 'default'}
               onClick={() => open(status.enabled ? 'disable' : 'enable')}
             >
-              {status.enabled ? 'Turn off' : 'Turn on'}
+              {status.enabled ? translate('turnOff') : translate('turnOn')}
             </Button>
           </SettingsRow>
         </ul>
@@ -105,7 +109,7 @@ function EnableDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (enable.isPending) return
-    if (!/^\d{6}$/.test(code)) return setError('Enter the 6 digits the app shows.')
+    if (!/^\d{6}$/.test(code)) return setError(translate('enterThe6DigitsTheAppShows'))
     enable.mutate(code, {
       onSuccess: setCodes,
       onError: (err) => setError(errorMessage(err)),
@@ -114,7 +118,7 @@ function EnableDialog({
   const copy = () =>
     void navigator.clipboard
       ?.writeText(codes?.join('\n') ?? '')
-      .then(() => toast.success('Recovery codes copied.'))
+      .then(() => toast.success(translate('recoveryCodesCopied')))
 
   return (
     <Dialog open onOpenChange={(next) => !next && !enable.isPending && onClose()}>
@@ -122,11 +126,8 @@ function EnableDialog({
         {codes ? (
           <>
             <DialogHeader>
-              <DialogTitle>Save your recovery codes</DialogTitle>
-              <DialogDescription>
-                Each one signs you in once if you lose your phone. This is the only time you’ll see
-                them.
-              </DialogDescription>
+              <DialogTitle>{translate('saveYourRecoveryCodes')}</DialogTitle>
+              <DialogDescription>{translate('eachOneSignsYouInOnceIfYouLose')}</DialogDescription>
             </DialogHeader>
             <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-lg bg-muted/60 p-4 font-mono text-body-sm">
               {codes.map((recovery) => (
@@ -135,24 +136,25 @@ function EnableDialog({
             </ul>
             <DialogFooter>
               <Button variant="outline" onClick={copy}>
-                <Copy /> Copy codes
+                <Copy />
+                {translate('copyCodes')}
               </Button>
               <Button
                 onClick={() => {
-                  toast.success('Two-factor authentication is on.')
+                  toast.success(translate('twoFactorAuthenticationIsOn'))
                   onClose()
                 }}
               >
-                I’ve saved them
+                {translate('iVeSavedThem')}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Turn on two-factor authentication</DialogTitle>
+              <DialogTitle>{translate('turnOnTwoFactorAuthentication')}</DialogTitle>
               <DialogDescription>
-                Scan the QR code with your authenticator app, then type the 6-digit code it shows.
+                {translate('scanTheQRCodeWithYourAuthenticatorAppThen')}
               </DialogDescription>
             </DialogHeader>
             {start.error ? (
@@ -163,7 +165,7 @@ function EnableDialog({
               <TotpSetup secret={setup.secret} url={setup.otpauth_url} />
             )}
             <form onSubmit={submit} className="grid gap-5" noValidate>
-              <FormField id="totp-code" required label="Code from the app" error={error}>
+              <FormField id="totp-code" required label={translate('codeFromTheApp')} error={error}>
                 <Input
                   {...describedBy('totp-code', error)}
                   inputMode="numeric"
@@ -184,10 +186,10 @@ function EnableDialog({
                   onClick={onClose}
                   disabled={enable.isPending}
                 >
-                  Cancel
+                  {translate('cancel')}
                 </Button>
                 <Button type="submit" disabled={!setup || enable.isPending}>
-                  {enable.isPending ? 'Checking…' : 'Turn on'}
+                  {enable.isPending ? translate('checking') : translate('turnOn')}
                 </Button>
               </DialogFooter>
             </form>
@@ -206,8 +208,8 @@ function TotpSetup({ secret, url }: { secret: string; url: string }) {
   const copy = () =>
     void navigator.clipboard
       ?.writeText(secret)
-      .then(() => toast.success('Key copied.'))
-      .catch(() => toast.error('Copy failed. Select the key and copy it by hand.'))
+      .then(() => toast.success(translate('keyCopied')))
+      .catch(() => toast.error(translate('copyFailedSelectTheKeyAndCopyItBy')))
   return (
     <div className="grid justify-items-center gap-4 rounded-lg bg-muted/60 p-4">
       {/* A QR needs dark modules on light ground in either theme, so its tile stays white. */}
@@ -216,12 +218,14 @@ function TotpSetup({ secret, url }: { secret: string; url: string }) {
           value={url}
           size={168}
           level="M"
-          title="QR code for your authenticator app"
+          title={translate('qrCodeForYourAuthenticatorApp')}
           data-testid="totp-qr"
         />
       </div>
       <div className="grid justify-items-center gap-1.5 text-center">
-        <p className="text-body-sm text-muted-foreground">Can’t scan it? Enter this key instead:</p>
+        <p className="text-body-sm text-muted-foreground">
+          {translate('canTScanItEnterThisKeyInstead')}
+        </p>
         <div className="flex items-center gap-1">
           <code className="font-mono text-sm text-balance select-all">{groupSecret(secret)}</code>
           <Tooltip>
@@ -230,20 +234,20 @@ function TotpSetup({ secret, url }: { secret: string; url: string }) {
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Copy key"
+                aria-label={translate('copyKey')}
                 onClick={copy}
               >
                 <Copy />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Copy key</TooltipContent>
+            <TooltipContent>{translate('copyKey')}</TooltipContent>
           </Tooltip>
         </div>
         <a
-          href={url}
+          href={localizedHref(url)}
           className="text-body-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
         >
-          Open in an authenticator app on this device
+          {translate('openInAnAuthenticatorAppOnThisDevice')}
         </a>
       </div>
     </div>
@@ -257,10 +261,10 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (disable.isPending) return
-    if (!code.trim()) return setError('Enter a code from the app or a recovery code.')
+    if (!code.trim()) return setError(translate('enterACodeFromTheAppOrARecovery'))
     disable.mutate(code.trim(), {
       onSuccess: () => {
-        toast.success('Two-factor authentication is off.')
+        toast.success(translate('twoFactorAuthenticationIsOff'))
         onClose()
       },
       onError: (err) => setError(errorMessage(err)),
@@ -270,16 +274,16 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(next) => !next && !disable.isPending && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Turn off two-factor authentication?</DialogTitle>
+          <DialogTitle>{translate('turnOffTwoFactorAuthentication')}</DialogTitle>
           <DialogDescription>
-            Signing in will need only your email code, Google or a passkey again.
+            {translate('signingInWillNeedOnlyYourEmailCodeGoogle')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5" noValidate>
           <FormField
             id="totp-off"
             required
-            label="Code from the app or a recovery code"
+            label={translate('codeFromTheAppOrARecoveryCode')}
             error={error}
           >
             <Input
@@ -295,10 +299,10 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Keep it on
+              {translate('keepItOn')}
             </Button>
             <Button type="submit" variant="destructive" disabled={disable.isPending}>
-              {disable.isPending ? 'Turning off…' : 'Turn off'}
+              {disable.isPending ? translate('turningOff') : translate('turnOff')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -23,6 +22,7 @@ import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 
@@ -73,7 +73,7 @@ export function ChoosePlan() {
   // Back from a Checkout left without paying: say so once, then tidy the URL.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('checkout') !== 'canceled') return
-    toast('Checkout cancelled. Nothing was charged.')
+    toast(translate('checkoutCancelledNothingWasCharged'))
     router.replace(CHOOSE_PLAN_PATH)
   }, [router])
 
@@ -83,10 +83,11 @@ export function ChoosePlan() {
       <PlanScreen workspace={<WorkspaceSwitcher session={session} />} action={<SignOutButton />}>
         {billing.error ? (
           <p role="alert" className="mt-16 text-center text-sm text-muted-foreground">
-            Plans couldn’t be loaded: {errorMessage(billing.error)}
+            {translate('plansCouldnTBeLoaded')}
+            {errorMessage(billing.error)}
           </p>
         ) : (
-          <Loader label="Loading plans" className="min-h-96" />
+          <Loader label={translate('loadingPlans')} className="min-h-96" />
         )}
       </PlanScreen>
     )
@@ -100,17 +101,18 @@ export function ChoosePlan() {
             {trial && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success-surface/70 px-3 py-1 text-[12.5px] font-medium text-success ring-1 ring-success-solid/25 backdrop-blur">
                 <Gift className="size-3.5" aria-hidden />
-                {data.trial_days} days free on Basic
+                {data.trial_days}
+                {translate('daysFreeOnBasic')}
               </span>
             )}
             <h1 className="text-[32px] leading-[1.1] font-semibold tracking-[-0.035em] text-balance sm:text-[46px]">
-              Choose a plan for{' '}
+              {translate('chooseAPlanFor')}{' '}
               <span className="accent ink-gradient">{session.workspace.name}</span>
             </h1>
             <p className="max-w-xl text-[15px] text-pretty text-muted-foreground sm:text-[16px]">
               {data.has_customer
-                ? 'Its plan has ended, so the workspace is read-only. Choose a plan and it opens again right away, with everything in it.'
-                : 'Invoices with QR bills, expenses, clients, documents and signatures in one place. One price per person, the whole team on the same plan.'}
+                ? translate('itsPlanHasEndedSoTheWorkspaceIsRead')
+                : translate('invoicesWithQRBillsExpensesClientsDocumentsAndSignatures')}
             </p>
           </div>
           <div className="mt-12 w-full max-w-[1080px]">
@@ -123,10 +125,10 @@ export function ChoosePlan() {
             <Lock className="size-5" aria-hidden />
           </span>
           <h1 className="text-[24px] font-medium tracking-[-0.02em]">
-            This workspace has no active plan
+            {translate('thisWorkspaceHasNoActivePlan')}
           </h1>
           <p className="text-[14px] text-pretty text-muted-foreground">
-            It is read-only until an owner or admin chooses one. Ask them to open Plan & billing.
+            {translate('itIsReadOnlyUntilAnOwnerOrAdmin')}
           </p>
         </div>
       )}
@@ -203,7 +205,7 @@ function WorkspaceSwitcher({ session }: { session: Session }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-56">
         <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">
-          Workspaces
+          {translate('workspaces')}
         </DropdownMenuLabel>
         {workspaces.map((workspace) => (
           <DropdownMenuItem
@@ -245,7 +247,8 @@ function SignOutButton() {
       disabled={signOut.isPending}
       onClick={() => signOut.mutate()}
     >
-      <LogOut className="size-3.5" /> Sign out
+      <LogOut className="size-3.5" />
+      {translate('signOut2')}
     </Button>
   )
 }

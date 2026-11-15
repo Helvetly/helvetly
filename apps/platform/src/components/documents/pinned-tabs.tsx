@@ -3,6 +3,7 @@ import { Pin, PinOff } from 'lucide-react'
 import { useState } from 'react'
 
 import { KINDS, type Kind, type ViewParams } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 /** A view the person pinned as a header tab, next to the fixed "All files". Folders are never
  * tabs: browsing them stays in "All files". */
@@ -98,7 +99,7 @@ export function PinItem({ pinned, tab }: { pinned: Pinned; tab: PinnedTab }) {
   const on = pinned.has(tab)
   return (
     <ContextMenuItem onSelect={() => pinned.toggle(tab)}>
-      {on ? <PinOff /> : <Pin />} {on ? 'Remove tab' : 'Add as tab'}
+      {on ? <PinOff /> : <Pin />} {on ? translate('removeTab') : translate('addAsTab')}
     </ContextMenuItem>
   )
 }

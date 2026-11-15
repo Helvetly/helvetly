@@ -1,3 +1,4 @@
+import { localizedHref } from '@helvetly/i18n'
 // Typed by hand from docs/auth-contract.md; the request core is @helvetly/ui/lib/http.
 import { API_PREFIX, request, type EmailCodeSent, type RequestOptions } from '@helvetly/ui/lib/http'
 
@@ -86,7 +87,11 @@ export function browserTimeZone(): string {
 
 /** A full page load to the API, which sends the browser to Google and back. */
 export function googleStartUrl(next: string): string {
-  const query = new URLSearchParams({ next, timezone: browserTimeZone() })
+  const query = new URLSearchParams({
+    next: localizedHref(next),
+    login: localizedHref('/login'),
+    timezone: browserTimeZone(),
+  })
   return `${API_PREFIX}/auth/google/start?${query}`
 }
 

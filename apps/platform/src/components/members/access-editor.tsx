@@ -1,8 +1,8 @@
 'use client'
-
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { useId, useState } from 'react'
 
+import { translate } from '@/lib/i18n'
 import {
   describeAccess,
   hrScopes,
@@ -16,9 +16,9 @@ import {
 } from '@/lib/permissions'
 
 const LEVELS: { level: Level; label: string }[] = [
-  { level: 'none', label: 'No access' },
-  { level: 'view', label: 'View' },
-  { level: 'edit', label: 'Edit' },
+  { level: 'none', label: translate('noAccess') },
+  { level: 'view', label: translate('view2') },
+  { level: 'edit', label: translate('edit') },
 ]
 
 const GENERAL = RESOURCES.filter((resource) => !('hr' in resource))
@@ -42,14 +42,14 @@ export function AccessEditor({
   const [custom, setCustom] = useState(() => presetOf(value) === 'custom')
   const selected = custom ? 'custom' : presetOf(value)
   const levels = levelsOf(value)
-  const problem = error ?? (value.length === 0 ? 'Give access to at least one area.' : null)
+  const problem = error ?? (value.length === 0 ? translate('giveAccessToAtLeastOneArea') : null)
 
   return (
     <div className="grid gap-2">
       {/* Scrolls sideways on a phone rather than wrapping the four choices. */}
       <div className="min-w-0 [scrollbar-width:none] overflow-x-auto">
         <Segmented
-          label="Access"
+          label={translate('access')}
           value={selected}
           options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
           onChange={(next) => {

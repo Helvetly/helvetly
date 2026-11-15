@@ -1,11 +1,11 @@
 'use client'
-
 import { Combobox, inputClass, type Option } from '@helvetly/ui/components/combobox'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ChevronsUpDown, X } from 'lucide-react'
 import { useRef, useState, type ComponentProps, type FocusEvent, type KeyboardEvent } from 'react'
 
 import { useClientTags } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 export { COUNTRY_OPTIONS } from '@helvetly/ui/lib/countries'
 export { Combobox, inputClass, type Option }
@@ -19,13 +19,13 @@ export const CURRENCY_OPTIONS: Option[] = [
     value: code,
     label: CURRENCIES.find((currency) => currency.code === code)?.name ?? code,
     hint: code,
-    group: 'Common',
+    group: translate('common'),
   })),
   ...CURRENCIES.filter(({ code }) => !COMMON_CURRENCIES.includes(code)).map(({ code, name }) => ({
     value: code,
     label: name,
     hint: code,
-    group: 'All currencies',
+    group: translate('allCurrencies'),
   })),
 ]
 
@@ -111,7 +111,7 @@ export function TagsInput({
             {tag}
             <button
               type="button"
-              aria-label={`Remove ${tag}`}
+              aria-label={translate('remove5', { tag: tag })}
               // Keeps focus in the field, so an inline editor around it does not see it leave.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onChange(value.filter((entry) => entry !== tag))}
@@ -145,12 +145,12 @@ export function TagsInput({
             if (draft.trim()) add(draft)
             leave(event)
           }}
-          placeholder={value.length ? '' : 'Add tags, e.g. VIP'}
+          placeholder={value.length ? '' : translate('addTagsEGVIP')}
           className="h-7 min-w-24 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-placeholder"
         />
       </div>
       {needle && suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1" aria-label="Suggested tags">
+        <div className="flex flex-wrap gap-1" aria-label={translate('suggestedTags')}>
           {suggestions.map((tag) => (
             <button
               key={tag.name}

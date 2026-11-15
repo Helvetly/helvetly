@@ -1,3 +1,4 @@
+import { translate } from '@/lib/i18n'
 // Passkeys in the browser. The API sends WebAuthn options as JSON (binary fields base64url) and takes
 // the credential back as JSON. Browsers with PublicKeyCredential.parse*OptionsFromJSON and toJSON()
 // convert natively; the fallbacks cover older ones (only a few fields are binary).
@@ -90,7 +91,7 @@ function credentialJson(credential: PublicKeyCredential): unknown {
 
 function expectPasskey(credential: Credential | null): PublicKeyCredential {
   if (credential instanceof PublicKeyCredential) return credential
-  throw new DOMException('No passkey was chosen', 'NotAllowedError')
+  throw new DOMException(translate('noPasskeyWasChosen'), 'NotAllowedError')
 }
 
 export function passkeysSupported(): boolean {
@@ -133,9 +134,9 @@ export function deviceName(): string {
   const ua = navigator.userAgent
   if (/iPhone/.test(ua)) return 'iPhone'
   if (/iPad/.test(ua)) return 'iPad'
-  if (/Android/.test(ua)) return 'Android phone'
-  if (/Macintosh|Mac OS X/.test(ua)) return 'Mac'
-  if (/Windows/.test(ua)) return 'Windows PC'
-  if (/Linux/.test(ua)) return 'Linux computer'
-  return 'Passkey'
+  if (/Android/.test(ua)) return translate('androidPhone')
+  if (/Macintosh|Mac OS X/.test(ua)) return translate('mac')
+  if (/Windows/.test(ua)) return translate('windowsPC')
+  if (/Linux/.test(ua)) return translate('linuxComputer')
+  return translate('passkey')
 }

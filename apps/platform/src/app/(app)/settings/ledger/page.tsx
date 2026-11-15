@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { LedgerPage } from '@/components/settings/ledger'
 
-export const metadata: Metadata = { title: 'Ledger' }
-
 export default function Page() {
-  return <LedgerPage />
+  return (
+    <>
+      <PageTitle message="ledger" />
+      <LedgerPage />
+    </>
+  )
 }

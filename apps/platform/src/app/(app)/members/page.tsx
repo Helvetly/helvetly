@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
 import { MembersPage } from '@/components/members/members-page'
-
-export const metadata: Metadata = { title: 'Members' }
+import { PageTitle } from '@/components/page-title'
 
 export default function Page() {
-  return <MembersPage />
+  return (
+    <>
+      <PageTitle message="members" />
+      <MembersPage />
+    </>
+  )
 }

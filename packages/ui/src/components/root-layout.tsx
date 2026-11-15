@@ -1,3 +1,4 @@
+import { locale } from '@helvetly/i18n'
 import { ThemeProvider } from '@helvetly/ui/components/theme-provider'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import type { ReactNode } from 'react'
@@ -8,7 +9,7 @@ export function RootLayout({
   themeHotkey = true,
 }: Readonly<{ children: ReactNode; themeHotkey?: boolean }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={fontClassName}>
+    <html lang={locale} suppressHydrationWarning className={fontClassName}>
       {/* Browser extensions (Grammarly, ColorZilla…) add attributes to <body> before hydration; not our markup. */}
       <body suppressHydrationWarning>
         <ThemeProvider hotkey={themeHotkey}>{children}</ThemeProvider>

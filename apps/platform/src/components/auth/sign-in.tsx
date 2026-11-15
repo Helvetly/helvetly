@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -29,6 +29,7 @@ import {
   type SignInResult,
   type TwoFactorRequired,
 } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   getPasskey,
   passkeyAutofillAvailable,
@@ -43,24 +44,24 @@ import { TwoFactorSignIn } from './two-factor-sign-in'
 
 /** Reasons for a Google sign-in that came back to /login?error=<code>. */
 const GOOGLE_ERRORS: Record<string, string> = {
-  google_cancelled: 'The sign-in at Google was cancelled.',
-  login_expired: 'The sign-in took too long or started in another browser. Try again.',
-  login_failed: 'The sign-in with Google did not work. Try again.',
-  email_unverified: 'This Google account has no verified email address.',
-  identity_taken: 'That Google account is already linked to another person.',
+  google_cancelled: translate('theSignInAtGoogleWasCancelled'),
+  login_expired: translate('theSignInTookTooLongOrStartedIn'),
+  login_failed: translate('theSignInWithGoogleDidNotWorkTry'),
+  email_unverified: translate('thisGoogleAccountHasNoVerifiedEmailAddress'),
+  identity_taken: translate('thatGoogleAccountIsAlreadyLinkedToAnotherPerson'),
 }
 
 function passkeyErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     switch (error.code) {
       case 'passkey_failed':
-        return 'This passkey could not be checked. It may have been removed from your account. Try again or sign in another way.'
+        return translate('thisPasskeyCouldNotBeCheckedItMayHave')
       case 'passkey_cloned':
-        return 'This passkey looks copied to another device. Sign in another way and remove it in Settings.'
+        return translate('thisPasskeyLooksCopiedToAnotherDeviceSignIn')
       case 'passkey_expired':
-        return 'The passkey prompt took too long. Try again.'
+        return translate('thePasskeyPromptTookTooLongTryAgain')
       case 'rate_limited':
-        return 'Too many attempts. Wait a few minutes and try again.'
+        return translate('tooManyAttemptsWaitAFewMinutesAndTry')
     }
   }
   return errorMessage(error)
@@ -153,9 +154,12 @@ export function SignIn() {
   }
   if (config.error) {
     return (
-      <Intro title="Sign-in is unavailable" subtitle="We can’t reach Helvetly right now.">
+      <Intro
+        title={translate('signInIsUnavailable')}
+        subtitle={translate('weCanTReachHelvetlyRightNow')}
+      >
         <Button variant="outline" size="xl" onClick={() => void config.refetch()}>
-          Try again
+          {translate('tryAgain')}
         </Button>
       </Intro>
     )
@@ -163,8 +167,8 @@ export function SignIn() {
   if (!config.data.google && !config.data.email && !config.data.passkey) {
     return (
       <Intro
-        title="Sign-in is not set up"
-        subtitle="No sign-in method is enabled on this server yet. Ask the operator to turn on Google or email codes."
+        title={translate('signInIsNotSetUp')}
+        subtitle={translate('noSignInMethodIsEnabledOnThisServer')}
       />
     )
   }
@@ -267,16 +271,19 @@ function SignInMethods({ config }: { config: AuthConfig }) {
   }
 
   return (
-    <Intro title="Welcome to Helvetly" subtitle="Sign in, or create your account in seconds.">
+    <Intro
+      title={translate('welcomeToHelvetly')}
+      subtitle={translate('signInOrCreateYourAccountInSeconds')}
+    >
       <div className="grid gap-3">
         {googleError && (
-          <Alert>{GOOGLE_ERRORS[googleError] ?? 'The sign-in did not work. Try again.'}</Alert>
+          <Alert>{GOOGLE_ERRORS[googleError] ?? translate('theSignInDidNotWorkTryAgain')}</Alert>
         )}
         {config.google && (
           <Button asChild variant="outline" size="xl" className={methodButton}>
-            <a href={googleStartUrl(next)}>
+            <a href={localizedHref(googleStartUrl(next))}>
               <GoogleMark />
-              Continue with Google
+              {translate('continueWithGoogle')}
             </a>
           </Button>
         )}
@@ -293,13 +300,18 @@ function SignInMethods({ config }: { config: AuthConfig }) {
             ) : (
               <KeyRound className="text-primary" />
             )}
-            {passkeySignIn.pending ? 'Waiting for your passkey…' : 'Continue with a passkey'}
+            {passkeySignIn.pending
+              ? translate('waitingForYourPasskey')
+              : translate('continueWithAPasskey')}
           </Button>
         )}
         {passkeySignIn.error && <Alert>{passkeySignIn.error}</Alert>}
         {(config.google || passkey) && config.email && (
           <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
-            <span className="h-px flex-1 bg-border" /> OR <span className="h-px flex-1 bg-border" />
+            <span className="h-px flex-1 bg-border" />
+            {translate('or3')}
+            <span className="h-px flex-1 bg-border" />
+            {translate('message2')}
           </div>
         )}
         {config.email && (

@@ -6,6 +6,7 @@ import { Cta } from '@/components/cta'
 import { ProductWindow } from '@/components/home/product-window'
 import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container } from '@/components/section'
+import { translate } from '@/lib/i18n'
 import { TRIAL_DAYS } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
@@ -31,9 +32,9 @@ export function Hero() {
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-heidi-soft px-2 py-0.5 font-medium text-heidi-ink">
             <HeidiMark className="size-3.5" animated />
-            New
+            {translate('new')}
           </span>
-          Meet Heidi, the assistant who knows your books
+          {translate('meetHeidiTheAssistantWhoKnowsYourBooks')}
           <ArrowRight aria-hidden className="size-3.5" />
         </Link>
 
@@ -41,16 +42,16 @@ export function Hero() {
           style={{ ['--d' as string]: '80ms' }}
           className="rise text-hero mt-7 max-w-4xl font-semibold text-balance"
         >
-          Your Swiss back office, <span className="accent ink-gradient pr-1">beautifully</span> in
-          order.
+          {translate('yourSwissBackOffice')}
+          <span className="accent ink-gradient pr-1">{translate('beautifully')}</span>
+          {translate('inOrder')}
         </h1>
 
         <p
           style={{ ['--d' as string]: '160ms' }}
           className="rise text-lead mt-6 max-w-3xl text-balance text-muted-foreground"
         >
-          QR invoices, reminders that send themselves, expenses, contracts and the VAT return. One
-          calm place for the whole team.
+          {translate('qrInvoicesRemindersThatSendThemselvesExpensesContractsAnd')}
         </p>
 
         <div
@@ -58,10 +59,12 @@ export function Hero() {
           className="rise mt-9 flex w-full max-w-xs flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row"
         >
           <Cta href={START_URL} className="w-full sm:w-auto">
-            Start your {TRIAL_DAYS}-day trial
+            {translate('startYour')}
+            {TRIAL_DAYS}
+            {translate('dayTrial')}
           </Cta>
           <Cta href="/pricing" variant="outline" className="w-full sm:w-auto">
-            See pricing
+            {translate('seePricing')}
           </Cta>
         </div>
 
@@ -101,9 +104,9 @@ export function Hero() {
             <CircleCheck className="size-5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-body-sm font-semibold">Payment received</span>
+            <span className="block text-body-sm font-semibold">{translate('paymentReceived')}</span>
             <span className="block truncate text-caption text-muted-foreground">
-              Alpenglühn GmbH paid 2026-0418 · CHF 4’860.00
+              {translate('alpenglHnGmbHPaid20260418CHF4860')}
             </span>
           </span>
         </div>
@@ -115,10 +118,12 @@ export function Hero() {
         >
           <div className="animate-float border-mint-solid/25 rounded-2xl border bg-card/90 p-3 text-left shadow-[0_24px_60px_-24px_rgb(85_39_201/0.45)] backdrop-blur">
             <p className="bg-mint text-mint-ink inline-flex rounded-full px-2 py-0.5 text-caption font-medium">
-              Payment part
+              {translate('paymentPart2')}
             </p>
             <QrGlyph className="mt-2 w-full text-foreground" />
-            <p className="mt-2 text-caption text-muted-foreground">QR-IBAN · QRR reference</p>
+            <p className="mt-2 text-caption text-muted-foreground">
+              {translate('qrIBANQRRReference')}
+            </p>
           </div>
         </div>
 
@@ -133,16 +138,16 @@ export function Hero() {
             <div className="flex items-start gap-2.5">
               <HeidiMark className="size-7" animated />
               <div className="text-body-sm">
-                <p className="font-semibold">Heidi</p>
+                <p className="font-semibold">{translate('heidi')}</p>
                 <p className="mt-0.5 text-muted-foreground">
-                  Rhein Consulting is 12 days overdue on CHF 9’720. Send the first reminder?
+                  {translate('rheinConsultingIs12DaysOverdueOnCHF9')}
                 </p>
                 <div className="mt-2.5 flex gap-1.5">
                   <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-via px-2.5 py-1 text-caption font-medium text-white">
-                    Send reminder
+                    {translate('sendReminder')}
                   </span>
                   <span className="border-site-line rounded-full border px-2.5 py-1 text-caption">
-                    Later
+                    {translate('later')}
                   </span>
                 </div>
               </div>

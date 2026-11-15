@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -14,6 +13,7 @@ import {
 import { useRef, type Ref } from 'react'
 
 import { MAX_MESSAGE } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { IMPORT_ACCEPT, MAX_IMPORT_FILES } from '@/lib/imports'
 
 import { withQuote } from './quote'
@@ -69,7 +69,8 @@ export function Composer({
             <div className="flex items-start gap-2 rounded-xl bg-heidi-soft py-2 pr-1.5 pl-3 text-body-sm">
               <div className="grid min-w-0 flex-1 gap-0.5">
                 <span className="flex items-center gap-1 font-medium text-heidi-ink">
-                  <CornerDownRight className="size-3.5" aria-hidden /> Replying to
+                  <CornerDownRight className="size-3.5" aria-hidden />
+                  {translate('replyingTo')}
                 </span>
                 <q className="line-clamp-3 whitespace-pre-line text-foreground before:content-none after:content-none">
                   {quote}
@@ -79,7 +80,7 @@ export function Composer({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Remove quote"
+                aria-label={translate('removeQuote')}
                 className="text-muted-foreground"
                 onClick={onClearQuote}
               >
@@ -88,7 +89,7 @@ export function Composer({
             </div>
           )}
           {files.length > 0 && (
-            <ul aria-label="Attached files" className="flex flex-wrap gap-1.5">
+            <ul aria-label={translate('attachedFiles')} className="flex flex-wrap gap-1.5">
               {files.map((file) => (
                 <li
                   key={`${file.name}-${file.size}-${file.lastModified}`}
@@ -102,7 +103,7 @@ export function Composer({
                   <span className="truncate">{file.name}</span>
                   <button
                     type="button"
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={translate('remove2', { name: file.name })}
                     onClick={() => onRemoveFile(file)}
                     className="flex size-5 items-center justify-center rounded-md text-destructive hover:bg-destructive/10"
                   >
@@ -115,7 +116,7 @@ export function Composer({
         </div>
       )}
       <label htmlFor="heidi-composer" className="sr-only">
-        Message Heidi
+        {translate('messageHeidi')}
       </label>
       <textarea
         id="heidi-composer"
@@ -159,7 +160,7 @@ export function Composer({
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Attach files"
+          aria-label={translate('attachFiles')}
           disabled={files.length >= MAX_IMPORT_FILES}
           className="text-muted-foreground"
           onClick={() => picker.current?.click()}
@@ -181,7 +182,7 @@ export function Composer({
           <Button
             type="button"
             size="icon-sm"
-            aria-label="Stop"
+            aria-label={translate('stop')}
             className={cn('rounded-full', length < COUNTER_FROM && 'ml-auto')}
             onClick={onStop}
           >
@@ -191,7 +192,7 @@ export function Composer({
           <Button
             type="submit"
             size="icon-sm"
-            aria-label="Send"
+            aria-label={translate('send')}
             disabled={!canSend}
             className={cn('rounded-full', length < COUNTER_FROM && 'ml-auto')}
           >

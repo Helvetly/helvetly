@@ -14,12 +14,21 @@ import {
   type Billing,
   type UsageItem,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { limitLine } from './plan-cards'
 
 const STATE = {
-  near: { text: 'Almost at limit', className: 'text-warning', ring: 'ring-warning-border' },
-  full: { text: 'Limit reached', className: 'text-destructive', ring: 'ring-destructive/40' },
+  near: {
+    text: translate('almostAtLimit'),
+    className: 'text-warning',
+    ring: 'ring-warning-border',
+  },
+  full: {
+    text: translate('limitReached'),
+    className: 'text-destructive',
+    ring: 'ring-destructive/40',
+  },
 }
 
 /** How full an item is, 0–1+; an unlimited item counts as empty so it sorts last. */
@@ -50,10 +59,11 @@ export function UsageOverview({ billing }: { billing: Billing }) {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-1">
         <h2 id="usage-title" className="text-body font-semibold">
-          Usage
+          {translate('usage')}
         </h2>
         <p className="text-body-sm text-muted-foreground tabular-nums">
-          This month since {formatDate(billing.period_start)}
+          {translate('thisMonthSince')}
+          {formatDate(billing.period_start)}
         </p>
       </div>
       {pressing && <UpgradeNudge billing={billing} item={pressing} />}
@@ -80,18 +90,22 @@ function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) 
         next && (
           <Button asChild size="sm" variant="outline" className="bg-card">
             <Link href="/settings/billing/plans">
-              See {next.name} <ArrowRight data-icon="inline-end" aria-hidden />
+              {translate('see')}
+              {next.name} <ArrowRight data-icon="inline-end" aria-hidden />
             </Link>
           </Button>
         )
       }
     >
       <strong className="font-medium">
-        {label}: {full ? 'the plan’s limit is reached.' : 'almost at the plan’s limit.'}
+        {label}: {full ? translate('thePlanSLimitIsReached') : translate('almostAtThePlanSLimit')}
       </strong>{' '}
       {next
-        ? `${next.name} includes ${lowerFirst(limitLine(item.limit, next.limits[item.limit] ?? null))}.`
-        : 'The limit resets with the next month.'}
+        ? translate('includes2', {
+            name: next.name,
+            value2: lowerFirst(limitLine(item.limit, next.limits[item.limit] ?? null)),
+          })
+        : translate('theLimitResetsWithTheNextMonth')}
     </Callout>
   )
 }
@@ -116,14 +130,19 @@ export function UsageTile({ item }: { item: UsageItem }) {
       <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 tabular-nums">
         <span className="text-page font-semibold tracking-[-0.02em]">{used}</span>
         <span className="text-body-sm text-muted-foreground">
-          {max === null ? 'of unlimited' : `of ${max}`}
+          {max === null ? translate('ofUnlimited') : translate('dynamicOf', { max: max })}
         </span>
       </p>
       {max === null ? (
         <div aria-hidden className="h-1.5 rounded-full bg-muted" />
       ) : (
         <Meter
-          label={`${label}: ${used} of ${max}${note ? `, ${note.text.toLowerCase()}` : ''}`}
+          label={translate('of4', {
+            label: label,
+            used: used,
+            max: max,
+            value4: note ? `, ${note.text.toLowerCase()}` : '',
+          })}
           value={item.used}
           max={item.max ?? 0}
         />

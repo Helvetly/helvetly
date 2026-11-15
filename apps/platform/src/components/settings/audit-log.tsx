@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
@@ -25,19 +25,20 @@ import {
 
 import { errorMessage } from '@/lib/api'
 import { booksApi, EVENT_LABELS, exportUrl, type FinancialEvent } from '@/lib/books'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 import { HelpTip } from './help-tip'
 import { SettingsEmpty, SettingsPage, SettingsSection } from './layout'
 import { isManager, SettingsHeader } from './settings-tabs'
 
-const day = new Intl.DateTimeFormat('en-GB', {
+const day = new Intl.DateTimeFormat(languageTag, {
   weekday: 'short',
   day: 'numeric',
   month: 'long',
   year: 'numeric',
 })
-const time = new Intl.DateTimeFormat('en-GB', { timeStyle: 'short' })
+const time = new Intl.DateTimeFormat(languageTag, { timeStyle: 'short' })
 
 const ICONS: Record<string, LucideIcon> = {
   invoice: FileText,
@@ -71,7 +72,7 @@ export function eventLook(kind: string): { Icon: LucideIcon; tone: Tone } {
 // The payload's document number reads better than an internal id ("2026-031", not "inv_…").
 const reference = (event: FinancialEvent) => {
   const number = event.payload.number
-  if (typeof number === 'number') return `No. ${number}`
+  if (typeof number === 'number') return translate('no3', { number: number })
   return typeof number === 'string' ? number : event.subject_id
 }
 
@@ -81,15 +82,16 @@ export function AuditLogSettings() {
       <SettingsHeader
         actions={
           <Button asChild variant="outline" size="sm">
-            <a href={exportUrl()} download>
-              <Download /> Export CSV
+            <a href={localizedHref(exportUrl())} download>
+              <Download />
+              {translate('exportCSV2')}
             </a>
           </Button>
         }
       />
       <SettingsPage
-        title="Audit log"
-        description="Every financial event in order. Entries can never be changed or removed."
+        title={translate('auditLog')}
+        description={translate('everyFinancialEventInOrderEntriesCanNeverBe')}
       >
         <AuditLog />
       </SettingsPage>
@@ -115,7 +117,7 @@ export function AuditLog() {
   if (!manager)
     return (
       <p className="text-body-sm text-muted-foreground">
-        Only an owner or admin can read the audit log.
+        {translate('onlyAnOwnerOrAdminCanReadTheAudit')}
       </p>
     )
   if (events.error)
@@ -128,17 +130,16 @@ export function AuditLog() {
     <div className="grid gap-5">
       <ChainStatus check={verify.data} failed={verify.isError} />
       {rows.length === 0 ? (
-        <SettingsSection id="audit-log-empty" icon={ListOrdered} title="Entries">
-          <SettingsEmpty icon={<History />} title="Nothing recorded yet">
-            Issued invoices, payments, booked expenses and closed months appear here, in the order
-            they happened.
+        <SettingsSection id="audit-log-empty" icon={ListOrdered} title={translate('entries')}>
+          <SettingsEmpty icon={<History />} title={translate('nothingRecordedYet')}>
+            {translate('issuedInvoicesPaymentsBookedExpensesAndClosedMonthsAppear')}
           </SettingsEmpty>
         </SettingsSection>
       ) : (
         <SettingsSection
           id="audit-log-entries"
           icon={ListOrdered}
-          title="Entries"
+          title={translate('entries')}
           action={
             <span className="text-body-sm text-muted-foreground tabular-nums">
               {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
@@ -177,7 +178,7 @@ export function AuditLog() {
           disabled={events.isFetchingNextPage}
           onClick={() => void events.fetchNextPage()}
         >
-          {events.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          {events.isFetchingNextPage ? translate('loading') : translate('loadMore')}
         </Button>
       )}
     </div>
@@ -207,7 +208,9 @@ function EventRow({ event }: { event: FinancialEvent }) {
       </span>
       <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground sm:col-start-3">
         <User className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate text-foreground/80">{event.actor?.name ?? 'System'}</span>
+        <span className="truncate text-foreground/80">
+          {event.actor?.name ?? translate('system')}
+        </span>
         <time
           dateTime={event.at}
           className="ml-auto text-body-sm text-muted-foreground tabular-nums sm:hidden"
@@ -233,15 +236,15 @@ function ChainStatus({
   failed: boolean
 }) {
   const help = (
-    <HelpTip label="About the chain check">
-      Each entry is sealed with the hash of the one before it. If anyone changed or removed an entry
-      outside Helvetly, the chain would no longer match from that entry on.
+    <HelpTip label={translate('aboutTheChainCheck')}>
+      {translate('eachEntryIsSealedWithTheHashOfThe')}
     </HelpTip>
   )
   if (!check)
     return (
       <p className="flex items-center gap-2 text-body-sm text-muted-foreground">
-        {failed ? 'The chain could not be checked right now.' : 'Checking the chain…'} {help}
+        {failed ? translate('theChainCouldNotBeCheckedRightNow') : translate('checkingTheChain')}{' '}
+        {help}
       </p>
     )
   return (
@@ -258,12 +261,14 @@ function ChainStatus({
       )}
       <span className="grid flex-1 gap-0.5">
         <span className="text-body font-medium">
-          {check.ok ? 'Chain verified' : `Chain broken at entry #${check.broken_at}`}
+          {check.ok
+            ? translate('chainVerified')
+            : translate('chainBrokenAtEntry', { broken_at: check.broken_at })}
         </span>
         <span className="text-body-sm text-muted-foreground">
           {check.ok
-            ? 'Every entry is intact and in its original order.'
-            : 'Entries from this one on may have been changed outside Helvetly.'}
+            ? translate('everyEntryIsIntactAndInItsOriginalOrder')
+            : translate('entriesFromThisOneOnMayHaveBeenChanged')}
         </span>
       </span>
       {help}

@@ -1,9 +1,12 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ArticleView } from '@/components/article'
+import { categoryLabel } from '@/lib/categories'
 import { readArticle, readCollection } from '@/lib/content'
+import { translate } from '@/lib/i18n'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -15,7 +18,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const guide = readArticle('guides', (await params).slug)
-  return guide ? { title: guide.title, description: guide.description } : {}
+  return guide
+    ? {
+        alternates: localizedAlternates(`/guides/${(await params).slug}`),
+        title: guide.title,
+        description: guide.description,
+      }
+    : {}
 }
 
 export default async function GuidePage({ params }: Props) {
@@ -28,15 +37,15 @@ export default async function GuidePage({ params }: Props) {
       kicker={
         <>
           <Link href="/guides" className="underline underline-offset-4 hover:text-foreground">
-            Guides
+            {translate('guides')}
           </Link>{' '}
-          · {guide.category}
+          · {categoryLabel(guide.category)}
         </>
       }
       aside={
         <>
           <p className="px-3 text-caption font-medium text-muted-foreground uppercase">
-            More guides
+            {translate('moreGuides')}
           </p>
           {others.map((g) => (
             <Link

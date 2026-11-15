@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag } from '@helvetly/i18n'
 import { Loader } from '@helvetly/ui/components/loader'
 import { useQuery } from '@tanstack/react-query'
 import { MessageSquare, MessagesSquare } from 'lucide-react'
@@ -7,10 +7,16 @@ import type { KeyboardEvent } from 'react'
 
 import { LoadError } from '@/components/load-error'
 import { heidiApi, type HeidiConversation } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 
 export type ChatGroup = { label: string; chats: HeidiConversation[] }
 
-const LABELS = ['Today', 'Yesterday', 'Previous 7 days', 'Older'] as const
+const LABELS = [
+  translate('today'),
+  translate('yesterday'),
+  translate('previous7Days'),
+  translate('older'),
+] as const
 
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
@@ -38,14 +44,14 @@ export function filterChats(chats: HeidiConversation[], term: string) {
   )
 }
 
-const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
-const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
-const dayAndYear = new Intl.DateTimeFormat('en-GB', {
+const clock = new Intl.DateTimeFormat(languageTag, { hour: '2-digit', minute: '2-digit' })
+const day = new Intl.DateTimeFormat(languageTag, { day: 'numeric', month: 'short' })
+const dayAndYear = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
 })
-const full = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'short' })
+const full = new Intl.DateTimeFormat(languageTag, { dateStyle: 'full', timeStyle: 'short' })
 
 /** "08:31" for today and yesterday (the group says which), "10 Nov" before, with the year if not this one. */
 export function chatTime(at: Date, now = new Date()) {
@@ -99,7 +105,7 @@ function Row({
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="flex min-w-0 items-baseline gap-2">
           <span className="truncate text-body-sm font-medium text-foreground">
-            {chat.title || 'Untitled chat'}
+            {chat.title || translate('untitledChat')}
           </span>
           <time
             dateTime={chat.updated_at}
@@ -130,26 +136,26 @@ export function ChatHistory({
     queryFn: heidiApi.conversations,
     refetchOnMount: 'always',
   })
-  if (isPending) return <Loader label="Loading your chats" />
+  if (isPending) return <Loader label={translate('loadingYourChats')} />
   if (error)
     return (
       <div className="my-auto py-6">
-        <LoadError what="your chats" error={error} onRetry={() => void refetch()} />
+        <LoadError what={translate('yourChats')} error={error} onRetry={() => void refetch()} />
       </div>
     )
   if (!data.data.length)
     return (
       <div className="m-auto grid justify-items-center gap-2 px-4 text-center">
         <MessagesSquare aria-hidden className="size-6 text-muted-foreground" />
-        <p className="text-body-sm font-medium">No chats yet</p>
+        <p className="text-body-sm font-medium">{translate('noChatsYet')}</p>
         <p className="max-w-64 text-body-sm text-muted-foreground">
-          Your conversations with Heidi will be listed here.
+          {translate('yourConversationsWithHeidiWillBeListedHere')}
         </p>
       </div>
     )
   const groups = groupChats(filterChats(data.data, term))
   return (
-    <nav aria-label="Chats" className="py-3">
+    <nav aria-label={translate('chats')} className="py-3">
       {groups.length ? (
         <div className="grid gap-4">
           {groups.map((group) => (
@@ -169,7 +175,8 @@ export function ChatHistory({
         </div>
       ) : (
         <output className="block px-2.5 py-6 text-center text-body-sm text-muted-foreground">
-          No chats match “{term.trim()}”.
+          {translate('noChatsMatch')}
+          {term.trim()}”.
         </output>
       )}
     </nav>

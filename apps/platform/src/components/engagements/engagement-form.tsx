@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
@@ -27,6 +26,7 @@ import {
   type Recurrence,
 } from '@/lib/engagements'
 import { useHabits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import {
   UNITS,
   useInvoiceSettings,
@@ -78,14 +78,14 @@ const CATEGORY_OPTIONS = VAT_CATEGORIES.map((c) => ({
 const SCHEDULE_CHOICES = [
   {
     value: 'once',
-    title: 'One-off',
-    text: 'A fixed period, e.g. 30 h in 3 months.',
+    title: translate('oneOff'),
+    text: translate('aFixedPeriodEG30HIn3'),
     icon: CalendarRange,
   },
   {
     value: 'recurring',
-    title: 'Recurring',
-    text: 'Repeats with the same quantity.',
+    title: translate('recurring'),
+    text: translate('repeatsWithTheSameQuantity'),
     icon: Repeat,
   },
 ] as const
@@ -93,14 +93,14 @@ const SCHEDULE_CHOICES = [
 const BILLING_CHOICES = [
   {
     value: 'advance',
-    title: 'Advance',
-    text: 'Invoice the whole period upfront.',
+    title: translate('advance'),
+    text: translate('invoiceTheWholePeriodUpfront'),
     icon: FastForward,
   },
   {
     value: 'arrears',
-    title: 'Arrears',
-    text: 'Invoice what was delivered, afterwards.',
+    title: translate('arrears'),
+    text: translate('invoiceWhatWasDeliveredAfterwards'),
     icon: Hourglass,
   },
 ] as const
@@ -140,7 +140,7 @@ type FormSheetProps = {
 function FormSheet(props: FormSheetProps) {
   const settings = useInvoiceSettings()
   if (!props.engagement && !settled(settings))
-    return <FormSheetLoading title="New engagement" onClose={props.onClose} />
+    return <FormSheetLoading title={translate('newEngagement2')} onClose={props.onClose} />
   return <FormSheetBody {...props} />
 }
 
@@ -188,7 +188,11 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
       if (!engagement)
         remember('engagement', habitValues(values), ENGAGEMENT_HABIT_FIELDS, values.client_id)
       void queryClient.invalidateQueries({ queryKey: queryKeys.engagements })
-      toast.success(engagement ? `${saved.title} saved.` : `${saved.title} created.`)
+      toast.success(
+        engagement
+          ? translate('saved2', { title: saved.title })
+          : translate('created4', { title: saved.title }),
+      )
       onSaved?.(saved)
       onClose()
     },
@@ -269,9 +273,13 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
     'aria-invalid': errors[field] ? true : undefined,
     'aria-describedby': errors[field] ? `${fieldId(field)}-error` : undefined,
   })
-  const title = engagement ? `Edit ${engagement.title}` : 'New engagement'
+  const title = engagement
+    ? translate('edit5', { title: engagement.title })
+    : translate('newEngagement2')
   const unit = UNITS.find((u) => u.value === values.unit)
-  const extra = `extra ${unit?.label.toLowerCase() ?? 'units'}`
+  const extra = translate('dynamicExtra', {
+    value1: unit?.label.toLowerCase() ?? translate('dynamicUnits'),
+  })
 
   return (
     <Sheet open onOpenChange={(next) => !next && requestClose()}>
@@ -281,7 +289,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(1180px,calc(100vw-6rem))]! dark:bg-card"
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        <SheetDescription className="sr-only">Engagement</SheetDescription>
+        <SheetDescription className="sr-only">{translate('engagement2')}</SheetDescription>
         <form
           ref={form}
           noValidate
@@ -294,15 +302,15 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
           <div className="flex shrink-0 flex-col gap-0.5 border-b px-5 py-4 md:px-8">
             <h2 className="truncate text-lg font-semibold">{title}</h2>
             <p className="text-[13px] text-muted-foreground">
-              Work agreed with a client, tracked as it is delivered.
+              {translate('workAgreedWithAClientTrackedAsItIs')}
             </p>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
             <div className="min-w-0 flex-1 lg:overflow-y-auto">
               <FormSection
-                title="Client & service"
-                description="Who it is for and what you deliver."
+                title={translate('clientService')}
+                description={translate('whoItIsForAndWhatYouDeliver')}
                 action={
                   <ProductPicker
                     currency={values.currency}
@@ -311,7 +319,12 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                   />
                 }
               >
-                <FormField field="client_id" label="Client" error={errors.client_id} required>
+                <FormField
+                  field="client_id"
+                  label={translate('client')}
+                  error={errors.client_id}
+                  required
+                >
                   <Popover open={clientOpen} onOpenChange={setClientOpen}>
                     <PopoverTrigger asChild>
                       <button
@@ -322,7 +335,10 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                         <span
                           className={cn('truncate', !values.client_id && 'text-muted-foreground')}
                         >
-                          {clientName || (values.client_id ? 'Selected client' : 'Choose a client')}
+                          {clientName ||
+                            (values.client_id
+                              ? translate('selectedClient')
+                              : translate('chooseAClient'))}
                         </span>
                         <ChevronsUpDown className="size-4 text-muted-foreground" />
                       </button>
@@ -332,28 +348,28 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     </PopoverContent>
                   </Popover>
                 </FormField>
-                <FormField field="title" label="Title" error={errors.title} required>
+                <FormField field="title" label={translate('title')} error={errors.title} required>
                   <input
                     {...describe('title')}
                     value={values.title}
                     onChange={(event) => set('title', event.target.value)}
-                    placeholder="German lessons"
+                    placeholder={translate('germanLessons')}
                     className={cn(inputClass, 'placeholder:text-placeholder')}
                   />
                 </FormField>
                 {showDescription ? (
                   <FormField
                     field="description"
-                    label="Description"
+                    label={translate('description')}
                     error={errors.description}
-                    tip="Internal notes; also added under the title on invoice lines."
+                    tip={translate('internalNotesAlsoAddedUnderTheTitleOnInvoice')}
                   >
                     <textarea
                       {...describe('description')}
                       rows={3}
                       value={values.description}
                       onChange={(event) => set('description', event.target.value)}
-                      placeholder="Weekly German lessons for the sales team"
+                      placeholder={translate('weeklyGermanLessonsForTheSalesTeam')}
                       className={cn(inputClass, 'h-auto min-h-20 resize-y py-2')}
                     />
                   </FormField>
@@ -368,16 +384,20 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       setDescriptionOpened(true)
                     }}
                   >
-                    <Plus className="size-4" /> Add description
+                    <Plus className="size-4" />
+                    {translate('addDescription')}
                   </Button>
                 )}
               </FormSection>
 
-              <FormSection title="Scope" description="How much you deliver in each period.">
+              <FormSection
+                title={translate('scope')}
+                description={translate('howMuchYouDeliverInEachPeriod')}
+              >
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)] gap-4">
                   <FormField
                     field="quantity"
-                    label={recurring ? 'Quantity per period' : 'Quantity'}
+                    label={recurring ? translate('quantityPerPeriod') : translate('quantity')}
                     error={errors.quantity}
                     required
                   >
@@ -390,12 +410,12 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
                     />
                   </FormField>
-                  <FormField field="unit" label="Unit">
+                  <FormField field="unit" label={translate('unit')}>
                     <Combobox
                       id={fieldId('unit')}
                       value={values.unit}
                       options={UNIT_OPTIONS}
-                      placeholder="No unit"
+                      placeholder={translate('noUnit')}
                       onChange={(code) =>
                         set('unit', UNITS.find((u) => u.value === code)?.value ?? '')
                       }
@@ -405,11 +425,11 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
-                title="Schedule"
-                description="A fixed period, or one that repeats with the same quantity."
+                title={translate('schedule')}
+                description={translate('aFixedPeriodOrOneThatRepeatsWithThe')}
               >
                 <FormChoiceCards
-                  label="Schedule"
+                  label={translate('schedule')}
                   value={recurring ? 'recurring' : 'once'}
                   options={[...SCHEDULE_CHOICES]}
                   onChange={(kind) =>
@@ -426,7 +446,12 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                   }
                 />
                 {recurring && (
-                  <FormField field="interval" label="Every" error={errors.interval} required>
+                  <FormField
+                    field="interval"
+                    label={translate('every')}
+                    error={errors.interval}
+                    required
+                  >
                     <div className="flex gap-1.5 sm:max-w-xs">
                       <input
                         {...describe('interval')}
@@ -437,10 +462,10 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       />
                       <Combobox
                         id="engagement-recurrence"
-                        label="Period"
+                        label={translate('period')}
                         value={values.recurrence}
                         options={[...RECURRENCE_OPTIONS]}
-                        placeholder="Period"
+                        placeholder={translate('period')}
                         onChange={(code) => {
                           const next = RECURRENCE_OPTIONS.find((o) => o.value === code)?.value
                           if (next) set('recurrence', next satisfies Recurrence)
@@ -451,7 +476,12 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField field="start_date" label="Starts" error={errors.start_date} required>
+                  <FormField
+                    field="start_date"
+                    label={translate('starts')}
+                    error={errors.start_date}
+                    required
+                  >
                     <input
                       {...describe('start_date')}
                       type="date"
@@ -462,10 +492,10 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                   </FormField>
                   <FormField
                     field="end_date"
-                    label={recurring ? 'Ends (optional)' : 'Ends'}
+                    label={recurring ? translate('endsOptional') : translate('ends')}
                     error={errors.end_date}
                     required={!recurring}
-                    hint={recurring ? 'Leave empty to run until you cancel it.' : undefined}
+                    hint={recurring ? translate('leaveEmptyToRunUntilYouCancelIt') : undefined}
                   >
                     <input
                       {...describe('end_date')}
@@ -478,28 +508,33 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                 </div>
               </FormSection>
 
-              <FormSection title="Price & VAT" description="When you invoice, and what you charge.">
+              <FormSection
+                title={translate('priceVAT')}
+                description={translate('whenYouInvoiceAndWhatYouCharge')}
+              >
                 <FormChoiceCards
-                  label="Billing"
+                  label={translate('billing')}
                   value={values.billing}
                   options={[...BILLING_CHOICES]}
                   onChange={(billing) => set('billing', billing)}
                 />
                 <FormField
                   field="unit_price"
-                  label={unit ? `Price per ${unit.short}` : 'Unit price'}
+                  label={
+                    unit ? translate('pricePer', { short: unit.short }) : translate('unitPrice')
+                  }
                   error={errors.unit_price ?? errors.currency}
-                  tip="Net: VAT is added on top. Gross: VAT is included in the price."
+                  tip={translate('netVATIsAddedOnTopGrossVATIs')}
                   required
                 >
                   <div className="flex items-stretch gap-2">
                     <Combobox
                       id={fieldId('currency')}
-                      label="Currency"
+                      label={translate('currency')}
                       value={values.currency}
                       options={CURRENCY_OPTIONS}
                       renderValue={(option) => option.value}
-                      placeholder="Currency"
+                      placeholder={translate('currency')}
                       invalid={Boolean(errors.currency)}
                       className="w-24 shrink-0"
                       onChange={(code) => set('currency', code)}
@@ -513,11 +548,11 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
                     />
                     <Segmented
-                      label="Price basis"
+                      label={translate('priceBasis')}
                       value={values.price_basis}
                       options={[
-                        { value: 'net', label: 'Net' },
-                        { value: 'gross', label: 'Gross' },
+                        { value: 'net', label: translate('net2') },
+                        { value: 'gross', label: translate('gross') },
                       ]}
                       onChange={(basis) => set('price_basis', basis)}
                     />
@@ -526,16 +561,16 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                 {showOverage ? (
                   <FormField
                     field="overage_unit_price"
-                    label={`Price for ${extra}`}
+                    label={translate('priceFor', { extra: extra })}
                     error={errors.overage_unit_price}
-                    tip="Charged for anything delivered beyond the committed quantity. Leave empty for the same price."
+                    tip={translate('chargedForAnythingDeliveredBeyondTheCommittedQuantityLeave')}
                   >
                     <input
                       {...describe('overage_unit_price')}
                       inputMode="decimal"
                       value={values.overage_unit_price}
                       onChange={(event) => set('overage_unit_price', event.target.value)}
-                      placeholder="Same as the regular price"
+                      placeholder={translate('sameAsTheRegularPrice')}
                       className={cn(
                         inputClass,
                         'tabular-nums placeholder:text-placeholder sm:max-w-xs',
@@ -553,13 +588,15 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       setOverageOpened(true)
                     }}
                   >
-                    <Plus className="size-4" /> Different price for {extra}
+                    <Plus className="size-4" />
+                    {translate('differentPriceFor')}
+                    {extra}
                   </Button>
                 )}
 
                 <FormField
                   field="vat_category"
-                  label="VAT"
+                  label={translate('vat')}
                   error={errors.vat_category ?? errors.vat_rate}
                   required
                 >
@@ -568,7 +605,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       id={fieldId('vat_category')}
                       value={values.vat_category}
                       options={CATEGORY_OPTIONS}
-                      placeholder="Choose a VAT category"
+                      placeholder={translate('chooseAVATCategory')}
                       className="min-w-0 flex-1 shrink"
                       onChange={(code) => {
                         const category = VAT_CATEGORIES.find((c) => c.value === code)?.value
@@ -583,7 +620,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                         <div className="relative w-24 shrink-0">
                           <input
                             {...describe('vat_rate')}
-                            aria-label="VAT rate"
+                            aria-label={translate('vatRate')}
                             aria-describedby={
                               errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
                             }
@@ -600,7 +637,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                           </span>
                         </div>
                         <Segmented
-                          label="VAT rate presets"
+                          label={translate('vatRatePresets')}
                           value={values.vat_rate}
                           options={VAT_RATES.map((rate) => ({ value: rate, label: rate }))}
                           onChange={(rate) => set('vat_rate', rate)}
@@ -612,36 +649,36 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
-                title="Details & automation"
-                description="Optional. Nothing is sent or issued without you."
+                title={translate('detailsAutomation')}
+                description={translate('optionalNothingIsSentOrIssuedWithoutYou')}
               >
                 <div className="grid gap-2">
                   {canRollOver(values) && (
                     <SwitchRow
                       id="engagement-rollover"
-                      label="Carry unused quantity to the next period"
-                      description="What is left at the end of a period can be used in the next one only, then it expires."
+                      label={translate('carryUnusedQuantityToTheNextPeriod')}
+                      description={translate('whatIsLeftAtTheEndOfAPeriod')}
                       checked={values.rollover}
                       onCheckedChange={(on) => set('rollover', on)}
                     />
                   )}
                   <SwitchRow
                     id="engagement-auto-invoice"
-                    label="Create invoice drafts automatically"
-                    description="Drafts only, you issue them: nothing is sent or issued without you."
+                    label={translate('createInvoiceDraftsAutomatically')}
+                    description={translate('draftsOnlyYouIssueThemNothingIsSentOr')}
                     checked={values.auto_invoice}
                     onCheckedChange={(on) => set('auto_invoice', on)}
                   />
                 </div>
 
                 <div className="grid gap-1.5">
-                  <p className="text-[13px] font-medium">Usage on invoices</p>
+                  <p className="text-[13px] font-medium">{translate('usageOnInvoices')}</p>
                   <Segmented
-                    label="Usage invoice lines"
+                    label={translate('usageInvoiceLines')}
                     value={values.invoice_detail}
                     options={[
-                      { value: 'summary', label: 'One summary line' },
-                      { value: 'per_entry', label: 'One line per entry' },
+                      { value: 'summary', label: translate('oneSummaryLine') },
+                      { value: 'per_entry', label: translate('oneLinePerEntry') },
                     ]}
                     onChange={(detail) => set('invoice_detail', detail)}
                   />
@@ -650,23 +687,23 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     field="reference"
-                    label="Reference"
+                    label={translate('reference')}
                     error={errors.reference}
-                    tip="The client’s PO or order number; printed on every invoice."
+                    tip={translate('theClientSPOOrOrderNumberPrintedOn')}
                   >
                     <input
                       {...describe('reference')}
                       value={values.reference}
                       onChange={(event) => set('reference', event.target.value)}
-                      placeholder="PO-2026-104"
+                      placeholder={translate('po2026104')}
                       className={inputClass}
                     />
                   </FormField>
                   <FormField
                     field="document_id"
-                    label="Contract document"
+                    label={translate('contractDocument')}
                     error={errors.document_id}
-                    tip="The ID of the signed contract in Documents."
+                    tip={translate('theIDOfTheSignedContractInDocuments')}
                   >
                     <input
                       {...describe('document_id')}
@@ -683,22 +720,27 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
 
           <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3 md:px-7">
             <span className="hidden text-xs text-muted-foreground sm:block">
-              <kbd className="font-sans">⌘</kbd> Enter to save
+              <kbd className="font-sans">⌘</kbd>
+              {translate('enterToSave')}
             </span>
             <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : engagement ? 'Save changes' : 'Create engagement'}
+              {save.isPending
+                ? translate('saving')
+                : engagement
+                  ? translate('saveChanges')
+                  : translate('createEngagement')}
             </Button>
           </div>
 
           {discarding && (
             <ConfirmDialog
-              title="Discard your changes?"
-              body="What you entered in this form will be lost."
-              confirmLabel="Discard"
-              cancelLabel="Keep editing"
+              title={translate('discardYourChanges')}
+              body={translate('whatYouEnteredInThisFormWillBeLost')}
+              confirmLabel={translate('discard')}
+              cancelLabel={translate('keepEditing')}
               tone="destructive"
               onDecide={(discard) => {
                 setDiscarding(false)

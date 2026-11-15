@@ -9,7 +9,8 @@
         "$TURBO_DEFAULT$",
         "!**/*.test.*",
         "!**/*_test.go",
-        "$TURBO_ROOT$/scripts/check-links.mjs"
+        "$TURBO_ROOT$/scripts/check-links.mjs",
+        "$TURBO_ROOT$/scripts/build-locales.mjs"
       ],
       "outputs": [".next/**", "!.next/cache/**", "out/**", "dist/**"]
     },
@@ -33,7 +34,15 @@
         "S3_PROXY_DOWNLOADS",
         "NEXT_PUBLIC_PLATFORM_URL",
         "NEXT_PUBLIC_DOCS_URL",
-        "NEXT_PUBLIC_GA_ID"
+        "NEXT_PUBLIC_GA_ID",
+        "HELVETLY_BUILD_LOCALE"
+      ]
+    },
+    "@helvetly/i18n#test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/*/src/messages/*.json",
+        "$TURBO_ROOT$/packages/ui/src/messages/*.json"
       ]
     }
   }

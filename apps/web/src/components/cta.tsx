@@ -1,3 +1,4 @@
+import { localizedHref } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -41,7 +42,7 @@ export function Cta({
     </>
   )
   return external ? (
-    <a href={href} className={classes}>
+    <a href={localizedHref(href)} className={classes}>
       {content}
     </a>
   ) : (

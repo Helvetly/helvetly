@@ -1,10 +1,10 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { translate } from '@/lib/i18n'
 import {
   retryable,
   STATUS_LABELS,
@@ -32,7 +32,7 @@ export function TransmissionsCard({
       className="rounded-xl bg-card px-4 pt-3 pb-4 shadow-elevation-1"
     >
       <h3 id="transmissions-title" className="text-[13px] font-medium text-muted-foreground">
-        E-invoice transmissions
+        {translate('eInvoiceTransmissions')}
       </h3>
       <ul className="mt-3 grid gap-2">
         {transmissions.data.map((t) => (
@@ -56,12 +56,12 @@ export function TransmissionsCard({
                 disabled={retry.isPending}
                 onClick={() =>
                   retry.mutate(t.id, {
-                    onSuccess: () => toast.success('Queued again.'),
+                    onSuccess: () => toast.success(translate('queuedAgain')),
                     onError: toastError,
                   })
                 }
               >
-                Retry
+                {translate('retry')}
               </Button>
             )}
           </li>

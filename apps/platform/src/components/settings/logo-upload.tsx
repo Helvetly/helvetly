@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ImagePlus, LoaderCircle, Plus, Trash2 } from 'lucide-react'
@@ -8,6 +7,7 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'sonner'
 
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { LOGO_TYPES, logoProblem, useLogo } from '@/lib/invoices'
 
 /** Picks one image (click or drop), checks it, uploads it; `error` is what went wrong, if anything. */
@@ -30,8 +30,8 @@ function useLogoPicker() {
     setDone(null)
     logo.upload.mutate(file, {
       onSuccess: () => {
-        setDone('Logo saved')
-        toast.success('Logo saved. It shows on every new PDF.')
+        setDone(translate('logoSaved'))
+        toast.success(translate('logoSavedItShowsOnEveryNewPDF'))
       },
       onError: (failure) => setError(errorMessage(failure)),
     })
@@ -88,7 +88,7 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
               <span className="relative size-full">
                 <Image
                   src={url}
-                  alt="Your logo"
+                  alt={translate('yourLogo')}
                   fill
                   unoptimized
                   sizes="224px"
@@ -98,12 +98,12 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
             </span>
             <span className="grid gap-2">
               <span className="text-body-sm text-muted-foreground">
-                Drop a new image here to replace it.
+                {translate('dropANewImageHereToReplaceIt')}
               </span>
               {canEdit && (
                 <span className="flex gap-2">
                   <Button type="button" variant="outline" size="sm" disabled={busy} onClick={open}>
-                    Replace
+                    {translate('replace2')}
                   </Button>
                   <Button
                     type="button"
@@ -115,14 +115,15 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
                       setDone(null)
                       logo.remove.mutate(undefined, {
                         onSuccess: () => {
-                          setDone('Logo removed')
-                          toast.success('Logo removed.')
+                          setDone(translate('logoRemoved2'))
+                          toast.success(translate('logoRemoved'))
                         },
                         onError: (failure) => setError(errorMessage(failure)),
                       })
                     }}
                   >
-                    <Trash2 /> Remove
+                    <Trash2 />
+                    {translate('remove')}
                   </Button>
                 </span>
               )}
@@ -139,11 +140,9 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
               <ImagePlus className="size-5 stroke-[1.5]" />
             </span>
             <span className="text-body font-medium text-foreground">
-              Drop your logo here, or click to choose
+              {translate('dropYourLogoHereOrClickToChoose')}
             </span>
-            <span className="text-caption">
-              PNG or JPEG, up to 2 MB. A wide logo on a transparent background prints best.
-            </span>
+            <span className="text-caption">{translate('pngOrJPEGUpTo2MBAWide')}</span>
           </button>
         )}
         {busy && (
@@ -187,7 +186,7 @@ export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: 
       <span className="relative mb-4 block h-14 w-56 dark:rounded-md dark:bg-white dark:p-1.5">
         <Image
           src={url}
-          alt="Your logo"
+          alt={translate('yourLogo')}
           fill
           unoptimized
           sizes="224px"
@@ -207,7 +206,7 @@ export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: 
         className="flex h-14 w-40 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-body-sm text-muted-foreground/80 transition-colors hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground"
       >
         {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-        {busy ? 'Uploading…' : 'Add logo'}
+        {busy ? translate('uploading3') : translate('addLogo')}
       </button>
       {error && <span className="text-caption text-destructive">{error}</span>}
     </div>

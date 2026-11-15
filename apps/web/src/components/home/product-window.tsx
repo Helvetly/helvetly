@@ -13,53 +13,65 @@ import {
 
 import { CountUp } from '@/components/count-up'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 
 // The hero's picture of the product: the platform's dashboard drawn in HTML, so it is sharp at any
 // size, follows the theme and can move. The figures are sample data.
 
 const NAV = [
-  { icon: LayoutDashboard, label: 'Dashboard', active: true },
-  { icon: FileText, label: 'Invoices' },
-  { icon: Receipt, label: 'Expenses' },
-  { icon: Users, label: 'Clients' },
-  { icon: Folder, label: 'Documents' },
-  { icon: CalendarRange, label: 'Engagements' },
-  { icon: FileSignature, label: 'Signatures' },
+  { icon: LayoutDashboard, label: translate('dashboard'), active: true },
+  { icon: FileText, label: translate('invoices') },
+  { icon: Receipt, label: translate('expenses') },
+  { icon: Users, label: translate('clients') },
+  { icon: Folder, label: translate('documents') },
+  { icon: CalendarRange, label: translate('engagements') },
+  { icon: FileSignature, label: translate('signatures') },
 ]
 
 const KPIS = [
   {
-    label: 'Revenue this year',
+    label: translate('revenueThisYear'),
     value: 248260,
     delta: '+18.4%',
     tone: 'text-success',
     bar: 'bg-mint-solid',
   },
   {
-    label: 'Open receivables',
+    label: translate('openReceivables'),
     value: 32940,
-    delta: '14 invoices',
+    delta: translate('message14Invoices'),
     tone: 'text-muted-foreground',
     bar: 'bg-sky-solid',
   },
   {
-    label: 'Overdue',
+    label: translate('overdue'),
     value: 4180,
-    delta: '3 invoices',
+    delta: translate('message3Invoices'),
     tone: 'text-warning',
     bar: 'bg-peach-solid',
   },
-  { label: 'Expenses', value: 61410, delta: '−6.2%', tone: 'text-success', bar: 'bg-lilac-solid' },
+  {
+    label: translate('expenses'),
+    value: 61410,
+    delta: '−6.2%',
+    tone: 'text-success',
+    bar: 'bg-lilac-solid',
+  },
 ]
 
 // Monthly revenue in thousands, Jan–Dec.
 const BARS = [14, 18, 16, 22, 19, 25, 21, 27, 24, 30, 28, 34]
 
 const INVOICES = [
-  { client: 'Alpenglühn GmbH', no: '2026-0418', amount: '4’860.00', status: 'live' },
-  { client: 'Studio Lumen', no: '2026-0417', amount: '1’250.00', status: 'Paid' },
-  { client: 'Rhein Consulting AG', no: '2026-0416', amount: '9’720.00', status: 'Overdue' },
-  { client: 'Bergwerk Design', no: '2026-0415', amount: '2’340.50', status: 'Paid' },
+  { client: translate('alpenglHnGmbH'), no: '2026-0418', amount: '4’860.00', status: 'live' },
+  { client: translate('studioLumen'), no: '2026-0417', amount: '1’250.00', status: 'Paid' },
+  {
+    client: translate('rheinConsultingAG'),
+    no: '2026-0416',
+    amount: '9’720.00',
+    status: 'Overdue',
+  },
+  { client: translate('bergwerkDesign'), no: '2026-0415', amount: '2’340.50', status: 'Paid' },
 ] as const
 
 const STATUS: Record<string, string> = {
@@ -104,7 +116,7 @@ export function ProductWindow() {
             <span className="inline-flex size-6 items-center justify-center rounded-[28%] bg-linear-to-br from-logo-from to-logo-to text-white">
               <LogoMark className="size-[62%]" />
             </span>
-            <span className="text-body-sm font-semibold">Acme Treuhand</span>
+            <span className="text-body-sm font-semibold">{translate('acmeTreuhand')}</span>
           </div>
           {NAV.map(({ icon: Icon, label, active }) => (
             <div
@@ -122,7 +134,7 @@ export function ProductWindow() {
           ))}
           <div className="mt-3 flex items-center gap-2 rounded-md bg-heidi-soft/70 px-2 py-1.5 text-body-sm font-medium text-heidi-ink">
             <HeidiMark className="size-4" animated />
-            Ask Heidi
+            {translate('askHeidi')}
           </div>
         </div>
 
@@ -130,12 +142,16 @@ export function ProductWindow() {
         <div className="m-2 flex min-w-0 flex-1 flex-col gap-3 rounded-xl bg-card p-4 shadow-elevation-1 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-caption text-muted-foreground">Wednesday, 11 November</p>
-              <p className="text-title font-semibold tracking-tight">Good morning, Anna</p>
+              <p className="text-caption text-muted-foreground">
+                {translate('wednesday11November')}
+              </p>
+              <p className="text-title font-semibold tracking-tight">
+                {translate('goodMorningAnna')}
+              </p>
             </div>
             <div className="hidden h-8 w-44 items-center gap-2 rounded-lg border border-input px-2.5 text-body-sm text-placeholder sm:flex">
               <Search className="size-3.5" />
-              Search…
+              {translate('search')}
             </div>
           </div>
 
@@ -159,8 +175,10 @@ export function ProductWindow() {
           <div className="grid gap-2.5 md:grid-cols-[1.25fr_1fr]">
             <div data-reveal className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between">
-                <p className="text-body-sm font-medium">Revenue</p>
-                <p className="text-caption text-muted-foreground">2026 · CHF thousands</p>
+                <p className="text-body-sm font-medium">{translate('revenue')}</p>
+                <p className="text-caption text-muted-foreground">
+                  {translate('message2026CHFThousands')}
+                </p>
               </div>
               <div className="mt-3 flex h-32 items-end gap-1.5">
                 {BARS.map((height, i) => (
@@ -180,8 +198,8 @@ export function ProductWindow() {
 
             <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between">
-                <p className="text-body-sm font-medium">Latest invoices</p>
-                <p className="text-caption text-link">View all</p>
+                <p className="text-body-sm font-medium">{translate('latestInvoices')}</p>
+                <p className="text-caption text-link">{translate('viewAll')}</p>
               </div>
               <ul className="mt-2 divide-y divide-border">
                 {INVOICES.map((inv) => (

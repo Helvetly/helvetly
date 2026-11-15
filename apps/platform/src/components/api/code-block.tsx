@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -8,6 +8,7 @@ import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { docsUrl } from '@/lib/docs'
+import { translate } from '@/lib/i18n'
 
 /** Several lines to paste (a config file, a command) in mono, with a copy button in the corner. */
 export function CodeBlock({ label, value }: { label: string; value: string }) {
@@ -23,19 +24,22 @@ export function CodeBlock({ label, value }: { label: string; value: string }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={`Copy ${label}`}
+            aria-label={translate('copy2', { label: label })}
             className="absolute top-1 right-1"
             onClick={() =>
               void navigator.clipboard.writeText(value).then(
-                () => toast(`${label} copied.`),
-                () => toast.error('Could not copy. Select the text and copy it instead.'),
+                () => toast(translate('copied', { label: label })),
+                () => toast.error(translate('couldNotCopySelectTheTextAndCopyIt')),
               )
             }
           >
             <Copy />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Copy {label.toLowerCase()}</TooltipContent>
+        <TooltipContent>
+          {translate('copy')}
+          {label.toLowerCase()}
+        </TooltipContent>
       </Tooltip>
     </section>
   )
@@ -53,7 +57,7 @@ export function DocsLink({
 }) {
   return (
     <a
-      href={docsUrl(path)}
+      href={localizedHref(docsUrl(path))}
       target="_blank"
       rel="noreferrer"
       className={cn(
@@ -63,7 +67,7 @@ export function DocsLink({
     >
       {children}
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="sr-only"> (opens in a new tab)</span>
+      <span className="sr-only">{translate('opensInANewTab2')}</span>
     </a>
   )
 }

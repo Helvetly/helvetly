@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Plus, ScrollText } from 'lucide-react'
@@ -8,6 +7,7 @@ import { useState } from 'react'
 import { Money } from '@/components/invoices/invoice-bits'
 import { RecordLink, useOpenHref } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { formatDay } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { quoteNumber, useQuotes } from '@/lib/quotes'
@@ -27,7 +27,8 @@ export function ClientQuotes({ clientId }: { clientId: string }) {
 
   const newButton = canWrite && (
     <Button size="sm" onClick={() => setCreating(true)}>
-      <Plus /> New quote
+      <Plus />
+      {translate('newQuote')}
     </Button>
   )
   const sheet = creating && (
@@ -54,9 +55,9 @@ export function ClientQuotes({ clientId }: { clientId: string }) {
         <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <ScrollText className="size-5 stroke-[1.5]" />
         </span>
-        <p className="text-title-sm font-medium">No quotes yet</p>
+        <p className="text-title-sm font-medium">{translate('noQuotesYet')}</p>
         <p className="max-w-xs text-body-sm text-pretty text-muted-foreground">
-          Quotes you offer this client show up here with their answer.
+          {translate('quotesYouOfferThisClientShowUpHereWith')}
         </p>
         {newButton && <div className="mt-2">{newButton}</div>}
         {sheet}
@@ -66,7 +67,7 @@ export function ClientQuotes({ clientId }: { clientId: string }) {
   return (
     <div className="grid gap-3">
       {newButton && <div className="flex justify-end">{newButton}</div>}
-      <section aria-label="Quotes" className="rounded-xl bg-card shadow-elevation-1">
+      <section aria-label={translate('quotes')} className="rounded-xl bg-card shadow-elevation-1">
         <ul className="divide-y divide-border/60">
           {rows.map((quote) => (
             <li key={quote.id}>
@@ -77,7 +78,9 @@ export function ClientQuotes({ clientId }: { clientId: string }) {
                 <span className="grid min-w-0 flex-1 leading-tight">
                   <span className="text-body tabular-nums">{quoteNumber(quote)}</span>
                   <span className="text-caption text-muted-foreground">
-                    {formatDay(quote.issue_date)} · valid until {formatDay(quote.valid_until)}
+                    {formatDay(quote.issue_date)}
+                    {translate('validUntil')}
+                    {formatDay(quote.valid_until)}
                   </span>
                 </span>
                 <Money

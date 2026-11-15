@@ -1,9 +1,10 @@
 'use client'
-
 // The currency the app charges by region, as apps/api/internal/billing/currency.go picks it: CHF in Switzerland and
 // Liechtenstein, EUR in the EU, USD elsewhere, by the visitor's country from Cloudflare, else by time zone. The
 // figures are the same in each. currency.test.ts checks these lists against the Go ones.
 import { useEffect, useState, useSyncExternalStore } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 export type Currency = 'chf' | 'eur' | 'usd'
 
@@ -134,5 +135,5 @@ const noChanges = () => () => {}
 
 /** What the prices include: VAT in francs and euros, sales tax (where due) in dollars. */
 export function taxNote(currency: Currency): string {
-  return currency === 'usd' ? 'incl. tax' : 'incl. VAT'
+  return currency === 'usd' ? translate('inclTax') : translate('inclVAT')
 }

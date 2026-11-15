@@ -2,10 +2,11 @@ import { Meter } from '@helvetly/ui/components/meter'
 import { cn } from '@helvetly/ui/lib/utils'
 
 import { formatLimit, meterState, type UsageItem } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 const STATE = {
-  near: { text: 'Almost at limit', className: 'text-warning' },
-  full: { text: 'Limit reached', className: 'text-destructive' },
+  near: { text: translate('almostAtLimit'), className: 'text-warning' },
+  full: { text: translate('limitReached'), className: 'text-destructive' },
 }
 
 /**
@@ -34,11 +35,14 @@ export function UsageMeter({
             <span className={cn('text-caption font-medium', note.className)}>{note.text}</span>
           )}
           {item.max === null ? (
-            <span>{used} · Unlimited</span>
+            <span>
+              {used}
+              {translate('unlimited3')}
+            </span>
           ) : (
             <span>
-              <span className={cn(state !== 'ok' && 'font-medium text-foreground')}>{used}</span> of{' '}
-              {formatLimit(item.limit, item.max)}
+              <span className={cn(state !== 'ok' && 'font-medium text-foreground')}>{used}</span>
+              {translate('of3')} {formatLimit(item.limit, item.max)}
             </span>
           )}
         </span>
@@ -47,7 +51,12 @@ export function UsageMeter({
         <div aria-hidden className="h-1.5 rounded-full bg-muted" />
       ) : (
         <Meter
-          label={`${label}: ${used} of ${formatLimit(item.limit, item.max)}${note ? `, ${note.text.toLowerCase()}` : ''}`}
+          label={translate('of2', {
+            label: label,
+            used: used,
+            value3: formatLimit(item.limit, item.max),
+            value4: note ? `, ${note.text.toLowerCase()}` : '',
+          })}
           value={item.used}
           max={item.max}
         />

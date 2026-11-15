@@ -1,11 +1,12 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Check, Copy, Plus, QrCode, Smartphone, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import {
   qrBillBlocker,
   revolutBlocker,
@@ -41,13 +42,13 @@ export function PaymentToggles({
   const setup: { key: keyof PaymentMethods; label: string; tip: string }[] = []
   const qrBill = {
     key: 'qr_bill' as const,
-    label: 'QR bill',
-    tip: 'Attach a Swiss QR bill page: the client scans it in their banking app, with this invoice’s reference.',
+    label: translate('qrBill'),
+    tip: translate('attachASwissQRBillPageTheClientScans'),
   }
   const revolut = {
     key: 'revolut' as const,
-    label: 'Revolut',
-    tip: `Print “Pay with Revolut” with a QR code of revolut.me/${settings.revolut_username ?? ''}, the amount and the invoice number; the email carries the link too.`,
+    label: translate('revolut2'),
+    tip: translate('printPayWithRevolutWithAQRCodeOf', { value1: settings.revolut_username ?? '' }),
   }
   if (settings.qr_bill_enabled)
     methods.push({ ...qrBill, blocker: qrBillBlocker(settings, currency) })
@@ -66,9 +67,9 @@ export function PaymentToggles({
   return (
     // Checkbox chips, not a segmented control: each method is on or off on its own, and both can be.
     <fieldset className="flex flex-wrap items-center gap-1.5">
-      <legend className="sr-only">Payment methods</legend>
+      <legend className="sr-only">{translate('paymentMethods')}</legend>
       <span aria-hidden className="pr-0.5 text-caption text-muted-foreground">
-        Payment
+        {translate('payment')}
       </span>
       {methods.map((method) => {
         const on = value[method.key] && !method.blocker
@@ -123,8 +124,8 @@ export function PaymentToggles({
 /** Small marks in a list row for the methods an invoice offers; nothing for plain bank details. */
 export function PaymentMarks({ methods }: { methods: PaymentMethods }) {
   const marks = [
-    methods.qr_bill && { key: 'qr', label: 'Swiss QR bill', icon: <QrCode /> },
-    methods.revolut && { key: 'revolut', label: 'Revolut', icon: <Smartphone /> },
+    methods.qr_bill && { key: 'qr', label: translate('swissQRBill'), icon: <QrCode /> },
+    methods.revolut && { key: 'revolut', label: translate('revolut2'), icon: <Smartphone /> },
   ].filter((mark) => mark !== false)
   if (marks.length === 0) return null
   return (
@@ -151,11 +152,13 @@ export function PaymentSummary({ payment }: { payment: Invoice['payment'] }) {
   )
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <span className="shrink-0">{parts.length ? parts.join(' · ') : 'Bank transfer only'}</span>
+      <span className="shrink-0">
+        {parts.length ? parts.join(' · ') : translate('bankTransferOnly')}
+      </span>
       {payment.revolut_url && (
         <>
           <a
-            href={payment.revolut_url}
+            href={localizedHref(payment.revolut_url)}
             target="_blank"
             rel="noreferrer"
             className="truncate text-[13px] text-muted-foreground underline underline-offset-4 hover:text-foreground hover:no-underline"
@@ -165,13 +168,13 @@ export function PaymentSummary({ payment }: { payment: Invoice['payment'] }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Copy the Revolut link"
+            aria-label={translate('copyTheRevolutLink')}
             className="shrink-0 text-muted-foreground"
             onClick={() => {
               const link = payment.revolut_url ?? ''
               void navigator.clipboard.writeText(link).then(
-                () => toast('Revolut link copied.'),
-                () => toast.error('Couldn’t copy the link.'),
+                () => toast(translate('revolutLinkCopied')),
+                () => toast.error(translate('couldnTCopyTheLink')),
               )
             }}
           >

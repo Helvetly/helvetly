@@ -1,9 +1,9 @@
 'use client'
-
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { useClaimEscape } from '@/components/inline-add'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 import { TagsInput } from './fields'
 
@@ -64,7 +64,7 @@ export function InlineTagsEditor({
     <div ref={wrapper} aria-busy={pending || undefined} className="grid flex-1 gap-1 py-1">
       <TagsInput
         id={id}
-        label="Tags"
+        label={translate('tags')}
         value={tags}
         invalid={Boolean(error)}
         onChange={change}

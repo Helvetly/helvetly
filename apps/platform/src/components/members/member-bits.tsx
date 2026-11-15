@@ -8,6 +8,7 @@ import Link from 'next/link'
 
 import { Initials } from '@/components/initials'
 import { useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import { PRESETS, presetOf } from '@/lib/permissions'
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
@@ -44,7 +45,7 @@ export function MemberCell({
           <span className="truncate">{name}</span>
           {you && (
             <span className="shrink-0 rounded-[4px] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              You
+              {translate('you2')}
             </span>
           )}
         </span>
@@ -73,13 +74,16 @@ export function TeamSummary({ members, pending }: { members: number; pending: nu
   return (
     <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-5 text-[13px] text-muted-foreground">
       <span>
-        {plural(members, 'member')} · {plural(pending, 'pending invitation')}
+        {plural(members, 'member')} · {plural(pending, translate('pendingInvitation'))}
       </span>
       {seats?.max != null && (
         <span>
-          {seats.used} of {seats.max} seats used ·{' '}
+          {seats.used}
+          {translate('of5')}
+          {seats.max}
+          {translate('seatsUsed')}{' '}
           <Link href="/settings/billing/plans" className="text-foreground underline">
-            Upgrade
+            {translate('upgrade')}
           </Link>
         </span>
       )}
@@ -88,9 +92,9 @@ export function TeamSummary({ members, pending }: { members: number; pending: nu
 }
 
 const RULES = [
-  'Owners and admins invite people, change roles and manage billing.',
-  'Members work with clients, invoices and documents.',
-  'Anyone can leave; the last owner stays.',
+  translate('ownersAndAdminsInvitePeopleChangeRolesAndManage'),
+  translate('membersWorkWithClientsInvoicesAndDocuments'),
+  translate('anyoneCanLeaveTheLastOwnerStays'),
 ]
 
 /** Shown while the owner is alone, so the page invites instead of sitting empty. */
@@ -100,9 +104,9 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
       <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Users className="size-4.5" />
       </span>
-      <h2 className="text-[15px] font-medium">Work together</h2>
+      <h2 className="text-[15px] font-medium">{translate('workTogether')}</h2>
       <p className="text-[14px] text-muted-foreground">
-        Invite your accountant or team. Everyone gets their own sign-in and sees the same workspace.
+        {translate('inviteYourAccountantOrTeamEveryoneGetsTheirOwn')}
       </p>
       <ul className="list-disc space-y-1 pl-5 text-[14px] text-muted-foreground">
         {RULES.map((rule) => (
@@ -111,7 +115,7 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
       </ul>
       {onInvite && (
         <Button size="sm" className="cursor-pointer" onClick={onInvite}>
-          Invite member
+          {translate('inviteMember')}
         </Button>
       )}
     </section>
@@ -121,5 +125,5 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
 /** The preset a member's scopes amount to, or "Custom". */
 export function AccessBadge({ scopes }: { scopes: string[] | null }) {
   const preset = PRESETS.find((entry) => entry.id === presetOf(scopes))
-  return <StatusBadge>{preset?.label ?? 'Custom'}</StatusBadge>
+  return <StatusBadge>{preset?.label ?? translate('custom')}</StatusBadge>
 }

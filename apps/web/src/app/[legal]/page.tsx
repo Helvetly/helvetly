@@ -1,3 +1,4 @@
+import { localizedHref, localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +7,7 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { Container } from '@/components/section'
+import { translate } from '@/lib/i18n'
 import { isLegalSlug, LEGAL, legalHref, readLegal, slugify } from '@/lib/legal'
 
 type Props = { params: Promise<{ legal: string }> }
@@ -18,7 +20,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { legal } = await params
-  return isLegalSlug(legal) ? { title: LEGAL[legal].title } : {}
+  return isLegalSlug(legal)
+    ? { alternates: localizedAlternates(`/${(await params).legal}`), title: LEGAL[legal].title }
+    : {}
 }
 
 function text(node: ReactNode): string {
@@ -31,10 +35,10 @@ function text(node: ReactNode): string {
 // Section headings get ids for the contents list; links between the files go to their pages.
 const MARKDOWN: Components = {
   h2: ({ children }) => <h2 id={slugify(text(children))}>{children}</h2>,
-  a: ({ href = '', children }) => <a href={legalHref(href)}>{children}</a>,
+  a: ({ href = '', children }) => <a href={localizedHref(legalHref(href))}>{children}</a>,
   // A wide table scrolls sideways in its own labelled box, which the keyboard can reach and scroll.
   table: ({ children }) => (
-    <section aria-label="Table" tabIndex={0} className="legal-table">
+    <section aria-label={translate('table')} tabIndex={0} className="legal-table">
       <table>{children}</table>
     </section>
   ),
@@ -49,7 +53,10 @@ export default async function LegalPage({ params }: Props) {
     <main className="pt-32 pb-24 sm:pt-40">
       <Container className="grid gap-12 lg:grid-cols-[220px_1fr]">
         <aside className="hidden lg:block">
-          <nav aria-label="Legal" className="sticky top-28 flex flex-col gap-1 text-body-sm">
+          <nav
+            aria-label={translate('legal')}
+            className="sticky top-28 flex flex-col gap-1 text-body-sm"
+          >
             {Object.keys(LEGAL)
               .filter(isLegalSlug)
               .map((key) => (
@@ -65,12 +72,12 @@ export default async function LegalPage({ params }: Props) {
             {headings.length > 0 && (
               <>
                 <p className="mt-6 px-3 text-caption font-medium text-muted-foreground uppercase">
-                  On this page
+                  {translate('onThisPage')}
                 </p>
                 {headings.map((h) => (
                   <a
                     key={h.id}
-                    href={`#${h.id}`}
+                    href={localizedHref(`#${h.id}`)}
                     className="px-3 py-1 leading-snug text-muted-foreground hover:text-foreground"
                   >
                     {h.text}

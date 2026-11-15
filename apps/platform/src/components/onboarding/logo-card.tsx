@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ImagePlus, Trash2 } from 'lucide-react'
@@ -7,6 +6,7 @@ import Image from 'next/image'
 import { useRef, useState, type DragEvent } from 'react'
 
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { LOGO_TYPES, logoProblem, useLogo } from '@/lib/invoices'
 
 // A transparent logo shows on a checkerboard, so its edges are visible.
@@ -71,7 +71,7 @@ export function LogoCard({ url }: { url: string | null }) {
           {url ? (
             <Image
               src={url}
-              alt="Your logo"
+              alt={translate('yourLogo')}
               fill
               unoptimized
               sizes="80px"
@@ -82,9 +82,11 @@ export function LogoCard({ url }: { url: string | null }) {
           )}
         </span>
         <span className="grid min-w-0 flex-1 gap-1">
-          <span className="text-sm font-medium">{url ? 'Your logo' : 'Upload your logo'}</span>
+          <span className="text-sm font-medium">
+            {url ? translate('yourLogo') : translate('uploadYourLogo')}
+          </span>
           <span className="text-[13px] text-muted-foreground">
-            PNG or JPEG, up to 2 MB. Drop it here or choose a file.
+            {translate('pngOrJPEGUpTo2MBDropIt')}
           </span>
           <span className="mt-1.5 flex flex-wrap gap-2">
             <Button
@@ -94,7 +96,11 @@ export function LogoCard({ url }: { url: string | null }) {
               disabled={busy}
               onClick={() => input.current?.click()}
             >
-              {logo.progress !== null ? 'Uploading…' : url ? 'Replace' : 'Choose file'}
+              {logo.progress !== null
+                ? translate('uploading3')
+                : url
+                  ? translate('replace2')
+                  : translate('chooseFile')}
             </Button>
             {url && (
               <Button
@@ -109,7 +115,8 @@ export function LogoCard({ url }: { url: string | null }) {
                   })
                 }}
               >
-                <Trash2 /> Remove
+                <Trash2 />
+                {translate('remove')}
               </Button>
             )}
           </span>

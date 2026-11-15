@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 // Small pieces every portal screen shares: page header, card, section states, file and invoice bits.
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Button } from '@helvetly/ui/components/button'
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { portalInvoicePdfUrl, type PortalInvoice } from '@/lib/portal'
 
 export const cardClass = 'rounded-xl bg-card shadow-elevation-1'
@@ -84,9 +85,13 @@ export function SectionTitle({
 export function RetryAlert({ what, onRetry }: { what: string; onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-      <p className="text-muted-foreground">{what} couldn’t be loaded. Try again in a moment.</p>
+      <p className="text-muted-foreground">
+        {what}
+        {translate('couldnTBeLoadedTryAgainInAMoment')}
+      </p>
       <Button variant="outline" onClick={onRetry}>
-        <RotateCw /> Try again
+        <RotateCw />
+        {translate('tryAgain')}
       </Button>
     </div>
   )
@@ -117,8 +122,13 @@ export function EmptyState({
 
 const FILE_KINDS: { test: RegExp; icon: LucideIcon; tone: Tone; label: string }[] = [
   { test: /pdf/, icon: FileText, tone: 'red', label: 'PDF' },
-  { test: /^image\//, icon: FileImage, tone: 'blue', label: 'Image' },
-  { test: /sheet|excel|csv/, icon: FileSpreadsheet, tone: 'green', label: 'Spreadsheet' },
+  { test: /^image\//, icon: FileImage, tone: 'blue', label: translate('image') },
+  {
+    test: /sheet|excel|csv/,
+    icon: FileSpreadsheet,
+    tone: 'green',
+    label: translate('spreadsheet'),
+  },
 ]
 
 /** A tinted tile with the file type's icon: PDF, image, spreadsheet or any other file. */
@@ -127,7 +137,7 @@ export function FileTile({ contentType, className }: { contentType: string; clas
   const Icon = kind?.icon ?? File
   return (
     <span
-      title={kind?.label ?? 'File'}
+      title={kind?.label ?? translate('file')}
       className={cn(
         'flex size-9 shrink-0 items-center justify-center rounded-lg',
         TONES[kind?.tone ?? 'gray'],
@@ -140,14 +150,14 @@ export function FileTile({ contentType, className }: { contentType: string; clas
 }
 
 const STATUS: Record<string, [Tone, string]> = {
-  open: ['blue', 'Open'],
-  paid: ['green', 'Paid'],
-  void: ['gray', 'Void'],
-  replaced: ['gray', 'Replaced'],
+  open: ['blue', translate('open')],
+  paid: ['green', translate('paid')],
+  void: ['gray', translate('void')],
+  replaced: ['gray', translate('replaced')],
 }
 
 export function InvoiceStatus({ invoice }: { invoice: PortalInvoice }) {
-  if (invoice.is_overdue) return <StatusBadge tone="red">Overdue</StatusBadge>
+  if (invoice.is_overdue) return <StatusBadge tone="red">{translate('overdue')}</StatusBadge>
   const [tone, label] = STATUS[invoice.status] ?? ['gray', invoice.status.replaceAll('_', ' ')]
   return <StatusBadge tone={tone}>{label}</StatusBadge>
 }
@@ -170,12 +180,14 @@ export function DownloadLink({
           variant="ghost"
           className={cn('shrink-0', text ? 'max-sm:w-8 max-sm:px-0' : 'w-8 px-0')}
         >
-          <a href={href} aria-label={label}>
+          <a href={localizedHref(href)} aria-label={label}>
             <Download /> {text && <span className="max-sm:hidden">{text}</span>}
           </a>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className={text ? 'sm:hidden' : undefined}>Download</TooltipContent>
+      <TooltipContent className={text ? 'sm:hidden' : undefined}>
+        {translate('download')}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -183,7 +195,7 @@ export function DownloadLink({
 export const PdfLink = ({ invoice }: { invoice: PortalInvoice }) => (
   <DownloadLink
     href={portalInvoicePdfUrl(invoice.id)}
-    label={`Download PDF of invoice ${invoice.number}`}
+    label={translate('downloadPDFOfInvoice', { number: invoice.number })}
     text="PDF"
   />
 )

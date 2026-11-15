@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
 import { Dashboard } from '@/components/dashboard/dashboard'
-
-export const metadata: Metadata = { title: 'Home' }
+import { PageTitle } from '@/components/page-title'
 
 export default function DashboardPage() {
-  return <Dashboard />
+  return (
+    <>
+      <PageTitle message="home" />
+      <Dashboard />
+    </>
+  )
 }

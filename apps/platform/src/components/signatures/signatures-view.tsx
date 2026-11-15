@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,6 +8,7 @@ import { useState } from 'react'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { initialsOf } from '@/components/initials'
+import { translate } from '@/lib/i18n'
 import {
   progressOf,
   signerColor,
@@ -20,12 +20,12 @@ import {
 import { RequestBadge } from './parts'
 
 const FILTERS: [RequestStatus | null, string][] = [
-  [null, 'All'],
-  ['pending', 'Out for signature'],
-  ['completed', 'Completed'],
-  ['declined', 'Declined'],
-  ['expired', 'Expired'],
-  ['revoked', 'Revoked'],
+  [null, translate('all')],
+  ['pending', translate('outForSignature')],
+  ['completed', translate('completed')],
+  ['declined', translate('declined')],
+  ['expired', translate('expired')],
+  ['revoked', translate('revoked')],
 ]
 
 /** Last thing that happened to a request, for sorting by eye. */
@@ -55,7 +55,7 @@ export function SignaturesView({
     <div className="flex flex-1 flex-col">
       <div
         role="tablist"
-        aria-label="Filter by status"
+        aria-label={translate('filterByStatus')}
         className="flex gap-1 overflow-x-auto px-3 pt-3 md:px-5"
       >
         {FILTERS.map(([value, label]) => (
@@ -74,7 +74,7 @@ export function SignaturesView({
       {list.error ? (
         <LoadProblem
           error={list.error}
-          what="The signature requests"
+          what={translate('theSignatureRequests')}
           onRetry={() => void list.refetch()}
         />
       ) : list.isPending ? (
@@ -82,15 +82,14 @@ export function SignaturesView({
       ) : requests.length === 0 ? (
         <State
           icon={<FileSignature />}
-          title={status ? 'Nothing here' : 'Nothing out for signature'}
+          title={status ? translate('nothingHere') : translate('nothingOutForSignature')}
           text={
-            status
-              ? 'No request has this status.'
-              : 'Send a PDF to sign online, or make a document from a template with signature fields. The signed copy lands back in Documents.'
+            status ? translate('noRequestHasThisStatus') : translate('sendAPDFToSignOnlineOrMakeA')
           }
           action={
             <Button size="sm" className="cursor-pointer gap-1.5" onClick={onCreate}>
-              <Plus className="size-4" /> PDF for signature
+              <Plus className="size-4" />
+              {translate('pdfForSignature3')}
             </Button>
           }
         />
@@ -122,7 +121,7 @@ function Row({ request, onOpen }: { request: SignatureRequest; onOpen: () => voi
         <span className="min-w-0">
           <span className="block truncate text-[14.5px]">{request.title}</span>
           <span className="block truncate text-[12.5px] text-muted-foreground">
-            {request.document?.name ?? 'Original kept with the request'}
+            {request.document?.name ?? translate('originalKeptWithTheRequest')}
           </span>
         </span>
       </span>

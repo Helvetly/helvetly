@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { ApiError, errorMessage } from '@helvetly/ui/lib/http'
@@ -10,6 +9,7 @@ import { ImageUp, LoaderCircle, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import {
   deletePortalAvatar,
   getPortalSession,
@@ -35,7 +35,7 @@ export function PortalPhoto() {
     mutationFn: async (file: File) => uploadPortalAvatar(await shrinkPhoto(file)),
     onSuccess: ({ avatar_url }) => {
       show(avatar_url)
-      toast.success('Photo saved.')
+      toast.success(translate('photoSaved'))
     },
     onError: (failure) => setError(errorMessage(failure)),
   })
@@ -50,7 +50,7 @@ export function PortalPhoto() {
     },
     onSuccess: () => {
       show('')
-      toast.success('Photo removed.')
+      toast.success(translate('photoRemoved'))
     },
     onError: (failure) => setError(errorMessage(failure)),
   })
@@ -85,10 +85,10 @@ export function PortalPhoto() {
       <LoginAvatar name={session.client.name} src={session.avatar_url} large />
       <div className="grid min-w-0 flex-1 basis-48 gap-0.5">
         <h2 id="portal-photo-title" className="text-title-sm font-medium">
-          Photo
+          {translate('photo')}
         </h2>
         <p className="text-body-sm text-pretty text-muted-foreground">
-          Shown in your account menu instead of your initials. PNG, JPEG or WebP.
+          {translate('shownInYourAccountMenuInsteadOfYourInitials')}
         </p>
         {error && (
           <p role="alert" className="text-body-sm text-destructive">
@@ -108,7 +108,11 @@ export function PortalPhoto() {
           ) : (
             <ImageUp aria-hidden />
           )}
-          {upload.isPending ? 'Uploading…' : session.avatar_url ? 'Change photo' : 'Upload photo'}
+          {upload.isPending
+            ? translate('uploading')
+            : session.avatar_url
+              ? translate('changePhoto')
+              : translate('uploadPhoto')}
         </Button>
         {session.avatar_url && (
           <Button
@@ -120,16 +124,17 @@ export function PortalPhoto() {
               setConfirming(true)
             }}
           >
-            <Trash2 aria-hidden /> Remove
+            <Trash2 aria-hidden />
+            {translate('remove')}
           </Button>
         )}
       </div>
       {confirming && (
         <ConfirmDialog
           tone="destructive"
-          title="Remove your photo?"
-          body="Your initials show instead. You can upload a new photo at any time."
-          confirmLabel="Remove photo"
+          title={translate('removeYourPhoto')}
+          body={translate('yourInitialsShowInsteadYouCanUploadANew')}
+          confirmLabel={translate('removePhoto')}
           onDecide={(approved) => {
             setConfirming(false)
             if (approved) remove.mutate()

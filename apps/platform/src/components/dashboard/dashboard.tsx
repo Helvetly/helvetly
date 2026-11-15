@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   ChartContainer,
@@ -32,6 +32,7 @@ import { InvoiceKpis } from '@/components/invoices/invoice-kpis'
 import { RecordLink } from '@/components/record-link'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   DEFAULT_PARAMS,
   SUMMARY_PERIODS,
@@ -78,10 +79,11 @@ export function Dashboard() {
     return (
       <div className="grid justify-items-start gap-3 p-5">
         <p role="alert" className="text-sm text-muted-foreground">
-          Workspace overview couldn’t be loaded: {errorMessage(session.error)}
+          {translate('workspaceOverviewCouldnTBeLoaded')}
+          {errorMessage(session.error)}
         </p>
         <Button variant="outline" size="sm" onClick={() => void session.refetch()}>
-          Retry workspace overview
+          {translate('retryWorkspaceOverview')}
         </Button>
       </div>
     )
@@ -89,16 +91,16 @@ export function Dashboard() {
   if (!session.data) {
     return (
       <div className="p-5">
-        <Loader label="Loading workspace overview" className="min-h-56" />
+        <Loader label={translate('loadingWorkspaceOverview')} className="min-h-56" />
       </div>
     )
   }
   return (
     <>
       <PageHeader
-        tabs={['Dashboard']}
+        tabs={[translate('dashboard')]}
         tabIcons={[LayoutGrid]}
-        primary={canInvoice ? 'New invoice' : undefined}
+        primary={canInvoice ? translate('newInvoice') : undefined}
         onPrimary={() => router.push('/invoices/new')}
         actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
       />
@@ -109,7 +111,7 @@ export function Dashboard() {
         {canReadEngagements && <EngagementsCard />}
         {!canReadInvoices && !canReadExpenses && !canReadEngagements && (
           <p className="text-sm text-muted-foreground">
-            Your workspace overview shows the sections you have permission to read.
+            {translate('yourWorkspaceOverviewShowsTheSectionsYouHavePermission')}
           </p>
         )}
       </div>
@@ -157,7 +159,7 @@ function PeriodFilter({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="min-w-0 font-normal">
           <CalendarDays className="stroke-[1.5] text-muted-foreground" />
-          <span className="sr-only">Period:</span>
+          <span className="sr-only">{translate('period2')}</span>
           <span className="truncate">{label}</span>
           {range && <span className="truncate text-muted-foreground max-sm:hidden">{range}</span>}
           <ChevronDown className="text-muted-foreground" />
@@ -165,7 +167,7 @@ function PeriodFilter({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-52">
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Key figures for
+          {translate('keyFiguresFor')}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={value}
@@ -200,11 +202,12 @@ function NeedsAttention() {
 
   return (
     <Section
-      title="Needs attention"
+      title={translate('needsAttention')}
       action={
         <Button asChild variant="ghost" size="sm" className="font-normal text-muted-foreground">
           <Link href="/invoices?status=open&status=refund_due&kind=invoice">
-            All that needs attention <ArrowRight className="stroke-[1.5]" />
+            {translate('allThatNeedsAttention')}
+            <ArrowRight className="stroke-[1.5]" />
           </Link>
         </Button>
       }
@@ -212,17 +215,18 @@ function NeedsAttention() {
       {invoices.error ? (
         <div className="grid justify-items-start gap-3 p-4">
           <p role="alert" className="text-sm text-muted-foreground">
-            Open invoices couldn’t be loaded: {errorMessage(invoices.error)}
+            {translate('openInvoicesCouldnTBeLoaded')}
+            {errorMessage(invoices.error)}
           </p>
           <Button size="sm" variant="outline" onClick={() => void invoices.refetch()}>
-            Retry invoices
+            {translate('retryInvoices')}
           </Button>
         </div>
       ) : !invoices.data ? (
         <Loader className="min-h-72" />
       ) : rows.length === 0 ? (
         <p className="px-4 py-12 text-center text-[14px] text-muted-foreground">
-          Nothing open. Every invoice is paid.
+          {translate('nothingOpenEveryInvoiceIsPaid')}
         </p>
       ) : (
         <ul className="py-1.5">
@@ -239,7 +243,7 @@ function NeedsAttention() {
                     <span className="truncate text-[13px] text-muted-foreground">
                       {row.number} ·{' '}
                       {isPositive(row.refund_due)
-                        ? 'to refund'
+                        ? translate('toRefund')
                         : dueLabel(row.due_date).toLowerCase()}
                     </span>
                   </span>
@@ -262,19 +266,19 @@ function NeedsAttention() {
 }
 
 const PERIODS = [
-  { value: '30d', label: '30D' },
-  { value: '90d', label: '90D' },
-  { value: '12m', label: '12M' },
+  { value: '30d', label: translate('message30d') },
+  { value: '90d', label: translate('message90d') },
+  { value: '12m', label: translate('message12m') },
 ] as const
 
 const chartConfig = {
-  income: { label: 'Income', color: 'var(--chart-1)' },
-  expenses: { label: 'Expenses', color: 'var(--chart-2)' },
+  income: { label: translate('income2'), color: 'var(--chart-1)' },
+  expenses: { label: translate('expenses'), color: 'var(--chart-2)' },
 } satisfies ChartConfig
 
 const tickDate = (period: string) => (iso: string) =>
   new Date(iso).toLocaleDateString(
-    'en-GB',
+    languageTag,
     period === '12m' ? { month: 'short' } : { day: 'numeric', month: 'short' },
   )
 
@@ -291,12 +295,12 @@ function CashFlow() {
 
   return (
     <Section
-      title="Cash flow"
+      title={translate('cashFlow')}
       action={
         <div className="flex items-center gap-3">
           {availableCurrencies.length > 1 && (
             <NativeSelect
-              aria-label="Cash flow currency"
+              aria-label={translate('cashFlowCurrency')}
               value={dashboard.data?.currency ?? currency}
               onChange={(event) => {
                 setCurrencies(availableCurrencies)
@@ -310,14 +314,19 @@ function CashFlow() {
               ))}
             </NativeSelect>
           )}
-          <Segmented label="Period" value={period} options={[...PERIODS]} onChange={setPeriod} />
+          <Segmented
+            label={translate('period')}
+            value={period}
+            options={[...PERIODS]}
+            onChange={setPeriod}
+          />
         </div>
       }
     >
       <div className="grid gap-4 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <output
-            aria-label="Net cash flow"
+            aria-label={translate('netCashFlow')}
             className="flex items-start gap-1 text-[30px] leading-none tracking-[-0.02em] tabular-nums"
           >
             <span className="mt-1 mr-0.5 text-[13px] tracking-normal text-muted-foreground">
@@ -325,32 +334,35 @@ function CashFlow() {
             </span>
             {dashboard.data ? formatWhole(net) : '—'}
             <span className="mt-0.5 ml-1 text-[11px] tracking-normal text-muted-foreground">
-              net
+              {translate('net')}
             </span>
           </output>
           <p className="flex items-center gap-4 text-[13px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="h-px w-4 bg-(--chart-1)" /> Income
+              <span className="h-px w-4 bg-(--chart-1)" />
+              {translate('income')}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-px w-4 border-t border-dashed border-(--chart-2)" /> Expenses
+              <span className="h-px w-4 border-t border-dashed border-(--chart-2)" />
+              {translate('expenses2')}
             </span>
           </p>
         </div>
         {(!canReadInvoices || !canReadExpenses) && (
           <p className="text-xs text-muted-foreground">
             {canReadInvoices
-              ? 'Invoice payments and refunds only. Expenses are not included in this view.'
-              : 'Paid expenses only. Invoice payments and refunds are not included in this view.'}
+              ? translate('invoicePaymentsAndRefundsOnlyExpensesAreNotIncluded')
+              : translate('paidExpensesOnlyInvoicePaymentsAndRefundsAreNot')}
           </p>
         )}
         {dashboard.error ? (
           <div className="grid h-56 content-center justify-items-start gap-3">
             <p role="alert" className="text-sm text-muted-foreground">
-              Cash flow couldn’t be loaded: {errorMessage(dashboard.error)}
+              {translate('cashFlowCouldnTBeLoaded')}
+              {errorMessage(dashboard.error)}
             </p>
             <Button size="sm" variant="outline" onClick={() => void dashboard.refetch()}>
-              Retry cash flow
+              {translate('retryCashFlow')}
             </Button>
           </div>
         ) : dashboard.data ? (

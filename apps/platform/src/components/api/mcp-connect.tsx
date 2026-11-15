@@ -1,8 +1,8 @@
 'use client'
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 
 import { Snippet } from '@/components/developers/snippet'
+import { translate } from '@/lib/i18n'
 
 import { CodeBlock } from './code-block'
 
@@ -19,19 +19,19 @@ export function mcpConfigs(origin: string, token = PLACEHOLDER) {
     clients: [
       {
         id: 'claude-code',
-        label: 'Claude Code',
-        hint: 'Run this in a terminal, then start Claude Code.',
+        label: translate('claudeCode'),
+        hint: translate('runThisInATerminalThenStartClaudeCode'),
         code: `claude mcp add --transport http helvetly ${url} \\\n  --header "${header}"`,
       },
       {
         id: 'claude-desktop',
-        label: 'Claude Desktop',
-        hint: 'Settings → Developer → Edit config, add this to claude_desktop_config.json, then restart Claude. Needs Node.js.',
+        label: translate('claudeDesktop'),
+        hint: translate('settingsDeveloperEditConfigAddThisToClaudeDesktop'),
         code: json({
           mcpServers: {
             helvetly: {
               command: 'npx',
-              args: ['-y', 'mcp-remote', url, '--header', 'Authorization:${AUTH_HEADER}'],
+              args: ['-y', 'mcp-remote', url, '--header', 'Authorization'],
               env: { AUTH_HEADER: `Bearer ${token}` },
             },
           },
@@ -39,16 +39,16 @@ export function mcpConfigs(origin: string, token = PLACEHOLDER) {
       },
       {
         id: 'cursor',
-        label: 'Cursor',
-        hint: 'Add this to ~/.cursor/mcp.json (or .cursor/mcp.json in a project).',
+        label: translate('cursor'),
+        hint: translate('addThisToCursorMcpJsonOrCursorMcp'),
         code: json({
           mcpServers: { helvetly: { url, headers: { Authorization: `Bearer ${token}` } } },
         }),
       },
       {
         id: 'other',
-        label: 'Other',
-        hint: 'Any client that speaks MCP over Streamable HTTP: this URL, with the token in the Authorization header.',
+        label: translate('other'),
+        hint: translate('anyClientThatSpeaksMCPOverStreamableHTTPThis'),
         code: `URL:    ${url}\nHeader: ${header}`,
       },
     ],
@@ -64,11 +64,14 @@ export function McpConnect({ origin, token }: { origin: string; token?: string }
   return (
     <div className="grid min-w-0 gap-4">
       <div className="grid gap-1.5">
-        <p className="text-body-sm font-medium">MCP server URL</p>
-        <Snippet label="MCP server URL" value={configs.url} />
+        <p className="text-body-sm font-medium">{translate('mcpServerURL')}</p>
+        <Snippet label={translate('mcpServerURL')} value={configs.url} />
       </div>
       <Tabs defaultValue="claude-code" className="min-w-0 gap-2.5">
-        <TabsList aria-label="AI assistant" className="h-auto max-w-full flex-wrap justify-start">
+        <TabsList
+          aria-label={translate('aiAssistant')}
+          className="h-auto max-w-full flex-wrap justify-start"
+        >
           {configs.clients.map((client) => (
             <TabsTrigger key={client.id} value={client.id} className="flex-none px-2.5">
               {client.label}
@@ -78,15 +81,15 @@ export function McpConnect({ origin, token }: { origin: string; token?: string }
         {configs.clients.map((client) => (
           <TabsContent key={client.id} value={client.id} className="grid min-w-0 gap-2">
             <p className="text-body-sm text-pretty text-muted-foreground">{client.hint}</p>
-            <CodeBlock label={`${client.label} setup`} value={client.code} />
+            <CodeBlock label={translate('setup', { label: client.label })} value={client.code} />
           </TabsContent>
         ))}
       </Tabs>
       {!token && (
         <p className="text-body-sm text-pretty text-muted-foreground">
-          Replace <code className="font-mono text-caption text-foreground">{PLACEHOLDER}</code> with
-          a token from the list above. The assistant then sees only what the token&apos;s access and
-          your role allow.
+          {translate('replace')}
+          <code className="font-mono text-caption text-foreground">{PLACEHOLDER}</code>
+          {translate('withATokenFromTheListAboveTheAssistant')}
         </p>
       )}
     </div>

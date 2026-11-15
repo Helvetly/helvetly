@@ -1,5 +1,4 @@
 'use client'
-
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { useSidebar } from '@helvetly/ui/components/sidebar'
@@ -11,6 +10,7 @@ import { useState, type ComponentType, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { translate } from '@/lib/i18n'
 import { can, useScopes } from '@/lib/permissions'
 
 import { isCurrent, useNavTarget } from './app-sidebar'
@@ -37,7 +37,7 @@ export function MobileTabBar() {
   return (
     <>
       <nav
-        aria-label="Main"
+        aria-label={translate('main')}
         className="fixed inset-x-0 bottom-0 z-40 grid min-w-[320px] grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
         {first && (
@@ -57,7 +57,7 @@ export function MobileTabBar() {
         <div className="flex items-center justify-center">
           <button
             type="button"
-            aria-label={primary?.label ?? 'Create'}
+            aria-label={primary?.label ?? translate('create')}
             onClick={primary ? primary.run : () => setCreating(true)}
             className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_12px_rgb(0_0_0/0.2)] transition-transform active:scale-95"
           >
@@ -71,7 +71,7 @@ export function MobileTabBar() {
             link={linkProps(rest[1].href ?? '/')}
           />
         )}
-        <TabButton label="Menu" icon={Menu} onClick={() => setOpenMobile(true)} />
+        <TabButton label={translate('menu')} icon={Menu} onClick={() => setOpenMobile(true)} />
       </nav>
       {creating && <CreateSheet onClose={() => setCreating(false)} />}
     </>
@@ -97,7 +97,7 @@ function Tab({
   return (
     <Link href={href} {...link} aria-current={current ? 'page' : undefined} className={tabClass}>
       <Icon />
-      {label === 'Dashboard' ? 'Home' : label}
+      {label === 'Dashboard' ? translate('home') : label}
     </Link>
   )
 }
@@ -137,12 +137,14 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
         className="gap-0 rounded-t-2xl px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
       >
         <span aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
-        <SheetTitle className="px-2 text-[15px] font-medium">Create</SheetTitle>
-        <SheetDescription className="sr-only">Start a new record or ask Heidi</SheetDescription>
+        <SheetTitle className="px-2 text-[15px] font-medium">{translate('create')}</SheetTitle>
+        <SheetDescription className="sr-only">
+          {translate('startANewRecordOrAskHeidi')}
+        </SheetDescription>
         <div className="mt-2 grid gap-0.5">
           {heidi && (
             <Row icon={<HeidiSparkle />} onClick={go(() => heidi.ask())}>
-              Ask Heidi
+              {translate('askHeidi')}
             </Row>
           )}
           {CREATE_ACTIONS.filter(({ need }) => can(scopes, need)).map(
@@ -150,7 +152,9 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
               <Row
                 key={label}
                 icon={<Icon />}
-                onClick={go(() => (href ? router.push(href) : toast(`${label} is coming soon.`)))}
+                onClick={go(() =>
+                  href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
+                )}
               >
                 {label}
               </Row>

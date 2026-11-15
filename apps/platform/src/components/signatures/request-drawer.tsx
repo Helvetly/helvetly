@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -15,6 +15,7 @@ import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { contentUrl, downloadUrl } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import {
   originalUrl,
   progressOf,
@@ -30,25 +31,25 @@ import {
 import { RequestBadge, SignerBadge } from './parts'
 
 const EVENT_LABELS: Record<SignatureEvent['type'], string> = {
-  created: 'Created',
-  sent: 'Link emailed',
-  viewed: 'Opened the document',
-  signed: 'Signed',
-  declined: 'Declined',
-  reminded: 'Reminder emailed',
-  revoked: 'Revoked',
-  completed: 'Completed: signed PDF filed',
+  created: translate('created3'),
+  sent: translate('linkEmailed'),
+  viewed: translate('openedTheDocument'),
+  signed: translate('signed'),
+  declined: translate('declined'),
+  reminded: translate('reminderEmailed'),
+  revoked: translate('revoked'),
+  completed: translate('completedSignedPDFFiled'),
 }
 
 const SIGNER_VERBS: Record<Signer['status'], string> = {
-  waiting: 'Waiting',
-  sent: 'Emailed',
-  viewed: 'Opened',
-  signed: 'Signed',
-  declined: 'Declined',
+  waiting: translate('waiting'),
+  sent: translate('emailed'),
+  viewed: translate('opened'),
+  signed: translate('signed'),
+  declined: translate('declined'),
 }
 
-const time = new Intl.DateTimeFormat('en-GB', {
+const time = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
@@ -82,22 +83,25 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
           </span>
           <div className="min-w-0 flex-1">
             <SheetTitle className="truncate text-[15px] font-medium">
-              {request?.title ?? 'Loading…'}
+              {request?.title ?? translate('loading')}
             </SheetTitle>
             {request && (
               <p className="truncate text-[12px] text-muted-foreground">
-                {progressOf(request).signed} of {progressOf(request).total} signed ·{' '}
+                {progressOf(request).signed}
+                {translate('of5')}
+                {progressOf(request).total}
+                {translate('signed2')}{' '}
                 {request.status === 'completed' && request.completed_at
-                  ? `completed ${formatDate(request.completed_at)}`
-                  : `expires ${formatDate(request.expires_at)}`}
+                  ? translate('dynamicCompleted', { value1: formatDate(request.completed_at) })
+                  : translate('dynamicExpires', { value1: formatDate(request.expires_at) })}
               </p>
             )}
           </div>
           {request?.signed_document && (
             <Button asChild className="cursor-pointer gap-1.5">
-              <a href={downloadUrl(request.signed_document.id)}>
+              <a href={localizedHref(downloadUrl(request.signed_document.id))}>
                 <Download className="size-4" />
-                <span className="max-sm:sr-only">Download signed PDF</span>
+                <span className="max-sm:sr-only">{translate('downloadSignedPDF')}</span>
               </a>
             </Button>
           )}
@@ -109,13 +113,13 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
                 disabled={remind.isPending}
                 onClick={() =>
                   remind.mutate(id, {
-                    onSuccess: () => toast.success('Reminder sent with a fresh link.'),
+                    onSuccess: () => toast.success(translate('reminderSentWithAFreshLink')),
                     onError: toastError,
                   })
                 }
               >
                 <BellRing className="size-4" />
-                <span className="max-sm:sr-only">Remind</span>
+                <span className="max-sm:sr-only">{translate('remind')}</span>
               </Button>
               <Button
                 variant="destructive-ghost"
@@ -123,7 +127,7 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
                 onClick={() => setConfirmRevoke(true)}
               >
                 <Ban className="size-4" />
-                <span className="max-sm:sr-only">Revoke</span>
+                <span className="max-sm:sr-only">{translate('revoke')}</span>
               </Button>
             </>
           )}
@@ -132,7 +136,7 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Close"
+            aria-label={translate('close')}
             className="cursor-pointer"
             onClick={onClose}
           >
@@ -157,16 +161,16 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
         </div>
         {confirmRevoke && (
           <ConfirmDialog
-            title="Revoke this request?"
-            body="Every signing link stops working at once. Signatures already given stay in the audit trail. This can’t be undone."
-            confirmLabel="Revoke"
+            title={translate('revokeThisRequest')}
+            body={translate('everySigningLinkStopsWorkingAtOnceSignaturesAlready')}
+            confirmLabel={translate('revoke')}
             tone="destructive"
             confirmIcon={<Ban />}
             onDecide={(approved) => {
               setConfirmRevoke(false)
               if (approved)
                 revoke.mutate(id, {
-                  onSuccess: () => toast.success('Request revoked.'),
+                  onSuccess: () => toast.success(translate('requestRevoked')),
                   onError: toastError,
                 })
             }}
@@ -191,7 +195,9 @@ function Details({ request }: { request: SignatureRequest }) {
       <div className="flex flex-wrap items-center gap-2">
         <RequestBadge status={request.status} />
         <span className="text-[12.5px] text-muted-foreground">
-          {request.signing_order === 'sequential' ? 'One after another' : 'Everyone at once'}
+          {request.signing_order === 'sequential'
+            ? translate('oneAfterAnother')
+            : translate('everyoneAtOnce')}
         </span>
       </div>
       {request.message && (
@@ -200,7 +206,7 @@ function Details({ request }: { request: SignatureRequest }) {
         </p>
       )}
       <section className="grid gap-2">
-        <Heading>Signers</Heading>
+        <Heading>{translate('signers')}</Heading>
         <ol className="grid gap-1.5">
           {request.signers.map((signer, index) => (
             <SignerRow key={signer.id} signer={signer} index={index} />
@@ -208,24 +214,24 @@ function Details({ request }: { request: SignatureRequest }) {
         </ol>
       </section>
       <section className="grid gap-2">
-        <Heading>Files</Heading>
+        <Heading>{translate('files')}</Heading>
         <dl className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 text-[13.5px]">
-          <dt className="text-muted-foreground">Original</dt>
+          <dt className="text-muted-foreground">{translate('original')}</dt>
           <dd className="min-w-0 truncate">
             <a
-              href={originalUrl(request.id)}
+              href={localizedHref(originalUrl(request.id))}
               target="_blank"
               rel="noreferrer"
               className="underline underline-offset-2 hover:no-underline"
             >
-              {request.document?.name ?? 'Frozen original'}
+              {request.document?.name ?? translate('frozenOriginal')}
             </a>
           </dd>
-          <dt className="text-muted-foreground">Signed</dt>
+          <dt className="text-muted-foreground">{translate('signed')}</dt>
           <dd className="min-w-0 truncate">
             {request.signed_document ? (
               <a
-                href={downloadUrl(request.signed_document.id)}
+                href={localizedHref(downloadUrl(request.signed_document.id))}
                 className="underline underline-offset-2 hover:no-underline"
               >
                 {request.signed_document.name}
@@ -233,22 +239,24 @@ function Details({ request }: { request: SignatureRequest }) {
             ) : (
               <span className="text-muted-foreground">
                 {request.status === 'pending'
-                  ? 'When everyone has signed'
-                  : 'None: not signed by everyone'}
+                  ? translate('whenEveryoneHasSigned')
+                  : translate('noneNotSignedByEveryone')}
               </span>
             )}
           </dd>
-          <dt className="text-muted-foreground">Sent by</dt>
+          <dt className="text-muted-foreground">{translate('sentBy')}</dt>
           <dd className="min-w-0 truncate">
-            {request.created_by?.name ?? 'Someone'} · {formatDate(request.created_at)}
+            {request.created_by?.name ?? translate('someone')} · {formatDate(request.created_at)}
           </dd>
         </dl>
-        <Hash label="Original SHA-256" value={request.original_sha256} />
-        {request.final_sha256 && <Hash label="Signed SHA-256" value={request.final_sha256} />}
+        <Hash label={translate('originalSHA256')} value={request.original_sha256} />
+        {request.final_sha256 && (
+          <Hash label={translate('signedSHA256')} value={request.final_sha256} />
+        )}
       </section>
       {request.events && request.events.length > 0 && (
         <section className="grid gap-2">
-          <Heading>Audit trail</Heading>
+          <Heading>{translate('auditTrail')}</Heading>
           <ol className="relative grid gap-3 border-l pl-4">
             {request.events.map((event) => (
               <li key={event.hash} className="relative text-[13px]">
@@ -280,8 +288,7 @@ function Details({ request }: { request: SignatureRequest }) {
           </ol>
           <p className="flex gap-2 text-[12px] leading-snug text-muted-foreground">
             <ShieldCheck className="mt-px size-3.5 shrink-0 stroke-[1.75] text-success-solid" />
-            Each event is chained to the one before by its SHA-256, so the trail can’t be changed
-            unnoticed.
+            {translate('eachEventIsChainedToTheOneBeforeBy')}
           </p>
         </section>
       )}
@@ -327,10 +334,10 @@ function Hash({ label, value }: { label: string; value: string }) {
   return (
     <button
       type="button"
-      title={`Copy ${label}`}
+      title={translate('copy2', { label: label })}
       onClick={() => {
         void navigator.clipboard.writeText(value)
-        toast(`${label} copied.`)
+        toast(translate('copied', { label: label }))
       }}
       className="cursor-pointer truncate rounded-lg bg-muted/60 px-2.5 py-2 text-left font-mono text-[11.5px] text-muted-foreground hover:text-foreground"
     >

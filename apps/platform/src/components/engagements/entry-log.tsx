@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Input } from '@helvetly/ui/components/input'
 import {
@@ -40,6 +40,7 @@ import {
   type EntryInput,
   type Period,
 } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { useMembers } from '@/lib/members'
 import { queryKeys } from '@/lib/queries'
 import { todayIn } from '@/lib/timezone'
@@ -49,12 +50,11 @@ import { plain, sumQuantities, Tip, unitShort, withUnit } from './engagement-bit
 /** The API's refusals, in words for the person. */
 export function friendlyError(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === 'entry_invoiced')
-      return 'This entry is on an invoice. Delete the draft or void the invoice first.'
-    if (error.code === 'already_invoiced') return 'This period already has an upfront invoice.'
+    if (error.code === 'entry_invoiced') return translate('thisEntryIsOnAnInvoiceDeleteTheDraft')
+    if (error.code === 'already_invoiced') return translate('thisPeriodAlreadyHasAnUpfrontInvoice')
     if (error.code === 'nothing_to_invoice')
-      return 'There is nothing to invoice for this period yet.'
-    if (error.code === 'period_invoiced') return 'This period is already invoiced.'
+      return translate('thereIsNothingToInvoiceForThisPeriodYet')
+    if (error.code === 'period_invoiced') return translate('thisPeriodIsAlreadyInvoiced')
   }
   return errorMessage(error)
 }
@@ -109,15 +109,18 @@ export function QuickLog({
       setNote('')
       refresh()
       quantityRef.current?.focus()
-      toast.success(`Logged ${data.entry.quantity}${unit ? ` ${unit}` : ''}.`, {
-        action: {
-          label: 'Undo',
-          onClick: () =>
-            void deleteEntry(engagementId, data.entry.id).then(refresh, (error: unknown) =>
-              toast.error(friendlyError(error)),
-            ),
+      toast.success(
+        translate('logged', { quantity: data.entry.quantity, value2: unit ? ` ${unit}` : '' }),
+        {
+          action: {
+            label: translate('undo'),
+            onClick: () =>
+              void deleteEntry(engagementId, data.entry.id).then(refresh, (error: unknown) =>
+                toast.error(friendlyError(error)),
+              ),
+          },
         },
-      })
+      )
     },
     onError: (error: unknown) => toast.error(friendlyError(error)),
   })
@@ -139,13 +142,13 @@ export function QuickLog({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[8rem_9.5rem_minmax(0,1fr)]">
         <div className="grid gap-1.5">
           <label htmlFor={`${id}-qty`} className={label}>
-            Quantity
+            {translate('quantity')}
           </label>
           <InputGroup>
             <InputGroupInput
               ref={quantityRef}
               id={`${id}-qty`}
-              aria-label="Quantity"
+              aria-label={translate('quantity')}
               inputMode="decimal"
               placeholder="0"
               className="tabular-nums"
@@ -161,7 +164,7 @@ export function QuickLog({
         </div>
         <div className="grid gap-1.5">
           <label htmlFor={`${id}-date`} className={label}>
-            Date
+            {translate('date')}
           </label>
           <Input
             id={`${id}-date`}
@@ -174,7 +177,7 @@ export function QuickLog({
         </div>
         <div className="grid gap-1.5 max-sm:col-span-2">
           <label htmlFor={`${id}-by`} className={label}>
-            Performed by
+            {translate('performedBy')}
           </label>
           <NativeSelect
             id={`${id}-by`}
@@ -182,7 +185,7 @@ export function QuickLog({
             onChange={(event) => setBy(event.target.value)}
             className="h-8"
           >
-            <option value="">Me</option>
+            <option value="">{translate('me')}</option>
             {members.data
               ?.filter((m) => !m.is_you)
               .map((m) => (
@@ -195,15 +198,15 @@ export function QuickLog({
       </div>
       <div className="grid gap-1.5">
         <label htmlFor={`${id}-note`} className={label}>
-          Note{' '}
+          {translate('note')}{' '}
           <span className="font-normal text-placeholder">
-            · optional, shown on per-entry invoice lines
+            {translate('optionalShownOnPerEntryInvoiceLines')}
           </span>
         </label>
         <Input
           id={`${id}-note`}
-          aria-label="Note"
-          placeholder="What was done?"
+          aria-label={translate('note')}
+          placeholder={translate('whatWasDone')}
           maxLength={500}
 
           value={note}
@@ -214,21 +217,26 @@ export function QuickLog({
         {over > 0 ? (
           <output className="flex min-w-0 items-center gap-1.5 text-body-sm text-warning">
             <TriangleAlert className="size-3.5 shrink-0" />
-            {(over / 1000).toString()} over what is left. It will be saved as overage.
+            {(over / 1000).toString()}
+            {translate('overWhatIsLeftItWillBeSavedAs')}
           </output>
         ) : (
-          <p className="text-body-sm text-muted-foreground max-sm:hidden">Press Enter to log.</p>
+          <p className="text-body-sm text-muted-foreground max-sm:hidden">
+            {translate('pressEnterToLog')}
+          </p>
         )}
         <Button type="submit" className="ml-auto" disabled={amount <= 0 || save.isPending}>
           <Plus />
-          {amount > 0 ? `Log ${quantity}${unit ? ` ${unit}` : ''}` : 'Log'}
+          {amount > 0
+            ? translate('log2', { quantity: quantity, value2: unit ? ` ${unit}` : '' })
+            : translate('log')}
         </Button>
       </div>
     </form>
   )
 }
 
-const dayMonth = new Intl.DateTimeFormat('en-GB', {
+const dayMonth = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
   timeZone: 'UTC',
@@ -265,7 +273,7 @@ function EntryRow({
   const remove = useMutation({
     mutationFn: () => deleteEntry(engagementId, entry.id),
     onSuccess: () => {
-      toast.success('Entry deleted.')
+      toast.success(translate('entryDeleted'))
       refresh()
     },
     onError: (error: unknown) => toast.error(friendlyError(error)),
@@ -285,41 +293,41 @@ function EntryRow({
         >
           <Input
             type="date"
-            aria-label="Date"
+            aria-label={translate('date')}
             value={draft.date}
             max={today()}
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
           />
           <Input
-            aria-label="Quantity"
+            aria-label={translate('quantity')}
             inputMode="decimal"
             className="tabular-nums"
             value={draft.quantity}
             onChange={(e) => setDraft({ ...draft, quantity: e.target.value.replace(',', '.') })}
           />
           <Input
-            aria-label="Note"
+            aria-label={translate('note')}
             maxLength={500}
             value={draft.note}
             onChange={(e) => setDraft({ ...draft, note: e.target.value })}
           />
           <div className="flex gap-1">
-            <Tip label="Save">
+            <Tip label={translate('save2')}>
               <Button
                 size="icon-sm"
                 type="submit"
-                aria-label="Save entry"
+                aria-label={translate('saveEntry')}
                 disabled={save.isPending}
               >
                 <Check />
               </Button>
             </Tip>
-            <Tip label="Cancel">
+            <Tip label={translate('cancel')}>
               <Button
                 size="icon-sm"
                 variant="ghost"
                 type="button"
-                aria-label="Cancel editing"
+                aria-label={translate('cancelEditing')}
                 onClick={() => setEditing(false)}
               >
                 <X />
@@ -349,7 +357,7 @@ function EntryRow({
       </time>
       <div className="min-w-0">
         <p className={cn('line-clamp-2 text-body', !entry.note && 'text-muted-foreground')}>
-          {entry.note || 'No note'}
+          {entry.note || translate('noNote')}
         </p>
         {(entry.performed_by || entry.invoice) && (
           <p className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
@@ -361,7 +369,8 @@ function EntryRow({
                 className="inline-flex shrink-0 items-center gap-1 hover:text-foreground"
               >
                 <Lock className="size-3" aria-hidden />
-                Invoice {entry.invoice.number ?? 'draft'}
+                {translate('invoice')}
+                {entry.invoice.number ?? 'draft'}
               </RecordLink>
             )}
           </p>
@@ -370,10 +379,11 @@ function EntryRow({
       {confirming ? (
         <span className="col-span-2 flex items-center justify-end gap-1">
           <Button size="xs" variant="destructive" onClick={() => remove.mutate()}>
-            <Trash2 /> Delete
+            <Trash2 />
+            {translate('delete')}
           </Button>
           <Button size="xs" variant="ghost" onClick={() => setConfirming(false)}>
-            Keep
+            {translate('keep')}
           </Button>
         </span>
       ) : (
@@ -386,21 +396,21 @@ function EntryRow({
         <span aria-hidden />
       ) : (
         <span className="flex justify-end gap-0.5 opacity-0 transition-opacity group-hover/entry:opacity-100 focus-within:opacity-100 max-sm:opacity-100">
-          <Tip label="Edit entry">
+          <Tip label={translate('editEntry')}>
             <Button
               size="icon-xs"
               variant="ghost"
-              aria-label="Edit entry"
+              aria-label={translate('editEntry')}
               onClick={() => setEditing(true)}
             >
               <Pencil />
             </Button>
           </Tip>
-          <Tip label="Delete entry">
+          <Tip label={translate('deleteEntry')}>
             <Button
               size="icon-xs"
               variant="destructive-ghost"
-              aria-label="Delete entry"
+              aria-label={translate('deleteEntry')}
               onClick={() => setConfirming(true)}
             >
               <Trash2 />
@@ -431,13 +441,13 @@ export function EntriesPanel({
     .filter((group) => group.rows.length > 0)
   return (
     <Panel
-      title="Entries"
+      title={translate('entries')}
       action={
         entries.length > 0 && (
           <Button asChild size="xs" variant="ghost" className="-mr-1.5 text-muted-foreground">
-            <a href={entriesExportUrl(engagementId)} download>
+            <a href={localizedHref(entriesExportUrl(engagementId))} download>
               <Download />
-              Export CSV
+              {translate('exportCSV')}
             </a>
           </Button>
         )
@@ -447,8 +457,8 @@ export function EntriesPanel({
         <div className="flex items-center gap-3 py-3 text-body-sm text-muted-foreground">
           <ClipboardList className="size-4 shrink-0" aria-hidden />
           <p>
-            Nothing logged yet.
-            {writable && ' What you log above shows up here, grouped by period.'}
+            {translate('nothingLoggedYet')}
+            {writable && translate('whatYouLogAboveShowsUpHereGroupedBy')}
           </p>
         </div>
       ) : (

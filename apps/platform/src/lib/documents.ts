@@ -1,5 +1,4 @@
 'use client'
-
 // Documents, typed by hand from docs/documents-contract.md.
 import {
   keepPreviousData,
@@ -11,6 +10,7 @@ import {
 
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
@@ -97,13 +97,13 @@ export type BulkResult = { updated: number; skipped: { id: string; reason: strin
 
 export const KIND_LABELS: Record<Kind, string> = {
   pdf: 'PDF',
-  image: 'Image',
-  spreadsheet: 'Spreadsheet',
-  document: 'Document',
-  presentation: 'Presentation',
-  text: 'Text',
-  archive: 'Archive',
-  other: 'File',
+  image: translate('image'),
+  spreadsheet: translate('spreadsheet'),
+  document: translate('document'),
+  presentation: translate('presentation'),
+  text: translate('text'),
+  archive: translate('archive'),
+  other: translate('file'),
 }
 
 /** What `<input accept>` offers; the server checks the content anyway. */
@@ -441,7 +441,9 @@ export function uploadDocument(
 ): Promise<DocFile> {
   // A proxy would refuse a bigger request with its own page, so the API's message is given here.
   if (file.size > DOCUMENT_MAX_BYTES)
-    return Promise.reject(new ApiError(413, 'payload_too_large', 'Upload files of up to 25 MB.'))
+    return Promise.reject(
+      new ApiError(413, 'payload_too_large', translate('uploadFilesOfUpTo25MB')),
+    )
   const form = new FormData()
   form.append('file', file)
   if (options.folderId) form.append('folder_id', options.folderId)
@@ -450,7 +452,7 @@ export function uploadDocument(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/v1/documents')
-    xhr.setRequestHeader('Accept', 'application/json')
+    xhr.setRequestHeader(translate('accept'), 'application/json')
     const token = getCsrfToken()
     if (token) xhr.setRequestHeader('X-CSRF-Token', token)
     xhr.responseType = 'json'
@@ -463,9 +465,11 @@ export function uploadDocument(
       else reject(errorFromBody(xhr.status, body))
     })
     xhr.addEventListener('error', () =>
-      reject(new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')),
+      reject(new ApiError(0, 'network_error', translate('cannotReachHelvetlyCheckYourConnection'))),
     )
-    xhr.addEventListener('abort', () => reject(new DOMException('Upload cancelled', 'AbortError')))
+    xhr.addEventListener('abort', () =>
+      reject(new DOMException(translate('uploadCancelled'), 'AbortError')),
+    )
     signal?.addEventListener('abort', () => xhr.abort(), { once: true })
     xhr.send(form)
   })

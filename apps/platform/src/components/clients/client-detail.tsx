@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -35,6 +35,7 @@ import { ClientQuotes } from '@/components/quotes/client-quotes'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
 import { errorMessage } from '@/lib/api'
 import { useClient, useSaveClient, type Client, type ClientInput } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
 import { ChangeRequestBanner } from './change-request-banner'
@@ -90,7 +91,7 @@ function Row({
       onClick={onEdit ?? onAdd}
       className="cursor-pointer text-link underline underline-offset-2 hover:no-underline"
     >
-      {addLabel ?? `Add ${label.toLowerCase()}`}
+      {addLabel ?? translate('add', { value1: label.toLowerCase() })}
     </button>
   )
   return (
@@ -104,7 +105,7 @@ function Row({
           editor
         ) : onEdit && value ? (
           <EditableValue
-            label={editLabel ?? `Edit ${label.toLowerCase()}`}
+            label={editLabel ?? translate('edit2', { value1: label.toLowerCase() })}
             onEdit={onEdit}
             className="-mx-1.5 w-[calc(100%+0.75rem)] px-1.5 py-1"
           >
@@ -113,7 +114,10 @@ function Row({
         ) : (
           (value ??
           (inline && !onEdit ? (
-            <InlineAdd label={addLabel ?? `Add ${label.toLowerCase()}`} {...inline} />
+            <InlineAdd
+              label={addLabel ?? translate('add', { value1: label.toLowerCase() })}
+              {...inline}
+            />
           ) : (
             add
           )))
@@ -123,10 +127,12 @@ function Row({
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Copy ${label.toLowerCase()}`}
+          aria-label={translate('copy3', { value1: label.toLowerCase() })}
           className="text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
           onClick={() =>
-            void navigator.clipboard.writeText(copy).then(() => toast(`${label} copied.`))
+            void navigator.clipboard
+              .writeText(copy)
+              .then(() => toast(translate('copied', { label: label })))
           }
         >
           <Copy />
@@ -147,9 +153,9 @@ function InternalIdRow({ value, onAdd, save }: InternalField<string> & { value: 
   return (
     <Row
       icon={Hash}
-      label="Internal ID"
-      addLabel="Add internal ID"
-      editLabel="Edit internal ID"
+      label={translate('internalID')}
+      addLabel={translate('addInternalID')}
+      editLabel={translate('editInternalID')}
       copy={value}
       onAdd={onAdd}
       value={value}
@@ -158,9 +164,9 @@ function InternalIdRow({ value, onAdd, save }: InternalField<string> & { value: 
       editor={
         save && (
           <InlineTextEditor
-            label="Internal ID"
+            label={translate('internalID')}
             initial={value ?? ''}
-            placeholder="K-1042"
+            placeholder={translate('k1042')}
             save={save}
             onDone={() => setEditing(false)}
           />
@@ -175,7 +181,7 @@ function TagsRow({ tags, onAdd, save }: InternalField<string[]> & { tags: string
   return (
     <Row
       icon={Tag}
-      label="Tags"
+      label={translate('tags')}
       onAdd={onAdd}
       editing={editing}
       onEdit={save && (() => setEditing(true))}
@@ -202,10 +208,10 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
   const [editing, setEditing] = useState(false)
   const editor = save && (
     <InlineTextEditor
-      label="Note"
+      label={translate('note')}
       multiline
       initial={note ?? ''}
-      placeholder="Only your team sees this."
+      placeholder={translate('onlyYourTeamSeesThis')}
       save={save}
       onDone={() => setEditing(false)}
     />
@@ -215,7 +221,7 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
     return (
       <Row
         icon={StickyNote}
-        label="Note"
+        label={translate('note')}
         onAdd={onAdd}
         value={null}
         editing={editing}
@@ -230,7 +236,7 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
   if (editing) return <div className="mt-2 flex">{editor}</div>
   return (
     <EditableValue
-      label="Edit note"
+      label={translate('editNote')}
       onEdit={onEdit}
       className="mt-2 items-start bg-muted/60 px-3 py-2.5 hover:bg-muted"
       // Centred on the note's first line (relaxed 13.5px text, 22px high), however long the note is.
@@ -270,20 +276,20 @@ export function ClientDetail({
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(1020px,100vw)]! dark:bg-background"
       >
-        <SheetTitle className="sr-only">{client?.name ?? 'Client'}</SheetTitle>
-        <SheetDescription className="sr-only">Client details</SheetDescription>
+        <SheetTitle className="sr-only">{client?.name ?? translate('client')}</SheetTitle>
+        <SheetDescription className="sr-only">{translate('clientDetails')}</SheetDescription>
         {client ? (
           <Detail client={client} canDelete={canDelete} onClose={onClose} onCommand={onCommand} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-[15px]">This client couldn’t be loaded.</p>
+            <p className="text-[15px]">{translate('thisClientCouldnTBeLoaded')}</p>
             <p className="text-sm text-muted-foreground">{errorMessage(query.error)}</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -344,12 +350,16 @@ function Detail({
             <div className="-mx-4 -my-1 [scrollbar-width:none] overflow-x-auto px-4 py-1 sm:-mx-6 sm:px-6">
               <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
                 {[
-                  { value: 'overview', label: 'Overview' },
-                  { value: 'contacts', label: 'Contacts', count: client.contacts.length },
-                  { value: 'files', label: 'Files', count: client.files_count },
-                  { value: 'invoices', label: 'Invoices' },
-                  { value: 'quotes', label: 'Quotes' },
-                  { value: 'engagements', label: 'Engagements' },
+                  { value: 'overview', label: translate('overview') },
+                  {
+                    value: 'contacts',
+                    label: translate('contacts'),
+                    count: client.contacts.length,
+                  },
+                  { value: 'files', label: translate('files'), count: client.files_count },
+                  { value: 'invoices', label: translate('invoices') },
+                  { value: 'quotes', label: translate('quotes') },
+                  { value: 'engagements', label: translate('engagements') },
                 ].map((tab) => (
                   <TabsTrigger
                     key={tab.value}
@@ -384,11 +394,16 @@ function Detail({
         {client.is_draft && (
           <Callout
             tone="warning"
-            title="Finish the address to start invoicing"
-            actions={<Button onClick={() => onCommand('complete', client)}>Complete</Button>}
+            title={translate('finishTheAddressToStartInvoicing')}
+            actions={
+              <Button onClick={() => onCommand('complete', client)}>{translate('complete')}</Button>
+            }
           >
             <div className="grid gap-3">
-              <p className="text-muted-foreground">Missing: {missing.join(', ')}</p>
+              <p className="text-muted-foreground">
+                {translate('missing')}
+                {missing.join(', ')}
+              </p>
               <div aria-hidden className="grid grid-cols-5 gap-1">
                 {Array.from({ length: 5 }, (_, i) => (
                   <span
@@ -404,16 +419,16 @@ function Detail({
           </Callout>
         )}
 
-        <Panel title="Contact">
+        <Panel title={translate('contact')}>
           <Row
             icon={Mail}
-            label="Email"
+            label={translate('email')}
             copy={client.email}
             onAdd={edit}
             value={
               client.email && (
                 <a
-                  href={`mailto:${client.email}`}
+                  href={localizedHref(`mailto:${client.email}`)}
                   className="underline underline-offset-2 hover:no-underline"
                 >
                   {client.email}
@@ -423,13 +438,13 @@ function Detail({
           />
           <Row
             icon={Phone}
-            label="Phone"
+            label={translate('phone')}
             copy={client.phone && displayPhone(client.phone)}
             onAdd={edit}
             value={
               client.phone && (
                 <a
-                  href={`tel:${client.phone}`}
+                  href={localizedHref(`tel:${client.phone}`)}
                   className="tabular-nums underline underline-offset-2 hover:no-underline"
                 >
                   {displayPhone(client.phone)}
@@ -439,12 +454,12 @@ function Detail({
           />
           <Row
             icon={Globe}
-            label="Website"
+            label={translate('website')}
             onAdd={edit}
             value={
               client.website && (
                 <a
-                  href={websiteHref(client.website)}
+                  href={localizedHref(websiteHref(client.website))}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 underline underline-offset-2 hover:no-underline"
@@ -458,16 +473,17 @@ function Detail({
         </Panel>
 
         <Panel
-          title="Address"
+          title={translate('address')}
           action={
             lines.length > 0 && (
               <a
-                href={mapsHref([...lines, country].join(', '))}
+                href={localizedHref(mapsHref([...lines, country].join(', ')))}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-[12.5px] text-muted-foreground hover:text-foreground"
               >
-                Open in Maps <ArrowUpRight className="size-3.5" />
+                {translate('openInMaps')}
+                <ArrowUpRight className="size-3.5" />
               </a>
             )
           }
@@ -490,25 +506,26 @@ function Detail({
               onClick={() => onCommand('complete', client)}
               className="flex min-h-10 items-center gap-3 text-[14px] text-muted-foreground/80 hover:text-foreground"
             >
-              <MapPin className="size-4 stroke-[1.5]" /> Add address
+              <MapPin className="size-4 stroke-[1.5]" />
+              {translate('addAddress')}
             </button>
           )}
         </Panel>
 
-        <Panel title="Billing">
+        <Panel title={translate('billing')}>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {[
               {
-                label: 'Currency',
+                label: translate('currency'),
                 value: client.currency ?? '—',
                 hint: currencyName(client.currency)?.split(' · ')[1],
               },
               {
-                label: 'Payment terms',
+                label: translate('paymentTerms'),
                 value:
                   client.payment_terms_days === null ? '—' : `${client.payment_terms_days} days`,
               },
-              { label: 'Documents in', value: languageName(client.language) ?? '—' },
+              { label: translate('documentsIn'), value: languageName(client.language) ?? '—' },
             ].map((tile) => (
               <div key={tile.label} className="grid gap-0.5 rounded-lg bg-muted/60 px-3 py-2.5">
                 <span className="text-[12px] text-muted-foreground">{tile.label}</span>
@@ -521,12 +538,12 @@ function Detail({
           <div className="mt-2">
             <Row
               icon={Receipt}
-              label="VAT / UID"
-              addLabel="Add VAT number"
+              label={translate('vatUID')}
+              addLabel={translate('addVATNumber')}
               copy={client.vat_number}
               onAdd={edit}
               inline={inline((text) => ({ vat_number: formatUid(text) }), {
-                placeholder: 'CHE-123.456.789 MWST',
+                placeholder: translate('che123456789MWST'),
                 mono: true,
               })}
               value={
@@ -537,18 +554,18 @@ function Detail({
             />
             <Row
               icon={Send}
-              label="Invoices to"
-              addLabel="Add billing email"
+              label={translate('invoicesTo')}
+              addLabel={translate('addBillingEmail')}
               onAdd={edit}
               inline={inline((text) => ({ billing_email: text }), {
-                placeholder: 'accounts@example.ch',
+                placeholder: translate('accountsExampleCh'),
               })}
               value={
                 (client.billing_email ?? client.email) && (
                   <span>
                     {client.billing_email ?? client.email}
                     {!client.billing_email && (
-                      <span className="text-muted-foreground"> · main email</span>
+                      <span className="text-muted-foreground">{translate('mainEmail')}</span>
                     )}
                   </span>
                 )
@@ -558,17 +575,18 @@ function Detail({
         </Panel>
 
         <Panel
-          title="Client portal"
+          title={translate('clientPortal')}
           action={
             <Switch
-              aria-label="Client portal"
+              aria-label={translate('clientPortal')}
               checked={Boolean(client.portal_enabled)}
               disabled={!canWrite || saveClient.isPending}
               onCheckedChange={(on) =>
                 saveClient.mutate(
                   { id: client.id, input: { portal_enabled: on } },
                   {
-                    onSuccess: () => toast(on ? 'Client portal on.' : 'Client portal off.'),
+                    onSuccess: () =>
+                      toast(on ? translate('clientPortalOn') : translate('clientPortalOff')),
                     onError: toastError,
                   },
                 )
@@ -579,7 +597,7 @@ function Detail({
           <PortalAccess client={client} canWrite={canWrite} onAddEmail={edit} />
         </Panel>
 
-        <Panel title="Internal">
+        <Panel title={translate('internal')}>
           <InternalIdRow
             value={client.internal_id}
             onAdd={edit}
@@ -600,12 +618,15 @@ function Detail({
         <SelfBillingAgreements clientId={client.id} />
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Added {formatDate(client.created_at)} · Updated {formatDate(client.updated_at)}
+          {translate('added2')}
+          {formatDate(client.created_at)}
+          {translate('updated')}
+          {formatDate(client.updated_at)}
         </p>
       </TabsContent>
 
       <TabsContent value="contacts" className="p-4 sm:p-5">
-        <Panel title="Contact persons">
+        <Panel title={translate('contactPersons')}>
           <ClientContacts client={client} />
         </Panel>
       </TabsContent>

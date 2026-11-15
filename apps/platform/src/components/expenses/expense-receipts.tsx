@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -24,6 +24,7 @@ import {
   useReceipts,
   type Receipt,
 } from '@/lib/expenses'
+import { translate } from '@/lib/i18n'
 
 /** Browsers show these inline; HEIC (iPhone photos) downloads instead. */
 const previewable = (type: string) =>
@@ -52,15 +53,15 @@ export function ReceiptDrop({
         <Upload className="size-4 stroke-[1.5]" />
       </span>
       <span>
-        <span className="font-medium text-foreground">Drop the receipt here</span> or click to
-        choose
+        <span className="font-medium text-foreground">{translate('dropTheReceiptHere')}</span>
+        {translate('orClickToChoose')}
       </span>
-      <span className="text-xs">PDF or a photo (JPEG, PNG, WebP, HEIC) · up to 25 MB each</span>
+      <span className="text-xs">{translate('pdfOrAPhotoJPEGPNGWebPHEICUp')}</span>
       <input
         type="file"
         multiple
         accept={RECEIPT_ACCEPT}
-        aria-label="Upload receipts"
+        aria-label={translate('uploadReceipts')}
         disabled={disabled}
         onDragEnter={() => setOver(true)}
         onDragLeave={() => setOver(false)}
@@ -69,7 +70,7 @@ export function ReceiptDrop({
           const files = [...(event.target.files ?? [])]
           event.target.value = ''
           if (files.length > RECEIPT_MAX_FILES)
-            toast.error(`Up to ${RECEIPT_MAX_FILES} receipts at once.`)
+            toast.error(translate('upToReceiptsAtOnce', { RECEIPT_MAX_FILES: RECEIPT_MAX_FILES }))
           if (files.length) onFiles(files.slice(0, RECEIPT_MAX_FILES))
         }}
         className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-progress"
@@ -128,14 +129,15 @@ export function StagedReceipts({
           <span className="grid min-w-0 flex-1 leading-tight">
             <span className="text-[13.5px] break-all">{file.name}</span>
             <span className="text-xs text-muted-foreground">
-              {formatFileSize(file.size)} · uploads when you save
+              {formatFileSize(file.size)}
+              {translate('uploadsWhenYouSave')}
             </span>
           </span>
           <Button
             type="button"
             variant="destructive-ghost"
             size="icon-sm"
-            aria-label={`Remove ${file.name}`}
+            aria-label={translate('remove2', { name: file.name })}
             className="cursor-pointer"
             onClick={() => onRemove(file)}
           >
@@ -176,7 +178,9 @@ export function ExpenseReceipts({
     )
       .then((added) => {
         toast.success(
-          added.length === 1 ? `${added[0]?.name} attached.` : `${added.length} receipts attached.`,
+          added.length === 1
+            ? translate('attached', { value1: added[0]?.name })
+            : translate('receiptsAttached', { length: added.length }),
         )
         setChosen(added[0]?.id ?? null)
       })
@@ -196,13 +200,13 @@ export function ExpenseReceipts({
   if (receipts.error)
     return (
       <p className="text-[13px] text-muted-foreground">
-        The receipts couldn’t be loaded.{' '}
+        {translate('theReceiptsCouldnTBeLoaded')}{' '}
         <button
           type="button"
           className="cursor-pointer underline"
           onClick={() => void receipts.refetch()}
         >
-          Try again
+          {translate('tryAgain')}
         </button>
       </p>
     )
@@ -218,8 +222,11 @@ export function ExpenseReceipts({
       {upload && (
         <output className="grid gap-1.5 rounded-lg px-3 py-2.5 text-[13px] ring-1 ring-border">
           <span className="break-all">
-            Uploading{' '}
-            {upload.names.length === 1 ? upload.names[0] : `${upload.names.length} receipts`}…
+            {translate('uploading')}{' '}
+            {upload.names.length === 1
+              ? upload.names[0]
+              : translate('dynamicReceipts', { length: upload.names.length })}
+            …
           </span>
           <span className="h-1 overflow-hidden rounded-full bg-muted">
             <span
@@ -267,7 +274,10 @@ export function ExpenseReceipts({
                 size="icon-sm"
                 className="cursor-pointer text-muted-foreground"
               >
-                <a href={receiptUrl(expenseId, receipt.id)} aria-label={`Download ${receipt.name}`}>
+                <a
+                  href={localizedHref(receiptUrl(expenseId, receipt.id))}
+                  aria-label={translate('download2', { name: receipt.name })}
+                >
                   <Download />
                 </a>
               </Button>
@@ -275,7 +285,7 @@ export function ExpenseReceipts({
                 <Button
                   variant="destructive-ghost"
                   size="icon-sm"
-                  aria-label={`Delete ${receipt.name}`}
+                  aria-label={translate('delete2', { name: receipt.name })}
                   className="cursor-pointer"
                   onClick={() => setDeleting(receipt)}
                 >
@@ -288,7 +298,8 @@ export function ExpenseReceipts({
       )}
       {list.length > 0 && uploadable && (
         <label className="relative inline-flex h-8 w-fit cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[13px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring/50">
-          <Upload className="size-3.5" /> Add another receipt
+          <Upload className="size-3.5" />
+          {translate('addAnotherReceipt')}
           <input
             type="file"
             multiple
@@ -307,16 +318,16 @@ export function ExpenseReceipts({
       {deleting && (
         <ConfirmDialog
           key={deleting.id}
-          title={`Delete ${deleting.name}?`}
-          body="The file is removed from this draft for good."
-          confirmLabel="Delete receipt"
+          title={translate('delete4', { name: deleting.name })}
+          body={translate('theFileIsRemovedFromThisDraftForGood')}
+          confirmLabel={translate('deleteReceipt')}
           tone="destructive"
           onDecide={(approved) => {
             const receipt = deleting
             setDeleting(null)
             if (approved)
               remove.mutate(receipt.id, {
-                onSuccess: () => toast.success(`${receipt.name} deleted.`),
+                onSuccess: () => toast.success(translate('deleted3', { name: receipt.name })),
                 onError: toastError,
               })
           }}
@@ -331,11 +342,11 @@ function ReceiptPreview({ expenseId, receipt }: { expenseId: string; receipt: Re
   if (!previewable(receipt.content_type))
     return (
       <a
-        href={receiptUrl(expenseId, receipt.id)}
+        href={localizedHref(receiptUrl(expenseId, receipt.id))}
         className="grid cursor-pointer justify-items-center gap-2 rounded-xl px-4 py-10 text-center text-[13px] text-muted-foreground ring-1 ring-border hover:text-foreground"
       >
         <FileText className="size-6 stroke-[1.5]" />
-        <span>This photo format has no preview in the browser. Download it to view.</span>
+        <span>{translate('thisPhotoFormatHasNoPreviewInTheBrowser')}</span>
       </a>
     )
   return (
@@ -344,10 +355,10 @@ function ReceiptPreview({ expenseId, receipt }: { expenseId: string; receipt: Re
         <PdfView src={src} title={receipt.name} className="h-[480px]" />
       ) : (
         <a
-          href={src}
+          href={localizedHref(src)}
           target="_blank"
           rel="noreferrer"
-          aria-label={`Open ${receipt.name} in a new tab`}
+          aria-label={translate('openInANewTab', { name: receipt.name })}
           className="relative block h-[480px] cursor-zoom-in bg-muted/40 dark:bg-background"
         >
           <Image

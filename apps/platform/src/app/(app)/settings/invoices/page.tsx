@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 
-export const metadata: Metadata = { title: 'Invoice settings' }
-
 export default function Page() {
-  return <InvoiceSettingsPage />
+  return (
+    <>
+      <PageTitle message="invoiceSettings" />
+      <InvoiceSettingsPage />
+    </>
+  )
 }

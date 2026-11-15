@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
@@ -17,6 +16,7 @@ import { useState } from 'react'
 import { handOffImport } from '@/components/import/hand-off'
 import { useClientSearch } from '@/lib/clients'
 import type { HeidiField, HeidiForm } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { IMPORT_KINDS, importKindByLabel } from '@/lib/imports'
 import { DEFAULT_PARAMS, useInvoiceList } from '@/lib/invoices'
 
@@ -108,7 +108,7 @@ function RecordPicker({
     field.record === 'client'
       ? (clients.data?.data ?? []).map((client) => `${client.name} · #${client.number}`)
       : (invoices.data?.data ?? []).map(
-          (invoice) => `${invoice.number ?? 'Draft'} · ${invoice.client.name}`,
+          (invoice) => `${invoice.number ?? translate('draft')} · ${invoice.client.name}`,
         )
 
   return (
@@ -122,7 +122,7 @@ function RecordPicker({
           className="w-full justify-between bg-card font-normal shadow-elevation-1"
         >
           <span className={cn('truncate', !value[0] && 'text-muted-foreground')}>
-            {value[0] ?? `Choose a ${field.record}…`}
+            {value[0] ?? translate('chooseA', { record: field.record })}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />
         </Button>
@@ -130,12 +130,12 @@ function RecordPicker({
       <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
         <Command>
           <CommandInput
-            placeholder={`Search ${field.record}s…`}
+            placeholder={translate('searchS', { record: field.record })}
             value={term}
             onValueChange={setTerm}
           />
           <CommandList>
-            <CommandEmpty>Nothing found.</CommandEmpty>
+            <CommandEmpty>{translate('nothingFound')}</CommandEmpty>
             {options.map((option) => (
               <CommandItem
                 key={option}
@@ -180,7 +180,7 @@ function FileDrop({
       {value.length ? (
         <span className="text-foreground">{value.join(', ')}</span>
       ) : (
-        <span>Drop a file here or click to choose</span>
+        <span>{translate('dropAFileHereOrClickToChoose')}</span>
       )}
       <input
         type="file"
@@ -278,11 +278,12 @@ export function HeidiFormView({
       ))}
       {locked ? (
         <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
-          <Check className="size-3.5" /> Answered
+          <Check className="size-3.5" />
+          {translate('answered')}
         </p>
       ) : (
         <Button type="submit" className="w-fit" disabled={disabled || !filled}>
-          Continue
+          {translate('continue')}
         </Button>
       )}
     </form>

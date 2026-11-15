@@ -1,6 +1,7 @@
 // Instalment plans, typed by hand from "Instalment plans" in docs/invoices-contract.md. A plan is made
 // from a draft through invoicesApi.createPlan; this file reads and steers it.
 import { request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import type { Interval } from '@/lib/invoices'
 
 export type PlanStatus = 'active' | 'paused' | 'cancelled' | 'done'
@@ -44,10 +45,10 @@ export const instalmentsApi = {
 }
 
 export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  cancelled: 'Cancelled',
-  done: 'Done',
+  active: translate('active'),
+  paused: translate('paused'),
+  cancelled: translate('cancelled'),
+  done: translate('done'),
 }
 
 /** How many of the plan's partials are issued, for "2 of 6". */

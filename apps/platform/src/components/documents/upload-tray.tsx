@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -19,6 +18,7 @@ import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatSize, refreshDocuments, uploadDocument, type OnConflict } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 import { kindFromName, KindIcon } from './kind'
 import {
@@ -92,12 +92,12 @@ function uploadError(error: unknown) {
 }
 
 const STATUS_TEXT: Record<Upload['status'], string> = {
-  queued: 'Waiting',
-  uploading: 'Uploading',
-  done: 'Uploaded',
-  failed: 'Failed',
-  conflict: 'Name taken',
-  cancelled: 'Cancelled',
+  queued: translate('waiting'),
+  uploading: translate('uploading'),
+  done: translate('uploaded2'),
+  failed: translate('failed'),
+  conflict: translate('nameTaken'),
+  cancelled: translate('cancelled'),
 }
 
 /** Bottom right: every upload with its progress, and what to do about clashes and failures. */
@@ -114,16 +114,22 @@ export function UploadTray({
   const finished = sum.active === 0 && sum.conflicts === 0
   const title =
     sum.active > 0
-      ? `Uploading ${sum.active} ${sum.active === 1 ? 'file' : 'files'}`
+      ? translate('uploading2', { active: sum.active, value2: sum.active === 1 ? 'file' : 'files' })
       : sum.conflicts > 0
-        ? `${sum.conflicts} ${sum.conflicts === 1 ? 'name is' : 'names are'} taken`
+        ? translate('dynamicTaken', {
+            conflicts: sum.conflicts,
+            value2: sum.conflicts === 1 ? translate('nameIs') : translate('namesAre'),
+          })
         : sum.failed > 0
-          ? `${sum.done} uploaded, ${sum.failed} failed`
-          : `${sum.done} ${sum.done === 1 ? 'upload' : 'uploads'} complete`
+          ? translate('uploadedFailed', { done: sum.done, failed: sum.failed })
+          : translate('dynamicComplete', {
+              done: sum.done,
+              value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
+            })
 
   return (
     <section
-      aria-label="Uploads"
+      aria-label={translate('uploads')}
       className="fixed right-4 bottom-4 z-40 w-[360px] max-w-[calc(100vw-2rem)] animate-in overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-elevation-2 duration-200 fade-in slide-in-from-bottom-2"
     >
       <header className="flex h-12 items-center gap-2 border-b px-3">
@@ -142,7 +148,7 @@ export function UploadTray({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={collapsed ? 'Show uploads' : 'Hide uploads'}
+          aria-label={collapsed ? translate('showUploads') : translate('hideUploads')}
           aria-expanded={!collapsed}
           className="cursor-pointer"
           onClick={() => setCollapsed(!collapsed)}
@@ -153,7 +159,7 @@ export function UploadTray({
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Close"
+            aria-label={translate('close')}
             className="cursor-pointer"
             onClick={() => act({ type: 'clear' })}
           >
@@ -173,14 +179,14 @@ export function UploadTray({
         <>
           {sum.conflicts > 1 && (
             <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-2 text-[13px]">
-              <span className="flex-1 text-muted-foreground">For all clashes:</span>
+              <span className="flex-1 text-muted-foreground">{translate('forAllClashes')}</span>
               <Button
                 size="sm"
                 variant="outline"
                 className="cursor-pointer"
                 onClick={() => act({ type: 'resolveAll', onConflict: 'keep_both' })}
               >
-                Keep both
+                {translate('keepBoth')}
               </Button>
               <Button
                 size="sm"
@@ -188,7 +194,7 @@ export function UploadTray({
                 className="cursor-pointer"
                 onClick={() => act({ type: 'resolveAll', onConflict: 'replace' })}
               >
-                Replace
+                {translate('replace2')}
               </Button>
               <Button
                 size="sm"
@@ -196,7 +202,7 @@ export function UploadTray({
                 className="cursor-pointer"
                 onClick={() => act({ type: 'resolveAll', onConflict: 'skip' })}
               >
-                Skip
+                {translate('skip')}
               </Button>
             </div>
           )}
@@ -231,22 +237,34 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
             {upload.status === 'failed'
               ? upload.error
               : upload.status === 'conflict'
-                ? `“${upload.file.name}” is already in ${upload.folderName}.`
+                ? translate('isAlreadyIn', {
+                    name: upload.file.name,
+                    folderName: upload.folderName,
+                  })
                 : upload.status === 'uploading'
-                  ? `${formatSize(upload.file.size * upload.progress)} of ${formatSize(upload.file.size)}`
+                  ? translate('dynamicOf2', {
+                      value1: formatSize(upload.file.size * upload.progress),
+                      value2: formatSize(upload.file.size),
+                    })
                   : `${STATUS_TEXT[upload.status]} · ${upload.folderName}`}
           </p>
         </div>
         {upload.status === 'done' && (
-          <Check aria-label="Uploaded" className="size-4 shrink-0 text-success-solid" />
+          <Check
+            aria-label={translate('uploaded2')}
+            className="size-4 shrink-0 text-success-solid"
+          />
         )}
         {upload.status === 'failed' && (
-          <TrayIcon label="Retry" onClick={() => retry()}>
+          <TrayIcon label={translate('retry')} onClick={() => retry()}>
             <RefreshCw />
           </TrayIcon>
         )}
         {running && (
-          <TrayIcon label="Cancel" onClick={() => act({ type: 'cancel', id: upload.id })}>
+          <TrayIcon
+            label={translate('cancel')}
+            onClick={() => act({ type: 'cancel', id: upload.id })}
+          >
             <X />
           </TrayIcon>
         )}
@@ -265,11 +283,15 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
             size="sm"
             variant="outline"
             className="cursor-pointer gap-1"
-            title={upload.suggestion ? `Upload as “${upload.suggestion}”` : undefined}
+            title={
+              upload.suggestion
+                ? translate('uploadAs', { suggestion: upload.suggestion })
+                : undefined
+            }
             onClick={() => retry('keep_both')}
           >
             <CopyPlus className="size-3.5" />
-            Keep both
+            {translate('keepBoth')}
           </Button>
           <Button
             size="sm"
@@ -278,7 +300,7 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
             onClick={() => retry('replace')}
           >
             <Replace className="size-3.5" />
-            Replace
+            {translate('replace2')}
           </Button>
           <Button
             size="sm"
@@ -286,7 +308,7 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
             className="cursor-pointer"
             onClick={() => act({ type: 'cancel', id: upload.id })}
           >
-            Skip
+            {translate('skip')}
           </Button>
         </div>
       )}

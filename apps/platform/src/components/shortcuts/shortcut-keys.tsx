@@ -1,10 +1,10 @@
 'use client'
-
 import { Kbd, KbdGroup } from '@helvetly/ui/components/kbd'
 import { keyLabels, type Keys } from '@helvetly/ui/lib/shortcuts'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Fragment } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { SHORTCUTS, useApple, type ShortcutId } from '@/lib/shortcuts'
 
 const Word = ({ children }: { children: string }) => (
@@ -18,7 +18,7 @@ function KeyCaps({ keys, apple }: { keys: Keys; apple: boolean }) {
   const combos = keys.split(' ')
   return keyLabels(keys, apple).map((step, index) => (
     <Fragment key={combos[index]}>
-      {index > 0 && <Word>then</Word>}
+      {index > 0 && <Word>{translate('then2')}</Word>}
       <KbdGroup>
         {step.map((label) => (
           <Kbd key={label}>{label}</Kbd>
@@ -53,7 +53,7 @@ export function ShortcutKeys({
     >
       {alternatives.map((keys, index) => (
         <Fragment key={keys}>
-          {index > 0 && <Word>or</Word>}
+          {index > 0 && <Word>{translate('or2')}</Word>}
           <KeyCaps keys={keys} apple={apple} />
         </Fragment>
       ))}

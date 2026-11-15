@@ -1,11 +1,11 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { ReactNode } from 'react'
 
 import { ApiError, errorMessage, type Session } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 /**
@@ -23,11 +23,11 @@ export function AuthGate({ children }: { children: (session: Session) => ReactNo
       <div role="alert" className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
         <Logo className="size-10" />
         <div className="grid max-w-sm gap-1 text-center">
-          <h1 className="text-base font-semibold">Helvetly can’t open right now</h1>
+          <h1 className="text-base font-semibold">{translate('helvetlyCanTOpenRightNow')}</h1>
           <p className="text-sm text-muted-foreground">{errorMessage(session.error)}</p>
         </div>
         <Button variant="outline" onClick={() => void session.refetch()}>
-          Try again
+          {translate('tryAgain')}
         </Button>
       </div>
     )

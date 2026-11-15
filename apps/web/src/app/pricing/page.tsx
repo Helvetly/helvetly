@@ -1,3 +1,4 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { FaqSection } from '@/components/faq'
@@ -6,26 +7,28 @@ import { PlanTable } from '@/components/plan-table'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { PRICING_FAQ } from '@/lib/faq'
+import { translate } from '@/lib/i18n'
 import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Pricing',
-  description:
-    'Basic, Pro and Business compared: what each plan includes, the allowances each person adds and prices per person in CHF, EUR or USD, tax included.',
+  alternates: localizedAlternates('/pricing'),
+  title: translate('pricing'),
+  description: translate('basicProAndBusinessComparedWhatEachPlanIncludes'),
 }
 
 export default function PricingPage() {
   return (
     <main>
       <PageHero
-        eyebrow="Pricing"
+        eyebrow={translate('pricing')}
         title={
           <>
-            Clear prices, <span className="accent">per person</span>
+            {translate('clearPrices')}
+            <span className="accent">{translate('perPerson2')}</span>
           </>
         }
-        lead="Every team member is billed at the plan’s price. Basic gets you invoicing, Pro adds Heidi and the whole back office, Business adds the client portal and e-invoice XML."
+        lead={translate('everyTeamMemberIsBilledAtThePlanS')}
       />
       <section className="pb-24">
         <Container>
@@ -35,9 +38,9 @@ export default function PricingPage() {
       <section id="compare-plans" className="py-24">
         <Container>
           <SectionHeading
-            eyebrow="Compare plans"
-            title="What each plan includes"
-            lead="See what is included and what is not before you choose. Monthly allowances start again at 00:00 UTC on the first of the month."
+            eyebrow={translate('comparePlans')}
+            title={translate('whatEachPlanIncludes')}
+            lead={translate('seeWhatIsIncludedAndWhatIsNotBefore')}
           />
           <div data-reveal className="mt-12">
             <PlanTable />
@@ -45,18 +48,21 @@ export default function PricingPage() {
         </Container>
       </section>
       <FaqSection
-        eyebrow="Billing questions"
+        eyebrow={translate('billingQuestions')}
         title={
           <>
-            Before you <span className="accent">choose</span>
+            {translate('beforeYou')}
+            <span className="accent">{translate('choose')}</span>
           </>
         }
-        lead="Trials, VAT, limits and changing plans, in short answers."
+        lead={translate('trialsVATLimitsAndChangingPlansInShortAnswers')}
         card={{
-          title: `Try Business for ${TRIAL.days} days`,
-          body: `Up to ${TRIAL.members} people, with smaller trial allowances, then pick the plan that fits. You can change it any time from the workspace settings.`,
+          title: translate('tryBusinessForDays', { days: TRIAL.days }),
+          body: translate('upToPeopleWithSmallerTrialAllowancesThenPick', {
+            members: TRIAL.members,
+          }),
           href: START_URL,
-          link: 'Start your free trial',
+          link: translate('startYourFreeTrial'),
         }}
         items={PRICING_FAQ}
       />

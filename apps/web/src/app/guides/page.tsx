@@ -1,17 +1,21 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
+import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import { readCollection } from '@/lib/content'
+import { translate } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
 export const metadata: Metadata = {
-  title: 'Guides',
-  description:
-    'Plain-English guides to Swiss VAT, the QR bill, payment reminders and e-invoicing, for founders, freelancers and small teams.',
+  alternates: localizedAlternates('/guides'),
+
+  title: translate('guides'),
+  description: translate('plainEnglishGuidesToSwissVATTheQRBill'),
 }
 
 const TONE: Record<string, Tone> = {
@@ -26,13 +30,14 @@ export default function GuidesPage() {
   return (
     <main>
       <PageHero
-        eyebrow="Guides"
+        eyebrow={translate('guides')}
         title={
           <>
-            Swiss paperwork, <span className="accent">explained</span>
+            {translate('swissPaperwork')}
+            <span className="accent">{translate('explained')}</span>
           </>
         }
-        lead="VAT, the QR bill, reminders and e-invoices in plain English, with the official sources at the end of every guide."
+        lead={translate('vatTheQRBillRemindersAndEInvoicesIn')}
       />
       <section className="pb-16">
         <Container className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -57,12 +62,14 @@ export default function GuidesPage() {
                     tone.ink,
                   )}
                 >
-                  {g.category}
+                  {categoryLabel(g.category)}
                 </span>
                 <h2 className="mt-4 text-title font-semibold text-balance">{g.title}</h2>
                 <p className="mt-2 flex-1 text-body text-muted-foreground">{g.description}</p>
                 <span className="mt-6 inline-flex items-center gap-1.5 text-body-sm font-medium underline-offset-4 group-hover:underline">
-                  {g.readingMinutes ? `${g.readingMinutes} min read` : 'Read the guide'}
+                  {g.readingMinutes
+                    ? translate('minRead', { readingMinutes: g.readingMinutes })
+                    : translate('readTheGuide')}
                   <ArrowRight aria-hidden className="size-4" />
                 </span>
               </Link>

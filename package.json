@@ -8,7 +8,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:visual": "bash e2e/visual/run.sh",
-    "test:storybook": "pnpm --filter @helvetly/platform exec vitest run --config vitest.storybook.config.ts && pnpm --filter @helvetly/portal exec vitest run --config vitest.storybook.config.ts",
+    "test:storybook": "for shard in 1 2 3; do pnpm --filter @helvetly/platform exec vitest run --config vitest.storybook.config.ts --shard=$shard/3 || exit 1; done && pnpm --filter @helvetly/portal exec vitest run --config vitest.storybook.config.ts",
     "test:e2e": "pnpm --filter @helvetly/e2e e2e",
     "test:tooling": "for t in scripts/*.test.sh; do bash \"$t\" || exit 1; done; node --test scripts/*.test.mjs",
     "test:einvoice": "bash scripts/validate-einvoice.sh",

@@ -1,3 +1,4 @@
+import { translate } from '@helvetly/ui/lib/i18n'
 // The JSON client of the Go API (docs/*-contract.md), shared by the platform and the portal. Both apps are
 // served from the same origin as the API, so relative URLs are enough and cookies are first-party.
 export const API_PREFIX = '/api/v1'
@@ -18,7 +19,7 @@ export class ApiError extends Error {
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Try again.'
+  return error instanceof Error ? error.message : translate('somethingWentWrongTryAgain')
 }
 
 // The CSRF token lives in memory only: it comes from sign-in responses and GET /session.
@@ -65,7 +66,7 @@ async function send(
     })
   } catch (error) {
     if (signal?.aborted) throw error
-    throw new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')
+    throw new ApiError(0, 'network_error', translate('cannotReachHelvetlyCheckYourConnection'))
   }
 }
 
@@ -83,7 +84,9 @@ export function errorFromBody(status: number, body: unknown): ApiError {
   return new ApiError(
     res.status,
     typeof error.code === 'string' ? error.code : `http_${res.status}`,
-    typeof error.message === 'string' ? error.message : `Request failed (${res.status}).`,
+    typeof error.message === 'string'
+      ? error.message
+      : translate('requestFailed', { status: res.status }),
     isRecord(error.details) ? error.details : {},
   )
 }

@@ -7,6 +7,7 @@ import {
   type RateSource,
 } from '@/lib/expenses'
 import { withHabits, type Habits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import { parseDecimalInput, PAYMENT_METHODS, type PaymentMethod } from '@/lib/invoices'
 
 export type LineValues = { key: string; description: string; amount: string; vat_rate: string }
@@ -152,37 +153,39 @@ export function validate(values: FormValues, today: string, booking: boolean): F
   lines.forEach((line) => {
     const index = values.lines.indexOf(line)
     if (parseDecimalInput(line.amount, 2) === null || line.amount.trim().startsWith('-'))
-      errors[`lines.${index}.amount`] = 'Enter an amount such as 49.90.'
+      errors[`lines.${index}.amount`] = translate('enterAnAmountSuchAs4990')
     const rate = parseDecimalInput(line.vat_rate, 2)
     if (rate === null || Number(rate) < 0 || Number(rate) > 100)
-      errors[`lines.${index}.vat_rate`] = 'Enter a rate from 0 to 100.'
+      errors[`lines.${index}.vat_rate`] = translate('enterARateFrom0To100')
   })
   if (values.input_tax === 'partial') {
     const share = parseDecimalInput(values.deductible_percent, 2)
     if (share === null || Number(share) <= 0 || Number(share) >= 100)
-      errors.deductible_percent = 'Enter a share above 0 and below 100.'
+      errors.deductible_percent = translate('enterAShareAbove0AndBelow100')
   }
   if (values.exchange_rate.trim()) {
     const rate = parseDecimalInput(values.exchange_rate, 6)
     if (rate === null || Number(rate) <= 0)
-      errors.exchange_rate = 'Enter a rate above 0, e.g. 0.9412.'
+      errors.exchange_rate = translate('enterARateAbove0EG09412')
   }
   if (values.document_date && values.due_date && values.due_date < values.document_date)
-    errors.due_date = 'The due date cannot be before the document date.'
+    errors.due_date = translate('theDueDateCannotBeBeforeTheDocumentDate')
   if (values.paid && values.paid_on && values.paid_on > today)
-    errors.paid_on = 'The payment date cannot be in the future.'
+    errors.paid_on = translate('thePaymentDateCannotBeInTheFuture')
   if (values.reimbursed_on && values.reimbursed_on > today)
-    errors.reimbursed_on = 'This date cannot be in the future.'
-  if (values.note.length > NOTE_MAX) errors.note = `Use at most ${NOTE_MAX} characters.`
+    errors.reimbursed_on = translate('thisDateCannotBeInTheFuture')
+  if (values.note.length > NOTE_MAX)
+    errors.note = translate('useAtMostCharacters2', { NOTE_MAX: NOTE_MAX })
 
   if (booking) {
-    if (!values.supplier_name.trim()) errors.supplier_name = 'Enter the supplier to book.'
-    if (!isDate(values.document_date)) errors.document_date = 'Enter the receipt’s date to book.'
+    if (!values.supplier_name.trim()) errors.supplier_name = translate('enterTheSupplierToBook')
+    if (!isDate(values.document_date))
+      errors.document_date = translate('enterTheReceiptSDateToBook')
     else if (values.document_date > today)
-      errors.document_date = 'The date cannot be in the future.'
-    if (!values.category_id) errors.category_id = 'Choose a category to book.'
+      errors.document_date = translate('theDateCannotBeInTheFuture')
+    if (!values.category_id) errors.category_id = translate('chooseACategoryToBook')
     if (!lines.some((line) => Number(parseDecimalInput(line.amount, 2) ?? 0) > 0))
-      errors['lines.0.amount'] ??= 'Enter the amount to book.'
+      errors['lines.0.amount'] ??= translate('enterTheAmountToBook')
   }
   return errors
 }

@@ -1,8 +1,9 @@
 'use client'
-
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ChevronRight, LoaderCircle } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 import type { ChatMessage } from './use-heidi'
 
@@ -10,7 +11,9 @@ import type { ChatMessage } from './use-heidi'
 export function formatDuration(ms: number) {
   if (ms < 1000) return '<1s'
   const seconds = Math.round(ms / 1000)
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+  return seconds < 60
+    ? `${seconds}s`
+    : translate('mS', { value1: Math.floor(seconds / 60), value2: seconds % 60 })
 }
 
 /** The time, every second while `running`. */
@@ -34,7 +37,7 @@ function Working({ label, elapsed }: { label: string; elapsed: number }) {
       {/* Only the step is announced, not every tick of the timer. */}
       <output
         aria-live="polite"
-        aria-label="Heidi is thinking"
+        aria-label={translate('heidiIsThinking')}
         className="animate-shimmer bg-[linear-gradient(90deg,var(--muted-foreground)_35%,var(--heidi)_50%,var(--muted-foreground)_65%)] bg-[length:200%_100%] bg-clip-text text-transparent motion-reduce:animate-none motion-reduce:bg-none motion-reduce:text-muted-foreground"
       >
         {label}…
@@ -56,7 +59,7 @@ function Working({ label, elapsed }: { label: string; elapsed: number }) {
 function Worked({ ms, steps }: { ms: number; steps: string[] }) {
   const [open, setOpen] = useState(false)
   const listId = useId()
-  const label = `Worked for ${formatDuration(ms)}`
+  const label = translate('workedFor', { value1: formatDuration(ms) })
   if (steps.length === 0)
     return <p className="flex h-6 items-center text-body-sm text-muted-foreground">{label}</p>
   return (
@@ -78,7 +81,7 @@ function Worked({ ms, steps }: { ms: number; steps: string[] }) {
         />
       </button>
       {open && (
-        <ol id={listId} aria-label="Steps" className="grid gap-1">
+        <ol id={listId} aria-label={translate('steps')} className="grid gap-1">
           {steps.map((step, index) => (
             <li
               // A step's text and how often it came before: stable as steps are only appended.
@@ -104,7 +107,8 @@ export function ActivityLine({ message }: { message: ChatMessage }) {
   const now = useNow(streaming)
   if (streaming) {
     const elapsed = (message.workedMs ?? 0) + (message.startedAt ? now - message.startedAt : 0)
-    const label = message.status ?? (message.text ? 'Writing the answer' : 'Thinking')
+    const label =
+      message.status ?? (message.text ? translate('writingTheAnswer') : translate('thinking'))
     return (
       // A muted line above the answer's text: the answer has no bubble to divide.
       <div className={cn(message.text && 'mb-1.5')}>

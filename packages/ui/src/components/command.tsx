@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Dialog,
   DialogContent,
@@ -8,6 +7,7 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { InputGroup, InputGroupAddon } from '@helvetly/ui/components/input-group'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { Command as CommandPrimitive } from 'cmdk'
 import { cn } from 'cn'
 import { SearchIcon, CheckIcon } from 'lucide-react'
@@ -27,8 +27,8 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
 }
 
 function CommandDialog({
-  title = 'Command Palette',
-  description = 'Search for a command to run...',
+  title = translate('commandPalette'),
+  description = translate('searchForACommandToRun'),
   children,
   className,
   showCloseButton = false,

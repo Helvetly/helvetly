@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Command,
   CommandDialog,
@@ -35,6 +34,7 @@ import { useOpenHref } from '@/components/record-link'
 import { ShortcutKeys } from '@/components/shortcuts/shortcut-keys'
 import { nextTheme } from '@/components/shortcuts/theme-shortcut'
 import { effectiveSearch, useClientSearch } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { can, useScopes } from '@/lib/permissions'
 
 import { CREATE_ACTIONS, visibleNav } from './nav'
@@ -79,20 +79,20 @@ export function CommandPalette({
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Quick Actions"
-      description="Jump anywhere in Helvetly or start something new"
+      title={translate('quickActions')}
+      description={translate('jumpAnywhereInHelvetlyOrStartSomethingNew')}
     >
-      <Command label="Search pages and actions">
+      <Command label={translate('searchPagesAndActions')}>
         <CommandInput
-          placeholder="Search pages, actions and clients…"
+          placeholder={translate('searchPagesActionsAndClients')}
           value={term}
           onValueChange={setTerm}
         />
         <CommandList>
-          <CommandEmpty>Nothing found.</CommandEmpty>
+          <CommandEmpty>{translate('nothingFound')}</CommandEmpty>
           {clients.length > 0 && (
             <>
-              <CommandGroup heading="Clients">
+              <CommandGroup heading={translate('clients')}>
                 {clients.map((client) => (
                   <CommandItem
                     key={client.id}
@@ -109,7 +109,7 @@ export function CommandPalette({
               <CommandSeparator />
             </>
           )}
-          <CommandGroup heading="Go to">
+          <CommandGroup heading={translate('goTo')}>
             {visibleNav(scopes)
               .flatMap((group) => group.items)
               .filter((item) => item.href)
@@ -124,31 +124,37 @@ export function CommandPalette({
                 </CommandItem>
               ))}
             <CommandItem onSelect={run(() => router.push('/account'))}>
-              <KeyRound /> Account settings: passkeys, 2FA & sessions
+              <KeyRound />
+              {translate('accountSettingsPasskeys2FASessions')}
             </CommandItem>
             <CommandItem onSelect={run(openPrefs)}>
-              <BellRing /> Notification preferences: email and bell
+              <BellRing />
+              {translate('notificationPreferencesEmailAndBell')}
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Create">
+          <CommandGroup heading={translate('create')}>
             {CREATE_ACTIONS.filter(({ need }) => can(scopes, need)).map(({ label, href }) => (
               <CommandItem
                 key={label}
-                onSelect={run(() => (href ? router.push(href) : toast(`${label} is coming soon.`)))}
+                onSelect={run(() =>
+                  href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
+                )}
               >
                 <Plus /> {label}
               </CommandItem>
             ))}
             <CommandItem onSelect={run(() => heidi?.ask())}>
-              <Sparkle /> Ask Heidi
+              <Sparkle />
+              {translate('askHeidi3')}
               <CommandShortcut>
                 <ShortcutKeys id="heidi" />
               </CommandShortcut>
             </CommandItem>
             {onHelp && (
               <CommandItem onSelect={run(onHelp)}>
-                <LifeBuoy /> Help & feedback
+                <LifeBuoy />
+                {translate('helpFeedback2')}
                 <CommandShortcut>
                   <ShortcutKeys id="help" />
                 </CommandShortcut>
@@ -156,7 +162,8 @@ export function CommandPalette({
             )}
             {onShortcuts && (
               <CommandItem onSelect={run(onShortcuts)}>
-                <Keyboard /> Keyboard shortcuts
+                <Keyboard />
+                {translate('keyboardShortcuts')}
                 <CommandShortcut>
                   <ShortcutKeys id="shortcuts" />
                 </CommandShortcut>
@@ -164,21 +171,25 @@ export function CommandPalette({
             )}
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Theme">
+          <CommandGroup heading={translate('theme')}>
             <CommandItem onSelect={run(() => setTheme(nextTheme(theme)))}>
-              <SunMoon /> Next theme
+              <SunMoon />
+              {translate('nextTheme')}
               <CommandShortcut>
                 <ShortcutKeys id="theme" />
               </CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={run(() => setTheme('light'))}>
-              <Sun /> Light
+              <Sun />
+              {translate('light')}
             </CommandItem>
             <CommandItem onSelect={run(() => setTheme('dark'))}>
-              <Moon /> Dark
+              <Moon />
+              {translate('dark')}
             </CommandItem>
             <CommandItem onSelect={run(() => setTheme('system'))}>
-              <Monitor /> System
+              <Monitor />
+              {translate('system2')}
             </CommandItem>
           </CommandGroup>
         </CommandList>

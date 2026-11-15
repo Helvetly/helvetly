@@ -1,5 +1,4 @@
 'use client'
-
 import { Loader } from '@helvetly/ui/components/loader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
@@ -9,6 +8,7 @@ import { FileText, QrCode, SearchX } from 'lucide-react'
 import { useState } from 'react'
 
 import { civilToday, dueText } from '@/lib/dates'
+import { translate } from '@/lib/i18n'
 import { isOpen, sumByCurrency } from '@/lib/invoices'
 import { listPortalInvoices, portalKeys, type PortalInvoice } from '@/lib/portal'
 
@@ -22,10 +22,10 @@ import {
 } from './portal-bits'
 
 const FILTERS = {
-  all: { label: 'All', test: () => true },
-  open: { label: 'Open', test: isOpen },
-  overdue: { label: 'Overdue', test: (i: PortalInvoice) => i.is_overdue },
-  paid: { label: 'Paid', test: (i: PortalInvoice) => i.status === 'paid' },
+  all: { label: translate('all'), test: () => true },
+  open: { label: translate('open'), test: isOpen },
+  overdue: { label: translate('overdue'), test: (i: PortalInvoice) => i.is_overdue },
+  paid: { label: translate('paid'), test: (i: PortalInvoice) => i.status === 'paid' },
 } satisfies Record<string, { label: string; test: (invoice: PortalInvoice) => boolean }>
 type Filter = keyof typeof FILTERS
 const isFilter = (value: string): value is Filter => value in FILTERS
@@ -46,9 +46,9 @@ function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string
   const year = today.slice(0, 4)
   const paid = invoices.filter((i) => i.status === 'paid' && i.issue_date.startsWith(year))
   const stats = [
-    ['Open', money(sumByCurrency(open, (i) => i.amount_due)), false],
-    ['Overdue', money(sumByCurrency(overdue, (i) => i.amount_due)), overdue.length > 0],
-    [`Paid in ${year}`, money(sumByCurrency(paid, (i) => i.total)), false],
+    [translate('open'), money(sumByCurrency(open, (i) => i.amount_due)), false],
+    [translate('overdue'), money(sumByCurrency(overdue, (i) => i.amount_due)), overdue.length > 0],
+    [translate('paidIn', { year: year }), money(sumByCurrency(paid, (i) => i.total)), false],
   ] as const
   return (
     // Phones: Open and Overdue side by side, Paid on its own row below.
@@ -101,7 +101,7 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
               <span className="sm:hidden">
                 <span className="capitalize">{invoice.status}</span> ·{' '}
               </span>
-              <span className="max-sm:hidden">Issued </span>
+              <span className="max-sm:hidden">{translate('issued')}</span>
               {formatDate(invoice.issue_date)}
             </>
           )}
@@ -113,7 +113,8 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
         </span>
         {open && invoice.amount_due !== invoice.total && (
           <span className="text-body-sm text-muted-foreground">
-            {formatMoney(invoice.amount_due, invoice.currency)} open
+            {formatMoney(invoice.amount_due, invoice.currency)}
+            {translate('open2')}
           </span>
         )}
       </span>
@@ -128,18 +129,18 @@ export function PortalInvoices() {
   const query = useQuery({ queryKey: portalKeys.invoices, queryFn: listPortalInvoices })
 
   const body = () => {
-    if (query.isPending) return <Loader label="Loading invoices" className="min-h-72" />
+    if (query.isPending) return <Loader label={translate('loadingInvoices')} className="min-h-72" />
     if (query.error)
       return (
         <div className={cn(cardClass, 'p-4 sm:p-5')}>
-          <RetryAlert what="Your invoices" onRetry={() => void query.refetch()} />
+          <RetryAlert what={translate('yourInvoices')} onRetry={() => void query.refetch()} />
         </div>
       )
     if (query.data.length === 0)
       return (
         <div className={cardClass}>
-          <EmptyState icon={FileText} title="No invoices yet">
-            Invoices appear here as soon as they are issued to you.
+          <EmptyState icon={FileText} title={translate('noInvoicesYet')}>
+            {translate('invoicesAppearHereAsSoonAsTheyAreIssued')}
           </EmptyState>
         </div>
       )
@@ -153,7 +154,7 @@ export function PortalInvoices() {
           className="gap-3"
         >
           <TabsList
-            aria-label="Show"
+            aria-label={translate('show')}
             className="max-w-full overflow-x-auto bg-card shadow-elevation-1"
           >
             {Object.entries(FILTERS).map(([key, { label, test }]) => (
@@ -170,9 +171,9 @@ export function PortalInvoices() {
               <div className={cardClass}>
                 <EmptyState
                   icon={SearchX}
-                  title={`No ${FILTERS[filter].label.toLowerCase()} invoices`}
+                  title={translate('noInvoices', { value1: FILTERS[filter].label.toLowerCase() })}
                 >
-                  Choose “All” to see every invoice.
+                  {translate('chooseAllToSeeEveryInvoice')}
                 </EmptyState>
               </div>
             ) : (
@@ -183,8 +184,8 @@ export function PortalInvoices() {
               </ul>
             )}
             <p className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-              <QrCode className="size-4 shrink-0" aria-hidden /> Pay with the Swiss QR bill in each
-              PDF.
+              <QrCode className="size-4 shrink-0" aria-hidden />
+              {translate('payWithTheSwissQRBillInEachPDF')}
             </p>
           </TabsContent>
         </Tabs>
@@ -194,7 +195,9 @@ export function PortalInvoices() {
 
   return (
     <div className="grid gap-5 sm:gap-6">
-      <PageHeader title="Invoices">Every invoice issued to you, each with its PDF.</PageHeader>
+      <PageHeader title={translate('invoices')}>
+        {translate('everyInvoiceIssuedToYouEachWithItsPDF')}
+      </PageHeader>
       {body()}
     </div>
   )

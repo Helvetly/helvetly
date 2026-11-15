@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -13,6 +12,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { translate } from '@/lib/i18n'
 import { scopesProblem, useChangeScopes, type Member } from '@/lib/members'
 import { EVERYTHING } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
@@ -33,7 +33,7 @@ export function AccessDialog({ member, onClose }: { member: Member; onClose: () 
       { user_id: member.user_id, scopes },
       {
         onSuccess: () => {
-          toast.success(`Access for ${member.name} changed.`)
+          toast.success(translate('accessForChanged', { name: member.name }))
           onClose()
         },
         onError: (error) => {
@@ -49,19 +49,20 @@ export function AccessDialog({ member, onClose }: { member: Member; onClose: () 
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Access for {member.name}</DialogTitle>
-          <DialogDescription>
-            What this member can see and change in the workspace.
-          </DialogDescription>
+          <DialogTitle>
+            {translate('accessFor')}
+            {member.name}
+          </DialogTitle>
+          <DialogDescription>{translate('whatThisMemberCanSeeAndChangeInThe')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
           <AccessEditor value={scopes} onChange={setScopes} error={problem} canChangeHR={owner} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={change.isPending || scopes.length === 0}>
-              Save access
+              {translate('saveAccess')}
             </Button>
           </DialogFooter>
         </form>

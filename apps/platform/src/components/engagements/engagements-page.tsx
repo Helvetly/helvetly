@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenuCheckboxItem,
@@ -45,6 +45,7 @@ import {
   type Engagement,
   type EngagementQuery,
 } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -68,17 +69,25 @@ const VIEWS: {
   query: Pick<EngagementQuery, 'status' | 'attention'>
 }[] = [
   // First, like every other list; the API puts running engagements on top and finished ones after.
-  { label: 'All', icon: Layers, query: { status: ALL_STATUSES } },
-  { label: 'Active', icon: ClipboardCheck, query: { status: LIVE } },
-  { label: 'Ending soon', icon: CalendarClock, query: { status: LIVE, attention: 'ending_soon' } },
-  { label: 'Behind pace', icon: TrendingDown, query: { status: LIVE, attention: 'under_pace' } },
+  { label: translate('all'), icon: Layers, query: { status: ALL_STATUSES } },
+  { label: translate('active'), icon: ClipboardCheck, query: { status: LIVE } },
+  {
+    label: translate('endingSoon'),
+    icon: CalendarClock,
+    query: { status: LIVE, attention: 'ending_soon' },
+  },
+  {
+    label: translate('behindPace'),
+    icon: TrendingDown,
+    query: { status: LIVE, attention: 'under_pace' },
+  },
   // to_invoice also covers ended engagements (contract: Summary).
   {
-    label: 'Needs invoicing',
+    label: translate('needsInvoicing'),
     icon: ReceiptText,
     query: { status: 'scheduled,active,ended', attention: 'to_invoice' },
   },
-  { label: 'Ended', icon: Archive, query: { status: 'ended,cancelled' } },
+  { label: translate('ended'), icon: Archive, query: { status: 'ended,cancelled' } },
 ]
 
 const dash = <span className="text-muted-foreground">—</span>
@@ -101,12 +110,15 @@ function PeriodCell({ engagement }: { engagement: Engagement }) {
       <span className="whitespace-nowrap">{periodLabel(period)}</span>
       <span className="text-[12px] text-muted-foreground">
         {engagement.status === 'ended' || engagement.status === 'cancelled'
-          ? 'Ended'
+          ? translate('ended')
           : period.state === 'upcoming'
-            ? 'Not started'
+            ? translate('notStarted')
             : left <= 0
-              ? 'Ends today'
-              : `${left} ${left === 1 ? 'day' : 'days'} left`}
+              ? translate('endsToday')
+              : translate('dynamicLeft', {
+                  left: left,
+                  value2: left === 1 ? translate('dynamicDay') : translate('days'),
+                })}
       </span>
     </span>
   )
@@ -119,7 +131,7 @@ function RemainingCell({ engagement }: { engagement: Engagement }) {
   const over = Number(period.overage) > 0
   return (
     <span className={cn('tabular-nums', over && 'text-amber-700 dark:text-amber-400')}>
-      {over ? `+${plain(period.overage)} over` : plain(period.remaining)}
+      {over ? translate('over3', { value1: plain(period.overage) }) : plain(period.remaining)}
       {unit && !over && <span className="text-muted-foreground"> {unit}</span>}
     </span>
   )
@@ -135,12 +147,12 @@ const TitleCell = ({ engagement }: { engagement: Engagement }) => (
 )
 
 const HEADERS = [
-  ['Engagement', 'w-[26%]'],
-  ['Period', 'w-[17%]'],
-  ['Progress', 'w-[20%]'],
-  ['Remaining', 'w-[10%] text-right'],
-  ['Billing', 'w-[10%]'],
-  ['Attention', 'w-[17%]'],
+  [translate('engagement2'), 'w-[26%]'],
+  [translate('period'), 'w-[17%]'],
+  [translate('progress'), 'w-[20%]'],
+  [translate('remaining'), 'w-[10%] text-right'],
+  [translate('billing'), 'w-[10%]'],
+  [translate('attention'), 'w-[17%]'],
 ] as const
 
 /** The "…" menu's own items: export what the filters show, and (owner/admin) the daily digest. */
@@ -166,7 +178,7 @@ function useMenu(filters: EngagementQuery) {
     },
     onError: (_error, _body, context) => {
       client.setQueryData(key, context?.before)
-      toast.error('Could not change the daily digest.')
+      toast.error(translate('couldNotChangeTheDailyDigest'))
     },
   })
   const { Item } = dropdownKit
@@ -174,12 +186,14 @@ function useMenu(filters: EngagementQuery) {
     <>
       {canWrite && (
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import
+          <FileUp />
+          {translate('import')}
         </Item>
       )}
       <Item asChild>
-        <a href={exportUrl(filters)} download>
-          <Download /> Export CSV
+        <a href={localizedHref(exportUrl(filters))} download>
+          <Download />
+          {translate('exportCSV2')}
         </a>
       </Item>
       {canManage && (
@@ -192,9 +206,9 @@ function useMenu(filters: EngagementQuery) {
             className="items-start"
           >
             <span className="grid leading-snug">
-              Daily e-mail digest
+              {translate('dailyEMailDigest')}
               <span className="text-[12px] text-muted-foreground">
-                Each morning: what needs invoicing or is ending soon.
+                {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
               </span>
             </span>
           </DropdownMenuCheckboxItem>
@@ -268,7 +282,7 @@ export function EngagementsPage() {
         active={view}
         onSelect={select}
         savedViews={false}
-        primary="New engagement"
+        primary={translate('newEngagement2')}
         onPrimary={() => setCreating(true)}
         menu={menu}
       />
@@ -276,24 +290,28 @@ export function EngagementsPage() {
       <KpiBand loading={!stats}>
         {stats && (
           <>
-            <Kpi label="Active" value={String(stats.active)} chart={<TickGauge share={1} />} />
             <Kpi
-              label="Ending soon"
+              label={translate('active')}
+              value={String(stats.active)}
+              chart={<TickGauge share={1} />}
+            />
+            <Kpi
+              label={translate('endingSoon')}
               value={String(stats.ending_soon)}
               chart={<TickGauge share={share(stats.ending_soon)} />}
             />
             <Kpi
-              label="Behind pace"
+              label={translate('behindPace')}
               value={String(stats.under_pace)}
               chart={<TickGauge share={share(stats.under_pace)} />}
             />
             <Kpi
-              label="Overage"
+              label={translate('overage')}
               value={String(stats.overage)}
               chart={<TickGauge share={share(stats.overage)} />}
             />
             <Kpi
-              label="Needs invoicing"
+              label={translate('needsInvoicing')}
               value={String(stats.to_invoice)}
               chart={<TickGauge share={share(stats.to_invoice)} />}
             />
@@ -306,8 +324,8 @@ export function EngagementsPage() {
             <Search className="size-4 shrink-0 stroke-[1.5]" />
             <input
               type="search"
-              aria-label="Search engagements"
-              placeholder="Search title, client or reference"
+              aria-label={translate('searchEngagements')}
+              placeholder={translate('searchTitleClientOrReference')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
@@ -316,15 +334,21 @@ export function EngagementsPage() {
         </div>
 
         {list.error ? (
-          <LoadProblem error={list.error} what="Engagements" onRetry={() => void list.refetch()} />
+          <LoadProblem
+            error={list.error}
+            what={translate('engagements')}
+            onRetry={() => void list.refetch()}
+          />
         ) : !list.data ? (
           <LoadingRows />
         ) : rows.length === 0 ? (
           term || view > 0 ? (
             <State
               icon={<SearchX />}
-              title={term ? `Nothing matches “${term}”` : 'Nothing in this view'}
-              text="Try another search or look at all engagements."
+              title={
+                term ? translate('nothingMatches3', { term: term }) : translate('nothingInThisView')
+              }
+              text={translate('tryAnotherSearchOrLookAtAllEngagements')}
               action={
                 <Button
                   variant="outline"
@@ -334,19 +358,19 @@ export function EngagementsPage() {
                     select(0)
                   }}
                 >
-                  Show all engagements
+                  {translate('showAllEngagements')}
                 </Button>
               }
             />
           ) : (
             <State
               icon={<ClipboardCheck />}
-              title="No engagements yet"
-              text="Agree a quantity of work per client, log what you deliver and invoice it in advance or in arrears."
+              title={translate('noEngagementsYet')}
+              text={translate('agreeAQuantityOfWorkPerClientLogWhat')}
               action={
                 canWrite && (
                   <Button size="sm" className="cursor-pointer" onClick={() => setCreating(true)}>
-                    New engagement
+                    {translate('newEngagement2')}
                   </Button>
                 )
               }
@@ -441,30 +465,35 @@ export function EngagementsPage() {
 
             {meta && (
               <nav
-                aria-label="Pages"
+                aria-label={translate('pages')}
                 className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
               >
                 <span className="tabular-nums">
                   {(meta.page - 1) * meta.page_size + 1}–
-                  {Math.min(meta.page * meta.page_size, meta.total)} of {meta.total}
+                  {Math.min(meta.page * meta.page_size, meta.total)}
+                  {translate('of5')}
+                  {meta.total}
                 </span>
                 <span className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Previous page"
+                    aria-label={translate('previousPage')}
                     disabled={meta.page <= 1}
                     onClick={() => setPage(meta.page - 1)}
                   >
                     <ChevronLeft />
                   </Button>
                   <span className="tabular-nums">
-                    Page {meta.page} of {Math.max(meta.total_pages, 1)}
+                    {translate('page')}
+                    {meta.page}
+                    {translate('of5')}
+                    {Math.max(meta.total_pages, 1)}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Next page"
+                    aria-label={translate('nextPage')}
                     disabled={meta.page >= meta.total_pages}
                     onClick={() => setPage(meta.page + 1)}
                   >

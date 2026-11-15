@@ -1,4 +1,5 @@
 import { isValidUid } from '@/components/clients/client-form-model'
+import { translate } from '@/lib/i18n'
 import {
   formatIban,
   ibanInfo,
@@ -94,9 +95,9 @@ export function validate(values: Values): Partial<Record<keyof Values, string>> 
   const vat = values.vat_number.trim()
   // The server checks every number starting with CH as a Swiss UID.
   if (values.vat_registered && /^CH/i.test(vat) && !isValidUid(vat))
-    errors.vat_number = 'This UID number isn’t valid. Check the digits.'
+    errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
   if (values.iban.trim() && !ibanInfo(values.iban).valid)
-    errors.iban = 'This IBAN’s check digits don’t match. Check for a typo.'
+    errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
   const market = unsupportedSellerCountry(values.country)
   if (market) errors.country = market
   return errors

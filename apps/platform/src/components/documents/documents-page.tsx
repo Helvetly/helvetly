@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -114,6 +113,7 @@ import {
   type TrashItem,
   type ViewParams,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import type { Template } from '@/lib/templates'
@@ -148,17 +148,17 @@ import { TrashView } from './trash-view'
 import { UploadTray, useUploads } from './upload-tray'
 
 const SORT_LABELS: Record<SortField, string> = {
-  name: 'Name',
-  created_at: 'Date uploaded',
-  updated_at: 'Date modified',
+  name: translate('name'),
+  created_at: translate('dateUploaded'),
+  updated_at: translate('dateModified'),
   size: 'Size',
   kind: 'Kind',
 }
 
 const DATE_PRESETS: DatePreset[] = ['7d', '30d', 'year']
 const DATE_LABELS: Record<DatePreset, string> = {
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
+  '7d': translate('last7Days'),
+  '30d': translate('last30Days'),
   year: 'This year',
 }
 
@@ -208,12 +208,12 @@ const tabLabel = (tab: PinnedTab) =>
   tab.type === 'kind'
     ? `${KIND_LABELS[tab.kind]}s`
     : tab.type === 'recent'
-      ? 'Recent'
+      ? translate('recent')
       : tab.type === 'signatures'
-        ? 'Signatures'
+        ? translate('signatures')
         : tab.type === 'templates'
-          ? 'Templates'
-          : 'Trash'
+          ? translate('templates')
+          : translate('trash')
 export function DocumentsPage() {
   const pathname = usePathname()
   const query = useSearchParams()
@@ -320,7 +320,9 @@ export function DocumentsPage() {
   }, [])
 
   const folderName = (id: string | null) =>
-    id ? (allFolders.find((folder) => folder.id === id)?.name ?? 'the folder') : 'All documents'
+    id
+      ? (allFolders.find((folder) => folder.id === id)?.name ?? translate('theFolder'))
+      : translate('allDocuments')
 
   // ---- what is on screen ----
   const filtered = view.kinds.length > 0 || view.mine || view.date !== null
@@ -363,7 +365,10 @@ export function DocumentsPage() {
     toast(`${done} ${plural(result.skipped.length, 'item')} skipped: ${reasons}`.trim(), {
       action:
         retry && nameClash
-          ? { label: 'Keep both', onClick: () => retry(result.skipped.map((skip) => skip.id)) }
+          ? {
+              label: translate('keepBoth'),
+              onClick: () => retry(result.skipped.map((skip) => skip.id)),
+            }
           : undefined,
     })
   }
@@ -383,7 +388,7 @@ export function DocumentsPage() {
     }).then((result) => {
       reportBulk(
         result,
-        `moved to ${folderName(target)}`,
+        translate('movedTo', { value1: folderName(target) }),
         (ids) =>
           void runBulk({
             action: 'move',
@@ -391,7 +396,10 @@ export function DocumentsPage() {
             folder_ids: payload.folders.filter((id) => ids.includes(id)),
             folder_id: target,
             on_conflict: 'keep_both',
-          }).then((again) => reportBulk(again, `moved to ${folderName(target)}`), toastError),
+          }).then(
+            (again) => reportBulk(again, translate('movedTo', { value1: folderName(target) })),
+            toastError,
+          ),
       )
       clearSelection()
     }, toastError)
@@ -400,11 +408,11 @@ export function DocumentsPage() {
     runBulk({ action: 'trash', document_ids: payload.files, folder_ids: payload.folders }).then(
       (result) => {
         clearSelection()
-        if (result.skipped.length) reportBulk(result, 'moved to the Trash')
+        if (result.skipped.length) reportBulk(result, translate('movedToTheTrash3'))
         else
-          toast.success(`${plural(result.updated, 'item')} moved to the Trash.`, {
+          toast.success(translate('movedToTheTrash2', { value1: plural(result.updated, 'item') }), {
             action: {
-              label: 'Undo',
+              label: translate('undo'),
               onClick: () =>
                 void runBulk({
                   action: 'restore',
@@ -421,7 +429,12 @@ export function DocumentsPage() {
   const copyFiles = async (ids: string[], target: string | null) => {
     try {
       await Promise.all(ids.map((id) => docsApi.copy(id, target)))
-      toast.success(`${plural(ids.length, 'copy', 'copies')} made in ${folderName(target)}.`)
+      toast.success(
+        translate('madeIn', {
+          value1: plural(ids.length, 'copy', 'copies'),
+          value2: folderName(target),
+        }),
+      )
     } catch (error) {
       toastError(error)
     } finally {
@@ -450,7 +463,7 @@ export function DocumentsPage() {
           action:
             typeof suggestion === 'string'
               ? {
-                  label: `Use “${suggestion}”`,
+                  label: translate('use', { suggestion: suggestion }),
                   onClick: () =>
                     void docsApi
                       .update(fileId, { name: suggestion })
@@ -466,7 +479,7 @@ export function DocumentsPage() {
     try {
       const { data } = await docsApi.createFolder(name, newFolderIn ?? null)
       refreshDocuments(queryClient)
-      toast.success(`${data.name} created.`)
+      toast.success(translate('created2', { name: data.name }))
       return null
     } catch (error) {
       if (error instanceof ApiError && error.code === 'validation_failed') {
@@ -573,10 +586,16 @@ export function DocumentsPage() {
     } else if (key === 'Enter' && focused) openItem(focused)
     else if (mod && key.toLowerCase() === 'c' && selectedSplit.files.length > 0) {
       setClipboard({ mode: 'copy', files: selectedSplit.files, folders: [] })
-      toast(`${plural(selectedSplit.files.length, 'file')} copied. Paste with ⌘V in any folder.`)
+      toast(
+        translate('copiedPasteWithVInAnyFolder', {
+          value1: plural(selectedSplit.files.length, 'file'),
+        }),
+      )
     } else if (canWrite && mod && key.toLowerCase() === 'x' && selectedKeys.size > 0) {
       setClipboard({ mode: 'cut', ...selectedSplit })
-      toast(`${plural(selectedKeys.size, 'item')} cut. Paste with ⌘V in another folder.`)
+      toast(
+        translate('cutPasteWithVInAnotherFolder', { value1: plural(selectedKeys.size, 'item') }),
+      )
     } else if (canWrite && mod && key.toLowerCase() === 'v') paste()
     else if (key.startsWith('Arrow') || key === 'Home' || key === 'End') {
       event.preventDefault()
@@ -600,37 +619,46 @@ export function DocumentsPage() {
     return (
       <ContextMenuContent className="min-w-52">
         <ContextMenuLabel className={titleClass}>
-          {single ? name : `${keys.length} selected`}
+          {single ? name : translate('dynamicSelected2', { length: keys.length })}
         </ContextMenuLabel>
         {single && (
           <ContextMenuItem onSelect={() => openItem(key)}>
-            {file ? <Eye /> : <FolderOpen />} {file ? 'Preview' : 'Open'}
+            {file ? <Eye /> : <FolderOpen />} {file ? translate('preview') : translate('open')}
             <ContextMenuShortcut>↵</ContextMenuShortcut>
           </ContextMenuItem>
         )}
         {split.files.length > 0 && (
           <ContextMenuItem onSelect={() => downloadFiles(split.files)}>
-            <Download /> Download{split.files.length > 1 ? ` ${split.files.length} files` : ''}
+            <Download />
+            {translate('download3')}
+            {split.files.length > 1
+              ? translate('dynamicFiles2', { length: split.files.length })
+              : ''}
           </ContextMenuItem>
         )}
         {canWrite && single && file?.kind === 'pdf' && !file.deleted_at && (
           <>
             <ContextMenuItem onSelect={() => setEditing({ template: null, document: file })}>
-              <LayoutTemplate /> Make a template…
+              <LayoutTemplate />
+              {translate('makeATemplate')}
             </ContextMenuItem>
             <ContextMenuItem onSelect={() => setSignFrom(file)}>
-              <FileSignature /> Send for signature…
+              <FileSignature />
+              {translate('sendForSignature')}
             </ContextMenuItem>
           </>
         )}
         {canWrite && single && file && !file.deleted_at && (
           <ContextMenuItem onSelect={() => setShareFrom(file)}>
-            <Share2 /> Share with client…
+            <Share2 />
+            {translate('shareWithClient')}
           </ContextMenuItem>
         )}
         {canWrite && single && (
           <ContextMenuItem onSelect={() => setRenaming(key)}>
-            <Pencil /> Rename <ContextMenuShortcut>F2</ContextMenuShortcut>
+            <Pencil />
+            {translate('rename')}
+            <ContextMenuShortcut>{translate('f2')}</ContextMenuShortcut>
           </ContextMenuItem>
         )}
         {single && folder && <StarItem folder={folder} onToggle={toggleStar} />}
@@ -638,19 +666,25 @@ export function DocumentsPage() {
           <>
             <ContextMenuSeparator />
             <ContextMenuItem onSelect={() => setPicker({ mode: 'move', ...split })}>
-              <FolderInput /> Move to…
+              <FolderInput />
+              {translate('moveTo2')}
             </ContextMenuItem>
             {split.files.length > 0 && split.folders.length === 0 && (
               <ContextMenuItem onSelect={() => setPicker({ mode: 'copy', ...split })}>
-                <Copy /> Copy to…
+                <Copy />
+                {translate('copyTo2')}
               </ContextMenuItem>
             )}
             <ContextMenuItem onSelect={() => setClipboard({ mode: 'cut', ...split })}>
-              <Scissors /> Cut <ContextMenuShortcut>⌘X</ContextMenuShortcut>
+              <Scissors />
+              {translate('cut')}
+              <ContextMenuShortcut>{translate('x')}</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onSelect={() => void trashItems(split)}>
-              <Trash2 /> Move to Trash <ContextMenuShortcut>⌫</ContextMenuShortcut>
+              <Trash2 />
+              {translate('moveToTrash2')}
+              <ContextMenuShortcut>⌫</ContextMenuShortcut>
             </ContextMenuItem>
           </>
         )}
@@ -675,7 +709,7 @@ export function DocumentsPage() {
     link: (file, clientId) =>
       void docsApi.link(file.id, 'client', clientId).then(() => {
         refreshDocuments(queryClient)
-        toast.success('Linked to the client.')
+        toast.success(translate('linkedToTheClient'))
       }, toastError),
     unlink: (file, link) =>
       void docsApi
@@ -706,7 +740,7 @@ export function DocumentsPage() {
       folder_ids: items.filter((item) => item.type === 'folder').map((item) => item.id),
     }).then((result) => {
       setTrashSelected(new Set())
-      reportBulk(result, 'deleted forever')
+      reportBulk(result, translate('deletedForever2'))
     }, toastError)
 
   // The page's own actions: the header's "…" menu and a right-click on the empty surface.
@@ -718,21 +752,24 @@ export function DocumentsPage() {
         {!inHeader && (
           <>
             <Item onSelect={() => setNewFolderIn(current)}>
-              <FolderPlus /> New folder
+              <FolderPlus />
+              {translate('newFolder2')}
             </Item>
             <Item onSelect={() => picker$.current?.click()}>
-              <UploadIcon /> Upload files
+              <UploadIcon />
+              {translate('uploadFiles2')}
             </Item>
           </>
         )}
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import invoices, contracts…
+          <FileUp />
+          {translate('importInvoicesContracts')}
         </Item>
         {clipboard && view.section === 'files' && (
           <Item onSelect={paste}>
-            <ClipboardPaste /> Paste{' '}
-            {plural(clipboard.files.length + clipboard.folders.length, 'item')}
-            <Shortcut>⌘V</Shortcut>
+            <ClipboardPaste />
+            {translate('paste')} {plural(clipboard.files.length + clipboard.folders.length, 'item')}
+            <Shortcut>{translate('v')}</Shortcut>
           </Item>
         )}
       </>
@@ -762,17 +799,20 @@ export function DocumentsPage() {
     return (
       <>
         <ContextMenuItem disabled={at === 0} onSelect={() => pinned.move(at, at - 1)}>
-          <ArrowLeft /> Move left
+          <ArrowLeft />
+          {translate('moveLeft')}
         </ContextMenuItem>
         <ContextMenuItem
           disabled={at === pinned.tabs.length - 1}
           onSelect={() => pinned.move(at, at + 1)}
         >
-          <ArrowRight /> Move right
+          <ArrowRight />
+          {translate('moveRight')}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => pinned.toggle(tab)}>
-          <X /> Close tab
+          <X />
+          {translate('closeTab')}
         </ContextMenuItem>
       </>
     )
@@ -798,7 +838,7 @@ export function DocumentsPage() {
         }}
       />
       <PageHeader
-        tabs={['All files', ...headerTabs.map(tabLabel)]}
+        tabs={[translate('allFiles'), ...headerTabs.map(tabLabel)]}
         tabIcons={[HardDrive, ...headerTabs.map(tabIcon)]}
         active={activeTab}
         onSelect={openTab}
@@ -823,7 +863,7 @@ export function DocumentsPage() {
             />
           )
         }
-        primary="Upload"
+        primary={translate('upload2')}
         onPrimary={() => picker$.current?.click()}
         menu={pageItems(dropdownKit, true)}
       />
@@ -884,12 +924,12 @@ export function DocumentsPage() {
                   <Trash2 className="size-4 stroke-[1.5] text-muted-foreground" />
                 )}
                 {view.section === 'recent'
-                  ? 'Recently uploaded'
+                  ? translate('recentlyUploaded')
                   : view.section === 'signatures'
-                    ? 'Out for signature'
+                    ? translate('outForSignature')
                     : view.section === 'templates'
-                      ? 'Templates'
-                      : 'Trash'}
+                      ? translate('templates')
+                      : translate('trash')}
               </p>
             )}
             {view.section === 'templates' && (
@@ -899,13 +939,14 @@ export function DocumentsPage() {
                   className="cursor-pointer"
                   onClick={() => setFilling(null)}
                 >
-                  Use a template…
+                  {translate('useATemplate')}
                 </Button>
                 <Button
                   className="cursor-pointer gap-1.5"
                   onClick={() => setEditing({ template: null, document: null })}
                 >
-                  <Plus className="size-4" /> New template
+                  <Plus className="size-4" />
+                  {translate('newTemplate')}
                 </Button>
               </div>
             )}
@@ -915,8 +956,8 @@ export function DocumentsPage() {
                   <Search className="size-4 shrink-0 stroke-[1.5]" />
                   <input
                     type="search"
-                    aria-label="Search files"
-                    placeholder="Search all files"
+                    aria-label={translate('searchFiles')}
+                    placeholder={translate('searchAllFiles')}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     className="w-full min-w-0 bg-transparent text-[14px] text-foreground outline-none placeholder:text-placeholder"
@@ -966,10 +1007,10 @@ export function DocumentsPage() {
             />
           ) : (
             <PageContextMenu
-              title={view.section === 'files' ? folderName(current) : 'Recently uploaded'}
+              title={view.section === 'files' ? folderName(current) : translate('recentlyUploaded')}
               items={(kit) => pageItems(kit)}
               views={{
-                tabs: ['All files', ...headerTabs.map(tabLabel)],
+                tabs: [translate('allFiles'), ...headerTabs.map(tabLabel)],
                 active: activeTab,
                 onSelect: openTab,
               }}
@@ -998,7 +1039,7 @@ export function DocumentsPage() {
                 {list.error ? (
                   <LoadProblem
                     error={list.error}
-                    what="The files"
+                    what={translate('theFiles')}
                     onRetry={() => void list.refetch()}
                   />
                 ) : loading ? (
@@ -1080,8 +1121,11 @@ export function DocumentsPage() {
                     />
                     {list.data && list.data.meta.total > files.length && (
                       <p className="px-5 pb-6 text-center text-[13px] text-muted-foreground">
-                        Showing the first {files.length} of {list.data.meta.total} files. Search or
-                        filter to find the rest.
+                        {translate('showingTheFirst')}
+                        {files.length}
+                        {translate('of5')}
+                        {list.data.meta.total}
+                        {translate('filesSearchOrFilterToFindTheRest')}
                       </p>
                     )}
                   </div>
@@ -1095,14 +1139,14 @@ export function DocumentsPage() {
                       ...(selectedSplit.files.length > 0
                         ? [
                             {
-                              label: 'Download',
+                              label: translate('download'),
                               icon: <Download />,
                               onClick: () => downloadFiles(selectedSplit.files),
                             },
                           ]
                         : []),
                       {
-                        label: 'Move to…',
+                        label: translate('moveTo'),
                         icon: <FolderInput />,
                         onClick: () => setPicker({ mode: 'move', ...selectedSplit }),
                         write: true,
@@ -1110,7 +1154,7 @@ export function DocumentsPage() {
                       ...(selectedSplit.files.length > 0 && selectedSplit.folders.length === 0
                         ? [
                             {
-                              label: 'Copy to…',
+                              label: translate('copyTo'),
                               icon: <Copy />,
                               onClick: () => setPicker({ mode: 'copy', ...selectedSplit }),
                               write: true,
@@ -1118,7 +1162,7 @@ export function DocumentsPage() {
                           ]
                         : []),
                       {
-                        label: 'Move to Trash',
+                        label: translate('moveToTrash'),
                         icon: <Trash2 />,
                         destructive: true,
                         onClick: () => void trashItems(selectedSplit),
@@ -1136,7 +1180,7 @@ export function DocumentsPage() {
               onClear={() => setTrashSelected(new Set())}
               actions={[
                 {
-                  label: 'Restore',
+                  label: translate('restore'),
                   icon: <RotateCcw />,
                   onClick: () =>
                     restoreFromTrash(trashItemsList.filter((item) => trashSelected.has(item.id))),
@@ -1145,7 +1189,7 @@ export function DocumentsPage() {
                 ...(canDelete
                   ? [
                       {
-                        label: 'Delete forever',
+                        label: translate('deleteForever'),
                         icon: <Trash2 />,
                         destructive: true,
                         onClick: () =>
@@ -1167,8 +1211,9 @@ export function DocumentsPage() {
             <div className="absolute inset-2 animate-in rounded-[18px] border-2 border-dashed border-primary/50 bg-primary/[0.04] duration-150 fade-in" />
             <div className="relative flex animate-in items-center gap-3 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] text-white shadow-elevation-2 duration-200 slide-in-from-bottom-2 dark:bg-zinc-800">
               <UploadIcon className="size-[18px]" />
-              Drop to upload to <span className="font-medium">{folderName(current)}</span>
-              <span className="text-white/60">· or onto a folder</span>
+              {translate('dropToUploadTo')}
+              <span className="font-medium">{folderName(current)}</span>
+              <span className="text-white/60">{translate('orOntoAFolder')}</span>
             </div>
           </div>
         )}
@@ -1231,8 +1276,10 @@ export function DocumentsPage() {
         <FolderPickerDialog
           title={
             picker.mode === 'move'
-              ? `Move ${plural(picker.files.length + picker.folders.length, 'item')}`
-              : `Copy ${plural(picker.files.length, 'file')}`
+              ? translate('move', {
+                  value1: plural(picker.files.length + picker.folders.length, 'item'),
+                })
+              : translate('copy3', { value1: plural(picker.files.length, 'file') })
           }
           action={picker.mode === 'move' ? 'Move' : 'Copy'}
           folders={allFolders}
@@ -1252,15 +1299,24 @@ export function DocumentsPage() {
           tone="destructive"
           title={
             confirm.kind === 'empty'
-              ? 'Empty the Trash?'
-              : `Delete ${confirm.items.length === 1 ? `“${confirm.items[0]?.name}”` : plural(confirm.items.length, 'item')} forever?`
+              ? translate('emptyTheTrash')
+              : translate('deleteForever2', {
+                  value1:
+                    confirm.items.length === 1
+                      ? `“${confirm.items[0]?.name}”`
+                      : plural(confirm.items.length, 'item'),
+                })
           }
           body={
             confirm.kind === 'empty'
-              ? `${plural(trashItemsList.length, 'item')} will be deleted for good. Business records stay. This can’t be undone.`
-              : 'They are deleted for good, with everything inside them. This can’t be undone.'
+              ? translate('willBeDeletedForGoodBusinessRecordsStayThis', {
+                  value1: plural(trashItemsList.length, 'item'),
+                })
+              : translate('theyAreDeletedForGoodWithEverythingInsideThem')
           }
-          confirmLabel={confirm.kind === 'empty' ? 'Empty Trash' : 'Delete forever'}
+          confirmLabel={
+            confirm.kind === 'empty' ? translate('emptyTrash') : translate('deleteForever')
+          }
           onDecide={(approved) => {
             const decided = confirm
             setConfirm(null)
@@ -1270,7 +1326,7 @@ export function DocumentsPage() {
               void docsApi.emptyTrash().then(({ data }) => {
                 refreshDocuments(queryClient)
                 setTrashSelected(new Set())
-                toast.success(`${plural(data.updated, 'item')} deleted forever.`)
+                toast.success(translate('deletedForever', { value1: plural(data.updated, 'item') }))
               }, toastError)
           }}
         />
@@ -1322,18 +1378,18 @@ function Breadcrumbs({
   if (searching)
     return (
       <p className="min-w-0 flex-1 truncate px-2 text-[15px]">
-        <span className="text-muted-foreground">Results for </span>
+        <span className="text-muted-foreground">{translate('resultsFor')}</span>
         <span className="font-medium">“{term.trim()}”</span>
-        <span className="text-muted-foreground"> in all folders</span>
+        <span className="text-muted-foreground">{translate('inAllFolders')}</span>
       </p>
     )
   return (
     <nav
-      aria-label="Breadcrumbs"
+      aria-label={translate('breadcrumbs')}
       className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
     >
       <Crumb target={null} current={crumbs.length === 0} onOpen={onOpen}>
-        All documents
+        {translate('allDocuments')}
       </Crumb>
       {crumbs.map((folder, i) => (
         <span key={folder.id} className="flex min-w-0 items-center gap-0.5">
@@ -1416,10 +1472,18 @@ function ViewToggle({
 }) {
   return (
     <span className="ml-1 flex items-center gap-0.5 rounded-lg bg-muted p-0.5 dark:bg-muted/60">
-      <ToolbarButton label="Grid" active={layout === 'grid'} onClick={() => onChange('grid')}>
+      <ToolbarButton
+        label={translate('grid')}
+        active={layout === 'grid'}
+        onClick={() => onChange('grid')}
+      >
         <LayoutGrid />
       </ToolbarButton>
-      <ToolbarButton label="List" active={layout === 'list'} onClick={() => onChange('list')}>
+      <ToolbarButton
+        label={translate('list')}
+        active={layout === 'list'}
+        onClick={() => onChange('list')}
+      >
         <ListIcon />
       </ToolbarButton>
     </span>
@@ -1448,10 +1512,10 @@ function SortMenu({
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>Sort</TooltipContent>
+        <TooltipContent>{translate('sort')}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="min-w-48">
-        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuLabel>{translate('sortBy')}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={view.sort}
           onValueChange={(value) => {
@@ -1470,8 +1534,8 @@ function SortMenu({
           value={view.desc ? 'desc' : 'asc'}
           onValueChange={(value) => onChange({ desc: value === 'desc' })}
         >
-          <DropdownMenuRadioItem value="asc">Ascending</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="desc">Descending</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="asc">{translate('ascending')}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="desc">{translate('descending')}</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -1506,7 +1570,7 @@ function Filters({
               )}
             >
               <ListFilter className="stroke-[1.5]" />
-              <span className="max-lg:sr-only">Filter</span>
+              <span className="max-lg:sr-only">{translate('filter')}</span>
               {count > 0 && (
                 <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground">
                   {count}
@@ -1515,10 +1579,10 @@ function Filters({
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>Filter</TooltipContent>
+        <TooltipContent>{translate('filter')}</TooltipContent>
       </Tooltip>
       <PopoverContent align="end" className="w-64 gap-0 p-2">
-        <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">Kind</p>
+        <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">{translate('kind')}</p>
         <div className="grid grid-cols-2 gap-0.5">
           {KINDS.map((kind) => (
             <label
@@ -1534,7 +1598,7 @@ function Filters({
           ))}
         </div>
         <div className="my-2 h-px bg-border" />
-        <p className="px-2 pb-1.5 text-xs text-muted-foreground">Uploaded</p>
+        <p className="px-2 pb-1.5 text-xs text-muted-foreground">{translate('uploaded2')}</p>
         {DATE_PRESETS.map((preset) => (
           <label
             key={preset}
@@ -1556,7 +1620,7 @@ function Filters({
             checked={view.mine}
             onCheckedChange={(checked) => onChange({ mine: checked === true })}
           />
-          By me
+          {translate('byMe')}
         </label>
         {count > 0 && (
           <>
@@ -1567,7 +1631,8 @@ function Filters({
               className="w-full cursor-pointer justify-start gap-1.5 font-normal"
               onClick={() => onChange({ kinds: [], mine: false, date: null })}
             >
-              <X className="size-3.5" /> Clear filters
+              <X className="size-3.5" />
+              {translate('clearFilters2')}
             </Button>
           </>
         )}
@@ -1596,13 +1661,13 @@ function Empty({
         icon={<SearchX />}
         title={
           view.search.trim()
-            ? `Nothing matches “${view.search.trim()}”`
-            : 'No files match these filters'
+            ? translate('nothingMatches2', { value1: view.search.trim() })
+            : translate('noFilesMatchTheseFilters')
         }
-        text="Try another name, or clear the search and filters."
+        text={translate('tryAnotherNameOrClearTheSearchAndFilters')}
         action={
           <Button variant="outline" size="sm" className="cursor-pointer" onClick={onClear}>
-            Clear search and filters
+            {translate('clearSearchAndFilters')}
           </Button>
         }
       />
@@ -1611,12 +1676,12 @@ function Empty({
     return (
       <State
         icon={<Clock />}
-        title="Nothing uploaded yet"
-        text="Files you and your team upload show up here, newest first."
+        title={translate('nothingUploadedYet')}
+        text={translate('filesYouAndYourTeamUploadShowUpHere')}
         action={
           canWrite && (
             <Button size="sm" className="cursor-pointer" onClick={onUpload}>
-              Upload files
+              {translate('uploadFiles')}
             </Button>
           )
         }
@@ -1635,16 +1700,18 @@ function Empty({
           </span>
         </div>
         <p className="text-[17px] font-medium tracking-[-0.01em] text-balance">
-          {view.folder ? `${folderName} is empty` : 'Your documents live here'}
+          {view.folder
+            ? translate('isEmpty', { folderName: folderName })
+            : translate('yourDocumentsLiveHere')}
         </p>
         <p className="mt-1.5 max-w-sm text-sm text-pretty text-muted-foreground">
-          Contracts, receipts and statements in one place, in folders you choose. PDFs and images
-          get a preview. Files of up to 25 MB each.
+          {translate('contractsReceiptsAndStatementsInOnePlaceInFolders')}
         </p>
         {canWrite && (
           <div className="mt-6 flex gap-2">
             <Button size="sm" className="cursor-pointer gap-1.5" onClick={onUpload}>
-              <UploadIcon className="size-4" /> Upload
+              <UploadIcon className="size-4" />
+              {translate('upload')}
             </Button>
             <Button
               size="sm"
@@ -1652,14 +1719,15 @@ function Empty({
               className="cursor-pointer gap-1.5"
               onClick={onNewFolder}
             >
-              <FolderPlus className="size-4" /> New folder
+              <FolderPlus className="size-4" />
+              {translate('newFolder2')}
             </Button>
           </div>
         )}
         {canWrite && (
           <p className="mt-6 flex items-center gap-1.5 text-[13px] text-muted-foreground">
             <MousePointer2 className="size-3.5 stroke-[1.5]" />
-            Or drag files from your computer anywhere onto this page
+            {translate('orDragFilesFromYourComputerAnywhereOntoThis')}
           </p>
         )}
       </div>
@@ -1694,7 +1762,7 @@ function Sheet({ kind, className }: { kind: Kind; className: string }) {
 }
 
 function LoadingTree() {
-  return <Loader label="Loading folders" className="min-h-32" />
+  return <Loader label={translate('loadingFolders')} className="min-h-32" />
 }
 
 /** "Create" next to Upload: a template, a PDF for signature, or a folder. */
@@ -1711,7 +1779,7 @@ function CreateMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="cursor-pointer gap-1">
-          Create
+          {translate('create')}
           <ChevronDown className="size-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
@@ -1719,22 +1787,25 @@ function CreateMenu({
         <DropdownMenuItem onSelect={onTemplate} className="items-start py-2">
           <LayoutTemplate className="mt-0.5" />
           <span className="grid gap-0.5">
-            <span>Template…</span>
+            <span>{translate('template')}</span>
             <span className="text-[12px] text-muted-foreground">
-              A contract or letter filled from a client
+              {translate('aContractOrLetterFilledFromAClient')}
             </span>
           </span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onSign} className="items-start py-2">
           <FileSignature className="mt-0.5" />
           <span className="grid gap-0.5">
-            <span>PDF for signature…</span>
-            <span className="text-[12px] text-muted-foreground">Send any PDF to sign online</span>
+            <span>{translate('pdfForSignature')}</span>
+            <span className="text-[12px] text-muted-foreground">
+              {translate('sendAnyPDFToSignOnline')}
+            </span>
           </span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onFolder}>
-          <FolderPlus /> New folder
+          <FolderPlus />
+          {translate('newFolder2')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

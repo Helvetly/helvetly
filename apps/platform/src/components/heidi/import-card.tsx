@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,6 +8,7 @@ import { useState } from 'react'
 
 import { ImportConflicts, type Conflict } from '@/components/import/import-conflicts'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   commitSummary,
   conflictsOf,
@@ -60,7 +60,9 @@ export function ImportCard({ batchId }: { batchId: string }) {
       </p>
     )
   if (!batch.data)
-    return <Loader2 aria-label="Loading the import" className="mt-2 size-4 animate-spin" />
+    return (
+      <Loader2 aria-label={translate('loadingTheImport')} className="mt-2 size-4 animate-spin" />
+    )
 
   const { files, records } = batch.data
   const reading = batch.data.status === 'extracting'
@@ -95,10 +97,10 @@ export function ImportCard({ batchId }: { batchId: string }) {
 
   return (
     <section
-      aria-label="Import"
+      aria-label={translate('import5')}
       className="mt-2 grid gap-3 rounded-xl border bg-card px-3.5 py-3 text-body-sm"
     >
-      <ul aria-label="Files" className="grid gap-1">
+      <ul aria-label={translate('files')} className="grid gap-1">
         {files.map((file) => (
           <li key={file.id} className="flex items-start gap-2">
             {file.status === 'failed' ? (
@@ -117,10 +119,10 @@ export function ImportCard({ batchId }: { batchId: string }) {
                 )}
               >
                 {file.status === 'failed'
-                  ? (file.error ?? 'Could not be read')
+                  ? (file.error ?? translate('couldNotBeRead'))
                   : file.document_type
                     ? DOCUMENT_TYPES[file.document_type]
-                    : 'Reading…'}
+                    : translate('reading2')}
               </span>
             </span>
           </li>
@@ -129,16 +131,17 @@ export function ImportCard({ batchId }: { batchId: string }) {
 
       {reading ? (
         <output className="block text-muted-foreground">
-          Read {read} of {files.length} files… You can keep chatting; the results show up here.
+          {translate('importReadProgress', { read, total: files.length })}
         </output>
       ) : records.length === 0 ? (
         <output className="block text-muted-foreground">
-          Nothing to import was found. Try clearer copies, or files that hold invoices, bills,
-          contracts, client lists or price lists.
+          {translate('nothingToImportWasFoundTryClearerCopiesOr')}
         </output>
       ) : (
         <>
-          <output className="block font-medium">Found {foundSummary(records)}.</output>
+          <output className="block font-medium">
+            {translate('importFoundSummary', { summary: foundSummary(records) })}
+          </output>
           {recordsByKind(records).map(({ kind, records: group }) => (
             <div key={kind} className="grid gap-1.5">
               <h4 className="text-caption font-medium text-muted-foreground">
@@ -169,12 +172,14 @@ export function ImportCard({ batchId }: { batchId: string }) {
                 disabled={!chosen.length || commit.isPending}
                 onClick={() => run(chosen)}
               >
-                {commit.isPending ? 'Importing…' : `Import ${chosen.length}`}
+                {commit.isPending
+                  ? translate('importing')
+                  : translate('import3', { length: chosen.length })}
               </Button>
             )}
             <Button asChild size="sm" variant="outline">
               <Link href="/documents?import=1">
-                {open.length ? 'Review and edit' : 'Open import'}
+                {open.length ? translate('reviewAndEdit') : translate('openImport')}
               </Link>
             </Button>
             {results.size > 0 && (
@@ -223,18 +228,21 @@ function RecordRow({
   onCheck: (on: boolean) => void
 }) {
   const config: ImportKindConfig = IMPORT_KINDS[record.kind]
-  const name = displayValue(record.data[config.labelKey ?? 'name']) || 'Unnamed'
+  const name = displayValue(record.data[config.labelKey ?? 'name']) || translate('unnamed')
   const issues = Object.entries(record.issues)
   const failed = result?.error?.message ?? record.error
   return (
     <li className="flex items-start gap-2">
       {record.status === 'created' ? (
-        <Check aria-label="Created" className="mt-0.5 size-4 shrink-0 text-success-solid" />
+        <Check
+          aria-label={translate('created3')}
+          className="mt-0.5 size-4 shrink-0 text-success-solid"
+        />
       ) : record.status === 'skipped' ? (
         <span className="size-4 shrink-0" />
       ) : (
         <Checkbox
-          aria-label={`Import ${name}`}
+          aria-label={translate('import4', { name: name })}
           checked={checked}
           onCheckedChange={(on) => onCheck(on === true)}
           className="mt-0.5"
@@ -256,14 +264,17 @@ function RecordRow({
         ) : (
           <span className="truncate">
             {name}
-            {record.status === 'skipped' && ' · skipped'}
+            {record.status === 'skipped' && translate('skipped3')}
           </span>
         )}
         <span className="truncate text-caption text-muted-foreground">{recordDetail(record)}</span>
         {record.duplicate && record.status !== 'created' && (
           <span className="flex items-start gap-1 text-caption text-warning">
             <Copy className="mt-0.5 size-3 shrink-0" />
-            Possible duplicate of {record.duplicate.label} ({record.duplicate.reason})
+            {translate('importDuplicate', {
+              label: record.duplicate.label,
+              reason: record.duplicate.reason,
+            })}
           </span>
         )}
         {record.status !== 'created' &&

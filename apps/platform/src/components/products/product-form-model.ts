@@ -1,5 +1,6 @@
 // The product form's state, checks and exact price preview (docs/products-contract.md).
 import { withHabits, type Habits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import {
   fromCents,
   parseDecimalInput,
@@ -92,28 +93,27 @@ const rateOf = (values: FormValues) => parseDecimalInput(values.vat_rate, 2)
 
 export function validate(values: FormValues): FieldErrors {
   const errors: FieldErrors = {}
-  if (!values.name.trim()) errors.name = 'Enter a name.'
-  else if (values.name.trim().length > 200) errors.name = 'Use at most 200 characters.'
+  if (!values.name.trim()) errors.name = translate('enterAName')
+  else if (values.name.trim().length > 200) errors.name = translate('useAtMost200Characters2')
   const price = parseDecimalInput(values.unit_price, 2, true)
-  if (!values.unit_price.trim()) errors.unit_price = 'Enter a price.'
+  if (!values.unit_price.trim()) errors.unit_price = translate('enterAPrice2')
   else if (price === null || price.startsWith('-') || toCents(price) > MAX_PRICE_CENTS)
-    errors.unit_price = 'Enter a price from 0 to 100’000’000.00 with at most two decimals.'
-  if (!/^[A-Z]{3}$/.test(values.currency)) errors.currency = 'Choose a currency.'
+    errors.unit_price = translate('enterAPriceFrom0To1000000002')
+  if (!/^[A-Z]{3}$/.test(values.currency)) errors.currency = translate('chooseACurrency')
   const rate = rateOf(values)
   if (values.vat_category === 'S') {
     if (rate === null || rate.startsWith('-') || Number(rate) > 100)
-      errors.vat_rate = 'Enter a VAT rate from 0 to 100 with at most two decimals.'
-    else if (Number(rate) === 0)
-      errors.vat_rate = 'A standard-rated item needs a rate above 0 (or choose zero rated).'
+      errors.vat_rate = translate('enterAVATRateFrom0To100With')
+    else if (Number(rate) === 0) errors.vat_rate = translate('aStandardRatedItemNeedsARateAbove0')
   }
   const sku = values.sku.trim()
-  if (sku.length > 64) errors.sku = 'Use at most 64 characters.'
+  if (sku.length > 64) errors.sku = translate('useAtMost64Characters')
   else if (sku && !/^[A-Za-z0-9._/-]+$/.test(sku))
-    errors.sku = 'Use letters, digits and . _ - / only, no spaces.'
+    errors.sku = translate('useLettersDigitsAndOnlyNoSpaces')
   if (values.type === 'product' && values.gtin.trim() && !isGtin(values.gtin))
-    errors.gtin = 'Enter a GTIN of 8, 12, 13 or 14 digits with a valid check digit.'
+    errors.gtin = translate('enterAGTINOf81213Or14')
   if (values.description.trim().length > DESCRIPTION_MAX)
-    errors.description = `Use at most ${DESCRIPTION_MAX} characters.`
+    errors.description = translate('useAtMostCharacters3', { DESCRIPTION_MAX: DESCRIPTION_MAX })
   return errors
 }
 

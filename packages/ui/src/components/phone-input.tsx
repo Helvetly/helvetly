@@ -1,7 +1,7 @@
 'use client'
-
 import { Combobox, inputClass, type Option } from '@helvetly/ui/components/combobox'
 import { COUNTRIES } from '@helvetly/ui/lib/countries'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { formatPhoneTyping, phonePlaceholder, type CountryCode } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 
@@ -38,8 +38,8 @@ export function PhoneInput({
         value={country}
         options={DIAL_OPTIONS}
         onChange={onCountryChange}
-        placeholder="Country"
-        label="Phone country"
+        placeholder={translate('country')}
+        label={translate('phoneCountry')}
         className={cn('w-[104px] shrink-0', className)}
         renderValue={(option) => (
           <span className="tabular-nums">

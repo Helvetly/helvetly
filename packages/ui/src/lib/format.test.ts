@@ -26,6 +26,7 @@ describe('formatRelative', () => {
 
 test('amounts group thousands, and zero never carries a minus', () => {
   expect(formatAmount('12500.5')).toBe('12’500.50')
+  expect(formatAmount('9007199254740993.1234')).toBe('9’007’199’254’740’993.1234')
   expect(formatAmount('-310.00')).toBe('−310.00')
   expect(formatAmount('-0.00')).toBe('0.00')
   expect(formatAmount('-0')).toBe('0.00')

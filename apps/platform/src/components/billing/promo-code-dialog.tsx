@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -15,6 +14,7 @@ import { useState, type FormEvent } from 'react'
 
 import { errorMessage } from '@/lib/api'
 import { usePromotionCode, type Promotion } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 /** Checks a promotion code with the API; the plan cards then show its price. */
 export function PromoCodeDialog({
@@ -33,7 +33,7 @@ export function PromoCodeDialog({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = code.trim().toUpperCase()
-    if (!trimmed) return setError('Enter a promotion code.')
+    if (!trimmed) return setError(translate('enterAPromotionCode'))
     check.mutate(trimmed, {
       onSuccess: (promotion) => {
         onApplied(promotion)
@@ -48,18 +48,18 @@ export function PromoCodeDialog({
     <Dialog open onOpenChange={(open) => !open && !check.isPending && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Promotion code</DialogTitle>
+          <DialogTitle>{translate('promotionCode')}</DialogTitle>
           <DialogDescription>
-            The discount shows on the plans it covers and applies at checkout.
+            {translate('theDiscountShowsOnThePlansItCoversAnd')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5" noValidate>
-          <FormField id="promotion-code" required label="Code" error={error}>
+          <FormField id="promotion-code" required label={translate('code')} error={error}>
             <Input
               {...describedBy('promotion-code', error)}
               autoComplete="off"
               maxLength={40}
-              placeholder="LAUNCH20"
+              placeholder={translate('launch20')}
               value={code}
               onChange={(event) => {
                 setCode(event.target.value)
@@ -69,10 +69,10 @@ export function PromoCodeDialog({
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={check.isPending}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={check.isPending}>
-              {check.isPending ? 'Checking…' : 'Apply'}
+              {check.isPending ? translate('checking') : translate('apply')}
             </Button>
           </DialogFooter>
         </form>

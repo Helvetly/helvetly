@@ -1,0 +1,4 @@
+{
+  "extends": "@helvetly/typescript-config/base.json",
+  "include": ["src", "*.ts"]
+}

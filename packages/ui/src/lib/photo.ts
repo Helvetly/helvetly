@@ -1,3 +1,4 @@
+import { translate } from '@helvetly/ui/lib/i18n'
 // A person's photo (the portal login's and the staff account's) is shrunk in the browser before upload
 // (docs/portal-contract.md "Photo (avatar)", docs/auth-contract.md "Photo"). The API stores PNG or JPEG; a WebP
 // pick is re-encoded here.
@@ -8,7 +9,7 @@ const MAX_BYTES = 1 << 20
 
 /** What is wrong with a picked file before anything is sent, or null. */
 export const photoProblem = (file: File) =>
-  PHOTO_TYPES.includes(file.type) ? null : 'Upload the photo as a PNG, JPEG or WebP image.'
+  PHOTO_TYPES.includes(file.type) ? null : translate('uploadThePhotoAsAPNGJPEGOrWebP')
 
 /** The size that fits `max` on each side at the same proportions; never larger than the original. */
 export function fitWithin(width: number, height: number, max = MAX_SIDE) {
@@ -22,7 +23,7 @@ export function fitWithin(width: number, height: number, max = MAX_SIDE) {
 const encode = (canvas: HTMLCanvasElement, type: string) =>
   new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('The photo could not be encoded.'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(translate('thePhotoCouldNotBeEncoded')))),
       type,
       0.9,
     ),
@@ -50,7 +51,7 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
   canvas.width = size.width
   canvas.height = size.height
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('This browser cannot resize the photo.')
+  if (!context) throw new Error(translate('thisBrowserCannotResizeThePhoto'))
   context.drawImage(bitmap, 0, 0, size.width, size.height)
   bitmap.close()
   // PNG and WebP may carry transparency: keep it as PNG while that stays small.
@@ -72,7 +73,7 @@ export async function cropPhoto(source: CanvasImageSource, area: CropArea): Prom
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = CROPPED_SIDE
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('This browser cannot crop the photo.')
+  if (!context) throw new Error(translate('thisBrowserCannotCropThePhoto'))
   paintCrop(context, source, area)
   return encode(canvas, 'image/jpeg')
 }

@@ -1,7 +1,7 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { leaveExitGhost } from '@helvetly/ui/lib/exit-ghost'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from 'cn'
 import { XIcon } from 'lucide-react'
 import { Dialog as SheetPrimitive } from 'radix-ui'
@@ -210,7 +210,7 @@ function SheetContent({
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
             <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{translate('close')}</span>
             </Button>
           </SheetPrimitive.Close>
         )}

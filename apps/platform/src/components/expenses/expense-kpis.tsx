@@ -1,9 +1,9 @@
 'use client'
-
 import { formatPercent } from '@helvetly/ui/lib/format'
 
 import { Kpi, KpiBand, Sparkline, TickGauge } from '@/components/kpi-band'
 import { useExpenseSummary } from '@/lib/expenses'
+import { translate } from '@/lib/i18n'
 import { chartNumber, formatWholeAmount, toCents } from '@/lib/invoices'
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
@@ -27,7 +27,7 @@ export function ExpenseKpis() {
       {summary && (
         <>
           <Kpi
-            label="Spent this month"
+            label={translate('spentThisMonth')}
             unit={summary.currency}
             value={formatWholeAmount(summary.this_month.amount)}
             note={
@@ -38,12 +38,12 @@ export function ExpenseKpis() {
             chart={<Sparkline values={summary.monthly.map((month) => chartNumber(month.amount))} />}
           />
           <Kpi
-            label="Unpaid"
+            label={translate('unpaid')}
             unit={summary.currency}
             value={formatWholeAmount(summary.unpaid.amount)}
             note={
               summary.overdue.count
-                ? `${summary.overdue.count} overdue`
+                ? translate('overdue', { count: summary.overdue.count })
                 : plural(summary.unpaid.count, 'bill', 'bills')
             }
             chart={
@@ -53,25 +53,31 @@ export function ExpenseKpis() {
             }
           />
           <Kpi
-            label="To reimburse"
+            label={translate('toReimburse')}
             unit={summary.currency}
             value={formatWholeAmount(summary.to_reimburse.amount)}
             note={plural(summary.to_reimburse.count, 'expense', 'expenses')}
             chart={null}
           />
           <Kpi
-            label={`Input VAT ${summary.input_vat.period.replace('-', ' ')}`}
+            label={translate('inputVAT', { value1: summary.input_vat.period.replace('-', ' ') })}
             unit={summary.currency}
             value={formatWholeAmount(summary.input_vat.amount)}
             note={
-              summary.incomplete.count ? `${summary.incomplete.count} to complete` : 'reclaimable'
+              summary.incomplete.count
+                ? translate('toComplete', { count: summary.incomplete.count })
+                : translate('reclaimable')
             }
             chart={null}
           />
           <Kpi
-            label={top?.category ? `Top: ${top.category.name}` : 'Top category'}
+            label={
+              top?.category
+                ? translate('top', { name: top.category.name })
+                : translate('topCategory')
+            }
             value={top ? formatPercent(topShare) : '—'}
-            note={top ? 'of this month' : 'nothing this month'}
+            note={top ? translate('ofThisMonth') : translate('nothingThisMonth')}
             chart={<TickGauge share={topShare} />}
           />
         </>

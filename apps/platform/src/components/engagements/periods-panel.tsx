@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -25,6 +24,7 @@ import {
   type Engagement,
   type Period,
 } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { UNITS } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 
@@ -38,9 +38,9 @@ export const unitShort = (unit: string | null) =>
 
 const INVOICE_TONE = { draft: 'gray', open: 'blue', paid: 'green' } as const
 const STATE = {
-  open: ['green', 'Current'],
-  upcoming: ['gray', 'Upcoming'],
-  closed: ['gray', 'Closed'],
+  open: ['green', translate('current')],
+  upcoming: ['gray', translate('upcoming')],
+  closed: ['gray', translate('closed')],
 } as const
 
 /** Every period with what was used, its invoices, and the ways to invoice it. */
@@ -61,7 +61,10 @@ export function PeriodsPanel({
   // Invoicing a period creates an invoice, so it needs both.
   const canInvoice = writeEngagements && writeInvoices
   const [sending, setSending] = useState<Period | null>(null)
-  const detailLabel = { summary: 'One summary line', per_entry: 'One line per entry' } as const
+  const detailLabel = {
+    summary: translate('oneSummaryLine'),
+    per_entry: translate('oneLinePerEntry'),
+  } as const
   const otherDetail = engagement.invoice_detail === 'summary' ? 'per_entry' : 'summary'
   const invoice = useMutation({
     mutationFn: ({
@@ -90,10 +93,13 @@ export function PeriodsPanel({
         const primary = !canInvoice
           ? null
           : upfrontOpen
-            ? { label: 'Invoice upfront', run: () => invoice.mutate({ period, kind: 'advance' }) }
+            ? {
+                label: translate('invoiceUpfront'),
+                run: () => invoice.mutate({ period, kind: 'advance' }),
+              }
             : hasUsage
               ? {
-                  label: 'Invoice usage',
+                  label: translate('invoiceUsage2'),
                   run: () =>
                     invoice.mutate({ period, kind: 'usage', detail: engagement.invoice_detail }),
                 }
@@ -121,9 +127,13 @@ export function PeriodsPanel({
                   </Button>
                 )}
                 <DropdownMenu>
-                  <Tip label="More actions">
+                  <Tip label={translate('moreActions')}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="Period actions">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={translate('periodActions')}
+                      >
                         <Ellipsis />
                       </Button>
                     </DropdownMenuTrigger>
@@ -135,7 +145,7 @@ export function PeriodsPanel({
                         onSelect={() => invoice.mutate({ period, kind: 'advance' })}
                       >
                         <FilePlus2 />
-                        {upfrontOpen ? 'Invoice upfront' : 'Invoiced upfront'}
+                        {upfrontOpen ? translate('invoiceUpfront') : translate('invoicedUpfront')}
                       </DropdownMenuItem>
                     )}
                     {canInvoice && primary?.label !== 'Invoice usage' && (
@@ -150,7 +160,7 @@ export function PeriodsPanel({
                         }
                       >
                         <FilePlus2 />
-                        Invoice usage
+                        {translate('invoiceUsage2')}
                       </DropdownMenuItem>
                     )}
                     {canInvoice && (
@@ -161,7 +171,8 @@ export function PeriodsPanel({
                         }
                       >
                         <FilePlus2 />
-                        Invoice usage, {detailLabel[otherDetail].toLowerCase()}
+                        {translate('invoiceUsage')}
+                        {detailLabel[otherDetail].toLowerCase()}
                       </DropdownMenuItem>
                     )}
                     {canInvoice && <DropdownMenuSeparator />}
@@ -171,12 +182,12 @@ export function PeriodsPanel({
                       }
                     >
                       <Download />
-                      Download report
+                      {translate('downloadReport')}
                     </DropdownMenuItem>
                     {writeEngagements && (
                       <DropdownMenuItem onSelect={() => setSending(period)}>
                         <Mail />
-                        Send report…
+                        {translate('sendReport')}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -197,12 +208,13 @@ export function PeriodsPanel({
               <p className="flex items-center gap-1.5 text-body-sm text-warning">
                 <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
                 <span>
-                  {period.unearned} {short} were invoiced upfront but not delivered.{' '}
+                  {period.unearned} {short}
+                  {translate('wereInvoicedUpfrontButNotDelivered')}{' '}
                   <RecordLink
                     href={`/invoices?id=${encodeURIComponent(period.advance_invoice.id)}`}
                     className="underline underline-offset-2"
                   >
-                    Issue a credit note?
+                    {translate('issueACreditNote')}
                   </RecordLink>
                 </span>
               </p>
@@ -212,7 +224,8 @@ export function PeriodsPanel({
                 {period.invoices.map((link) => (
                   <RecordLink key={link.id} href={`/invoices?id=${encodeURIComponent(link.id)}`}>
                     <StatusBadge tone={INVOICE_TONE[link.status]}>
-                      {link.kind === 'advance' ? 'Upfront' : 'Usage'} · {link.number ?? 'Draft'}
+                      {link.kind === 'advance' ? translate('upfront') : translate('usage')} ·{' '}
+                      {link.number ?? translate('draft')}
                     </StatusBadge>
                   </RecordLink>
                 ))}

@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { PortalInvoices } from '@/components/portal-invoices'
 
-export const metadata: Metadata = { title: 'Invoices' }
-
 export default function PortalInvoicesPage() {
-  return <PortalInvoices />
+  return (
+    <>
+      <PageTitle message="invoices" />
+      <PortalInvoices />
+    </>
+  )
 }

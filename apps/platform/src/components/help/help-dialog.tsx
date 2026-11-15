@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import { toast } from 'sonner'
 
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { feedbackApi } from '@/lib/feedback'
+import { translate } from '@/lib/i18n'
 
 import { FeedbackForm } from './feedback-form'
 
@@ -43,10 +43,10 @@ export function HelpDialog({
       >
         <header className="shrink-0 px-6 pt-6 pb-1">
           <DialogTitle className="text-[17px] font-medium tracking-[-0.01em]">
-            Help & feedback
+            {translate('helpFeedback')}
           </DialogTitle>
           <DialogDescription className="mt-1 text-[13.5px] text-muted-foreground">
-            Tell the Helvetly team what went wrong or what would make your work easier.
+            {translate('tellTheHelvetlyTeamWhatWentWrongOrWhat')}
           </DialogDescription>
         </header>
 
@@ -64,13 +64,15 @@ export function HelpDialog({
                 <HeidiSparkle className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-medium">Have a question?</span>
+                <span className="block text-[13.5px] font-medium">
+                  {translate('haveAQuestion')}
+                </span>
                 <span className="block text-[12.5px] text-muted-foreground">
-                  Ask Heidi how to do anything in Helvetly.
+                  {translate('askHeidiHowToDoAnythingInHelvetly')}
                 </span>
               </span>
               <span className="flex items-center gap-1 text-[13px] font-medium text-heidi-ink">
-                Ask Heidi
+                {translate('askHeidi')}
                 <ArrowRight className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
               </span>
             </button>
@@ -83,7 +85,7 @@ export function HelpDialog({
           onCancel={() => onOpenChange(false)}
           onSent={() => {
             onOpenChange(false)
-            toast.success('Thanks! Your feedback was sent.')
+            toast.success(translate('thanksYourFeedbackWasSent'))
           }}
         />
       </DialogContent>

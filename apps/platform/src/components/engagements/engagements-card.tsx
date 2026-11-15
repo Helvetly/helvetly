@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight } from 'lucide-react'
@@ -7,6 +6,7 @@ import Link from 'next/link'
 
 import { RecordLink } from '@/components/record-link'
 import { getEngagementSummary, listEngagements, periodLabel } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 
 import { EngagementStatusBadge } from './engagement-bits'
@@ -30,21 +30,22 @@ export function EngagementsCard() {
   return (
     <section className="flex min-w-0 flex-col rounded-xl bg-card shadow-elevation-1">
       <div className="flex h-12 items-center justify-between gap-3 border-b px-4">
-        <h2 className="text-[15px]">Engagements</h2>
+        <h2 className="text-[15px]">{translate('engagements')}</h2>
         <Button asChild variant="ghost" size="sm" className="font-normal text-muted-foreground">
           <Link href="/engagements">
-            All engagements <ArrowRight className="stroke-[1.5]" />
+            {translate('allEngagements')}
+            <ArrowRight className="stroke-[1.5]" />
           </Link>
         </Button>
       </div>
       <p className="flex gap-6 px-4 pt-3 text-[13px] text-muted-foreground">
         <span>
           <span className="text-[15px] text-foreground tabular-nums">{stats.ending_soon}</span>{' '}
-          ending soon
+          {translate('endingSoon2')}
         </span>
         <span>
-          <span className="text-[15px] text-foreground tabular-nums">{stats.to_invoice}</span> to
-          invoice
+          <span className="text-[15px] text-foreground tabular-nums">{stats.to_invoice}</span>
+          {translate('toInvoice')}
         </span>
       </p>
       <ul className="py-1.5">

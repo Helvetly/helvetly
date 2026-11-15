@@ -1,7 +1,8 @@
+import { languageTag } from '@helvetly/i18n'
 import type { Option } from '@helvetly/ui/components/combobox'
 import { getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min'
 
-const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+const regionNames = new Intl.DisplayNames([languageTag], { type: 'region' })
 export const countryName = (code: string) => regionNames.of(code) ?? code
 
 /** Every country, Switzerland first, then by name. */

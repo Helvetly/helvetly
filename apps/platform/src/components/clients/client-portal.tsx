@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useResendPortalInvite, type Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { useAuthConfig } from '@/lib/queries'
 
 /** The address a client signs in to the portal with: its email, else its billing email ('' for none). */
@@ -35,18 +36,24 @@ export function invitationStatus(
 ): InvitationStatus {
   if (client.portal_signed_in_at)
     return {
-      label: `Signed in ${formatDate(client.portal_signed_in_at)}`,
+      label: translate('signedIn2', { value1: formatDate(client.portal_signed_in_at) }),
       tone: 'green',
       action: 'Resend',
     }
   if (client.portal_invited_at)
-    return { label: `Sent ${formatDate(client.portal_invited_at)}`, tone: 'blue', action: 'Resend' }
-  return { label: 'Not sent', tone: 'gray', action: 'Send invitation' }
+    return {
+      label: translate('sent', { value1: formatDate(client.portal_invited_at) }),
+      tone: 'blue',
+      action: 'Resend',
+    }
+  return { label: translate('notSent'), tone: 'gray', action: 'Send invitation' }
 }
 
 /** The invitation line in the client form, for a saved client. */
 export const invitationText = (invitedAt: string | null | undefined) =>
-  invitedAt ? `Invitation sent ${formatDate(invitedAt)}.` : 'No invitation sent yet.'
+  invitedAt
+    ? translate('invitationSent', { value1: formatDate(invitedAt) })
+    : translate('noInvitationSentYet')
 
 /** An icon-only control with its name in a tooltip. */
 function Tip({ label, children }: { label: string; children: ReactElement }) {
@@ -106,41 +113,42 @@ export function PortalAccess({
 
   if (!on)
     return (
-      <StatusRow icon={KeyRound} label="Access">
-        <StatusBadge>Off</StatusBadge>
+      <StatusRow icon={KeyRound} label={translate('access')}>
+        <StatusBadge>{translate('off')}</StatusBadge>
         <span className="text-body-sm text-muted-foreground">
-          Turn it on to let the client sign in and see its invoices, engagements and shared
-          documents.
+          {translate('turnItOnToLetTheClientSignIn')}
         </span>
       </StatusRow>
     )
 
   return (
     <div className="grid">
-      <StatusRow icon={KeyRound} label="Access">
-        <StatusBadge tone="green">On</StatusBadge>
+      <StatusRow icon={KeyRound} label={translate('access')}>
+        <StatusBadge tone="green">{translate('on')}</StatusBadge>
         <span className="text-body-sm text-muted-foreground max-sm:hidden">
-          Sees its invoices, engagements and shared documents
+          {translate('seesItsInvoicesEngagementsAndSharedDocuments')}
         </span>
       </StatusRow>
       {login ? (
         <>
-          <StatusRow icon={AtSign} label="Signs in with">
+          <StatusRow icon={AtSign} label={translate('signsInWith2')}>
             <span className="truncate">{login}</span>
             {!client.email && (
-              <span className="text-body-sm text-muted-foreground">billing email</span>
+              <span className="text-body-sm text-muted-foreground">
+                {translate('billingEmail2')}
+              </span>
             )}
           </StatusRow>
           <StatusRow
             icon={Send}
-            label="Invitation"
+            label={translate('invitation')}
             action={
               canWrite && (
                 <Tip
                   label={
                     invitation.action === 'Resend'
-                      ? `Email ${login} the portal link again`
-                      : `Email ${login} the portal link`
+                      ? translate('emailThePortalLinkAgain', { login: login })
+                      : translate('emailThePortalLink', { login: login })
                   }
                 >
                   <Button
@@ -149,7 +157,8 @@ export function PortalAccess({
                     disabled={resend.isPending}
                     onClick={() =>
                       resend.mutate(client.id, {
-                        onSuccess: () => toast.success(`Invitation sent to ${login}.`),
+                        onSuccess: () =>
+                          toast.success(translate('invitationSentTo', { login: login })),
                         onError: toastError,
                       })
                     }
@@ -186,12 +195,12 @@ function NoAddressWarning({ onAddEmail }: { onAddEmail?: () => void }) {
             onClick={onAddEmail}
             className="cursor-pointer underline underline-offset-2 hover:no-underline"
           >
-            Add an email
+            {translate('addAnEmail')}
           </button>
         ) : (
-          'Add an email'
+          translate('addAnEmail')
         )}{' '}
-        to let this client sign in.
+        {translate('toLetThisClientSignIn')}
       </span>
     </Callout>
   )
@@ -218,8 +227,11 @@ export function PortalStatus({
     <div className="grid gap-2">
       {login ? (
         <p className="text-body">
-          Signs in with <strong className="font-medium">{login}</strong>
-          {fallback && <span className="text-muted-foreground"> · the billing email</span>}
+          {translate('signsInWith')}
+          <strong className="font-medium">{login}</strong>
+          {fallback && (
+            <span className="text-muted-foreground">{translate('theBillingEmail')}</span>
+          )}
         </p>
       ) : (
         <NoAddressWarning onAddEmail={onAddEmail} />
@@ -234,29 +246,31 @@ export function PortalStatus({
 function PortalLinkActions({ url }: { url: string }) {
   return (
     <>
-      <Tip label="Copy portal link">
+      <Tip label={translate('copyPortalLink')}>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Copy portal link"
+          aria-label={translate('copyPortalLink')}
           className="text-muted-foreground"
           onClick={() =>
-            void navigator.clipboard.writeText(`${url}/`).then(() => toast('Portal link copied.'))
+            void navigator.clipboard
+              .writeText(`${url}/`)
+              .then(() => toast(translate('portalLinkCopied')))
           }
         >
           <Copy />
         </Button>
       </Tip>
-      <Tip label="Open the portal">
+      <Tip label={translate('openThePortal')}>
         <Button
           asChild
           variant="ghost"
           size="icon-sm"
-          aria-label="Open the portal"
+          aria-label={translate('openThePortal')}
           className="text-muted-foreground"
         >
-          <a href={`${url}/`} target="_blank" rel="noreferrer">
+          <a href={localizedHref(`${url}/`)} target="_blank" rel="noreferrer">
             <ExternalLink />
           </a>
         </Button>
@@ -272,9 +286,9 @@ function PortalLinkRow() {
   const url = useAuthConfig().data?.portal_url
   if (!url) return null
   return (
-    <StatusRow icon={Globe} label="Portal" action={<PortalLinkActions url={url} />}>
+    <StatusRow icon={Globe} label={translate('portal')} action={<PortalLinkActions url={url} />}>
       <a
-        href={`${url}/`}
+        href={localizedHref(`${url}/`)}
         target="_blank"
         rel="noreferrer"
         className="truncate underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"
@@ -291,9 +305,9 @@ export function PortalLink() {
   if (!url) return null
   return (
     <p className="flex min-w-0 items-center gap-1 text-body-sm text-muted-foreground">
-      <span className="shrink-0">Clients sign in at</span>
+      <span className="shrink-0">{translate('clientsSignInAt')}</span>
       <a
-        href={`${url}/`}
+        href={localizedHref(`${url}/`)}
         target="_blank"
         rel="noreferrer"
         className="min-w-0 truncate text-foreground underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"

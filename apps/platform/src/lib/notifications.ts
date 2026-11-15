@@ -1,5 +1,4 @@
 'use client'
-
 // The person's notifications and their settings, typed by hand from docs/notifications-contract.md.
 // Served by Go; the handlers in src/mocks/notifications.ts are a test-only fake.
 import {
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react'
 
 import { request, type ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type Notification = {
   id: string
@@ -56,84 +56,96 @@ type Category = { label: string; icon: LucideIcon }
 /** The categories in the server's order, each with its icon (the tile is neutral, the icon tells the type). */
 export const CATEGORIES: Record<string, Category> = {
   invoices: {
-    label: 'Invoices & payments',
+    label: translate('invoicesPayments'),
     icon: ReceiptText,
   },
   clients: {
-    label: 'Clients & portal',
+    label: translate('clientsPortal'),
     icon: Building2,
   },
   documents: {
-    label: 'Documents & signatures',
+    label: translate('documentsSignatures'),
     icon: FileSignature,
   },
   expenses: {
-    label: 'Expenses',
+    label: translate('expenses'),
     icon: Wallet,
   },
   engagements: {
-    label: 'Engagements',
+    label: translate('engagements'),
     icon: ClipboardCheck,
   },
   team: {
-    label: 'Team',
+    label: translate('team'),
     icon: Users,
   },
   billing: {
-    label: 'Billing',
+    label: translate('billing'),
     icon: CreditCard,
   },
   books: {
-    label: 'Books & VAT',
+    label: translate('booksVAT'),
     icon: BookCheck,
   },
   ai: {
-    label: 'AI import & Heidi',
+    label: translate('aiImportHeidi'),
     icon: Sparkles,
   },
 }
 
-const OTHER: Category = { label: 'Other', icon: Bell }
+const OTHER: Category = { label: translate('other'), icon: Bell }
 export const categoryOf = (category: string) => CATEGORIES[category] ?? OTHER
 
-const MANAGERS = 'For owners and admins'
-const YOURS = 'Requests you sent'
+const MANAGERS = translate('forOwnersAndAdmins')
+const YOURS = translate('requestsYouSent')
 
 /** What each event is called in the settings; an event a newer server adds stays unlisted until named here. */
 export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
-  'invoice.paid': { label: 'Invoice paid', hint: MANAGERS },
-  'invoice.partly_paid': { label: 'Invoice partly paid', hint: MANAGERS },
-  'invoice.overdue': { label: 'Invoice overdue', hint: MANAGERS },
-  'dunning.sent': { label: 'Payment reminder sent', hint: MANAGERS },
-  'instalment.issued': { label: 'Instalment issued', hint: MANAGERS },
-  'quote.accepted': { label: 'Quote accepted', hint: MANAGERS },
-  'quote.declined': { label: 'Quote declined', hint: MANAGERS },
-  'einvoice.delivery_failed': { label: 'E-invoice not delivered', hint: MANAGERS },
-  'einvoice.delivered': { label: 'E-invoice delivered', hint: MANAGERS },
-  'client.change_requested': { label: 'Client change request', hint: MANAGERS },
-  'portal.first_sign_in': { label: 'First portal sign-in', hint: MANAGERS },
-  'portal.document_viewed': { label: 'Shared document opened', hint: 'Documents you shared' },
-  'signature.viewed': { label: 'Signature request opened', hint: YOURS },
-  'signature.signed': { label: 'Someone signed', hint: YOURS },
-  'signature.completed': { label: 'Document signed', hint: YOURS },
-  'signature.declined': { label: 'Signature declined', hint: YOURS },
-  'expense.reimbursed': { label: 'Expense reimbursed', hint: 'Expenses you paid' },
-  'engagement.draft_created': { label: 'Engagement draft ready', hint: MANAGERS },
-  'engagement.over_committed': { label: 'Engagement over commitment', hint: MANAGERS },
-  'member.invited': { label: 'Someone invited', hint: MANAGERS },
-  'member.joined': { label: 'Someone joined', hint: MANAGERS },
-  'member.role_changed': { label: 'Your role changed', hint: 'About you' },
-  'member.removed': { label: 'Someone removed', hint: MANAGERS },
-  'billing.trial_ending': { label: 'Trial ending', hint: 'For owners' },
-  'billing.payment_failed': { label: 'Subscription payment failed', hint: 'For owners' },
-  'billing.payment_disputed': { label: 'Payment disputed', hint: MANAGERS },
-  'billing.subscription_changed': { label: 'Subscription changed', hint: 'For owners' },
-  'billing.limit_near': { label: 'Plan limit nearly reached', hint: MANAGERS },
-  'period.closed': { label: 'Month closed', hint: MANAGERS },
-  'period.reopened': { label: 'Month reopened', hint: MANAGERS },
-  'vat.return_due': { label: 'VAT return due', hint: MANAGERS },
-  'import.ready': { label: 'Import ready to review', hint: 'Imports you started' },
-  'import.failed': { label: 'Import failed', hint: 'Imports you started' },
+  'invoice.paid': { label: translate('invoicePaid'), hint: MANAGERS },
+  'invoice.partly_paid': { label: translate('invoicePartlyPaid'), hint: MANAGERS },
+  'invoice.overdue': { label: translate('invoiceOverdue'), hint: MANAGERS },
+  'dunning.sent': { label: translate('paymentReminderSent'), hint: MANAGERS },
+  'instalment.issued': { label: translate('instalmentIssued'), hint: MANAGERS },
+  'quote.accepted': { label: translate('quoteAccepted'), hint: MANAGERS },
+  'quote.declined': { label: translate('quoteDeclined'), hint: MANAGERS },
+  'einvoice.delivery_failed': { label: translate('eInvoiceNotDelivered'), hint: MANAGERS },
+  'einvoice.delivered': { label: translate('eInvoiceDelivered'), hint: MANAGERS },
+  'client.change_requested': { label: translate('clientChangeRequest'), hint: MANAGERS },
+  'portal.first_sign_in': { label: translate('firstPortalSignIn'), hint: MANAGERS },
+  'portal.document_viewed': {
+    label: translate('sharedDocumentOpened'),
+    hint: translate('documentsYouShared'),
+  },
+  'signature.viewed': { label: translate('signatureRequestOpened'), hint: YOURS },
+  'signature.signed': { label: translate('someoneSigned'), hint: YOURS },
+  'signature.completed': { label: translate('documentSigned'), hint: YOURS },
+  'signature.declined': { label: translate('signatureDeclined'), hint: YOURS },
+  'expense.reimbursed': {
+    label: translate('expenseReimbursed'),
+    hint: translate('expensesYouPaid'),
+  },
+  'engagement.draft_created': { label: translate('engagementDraftReady'), hint: MANAGERS },
+  'engagement.over_committed': { label: translate('engagementOverCommitment'), hint: MANAGERS },
+  'member.invited': { label: translate('someoneInvited'), hint: MANAGERS },
+  'member.joined': { label: translate('someoneJoined'), hint: MANAGERS },
+  'member.role_changed': { label: translate('yourRoleChanged'), hint: translate('aboutYou') },
+  'member.removed': { label: translate('someoneRemoved'), hint: MANAGERS },
+  'billing.trial_ending': { label: translate('trialEnding'), hint: translate('forOwners') },
+  'billing.payment_failed': {
+    label: translate('subscriptionPaymentFailed'),
+    hint: translate('forOwners'),
+  },
+  'billing.payment_disputed': { label: translate('paymentDisputed'), hint: MANAGERS },
+  'billing.subscription_changed': {
+    label: translate('subscriptionChanged'),
+    hint: translate('forOwners'),
+  },
+  'billing.limit_near': { label: translate('planLimitNearlyReached'), hint: MANAGERS },
+  'period.closed': { label: translate('monthClosed'), hint: MANAGERS },
+  'period.reopened': { label: translate('monthReopened'), hint: MANAGERS },
+  'vat.return_due': { label: translate('vatReturnDue'), hint: MANAGERS },
+  'import.ready': { label: translate('importReadyToReview'), hint: translate('importsYouStarted') },
+  'import.failed': { label: translate('importFailed'), hint: translate('importsYouStarted') },
 }
 
 /** How long a read notification stays in the bell's bubble; the Notifications page keeps it. */
@@ -290,7 +302,13 @@ export function byDay(items: Notification[], now = new Date()) {
   for (const item of items) {
     const at = new Date(item.created_at)
     const label =
-      at >= today ? 'Today' : at >= yesterday ? 'Yesterday' : at >= monday ? 'This week' : 'Earlier'
+      at >= today
+        ? translate('today')
+        : at >= yesterday
+          ? translate('yesterday')
+          : at >= monday
+            ? translate('thisWeek')
+            : translate('earlier')
     const last = days.at(-1)
     if (last?.label === label) last.items.push(item)
     else days.push({ label, items: [item] })

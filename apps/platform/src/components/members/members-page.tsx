@@ -1,5 +1,4 @@
 'use client'
-
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
@@ -14,6 +13,7 @@ import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import {
   assignableRoles,
   canManage,
@@ -33,7 +33,7 @@ import { AccessDialog } from './access-dialog'
 import { copyLink, InviteDialog } from './invite-dialog'
 import { AccessBadge, InvitePanel, LastActive, MemberCell, TeamSummary } from './member-bits'
 
-const TABS = ['All', 'Invited']
+const TABS = [translate('all'), translate('invited')]
 const TAB_ICONS = [Users, Mail]
 
 type Pending =
@@ -77,7 +77,9 @@ export function MembersPage() {
         onSuccess: (sent) => {
           setLinks((current) => ({ ...current, [invitation.id]: sent.url }))
           toast.success(
-            sent.email_sent ? 'Invitation sent again.' : 'Email not sent: copy the link.',
+            sent.email_sent
+              ? translate('invitationSentAgain')
+              : translate('emailNotSentCopyTheLink'),
           )
         },
         onError: toastError,
@@ -90,7 +92,7 @@ export function MembersPage() {
     if (!approved || !current) return
     if (current.kind === 'revoke')
       revoke.mutate(current.invitation.id, {
-        onSuccess: () => toast.success('Invitation revoked.'),
+        onSuccess: () => toast.success(translate('invitationRevoked')),
         onError: toastError,
       })
     else
@@ -98,7 +100,7 @@ export function MembersPage() {
         // Leaving ends this session, so there is nothing left to show here.
         onSuccess: () => {
           if (current.kind === 'leave') router.replace('/login')
-          else toast.success(`${current.member.name} removed.`)
+          else toast.success(translate('removed2', { name: current.member.name }))
         },
         onError: toastError,
       })
@@ -112,7 +114,7 @@ export function MembersPage() {
         savedViews={false}
         active={tab}
         onSelect={setTab}
-        primary={manager ? 'Invite member' : undefined}
+        primary={manager ? translate('inviteMember') : undefined}
         onPrimary={() => setInviting(true)}
       />
       <div className="flex flex-1 flex-col">
@@ -120,7 +122,7 @@ export function MembersPage() {
         {error ? (
           <LoadProblem
             error={error}
-            what="The team"
+            what={translate('theTeam')}
             onRetry={() => {
               void members.refetch()
               void invitations.refetch()
@@ -131,20 +133,22 @@ export function MembersPage() {
         ) : empty ? (
           <State
             icon={<UserX />}
-            title="Nobody here"
-            text="Nobody matches this view."
+            title={translate('nobodyHere')}
+            text={translate('nobodyMatchesThisView')}
             action={null}
           />
         ) : (
           <table className="w-full table-fixed text-[15px]">
             <thead>
               <tr className="h-11 border-b bg-muted/50 text-left text-[13px] text-muted-foreground">
-                <th className="w-[34%] pl-5 font-medium">Member</th>
-                <th className="w-[26%] px-3 font-medium">Role and access</th>
-                <th className="hidden w-[20%] px-3 font-medium @4xl:table-cell">Last active</th>
-                <th className="w-[14%] px-3 font-medium">Status</th>
+                <th className="w-[34%] pl-5 font-medium">{translate('member')}</th>
+                <th className="w-[26%] px-3 font-medium">{translate('roleAndAccess')}</th>
+                <th className="hidden w-[20%] px-3 font-medium @4xl:table-cell">
+                  {translate('lastActive')}
+                </th>
+                <th className="w-[14%] px-3 font-medium">{translate('status')}</th>
                 <th className="w-12">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{translate('actions')}</span>
                 </th>
               </tr>
             </thead>
@@ -171,10 +175,15 @@ export function MembersPage() {
                       <LastActive iso={member.last_active_at} />
                     </td>
                     <td className="px-3">
-                      <StatusBadge tone="green">Active</StatusBadge>
+                      <StatusBadge tone="green">{translate('active')}</StatusBadge>
                     </td>
                     <td className="pr-3 text-right">
-                      {menu && <RowMenuButton label={`Actions for ${member.name}`} menu={menu} />}
+                      {menu && (
+                        <RowMenuButton
+                          label={translate('actionsFor', { name: member.name })}
+                          menu={menu}
+                        />
+                      )}
                     </td>
                   </tr>
                 )
@@ -184,7 +193,7 @@ export function MembersPage() {
                   <td className="pl-5">
                     <MemberCell
                       name={invitation.email}
-                      detail={`Invited by ${invitation.invited_by}`}
+                      detail={translate('invitedBy', { invited_by: invitation.invited_by })}
                     />
                   </td>
                   <td className="px-3">
@@ -194,15 +203,15 @@ export function MembersPage() {
                     </span>
                   </td>
                   <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
-                    {`Expires ${formatDate(invitation.expires_at)}`}
+                    {translate('expires3', { value1: formatDate(invitation.expires_at) })}
                   </td>
                   <td className="px-3">
-                    <StatusBadge tone="blue">Invited</StatusBadge>
+                    <StatusBadge tone="blue">{translate('invited')}</StatusBadge>
                   </td>
                   <td className="pr-3 text-right">
                     {manager && (
                       <RowMenuButton
-                        label={`Actions for ${invitation.email}`}
+                        label={translate('actionsFor3', { email: invitation.email })}
                         menu={invitationMenu(invitation, links[invitation.id], invitationRun)}
                       />
                     )}
@@ -257,20 +266,23 @@ function memberMenu(
         ))}
         {roles.length > 0 && member.role === 'member' && (
           <Item onSelect={() => run.editAccess(member)}>
-            <KeyRound /> Change access…
+            <KeyRound />
+            {translate('changeAccess')}
           </Item>
         )}
         {roles.length > 0 && !member.is_you && <Separator />}
         {roles.length > 0 && !member.is_you && (
           <Item variant="destructive" onSelect={() => run.ask({ kind: 'remove', member })}>
-            <UserX /> Remove from workspace
+            <UserX />
+            {translate('removeFromWorkspace')}
           </Item>
         )}
         {member.is_you && (
           <>
             {roles.length > 0 && <Separator />}
             <Item variant="destructive" onSelect={() => run.ask({ kind: 'leave', member })}>
-              <LogOut /> Leave workspace
+              <LogOut />
+              {translate('leaveWorkspace2')}
             </Item>
           </>
         )}
@@ -290,15 +302,18 @@ function invitationMenu(
       <>
         {link && (
           <Item onSelect={() => void copyLink(link)}>
-            <Link2 /> Copy link
+            <Link2 />
+            {translate('copyLink')}
           </Item>
         )}
         <Item onSelect={() => run.resend(invitation)}>
-          <RefreshCw /> Resend
+          <RefreshCw />
+          {translate('resend')}
         </Item>
         <Separator />
         <Item variant="destructive" onSelect={() => run.ask({ kind: 'revoke', invitation })}>
-          <Trash2 /> Revoke
+          <Trash2 />
+          {translate('revoke4')}
         </Item>
       </>
     ),
@@ -306,24 +321,24 @@ function invitationMenu(
 }
 
 function confirmText(pending: Pending, seatCost: string | null | undefined) {
-  const saving = seatCost ? ` Saves ${seatCost}, prorated by Stripe.` : ''
+  const saving = seatCost ? translate('savesProratedByStripe', { seatCost: seatCost }) : ''
   if (pending.kind === 'revoke')
     return {
-      title: `Revoke the invitation for ${pending.invitation.email}?`,
-      body: 'The link stops working.',
-      confirmLabel: 'Revoke invitation',
+      title: translate('revokeTheInvitationFor', { email: pending.invitation.email }),
+      body: translate('theLinkStopsWorking'),
+      confirmLabel: translate('revokeInvitation'),
     }
   if (pending.kind === 'leave')
     return {
-      title: 'Leave this workspace?',
-      body: `You lose access until someone invites you again.${saving}`,
-      confirmLabel: 'Leave workspace',
+      title: translate('leaveThisWorkspace'),
+      body: translate('youLoseAccessUntilSomeoneInvitesYouAgain', { saving: saving }),
+      confirmLabel: translate('leaveWorkspace'),
       confirmIcon: <LogOut />,
     }
   return {
-    title: `Remove ${pending.member.name}?`,
-    body: `They lose access to this workspace right away.${saving}`,
-    confirmLabel: 'Remove member',
+    title: translate('remove3', { name: pending.member.name }),
+    body: translate('theyLoseAccessToThisWorkspaceRightAway', { saving: saving }),
+    confirmLabel: translate('removeMember'),
     confirmIcon: <UserX />,
   }
 }

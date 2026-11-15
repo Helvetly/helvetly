@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -21,6 +20,7 @@ import { Check, FilePenLine, LoaderCircle, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import { getPortalSession, portalKeys } from '@/lib/portal'
 import {
   decidePortalQuote,
@@ -36,10 +36,10 @@ import {
 import { cardClass, DownloadLink, EmptyState, PageHeader, RetryAlert } from './portal-bits'
 
 const STATUS: Record<PortalQuote['status'], [Tone, string]> = {
-  sent: ['blue', 'Awaiting your answer'],
-  accepted: ['green', 'Accepted'],
-  declined: ['red', 'Declined'],
-  expired: ['gray', 'Expired'],
+  sent: ['blue', translate('awaitingYourAnswer')],
+  accepted: ['green', translate('accepted2')],
+  declined: ['red', translate('declined2')],
+  expired: ['gray', translate('expired')],
 }
 
 export function QuoteStatus({ quote }: { quote: PortalQuote }) {
@@ -49,16 +49,19 @@ export function QuoteStatus({ quote }: { quote: PortalQuote }) {
 
 /** What the quote's state means for the client, in one line. */
 function stateText(quote: PortalQuote) {
-  if (quote.status === 'sent') return `Valid until ${formatDate(quote.valid_until)}`
-  if (quote.status === 'expired') return 'Expired – ask for a new quote'
-  const verb = quote.status === 'accepted' ? 'Accepted' : 'Declined'
-  return quote.decided_at ? `${verb} on ${formatDate(quote.decided_at)}` : verb
+  if (quote.status === 'sent')
+    return translate('validUntil2', { value1: formatDate(quote.valid_until) })
+  if (quote.status === 'expired') return translate('expiredAskForANewQuote')
+  const verb = quote.status === 'accepted' ? translate('accepted2') : translate('declined2')
+  return quote.decided_at
+    ? translate('dynamicOn2', { verb: verb, value2: formatDate(quote.decided_at) })
+    : verb
 }
 
 export const QuotePdfLink = ({ quote }: { quote: PortalQuote }) => (
   <DownloadLink
     href={portalQuotePdfUrl(quote.id)}
-    label={`Download PDF of quote ${quoteName(quote)}`}
+    label={translate('downloadPDFOfQuote', { value1: quoteName(quote) })}
     text="PDF"
   />
 )
@@ -74,7 +77,7 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
   })
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
-  const supplier = session.data?.workspace.name ?? 'Your supplier'
+  const supplier = session.data?.workspace.name ?? translate('yourSupplier')
   const accept = decision === 'accept'
   const name = quoteName(quote)
 
@@ -84,7 +87,13 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
       queryClient.setQueryData<PortalQuote[]>(portalKeys.quotes, (list) =>
         list?.map((q) => (q.id === answered.id ? answered : q)),
       )
-      toast.success(`Quote ${name} ${accept ? 'accepted' : 'declined'}. ${supplier} has been told.`)
+      toast.success(
+        translate('quoteHasBeenTold', {
+          name: name,
+          value2: accept ? translate('accepted') : translate('declined'),
+          supplier: supplier,
+        }),
+      )
       onClose()
     },
     onError: (failure) => {
@@ -109,22 +118,31 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
           <DialogHeader>
             <DialogTitle>
               {accept
-                ? `Accept quote ${name} for ${formatMoney(quote.total, quote.currency)}?`
-                : `Decline quote ${name}?`}
+                ? translate('acceptQuoteFor', {
+                    name: name,
+                    value2: formatMoney(quote.total, quote.currency),
+                  })
+                : translate('declineQuote3', { name: name })}
             </DialogTitle>
             <DialogDescription>
               {accept
-                ? `${supplier} is told right away and can start the work. You can’t change your answer here afterwards.`
-                : `${supplier} is told right away. A short note on why helps them send a better quote.`}
+                ? translate('isToldRightAwayAndCanStartTheWork', { supplier: supplier })
+                : translate('isToldRightAwayAShortNoteOnWhy', { supplier: supplier })}
             </DialogDescription>
           </DialogHeader>
-          <FormField id="quote-note" label="Note (optional)" hint={`Up to ${NOTE_MAX} characters.`}>
+          <FormField
+            id="quote-note"
+            label={translate('noteOptional')}
+            hint={translate('upToCharacters', { NOTE_MAX: NOTE_MAX })}
+          >
             <Textarea
               id="quote-note"
               value={note}
               maxLength={NOTE_MAX}
               disabled={decide.isPending}
-              placeholder={accept ? 'e.g. Please start on 1 December.' : 'e.g. The budget changed.'}
+              placeholder={
+                accept ? translate('eGPleaseStartOn1December') : translate('eGTheBudgetChanged')
+              }
               onChange={(event) => setNote(event.target.value)}
             />
           </FormField>
@@ -135,7 +153,7 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={decide.isPending}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button
               type="submit"
@@ -151,11 +169,11 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
               )}
               {decide.isPending
                 ? accept
-                  ? 'Accepting…'
-                  : 'Declining…'
+                  ? translate('accepting')
+                  : translate('declining')
                 : accept
-                  ? 'Accept quote'
-                  : 'Decline quote'}
+                  ? translate('acceptQuote2')
+                  : translate('declineQuote2')}
             </Button>
           </DialogFooter>
         </form>
@@ -187,23 +205,26 @@ function QuoteRow({ quote, onAsk }: { quote: PortalQuote; onAsk: (asking: Asking
       </div>
       {quote.decision_note && (
         <p className="text-body-sm break-words text-muted-foreground sm:pl-12">
-          Your note: “{quote.decision_note}”
+          {translate('yourNote')}
+          {quote.decision_note}”
         </p>
       )}
       {isAwaiting(quote) && (
         <div className="flex gap-2 sm:pl-12">
           <Button
-            aria-label={`Accept quote ${quoteName(quote)}`}
+            aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
             onClick={() => onAsk({ quote, decision: 'accept' })}
           >
-            <Check aria-hidden /> Accept
+            <Check aria-hidden />
+            {translate('accept')}
           </Button>
           <Button
             variant="outline"
-            aria-label={`Decline quote ${quoteName(quote)}`}
+            aria-label={translate('declineQuote', { value1: quoteName(quote) })}
             onClick={() => onAsk({ quote, decision: 'decline' })}
           >
-            <X aria-hidden /> Decline
+            <X aria-hidden />
+            {translate('decline')}
           </Button>
         </div>
       )}
@@ -216,18 +237,18 @@ export function PortalQuotes() {
   const query = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
 
   const body = () => {
-    if (query.isPending) return <Loader label="Loading quotes" className="min-h-72" />
+    if (query.isPending) return <Loader label={translate('loadingQuotes')} className="min-h-72" />
     if (query.error)
       return (
         <div className={cn(cardClass, 'p-4 sm:p-5')}>
-          <RetryAlert what="Your quotes" onRetry={() => void query.refetch()} />
+          <RetryAlert what={translate('yourQuotes')} onRetry={() => void query.refetch()} />
         </div>
       )
     if (query.data.length === 0)
       return (
         <div className={cardClass}>
-          <EmptyState icon={FilePenLine} title="No quotes yet">
-            Quotes appear here as soon as they are sent to you.
+          <EmptyState icon={FilePenLine} title={translate('noQuotesYet')}>
+            {translate('quotesAppearHereAsSoonAsTheyAreSent')}
           </EmptyState>
         </div>
       )
@@ -242,8 +263,8 @@ export function PortalQuotes() {
 
   return (
     <div className="grid gap-5 sm:gap-6">
-      <PageHeader title="Quotes">
-        Every quote sent to you, each with its PDF. Accept or decline it here.
+      <PageHeader title={translate('quotes')}>
+        {translate('everyQuoteSentToYouEachWithItsPDF')}
       </PageHeader>
       {body()}
       {asking && (

@@ -46,6 +46,7 @@ apps/api        Go API; builds the single `helvetly` binary, which embeds the tw
 apps/platform   the signed-in app (Next.js static export)
 apps/portal     the client portal (Next.js static export, served for PORTAL_URL's host)
 apps/web        the public website (Next.js static export, deployed on its own)
+packages/i18n   translation runtime, locale registry and static-export configuration
 packages/ui     shared components (shadcn/ui), theme, logo
 e2e             Playwright end-to-end and visual tests against the real API
 ```
@@ -56,6 +57,30 @@ other host. It applies database migrations at start. `GET /api/health` answers w
 
 Stack: Go (standard library `net/http`, pgx, goose), PostgreSQL, Next.js 16, React 19, Tailwind CSS 4, shadcn/ui,
 TanStack Query, Turborepo, Vitest, Storybook and Playwright.
+
+## Languages
+
+All interfaces use English catalogs (`src/messages/en.json`) in each app and `packages/ui`.
+The shared `packages/i18n` runtime provides typed keys, ICU messages, interpolation and English fallback.
+User data, API identifiers and the language of issued financial documents remain separate from interface language.
+
+To enable another language, add it to `packages/i18n/src/locales.json`, add its JSON catalogs next to
+`en.json`, and import them into each `src/lib/i18n.ts` with `createMessages({ en, de })`.
+Translate complete messages; ICU plural rules are available for counts.
+Marketing and documentation keep English at the existing URLs; other languages use prefixes such as `/de/`.
+Their builds create a separate static export for each configured language; for marketing development, set
+`HELVETLY_BUILD_LOCALE=de` before starting Next.js.
+
+Platform and portal keep all routes unprefixed. Open a link with `?lang=de` to select a language and save it
+under `helvetly.language` in that origin's `localStorage`. Without a supported query parameter, the saved
+language is used, then English. The language menu changes `?lang` while preserving other query parameters
+and the fragment; switching reloads the page so module-level labels use the selected language too.
+Blocked storage still allows explicit language links. Each origin keeps its own preference.
+The menu appears only when more than one language is enabled. Adding languages requires a rebuild.
+
+Marketing Markdown overrides live in `content/<collection>/<locale>/`, alongside the existing English files;
+missing files fall back to English. Keep category identifiers stable and translate their displayed labels.
+The separately maintained developer documentation has its own locale registry and catalogs.
 
 ## Requirements
 

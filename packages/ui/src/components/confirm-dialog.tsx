@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -7,6 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CircleQuestionMark, Trash2, TriangleAlert } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
@@ -77,7 +77,7 @@ export function ConfirmDialog({
         {children}
         <div className="mt-6 grid grid-cols-2 gap-2">
           <Button variant="outline" size="xl" onClick={() => decide(false)}>
-            {cancelLabel ?? (destructive ? 'Keep it' : 'Not now')}
+            {cancelLabel ?? (destructive ? translate('keepIt') : translate('notNow'))}
           </Button>
           <Button
             variant={destructive ? 'destructive' : 'default'}

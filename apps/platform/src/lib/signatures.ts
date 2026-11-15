@@ -1,10 +1,10 @@
 'use client'
-
 // Signatures, typed by hand from docs/signatures-contract.md.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
 import { refreshDocuments } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 
 export type RequestStatus = 'pending' | 'completed' | 'declined' | 'revoked' | 'expired'
@@ -134,10 +134,10 @@ const MIN_TEXT = { w: 0.08, h: 0.02 }
 export const minSize = (kind?: string) => (kind && MIN_SIZES[kind]) || MIN_TEXT
 
 export const FIELD_LABELS: Record<FieldKind, string> = {
-  signature: 'Signature',
-  date: 'Date signed',
-  name: 'Name',
-  text: 'Text',
+  signature: translate('signature'),
+  date: translate('dateSigned'),
+  name: translate('name'),
+  text: translate('text'),
 }
 
 /** Signer colours by index: distinct, calm hues that read in light and dark mode. */
@@ -257,21 +257,21 @@ export function checkSigners(signers: DraftSigner[]) {
   const rows = signers.map((signer, index) => {
     const email = signer.email.trim().toLowerCase()
     return {
-      name: signer.name.trim() ? '' : 'Enter a name.',
+      name: signer.name.trim() ? '' : translate('enterAName'),
       email: !email
-        ? 'Enter an email address.'
+        ? translate('enterAnEmailAddress')
         : !EMAIL.test(email)
-          ? 'Enter a valid email address.'
+          ? translate('enterAValidEmailAddress')
           : signers.findIndex((other) => other.email.trim().toLowerCase() === email) < index
-            ? 'This person is already a signer.'
+            ? translate('thisPersonIsAlreadyASigner')
             : '',
     }
   })
   const list =
     signers.length === 0
-      ? 'Add at least one signer.'
+      ? translate('addAtLeastOneSigner')
       : signers.length > 10
-        ? 'Use at most 10 signers.'
+        ? translate('useAtMost10Signers')
         : ''
   return { rows, list, ok: !list && rows.every((row) => !row.name && !row.email) }
 }

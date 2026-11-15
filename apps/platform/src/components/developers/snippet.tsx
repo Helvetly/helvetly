@@ -1,9 +1,10 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
+
+import { translate } from '@/lib/i18n'
 
 /** One line to paste (a header, a command, a secret) in mono, with a copy button. */
 export function Snippet({ label, value }: { label: string; value: string }) {
@@ -16,18 +17,21 @@ export function Snippet({ label, value }: { label: string; value: string }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={`Copy ${label}`}
+            aria-label={translate('copy2', { label: label })}
             onClick={() =>
               void navigator.clipboard.writeText(value).then(
-                () => toast(`${label} copied.`),
-                () => toast.error('Could not copy. Select the text and copy it instead.'),
+                () => toast(translate('copied', { label: label })),
+                () => toast.error(translate('couldNotCopySelectTheTextAndCopyIt')),
               )
             }
           >
             <Copy />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Copy {label.toLowerCase()}</TooltipContent>
+        <TooltipContent>
+          {translate('copy')}
+          {label.toLowerCase()}
+        </TooltipContent>
       </Tooltip>
     </div>
   )

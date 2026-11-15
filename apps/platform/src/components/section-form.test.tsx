@@ -242,3 +242,27 @@ test('leaving with unsaved edits asks first, by link, by tab and on unload', asy
   await user.click(screen.getByRole('button', { name: 'Discard and leave' }))
   expect(push).toHaveBeenCalledWith('/settings/billing')
 })
+
+vi.mock('@helvetly/i18n/locales.json', () => ({
+  default: {
+    defaultLocale: 'en',
+    locales: {
+      en: { name: 'English', languageTag: 'en-GB', numberLocale: 'de-CH' },
+      de: { name: 'Deutsch', languageTag: 'de-DE', numberLocale: 'de-DE' },
+    },
+  },
+}))
+
+test('discarding edits sends an unprefixed localized link to the Next router', async () => {
+  const user = userEvent.setup()
+  render(
+    <>
+      <GuardedPage />
+      <Link href="/de/clients">Localized clients</Link>
+    </>,
+  )
+  await user.type(screen.getByLabelText('city'), 'x')
+  await user.click(screen.getByRole('link', { name: 'Localized clients' }))
+  await user.click(screen.getByRole('button', { name: 'Discard and leave' }))
+  expect(push).toHaveBeenCalledWith('/clients')
+})

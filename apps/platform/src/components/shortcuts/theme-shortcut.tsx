@@ -1,12 +1,12 @@
 'use client'
-
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import { useShortcut } from '@/lib/shortcuts'
 
 const ORDER = ['light', 'dark', 'system'] as const
-const NAMES = { light: 'Light', dark: 'Dark', system: 'System' }
+const NAMES = { light: translate('light2'), dark: translate('dark2'), system: translate('system') }
 
 /** The theme after `theme` in light → dark → system → light. */
 export function nextTheme(theme: string | undefined) {
@@ -20,7 +20,7 @@ export function ThemeShortcut() {
   useShortcut('theme', () => {
     const next = nextTheme(theme ?? 'system')
     setTheme(next)
-    toast(`Theme: ${NAMES[next]}`, { id: 'theme-shortcut' })
+    toast(translate('theme2', { value1: NAMES[next] }), { id: 'theme-shortcut' })
   })
   return null
 }

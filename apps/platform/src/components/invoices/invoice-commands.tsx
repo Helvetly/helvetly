@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
   ArrowRightLeft,
@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { MenuKit } from '@/components/data/menus'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   cannotIssueReasons,
   documentName,
@@ -71,28 +72,28 @@ const DERIVE: Record<
   { title: (name: string) => string; body: string; confirmLabel: string; done: string }
 > = {
   correct: {
-    title: (name) => `Correct ${name}?`,
-    body: 'A draft corrected invoice with the same lines opens in the editor. Once it is issued, it replaces this one and the payments move over.',
-    confirmLabel: 'Create correction',
-    done: 'Draft correction created. Fix what was wrong, then issue it.',
+    title: (name) => translate('correct2', { name: name }),
+    body: translate('aDraftCorrectedInvoiceWithTheSameLinesOpens'),
+    confirmLabel: translate('createCorrection'),
+    done: translate('draftCorrectionCreatedFixWhatWasWrongThenIssue'),
   },
   debit_note: {
-    title: (name) => `Charge more on ${name}?`,
-    body: 'A draft debit note for this invoice opens in the editor. Add the extra lines, then issue it.',
-    confirmLabel: 'Create debit note',
-    done: 'Draft debit note created. Add the lines, then issue it.',
+    title: (name) => translate('chargeMoreOn', { name: name }),
+    body: translate('aDraftDebitNoteForThisInvoiceOpensIn'),
+    confirmLabel: translate('createDebitNote'),
+    done: translate('draftDebitNoteCreatedAddTheLinesThenIssue'),
   },
   convert_invoice: {
-    title: (name) => `Convert ${name} to an invoice?`,
-    body: 'A draft invoice with the client and lines of this proforma opens in the editor. The proforma stays as it is.',
-    confirmLabel: 'Convert to invoice',
-    done: 'Draft invoice created from the proforma.',
+    title: (name) => translate('convertToAnInvoice', { name: name }),
+    body: translate('aDraftInvoiceWithTheClientAndLinesOf'),
+    confirmLabel: translate('convertToInvoice2'),
+    done: translate('draftInvoiceCreatedFromTheProforma'),
   },
   convert_prepayment: {
-    title: (name) => `Convert ${name} to a prepayment invoice?`,
-    body: 'A draft prepayment invoice with the client and lines of this proforma opens in the editor. The proforma stays as it is.',
-    confirmLabel: 'Convert to prepayment',
-    done: 'Draft prepayment invoice created from the proforma.',
+    title: (name) => translate('convertToAPrepaymentInvoice', { name: name }),
+    body: translate('aDraftPrepaymentInvoiceWithTheClientAndLines'),
+    confirmLabel: translate('convertToPrepayment2'),
+    done: translate('draftPrepaymentInvoiceCreatedFromTheProforma'),
   },
 }
 const isDerive = (command: InvoiceCommand): command is DeriveCommand => command in DERIVE
@@ -181,7 +182,7 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       return once((settled) =>
         duplicate.mutate(invoice.id, {
           onSuccess: (copy) => {
-            toast.success(`Copied into a new draft for ${copy.client.name}.`)
+            toast.success(translate('copiedIntoANewDraftFor', { name: copy.client.name }))
             router.push(editHref(copy.id))
           },
           onError: toastError,
@@ -193,7 +194,7 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
 
   const confirmIssue = (invoice: InvoiceListItem) =>
     issue.mutate(invoice.id, {
-      onSuccess: (issued) => toast.success(`${documentName(issued)} issued.`),
+      onSuccess: (issued) => toast.success(translate('issued2', { value1: documentName(issued) })),
       onError: (error) => {
         const reasons = cannotIssueReasons(error)
         if (reasons) setBlocked({ invoice, reasons })
@@ -211,7 +212,7 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       once((settled) =>
         creditNote.mutate(invoice.id, {
           onSuccess: (note) => {
-            toast.success('Draft credit note created. Adjust the lines, then issue it.')
+            toast.success(translate('draftCreditNoteCreatedAdjustTheLinesThenIssue'))
             router.push(editHref(note.id))
           },
           onError: fail,
@@ -235,10 +236,17 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
     if (command === 'void')
       voidInvoice.mutate(
         { id: invoice.id },
-        { onSuccess: (voided) => toast.success(`${documentName(voided)} is void.`), onError: fail },
+        {
+          onSuccess: (voided) =>
+            toast.success(translate('isVoid', { value1: documentName(voided) })),
+          onError: fail,
+        },
       )
     if (command === 'delete')
-      remove.mutate(invoice.id, { onSuccess: () => toast.success('Draft deleted.'), onError: fail })
+      remove.mutate(invoice.id, {
+        onSuccess: () => toast.success(translate('draftDeleted2')),
+        onError: fail,
+      })
   }
 
   const confirm = (props: {
@@ -278,15 +286,15 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       )
     if (command === 'issue')
       dialog = confirm({
-        title: `Issue this ${kindInfo(invoice.kind).label.toLowerCase()}?`,
-        body: `It gets the next number, its PDF is stored and it can no longer be edited. Corrections then go through a credit note.`,
-        confirmLabel: 'Issue',
+        title: translate('issueThis', { value1: kindInfo(invoice.kind).label.toLowerCase() }),
+        body: translate('itGetsTheNextNumberItsPDFIsStored'),
+        confirmLabel: translate('issue3'),
       })
     if (command === 'credit_note')
       dialog = confirm({
-        title: `Credit ${name}?`,
-        body: 'A draft credit note for the full amount opens in the editor. Reduce the lines for a partial credit, then issue it.',
-        confirmLabel: 'Create credit note',
+        title: translate('credit', { name: name }),
+        body: translate('aDraftCreditNoteForTheFullAmountOpens'),
+        confirmLabel: translate('createCreditNote2'),
       })
     if (isDerive(command))
       dialog = confirm({
@@ -296,17 +304,17 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       })
     if (command === 'void')
       dialog = confirm({
-        title: `Void ${name}?`,
-        body: 'A full credit note is issued against it and nothing is owed any more. This can’t be undone.',
-        confirmLabel: 'Void invoice',
+        title: translate('void4', { name: name }),
+        body: translate('aFullCreditNoteIsIssuedAgainstItAnd'),
+        confirmLabel: translate('voidInvoice'),
         destructive: true,
         confirmIcon: <Ban />,
       })
     if (command === 'delete')
       dialog = confirm({
-        title: 'Delete this draft?',
-        body: `The draft for ${invoice.client.name} is removed for good. Drafts have no number, so nothing goes missing in your numbering.`,
-        confirmLabel: 'Delete draft',
+        title: translate('deleteThisDraft'),
+        body: translate('theDraftForIsRemovedForGoodDraftsHave', { name: invoice.client.name }),
+        confirmLabel: translate('deleteDraft2'),
         destructive: true,
       })
   }
@@ -384,58 +392,68 @@ export function CommandItems({
     <>
       {showOpen && (
         <Item onSelect={() => run('open', invoice)}>
-          <PanelRightOpen /> Open details
+          <PanelRightOpen />
+          {translate('openDetails')}
         </Item>
       )}
       {show('edit') && (
         <Item onSelect={() => run('edit', invoice)}>
-          <Pencil /> Edit draft
+          <Pencil />
+          {translate('editDraft')}
         </Item>
       )}
       {show('issue') && (
         <Item onSelect={() => run('issue', invoice)}>
-          <Stamp /> Issue
+          <Stamp />
+          {translate('issue2')}
         </Item>
       )}
       {show('send') && (
         <Item onSelect={() => run('send', invoice)}>
-          <Send /> {invoice.sent_at ? 'Send again' : 'Send by email'}
+          <Send /> {invoice.sent_at ? translate('sendAgain') : translate('sendByEmail')}
         </Item>
       )}
       {show('refund') && (
         <Item onSelect={() => run('refund', invoice)}>
-          <Undo2 /> Record refund
+          <Undo2 />
+          {translate('recordRefund')}
         </Item>
       )}
       {show('payment') && (
         <Item onSelect={() => run('payment', invoice)}>
-          <Wallet /> Record payment
+          <Wallet />
+          {translate('recordPayment')}
         </Item>
       )}
       <Item asChild>
-        <a href={pdfUrl(invoice.id, true)} download>
-          <Download /> Download PDF
+        <a href={localizedHref(pdfUrl(invoice.id, true))} download>
+          <Download />
+          {translate('downloadPDF2')}
         </a>
       </Item>
       {show('duplicate') && (
         <Item onSelect={() => run('duplicate', invoice)}>
-          <Copy /> Duplicate
+          <Copy />
+          {translate('duplicate')}
         </Item>
       )}
       {show('plan') && (
         <Item onSelect={() => run('plan', invoice)}>
-          <CalendarRange /> Split into instalment invoices
+          <CalendarRange />
+          {translate('splitIntoInstalmentInvoices2')}
         </Item>
       )}
       {(show('convert_invoice') || show('convert_prepayment')) && <Separator />}
       {show('convert_invoice') && (
         <Item onSelect={() => run('convert_invoice', invoice)}>
-          <ArrowRightLeft /> Convert to invoice
+          <ArrowRightLeft />
+          {translate('convertToInvoice')}
         </Item>
       )}
       {show('convert_prepayment') && (
         <Item onSelect={() => run('convert_prepayment', invoice)}>
-          <ArrowRightLeft /> Convert to prepayment
+          <ArrowRightLeft />
+          {translate('convertToPrepayment')}
         </Item>
       )}
       {(show('credit_note') ||
@@ -445,27 +463,32 @@ export function CommandItems({
         show('delete')) && <Separator />}
       {show('correct') && (
         <Item onSelect={() => run('correct', invoice)}>
-          <FilePen /> Correct
+          <FilePen />
+          {translate('correct')}
         </Item>
       )}
       {show('debit_note') && (
         <Item onSelect={() => run('debit_note', invoice)}>
-          <FilePlus /> Debit note
+          <FilePlus />
+          {translate('debitNote')}
         </Item>
       )}
       {show('credit_note') && (
         <Item onSelect={() => run('credit_note', invoice)}>
-          <FileMinus /> Create credit note
+          <FileMinus />
+          {translate('createCreditNote')}
         </Item>
       )}
       {show('void') && (
         <Item variant="destructive" onSelect={() => run('void', invoice)}>
-          <Ban /> Void
+          <Ban />
+          {translate('void3')}
         </Item>
       )}
       {show('delete') && (
         <Item variant="destructive" onSelect={() => run('delete', invoice)}>
-          <Trash2 /> Delete draft
+          <Trash2 />
+          {translate('deleteDraft')}
         </Item>
       )}
     </>

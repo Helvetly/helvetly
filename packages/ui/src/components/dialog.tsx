@@ -1,6 +1,6 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from 'cn'
 import { XIcon } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
@@ -62,7 +62,7 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className="absolute top-2 right-2" size="icon-sm">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{translate('close')}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -97,7 +97,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{translate('close')}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

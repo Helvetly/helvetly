@@ -1,5 +1,4 @@
 'use client'
-
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import {
   DropdownMenu,
@@ -10,6 +9,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { LanguageMenuItems } from '@helvetly/ui/components/language-switcher'
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +51,7 @@ import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
 import { api, setCsrfToken, type Session, type User } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
 import { effectiveScopes } from '@/lib/permissions'
 import { useShortcut } from '@/lib/shortcuts'
@@ -167,7 +168,7 @@ export function AppSidebar({ session }: { session: Session }) {
             className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-xl p-1.5"
           >
             <DropdownMenuLabel className="px-2 pt-1 pb-1.5 text-[12px] font-normal text-[#a8a7aa] dark:text-muted-foreground">
-              Workspaces
+              {translate('workspaces')}
             </DropdownMenuLabel>
             {workspaces.map((workspace) => (
               <DropdownMenuItem
@@ -198,7 +199,9 @@ export function AppSidebar({ session }: { session: Session }) {
               >
                 <Plus className="size-4" />
               </span>
-              <span className="text-[14px] text-[#161618] dark:text-foreground">Add workspace</span>
+              <span className="text-[14px] text-[#161618] dark:text-foreground">
+                {translate('addWorkspace')}
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -206,14 +209,16 @@ export function AppSidebar({ session }: { session: Session }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip={{ children: <WithShortcut label="Quick Actions" id="quickActions" /> }}
+              tooltip={{
+                children: <WithShortcut label={translate('quickActions')} id="quickActions" />,
+              }}
               onClick={() => setPaletteOpen(true)}
               aria-expanded={paletteOpen}
               // Compact: the height and type of a nav row, a hairline shadow instead of a raised card.
               className="h-8 gap-2 rounded-lg bg-[#fdfdfd] px-2.5 text-[13.5px] text-[#6b6a6d] shadow-[0_0_0_1px_rgb(0_0_0/0.04),0_1px_2px_rgb(0_0_0/0.04)] hover:bg-white hover:text-foreground active:bg-white aria-expanded:bg-white aria-expanded:text-foreground dark:bg-card dark:text-muted-foreground dark:active:bg-card [&_svg]:size-4! [&_svg]:stroke-[1.5]"
             >
               <Zap />
-              <span>Quick Actions</span>
+              <span>{translate('quickActions')}</span>
               <kbd className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border border-[#d6d6d8] bg-transparent px-1 font-sans text-[10.5px] text-[#bdbdc0] group-data-[collapsible=icon]:hidden dark:border-border dark:text-muted-foreground">
                 /
               </kbd>
@@ -264,7 +269,7 @@ export function AppSidebar({ session }: { session: Session }) {
                                 setOpenMobile(false)
                                 heidi?.setOpen(!heidi.open)
                               }
-                            : () => toast(`${label} is coming soon.`)
+                            : () => toast(translate('isComingSoon', { label: label }))
                       }
                     >
                       {href ? (
@@ -316,7 +321,7 @@ export function AppSidebar({ session }: { session: Session }) {
 function NewTag() {
   return (
     <span className="rounded-[4px] bg-heidi px-1.5 text-[11px] leading-[18px] font-semibold tracking-wide text-background uppercase group-data-[collapsible=icon]:hidden">
-      New
+      {translate('new3')}
     </span>
   )
 }
@@ -402,26 +407,31 @@ function UserMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/account">
-                <Settings /> Settings
+                <Settings />
+                {translate('settings2')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onHelp}>
-              <LifeBuoy /> Help & feedback
+              <LifeBuoy />
+              {translate('helpFeedback2')}
               <DropdownMenuShortcut>
                 <ShortcutKeys id="help" />
               </DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onShortcuts}>
-              <Keyboard /> Keyboard shortcuts
+              <Keyboard />
+              {translate('keyboardShortcuts')}
               <DropdownMenuShortcut>
                 <ShortcutKeys id="shortcuts" />
               </DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <LanguageMenuItems />
             <ThemeSwitcher />
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={signOut.isPending} onSelect={() => signOut.mutate()}>
-              <LogOut /> Log out
+              <LogOut />
+              {translate('logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

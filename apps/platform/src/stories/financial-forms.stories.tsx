@@ -49,6 +49,13 @@ const meta = {
 } satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
+
+export const ProductOpeningFocus: Story = {
+  play: async ({ mount }) => {
+    await mount(<ProductForm defaults={defaults} onClose={fn()} onSaved={fn()} />)
+    await expect(within(document.body).getByRole('textbox', { name: 'Name' })).toHaveFocus()
+  },
+}
 const savedProduct = fn()
 const productInput = fn()
 const savedClient = fn()

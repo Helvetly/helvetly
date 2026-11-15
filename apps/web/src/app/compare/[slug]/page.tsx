@@ -1,3 +1,4 @@
+import { localizedHref, localizedAlternates } from '@helvetly/i18n'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Check, Minus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -8,6 +9,7 @@ import { Cta } from '@/components/cta'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
 import { type Cell, competitor, COMPETITORS, OURS, ROW_GROUPS } from '@/lib/compare'
+import { translate } from '@/lib/i18n'
 import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
@@ -23,8 +25,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const them = competitor((await params).slug)
   return them
     ? {
-        title: `Helvetly vs ${them.name}`,
-        description: `An honest comparison of Helvetly and ${them.name} for Swiss companies: prices, invoicing, e-invoicing, teams, AI and what each one does better.`,
+        alternates: localizedAlternates(`/compare/${(await params).slug}`),
+
+        title: translate('helvetlyVs', { name: them.name }),
+        description: translate('anHonestComparisonOfHelvetlyAndForSwissCompanies', {
+          name: them.name,
+        }),
       }
     : {}
 }
@@ -34,21 +40,21 @@ function Value({ cell }: { cell: Cell }) {
     return (
       <>
         <Minus aria-hidden className="size-4 text-placeholder" />
-        <span className="sr-only">Not found on their website</span>
+        <span className="sr-only">{translate('notFoundOnTheirWebsite')}</span>
       </>
     )
   if (cell === true)
     return (
       <>
         <Check aria-hidden className="size-4 text-brand" />
-        <span className="sr-only">Yes</span>
+        <span className="sr-only">{translate('yes')}</span>
       </>
     )
   if (cell === false)
     return (
       <>
         <Minus aria-hidden className="size-4 text-placeholder" />
-        <span className="sr-only">Not offered</span>
+        <span className="sr-only">{translate('notOffered')}</span>
       </>
     )
   return <span className="text-body">{cell}</span>
@@ -63,8 +69,8 @@ export default async function ComparePage({ params }: Props) {
         eyebrow={
           <>
             <Logo className="size-5 rounded-md bg-white p-px ring-1 ring-black/5" />
-            Helvetly
-            <span className="text-muted-foreground">vs</span>
+            {translate('helvetly')}
+            <span className="text-muted-foreground">{translate('vs')}</span>
             <Image
               src={them.logo}
               alt=""
@@ -83,9 +89,13 @@ export default async function ComparePage({ params }: Props) {
           style={{ ['--d' as string]: '200ms' }}
           className="mt-9 flex flex-col gap-3 sm:flex-row"
         >
-          <Cta href={START_URL}>Try Business free for {TRIAL.days} days</Cta>
+          <Cta href={START_URL}>
+            {translate('tryBusinessFreeFor')}
+            {TRIAL.days}
+            {translate('days')}
+          </Cta>
           <Cta href="/pricing" variant="outline">
-            See pricing
+            {translate('seePricing')}
           </Cta>
         </div>
       </PageHero>
@@ -93,7 +103,9 @@ export default async function ComparePage({ params }: Props) {
       <section className="py-16">
         <Container className="grid gap-4 md:grid-cols-2">
           <div data-reveal className="border-site-line bg-site-tint rounded-3xl border p-7">
-            <h2 className="text-title font-semibold">Helvetly is the better fit when you…</h2>
+            <h2 className="text-title font-semibold">
+              {translate('helvetlyIsTheBetterFitWhenYou')}
+            </h2>
             <ul className="mt-4 grid gap-2.5 text-body">
               {them.oursIf.map((item) => (
                 <li key={item} className="flex gap-2.5">
@@ -108,7 +120,10 @@ export default async function ComparePage({ params }: Props) {
             style={{ ['--d' as string]: '100ms' }}
             className="border-site-line rounded-3xl border p-7"
           >
-            <h2 className="text-title font-semibold">{them.name} may suit you better if you…</h2>
+            <h2 className="text-title font-semibold">
+              {them.name}
+              {translate('maySuitYouBetterIfYou')}
+            </h2>
             <ul className="mt-4 grid gap-2.5 text-body text-muted-foreground">
               {them.theirsIf.map((item) => (
                 <li key={item} className="flex gap-2.5">
@@ -123,13 +138,16 @@ export default async function ComparePage({ params }: Props) {
 
       <section className="py-16">
         <Container>
-          <SectionHeading eyebrow="Side by side" title="Feature by feature" />
+          <SectionHeading eyebrow={translate('sideBySide')} title={translate('featureByFeature')} />
           <div
             data-reveal
             className="border-site-line relative mt-12 overflow-x-auto rounded-3xl border"
           >
             <table className="w-full min-w-[680px] border-collapse text-left">
-              <caption className="sr-only">Helvetly compared with {them.name}</caption>
+              <caption className="sr-only">
+                {translate('helvetlyComparedWith')}
+                {them.name}
+              </caption>
               <thead className="bg-site-tint">
                 <tr>
                   <th
@@ -141,7 +159,7 @@ export default async function ComparePage({ params }: Props) {
                   <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
                     <span className="flex items-center gap-2.5">
                       <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
-                      Helvetly
+                      {translate('helvetly')}
                     </span>
                   </th>
                   <th
@@ -191,19 +209,23 @@ export default async function ComparePage({ params }: Props) {
             </table>
           </div>
           <p className="mx-auto mt-6 max-w-3xl text-center text-body-sm text-muted-foreground">
-            What {them.name} offers comes from its public website,{' '}
+            {translate('what')}
+            {them.name}
+            {translate('offersComesFromItsPublicWebsite')}{' '}
             <a
-              href={them.url}
+              href={localizedHref(them.url)}
               rel="noopener"
               className="underline underline-offset-4 hover:text-foreground"
             >
               {new URL(them.url).hostname.replace(/^www\./, '')}
             </a>
-            , as of {them.checked}, and its prices and packages as of {them.pricesChecked}; a dash
-            means it is not offered or we could not find it there. Yearly costs use each product’s
-            package with expenses or the closest match, at its listed price. {them.name} and its
-            logo are trademarks of their owner, which is not affiliated with Helvetly. Something out
-            of date? Tell us and we will fix it.
+            {translate('asOf')}
+            {them.checked}
+            {translate('andItsPricesAndPackagesAsOf')}
+            {them.pricesChecked}
+            {translate('aDashMeansItIsNotOfferedOrWe2')}
+            {them.name}
+            {translate('andItsLogoAreTrademarksOfTheirOwnerWhich')}
           </p>
         </Container>
       </section>

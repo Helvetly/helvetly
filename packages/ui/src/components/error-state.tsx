@@ -1,6 +1,6 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { ArrowLeft, RotateCcw, TriangleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -24,14 +24,15 @@ function ErrorState({ reset, home }: { reset: () => void; home?: ReactNode }) {
           </span>
         </span>
         <h1 className="mt-5 text-title font-semibold tracking-[-0.015em] text-balance">
-          Something went wrong on this page
+          {translate('somethingWentWrongOnThisPage')}
         </h1>
         <p className="mt-2 text-body text-muted-foreground sm:whitespace-nowrap">
-          Your data is safe. Try again, or go back to where you were.
+          {translate('yourDataIsSafeTryAgainOrGoBack')}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Button onClick={reset}>
-            <RotateCcw /> Try again
+            <RotateCcw />
+            {translate('tryAgain')}
           </Button>
           {home}
         </div>
@@ -40,7 +41,8 @@ function ErrorState({ reset, home }: { reset: () => void; home?: ReactNode }) {
           onClick={() => window.history.back()}
           className="mt-4 inline-flex items-center gap-1 text-body-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
-          <ArrowLeft aria-hidden className="size-3.5" /> Go back
+          <ArrowLeft aria-hidden className="size-3.5" />
+          {translate('goBack')}
         </button>
       </div>
     </div>

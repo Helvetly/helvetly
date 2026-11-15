@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
@@ -24,10 +24,11 @@ import {
   useDeleteClientFile,
   type ClientFile,
 } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.doc,.docx,.txt'
 const MAX_FILES = 10
-const TYPES_HINT = 'PDF, images, Office, CSV or text · up to 25 MB each'
+const TYPES_HINT = translate('pdfImagesOfficeCSVOrTextUpTo25')
 
 /** Where Documents previews this file (a client's files are documents linked to it). */
 export const previewHref = (file: Pick<ClientFile, 'id'>) =>
@@ -68,7 +69,8 @@ export function ClientFiles({ clientId }: { clientId: string }) {
 
   const send = (picked: File[]) => {
     if (!picked.length || upload) return
-    if (picked.length > MAX_FILES) toast.error(`Up to ${MAX_FILES} files at once.`)
+    if (picked.length > MAX_FILES)
+      toast.error(translate('upToFilesAtOnce', { MAX_FILES: MAX_FILES }))
     const batch = picked.slice(0, MAX_FILES)
     setUpload({ names: batch.map((file) => file.name), progress: 0 })
     // Sizes and same-batch duplicates are checked first; the server checks types and says what it refused.
@@ -77,7 +79,9 @@ export function ClientFiles({ clientId }: { clientId: string }) {
     )
       .then((added) => {
         toast.success(
-          added.length === 1 ? `${added[0]?.name} uploaded.` : `${added.length} files uploaded.`,
+          added.length === 1
+            ? translate('uploaded', { value1: added[0]?.name })
+            : translate('filesUploaded', { length: added.length }),
         )
       })
       .catch((error: unknown) => {
@@ -123,7 +127,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
       <Panel
         title={
           <span className="flex items-center gap-1.5">
-            Files{' '}
+            {translate('files')}{' '}
             {count > 0 && (
               <span className="rounded-full bg-muted px-1.5 text-caption text-muted-foreground tabular-nums">
                 {count}
@@ -134,7 +138,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
         action={
           <div className="flex items-center gap-2">
             <span className="text-caption text-muted-foreground max-sm:hidden">
-              or drop files here
+              {translate('orDropFilesHere')}
             </span>
             <Tip label={TYPES_HINT}>
               <Button
@@ -143,7 +147,8 @@ export function ClientFiles({ clientId }: { clientId: string }) {
                 disabled={upload !== null}
                 onClick={() => picker.current?.click()}
               >
-                <Upload /> Upload
+                <Upload />
+                {translate('upload')}
               </Button>
             </Tip>
             <input
@@ -152,7 +157,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
               multiple
               hidden
               accept={ACCEPT}
-              aria-label="Upload files"
+              aria-label={translate('uploadFiles')}
               onChange={(event) => {
                 send([...(event.target.files ?? [])])
                 event.target.value = ''
@@ -164,8 +169,11 @@ export function ClientFiles({ clientId }: { clientId: string }) {
         {upload && (
           <output className="mb-2 grid gap-1.5 rounded-lg bg-muted/60 px-3 py-2.5 text-body-sm">
             <span className="truncate">
-              Uploading{' '}
-              {upload.names.length === 1 ? upload.names[0] : `${upload.names.length} files`}…
+              {translate('uploading')}{' '}
+              {upload.names.length === 1
+                ? upload.names[0]
+                : translate('dynamicFiles', { length: upload.names.length })}
+              …
             </span>
             <span className="h-1 overflow-hidden rounded-full bg-border">
               <span
@@ -186,14 +194,16 @@ export function ClientFiles({ clientId }: { clientId: string }) {
               className="cursor-pointer underline"
               onClick={() => void files.refetch()}
             >
-              Try again
+              {translate('tryAgain')}
             </button>
           </p>
         ) : count === 0 ? (
           <EmptyState
             icon={Paperclip}
-            title="No files yet"
-            description={`Drop contracts, receipts or other files here, or use Upload. ${TYPES_HINT}.`}
+            title={translate('noFilesYet')}
+            description={translate('dropContractsReceiptsOrOtherFilesHereOrUse', {
+              TYPES_HINT: TYPES_HINT,
+            })}
             className="rounded-lg border border-dashed border-border py-8"
           />
         ) : (
@@ -216,7 +226,8 @@ export function ClientFiles({ clientId }: { clientId: string }) {
           className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-xl border-2 border-dashed border-primary/40 bg-card/90 text-body"
         >
           <span className="flex items-center gap-2 font-medium">
-            <Upload className="size-4" /> Drop to upload to this client
+            <Upload className="size-4" />
+            {translate('dropToUploadToThisClient')}
           </span>
         </div>
       )}
@@ -224,16 +235,16 @@ export function ClientFiles({ clientId }: { clientId: string }) {
       {deleting && (
         <ConfirmDialog
           key={deleting.id}
-          title={`Delete ${deleting.name}?`}
-          body="It moves to the Trash in Documents, where it can be restored for 30 days."
-          confirmLabel="Delete file"
+          title={translate('delete4', { name: deleting.name })}
+          body={translate('itMovesToTheTrashInDocumentsWhereIt')}
+          confirmLabel={translate('deleteFile')}
           tone="destructive"
           onDecide={(approved) => {
             const file = deleting
             setDeleting(null)
             if (approved)
               remove.mutate(file.id, {
-                onSuccess: () => toast.success(`${file.name} moved to the Trash.`),
+                onSuccess: () => toast.success(translate('movedToTheTrash', { name: file.name })),
                 onError: toastError,
               })
           }}
@@ -258,7 +269,7 @@ function FileRow({
       <FileTile file={{ name: file.name, kind: kindOfType(file.content_type) }} />
       <span className="grid min-w-0 flex-1 gap-0.5">
         <a
-          href={href}
+          href={localizedHref(href)}
           className="truncate text-body underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"
         >
           {file.name}
@@ -266,37 +277,37 @@ function FileRow({
         <span className="truncate text-caption text-muted-foreground">{fileMeta(file)}</span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within/file:opacity-100 group-hover/file:opacity-100 max-sm:opacity-100">
-        <Tip label="Preview in Documents">
+        <Tip label={translate('previewInDocuments')}>
           <Button
             asChild
             variant="ghost"
             size="icon-sm"
             className="text-muted-foreground"
-            aria-label={`Preview ${file.name}`}
+            aria-label={translate('preview2', { name: file.name })}
           >
             <Link href={previewHref(file)}>
               <Eye />
             </Link>
           </Button>
         </Tip>
-        <Tip label="Download">
+        <Tip label={translate('download')}>
           <Button
             asChild
             variant="ghost"
             size="icon-sm"
             className="text-muted-foreground"
-            aria-label={`Download ${file.name}`}
+            aria-label={translate('download2', { name: file.name })}
           >
-            <a href={href}>
+            <a href={localizedHref(href)}>
               <Download />
             </a>
           </Button>
         </Tip>
-        <Tip label="Delete">
+        <Tip label={translate('delete3')}>
           <Button
             variant="destructive-ghost"
             size="icon-sm"
-            aria-label={`Delete ${file.name}`}
+            aria-label={translate('delete2', { name: file.name })}
             onClick={onDelete}
           >
             <Trash2 />

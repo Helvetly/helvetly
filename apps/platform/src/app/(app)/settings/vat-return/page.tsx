@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { VATReturnPage } from '@/components/settings/vat-return'
 
-export const metadata: Metadata = { title: 'VAT return' }
-
 export default function Page() {
-  return <VATReturnPage />
+  return (
+    <>
+      <PageTitle message="vatReturn" />
+      <VATReturnPage />
+    </>
+  )
 }

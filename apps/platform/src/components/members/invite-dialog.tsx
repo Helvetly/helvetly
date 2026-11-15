@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -11,6 +10,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { seatCostLabel, useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import {
   assignableRoles,
   scopesProblem,
@@ -25,16 +25,16 @@ import { AccessEditor } from './access-editor'
 export async function copyLink(url: string) {
   try {
     await navigator.clipboard.writeText(url)
-    toast.success('Link copied.')
+    toast.success(translate('linkCopied'))
   } catch {
-    toast.error('Could not copy the link. Select it and copy by hand.')
+    toast.error(translate('couldNotCopyTheLinkSelectItAndCopy'))
   }
 }
 
 const ROLE_TEXT: Record<Role, string> = {
-  owner: 'Everything, including billing and deleting the workspace.',
-  admin: 'Manages members, settings and billing; works with all data.',
-  member: 'Works with the data you give them access to.',
+  owner: translate('everythingIncludingBillingAndDeletingTheWorkspace'),
+  admin: translate('managesMembersSettingsAndBillingWorksWithAllData'),
+  member: translate('worksWithTheDataYouGiveThemAccessTo'),
 }
 
 /**
@@ -76,7 +76,7 @@ export function InviteDialog({
         onSuccess: (sent) => {
           onInvited?.(sent)
           if (!sent.email_sent) return setCreated(sent)
-          toast.success(`Invitation sent to ${sent.email}.`)
+          toast.success(translate('invitationSentTo2', { email: sent.email }))
           onClose()
         },
         onError: (error) => {
@@ -95,9 +95,9 @@ export function InviteDialog({
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(600px,calc(100vw-6rem))]! dark:bg-card"
       >
         <div className="grid shrink-0 gap-0.5 border-b px-5 py-4 pr-12 md:px-8">
-          <SheetTitle className="text-lg font-semibold">Invite member</SheetTitle>
+          <SheetTitle className="text-lg font-semibold">{translate('inviteMember')}</SheetTitle>
           <SheetDescription className="text-[13px]">
-            They join this workspace with the role you pick, after signing in with this address.
+            {translate('theyJoinThisWorkspaceWithTheRoleYouPick')}
           </SheetDescription>
         </div>
         {created ? (
@@ -106,57 +106,56 @@ export function InviteDialog({
               <div className="grid gap-1">
                 <p className="text-sm font-medium">
                   {by === 'link'
-                    ? `Invitation link for ${created.email}`
-                    : `The email to ${created.email} didn’t go out`}
+                    ? translate('invitationLinkFor', { email: created.email })
+                    : translate('theEmailToDidnTGoOut', { email: created.email })}
                 </p>
                 <p className="text-[13px] text-muted-foreground">
-                  Send them this link yourself. It works for 7 days, only for someone signed in with
-                  that address.
+                  {translate('sendThemThisLinkYourselfItWorksFor7')}
                 </p>
               </div>
               <div className="flex gap-2">
-                <Input readOnly aria-label="Invitation link" value={created.url} />
+                <Input readOnly aria-label={translate('invitationLink')} value={created.url} />
                 <Button variant="outline" onClick={() => void copyLink(created.url)}>
-                  Copy
+                  {translate('copy5')}
                 </Button>
               </div>
             </div>
             <div className="flex shrink-0 justify-end border-t px-5 py-3 md:px-7">
-              <Button onClick={onClose}>Done</Button>
+              <Button onClick={onClose}>{translate('done')}</Button>
             </div>
           </div>
         ) : (
           <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
             <div className="grid flex-1 content-start gap-5 overflow-y-auto px-5 py-6 md:px-8">
-              <FormField id="invite-email" label="Email" required>
+              <FormField id="invite-email" label={translate('email')} required>
                 <Input
                   id="invite-email"
                   type="email"
                   required
                   value={email}
-                  placeholder="colleague@example.ch"
+                  placeholder={translate('colleagueExampleCh')}
                   onChange={(event) => setEmail(event.target.value)}
                 />
               </FormField>
               <div className="grid justify-items-start gap-1.5">
-                <span className="text-[13px] font-medium">How to invite</span>
+                <span className="text-[13px] font-medium">{translate('howToInvite')}</span>
                 <Segmented
-                  label="How to invite"
+                  label={translate('howToInvite')}
                   value={by}
                   options={[
-                    { value: 'email', label: 'By email' },
-                    { value: 'link', label: 'By link' },
+                    { value: 'email', label: translate('byEmail') },
+                    { value: 'link', label: translate('byLink') },
                   ]}
                   onChange={setBy}
                 />
                 <p className="text-xs text-muted-foreground">
                   {by === 'email'
-                    ? 'We email them the invitation.'
-                    : 'You get a link to share yourself; no email is sent.'}
+                    ? translate('weEmailThemTheInvitation')
+                    : translate('youGetALinkToShareYourselfNoEmail')}
                 </p>
               </div>
               <fieldset className="grid gap-1.5">
-                <legend className="mb-1.5 text-[13px] font-medium">Role</legend>
+                <legend className="mb-1.5 text-[13px] font-medium">{translate('role')}</legend>
                 {roles.map((entry) => (
                   <label
                     key={entry}
@@ -179,7 +178,7 @@ export function InviteDialog({
               </fieldset>
               {role === 'member' && (
                 <div className="grid gap-1.5">
-                  <span className="text-[13px] font-medium">Access</span>
+                  <span className="text-[13px] font-medium">{translate('access')}</span>
                   <AccessEditor
                     value={scopes}
                     onChange={setScopes}
@@ -192,17 +191,19 @@ export function InviteDialog({
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-2 border-t px-5 py-3 md:px-7">
               {cost && (
                 <p className="mr-auto text-xs text-pretty text-muted-foreground">
-                  Adds {cost} once accepted
+                  {translate('adds')}
+                  {cost}
+                  {translate('onceAccepted')}
                 </p>
               )}
               <Button type="button" variant="ghost" onClick={onClose}>
-                Cancel
+                {translate('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={invite.isPending || (role === 'member' && scopes.length === 0)}
               >
-                {by === 'email' ? 'Send invitation' : 'Create link'}
+                {by === 'email' ? translate('sendInvitation') : translate('createLink')}
               </Button>
             </div>
           </form>

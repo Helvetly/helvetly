@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -34,6 +33,7 @@ import { toast } from 'sonner'
 
 import { loadProblemText } from '@/components/data/load-problem'
 import { EditableValue, InlineTextEditor } from '@/components/inline-add'
+import { translate } from '@/lib/i18n'
 import { formatMoney, fromCents, toCents, VAT_CATEGORIES } from '@/lib/invoices'
 import { useProduct, useSaveProduct, type Product } from '@/lib/products'
 
@@ -72,7 +72,7 @@ function Row({
           editor
         ) : onEdit && value ? (
           <EditableValue
-            label={`Edit ${label}`}
+            label={translate('edit6', { label: label })}
             onEdit={onEdit}
             className="-mx-1.5 w-[calc(100%+0.75rem)] px-1.5 py-1"
           >
@@ -86,7 +86,8 @@ function Row({
               onClick={add}
               className="cursor-pointer text-link underline underline-offset-2 hover:no-underline"
             >
-              Add {label === label.toUpperCase() ? label : label.toLowerCase()}
+              {translate('add2')}
+              {label === label.toUpperCase() ? label : label.toLowerCase()}
             </button>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -97,10 +98,12 @@ function Row({
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Copy ${label.toLowerCase()}`}
+          aria-label={translate('copy3', { value1: label.toLowerCase() })}
           className="text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
           onClick={() =>
-            void navigator.clipboard.writeText(copy).then(() => toast(`${label} copied.`))
+            void navigator.clipboard
+              .writeText(copy)
+              .then(() => toast(translate('copied', { label: label })))
           }
         >
           <Copy />
@@ -173,22 +176,22 @@ export function ProductDetail({
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(680px,100vw)]! dark:bg-background"
       >
-        <SheetTitle className="sr-only">{product?.name ?? 'Product'}</SheetTitle>
-        <SheetDescription className="sr-only">Catalogue item details</SheetDescription>
+        <SheetTitle className="sr-only">{product?.name ?? translate('product')}</SheetTitle>
+        <SheetDescription className="sr-only">{translate('catalogueItemDetails')}</SheetDescription>
         {product ? (
           <Detail product={product} canManage={canManage} onClose={onClose} onCommand={onCommand} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-[15px]">This item couldn’t be loaded.</p>
+            <p className="text-[15px]">{translate('thisItemCouldnTBeLoaded')}</p>
             <p className="text-sm text-muted-foreground">
-              {loadProblemText(query.error, 'This item')}
+              {loadProblemText(query.error, translate('thisItem'))}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -221,13 +224,21 @@ function Detail({
   const unit = unitShort(product.unit)
   const category = VAT_CATEGORIES.find((entry) => entry.value === product.vat_category)
   const prices = [
-    { label: 'Net', value: product.unit_price_net, entered: product.price_basis === 'net' },
     {
-      label: 'VAT',
+      label: translate('net2'),
+      value: product.unit_price_net,
+      entered: product.price_basis === 'net',
+    },
+    {
+      label: translate('vat'),
       value: fromCents(toCents(product.unit_price_gross) - toCents(product.unit_price_net)),
       entered: false,
     },
-    { label: 'Gross', value: product.unit_price_gross, entered: product.price_basis === 'gross' },
+    {
+      label: translate('gross'),
+      value: product.unit_price_gross,
+      entered: product.price_basis === 'gross',
+    },
   ]
 
   return (
@@ -240,40 +251,48 @@ function Detail({
             </span>
           )}
           <span className="ml-1.5 text-[13px] text-muted-foreground">
-            {product.type === 'product' ? 'Product' : 'Service'}
+            {product.type === 'product' ? translate('product') : translate('service')}
           </span>
           <div className="ml-auto flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
                 <DropdownMenuItem onSelect={() => onCommand('duplicate', product)}>
-                  <CopyPlus /> Duplicate
+                  <CopyPlus />
+                  {translate('duplicate')}
                 </DropdownMenuItem>
                 {canManage && (
                   <>
                     <DropdownMenuItem onSelect={() => onCommand('archive', product)}>
                       {product.is_archived ? <ArchiveRestore /> : <Archive />}
-                      {product.is_archived ? 'Restore' : 'Archive'}
+                      {product.is_archived ? translate('restore') : translate('archive')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
                       onSelect={() => onCommand('delete', product)}
                     >
-                      <Trash2 /> Delete
+                      <Trash2 />
+                      {translate('delete')}
                     </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="outline" className="gap-1.5" onClick={edit}>
-              <Pencil className="size-3.5" /> Edit
+              <Pencil className="size-3.5" />
+              {translate('edit4')}
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('close')}
+              onClick={onClose}
+            >
               <X />
             </Button>
           </div>
@@ -304,7 +323,7 @@ function Detail({
                   product.currency,
                 )}
                 {unit && ` / ${unit}`} ·{' '}
-                {product.price_basis === 'gross' ? 'incl. VAT' : 'excl. VAT'}
+                {product.price_basis === 'gross' ? translate('inclVAT3') : translate('exclVAT2')}
               </span>
             </div>
           </div>
@@ -312,13 +331,13 @@ function Detail({
       </header>
 
       <div className="grid content-start gap-3 p-4 sm:p-5">
-        <Panel title="Price per unit">
+        <Panel title={translate('pricePerUnit')}>
           <div className="grid grid-cols-3 gap-2">
             {prices.map((price) => (
               <div key={price.label} className="grid gap-0.5 rounded-lg bg-muted/60 px-3 py-2.5">
                 <span className="text-[12px] text-muted-foreground">
                   {price.label}
-                  {price.entered && ' · entered'}
+                  {price.entered && translate('entered')}
                 </span>
                 <span className="text-[15px] font-medium tabular-nums">
                   {formatMoney(price.value, product.currency)}
@@ -329,7 +348,7 @@ function Detail({
           <div className="mt-2">
             <Row
               icon={Percent}
-              label="VAT"
+              label={translate('vat')}
               value={
                 <span>
                   {vatLabel(product)}
@@ -337,16 +356,21 @@ function Detail({
                 </span>
               }
             />
-            <Row icon={Ruler} label="Unit" onAdd={edit} value={unitLabel(product.unit)} />
+            <Row
+              icon={Ruler}
+              label={translate('unit')}
+              onAdd={edit}
+              value={unitLabel(product.unit)}
+            />
           </div>
         </Panel>
 
-        <Panel title="Identifiers">
+        <Panel title={translate('identifiers')}>
           <IdentifierRow
             icon={Hash}
             label="SKU"
             value={product.sku}
-            placeholder="WEB-HOUR"
+            placeholder={translate('webHOUR')}
             onAdd={edit}
             save={saveIdentifier('sku')}
           />
@@ -362,7 +386,7 @@ function Detail({
           )}
         </Panel>
 
-        <Panel title="On the invoice">
+        <Panel title={translate('onTheInvoice')}>
           <div className="rounded-lg bg-muted/60 px-3 py-2.5 text-[13.5px] leading-relaxed">
             <p className="font-medium">{product.name}</p>
             {product.description ? (
@@ -373,15 +397,19 @@ function Detail({
                 onClick={edit}
                 className="cursor-pointer text-link underline underline-offset-2 hover:no-underline"
               >
-                Add a description
+                {translate('addADescription')}
               </button>
             )}
           </div>
         </Panel>
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Added {formatDate(product.created_at)} · Updated {formatDate(product.updated_at)}
-          {product.archived_at && ` · Archived ${formatDate(product.archived_at)}`}
+          {translate('added2')}
+          {formatDate(product.created_at)}
+          {translate('updated')}
+          {formatDate(product.updated_at)}
+          {product.archived_at &&
+            translate('archived2', { value1: formatDate(product.archived_at) })}
         </p>
       </div>
     </div>
