@@ -4,5 +4,5 @@ import type { MetadataRoute } from 'next'
 export const dynamic = 'force-static'
 
 export default function robots(): MetadataRoute.Robots {
-  return { rules: { userAgent: '*', allow: '/' }, sitemap: 'https://helvetly.com/sitemap.xml' }
+  return { rules: { userAgent: '*', allow: '/' }, sitemap: 'https://www.helvetly.com/sitemap.xml' }
 }

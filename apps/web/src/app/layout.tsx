@@ -20,7 +20,7 @@ const serif = Instrument_Serif({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://helvetly.com'),
+  metadataBase: new URL('https://www.helvetly.com'),
   title: {
     default: 'Helvetly · The calm back office for Swiss companies',
     template: '%s · Helvetly',

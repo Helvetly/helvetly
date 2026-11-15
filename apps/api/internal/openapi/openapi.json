@@ -6,7 +6,7 @@
     "description": "The public part of Helvetly's API: clients, invoices, quotes, instalment plans, payments, expenses, documents, engagements, products, the books (periods, audit log, VAT return, ledger) and the key figures (reports) of one workspace. Authenticate with a personal API token (Settings → API & MCP): `Authorization: Bearer hvt_…`. A token's scopes name what it may do per resource, the operation's tag in lower case: `read:invoices` calls the GET operations tagged Invoices, `write:invoices` also the others; `read:*` and `write:*` cover every resource, and write implies read. Anything else answers 403 token_scope. The token acts as its person with their live role and permissions, in the token's workspace. Amounts are exact decimal strings. Errors are `{\"error\": {\"code\", \"message\", \"details\"}}`. 600 requests a minute per token. The same operations are tools on the MCP server at /api/mcp.",
     "contact": {
       "name": "Helvetly",
-      "url": "https://helvetly.com"
+      "url": "https://www.helvetly.com"
     }
   },
   "servers": [

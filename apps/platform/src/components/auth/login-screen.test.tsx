@@ -64,10 +64,10 @@ test('the terms and the privacy policy are links to the website', async () => {
   renderScreen()
   expect(await screen.findByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
     'href',
-    'https://helvetly.com/terms',
+    'https://www.helvetly.com/terms',
   )
   expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
     'href',
-    'https://helvetly.com/privacy',
+    'https://www.helvetly.com/privacy',
   )
 })
