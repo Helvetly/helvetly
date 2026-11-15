@@ -163,6 +163,7 @@ export function GeneralCard({
         <FieldGrid>
           <FormField
             id="workspace-name"
+            required
             label="Workspace name"
             width="md"
             error={form.errors.name}
@@ -179,6 +180,7 @@ export function GeneralCard({
 
           <FormField
             id="workspace-timezone"
+            required
             label="Time zone"
             width="md"
             error={form.errors.timezone}

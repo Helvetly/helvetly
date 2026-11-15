@@ -14,6 +14,10 @@ import (
 // stripeVersion pins the shape of every answer (current_period_end on the subscription, among others).
 const stripeVersion = "2024-06-20"
 
+// managedPaymentsVersion is the oldest version Stripe accepts Managed Payments on; only those Checkout calls use it,
+// and billing reads nothing but the session's url from their answer.
+const managedPaymentsVersion = "2025-03-31.basil"
+
 // StripeClient is the few Stripe API calls billing needs, form-encoded over net/http: no SDK for a handful
 // of endpoints (docs/billing-contract.md).
 type StripeClient struct {
@@ -53,7 +57,11 @@ func (c *StripeClient) Call(ctx context.Context, method, path string, form url.V
 		return fmt.Errorf("stripe: %w", err)
 	}
 	req.SetBasicAuth(c.key, "")
-	req.Header.Set("Stripe-Version", stripeVersion)
+	version := stripeVersion
+	if form.Get("managed_payments[enabled]") == "true" {
+		version = managedPaymentsVersion
+	}
+	req.Header.Set("Stripe-Version", version)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}

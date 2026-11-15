@@ -105,7 +105,7 @@ test('turns on two-factor authentication with a code and shows the recovery code
     'QR code for your authenticator app',
   )
   expect(within(dialog).getByRole('button', { name: 'Copy key' })).toBeVisible()
-  const input = within(dialog).getByLabelText('Code from the app')
+  const input = within(dialog).getByLabelText(/^Code from the app\*?$/)
   await userEvent.type(input, '000000')
   await userEvent.click(within(dialog).getByRole('button', { name: 'Turn on' }))
   expect(await within(dialog).findByText(/not valid/)).toBeVisible()
@@ -119,12 +119,12 @@ test('turns on two-factor authentication with a code and shows the recovery code
 
 test('saves the name', async () => {
   renderPage()
-  const input = await screen.findByLabelText('Full name')
+  const input = await screen.findByLabelText(/^Full name\*?$/)
   await userEvent.clear(input)
   await userEvent.type(input, 'Pete Krajewski')
   await userEvent.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled())
-  expect(screen.getByLabelText('Full name')).toHaveValue('Pete Krajewski')
+  expect(screen.getByLabelText(/^Full name\*?$/)).toHaveValue('Pete Krajewski')
 })
 
 test('the settings tabs mark this page and open another one', async () => {

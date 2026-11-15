@@ -671,7 +671,7 @@ function ReopenDialog({
               log.
             </DialogDescription>
           </DialogHeader>
-          <FormField id="reopen-reason" label="Reason">
+          <FormField id="reopen-reason" required label="Reason">
             <Textarea
               id="reopen-reason"
               rows={3}

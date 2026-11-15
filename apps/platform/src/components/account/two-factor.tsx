@@ -163,7 +163,7 @@ function EnableDialog({
               <TotpSetup secret={setup.secret} url={setup.otpauth_url} />
             )}
             <form onSubmit={submit} className="grid gap-5" noValidate>
-              <FormField id="totp-code" label="Code from the app" error={error}>
+              <FormField id="totp-code" required label="Code from the app" error={error}>
                 <Input
                   {...describedBy('totp-code', error)}
                   inputMode="numeric"
@@ -276,7 +276,12 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5" noValidate>
-          <FormField id="totp-off" label="Code from the app or a recovery code" error={error}>
+          <FormField
+            id="totp-off"
+            required
+            label="Code from the app or a recovery code"
+            error={error}
+          >
             <Input
               {...describedBy('totp-off', error)}
               autoComplete="one-time-code"

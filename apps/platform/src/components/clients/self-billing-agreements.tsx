@@ -100,7 +100,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
           className="grid gap-3 rounded-xl bg-card p-4 shadow-elevation-1"
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField id="sba-starts_on" label="Starts on" error={errors.starts_on}>
+            <FormField id="sba-starts_on" required label="Starts on" error={errors.starts_on}>
               <Input type="date" {...field('starts_on')} />
             </FormField>
             <FormField id="sba-ends_on" label="Ends on (optional)" error={errors.ends_on}>

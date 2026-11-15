@@ -106,7 +106,7 @@ const widthFollowsScreen: Story['play'] = async ({ canvasElement }) => {
   // A section is a band: its title on the left, its fields stacked on the right, label above control.
   const profile = within(body).getByRole('region', { name: 'Profile' })
   const label = within(profile).getByText('Full name')
-  const field = within(profile).getByLabelText('Full name')
+  const field = within(profile).getByLabelText(/^Full name\*?$/)
   await expect(field.getBoundingClientRect().top).toBeGreaterThan(
     label.getBoundingClientRect().bottom - 1,
   )

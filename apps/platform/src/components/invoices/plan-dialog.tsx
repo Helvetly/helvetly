@@ -157,6 +157,7 @@ export function PlanDialog({
             </FormField>
             <FormField
               id="plan-lead"
+              required
               label="Issue days before due"
               error={errors.lead_days}
               tip="Each invoice is issued this many days before its due date."

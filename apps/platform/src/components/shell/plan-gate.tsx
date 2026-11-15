@@ -10,12 +10,14 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
+import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 
+import { ShellLoading } from '@/components/auth-gate'
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
@@ -49,11 +51,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
     (billing.isPending && billing.failureCount === 0 && billing.errorUpdateCount === 0) ||
     locked
   ) {
-    return (
-      <div className="flex min-h-svh flex-col bg-background">
-        <Loader size="page" />
-      </div>
-    )
+    return <ShellLoading />
   }
   return children
 }
@@ -150,11 +148,17 @@ export function PlanScreen({
             <Logo className="size-7" />
             {workspace}
           </div>
-          {action}
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            {action}
+          </div>
         </header>
       ) : (
-        // Without the bar the action is the way back, top left.
-        <div className="absolute top-3 left-4 md:top-4 md:left-6">{action}</div>
+        <>
+          {/* Without the bar the action is the way back, top left, and the theme top right. */}
+          <div className="absolute top-3 left-4 md:top-4 md:left-6">{action}</div>
+          <ThemeToggle className="absolute top-3 right-4 md:top-4 md:right-6" />
+        </>
       )}
       <main
         className={cn(
