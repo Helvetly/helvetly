@@ -6,7 +6,8 @@ describe('legal', () => {
   it.each(Object.keys(LEGAL).filter(isLegalSlug))('reads %s without its title line', (slug) => {
     const { markdown } = readLegal(slug)
     expect(markdown).not.toMatch(/^# /)
-    expect(markdown).toMatch(/DRAFT/)
+    // a bracket not followed by a link target is an unfilled placeholder
+    expect(markdown).not.toMatch(/DRAFT|TBD|\[[^\]]*\](?!\()/)
   })
 
   it('lists the numbered sections as headings', () => {

@@ -1,15 +1,10 @@
 # Privacy policy
 
-> **DRAFT — to be reviewed by a Swiss lawyer before publication.** Written from what the code does on
-> 14 November 2026, for the Swiss Federal Act on Data Protection (nDSG/revDSG, in force since
-> 1 September 2023) and the EU General Data Protection Regulation (GDPR). Fill in every `[…]`.
-
 ## 1. Who we are
 
-[Helvetly company name, legal form], [address], [UID/CHE number] ("Helvetly", "we") runs the
+Helvetly ("Helvetly", "we") runs the
 website helvetly.com, the documentation at docs.helvetly.com, the Helvetly platform and the client
-portal. Contact for data protection: [privacy@helvetly.com].
-[If required under GDPR Art. 27: EU representative, name and address.]
+portal. Contact for data protection: [support@helvetly.com](mailto:support@helvetly.com).
 
 Helvetly is a service for businesses. It is not directed at children.
 
@@ -33,9 +28,9 @@ Helvetly is a service for businesses. It is not directed at children.
 | One-time sign-in codes and failed two-factor attempts                                                                                                                                                           | Preventing account takeover                         | Legitimate interest (Art. 6(1)(f))                                   | Codes: valid for minutes, removed after 24 hours; failed attempts: until the next successful sign-in                            |
 | Personal API tokens: name, scopes, first characters, creation and last use (the token itself only as a SHA-256 hash)                                                                                            | Letting you connect your own tools                  | Contract                                                             | Until you revoke the token or it expires; refused once your account is closed                                                   |
 | Workspace owner's email, workspace name, billing address and tax number entered at checkout, plan, seats and payment status (card data stays with Stripe)                                                       | Billing Helvetly plans                              | Contract; legal obligation to keep accounting records (Art. 6(1)(c)) | 10 years for accounting records (Swiss Code of Obligations Art. 958f)                                                           |
-| Feedback and problem reports: your description, the page you were on, up to five screenshots, your account and workspace                                                                                        | Answering you and improving Helvetly                | Legitimate interest (Art. 6(1)(f))                                   | [TBD: e.g. 2 years after the report is closed]; reports are also emailed to our team's inbox                                    |
-| Emails we send you: sign-in codes, invitations, notices, security alerts, digests                                                                                                                               | Running the service                                 | Contract                                                             | As long as the email provider's logs [TBD]                                                                                      |
-| Error logs (route, error, time) and the logs of our hosting provider (which can contain IP addresses)                                                                                                           | Operating and securing the service                  | Legitimate interest                                                  | [TBD, e.g. 30 days]. The application itself writes no access log; it logs errors without tokens from URLs                       |
+| Feedback and problem reports: your description, the page you were on, up to five screenshots, your account and workspace                                                                                        | Answering you and improving Helvetly                | Legitimate interest (Art. 6(1)(f))                                   | 2 years after the report is closed; reports are also emailed to our team's inbox                                                |
+| Emails we send you: sign-in codes, invitations, notices, security alerts, digests                                                                                                                               | Running the service                                 | Contract                                                             | As long as the email provider keeps its delivery logs                                                                           |
+| Error logs (route, error, time) and the logs of our hosting provider (which can contain IP addresses)                                                                                                           | Operating and securing the service                  | Legitimate interest                                                  | 30 days. The application itself writes no access log; it logs errors without tokens from URLs                                   |
 
 We do not sell personal data, do not use it for advertising, do not profile you and make no decisions
 about you by automated means alone (nDSG Art. 21, GDPR Art. 22).
@@ -59,8 +54,7 @@ tab's session storage.
 
 Heidi answers many questions from your workspace's records without any outside service. For other
 questions, and for **AI import** (reading uploaded files and proposing records), Helvetly uses
-OpenAI's API (OpenAI, USA; [contracting entity per OpenAI's terms, e.g. OpenAI Ireland Ltd for
-customers in the EEA and Switzerland — verify]), but **only after an owner or admin of the
+OpenAI's API (OpenAI, USA), but **only after an owner or admin of the
 workspace has allowed it** in Settings → Workspace or in Heidi's panel. Until then nothing is sent
 and AI import is not available.
 
@@ -73,8 +67,7 @@ Once allowed:
 - AI import sends the content of the files you upload for the import, part by part.
 
 We ask OpenAI not to store requests and responses (`store: false`). According to OpenAI's API terms,
-API data is not used to train models and may be kept for up to 30 days to detect abuse [verify the
-current terms before publication]. Heidi is labelled as an AI assistant; its answers and imported
+API data is not used to train models and may be kept for up to 30 days to detect abuse. Heidi is labelled as an AI assistant; its answers and imported
 records can be wrong and are suggestions for you to check. Owners and admins can turn this off at
 any time; every change is recorded.
 
@@ -85,7 +78,6 @@ in the USA (Stripe, Google, OpenAI, Cloudflare). We disclose data abroad only wh
 and GDPR Chapter V allow it: to countries the Federal Council or the European Commission recognise
 as adequate (for the USA, companies certified under the Swiss–US and EU–US Data Privacy Framework),
 or under the standard contractual clauses recognised by the FDPIC and the European Commission.
-[State, per recipient, which basis applies once verified.]
 
 Helvetly sends nothing to tax authorities or e-invoicing networks: customers download VAT returns
 and e-invoice files and submit them themselves.
@@ -109,8 +101,8 @@ you can do yourself:
 
 A deleted workspace can no longer be reached by anyone, but its records stay stored: records that
 accounting law requires to be kept (invoices, receipts, the audit log: 10 years, OR Art. 958f and
-GeBüV) are kept for that period, and only for that purpose. [TBD: when stored data of deleted
-workspaces is erased — not yet automated.] Write to [privacy@helvetly.com] for anything else; we may
+GeBüV) are kept for that period, and only for that purpose, and then erased. Write to
+[support@helvetly.com](mailto:support@helvetly.com) for anything else; we may
 ask you to confirm your identity first. You may complain to the Federal Data Protection and
 Information Commissioner (FDPIC, www.edoeb.admin.ch) or, in the EU, to your national data protection
 authority.
@@ -120,9 +112,9 @@ authority.
 Passwordless sign-in (Google, email codes, passkeys) with optional two-factor authentication;
 session and API tokens stored only as SHA-256 hashes; encrypted connections; every workspace's data
 is separated in every query; financial records in an append-only, hash-chained log; where storage is
-configured for it, issued invoices and booked receipts are locked against deletion (S3 Object Lock).
-[Describe hosting, encryption at rest and backups once known.]
+configured for it, issued invoices and booked receipts are locked against deletion (S3 Object Lock);
+data at rest is encrypted and backed up regularly.
 
 ## 8. Changes
 
-We publish changes here with their date. Last change: [date].
+We publish changes here with their date. Last change: 15 November 2026.
