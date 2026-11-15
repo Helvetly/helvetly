@@ -216,7 +216,7 @@ ALTER TABLE limit_workspaces
     ADD COLUMN expires_at timestamp with time zone,
     ADD COLUMN set_by text NOT NULL DEFAULT '';
 ALTER TABLE limit_workspaces RENAME COLUMN note TO reason;
-UPDATE limit_workspaces w SET offer_id = 'helvetly-2026-11-v2', set_by = 'migration 00006',
+UPDATE limit_workspaces w SET offer_id = 'helvetly-2026-11-v2', set_by = 'migration 00007',
     reason = CASE WHEN btrim(reason) = '' THEN 'set before offer v2' ELSE reason END,
     state = CASE WHEN l.kind = 'access' THEN CASE WHEN w.value = 0 THEN 'disabled' ELSE 'enabled' END
         WHEN w.value = -1 THEN 'unlimited' ELSE 'limited' END,
@@ -247,7 +247,7 @@ CREATE TABLE offer_audit (
 CREATE TRIGGER offer_audit_append_only BEFORE UPDATE OR DELETE ON offer_audit FOR EACH ROW EXECUTE FUNCTION offer_audit_append_only();
 CREATE TRIGGER offer_audit_no_truncate BEFORE TRUNCATE ON offer_audit FOR EACH STATEMENT EXECUTE FUNCTION offer_audit_append_only();
 INSERT INTO offer_audit (actor, action, target, after, reason)
-SELECT 'migration 00006', 'offer.publish', id, jsonb_build_object('offer_id', id, 'checksum', checksum),
+SELECT 'migration 00007', 'offer.publish', id, jsonb_build_object('offer_id', id, 'checksum', checksum),
     'Offer v2 approved by the owner on 2026-11-15'
 FROM offer_versions WHERE id = 'helvetly-2026-11-v2';
 

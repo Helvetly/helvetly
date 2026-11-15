@@ -11,7 +11,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// seeded is offer v2 as 00006 published it, with the definitions.
+// seeded is offer v2 as 00007 published it, with the definitions.
 func seeded(t *testing.T) (*env, Offer, []store.LimitDef) {
 	t.Helper()
 	e := newEnv(t, true)
@@ -123,6 +123,14 @@ func TestOfferValidation(t *testing.T) {
 		{"the internal AI cost on the pricing page", func(o *Offer) {
 			o.PublicPricing.ComparisonRows[5].LimitKeys = append(o.PublicPricing.ComparisonRows[5].LimitKeys, "ai_cost_usd_micros")
 		}, "ai_cost_usd_micros is a feature, a technical guard or internal"},
+		{"an AI cost budget that cannot fund the token pool", func(o *Offer) {
+			recordOf(o, "ai_cost_usd_micros").Values[Pro] = OfferValue{State: StateLimited, Value: n64(2_000_000)}
+		}, "ai_cost_usd_micros on pro:"},
+		{"an AI cost increment that cannot fund a seat's tokens", func(o *Offer) {
+			recordOf(o, "ai_cost_usd_micros").PerAdditionalPaidSeat[Business] = 1
+			o.UsagePolicy.Pooled = removed(o.UsagePolicy.Pooled, "ai_cost_usd_micros")
+		}, "ai_cost_usd_micros per paid seat on business"},
+		{"a trial whose AI cost cannot fund its tokens", func(o *Offer) { o.Trial.Overrides["ai_cost_usd_micros"] = 100 }, "trial.overrides.ai_cost_usd_micros"},
 		{"markup in a label", func(o *Offer) { o.PublicPricing.ComparisonRows[0].LabelEN = "<b>Invoices</b>" }, "label_en must be plain text"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

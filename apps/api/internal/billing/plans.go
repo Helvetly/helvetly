@@ -97,6 +97,7 @@ const (
 	Signatures  Limit = "signatures_per_month"   // signature requests sent this month
 	Storage     Limit = "storage_bytes"          // documents and expense receipts
 	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
+	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
 )
 

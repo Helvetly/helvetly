@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-// TestOffersMigration: 00006 publishes offer v2 with every plan's value of its 66 keys, moves a workspace's own
+// TestOffersMigration: 00007 publishes offer v2 with every plan's value of its 66 keys, moves a workspace's own
 // values onto it (unlimited and features as states, members dropped) and assigns the workspace; published rows and
 // the audit refuse changes; Down restores the earlier limits with the workspace's values, and Up runs again.
 func TestOffersMigration(t *testing.T) {
 	ctx := context.Background()
 	p, pool := migrationProvider(t)
-	if _, err := p.UpTo(ctx, 5); err != nil {
+	if _, err := p.UpTo(ctx, 6); err != nil {
 		t.Fatal(err)
 	}
 	exec := func(sql string, args ...any) {
@@ -34,7 +34,7 @@ func TestOffersMigration(t *testing.T) {
 	exec(`INSERT INTO limit_workspaces (limit_key, workspace_id, value, note) VALUES
 		('clients', 'ws_1', 40, 'pilot'), ('api_access', 'ws_1', 1, ''), ('storage_bytes', 'ws_1', -1, 'big'),
 		('members', 'ws_1', 3, 'flat')`)
-	if _, err := p.UpTo(ctx, 6); err != nil {
+	if _, err := p.UpTo(ctx, 7); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(`SELECT count(*) FROM limits`); n != 66 {
@@ -81,7 +81,7 @@ func TestOffersMigration(t *testing.T) {
 			t.Fatalf("%s: %v", sql, err)
 		}
 	}
-	if _, err := p.DownTo(ctx, 5); err != nil {
+	if _, err := p.DownTo(ctx, 6); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(`SELECT count(*) FROM limits`); n != 10 {
@@ -95,7 +95,7 @@ func TestOffersMigration(t *testing.T) {
 			t.Fatalf("%s after Down: %d", key, n)
 		}
 	}
-	if _, err := p.UpTo(ctx, 6); err != nil {
+	if _, err := p.UpTo(ctx, 7); err != nil {
 		t.Fatal(err)
 	}
 }

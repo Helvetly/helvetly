@@ -4,7 +4,7 @@ import type { Billing, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 2 ** 30
 // The limits seeded in apps/api/internal/store/migrations before offer v2 (00005); the API's values now come from the
-// published offer (00006).
+// published offer (00007).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 50,

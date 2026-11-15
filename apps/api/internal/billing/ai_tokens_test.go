@@ -41,3 +41,33 @@ func TestAITokensFollowThePlan(t *testing.T) {
 		}
 	})
 }
+
+// TestAICostFollowsTheOffer: the cost guard is the offer's ai_cost_usd_micros pooled by paid seats, none without a
+// plan and unlimited without billing; a pack adds tokens, never cost.
+func TestAICostFollowsTheOffer(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t, true)
+	b := e.workspace()
+	cost := func(e *env, ws string) int64 {
+		t.Helper()
+		n, err := e.svc.AICost(ctx, e.st.Q, ws)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if n := cost(e, b.workspace); n != 0 {
+		t.Fatalf("no plan: %d", n)
+	}
+	e.subscribe(b.workspace, "price_pm")
+	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 2 WHERE workspace_id = $1`, b.workspace)
+	if n := cost(e, b.workspace); n != 6_000_000 {
+		t.Fatalf("pro × 2: %d", n)
+	}
+	t.Run("billing off", func(t *testing.T) {
+		off := newEnv(t, false)
+		if n := cost(off, off.workspace().workspace); n != Unlimited {
+			t.Fatalf("billing off: %d", n)
+		}
+	})
+}

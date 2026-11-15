@@ -171,6 +171,20 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	return monthly + bought, err
 }
 
+// AICost is the workspace's monthly model cost guard in micro-USD (an aimodel.Allowance): its offer's
+// ai_cost_usd_micros, pooled by paid seats; none without a plan, unlimited (-1) when billing is off. AI token packs
+// add tokens, not cost: a pack's tokens are spent only while this budget lasts.
+func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
+	r, err := s.Entitlements(ctx, q, workspaceID)
+	if err != nil || r.SelfHosted {
+		return Unlimited, err
+	}
+	if r.Plan == "" {
+		return 0, nil
+	}
+	return r.Cap(AICost)
+}
+
 // AllowResource is injected into Store's canonical writes before requests and jobs start.
 func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, resource string, add int64) error {
 	if !s.enabled {

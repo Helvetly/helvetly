@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/store"
 )
 
@@ -180,6 +181,7 @@ func (o Offer) Validate(defs []store.LimitDef) error {
 		}
 	}
 	o.validateTrial(fail)
+	o.validateAIFunding(fail)
 	o.validatePublic(fail)
 	return errors.Join(errs...)
 }
@@ -263,6 +265,31 @@ func (o Offer) validateTrial(fail func(string, ...any)) {
 			fail("trial.overrides.%s: not a limit, or below 0", key)
 		}
 	}
+}
+
+// validateAIFunding: on every plan the AI cost budget pays for the whole token pool at the sold model's worst mix,
+// for the first seat, for each further one and in the trial, so the cost guard never silently shrinks the pool.
+func (o Offer) validateAIFunding(fail func(string, ...any)) {
+	tokens, okT := o.record(string(AITokens))
+	cost, okC := o.record(string(AICost))
+	if !okT || !okC {
+		return // reported as missing
+	}
+	card := aimodel.Cards[aimodel.DefaultModel]
+	check := func(where string, t, c int64) {
+		if err := card.Funds(t, c); err != nil {
+			fail("%s: %v", where, err)
+		}
+	}
+	for _, plan := range planOrder {
+		t, c := tokens.Values[plan], cost.Values[plan]
+		if t.State != StateLimited || c.State != StateLimited || t.Value == nil || c.Value == nil {
+			continue // a state error is reported with the record
+		}
+		check("ai_cost_usd_micros on "+plan, *t.Value, *c.Value)
+		check("ai_cost_usd_micros per paid seat on "+plan, tokens.PerAdditionalPaidSeat[plan], cost.PerAdditionalPaidSeat[plan])
+	}
+	check("trial.overrides.ai_cost_usd_micros", o.Trial.Overrides[string(AITokens)], o.Trial.Overrides[string(AICost)])
 }
 
 // validatePublic: the comparison names business features and customer allowances only, never an internal key or a

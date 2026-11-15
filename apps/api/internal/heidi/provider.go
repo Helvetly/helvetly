@@ -87,7 +87,7 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 		request.Files = append(request.Files, ProviderFile{Name: f.Name, ContentType: f.Type, Bytes: b})
 	}
-	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, Now: s.now, Gate: consentGate}
+	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now, Gate: consentGate}
 	// One operation per turn: the classifier and the answer share its cost cap.
 	call := aimodel.Call{Kind: "heidi", Operation: auth.NewID("turn"), Caps: aimodel.HeidiCaps}
 	var spent int64
