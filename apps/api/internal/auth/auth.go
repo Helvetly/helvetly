@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -105,7 +106,9 @@ func (s *Service) authConfig(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"google": s.cfg.GoogleSignIn(), "email": s.cfg.EmailSignIn(),
 		"passkey": true, "dev_codes": s.cfg.DevSignIn, "portal_url": s.cfg.PortalURL,
 		// The platform's page views; empty = off (the platform loads no analytics).
-		"google_analytics_id": s.cfg.GoogleAnalyticsID})
+		"google_analytics_id": s.cfg.GoogleAnalyticsID,
+		// Where tokens and agents call the API (PUBLIC_API_URL), else this platform's own origin.
+		"api_url": cmp.Or(s.cfg.APIURL, s.cfg.PublicURL)})
 }
 
 // ---- errors and JSON ----

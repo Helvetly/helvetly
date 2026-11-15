@@ -2,29 +2,20 @@
 
 import { Button } from '@helvetly/ui/components/button'
 import { BookOpen, Bot, Braces } from 'lucide-react'
-import { useSyncExternalStore } from 'react'
 
 import { Snippet } from '@/components/developers/snippet'
 import { SettingsPage, SettingsSection } from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
+import { useApiOrigin } from '@/lib/api-origin'
 import { docsUrl } from '@/lib/docs'
 
 import { ApiTokens } from './api-tokens'
 import { DocsLink } from './code-block'
 import { McpConnect } from './mcp-connect'
 
-const noSubscribe = () => () => {}
-/** The app's own origin, which serves the API and the MCP server (same origin, AGENTS.md). */
-const useOrigin = () =>
-  useSyncExternalStore(
-    noSubscribe,
-    () => window.location.origin,
-    () => '',
-  )
-
 /** Settings → API & MCP: personal tokens, the REST API and connecting an AI assistant. */
 export function ApiSettings() {
-  const origin = useOrigin()
+  const origin = useApiOrigin()
   return (
     <>
       <SettingsHeader />

@@ -30,6 +30,7 @@ import {
   type TokenExpiry,
 } from '@/lib/account'
 import { errorMessage } from '@/lib/api'
+import { useApiOrigin } from '@/lib/api-origin'
 import {
   emptyMatrix,
   matrixScopes,
@@ -340,6 +341,7 @@ function CreateTokenSheet({ onClose }: { onClose: () => void }) {
 
 /** The secret, shown this once, and how to use it. */
 function Secret({ token, onDone }: { token: NewApiToken; onDone: () => void }) {
+  const apiOrigin = useApiOrigin()
   return (
     <>
       <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-4 py-5 sm:px-5">
@@ -358,7 +360,7 @@ function Secret({ token, onDone }: { token: NewApiToken; onDone: () => void }) {
         </div>
         <div className="grid gap-2">
           <p className="text-body-sm font-medium">Connect an AI assistant</p>
-          <McpConnect origin={window.location.origin} token={token.token} />
+          <McpConnect origin={apiOrigin} token={token.token} />
         </div>
         <p className="text-body-sm text-muted-foreground">
           Endpoints and examples are in the <DocsLink>API reference</DocsLink>.

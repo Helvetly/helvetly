@@ -30,6 +30,9 @@ type Config struct {
 	// MediaURL is the origin downloads are redirected to (MEDIA_URL), signed links under /api/media/ served by this
 	// binary on another host. Empty = presigned or proxied downloads (S3_PROXY_DOWNLOADS).
 	MediaURL string
+	// APIURL is the origin bearer clients and agents are told to use (PUBLIC_API_URL), e.g. https://api.helvetly.com, the
+	// same binary on its own host. Empty = PUBLIC_URL serves them too.
+	APIURL string
 	// SecretKey seals the Google sign-in cookie and keys the client-address HMAC (32 bytes).
 	SecretKey []byte
 	// DevSecretKey: SECRET_KEY was empty and a fixed development key is in use.
@@ -243,6 +246,20 @@ func Load() (Config, error) {
 			fail("MEDIA_URL must be https on a public host, got %q", c.MediaURL)
 		default:
 			c.MediaURL = m.Scheme + "://" + strings.ToLower(m.Host)
+		}
+	}
+	if c.APIURL = env("PUBLIC_API_URL", ""); c.APIURL != "" {
+		a, err := url.Parse(c.APIURL)
+		switch {
+		case err != nil || (a.Scheme != "http" && a.Scheme != "https") || a.Host == "" || (a.Path != "" && a.Path != "/") ||
+			a.RawQuery != "" || a.Fragment != "" || a.User != nil:
+			fail("PUBLIC_API_URL must be an origin such as https://api.helvetly.com, got %q", c.APIURL)
+		case (u != nil && strings.EqualFold(a.Host, u.Host)) || (p != nil && strings.EqualFold(a.Host, p.Host)):
+			fail("PUBLIC_API_URL must be on another host than PUBLIC_URL and PORTAL_URL, got %q", a.Host)
+		case !localHost(a.Hostname()) && a.Scheme != "https":
+			fail("PUBLIC_API_URL must be https on a public host, got %q", c.APIURL)
+		default:
+			c.APIURL = a.Scheme + "://" + strings.ToLower(a.Host)
 		}
 	}
 	c.CookieSecure = boolean("COOKIE_SECURE", u != nil && u.Scheme == "https")
