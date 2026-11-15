@@ -1,6 +1,8 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
@@ -9,6 +11,10 @@ import { billingKeys, type Billing } from '@/lib/billing'
 import { queryKeys } from '@/lib/queries'
 
 import { ChoosePlan, PlanGate } from './plan-gate'
+
+const server = setupServer()
+beforeAll(() => server.listen())
+afterAll(() => server.close())
 
 let pathname = '/clients'
 const replace = vi.fn<(href: string) => void>()
@@ -100,4 +106,22 @@ test('the picker sends a workspace with a plan home', () => {
   renderWith(<ChoosePlan />, billingFixture({ locked: false, plan: 'basic', status: 'active' }))
   expect(replace).toHaveBeenCalledWith('/')
   expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
+})
+
+test('billing the person may not read does not hold the page', async () => {
+  const client = new QueryClient()
+  client.setQueryData(queryKeys.session, session)
+  server.use(
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({ error: { code: 'forbidden', message: 'No access.' } }, { status: 403 }),
+    ),
+  )
+  render(
+    <QueryClientProvider client={client}>
+      <PlanGate>
+        <p>The list</p>
+      </PlanGate>
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('The list', {}, { timeout: 2000 })).toBeVisible()
 })

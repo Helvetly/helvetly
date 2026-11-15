@@ -43,7 +43,8 @@ export function PlanGate({ children }: { children: ReactNode }) {
     if (locked) router.replace(CHOOSE_PLAN_PATH)
   }, [locked, router])
 
-  if (billing.isPending || locked) {
+  // A failed answer (a member without billing access, say) is not waited out through the retries.
+  if ((billing.isPending && billing.failureCount === 0) || locked) {
     return (
       <div className="flex min-h-svh flex-col bg-background">
         <Loader size="page" />
