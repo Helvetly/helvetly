@@ -8,50 +8,101 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { api, setCsrfToken, type Session } from '@/lib/api'
+import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
 import { useSwitchWorkspace, useWorkspaces } from '@/lib/members'
+import { useSession } from '@/lib/queries'
+
+export const CHOOSE_PLAN_PATH = '/choose-plan'
+
+/** Whether `pathname` is the plan picker (the static export serves it as /choose-plan/). */
+export const isChoosePlan = (pathname: string) => pathname.replace(/\/$/, '') === CHOOSE_PLAN_PATH
 
 /**
- * A workspace without an active plan is read-only: every page but billing gives way to a full-screen plan
- * picker, without the sidebar. The bar on top keeps the way out (another workspace, or signing out).
+ * A workspace without an active plan is read-only: every page but billing sends to the plan picker,
+ * a page of its own. Until billing answers nothing of the app shows, or a locked workspace would
+ * flash it before the picker.
  */
-export function PlanGate({ session, children }: { session: Session; children: ReactNode }) {
-  const billing = useBilling().data
+export function PlanGate({ children }: { children: ReactNode }) {
+  const billing = useBilling()
+  const router = useRouter()
   const onBilling = (usePathname() ?? '').startsWith('/settings/billing')
-  if (!billing?.enabled || !billing.locked || onBilling) return children
-  const trial = !billing.has_customer && billing.trial_available
+  const locked = Boolean(billing.data?.enabled && billing.data.locked) && !onBilling
+
+  useEffect(() => {
+    if (locked) router.replace(CHOOSE_PLAN_PATH)
+  }, [locked, router])
+
+  if (billing.isPending || locked) {
+    return (
+      <div className="flex min-h-svh flex-col bg-background">
+        <Loader size="page" />
+      </div>
+    )
+  }
+  return children
+}
+
+/** The plan picker of a workspace without an active plan; a workspace with one goes home. */
+export function ChoosePlan() {
+  // The layout's AuthGate renders pages only once the session is in.
+  const session = useSession().data
+  const billing = useBilling()
+  const router = useRouter()
+  const data = billing.data
+  const open = Boolean(data && !(data.enabled && data.locked))
+
+  useEffect(() => {
+    if (open) router.replace('/')
+  }, [open, router])
+
+  if (!session) return null
+  if (!data || open) {
+    return (
+      <PlanScreen workspace={<WorkspaceSwitcher session={session} />} action={<SignOutButton />}>
+        {billing.error ? (
+          <p role="alert" className="mt-16 text-center text-sm text-muted-foreground">
+            Plans couldn’t be loaded: {errorMessage(billing.error)}
+          </p>
+        ) : (
+          <Loader label="Loading plans" className="min-h-96" />
+        )}
+      </PlanScreen>
+    )
+  }
+  const trial = !data.has_customer && data.trial_available
   return (
     <PlanScreen workspace={<WorkspaceSwitcher session={session} />} action={<SignOutButton />}>
-      {billing.can_manage ? (
+      {data.can_manage ? (
         <>
           <div className="grid max-w-2xl justify-items-center gap-4 text-center">
             {trial && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success-surface/70 px-3 py-1 text-[12.5px] font-medium text-success ring-1 ring-success-solid/25 backdrop-blur">
                 <Gift className="size-3.5" aria-hidden />
-                {billing.trial_days} days free on Basic
+                {data.trial_days} days free on Basic
               </span>
             )}
             <h1 className="text-[32px] leading-[1.1] font-semibold tracking-[-0.035em] text-balance sm:text-[46px]">
               Choose a plan for {session.workspace.name}
             </h1>
             <p className="max-w-xl text-[15px] text-pretty text-muted-foreground sm:text-[16px]">
-              {billing.has_customer
+              {data.has_customer
                 ? 'Its plan has ended, so the workspace is read-only. Choose a plan and it opens again right away, with everything in it.'
                 : 'Invoices with QR bills, expenses, clients, documents and signatures in one place. One price per person, the whole team on the same plan.'}
             </p>
           </div>
           <div className="mt-12 w-full max-w-[1080px]">
-            <PlanCards billing={billing} />
+            <PlanCards billing={data} />
           </div>
         </>
       ) : (

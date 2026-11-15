@@ -1,17 +1,20 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
 import { billingKeys, type Billing } from '@/lib/billing'
+import { queryKeys } from '@/lib/queries'
 
-import { PlanGate } from './plan-gate'
+import { ChoosePlan, PlanGate } from './plan-gate'
 
 let pathname = '/clients'
+const replace = vi.fn<(href: string) => void>()
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
-  useRouter: () => ({ replace: vi.fn<() => void>() }),
+  useRouter: () => ({ replace }),
 }))
 
 const session: Session = {
@@ -22,57 +25,79 @@ const session: Session = {
   csrf_token: 't',
 }
 
-function renderGate(billing?: Billing) {
-  const client = new QueryClient()
+function renderWith(node: ReactNode, billing?: Billing) {
+  // Billing never answers in these tests unless it is seeded.
+  const client = new QueryClient({
+    defaultOptions: { queries: { queryFn: () => new Promise(() => {}), retry: false } },
+  })
+  client.setQueryData(queryKeys.session, session)
   if (billing) client.setQueryData(billingKeys.overview, billing)
   render(
     <QueryClientProvider client={client}>
-      <TooltipProvider>
-        <PlanGate session={session}>
-          <p>The list</p>
-        </PlanGate>
-      </TooltipProvider>
+      <TooltipProvider>{node}</TooltipProvider>
     </QueryClientProvider>,
   )
 }
 
+const gate = (billing?: Billing) =>
+  renderWith(
+    <PlanGate>
+      <p>The list</p>
+    </PlanGate>,
+    billing,
+  )
+
 afterEach(() => {
   pathname = '/clients'
+  replace.mockClear()
 })
 
-test('a locked workspace shows its plans to an owner or admin', () => {
-  renderGate(billingFixture())
+test('a locked workspace goes to the plan picker without showing the page', () => {
+  gate(billingFixture())
   expect(screen.queryByText('The list')).toBeNull()
+  expect(replace).toHaveBeenCalledWith('/choose-plan')
+})
+
+test('before billing loads the page does not show', () => {
+  gate()
+  expect(screen.queryByText('The list')).toBeNull()
+  expect(screen.getByText('Loading…')).toBeVisible()
+  expect(replace).not.toHaveBeenCalled()
+})
+
+test('the billing settings are never gated', () => {
+  pathname = '/settings/billing'
+  gate(billingFixture())
+  expect(screen.getByText('The list')).toBeVisible()
+  expect(replace).not.toHaveBeenCalled()
+})
+
+test('a workspace with a plan is not gated', () => {
+  gate(billingFixture({ locked: false, plan: 'basic', status: 'active' }))
+  expect(screen.getByText('The list')).toBeVisible()
+})
+
+test('billing off is not gated', () => {
+  gate(billingFixture({ enabled: false, locked: false }))
+  expect(screen.getByText('The list')).toBeVisible()
+})
+
+test('the picker shows the plans to an owner or admin', () => {
+  renderWith(<ChoosePlan />, billingFixture())
   expect(screen.getByRole('heading', { name: 'Choose a plan for Acme' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
   expect(screen.getByRole('region', { name: 'Basic' })).toBeVisible()
 })
 
-test('a member is told to ask an owner', () => {
-  renderGate(billingFixture({ can_manage: false }))
-  expect(screen.queryByText('The list')).toBeNull()
+test('the picker tells a member to ask an owner', () => {
+  renderWith(<ChoosePlan />, billingFixture({ can_manage: false }))
   expect(screen.getByText('This workspace has no active plan')).toBeVisible()
   expect(screen.getByText(/until an owner or admin chooses one/)).toBeVisible()
   expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
 })
 
-test('the billing settings are never gated', () => {
-  pathname = '/settings/billing'
-  renderGate(billingFixture())
-  expect(screen.getByText('The list')).toBeVisible()
-})
-
-test('a workspace with a plan, billing off, or billing not loaded yet is not gated', () => {
-  renderGate(billingFixture({ locked: false, plan: 'basic', status: 'active' }))
-  expect(screen.getByText('The list')).toBeVisible()
-})
-
-test('billing off is not gated', () => {
-  renderGate(billingFixture({ enabled: false, locked: false }))
-  expect(screen.getByText('The list')).toBeVisible()
-})
-
-test('before billing loads the page shows', () => {
-  renderGate()
-  expect(screen.getByText('The list')).toBeVisible()
+test('the picker sends a workspace with a plan home', () => {
+  renderWith(<ChoosePlan />, billingFixture({ locked: false, plan: 'basic', status: 'active' }))
+  expect(replace).toHaveBeenCalledWith('/')
+  expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
 })

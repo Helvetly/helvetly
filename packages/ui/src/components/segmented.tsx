@@ -27,7 +27,7 @@ export function Segmented<T extends string>({
     // Stretches to the height of a neighbouring field; the options fill it, so the padding stays even.
     <fieldset
       className={cn(
-        'items-stretch rounded-lg bg-muted p-0.5',
+        'items-stretch rounded-lg bg-foreground/6 p-0.5',
         fill ? 'grid w-full auto-cols-fr grid-flow-col' : 'flex w-fit',
       )}
     >

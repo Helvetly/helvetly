@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
-import { PlanGate } from '@/components/shell/plan-gate'
+import { ChoosePlan } from '@/components/shell/plan-gate'
 import type { Billing } from '@/lib/billing'
 
 import { screenHandlers, storySession } from './screen-fixtures'
@@ -16,15 +16,11 @@ const handlers = (billing: Billing) => [
 
 const meta = {
   title: 'Financial overview/Plan gate',
-  render: () => (
-    <PlanGate session={storySession}>
-      <p>The workspace</p>
-    </PlanGate>
-  ),
+  render: () => <ChoosePlan />,
   parameters: {
     layout: 'fullscreen',
     ownMain: true,
-    nextjs: { navigation: { pathname: '/' } },
+    nextjs: { navigation: { pathname: '/choose-plan' } },
     msw: { handlers: handlers(billingFixture()) },
   },
 } satisfies Meta
