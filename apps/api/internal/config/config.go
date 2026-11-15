@@ -76,8 +76,8 @@ type AI struct {
 // Stripe: subscription billing (docs/billing-contract.md); off when SecretKey is empty, and then no plan limit applies.
 type Stripe struct {
 	SecretKey string
-	// WebhookSecret (STRIPE_WEBHOOK_SECRET) is one signing secret, or several separated by commas while two endpoints
-	// deliver the same events (switching the endpoint's API version): an event signed with any of them is taken.
+	// WebhookSecret (STRIPE_WEBHOOK_SECRET) is one signing secret, or several separated by commas only while rotating
+	// it: an event signed with any of them is taken. The endpoint's API version needs none (handlers read objects again).
 	WebhookSecret string
 	// AutomaticTax turns on Stripe Tax in Checkout (Swiss VAT taken out of VAT-inclusive prices).
 	AutomaticTax bool

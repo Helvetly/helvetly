@@ -172,7 +172,8 @@ func monthStart(now time.Time, loc *time.Location) time.Time {
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
 }
 
-// live: a subscription in one of these states gives its plan.
+// live: a subscription in one of these states gives its plan. Not incomplete (its first payment unpaid): it never
+// grants its plan, nor replaces or ends a live one on record (apply), until it is paid.
 func live(status string) bool {
 	return status == "active" || status == "trialing" || status == "past_due"
 }

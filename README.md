@@ -149,9 +149,10 @@ Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_su
 `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `charge.refunded`. An opened dispute
 alerts the owners and admins; a lost one ends the subscription it paid at once, or takes back the AI token pack's
 tokens (as much as is left this month). A full refund takes back a pack's tokens; a refunded subscription payment
-changes nothing, since you cancel the subscription yourself if you mean to. To move the endpoint to another API
-version, add a second endpoint and set `STRIPE_WEBHOOK_SECRET=whsec_new,whsec_old` until the old one is removed: both
-verify, and an event delivered to both is applied once.
+changes nothing, since you cancel the subscription yourself if you mean to. The endpoint's API version does not
+matter: billing reads only the event's id, type and object id, and reads the object again from Stripe with its pinned
+version, so a version change needs no new endpoint or secret. Only while rotating the signing secret, set
+`STRIPE_WEBHOOK_SECRET=whsec_new,whsec_old`: both verify, and an event delivered twice is applied once.
 
 Plan changes and seats are invoiced at once: added seats and upgrades are charged, removed seats and downgrades
 credited to the customer's Stripe balance. An upgrade, monthly to yearly and leaving the trial take effect once that
