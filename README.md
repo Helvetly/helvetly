@@ -145,6 +145,11 @@ Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, p
 account by lookup key `helvetly_<basic|pro|business>_<month|year>`: recurring, per seat, with the metadata
 `helvetly_pricing=per_seat`. Create those prices in your own Stripe account; the plan limits live in the
 `plan_limits` table. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
+Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.*`,
+`charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `charge.refunded`. An opened dispute
+alerts the owners and admins; a lost one ends the subscription it paid at once, or takes back the AI token pack's
+tokens (as much as is left this month). A full refund takes back a pack's tokens; a refunded subscription payment
+changes nothing, since you cancel the subscription yourself if you mean to.
 
 Optional extra AI tokens: one-time prices of the product `helvetly_ai_tokens`, each with the metadata
 `helvetly_ai_tokens=<tokens>`. A workspace on a plan buys one through Checkout; once paid, its tokens add to the

@@ -152,6 +152,10 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	disputed, err := s.db.Disputed(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
 		max := s.plans.forBilling(b, l)
@@ -191,7 +195,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
 		"usage": usage, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
-		"ai_tokens_bought": bought, "ai_packs": []aiPack{},
+		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
 	}
 	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
 		out["ai_packs"] = packsIn(s.aiPacks(r.Context()), cur)

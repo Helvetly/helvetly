@@ -49,7 +49,7 @@ var WorkspaceExportTables = []ExportTable{
 	own("templates"),
 	own("closed_periods"), own("financial_events"), own("ledger_settings"),
 	own("workspace_counters"), own("dunning_notices"), own("vat_return_settings"), own("einvoice_transmissions"),
-	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_token_packs"),
+	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_token_packs"), own("billing_disputes"),
 }
 
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,

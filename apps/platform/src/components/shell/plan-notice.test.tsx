@@ -51,6 +51,11 @@ test.each<[string, Partial<Billing>, ReturnType<typeof planNotice>]>([
     }),
   ],
   [
+    'a disputed payment, ahead of the trial',
+    { disputed: true, status: 'trialing', trial_end: '2026-11-16T12:00:00Z' },
+    expect.objectContaining({ kind: 'disputed', tone: 'warning', action: null, dismissable: true }),
+  ],
+  [
     'a trial',
     { status: 'trialing', trial_end: '2026-11-16T12:00:00Z', trial_days: 7 },
     expect.objectContaining({

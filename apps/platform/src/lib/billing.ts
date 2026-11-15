@@ -76,6 +76,8 @@ export type Billing = {
   ai_tokens_bought: number
   /** The AI token packs on sale (empty without a plan, or for someone who cannot manage billing). */
   ai_packs: AIPack[]
+  /** A payment of the workspace is in a chargeback that is not closed yet. */
+  disputed: boolean
 }
 /** A one-time AI token pack: tokens for a price incl. VAT. */
 export type AIPack = { tokens: number; amount: number; currency: string }

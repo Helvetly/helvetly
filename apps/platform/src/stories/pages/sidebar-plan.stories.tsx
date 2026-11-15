@@ -108,6 +108,20 @@ export const TrialMember: Story = {
   },
 }
 
+/** A chargeback is open: the plan keeps working, so the card only informs and can be hidden. */
+export const PaymentDisputed: Story = {
+  parameters: page(live({ disputed: true })),
+  play: async ({ canvasElement }) => {
+    const card = await notice(canvasElement)
+    await expect(card.getByText('Payment disputed')).toBeVisible()
+    await expect(card.getByText(/A payment is disputed/)).toBeVisible()
+    await expect(card.queryByRole('link')).toBeNull()
+    await expect(card.getByRole('button', { name: 'Hide for this session' })).toBeVisible()
+  },
+}
+export const PaymentDisputedDark = dark(PaymentDisputed)
+export const PaymentDisputedPhone = phone(PaymentDisputed)
+
 export const PaymentFailed: Story = {
   parameters: page(live({ plan: 'pro', status: 'past_due' })),
   play: async ({ canvasElement }) => {

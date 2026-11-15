@@ -65,6 +65,7 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
   usage: [],
   ai_tokens_bought: 0,
   ai_packs: [],
+  disputed: false,
   plans: [
     { id: 'basic', name: 'Basic', limits: basic, prices: prices(1900, over.currency ?? 'chf') },
     { id: 'pro', name: 'Pro', limits: pro, prices: prices(4900, over.currency ?? 'chf') },

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // Workspaces and their billing (internal/workspaces, internal/billing).
@@ -213,10 +215,42 @@ func (q Q) AddAITokenPack(ctx context.Context, sessionID, workspaceID, period st
 	return tag.RowsAffected() == 1, err
 }
 
-// AITokenPacks is the tokens the workspace bought for the month period (YYYY-MM).
+// AITokenPacks is the tokens the workspace bought for the month period (YYYY-MM), less those taken back.
 func (q Q) AITokenPacks(ctx context.Context, workspaceID, period string) (int64, error) {
 	var n int64
-	err := q.db.QueryRow(ctx, `SELECT coalesce(sum(tokens), 0) FROM ai_token_packs WHERE workspace_id = $1 AND period = $2`,
+	err := q.db.QueryRow(ctx, `SELECT coalesce(sum(tokens - revoked), 0) FROM ai_token_packs WHERE workspace_id = $1 AND period = $2`,
 		workspaceID, period).Scan(&n)
 	return n, err
+}
+
+// RevokeAITokenPack takes back a refunded or charged-back pack, once: up to max of its tokens when it counts for
+// period, none when it has lapsed. A pack not recorded yet is recorded taken back whole, so its late credit adds
+// nothing. ok is false when the pack was taken back before (or is another workspace's).
+func (q Q) RevokeAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens, max int64, now time.Time) (taken int64, ok bool, err error) {
+	err = q.db.QueryRow(ctx, `INSERT INTO ai_token_packs (checkout_session_id, workspace_id, period, tokens, revoked, revoked_at, created_at)
+		VALUES ($1, $2, $3, $4, $4, $6, $6)
+		ON CONFLICT (checkout_session_id) DO UPDATE SET revoked_at = $6,
+			revoked = CASE WHEN ai_token_packs.period = EXCLUDED.period THEN least(ai_token_packs.tokens, greatest($5::bigint, 0)) ELSE 0 END
+		WHERE ai_token_packs.revoked_at IS NULL AND ai_token_packs.workspace_id = EXCLUDED.workspace_id
+		RETURNING revoked`, sessionID, workspaceID, period, tokens, max, now).Scan(&taken)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	return taken, err == nil, err
+}
+
+// SaveDispute records a dispute's latest status; fresh is true the first time the dispute is seen.
+func (q Q) SaveDispute(ctx context.Context, id, workspaceID, status string, now time.Time) (fresh bool, err error) {
+	err = q.db.QueryRow(ctx, `INSERT INTO billing_disputes (id, workspace_id, status, updated_at) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, updated_at = EXCLUDED.updated_at
+		RETURNING xmax = 0`, id, workspaceID, status, now).Scan(&fresh)
+	return fresh, err
+}
+
+// Disputed reports whether a payment of the workspace is in a dispute that is not closed yet.
+func (q Q) Disputed(ctx context.Context, workspaceID string) (bool, error) {
+	var open bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM billing_disputes WHERE workspace_id = $1
+		AND status NOT IN ('won', 'lost', 'warning_closed'))`, workspaceID).Scan(&open)
+	return open, err
 }

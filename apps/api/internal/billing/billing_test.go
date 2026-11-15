@@ -85,6 +85,9 @@ type fakeStripe struct {
 	perSeat   bool                      // the catalogue's prices are per seat (setPerSeat)
 	promos    map[string]map[string]any // promotion codes by code
 	coupons   map[string]map[string]any
+	charges   map[string]map[string]any // by id, invoice expanded
+	disputes  map[string]map[string]any // by id, charge is the charge's id
+	sessions  []map[string]any          // Checkout Sessions, found by payment_intent
 	// held, when set, pauses the first request to that "METHOD path" (reached closes) until resume closes
 	held            string
 	reached, resume chan struct{}
@@ -138,6 +141,20 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			c["currency"] = cur
 		}
 		reply(c)
+	case key == "GET /v1/checkout/sessions":
+		data := []map[string]any{}
+		for _, cs := range f.sessions {
+			if cs["payment_intent"] == r.Form.Get("payment_intent") {
+				data = append(data, cs)
+			}
+		}
+		reply(map[string]any{"data": data})
+	case parts[0] == "charges" && len(parts) == 2:
+		reply(f.charges[parts[1]])
+	case parts[0] == "disputes" && len(parts) == 2:
+		d := maps.Clone(f.disputes[parts[1]])
+		d["charge"] = f.charges[d["charge"].(string)]
+		reply(d)
 	case key == "POST /v1/checkout/sessions":
 		reply(map[string]string{"url": "https://checkout.stripe.test/c"})
 	case key == "POST /v1/billing_portal/sessions":
@@ -292,7 +309,8 @@ func newEnv(t *testing.T, enabled bool) *env {
 	st, raw := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, catalog: catalog(), currency: map[string]string{},
-		promos: map[string]map[string]any{}, coupons: map[string]map[string]any{}}
+		promos: map[string]map[string]any{}, coupons: map[string]map[string]any{},
+		charges: map[string]map[string]any{}, disputes: map[string]map[string]any{}}
 	stripeSrv := httptest.NewServer(fake)
 	t.Cleanup(stripeSrv.Close)
 	cfg := config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32), SessionTTL: time.Hour}

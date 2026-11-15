@@ -6,7 +6,15 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@helvetly/ui/co
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { CalendarClock, Clock, CreditCard, Lock, X, type LucideIcon } from 'lucide-react'
+import {
+  CalendarClock,
+  Clock,
+  CreditCard,
+  Lock,
+  ShieldAlert,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState, useSyncExternalStore } from 'react'
 
@@ -14,7 +22,7 @@ import { trialDaysLeft, type Billing } from '@/lib/billing'
 
 type Tone = 'brand' | 'warning' | 'danger'
 export type PlanNotice = {
-  kind: 'trial' | 'payment' | 'ending' | 'locked'
+  kind: 'trial' | 'payment' | 'disputed' | 'ending' | 'locked'
   tone: Tone
   title: string
   text: string
@@ -71,6 +79,15 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
       action: manage ? { label: 'Update payment', href: BILLING } : null,
       dismissable: false,
     }
+  if (billing.disputed)
+    return {
+      kind: 'disputed',
+      tone: 'warning',
+      title: 'Payment disputed',
+      text: 'A payment is disputed with the card issuer. The plan keeps working while the dispute is open; if it is lost, what the payment bought ends.',
+      action: null,
+      dismissable: true,
+    }
   if (billing.status === 'trialing' && billing.trial_end) {
     const left = trialDaysLeft(billing.trial_end, now)
     const ends = formatDate(billing.trial_end)
@@ -104,6 +121,7 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
 const ICONS: Record<PlanNotice['kind'], LucideIcon> = {
   trial: Clock,
   payment: CreditCard,
+  disputed: ShieldAlert,
   ending: CalendarClock,
   locked: Lock,
 }
@@ -151,7 +169,7 @@ function useHidden(key: string) {
 
 /**
  * The plan's state above the user button: the trial's countdown with the way to a plan, a failed
- * payment, a plan that ends, or a read-only workspace. Collapsed, the sidebar keeps only its icon.
+ * payment, a disputed payment, a plan that ends, or a read-only workspace. Collapsed, the sidebar keeps only its icon.
  */
 export function SidebarPlanNotice({
   billing,
