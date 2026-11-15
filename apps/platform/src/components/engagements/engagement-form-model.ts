@@ -293,10 +293,10 @@ export function periodTotal(values: Pick<FormValues, 'quantity' | 'unit_price'>)
 }
 
 const RECURRENCE_WORDS: Record<Exclude<Recurrence, 'none'>, [string, string]> = {
-  weekly: ['week', 'weeks'],
-  monthly: ['month', 'months'],
-  quarterly: ['quarter', 'quarters'],
-  yearly: ['year', 'years'],
+  weekly: [translate('dynamicWeek'), translate('dynamicWeeks')],
+  monthly: [translate('dynamicMonth'), translate('dynamicMonths')],
+  quarterly: [translate('dynamicQuarter'), translate('dynamicQuarters')],
+  yearly: [translate('dynamicYear'), translate('dynamicYears')],
 }
 
 export const RECURRENCE_OPTIONS = [
@@ -350,15 +350,23 @@ export function summarySentence(values: FormValues, clientName: string): string 
   const unit = UNITS.find((u) => u.value === values.unit)?.short
   const amount = parseDecimalInput(values.quantity, 3) ?? ''
   const what = [unit ? `${amount} ${unit}` : amount, values.title.trim()].filter(Boolean).join(' ')
-  const who = clientName ? `${what} for ${clientName}` : what
+  const who = clientName ? translate('dynamicFor', { what: what, clientName: clientName }) : what
   const start = swissDate(values.start_date)
   const end = isDate(values.end_date) ? swissDate(values.end_date) : null
   let when: string
-  if (values.recurrence === 'none') when = end ? `${start} – ${end}` : `from ${start}`
+  if (values.recurrence === 'none')
+    when = end ? `${start} – ${end}` : translate('dynamicFrom2', { start: start })
   else {
     const n = Number(values.interval)
     const [one, many] = RECURRENCE_WORDS[values.recurrence]
-    when = `${n === 1 ? `every ${one}` : `every ${n} ${many}`} from ${start}${end ? ` until ${end}` : ''}`
+    when = translate('dynamicFrom', {
+      value1:
+        n === 1
+          ? translate('dynamicEvery2', { one: one })
+          : translate('dynamicEvery', { n: n, many: many }),
+      start: start,
+      value3: end ? translate('dynamicUntil', { end: end }) : '',
+    })
   }
   const billed =
     values.billing === 'advance' ? translate('billedUpfront') : translate('billedAfterDelivery')

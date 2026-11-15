@@ -306,6 +306,7 @@ function PdfPage({
       <canvas
         ref={canvas}
         aria-label={translate('page2', { number: number })}
+        data-pdf-page={number}
         className={cn(
           'block size-full rounded-[3px] bg-white shadow-elevation-2 transition-opacity duration-300',
           drawn ? 'opacity-100' : 'opacity-0',

@@ -156,5 +156,8 @@ export function TemplatesView({
 
 function countLabel(template: Template) {
   const data = template.fields.filter((field) => isDataKind(field.kind)).length
-  return `${data} client ${data === 1 ? 'field' : 'fields'}`
+  return translate('dynamicClient', {
+    data: data,
+    value2: data === 1 ? translate('dynamicField') : translate('dynamicFields'),
+  })
 }

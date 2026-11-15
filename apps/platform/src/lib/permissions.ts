@@ -136,7 +136,9 @@ export function scopesFor(levels: Levels): string[] {
 const name = (resource: { label: string }) => resource.label.toLowerCase()
 
 const list = (names: string[]) =>
-  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  names.length < 2
+    ? names.join('')
+    : translate('dynamicAnd', { value1: names.slice(0, -1).join(', '), value2: names.at(-1) })
 
 /** One line for the access summary: "Can view everything, edit invoices and expenses". */
 export function describeAccess(scopes: readonly string[] | null): string {

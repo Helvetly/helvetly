@@ -284,7 +284,7 @@ function Detail({
             <p className="text-[14px] font-medium">
               {translate('voided')}
               {expense.voided_at && formatDate(expense.voided_at)}
-              {expense.voided_by && ` by ${expense.voided_by.name}`}
+              {expense.voided_by && translate('dynamicBy', { name: expense.voided_by.name })}
             </p>
             {expense.void_reason && (
               <p className="text-[13px] text-muted-foreground">{expense.void_reason}</p>
@@ -440,9 +440,9 @@ function Detail({
         <p className="text-xs leading-relaxed text-muted-foreground">
           {translate('created5')}
           {formatDate(expense.created_at)}
-          {expense.created_by && ` by ${expense.created_by.name}`}
+          {expense.created_by && translate('dynamicBy', { name: expense.created_by.name })}
           {expense.booked_at && translate('booked', { value1: formatDate(expense.booked_at) })}
-          {expense.booked_by && ` by ${expense.booked_by.name}`}
+          {expense.booked_by && translate('dynamicBy', { name: expense.booked_by.name })}
           {translate('bookedExpensesAndTheirReceiptsAreKeptFor10')}
         </p>
       </div>

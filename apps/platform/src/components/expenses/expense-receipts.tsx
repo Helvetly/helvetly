@@ -223,7 +223,10 @@ export function ExpenseReceipts({
         <output className="grid gap-1.5 rounded-lg px-3 py-2.5 text-[13px] ring-1 ring-border">
           <span className="break-all">
             {translate('uploading')}{' '}
-            {upload.names.length === 1 ? upload.names[0] : `${upload.names.length} receipts`}…
+            {upload.names.length === 1
+              ? upload.names[0]
+              : translate('dynamicReceipts', { length: upload.names.length })}
+            …
           </span>
           <span className="h-1 overflow-hidden rounded-full bg-muted">
             <span

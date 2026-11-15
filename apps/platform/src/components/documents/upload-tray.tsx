@@ -116,10 +116,16 @@ export function UploadTray({
     sum.active > 0
       ? translate('uploading2', { active: sum.active, value2: sum.active === 1 ? 'file' : 'files' })
       : sum.conflicts > 0
-        ? `${sum.conflicts} ${sum.conflicts === 1 ? translate('nameIs') : translate('namesAre')} taken`
+        ? translate('dynamicTaken', {
+            conflicts: sum.conflicts,
+            value2: sum.conflicts === 1 ? translate('nameIs') : translate('namesAre'),
+          })
         : sum.failed > 0
           ? translate('uploadedFailed', { done: sum.done, failed: sum.failed })
-          : `${sum.done} ${sum.done === 1 ? 'upload' : 'uploads'} complete`
+          : translate('dynamicComplete', {
+              done: sum.done,
+              value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
+            })
 
   return (
     <section
@@ -236,7 +242,10 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
                     folderName: upload.folderName,
                   })
                 : upload.status === 'uploading'
-                  ? `${formatSize(upload.file.size * upload.progress)} of ${formatSize(upload.file.size)}`
+                  ? translate('dynamicOf2', {
+                      value1: formatSize(upload.file.size * upload.progress),
+                      value2: formatSize(upload.file.size),
+                    })
                   : `${STATUS_TEXT[upload.status]} · ${upload.folderName}`}
           </p>
         </div>

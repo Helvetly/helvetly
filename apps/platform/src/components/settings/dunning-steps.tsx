@@ -136,7 +136,7 @@ export function standardText(steps: StepDraft[], index: number): string {
 
 const dayCount = (typed: string) => {
   const days = Number(typed) || 0
-  return `${days} ${days === 1 ? 'day' : 'days'}`
+  return translate('dunningDayCount', { count: days })
 }
 
 const WHEN: Record<DunningTiming, string> = {
@@ -153,11 +153,11 @@ export function stepSummary(step: StepDraft, currency: string): string {
     isNote(step)
       ? translate('friendlyNote')
       : fee > 0
-        ? `${currency} ${fee.toFixed(2)} fee`
+        ? translate('dynamicFee', { currency: currency, value2: fee.toFixed(2) })
         : translate('noFee'),
     step.text.trim() ? translate('ownText2') : translate('standardText2'),
   ]
-  if (!step.qr_bill) parts.push('no QR bill')
+  if (!step.qr_bill) parts.push(translate('noQrBill'))
   return parts.join(' · ')
 }
 

@@ -59,7 +59,7 @@ export function Sessions() {
           <ul className="divide-y">
             {list.map((session) => {
               const Icon = ICONS[session.device]
-              const label = `${session.browser} on ${session.os}`
+              const label = translate('dynamicOn', { browser: session.browser, os: session.os })
               return (
                 <SettingsRow
                   key={session.id}

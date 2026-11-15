@@ -59,7 +59,7 @@ function afterDiscount(billing: Billing, discount: Discount): string {
   const terms = translate('code2', { code: discount.code, value2: describeDiscount(discount) })
   return price && billing.interval
     ? `${formatPrice(price)} / ${billing.interval} with ${terms}`
-    : `${terms} applies`
+    : translate('dynamicApplies', { terms: terms })
 }
 
 /** The workspace's plan under its name in the switcher: "Pro", "Basic · Trial"; null without billing. */

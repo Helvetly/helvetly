@@ -36,15 +36,15 @@ export function UsageBar({ engagement }: { engagement: PortalEngagement }) {
 }
 
 const PER: Record<string, string> = {
-  weekly: 'week',
-  monthly: 'month',
-  quarterly: 'quarter',
-  yearly: 'year',
+  weekly: translate('dynamicWeek'),
+  monthly: translate('dynamicMonth'),
+  quarterly: translate('dynamicQuarter'),
+  yearly: translate('dynamicYear'),
 }
 
 /** "10 hours per month"; a one-off ('none') is "10 hours in total". */
 const commitment = ({ quantity, unit, recurrence }: PortalEngagement) =>
-  `${Number(quantity)} ${unit} ${PER[recurrence] ? `per ${PER[recurrence]}` : translate('inTotal')}`
+  `${Number(quantity)} ${unit} ${PER[recurrence] ? translate('dynamicPer', { value1: PER[recurrence] }) : translate('inTotal')}`
 
 function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (

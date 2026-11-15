@@ -149,7 +149,9 @@ const afterDays = (typed: string) =>
   ].toSorted((a, b) => a - b)
 
 const joinDays = (days: number[]) =>
-  days.length < 2 ? days.join('') : `${days.slice(0, -1).join(', ')} and ${days.at(-1)}`
+  days.length < 2
+    ? days.join('')
+    : translate('dynamicAnd', { value1: days.slice(0, -1).join(', '), value2: days.at(-1) })
 
 /** The reminder settings in words, as the client will experience them. */
 export function reminderSummary(beforeTyped: string, afterTyped: string): string {

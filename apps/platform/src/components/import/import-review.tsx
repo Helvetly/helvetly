@@ -27,8 +27,9 @@ import {
 import { ImportClientField } from './import-client-field'
 
 const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
-  displayValue(record.data[config.labelKey ?? 'name']) || `row ${index + 1}`
-const issueId = (record: ImportRecord, field: string) => `issue-${record.id}-${field}`
+  displayValue(record.data[config.labelKey ?? 'name']) ||
+  translate('dynamicRow', { value1: index + 1 })
+const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
 
 /** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
 export function GroupedReview({

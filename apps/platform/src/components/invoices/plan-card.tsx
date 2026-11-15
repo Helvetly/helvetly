@@ -167,7 +167,7 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
               >
                 {item.status === 'cancelled'
                   ? translate('cancelled')
-                  : `issued ${formatDay(item.issue_on)}`}
+                  : translate('dynamicIssued', { value1: formatDay(item.issue_on) })}
               </span>
             )}
           </li>

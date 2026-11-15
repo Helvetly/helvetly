@@ -619,7 +619,7 @@ export function DocumentsPage() {
     return (
       <ContextMenuContent className="min-w-52">
         <ContextMenuLabel className={titleClass}>
-          {single ? name : `${keys.length} selected`}
+          {single ? name : translate('dynamicSelected2', { length: keys.length })}
         </ContextMenuLabel>
         {single && (
           <ContextMenuItem onSelect={() => openItem(key)}>
@@ -631,7 +631,9 @@ export function DocumentsPage() {
           <ContextMenuItem onSelect={() => downloadFiles(split.files)}>
             <Download />
             {translate('download3')}
-            {split.files.length > 1 ? ` ${split.files.length} files` : ''}
+            {split.files.length > 1
+              ? translate('dynamicFiles2', { length: split.files.length })
+              : ''}
           </ContextMenuItem>
         )}
         {canWrite && single && file?.kind === 'pdf' && !file.deleted_at && (

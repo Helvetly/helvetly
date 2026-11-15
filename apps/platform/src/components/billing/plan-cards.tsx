@@ -30,6 +30,8 @@ import {
   yearlySaving,
   type Billing,
   LIMIT_LABELS,
+  limitNoun,
+  limitFactLabel,
   type Interval,
   type LimitKey,
   type Plan,
@@ -76,12 +78,11 @@ export function limitLine(key: LimitKey, value: number | null): string {
   if (key === 'members')
     return translate('besidesTheOwner', {
       value1: formatLimit(key, value),
-      value2: value === 1 ? 'member' : 'members',
+      value2: limitNoun('members', value ?? 2),
     })
   const monthly = key.endsWith('_per_month')
-  let noun = LIMIT_LABELS[key].replace(/ this month$/, '').toLowerCase()
+  const noun = limitNoun(key, value ?? 2)
   if (value === null) return translate('unlimited', { noun: noun })
-  if (value === 1) noun = noun.replace(/s$/, '')
   return `${formatLimit(key, value)} ${noun}${monthly ? translate('aMonth2') : ''}`
 }
 
@@ -153,15 +154,13 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
 
 /** A limit as a short fact with its key number first: "50" clients, "Unlimited" invoices / month. */
 export function planFact(key: LimitKey, value: number | null): { value: string; label: string } {
-  const monthly = key.endsWith('_per_month')
-  const noun = LIMIT_LABELS[key].replace(/ this month$/, '').toLowerCase()
-  const label = `${key === 'storage_bytes' ? 'storage' : key === 'ai_tokens_per_month' ? translate('aiTokens') : noun}${monthly ? ' / month' : ''}`
+  const label = limitFactLabel(key)
   if (key === 'members')
     return {
-      value: value === null ? 'Any number' : formatLimit(key, value),
+      value: value === null ? translate('anyNumber') : formatLimit(key, value),
       label: translate('ofPeople'),
     }
-  if (value === null) return { value: 'Unlimited', label }
+  if (value === null) return { value: translate('unlimited2'), label }
   if (key === 'ai_tokens_per_month' && value >= 1_000_000)
     return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
   return { value: formatLimit(key, value), label }

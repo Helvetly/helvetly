@@ -130,7 +130,7 @@ export function UsageTile({ item }: { item: UsageItem }) {
       <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 tabular-nums">
         <span className="text-page font-semibold tracking-[-0.02em]">{used}</span>
         <span className="text-body-sm text-muted-foreground">
-          {max === null ? translate('ofUnlimited') : `of ${max}`}
+          {max === null ? translate('ofUnlimited') : translate('dynamicOf', { max: max })}
         </span>
       </p>
       {max === null ? (

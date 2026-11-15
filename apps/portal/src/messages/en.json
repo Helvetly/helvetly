@@ -171,5 +171,12 @@
   "yourQuotes": "Your quotes",
   "yourSupplier": "Your supplier",
   "yourSupplierKeptYourDetailsAsTheyWere": "Your supplier kept your details as they were",
-  "yourSupplierWillReviewThemSoon": ". Your supplier will review them soon."
+  "yourSupplierWillReviewThemSoon": ". Your supplier will review them soon.",
+  "dynamicPer": "per {value1}",
+  "dynamicYear": "year",
+  "dynamicQuarter": "quarter",
+  "dynamicMonth": "month",
+  "dynamicWeek": "week",
+  "dynamicOn": " on {value1}",
+  "dynamicOn2": "{verb} on {value2}"
 }

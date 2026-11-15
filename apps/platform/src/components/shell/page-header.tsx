@@ -169,7 +169,7 @@ export function PageHeader({
   // A person who cannot change this page's records gets no "New …" button.
   const writable = useCanWriteHere()
   const apple = useApple()
-  const runPrimary = onPrimary ?? soon(`${primary} is`)
+  const runPrimary = onPrimary ?? soon(translate('dynamicIs', { primary: primary }))
   usePublishPrimary(primary && writable ? primary : undefined, runPrimary)
   const saveView = (
     <Button

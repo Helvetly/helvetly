@@ -122,7 +122,7 @@ export function RowContextMenu({
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-52">
         <ContextMenuLabel className={titleClass}>
-          {many ? `${many.count} selected` : menu.title}
+          {many ? translate('dynamicSelected', { count: many.count }) : menu.title}
         </ContextMenuLabel>
         {many ? <BulkItems actions={many.actions} /> : menu.items(contextKit)}
       </ContextMenuContent>

@@ -277,7 +277,9 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
     ? translate('edit5', { title: engagement.title })
     : translate('newEngagement2')
   const unit = UNITS.find((u) => u.value === values.unit)
-  const extra = `extra ${unit?.label.toLowerCase() ?? 'units'}`
+  const extra = translate('dynamicExtra', {
+    value1: unit?.label.toLowerCase() ?? translate('dynamicUnits'),
+  })
 
   return (
     <Sheet open onOpenChange={(next) => !next && requestClose()}>

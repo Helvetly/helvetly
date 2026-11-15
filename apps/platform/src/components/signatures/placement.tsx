@@ -233,7 +233,7 @@ export function Placement<K extends string>({
     setArmed(null)
     const target =
       pane.current?.querySelector(`[data-field-key="${field.key}"]`) ??
-      pane.current?.querySelector(`[aria-label="Page ${field.page}"]`)
+      pane.current?.querySelector(`[data-pdf-page="${field.page}"]`)
     target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
   }
   const remove = (key: string) => {

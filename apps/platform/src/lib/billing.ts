@@ -277,6 +277,37 @@ export const LIMIT_LABELS: Record<LimitKey, string> = {
   ai_tokens_per_month: translate('aiTokensThisMonth'),
 }
 
+const limitNounMessages = {
+  members: 'limitNounMembers',
+  clients: 'limitNounClients',
+  invoices_per_month: 'limitNounInvoicesPerMonth',
+  expenses_per_month: 'limitNounExpensesPerMonth',
+  products: 'limitNounProducts',
+  engagements: 'limitNounEngagements',
+  signatures_per_month: 'limitNounSignaturesPerMonth',
+  storage_bytes: 'limitNounStorageBytes',
+  ai_tokens_per_month: 'limitNounAiTokensPerMonth',
+} as const
+
+export function limitNoun(key: LimitKey, count = 2): string {
+  return translate(limitNounMessages[key], { count })
+}
+
+export function limitFactLabel(key: LimitKey, count = 2): string {
+  const noun = limitNoun(key, count)
+  return key.endsWith('_per_month') ? translate('monthlyLimitFact', { noun }) : noun
+}
+
+export function comparisonLimitLabel(key: LimitKey): string {
+  const monthly: Partial<Record<LimitKey, string>> = {
+    invoices_per_month: translate('invoicesPerMonthLabel'),
+    expenses_per_month: translate('expensesPerMonthLabel'),
+    signatures_per_month: translate('signaturesPerMonthLabel'),
+    ai_tokens_per_month: translate('aiTokensPerMonthLabel'),
+  }
+  return monthly[key] ?? LIMIT_LABELS[key]
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes >= 2 ** 40) return `${+(bytes / 2 ** 40).toFixed(1)} TB`
   if (bytes >= 1 << 30) return `${+(bytes / (1 << 30)).toFixed(1)} GB`
@@ -366,10 +397,14 @@ export function describeDiscount(
   const off = promo.percent_off
     ? `−${promo.percent_off} %`
     : `−${formatPrice({ amount: promo.amount_off ?? 0, currency: promo.currency ?? 'chf' })}`
-  if (promo.duration === 'forever') return `${off} forever`
-  if (promo.duration === 'once') return `${off} once`
+  if (promo.duration === 'forever') return translate('dynamicForever', { off: off })
+  if (promo.duration === 'once') return translate('dynamicOnce', { off: off })
   const months = promo.duration_in_months ?? 1
-  return `${off} for ${months} ${months === 1 ? 'month' : 'months'}`
+  return translate('dynamicFor2', {
+    off: off,
+    months: months,
+    value3: months === 1 ? translate('dynamicMonth') : translate('dynamicMonths'),
+  })
 }
 
 /** The yearly saving against twelve monthly payments, in whole percent (0 when unknown). */

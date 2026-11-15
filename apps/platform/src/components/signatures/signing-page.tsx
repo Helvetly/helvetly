@@ -110,7 +110,10 @@ export function SigningPage() {
 
 function Signing({ token, view }: { token: string; view: SigningView }) {
   const { request, signer } = view
-  const sender = `${request.sender.name} from ${request.workspace}`
+  const sender = translate('dynamicFrom4', {
+    name: request.sender.name,
+    workspace: request.workspace,
+  })
   if (request.status === 'revoked')
     return (
       <Notice

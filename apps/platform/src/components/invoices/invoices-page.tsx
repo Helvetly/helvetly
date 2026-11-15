@@ -160,10 +160,16 @@ function DueCell({ invoice }: { invoice: InvoiceListItem }) {
         )}
       >
         {days < 0
-          ? `${-days} ${days === -1 ? 'day' : 'days'} late`
+          ? translate('dynamicLate', {
+              value1: -days,
+              value2: days === -1 ? translate('dynamicDay') : translate('days'),
+            })
           : days === 0
             ? 'today'
-            : `in ${days} ${days === 1 ? 'day' : 'days'}`}
+            : translate('dynamicIn', {
+                days: days,
+                value2: days === 1 ? translate('dynamicDay') : translate('days'),
+              })}
       </span>
     </span>
   )

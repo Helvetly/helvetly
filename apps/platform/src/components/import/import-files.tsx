@@ -135,7 +135,10 @@ function fileStatus(file: ImportFile, records: number) {
           })
         : translate('reading')
     case 'done':
-      return `${records} ${records === 1 ? 'record' : 'records'} found`
+      return translate('dynamicFound', {
+        records: records,
+        value2: records === 1 ? 'record' : 'records',
+      })
     case 'failed':
       return file.error ?? translate('couldNotBeRead')
   }

@@ -170,7 +170,10 @@ export function ClientFiles({ clientId }: { clientId: string }) {
           <output className="mb-2 grid gap-1.5 rounded-lg bg-muted/60 px-3 py-2.5 text-body-sm">
             <span className="truncate">
               {translate('uploading')}{' '}
-              {upload.names.length === 1 ? upload.names[0] : `${upload.names.length} files`}…
+              {upload.names.length === 1
+                ? upload.names[0]
+                : translate('dynamicFiles', { length: upload.names.length })}
+              …
             </span>
             <span className="h-1 overflow-hidden rounded-full bg-border">
               <span

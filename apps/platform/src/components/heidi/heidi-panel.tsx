@@ -378,7 +378,7 @@ function PanelBody() {
               >
                 {needle.length >= 2
                   ? matches.length
-                    ? `${matchIndex + 1} of ${matches.length}`
+                    ? translate('dynamicOf3', { value1: matchIndex + 1, length: matches.length })
                     : translate('noMatches')
                   : ''}
               </span>

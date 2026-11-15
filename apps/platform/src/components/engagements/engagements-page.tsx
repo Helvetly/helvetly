@@ -115,7 +115,10 @@ function PeriodCell({ engagement }: { engagement: Engagement }) {
             ? translate('notStarted')
             : left <= 0
               ? translate('endsToday')
-              : `${left} ${left === 1 ? 'day' : 'days'} left`}
+              : translate('dynamicLeft', {
+                  left: left,
+                  value2: left === 1 ? translate('dynamicDay') : translate('days'),
+                })}
       </span>
     </span>
   )

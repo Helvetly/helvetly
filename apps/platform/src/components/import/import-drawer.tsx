@@ -165,7 +165,10 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
     status = upload.isPending
       ? translate('uploading3')
       : files.length
-        ? `${files.length} ${files.length === 1 ? 'file' : 'files'} chosen`
+        ? translate('dynamicChosen', {
+            length: files.length,
+            value2: files.length === 1 ? translate('dynamicFile') : translate('dynamicFiles3'),
+          })
         : translate('noFilesChosenYet')
     actions = (
       <Button disabled={!files.length || upload.isPending} onClick={read}>

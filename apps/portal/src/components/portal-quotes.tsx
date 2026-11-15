@@ -53,7 +53,9 @@ function stateText(quote: PortalQuote) {
     return translate('validUntil2', { value1: formatDate(quote.valid_until) })
   if (quote.status === 'expired') return translate('expiredAskForANewQuote')
   const verb = quote.status === 'accepted' ? translate('accepted2') : translate('declined2')
-  return quote.decided_at ? `${verb} on ${formatDate(quote.decided_at)}` : verb
+  return quote.decided_at
+    ? translate('dynamicOn2', { verb: verb, value2: formatDate(quote.decided_at) })
+    : verb
 }
 
 export const QuotePdfLink = ({ quote }: { quote: PortalQuote }) => (

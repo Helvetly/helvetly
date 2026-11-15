@@ -3,8 +3,8 @@ import { Check, InfinityIcon, Minus } from 'lucide-react'
 
 import {
   FEATURE_LABELS,
+  comparisonLimitLabel,
   formatLimit,
-  LIMIT_LABELS,
   type Billing,
   type FeatureKey,
   type Plan,
@@ -59,7 +59,7 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
                   scope="row"
                   className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5"
                 >
-                  {LIMIT_LABELS[key].replace(/ this month$/, ' a month')}
+                  {comparisonLimitLabel(key)}
                 </th>
                 {plans.map((plan) => {
                   const value = plan.limits[key]

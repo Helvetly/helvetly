@@ -18,7 +18,7 @@ export function DuplicateWarning({ duplicate }: { duplicate: Expense['duplicate_
           {translate('expense')}
           {duplicate.number}
         </Link>
-        {duplicate.date && ` from ${formatDate(duplicate.date)}`}
+        {duplicate.date && translate('dynamicFrom3', { value1: formatDate(duplicate.date) })}
         {translate('checkBeforeBookingItTwice')}
       </span>
     </p>

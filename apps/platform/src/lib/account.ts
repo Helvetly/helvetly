@@ -210,7 +210,11 @@ export function lastActive(iso: string, now = new Date()): string {
   if (minutes < 60) return translate('minAgo', { minutes: minutes })
   if (minutes < 24 * 60) return translate('hAgo', { value1: Math.floor(minutes / 60) })
   const days = Math.floor(minutes / (24 * 60))
-  if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'} ago`
+  if (days < 7)
+    return translate('dynamicAgo', {
+      days: days,
+      value2: days === 1 ? translate('dynamicDay') : translate('days'),
+    })
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso))
 }
 

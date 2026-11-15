@@ -180,7 +180,7 @@ function useItem(props: ItemsProps, key: ItemKey, name: string, folderTarget: st
         startDrag(
           event,
           { files, folders, from: props.from },
-          keys.length === 1 ? name : `${keys.length} items`,
+          keys.length === 1 ? name : translate('dynamicItems', { length: keys.length }),
         )
       },
       onDragEnd: endDrag,

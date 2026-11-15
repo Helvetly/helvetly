@@ -92,8 +92,8 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
                 {progressOf(request).total}
                 {translate('signed2')}{' '}
                 {request.status === 'completed' && request.completed_at
-                  ? `completed ${formatDate(request.completed_at)}`
-                  : `expires ${formatDate(request.expires_at)}`}
+                  ? translate('dynamicCompleted', { value1: formatDate(request.completed_at) })
+                  : translate('dynamicExpires', { value1: formatDate(request.expires_at) })}
               </p>
             )}
           </div>

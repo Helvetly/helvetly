@@ -214,7 +214,8 @@ export function PortalProfile() {
             <div className="grid gap-1.5">
               <p className="text-muted-foreground">
                 {translate('yourSupplierKeptYourDetailsAsTheyWere')}
-                {decision.decided_at && ` on ${formatDate(decision.decided_at)}`}
+                {decision.decided_at &&
+                  translate('dynamicOn', { value1: formatDate(decision.decided_at) })}
                 {translate('youCanSendANewRequestBelow')}
               </p>
               {decision.reason && (

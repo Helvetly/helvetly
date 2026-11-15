@@ -423,7 +423,9 @@ function Editor({
                   <TotalRow
                     key={`${group.category}${group.rate}`}
                     muted
-                    label={`VAT ${group.category === 'S' ? `${group.rate}%` : group.category}`}
+                    label={translate('vatGroupLabel', {
+                      category: group.category === 'S' ? `${group.rate}%` : group.category,
+                    })}
                     value={group.vat_amount}
                   />
                 ))}

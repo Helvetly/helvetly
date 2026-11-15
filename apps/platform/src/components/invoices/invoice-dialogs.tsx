@@ -423,7 +423,7 @@ export function SendDialog({
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const send = useSendInvoice()
-  const defaultSubject = `${documentName(invoice)}${seller ? ` from ${seller}` : ''}`
+  const defaultSubject = `${documentName(invoice)}${seller ? translate('from2', { seller: seller }) : ''}`
   const recipients = to ?? fallback
 
   const submit = () => {

@@ -178,7 +178,9 @@ export function ApiTokens() {
                   {translate('created')}
                   {formatDate(token.created_at)} ·{' '}
                   {token.last_used_at
-                    ? `used ${lastActive(token.last_used_at).toLowerCase()}`
+                    ? translate('dynamicUsed', {
+                        value1: lastActive(token.last_used_at).toLowerCase(),
+                      })
                     : translate('neverUsed')}{' '}
                   · {expiry(token)}
                 </>

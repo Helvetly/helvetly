@@ -337,7 +337,7 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
     ],
     [
       translate('uploaded2'),
-      `${formatDate(file.created_at)}${file.uploaded_by?.name ? ` by ${file.uploaded_by.name}` : ''}`,
+      `${formatDate(file.created_at)}${file.uploaded_by?.name ? translate('dynamicBy', { name: file.uploaded_by.name }) : ''}`,
     ],
     [translate('modified'), formatDate(file.updated_at)],
   ]

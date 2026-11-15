@@ -329,7 +329,10 @@ export function missingAddress(values: FormValues): AddressField[] {
 export function draftHint(missing: AddressField[]): string | null {
   if (!missing.length) return null
   const names = missing.map((field) => ADDRESS_LABELS[field])
-  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  const list =
+    names.length > 1
+      ? translate('dynamicAnd', { value1: names.slice(0, -1).join(', '), value2: names.at(-1) })
+      : names[0]
   return translate('draftUntilTheAddressIsCompleteAdd', { list: list })
 }
 
