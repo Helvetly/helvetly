@@ -202,6 +202,7 @@ const localHelp = "I can still show overdue or recent invoices, expenses, client
 
 func (s *Service) chat(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	st := &stream{w: w}
+	defer st.keepAlive(s.keepAlive)()
 	if err := s.turn(w, r, sess, st); err != nil {
 		if !st.started {
 			return err

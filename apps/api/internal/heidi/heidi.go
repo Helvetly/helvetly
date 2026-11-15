@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"helvetly.com/api/internal/aimodel"
@@ -51,11 +52,12 @@ type Service struct {
 	allowance    aimodel.Allowance
 	now          func() time.Time
 	limit        *auth.RateLimiter
+	keepAlive    time.Duration
 	allowStorage func(context.Context, store.Q, store.Session, int64) error
 }
 
 func New(db *store.Store, a Auth, files Storage, e Engagements, options Options) *Service {
-	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, allowStorage: options.AllowStorage, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute)}
+	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, allowStorage: options.AllowStorage, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute), keepAlive: 25 * time.Second}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -319,11 +321,49 @@ type turn struct {
 // stream writes Server-Sent Events; the headers go out with the first event, so an error before it is still a
 // normal JSON error and one after it an error frame.
 type stream struct {
+	mu      sync.Mutex // serialises event frames with keep-alive comments
 	w       http.ResponseWriter
 	started bool
 }
 
+// keepAlive writes an SSE comment every interval once the stream has started, so a proxy that cuts a response idle
+// for 100 s (Cloudflare) keeps it open while the model works. stop waits for the writer to exit, so call it before
+// the handler returns.
+func (st *stream) keepAlive(every time.Duration) (stop func()) {
+	done, exited := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(exited)
+		t := time.NewTicker(every)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				st.ping()
+			}
+		}
+	}()
+	return func() { close(done); <-exited }
+}
+
+func (st *stream) ping() {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if !st.started {
+		return
+	}
+	if _, err := io.WriteString(st.w, ": ping\n\n"); err != nil {
+		return
+	}
+	if f, ok := st.w.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func (st *stream) send(v any) error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	if !st.started {
 		st.started = true
 		st.w.Header().Set("Content-Type", "text/event-stream")
