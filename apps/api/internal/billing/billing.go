@@ -136,10 +136,11 @@ type planPrice struct {
 }
 
 type planItem struct {
-	ID     string                `json:"id"`
-	Name   string                `json:"name"`
-	Limits map[Limit]*int64      `json:"limits"` // null: unlimited
-	Prices map[string]*planPrice `json:"prices"` // month, year; null when Stripe could not be read
+	ID       string                `json:"id"`
+	Name     string                `json:"name"`
+	Limits   map[Limit]*int64      `json:"limits"` // null: unlimited
+	Features []Feature             `json:"features"`
+	Prices   map[string]*planPrice `json:"prices"` // month, year; null when Stripe could not be read
 }
 
 func maxOf(v int64) *int64 {
@@ -184,7 +185,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
-		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Prices: map[string]*planPrice{}}
+		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: featuresOf(id),
+			Prices: map[string]*planPrice{}}
 		for _, l := range limitOrder {
 			p.Limits[l] = maxOf(s.plans.of(id, l))
 		}
@@ -205,7 +207,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"current_period_end": b.CurrentPeriodEnd, "cancel_at_period_end": b.CancelAtPeriodEnd, "trial_end": b.TrialEnd,
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
-		"usage": usage, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
+		"usage": usage, "features": s.workspaceFeatures(plan), "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
 		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
 		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
 	}

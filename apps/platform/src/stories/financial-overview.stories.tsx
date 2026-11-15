@@ -499,6 +499,10 @@ export const ChangePlanFullComparison: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
     await expect(canvas.getByRole('heading', { name: 'Compare plans' })).toBeVisible()
+    // A plan feature is a row of its own: a dash where the plan lacks it, a check where it has it.
+    const apiRow = within(canvas.getByRole('row', { name: /^API tokens/ }))
+    await expect(apiRow.getAllByLabelText('Not included')).toHaveLength(1)
+    await expect(apiRow.getAllByLabelText('Included')).toHaveLength(2)
     // The picker ends with the comparison: no feature grid, no questions.
     await expect(
       canvas.queryByRole('heading', { name: 'Every plan includes' }),

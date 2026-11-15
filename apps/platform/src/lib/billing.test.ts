@@ -9,6 +9,7 @@ import {
   discounted,
   isUpgrade,
   limitReached,
+  lockedFeature,
   paymentFailed,
   planRequired,
   promoApplies,
@@ -88,6 +89,7 @@ const plan = (month: number, year: number): Plan => ({
     storage_bytes: 1,
     ai_tokens_per_month: 1_000_000,
   },
+  features: [],
   prices: { month: { amount: month, currency: 'chf' }, year: { amount: year, currency: 'chf' } },
 })
 
@@ -310,4 +312,22 @@ test('freeForever: only a code that leaves nothing to pay, for good', () => {
 test('billing requests carry the browser time zone', () => {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
   expect(withZone('/billing')).toBe(`/billing?tz=${encodeURIComponent(zone)}`)
+})
+
+describe('lockedFeature', () => {
+  it('names the cheapest plan with the feature when the workspace lacks it', () => {
+    expect(lockedFeature(billingFixture({ plan: 'basic' }), 'api_access')?.plan?.id).toBe('pro')
+  })
+  it('is null when the plan includes it, without billing, or before billing answers', () => {
+    expect(lockedFeature(billingFixture({ plan: 'pro' }), 'api_access')).toBeNull()
+    expect(
+      lockedFeature(billingFixture({ enabled: false, features: ['api_access'] }), 'api_access'),
+    ).toBeNull()
+    expect(lockedFeature(undefined, 'api_access')).toBeNull()
+  })
+  it('stays locked without an upgrade path when no plan has it', () => {
+    const billing = billingFixture({ plan: 'basic' })
+    const plans = billing.plans.map((each) => ({ ...each, features: [] }))
+    expect(lockedFeature({ ...billing, plans }, 'api_access')).toEqual({ plan: null })
+  })
 })
