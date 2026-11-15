@@ -456,6 +456,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
+      react-ga4:
+        specifier: 3.0.1
+        version: 3.0.1
       react-markdown:
         specifier: 'catalog:'
         version: 10.1.0(@types/react@19.3.0)(react@19.3.1)
@@ -4715,6 +4718,9 @@ packages:
     peerDependencies:
       react: '>=16.4.0'
       react-dom: '>=16.4.0'
+
+  react-ga4@3.0.1:
+    resolution: {integrity: sha512-GyCc01bSheWXjzGDyHsXMOqk/SP5Cf/JrcJTg4hcpKx4eeSwaJKpJUc+ipF4ffLTZkmabmf3ZGBv4OKHTXNXyA==}
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
@@ -9365,6 +9371,8 @@ snapshots:
       normalize-wheel: 1.0.1
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
+
+  react-ga4@3.0.1: {}
 
   react-is@17.0.2: {}
 

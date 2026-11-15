@@ -35,8 +35,11 @@ Helvetly is a service for businesses. It is not directed at children.
 We do not sell personal data, do not use it for advertising, do not profile you and make no decisions
 about you by automated means alone (nDSG Art. 21, GDPR Art. 22).
 
-**Cookies and browser storage.** The website and the documentation set no cookies and use no
-analytics, advertising or tracking. The platform and the client portal set only cookies that are
+**Cookies and browser storage.** The website (www.helvetly.com) uses Google Analytics 4 to count visits and see
+which pages and channels bring visitors; it sets Google's `_ga` cookies (up to 2 years) and sends page views and device
+data to Google, which uses the IP address only to derive an approximate location and does not store it (legitimate interest, Art. 6(1)(f)). Blocking
+cookies or scripts in your browser turns it off. The documentation sets no cookies and uses no analytics,
+advertising or tracking. The platform and the client portal load no analytics and set only cookies that are
 strictly necessary for signing in:
 
 | Name                      | Set by        | Purpose                                                | Lifetime                       |
