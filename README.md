@@ -166,4 +166,5 @@ products then need an eligible tax code such as `txcd_10103001`.
 - [AGENTS.md](AGENTS.md): layout and conventions, for people and coding agents.
 - [SECURITY.md](SECURITY.md): how to report a vulnerability privately.
 - License: GNU Affero General Public License v3.0 only ([LICENSE](LICENSE), SPDX `AGPL-3.0-only`). Third-party
-  material keeps its own license ([NOTICE](NOTICE)).
+  material keeps its own license ([NOTICE](NOTICE)). Contributions are welcome under the
+  [Contributor License Agreement](CONTRIBUTING.md#contributor-license-agreement).

@@ -11,6 +11,9 @@ optional Stripe subscription billing and optional AI features. See README.md for
 
 This repository holds the application only. Deployment of any particular installation (servers, DNS, credentials)
 is not part of it, and nothing here may depend on a private checkout or a secret beyond the CI run's own token.
+The two exceptions sit outside CI: the release hand-off to deployment (`DEPLOY_DISPATCH_TOKEN`, in
+`.github/workflows/release.yml`) and the CLA check (`CLA_SIGNATURES_TOKEN`, in `.github/workflows/cla.yml`).
+Outside contributions need the CLA (`ICLA.md`, `CCLA.md`, CONTRIBUTING.md).
 This repository has no `docs/` folder and gets none: design notes, plans, reports and agents' working documents live
 in the maintainers' separate documentation repository. Comments that cite `docs/…` refer to it; here the code and tests
 are the reference.

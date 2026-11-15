@@ -1,8 +1,12 @@
 # Publishes the container image of a release: pushing a tag v<semver> that points at a commit of main, whose
 # `CI required` check passed, builds the Dockerfile and pushes ghcr.io/helvetly/helvetly:<tag> with a build
 # provenance attestation that ties the image digest to this repository, workflow, tag and commit. An existing tag is
-# never overwritten. Nothing is deployed from here and no secret beyond the run's own GITHUB_TOKEN is used: an
-# installation pulls a release by its tag and verifies it on its own side (README: Releases).
+# never overwritten. Nothing is deployed from here: an installation pulls a release by its tag and verifies it on its
+# own side (README: Releases).
+#
+# Hand-off: once the image is published, a final release (no '-' in the tag) of Helvetly/helvetly sends a
+# `helvetly-release` dispatch event with the tag and commit SHA to the repository in the variable
+# DEPLOY_DISPATCH_REPO, using the secret DEPLOY_DISPATCH_TOKEN. Forks and prereleases skip it.
 #
 # CI still running when the tag arrives: the run fails at "Check CI"; re-run it once CI is green.
 name: Release
@@ -96,3 +100,23 @@ jobs:
       - name: Sign out
         if: always()
         run: docker logout ghcr.io
+
+  dispatch:
+    name: Hand off to deployment
+    needs: [image]
+    if: github.repository == 'Helvetly/helvetly' && !contains(github.ref_name, '-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {} # calls another repository with DEPLOY_DISPATCH_TOKEN; GITHUB_TOKEN is not used
+    steps:
+      - name: Send the release to the deployment repository
+        env:
+          REPO: ${{ vars.DEPLOY_DISPATCH_REPO }}
+          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        # -f keeps both values strings (-F would turn an all-digit SHA into a number)
+        run: |
+          [ -n "$REPO" ] || { echo "::error::repository variable DEPLOY_DISPATCH_REPO is not set"; exit 1; }
+          [ -n "$GH_TOKEN" ] || { echo "::error::secret DEPLOY_DISPATCH_TOKEN is not set"; exit 1; }
+          gh api "repos/$REPO/dispatches" -f event_type=helvetly-release \
+            -f "client_payload[tag]=$TAG" -f "client_payload[sha]=$GITHUB_SHA"

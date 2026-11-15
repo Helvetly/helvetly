@@ -244,7 +244,7 @@ const workflowDir = new URL('../.github/workflows/', import.meta.url)
 test('every action in every workflow is pinned by commit SHA, and checkouts drop the token', () => {
   for (const name of readdirSync(workflowDir)) {
     const workflow = readFileSync(new URL(name, workflowDir), 'utf8')
-    for (const line of workflow.match(/uses: .+/g) ?? [])
+    for (const line of workflow.match(/^\s*(?:- )?uses: .+/gm) ?? [])
       assert.match(line, /@[0-9a-f]{40} # v\d+\.\d+\.\d+/, `${name}: ${line}`)
     for (const checkout of workflow.match(
       /uses: actions\/checkout@.+\n(?:\s+with:\n(?:\s{10,}.+\n)+)?/g,
@@ -270,14 +270,23 @@ const workflows = readdirSync(workflowDir).map((name) => ({
   text: readFileSync(new URL(name, workflowDir), 'utf8'),
 }))
 
-test('the public workflows use no long-lived secret and deploy nothing', () => {
+// The only tokens beyond the run's own: one that starts Helvetly/infra's deploy with a tag, one that writes CLA
+// signatures. Production credentials live in the private deployment repository.
+const allowedSecrets = {
+  'release.yml': ['secrets.DEPLOY_DISPATCH_TOKEN'],
+  'cla.yml': ['secrets.CLA_SIGNATURES_TOKEN'],
+}
+
+test('the public workflows use no long-lived secret but the dispatch and CLA tokens, and deploy nothing', () => {
   for (const { name, text } of workflows) {
-    // Only the run's own short-lived token; production credentials live in the private deployment repository.
     for (const ref of text.match(/secrets\.[A-Za-z_]+/g) ?? [])
-      assert.equal(ref, 'secrets.GITHUB_TOKEN', name)
+      assert.ok(
+        ['secrets.GITHUB_TOKEN', ...(allowedSecrets[name] ?? [])].includes(ref),
+        `${name}: ${ref}`,
+      )
     assert.doesNotMatch(text, /secrets: inherit|repository_dispatch|wrangler|doctl|ssh /, name)
     // Every workflow states its token's permissions; none asks for all of them.
-    assert.match(text, /\npermissions:\n {2}[a-z-]+: (read|write)\n/, name)
+    assert.match(text, /\npermissions:(?: \{\}|\n {2}[a-z-]+: (read|write))\n/, name)
     assert.doesNotMatch(text, /write-all/, name)
   }
 })
