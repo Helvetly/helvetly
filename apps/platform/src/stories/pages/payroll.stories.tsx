@@ -42,6 +42,11 @@ export const Month: Story = {
     if (!row) throw new Error('Noah’s entry is not listed.')
     await expect(within(row).getAllByText(/—/).length).toBeGreaterThan(0)
     await expect(within(row).queryByText(/EUR 0\.00/)).toBeNull()
+    // A month's sum over only some entries is not shown as its total: incomplete sums read "—".
+    const eur = body().getAllByRole('region', { name: 'Totals in EUR' })[0]
+    if (!eur) throw new Error('No EUR totals.')
+    await expect(within(eur).queryByText(/EUR 0\.00/)).toBeNull()
+    await expect(within(eur).getByText(/5.200\.00/)).toBeVisible()
     await expect(body().getByText('Approved is not paid.', { exact: false })).toBeVisible()
   },
 }

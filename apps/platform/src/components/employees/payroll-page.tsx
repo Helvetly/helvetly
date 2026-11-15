@@ -194,6 +194,19 @@ export function PayrollPage() {
   )
 }
 
+// A sum is shown only when every entry has the value: a sum over some entries would read as the month's total.
+// The missing counts below say what is incomplete.
+function summaryValue(total: PayrollTotals, key: (typeof AMOUNTS)[number][0] | 'total_cost') {
+  const missing = {
+    gross: total.missing_gross,
+    deductions: total.missing_deductions,
+    net: total.missing_net,
+    employer_costs: total.missing_employer_costs,
+    total_cost: total.missing_gross + total.missing_employer_costs,
+  }[key]
+  return missing > 0 ? '—' : formatMoney(total[key], total.currency)
+}
+
 function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
   if (!totals || totals.length === 0) return null
   return (
@@ -216,9 +229,7 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
               {[...AMOUNTS, ['total_cost', 'Total cost'] as const].map(([key, label]) => (
                 <div key={key} className="contents">
                   <dt className="text-muted-foreground">{label}</dt>
-                  <dd className="text-right tabular-nums">
-                    {formatMoney(total[key], total.currency)}
-                  </dd>
+                  <dd className="text-right tabular-nums">{summaryValue(total, key)}</dd>
                 </div>
               ))}
             </dl>
@@ -242,14 +253,14 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
       <table className="hidden w-full table-fixed text-[15px] lg:table">
         <thead>
           <tr className="h-11 border-b bg-muted/50 text-left text-[13px] text-muted-foreground">
-            <th className="w-[24%] pl-5 font-medium">Employee</th>
-            <th className="w-[14%] px-3 font-medium">Period</th>
+            <th className="w-[17%] pl-5 font-medium">Employee</th>
+            <th className="w-[15%] px-3 font-medium">Period</th>
             {AMOUNTS.map(([key, label]) => (
-              <th key={key} className="px-3 text-right font-medium">
+              <th key={key} className="px-2 text-right font-medium">
                 {label}
               </th>
             ))}
-            <th className="w-[18%] px-3 pr-5 font-medium">Status</th>
+            <th className="w-[15%] px-3 pr-5 font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -272,7 +283,7 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
                 {entry.period_start.slice(5)} – {entry.period_end.slice(5)}
               </td>
               {AMOUNTS.map(([key]) => (
-                <td key={key} className="truncate px-3 text-right tabular-nums">
+                <td key={key} className="truncate px-2 text-right text-[14px] tabular-nums">
                   {formatPay(entry[key], entry.currency)}
                 </td>
               ))}
