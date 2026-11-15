@@ -90,7 +90,13 @@ function Profile({ user }: { user: User }) {
           <ProfilePhoto user={user} name={form.saved.name || user.email} />
         </FormField>
         <FieldGrid>
-          <FormField id="profile-name" label="Full name" error={form.errors.name} width="md">
+          <FormField
+            id="profile-name"
+            required
+            label="Full name"
+            error={form.errors.name}
+            width="md"
+          >
             <Input
               {...describedBy('profile-name', form.errors.name)}
               autoComplete="name"

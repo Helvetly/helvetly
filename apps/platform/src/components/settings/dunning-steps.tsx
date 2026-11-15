@@ -401,7 +401,13 @@ function StepDialog({
               className={fieldInput}
             />
           </FormField>
-          <FormField id={id('days')} label="When" error={errors.days ?? errors.timing} group>
+          <FormField
+            id={id('days')}
+            required
+            label="When"
+            error={errors.days ?? errors.timing}
+            group
+          >
             <Segmented
               label="When"
               fill

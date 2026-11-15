@@ -282,6 +282,7 @@ function CreateTokenSheet({ onClose }: { onClose: () => void }) {
               </FormField>
               <FormField
                 id="token-scopes"
+                required
                 label="Access"
                 error={preset === 'custom' ? undefined : errors.scopes}
                 tip="What the token may read and change. It never goes beyond your own role in the workspace."

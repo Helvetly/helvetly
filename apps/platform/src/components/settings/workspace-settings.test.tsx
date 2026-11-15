@@ -56,7 +56,7 @@ function wrap(role: string) {
 
 async function chooseZone(zone: string) {
   const user = userEvent.setup()
-  await user.click(screen.getByLabelText('Time zone'))
+  await user.click(screen.getByLabelText(/^Time zone\*?$/))
   // One paste of the city, not ~16 keystrokes over ~400 zones: typing timed out on slow CI runners.
   await user.click(screen.getByPlaceholderText('Search…'))
   await user.paste(zoneCity(zone))
@@ -89,7 +89,7 @@ test('names nested zones by city and country', () => {
 
 test('an owner saves a new time zone and the session is fetched again', async () => {
   const invalidate = wrap('owner')
-  expect(screen.getByLabelText('Time zone')).toHaveTextContent('Zurich')
+  expect(screen.getByLabelText(/^Time zone\*?$/)).toHaveTextContent('Zurich')
   expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
   await chooseZone('America/New_York')
   await waitFor(() => expect(sent).toEqual([{ timezone: 'America/New_York' }]))
@@ -98,15 +98,15 @@ test('an owner saves a new time zone and the session is fetched again', async ()
 
 test('an admin cannot rename but can change the time zone', async () => {
   wrap('admin')
-  expect(screen.getByLabelText('Workspace name')).toBeDisabled()
+  expect(screen.getByLabelText(/^Workspace name\*?$/)).toBeDisabled()
   await chooseZone('Asia/Tokyo')
   await waitFor(() => expect(sent).toEqual([{ timezone: 'Asia/Tokyo' }]))
 })
 
 test('a member only sees the time zone', () => {
   wrap('member')
-  expect(screen.getByLabelText('Time zone')).toHaveValue('Europe/Zurich') // a plain disabled field, no picker
-  expect(screen.getByLabelText('Time zone')).toBeDisabled()
+  expect(screen.getByLabelText(/^Time zone\*?$/)).toHaveValue('Europe/Zurich') // a plain disabled field, no picker
+  expect(screen.getByLabelText(/^Time zone\*?$/)).toBeDisabled()
   expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 })
 

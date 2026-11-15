@@ -751,7 +751,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
             disabled={save.isPending}
             className="grid min-h-0 flex-1 content-start gap-5 overflow-auto p-4"
           >
-            <FormField id="vat-method" label="Method" error={errors.method}>
+            <FormField id="vat-method" required label="Method" error={errors.method}>
               <NativeSelect
                 id="vat-method"
                 value={draft.method}
@@ -768,7 +768,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
               </NativeSelect>
             </FormField>
             <div className="grid gap-5 sm:grid-cols-2">
-              <FormField id="vat-period" label="Return period" error={errors.period}>
+              <FormField id="vat-period" required label="Return period" error={errors.period}>
                 <NativeSelect
                   id="vat-period"
                   value={draft.period}
@@ -784,7 +784,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                   ))}
                 </NativeSelect>
               </FormField>
-              <FormField id="vat-basis" label="Basis" error={errors.basis}>
+              <FormField id="vat-basis" required label="Basis" error={errors.basis}>
                 <NativeSelect
                   id="vat-basis"
                   value={draft.basis}
