@@ -53,6 +53,7 @@ import {
   Search,
   SearchX,
   Trash2,
+  FileUp,
   Upload as UploadIcon,
   X,
   Share2,
@@ -73,6 +74,8 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { useImportDrawer } from '@/components/import/import-button'
+import { ImportDrawer } from '@/components/import/import-drawer'
 import { PageHeader } from '@/components/shell/page-header'
 import { CreateSignatureDrawer } from '@/components/signatures/create-drawer'
 import { RequestDrawer } from '@/components/signatures/request-drawer'
@@ -254,6 +257,7 @@ export function DocumentsPage() {
   >(undefined)
   const [filling, setFilling] = useState<Template | null | undefined>(undefined)
   const uploads = useUploads()
+  const importDrawer = useImportDrawer()
   const picker$ = useRef<HTMLInputElement>(null)
   const surface = useRef<HTMLDivElement>(null)
 
@@ -707,10 +711,9 @@ export function DocumentsPage() {
 
   // The page's own actions: the header's "…" menu and a right-click on the empty surface.
   // The header's "…" leaves New folder to the Create menu beside it.
-  // The header has its own Upload and "New" buttons, so its "…" menu keeps only Paste.
+  // The header has its own Upload and "New" buttons, so its "…" menu keeps Import and Paste.
   const pageItems = ({ Item, Shortcut }: MenuKit, inHeader = false) =>
-    canWrite &&
-    (!inHeader || (clipboard && view.section === 'files')) && (
+    canWrite && (
       <>
         {!inHeader && (
           <>
@@ -722,6 +725,9 @@ export function DocumentsPage() {
             </Item>
           </>
         )}
+        <Item onSelect={importDrawer.open}>
+          <FileUp /> Import invoices, contracts…
+        </Item>
         {clipboard && view.section === 'files' && (
           <Item onSelect={paste}>
             <ClipboardPaste /> Paste{' '}
@@ -1169,6 +1175,7 @@ export function DocumentsPage() {
       </div>
 
       <UploadTray uploads={uploads.uploads} act={uploads.act} />
+      {importDrawer.isOpen && <ImportDrawer kind="auto" onClose={importDrawer.close} />}
 
       {shareFrom && <ShareDrawer file={shareFrom} onClose={() => setShareFrom(null)} />}
       {signFrom !== undefined && (

@@ -20,6 +20,7 @@ const batch: ImportBatch = {
     {
       id: 'imr_1',
       file_id: 'imf_1',
+      kind: 'expenses',
       status: 'pending',
       data: { supplier_name: 'Migros', amount: '108.10', vat_rate: '8.1', reverse_charge: false },
       issues: {},

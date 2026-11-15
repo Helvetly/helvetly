@@ -1,5 +1,6 @@
 // Heidi, typed by hand from docs/heidi-contract.md.
 import { request, respond } from '@/lib/api'
+import { IMPORT_ACCEPT } from '@/lib/imports'
 import { STATUS_LABELS, type DisplayStatus } from '@/lib/invoices'
 
 export type HeidiAction =
@@ -63,6 +64,7 @@ export type HeidiEvent =
   | { type: 'actions'; actions: HeidiAction[] }
   | { type: 'records'; records: HeidiRecord[] }
   | { type: 'form'; form: HeidiForm }
+  | { type: 'import'; import_id: string }
   | HeidiConfirmation
   | { type: 'done'; usage: { tokens: number } }
   | { type: 'error'; message: string }
@@ -76,6 +78,8 @@ export type HeidiMessage = {
   actions?: HeidiAction[]
   records?: HeidiRecord[]
   form?: HeidiForm
+  /** The import this answer reports on: the chat shows its progress and review. */
+  import_id?: string
   confirmation?: HeidiConfirmation
   /** Set on assistant messages. */
   generated_by?: HeidiGeneratedBy
@@ -131,6 +135,29 @@ export const MAX_MESSAGE = 4000
 export const MAX_FILES = 4
 export const MAX_FILE_BYTES = 8 * 1024 * 1024
 export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf']
+
+/** Heidi reads the file itself in the chat: an image or PDF up to 8 MB. */
+export const chatReadable = (file: File) =>
+  FILE_TYPES.includes(file.type) && file.size <= MAX_FILE_BYTES
+
+/** An import can read it (spreadsheets, Word, CSV and ZIPs too), by its name as the import's picker does. */
+export const importable = (file: File) =>
+  IMPORT_ACCEPT.split(',').some((extension) => file.name.toLowerCase().endsWith(extension))
+
+// The stems the API's own import check uses: English, German, French, Italian, Polish.
+const IMPORT_STEMS = ['import', 'importier', 'importuj', 'importa']
+
+/** The files go to an import that works out what each one is: the message asks to import them, or only an import
+ * can take them (a ZIP, a spreadsheet, more than four files or a big one). */
+export function goesToImport(text: string, files: File[]) {
+  if (!files.length) return false
+  const lower = text.toLowerCase()
+  return (
+    IMPORT_STEMS.some((stem) => lower.includes(stem)) ||
+    files.length > MAX_FILES ||
+    !files.every(chatReadable)
+  )
+}
 
 // The stream is a trust boundary: frames are checked by hand and anything unknown is skipped.
 
@@ -264,6 +291,8 @@ export function toHeidiEvent(value: unknown): HeidiEvent | null {
         : null
     case 'form':
       return isForm(value.form) ? { type: 'form', form: value.form } : null
+    case 'import':
+      return isString(value.import_id) ? { type: 'import', import_id: value.import_id } : null
     case 'confirmation': {
       const { id, title, body, confirm_label: confirmLabel, tone } = value
       if (!isString(id) || !isString(title) || !isString(body) || !isString(confirmLabel))

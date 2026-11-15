@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import {
+  DOCUMENT_TYPES,
   IMPORT_ACCEPT,
   IMPORT_FILE_TYPES,
   MAX_IMPORT_FILE_BYTES,
@@ -165,6 +166,11 @@ export function FileProgress({
                 file.status === 'failed' ? 'text-destructive' : 'text-muted-foreground',
               )}
             >
+              {file.document_type && file.document_type !== 'other' && (
+                <span className="font-medium text-foreground">
+                  {DOCUMENT_TYPES[file.document_type]} ·{' '}
+                </span>
+              )}
               {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
               {file.reused && ' · already in Documents, not stored again'}
             </span>

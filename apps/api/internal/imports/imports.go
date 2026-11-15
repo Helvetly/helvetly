@@ -89,6 +89,9 @@ func need(sess store.Session, scope string) error {
 
 // kindOf: a registered kind, or 400.
 func kindOf(name string) (Kind, error) {
+	if name == Auto {
+		return autoKind, nil
+	}
 	k, ok := Kinds[name]
 	if !ok {
 		return Kind{}, invalid("Choose what to import: one of the registered kinds.")
@@ -117,11 +120,20 @@ func (s *Service) batch(ctx context.Context, q store.Q, sess store.Session, id, 
 	if err != nil {
 		return b, Kind{}, err
 	}
-	k, ok := Kinds[b.Kind]
-	if !ok {
+	k, err := kindOf(b.Kind)
+	if err != nil {
 		return b, Kind{}, store.ErrNotFound // a kind this build no longer offers
 	}
 	return b, k, need(sess, action+":"+k.Resource)
+}
+
+// recordKind is the kind a record is created as (its own, in an auto batch), after checking the session may write it.
+func recordKind(sess store.Session, rec store.ImportRecord) (Kind, error) {
+	k, ok := Kinds[rec.Kind]
+	if !ok {
+		return Kind{}, store.ErrNotFound
+	}
+	return k, need(sess, "write:"+k.Resource)
 }
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {

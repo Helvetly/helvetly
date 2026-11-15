@@ -341,3 +341,9 @@ func qrCurrencies(iban string) []string {
 	}
 	return nil
 }
+
+// SellerOf is the workspace's own business as its invoices name it (empty fields until the settings are filled).
+func SellerOf(ctx context.Context, q store.Q, workspaceID string) (store.Party, error) {
+	s, err := loadSettings(ctx, q, workspaceID)
+	return s.Seller.Party, err
+}

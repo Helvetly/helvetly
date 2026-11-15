@@ -36,3 +36,17 @@ func TestFakeClassifiesHeidiScopeAsInScope(t *testing.T) {
 		t.Fatalf("reply=%+v err=%v", reply, err)
 	}
 }
+
+func TestFakeReadsCSVAsAClientListForAnAutoImport(t *testing.T) {
+	client := map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": []string{"string", "null"}}}}
+	schema := map[string]any{"type": "object", "properties": map[string]any{"document_type": map[string]any{"type": "string"},
+		"clients": map[string]any{"type": "array", "items": client}, "invoices": map[string]any{"type": "array", "items": client}}}
+	reply, err := Fake{}.Answer(context.Background(), Request{Message: "File name: a.csv\n\nName\nAcme AG\n", Schema: &Schema{Name: "t", JSON: schema}})
+	var out struct {
+		DocumentType string `json:"document_type"`
+		Clients      []map[string]any
+	}
+	if err != nil || json.Unmarshal([]byte(reply.Text), &out) != nil || out.DocumentType != "client_list" || len(out.Clients) != 1 || out.Clients[0]["name"] != "Acme AG" {
+		t.Fatalf("%s %v", reply.Text, err)
+	}
+}

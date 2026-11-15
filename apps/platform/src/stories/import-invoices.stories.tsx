@@ -19,6 +19,7 @@ type Story = StoryObj<typeof meta>
 const unmatched: ImportRecord = {
   id: 'imr_inv',
   file_id: 'imf_1',
+  kind: 'invoices',
   status: 'pending',
   data: {
     client_name: 'Alpenglow Studio',
@@ -49,6 +50,7 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
       chunks_done: 1,
       chunks_total: 1,
       reused: false,
+      document_type: null,
     },
   ],
   records,
@@ -136,6 +138,7 @@ export const PickClient: Story = {
 const issued = (n: number, client = 'Kunde AG'): ImportRecord => ({
   id: `imr_${n}`,
   file_id: 'imf_1',
+  kind: 'invoices',
   status: 'pending',
   data: {
     client_id: 'cli_1',

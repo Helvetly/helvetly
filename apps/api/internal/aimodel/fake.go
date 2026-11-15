@@ -29,7 +29,12 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		// Heidi's scope classifier: obvious off-topic messages never reach it, so the fake lets the rest through.
 		return Reply{Text: `{"in_scope":true,"reason":"development model"}`, Tokens: &tokens}, nil
 	}
-	props := recordProperties(r.Schema.JSON)
+	// An import that works out the document type (one array per kind) reads the CSV as a client list.
+	key := "records"
+	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["document_type"] != nil {
+		key = "clients"
+	}
+	props := recordProperties(r.Schema.JSON, key)
 	_, body, _ := strings.Cut(r.Message, "\n\n")
 	rows, err := csv.NewReader(strings.NewReader(body)).ReadAll()
 	if err != nil && len(rows) == 0 {
@@ -52,18 +57,22 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 			records = append(records, rec)
 		}
 	}
-	b, err := json.Marshal(map[string]any{"records": records})
+	answer := map[string]any{key: records}
+	if key == "clients" {
+		answer["document_type"] = "client_list"
+	}
+	b, err := json.Marshal(answer)
 	if err != nil {
 		return Reply{}, errors.New("fake model could not encode its answer")
 	}
 	return Reply{Text: string(b), Tokens: &tokens}, nil
 }
 
-// recordProperties: the JSON types of each property of the schema's records items.
-func recordProperties(schema map[string]any) map[string][]string {
+// recordProperties: the JSON types of each property of the items of the schema's array at key.
+func recordProperties(schema map[string]any, key string) map[string][]string {
 	out := map[string][]string{}
 	props, _ := schema["properties"].(map[string]any)
-	records, _ := props["records"].(map[string]any)
+	records, _ := props[key].(map[string]any)
 	items, _ := records["items"].(map[string]any)
 	fields, _ := items["properties"].(map[string]any)
 	for name, v := range fields {

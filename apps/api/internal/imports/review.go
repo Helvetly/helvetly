@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -114,11 +115,16 @@ func review(ctx context.Context, q store.Q, k Kind, workspaceID, batchID string,
 		issues = map[string]string{}
 	}
 	r.Issues = issues
+	if linked, err := linkedClient(ctx, q, k, batchID, *r); err != nil {
+		return err
+	} else if linked {
+		delete(r.Issues, "client_id") // its client is created first by the same commit
+	}
 	if r.Duplicate, err = k.Duplicate(ctx, q, workspaceID, r.Data); err != nil || r.Duplicate != nil {
 		return err
 	}
 	if name := rawText(r.Data[k.labelField()]); name != "" {
-		taken, err := q.ImportNameTaken(ctx, batchID, r.ID, k.labelField(), name)
+		taken, err := q.ImportNameTaken(ctx, batchID, r.ID, k.Name, k.labelField(), name)
 		if err != nil {
 			return err
 		}
@@ -142,7 +148,14 @@ func (s *Service) edit(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	ctx := r.Context()
 	var rec store.ImportRecord
 	err := s.db.Tx(ctx, func(q store.Q) error {
-		b, k, err := s.batch(ctx, q, sess, r.PathValue("id"), "write")
+		b, _, err := s.batch(ctx, q, sess, r.PathValue("id"), "write")
+		if err != nil {
+			return err
+		}
+		if rec, err = q.LockImportRecord(ctx, b.ID, r.PathValue("record_id")); err != nil {
+			return err
+		}
+		k, err := recordKind(sess, rec)
 		if err != nil {
 			return err
 		}
@@ -151,9 +164,6 @@ func (s *Service) edit(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			if !slices.Contains(fields, key) {
 				return invalid("Unknown field " + key + ".")
 			}
-		}
-		if rec, err = q.LockImportRecord(ctx, b.ID, r.PathValue("record_id")); err != nil {
-			return err
 		}
 		if rec.Status == "created" {
 			return auth.Error(http.StatusConflict, "invalid_state", "This record has already been created.", nil)
@@ -208,13 +218,14 @@ func (s *Service) commit(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 	}
 	ctx := r.Context()
-	b, k, err := s.batch(ctx, s.db.Q, sess, r.PathValue("id"), "write")
+	b, _, err := s.batch(ctx, s.db.Q, sess, r.PathValue("id"), "write")
 	if err != nil {
 		return err
 	}
 	results := []commitResult{}
-	for _, id := range slices.Compact(slices.Clone(body.RecordIDs)) {
-		res, err := s.commitOne(ctx, sess, k, b.ID, id, body.Resolutions[id])
+	ids := slices.Compact(slices.Clone(body.RecordIDs))
+	for _, id := range byCommitOrder(ids, b.Records) {
+		res, err := s.commitOne(ctx, sess, b.ID, id, body.Resolutions[id])
 		if err != nil {
 			return err
 		}
@@ -230,7 +241,7 @@ func (s *Service) commit(w http.ResponseWriter, r *http.Request, sess store.Sess
 // commitOne creates one record in its own transaction. The record's row lock makes a retried or concurrent commit
 // wait and then see the created entity instead of creating it again. A refusal the person can act on (invalid data,
 // a plan limit) is recorded on the record; anything else is an error.
-func (s *Service) commitOne(ctx context.Context, sess store.Session, k Kind, batchID, id, resolution string) (commitResult, error) {
+func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id, resolution string) (commitResult, error) {
 	res := commitResult{ID: id, Status: "failed"}
 	var refusal *errorBody
 	var kept []string // copies Create stored; deleted again when the transaction fails
@@ -242,6 +253,10 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, k Kind, bat
 		if rec.Status == "created" {
 			res.Status, res.EntityID = "created", rec.EntityID
 			return nil
+		}
+		k, err := recordKind(sess, rec)
+		if err != nil {
+			return err
 		}
 		if done, err := s.skip(ctx, q, &rec, resolution); done || err != nil {
 			res.Status = rec.Status
@@ -272,8 +287,18 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, k Kind, bat
 			sum := sha256.Sum256(b)
 			return int64(len(b)), hex.EncodeToString(sum[:]), nil
 		}
+		document := func(ctx context.Context) (string, error) {
+			if src.DocumentID != nil {
+				return *src.DocumentID, nil
+			}
+			id, key, err := s.entryDocument(ctx, q, sess, src)
+			if key != "" {
+				kept = append(kept, key)
+			}
+			return id, err
+		}
 		entity, conflict, err := k.write(ctx, q, sess, rec.Data, Source{DocumentID: src.DocumentID, Name: src.Name,
-			ContentType: src.ContentType, Keep: keep}, resolution)
+			ContentType: src.ContentType, Keep: keep, Document: document}, resolution)
 		if err != nil {
 			return err
 		}
@@ -302,6 +327,37 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, k Kind, bat
 	}
 	res.Error = refusal
 	return res, err
+}
+
+// entryDocument stores a ZIP entry as a Document of its own, under the same hash lock and storage admission as an
+// upload; equal bytes already stored as a Document are reused. key is the object it put ("" when none).
+func (s *Service) entryDocument(ctx context.Context, q store.Q, sess store.Session, src store.ImportSource) (id, key string, err error) {
+	b, err := s.read(ctx, store.ImportFile{ObjectKey: src.ObjectKey, EntryIndex: src.EntryIndex})
+	if err != nil {
+		return "", "", err
+	}
+	sum := sha256.Sum256(b)
+	list := []upload{{name: src.Name, contentType: src.ContentType, data: b, sum: hex.EncodeToString(sum[:])}}
+	if err := s.admit(ctx, q, sess, list); err != nil {
+		return "", "", err
+	}
+	u := &list[0]
+	// A match may be an expense receipt ("rcp_…"), which is no Document: then the entry is stored as one.
+	if u.reused && strings.HasPrefix(u.documentID, "doc_") {
+		return u.documentID, "", nil
+	}
+	if u.reused && s.allowStorage != nil {
+		if err := s.allowStorage(ctx, q, sess, int64(len(b))); err != nil {
+			return "", "", err
+		}
+	}
+	u.documentID = auth.NewID("doc")
+	u.key = sess.Workspace.ID + "/documents/" + u.documentID
+	u.name = path.Base(strings.ReplaceAll(u.name, " › ", "/"))
+	if err := s.files.Put(ctx, u.key, bytes.NewReader(b), int64(len(b)), u.contentType, u.name); err != nil {
+		return "", u.key, err
+	}
+	return u.documentID, u.key, s.createDocument(ctx, q, sess, *u)
 }
 
 func (s *Service) deleteKept(ctx context.Context, keys []string) {

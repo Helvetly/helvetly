@@ -29,6 +29,7 @@ const retainer = {
 const record = (id: string, over: Partial<ImportRecord> = {}): ImportRecord => ({
   id,
   file_id: 'imf_1',
+  kind: 'engagements',
   status: 'pending',
   data: { client_name: client.name, ...retainer },
   issues: {},
@@ -59,6 +60,7 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
       chunks_done: 1,
       chunks_total: 1,
       reused: false,
+      document_type: null,
     },
   ],
   records,

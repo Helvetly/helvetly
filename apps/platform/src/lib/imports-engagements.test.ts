@@ -29,6 +29,7 @@ describe('the engagements import kind', () => {
           {
             id: 'imr_1',
             file_id: 'imf_1',
+            kind: 'engagements',
             status: 'pending',
             data: { client_name: 'Muster AG', title: 'Retainer', interval: 1 },
             issues: { client_id: 'No client matches this document: choose one.' },

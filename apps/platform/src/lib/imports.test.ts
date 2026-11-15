@@ -22,6 +22,7 @@ import {
 const record = (over: Partial<ImportRecord> = {}): ImportRecord => ({
   id: 'imr_1',
   file_id: 'imf_1',
+  kind: 'clients',
   status: 'pending',
   data: { name: 'Muster AG' },
   issues: {},
@@ -46,6 +47,7 @@ const batch = (over: Partial<ImportBatch> = {}): ImportBatch => ({
       chunks_done: 1,
       chunks_total: 1,
       reused: false,
+      document_type: null,
     },
   ],
   records: [record()],
