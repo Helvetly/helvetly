@@ -25,13 +25,11 @@ test('write alone is enough to see a page; the dashboard and Heidi always stay',
   )
 })
 
-test('Employees and Payroll need HR scopes, which a member\'s "*" never gives', () => {
+test('Employees needs an HR scope, which a member\'s "*" never gives', () => {
   expect(labels(['*:*'])).not.toContain('Employees')
-  expect(labels(['*:*'])).not.toContain('Payroll')
   expect(labels(effectiveScopes('admin', undefined))).not.toContain('Employees')
   expect(labels(effectiveScopes('owner', undefined))).toEqual(
-    expect.arrayContaining(['Members', 'Employees', 'Payroll']),
+    expect.arrayContaining(['Members', 'Employees']),
   )
   expect(labels(['read:employees'])).toContain('Employees')
-  expect(labels(['read:employees'])).not.toContain('Payroll')
 })

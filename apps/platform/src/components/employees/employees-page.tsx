@@ -3,7 +3,8 @@
 import { Button } from '@helvetly/ui/components/button'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { IdCard, Search, SearchX, UserPlus } from 'lucide-react'
+import { Banknote, IdCard, Search, SearchX, UserPlus } from 'lucide-react'
+import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -37,6 +38,7 @@ export function EmployeesPage() {
   const params = parseListParams(query)
   const list = useEmployeeList(params)
   const canWrite = useCan('write:employees')
+  const canPayroll = useCan('read:payroll')
   const openId = query.get('id')
   const editId = query.get('edit')
   const creating = query.get('new') === '1' && canWrite
@@ -71,6 +73,15 @@ export function EmployeesPage() {
         savedViews={false}
         primary={canWrite ? 'New employee' : undefined}
         onPrimary={() => go({ new: '1' }, true)}
+        actions={
+          canPayroll ? (
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href="/employees/payroll">
+                <Banknote className="size-3.5" /> Payroll
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
       <div className="flex flex-1 flex-col">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 md:px-5">

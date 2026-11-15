@@ -56,21 +56,13 @@ import { effectiveScopes } from '@/lib/permissions'
 import { useShortcut } from '@/lib/shortcuts'
 
 import { CommandPalette } from './command-palette'
-import { NAV, visibleNav } from './nav'
+import { visibleNav } from './nav'
 import { planLabel, SidebarPlanNotice } from './plan-notice'
 import { ThemeSwitcher } from './theme-switcher'
 
-const NAV_HREFS = NAV.flatMap((group) => group.items.flatMap(({ href }) => (href ? [href] : [])))
-
 export const isCurrent = (pathname: string, href: string) => {
   const path = pathname.replace(/\/$/, '') || '/'
-  const under = (base: string) =>
-    base === '/' ? path === '/' : path === base || path.startsWith(`${base}/`)
-  // A nested item (Payroll under Employees) takes the mark from its parent.
-  return (
-    under(href) &&
-    !NAV_HREFS.some((other) => other.startsWith(`${href}/`) && href !== '/' && under(other))
-  )
+  return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`)
 }
 
 /**
@@ -237,7 +229,7 @@ export function AppSidebar({ session }: { session: Session }) {
         <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
         {help && <HelpDialog open={help.open} onOpenChange={(open) => setHelp({ open })} />}
       </SidebarHeader>
-      <SidebarContent className="gap-2 px-0 pt-1">
+      <SidebarContent className="gap-1 px-0 py-1">
         {visibleNav(effectiveScopes(session.role, session.scopes)).map((group, index) => (
           <SidebarGroup
             key={group.label ?? index}

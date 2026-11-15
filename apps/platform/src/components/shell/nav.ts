@@ -1,6 +1,5 @@
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
-  Banknote,
   Bell,
   Building2,
   ClipboardCheck,
@@ -50,7 +49,6 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
     items: [
       { label: 'Members', icon: Users, href: '/members' },
       { label: 'Employees', icon: IdCard, href: '/employees' },
-      { label: 'Payroll', icon: Banknote, href: '/employees/payroll' },
     ],
   },
   {
