@@ -270,15 +270,16 @@ test('while a payment fails no plan can be chosen', () => {
 
 const proTotal = () => card('Pro').querySelector('[data-slot=team-total]')
 
-test('the team size changes every card’s total live, never below one person', async () => {
+test('every card totals the workspace’s people, with no control to pick them', () => {
   renderCards(billing())
   expect(proTotal()).toHaveTextContent('For 3 peopleCHF 147 / month')
-  await userEvent.click(screen.getByRole('button', { name: 'More people' }))
-  expect(proTotal()).toHaveTextContent('For 4 peopleCHF 196 / month')
-  for (const _ of [1, 2, 3])
-    await userEvent.click(screen.getByRole('button', { name: 'Fewer people' }))
+  expect(screen.queryByRole('group', { name: 'Team size' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /people/ })).not.toBeInTheDocument()
+})
+
+test('a workspace with no seats counted yet is totalled for one person', () => {
+  renderCards(billing({ seats: 0 }))
   expect(proTotal()).toHaveTextContent('For 1 personCHF 49 / month')
-  expect(screen.getByRole('button', { name: 'Fewer people' })).toBeDisabled()
 })
 
 test('limits read as short facts with the key number first', () => {

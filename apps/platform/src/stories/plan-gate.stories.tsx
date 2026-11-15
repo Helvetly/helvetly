@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { ChoosePlan } from '@/components/shell/plan-gate'
@@ -55,10 +55,11 @@ export const NewWorkspace: Story = {
     await expect(canvas.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument()
     const pro = within(canvas.getByRole('region', { name: 'Pro' }))
     await expect(pro.getByText('Recommended')).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'More people' }))
+    // Seats follow the workspace's people: a total for them, no control to pick another number.
+    await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
     await expect(
       canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
-    ).toHaveTextContent('For 4 peopleCHF 196 / month')
+    ).toHaveTextContent('For 3 peopleCHF 147 / month')
   },
 }
 
