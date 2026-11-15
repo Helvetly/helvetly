@@ -26,7 +26,7 @@ export function PricingCards() {
           <label
             key={value}
             className={cn(
-              'relative inline-flex items-center rounded-full px-4 py-1.5 transition-colors has-checked:bg-card has-checked:shadow-elevation-1 dark:has-checked:bg-white/15 has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
+              'relative inline-flex items-center rounded-full px-4 py-1.5 transition-colors has-checked:bg-card has-checked:shadow-elevation-1 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:has-checked:bg-white/15',
               interval === value
                 ? 'text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
