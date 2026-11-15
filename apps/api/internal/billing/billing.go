@@ -161,10 +161,10 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
 	}
 	prices := s.planPrices(r.Context())
-	cur, err := s.currencyFor(r.Context(), b.CustomerID, sess.Workspace.Timezone)
+	cur, err := s.currencyFor(r.Context(), b.CustomerID, auth.Country(r), sess.Workspace.Timezone)
 	if err != nil {
 		s.log.WarnContext(r.Context(), "reading the Stripe customer's currency failed", "error", err)
-		cur = CurrencyOf(sess.Workspace.Timezone)
+		cur = CurrencyOf(auth.Country(r), sess.Workspace.Timezone)
 	}
 	cur = offered(cur, slices.Collect(maps.Values(prices)))
 	list := make([]planItem, 0, len(planOrder))
@@ -385,7 +385,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	// a Checkout session writes nothing of ours, so Stripe is called after the lock is released
 	if checkout != nil {
-		cur, err := s.currencyFor(ctx, checkout.CustomerID, sess.Workspace.Timezone)
+		cur, err := s.currencyFor(ctx, checkout.CustomerID, auth.Country(r), sess.Workspace.Timezone)
 		if err != nil {
 			return err
 		}

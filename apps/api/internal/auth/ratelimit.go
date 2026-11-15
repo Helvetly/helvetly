@@ -77,10 +77,10 @@ func clientIP(r *http.Request) string {
 // ForwardedFor sets r.RemoteAddr to the client a trusted reverse proxy reports: the right-most
 // X-Forwarded-For hop that is not itself a trusted proxy (left-most hops are client-supplied and forgeable).
 // From any other peer, or with no trusted proxies, the header is ignored.
+//
+// CF-IPCountry (CountryHeader) is kept only when the hop that handed the client on was Cloudflare's edge (the peer
+// itself, or the next hop to the right of the client); from anywhere else the client could have set it, so it goes.
 func ForwardedFor(trusted []netip.Prefix, next http.Handler) http.Handler {
-	if len(trusted) == 0 {
-		return next
-	}
 	isTrusted := func(ip netip.Addr) bool {
 		for _, p := range trusted {
 			if p.Contains(ip) {
@@ -92,7 +92,10 @@ func ForwardedFor(trusted []netip.Prefix, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		peer, perr := netip.ParseAddr(host)
-		if err == nil && perr == nil && isTrusted(peer.Unmap()) {
+		edge := err == nil && perr == nil && fromCloudflare(peer.Unmap()) // nothing in between: a direct Cloudflare peer
+		if len(trusted) > 0 && err == nil && perr == nil && isTrusted(peer.Unmap()) {
+			edge = false
+			handedOn := peer.Unmap()
 			hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
 			for i := len(hops) - 1; i >= 0; i-- {
 				ip, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
@@ -102,9 +105,15 @@ func ForwardedFor(trusted []netip.Prefix, next http.Handler) http.Handler {
 				if ip = ip.Unmap(); !isTrusted(ip) {
 					r = r.WithContext(r.Context())
 					r.RemoteAddr = net.JoinHostPort(ip.String(), "0")
+					edge = fromCloudflare(handedOn)
 					break
 				}
+				handedOn = ip
 			}
+		}
+		if !edge && r.Header.Get(CountryHeader) != "" {
+			r = r.Clone(r.Context())
+			r.Header.Del(CountryHeader)
 		}
 		next.ServeHTTP(w, r)
 	})

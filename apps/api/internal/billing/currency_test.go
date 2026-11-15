@@ -6,24 +6,30 @@ import (
 )
 
 func TestCurrencyOf(t *testing.T) {
-	for _, tt := range []struct{ tz, want string }{
-		{"Europe/Zurich", "chf"},
-		{"Europe/Vaduz", "chf"},
-		{"Europe/Berlin", "eur"},
-		{"Europe/Busingen", "eur"}, // German, on Swiss time
-		{"Europe/Paris", "eur"},
-		{"Atlantic/Canary", "eur"},
-		{"Asia/Nicosia", "eur"},
-		{"Indian/Reunion", "eur"},
-		{"Europe/London", "usd"},
-		{"Europe/Oslo", "usd"},
-		{"Europe/Monaco", "usd"}, // pays in euros, not in the EU
-		{"America/New_York", "usd"},
-		{"UTC", "usd"},
-		{"", "usd"},
+	for _, tt := range []struct{ country, tz, want string }{
+		{"CH", "", "chf"},
+		{"LI", "America/New_York", "chf"}, // the country wins over the time zone
+		{"DE", "Europe/Zurich", "eur"},
+		{"FR", "", "eur"},
+		{"RE", "", "eur"}, // Réunion, an outermost region
+		{"GB", "Europe/Berlin", "usd"},
+		{"NO", "", "usd"},
+		{"MC", "", "usd"}, // pays in euros, not in the EU
+		{"US", "", "usd"},
+		// No country from Cloudflare: the workspace's time zone.
+		{"", "Europe/Zurich", "chf"},
+		{"", "Europe/Vaduz", "chf"},
+		{"", "Europe/Berlin", "eur"},
+		{"", "Europe/Busingen", "eur"}, // German, on Swiss time
+		{"", "Atlantic/Canary", "eur"},
+		{"", "Asia/Nicosia", "eur"},
+		{"", "Europe/London", "usd"},
+		{"", "Europe/Monaco", "usd"},
+		{"", "UTC", "usd"},
+		{"", "", "usd"},
 	} {
-		if got := CurrencyOf(tt.tz); got != tt.want {
-			t.Errorf("CurrencyOf(%q) = %q, want %q", tt.tz, got, tt.want)
+		if got := CurrencyOf(tt.country, tt.tz); got != tt.want {
+			t.Errorf("CurrencyOf(%q, %q) = %q, want %q", tt.country, tt.tz, got, tt.want)
 		}
 	}
 }
@@ -84,9 +90,40 @@ func TestRegionalCurrency(t *testing.T) {
 	}
 }
 
+func TestCountryFromCloudflare(t *testing.T) {
+	e := newEnv(t, true)
+	for _, tt := range []struct {
+		name, tz, country string
+		via               bool
+		want              string
+	}{
+		{"Swiss visitor, US time zone", "America/New_York", "CH", true, "chf"},
+		{"German visitor, Swiss time zone", "Europe/Zurich", "DE", true, "eur"},
+		{"British visitor, German time zone", "Europe/Berlin", "GB", true, "usd"},
+		{"Cloudflare does not know the country", "Europe/Berlin", "XX", true, "eur"},
+		{"Tor through Cloudflare", "Europe/Zurich", "T1", true, "chf"},
+		// The header straight from the client, not through Cloudflare's edge, is dropped: the time zone decides.
+		{"forged header", "Europe/Berlin", "CH", false, "eur"},
+	} {
+		b := e.workspaceIn(tt.tz).viaCloudflare(tt.country)
+		if !tt.via {
+			b.header.Set("X-Forwarded-For", "203.0.113.9")
+		}
+		if cur, pro := e.overviewCurrency(b); cur != tt.want || pro["currency"] != tt.want {
+			t.Fatalf("%s: overview %q, Pro %v", tt.name, cur, pro)
+		}
+		if code, _ := e.do(b, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
+			t.Fatalf("%s: checkout %d", tt.name, code)
+		}
+		if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("currency") != tt.want {
+			t.Fatalf("%s: checkout currency %q", tt.name, f.Get("currency"))
+		}
+	}
+}
+
 func TestExistingCustomerKeepsItsCurrency(t *testing.T) {
 	e := newEnv(t, true)
-	owner := e.workspaceIn("Europe/Berlin")
+	owner := e.workspaceIn("Europe/Berlin").viaCloudflare("DE")
 	e.subscribe(owner.workspace, "price_bm")
 	e.stripe.mu.Lock()
 	e.stripe.currency["cus_"+owner.workspace] = "chf" // Stripe fixed the customer to francs with its first subscription

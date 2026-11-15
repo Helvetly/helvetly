@@ -29,10 +29,27 @@ var regionCurrency = map[string]string{
 	"Indian/Reunion": EUR, "Indian/Mayotte": EUR,
 }
 
-// CurrencyOf is the currency a workspace in the IANA time zone tz pays in. The time zone is the workspace's own
-// (set from the browser at sign-up), not the request's: the platform host is not behind Cloudflare, so a
-// CF-IPCountry header there would be the client's to set.
-func CurrencyOf(tz string) string {
+// countryCurrency is the currency of Switzerland, Liechtenstein and the EU-27 (ISO 3166-1 alpha-2, as Cloudflare
+// names countries); any other country pays in USD.
+var countryCurrency = map[string]string{
+	"CH": Currency, "LI": Currency,
+	"AT": EUR, "BE": EUR, "BG": EUR, "HR": EUR, "CY": EUR, "CZ": EUR, "DK": EUR, "EE": EUR, "FI": EUR, "FR": EUR, "DE": EUR,
+	"GR": EUR, "HU": EUR, "IE": EUR, "IT": EUR, "LV": EUR, "LT": EUR, "LU": EUR, "MT": EUR, "NL": EUR, "PL": EUR, "PT": EUR,
+	"RO": EUR, "SK": EUR, "SI": EUR, "ES": EUR, "SE": EUR,
+	// The outermost regions Cloudflare names apart from their country.
+	"AX": EUR, "GF": EUR, "GP": EUR, "MQ": EUR, "RE": EUR, "YT": EUR, "MF": EUR,
+}
+
+// CurrencyOf is the currency a visitor pays in: by country, the request's CF-IPCountry when Cloudflare's edge sent
+// it (auth.Country, "" otherwise), else by the workspace's IANA time zone tz (set from the browser at sign-up), for
+// a server without Cloudflare in front.
+func CurrencyOf(country, tz string) string {
+	if country != "" {
+		if c, ok := countryCurrency[country]; ok {
+			return c
+		}
+		return USD
+	}
 	if c, ok := regionCurrency[tz]; ok {
 		return c
 	}
@@ -61,9 +78,9 @@ func offered(cur string, prices []price) string {
 
 // currencyFor is the currency the workspace pays in: its Stripe customer's, once Stripe has fixed one (a customer is
 // charged in one currency), else its region's.
-func (s *Service) currencyFor(ctx context.Context, customerID, tz string) (string, error) {
+func (s *Service) currencyFor(ctx context.Context, customerID, country, tz string) (string, error) {
 	if customerID == "" || !s.enabled {
-		return CurrencyOf(tz), nil
+		return CurrencyOf(country, tz), nil
 	}
 	if cur, ok := s.customerCurrency.Load(customerID); ok {
 		return cur.(string), nil
@@ -75,7 +92,7 @@ func (s *Service) currencyFor(ctx context.Context, customerID, tz string) (strin
 		return "", err
 	}
 	if c.Currency == "" {
-		return CurrencyOf(tz), nil // not fixed yet: read again next time
+		return CurrencyOf(country, tz), nil // not fixed yet: read again next time
 	}
 	s.customerCurrency.Store(customerID, c.Currency) // Stripe never changes it once set
 	return c.Currency, nil

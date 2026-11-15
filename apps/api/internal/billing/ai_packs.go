@@ -94,7 +94,7 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 	if b.CustomerID == "" {
 		return errNoCustomer
 	}
-	cur, err := s.currencyFor(ctx, b.CustomerID, sess.Workspace.Timezone)
+	cur, err := s.currencyFor(ctx, b.CustomerID, auth.Country(r), sess.Workspace.Timezone)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strconv"
@@ -314,12 +315,24 @@ func newEnv(t *testing.T, enabled bool) *env {
 	for _, m := range []string{"GET", "PATCH", "PUT", "DELETE"} {
 		mux.HandleFunc(m+" /api/v1/", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	}
-	srv := httptest.NewServer(svc.Guard(mux))
+	// As in production: the client address and CF-IPCountry are believed only from a trusted proxy that Cloudflare
+	// handed the request to (the test client is that proxy, 127.0.0.1).
+	trusted := append([]netip.Prefix{netip.MustParsePrefix("127.0.0.1/32"), netip.MustParsePrefix("::1/128")}, config.CloudflareIPs...)
+	srv := httptest.NewServer(auth.ForwardedFor(trusted, svc.Guard(mux)))
 	t.Cleanup(srv.Close)
 	return &env{t: t, st: st, raw: raw, stripe: fake, svc: svc, srv: srv}
 }
 
-type browser struct{ token, csrf, workspace string }
+type browser struct {
+	token, csrf, workspace string
+	header                 http.Header // sent with every request, such as CF-IPCountry and X-Forwarded-For
+}
+
+// viaCloudflare makes b's requests come from a visitor in country through Cloudflare's edge (104.16.0.1).
+func (b *browser) viaCloudflare(country string) *browser {
+	b.header = http.Header{auth.CountryHeader: {country}, "X-Forwarded-For": {"203.0.113.9, 104.16.0.1"}}
+	return b
+}
 
 func (e *env) workspace() *browser {
 	e.t.Helper()
@@ -365,6 +378,9 @@ func (e *env) do(b *browser, method, path string, body any) (int, map[string]any
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: "helvetly_session", Value: b.token})
 	req.Header.Set("X-CSRF-Token", b.csrf)
+	for k, v := range b.header {
+		req.Header[k] = v
+	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		e.t.Fatal(err)

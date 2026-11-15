@@ -54,6 +54,18 @@ describe('pricing page', () => {
     expect(within(pro).getByText('EUR 39.25 a month, billed yearly, incl. VAT')).toBeTruthy()
   })
 
+  it('prefers the country Cloudflare saw to the time zone', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async () => new Response('h=helvetly.com\nloc=GB\n')),
+    )
+    render(<PricingPage />)
+    const pro = screen.getAllByRole('article')[1]!
+    expect(await within(pro).findByText('USD 39.25 a month, billed yearly, incl. tax')).toBeTruthy()
+    expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
+    vi.unstubAllGlobals()
+  })
+
   it('shows yearly prices first and monthly ones on request', async () => {
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!
