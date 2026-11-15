@@ -23,10 +23,7 @@ import (
 
 func setAdmissionLimit(t *testing.T, e *env, key Limit, max int64) {
 	t.Helper()
-	e.exec(`UPDATE plan_limits SET max_value=$2 WHERE plan='basic' AND limit_key=$1`, string(key), max)
-	var err error
-	e.svc.plans, err = loadPlanLimits(context.Background(), e.st)
-	if err != nil {
+	if err := e.st.SetPlanLimit(context.Background(), string(key), Basic, max); err != nil {
 		t.Fatal(err)
 	}
 	e.st.SetAdmission(e.svc.AllowResource)

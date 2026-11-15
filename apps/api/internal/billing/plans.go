@@ -76,7 +76,7 @@ func planOfKey(key string) (plan, interval string) {
 	return plan, interval
 }
 
-// PlanDescription is what the Stripe product says about a plan; the limits themselves live in plan_limits.
+// PlanDescription is what the Stripe product says about a plan; the limits themselves live in limits and limit_plans.
 func PlanDescription(plan string) string { return planDescriptions[plan] }
 
 var planDescriptions = map[string]string{
@@ -113,12 +113,14 @@ var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagem
 // stockLimits are counted on what exists, so a smaller plan must fit them; monthly ones restart each month.
 var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage}
 
-// planLimits is what each plan allows, read once from plan_limits (seeded by migration) when the service starts.
+// planLimits is what each plan allows (or, from limitsOf, one workspace on its plan); -1 is unlimited and a feature
+// is 1 or 0.
 type planLimits map[string]map[Limit]int64
 
-// loadPlanLimits reads plan_limits and refuses a table that misses a plan or a limit, so a cap is never guessed.
+// loadPlanLimits reads every plan's limits (limits and limit_plans) for the plan catalogue, and refuses a limits
+// table that misses a limit, so a cap is never guessed. Checks on one workspace read limitsOf instead.
 func loadPlanLimits(ctx context.Context, db *store.Store) (planLimits, error) {
-	rows, err := db.PlanLimits(ctx)
+	rows, err := db.PlanLimits(ctx, planOrder)
 	if err != nil {
 		return nil, fmt.Errorf("reading plan limits: %w", err)
 	}
@@ -127,19 +129,31 @@ func loadPlanLimits(ctx context.Context, db *store.Store) (planLimits, error) {
 		if out[r.Plan] == nil {
 			out[r.Plan] = map[Limit]int64{}
 		}
-		out[r.Plan][Limit(r.Limit)] = Unlimited
-		if r.Max != nil {
-			out[r.Plan][Limit(r.Limit)] = *r.Max
-		}
+		out[r.Plan][Limit(r.Limit)] = r.Value
 	}
-	for _, plan := range planOrder {
-		for _, l := range limitOrder {
-			if _, ok := out[plan][l]; !ok {
-				return nil, fmt.Errorf("plan_limits has no %s limit for the %s plan", l, plan)
-			}
+	for _, l := range limitOrder {
+		if _, ok := out[Basic][l]; !ok {
+			return nil, fmt.Errorf("limits has no %s limit", l)
 		}
 	}
 	return out, nil
+}
+
+// limitsOf is a workspace's limits on plan, its own values replacing the plan's (limit_workspaces): every check on
+// one workspace reads them, in one query. None without a plan.
+func limitsOf(ctx context.Context, q store.Q, workspaceID, plan string) (planLimits, error) {
+	if plan == "" {
+		return planLimits{}, nil
+	}
+	rows, err := q.ResolveLimits(ctx, workspaceID, plan)
+	if err != nil {
+		return nil, fmt.Errorf("resolving limits: %w", err)
+	}
+	m := make(map[Limit]int64, len(rows))
+	for _, r := range rows {
+		m[Limit(r.Limit)] = r.Value
+	}
+	return planLimits{plan: m}, nil
 }
 
 // forBilling is the cap on a limit for the workspace's subscription: a per-seat one is billed for every member, so

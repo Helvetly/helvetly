@@ -49,7 +49,7 @@ type Service struct {
 	customerCurrency sync.Map // Stripe customer id -> the currency Stripe fixed for it
 }
 
-// New reads the plan limits seeded in plan_limits; the server does not start without them.
+// New reads the plan limits (limits and limit_plans); the server does not start without them.
 func New(ctx context.Context, db *store.Store, a Auth, cfg config.Config, log *slog.Logger) (*Service, error) {
 	plans, err := loadPlanLimits(ctx, db)
 	if err != nil {
@@ -169,9 +169,13 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	limits, err := limitsOf(r.Context(), s.db.Q, sess.Workspace.ID, plan)
+	if err != nil {
+		return err
+	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
-		max := s.plans.forBilling(b, l, s.now())
+		max := limits.forBilling(b, l, s.now())
 		if l == AITokens && max != Unlimited && plan != "" {
 			max += bought // the packs bought this month count on top of the plan's allowance
 		}
@@ -185,7 +189,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
-		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: featuresOf(id),
+		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: s.plans.featuresOf(id),
 			Prices: map[string]*planPrice{}}
 		for _, l := range limitOrder {
 			p.Limits[l] = maxOf(s.plans.of(id, l))
@@ -207,7 +211,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"current_period_end": b.CurrentPeriodEnd, "cancel_at_period_end": b.CancelAtPeriodEnd, "trial_end": b.TrialEnd,
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
-		"usage": usage, "features": s.workspaceFeatures(plan), "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
+		"usage": usage, "features": s.workspaceFeatures(limits, plan), "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
 		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
 		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
 	}
@@ -551,7 +555,11 @@ func (s *Service) fits(ctx context.Context, q store.Q, ws store.Workspace, plan 
 	if err != nil {
 		return err
 	}
-	if over := s.plans.overages(plan, perSeat, u); len(over) > 0 {
+	limits, err := limitsOf(ctx, q, ws.ID, plan)
+	if err != nil {
+		return err
+	}
+	if over := limits.overages(plan, perSeat, u); len(over) > 0 {
 		return auth.Error(http.StatusConflict, "plan_limits_exceeded", overageMessage(plan, over),
 			map[string]any{"plan": plan, "overages": over})
 	}

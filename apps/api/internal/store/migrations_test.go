@@ -95,7 +95,7 @@ func TestDownUp(t *testing.T) {
 		}
 	}
 	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM plan_limits`).Scan(&n); err != nil || n == 0 {
-		t.Fatalf("plan_limits has %d rows after Down and Up: %v", n, err)
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM limits`).Scan(&n); err != nil || n == 0 {
+		t.Fatalf("limits has %d rows after Down and Up: %v", n, err)
 	}
 }

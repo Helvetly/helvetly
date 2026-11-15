@@ -163,7 +163,11 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if plan == "" {
 		return 0, nil
 	}
-	monthly := s.plans.of(plan, AITokens)
+	limits, err := limitsOf(ctx, q, workspaceID, plan)
+	if err != nil {
+		return 0, err
+	}
+	monthly := limits.of(plan, AITokens)
 	if monthly == Unlimited {
 		return Unlimited, nil
 	}
@@ -202,7 +206,11 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	if plan == "" {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
 	}
-	max := s.plans.forBilling(b, limit, s.now())
+	limits, err := limitsOf(ctx, q, workspaceID, plan)
+	if err != nil {
+		return err
+	}
+	max := limits.forBilling(b, limit, s.now())
 	if max == Unlimited {
 		return nil
 	}
@@ -245,7 +253,11 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 		return "", 0, 0, false, err
 	}
 	plan = PlanOf(b, s.now())
-	max = s.plans.forBilling(b, limit, s.now())
+	limits, err := limitsOf(ctx, s.db.Q, ws.ID, plan)
+	if err != nil {
+		return "", 0, 0, false, err
+	}
+	max = limits.forBilling(b, limit, s.now())
 	if max == Unlimited {
 		return plan, 0, max, true, nil
 	}
