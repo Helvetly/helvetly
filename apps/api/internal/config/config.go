@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +52,9 @@ type Config struct {
 	AI      AI
 	// FeedbackEmail receives Help & feedback reports (FEEDBACK_EMAIL); empty = reports are stored only.
 	FeedbackEmail string
+	// GoogleAnalyticsID: the GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID, G-...); empty = off,
+	// so an installation sends nothing to Google unless its operator sets it.
+	GoogleAnalyticsID string
 }
 
 // AI is the model behind Heidi and the AI import; opt-in. No key means Heidi's factual local commands only. The monthly
@@ -117,6 +121,9 @@ func (c Config) MailConfigured() bool { return c.SMTP.Host != "" && c.SMTP.From 
 
 func (c Config) GoogleSignIn() bool { return c.GoogleClientID != "" }
 
+// gaID is a GA4 measurement id (GOOGLE_ANALYTICS_ID).
+var gaID = regexp.MustCompile(`^G-[A-Z0-9]{4,20}$`)
+
 func Load() (Config, error) {
 	var errs []error
 	fail := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
@@ -159,7 +166,8 @@ func Load() (Config, error) {
 		DevSignIn: boolean("AUTH_DEV_SIGNIN", false),
 		AI: AI{OpenAIKey: env("OPENAI_API_KEY", ""), OpenAIBaseURL: strings.TrimSuffix(env("OPENAI_BASE_URL", "https://api.openai.com/v1"), "/"),
 			Model: env("OPENAI_MODEL", "gpt-6-astra"), FakeImportModel: boolean("HELVETLY_E2E_FAKE_AI", false)},
-		FeedbackEmail: env("FEEDBACK_EMAIL", ""),
+		FeedbackEmail:     env("FEEDBACK_EMAIL", ""),
+		GoogleAnalyticsID: env("GOOGLE_ANALYTICS_ID", ""),
 	}
 	if c.FeedbackEmail != "" {
 		if a, err := mail.ParseAddress(c.FeedbackEmail); err != nil || a.Name != "" {
@@ -171,6 +179,9 @@ func Load() (Config, error) {
 		if os.Getenv(old) != "" { // a renamed setting must not be dropped silently
 			fail("%s is no longer read: use %s", old, now)
 		}
+	}
+	if c.GoogleAnalyticsID != "" && !gaID.MatchString(c.GoogleAnalyticsID) {
+		fail("GOOGLE_ANALYTICS_ID must be a GA4 measurement id such as G-ABC123XYZ, got %q", c.GoogleAnalyticsID)
 	}
 	if strings.ContainsAny(c.AI.OpenAIKey, " \t\r\n") {
 		fail("OPENAI_API_KEY must not contain whitespace")

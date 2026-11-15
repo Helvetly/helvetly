@@ -6,6 +6,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { Analytics } from '@/components/analytics'
 import { toastPlanRequired } from '@/components/billing/plan-required-toast'
 import { UpgradePrompt, promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ThemeShortcut } from '@/components/shortcuts/theme-shortcut'
@@ -52,6 +53,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <Toaster position="bottom-right" mobileOffset={{ bottom: 88 }} />
         <UpgradePrompt />
         <ThemeShortcut />
+        <Analytics />
       </TooltipProvider>
     </QueryClientProvider>
   )

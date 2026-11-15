@@ -24,6 +24,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-easy-crop": "catalog:",
+    "react-ga4": "3.0.1",
     "react-markdown": "catalog:",
     "recharts": "catalog:",
     "remark-gfm": "catalog:",
