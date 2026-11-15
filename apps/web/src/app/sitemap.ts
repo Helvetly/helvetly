@@ -5,7 +5,7 @@ import { readCollection } from '@/lib/content'
 import { topicsWithArticles } from '@/lib/help-topics'
 import { LEGAL } from '@/lib/legal'
 
-const SITE = 'https://helvetly.com'
+const SITE = 'https://www.helvetly.com'
 
 // Generated once at build time: the site is a static export.
 export const dynamic = 'force-static'

@@ -15,7 +15,7 @@ WORKDIR /src
 ENV NEXT_TELEMETRY_DISABLED=1 CI=1
 # Baked into the client bundles at build time (public URLs only, never a secret).
 ARG NEXT_PUBLIC_DOCS_URL=https://docs.helvetly.com
-ARG NEXT_PUBLIC_WEB_URL=https://helvetly.com
+ARG NEXT_PUBLIC_WEB_URL=https://www.helvetly.com
 ENV NEXT_PUBLIC_DOCS_URL=$NEXT_PUBLIC_DOCS_URL NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL
 COPY . .
 RUN pnpm install --frozen-lockfile --filter '@helvetly/platform...' --filter '@helvetly/portal...' \

@@ -27,6 +27,6 @@ test('the sign-in links to the privacy policy on the website', async () => {
   )
   expect(await screen.findByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
     'href',
-    'https://helvetly.com/privacy',
+    'https://www.helvetly.com/privacy',
   )
 })
