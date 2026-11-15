@@ -11,7 +11,8 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { KeySquare, LoaderCircle, Plus, Trash2, TriangleAlert, X } from 'lucide-react'
+import { KeySquare, LoaderCircle, Lock, Plus, Trash2, TriangleAlert, X } from 'lucide-react'
+import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ import {
 } from '@/lib/account'
 import { errorMessage } from '@/lib/api'
 import { useApiOrigin } from '@/lib/api-origin'
+import { useLockedFeature } from '@/lib/billing'
 import {
   emptyMatrix,
   matrixScopes,
@@ -96,11 +98,17 @@ export function ApiTokens() {
   const revoke = useRevokeApiToken()
   const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState<ApiToken | null>(null)
+  const locked = useLockedFeature('api_access')
 
   const empty = tokens.data?.length === 0
   // One "Create token": the empty state's primary action, else under the description.
   const createButton = (
-    <Button size="sm" variant={empty ? 'default' : 'outline'} onClick={() => setCreating(true)}>
+    <Button
+      size="sm"
+      variant={empty ? 'default' : 'outline'}
+      disabled={Boolean(locked)}
+      onClick={() => setCreating(true)}
+    >
       <Plus /> Create token
     </Button>
   )
@@ -119,6 +127,22 @@ export function ApiTokens() {
       }
       action={!empty && createButton}
     >
+      {locked && (
+        <Callout
+          className="mb-4"
+          icon={Lock}
+          actions={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings/billing/plans">See plans</Link>
+            </Button>
+          }
+        >
+          {locked.plan
+            ? `New API tokens come with the ${locked.plan.name} plan.`
+            : 'Your plan does not include new API tokens.'}{' '}
+          Tokens you already have keep working.
+        </Callout>
+      )}
       {tokens.isPending ? (
         <Loader className="min-h-9" />
       ) : tokens.error ? (

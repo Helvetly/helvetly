@@ -1,6 +1,6 @@
 import { yearOf } from '@helvetly/ui/lib/price'
 
-import type { Billing, LimitKey } from '@/lib/billing'
+import type { Billing, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 2 ** 30
 // The limits seeded in apps/api/internal/store/migrations/00001_init.sql (plan_limits).
@@ -37,6 +37,12 @@ const business: Record<LimitKey, number | null> = {
   storage_bytes: 1024 * GB,
   ai_tokens_per_month: 20_000_000,
 }
+// The features declared in apps/api/internal/billing/features.go.
+const features: Record<PlanId, FeatureKey[]> = {
+  basic: [],
+  pro: ['api_access'],
+  business: ['api_access'],
+}
 const prices = (month: number, currency: string) => ({
   month: { amount: month, currency },
   year: yearOf({ amount: month, currency }),
@@ -63,17 +69,31 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
   period_start: '2026-11-01',
   discount: null,
   usage: [],
+  features: over.plan ? features[over.plan] : [],
   ai_tokens_bought: 0,
   ai_packs: [],
   disputed: false,
   payment_overdue: false,
   plans: [
-    { id: 'basic', name: 'Basic', limits: basic, prices: prices(1900, over.currency ?? 'chf') },
-    { id: 'pro', name: 'Pro', limits: pro, prices: prices(4900, over.currency ?? 'chf') },
+    {
+      id: 'basic',
+      name: 'Basic',
+      limits: basic,
+      features: features.basic,
+      prices: prices(1900, over.currency ?? 'chf'),
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      limits: pro,
+      features: features.pro,
+      prices: prices(4900, over.currency ?? 'chf'),
+    },
     {
       id: 'business',
       name: 'Business',
       limits: business,
+      features: features.business,
       prices: prices(9900, over.currency ?? 'chf'),
     },
   ],
@@ -92,6 +112,7 @@ export const flatBillingFixture = (over: Partial<Billing> = {}): Billing => {
       id: plan.id,
       name: plan.name,
       prices: plan.prices,
+      features: plan.features,
       limits: { ...plan.limits, members: FLAT_MEMBER_LIMITS[plan.id] },
     })),
   }

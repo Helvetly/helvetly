@@ -33,7 +33,12 @@ var guarded = map[string]Limit{
 	"POST /api/v1/expenses/{id}/receipts":  Storage,
 }
 
-// Guard gives an early 402 for writes that exceed a plan and makes an unsubscribed
+// gated lists writes that need a plan feature (features.go).
+var gated = map[string]Feature{
+	"POST /api/v1/account/tokens": APIAccess,
+}
+
+// Guard gives an early 402 for writes that exceed a plan or need a feature it lacks, and makes an unsubscribed
 // workspace read-only. Transactional canonical-write admission also covers jobs and races.
 func (s *Service) Guard(next http.Handler) http.Handler {
 	routes := http.NewServeMux()
@@ -68,6 +73,15 @@ func (s *Service) Guard(next http.Handler) http.Handler {
 				}
 			}
 			if err := s.check(r, sess, limit, add); err != nil {
+				s.writeError(w, r, err)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+	}
+	for pattern, feature := range gated {
+		routes.Handle(pattern, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
+			if err := s.Require(r.Context(), s.db.Q, sess.Workspace.ID, feature); err != nil {
 				s.writeError(w, r, err)
 				return
 			}

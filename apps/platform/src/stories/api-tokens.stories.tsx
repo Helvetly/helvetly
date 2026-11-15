@@ -3,12 +3,20 @@ import { delay, http, HttpResponse } from 'msw'
 import { expect, fn, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { ApiTokens } from '@/components/api/api-tokens'
+import { billingFixture } from '@/components/billing/billing-fixture'
+import type { PlanId } from '@/lib/billing'
 import { accountHandlers, resetAccountMock } from '@/mocks/account'
 
 const created = fn()
 const body = () => within(document.body)
+const onPlan = (plan: PlanId) =>
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({ data: billingFixture({ locked: false, plan, status: 'active' }) }),
+  )
 const tokens = (handler: Parameters<typeof http.get>[1]) => ({
-  msw: { handlers: [http.get('/api/v1/account/tokens', handler), ...accountHandlers] },
+  msw: {
+    handlers: [http.get('/api/v1/account/tokens', handler), onPlan('pro'), ...accountHandlers],
+  },
 })
 
 const meta = {
@@ -24,6 +32,7 @@ const meta = {
         http.post('/api/v1/account/tokens', async ({ request }) => {
           created(await request.clone().json())
         }),
+        onPlan('pro'),
         ...accountHandlers,
       ],
     },
@@ -76,6 +85,23 @@ export const Empty: Story = {
     await expect(empty.closest('[data-slot="settings-empty"]')?.contains(create[0] ?? null)).toBe(
       true,
     )
+  },
+}
+
+/** A plan without API access: new tokens are locked behind the plan that has it; existing ones stay. */
+export const LockedByPlan: Story = {
+  parameters: { msw: { handlers: [onPlan('basic'), ...accountHandlers] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText(/New API tokens come with the Pro plan/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
+    )
+    await expect(canvas.getByRole('button', { name: 'Create token' })).toBeDisabled()
+    // Tokens made before keep working and can still be revoked.
+    await expect(await canvas.findByText('Claude')).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Revoke Claude' })).toBeEnabled()
   },
 }
 

@@ -20,6 +20,9 @@ export type LimitKey =
   | 'storage_bytes'
   | 'ai_tokens_per_month'
 
+/** A capability a plan switches on or off (apps/api/internal/billing/features.go). */
+export type FeatureKey = 'api_access'
+
 /** `null` is unlimited. */
 export type UsageItem = { limit: LimitKey; used: number; max: number | null }
 export type PlanPrice = Price
@@ -28,6 +31,7 @@ export type Plan = {
   id: PlanId
   name: string
   limits: Record<LimitKey, number | null>
+  features: FeatureKey[]
   /** Per person (seat) for the interval. */
   prices: Record<Interval, PlanPrice | null>
 }
@@ -68,6 +72,8 @@ export type Billing = {
   period_start: string
   discount: Discount | null
   usage: UsageItem[]
+  /** What the workspace may use now: every feature without billing, none without a plan. */
+  features: FeatureKey[]
   plans: Plan[]
   /** What the workspace pays in: `chf` in Switzerland and Liechtenstein, `eur` in the EU, `usd` elsewhere; an
    * existing Stripe customer keeps its own. Plan and pack prices are in it. */
@@ -212,6 +218,25 @@ export function useSyncBilling() {
     },
   })
 }
+
+export const FEATURE_LABELS: Record<FeatureKey, string> = {
+  api_access: 'API tokens',
+}
+
+/**
+ * A feature the workspace's plan lacks, with the cheapest plan that unlocks it (null when none does); null while the
+ * workspace may use it, or while billing has not answered (the API refuses the action anyway).
+ */
+export function lockedFeature(
+  billing: Billing | undefined,
+  feature: FeatureKey,
+): { plan: Plan | null } | null {
+  if (!billing || billing.features.includes(feature)) return null
+  return { plan: billing.plans.find((plan) => plan.features.includes(feature)) ?? null }
+}
+
+/** `lockedFeature` for the signed-in workspace. */
+export const useLockedFeature = (feature: FeatureKey) => lockedFeature(useBilling().data, feature)
 
 /** A 402 from a create endpoint: the workspace's plan is full for that limit. */
 export type LimitReached = { limit: LimitKey; used: number; max: number; plan: PlanId }

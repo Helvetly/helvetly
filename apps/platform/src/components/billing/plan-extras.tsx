@@ -1,13 +1,21 @@
 import { cn } from '@helvetly/ui/lib/utils'
-import { InfinityIcon, Minus } from 'lucide-react'
+import { Check, InfinityIcon, Minus } from 'lucide-react'
 
-import { formatLimit, LIMIT_LABELS, type Billing, type Plan } from '@/lib/billing'
+import {
+  FEATURE_LABELS,
+  formatLimit,
+  LIMIT_LABELS,
+  type Billing,
+  type FeatureKey,
+  type Plan,
+} from '@/lib/billing'
 
 import { LIMIT_ORDER } from './plan-cards'
 
 /** Every limit of every plan side by side, read from the plans. */
 export function PlanComparison({ plans, current }: { plans: Plan[]; current: Billing['plan'] }) {
   const keys = LIMIT_ORDER.filter((key) => plans.some((plan) => key in plan.limits))
+  const features = [...new Set(plans.flatMap((plan) => plan.features))]
   return (
     <section aria-labelledby="compare" className="mt-20 w-full max-w-[1080px]">
       <h2 id="compare" className="text-center text-page font-semibold tracking-[-0.02em]">
@@ -83,9 +91,45 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
                 })}
               </tr>
             ))}
+            {features.map((feature) => (
+              <FeatureRow key={feature} feature={feature} plans={plans} current={current} />
+            ))}
           </tbody>
         </table>
       </div>
     </section>
+  )
+}
+
+function FeatureRow({
+  feature,
+  plans,
+  current,
+}: {
+  feature: FeatureKey
+  plans: Plan[]
+  current: Billing['plan']
+}) {
+  return (
+    <tr>
+      <th scope="row" className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5">
+        {FEATURE_LABELS[feature]}
+      </th>
+      {plans.map((plan) => (
+        <td
+          key={plan.id}
+          className={cn(
+            'px-1.5 py-3.5 text-center sm:px-4',
+            plan.id === current && 'bg-brand-surface/40',
+          )}
+        >
+          {plan.features.includes(feature) ? (
+            <Check className="mx-auto size-4 text-brand" aria-label="Included" />
+          ) : (
+            <Minus className="mx-auto size-4 text-muted-foreground" aria-label="Not included" />
+          )}
+        </td>
+      ))}
+    </tr>
   )
 }
