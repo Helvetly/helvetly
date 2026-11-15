@@ -18,8 +18,29 @@ const maxScopes = 30
 var (
 	actions   = []string{"read", "write", "*"}
 	resources = []string{"clients", "invoices", "expenses", "products", "documents", "engagements", "members",
-		"settings", "billing", "*"}
+		"settings", "billing", "*", "employees", "payroll", "employee-documents", "payroll-approval", "payroll-export"}
+	// hr are the HR resources (docs/planning/2026-11-15-employees.md): a "*" resource never reaches them, admins do
+	// not have them, and only owners hold them without a grant.
+	hr = []string{"employees", "payroll", "employee-documents", "payroll-approval", "payroll-export"}
 )
+
+// IsHR reports whether scope ("<action>:<resource>") names an HR resource.
+func IsHR(scope string) bool {
+	_, resource, _ := strings.Cut(scope, ":")
+	return slices.Contains(hr, resource)
+}
+
+// HRScopes is the HR part of a scope list, sorted, so two lists can be compared.
+func HRScopes(scopes []string) []string {
+	out := []string{}
+	for _, s := range scopes {
+		if IsHR(s) {
+			out = append(out, s)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
 
 // Validate checks a member's scope list: non-empty, at most 30, no duplicates, each "<action>:<resource>".
 func Validate(scopes []string) error {
@@ -38,16 +59,17 @@ func Validate(scopes []string) error {
 	return nil
 }
 
-// Allows reports whether the membership grants need ("<action>:<resource>"). Owners and admins have every
-// scope; write implies read.
+// Allows reports whether the membership grants need ("<action>:<resource>"). Owners have every scope, admins every
+// scope but the HR ones, which a member holds only when named (a "*" resource does not reach them); write implies read.
 func Allows(role string, scopes []string, need string) bool {
-	if role == "owner" || role == "admin" {
+	isHR := IsHR(need)
+	if role == "owner" || role == "admin" && !isHR {
 		return true
 	}
 	action, resource, _ := strings.Cut(need, ":")
 	for _, s := range scopes {
 		a, r, _ := strings.Cut(s, ":")
-		if (r == "*" || r == resource) && (a == "*" || a == action || a == "write" && action == "read") {
+		if (r == resource || r == "*" && !isHR) && (a == "*" || a == action || a == "write" && action == "read") {
 			return true
 		}
 	}
@@ -80,6 +102,9 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/members", "members"},
 	{"/api/v1/workspace", "settings"},
 	{"/api/v1/billing", "billing"},
+	{"/api/v1/employees", "employees"},
+	{"/api/v1/employment", "employees"},
+	{"/api/v1/payroll", "payroll"},
 }
 
 // also: routes that create in a second resource, as path.Match patterns per method.

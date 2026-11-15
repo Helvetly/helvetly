@@ -13,10 +13,10 @@ import (
 func TestIncludes(t *testing.T) {
 	// Every plan and feature, spelled out: a change to planFeatures has to change this table too.
 	want := map[string]map[Feature]bool{
-		"":       {APIAccess: false},
-		Basic:    {APIAccess: false},
-		Pro:      {APIAccess: true},
-		Business: {APIAccess: true},
+		"":       {APIAccess: false, EmployeesModule: false},
+		Basic:    {APIAccess: false, EmployeesModule: true},
+		Pro:      {APIAccess: true, EmployeesModule: true},
+		Business: {APIAccess: true, EmployeesModule: true},
 	}
 	for plan, features := range want {
 		for _, f := range featureOrder {
@@ -136,10 +136,10 @@ func TestOverviewFeatures(t *testing.T) {
 	b := e.workspace()
 	e.subscribe(b.workspace, "price_bm")
 	own, plans := features(t, e, b)
-	if own == nil || len(own) != 0 {
+	if len(own) != 1 || own[0] != string(EmployeesModule) {
 		t.Fatalf("basic workspace features: %v", own)
 	}
-	if plans[Basic] == nil || len(plans[Basic]) != 0 || len(plans[Pro]) != 1 || plans[Pro][0] != string(APIAccess) {
+	if len(plans[Basic]) != 1 || len(plans[Pro]) != 2 || plans[Pro][0] != string(APIAccess) {
 		t.Fatalf("plan features: %v", plans)
 	}
 }

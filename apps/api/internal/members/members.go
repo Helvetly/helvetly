@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"helvetly.com/api/internal/auth"
@@ -121,6 +122,9 @@ func (s *Service) change(r *http.Request, sess store.Session, fn func(q store.Q,
 	})
 }
 
+// errHRScopes: only an owner grants or withdraws access to employee and payroll data.
+var errHRScopes = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can change access to employees and payroll.", nil)
+
 func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	if !CanManage(sess.Role) {
 		return errForbidden
@@ -150,6 +154,14 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if body.Scopes == nil {
 			scopes = nil // the store keeps a member's scopes, or gives a demoted person full access
+		} else if actor != "owner" {
+			old, err := q.MemberScopes(r.Context(), sess.Workspace.ID, r.PathValue("user_id"))
+			if err != nil {
+				return err
+			}
+			if !slices.Equal(permissions.HRScopes(old), permissions.HRScopes(scopes)) {
+				return errHRScopes
+			}
 		}
 		if lastOwner && to != "owner" {
 			return errLastOwner

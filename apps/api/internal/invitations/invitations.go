@@ -185,6 +185,9 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	if sess.Role != "owner" && len(permissions.HRScopes(scopes)) > 0 {
+		return auth.Error(http.StatusForbidden, "forbidden", "Only an owner can give access to employees and payroll.", nil)
+	}
 	ctx, now, token := r.Context(), time.Now(), rand.Text()
 	inv := store.Invitation{ID: auth.NewID("inv"), WorkspaceID: sess.Workspace.ID, Email: email, Role: body.Role,
 		Scopes: scopes, InvitedBy: sess.User.ID, CreatedAt: now, ExpiresAt: now.Add(ttl)}

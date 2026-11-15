@@ -24,6 +24,7 @@ var guarded = map[string]Limit{
 	"POST /api/v1/expenses/{id}/duplicate": Expenses,
 	"POST /api/v1/products":                Products,
 	"POST /api/v1/products/{id}/duplicate": Products,
+	"POST /api/v1/employees":               Employees,
 	"POST /api/v1/engagements":             Engagements,
 	"POST /api/v1/engagements/{id}/renew":  Engagements,
 	"POST /api/v1/engagements/{id}/resume": Engagements,
@@ -181,7 +182,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage}, limit) {
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, Employees}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -201,6 +202,9 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	plan := PlanOf(b, s.now())
 	if plan == "" {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
+	}
+	if limit == Employees && !Includes(plan, EmployeesModule) { // the module is a feature; its count a limit
+		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, featureError(plan, EmployeesModule))
 	}
 	max := s.plans.forBilling(b, limit, s.now())
 	if max == Unlimited {

@@ -14,20 +14,21 @@ import (
 type Feature string
 
 const (
-	APIAccess Feature = "api_access" // creating personal API tokens (the REST API and MCP)
+	APIAccess       Feature = "api_access" // creating personal API tokens (the REST API and MCP)
+	EmployeesModule Feature = "employees"  // employee records, pay terms, employee documents and the payroll register
 )
 
 // featureOrder is the order features are listed in.
-var featureOrder = []Feature{APIAccess}
+var featureOrder = []Feature{APIAccess, EmployeesModule}
 
 // planFeatures is what each plan includes; a feature no plan lists is off on every plan while billing is on.
 var planFeatures = map[string][]Feature{
-	Basic:    {},
-	Pro:      {APIAccess},
-	Business: {APIAccess},
+	Basic:    {EmployeesModule},
+	Pro:      {APIAccess, EmployeesModule},
+	Business: {APIAccess, EmployeesModule},
 }
 
-var featureNames = map[Feature]string{APIAccess: "API tokens"}
+var featureNames = map[Feature]string{APIAccess: "API tokens", EmployeesModule: "Employees and payroll register"}
 
 // Includes reports whether plan includes the feature; no plan ("") includes none.
 func Includes(plan string, f Feature) bool { return slices.Contains(planFeatures[plan], f) }

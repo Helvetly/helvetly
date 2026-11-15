@@ -98,6 +98,7 @@ const (
 	Signatures  Limit = "signatures_per_month" // signature requests sent this month
 	Storage     Limit = "storage_bytes"        // documents and expense receipts
 	AITokens    Limit = "ai_tokens_per_month"  // model tokens Heidi and the AI import used this month (heidi_usage)
+	Employees   Limit = "employees"            // employee records not archived; separate from member seats
 )
 
 // Unlimited: the plan has no cap on that limit.
@@ -108,10 +109,10 @@ const gb = 1 << 30
 var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
 
 // limitOrder is the order limits are listed in.
-var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
+var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens, Employees}
 
 // stockLimits are counted on what exists, so a smaller plan must fit them; monthly ones restart each month.
-var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage}
+var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage, Employees}
 
 // planLimits is what each plan allows, read once from plan_limits (seeded by migration) when the service starts.
 type planLimits map[string]map[Limit]int64
@@ -250,6 +251,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.StorageBytes
 	case AITokens:
 		return u.AITokensThisMonth
+	case Employees:
+		return u.Employees
 	}
 	return 0
 }

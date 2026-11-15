@@ -54,6 +54,14 @@ func (q Q) MemberRole(ctx context.Context, workspaceID, userID string) (string, 
 	return role, err
 }
 
+// MemberScopes is a membership's stored scopes (nil for owners and admins).
+func (q Q) MemberScopes(ctx context.Context, workspaceID, userID string) ([]string, error) {
+	var scopes []string
+	err := q.db.QueryRow(ctx, `SELECT scopes FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID).Scan(&scopes)
+	return scopes, err
+}
+
 func (q Q) CountOwners(ctx context.Context, workspaceID string) (int, error) {
 	var n int
 	err := q.db.QueryRow(ctx, `SELECT count(*) FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'`,

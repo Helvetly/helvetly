@@ -42,6 +42,7 @@ type Usage struct {
 	Products, Engagements, SignaturesThisMonth             int64
 	StorageBytes                                           int64
 	AITokensThisMonth                                      int64 // heidi_usage of the calendar month
+	Employees                                              int64 // employees not archived
 }
 
 // PlanLimit is one cap of one plan (plan_limits); Max nil is unlimited.
@@ -162,9 +163,10 @@ func (q Q) WorkspaceUsage(ctx context.Context, workspaceID string, monthStart, n
 			(SELECT count(*) FROM signature_requests WHERE workspace_id = $1 AND created_at >= $2),
 			(SELECT coalesce(sum(size), 0) FROM documents WHERE workspace_id = $1)
 			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
-			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period = $4)`,
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period = $4),
+			(SELECT count(*) FROM employees WHERE workspace_id = $1 AND archived_at IS NULL)`,
 		workspaceID, monthStart, today, monthStart.Format("2006-01")).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth)
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.Employees)
 	return u, err
 }
 

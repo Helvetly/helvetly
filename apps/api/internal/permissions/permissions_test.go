@@ -30,6 +30,7 @@ func TestValidate(t *testing.T) {
 		{[]string{"read"}, false},
 		{[]string{"read:clients:x"}, false},
 		{[]string{""}, false},
+		{[]string{"read:employees", "write:payroll", "read:employee-documents", "write:payroll-approval", "read:payroll-export"}, true},
 	} {
 		if err := Validate(c.scopes); (err == nil) != c.ok {
 			t.Errorf("Validate(%q) = %v, want ok %v", c.scopes, err, c.ok)
@@ -57,6 +58,21 @@ func TestAllows(t *testing.T) {
 		{"member", []string{"*:invoices"}, "write:invoices", true},
 		{"member", []string{"*:invoices"}, "read:expenses", false},
 		{"member", []string{"write:*"}, "read:documents", true},
+		// HR resources: owners only, unless a member was named the scope; "*" resources and admins never reach them.
+		{"owner", nil, "write:payroll-approval", true},
+		{"owner", nil, "read:payroll-export", true},
+		{"admin", nil, "read:employees", false},
+		{"admin", nil, "read:payroll", false},
+		{"member", []string{"*:*"}, "read:employees", false},
+		{"member", []string{"*:*"}, "read:payroll", false},
+		{"member", []string{"read:*"}, "read:employee-documents", false},
+		{"member", []string{"write:*"}, "write:payroll-approval", false},
+		{"member", []string{"read:employees"}, "read:employees", true},
+		{"member", []string{"read:employees"}, "read:payroll", false},
+		{"member", []string{"write:payroll"}, "read:payroll", true},
+		{"member", []string{"write:payroll"}, "write:payroll-approval", false},
+		{"member", []string{"*:payroll-approval"}, "write:payroll-approval", true},
+		{"member", []string{"read:payroll-export"}, "read:payroll-export", true},
 	} {
 		if got := Allows(c.role, c.scopes, c.need); got != c.want {
 			t.Errorf("Allows(%s, %q, %s) = %v, want %v", c.role, c.scopes, c.need, got, c.want)
@@ -156,5 +172,15 @@ func TestEveryRouteIsMapped(t *testing.T) {
 	}
 	if n < 150 {
 		t.Fatalf("found only %d routes: is the source scan broken?", n)
+	}
+}
+
+func TestHRScopes(t *testing.T) {
+	got := HRScopes([]string{"*:*", "write:payroll", "read:clients", "read:employees"})
+	if !slices.Equal(got, []string{"read:employees", "write:payroll"}) {
+		t.Fatalf("HRScopes = %q", got)
+	}
+	if len(HRScopes([]string{"*:*"})) != 0 {
+		t.Fatal("full access must hold no HR scope")
 	}
 }
