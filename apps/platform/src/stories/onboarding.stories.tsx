@@ -35,7 +35,10 @@ const step = (canvasElement: HTMLElement, name: string) =>
   within(canvasElement).findByTestId(`onboarding-step-${name}`)
 const next = async (canvasElement: HTMLElement, from: string, label: RegExp) => {
   const current = within(await step(canvasElement, from))
-  await userEvent.click(await current.findByRole('button', { name: label }))
+  const button = await current.findByRole('button', { name: label })
+  // A step's button stays disabled while the previous step still saves.
+  await waitFor(() => expect(button).toBeEnabled())
+  await userEvent.click(button)
 }
 
 export const Welcome: Story = {
