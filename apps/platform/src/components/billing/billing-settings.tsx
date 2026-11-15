@@ -74,7 +74,8 @@ export function BillingSettings() {
               </p>
             )}
             <PlanSummary billing={data} onPortal={openPortal} portalPending={portal.isPending} />
-            {data.usage.length > 0 && <UsageOverview billing={data} />}
+            {/* Without a plan there are no limits to measure against ("0 of unlimited" misleads). */}
+            {data.plan !== '' && data.usage.length > 0 && <UsageOverview billing={data} />}
             <AITokenPacks billing={data} />
             {payments && (
               <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
