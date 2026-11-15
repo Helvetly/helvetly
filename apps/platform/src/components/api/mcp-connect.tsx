@@ -31,7 +31,7 @@ export function mcpConfigs(origin: string, token = PLACEHOLDER) {
           mcpServers: {
             helvetly: {
               command: 'npx',
-              args: ['-y', 'mcp-remote', url, '--header', 'Authorization:${AUTH_HEADER}'],
+              args: ['-y', 'mcp-remote', url, '--header', 'Authorization'],
               env: { AUTH_HEADER: `Bearer ${token}` },
             },
           },

@@ -1,4 +1,3 @@
-import { translate } from '@/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, InfinityIcon, Minus } from 'lucide-react'
 
@@ -10,6 +9,7 @@ import {
   type FeatureKey,
   type Plan,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { LIMIT_ORDER } from './plan-cards'
 
@@ -125,9 +125,12 @@ function FeatureRow({
           )}
         >
           {plan.features.includes(feature) ? (
-            <Check className="mx-auto size-4 text-brand" aria-label="Included" />
+            <Check className="mx-auto size-4 text-brand" aria-label={translate('included')} />
           ) : (
-            <Minus className="mx-auto size-4 text-muted-foreground" aria-label="Not included" />
+            <Minus
+              className="mx-auto size-4 text-muted-foreground"
+              aria-label={translate('notIncluded')}
+            />
           )}
         </td>
       ))}

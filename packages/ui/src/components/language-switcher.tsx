@@ -1,6 +1,6 @@
 'use client'
 
-import { locale, locales, localizedHref } from '@helvetly/i18n'
+import { browserLanguage, languageHref, locale, locales, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -24,7 +24,9 @@ export function LanguageMenuItems() {
           lang={language}
           onSelect={() => {
             const path = window.location.pathname + window.location.search + window.location.hash
-            window.location.assign(localizedHref(path, language))
+            window.location.assign(
+              browserLanguage ? languageHref(path, language) : localizedHref(path, language),
+            )
           }}
         >
           <span className="flex-1">{details.name}</span>

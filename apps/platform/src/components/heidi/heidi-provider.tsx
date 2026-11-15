@@ -1,5 +1,4 @@
 'use client'
-import { translate } from '@/lib/i18n'
 import { usePathname } from 'next/navigation'
 import {
   createContext,
@@ -14,6 +13,7 @@ import { toast } from 'sonner'
 
 import { addFiles as addImportFiles } from '@/components/import/import-files'
 import { chatReadable, importable, type HeidiPage } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { useShortcut } from '@/lib/shortcuts'
 
 import { useHeidiChat, type HeidiChat } from './use-heidi'
@@ -124,8 +124,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
   const addFiles = useCallback((incoming: File[]) => {
     // Images and PDFs Heidi reads itself; anything an import reads (a ZIP, a spreadsheet) goes to one when sent.
     const accepted = incoming.filter((file) => chatReadable(file) || importable(file))
-    if (accepted.length < incoming.length)
-      toast.error(translate('heidiAcceptedImports'))
+    if (accepted.length < incoming.length) toast.error(translate('heidiAcceptedImports'))
     setFiles((current) => {
       const { files: next, note } = addImportFiles(current, accepted)
       if (note) toast.error(note)

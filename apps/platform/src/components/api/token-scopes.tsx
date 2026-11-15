@@ -61,7 +61,10 @@ export function ScopeMatrixField({
                       className="mx-auto"
                       checked={access !== 'none'}
                       onCheckedChange={(checked) =>
-                        onChange({ ...value, [name]: checked === true ? 'read' : 'none' })
+                        onChange({
+                          ...value,
+                          [name]: checked === true ? 'read' : 'none',
+                        })
                       }
                     />
                   </td>
@@ -72,7 +75,10 @@ export function ScopeMatrixField({
                         className="mx-auto"
                         checked={access === 'write'}
                         onCheckedChange={(checked) =>
-                          onChange({ ...value, [name]: checked === true ? 'write' : 'read' })
+                          onChange({
+                            ...value,
+                            [name]: checked === true ? 'write' : 'read',
+                          })
                         }
                       />
                     ) : (

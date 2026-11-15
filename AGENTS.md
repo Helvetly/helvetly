@@ -40,7 +40,7 @@ are the reference.
 - **No server runtime in the frontends.** Platform and portal are `output: 'export'`: no route handlers, server
   actions, middleware or request-time rendering, no dynamic routes without `generateStaticParams`. Data comes from
   the Go API via relative `fetch('/api/...')`; in development `next dev` rewrites `/api/*` to `API_URL`.
-- **Languages.** Each locale is a separate static build through `scripts/build-locales.mjs`; English keeps root URLs, other locales use a path prefix. Put interface text in the owning app's `src/messages/en.json` (shared controls in `packages/ui`). Use `localizedHref` for native and cross-site application links; API paths and protocol identifiers remain stable. Never use mutable global locale state or add request-time rendering.
+- **Languages.** Marketing uses per-locale static builds through `scripts/build-locales.mjs`: English keeps root URLs, other languages use a prefix. Platform and portal use one static build with unprefixed routes: `?lang` selects and saves `helvetly.language` in localStorage, then the stored preference and English are the fallbacks. Language changes reload the page to update module-level labels. Put interface text in the owning app's `src/messages/en.json` (shared controls in `packages/ui`). Use explicit `localizedHref(path, locale)` for public-site links; API paths and protocol identifiers stay stable. No request-time rendering.
 - **Website.** `apps/web` is its own static export (every route known at build time); `build` also runs the internal
   link check (`scripts/check-links.mjs`). It renders the legal texts in `apps/web/content/legal`.
 - **API mocks** (`src/mocks` in platform and portal) are test fixtures only: Vitest (`msw/node`) and Storybook.

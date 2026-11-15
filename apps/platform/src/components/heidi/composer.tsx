@@ -1,5 +1,4 @@
 'use client'
-import { translate } from '@/lib/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -14,6 +13,7 @@ import {
 import { useRef, type Ref } from 'react'
 
 import { MAX_MESSAGE } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { IMPORT_ACCEPT, MAX_IMPORT_FILES } from '@/lib/imports'
 
 import { withQuote } from './quote'

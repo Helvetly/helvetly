@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-
 import { Welcome } from '@/components/onboarding/onboarding'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('welcome') }
+import { PageTitle } from '@/components/page-title'
 
 export default function Page() {
-  return <Welcome />
+  return (
+    <>
+      <PageTitle message="welcome" />
+      <Welcome />
+    </>
+  )
 }

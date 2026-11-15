@@ -1,4 +1,5 @@
 'use client'
+import { BrowserLanguage } from '@helvetly/ui/components/browser-language'
 import { Button } from '@helvetly/ui/components/button'
 import { ErrorState, type PageError } from '@helvetly/ui/components/error-state'
 import { RootLayout } from '@helvetly/ui/components/root-layout'
@@ -13,19 +14,21 @@ import { translate } from '@/lib/i18n'
 export default function GlobalError({ reset }: { error: PageError; reset: () => void }) {
   return (
     <RootLayout>
-      <main className="min-h-svh bg-background text-foreground">
-        <ErrorState
-          reset={reset}
-          home={
-            <Button asChild variant="outline">
-              <Link href="/">
-                <House />
-                {translate('goToOverview')}
-              </Link>
-            </Button>
-          }
-        />
-      </main>
+      <BrowserLanguage>
+        <main className="min-h-svh bg-background text-foreground">
+          <ErrorState
+            reset={reset}
+            home={
+              <Button asChild variant="outline">
+                <Link href="/">
+                  <House />
+                  {translate('goToOverview')}
+                </Link>
+              </Button>
+            }
+          />
+        </main>
+      </BrowserLanguage>
     </RootLayout>
   )
 }

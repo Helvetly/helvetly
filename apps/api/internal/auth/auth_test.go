@@ -392,9 +392,6 @@ func TestSafeNext(t *testing.T) {
 		{"/login", "/"},
 		{"/login?next=/x", "/"},
 		{"/login/", "/"},
-		{"/de/login", "/"},
-		{"/pt-BR/login/again", "/"},
-		{"/de/invoices", "/de/invoices"},
 		{"/loginx", "/loginx"},
 		{"/" + strings.Repeat("a", 600), "/"},
 	} {

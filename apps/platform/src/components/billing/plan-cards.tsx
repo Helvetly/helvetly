@@ -53,11 +53,13 @@ const fail = (error: unknown) => {
   const { payUrl } = unpaid
   return toast.error(unpaid.message, {
     duration: Infinity,
-    action: payUrl ? { label: 'Pay', onClick: () => window.location.assign(payUrl) } : undefined,
+    action: payUrl
+      ? { label: translate('pay'), onClick: () => window.location.assign(payUrl) }
+      : undefined,
   })
 }
 
-const textLink = translate('underlineUnderlineOffset2HoverNoUnderline')
+const textLink = 'underline underline-offset-2 hover:no-underline'
 
 const isLimitKey = (key: string): key is LimitKey => key in LIMIT_LABELS
 
@@ -145,8 +147,7 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
     return translate('yourTrialEndsNowAndIsChargedToday2', { name: plan.name, charge })
   const payNow =
     isUpgrade(billing.plan, plan.id) || (interval === 'year' && billing.interval === 'month')
-  if (payNow)
-    return translate('planUpgradeCharge', { name: plan.name, charge })
+  if (payNow) return translate('planUpgradeCharge', { name: plan.name, charge })
   return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 

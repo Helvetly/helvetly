@@ -1,42 +1,11 @@
 package auth
 
 import (
-	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 )
-
-func TestLoginPage(t *testing.T) {
-	s := &Service{}
-	for _, tc := range []struct{ input, want string }{
-		{"", "/login"},
-		{"/login", "/login"},
-		{"/de/login", "/de/login"},
-		{"/pt-BR/login/", "/pt-BR/login"},
-		{"https://evil.example/login", "/login"},
-		{"//evil.example/login", "/login"},
-		{"/de/login/other", "/login"},
-		{"/de/login?next=//evil.example", "/login"},
-		{"/de\\login", "/login"},
-	} {
-		r := httptest.NewRequest("GET", "/api/v1/auth/google/start?login="+url.QueryEscape(tc.input), nil)
-		if got := s.loginPage(r); got != tc.want {
-			t.Errorf("loginPage(%q) = %q, want %q", tc.input, got, tc.want)
-		}
-	}
-}
-
-func TestGoogleCancellationKeepsLocale(t *testing.T) {
-	e := newEnv(t)
-	b := e.newBrowser()
-	e.do(b, "GET", "/api/v1/auth/google/start?login=%2Fde%2Flogin&next=%2Fde%2Finvoices", nil, 302, nil)
-	response := e.do(b, "GET", "/api/v1/auth/google/callback?error=access_denied", nil, 302, nil)
-	if got := response.Header.Get("Location"); got != "/de/login?error=google_cancelled" {
-		t.Fatalf("localized cancellation redirected to %q", got)
-	}
-}
 
 var (
 	ana = fakeIdentity{Sub: "sub-ana", Email: "ana@example.com", Name: "Ana Owner"}

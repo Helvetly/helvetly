@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 8000",
-    "build": "node ../../scripts/build-locales.mjs",
+    "build": "next build",
     "start": "next start --port 8000",
     "typecheck": "next typegen && tsc",
     "test": "vitest run",

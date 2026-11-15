@@ -1,4 +1,4 @@
-import { localizedNextConfig } from '@helvetly/i18n/next'
+import { browserLanguageNextConfig } from '@helvetly/i18n/next'
 import type { NextConfig } from 'next'
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
 
@@ -12,15 +12,13 @@ export default function config(phase: string): NextConfig {
     devIndicators: false,
     // pnpm dev:tunnel serves next dev on dev-*.helvetly.com (scripts/dev-tunnel.sh).
     allowedDevOrigins: ['*.helvetly.com'],
-    ...localizedNextConfig,
+    ...browserLanguageNextConfig,
   }
   if (phase === PHASE_DEVELOPMENT_SERVER) {
     return {
       ...base,
       ...(process.env.HELVETLY_E2E_NEXT_DIST ? { distDir: '.next-e2e' } : {}),
-      rewrites: async () => [
-        { source: '/api/:path*', destination: `${apiUrl}/api/:path*`, basePath: false },
-      ],
+      rewrites: async () => [{ source: '/api/:path*', destination: `${apiUrl}/api/:path*` }],
     }
   }
   return { ...base, output: 'export', trailingSlash: true, images: { unoptimized: true } }

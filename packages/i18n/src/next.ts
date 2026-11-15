@@ -9,3 +9,8 @@ export const localizedNextConfig = {
   env: { NEXT_PUBLIC_LOCALE: language },
   transpilePackages: ['@helvetly/ui', '@helvetly/i18n'],
 }
+
+export const browserLanguageNextConfig = {
+  env: { NEXT_PUBLIC_I18N_MODE: 'browser', NEXT_PUBLIC_LOCALE: configuration.defaultLocale },
+  transpilePackages: ['@helvetly/ui', '@helvetly/i18n'],
+}

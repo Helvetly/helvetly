@@ -221,7 +221,7 @@ export function useSyncBilling() {
 }
 
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
-  api_access: 'API tokens',
+  api_access: translate('apiTokens'),
 }
 
 /**

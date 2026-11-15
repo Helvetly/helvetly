@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
 
 import { translate } from '@/lib/i18n'
 import { siteUrl } from '@/lib/site'
@@ -17,6 +18,9 @@ export function LoginScreen() {
   return (
     <div className="grid min-h-svh animate-in bg-card duration-200 fade-in-0 lg:grid-cols-2">
       <main className="flex flex-col px-4 py-10">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-[22.5rem]">
             <SignIn />

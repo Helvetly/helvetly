@@ -157,9 +157,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         {upload.error && <Problem error={upload.error} onRetry={read} />}
         <DropZone files={files} disabled={upload.isPending} onChange={setFiles} />
         <p className="text-[12.5px] text-pretty text-muted-foreground">
-          {config
-            ? translate('importSuggestions', { noun })
-            : translate('importAutoSuggestions')}{' '}
+          {config ? translate('importSuggestions', { noun }) : translate('importAutoSuggestions')}{' '}
           {translate('importReviewFirst')}
         </p>
       </div>
@@ -240,7 +238,10 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
       summary ??
       (config || !records.length
         ? translate('ofSelected', { length: chosen.length, value2: open.length })
-        : translate('importFoundSelected', { summary: foundSummary(records), count: chosen.length }))
+        : translate('importFoundSelected', {
+            summary: foundSummary(records),
+            count: chosen.length,
+          }))
     error = commit.error ? errorMessage(commit.error) : null
     actions = (
       <>

@@ -1,5 +1,4 @@
 'use client'
-import { translate } from '@/lib/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -33,6 +32,7 @@ import {
 import { errorMessage } from '@/lib/api'
 import { useApiOrigin } from '@/lib/api-origin'
 import { useLockedFeature } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import {
   emptyMatrix,
   matrixScopes,
@@ -109,7 +109,8 @@ export function ApiTokens() {
       disabled={Boolean(locked)}
       onClick={() => setCreating(true)}
     >
-      <Plus />{translate('createToken2')}
+      <Plus />
+      {translate('createToken2')}
     </Button>
   )
 
@@ -132,14 +133,14 @@ export function ApiTokens() {
           icon={Lock}
           actions={
             <Button asChild size="sm" variant="outline">
-              <Link href="/settings/billing/plans">See plans</Link>
+              <Link href="/settings/billing/plans">{translate('seePlans')}</Link>
             </Button>
           }
         >
           {locked.plan
-            ? `New API tokens come with the ${locked.plan.name} plan.`
-            : 'Your plan does not include new API tokens.'}{' '}
-          Tokens you already have keep working.
+            ? translate('newAPITokensComeWithThePlan', { name: locked.plan.name })
+            : translate('yourPlanDoesNotIncludeNewAPITokens')}{' '}
+          {translate('tokensYouAlreadyHaveKeepWorking')}
         </Callout>
       )}
       {tokens.isPending ? (

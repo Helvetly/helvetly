@@ -28,7 +28,7 @@ import { ImportClientField } from './import-client-field'
 
 const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
   displayValue(record.data[config.labelKey ?? 'name']) || `row ${index + 1}`
-const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
+const issueId = (record: ImportRecord, field: string) => `issue-${record.id}-${field}`
 
 /** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
 export function GroupedReview({
@@ -48,8 +48,7 @@ export function GroupedReview({
   if (!groups.length)
     return (
       <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
-        Nothing to import was found in these files. Try clearer copies, or files that hold invoices,
-        bills, contracts, client lists or price lists.
+        {translate('nothingToImportWasFoundInTheseFilesTry')}
       </p>
     )
   return (
@@ -348,9 +347,12 @@ export function EditRecord({
                 <span className="flex h-9 items-center">
                   <Checkbox
                     {...describedBy(id, error)}
-                    checked={values[field] === 'Yes'}
+                    checked={values[field] === translate('yes')}
                     onCheckedChange={(on) =>
-                      setValues((current) => ({ ...current, [field]: on === true ? 'Yes' : 'No' }))
+                      setValues((current) => ({
+                        ...current,
+                        [field]: on === true ? translate('yes') : translate('no4'),
+                      }))
                     }
                   />
                 </span>

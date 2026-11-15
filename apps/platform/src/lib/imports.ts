@@ -1,4 +1,5 @@
 'use client'
+import { languageTag } from '@helvetly/i18n'
 // AI-assisted import, typed by hand from docs/imports-contract.md.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -21,12 +22,12 @@ export type ImportFile = {
 
 /** The document types an `auto` import tells apart. */
 export const DOCUMENT_TYPES = {
-  sales_invoice: 'Invoice you issued',
-  bill: 'Bill you received',
-  contract: 'Contract',
-  client_list: 'Client list',
-  product_list: 'Price list',
-  other: 'Not recognised',
+  sales_invoice: translate('invoiceYouIssued'),
+  bill: translate('billYouReceived'),
+  contract: translate('contract'),
+  client_list: translate('clientList'),
+  product_list: translate('priceList'),
+  other: translate('notRecognised'),
 } as const
 
 export type DocumentType = keyof typeof DOCUMENT_TYPES
@@ -133,7 +134,7 @@ export const IMPORT_KINDS = {
       street_number: translate('no'),
       zip: translate('postcode'),
       city: translate('city'),
-      country: 'Country',
+      country: translate('importFieldCountry'),
       vat_number: translate('vatNumber'),
       registration_number: translate('registrationNumber'),
     },
@@ -157,13 +158,13 @@ export const IMPORT_KINDS = {
     label: translate('productsServices'),
     path: '/products',
     fields: {
-      type: 'Type',
+      type: translate('importFieldType'),
       name: translate('name'),
       description: translate('description'),
-      sku: 'SKU',
+      sku: translate('importFieldSKU'),
       unit: translate('unit'),
       unit_price: translate('price2'),
-      currency: 'Currency',
+      currency: translate('importFieldCurrency'),
       vat_rate: translate('vatRate'),
     },
     columns: ['type', 'name', 'sku', 'unit', 'unit_price', 'currency'],
@@ -182,7 +183,7 @@ export const IMPORT_KINDS = {
       quantity: translate('quantity'),
       unit: translate('unit'),
       unit_price: translate('price2'),
-      currency: 'Currency',
+      currency: translate('importFieldCurrency'),
       vat_rate: translate('vatRate'),
       billing: translate('billing'),
       recurrence: translate('repeats'),
@@ -224,7 +225,7 @@ export const IMPORT_KINDS = {
       reference: translate('reference'),
       issue_date: translate('date'),
       due_date: translate('due'),
-      currency: 'Currency',
+      currency: translate('importFieldCurrency'),
       total: translate('total'),
       lines: translate('lines'),
       issued_elsewhere: translate('alreadyIssued'),
@@ -273,7 +274,7 @@ export const IMPORT_KINDS = {
       description: translate('description'),
       document_date: translate('date'),
       due_date: translate('dueDate'),
-      currency: 'Currency',
+      currency: translate('importFieldCurrency'),
       amount: translate('amount'),
       vat_rate: translate('vatRate'),
       amount_2: translate('amountAt2ndRate'),
@@ -572,32 +573,30 @@ export function recordsByKind(records: ImportRecord[]) {
 
 /** "5 invoices, 5 clients and 1 engagement": what an `auto` import found, for a summary line. */
 export function foundSummary(records: ImportRecord[]) {
-  const parts = recordsByKind(records).map(({ kind, records: list }) => {
-    const noun = IMPORT_KINDS[kind].label.toLowerCase()
-    return `${list.length} ${list.length === 1 ? (SINGULAR[kind] ?? noun) : noun}`
-  })
-  if (parts.length < 2) return parts.join('')
-  return `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+  const parts = recordsByKind(records).map(({ kind, records: list }) =>
+    translate(importCountMessages[kind], { count: list.length }),
+  )
+  return new Intl.ListFormat(languageTag, { style: 'long', type: 'conjunction' }).format(parts)
 }
 
-const SINGULAR: Partial<Record<ImportKind, string>> = {
-  clients: 'client',
-  products: 'product or service',
-  invoices: 'invoice',
-  engagements: 'engagement',
-  expenses: 'expense',
-}
+const importCountMessages = {
+  clients: 'importClientCount',
+  products: 'importProductCount',
+  invoices: 'importInvoiceCount',
+  engagements: 'importEngagementCount',
+  expenses: 'importExpenseCount',
+} as const
 
-/** "8 created, 1 skipped, 2 need attention" after a commit. */
+/** A summary of committed rows, including those still needing attention. */
 export function commitSummary(results: CommitResult[]) {
   const count = (status: CommitResult['status']) =>
     results.filter((result) => result.status === status).length
   const created = count('created')
   const skipped = count('skipped')
   const open = results.length - created - skipped
-  const parts = [`${created} created`]
-  if (skipped) parts.push(`${skipped} skipped`)
-  if (open) parts.push(`${open} ${open === 1 ? 'needs' : 'need'} attention`)
+  const parts = [translate('importCreatedCount', { count: created })]
+  if (skipped) parts.push(translate('importSkippedCount', { count: skipped }))
+  if (open) parts.push(translate('importAttentionCount', { count: open }))
   return parts.join(', ')
 }
 
@@ -632,7 +631,7 @@ export function recordChanges(
   for (const [field, raw] of Object.entries(values)) {
     const value = raw.trim()
     if (value === displayValue(data[field])) continue
-    if (toggles.includes(field)) changes[field] = value === 'Yes'
+    if (toggles.includes(field)) changes[field] = value === translate('yes')
     else changes[field] = value === '' ? null : value
   }
   return changes
@@ -641,7 +640,7 @@ export function recordChanges(
 export function displayValue(value: ImportValue | undefined) {
   if (value === undefined) return ''
   if (typeof value === 'boolean') return value ? translate('yes') : translate('no4')
-  if (Array.isArray(value)) return `${value.length} ${value.length === 1 ? 'line' : 'lines'}`
+  if (Array.isArray(value)) return translate('importLineCount', { count: value.length })
   return String(value)
 }
 

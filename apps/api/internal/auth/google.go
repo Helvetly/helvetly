@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -41,7 +40,6 @@ type loginState struct {
 	Nonce         string `json:"n"`
 	Verifier      string `json:"v"`
 	Next          string `json:"x"`
-	Login         string `json:"l,omitempty"`
 	Timezone      string `json:"z"`
 	Expires       int64  `json:"e"`
 	LinkUserID    string `json:"u,omitempty"`
@@ -71,24 +69,7 @@ func (s *Service) googleProvider(ctx context.Context) (*googleClient, error) {
 }
 
 func (s *Service) loginRedirect(w http.ResponseWriter, r *http.Request, code string) {
-	http.Redirect(w, r, s.loginPage(r)+"?error="+code, http.StatusFound)
-}
-
-// Only a login page on this host may receive OAuth errors and two-factor challenges.
-func (s *Service) loginPage(r *http.Request) string {
-	login := r.URL.Query().Get("login")
-	if login == "" {
-		if cookie, err := r.Cookie(loginCookie); err == nil {
-			var state loginState
-			if s.unseal(cookie.Value, &state) == nil {
-				login = state.Login
-			}
-		}
-	}
-	if match := loginPathPattern.FindString(login); match != "" && match == login {
-		return strings.TrimSuffix(login, "/")
-	}
-	return "/login"
+	http.Redirect(w, r, "/login?error="+code, http.StatusFound)
 }
 
 func (s *Service) setLoginCookie(w http.ResponseWriter, value string, maxAge int) {
@@ -109,7 +90,7 @@ func (s *Service) googleStart(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	st := loginState{State: rand.Text(), Nonce: rand.Text(), Verifier: oauth2.GenerateVerifier(), Next: SafeNext(q.Get("next")),
-		Login: s.loginPage(r), Timezone: q.Get("timezone"), Expires: s.now().Add(loginTTL).Unix()}
+		Timezone: q.Get("timezone"), Expires: s.now().Add(loginTTL).Unix()}
 	sealed, err := s.seal(st)
 	if err != nil {
 		s.WriteError(w, r, err)
@@ -151,7 +132,7 @@ func (s *Service) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if ns.challenge != "" {
-		http.Redirect(w, r, s.loginPage(r)+"?two_factor=1#challenge="+ns.challenge, http.StatusFound)
+		http.Redirect(w, r, "/login?two_factor=1#challenge="+ns.challenge, http.StatusFound)
 		return
 	}
 	if ns.linked {

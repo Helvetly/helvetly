@@ -64,10 +64,16 @@ User data, API identifiers and the language of issued financial documents remain
 To enable another language, add it to `packages/i18n/src/locales.json`, add its JSON catalogs next to
 `en.json`, and import them into each `src/lib/i18n.ts` with `createMessages({ en, de })`.
 Translate complete messages; ICU plural rules are available for counts.
-English keeps the existing URLs. Other languages use prefixes such as `/de/`;
-the language menu appears when more than one language is enabled and preserves path, query and fragment.
-`pnpm build` creates an independent static export for each configured language, so build time and output size
-grow with the number of languages. For development, set `HELVETLY_BUILD_LOCALE=de` before starting Next.js.
+Marketing and documentation keep English at the existing URLs; other languages use prefixes such as `/de/`.
+Their builds create a separate static export for each configured language; for marketing development, set
+`HELVETLY_BUILD_LOCALE=de` before starting Next.js.
+
+Platform and portal keep all routes unprefixed. Open a link with `?lang=de` to select a language and save it
+under `helvetly.language` in that origin's `localStorage`. Without a supported query parameter, the saved
+language is used, then English. The language menu changes `?lang` while preserving other query parameters
+and the fragment; switching reloads the page so module-level labels use the selected language too.
+Blocked storage still allows explicit language links. Each origin keeps its own preference.
+The menu appears only when more than one language is enabled. Adding languages requires a rebuild.
 
 Marketing Markdown overrides live in `content/<collection>/<locale>/`, alongside the existing English files;
 missing files fall back to English. Keep category identifiers stable and translate their displayed labels.

@@ -1,11 +1,11 @@
-import { localizedHref } from '@helvetly/i18n'
+import { defaultLocale, languageHref, locale } from '@helvetly/i18n'
 
 import { COMPETITORS } from '@/lib/compare'
 import { translate } from '@/lib/i18n'
 
 export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? 'http://localhost:8000'
 // Sign-in is passwordless and makes the account on first use, so starting and signing in share a page.
-export const SIGN_IN_URL = `${PLATFORM_URL}${localizedHref('/login')}`
+export const SIGN_IN_URL = `${PLATFORM_URL}${locale === defaultLocale ? '/login' : languageHref('/login', locale)}`
 export const START_URL = SIGN_IN_URL
 
 export const NAV = [

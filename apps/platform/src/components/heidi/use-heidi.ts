@@ -1,5 +1,4 @@
 'use client'
-import { translate } from '@/lib/i18n'
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -16,6 +15,7 @@ import {
   type HeidiPage,
   type HeidiRecord,
 } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { importsApi } from '@/lib/imports'
 import { invoiceKeys } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
@@ -283,7 +283,10 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         form.set('page', page)
         if (goesToImport(text, files)) {
           // The files go to an import that works out what they are; the answer then follows it.
-          update(assistantId, () => ({ status: 'Uploading files', steps: ['Uploading files'] }))
+          update(assistantId, () => ({
+            status: 'Uploading files',
+            steps: [translate('uploadingFiles')],
+          }))
           const batch = await importsApi.upload('auto', files)
           form.set('import_id', batch.id)
         } else for (const file of files) form.append('files[]', file)

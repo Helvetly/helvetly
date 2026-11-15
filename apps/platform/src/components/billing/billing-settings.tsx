@@ -162,7 +162,10 @@ function PaymentMethod({
         )}
       </div>
       <p className="border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground">
-        {translate('billingChargeNotice', { currency: currency.toUpperCase(), taxNote: taxNoteLong(currency) })}
+        {translate('billingChargeNotice', {
+          currency: currency.toUpperCase(),
+          taxNote: taxNoteLong(currency),
+        })}
       </p>
     </BillingCard>
   )

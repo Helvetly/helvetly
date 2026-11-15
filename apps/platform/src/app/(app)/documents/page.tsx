@@ -1,18 +1,19 @@
-import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
+import { PageTitle } from '@/components/page-title'
 import { PageLoading } from '@/components/shell/page-loading'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('documents') }
 
 export default function Page() {
   // The folder, view and open file live in the URL (useSearchParams), which needs a boundary in a
   // static export.
   return (
-    <Suspense fallback={<PageLoading />}>
-      <DocumentsPage />
-    </Suspense>
+    <>
+      <PageTitle message="documents" />
+
+      <Suspense fallback={<PageLoading />}>
+        <DocumentsPage />
+      </Suspense>
+    </>
   )
 }

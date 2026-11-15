@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-
 import { Dashboard } from '@/components/dashboard/dashboard'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('home') }
+import { PageTitle } from '@/components/page-title'
 
 export default function DashboardPage() {
-  return <Dashboard />
+  return (
+    <>
+      <PageTitle message="home" />
+      <Dashboard />
+    </>
+  )
 }

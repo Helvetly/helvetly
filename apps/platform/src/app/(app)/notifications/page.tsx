@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-
 import { NotificationsPage } from '@/components/notifications/notifications-page'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('notifications') }
+import { PageTitle } from '@/components/page-title'
 
 export default function Page() {
-  return <NotificationsPage />
+  return (
+    <>
+      <PageTitle message="notifications" />
+      <NotificationsPage />
+    </>
+  )
 }

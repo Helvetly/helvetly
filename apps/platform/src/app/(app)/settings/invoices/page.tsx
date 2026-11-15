@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('invoiceSettings') }
 
 export default function Page() {
-  return <InvoiceSettingsPage />
+  return (
+    <>
+      <PageTitle message="invoiceSettings" />
+      <InvoiceSettingsPage />
+    </>
+  )
 }

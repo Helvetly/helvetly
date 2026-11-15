@@ -1,5 +1,6 @@
 'use client'
 
+import { BrowserLanguage } from '@helvetly/ui/components/browser-language'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -11,6 +12,7 @@ import { toastPlanRequired } from '@/components/billing/plan-required-toast'
 import { UpgradePrompt, promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ThemeShortcut } from '@/components/shortcuts/theme-shortcut'
 import { ApiError, setUnauthorizedHandler } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { toastForbidden } from '@/lib/permissions'
 import { loginHref } from '@/lib/safe'
 
@@ -46,15 +48,18 @@ export function Providers({ children }: { children: ReactNode }) {
   }, [client, router])
 
   return (
-    <QueryClientProvider client={client}>
-      <TooltipProvider>
-        {children}
-        {/* On phones, above the bottom tab bar. */}
-        <Toaster position="bottom-right" mobileOffset={{ bottom: 88 }} />
-        <UpgradePrompt />
-        <ThemeShortcut />
-        <Analytics />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <BrowserLanguage>
+      <meta name="description" content={translate('helvetlyPlatform')} />
+      <QueryClientProvider client={client}>
+        <TooltipProvider>
+          {children}
+          {/* On phones, above the bottom tab bar. */}
+          <Toaster position="bottom-right" mobileOffset={{ bottom: 88 }} />
+          <UpgradePrompt />
+          <ThemeShortcut />
+          <Analytics />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </BrowserLanguage>
   )
 }

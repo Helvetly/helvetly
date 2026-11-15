@@ -1,10 +1,11 @@
-import type { Metadata } from 'next'
-
 import { AccountSettings } from '@/components/account/account-settings'
-import { translate } from '@/lib/i18n'
-
-export const metadata: Metadata = { title: translate('accountSettings') }
+import { PageTitle } from '@/components/page-title'
 
 export default function AccountPage() {
-  return <AccountSettings />
+  return (
+    <>
+      <PageTitle message="accountSettings" />
+      <AccountSettings />
+    </>
+  )
 }

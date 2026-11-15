@@ -760,7 +760,8 @@ export function DocumentsPage() {
           </>
         )}
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import invoices, contracts…
+          <FileUp />
+          {translate('importInvoicesContracts')}
         </Item>
         {clipboard && view.section === 'files' && (
           <Item onSelect={paste}>

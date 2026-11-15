@@ -1,6 +1,14 @@
 import { IntlMessageFormat } from 'intl-messageformat'
 
+import { currentBrowserLocale } from './browser-locale'
 import configuration from './locales.json'
+
+export {
+  browserLocale,
+  currentBrowserLocale,
+  languageHref,
+  languageStorageKey,
+} from './browser-locale'
 
 export const defaultLocale = configuration.defaultLocale
 export const locales = configuration.locales
@@ -10,13 +18,17 @@ export function isLocale(value: string): value is Locale {
   return Object.hasOwn(locales, value)
 }
 
-const configuredLocale = process.env.NEXT_PUBLIC_LOCALE ?? defaultLocale
+export const browserLanguage = process.env.NEXT_PUBLIC_I18N_MODE === 'browser'
+const configuredLocale =
+  browserLanguage && typeof window !== 'undefined'
+    ? currentBrowserLocale()
+    : (process.env.NEXT_PUBLIC_LOCALE ?? defaultLocale)
 export const locale = isLocale(configuredLocale) ? configuredLocale : 'en'
 export const languageTag = locales[locale].languageTag
 export const numberLocale = locales[locale].numberLocale
-export const localePrefix = locale === defaultLocale ? '' : `/${locale}`
+export const localePrefix = browserLanguage || locale === defaultLocale ? '' : `/${locale}`
 
-/** Each static export has its own fixed locale, including server-rendered text and metadata. */
+/** The language stays fixed for the lifetime of the page, including module-level labels. */
 export function createMessages<const Messages extends Record<string, string>>(
   catalogs: { en: Messages } & Partial<Record<Locale, Partial<Record<keyof Messages, string>>>>,
 ) {
@@ -62,7 +74,7 @@ export function localizedHref(href: string, language?: string): string
 export function localizedHref(href: string | undefined, language?: string): string | undefined
 export function localizedHref(
   href: string | undefined,
-  language: string = locale,
+  language: string = browserLanguage ? defaultLocale : locale,
 ): string | undefined {
   if (href === undefined) return undefined
   if (
