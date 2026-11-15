@@ -106,3 +106,32 @@ export const PageNoTokens: Story = {
     await expect(canvas.getByRole('region', { name: 'Connect an AI assistant' })).toBeVisible()
   },
 }
+
+/** The server names its API host (PUBLIC_API_URL): the MCP and REST setups point tokens there, not at the platform. */
+export const ApiHost: Story = {
+  parameters: {
+    ...meta.parameters,
+    msw: {
+      handlers: [
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            google: true,
+            email: true,
+            passkey: true,
+            dev_codes: false,
+            api_url: 'https://api.helvetly.com',
+          }),
+        ),
+        ...accountHandlers,
+        ...screenHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const mcp = within(await canvas.findByRole('region', { name: 'Connect an AI assistant' }))
+    await expect(await mcp.findByText('https://api.helvetly.com/api/mcp')).toBeVisible()
+    const rest = within(canvas.getByRole('region', { name: 'REST API' }))
+    await expect(rest.getByText('https://api.helvetly.com/api/v1')).toBeVisible()
+  },
+}

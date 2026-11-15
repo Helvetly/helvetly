@@ -24,6 +24,8 @@ export type AuthConfig = {
   portal_url?: string
   /** GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID); empty or missing = no analytics. */
   google_analytics_id?: string
+  /** Where tokens and agents call the API (PUBLIC_API_URL, else the platform's origin; missing from an older API). */
+  api_url?: string
 }
 export type User = { id: string; email: string; name: string; avatar_url: string | null }
 export type Session = {

@@ -60,6 +60,11 @@ func TestLoad(t *testing.T) {
 			func(c Config) bool { return c.MediaURL == "http://localhost:8004" }},
 		{"public media origin over plain HTTP", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "http://media.helvetly.com"}, "MEDIA_URL must be https", nil},
 		{"media url with a path", map[string]string{"AUTH_DEV_SIGNIN": "true", "MEDIA_URL": "http://localhost:8004/media"}, "MEDIA_URL must be an origin", nil},
+		{"api origin", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "PUBLIC_API_URL": "https://API.helvetly.com/"}, "",
+			func(c Config) bool { return c.APIURL == "https://api.helvetly.com" }},
+		{"api origin on the platform's host", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "PUBLIC_API_URL": "https://app.helvetly.com"}, "PUBLIC_API_URL must be on another host", nil},
+		{"public api origin over plain HTTP", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "PUBLIC_API_URL": "http://api.helvetly.com"}, "PUBLIC_API_URL must be https", nil},
+		{"api url with a path", map[string]string{"AUTH_DEV_SIGNIN": "true", "PUBLIC_API_URL": "http://localhost:8005/api"}, "PUBLIC_API_URL must be an origin", nil},
 		{"media on the platform's host", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "https://APP.helvetly.com"}, "MEDIA_URL must be on another host", nil},
 		{"media on the portal's host", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "https://portal.helvetly.com"}, "MEDIA_URL must be on another host", nil},
 		{"proxy downloads", map[string]string{"AUTH_DEV_SIGNIN": "true", "S3_PROXY_DOWNLOADS": "true"}, "",
@@ -124,7 +129,7 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"
