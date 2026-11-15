@@ -54,6 +54,9 @@ are the reference.
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
+- **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
+  `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
+  UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget;
   each call reserves its tokens and rate-card cost first, one call in flight per workspace, see `ai_calls`).
