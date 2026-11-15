@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -25,6 +24,7 @@ import { SesLine } from '@/components/signatures/parts'
 import { DocPreview } from '@/components/signatures/pdf-parts'
 import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useClientSearch, type Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { checkSigners, signerColor, type DraftSigner, type SigningOrder } from '@/lib/signatures'
 import {
   DATA_LABELS,
@@ -46,7 +46,7 @@ import {
   ROLE_LANE,
 } from '@/lib/templates'
 
-const STEPS = ['Template & client', 'Fill in', 'Send'] as const
+const STEPS = [translate('templateClient'), translate('fillIn'), translate('send')] as const
 
 /**
  * Make a document from a template for one client: the client's details fill the template, then it
@@ -132,10 +132,10 @@ export function FillTemplateDrawer({
         onSuccess: ({ data }) => {
           toast.success(
             data.signature_request_id
-              ? `“${data.document.name}” sent for signature.`
+              ? translate('sentForSignature', { name: data.document.name })
               : data.emailed_to
-                ? `“${data.document.name}” emailed to ${data.emailed_to}.`
-                : `“${data.document.name}” saved to Documents.`,
+                ? translate('emailedTo', { name: data.document.name, emailed_to: data.emailed_to })
+                : translate('savedToDocuments', { name: data.document.name }),
           )
           onClose()
         },
@@ -148,7 +148,7 @@ export function FillTemplateDrawer({
   const caption = (field: TemplateDraftField) => {
     if (field.kind === 'signature' || field.kind === 'date' || field.kind === 'name')
       return fieldCaption({ ...field, kind: field.kind })
-    if (field.kind === 'text') return field.label || 'Text'
+    if (field.kind === 'text') return field.label || translate('text')
     const value = step > 0 ? (values[valueKey({ id: field.key, kind: field.kind })] ?? '') : ''
     return value.trim() || (field.kind === 'custom' ? field.label : DATA_LABELS[field.kind])
   }
@@ -159,33 +159,33 @@ export function FillTemplateDrawer({
       caption={caption}
       pages={pages}
       onPages={setPages}
-      empty="Choose a template to see it here."
+      empty={translate('chooseATemplateToSeeItHere')}
     />
   )
   const actionLabel =
     delivery === 'signature'
-      ? 'Send for signature'
+      ? translate('sendForSignature2')
       : delivery === 'email'
-        ? 'Send email'
-        : 'Save to Documents'
+        ? translate('sendEmail')
+        : translate('saveToDocuments')
 
   return (
     <WizardSheet
       icon={<LayoutTemplate />}
-      title={step > 0 && title.trim() ? title.trim() : 'New document from a template'}
+      title={step > 0 && title.trim() ? title.trim() : translate('newDocumentFromATemplate')}
       steps={STEPS}
       step={step}
       onStep={setStep}
       dirty={dirty}
       busy={generate.isPending}
-      discardTitle="Discard this document?"
+      discardTitle={translate('discardThisDocument')}
       onClose={onClose}
       status={[template?.name ?? 'No template chosen', client?.name].filter(Boolean).join(' · ')}
       error={serverError ?? (tried ? problem : null)}
       action={
         step < STEPS.length - 1 ? (
           <Button className="cursor-pointer" onClick={next}>
-            Next
+            {translate('next2')}
           </Button>
         ) : (
           <Button className="cursor-pointer gap-1.5" disabled={generate.isPending} onClick={send}>
@@ -198,8 +198,8 @@ export function FillTemplateDrawer({
       {step === 0 && (
         <Split preview={preview}>
           <StepTitle
-            title="Which template, for whom?"
-            text="The client’s name, address and contact fill the template’s fields. You can check and change them next."
+            title={translate('whichTemplateForWhom')}
+            text={translate('theClientSNameAddressAndContactFillThe')}
           />
           <TemplatePicker selected={template} onPick={setTemplate} />
           <ClientPicker selected={client} onPick={setClient} />
@@ -208,14 +208,14 @@ export function FillTemplateDrawer({
       {step === 1 && template && (
         <Split preview={preview}>
           <StepTitle
-            title="Check the details"
-            text="Taken from the client. Changes here go into this document only, not into the client’s record."
+            title={translate('checkTheDetails')}
+            text={translate('takenFromTheClientChangesHereGoIntoThis')}
           />
           <FormField
             id="fill-title"
-            label="Document title"
+            label={translate('documentTitle')}
             required
-            tip="Also its file name in Documents."
+            tip={translate('alsoItsFileNameInDocuments')}
           >
             <Input
               id="fill-title"
@@ -235,31 +235,31 @@ export function FillTemplateDrawer({
       {step === 2 && template && (
         <Split preview={preview}>
           <StepTitle
-            title="What should happen with it?"
-            text="It is saved to Documents, next to the client’s other files, in every case."
+            title={translate('whatShouldHappenWithIt')}
+            text={translate('itIsSavedToDocumentsNextToTheClient')}
           />
           <div className="grid gap-2">
             <Choice
               icon={FileDown}
-              label="Save to Documents"
-              text="Keep it; send it yourself later."
+              label={translate('saveToDocuments')}
+              text={translate('keepItSendItYourselfLater')}
               selected={delivery === 'save'}
               onPick={() => setDelivery('save')}
             />
             <Choice
               icon={Mail}
-              label="Email it to the client"
-              text="As a PDF attachment, from your workspace."
+              label={translate('emailItToTheClient')}
+              text={translate('asAPDFAttachmentFromYourWorkspace')}
               selected={delivery === 'email'}
               onPick={() => setDelivery('email')}
             />
             <Choice
               icon={FileSignature}
-              label="Send for signature"
+              label={translate('sendForSignature2')}
               text={
                 template.signers.length > 0
-                  ? 'Each signer gets a link to sign online.'
-                  : 'This template has no signing fields. Add them in the template first.'
+                  ? translate('eachSignerGetsALinkToSignOnline')
+                  : translate('thisTemplateHasNoSigningFieldsAddThemIn')
               }
               selected={delivery === 'signature'}
               disabled={template.signers.length === 0}
@@ -267,7 +267,7 @@ export function FillTemplateDrawer({
             />
           </div>
           {delivery === 'email' && (
-            <FormField id="fill-to" label="To" required>
+            <FormField id="fill-to" label={translate('to3')} required>
               <Input
                 id="fill-to"
                 type="email"
@@ -289,9 +289,11 @@ export function FillTemplateDrawer({
           {delivery !== 'save' && (
             <FormField
               id="fill-message"
-              label="Message"
+              label={translate('message')}
               hint={
-                delivery === 'signature' ? 'Shown in the email and on the signing page.' : undefined
+                delivery === 'signature'
+                  ? translate('shownInTheEmailAndOnTheSigningPage')
+                  : undefined
               }
             >
               <Textarea
@@ -299,7 +301,7 @@ export function FillTemplateDrawer({
                 value={message}
                 maxLength={2000}
                 rows={4}
-                placeholder="Hello, please find the document attached."
+                placeholder={translate('helloPleaseFindTheDocumentAttached')}
                 onChange={(event) => setMessage(event.target.value)}
               />
             </FormField>
@@ -325,8 +327,11 @@ function TemplatePicker({
   const templates = list.data ?? []
   return (
     <section className="grid gap-2">
-      <h3 className="text-[13px] font-medium">Template</h3>
-      <div aria-label="Templates" className="grid max-h-64 overflow-y-auto rounded-xl border p-1">
+      <h3 className="text-[13px] font-medium">{translate('template2')}</h3>
+      <div
+        aria-label={translate('templates')}
+        className="grid max-h-64 overflow-y-auto rounded-xl border p-1"
+      >
         {templates.map((template) => (
           <button
             key={template.id}
@@ -339,8 +344,11 @@ function TemplatePicker({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[14px]">{template.name}</span>
               <span className="block truncate text-[12px] text-muted-foreground">
-                {template.signers.length > 0 ? 'Asks for signatures' : 'No signatures'}
-                {template.last_used_at && ` · used ${formatRelative(template.last_used_at)}`}
+                {template.signers.length > 0
+                  ? translate('asksForSignatures')
+                  : translate('noSignatures')}
+                {template.last_used_at &&
+                  translate('used', { value1: formatRelative(template.last_used_at) })}
               </span>
             </span>
             {template.id === selected?.id && <Check className="size-4 text-brand" />}
@@ -348,7 +356,9 @@ function TemplatePicker({
         ))}
         {templates.length === 0 && (
           <p className="px-3 py-6 text-center text-[13px] text-muted-foreground">
-            {list.isPending ? 'Loading…' : 'No templates yet. Make one in Documents → Templates.'}
+            {list.isPending
+              ? translate('loading')
+              : translate('noTemplatesYetMakeOneInDocumentsTemplates')}
           </p>
         )}
       </div>
@@ -368,19 +378,22 @@ function ClientPicker({
   const clients = search.data?.data ?? []
   return (
     <section className="grid gap-2">
-      <h3 className="text-[13px] font-medium">Client</h3>
+      <h3 className="text-[13px] font-medium">{translate('client')}</h3>
       <label className="flex h-9 items-center gap-2 rounded-lg bg-muted/60 px-2.5 text-muted-foreground focus-within:bg-card focus-within:ring-2 focus-within:ring-ring/30">
         <Search className="size-4 shrink-0 stroke-[1.5]" />
         <input
           type="search"
-          aria-label="Search clients"
-          placeholder="Search clients"
+          aria-label={translate('searchClients')}
+          placeholder={translate('searchClients')}
           value={term}
           onChange={(event) => setTerm(event.target.value)}
           className="w-full bg-transparent text-[14px] text-foreground outline-none placeholder:text-placeholder"
         />
       </label>
-      <div aria-label="Clients" className="grid max-h-64 overflow-y-auto rounded-xl border p-1">
+      <div
+        aria-label={translate('clients')}
+        className="grid max-h-64 overflow-y-auto rounded-xl border p-1"
+      >
         {selected && !clients.some((client) => client.id === selected.id) && (
           <ClientRow client={selected} selected onPick={() => {}} />
         )}
@@ -394,7 +407,7 @@ function ClientPicker({
         ))}
         {clients.length === 0 && !selected && (
           <p className="px-3 py-6 text-center text-[13px] text-muted-foreground">
-            {search.isPending ? 'Searching…' : 'No client matches.'}
+            {search.isPending ? translate('searching') : translate('noClientMatches')}
           </p>
         )}
       </div>
@@ -448,7 +461,7 @@ function ValueFields({
   if (entries.length === 0)
     return (
       <p className="text-[13px] text-muted-foreground">
-        This template has no client fields: the document is the PDF as it is.
+        {translate('thisTemplateHasNoClientFieldsTheDocumentIs')}
       </p>
     )
   return (
@@ -457,7 +470,7 @@ function ValueFields({
         const key = valueKey(field)
         const custom = field.kind === 'custom'
         const label = custom
-          ? (field.label ?? 'Text')
+          ? (field.label ?? translate('text'))
           : isDataKind(field.kind)
             ? DATA_LABELS[field.kind]
             : ''
@@ -469,9 +482,9 @@ function ValueFields({
             id={id}
             label={label}
             required={custom}
-            error={custom && tried && !value.trim() ? 'Fill this in.' : undefined}
+            error={custom && tried && !value.trim() ? translate('fillThisIn') : undefined}
             hint={
-              !custom && !value.trim() ? 'The client has none: the box stays empty.' : undefined
+              !custom && !value.trim() ? translate('theClientHasNoneTheBoxStaysEmpty') : undefined
             }
           >
             {field.kind === 'client.address' ? (
@@ -551,7 +564,7 @@ function RoleSigners({
     onSigners(signers.map((signer, i) => (i === index ? { ...signer, ...change } : signer)))
   return (
     <section className="grid gap-2">
-      <h3 className="text-[13px] font-medium">Signers</h3>
+      <h3 className="text-[13px] font-medium">{translate('signers')}</h3>
       <ol className="grid gap-2">
         {template.signers.map((role, index) => {
           const signer = signers[index] ?? { name: '', email: '' }
@@ -568,8 +581,8 @@ function RoleSigners({
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-1">
                   <Input
-                    aria-label={`${role.label} name`}
-                    placeholder="Full name"
+                    aria-label={translate('name2', { label: role.label })}
+                    placeholder={translate('fullName')}
                     value={signer.name}
                     maxLength={200}
                     aria-invalid={tried && !!row?.name}
@@ -580,8 +593,8 @@ function RoleSigners({
                 <div className="grid gap-1">
                   <Input
                     type="email"
-                    aria-label={`${role.label} email`}
-                    placeholder="name@company.ch"
+                    aria-label={translate('email4', { label: role.label })}
+                    placeholder={translate('nameCompanyCh')}
                     value={signer.email}
                     aria-invalid={tried && !!row?.email}
                     onChange={(event) => set(index, { email: event.target.value })}

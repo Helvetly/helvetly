@@ -3,6 +3,7 @@ import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 
 import { RecordLink } from '@/components/record-link'
+import { translate } from '@/lib/i18n'
 import { categoryOf, type Notification } from '@/lib/notifications'
 
 /** The category's icon on a neutral tile; AI and Heidi keep Heidi's colour. */
@@ -60,7 +61,7 @@ export function NotificationBody({ n, className = '' }: { n: Notification; class
 export function UnreadDot({ className }: { className?: string }) {
   return (
     <span className={cn('size-2 shrink-0 rounded-full bg-success-solid', className)}>
-      <span className="sr-only">New</span>
+      <span className="sr-only">{translate('new3')}</span>
     </span>
   )
 }

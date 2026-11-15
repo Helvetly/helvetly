@@ -1,5 +1,4 @@
 'use client'
-
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useState, type ReactNode } from 'react'
@@ -23,6 +22,7 @@ import {
   useExpenseAction,
   type Expense,
 } from '@/lib/expenses'
+import { translate } from '@/lib/i18n'
 import { canManageInvoices } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
@@ -137,7 +137,9 @@ function StackedClient({ id, onClose }: { id: string; onClose: () => void }) {
         { id: client.id, input: { is_active: !client.is_active } },
         {
           onSuccess: () =>
-            toast.success(`${client.name} ${client.is_active ? 'deactivated' : 'activated'}.`),
+            toast.success(
+              `${client.name} ${client.is_active ? translate('deactivated') : translate('activated')}.`,
+            ),
           onError: toastError,
         },
       )
@@ -148,7 +150,7 @@ function StackedClient({ id, onClose }: { id: string; onClose: () => void }) {
     if (!approved || !target) return
     remove.mutate(target.id, {
       onSuccess: () => {
-        toast.success(`${target.name} deleted.`)
+        toast.success(translate('deleted3', { name: target.name }))
         onClose()
       },
       onError: toastError,
@@ -168,9 +170,9 @@ function StackedClient({ id, onClose }: { id: string; onClose: () => void }) {
       )}
       {deleting && (
         <ConfirmDialog
-          title={`Delete ${deleting.name}?`}
-          body="Invoices and documents that mention them keep their copy of the details. This can’t be undone here."
-          confirmLabel="Delete client"
+          title={translate('delete4', { name: deleting.name })}
+          body={translate('invoicesAndDocumentsThatMentionThemKeepTheirCopy')}
+          confirmLabel={translate('deleteClient')}
           tone="destructive"
           onDecide={confirmDelete}
         />
@@ -200,13 +202,13 @@ function StackedExpense({
   const command = (name: ExpenseCommand, expense: Expense) => {
     if (name === 'book')
       book.mutate(expense.id, {
-        onSuccess: (saved) => toast.success(`Expense #${saved.number} booked.`),
+        onSuccess: (saved) => toast.success(translate('expenseBooked', { number: saved.number })),
         onError: toastError,
       })
     else if (name === 'duplicate')
       duplicate.mutate(expense.id, {
         onSuccess: (copy) => {
-          toast.success(`Copied as draft #${copy.number}.`)
+          toast.success(translate('copiedAsDraft', { number: copy.number }))
           open({ kind: 'expense', id: copy.id })
         },
         onError: toastError,

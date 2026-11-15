@@ -1,9 +1,9 @@
 'use client'
-
 import { Check } from 'lucide-react'
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
 export type Feature = {
@@ -151,7 +151,7 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
         <div
           ref={list}
           role="tablist"
-          aria-label="Features"
+          aria-label={translate('features')}
           aria-orientation="vertical"
           className="relative flex flex-col gap-1 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:translate-y-(--shift)"
         >

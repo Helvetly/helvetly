@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { CalendarRange, FilePlus2, Plus, ReceiptText } from 'lucide-react'
@@ -7,6 +6,7 @@ import Link from 'next/link'
 
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { issuedCount, PLAN_STATUS_LABELS } from '@/lib/instalments'
 import {
   DEFAULT_PARAMS,
@@ -44,13 +44,14 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
         <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <ReceiptText className="size-5 stroke-[1.5]" />
         </span>
-        <p className="text-[15px] font-medium">No invoices yet</p>
+        <p className="text-[15px] font-medium">{translate('noInvoicesYet')}</p>
         <p className="max-w-xs text-[13px] text-pretty text-muted-foreground">
-          Invoices for this client show up here with what is still open.
+          {translate('invoicesForThisClientShowUpHereWithWhat')}
         </p>
         <Button asChild size="sm" className="mt-2">
           <Link href={newInvoiceHref(clientId)}>
-            <FilePlus2 /> New invoice
+            <FilePlus2 />
+            {translate('newInvoice2')}
           </Link>
         </Button>
       </div>
@@ -62,26 +63,27 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
         {summary && summary.outstanding.count > 0 ? (
           <div className="grid gap-0.5">
             <span className="text-[12px] text-muted-foreground">
-              Open · {summary.outstanding.count}{' '}
-              {summary.outstanding.count === 1 ? 'invoice' : 'invoices'}
+              {translate('open2')}
+              {summary.outstanding.count} {summary.outstanding.count === 1 ? 'invoice' : 'invoices'}
             </span>
             <span className="text-[18px] tracking-[-0.01em] tabular-nums">
               {formatMoney(summary.outstanding.amount, summary.currency)}
             </span>
             {summary.overdue.count > 0 && (
               <span className="text-[12px] text-[#b5544f] tabular-nums dark:text-rose-300">
-                {formatMoney(summary.overdue.amount, summary.currency)} overdue
+                {formatMoney(summary.overdue.amount, summary.currency)}
+                {translate('overdue2')}
               </span>
             )}
           </div>
         ) : (
           <span className="text-[13.5px] text-muted-foreground">
-            {summary ? 'Nothing open: every invoice is settled.' : 'Loading…'}
+            {summary ? translate('nothingOpenEveryInvoiceIsSettled') : translate('loading')}
           </span>
         )}
         {summary && toCents(summary.paid_this_month.amount) > 0n && (
           <div className="grid gap-0.5">
-            <span className="text-[12px] text-muted-foreground">Paid this month</span>
+            <span className="text-[12px] text-muted-foreground">{translate('paidThisMonth')}</span>
             <span className="text-[18px] tracking-[-0.01em] tabular-nums">
               {formatMoney(summary.paid_this_month.amount, summary.currency)}
             </span>
@@ -89,7 +91,8 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
         )}
         <Button asChild className="ml-auto">
           <Link href={newInvoiceHref(clientId)}>
-            <Plus /> New invoice
+            <Plus />
+            {translate('newInvoice2')}
           </Link>
         </Button>
       </section>
@@ -106,11 +109,13 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
                   <span className="text-[14px]">
                     <InvoiceNumber invoice={invoice} />
                     {invoice.kind === 'credit_note' && (
-                      <span className="text-muted-foreground"> · credit note</span>
+                      <span className="text-muted-foreground">{translate('creditNote')}</span>
                     )}
                   </span>
                   <span className="text-[12.5px] text-muted-foreground">
-                    {formatDay(invoice.issue_date)} · due {formatDay(invoice.due_date)}
+                    {formatDay(invoice.issue_date)}
+                    {translate('due2')}
+                    {formatDay(invoice.due_date)}
                   </span>
                 </span>
                 <Money
@@ -131,7 +136,9 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
             href={`/invoices?client=${encodeURIComponent(clientId)}`}
             className="block border-t border-border/60 px-4 py-2.5 text-center text-[13px] text-muted-foreground hover:text-foreground"
           >
-            All {total} invoices
+            {translate('all2')}
+            {total}
+            {translate('invoices2')}
           </Link>
         )}
       </section>
@@ -146,7 +153,10 @@ function ClientPlans({ clientId }: { clientId: string }) {
   )
   if (running.length === 0) return null
   return (
-    <section aria-label="Instalment plans" className="rounded-xl bg-card shadow-elevation-1">
+    <section
+      aria-label={translate('instalmentPlans')}
+      className="rounded-xl bg-card shadow-elevation-1"
+    >
       <ul className="divide-y divide-border/60">
         {running.map((plan) => {
           const next = plan.items.find((item) => item.status === 'scheduled')
@@ -159,11 +169,15 @@ function ClientPlans({ clientId }: { clientId: string }) {
                 <CalendarRange className="size-4 shrink-0 text-muted-foreground" />
                 <span className="grid min-w-0 flex-1 leading-tight">
                   <span className="text-[14px]">
-                    Instalment plan · {issuedCount(plan)} of {plan.count} issued
+                    {translate('instalmentPlan')}
+                    {issuedCount(plan)}
+                    {translate('of5')}
+                    {plan.count}
+                    {translate('issued')}
                   </span>
                   <span className="text-[12.5px] text-muted-foreground">
                     {INTERVALS.find((entry) => entry.value === plan.interval)?.label}
-                    {next && ` · next issued ${formatDay(next.issue_on)}`}
+                    {next && translate('nextIssued', { value1: formatDay(next.issue_on) })}
                   </span>
                 </span>
                 <span className="text-[12.5px] text-muted-foreground">

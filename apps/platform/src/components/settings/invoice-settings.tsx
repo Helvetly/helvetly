@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
@@ -56,6 +56,7 @@ import {
   type SectionState,
 } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   canManageInvoices,
   exampleNumber,
@@ -159,8 +160,8 @@ export function reminderSummary(beforeTyped: string, afterTyped: string): string
     before > 0 && `${before} ${before === 1 ? 'day' : 'days'} before`,
     after.length > 0 && `${joinDays(after)} ${after.at(-1) === 1 ? 'day' : 'days'} after`,
   ].filter(Boolean)
-  if (parts.length === 0) return 'No reminders are sent.'
-  return `Your client gets a reminder ${parts.join(', and ')} each due date, until the instalment is paid.`
+  if (parts.length === 0) return translate('noRemindersAreSent')
+  return translate('yourClientGetsAReminderEachDueDateUntil', { value1: parts.join(', and ') })
 }
 
 export function valuesFrom(settings: InvoiceSettings): Values {
@@ -294,38 +295,38 @@ export function validate(values: Values): FieldErrors {
   const errors: FieldErrors = {}
   if (values.electronic_scheme.trim() || values.electronic_id.trim()) {
     if (!/^\d{4}$/.test(values.electronic_scheme.trim()))
-      errors.electronic_scheme = 'Enter the four-digit EAS scheme code.'
+      errors.electronic_scheme = translate('enterTheFourDigitEASSchemeCode')
     if (!values.electronic_id.trim())
-      errors.electronic_id = 'Enter the electronic address registered with your provider.'
+      errors.electronic_id = translate('enterTheElectronicAddressRegisteredWithYourProvider')
   }
   if (values.iban.trim() && !ibanInfo(values.iban).valid)
-    errors.iban = 'This IBAN’s check digits don’t match. Check for a typo.'
+    errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
   const market = unsupportedSellerCountry(values.country)
   if (market) errors.country = market
   const rate = parseDecimalInput(values.default_vat_rate, 2)
   if (rate === null || rate.startsWith('-') || Number(rate) > 100)
-    errors.default_vat_rate = 'A rate from 0 to 100.'
+    errors.default_vat_rate = translate('aRateFrom0To100')
   const days = Number(values.default_terms_days)
   if (!/^\d{1,3}$/.test(values.default_terms_days) || days > 365)
-    errors.default_terms_days = 'From 0 to 365 days.'
+    errors.default_terms_days = translate('from0To365Days')
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
-    errors.email = 'Check the email address.'
+    errors.email = translate('checkTheEmailAddress')
   if (values.phone.trim() && !toE164(values.phone, values.phone_country)) errors.phone = PHONE_ERROR
   if (values.revolut_username.trim() && !revolutUsername(values.revolut_username))
-    errors.revolut_username = '3 to 32 letters, digits, dots, dashes or underscores.'
+    errors.revolut_username = translate('message3To32LettersDigitsDotsDashesOrUnderscores')
   else if (values.revolut_enabled && !values.revolut_username.trim())
-    errors.revolut_username = 'Enter your revolut.me username to offer Revolut.'
-  if (!whole(values.instalments_count, 2, 12)) errors.instalments_count = 'From 2 to 12.'
+    errors.revolut_username = translate('enterYourRevolutMeUsernameToOfferRevolut')
+  if (!whole(values.instalments_count, 2, 12)) errors.instalments_count = translate('from2To122')
   if (!whole(values.instalments_plan_lead_days, 0, 60))
-    errors.instalments_plan_lead_days = 'From 0 to 60 days.'
+    errors.instalments_plan_lead_days = translate('from0To60Days')
   if (!whole(values.instalments_remind_before_days, 0, 30))
-    errors.instalments_remind_before_days = 'From 0 to 30 days.'
+    errors.instalments_remind_before_days = translate('from0To30Days')
   const after = values.instalments_remind_after_days.split(/[\s,;]+/).filter(Boolean)
   if (
     after.some((day) => !whole(day, 1, 90)) ||
     afterDays(values.instalments_remind_after_days).length > 3
   )
-    errors.instalments_remind_after_days = 'Up to three days from 1 to 90, e.g. 3, 10.'
+    errors.instalments_remind_after_days = translate('upToThreeDaysFrom1To90E')
   const timing = timingProblems(values.dunning_steps)
   values.dunning_steps.forEach((step, i) => {
     for (const [field, message] of Object.entries(stepErrors(step)))
@@ -334,7 +335,7 @@ export function validate(values: Values): FieldErrors {
   })
   const interest = parseDecimalInput(values.dunning_interest_rate, 2)
   if (interest === null || interest.startsWith('-') || Number(interest) > 15)
-    errors.dunning_interest_rate = 'A rate from 0 to 15 %.'
+    errors.dunning_interest_rate = translate('aRateFrom0To15')
   return errors
 }
 
@@ -348,10 +349,10 @@ export const formField = (name: string) =>
         .replace('dunning.', 'dunning_')
 
 const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
-  { value: 'de', label: 'Deutsch' },
-  { value: 'fr', label: 'Français' },
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
+  { value: 'de', label: translate('deutsch') },
+  { value: 'fr', label: translate('franAis') },
+  { value: 'it', label: translate('italiano') },
+  { value: 'en', label: translate('english') },
 ]
 const TERMS = ['10', '30', '60']
 
@@ -385,10 +386,10 @@ const SECTIONS: {
   required: string[]
   fields: (keyof Values)[]
 }[] = [
-  { id: 'logo', title: 'Logo', icon: ImageIcon, required: [], fields: [] },
+  { id: 'logo', title: translate('logo'), icon: ImageIcon, required: [], fields: [] },
   {
     id: 'company',
-    title: 'Company',
+    title: translate('company'),
     icon: Building2,
     required: [
       'seller.name',
@@ -413,21 +414,21 @@ const SECTIONS: {
   },
   {
     id: 'vat',
-    title: 'VAT',
+    title: translate('vat'),
     icon: Percent,
     required: ['seller.vat_number'],
     fields: ['vat_registered', 'vat_number', 'default_vat_mode', 'default_vat_rate'],
   },
   {
     id: 'einvoice',
-    title: 'E-invoices',
+    title: translate('eInvoices'),
     icon: FileCode,
     required: ['seller.registration_number', 'seller.electronic_address'],
     fields: ['registration_number', 'electronic_scheme', 'electronic_id'],
   },
   {
     id: 'bank',
-    title: 'Bank account',
+    title: translate('bankAccount'),
     icon: Landmark,
     required: ['iban'],
     fields: ['iban', 'bank_name'],
@@ -435,22 +436,28 @@ const SECTIONS: {
   // Not needed to issue: incomplete only while Revolut is on without a username.
   {
     id: 'payment',
-    title: 'Payment methods',
+    title: translate('paymentMethods'),
     icon: CreditCard,
     required: ['revolut_username'],
     fields: ['qr_bill_enabled', 'revolut_enabled', 'revolut_username'],
   },
-  { id: 'numbering', title: 'Numbering', icon: Hash, required: [], fields: ['number_format'] },
+  {
+    id: 'numbering',
+    title: translate('numbering'),
+    icon: Hash,
+    required: [],
+    fields: ['number_format'],
+  },
   {
     id: 'defaults',
-    title: 'Defaults',
+    title: translate('defaults'),
     icon: SlidersHorizontal,
     required: [],
     fields: ['currency', 'language', 'default_terms_days'],
   },
   {
     id: 'instalments',
-    title: 'Instalments',
+    title: translate('instalments2'),
     icon: CalendarRange,
     required: [],
     fields: [
@@ -466,7 +473,7 @@ const SECTIONS: {
   },
   {
     id: 'dunning',
-    title: 'Dunning',
+    title: translate('dunning'),
     icon: BellRing,
     required: [],
     fields: [
@@ -477,7 +484,7 @@ const SECTIONS: {
       'dunning_interest_from',
     ],
   },
-  { id: 'footer', title: 'Footer', icon: PanelBottom, required: [], fields: ['footer'] },
+  { id: 'footer', title: translate('footer'), icon: PanelBottom, required: [], fields: ['footer'] },
 ]
 const SAVED_SECTIONS = SECTIONS.filter((section) => section.fields.length > 0)
 const sectionById = (id: SectionId) => SECTIONS.find((section) => section.id === id)
@@ -492,11 +499,11 @@ export function InvoiceSettingsPage() {
         {settings.error ? (
           <State
             icon={<CloudOff />}
-            title="Couldn’t load the invoice settings"
+            title={translate('couldnTLoadTheInvoiceSettings')}
             text={errorMessage(settings.error)}
             action={
               <Button variant="outline" size="sm" onClick={() => void settings.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
             }
           />
@@ -540,22 +547,22 @@ function Section({
 function VatOffNote() {
   return (
     <div
-      aria-label="Not registered for VAT"
+      aria-label={translate('notRegisteredForVAT')}
       role="note"
       className="grid gap-4 rounded-xl bg-muted/50 px-4 py-3.5 text-body-sm leading-relaxed text-foreground sm:grid-cols-2 sm:gap-8"
     >
       <div className="grid content-start gap-1">
-        <p className="font-medium">While it is off</p>
+        <p className="font-medium">{translate('whileItIsOff')}</p>
         <ul className="grid list-disc gap-0.5 pl-4.5 marker:text-muted-foreground">
-          <li>Invoices carry no VAT: the prices are the totals.</li>
-          <li>Each invoice notes that you are not VAT-registered.</li>
+          <li>{translate('invoicesCarryNoVATThePricesAreTheTotals')}</li>
+          <li>{translate('eachInvoiceNotesThatYouAreNotVATRegistered')}</li>
         </ul>
       </div>
       <div className="grid content-start gap-1">
-        <p className="font-medium">Turning it on asks for</p>
+        <p className="font-medium">{translate('turningItOnAsksFor')}</p>
         <ul className="grid list-disc gap-0.5 pl-4.5 marker:text-muted-foreground">
-          <li>Your UID with MWST, e.g. CHE-123.456.789 MWST.</li>
-          <li>Whether prices include VAT, and your usual rate (8.1%, 3.8% or 2.6%).</li>
+          <li>{translate('yourUIDWithMWSTEGCHE123456')}</li>
+          <li>{translate('whetherPricesIncludeVATAndYourUsualRate8')}</li>
         </ul>
       </div>
     </div>
@@ -566,20 +573,19 @@ function VatOffNote() {
 function IbanNote({ iban }: { iban: Extract<IbanInfo, { valid: true }> }) {
   if (iban.qr)
     return (
-      <Callout tone="success" icon={QrCode} title="QR-IBAN">
-        CHF invoices get a 27-digit QR reference your bank matches to the payment automatically. A
-        QR-IBAN takes CHF only: EUR invoices need a normal IBAN.
+      <Callout tone="success" icon={QrCode} title={translate('qrIBAN')}>
+        {translate('chfInvoicesGetA27DigitQRReferenceYour')}
       </Callout>
     )
   if (iban.swiss)
     return (
-      <Callout tone="info" icon={Landmark} title="Swiss IBAN">
-        Invoices get an RF creditor reference. Ask your bank for a QR-IBAN to use QR references.
+      <Callout tone="info" icon={Landmark} title={translate('swissIBAN')}>
+        {translate('invoicesGetAnRFCreditorReferenceAskYourBank')}
       </Callout>
     )
   return (
-    <Callout tone="neutral" icon={Globe} title={`IBAN from ${iban.country}`}>
-      Bank details are printed; Swiss QR bills need a CH or LI IBAN.
+    <Callout tone="neutral" icon={Globe} title={translate('ibanFrom', { country: iban.country })}>
+      {translate('bankDetailsArePrintedSwissQRBillsNeedA')}
     </Callout>
   )
 }
@@ -595,12 +601,20 @@ function TestLink({ href }: { href: string }) {
           size="icon-sm"
           className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground"
         >
-          <a href={href} target="_blank" rel="noreferrer" aria-label="Test the link">
+          <a
+            href={localizedHref(href)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={translate('testTheLink2')}
+          >
             <ExternalLink />
           </a>
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Test the link: {href.replace('https://', '')}</TooltipContent>
+      <TooltipContent>
+        {translate('testTheLink')}
+        {href.replace('https://', '')}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -649,7 +663,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
         throw error
       }),
     fieldErrors: (error) => apiFieldErrors(error, formField),
-    savedMessage: (id) => `${sectionById(id)?.title ?? 'Settings'} saved.`,
+    savedMessage: (id) => `${sectionById(id)?.title ?? translate('settings')} saved.`,
   })
   const { values, errors: shown } = form
   const [customRate, setCustomRate] = useState(
@@ -703,14 +717,15 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
         actions={
           canEdit ? undefined : (
             <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-              <Lock className="size-3.5" /> Read only: owners and admins change these
+              <Lock className="size-3.5" />
+              {translate('readOnlyOwnersAndAdminsChangeThese')}
             </span>
           )
         }
       />
       <SettingsPage
-        title="Invoice settings"
-        description="What every invoice says about you: company, VAT, bank account, payment methods, numbering and defaults. Each section saves on its own."
+        title={translate('invoiceSettings')}
+        description={translate('whatEveryInvoiceSaysAboutYouCompanyVATBank')}
         nav={SECTIONS.map((section) => (
           <button
             key={section.id}
@@ -722,20 +737,20 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate">{section.title}</span>
               {form.dirtySections.includes(section.id) && (
-                <span className="flex" title="Unsaved changes">
+                <span className="flex" title={translate('unsavedChanges3')}>
                   <UnsavedDot />
-                  <span className="sr-only">Unsaved changes</span>
+                  <span className="sr-only">{translate('unsavedChanges3')}</span>
                 </span>
               )}
             </span>
             {section.required.length > 0 &&
               (sectionMissing(section.id) ? (
                 <span
-                  aria-label="Incomplete"
+                  aria-label={translate('incomplete')}
                   className="size-2 rounded-full bg-warning-solid ring-2 ring-warning-solid/15"
                 />
               ) : (
-                <Check aria-label="Complete" className="size-3.5 text-success-solid" />
+                <Check aria-label={translate('complete')} className="size-3.5 text-success-solid" />
               ))}
           </button>
         ))}
@@ -755,7 +770,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 {form.dirtySections.includes(section.id) && (
                   <>
                     <UnsavedDot />
-                    <span className="sr-only">(unsaved changes)</span>
+                    <span className="sr-only">{translate('unsavedChanges2')}</span>
                   </>
                 )}
               </button>
@@ -769,8 +784,8 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
           <fieldset disabled={!canEdit} className="grid min-w-0 gap-5">
             <Section
               id="logo"
-              title="Logo"
-              description="Top left on every invoice and credit note, above your address."
+              title={translate('logo')}
+              description={translate('topLeftOnEveryInvoiceAndCreditNoteAbove')}
             >
               <LogoDropzone url={logoSrc(settings)} canEdit={canEdit} />
             </Section>
@@ -778,23 +793,28 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="company"
               state={state('company')}
-              title="Company"
-              description="The seller block on every invoice. Swiss QR bills need the full, structured address."
+              title={translate('company')}
+              description={translate('theSellerBlockOnEveryInvoiceSwissQRBills')}
             >
-              <FormField id={inputId('name')} label="Company name" required error={shown.name}>
+              <FormField
+                id={inputId('name')}
+                label={translate('companyName')}
+                required
+                error={shown.name}
+              >
                 <input
                   {...describe('name')}
                   value={values.name}
                   maxLength={70}
                   autoComplete="organization"
                   onChange={(e) => set('name', e.target.value)}
-                  placeholder="e.g. Muster AG"
+                  placeholder={translate('eGMusterAG')}
                   className={bigInput}
                 />
               </FormField>
               <FormField
                 id={inputId('street')}
-                label="Street"
+                label={translate('street')}
                 required
                 error={shown.street}
                 width="md"
@@ -805,13 +825,13 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   maxLength={70}
                   autoComplete="address-line1"
                   onChange={(e) => set('street', e.target.value)}
-                  placeholder="e.g. Bahnhofstrasse"
+                  placeholder={translate('eGBahnhofstrasse')}
                   className={bigInput}
                 />
               </FormField>
               <FormField
                 id={inputId('street_number')}
-                label="Number"
+                label={translate('number')}
                 width="xs"
                 required
                 error={shown.street_number}
@@ -821,17 +841,22 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   value={values.street_number}
                   maxLength={16}
                   onChange={(e) => set('street_number', e.target.value)}
-                  placeholder="e.g. 1"
+                  placeholder={translate('eG1')}
                   className={bigInput}
                 />
               </FormField>
-              <FormField id={inputId('apt')} label="Apt / suite" error={shown.apt} width="xs">
+              <FormField
+                id={inputId('apt')}
+                label={translate('aptSuite')}
+                error={shown.apt}
+                width="xs"
+              >
                 <input
                   {...describe('apt')}
                   value={values.apt}
                   autoComplete="address-line2"
                   onChange={(e) => set('apt', e.target.value)}
-                  placeholder="Optional"
+                  placeholder={translate('optional')}
                   className={bigInput}
                 />
               </FormField>
@@ -842,24 +867,30 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   maxLength={16}
                   autoComplete="postal-code"
                   onChange={(e) => set('zip', e.target.value)}
-                  placeholder="e.g. 8001"
+                  placeholder={translate('eG8001')}
                   className={bigInput}
                 />
               </FormField>
-              <FormField id={inputId('city')} label="City" required error={shown.city} width="xs">
+              <FormField
+                id={inputId('city')}
+                label={translate('city')}
+                required
+                error={shown.city}
+                width="xs"
+              >
                 <input
                   {...describe('city')}
                   value={values.city}
                   maxLength={35}
                   autoComplete="address-level2"
                   onChange={(e) => set('city', e.target.value)}
-                  placeholder="e.g. Zürich"
+                  placeholder={translate('eGZRich')}
                   className={bigInput}
                 />
               </FormField>
               <FormField
                 id={inputId('country')}
-                label="Country"
+                label={translate('country')}
                 required
                 error={shown.country}
                 width="md"
@@ -869,7 +900,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   value={values.country}
                   options={COUNTRY_OPTIONS}
                   invalid={Boolean(shown.country)}
-                  placeholder="Choose a country"
+                  placeholder={translate('chooseACountry2')}
 
                   onChange={(code) => set('country', code)}
                 />
@@ -877,21 +908,26 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               <>
                 <FormField
                   id={inputId('email')}
-                  label="Email"
+                  label={translate('email')}
                   width="md"
                   error={shown.email}
-                  tip="Printed on invoices and the reply-to address when you send them."
+                  tip={translate('printedOnInvoicesAndTheReplyToAddressWhen')}
                 >
                   <input
                     {...describe('email')}
                     type="email"
                     value={values.email}
                     onChange={(e) => set('email', e.target.value)}
-                    placeholder="e.g. billing@muster.ch"
+                    placeholder={translate('eGBillingMusterCh')}
                     className={bigInput}
                   />
                 </FormField>
-                <FormField id={inputId('phone')} label="Phone" error={shown.phone} width="md">
+                <FormField
+                  id={inputId('phone')}
+                  label={translate('phone')}
+                  error={shown.phone}
+                  width="md"
+                >
                   <PhoneInput
                     {...describe('phone')}
                     value={values.phone}
@@ -907,29 +943,29 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="einvoice"
               state={state('einvoice')}
-              title="Electronic invoicing"
-              description="Use the electronic address registered with your provider. XML export does not send an invoice through a delivery network."
+              title={translate('electronicInvoicing')}
+              description={translate('useTheElectronicAddressRegisteredWithYourProviderXML')}
             >
               <>
                 <FormField
                   id={inputId('electronic_scheme')}
-                  label="E-invoice address scheme"
+                  label={translate('eInvoiceAddressScheme')}
                   width="sm"
                   error={shown.electronic_scheme}
-                  tip="EAS code, for example 0088 for GLN or 0204 for a German Leitweg-ID."
+                  tip={translate('easCodeForExample0088ForGLNOr0204')}
                 >
                   <input
                     {...describe('electronic_scheme')}
                     value={values.electronic_scheme}
                     maxLength={4}
                     onChange={(event) => set('electronic_scheme', event.target.value)}
-                    placeholder="e.g. 0088"
+                    placeholder={translate('eG0088')}
                     className={bigInput}
                   />
                 </FormField>
                 <FormField
                   id={inputId('electronic_id')}
-                  label="E-invoice electronic address"
+                  label={translate('eInvoiceElectronicAddress')}
                   width="lg"
                   error={shown.electronic_id}
                 >
@@ -938,24 +974,24 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                     value={values.electronic_id}
                     maxLength={200}
                     onChange={(event) => set('electronic_id', event.target.value)}
-                    placeholder="e.g. 7612345678900"
+                    placeholder={translate('eG7612345678900')}
                     className={bigInput}
                   />
                 </FormField>
               </>
               <FormField
                 id={inputId('registration_number')}
-                label="Business registration number"
+                label={translate('businessRegistrationNumber')}
                 width="md"
                 error={shown.registration_number}
-                tip="The legal registration number, separately from VAT. Required for XML outside VAT."
+                tip={translate('theLegalRegistrationNumberSeparatelyFromVATRequiredFor')}
               >
                 <input
                   {...describe('registration_number')}
                   value={values.registration_number}
                   maxLength={100}
                   onChange={(event) => set('registration_number', event.target.value)}
-                  placeholder="e.g. CHE-123.456.789"
+                  placeholder={translate('eGCHE123456789')}
                   className={bigInput}
                 />
               </FormField>
@@ -964,16 +1000,16 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="vat"
               state={state('vat')}
-              title="VAT"
-              description="Registered businesses print their UID with MWST and a VAT breakdown per rate."
+              title={translate('vat')}
+              description={translate('registeredBusinessesPrintTheirUIDWithMWSTAndA')}
             >
               <SwitchRow
                 id="settings-vat-registered"
-                label="Registered for VAT"
+                label={translate('registeredForVAT')}
                 description={
                   values.vat_registered
-                    ? 'Invoices show your UID and add VAT per rate.'
-                    : 'Turn on once the ESTV has registered your business for VAT.'
+                    ? translate('invoicesShowYourUIDAndAddVATPerRate')
+                    : translate('turnOnOnceTheESTVHasRegisteredYourBusiness')
                 }
                 checked={values.vat_registered}
                 onCheckedChange={(on) => set('vat_registered', on)}
@@ -983,45 +1019,49 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 <>
                   <FormField
                     id={inputId('vat_number')}
-                    label="VAT number"
+                    label={translate('vatNumber')}
                     width="md"
                     required
                     error={shown.vat_number}
-                    tip="Your UID with the MWST suffix, e.g. CHE-123.456.789 MWST."
+                    tip={translate('yourUIDWithTheMWSTSuffixEGCHE')}
                   >
                     <input
                       {...describe('vat_number')}
                       value={values.vat_number}
                       onChange={(e) => set('vat_number', formatUid(e.target.value))}
-                      placeholder="e.g. CHE-123.456.789 MWST"
+                      placeholder={translate('eGCHE123456789MWST')}
                       className={cn(bigInput, 'font-mono text-body')}
                     />
                   </FormField>
                   <>
-                    <FormField id={inputId('default_vat_mode')} label="Prices are entered" group>
+                    <FormField
+                      id={inputId('default_vat_mode')}
+                      label={translate('pricesAreEntered')}
+                      group
+                    >
                       <Segmented
-                        label="Prices are entered"
+                        label={translate('pricesAreEntered')}
                         value={values.default_vat_mode}
                         options={[
-                          { value: 'exclusive', label: 'Excl. VAT' },
-                          { value: 'inclusive', label: 'Incl. VAT' },
+                          { value: 'exclusive', label: translate('exclVAT') },
+                          { value: 'inclusive', label: translate('inclVAT') },
                         ]}
                         onChange={(mode) => set('default_vat_mode', mode)}
                       />
                     </FormField>
                     <FormField
                       id={inputId('default_vat_rate')}
-                      label="Default rate"
+                      label={translate('defaultRate')}
                       error={shown.default_vat_rate}
                       group
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <Segmented
-                          label="Default rate"
+                          label={translate('defaultRate')}
                           value={customRate ? 'custom' : values.default_vat_rate}
                           options={[
                             ...VAT_RATES.map((rate) => ({ value: rate, label: `${rate}%` })),
-                            { value: 'custom', label: 'Other' },
+                            { value: 'custom', label: translate('other') },
                           ]}
                           onChange={(choice) => {
                             setCustomRate(choice === 'custom')
@@ -1031,7 +1071,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                         {customRate && (
                           <UnitInput
                             {...describe('default_vat_rate')}
-                            aria-label="Other rate"
+                            aria-label={translate('otherRate')}
                             unit="%"
                             inputMode="decimal"
                             value={values.default_vat_rate}
@@ -1050,8 +1090,8 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="bank"
               state={state('bank')}
-              title="Bank account"
-              description="Printed on every invoice. A Swiss IBAN adds a QR bill to CHF and EUR invoices."
+              title={translate('bankAccount')}
+              description={translate('printedOnEveryInvoiceASwissIBANAddsA')}
             >
               <FormField id={inputId('iban')} label="IBAN" required error={shown.iban} width="md">
                 <input
@@ -1059,17 +1099,22 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   value={values.iban}
                   onChange={(e) => set('iban', e.target.value.toUpperCase())}
                   onBlur={() => iban.valid && set('iban', iban.formatted)}
-                  placeholder="e.g. CH93 0076 2011 6238 5295 7"
+                  placeholder={translate('eGCH9300762011623852957')}
                   spellCheck={false}
                   className={cn(bigInput, 'font-mono text-body tracking-wide')}
                 />
               </FormField>
-              <FormField id={inputId('bank_name')} label="Bank" error={shown.bank_name} width="md">
+              <FormField
+                id={inputId('bank_name')}
+                label={translate('bank')}
+                error={shown.bank_name}
+                width="md"
+              >
                 <input
                   {...describe('bank_name')}
                   value={values.bank_name}
                   onChange={(e) => set('bank_name', e.target.value)}
-                  placeholder="e.g. Zürcher Kantonalbank"
+                  placeholder={translate('eGZRcherKantonalbank')}
                   className={bigInput}
                 />
               </FormField>
@@ -1079,23 +1124,24 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="payment"
               state={state('payment')}
-              title="Payment methods"
-              description="Ways to pay besides the bank details on every invoice. Each invoice can turn them on or off; new ones start with what is on here."
+              title={translate('paymentMethods')}
+              description={translate('waysToPayBesidesTheBankDetailsOnEvery')}
             >
               <SwitchRow
                 id={inputId('qr_bill_enabled')}
-                label="Swiss QR bill"
+                label={translate('swissQRBill')}
                 description={
                   !values.iban.trim() ? (
                     <span className="text-warning">
-                      Add your IBAN under Bank account to attach it.
+                      {translate('addYourIBANUnderBankAccountToAttachIt')}
                     </span>
                   ) : iban.valid && !iban.swiss ? (
                     <span className="text-warning">
-                      Needs a CH or LI IBAN; yours is from {iban.country}.
+                      {translate('needsACHOrLIIBANYoursIsFrom')}
+                      {iban.country}.
                     </span>
                   ) : (
-                    'A payment slip on its own page of CHF and EUR invoices.'
+                    translate('aPaymentSlipOnItsOwnPageOfCHF')
                   )
                 }
                 checked={values.qr_bill_enabled}
@@ -1103,8 +1149,8 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               />
               <SwitchRow
                 id={inputId('revolut_enabled')}
-                label="Revolut"
-                description="A “Pay with Revolut” link and QR code on the invoice and in the email."
+                label={translate('revolut2')}
+                description={translate('aPayWithRevolutLinkAndQRCodeOn')}
                 checked={values.revolut_enabled}
                 onCheckedChange={(on) => {
                   form.touch('revolut_username')
@@ -1114,18 +1160,18 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               {(values.revolut_enabled || values.revolut_username) && (
                 <FormField
                   id={inputId('revolut_username')}
-                  label="revolut.me username"
+                  label={translate('revolutMeUsername')}
                   width="md"
                   required={values.revolut_enabled}
                   error={shown.revolut_username}
-                  tip="Your Revtag, as in your revolut.me link. Paste the whole link if you like."
+                  tip={translate('yourRevtagAsInYourRevolutMeLinkPaste')}
                 >
                   <div className="relative">
                     <span
                       aria-hidden
                       className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-body text-muted-foreground"
                     >
-                      revolut.me/
+                      {translate('revolutMe')}
                     </span>
                     <input
                       {...describe('revolut_username')}
@@ -1135,7 +1181,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                       autoCapitalize="none"
                       onChange={(e) => set('revolut_username', e.target.value)}
                       onBlur={() => revolutName && set('revolut_username', revolutName)}
-                      placeholder="yourname"
+                      placeholder={translate('yourname')}
                       className={cn(
                         bigInput,
                         'pl-[104px] font-mono text-body',
@@ -1151,10 +1197,10 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="numbering"
               state={state('numbering')}
-              title="Numbering"
-              description="Numbers are given when an invoice is issued, without gaps, restarting every year."
+              title={translate('numbering')}
+              description={translate('numbersAreGivenWhenAnInvoiceIsIssuedWithout')}
             >
-              <FormField id={inputId('number_format')} label="Number format" width="md">
+              <FormField id={inputId('number_format')} label={translate('numberFormat')} width="md">
                 <Combobox
                   id={inputId('number_format')}
                   value={values.number_format}
@@ -1169,20 +1215,28 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                       <span className="text-muted-foreground">{option.hint}</span>
                     </span>
                   )}
-                  placeholder="Choose a format"
+                  placeholder={translate('chooseAFormat')}
                   onChange={(format) => {
                     const picked = NUMBER_FORMATS.find((entry) => entry === format)
                     if (picked) set('number_format', picked)
                   }}
                 />
               </FormField>
-              <FormField id={inputId('number_preview')} label="Next numbers" width="md" group>
+              <FormField
+                id={inputId('number_preview')}
+                label={translate('nextNumbers')}
+                width="md"
+                group
+              >
                 <SettingsPreview
-                  label="Next numbers"
+                  label={translate('nextNumbers')}
                   items={[
-                    { label: 'Invoice', value: exampleNumber(values.number_format, year, 1) },
                     {
-                      label: 'Credit note',
+                      label: translate('invoice2'),
+                      value: exampleNumber(values.number_format, year, 1),
+                    },
+                    {
+                      label: translate('creditNote2'),
                       value: exampleNumber(values.number_format, year, 1, true),
                     },
                   ]}
@@ -1193,13 +1247,13 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="defaults"
               state={state('defaults')}
-              title="Defaults"
-              description="What a new invoice starts with. A client’s own currency, language and terms win over these."
+              title={translate('defaults')}
+              description={translate('whatANewInvoiceStartsWithAClientS')}
             >
               <>
                 <FormField
                   id={inputId('currency')}
-                  label="Currency"
+                  label={translate('currency')}
                   width="md"
                   error={shown.currency}
                   hint={currencyLocked ?? undefined}
@@ -1210,14 +1264,14 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                       value={values.currency}
                       options={CURRENCY_OPTIONS}
                       renderValue={(option) => `${option.value} · ${option.label}`}
-                      placeholder="Choose a currency"
+                      placeholder={translate('chooseACurrency2')}
                       onChange={(code) => set('currency', code)}
                     />
                   </fieldset>
                 </FormField>
-                <FormField id={inputId('language')} label="Document language" group>
+                <FormField id={inputId('language')} label={translate('documentLanguage')} group>
                   <Segmented
-                    label="Document language"
+                    label={translate('documentLanguage')}
                     value={values.language}
                     options={LANGUAGE_CHOICES}
                     onChange={(language) => set('language', language)}
@@ -1226,17 +1280,20 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               </>
               <FormField
                 id={inputId('default_terms_days')}
-                label="Payment terms"
+                label={translate('paymentTerms')}
                 error={shown.default_terms_days}
                 group
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <Segmented
-                    label="Payment terms"
+                    label={translate('paymentTerms')}
                     value={customTerms ? 'custom' : values.default_terms_days}
                     options={[
-                      ...TERMS.map((days) => ({ value: days, label: `${days} days` })),
-                      { value: 'custom', label: 'Custom' },
+                      ...TERMS.map((days) => ({
+                        value: days,
+                        label: translate('days3', { days: days }),
+                      })),
+                      { value: 'custom', label: translate('custom') },
                     ]}
                     onChange={(choice) => {
                       setCustomTerms(choice === 'custom')
@@ -1246,7 +1303,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   {customTerms && (
                     <UnitInput
                       {...describe('default_terms_days')}
-                      aria-label="Custom payment terms"
+                      aria-label={translate('customPaymentTerms')}
                       unit="days"
                       inputMode="numeric"
                       value={values.default_terms_days}
@@ -1264,24 +1321,28 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="instalments"
               state={state('instalments')}
-              title="Instalments"
-              description="How an invoice paid in parts starts, and the reminders clients get. Each invoice can change its own."
+              title={translate('instalments2')}
+              description={translate('howAnInvoicePaidInPartsStartsAndThe')}
             >
-              <FormField id={inputId('instalments_mode')} label="Pay in instalments as" group>
+              <FormField
+                id={inputId('instalments_mode')}
+                label={translate('payInInstalmentsAs')}
+                group
+              >
                 <Segmented
                   fill
-                  label="Pay in instalments as"
+                  label={translate('payInInstalmentsAs')}
                   value={values.instalments_mode}
                   options={[
-                    { value: 'schedule', label: 'One invoice, several due dates' },
-                    { value: 'plan', label: 'One invoice per instalment' },
+                    { value: 'schedule', label: translate('oneInvoiceSeveralDueDates') },
+                    { value: 'plan', label: translate('oneInvoicePerInstalment') },
                   ]}
                   onChange={(mode) => set('instalments_mode', mode)}
                 />
               </FormField>
               <FormField
                 id={inputId('instalments_count')}
-                label="Instalments"
+                label={translate('instalments2')}
                 width="xs"
                 error={shown.instalments_count}
               >
@@ -1295,7 +1356,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   className={cn(bigInput, 'tabular-nums')}
                 />
               </FormField>
-              <FormField id={inputId('instalments_interval')} label="Every" width="xs">
+              <FormField id={inputId('instalments_interval')} label={translate('every')} width="xs">
                 <NativeSelect
                   id={inputId('instalments_interval')}
                   value={values.instalments_interval}
@@ -1313,14 +1374,14 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               </FormField>
               <FormField
                 id={inputId('instalments_plan_lead_days')}
-                label="Issue invoices"
+                label={translate('issueInvoices')}
                 width="md"
                 error={shown.instalments_plan_lead_days}
-                tip="For one invoice per instalment: how many days before each due date its invoice is issued."
+                tip={translate('forOneInvoicePerInstalmentHowManyDaysBefore')}
               >
                 <UnitInput
                   {...describe('instalments_plan_lead_days')}
-                  unit="days before due"
+                  unit={translate('daysBeforeDue')}
                   inputMode="numeric"
                   value={values.instalments_plan_lead_days}
                   onChange={(e) =>
@@ -1330,15 +1391,15 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               </FormField>
               <SwitchRow
                 id={inputId('instalments_plan_auto_send')}
-                label="Email instalment invoices when issued"
-                description="Sent to the client’s billing email; without one they are issued and wait for you."
+                label={translate('emailInstalmentInvoicesWhenIssued')}
+                description={translate('sentToTheClientSBillingEmailWithoutOne')}
                 checked={values.instalments_plan_auto_send}
                 onCheckedChange={(on) => set('instalments_plan_auto_send', on)}
               />
               <SwitchRow
                 id={inputId('instalments_reminders_enabled')}
-                label="Payment reminders"
-                description="Emails the client before and after each instalment is due, while it is open."
+                label={translate('paymentReminders')}
+                description={translate('emailsTheClientBeforeAndAfterEachInstalmentIs')}
                 checked={values.instalments_reminders_enabled}
                 onCheckedChange={(on) => set('instalments_reminders_enabled', on)}
               />
@@ -1346,14 +1407,14 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 <>
                   <FormField
                     id={inputId('instalments_remind_before_days')}
-                    label="Before the due date"
+                    label={translate('beforeTheDueDate')}
                     width="md"
                     error={shown.instalments_remind_before_days}
-                    tip="A friendly heads-up before the instalment is due. 0 sends none."
+                    tip={translate('aFriendlyHeadsUpBeforeTheInstalmentIsDue')}
                   >
                     <UnitInput
                       {...describe('instalments_remind_before_days')}
-                      unit="days before"
+                      unit={translate('daysBefore')}
                       inputMode="numeric"
                       value={values.instalments_remind_before_days}
                       onChange={(e) =>
@@ -1366,20 +1427,20 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   </FormField>
                   <FormField
                     id={inputId('instalments_remind_after_days')}
-                    label="After the due date, if unpaid"
+                    label={translate('afterTheDueDateIfUnpaid')}
                     width="md"
                     error={shown.instalments_remind_after_days}
-                    tip="Up to three reminders, separated by commas: 3, 10 sends one 3 days and one 10 days after the due date."
+                    tip={translate('upToThreeRemindersSeparatedByCommas310')}
                   >
                     <UnitInput
                       {...describe('instalments_remind_after_days')}
-                      unit="days after"
+                      unit={translate('daysAfter')}
                       value={values.instalments_remind_after_days}
                       onChange={(e) => set('instalments_remind_after_days', e.target.value)}
                       placeholder="3, 10"
                     />
                   </FormField>
-                  <SettingsPreview label="Reminder schedule">
+                  <SettingsPreview label={translate('reminderSchedule')}>
                     {reminderSummary(
                       values.instalments_remind_before_days,
                       values.instalments_remind_after_days,
@@ -1392,13 +1453,13 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="dunning"
               state={state('dunning')}
-              title="Dunning"
-              description="Reminders for invoices without instalments, in up to ten steps: friendly notes before the due date, then reminders after it. Each invoice can be paused and each client left out."
+              title={translate('dunning')}
+              description={translate('remindersForInvoicesWithoutInstalmentsInUpToTen')}
             >
               <SwitchRow
                 id={inputId('dunning_enabled')}
-                label="Send reminders automatically"
-                description="Each step goes out once, to the client’s billing email. Sending one by hand works either way."
+                label={translate('sendRemindersAutomatically')}
+                description={translate('eachStepGoesOutOnceToTheClientS')}
                 checked={values.dunning_enabled}
                 onCheckedChange={(on) => set('dunning_enabled', on)}
               />
@@ -1410,8 +1471,8 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               />
               <SwitchRow
                 id={inputId('dunning_interest_enabled')}
-                label="Default interest"
-                description="Simple interest on the open amount, shown on each reminder (OR 104). Not added to the invoice."
+                label={translate('defaultInterest')}
+                description={translate('simpleInterestOnTheOpenAmountShownOnEach')}
                 checked={values.dunning_interest_enabled}
                 onCheckedChange={(on) => set('dunning_interest_enabled', on)}
               />
@@ -1419,14 +1480,14 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 <>
                   <FormField
                     id={inputId('dunning_interest_rate')}
-                    label="Rate"
+                    label={translate('rate2')}
                     width="xs"
                     error={shown.dunning_interest_rate}
-                    tip="5 % a year is the statutory rate; a higher one must be agreed."
+                    tip={translate('message5AYearIsTheStatutoryRateAHigher')}
                   >
                     <UnitInput
                       {...describe('dunning_interest_rate')}
-                      unit="% a year"
+                      unit={translate('aYear3')}
                       inputMode="decimal"
                       value={values.dunning_interest_rate}
                       onChange={(e) => set('dunning_interest_rate', e.target.value)}
@@ -1434,16 +1495,16 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   </FormField>
                   <FormField
                     id={inputId('dunning_interest_from')}
-                    label="Interest runs from"
-                    hint="From the due date only when it was agreed with the client."
+                    label={translate('interestRunsFrom')}
+                    hint={translate('fromTheDueDateOnlyWhenItWasAgreed')}
                     group
                   >
                     <Segmented
-                      label="Interest runs from"
+                      label={translate('interestRunsFrom')}
                       value={values.dunning_interest_from}
                       options={[
-                        { value: 'reminder', label: 'The first reminder' },
-                        { value: 'due_date', label: 'The due date' },
+                        { value: 'reminder', label: translate('theFirstReminder') },
+                        { value: 'due_date', label: translate('theDueDate') },
                       ]}
                       onChange={(from) => set('dunning_interest_from', from)}
                     />
@@ -1455,12 +1516,12 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
             <Section
               id="footer"
               state={state('footer')}
-              title="Footer"
-              description="Printed under the totals of every new invoice; each invoice can change it."
+              title={translate('footer')}
+              description={translate('printedUnderTheTotalsOfEveryNewInvoiceEach')}
             >
               <FormField
                 id={inputId('footer')}
-                label="Footer text"
+                label={translate('footerText')}
                 error={shown.footer}
                 hint={<span className="tabular-nums">{values.footer.length} / 1000</span>}
               >
@@ -1470,7 +1531,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   maxLength={1000}
                   value={values.footer}
                   onChange={(e) => set('footer', e.target.value)}
-                  placeholder="e.g. Thank you for your trust. Payable within the agreed terms."
+                  placeholder={translate('eGThankYouForYourTrustPayableWithin')}
                   className={cn(bigInput, 'h-auto min-h-24 resize-y py-2.5 leading-relaxed')}
                 />
               </FormField>
@@ -1497,16 +1558,21 @@ function Readiness({
   if (missing.length === 0)
     return (
       <p className="flex items-center gap-2.5 rounded-xl bg-success-surface px-4 py-3 text-body text-success ring-1 ring-success-solid/20 sm:px-5">
-        <CircleCheck className="size-4" /> <span className="font-medium">Ready</span> — invoices can
-        be issued with these details.
+        <CircleCheck className="size-4" /> <span className="font-medium">{translate('ready')}</span>
+        {translate('invoicesCanBeIssuedWithTheseDetails')}
       </p>
     )
   return (
     <div className="grid gap-3 rounded-xl border bg-card px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-title-sm font-semibold tracking-[-0.01em]">Ready to issue invoices</p>
+        <p className="text-title-sm font-semibold tracking-[-0.01em]">
+          {translate('readyToIssueInvoices')}
+        </p>
         <p className="text-body-sm text-muted-foreground tabular-nums">
-          {done} of {total} done
+          {done}
+          {translate('of5')}
+          {total}
+          {translate('done3')}
         </p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -1516,7 +1582,7 @@ function Readiness({
         />
       </div>
       <p className="flex flex-wrap gap-x-1 text-body-sm text-muted-foreground">
-        Still needed:
+        {translate('stillNeeded')}
         {missing.map((field, i) => (
           <span key={field}>
             <button

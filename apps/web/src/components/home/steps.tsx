@@ -2,26 +2,27 @@ import { FileUp, Landmark, Send } from 'lucide-react'
 
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
 const STEPS: { icon: typeof FileUp; tone: Tone; title: string; body: string }[] = [
   {
     icon: FileUp,
     tone: 'sky',
-    title: 'Bring what you have',
-    body: 'Upload old invoices, client lists, receipts or a spreadsheet. The AI import turns them into records you check before anything is saved.',
+    title: translate('bringWhatYouHave'),
+    body: translate('uploadOldInvoicesClientListsReceiptsOrASpreadsheet'),
   },
   {
     icon: Send,
     tone: 'mint',
-    title: 'Invoice and get paid',
-    body: 'Issue an invoice with the QR bill, email it from Helvetly, and let reminders and instalments follow up on their own.',
+    title: translate('invoiceAndGetPaid'),
+    body: translate('issueAnInvoiceWithTheQRBillEmailIt'),
   },
   {
     icon: Landmark,
     tone: 'lilac',
-    title: 'Close the quarter',
-    body: 'Close the month so nothing changes behind your back, then export the VAT return for the ePortal and the files for your trustee.',
+    title: translate('closeTheQuarter'),
+    body: translate('closeTheMonthSoNothingChangesBehindYourBack'),
   },
 ]
 
@@ -30,11 +31,13 @@ export function Steps() {
     <section className="py-4">
       <Container>
         <SectionHeading
-          eyebrow="How it works"
+          eyebrow={translate('howItWorks')}
           tone="sky"
           title={
             <>
-              Set up in an afternoon, <span className="accent">calm</span> every month after
+              {translate('setUpInAnAfternoon')}
+              <span className="accent">{translate('calm')}</span>
+              {translate('everyMonthAfter')}
             </>
           }
         />

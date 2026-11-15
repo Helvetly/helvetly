@@ -1,5 +1,4 @@
 'use client'
-
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,20 +8,20 @@ import { useSearchParams } from 'next/navigation'
 import { Fragment, useEffect, useState } from 'react'
 
 import { heidiApi, type HeidiPage } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 /** The welcome's staggered entrance; each part adds its delay and slide. */
-const enter =
-  'animate-in duration-700 ease-out fill-mode-backwards fade-in motion-reduce:animate-none'
+const enter = translate('animateInDuration700EaseOutFillModeBackwards')
 
 /** Milliseconds per typed letter, and the pause before the first one. */
 const TYPE_MS = 32
 const TYPE_START_MS = 250
 
 function greeting(hour: number) {
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (hour < 12) return translate('goodMorning')
+  if (hour < 18) return translate('goodAfternoon')
+  return translate('goodEvening')
 }
 
 const prefersReducedMotion = () =>
@@ -132,9 +131,9 @@ export function EmptyState({
                 lines={[
                   [{ text: hello }],
                   [
-                    { text: 'What’s on ' },
+                    { text: translate('whatSOn') },
                     {
-                      text: 'your mind?',
+                      text: translate('yourMind'),
                       className:
                         'bg-linear-to-r from-heidi-from to-heidi-to bg-clip-text text-transparent',
                     },
@@ -150,7 +149,7 @@ export function EmptyState({
               'delay-300 slide-in-from-bottom-1',
             )}
           >
-            Ask about invoices, clients, expenses and VAT, or how Helvetly works.
+            {translate('askAboutInvoicesClientsExpensesAndVATOrHow')}
           </p>
         </div>
       </div>
@@ -159,7 +158,7 @@ export function EmptyState({
         className={cn(enter, 'delay-400 slide-in-from-bottom-2')}
       >
         <h3 id="heidi-suggestions" className="px-2 pb-1.5 text-caption text-muted-foreground">
-          Try asking
+          {translate('tryAsking')}
         </h3>
         <ul
           className={cn(

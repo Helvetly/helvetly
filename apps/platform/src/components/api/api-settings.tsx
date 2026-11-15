@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { BookOpen, Bot, Braces } from 'lucide-react'
 
@@ -8,6 +8,7 @@ import { SettingsPage, SettingsSection } from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { useApiOrigin } from '@/lib/api-origin'
 import { docsUrl } from '@/lib/docs'
+import { translate } from '@/lib/i18n'
 
 import { ApiTokens } from './api-tokens'
 import { DocsLink } from './code-block'
@@ -20,12 +21,14 @@ export function ApiSettings() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="API & MCP"
-        description="Connect your own scripts and AI assistants to Helvetly. Tokens are yours: they follow you, not the workspace, and each acts in the workspace it was created in."
+        title={translate('apiMCP')}
+        description={translate('connectYourOwnScriptsAndAIAssistantsToHelvetly')}
         actions={
           <Button asChild size="sm" variant="outline">
-            <a href={docsUrl()} target="_blank" rel="noreferrer">
-              <BookOpen /> Developer docs <span className="sr-only">(opens in a new tab)</span>
+            <a href={localizedHref(docsUrl())} target="_blank" rel="noreferrer">
+              <BookOpen />
+              {translate('developerDocs')}
+              <span className="sr-only">{translate('opensInANewTab')}</span>
             </a>
           </Button>
         }
@@ -34,12 +37,11 @@ export function ApiSettings() {
         <SettingsSection
           id="mcp"
           icon={Bot}
-          title="Connect an AI assistant"
+          title={translate('connectAnAIAssistant')}
           description={
             <>
-              Claude, Cursor and other assistants can use Helvetly through MCP: they look up clients
-              and invoices and, with a write token, create them for you.{' '}
-              <DocsLink path="/mcp">MCP guide</DocsLink>
+              {translate('claudeCursorAndOtherAssistantsCanUseHelvetlyThrough')}{' '}
+              <DocsLink path="/mcp">{translate('mcpGuide')}</DocsLink>
             </>
           }
         >
@@ -48,23 +50,23 @@ export function ApiSettings() {
         <SettingsSection
           id="rest-api"
           icon={Braces}
-          title="REST API"
+          title={translate('restAPI')}
           description={
             <>
-              JSON over HTTPS, the same operations as the MCP tools. Send the token in the
-              Authorization header. <DocsLink>API reference</DocsLink>
+              {translate('jsonOverHTTPSTheSameOperationsAsTheMCP')}
+              <DocsLink>{translate('apiReference')}</DocsLink>
             </>
           }
         >
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <p className="text-body-sm font-medium">Base URL</p>
-              <Snippet label="Base URL" value={`${origin}/api/v1`} />
+              <p className="text-body-sm font-medium">{translate('baseURL')}</p>
+              <Snippet label={translate('baseURL')} value={`${origin}/api/v1`} />
             </div>
             <div className="grid gap-1.5">
-              <p className="text-body-sm font-medium">First request</p>
+              <p className="text-body-sm font-medium">{translate('firstRequest')}</p>
               <Snippet
-                label="Example request"
+                label={translate('exampleRequest')}
                 value={`curl ${origin}/api/v1/clients -H "Authorization: Bearer hvt_YOUR_TOKEN"`}
               />
             </div>

@@ -1,5 +1,4 @@
 'use client'
-
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -13,6 +12,7 @@ import { PhotoCropDialog } from '@/components/account/photo-crop'
 import { initialsOf } from '@/components/initials'
 import { isOwnPhoto, useRemovePhoto, useUploadPhoto } from '@/lib/account'
 import { errorMessage, type User } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 /** A picked photo being cropped: the file and a local URL to show it. */
 type Draft = { file: File; url: string }
@@ -39,7 +39,7 @@ export function ProfilePhoto({ user, name }: { user: User; name: string }) {
   const own = isOwnPhoto(user.avatar_url)
   const busy = upload.isPending || remove.isPending
   const choose = () => input.current?.click()
-  const action = own ? 'Change photo' : 'Upload photo'
+  const action = own ? translate('changePhoto') : translate('uploadPhoto')
 
   const pick = (file: File | undefined) => {
     if (!file) return
@@ -57,15 +57,15 @@ export function ProfilePhoto({ user, name }: { user: User; name: string }) {
     upload.mutate(photo, {
       onSuccess: () => {
         setDraft(null)
-        toast.success('Photo saved.')
+        toast.success(translate('photoSaved'))
       },
     })
 
   const hint = own
-    ? 'Your own photo, shown to your team wherever you appear.'
+    ? translate('yourOwnPhotoShownToYourTeamWhereverYou')
     : user.avatar_url
-      ? 'Your Google picture. Upload a photo to use another one.'
-      : 'Upload a photo to show instead of your initials.'
+      ? translate('yourGooglePictureUploadAPhotoToUseAnother')
+      : translate('uploadAPhotoToShowInsteadOfYourInitials')
 
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -135,7 +135,8 @@ export function ProfilePhoto({ user, name }: { user: User; name: string }) {
               setConfirming(true)
             }}
           >
-            <Trash2 aria-hidden /> Remove
+            <Trash2 aria-hidden />
+            {translate('remove')}
           </Button>
         )}
       </div>
@@ -152,14 +153,14 @@ export function ProfilePhoto({ user, name }: { user: User; name: string }) {
       {confirming && (
         <ConfirmDialog
           tone="destructive"
-          title="Remove your photo?"
-          body="Your Google picture shows again if you connected Google, else your initials. You can upload a new photo at any time."
-          confirmLabel="Remove photo"
+          title={translate('removeYourPhoto')}
+          body={translate('yourGooglePictureShowsAgainIfYouConnectedGoogle')}
+          confirmLabel={translate('removePhoto')}
           onDecide={(approved) => {
             setConfirming(false)
             if (approved)
               remove.mutate(undefined, {
-                onSuccess: () => toast.success('Photo removed.'),
+                onSuccess: () => toast.success(translate('photoRemoved')),
                 onError: (failure) => setError(errorMessage(failure)),
               })
           }}

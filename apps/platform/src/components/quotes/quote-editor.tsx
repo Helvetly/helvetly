@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
@@ -31,6 +30,7 @@ import {
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import {
   formatAmount,
   isZero,
@@ -71,9 +71,9 @@ export function NewQuoteSheet({
         showCloseButton={false}
         className={cn('w-full! max-w-none! gap-0 bg-panel p-0 dark:bg-background', EDITOR_WIDTH)}
       >
-        <SheetTitle className="sr-only">New quote</SheetTitle>
+        <SheetTitle className="sr-only">{translate('newQuote2')}</SheetTitle>
         <SheetDescription className="sr-only">
-          A quote for a client, saved as a draft
+          {translate('aQuoteForAClientSavedAsADraft')}
         </SheetDescription>
         <QuoteEditor clientId={clientId} onCancel={onClose} onSaved={onSaved} />
       </SheetContent>
@@ -96,10 +96,10 @@ export function QuoteEditor({
   const settings = useInvoiceSettings()
   const preset = useClient(quote ? null : clientId)
   const title = !quote
-    ? 'New quote'
+    ? translate('newQuote2')
     : quote.number
-      ? `Edit ${quoteNumber(quote)}`
-      : 'Edit draft quote'
+      ? translate('edit2', { value1: quoteNumber(quote) })
+      : translate('editDraftQuote')
   if (settings.error)
     return (
       <Frame title={title} onCancel={onCancel}>
@@ -149,14 +149,14 @@ function Frame({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Close editor"
+              aria-label={translate('closeEditor')}
               className="ml-auto"
               onClick={onCancel}
             >
               <X />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Close without saving</TooltipContent>
+          <TooltipContent>{translate('closeWithoutSaving')}</TooltipContent>
         </Tooltip>
       </header>
       {children}
@@ -190,7 +190,7 @@ function Editor({
   const errors: Record<string, string> = {
     ...fromServer,
     ...converted.errors,
-    ...(tried && !values.client_id ? { client_id: 'Choose who this quote is for.' } : {}),
+    ...(tried && !values.client_id ? { client_id: translate('chooseWhoThisQuoteIsFor') } : {}),
   }
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
 
@@ -211,18 +211,18 @@ function Editor({
   const submit = () => {
     setTried(true)
     if (!values.client_id || Object.keys(converted.errors).length)
-      return toast.error('Fix the highlighted fields first.')
+      return toast.error(translate('fixTheHighlightedFieldsFirst'))
     save.mutate(
       { id: quote?.id, input: converted.input },
       {
         onSuccess: (saved) => {
-          toast.success(quote ? 'Quote saved.' : 'Draft quote created.')
+          toast.success(quote ? translate('quoteSaved') : translate('draftQuoteCreated'))
           onSaved(saved)
         },
         onError: (error) => {
           if (error instanceof ApiError && error.status === 422) {
             setFromServer(serverErrors(error.details.fields, converted.keys))
-            toast.error('Fix the highlighted fields first.')
+            toast.error(translate('fixTheHighlightedFieldsFirst'))
           } else failQuote(error)
         },
       },
@@ -247,7 +247,12 @@ function Editor({
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="grid content-start gap-5 p-4 sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField id="quote-client" label="Client" required error={errors.client_id}>
+              <FormField
+                id="quote-client"
+                label={translate('client')}
+                required
+                error={errors.client_id}
+              >
                 <Popover open={picking} onOpenChange={setPicking}>
                   <PopoverTrigger asChild>
                     <button
@@ -256,7 +261,8 @@ function Editor({
                       className={cn(inputClass, 'flex items-center justify-between text-left')}
                     >
                       <span className={cn('truncate', !client && 'text-muted-foreground')}>
-                        {client?.name ?? (values.client_id ? 'Loading…' : 'Choose a client')}
+                        {client?.name ??
+                          (values.client_id ? translate('loading') : translate('chooseAClient'))}
                       </span>
                       <ChevronsUpDown className="size-4 text-muted-foreground" />
                     </button>
@@ -278,20 +284,25 @@ function Editor({
               </FormField>
               <FormField
                 id="quote-reference"
-                label="Reference"
+                label={translate('reference')}
                 error={errors.reference}
-                tip="The client’s project or request number, printed on the quote."
+                tip={translate('theClientSProjectOrRequestNumberPrintedOn')}
               >
                 <input
                   {...describedBy('quote-reference', errors.reference)}
                   value={values.reference}
                   maxLength={100}
                   onChange={(event) => set('reference', event.target.value)}
-                  placeholder="Optional"
+                  placeholder={translate('optional')}
                   className={inputClass}
                 />
               </FormField>
-              <FormField id="quote-issue_date" label="Date" required error={errors.issue_date}>
+              <FormField
+                id="quote-issue_date"
+                label={translate('date')}
+                required
+                error={errors.issue_date}
+              >
                 <input
                   {...describedBy('quote-issue_date', errors.issue_date)}
                   type="date"
@@ -303,10 +314,10 @@ function Editor({
               </FormField>
               <FormField
                 id="quote-valid_until"
-                label="Valid until"
+                label={translate('validUntil3')}
                 required
                 error={errors.valid_until}
-                tip="After this date the client can no longer accept it in the portal."
+                tip={translate('afterThisDateTheClientCanNoLongerAccept')}
               >
                 <input
                   {...describedBy('quote-valid_until', errors.valid_until)}
@@ -326,8 +337,8 @@ function Editor({
                 <Combobox
                   value={values.currency}
                   options={CURRENCY_OPTIONS}
-                  label="Currency"
-                  placeholder="Currency"
+                  label={translate('currency')}
+                  placeholder={translate('currency')}
                   renderValue={(option) => option.value}
                   contentClassName="w-[300px]"
                   className="h-8"
@@ -335,13 +346,13 @@ function Editor({
                 />
               </div>
               <Segmented
-                label="Document language"
+                label={translate('documentLanguage')}
                 value={values.language}
                 options={LANGUAGE_CHOICES}
                 onChange={(language) => set('language', language)}
               />
               <Segmented
-                label="VAT"
+                label={translate('vat')}
                 value={values.vat_mode}
                 options={VAT_CHOICES}
                 onChange={(mode) =>
@@ -353,14 +364,14 @@ function Editor({
               />
             </div>
 
-            <FormField id="quote-intro" label="Introduction" error={errors.intro}>
+            <FormField id="quote-intro" label={translate('introduction')} error={errors.intro}>
               <textarea
                 {...describedBy('quote-intro', errors.intro)}
                 rows={2}
                 maxLength={1000}
                 value={values.intro}
                 onChange={(event) => set('intro', event.target.value)}
-                placeholder="Printed above the lines, e.g. Thank you for your request. We are pleased to offer:"
+                placeholder={translate('printedAboveTheLinesEGThankYouFor')}
                 className={textArea}
               />
             </FormField>
@@ -380,17 +391,17 @@ function Editor({
             </div>
 
             <dl
-              aria-label="Totals"
+              aria-label={translate('totals')}
               aria-busy={preview.isFetching}
               className={cn(
                 'grid w-full gap-2 justify-self-end text-body transition-opacity sm:w-80',
                 preview.isFetching && 'opacity-70',
               )}
             >
-              <TotalRow label="Subtotal" value={totals?.subtotal} />
+              <TotalRow label={translate('subtotal')} value={totals?.subtotal} />
               <div className="flex items-center justify-between gap-3">
                 <dt className="flex items-center gap-2 text-muted-foreground">
-                  <label htmlFor="quote-discount_percent">Discount %</label>
+                  <label htmlFor="quote-discount_percent">{translate('discount4')}</label>
                   <input
                     id="quote-discount_percent"
                     aria-invalid={errors.discount_percent ? true : undefined}
@@ -417,24 +428,30 @@ function Editor({
                   />
                 ))}
               <div className="flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-2 font-medium">
-                <dt>Total {values.currency}</dt>
+                <dt>
+                  {translate('total2')}
+                  {values.currency}
+                </dt>
                 <dd className="text-title tabular-nums">
                   {totals ? formatAmount(totals.payable_total) : '—'}
                 </dd>
               </div>
               {errors.discount_percent && (
-                <p className="text-xs text-destructive">Discount: {errors.discount_percent}</p>
+                <p className="text-xs text-destructive">
+                  {translate('discount3')}
+                  {errors.discount_percent}
+                </p>
               )}
             </dl>
 
-            <FormField id="quote-footer" label="Footer" error={errors.footer}>
+            <FormField id="quote-footer" label={translate('footer')} error={errors.footer}>
               <textarea
                 {...describedBy('quote-footer', errors.footer)}
                 rows={2}
                 maxLength={1000}
                 value={values.footer}
                 onChange={(event) => set('footer', event.target.value)}
-                placeholder="Printed at the bottom, e.g. terms or what is not included"
+                placeholder={translate('printedAtTheBottomEGTermsOrWhat')}
                 className={textArea}
               />
             </FormField>
@@ -444,8 +461,9 @@ function Editor({
                 htmlFor="quote-note"
                 className="flex items-center gap-1.5 text-body-sm font-medium text-muted-foreground"
               >
-                <Lock className="size-3.5" /> Internal note
-                <span className="font-normal">· never printed or shown to the client</span>
+                <Lock className="size-3.5" />
+                {translate('internalNote2')}
+                <span className="font-normal">{translate('neverPrintedOrShownToTheClient')}</span>
               </label>
               <textarea
                 id="quote-note"
@@ -453,7 +471,7 @@ function Editor({
                 maxLength={1000}
                 value={values.note}
                 onChange={(event) => set('note', event.target.value)}
-                placeholder="Anything your team should know about this quote"
+                placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
                 className={textArea}
               />
             </section>
@@ -462,22 +480,26 @@ function Editor({
 
         <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 bg-card px-4 py-3">
           <span className="text-body-sm text-muted-foreground max-sm:hidden">
-            Saved as a draft: nothing is sent yet.
+            {translate('savedAsADraftNothingIsSentYet')}
           </span>
           <Button type="button" variant="ghost" className="ml-auto" onClick={cancel}>
-            Cancel
+            {translate('cancel')}
           </Button>
           <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? 'Saving…' : quote ? 'Save changes' : 'Save draft'}
+            {save.isPending
+              ? translate('saving')
+              : quote
+                ? translate('saveChanges')
+                : translate('saveDraft')}
           </Button>
         </footer>
       </form>
 
       {discarding && (
         <ConfirmDialog
-          title="Discard your changes?"
-          body="What you typed in this quote is not saved."
-          confirmLabel="Discard"
+          title={translate('discardYourChanges')}
+          body={translate('whatYouTypedInThisQuoteIsNotSaved')}
+          confirmLabel={translate('discard')}
           tone="destructive"
           onDecide={(approved) => {
             setDiscarding(false)

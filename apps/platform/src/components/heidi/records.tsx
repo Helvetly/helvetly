@@ -1,5 +1,4 @@
 'use client'
-
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Meter } from '@helvetly/ui/components/meter'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
@@ -11,6 +10,7 @@ import { plain } from '@/components/engagements/engagement-bits'
 import { STATUS_TONES } from '@/components/invoices/invoice-bits'
 import { useOpenHref } from '@/components/record-link'
 import type { HeidiRecord } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { STATUS_LABELS, UNITS } from '@/lib/invoices'
 
 const ICONS: Record<HeidiRecord['kind'], LucideIcon> = {
@@ -37,7 +37,10 @@ export function progressText({
   available: string
   unit: string
 }) {
-  return `${plain(used)} of ${[plain(available), short(unit)].filter(Boolean).join(' ')} used`
+  return translate('ofUsed', {
+    value1: plain(used),
+    value2: [plain(available), short(unit)].filter(Boolean).join(' '),
+  })
 }
 
 /** The records as plain lines, so a copied answer keeps them. */

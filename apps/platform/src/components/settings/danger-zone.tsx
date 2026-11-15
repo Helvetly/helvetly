@@ -2,6 +2,8 @@ import { Button } from '@helvetly/ui/components/button'
 import { TriangleAlert, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
+
 import { SettingsSection } from './layout'
 
 /**
@@ -14,8 +16,8 @@ export function DangerZone({ id, children }: { id: string; children: ReactNode }
       id={id}
       icon={TriangleAlert}
       tone="danger"
-      title="Danger zone"
-      description="These actions can’t be undone."
+      title={translate('dangerZone')}
+      description={translate('theseActionsCanTBeUndone')}
     >
       <div
         data-slot="danger-zone"

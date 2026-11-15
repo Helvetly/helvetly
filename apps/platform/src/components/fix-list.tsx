@@ -9,6 +9,8 @@ import { ArrowRight, Ban, CircleAlert } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
+
 /** One row: the problems fixed in one place, and the way there when there is one. */
 export type Fix = { key: string; messages: string[]; action?: ReactNode }
 
@@ -72,7 +74,9 @@ export function FixList({
 
 /** "{n} things to fix before …", or "One thing …". */
 export const fixCount = (count: number, before: string) =>
-  count === 1 ? `One thing to fix before ${before}` : `${count} things to fix before ${before}`
+  count === 1
+    ? translate('oneThingToFixBefore', { before: before })
+    : translate('thingsToFixBefore', { count: count, before: before })
 
 /** The fix list in a dialog: the icon inline with the title, a line of context, then the rows. */
 export function FixDialog({

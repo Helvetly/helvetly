@@ -1,5 +1,5 @@
 'use client'
-
+import { numberLocale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import {
@@ -29,6 +29,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 
 import { PdfView } from '@/components/invoices/pdf-view'
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { signaturesApi, signingDocumentUrl, type Field, type SigningView } from '@/lib/signatures'
 
 import { AdoptDialog, type Adopted } from './adopt-dialog'
@@ -37,7 +38,7 @@ import { FIELD_ICONS, FieldBox, SesNote } from './parts'
 const SIGNER_COLOR = '#2f6fdf'
 // Public page for an external signer: their own zone, not a workspace's, is right.
 const today = () =>
-  new Intl.DateTimeFormat('de-CH', {
+  new Intl.DateTimeFormat(numberLocale, {
     timeZone: 'Europe/Zurich',
     day: '2-digit',
     month: '2-digit',
@@ -73,8 +74,8 @@ export function SigningPage() {
     return (
       <Notice
         icon={Link2Off}
-        title="This link is incomplete"
-        text="Open the link from your email again, the whole of it."
+        title={translate('thisLinkIsIncomplete')}
+        text={translate('openTheLinkFromYourEmailAgainTheWhole')}
       />
     )
   if (view.error) {
@@ -83,19 +84,25 @@ export function SigningPage() {
       return (
         <Notice
           icon={Link2Off}
-          title="This link doesn’t work"
-          text="It may have been replaced by a newer reminder or mistyped. Use the latest email you got, or ask the sender for a new link."
+          title={translate('thisLinkDoesnTWork')}
+          text={translate('itMayHaveBeenReplacedByANewerReminder')}
         />
       )
     if (code === 'link_expired')
       return (
         <Notice
           icon={Hourglass}
-          title="This link has expired"
-          text="Ask the sender to send the document again."
+          title={translate('thisLinkHasExpired')}
+          text={translate('askTheSenderToSendTheDocumentAgain')}
         />
       )
-    return <Notice icon={OctagonX} title="Something went wrong" text={errorMessage(view.error)} />
+    return (
+      <Notice
+        icon={OctagonX}
+        title={translate('somethingWentWrong')}
+        text={errorMessage(view.error)}
+      />
+    )
   }
   if (!token || !view.data) return <Loading />
   return <Signing token={token} view={view.data} />
@@ -108,8 +115,8 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
     return (
       <Notice
         icon={Ban}
-        title="This request was withdrawn"
-        text={`${sender} withdrew “${request.title}”. There is nothing to sign.`}
+        title={translate('thisRequestWasWithdrawn')}
+        text={translate('withdrewThereIsNothingToSign', { sender: sender, title: request.title })}
       />
     )
   if (signer.status === 'signed')
@@ -117,11 +124,20 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
       <Notice
         tone="green"
         icon={CircleCheck}
-        title={request.status === 'completed' ? 'Everyone has signed' : 'You’ve signed'}
+        title={
+          request.status === 'completed' ? translate('everyoneHasSigned') : translate('youVeSigned')
+        }
         text={
           request.status === 'completed'
-            ? `“${request.title}” is complete. The signed PDF with its certificate is on its way to ${signer.email}.`
-            : `Thank you, ${signer.name}. When everyone has signed “${request.title}”, the signed PDF comes to ${signer.email}.`
+            ? translate('isCompleteTheSignedPDFWithItsCertificateIs', {
+                title: request.title,
+                email: signer.email,
+              })
+            : translate('thankYouWhenEveryoneHasSignedTheSignedPDF', {
+                name: signer.name,
+                title: request.title,
+                email: signer.email,
+              })
         }
       />
     )
@@ -129,24 +145,30 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
     return (
       <Notice
         icon={OctagonX}
-        title="You declined to sign"
-        text={`${request.sender.name} has been told. Nothing more to do here.`}
+        title={translate('youDeclinedToSign')}
+        text={translate('hasBeenToldNothingMoreToDoHere', { name: request.sender.name })}
       />
     )
   if (request.status === 'declined')
     return (
       <Notice
         icon={OctagonX}
-        title="Signing was stopped"
-        text={`Another signer declined “${request.title}”, so it can’t be signed any more. ${request.sender.name} has been told.`}
+        title={translate('signingWasStopped')}
+        text={translate('anotherSignerDeclinedSoItCanTBeSigned', {
+          title: request.title,
+          name: request.sender.name,
+        })}
       />
     )
   if (request.status === 'expired')
     return (
       <Notice
         icon={Hourglass}
-        title="This request has expired"
-        text={`It ran until ${formatDate(request.expires_at)}. Ask ${request.sender.name} to send it again.`}
+        title={translate('thisRequestHasExpired')}
+        text={translate('itRanUntilAskToSendItAgain', {
+          value1: formatDate(request.expires_at),
+          name: request.sender.name,
+        })}
       />
     )
   if (request.status === 'completed')
@@ -154,16 +176,16 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
       <Notice
         tone="green"
         icon={CircleCheck}
-        title="This document is complete"
-        text="Everyone has signed it."
+        title={translate('thisDocumentIsComplete')}
+        text={translate('everyoneHasSignedIt')}
       />
     )
   if (signer.status === 'waiting')
     return (
       <Notice
         icon={Clock}
-        title="It’s not your turn yet"
-        text={`“${request.title}” is signed in order. You’ll get an email when it’s your turn.`}
+        title={translate('itSNotYourTurnYet')}
+        text={translate('isSignedInOrderYouLlGetAnEmail', { title: request.title })}
       />
     )
   return <SignForm token={token} view={view} />
@@ -210,7 +232,7 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
     } catch (caught) {
       setError(
         caught instanceof ApiError && caught.code === 'original_changed'
-          ? 'This document was changed after it was sent, so it can’t be signed. Ask the sender to send it again.'
+          ? translate('thisDocumentWasChangedAfterItWasSentSo')
           : errorMessage(caught),
       )
       if (caught instanceof ApiError && caught.code === 'not_signable')
@@ -254,18 +276,22 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14.5px] font-medium">{request.title}</p>
             <p className="truncate text-[12px] text-muted-foreground">
-              From {request.sender.name} · {request.workspace}
+              {translate('from3')}
+              {request.sender.name} · {request.workspace}
             </p>
           </div>
           <span className="hidden text-[12.5px] text-muted-foreground tabular-nums sm:block">
-            {done} of {fields.length} fields
+            {done}
+            {translate('of5')}
+            {fields.length}
+            {translate('fields')}
           </span>
           <Button
             variant="ghost"
             className="cursor-pointer text-muted-foreground"
             onClick={() => setDeclining(true)}
           >
-            Decline
+            {translate('decline')}
           </Button>
         </div>
         <div className="h-0.5 bg-transparent">
@@ -282,7 +308,10 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
             <span className="font-medium">{request.sender.name}</span>
             <span className="text-muted-foreground">
               {' '}
-              ({request.sender.email}) asks you, {signer.name}, to sign this document.
+              ({request.sender.email}
+              {translate('asksYou')}
+              {signer.name}
+              {translate('toSignThisDocument')}
             </span>
           </p>
           {request.message && (
@@ -305,7 +334,7 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
               checked={consent}
               onCheckedChange={(on) => setConsent(on === true)}
               className="mt-0.5"
-              aria-label="I agree to sign electronically"
+              aria-label={translate('iAgreeToSignElectronically')}
             />
             <span>{view.consent_text}</span>
           </label>
@@ -317,7 +346,8 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
                 className="flex-1 cursor-pointer gap-1.5 sm:flex-none"
                 onClick={() => goTo(nextField)}
               >
-                <ArrowDown className="size-4" /> Next field
+                <ArrowDown className="size-4" />
+                {translate('nextField')}
               </Button>
             ) : null}
             <Button
@@ -326,7 +356,8 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
               disabled={!ready || busy}
               onClick={() => void finish()}
             >
-              {busy && <Loader2 className="size-4 animate-spin" />} Finish
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              {translate('finish')}
             </Button>
           </div>
           {error && (
@@ -383,7 +414,7 @@ function SigningField({
         <button
           type="button"
           onClick={onSign}
-          aria-label={signature ? 'Change your signature' : 'Sign here'}
+          aria-label={signature ? translate('changeYourSignature') : translate('signHere2')}
           className={cn(
             'flex size-full cursor-pointer items-center justify-center gap-1 font-medium',
             !signature && 'animate-pulse hover:animate-none motion-reduce:animate-none',
@@ -397,7 +428,8 @@ function SigningField({
             />
           ) : (
             <>
-              <Icon className="size-[1.2em]" /> Sign here
+              <Icon className="size-[1.2em]" />
+              {translate('signHere')}
             </>
           )}
         </button>
@@ -413,8 +445,8 @@ function SigningField({
         className="p-0"
       >
         <input
-          aria-label={field.label ?? 'Text'}
-          placeholder={field.label ?? 'Text'}
+          aria-label={field.label ?? translate('text')}
+          placeholder={field.label ?? translate('text')}
           value={value}
           maxLength={200}
           onChange={(event) => onValue(event.target.value)}
@@ -429,7 +461,7 @@ function SigningField({
       color={SIGNER_COLOR}
       data-field-id={field.id}
       className="border-dashed bg-transparent! px-1"
-      title="Filled in when you finish"
+      title={translate('filledInWhenYouFinish')}
     >
       <span className="truncate text-[clamp(9px,1.6cqw,14px)] text-[#1c2a4a]">
         {field.kind === 'date' ? today() : name}
@@ -460,15 +492,15 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
       <DialogContent className="w-[min(440px,calc(100vw-2rem))] max-w-none! gap-4 rounded-2xl p-6">
         <div className="grid gap-1">
           <DialogTitle className="text-[17px] font-medium tracking-[-0.01em]">
-            Decline to sign?
+            {translate('declineToSign')}
           </DialogTitle>
           <DialogDescription className="text-[13.5px]">
-            The sender is told, with your reason, and nobody else can sign this request.
+            {translate('theSenderIsToldWithYourReasonAndNobody')}
           </DialogDescription>
         </div>
         <Textarea
-          aria-label="Reason"
-          placeholder="e.g. The start date in clause 2 is wrong."
+          aria-label={translate('reason')}
+          placeholder={translate('eGTheStartDateInClause2Is')}
           rows={4}
           maxLength={500}
           value={reason}
@@ -477,7 +509,7 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
         {error && <p className="text-[13px] text-destructive">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <Button size="xl" variant="outline" className="cursor-pointer" onClick={onClose}>
-            Keep signing
+            {translate('keepSigning')}
           </Button>
           <Button
             size="xl"
@@ -486,7 +518,7 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
             disabled={!reason.trim() || busy}
             onClick={() => void decline()}
           >
-            Decline
+            {translate('decline')}
           </Button>
         </div>
       </DialogContent>
@@ -526,8 +558,11 @@ function Notice({
 function Loading() {
   return (
     <Shell>
-      <Loader2 aria-label="Loading" className="size-6 animate-spin text-muted-foreground" />
-      <p className="mt-4 text-[14px] text-muted-foreground">Opening the document…</p>
+      <Loader2
+        aria-label={translate('loading2')}
+        className="size-6 animate-spin text-muted-foreground"
+      />
+      <p className="mt-4 text-[14px] text-muted-foreground">{translate('openingTheDocument')}</p>
     </Shell>
   )
 }
@@ -541,7 +576,8 @@ function Shell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <p className="flex items-center gap-1.5 py-6 text-[12px] text-muted-foreground">
-        <MailCheck className="size-3.5" /> Electronic signatures by Helvetly
+        <MailCheck className="size-3.5" />
+        {translate('electronicSignaturesByHelvetly')}
       </p>
     </div>
   )

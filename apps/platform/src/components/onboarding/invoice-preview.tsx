@@ -2,6 +2,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import Image from 'next/image'
 
 import { COUNTRY_OPTIONS } from '@/components/clients/fields'
+import { translate } from '@/lib/i18n'
 import { ibanInfo, type DocLanguage } from '@/lib/invoices'
 
 import { vatNumber, type Values } from './onboarding-model'
@@ -41,8 +42,8 @@ const WORDS: Record<
 }
 
 const LINES = [
-  { text: 'Consulting', amount: 1800 },
-  { text: 'Bookkeeping', amount: 650 },
+  { text: translate('consulting'), amount: 1800 },
+  { text: translate('bookkeeping'), amount: 650 },
 ]
 
 const money = (amount: number, currency: string) =>
@@ -83,7 +84,7 @@ export function InvoicePreview({ values, logo }: { values: Values | null; logo: 
             />
           ) : (
             <span className="flex h-10 w-24 items-center justify-center rounded-md border border-dashed border-neutral-300 text-[9px] text-neutral-500">
-              Logo
+              {translate('logo')}
             </span>
           )}
         </span>

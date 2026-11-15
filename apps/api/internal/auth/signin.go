@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -16,6 +17,8 @@ const (
 	providerGoogle = "google"
 	providerEmail  = "email"
 )
+
+var loginPathPattern = regexp.MustCompile(`^/(?:[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*/)?login(?:/|$)`)
 
 // identity is a verified sign-in: Google (subject: its `sub`) or an email code (subject: the address).
 type identity struct {
@@ -144,7 +147,7 @@ func SafeNext(next string) string {
 		return "/"
 	}
 	u, err := url.Parse(next)
-	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "/login" || strings.HasPrefix(u.Path, "/login/") {
+	if err != nil || u.Scheme != "" || u.Host != "" || loginPathPattern.MatchString(u.Path) {
 		return "/"
 	}
 	return next

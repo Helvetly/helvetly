@@ -1,3 +1,4 @@
+import { translate } from '@/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, InfinityIcon, Minus } from 'lucide-react'
 
@@ -19,7 +20,7 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
   return (
     <section aria-labelledby="compare" className="mt-20 w-full max-w-[1080px]">
       <h2 id="compare" className="text-center text-page font-semibold tracking-[-0.02em]">
-        Compare plans
+        {translate('comparePlans')}
       </h2>
       {/* Four columns fit a phone when their text wraps, so nothing scrolls sideways. */}
       <div className="mt-8 overflow-hidden rounded-2xl bg-card shadow-elevation-1">
@@ -30,7 +31,7 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
                 scope="col"
                 className="px-3 py-4 text-left font-medium text-muted-foreground sm:px-5"
               >
-                <span className="sr-only">Limit</span>
+                <span className="sr-only">{translate('limit')}</span>
               </th>
               {plans.map((plan) => (
                 <th
@@ -44,7 +45,7 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
                   {plan.name}
                   {plan.id === current && (
                     <span className="mx-auto mt-1 block w-fit rounded-full bg-brand-surface px-2 text-caption leading-5 font-medium text-brand sm:mt-0 sm:ml-1.5 sm:inline">
-                      Current
+                      {translate('current')}
                     </span>
                   )}
                 </th>
@@ -71,17 +72,17 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
                       )}
                     >
                       {value === null && key === 'members' ? (
-                        <span className="font-medium text-brand">Any number</span>
+                        <span className="font-medium text-brand">{translate('anyNumber')}</span>
                       ) : value === null ? (
                         <span className="inline-flex items-center gap-1 font-medium text-brand">
                           <InfinityIcon className="size-4" aria-hidden />
                           {/* A phone's column has room for the sign only. */}
-                          <span className="max-sm:sr-only">Unlimited</span>
+                          <span className="max-sm:sr-only">{translate('unlimited2')}</span>
                         </span>
                       ) : value === 0 ? (
                         <Minus
                           className="mx-auto size-4 text-muted-foreground"
-                          aria-label="Not included"
+                          aria-label={translate('notIncluded')}
                         />
                       ) : (
                         formatLimit(key, value)

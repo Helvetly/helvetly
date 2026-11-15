@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Combobox, inputClass } from '@helvetly/ui/components/combobox'
@@ -23,6 +22,7 @@ import { Building2, CircleX, Clock, Landmark, Mail, MapPin, type LucideIcon } fr
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import {
   getPortalProfile,
   portalKeys,
@@ -35,27 +35,27 @@ import { PortalPhoto } from './portal-photo'
 
 type Key = keyof ProfileFields
 const FIELDS: { key: Key; label: string; wide?: boolean }[] = [
-  { key: 'name', label: 'Name', wide: true },
-  { key: 'billing_email', label: 'Billing email' },
-  { key: 'phone', label: 'Phone' },
-  { key: 'street', label: 'Street' },
-  { key: 'street_number', label: 'Number' },
-  { key: 'apt', label: 'Apartment' },
+  { key: 'name', label: translate('name'), wide: true },
+  { key: 'billing_email', label: translate('billingEmail') },
+  { key: 'phone', label: translate('phone') },
+  { key: 'street', label: translate('street') },
+  { key: 'street_number', label: translate('number') },
+  { key: 'apt', label: translate('apartment') },
   { key: 'zip', label: 'ZIP' },
-  { key: 'city', label: 'City' },
-  { key: 'country', label: 'Country' },
-  { key: 'vat_number', label: 'VAT number' },
-  { key: 'registration_number', label: 'Registration number' },
+  { key: 'city', label: translate('city') },
+  { key: 'country', label: translate('country') },
+  { key: 'vat_number', label: translate('vatNumber') },
+  { key: 'registration_number', label: translate('registrationNumber') },
 ]
 const GROUPS: { title: string; icon: LucideIcon; keys: Key[] }[] = [
-  { title: 'Company', icon: Building2, keys: ['name'] },
-  { title: 'Contact', icon: Mail, keys: ['billing_email', 'phone'] },
+  { title: translate('company'), icon: Building2, keys: ['name'] },
+  { title: translate('contact'), icon: Mail, keys: ['billing_email', 'phone'] },
   {
-    title: 'Address',
+    title: translate('address'),
     icon: MapPin,
     keys: ['street', 'street_number', 'apt', 'zip', 'city', 'country'],
   },
-  { title: 'Tax IDs', icon: Landmark, keys: ['vat_number', 'registration_number'] },
+  { title: translate('taxIDs'), icon: Landmark, keys: ['vat_number', 'registration_number'] },
 ]
 const labelOf = (key: string) => FIELDS.find((f) => f.key === key)?.label ?? key
 const text = (value: string | null | undefined) => value ?? ''
@@ -67,7 +67,7 @@ function fieldErrors(error: unknown): Record<string, string> {
   return Object.fromEntries(
     Object.entries(fields).map(([key, code]) => [
       key,
-      code === 'required' ? 'Required.' : 'This value isn’t valid.',
+      code === 'required' ? translate('required') : translate('thisValueIsnTValid'),
     ]),
   )
 }
@@ -99,8 +99,8 @@ export function PortalProfile() {
   })
 
   const header = (
-    <PageHeader title="Profile">
-      The details your supplier has on file. Changes are applied after they approve them.
+    <PageHeader title={translate('profile')}>
+      {translate('theDetailsYourSupplierHasOnFileChangesAre')}
     </PageHeader>
   )
   if (query.isPending)
@@ -115,7 +115,7 @@ export function PortalProfile() {
       <div className="grid gap-5 sm:gap-6">
         {header}
         <div className={cn(cardClass, 'p-4 sm:p-5')}>
-          <RetryAlert what="Your details" onRetry={() => void query.refetch()} />
+          <RetryAlert what={translate('yourDetails')} onRetry={() => void query.refetch()} />
         </div>
       </div>
     )
@@ -150,7 +150,7 @@ export function PortalProfile() {
         value={value(key)}
         options={COUNTRY_OPTIONS}
         invalid={Boolean(errors[key])}
-        placeholder="Choose a country"
+        placeholder={translate('chooseACountry')}
         onChange={(code) => set(key, code)}
       />
     ) : key === 'phone' ? (
@@ -182,12 +182,13 @@ export function PortalProfile() {
       {header}
       <PortalPhoto />
       {pending && (
-        <section aria-label="Pending change request">
-          <Callout tone="warning" icon={Clock} title="Waiting for approval">
+        <section aria-label={translate('pendingChangeRequest')}>
+          <Callout tone="warning" icon={Clock} title={translate('waitingForApproval')}>
             <div className="grid gap-1.5">
               <p className="text-muted-foreground">
-                You asked for these changes on {formatDate(pending.created_at)}. Your supplier will
-                review them soon.
+                {translate('youAskedForTheseChangesOn')}
+                {formatDate(pending.created_at)}
+                {translate('yourSupplierWillReviewThemSoon')}
               </p>
               <ul className="grid gap-0.5">
                 {Object.entries(pending.fields).map(([key, requested]) => (
@@ -204,17 +205,21 @@ export function PortalProfile() {
         </section>
       )}
       {rejected && (
-        <section aria-label="Rejected change request">
-          <Callout tone="neutral" icon={CircleX} title="Your last change request was not accepted">
+        <section aria-label={translate('rejectedChangeRequest')}>
+          <Callout
+            tone="neutral"
+            icon={CircleX}
+            title={translate('yourLastChangeRequestWasNotAccepted')}
+          >
             <div className="grid gap-1.5">
               <p className="text-muted-foreground">
-                Your supplier kept your details as they were
-                {decision.decided_at && ` on ${formatDate(decision.decided_at)}`}. You can send a
-                new request below.
+                {translate('yourSupplierKeptYourDetailsAsTheyWere')}
+                {decision.decided_at && ` on ${formatDate(decision.decided_at)}`}
+                {translate('youCanSendANewRequestBelow')}
               </p>
               {decision.reason && (
                 <p className="break-words whitespace-pre-line">
-                  <span className="text-muted-foreground">Reason: </span>
+                  <span className="text-muted-foreground">{translate('reason')}</span>
                   {decision.reason}
                 </p>
               )}
@@ -254,9 +259,11 @@ export function PortalProfile() {
         ))}
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={changed.length === 0 || submit.isPending}>
-            Request change
+            {translate('requestChange')}
           </Button>
-          <p className="text-body-sm text-muted-foreground">Changes are applied after approval.</p>
+          <p className="text-body-sm text-muted-foreground">
+            {translate('changesAreAppliedAfterApproval')}
+          </p>
         </div>
       </form>
     </div>

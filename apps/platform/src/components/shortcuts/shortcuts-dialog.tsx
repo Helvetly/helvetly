@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Dialog,
   DialogContent,
@@ -8,11 +7,17 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 
+import { translate } from '@/lib/i18n'
 import { SHORTCUTS, type Shortcut, type ShortcutId } from '@/lib/shortcuts'
 
 import { ShortcutKeys } from './shortcut-keys'
 
-const GROUPS: Shortcut['group'][] = ['General', 'Navigation', 'Appearance', 'On a page']
+const GROUPS: Record<Shortcut['group'], string> = {
+  General: translate('general'),
+  Navigation: translate('navigation'),
+  Appearance: translate('appearance'),
+  'On a page': translate('onAPage'),
+}
 
 const entries = Object.entries(SHORTCUTS) as [ShortcutId, Shortcut][]
 
@@ -28,18 +33,16 @@ export function ShortcutsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Keyboard shortcuts</DialogTitle>
-          <DialogDescription>
-            Single keys work when you are not typing in a field.
-          </DialogDescription>
+          <DialogTitle>{translate('keyboardShortcuts2')}</DialogTitle>
+          <DialogDescription>{translate('singleKeysWorkWhenYouAreNotTypingIn')}</DialogDescription>
         </DialogHeader>
-        {GROUPS.map((group) => (
+        {Object.entries(GROUPS).map(([group, label]) => (
           <section key={group} aria-labelledby={`shortcuts-${group}`} className="grid gap-1">
             <h3
               id={`shortcuts-${group}`}
               className="text-caption font-medium text-muted-foreground"
             >
-              {group}
+              {label}
             </h3>
             <dl className="divide-y divide-border/60">
               {entries

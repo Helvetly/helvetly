@@ -1,4 +1,5 @@
 import { COUNTRIES } from '@helvetly/ui/lib/countries'
+import { translate } from '@helvetly/ui/lib/i18n'
 import {
   AsYouType,
   getCountryCallingCode,
@@ -10,7 +11,7 @@ import examples from 'libphonenumber-js/mobile/examples'
 
 export type { CountryCode }
 
-export const PHONE_ERROR = 'Enter a valid phone number.'
+export const PHONE_ERROR = translate('enterAValidPhoneNumber')
 
 /** The code itself when it is a country with a dialling code, else Switzerland. */
 export const phoneCountryOr = (code: string | null | undefined): CountryCode =>

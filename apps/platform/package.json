@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 8000",
-    "build": "next build",
+    "build": "node ../../scripts/build-locales.mjs",
     "start": "next start --port 8000",
     "typecheck": "next typegen && tsc",
     "test": "vitest run",
@@ -14,6 +14,7 @@
     "test:storybook": "vitest run --config vitest.storybook.config.ts"
   },
   "dependencies": {
+    "@helvetly/i18n": "workspace:*",
     "@helvetly/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "lucide-react": "catalog:",

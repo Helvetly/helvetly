@@ -3,6 +3,8 @@
 import { createMatcher, isApple, isTypingTarget, type Keys } from '@helvetly/ui/lib/shortcuts'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 
+import { translate } from '@/lib/i18n'
+
 export type Shortcut = {
   label: string
   group: 'General' | 'Navigation' | 'Appearance' | 'On a page'
@@ -12,14 +14,14 @@ export type Shortcut = {
 
 /** Every app-wide keyboard shortcut: what the shortcuts dialog lists and `useShortcut` listens for. */
 export const SHORTCUTS = {
-  quickActions: { label: 'Open Quick Actions', group: 'General', keys: ['/', 'mod+k'] },
-  heidi: { label: 'Open or close Heidi', group: 'General', keys: ['mod+j'] },
-  help: { label: 'Help & feedback', group: 'General', keys: ['h'] },
-  shortcuts: { label: 'Keyboard shortcuts', group: 'General', keys: ['?'] },
-  sidebar: { label: 'Show or hide the sidebar', group: 'Navigation', keys: ['mod+b'] },
-  notifications: { label: 'Go to Notifications', group: 'Navigation', keys: ['g n'] },
-  theme: { label: 'Switch theme: light, dark, system', group: 'Appearance', keys: ['d'] },
-  newRecord: { label: 'New record, like the page’s “New” button', group: 'On a page', keys: ['n'] },
+  quickActions: { label: translate('shortcutLabel1'), group: 'General', keys: ['/', 'mod+k'] },
+  heidi: { label: translate('shortcutLabel2'), group: 'General', keys: ['mod+j'] },
+  help: { label: translate('shortcutLabel3'), group: 'General', keys: ['h'] },
+  shortcuts: { label: translate('shortcutLabel4'), group: 'General', keys: ['?'] },
+  sidebar: { label: translate('shortcutLabel5'), group: 'Navigation', keys: ['mod+b'] },
+  notifications: { label: translate('shortcutLabel6'), group: 'Navigation', keys: ['g n'] },
+  theme: { label: translate('shortcutLabel7'), group: 'Appearance', keys: ['d'] },
+  newRecord: { label: translate('shortcutLabel8'), group: 'On a page', keys: ['n'] },
 } as const satisfies Record<string, Shortcut>
 
 export type ShortcutId = keyof typeof SHORTCUTS

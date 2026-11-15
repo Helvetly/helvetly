@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Trash2, X, type LucideIcon } from 'lucide-react'
@@ -7,6 +6,7 @@ import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from '
 
 import { NativeSelect } from '@/components/clients/fields'
 import { PdfView } from '@/components/invoices/pdf-view'
+import { translate } from '@/lib/i18n'
 import {
   addField,
   clampBox,
@@ -72,7 +72,8 @@ export function Placement<K extends string>({
   const gesture = useRef<Gesture<K> | null>(null)
   const pane = useRef<HTMLDivElement>(null)
   const current = fields.find((field) => field.key === selected)
-  const laneName = (index: number) => lanes[index]?.name || `Signer ${index + 1}`
+  const laneName = (index: number) =>
+    lanes[index]?.name || translate('signer', { value1: index + 1 })
   const caption = (field: DraftField<K>) =>
     prompt?.(field.kind) && field.label ? field.label : label(field.kind)
 
@@ -201,7 +202,10 @@ export function Placement<K extends string>({
               {/* Focus target for the keyboard: arrows move it, Backspace removes it. */}
               <button
                 type="button"
-                aria-label={`${label(field.kind)} for ${laneName(field.signer)}`}
+                aria-label={translate('for3', {
+                  value1: label(field.kind),
+                  value2: laneName(field.signer),
+                })}
                 onFocus={() => setSelected(field.key)}
                 className="flex size-full min-w-0 cursor-move items-center gap-1 px-1.5 outline-none"
               >
@@ -253,11 +257,11 @@ export function Placement<K extends string>({
   return (
     <div className="flex min-h-0 flex-1">
       <aside
-        aria-label="Field palette"
+        aria-label={translate('fieldPalette')}
         className="flex w-[280px] shrink-0 flex-col gap-5 overflow-y-auto border-r p-4"
       >
         <section className="grid gap-1.5">
-          <h3 className="text-[13px] font-medium">Fields for</h3>
+          <h3 className="text-[13px] font-medium">{translate('fieldsFor')}</h3>
           {lanes.map((lane, index) => {
             const count = fields.filter((field) => field.signer === index).length
             return (
@@ -283,7 +287,7 @@ export function Placement<K extends string>({
         </section>
 
         <section className="grid gap-1.5">
-          <h3 className="text-[13px] font-medium">Drag onto the page</h3>
+          <h3 className="text-[13px] font-medium">{translate('dragOntoThePage')}</h3>
           {kinds(active).map((kind) => {
             const Icon = icon(kind)
             const color = signerColor(active)
@@ -310,7 +314,9 @@ export function Placement<K extends string>({
             )
           })}
           <p className="px-1 text-[12px] leading-snug text-muted-foreground">
-            {armed ? `Click on a page to place “${label(armed)}”. Esc cancels.` : palette.hint}
+            {armed
+              ? translate('clickOnAPageToPlaceEscCancels', { value1: label(armed) })
+              : palette.hint}
           </p>
         </section>
       </aside>
@@ -325,19 +331,19 @@ export function Placement<K extends string>({
       </div>
       {/* What is placed and the selected field sit on the right, so the left rail stays the palette. */}
       <aside
-        aria-label="Placed fields"
+        aria-label={translate('placedFields')}
         className="flex w-[260px] shrink-0 flex-col gap-5 overflow-y-auto border-l p-4"
       >
         <section aria-labelledby="placed-heading" className="grid gap-1.5">
           <div className="flex items-center">
             <h3 id="placed-heading" className="flex-1 text-[13px] font-medium">
-              In this document
+              {translate('inThisDocument')}
             </h3>
             <span className="text-[12px] text-muted-foreground tabular-nums">{fields.length}</span>
           </div>
           {used.length === 0 && (
             <p className="px-1 text-[12px] leading-snug text-muted-foreground">
-              Drag fields onto the page — they will be listed here.
+              {translate('dragFieldsOntoThePageTheyWillBeListed')}
             </p>
           )}
           {used.map((group) => (
@@ -368,13 +374,17 @@ export function Placement<K extends string>({
                         />
                         <span className="min-w-0 flex-1 truncate">{caption(field)}</span>
                         <span className="text-[12px] text-muted-foreground tabular-nums group-focus-within/item:invisible group-hover/item:invisible">
-                          p. {field.page}
+                          {translate('p2')}
+                          {field.page}
                         </span>
                       </button>
                       <Button
                         variant="destructive-ghost"
                         size="icon-sm"
-                        aria-label={`Remove ${caption(field)}, page ${field.page}`}
+                        aria-label={translate('removePage', {
+                          value1: caption(field),
+                          page: field.page,
+                        })}
                         className="absolute top-0.5 right-0.5 cursor-pointer opacity-0 group-focus-within/item:opacity-100 group-hover/item:opacity-100 focus-visible:opacity-100"
                         onClick={() => remove(field.key)}
                       >
@@ -399,7 +409,7 @@ export function Placement<K extends string>({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Deselect"
+                aria-label={translate('deselect')}
                 className="cursor-pointer"
                 onClick={() => setSelected(null)}
               >
@@ -412,7 +422,7 @@ export function Placement<K extends string>({
                 <input
                   value={current.label ?? ''}
                   maxLength={100}
-                  placeholder="e.g. Job title"
+                  placeholder={translate('eGJobTitle')}
                   onChange={(event) =>
                     onFields(updateField(fields, current.key, { label: event.target.value }))
                   }
@@ -422,7 +432,7 @@ export function Placement<K extends string>({
             )}
             {movableTo.length > 1 && (
               <label className="grid gap-1 text-[12.5px] text-muted-foreground">
-                Signer
+                {translate('signer2')}
                 <NativeSelect
                   value={current.signer}
                   onChange={(event) => {
@@ -446,7 +456,8 @@ export function Placement<K extends string>({
               className="cursor-pointer justify-start gap-1.5 px-2"
               onClick={() => remove(current.key)}
             >
-              <Trash2 className="size-4" /> Remove field
+              <Trash2 className="size-4" />
+              {translate('removeField')}
             </Button>
           </section>
         )}

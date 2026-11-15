@@ -1,6 +1,8 @@
 import { cn } from '@helvetly/ui/lib/utils'
 import { CreditCard } from 'lucide-react'
 
+import { translate } from '@/lib/i18n'
+
 /**
  * A card's brand as a small mark on a card-shaped tile: a wordmark for Visa and American Express,
  * the two circles for Mastercard, a card icon for anything else (or no card). Drawn with tokens, so
@@ -74,7 +76,8 @@ export function PaymentCard({
         )}
       >
         <span className="flex items-center gap-2">
-          <CreditCard aria-hidden className="size-4" /> No card on file
+          <CreditCard aria-hidden className="size-4" />
+          {translate('noCardOnFile')}
         </span>
       </div>
     )
@@ -97,17 +100,17 @@ export function PaymentCard({
       <div className="grid gap-1.5">
         <p className="font-mono text-title-sm tracking-[0.18em] tabular-nums">
           <span aria-hidden>•••• •••• •••• </span>
-          <span className="sr-only">Card ending in </span>
+          <span className="sr-only">{translate('cardEndingIn')}</span>
           {card.last4}
         </p>
         <p className="flex justify-between text-caption opacity-70">
           <span>
             {card.brand === 'amex'
-              ? 'American Express'
+              ? translate('americanExpress')
               : card.brand.replace(/^./, (c) => c.toUpperCase())}
           </span>
           <span className="tabular-nums">
-            <span className="sr-only">Expires </span>
+            <span className="sr-only">{translate('expires2')}</span>
             {expiry}
           </span>
         </p>

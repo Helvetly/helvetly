@@ -1,3 +1,4 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import {
   Fingerprint,
   FolderLock,
@@ -13,18 +14,20 @@ import { TrustGrid } from '@/components/home/trust'
 import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
 export const metadata: Metadata = {
-  title: 'Security and privacy',
-  description:
-    'How Helvetly protects your company’s records: passwordless sign-in, a hash-chained audit log, closed periods, full export and AI that waits for consent.',
+  alternates: localizedAlternates('/security'),
+
+  title: translate('securityAndPrivacy'),
+  description: translate('howHelvetlyProtectsYourCompanySRecordsPasswordlessSign'),
 }
 
 // Each point describes what the code does today; see the contracts in docs/ before changing one.
 const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] }[] = [
   {
-    title: 'Signing in',
+    title: translate('signingIn'),
     icon: Fingerprint,
     tone: 'lilac',
     points: [
@@ -36,7 +39,7 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     ],
   },
   {
-    title: 'Your records',
+    title: translate('yourRecords'),
     icon: ScrollText,
     tone: 'mint',
     points: [
@@ -48,7 +51,7 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     ],
   },
   {
-    title: 'Files',
+    title: translate('files'),
     icon: FolderLock,
     tone: 'sky',
     points: [
@@ -58,7 +61,7 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     ],
   },
   {
-    title: 'AI',
+    title: translate('ai'),
     icon: Sparkles,
     tone: 'rose',
     points: [
@@ -69,7 +72,7 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     ],
   },
   {
-    title: 'Privacy',
+    title: translate('privacy'),
     icon: ShieldCheck,
     tone: 'lemon',
     points: [
@@ -85,14 +88,14 @@ export default function SecurityPage() {
   return (
     <main>
       <PageHero
-        eyebrow="Security and privacy"
+        eyebrow={translate('securityAndPrivacy')}
         title={
           <>
-            Your books are the record of your company.{' '}
-            <span className="accent">We treat them that way.</span>
+            {translate('yourBooksAreTheRecordOfYourCompany')}{' '}
+            <span className="accent">{translate('weTreatThemThatWay')}</span>
           </>
         }
-        lead="What Helvetly does to keep your financial records correct, private and yours."
+        lead={translate('whatHelvetlyDoesToKeepYourFinancialRecordsCorrect')}
       />
       <section className="pb-16">
         <Container>
@@ -132,23 +135,23 @@ export default function SecurityPage() {
             </div>
           ))}
           <p className="pt-10 text-body text-muted-foreground">
-            The legal side is in the{' '}
+            {translate('theLegalSideIsInThe')}{' '}
             <Link
               href="/privacy"
               className="text-link underline underline-offset-4 hover:no-underline"
             >
-              privacy policy
+              {translate('privacyPolicy')}
             </Link>
-            , the{' '}
+            {translate('the')}{' '}
             <Link href="/dpa" className="text-link underline underline-offset-4 hover:no-underline">
-              data processing agreement
+              {translate('dataProcessingAgreement')}
             </Link>{' '}
-            and the{' '}
+            {translate('andThe')}{' '}
             <Link
               href="/subprocessors"
               className="text-link underline underline-offset-4 hover:no-underline"
             >
-              list of subprocessors
+              {translate('listOfSubprocessors')}
             </Link>
             .
           </p>

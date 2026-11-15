@@ -1,5 +1,4 @@
 'use client'
-
 // Expenses, typed by hand from docs/expenses-contract.md.
 import {
   keepPreviousData,
@@ -11,6 +10,7 @@ import {
 
 import { type ApiError, request } from '@/lib/api'
 import type { ClientFile, Page } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import type { Decimal, PaymentMethod } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
 import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
@@ -148,19 +148,19 @@ export type BulkAction = 'book' | 'mark_paid' | 'mark_unpaid' | 'mark_reimbursed
 export type BulkResult = { updated: number; skipped: { id: string; reason: string }[] }
 
 export const MISSING_LABELS: Record<MissingField, string> = {
-  supplier_name: 'Supplier',
-  document_date: 'Date',
-  category: 'Category',
-  total: 'Amount',
-  exchange_rate: 'Exchange rate',
-  receipt: 'Receipt',
+  supplier_name: translate('supplier'),
+  document_date: translate('date'),
+  category: translate('category'),
+  total: translate('amount'),
+  exchange_rate: translate('exchangeRate'),
+  receipt: translate('receipt'),
 }
 
 export const RATE_SOURCES: { value: RateSource; label: string }[] = [
-  { value: 'estv_monthly', label: 'ESTV monthly rate' },
-  { value: 'estv_daily', label: 'ESTV daily rate' },
-  { value: 'bank', label: 'Bank statement' },
-  { value: 'manual', label: 'Other' },
+  { value: 'estv_monthly', label: translate('estvMonthlyRate') },
+  { value: 'estv_daily', label: translate('estvDailyRate') },
+  { value: 'bank', label: translate('bankStatement') },
+  { value: 'manual', label: translate('other') },
 ]
 
 // The list
@@ -423,8 +423,7 @@ export function useDeleteReceipt(id: string) {
 /** VAT charged outside Switzerland and Liechtenstein: not reclaimable as Swiss input tax. */
 export const isForeignVat = (country: string) => country !== 'CH' && country !== 'LI'
 
-export const FOREIGN_VAT_HINT =
-  'Foreign VAT isn’t reclaimable Swiss input tax — you may reclaim it in the other country.'
+export const FOREIGN_VAT_HINT = translate('foreignVATIsnTReclaimableSwissInputTaxYou')
 
 /** Who may void booked expenses and manage categories. */
 export const canManageExpenses = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -433,15 +432,15 @@ export const canManageExpenses = (role: string | undefined) => role === 'owner' 
 export function expenseState(
   expense: Pick<Expense, 'status' | 'is_complete' | 'payment_status' | 'is_overdue'>,
 ) {
-  if (expense.status === 'void') return { label: 'Void', tone: 'gray' } as const
+  if (expense.status === 'void') return { label: translate('void2'), tone: 'gray' } as const
   if (expense.status === 'draft')
     return expense.is_complete
-      ? ({ label: 'Ready to book', tone: 'blue' } as const)
-      : ({ label: 'Incomplete', tone: 'amber' } as const)
-  if (expense.payment_status === 'paid') return { label: 'Paid', tone: 'green' } as const
+      ? ({ label: translate('readyToBook'), tone: 'blue' } as const)
+      : ({ label: translate('incomplete'), tone: 'amber' } as const)
+  if (expense.payment_status === 'paid') return { label: translate('paid'), tone: 'green' } as const
   return expense.is_overdue
-    ? ({ label: 'Overdue', tone: 'red' } as const)
-    : ({ label: 'Unpaid', tone: 'amber' } as const)
+    ? ({ label: translate('overdue3'), tone: 'red' } as const)
+    : ({ label: translate('unpaid'), tone: 'amber' } as const)
 }
 
 export const RECEIPT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic,.heif'

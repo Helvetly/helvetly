@@ -1,5 +1,5 @@
 'use client'
-
+import { translate } from '@/lib/i18n'
 import { usePathname } from 'next/navigation'
 import {
   createContext,
@@ -20,22 +20,22 @@ import { useHeidiChat, type HeidiChat } from './use-heidi'
 
 /** The page Heidi is asked from, and how to name it in a sentence. */
 const PAGES: Record<string, [HeidiPage, string]> = {
-  '': ['dashboard', 'your dashboard'],
-  clients: ['clients', 'your clients'],
-  invoices: ['invoices', 'your invoices'],
-  expenses: ['expenses', 'your expenses'],
-  engagements: ['engagements', 'your engagements'],
-  documents: ['documents', 'your documents'],
-  products: ['products', 'your products and services'],
-  members: ['members', 'your team'],
-  settings: ['settings', 'your settings'],
-  'settings/billing': ['billing', 'your plan and billing'],
+  '': ['dashboard', translate('yourDashboard')],
+  clients: ['clients', translate('yourClients')],
+  invoices: ['invoices', translate('yourInvoices')],
+  expenses: ['expenses', translate('yourExpenses2')],
+  engagements: ['engagements', translate('yourEngagements')],
+  documents: ['documents', translate('yourDocuments')],
+  products: ['products', translate('yourProductsAndServices')],
+  members: ['members', translate('yourTeam')],
+  settings: ['settings', translate('yourSettings')],
+  'settings/billing': ['billing', translate('yourPlanAndBilling')],
 }
 
 export function pageOf(pathname: string): { page: HeidiPage; name: string } {
   const [, section = '', sub = ''] = pathname.split('/')
   const [page, name] = PAGES[`${section}/${sub}`] ??
-    PAGES[section] ?? ['dashboard', 'your dashboard']
+    PAGES[section] ?? ['dashboard', translate('yourDashboard')]
   return { page, name }
 }
 
@@ -116,7 +116,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
     (next: boolean) => {
       setMaxState(next)
       // Max mode on a page starts with a brief about it, ready to send.
-      if (next && !draft.trim()) setDraft(`Brief me on ${name}`)
+      if (next && !draft.trim()) setDraft(translate('briefMeOn', { name: name }))
     },
     [draft, name],
   )
@@ -125,7 +125,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
     // Images and PDFs Heidi reads itself; anything an import reads (a ZIP, a spreadsheet) goes to one when sent.
     const accepted = incoming.filter((file) => chatReadable(file) || importable(file))
     if (accepted.length < incoming.length)
-      toast.error('Heidi takes PDFs, photos, Excel, Word, CSV or a ZIP of them.')
+      toast.error(translate('heidiAcceptedImports'))
     setFiles((current) => {
       const { files: next, note } = addImportFiles(current, accepted)
       if (note) toast.error(note)

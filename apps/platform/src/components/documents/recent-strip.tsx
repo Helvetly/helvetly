@@ -1,10 +1,10 @@
 'use client'
-
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import type { ReactNode } from 'react'
 
 import { formatSize, type DocFile } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 import { KindIcon } from './kind'
 import { MenuButton } from './menu-button'
@@ -51,7 +51,7 @@ export function RecentStrip({
                     {formatSize(file.size)} · {formatRelative(file.created_at)}
                   </span>
                 </button>
-                <MenuButton label={`Actions for ${file.name}`} />
+                <MenuButton label={translate('actionsFor', { name: file.name })} />
               </div>
             </ContextMenuTrigger>
             {menu(fileKey(file.id))}

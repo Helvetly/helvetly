@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
@@ -33,6 +33,7 @@ import {
   type Expense,
 } from '@/lib/expenses'
 import { useHabits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import {
   formatMoney,
   PAYMENT_METHODS,
@@ -60,7 +61,7 @@ import {
 import { ReceiptDrop, StagedReceipts } from './expense-receipts'
 
 const twoDecimals = (code: string) =>
-  new Intl.NumberFormat('en', { style: 'currency', currency: code }).resolvedOptions()
+  new Intl.NumberFormat(languageTag, { style: 'currency', currency: code }).resolvedOptions()
     .maximumFractionDigits === 2
 
 const fieldId = (field: string) => `expense-${field}`
@@ -88,7 +89,7 @@ export function ExpenseForm(props: ExpenseFormProps) {
   const settings = useInvoiceSettings()
   const categories = useExpenseCategories()
   if (!props.expense && !(settled(settings) && settled(categories)))
-    return <FormSheetLoading title="New expense" onClose={props.onClose} />
+    return <FormSheetLoading title={translate('newExpense')} onClose={props.onClose} />
   return <ExpenseFormBody {...props} />
 }
 
@@ -191,7 +192,9 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       if (!expense) remember('expense', values, EXPENSE_HABITS)
       if (staged.length) {
         await uploadReceipts(saved.id, staged, () => {}).catch((error: unknown) =>
-          toast.error(`Saved, but the receipt wasn’t uploaded: ${errorMessage(error)}`),
+          toast.error(
+            translate('savedButTheReceiptWasnTUploaded', { value1: errorMessage(error) }),
+          ),
         )
         saved = (await expensesApi.get(saved.id)).data
       }
@@ -205,7 +208,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               ? error.details.reasons.filter((reason) => typeof reason === 'string')
               : []
           toast.warning(
-            `Saved as draft #${saved.number}. ${reasons.join(' ') || errorMessage(error)}`,
+            translate('savedAsDraft', {
+              number: saved.number,
+              value2: reasons.join(' ') || errorMessage(error),
+            }),
           )
           onSaved(saved, !expense)
           return
@@ -213,14 +219,16 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       }
       toast.success(
         book && !booked
-          ? `Expense #${saved.number} booked.`
+          ? translate('expenseBooked', { number: saved.number })
           : expense
-            ? `Expense #${saved.number} saved.`
-            : `Draft #${saved.number} saved.`,
+            ? translate('expenseSaved', { number: saved.number })
+            : translate('draftSaved', { number: saved.number }),
       )
       if (saved.duplicate_of)
         toast.warning(
-          `Expense #${saved.duplicate_of.number} has the same supplier and receipt number.`,
+          translate('expenseHasTheSameSupplierAndReceiptNumber', {
+            number: saved.duplicate_of.number,
+          }),
         )
       onSaved(saved, !expense)
     } catch (error) {
@@ -262,17 +270,19 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     label: category.name,
     hint: category.account_code,
   }))
-  const title = expense ? `Edit expense #${expense.number}` : 'New expense'
+  const title = expense
+    ? translate('editExpense', { number: expense.number })
+    : translate('newExpense')
 
   const payment = (
-    <FormSection title="Payment" description="Whether it is paid, and how.">
+    <FormSection title={translate('payment')} description={translate('whetherItIsPaidAndHow')}>
       <div className="flex items-center justify-between gap-4">
         <Segmented
-          label="Payment"
+          label={translate('payment')}
           value={values.paid ? 'paid' : 'unpaid'}
           options={[
-            { value: 'unpaid', label: 'Not paid yet' },
-            { value: 'paid', label: 'Paid' },
+            { value: 'unpaid', label: translate('notPaidYet') },
+            { value: 'paid', label: translate('paid') },
           ]}
           onChange={(choice) => set('paid', choice === 'paid')}
         />
@@ -282,9 +292,9 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             field="paid_on"
-            label="Paid on"
+            label={translate('paidOn')}
             error={errors.paid_on}
-            tip="Leave empty to use the receipt’s date."
+            tip={translate('leaveEmptyToUseTheReceiptSDate')}
           >
             <input
               {...describe('paid_on')}
@@ -292,11 +302,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               max={today}
               value={values.paid_on}
               onChange={(event) => set('paid_on', event.target.value)}
-              placeholder="YYYY-MM-DD"
+              placeholder={translate('yyyyMMDD')}
               className={cn(inputClass, 'cursor-text tabular-nums')}
             />
           </FormField>
-          <FormField field="payment_method" label="Method">
+          <FormField field="payment_method" label={translate('method')}>
             <Combobox
               id={fieldId('payment_method')}
               value={values.payment_method}
@@ -304,7 +314,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 value: method.value,
                 label: method.label,
               }))}
-              placeholder="How it was paid"
+              placeholder={translate('howItWasPaid')}
               onChange={(method) =>
                 set('payment_method', PAYMENT_METHODS.find((m) => m.value === method)?.value ?? '')
               }
@@ -315,10 +325,12 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             className="sm:col-span-2"
             label={
               payer && payer.id !== session?.user.id
-                ? `Paid by ${payer.name} out of pocket`
-                : 'I paid this myself'
+                ? translate('paidByOutOfPocket', { name: payer.name })
+                : translate('iPaidThisMyself')
             }
-            description={`Out of pocket: the company owes it back to ${payer?.name ?? 'you'}.`}
+            description={translate('outOfPocketTheCompanyOwesItBackTo', {
+              value1: payer?.name ?? translate('you'),
+            })}
             checked={values.out_of_pocket}
             onCheckedChange={(on) =>
               setValues((current) => ({
@@ -331,9 +343,9 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           {values.out_of_pocket && (
             <FormField
               field="reimbursed_on"
-              label="Reimbursed on"
+              label={translate('reimbursedOn')}
               error={errors.reimbursed_on}
-              tip="When the company paid it back."
+              tip={translate('whenTheCompanyPaidItBack')}
             >
               <input
                 {...describe('reimbursed_on')}
@@ -341,7 +353,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 max={today}
                 value={values.reimbursed_on}
                 onChange={(event) => set('reimbursed_on', event.target.value)}
-                placeholder="YYYY-MM-DD"
+                placeholder={translate('yyyyMMDD')}
                 className={cn(inputClass, 'cursor-text tabular-nums')}
               />
             </FormField>
@@ -354,11 +366,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const note = (
     <FormField
       field="note"
-      label="Internal note"
+      label={translate('internalNote')}
       error={errors.note}
       hint={
         <span className="flex justify-between">
-          Only your team sees this.
+          {translate('onlyYourTeamSeesThis')}
           <span className={cn('tabular-nums', values.note.length > NOTE_MAX && 'text-destructive')}>
             {values.note.length} / {NOTE_MAX}
           </span>
@@ -370,7 +382,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         rows={2}
         value={values.note}
         onChange={(event) => set('note', event.target.value)}
-        placeholder="Anything your team or your accountant should know"
+        placeholder={translate('anythingYourTeamOrYourAccountantShouldKnow')}
         className={cn(inputClass, 'h-auto min-h-16 resize-y py-2')}
       />
     </FormField>
@@ -391,8 +403,8 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           <h2 className="truncate text-lg font-semibold">{title}</h2>
           <p className="text-[13px] text-muted-foreground">
             {booked
-              ? 'Booked: the amounts are part of your books now.'
-              : 'Save a draft any time; booking needs the starred fields and a receipt.'}
+              ? translate('bookedTheAmountsArePartOfYourBooksNow')
+              : translate('saveADraftAnyTimeBookingNeedsTheStarred')}
           </p>
         </div>
       </div>
@@ -403,19 +415,21 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             <div className="border-b border-border/60 px-5 py-6 md:px-8">
               <output className="flex max-w-[800px] items-start gap-2.5 rounded-lg bg-muted/60 px-3 py-2.5 text-[13px] text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" />
-                Supplier, amounts and receipts are locked once booked. To correct them, void this
-                expense and book a corrected copy.
+                {translate('supplierAmountsAndReceiptsAreLockedOnceBookedTo')}
               </output>
             </div>
             {payment}
-            <FormSection title="Note" description="Only visible to your team.">
+            <FormSection title={translate('note')} description={translate('onlyVisibleToYourTeam')}>
               {note}
             </FormSection>
           </>
         ) : (
           <>
             {!expense && (
-              <FormSection title="Receipt" description="Attach it now or later; booking needs one.">
+              <FormSection
+                title={translate('receipt')}
+                description={translate('attachItNowOrLaterBookingNeedsOne')}
+              >
                 {staged.length ? (
                   <StagedReceipts
                     files={staged}
@@ -427,11 +441,14 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               </FormSection>
             )}
 
-            <FormSection title="Details" description="Who you paid, when, and for what.">
+            <FormSection
+              title={translate('details')}
+              description={translate('whoYouPaidWhenAndForWhat')}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   field="supplier_name"
-                  label="Supplier"
+                  label={translate('supplier')}
                   error={errors.supplier_name}
                   required
                   className="sm:col-span-2"
@@ -440,14 +457,14 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     {...describe('supplier_name')}
                     value={values.supplier_name}
                     onChange={(event) => set('supplier_name', event.target.value)}
-                    placeholder="Swisscom (Schweiz) AG"
+                    placeholder={translate('swisscomSchweizAG')}
                     autoComplete="off"
                     className={inputClass}
                   />
                 </FormField>
                 <FormField
                   field="document_date"
-                  label="Receipt date"
+                  label={translate('receiptDate')}
                   error={errors.document_date}
                   required
                 >
@@ -457,15 +474,15 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     max={today}
                     value={values.document_date}
                     onChange={(event) => set('document_date', event.target.value)}
-                    placeholder="YYYY-MM-DD"
+                    placeholder={translate('yyyyMMDD')}
                     className={cn(inputClass, 'cursor-text tabular-nums')}
                   />
                 </FormField>
                 <FormField
                   field="due_date"
-                  label="Due date"
+                  label={translate('dueDate')}
                   error={errors.due_date}
-                  tip="For supplier invoices you pay later; unpaid ones past it show as overdue."
+                  tip={translate('forSupplierInvoicesYouPayLaterUnpaidOnesPast')}
                 >
                   <input
                     {...describe('due_date')}
@@ -473,23 +490,27 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     min={values.document_date || undefined}
                     value={values.due_date}
                     onChange={(event) => set('due_date', event.target.value)}
-                    placeholder="YYYY-MM-DD"
+                    placeholder={translate('yyyyMMDD')}
                     className={cn(inputClass, 'cursor-text tabular-nums')}
                   />
                 </FormField>
                 <FormField
                   field="category_id"
-                  label="Category"
+                  label={translate('category')}
                   error={errors.category_id}
                   required
-                  tip="Each category books to an account of the Swiss SME chart of accounts (KMU-Kontenrahmen)."
+                  tip={translate('eachCategoryBooksToAnAccountOfTheSwiss')}
                 >
                   <Combobox
                     id={fieldId('category_id')}
                     value={values.category_id}
                     options={categoryOptions}
                     invalid={Boolean(errors.category_id)}
-                    placeholder={categories.isPending ? 'Loading categories…' : 'Choose a category'}
+                    placeholder={
+                      categories.isPending
+                        ? translate('loadingCategories')
+                        : translate('chooseACategory')
+                    }
                     renderValue={(option) => (
                       <span>
                         {option.label}{' '}
@@ -499,26 +520,30 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     onChange={(id) => set('category_id', id)}
                   />
                 </FormField>
-                <FormField field="reference" label="Invoice / receipt no." error={errors.reference}>
+                <FormField
+                  field="reference"
+                  label={translate('invoiceReceiptNo')}
+                  error={errors.reference}
+                >
                   <input
                     {...describe('reference')}
                     value={values.reference}
                     onChange={(event) => set('reference', event.target.value)}
-                    placeholder="R-2026-0412"
+                    placeholder={translate('r20260412')}
                     className={inputClass}
                   />
                 </FormField>
                 <DuplicateWarning duplicate={expense?.duplicate_of ?? null} />
                 <FormField
                   field="supplier_country"
-                  label="Supplier country"
-                  tip="Where the supplier charged its VAT. Only Swiss and Liechtenstein VAT is reclaimable as Swiss input tax."
+                  label={translate('supplierCountry')}
+                  tip={translate('whereTheSupplierChargedItsVATOnlySwissAnd')}
                 >
                   <Combobox
                     id={fieldId('supplier_country')}
                     value={values.supplier_country}
                     options={COUNTRY_OPTIONS}
-                    placeholder="Choose a country"
+                    placeholder={translate('chooseACountry2')}
                     onChange={(code) => {
                       setValues((current) => withSupplierCountry(current, code, registered))
                     }}
@@ -526,21 +551,21 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="supplier_vat_number"
-                  label="Supplier VAT / UID"
+                  label={translate('supplierVATUID')}
                   error={errors.supplier_vat_number}
-                  tip="Printed on the receipt, e.g. CHE-123.456.789 MWST. Needed for input tax above CHF 400."
+                  tip={translate('printedOnTheReceiptEGCHE123456')}
                 >
                   <input
                     {...describe('supplier_vat_number')}
                     value={values.supplier_vat_number}
                     onChange={(event) => set('supplier_vat_number', event.target.value)}
-                    placeholder="CHE-123.456.789 MWST"
+                    placeholder={translate('che123456789MWST')}
                     className={cn(inputClass, 'font-mono text-[13px]')}
                   />
                 </FormField>
                 <FormField
                   field="description"
-                  label="What for"
+                  label={translate('whatFor')}
                   error={errors.description}
                   className="sm:col-span-2"
                 >
@@ -548,7 +573,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     {...describe('description')}
                     value={values.description}
                     onChange={(event) => set('description', event.target.value)}
-                    placeholder="Mobile subscription, October"
+                    placeholder={translate('mobileSubscriptionOctober')}
                     className={inputClass}
                   />
                 </FormField>
@@ -556,15 +581,15 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             </FormSection>
 
             <FormSection
-              title="Amounts"
-              description="What the receipt adds up to, line by line."
+              title={translate('amounts')}
+              description={translate('whatTheReceiptAddsUpToLineByLine')}
               action={
                 <Segmented
-                  label="Amounts are"
+                  label={translate('amountsAre')}
                   value={values.amount_mode}
                   options={[
-                    { value: 'gross', label: 'Incl. VAT' },
-                    { value: 'net', label: 'Excl. VAT' },
+                    { value: 'gross', label: translate('inclVAT') },
+                    { value: 'net', label: translate('exclVAT') },
                   ]}
                   onChange={(mode) => set('amount_mode', mode)}
                 />
@@ -572,29 +597,31 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             >
               <div className="grid gap-2">
                 <div className="grid grid-cols-[minmax(0,1fr)_120px_92px_32px] gap-2 text-[13px] font-medium max-sm:grid-cols-[minmax(0,1fr)_110px_84px_32px]">
-                  <span>Item</span>
+                  <span>{translate('item')}</span>
                   <span>
-                    Amount
+                    {translate('amount')}
                     <span aria-hidden className="ml-0.5 text-destructive">
                       *
                     </span>
                   </span>
-                  <span>VAT %</span>
+                  <span>{translate('vat2')}</span>
                   <span />
                 </div>
                 {values.lines.map((line, index) => (
                   <div key={line.key} className="grid gap-1">
                     <div className="grid grid-cols-[minmax(0,1fr)_120px_92px_32px] items-center gap-2 max-sm:grid-cols-[minmax(0,1fr)_110px_84px_32px]">
                       <input
-                        aria-label={`Line ${index + 1} description`}
+                        aria-label={translate('lineDescription', { value1: index + 1 })}
                         value={line.description}
                         onChange={(event) => setLine(index, { description: event.target.value })}
-                        placeholder={index === 0 ? 'Optional, e.g. Hotel' : 'e.g. Breakfast'}
+                        placeholder={
+                          index === 0 ? translate('optionalEGHotel') : translate('eGBreakfast')
+                        }
                         className={inputClass}
                       />
                       <input
                         {...describe(`lines.${index}.amount`)}
-                        aria-label={`Line ${index + 1} amount`}
+                        aria-label={translate('lineAmount', { value1: index + 1 })}
                         inputMode="decimal"
                         value={line.amount}
                         onChange={(event) => setLine(index, { amount: event.target.value })}
@@ -603,7 +630,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                       />
                       <input
                         {...describe(`lines.${index}.vat_rate`)}
-                        aria-label={`Line ${index + 1} VAT rate`}
+                        aria-label={translate('lineVATRate', { value1: index + 1 })}
                         inputMode="decimal"
                         list="expense-vat-rates"
                         value={line.vat_rate}
@@ -615,7 +642,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                         type="button"
                         variant="destructive-ghost"
                         size="icon-sm"
-                        aria-label={`Remove line ${index + 1}`}
+                        aria-label={translate('removeLine', { value1: index + 1 })}
                         disabled={values.lines.length === 1}
                         className="cursor-pointer"
                         onClick={() =>
@@ -655,18 +682,19 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     set('lines', [...values.lines, newLine(registered ? defaultRate : '0')])
                   }
                 >
-                  <Plus /> Add a line for another VAT rate
+                  <Plus />
+                  {translate('addALineForAnotherVATRate')}
                 </Button>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField field="currency" label="Currency">
+                <FormField field="currency" label={translate('currency')}>
                   <Combobox
                     id={fieldId('currency')}
                     value={values.currency}
                     options={currencyOptions}
                     renderValue={(option) => `${option.value} · ${option.label}`}
-                    placeholder="Choose a currency"
+                    placeholder={translate('chooseACurrency2')}
                     onChange={(code) => set('currency', code)}
                   />
                 </FormField>
@@ -674,10 +702,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                   <>
                     <FormField
                       field="exchange_rate"
-                      label={`${baseCurrency} per 1 ${values.currency}`}
+                      label={translate('per1', {
+                        baseCurrency: baseCurrency,
+                        currency: values.currency,
+                      })}
                       error={errors.exchange_rate}
                       required
-                      tip="The rate you book with: the ESTV rate for VAT, or what your bank charged."
+                      tip={translate('theRateYouBookWithTheESTVRateFor')}
                     >
                       <input
                         {...describe('exchange_rate')}
@@ -689,17 +720,17 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                       />
                     </FormField>
                     <div className="grid grid-cols-2 gap-2">
-                      <FormField field="exchange_rate_date" label="Rate date">
+                      <FormField field="exchange_rate_date" label={translate('rateDate')}>
                         <input
                           {...describe('exchange_rate_date')}
                           type="date"
                           value={values.exchange_rate_date}
                           onChange={(event) => set('exchange_rate_date', event.target.value)}
-                          placeholder="YYYY-MM-DD"
+                          placeholder={translate('yyyyMMDD')}
                           className={cn(inputClass, 'cursor-text px-2 tabular-nums')}
                         />
                       </FormField>
-                      <FormField field="exchange_rate_source" label="Source">
+                      <FormField field="exchange_rate_source" label={translate('source')}>
                         <Combobox
                           id={fieldId('exchange_rate_source')}
                           value={values.exchange_rate_source}
@@ -707,7 +738,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                             value: source.value,
                             label: source.label,
                           }))}
-                          placeholder="Source"
+                          placeholder={translate('source')}
                           contentClassName="w-56"
                           onChange={(source) =>
                             set(
@@ -725,22 +756,25 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               <Totals expense={totals} foreign={foreign} loading={preview.isFetching} />
             </FormSection>
 
-            <FormSection title="Input tax" description="How much of the VAT you can reclaim.">
+            <FormSection
+              title={translate('inputTax')}
+              description={translate('howMuchOfTheVATYouCanReclaim')}
+            >
               <FormField
                 field="deductible_percent"
-                label="Reclaimable VAT"
+                label={translate('reclaimableVAT')}
                 error={errors.deductible_percent}
                 hint={isForeignVat(values.supplier_country) ? FOREIGN_VAT_HINT : undefined}
-                tip="Input tax (Vorsteuer): full for business costs, partial for mixed private use, none when you are not VAT-registered or it is excluded (e.g. 50% of entertainment)."
+                tip={translate('inputTaxVorsteuerFullForBusinessCostsPartialFor')}
               >
                 <div className="flex min-h-9 flex-wrap items-center gap-2">
                   <Segmented
-                    label="Reclaimable VAT"
+                    label={translate('reclaimableVAT')}
                     value={values.input_tax}
                     options={[
-                      { value: 'full', label: 'Full' },
-                      { value: 'partial', label: 'Partial' },
-                      { value: 'none', label: 'None' },
+                      { value: 'full', label: translate('full') },
+                      { value: 'partial', label: translate('partial') },
+                      { value: 'none', label: translate('none2') },
                     ]}
                     onChange={(choice) => {
                       set('input_tax', choice)
@@ -758,7 +792,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                         value={values.deductible_percent}
                         onChange={(event) => set('deductible_percent', event.target.value)}
                         placeholder="50"
-                        aria-label="Deductible share in percent"
+                        aria-label={translate('deductibleShareInPercent')}
                         className={cn(inputClass, 'w-20 text-right tabular-nums')}
                       />
                       %
@@ -770,18 +804,21 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
 
             {payment}
 
-            <FormSection title="Notes" description="For your team and your accountant.">
+            <FormSection
+              title={translate('notes')}
+              description={translate('forYourTeamAndYourAccountant')}
+            >
               {note}
               <FormField
                 field="receipt_missing_reason"
-                label="No receipt?"
-                tip="A substitute receipt (Ersatzbeleg): say what was bought, where and why the original is missing."
+                label={translate('noReceipt')}
+                tip={translate('aSubstituteReceiptErsatzbelegSayWhatWasBoughtWhere')}
               >
                 <input
                   {...describe('receipt_missing_reason')}
                   value={values.receipt_missing_reason}
                   onChange={(event) => set('receipt_missing_reason', event.target.value)}
-                  placeholder="e.g. Parking meter, no receipt issued"
+                  placeholder={translate('eGParkingMeterNoReceiptIssued')}
                   className={inputClass}
                 />
               </FormField>
@@ -792,7 +829,8 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
 
       <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3 md:px-7">
         <span className="hidden text-xs text-muted-foreground sm:block">
-          <kbd className="font-sans">⌘</kbd> Enter to save
+          <kbd className="font-sans">⌘</kbd>
+          {translate('enterToSave')}
         </span>
         <Button
           type="button"
@@ -800,11 +838,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           className="ml-auto cursor-pointer"
           onClick={requestClose}
         >
-          Cancel
+          {translate('cancel')}
         </Button>
         {booked ? (
           <Button type="submit" disabled={busy} className="cursor-pointer">
-            {busy ? 'Saving…' : 'Save changes'}
+            {busy ? translate('saving') : translate('saveChanges')}
           </Button>
         ) : (
           <>
@@ -815,10 +853,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               className="cursor-pointer"
               onClick={() => void submit(false)}
             >
-              Save draft
+              {translate('saveDraft')}
             </Button>
             <Button type="submit" disabled={busy} className="cursor-pointer">
-              {busy ? 'Saving…' : 'Save and book'}
+              {busy ? translate('saving') : translate('saveAndBook')}
             </Button>
           </>
         )}
@@ -826,10 +864,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
 
       {discarding && (
         <ConfirmDialog
-          title="Discard your changes?"
-          body="What you entered in this form will be lost."
-          confirmLabel="Discard"
-          cancelLabel="Keep editing"
+          title={translate('discardYourChanges')}
+          body={translate('whatYouEnteredInThisFormWillBeLost')}
+          confirmLabel={translate('discard')}
+          cancelLabel={translate('keepEditing')}
           tone="destructive"
           onDecide={(discard) => {
             setDiscarding(false)
@@ -848,7 +886,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        <SheetDescription className="sr-only">Expense details</SheetDescription>
+        <SheetDescription className="sr-only">{translate('expenseDetails')}</SheetDescription>
         {body}
       </SheetContent>
     </Sheet>
@@ -867,11 +905,14 @@ function Totals({
 }) {
   if (!expense) return null
   const rows = [
-    { label: 'Net', value: formatMoney(expense.net_total, expense.currency) },
+    { label: translate('net2'), value: formatMoney(expense.net_total, expense.currency) },
     ...expense.vat_breakdown
       .filter((group) => group.rate !== '0')
       .map((group) => ({
-        label: `VAT ${group.rate}% on ${formatMoney(group.taxable_amount, expense.currency)}`,
+        label: translate('vatOn', {
+          rate: group.rate,
+          value2: formatMoney(group.taxable_amount, expense.currency),
+        }),
         value: formatMoney(group.vat_amount, expense.currency),
       })),
   ]
@@ -890,19 +931,22 @@ function Totals({
         </div>
       ))}
       <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5 text-[15px] font-medium">
-        <span>Total</span>
+        <span>{translate('total')}</span>
         <span className="tabular-nums">{formatMoney(expense.total, expense.currency)}</span>
       </div>
       {foreign && (
         <div className="flex justify-between gap-4 text-muted-foreground">
-          <span>In {expense.base.currency}</span>
+          <span>
+            {translate('in2')}
+            {expense.base.currency}
+          </span>
           <span className="tabular-nums">
             {formatMoney(expense.base.total, expense.base.currency)}
           </span>
         </div>
       )}
       <div className="flex justify-between gap-4 text-success">
-        <span>Reclaimable input tax</span>
+        <span>{translate('reclaimableInputTax2')}</span>
         <span className="tabular-nums">
           {formatMoney(expense.base.deductible_vat, expense.base.currency)}
         </span>

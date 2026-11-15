@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ import { initialsOf } from '@/components/initials'
 import { newInvoiceHref } from '@/components/invoices/client-invoices'
 import { RecordPageButton } from '@/components/record-link'
 import type { Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 import { addressLines, ClientStatusBadge } from './client-bits'
 import { countryName } from './client-form-model'
@@ -43,13 +44,15 @@ export function headerFacts(client: Client): HeaderFact[] {
   const lines = addressLines(client)
   const place = [client.city, country].filter(Boolean).join(', ')
   const facts: (HeaderFact | null)[] = [
-    client.email ? { label: 'Email', text: client.email, href: `mailto:${client.email}` } : null,
+    client.email
+      ? { label: translate('email'), text: client.email, href: `mailto:${client.email}` }
+      : null,
     client.phone
-      ? { label: 'Phone', text: displayPhone(client.phone), href: `tel:${client.phone}` }
+      ? { label: translate('phone'), text: displayPhone(client.phone), href: `tel:${client.phone}` }
       : null,
     place
       ? {
-          label: 'Location',
+          label: translate('location'),
           text: place,
           href: mapsHref([...lines, country].filter(Boolean).join(', ')),
           external: true,
@@ -57,7 +60,7 @@ export function headerFacts(client: Client): HeaderFact[] {
       : null,
     client.website
       ? {
-          label: 'Website',
+          label: translate('website'),
           text: client.website.replace(/^https?:\/\//i, '').replace(/\/$/, ''),
           href: websiteHref(client.website),
           external: true,
@@ -69,9 +72,9 @@ export function headerFacts(client: Client): HeaderFact[] {
 
 /** "Person · goes by Anna" / "Company · contact Anna Muster". */
 export function clientKind(client: Pick<Client, 'is_company' | 'preferred_name'>): string {
-  const kind = client.is_company ? 'Company' : 'Person'
+  const kind = client.is_company ? translate('company') : translate('person')
   if (!client.preferred_name) return kind
-  return `${kind} · ${client.is_company ? 'contact' : 'goes by'} ${client.preferred_name}`
+  return `${kind} · ${client.is_company ? 'contact' : translate('goesBy')} ${client.preferred_name}`
 }
 
 /** An icon-only control with its name in a tooltip. */
@@ -114,48 +117,58 @@ export function ClientHeader({
         <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption font-medium text-muted-foreground tabular-nums">
           #{client.number}
         </span>
-        <span className="ml-1.5 text-body-sm text-muted-foreground max-sm:sr-only">Client</span>
+        <span className="ml-1.5 text-body-sm text-muted-foreground max-sm:sr-only">
+          {translate('client')}
+        </span>
         <div className="ml-auto flex items-center gap-1">
           <DropdownMenu>
-            <Tip label="More actions">
+            <Tip label={translate('moreActions')}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
             </Tip>
             <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuItem onSelect={onEdit}>
-                <Pencil /> Edit details
+                <Pencil />
+                {translate('editDetails')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onToggle}>
-                <Power /> {client.is_active ? 'Deactivate' : 'Activate'}
+                <Power /> {client.is_active ? translate('deactivate') : translate('activate')}
               </DropdownMenuItem>
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                    <Trash2 /> Delete
+                    <Trash2 />
+                    {translate('delete')}
                   </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Tip label="New document from a template">
+          <Tip label={translate('newDocumentFromATemplate')}>
             <Button variant="outline" onClick={onFillTemplate}>
               <LayoutTemplate className="size-3.5" />
-              <span className="max-sm:sr-only">Document</span>
+              <span className="max-sm:sr-only">{translate('document')}</span>
             </Button>
           </Tip>
           <Button asChild>
-            <a href={newInvoiceHref(client.id)}>
-              <FilePlus2 className="size-3.5" /> New invoice
+            <a href={localizedHref(newInvoiceHref(client.id))}>
+              <FilePlus2 className="size-3.5" />
+              {translate('newInvoice2')}
             </a>
           </Button>
           <RecordPageButton />
-          <Tip label="Close">
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+          <Tip label={translate('close')}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('close')}
+              onClick={onClose}
+            >
               <X />
             </Button>
           </Tip>
@@ -213,7 +226,7 @@ function Fact({ fact }: { fact: HeaderFact }) {
       <dt className="text-caption text-muted-foreground">{fact.label}</dt>
       <dd className="min-w-0 truncate text-body">
         <a
-          href={fact.href}
+          href={localizedHref(fact.href)}
           target={fact.external ? '_blank' : undefined}
           rel={fact.external ? 'noreferrer' : undefined}
           className={cn(

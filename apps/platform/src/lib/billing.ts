@@ -1,11 +1,12 @@
 'use client'
-
+import { numberLocale } from '@helvetly/i18n'
 // Plans, usage and Stripe billing, typed by hand from docs/billing-contract.md.
 import { meterTone } from '@helvetly/ui/components/meter'
 import { formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type PlanId = 'basic' | 'pro' | 'business'
 export type Interval = 'month' | 'year'
@@ -265,15 +266,15 @@ const isLimitKey = (value: unknown): value is LimitKey => LIMIT_KEYS.has(value)
 const isPlanId = (value: unknown): value is PlanId => PLAN_IDS.has(value)
 
 export const LIMIT_LABELS: Record<LimitKey, string> = {
-  members: 'Members',
-  clients: 'Clients',
-  invoices_per_month: 'Invoices this month',
-  expenses_per_month: 'Expenses this month',
-  products: 'Products & services',
-  engagements: 'Running engagements',
-  signatures_per_month: 'Signature requests this month',
-  storage_bytes: 'Storage',
-  ai_tokens_per_month: 'AI tokens this month',
+  members: translate('members'),
+  clients: translate('clients'),
+  invoices_per_month: translate('invoicesThisMonth'),
+  expenses_per_month: translate('expensesThisMonth'),
+  products: translate('productsServices'),
+  engagements: translate('runningEngagements2'),
+  signatures_per_month: translate('signatureRequestsThisMonth'),
+  storage_bytes: translate('storage'),
+  ai_tokens_per_month: translate('aiTokensThisMonth'),
 }
 
 export function formatBytes(bytes: number): string {
@@ -286,8 +287,8 @@ export function formatBytes(bytes: number): string {
 
 /** A limit's value as people read it: "10", "500 MB", "Unlimited". */
 export function formatLimit(limit: LimitKey, value: number | null): string {
-  if (value === null) return 'Unlimited'
-  return limit === 'storage_bytes' ? formatBytes(value) : value.toLocaleString('de-CH')
+  if (value === null) return translate('unlimited2')
+  return limit === 'storage_bytes' ? formatBytes(value) : value.toLocaleString(numberLocale)
 }
 
 /** How full a meter is, on the meter's own thresholds: fine, almost at the limit (75 %), at it. */
@@ -328,12 +329,12 @@ export function seatCostLabel(billing: Billing): string | null {
 
 /** What a price includes, short: VAT in francs and euros, sales tax (where due) in dollars. */
 export function taxNote(currency: string): string {
-  return currency === 'usd' ? 'incl. tax' : 'incl. VAT'
+  return currency === 'usd' ? translate('inclTax') : translate('inclVAT3')
 }
 
 /** The same, naming Swiss VAT for francs: "incl. Swiss VAT", "incl. VAT", "incl. tax". */
 export function taxNoteLong(currency: string): string {
-  return currency === 'chf' ? 'incl. Swiss VAT' : taxNote(currency)
+  return currency === 'chf' ? translate('inclSwissVAT') : taxNote(currency)
 }
 
 const RANK: Record<PlanId | '', number> = { '': 0, basic: 1, pro: 2, business: 3 }
@@ -386,7 +387,7 @@ export function nextPlan(billing: Billing): Plan | undefined {
 }
 
 /** Per-seat plans have no member cap. */
-export const ANY_PEOPLE = 'Any number of people'
+export const ANY_PEOPLE = translate('anyNumberOfPeople')
 
 const HIGHLIGHT_ORDER: LimitKey[] = [
   'members',
@@ -402,13 +403,13 @@ const HIGHLIGHT_ORDER: LimitKey[] = [
 const HIGHLIGHT_NOUNS: Record<LimitKey, string> = {
   members: 'members',
   clients: 'clients',
-  invoices_per_month: 'invoices a month',
-  expenses_per_month: 'expenses a month',
-  products: 'products & services',
-  engagements: 'running engagements',
-  signatures_per_month: 'signature requests a month',
+  invoices_per_month: translate('invoicesAMonth'),
+  expenses_per_month: translate('expensesAMonth'),
+  products: translate('productsServices2'),
+  engagements: translate('runningEngagements'),
+  signatures_per_month: translate('signatureRequestsAMonth'),
   storage_bytes: 'storage',
-  ai_tokens_per_month: 'AI tokens a month',
+  ai_tokens_per_month: translate('aiTokensAMonth'),
 }
 
 /** A plan's main limits as short lines: "2 members", "50 clients", "30 invoices a month". */
@@ -417,7 +418,7 @@ export function planHighlights(plan: Plan, count = 4): string[] {
     const value = plan.limits[limit]
     if (limit === 'members' && value === null) return ANY_PEOPLE
     return value === null
-      ? `Unlimited ${HIGHLIGHT_NOUNS[limit]}`
+      ? translate('unlimited4', { value1: HIGHLIGHT_NOUNS[limit] })
       : `${formatLimit(limit, value)} ${HIGHLIGHT_NOUNS[limit]}`
   })
 }

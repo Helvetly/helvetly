@@ -1,5 +1,4 @@
 'use client'
-
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
 import { Check } from 'lucide-react'
 import { useState } from 'react'
@@ -7,6 +6,7 @@ import { useState } from 'react'
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
 import { taxNote, useCurrency } from '@/lib/currency'
+import { translate } from '@/lib/i18n'
 import { type Interval, PLANS, priceOf, TRIAL_DAYS, YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
@@ -23,7 +23,7 @@ export function PricingCards() {
   return (
     <div className="flex flex-col items-center">
       <fieldset className="border-site-line bg-site-tint inline-flex rounded-full border p-1 text-body-sm font-medium">
-        <legend className="sr-only">Billing interval</legend>
+        <legend className="sr-only">{translate('billingInterval')}</legend>
         {(['month', 'year'] as const).map((value) => (
           <label
             key={value}
@@ -42,7 +42,7 @@ export function PricingCards() {
               onChange={() => setInterval(value)}
               className="absolute inset-0 cursor-pointer appearance-none opacity-0"
             />
-            {value === 'month' ? 'Monthly' : 'Yearly'}
+            {value === 'month' ? translate('monthly') : translate('yearly')}
             {value === 'year' && (
               <span className="ml-1.5 rounded-full bg-brand-surface px-1.5 py-0.5 text-caption text-brand">
                 −{YEARLY_DISCOUNT_PERCENT}%
@@ -71,7 +71,7 @@ export function PricingCards() {
                 <h3 className="text-title font-semibold">{plan.name}</h3>
                 {featured && (
                   <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2.5 py-0.5 text-caption font-medium text-white">
-                    Most popular
+                    {translate('mostPopular')}
                   </span>
                 )}
               </div>
@@ -98,7 +98,8 @@ export function PricingCards() {
                 <span
                   className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
                 >
-                  / person / {interval}
+                  {translate('person')}
+                  {interval}
                 </span>
               </p>
               <p
@@ -108,15 +109,20 @@ export function PricingCards() {
                 )}
               >
                 {interval === 'year'
-                  ? `${formatPrice(monthOf(priceOf(plan, 'year', currency)))} a month, billed yearly, ${taxNote(currency)}`
-                  : `Billed monthly, ${taxNote(currency)}`}
+                  ? translate('aMonthBilledYearly', {
+                      value1: formatPrice(monthOf(priceOf(plan, 'year', currency))),
+                      value2: taxNote(currency),
+                    })
+                  : translate('billedMonthly', { value1: taxNote(currency) })}
               </p>
               <Cta
                 href={START_URL}
                 variant={featured ? 'light' : 'primary'}
                 className="mt-6 w-full"
               >
-                {plan.id === 'basic' ? `Start ${TRIAL_DAYS}-day trial` : `Choose ${plan.name}`}
+                {plan.id === 'basic'
+                  ? translate('startDayTrial', { TRIAL_DAYS: TRIAL_DAYS })
+                  : translate('choose2', { name: plan.name })}
               </Cta>
               <ul className="mt-7 grid gap-2.5 text-body">
                 {plan.highlights.map((item) => (
@@ -140,10 +146,7 @@ export function PricingCards() {
         })}
       </div>
       <p className="mt-10 max-w-3xl text-center text-body-sm text-muted-foreground">
-        Every plan includes every feature: QR bills, reminders, e-invoicing, signatures, the client
-        portal and Heidi. Prices are per person in the workspace; plans differ only in how much you
-        can do. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU and USD everywhere
-        else.
+        {translate('everyPlanIncludesEveryFeatureQRBillsRemindersE')}
       </p>
     </div>
   )

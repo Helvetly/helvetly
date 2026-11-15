@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
@@ -22,6 +22,7 @@ import {
   usePortal,
   useSyncBilling,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { AITokenPacks } from './ai-token-packs'
 import { BillingCard } from './billing-card'
@@ -57,21 +58,21 @@ export function BillingSettings() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="Plan & billing"
-        description="This workspace’s plan, what it uses of it and its payments. Each workspace is billed on its own."
+        title={translate('planBilling')}
+        description={translate('thisWorkspaceSPlanWhatItUsesOfIt')}
       >
         {billing.error ? (
           <p role="alert" className="text-sm text-muted-foreground">
-            Billing couldn’t be loaded: {errorMessage(billing.error)}
+            {translate('billingCouldnTBeLoaded')}
+            {errorMessage(billing.error)}
           </p>
         ) : !data ? (
-          <Loader label="Loading billing" className="min-h-80" />
+          <Loader label={translate('loadingBilling')} className="min-h-80" />
         ) : (
           <div data-slot="billing-overview" className="@container grid gap-7">
             {!data.enabled && (
               <p className="rounded-lg bg-warning-surface px-4 py-3 text-body-sm text-pretty text-warning">
-                Subscription billing is currently unavailable. Plan limits are not applied to this
-                workspace.
+                {translate('subscriptionBillingIsCurrentlyUnavailablePlanLimitsAreNot')}
               </p>
             )}
             <PlanSummary billing={data} onPortal={openPortal} portalPending={portal.isPending} />
@@ -109,19 +110,19 @@ function useCheckoutReturn() {
     handled.current = true
     router.replace(pathname)
     if (outcome === 'canceled') {
-      toast('Checkout cancelled. Nothing was charged.')
+      toast(translate('checkoutCancelledNothingWasCharged'))
       return
     }
     if (outcome === 'ai_tokens') {
-      toast.success('Payment received. The AI tokens are added in a moment.')
+      toast.success(translate('paymentReceivedTheAITokensAreAddedInA'))
       return
     }
     sync.mutate(undefined, {
       onSuccess: (billing) =>
         toast.success(
           billing.plan === ''
-            ? 'Payment received. The plan appears here in a moment.'
-            : `Welcome to ${capitalize(billing.plan)}.`,
+            ? translate('paymentReceivedThePlanAppearsHereInAMoment')
+            : translate('welcomeTo', { value1: capitalize(billing.plan) }),
         ),
       onError: toastError,
     })
@@ -143,8 +144,8 @@ function PaymentMethod({
   return (
     <BillingCard
       id="payment-method"
-      title="Payment method"
-      description="The card Stripe charges."
+      title={translate('paymentMethod')}
+      description={translate('theCardStripeCharges')}
       action={
         !details.isPending && (
           <Button size="sm" variant="outline" disabled={portalPending} onClick={onPortal}>
@@ -155,14 +156,13 @@ function PaymentMethod({
     >
       <div className="grid flex-1 place-items-center px-5 py-5">
         {details.isPending ? (
-          <Loader label="Loading the card" className="min-h-40" />
+          <Loader label={translate('loadingTheCard')} className="min-h-40" />
         ) : (
           <PaymentCard card={card} />
         )}
       </div>
       <p className="border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground">
-        Charged in {currency.toUpperCase()} {taxNoteLong(currency)}. A change of plan is invoiced
-        now, prorated to the day.
+        {translate('billingChargeNotice', { currency: currency.toUpperCase(), taxNote: taxNoteLong(currency) })}
       </p>
     </BillingCard>
   )
@@ -183,33 +183,34 @@ function Invoices() {
   return (
     <BillingCard
       id="billing-invoices"
-      title="Invoices"
-      description="Helvetly’s invoices to this workspace."
+      title={translate('invoices')}
+      description={translate('helvetlySInvoicesToThisWorkspace')}
     >
       {details.isPending ? (
-        <Loader label="Loading invoices" className="min-h-28" />
+        <Loader label={translate('loadingInvoices')} className="min-h-28" />
       ) : details.error ? (
         <p role="alert" className="px-5 py-4 text-body-sm text-muted-foreground">
-          Invoices couldn’t be loaded: {errorMessage(details.error)}
+          {translate('invoicesCouldnTBeLoaded')}
+          {errorMessage(details.error)}
         </p>
       ) : !invoices || invoices.length === 0 ? (
         <div className="grid justify-items-center gap-2 px-5 py-8 text-center">
           <Receipt aria-hidden className="size-5 text-muted-foreground" />
-          <p className="text-body font-medium">No invoices yet</p>
+          <p className="text-body font-medium">{translate('noInvoicesYet')}</p>
           <p className="max-w-xs text-body-sm text-pretty text-muted-foreground">
-            The first arrives when the trial or the first period ends.
+            {translate('theFirstArrivesWhenTheTrialOrTheFirst')}
           </p>
         </div>
       ) : (
         <table className="w-full text-body">
           <thead className="text-left text-caption text-muted-foreground">
             <tr className="border-b">
-              <th className="py-2 pl-5 font-medium">Date</th>
-              <th className="hidden py-2 pl-4 font-medium @md:table-cell">Number</th>
-              <th className="py-2 pl-4 text-right font-medium">Amount</th>
-              <th className="py-2 pl-4 font-medium @sm:pl-6">Status</th>
+              <th className="py-2 pl-5 font-medium">{translate('date')}</th>
+              <th className="hidden py-2 pl-4 font-medium @md:table-cell">{translate('number')}</th>
+              <th className="py-2 pl-4 text-right font-medium">{translate('amount')}</th>
+              <th className="py-2 pl-4 font-medium @sm:pl-6">{translate('status')}</th>
               <th className="w-12 py-2 pr-3">
-                <span className="sr-only">Download</span>
+                <span className="sr-only">{translate('download')}</span>
               </th>
             </tr>
           </thead>
@@ -223,7 +224,7 @@ function Invoices() {
                       <span className="whitespace-nowrap">{formatDate(invoice.date)}</span>
                       {/* The number moves under the date on a narrow card. */}
                       <a
-                        href={invoice.url}
+                        href={localizedHref(invoice.url)}
                         target="_blank"
                         rel="noreferrer"
                         className="text-body-sm text-muted-foreground underline underline-offset-2 hover:no-underline @md:hidden"
@@ -234,7 +235,7 @@ function Invoices() {
                   </td>
                   <td className="hidden py-2.5 pl-4 @md:table-cell">
                     <a
-                      href={invoice.url}
+                      href={localizedHref(invoice.url)}
                       target="_blank"
                       rel="noreferrer"
                       className="text-muted-foreground underline underline-offset-2 hover:text-foreground hover:no-underline"
@@ -255,12 +256,15 @@ function Invoices() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button asChild size="icon-sm" variant="ghost">
-                            <a href={invoice.pdf} aria-label={`Download ${number} as PDF`}>
+                            <a
+                              href={localizedHref(invoice.pdf)}
+                              aria-label={translate('downloadAsPDF', { number: number })}
+                            >
                               <Download aria-hidden />
                             </a>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Download PDF</TooltipContent>
+                        <TooltipContent>{translate('downloadPDF')}</TooltipContent>
                       </Tooltip>
                     )}
                   </td>

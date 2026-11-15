@@ -1,3 +1,4 @@
+import { languageTag } from '@helvetly/i18n'
 import { COUNTRIES, countryName } from '@helvetly/ui/lib/countries'
 import { PHONE_ERROR, phoneDraft, toE164, type CountryCode } from '@helvetly/ui/lib/phone'
 
@@ -10,6 +11,7 @@ import {
   type EInvoiceFormat,
   type Language,
 } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 /** What the form edits: every text as typed, plus the phone's country for national numbers. */
 export type FormValues = {
@@ -105,49 +107,52 @@ export const ADDRESS_LABELS: Record<AddressField, string> = {
 
 /** ISO 3166-2:RO: the counties and Bucharest, as RO e-Factura codes them. */
 export const RO_COUNTIES: { value: string; label: string }[] = Object.entries({
-  AB: 'Alba',
-  AG: 'Argeș',
-  AR: 'Arad',
-  B: 'București',
-  BC: 'Bacău',
-  BH: 'Bihor',
-  BN: 'Bistrița-Năsăud',
-  BR: 'Brăila',
-  BT: 'Botoșani',
-  BV: 'Brașov',
-  BZ: 'Buzău',
-  CJ: 'Cluj',
+  AB: translate('alba'),
+  AG: translate('arge'),
+  AR: translate('arad'),
+  B: translate('bucureTi'),
+  BC: translate('bacU'),
+  BH: translate('bihor'),
+  BN: translate('bistriANSUd'),
+  BR: translate('brIla'),
+  BT: translate('botoAni'),
+  BV: translate('braOv'),
+  BZ: translate('buzU'),
+  CJ: translate('cluj'),
   CL: 'Călărași',
-  CS: 'Caraș-Severin',
-  CT: 'Constanța',
-  CV: 'Covasna',
+  CS: translate('caraSeverin'),
+  CT: translate('constanA'),
+  CV: translate('covasna'),
   DB: 'Dâmbovița',
-  DJ: 'Dolj',
-  GJ: 'Gorj',
-  GL: 'Galați',
-  GR: 'Giurgiu',
-  HD: 'Hunedoara',
-  HR: 'Harghita',
-  IF: 'Ilfov',
-  IL: 'Ialomița',
-  IS: 'Iași',
-  MH: 'Mehedinți',
-  MM: 'Maramureș',
-  MS: 'Mureș',
-  NT: 'Neamț',
-  OT: 'Olt',
-  PH: 'Prahova',
-  SB: 'Sibiu',
+  DJ: translate('dolj'),
+  GJ: translate('gorj'),
+  GL: translate('galaI'),
+  GR: translate('giurgiu'),
+  HD: translate('hunedoara'),
+  HR: translate('harghita'),
+  IF: translate('ilfov'),
+  IL: translate('ialomiA'),
+  IS: translate('iaI'),
+  MH: translate('mehedinI'),
+  MM: translate('maramure'),
+  MS: translate('mure'),
+  NT: translate('neam'),
+  OT: translate('olt'),
+  PH: translate('prahova'),
+  SB: translate('sibiu'),
   SJ: 'Sălaj',
-  SM: 'Satu Mare',
-  SV: 'Suceava',
-  TL: 'Tulcea',
-  TM: 'Timiș',
-  TR: 'Teleorman',
+  SM: translate('satuMare'),
+  SV: translate('suceava'),
+  TL: translate('tulcea'),
+  TM: translate('timi'),
+  TR: translate('teleorman'),
   VL: 'Vâlcea',
-  VN: 'Vrancea',
-  VS: 'Vaslui',
-}).map(([code, name]) => ({ value: `RO-${code}`, label: `${name} (RO-${code})` }))
+  VN: translate('vrancea'),
+  VS: translate('vaslui'),
+}).map(([code, name]) => ({
+  value: `RO-${code}`,
+  label: translate('ro', { name: name, code: code }),
+}))
 
 export { COUNTRIES, countryName }
 
@@ -235,36 +240,39 @@ export function validate(values: FormValues): FieldErrors {
   const errors: FieldErrors = {}
   if (values.electronic_scheme.trim() || values.electronic_id.trim()) {
     if (!/^\d{4}$/.test(values.electronic_scheme.trim()))
-      errors.electronic_scheme = 'Enter the four-digit EAS scheme code.'
+      errors.electronic_scheme = translate('enterTheFourDigitEASSchemeCode')
     if (!values.electronic_id.trim())
-      errors.electronic_id = 'Enter the electronic address registered with your provider.'
+      errors.electronic_id = translate('enterTheElectronicAddressRegisteredWithYourProvider')
   }
   if (!values.name.trim())
-    errors.name = values.is_company ? 'Enter the company name.' : 'Enter the full name.'
+    errors.name = values.is_company
+      ? translate('enterTheCompanyName')
+      : translate('enterTheFullName')
   const email = values.email.trim()
-  if (email && !EMAIL.test(email)) errors.email = 'Enter a valid email address.'
+  if (email && !EMAIL.test(email)) errors.email = translate('enterAValidEmailAddress')
   const billing = values.billing_email.trim()
-  if (billing && !EMAIL.test(billing)) errors.billing_email = 'Enter a valid email address.'
+  if (billing && !EMAIL.test(billing)) errors.billing_email = translate('enterAValidEmailAddress')
   const website = values.website.trim()
   if (website && !/^(https?:\/\/)?[^\s/.]+\.[^\s]+$/i.test(website))
-    errors.website = 'Enter a website, e.g. example.ch.'
+    errors.website = translate('enterAWebsiteEGExampleCh')
   const vat = values.vat_number.trim()
   // The server checks every number starting with CH as a Swiss UID.
   if (vat && /^CH/i.test(vat) && !isValidUid(vat))
-    errors.vat_number = 'This UID number isn’t valid. Check the digits.'
+    errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
   const terms = values.payment_terms_days.trim()
   if (terms && !(/^\d+$/.test(terms) && Number(terms) <= 365))
-    errors.payment_terms_days = 'Enter 0 to 365 days.'
-  if (values.currency && !/^[A-Z]{3}$/.test(values.currency)) errors.currency = 'Choose a currency.'
+    errors.payment_terms_days = translate('enter0To365Days')
+  if (values.currency && !/^[A-Z]{3}$/.test(values.currency))
+    errors.currency = translate('chooseACurrency')
   if (values.phone.trim() && !toE164(values.phone, values.phone_country)) errors.phone = PHONE_ERROR
   if (values.country.trim() && !/^[A-Z]{2}$/i.test(values.country.trim()))
-    errors.country = 'Choose a country.'
+    errors.country = translate('chooseACountry')
   if (values.leitweg_id.trim() && !isLeitwegId(values.leitweg_id))
-    errors.leitweg_id = 'Check the Leitweg-ID, e.g. 04011000-1234512345-06.'
+    errors.leitweg_id = translate('checkTheLeitwegIDEG04011000123451234506')
   for (const [field, max] of Object.entries(MAX) as [keyof FormValues, number][]) {
     const value = values[field]
     if (typeof value === 'string' && value.trim().length > max && !errors[field])
-      errors[field] = `Use at most ${max} characters.`
+      errors[field] = translate('useAtMostCharacters', { max: max })
   }
   return errors
 }
@@ -322,7 +330,7 @@ export function draftHint(missing: AddressField[]): string | null {
   if (!missing.length) return null
   const names = missing.map((field) => ADDRESS_LABELS[field])
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
-  return `Draft until the address is complete: add ${list}.`
+  return translate('draftUntilTheAddressIsCompleteAdd', { list: list })
 }
 
 /** Server field errors (422 `details.fields`) for the fields this form has. */
@@ -390,21 +398,25 @@ export function addTag(tags: string[], input: string): { tags: string[]; error?:
   const tag = input.trim().replace(/\s+/g, ' ')
   if (!tag) return { tags }
   if (tag.length > MAX_TAG_LENGTH)
-    return { tags, error: `Tags have at most ${MAX_TAG_LENGTH} characters.` }
+    return {
+      tags,
+      error: translate('tagsHaveAtMostCharacters', { MAX_TAG_LENGTH: MAX_TAG_LENGTH }),
+    }
   if (tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return { tags }
-  if (tags.length >= MAX_TAGS) return { tags, error: `A client has at most ${MAX_TAGS} tags.` }
+  if (tags.length >= MAX_TAGS)
+    return { tags, error: translate('aClientHasAtMostTags', { MAX_TAGS: MAX_TAGS }) }
   return { tags: [...tags, tag] }
 }
 
 // Billing defaults
 
-const languageNames = new Intl.DisplayNames(['en'], { type: 'language' })
+const languageNames = new Intl.DisplayNames([languageTag], { type: 'language' })
 export const LANGUAGE_OPTIONS = LANGUAGES.map((code) => ({
   code,
   name: languageNames.of(code) ?? code,
 }))
 
-const currencyNames = new Intl.DisplayNames(['en'], { type: 'currency' })
+const currencyNames = new Intl.DisplayNames([languageTag], { type: 'currency' })
 const FIRST_CURRENCIES = ['CHF', 'EUR']
 const currencyRank = (code: string) => {
   const index = FIRST_CURRENCIES.indexOf(code)

@@ -1,11 +1,12 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { useMutation } from '@tanstack/react-query'
 import { Loader2, MailX } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { EVENT_LABELS, unsubscribe } from '@/lib/notifications'
 
 import { PREFS_HREF } from './prefs-drawer'
@@ -16,7 +17,7 @@ export function UnsubscribePage() {
     mutationFn: (token: string) =>
       token
         ? unsubscribe(token)
-        : Promise.reject(new Error('Open the link from your email again, the whole of it.')),
+        : Promise.reject(new Error(translate('openTheLinkFromYourEmailAgainTheWhole'))),
   })
   const started = useRef(false)
 
@@ -37,15 +38,16 @@ export function UnsubscribePage() {
         </span>
         {run.isSuccess ? (
           <>
-            <h1 className="text-[19px] font-medium">You’re unsubscribed</h1>
+            <h1 className="text-[19px] font-medium">{translate('youReUnsubscribed')}</h1>
             <p className="text-[14px] text-pretty text-muted-foreground">
-              No more emails {what ? `about “${what}”` : 'of this kind'}. The bell in Helvetly still
-              shows them unless you turn that off too.
+              {translate('noMoreEmails')}
+              {what ? translate('about2', { what: what }) : translate('ofThisKind')}
+              {translate('theBellInHelvetlyStillShowsThemUnlessYou')}
             </p>
           </>
         ) : run.isError ? (
           <>
-            <h1 className="text-[19px] font-medium">This link didn’t work</h1>
+            <h1 className="text-[19px] font-medium">{translate('thisLinkDidnTWork')}</h1>
             <p className="text-[14px] text-pretty text-muted-foreground">
               {errorMessage(run.error)}
             </p>
@@ -53,12 +55,12 @@ export function UnsubscribePage() {
         ) : (
           <>
             <Loader2 aria-hidden className="size-6 animate-spin text-muted-foreground" />
-            <h1 className="text-[19px] font-medium">Unsubscribing…</h1>
+            <h1 className="text-[19px] font-medium">{translate('unsubscribing')}</h1>
           </>
         )}
         <Button asChild variant="outline" className="mt-2">
           {/* A full load: this page is outside the app, whose drawer opens from the address. */}
-          <a href={PREFS_HREF}>Change notification settings</a>
+          <a href={localizedHref(PREFS_HREF)}>{translate('changeNotificationSettings')}</a>
         </Button>
       </div>
     </div>

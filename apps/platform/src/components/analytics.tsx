@@ -1,9 +1,9 @@
 'use client'
-
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type ReactGA from 'react-ga4'
 
+import { translate } from '@/lib/i18n'
 import { useAuthConfig } from '@/lib/queries'
 
 /**
@@ -38,7 +38,7 @@ export function Analytics() {
 
     const location = window.location.origin + pathname
     ga.set({ page_location: location, page_title: 'Helvetly' })
-    ga.send({ hitType: 'pageview', page: pathname, location, title: 'Helvetly' })
+    ga.send({ hitType: 'pageview', page: pathname, location, title: translate('helvetly') })
   }, [ga, pathname])
 
   return null

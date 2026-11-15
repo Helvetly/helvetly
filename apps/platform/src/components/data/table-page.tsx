@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -24,6 +23,7 @@ import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
 import { DetailsPopover, DetailsSheet, type RowDetails } from './row-details'
@@ -43,7 +43,7 @@ export type RowLine = { title: string; subtitle: string; value?: string; status?
 
 type View<Row> = { label: string; filter?: (row: Row) => boolean }
 
-const soon = (what: string) => () => toast(`${what} coming soon.`)
+const soon = (what: string) => () => toast(translate('comingSoon', { what: what }))
 
 const matches = (row: object, query: string) =>
   Object.values(row).join(' ').toLowerCase().includes(query.trim().toLowerCase())
@@ -100,16 +100,17 @@ export function TablePage<Row extends { id: string }>({
             variant="ghost"
             size="sm"
             className="text-[15px] font-normal"
-            onClick={soon('Filters are')}
+            onClick={soon(translate('filtersAre'))}
           >
-            <ListFilter className="stroke-[1.5]" /> Filters
+            <ListFilter className="stroke-[1.5]" />
+            {translate('filters')}
           </Button>
           <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
             <Search className="size-4 shrink-0 stroke-[1.5]" />
             <input
               type="search"
-              aria-label={`Search ${noun}`}
-              placeholder="Search"
+              aria-label={translate('search2', { noun: noun })}
+              placeholder={translate('search')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
@@ -119,21 +120,21 @@ export function TablePage<Row extends { id: string }>({
             variant="ghost"
             size="sm"
             className="text-[15px] font-normal"
-            onClick={soon('Custom columns are')}
+            onClick={soon(translate('customColumnsAre'))}
           >
             <SlidersHorizontal className="stroke-[1.5]" />
-            <span className="max-sm:sr-only">Customize</span>
+            <span className="max-sm:sr-only">{translate('customize')}</span>
           </Button>
         </div>
 
         {query.error ? (
           <State
             icon={<CloudOff />}
-            title={`Couldn’t load ${noun}`}
+            title={translate('couldnTLoad', { noun: noun })}
             text={errorMessage(query.error)}
             action={
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
             }
           />
@@ -146,7 +147,7 @@ export function TablePage<Row extends { id: string }>({
                 <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
                   <th className="w-12 pl-5">
                     <Checkbox
-                      aria-label={`Select all ${noun}`}
+                      aria-label={translate('selectAll2', { noun: noun })}
                       className="bg-card"
                       checked={allSelected}
                       onCheckedChange={(checked) =>
@@ -185,7 +186,7 @@ export function TablePage<Row extends { id: string }>({
                   >
                     <td className="pl-5">
                       <Checkbox
-                        aria-label={`Select ${line(row).title}`}
+                        aria-label={translate('select2', { title: line(row).title })}
                         className="bg-card"
                         checked={selected.has(row.id)}
                         onCheckedChange={() => toggle(row.id)}
@@ -223,7 +224,7 @@ export function TablePage<Row extends { id: string }>({
                     className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
                   >
                     <Checkbox
-                      aria-label={`Select ${title}`}
+                      aria-label={translate('select2', { title: title })}
                       className="bg-card"
                       checked={selected.has(row.id)}
                       onCheckedChange={() => toggle(row.id)}
@@ -252,8 +253,12 @@ export function TablePage<Row extends { id: string }>({
             {rows.length === 0 && (
               <State
                 icon={<SearchX />}
-                title={search ? `Nothing matches “${search}”` : `No ${noun} in this view`}
-                text={search ? 'Try another word.' : 'Pick another view to see more.'}
+                title={
+                  search
+                    ? translate('nothingMatches', { search: search })
+                    : translate('noInThisView', { noun: noun })
+                }
+                text={search ? translate('tryAnotherWord') : translate('pickAnotherViewToSeeMore')}
                 action={
                   <Button
                     variant="outline"
@@ -263,7 +268,8 @@ export function TablePage<Row extends { id: string }>({
                       setViewIndex(0)
                     }}
                   >
-                    Show all {noun}
+                    {translate('showAll')}
+                    {noun}
                   </Button>
                 }
               />
@@ -276,15 +282,27 @@ export function TablePage<Row extends { id: string }>({
             count={selected.size}
             onClear={() => setSelected(new Set())}
             actions={[
-              { label: 'Export', icon: <Upload />, onClick: soon(`Exporting ${noun} is`) },
-              { label: 'Archive', icon: <Archive />, onClick: soon(`Archiving ${noun} is`) },
               {
-                label: 'Delete',
+                label: translate('export'),
+                icon: <Upload />,
+                onClick: soon(translate('exportingIs', { noun: noun })),
+              },
+              {
+                label: translate('archive'),
+                icon: <Archive />,
+                onClick: soon(translate('archivingIs', { noun: noun })),
+              },
+              {
+                label: translate('delete3'),
                 icon: <Trash2 />,
-                onClick: soon(`Deleting ${noun} is`),
+                onClick: soon(translate('deletingIs', { noun: noun })),
                 destructive: true,
               },
-              { label: 'More', icon: <Ellipsis />, onClick: soon('More actions are') },
+              {
+                label: translate('more'),
+                icon: <Ellipsis />,
+                onClick: soon(translate('moreActionsAre')),
+              },
             ]}
           />
         )}
@@ -329,7 +347,7 @@ export function BulkBar({
     <div className="pointer-events-none sticky bottom-5 z-30 mt-auto flex animate-in justify-center gap-2 px-4 pt-6 duration-200 fade-in slide-in-from-bottom-2">
       <button
         type="button"
-        aria-label="Clear selection"
+        aria-label={translate('clearSelection')}
         onClick={onClear}
         className="pointer-events-auto flex size-11 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-elevation-2 transition-colors duration-150 hover:bg-zinc-800 dark:bg-zinc-800"
       >
@@ -337,10 +355,13 @@ export function BulkBar({
       </button>
       <div
         role="toolbar"
-        aria-label="Selected rows"
+        aria-label={translate('selectedRows')}
         className="pointer-events-auto flex h-11 items-center gap-2 rounded-xl bg-zinc-900 px-4 text-[15px] text-white shadow-elevation-2 dark:bg-zinc-800"
       >
-        <span className="pr-1 whitespace-nowrap tabular-nums">Selected: {count}</span>
+        <span className="pr-1 whitespace-nowrap tabular-nums">
+          {translate('selected')}
+          {count}
+        </span>
         {actions
           .filter((action) => writable || !action.write)
           .map(({ label, icon, onClick, destructive }) => (

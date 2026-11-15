@@ -1,5 +1,4 @@
 'use client'
-
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import {
@@ -30,6 +29,7 @@ import {
   type Folder,
   type SortField,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
 
 import { endDrag, startDrag, useDropTarget } from './drop-target'
@@ -276,7 +276,7 @@ function Grid(props: ItemsProps) {
       {props.folders.length > 0 &&
         section(
           'folders',
-          'Folders',
+          translate('folders'),
           <div className="grid grid-cols-[repeat(auto-fill,minmax(124px,1fr))] gap-x-2 gap-y-3 @2xl:grid-cols-[repeat(auto-fill,minmax(164px,1fr))]">
             {props.folders.map((folder) => (
               <FolderTile key={folder.id} props={props} folder={folder} />
@@ -284,11 +284,16 @@ function Grid(props: ItemsProps) {
           </div>,
         )}
       {props.recent &&
-        section('recent', 'Recent', props.recent, 'The latest uploads, from every folder')}
+        section(
+          'recent',
+          translate('recent'),
+          props.recent,
+          translate('theLatestUploadsFromEveryFolder'),
+        )}
       {props.files.length > 0 &&
         section(
           'files',
-          'Files',
+          translate('files'),
           <div className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-3">
             {props.files.map((file) => (
               <FileCard key={file.id} props={props} file={file} />
@@ -314,7 +319,7 @@ function ItemCheck({
   const checked = props.selected.has(item)
   return (
     <Checkbox
-      aria-label={`Select ${name}`}
+      aria-label={translate('select', { name: name })}
       checked={checked}
       onCheckedChange={() => props.onToggle(item)}
       // Not the card's click (which replaces the selection), and never the start of a drag.
@@ -333,7 +338,9 @@ function ItemCheck({
 }
 
 const filesAndSize = (count: number, size: number) =>
-  count === 0 ? 'Empty' : `${count} ${count === 1 ? 'file' : 'files'} · ${formatSize(size)}`
+  count === 0
+    ? translate('empty')
+    : `${count} ${count === 1 ? 'file' : 'files'} · ${formatSize(size)}`
 
 /** A folder as a big glossy illustration, its name and what is inside. */
 function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
@@ -350,7 +357,7 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
           className={tile}
         >
           {folder.starred && (
-            <span className="absolute top-3 right-3" title="Starred">
+            <span className="absolute top-3 right-3" title={translate('starred')}>
               <StarGlyph className="size-4" />
             </span>
           )}
@@ -371,7 +378,8 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
               </span>
             )}
             <span className="block truncate text-[12.5px] text-muted-foreground">
-              Updated {formatRelative(folder.updated_at)}
+              {translate('updated2')}
+              {formatRelative(folder.updated_at)}
             </span>
           </span>
         </Shell>
@@ -423,7 +431,7 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
               )}
               <span className="block truncate text-[12px] text-muted-foreground">
                 {props.showLocation
-                  ? (file.folder?.name ?? 'All documents')
+                  ? (file.folder?.name ?? translate('allDocuments'))
                   : `${formatSize(file.size)} · ${formatDate(file.created_at)}`}
               </span>
             </span>
@@ -456,7 +464,7 @@ function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label={`Share ${file.name} with a client`}
+            aria-label={translate('shareWithAClient', { name: file.name })}
             onClick={(event) => {
               event.stopPropagation()
               onOpen()
@@ -467,7 +475,7 @@ function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
             <Share2 className="size-4" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>Share with client</TooltipContent>
+        <TooltipContent>{translate('shareWithClient2')}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   )
@@ -490,7 +498,7 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
       )}
       {retained && (
         <span
-          title={`Business record, kept until ${file.retained_until}`}
+          title={translate('businessRecordKeptUntil', { retained_until: file.retained_until })}
           className="flex size-5 items-center justify-center rounded-full bg-[#ece9d5] text-[#827851] shadow-elevation-1 dark:bg-amber-500/20 dark:text-amber-300"
         >
           <Lock className="size-3" />
@@ -511,22 +519,26 @@ function List(props: ItemsProps) {
   ]
   const picked = keys.filter((key) => props.selected.has(key)).length
   const columns: Column[] = [
-    { label: 'Name', sort: 'name', className: 'pl-1' },
-    ...(props.showLocation ? [{ label: 'Location', className: 'w-[16%]' }] : []),
-    { label: 'Uploaded by', className: 'w-[18%] hidden @4xl:table-cell' },
-    { label: 'Created', sort: 'created_at', className: 'w-[12%] hidden @5xl:table-cell' },
-    { label: 'Modified', sort: 'updated_at', className: 'w-[12%]' },
-    { label: 'Status', className: 'w-[15%] hidden @3xl:table-cell' },
+    { label: translate('name'), sort: 'name', className: 'pl-1' },
+    ...(props.showLocation ? [{ label: translate('location'), className: 'w-[16%]' }] : []),
+    { label: translate('uploadedBy'), className: 'w-[18%] hidden @4xl:table-cell' },
+    {
+      label: translate('created3'),
+      sort: 'created_at',
+      className: 'w-[12%] hidden @5xl:table-cell',
+    },
+    { label: translate('modified'), sort: 'updated_at', className: 'w-[12%]' },
+    { label: translate('status'), className: 'w-[15%] hidden @3xl:table-cell' },
     { label: '', className: 'w-12 pr-3' },
   ]
   return (
     <div className="p-3 md:p-4">
-      <table aria-label="Files" className="w-full table-fixed text-[14px]">
+      <table aria-label={translate('files')} className="w-full table-fixed text-[14px]">
         <thead>
           <tr className="h-10 text-left text-[12px] text-muted-foreground [&>th]:bg-muted/60 dark:[&>th]:bg-muted/40 [&>th:first-child]:rounded-l-lg [&>th:last-child]:rounded-r-lg">
             <th className="w-11 pl-4">
               <Checkbox
-                aria-label="Select all"
+                aria-label={translate('selectAll3')}
                 className="bg-card"
                 checked={picked === 0 ? false : picked === keys.length ? true : 'indeterminate'}
                 onCheckedChange={() => props.onToggleAll(picked < keys.length)}
@@ -641,7 +653,7 @@ function StatusPill({ file }: { file: DocFile }) {
     <span
       title={
         retained
-          ? `Kept until ${file.retained_until}`
+          ? translate('keptUntil', { retained_until: file.retained_until })
           : file.links.map((link) => link.label).join(', ')
       }
       className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full border border-border/80 px-2 text-[12px] text-foreground/80"
@@ -654,8 +666,8 @@ function StatusPill({ file }: { file: DocFile }) {
       />
       <span className="truncate">
         {retained
-          ? 'Business record'
-          : `Linked${file.links.length > 1 ? ` · ${file.links.length}` : ''}`}
+          ? translate('businessRecord')
+          : translate('linked', { value1: file.links.length > 1 ? ` · ${file.links.length}` : '' })}
       </span>
     </span>
   )
@@ -708,7 +720,7 @@ function FolderRow({ props, folder }: { props: ItemsProps; folder: Folder }) {
           {folder.starred && <StarGlyph className="size-3.5" />}
         </td>
         <td className={actions}>
-          <MenuButton label={`Actions for ${folder.name}`} />
+          <MenuButton label={translate('actionsFor', { name: folder.name })} />
         </td>
       </tr>
     </ItemMenu>
@@ -752,7 +764,7 @@ function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
           <td className={muted}>
             <span className="flex min-w-0 items-center gap-1.5">
               <FolderMark className="size-4" />
-              <span className="truncate">{file.folder?.name ?? 'All documents'}</span>
+              <span className="truncate">{file.folder?.name ?? translate('allDocuments')}</span>
             </span>
           </td>
         )}
@@ -767,7 +779,7 @@ function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
         <td className={actions}>
           <span className="flex items-center">
             <ShareButton file={file} onOpen={() => setSharing(true)} />
-            <MenuButton label={`Actions for ${file.name}`} />
+            <MenuButton label={translate('actionsFor', { name: file.name })} />
           </span>
           {sharing && <ShareDrawer file={file} onClose={() => setSharing(false)} />}
         </td>

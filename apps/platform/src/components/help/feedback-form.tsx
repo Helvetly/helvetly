@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -17,12 +16,23 @@ import {
   type FeedbackInput,
   type FeedbackKind,
 } from '@/lib/feedback'
+import { translate } from '@/lib/i18n'
 
 const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`
 
 const KINDS = [
-  { value: 'problem', label: 'Report a problem', hint: 'Something isn’t working', icon: Bug },
-  { value: 'feature', label: 'Suggest an idea', hint: 'Make Helvetly better', icon: Lightbulb },
+  {
+    value: 'problem',
+    label: translate('reportAProblem'),
+    hint: translate('somethingIsnTWorking'),
+    icon: Bug,
+  },
+  {
+    value: 'feature',
+    label: translate('suggestAnIdea'),
+    hint: translate('makeHelvetlyBetter'),
+    icon: Lightbulb,
+  },
 ] as const
 
 export type SendFeedback = UseMutationResult<{ id: string }, Error, FeedbackInput>
@@ -64,9 +74,11 @@ export function FeedbackForm({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (send.isPending) return
-    if (!length) return setError('Describe what happened or what you would like.')
+    if (!length) return setError(translate('describeWhatHappenedOrWhatYouWouldLike'))
     if (length > MAX_DESCRIPTION)
-      return setError(`Keep the description under ${MAX_DESCRIPTION} characters.`)
+      return setError(
+        translate('keepTheDescriptionUnderCharacters', { MAX_DESCRIPTION: MAX_DESCRIPTION }),
+      )
     if (fileError) return
     send.mutate(
       { kind, description, screenshots },
@@ -95,7 +107,9 @@ export function FeedbackForm({
     >
       <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-6 pt-5 pb-6">
         <fieldset className="grid gap-2">
-          <legend className="mb-2 text-[13px] font-medium">What would you like to share?</legend>
+          <legend className="mb-2 text-[13px] font-medium">
+            {translate('whatWouldYouLikeToShare')}
+          </legend>
           <div className="grid grid-cols-2 gap-2">
             {KINDS.map(({ value, label, hint, icon: Icon }) => {
               const checked = kind === value
@@ -136,7 +150,7 @@ export function FeedbackForm({
 
         <div className="grid gap-2">
           <label htmlFor="feedback-description" className="text-[13px] font-medium">
-            Description
+            {translate('description')}
             <span aria-hidden className="ml-0.5 text-destructive">
               *
             </span>
@@ -149,8 +163,8 @@ export function FeedbackForm({
             disabled={send.isPending}
             placeholder={
               kind === 'problem'
-                ? 'What happened, and what did you expect instead?'
-                : 'What would you like Helvetly to do, and why would it help?'
+                ? translate('whatHappenedAndWhatDidYouExpectInstead')
+                : translate('whatWouldYouLikeHelvetlyToDoAndWhy')
             }
             onChange={(event) => {
               setDescription(event.target.value)
@@ -176,12 +190,13 @@ export function FeedbackForm({
 
         <div className="grid gap-2">
           <span className="text-[13px] font-medium">
-            Screenshots <span className="font-normal text-muted-foreground">(optional)</span>
+            {translate('screenshots2')}
+            <span className="font-normal text-muted-foreground">{translate('optional2')}</span>
           </span>
           <input
             ref={picker}
             id="feedback-screenshots"
-            aria-label="Screenshots"
+            aria-label={translate('screenshots')}
             type="file"
             multiple
             accept={SCREENSHOT_TYPES.join(',')}
@@ -217,22 +232,28 @@ export function FeedbackForm({
               </span>
               <span className="min-w-0">
                 <span className="block text-[13.5px]">
-                  Drop, paste or <span className="underline underline-offset-2">browse</span>
+                  {translate('dropPasteOr')}
+                  <span className="underline underline-offset-2">{translate('browse')}</span>
                 </span>
                 <span className="block text-[12px] text-muted-foreground">
-                  Up to {MAX_SCREENSHOTS} PNG, JPEG or WebP images, 5 MB each
+                  {translate('upTo')}
+                  {MAX_SCREENSHOTS}
+                  {translate('pngJPEGOrWebPImages5MBEach')}
                 </span>
               </span>
             </button>
           )}
           {screenshots.length > 0 && (
-            <ul aria-label="Selected screenshots" className="grid grid-cols-5 gap-2">
+            <ul aria-label={translate('selectedScreenshots')} className="grid grid-cols-5 gap-2">
               {screenshots.map((file, index) => (
                 <li key={fileKey(file)} className="group relative">
                   <Thumbnail file={file} />
                   <button
                     type="button"
-                    aria-label={`Remove screenshot ${index + 1}: ${file.name}`}
+                    aria-label={translate('removeScreenshot', {
+                      value1: index + 1,
+                      name: file.name,
+                    })}
                     disabled={send.isPending}
                     onClick={() =>
                       setScreenshots((current) => current.filter((_, i) => i !== index))
@@ -249,8 +270,7 @@ export function FeedbackForm({
 
         <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
           <Lock className="mt-px size-3.5 shrink-0" />
-          Your account, workspace and the page you are on are included. Remove private information
-          from screenshots first.
+          {translate('yourAccountWorkspaceAndThePageYouAreOn')}
         </p>
 
         {shown && (
@@ -265,10 +285,10 @@ export function FeedbackForm({
 
       <footer className="flex shrink-0 items-center justify-end gap-2 border-t px-6 py-3.5">
         <Button type="button" variant="ghost" onClick={onCancel} disabled={send.isPending}>
-          Cancel
+          {translate('cancel')}
         </Button>
         <Button type="submit" disabled={send.isPending}>
-          {send.isPending ? 'Sending…' : 'Send feedback'}
+          {send.isPending ? translate('sending') : translate('sendFeedback')}
         </Button>
       </footer>
     </form>

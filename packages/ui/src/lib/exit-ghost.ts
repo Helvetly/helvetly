@@ -1,3 +1,4 @@
+import { translate } from '@helvetly/ui/lib/i18n'
 /**
  * Plays the exit animation of overlay elements (a drawer and its backdrop) that React removed while
  * they were still open. Drawers are mostly closed by unmounting them (a cleared `?id=`, a saved
@@ -20,7 +21,7 @@ export function leaveExitGhost(
   )
   const first = open[0]
   if (!first || typeof first.getAnimations !== 'function') return
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (window.matchMedia(translate('prefersReducedMotionReduce')).matches) return
   // Copied now, while scroll positions and canvases still have their content.
   const copies = open.map(snapshot)
   queueMicrotask(() => {

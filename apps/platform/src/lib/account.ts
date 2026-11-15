@@ -1,10 +1,10 @@
 'use client'
-
 // The signed-in person's own settings, typed by hand from docs/auth-contract.md ("User settings").
 // Account and passkey endpoints are served by Go; src/mocks/account.ts is a test-only fake.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError, type Session, type User } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 import type { TokenScope } from '@/lib/token-scopes'
 
@@ -206,9 +206,9 @@ export function useDeleteAccount() {
 /** "Active now", "12 min ago", "3 h ago", "2 days ago", then the date. */
 export function lastActive(iso: string, now = new Date()): string {
   const minutes = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000)
-  if (minutes < 2) return 'Active now'
-  if (minutes < 60) return `${minutes} min ago`
-  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`
+  if (minutes < 2) return translate('activeNow')
+  if (minutes < 60) return translate('minAgo', { minutes: minutes })
+  if (minutes < 24 * 60) return translate('hAgo', { value1: Math.floor(minutes / 60) })
   const days = Math.floor(minutes / (24 * 60))
   if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'} ago`
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso))

@@ -1,4 +1,5 @@
 import { ApiError, errorFromBody, getCsrfToken } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 /** Cloudflare refuses request bodies over 100 MB, so one request carries at most 95 MB of files. */
 export const MAX_REQUEST_BYTES = 95 * 1024 * 1024
@@ -49,7 +50,7 @@ export async function checkSameBatch(packs: File[][]) {
       throw new ApiError(
         409,
         'duplicate_file',
-        `${file.name} contains the same file as ${first}.`,
+        translate('containsTheSameFileAs', { name: file.name, first: first }),
         {
           existing_name: first,
           resource: 'upload',
@@ -70,7 +71,7 @@ function postFiles<T>(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', url)
-    xhr.setRequestHeader('Accept', 'application/json')
+    xhr.setRequestHeader(translate('accept'), 'application/json')
     const token = getCsrfToken()
     if (token) xhr.setRequestHeader('X-CSRF-Token', token)
     xhr.responseType = 'json'
@@ -92,7 +93,7 @@ function postFiles<T>(
       reject(typeof reason === 'string' ? new ApiError(error.status, error.code, reason) : error)
     })
     xhr.addEventListener('error', () =>
-      reject(new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')),
+      reject(new ApiError(0, 'network_error', translate('cannotReachHelvetlyCheckYourConnection'))),
     )
     xhr.send(form)
   })
@@ -113,7 +114,7 @@ export async function uploadInPacks<T>(
     throw new ApiError(
       422,
       'validation_failed',
-      `${big.name} is larger than ${maxFileBytes / MB} MB.`,
+      translate('isLargerThanMB', { name: big.name, value2: maxFileBytes / MB }),
     )
   const packs = packFiles(files)
   await checkSameBatch(packs)

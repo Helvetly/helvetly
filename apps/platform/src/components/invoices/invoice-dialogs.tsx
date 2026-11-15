@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -27,6 +26,7 @@ import {
 } from '@/components/fix-list'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import {
   documentName,
   formatMoney,
@@ -86,10 +86,10 @@ export function FormDialog({
           <div className="flex items-center gap-2 border-t border-border/70 px-6 py-3">
             {aside}
             <Button type="button" variant="ghost" className="ml-auto" onClick={onClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Working…' : action}
+              {pending ? translate('working') : action}
             </Button>
           </div>
         </form>
@@ -128,11 +128,13 @@ export function PaymentDialog({
   const submit = () => {
     const value = parseDecimalInput(amount, 2, true)
     const found: Record<string, string> = {}
-    if (!value || toCents(value) <= 0n) found.amount = 'Enter an amount above 0.'
+    if (!value || toCents(value) <= 0n) found.amount = translate('enterAnAmountAbove0')
     else if (toCents(value) > toCents(invoice.amount_due))
-      found.amount = `At most ${formatMoney(invoice.amount_due, invoice.currency)} is still due.`
-    if (!paidOn) found.paid_on = 'Choose the day it arrived.'
-    else if (paidOn > today()) found.paid_on = 'The payment date can’t be in the future.'
+      found.amount = translate('atMostIsStillDue', {
+        value1: formatMoney(invoice.amount_due, invoice.currency),
+      })
+    if (!paidOn) found.paid_on = translate('chooseTheDayItArrived')
+    else if (paidOn > today()) found.paid_on = translate('thePaymentDateCanTBeInTheFuture')
     setErrors(found)
     if (Object.keys(found).length || !value) return
     add.mutate(
@@ -149,8 +151,8 @@ export function PaymentDialog({
         onSuccess: (updated) => {
           toast.success(
             updated.status === 'paid'
-              ? `${documentName(updated)} is paid in full.`
-              : `Payment of ${formatMoney(value, invoice.currency)} recorded.`,
+              ? translate('isPaidInFull', { value1: documentName(updated) })
+              : translate('paymentOfRecorded', { value1: formatMoney(value, invoice.currency) }),
           )
           onClose()
         },
@@ -165,14 +167,14 @@ export function PaymentDialog({
 
   return (
     <FormDialog
-      title="Record a payment"
+      title={translate('recordAPayment')}
       description={
         <>
           {documentName(invoice)} · {invoice.client.name} ·{' '}
           <span className="text-foreground tabular-nums">
             {formatMoney(invoice.amount_due, invoice.currency)}
           </span>{' '}
-          due
+          {translate('due4')}
         </>
       }
       action="Record payment"
@@ -188,19 +190,19 @@ export function PaymentDialog({
           onClick={() =>
             markPaid.mutate(invoice.id, {
               onSuccess: (updated) => {
-                toast.success(`${documentName(updated)} marked as paid.`)
+                toast.success(translate('markedAsPaid', { value1: documentName(updated) }))
                 onClose()
               },
               onError: toastError,
             })
           }
         >
-          Mark fully paid today
+          {translate('markFullyPaidToday')}
         </Button>
       }
     >
       <div className="grid grid-cols-2 gap-3">
-        <FormField id="payment-amount" label="Amount" required error={errors.amount}>
+        <FormField id="payment-amount" label={translate('amount')} required error={errors.amount}>
           <div className="relative">
             <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[13px] text-muted-foreground">
               {invoice.currency}
@@ -215,7 +217,7 @@ export function PaymentDialog({
             />
           </div>
         </FormField>
-        <FormField id="payment-date" label="Paid on" required error={errors.paid_on}>
+        <FormField id="payment-date" label={translate('paidOn')} required error={errors.paid_on}>
           <input
             {...describedBy('payment-date', errors.paid_on)}
             type="date"
@@ -227,9 +229,9 @@ export function PaymentDialog({
         </FormField>
       </div>
       <div className="grid gap-1.5">
-        <span className="text-[13px] font-medium">Method</span>
+        <span className="text-[13px] font-medium">{translate('method')}</span>
         <Segmented
-          label="Payment method"
+          label={translate('paymentMethod')}
           value={method}
           options={PAYMENT_METHODS}
           onChange={setMethod}
@@ -237,16 +239,16 @@ export function PaymentDialog({
       </div>
       <FormField
         id="payment-note"
-        label="Note"
+        label={translate('note')}
         error={errors.note}
-        tip="Only your team sees this, e.g. the bank’s booking text."
+        tip={translate('onlyYourTeamSeesThisEGTheBank')}
       >
         <input
           {...describedBy('payment-note', errors.note)}
           value={note}
           maxLength={200}
           onChange={(event) => setNote(event.target.value)}
-          placeholder="e.g. Partial payment, rest in December"
+          placeholder={translate('eGPartialPaymentRestInDecember')}
           className={fieldClass}
         />
       </FormField>
@@ -272,11 +274,13 @@ export function RefundDialog({
   const submit = () => {
     const value = parseDecimalInput(amount, 2, true)
     const found: Record<string, string> = {}
-    if (!value || toCents(value) <= 0n) found.amount = 'Enter an amount above 0.'
+    if (!value || toCents(value) <= 0n) found.amount = translate('enterAnAmountAbove0')
     else if (toCents(value) > toCents(invoice.refund_due))
-      found.amount = `At most ${formatMoney(invoice.refund_due, invoice.currency)} is owed back.`
-    if (!refundedOn) found.refunded_on = 'Choose the day it was paid back.'
-    else if (refundedOn > today()) found.refunded_on = 'The refund date can’t be in the future.'
+      found.amount = translate('atMostIsOwedBack', {
+        value1: formatMoney(invoice.refund_due, invoice.currency),
+      })
+    if (!refundedOn) found.refunded_on = translate('chooseTheDayItWasPaidBack')
+    else if (refundedOn > today()) found.refunded_on = translate('theRefundDateCanTBeInTheFuture')
     setErrors(found)
     if (Object.keys(found).length || !value) return
     add.mutate(
@@ -291,7 +295,9 @@ export function RefundDialog({
       },
       {
         onSuccess: () => {
-          toast.success(`Refund of ${formatMoney(value, invoice.currency)} recorded.`)
+          toast.success(
+            translate('refundOfRecorded', { value1: formatMoney(value, invoice.currency) }),
+          )
           onClose()
         },
         onError: (error) => {
@@ -305,14 +311,14 @@ export function RefundDialog({
 
   return (
     <FormDialog
-      title="Record a refund"
+      title={translate('recordARefund')}
       description={
         <>
           {documentName(invoice)} · {invoice.client.name} ·{' '}
           <span className="text-foreground tabular-nums">
             {formatMoney(invoice.refund_due, invoice.currency)}
           </span>{' '}
-          owed back
+          {translate('owedBack2')}
         </>
       }
       action="Record refund"
@@ -321,7 +327,7 @@ export function RefundDialog({
       onClose={onClose}
     >
       <div className="grid grid-cols-2 gap-3">
-        <FormField id="refund-amount" label="Amount" required error={errors.amount}>
+        <FormField id="refund-amount" label={translate('amount')} required error={errors.amount}>
           <div className="relative">
             <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[13px] text-muted-foreground">
               {invoice.currency}
@@ -336,7 +342,12 @@ export function RefundDialog({
             />
           </div>
         </FormField>
-        <FormField id="refund-date" label="Refunded on" required error={errors.refunded_on}>
+        <FormField
+          id="refund-date"
+          label={translate('refundedOn')}
+          required
+          error={errors.refunded_on}
+        >
           <input
             {...describedBy('refund-date', errors.refunded_on)}
             type="date"
@@ -348,9 +359,9 @@ export function RefundDialog({
         </FormField>
       </div>
       <div className="grid gap-1.5">
-        <span className="text-[13px] font-medium">Method</span>
+        <span className="text-[13px] font-medium">{translate('method')}</span>
         <Segmented
-          label="Refund method"
+          label={translate('refundMethod')}
           value={method}
           options={PAYMENT_METHODS}
           onChange={setMethod}
@@ -358,16 +369,16 @@ export function RefundDialog({
       </div>
       <FormField
         id="refund-note"
-        label="Note"
+        label={translate('note')}
         error={errors.note}
-        tip="Only your team sees this, e.g. the bank’s booking text."
+        tip={translate('onlyYourTeamSeesThisEGTheBank')}
       >
         <input
           {...describedBy('refund-note', errors.note)}
           value={note}
           maxLength={200}
           onChange={(event) => setNote(event.target.value)}
-          placeholder="e.g. Paid back to the client’s account"
+          placeholder={translate('eGPaidBackToTheClientSAccount')}
           className={fieldClass}
         />
       </FormField>
@@ -388,10 +399,10 @@ export function recipientErrors(to: string, cc: string): Record<string, string> 
     (address) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address),
   )
   const found: Record<string, string> = {}
-  if (list.length === 0) found.to = 'Add at least one email address.'
-  else if (list.length > 10) found.to = 'At most 10 recipients.'
-  else if (bad) found.to = `“${bad}” isn’t an email address.`
-  if (emails(cc).length > 10) found.cc = 'At most 10 addresses in Cc.'
+  if (list.length === 0) found.to = translate('addAtLeastOneEmailAddress')
+  else if (list.length > 10) found.to = translate('atMost10Recipients')
+  else if (bad) found.to = translate('isnTAnEmailAddress', { bad: bad })
+  if (emails(cc).length > 10) found.cc = translate('atMost10AddressesInCc')
   return found
 }
 
@@ -433,7 +444,9 @@ export function SendDialog({
       },
       {
         onSuccess: () => {
-          toast.success(`${documentName(invoice)} sent to ${list.join(', ')}.`)
+          toast.success(
+            translate('sentTo', { value1: documentName(invoice), value2: list.join(', ') }),
+          )
           onClose()
         },
         onError: (error) => {
@@ -447,8 +460,11 @@ export function SendDialog({
 
   return (
     <FormDialog
-      title={invoice.sent_at ? 'Send again' : 'Send by email'}
-      description={`${documentName(invoice)} for ${invoice.client.name} goes out with its PDF attached.`}
+      title={invoice.sent_at ? translate('sendAgain') : translate('sendByEmail')}
+      description={translate('forGoesOutWithItsPDFAttached', {
+        value1: documentName(invoice),
+        name: invoice.client.name,
+      })}
       action="Send"
       pending={send.isPending}
       onSubmit={submit}
@@ -456,10 +472,10 @@ export function SendDialog({
     >
       <FormField
         id="send-to"
-        label="To"
+        label={translate('to3')}
         required
         error={errors.to}
-        tip="Separate several addresses with commas. Defaults to the client’s billing email."
+        tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
       >
         <input
           {...describedBy('send-to', errors.to)}
@@ -467,37 +483,39 @@ export function SendDialog({
           multiple
           value={recipients}
           onChange={(event) => setTo(event.target.value)}
-          placeholder="accounts@client.ch"
+          placeholder={translate('accountsClientCh')}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-cc" label="Cc" error={errors.cc}>
+      <FormField id="send-cc" label={translate('cc')} error={errors.cc}>
         <input
           {...describedBy('send-cc', errors.cc)}
           type="email"
           multiple
           value={cc}
           onChange={(event) => setCc(event.target.value)}
-          placeholder="Optional"
+          placeholder={translate('optional')}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-subject" label="Subject" error={errors.subject}>
+      <FormField id="send-subject" label={translate('subject')} error={errors.subject}>
         <input
           {...describedBy('send-subject', errors.subject)}
           value={subject ?? ''}
           onChange={(event) => setSubject(event.target.value)}
-          placeholder={`${defaultSubject} (in the invoice’s language)`}
+          placeholder={translate('inTheInvoiceSLanguage', { defaultSubject: defaultSubject })}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-message" label="Message" error={errors.message}>
+      <FormField id="send-message" label={translate('message')} error={errors.message}>
         <textarea
           {...describedBy('send-message', errors.message)}
           rows={4}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder={`Hello,\n\nplease find attached ${documentName(invoice).toLowerCase()}.\n\nKind regards`}
+          placeholder={translate('helloPleaseFindAttachedKindRegards', {
+            value1: documentName(invoice).toLowerCase(),
+          })}
           className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
         />
       </FormField>
@@ -518,7 +536,10 @@ export function reasonFix(
   if (SETTINGS_CODES.has(reason.code) || reason.field?.startsWith('settings.'))
     return settingsFix(reason.field?.replace(/^settings\./, '') ?? '')
   if (CLIENT_CODES.has(reason.code))
-    return { label: 'Complete the client', href: `/clients?id=${encodeURIComponent(clientId)}` }
+    return {
+      label: translate('completeTheClient'),
+      href: `/clients?id=${encodeURIComponent(clientId)}`,
+    }
   return null
 }
 
@@ -532,7 +553,7 @@ export function groupReasons(reasons: IssueReason[]): IssueReason[] {
   const merged: IssueReason = {
     code: 'settings_incomplete',
     field: missing[0]?.field,
-    message: `Your company details are missing: ${labels.join(', ')}.`,
+    message: translate('yourCompanyDetailsAreMissing', { value1: labels.join(', ') }),
   }
   return [merged, ...reasons.filter((reason) => reason.code !== 'settings_incomplete')]
 }
@@ -560,7 +581,8 @@ export function issueFixes(
         onFixInline &&
         reason.field && (
           <button type="button" onClick={() => onFixInline(reason)} className={fixActionClass}>
-            Show me <ArrowRight aria-hidden className="size-3.5" />
+            {translate('showMe')}
+            <ArrowRight aria-hidden className="size-3.5" />
           </button>
         )
       ),
@@ -600,16 +622,16 @@ export function IssueBlockersDialog({
 }) {
   return (
     <FixDialog
-      title="Not ready to issue yet"
-      description="Nothing was numbered or stored. Fix these, then issue again."
+      title={translate('notReadyToIssueYet')}
+      description={translate('nothingWasNumberedOrStoredFixTheseThenIssue')}
       onClose={onClose}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Close
+            {translate('close')}
           </Button>
           <Button asChild>
-            <Link href={editHref}>Open in editor</Link>
+            <Link href={editHref}>{translate('openInEditor')}</Link>
           </Button>
         </>
       }

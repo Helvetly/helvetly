@@ -1,11 +1,12 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowLeft, Check, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 /**
  * A step-by-step editor in a sheet that takes nearly the whole screen: steps in the header, Back,
@@ -64,7 +65,7 @@ export function WizardSheet({
             {icon}
           </span>
           <SheetTitle className="min-w-0 truncate text-[15px] font-medium">{title}</SheetTitle>
-          <ol className="mx-auto hidden items-center gap-1 lg:flex" aria-label="Steps">
+          <ol className="mx-auto hidden items-center gap-1 lg:flex" aria-label={translate('steps')}>
             {steps.map((label, index) => (
               <li key={label} className="flex items-center gap-1">
                 {index > 0 && <span className="h-px w-5 bg-border" />}
@@ -90,12 +91,15 @@ export function WizardSheet({
             ))}
           </ol>
           <span className="text-[12px] text-muted-foreground lg:hidden">
-            Step {step + 1} of {steps.length}
+            {translate('step')}
+            {step + 1}
+            {translate('of5')}
+            {steps.length}
           </span>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Close"
+            aria-label={translate('close')}
             disabled={busy}
             className="ml-auto cursor-pointer lg:ml-0"
             onClick={requestClose}
@@ -116,7 +120,7 @@ export function WizardSheet({
                 onClick={() => onStep(step - 1)}
               >
                 <ArrowLeft className="size-4" />
-                Back
+                {translate('back2')}
               </Button>
             )}
           </div>
@@ -135,9 +139,9 @@ export function WizardSheet({
           <ConfirmDialog
             tone="destructive"
             title={discardTitle}
-            body="What you’ve set up so far is lost."
-            confirmLabel="Discard"
-            cancelLabel="Keep editing"
+            body={translate('whatYouVeSetUpSoFarIsLost')}
+            confirmLabel={translate('discard')}
+            cancelLabel={translate('keepEditing')}
             onDecide={(discard) => {
               setDiscarding(false)
               if (discard) onClose()

@@ -1,3 +1,4 @@
+import { numberLocale } from '@helvetly/i18n'
 // Plan prices as the app and the website show them, so the two never round differently.
 
 /** An amount in minor units (rappen) of its currency. */
@@ -20,7 +21,7 @@ export function monthOf(year: Price): Price {
 /** The number alone, Swiss style: "19", "18.50", "1'140". */
 export function formatAmount({ amount }: Price): string {
   const value = amount / 100
-  return value.toLocaleString('de-CH', {
+  return value.toLocaleString(numberLocale, {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   })

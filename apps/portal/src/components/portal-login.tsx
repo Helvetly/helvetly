@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
@@ -8,6 +8,7 @@ import { ShieldCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { getPortalSession, portalKeys, startPortalSignIn, verifyPortalCode } from '@/lib/portal'
 import { siteUrl } from '@/lib/site'
 
@@ -49,10 +50,11 @@ export function PortalLogin() {
             <div className="grid gap-6">
               <div className="grid justify-items-center gap-2 text-center">
                 <Logo className="mb-3 size-11" />
-                <h1 className="text-xl font-semibold tracking-tight">Client portal</h1>
+                <h1 className="text-xl font-semibold tracking-tight">
+                  {translate('clientPortal')}
+                </h1>
                 <p className="text-sm text-balance text-muted-foreground">
-                  Your invoices, work and documents from your supplier, in one place. Sign in with
-                  the email address they have on file.
+                  {translate('yourInvoicesWorkAndDocumentsFromYourSupplierIn')}
                 </p>
               </div>
               <EmailAddressForm
@@ -65,11 +67,11 @@ export function PortalLogin() {
         </div>
         <p className="text-center text-body-sm text-balance text-muted-foreground">
           <ShieldCheck className="mr-1.5 inline size-4 -translate-y-px text-brand" aria-hidden />
-          No password — we email you a one-time code.
+          {translate('noPasswordWeEmailYouAOneTimeCode')}
         </p>
         <p className="text-center text-body-sm text-muted-foreground">
-          <a href={siteUrl('/privacy')} className="underline">
-            Privacy Policy
+          <a href={localizedHref(siteUrl('/privacy'))} className="underline">
+            {translate('privacyPolicy')}
           </a>
         </p>
       </div>

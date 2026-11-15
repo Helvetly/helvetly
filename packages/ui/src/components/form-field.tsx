@@ -1,6 +1,6 @@
 'use client'
-
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CircleHelp } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -88,7 +88,7 @@ export function HelpTip({ label, children }: { label: string; children: ReactNod
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label={`About ${label}`}
+          aria-label={translate('about', { label: label })}
           className="rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <CircleHelp className="size-3.5 stroke-[1.75]" />

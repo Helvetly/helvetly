@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
@@ -11,6 +10,7 @@ import {
   CommandShortcut,
 } from '@helvetly/ui/components/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
@@ -86,9 +86,9 @@ export function Combobox({
         )}
       >
         <Command>
-          <CommandInput placeholder="Search…" />
+          <CommandInput placeholder={translate('search')} />
           <CommandList>
-            <CommandEmpty>Nothing found.</CommandEmpty>
+            <CommandEmpty>{translate('nothingFound')}</CommandEmpty>
             {[...new Set(options.map((option) => option.group))].map((group) => (
               <CommandGroup key={group ?? ''} heading={group}>
                 {options

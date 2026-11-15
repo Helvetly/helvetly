@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
@@ -25,16 +24,17 @@ import {
   type ChangeRequest,
   type Client,
 } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 import { addressLines } from './client-bits'
 import { countryName } from './client-form-model'
 
 const LABELS: Record<string, string> = {
-  name: 'Name',
-  billing_email: 'Billing email',
-  phone: 'Phone',
-  vat_number: 'VAT number',
-  registration_number: 'Registration no.',
+  name: translate('name'),
+  billing_email: translate('billingEmail'),
+  phone: translate('phone'),
+  vat_number: translate('vatNumber'),
+  registration_number: translate('registrationNo'),
 }
 const ADDRESS = new Set<string>(ADDRESS_FIELDS)
 const MAX_REASON = 500
@@ -65,7 +65,7 @@ export function changeRows(client: Client, request: ChangeRequest): Row[] {
   if (fields.some(([field]) => ADDRESS.has(field))) {
     rows.push({
       key: 'address',
-      label: 'Address',
+      label: translate('address'),
       current: addressBlock(client),
       requested: addressBlock({ ...client, ...request.fields }),
     })
@@ -99,12 +99,14 @@ export function ChangeRequestBanner({
         <Callout
           tone={decided === 'rejected' ? 'neutral' : 'success'}
           icon={decided === 'rejected' ? X : CircleCheck}
-          title={decided === 'rejected' ? 'Request rejected' : 'Changes applied'}
+          title={
+            decided === 'rejected' ? translate('requestRejected2') : translate('changesApplied2')
+          }
           actions={
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label="Dismiss"
+              aria-label={translate('dismiss')}
               onClick={() => setDecided(null)}
             >
               <X />
@@ -127,18 +129,19 @@ export function ChangeRequestBanner({
 
   const count = changeRows(client, request).length
   return (
-    <section aria-label="Change request" className="px-4 pt-4 sm:px-5 sm:pt-5">
+    <section aria-label={translate('changeRequest')} className="px-4 pt-4 sm:px-5 sm:pt-5">
       <Callout
         tone="info"
         icon={UserPen}
         actions={
           <Button size="sm" variant="outline" onClick={() => onReviewingChange(true)}>
-            Review
+            {translate('review')}
           </Button>
         }
       >
-        <span className="font-medium">{requesterOf(client, request)}</span> asked to change {count}{' '}
-        {count === 1 ? 'field' : 'fields'}{' '}
+        <span className="font-medium">{requesterOf(client, request)}</span>
+        {translate('askedToChange')}
+        {count} {count === 1 ? 'field' : 'fields'}{' '}
         <span className="whitespace-nowrap text-muted-foreground">
           · <time dateTime={request.created_at}>{formatRelative(request.created_at)}</time>
         </span>
@@ -185,7 +188,7 @@ function ChangeRequestReview({
       else await rejectChangeRequest(client.id, decision.reason.trim())
     },
     onSuccess: (_, decision) => {
-      toast.success(decision.approve ? 'Changes applied.' : 'Request rejected.')
+      toast.success(decision.approve ? translate('changesApplied') : translate('requestRejected'))
       queryClient.setQueryData(clientKeys.changeRequest(client.id), null)
       void queryClient.invalidateQueries({ queryKey: clientKeys.detail(client.id) })
       void queryClient.invalidateQueries({ queryKey: ['clients', 'list'] })
@@ -217,10 +220,11 @@ function ChangeRequestReview({
           <Initials name={requester} className="size-9 text-caption" />
           <div className="grid min-w-0 flex-1 gap-0.5">
             <SheetTitle className="text-body font-medium">
-              Profile change requested by the client
+              {translate('profileChangeRequestedByTheClient')}
             </SheetTitle>
             <SheetDescription className="text-body-sm text-pretty text-muted-foreground">
-              {requester} via client portal{' '}
+              {requester}
+              {translate('viaClientPortal')}{' '}
               <span className="whitespace-nowrap">
                 · <time dateTime={request.created_at}>{formatRelative(request.created_at)}</time>
               </span>
@@ -229,7 +233,7 @@ function ChangeRequestReview({
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label="Close"
+            aria-label={translate('close')}
             disabled={decide.isPending}
             onClick={onClose}
           >
@@ -247,7 +251,7 @@ function ChangeRequestReview({
                 <dt className="flex items-center gap-2.5 self-start text-body-sm text-muted-foreground @xl:pt-0.5">
                   {canDecide && (
                     <Checkbox
-                      aria-label={`Apply ${row.label.toLowerCase()}`}
+                      aria-label={translate('apply2', { value1: row.label.toLowerCase() })}
                       checked={!skipped.has(row.key)}
                       disabled={decide.isPending}
                       onCheckedChange={(checked) => toggle(row.key, checked === true)}
@@ -258,7 +262,7 @@ function ChangeRequestReview({
                 <dd className="grid items-start gap-1 @md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] @md:gap-2">
                   <Lines
                     lines={row.current}
-                    empty="Not set"
+                    empty={translate('notSet')}
                     as="del"
                     className="text-muted-foreground decoration-muted-foreground/60"
                   />
@@ -268,7 +272,7 @@ function ChangeRequestReview({
                   />
                   <Lines
                     lines={row.requested}
-                    empty="Removed"
+                    empty={translate('removed')}
                     as="ins"
                     className={cn(
                       'max-w-full justify-self-start rounded-md px-1.5 no-underline',
@@ -291,7 +295,8 @@ function ChangeRequestReview({
                 onClick={() => decide.mutate({ approve: true, fields: chosen })}
               >
                 {pending === true ? <LoaderCircle className="animate-spin" /> : <Check />}
-                Approve {chosen.length} {chosen.length === 1 ? 'change' : 'changes'}
+                {translate('approve')}
+                {chosen.length} {chosen.length === 1 ? 'change' : 'changes'}
               </Button>
               <Button
                 variant="destructive-ghost"
@@ -299,23 +304,25 @@ function ChangeRequestReview({
                 onClick={() => setConfirming(true)}
               >
                 {pending === false ? <LoaderCircle className="animate-spin" /> : <X />}
-                Reject
+                {translate('reject')}
               </Button>
               <p className="text-caption text-muted-foreground sm:ml-auto">
-                {rows.length > 1 ? 'Unchecked changes are discarded.' : 'Applied as shown.'}
+                {rows.length > 1
+                  ? translate('uncheckedChangesAreDiscarded')
+                  : translate('appliedAsShown')}
               </p>
             </>
           ) : (
             <p className="text-body-sm text-muted-foreground">
-              An owner or admin can approve or reject this request.
+              {translate('anOwnerOrAdminCanApproveOrRejectThis')}
             </p>
           )}
         </footer>
         {confirming && (
           <ConfirmDialog
-            title="Reject the requested changes?"
-            body={`${client.name}’s details stay as they are. The client sees the rejection in the portal and can send a new request.`}
-            confirmLabel="Reject"
+            title={translate('rejectTheRequestedChanges')}
+            body={translate('sDetailsStayAsTheyAreTheClientSees', { name: client.name })}
+            confirmLabel={translate('reject')}
             confirmIcon={<X />}
             tone="destructive"
             onDecide={(approved) => {
@@ -324,12 +331,14 @@ function ChangeRequestReview({
             }}
           >
             <div className="mt-4 grid gap-1.5 text-left">
-              <Label htmlFor="change-request-reason">Reason for the client (optional)</Label>
+              <Label htmlFor="change-request-reason">
+                {translate('reasonForTheClientOptional')}
+              </Label>
               <Textarea
                 id="change-request-reason"
                 value={reason}
                 maxLength={MAX_REASON}
-                placeholder="For example: the VAT number belongs to another company."
+                placeholder={translate('forExampleTheVATNumberBelongsToAnotherCompany')}
                 onChange={(event) => setReason(event.target.value)}
               />
             </div>
@@ -352,7 +361,7 @@ function Lines({
   as: 'del' | 'ins'
   className: string
 }) {
-  const label = Tag === 'del' ? 'Current: ' : 'Requested: '
+  const label = Tag === 'del' ? translate('current2') : translate('requested')
   if (!lines.length)
     return (
       <span className="text-muted-foreground">

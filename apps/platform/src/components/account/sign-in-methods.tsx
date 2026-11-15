@@ -1,5 +1,4 @@
 'use client'
-
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -15,6 +14,7 @@ import { LoadError } from '@/components/load-error'
 import { SettingsEmpty, SettingsRow, SettingsSection } from '@/components/settings/layout'
 import { useAccount, useConnectGoogle, useDisconnect } from '@/lib/account'
 import { api, errorMessage, type Passkey } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { createPasskey, deviceName, passkeyCancelled, passkeysSupported } from '@/lib/passkeys'
 import { queryKeys, useAuthConfig, usePasskeys } from '@/lib/queries'
 
@@ -35,19 +35,24 @@ export function SignInMethods({ email }: { email: string }) {
       <SettingsSection
         id="sign-in"
         icon={KeyRound}
-        title="Sign-in methods"
-        description="Helvetly has no passwords. Sign in with a code sent to your email, your Google account or a passkey."
+        title={translate('signInMethods')}
+        description={translate('helvetlyHasNoPasswordsSignInWithACode')}
       >
         <ul className="divide-y">
           <SettingsRow
             icon={<Mail />}
             title={
               <>
-                Email code <Badge variant="secondary">{emailOn ? 'On' : 'Unavailable'}</Badge>
+                {translate('emailCode')}
+                <Badge variant="secondary">
+                  {emailOn ? translate('on') : translate('unavailable')}
+                </Badge>
               </>
             }
             meta={
-              emailOn ? `A 6-digit code to ${email}` : 'Email sign-in is disabled on this server.'
+              emailOn
+                ? translate('a6DigitCodeTo', { email: email })
+                : translate('emailSignInIsDisabledOnThisServer')
             }
           />
           {account.isPending ? (
@@ -57,7 +62,7 @@ export function SignInMethods({ email }: { email: string }) {
           ) : account.error ? (
             <li className="py-3">
               <LoadError
-                what="connected accounts"
+                what={translate('connectedAccounts')}
                 error={account.error}
                 onRetry={() => account.refetch()}
               />
@@ -65,11 +70,19 @@ export function SignInMethods({ email }: { email: string }) {
           ) : (
             <SettingsRow
               icon={<GoogleMark />}
-              title={<>Google {google && <Badge variant="secondary">Connected</Badge>}</>}
+              title={
+                <>
+                  {translate('google')}
+                  {google && <Badge variant="secondary">{translate('connected')}</Badge>}
+                </>
+              }
               meta={
                 google
-                  ? `${google.email} · since ${formatDate(google.created_at)}`
-                  : 'Sign in with one click from your Google account'
+                  ? translate('since', {
+                      email: google.email,
+                      value2: formatDate(google.created_at),
+                    })
+                  : translate('signInWithOneClickFromYourGoogleAccount')
               }
             >
               {google ? (
@@ -79,12 +92,13 @@ export function SignInMethods({ email }: { email: string }) {
                   disabled={disconnect.isPending}
                   onClick={() =>
                     disconnect.mutate('google', {
-                      onSuccess: () => toast.success('Google disconnected.'),
+                      onSuccess: () => toast.success(translate('googleDisconnected')),
                       onError: toastError,
                     })
                   }
                 >
-                  <Unlink /> Disconnect
+                  <Unlink />
+                  {translate('disconnect')}
                 </Button>
               ) : (
                 googleOn && (
@@ -98,7 +112,7 @@ export function SignInMethods({ email }: { email: string }) {
                       })
                     }
                   >
-                    Connect
+                    {translate('connect')}
                   </Button>
                 )
               )}
@@ -129,7 +143,7 @@ function Passkeys() {
     },
     onSuccess: ({ data }) => {
       setPasskeys(data)
-      toast.success('Passkey added. You can sign in with it now.')
+      toast.success(translate('passkeyAddedYouCanSignInWithItNow'))
     },
     onError: (error) => {
       if (!passkeyCancelled(error)) toast.error(errorMessage(error))
@@ -139,7 +153,7 @@ function Passkeys() {
     mutationFn: api.deletePasskey,
     onSuccess: (_, id) => {
       setPasskeys((passkeys.data ?? []).filter((passkey) => passkey.id !== id))
-      toast.success('Passkey removed.')
+      toast.success(translate('passkeyRemoved'))
     },
     onError: toastError,
   })
@@ -153,7 +167,7 @@ function Passkeys() {
       disabled={!supported || add.isPending}
       onClick={() => add.mutate()}
     >
-      <Plus /> {add.isPending ? 'Waiting for your device…' : 'Add passkey'}
+      <Plus /> {add.isPending ? translate('waitingForYourDevice') : translate('addPasskey')}
     </Button>
   )
 
@@ -161,21 +175,25 @@ function Passkeys() {
     <SettingsSection
       id="passkeys"
       icon={Fingerprint}
-      title="Passkeys"
-      description="Your fingerprint, face or device PIN instead of waiting for an email."
+      title={translate('passkeys')}
+      description={translate('yourFingerprintFaceOrDevicePINInsteadOfWaiting')}
     >
       {!supported && (
         <p data-wide className="text-body-sm text-muted-foreground">
-          This browser can’t create passkeys. Add one from a browser that supports them.
+          {translate('thisBrowserCanTCreatePasskeysAddOneFrom')}
         </p>
       )}
       {passkeys.isPending ? (
         <Loader className="min-h-9" />
       ) : passkeys.error ? (
-        <LoadError what="your passkeys" error={passkeys.error} onRetry={() => passkeys.refetch()} />
+        <LoadError
+          what={translate('yourPasskeys')}
+          error={passkeys.error}
+          onRetry={() => passkeys.refetch()}
+        />
       ) : passkeys.data.length === 0 ? (
-        <SettingsEmpty icon={<KeyRound />} title="No passkeys yet" action={addButton}>
-          Add one to sign in with your fingerprint, face or device PIN.
+        <SettingsEmpty icon={<KeyRound />} title={translate('noPasskeysYet')} action={addButton}>
+          {translate('addOneToSignInWithYourFingerprintFace')}
         </SettingsEmpty>
       ) : (
         <ul className="divide-y">
@@ -184,16 +202,17 @@ function Passkeys() {
               key={passkey.id}
               icon={<KeyRound />}
               title={passkey.name}
-              meta={`Added ${formatDate(passkey.created_at)} · ${
-                passkey.last_used_at
-                  ? `last used ${formatDate(passkey.last_used_at)}`
-                  : 'never used'
-              }`}
+              meta={translate('added', {
+                value1: formatDate(passkey.created_at),
+                value2: passkey.last_used_at
+                  ? translate('lastUsed', { value1: formatDate(passkey.last_used_at) })
+                  : translate('neverUsed'),
+              })}
             >
               <Button
                 variant="destructive-ghost"
                 size="icon-sm"
-                aria-label={`Remove ${passkey.name}`}
+                aria-label={translate('remove2', { name: passkey.name })}
                 disabled={remove.isPending && remove.variables === passkey.id}
                 onClick={() => remove.mutate(passkey.id)}
               >

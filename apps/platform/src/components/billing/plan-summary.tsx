@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -32,14 +31,15 @@ import {
   trialDaysLeft,
   type Billing,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { Countdown } from './countdown'
 
 const BADGES = {
-  past_due: { tone: 'red', label: 'Past due' },
-  cancels: { tone: 'amber', label: 'Cancels' },
-  trialing: { tone: 'blue', label: 'Trial' },
-  active: { tone: 'green', label: 'Active' },
+  past_due: { tone: 'red', label: translate('pastDue') },
+  cancels: { tone: 'amber', label: translate('cancels') },
+  trialing: { tone: 'blue', label: translate('trial') },
+  active: { tone: 'green', label: translate('active') },
 } satisfies Record<string, { tone: Tone; label: string }>
 
 const badgeOf = (billing: Billing) =>
@@ -74,7 +74,7 @@ export function PlanSummary({
   const notes = notesOf(billing)
   return (
     <section
-      aria-label="Current plan"
+      aria-label={translate('currentPlan')}
       data-slot="plan-summary"
       className="@container overflow-hidden rounded-2xl bg-card shadow-elevation-1"
     >
@@ -83,16 +83,18 @@ export function PlanSummary({
           <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
             <div className="grid min-w-0 gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-caption font-medium text-muted-foreground">Current plan</span>
+                <span className="text-caption font-medium text-muted-foreground">
+                  {translate('currentPlan')}
+                </span>
                 {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
               </div>
               <h2 className="text-display font-semibold tracking-[-0.035em]">
-                {plan ? plan.name : 'No plan'}
+                {plan ? plan.name : translate('noPlan')}
               </h2>
               <p className="text-body-sm text-muted-foreground">
                 {!plan
-                  ? 'This workspace is read-only until it has a plan.'
-                  : `${billing.interval === 'year' ? 'Billed yearly' : 'Billed monthly'} · ${taxNoteLong(billing.currency)}`}
+                  ? translate('thisWorkspaceIsReadOnlyUntilItHasA')
+                  : `${billing.interval === 'year' ? translate('billedYearly') : translate('billedMonthly')} · ${taxNoteLong(billing.currency)}`}
               </p>
             </div>
             {plan && <Price billing={billing} />}
@@ -116,23 +118,22 @@ function Price({ billing }: { billing: Billing }) {
     <div data-slot="plan-price" className="grid gap-1 tabular-nums @lg:border-l @lg:pl-10">
       <p className="text-body-sm text-muted-foreground">
         {perSeat ? (
-          `${formatPrice(perSeat)} per person × ${people(billing.seats)}`
+          translate('perPerson2', { value1: formatPrice(perSeat), value2: people(billing.seats) })
         ) : (
           <span className="inline-flex items-center gap-1.5">
-            Flat price for the workspace
+            {translate('flatPriceForTheWorkspace')}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label="About the flat price"
+                  aria-label={translate('aboutTheFlatPrice')}
                   className="rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <Info className="size-3.5" aria-hidden />
                 </button>
               </TooltipTrigger>
               <TooltipContent className="max-w-64 text-pretty">
-                An earlier flat price for the whole workspace. It moves to per-person pricing with
-                the next change of plan or billing interval.
+                {translate('anEarlierFlatPriceForTheWholeWorkspaceIt')}
               </TooltipContent>
             </Tooltip>
           </span>
@@ -159,31 +160,39 @@ function NextStep({
   if (!billing.enabled) return null
   if (billing.plan === '')
     return (
-      <Panel tone="muted" label="Read-only" icon={<Lock aria-hidden />} title="Read-only">
+      <Panel
+        tone="muted"
+        label={translate('readOnly')}
+        icon={<Lock aria-hidden />}
+        title={translate('readOnly')}
+      >
         {billing.trial_available
-          ? `Start Basic free for ${billing.trial_days} days; until then nothing can be changed.`
-          : 'Choose a plan; until then nothing can be changed.'}
+          ? translate('startBasicFreeForDaysUntilThenNothingCan', {
+              trial_days: billing.trial_days,
+            })
+          : translate('chooseAPlanUntilThenNothingCanBeChanged')}
       </Panel>
     )
   if (billing.status === 'past_due')
     return (
       <Panel
         tone="danger"
-        label="Payment failed"
+        label={translate('paymentFailed')}
         icon={<AlertTriangle aria-hidden />}
-        title="Payment failed"
+        title={translate('paymentFailed')}
         action={
           billing.can_manage && (
             <Button size="sm" variant="outline" disabled={portalPending} onClick={onPortal}>
-              <CreditCard aria-hidden /> Update payment method
+              <CreditCard aria-hidden />
+              {translate('updatePaymentMethod')}
             </Button>
           )
         }
       >
-        The last charge didn’t go through. Stripe retries the card;{' '}
+        {translate('theLastChargeDidnTGoThroughStripeRetries')}{' '}
         {billing.can_manage
-          ? 'update it to keep the plan running. The plan can change again once it is paid.'
-          : 'an owner or admin can update it.'}
+          ? translate('updateItToKeepThePlanRunningThePlan')
+          : translate('anOwnerOrAdminCanUpdateIt')}
       </Panel>
     )
   const next = nextCharge(billing)
@@ -196,23 +205,37 @@ function NextStep({
     const days = Math.max(billing.trial_days, left)
     return (
       <CountdownPanel
-        countdown={<Countdown value={days - left} max={days} left={left} label="Trial days used" />}
-        title={
-          left === 0 ? 'Your trial ends today' : `Trial ends on ${formatDate(billing.trial_end)}`
+        countdown={
+          <Countdown
+            value={days - left}
+            max={days}
+            left={left}
+            label={translate('trialDaysUsed')}
+          />
         }
-        detail={`Day ${Math.min(days, days - left + 1)} of ${days}`}
+        title={
+          left === 0
+            ? translate('yourTrialEndsToday')
+            : translate('trialEndsOn', { value1: formatDate(billing.trial_end) })
+        }
+        detail={translate('dayOf', { value1: Math.min(days, days - left + 1), days: days })}
       >
         {billing.discount && freeForever(billing) ? (
           <>
-            Then free forever with code{' '}
+            {translate('thenFreeForeverWithCode')}{' '}
             <span className="font-medium text-foreground">{billing.discount.code}</span>.
           </>
         ) : (
           amount && (
             <>
-              Then {amount} is charged
+              {translate('then')}
+              {amount}
+              {translate('isCharged')}
               {billing.discount &&
-                ` with code ${billing.discount.code} (${describeDiscount(billing.discount)})`}
+                translate('withCode', {
+                  code: billing.discount.code,
+                  value2: describeDiscount(billing.discount),
+                })}
               .
             </>
           )
@@ -231,14 +254,23 @@ function NextStep({
           value={period.days - period.left}
           max={period.days}
           left={period.left}
-          label="Billing period elapsed"
+          label={translate('billingPeriodElapsed')}
           tone={ends ? 'muted' : 'brand'}
         />
       }
-      title={ends ? `Ends on ${end}` : `Renews on ${end}`}
-      detail={ends ? 'Then the workspace is read-only.' : 'The plan renews automatically.'}
+      title={ends ? translate('endsOn', { end: end }) : translate('renewsOn', { end: end })}
+      detail={
+        ends ? translate('thenTheWorkspaceIsReadOnly') : translate('thePlanRenewsAutomatically')
+      }
     >
-      {ends ? 'Nothing more is charged.' : amount && <>Next charge {amount}.</>}
+      {ends
+        ? translate('nothingMoreIsCharged')
+        : amount && (
+            <>
+              {translate('nextCharge')}
+              {amount}.
+            </>
+          )}
     </CountdownPanel>
   )
 }
@@ -344,7 +376,7 @@ function notesOf(billing: Billing): ReactNode[] | null {
   if (billing.enabled && !billing.can_manage && billing.plan !== '')
     lines.push(
       <Note key="manage" icon={<Lock aria-hidden />}>
-        Only an owner or admin can change the workspace’s plan.
+        {translate('onlyAnOwnerOrAdminCanChangeTheWorkspace')}
       </Note>,
     )
   return lines.length > 0 ? lines : null
@@ -383,24 +415,31 @@ function Actions({
         <>
           <Button asChild>
             <Link href={PLANS_PAGE}>
-              <Zap aria-hidden /> Upgrade to {upgrade.name}
+              <Zap aria-hidden />
+              {translate('upgradeTo2')}
+              {upgrade.name}
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={PLANS_PAGE}>Compare plans</Link>
+            <Link href={PLANS_PAGE}>{translate('comparePlans')}</Link>
           </Button>
         </>
       ) : (
         <Button asChild variant={canChange ? 'default' : 'outline'}>
           <Link href={PLANS_PAGE}>
-            {!canChange ? 'Compare plans' : billing.plan === '' ? 'Choose a plan' : 'Change plan'}
+            {!canChange
+              ? translate('comparePlans')
+              : billing.plan === ''
+                ? translate('chooseAPlan')
+                : translate('changePlan')}
             {canChange && <ArrowRight data-icon="inline-end" aria-hidden />}
           </Link>
         </Button>
       )}
       {portal && (
         <Button variant="ghost" disabled={portalPending} onClick={onPortal}>
-          <ExternalLink aria-hidden /> Manage billing
+          <ExternalLink aria-hidden />
+          {translate('manageBilling')}
         </Button>
       )}
     </div>

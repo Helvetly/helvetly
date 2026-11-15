@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -23,6 +22,7 @@ import { AIConsentCard } from '@/components/heidi/ai-consent'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import { useDeleteWorkspace } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import { useUpdateWorkspace, type WorkspaceUpdate } from '@/lib/workspaces'
@@ -37,8 +37,8 @@ export function WorkspaceSettings() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="Workspace"
-        description="The workspace’s name and time zone, AI answers, exporting and deleting it. Each workspace has its own members, data and plan."
+        title={translate('workspace')}
+        description={translate('theWorkspaceSNameAndTimeZoneAIAnswers')}
       >
         {session ? (
           <>
@@ -104,10 +104,12 @@ export function timeZoneOptions(current: string, now = new Date()): Option[] {
     group,
   })
   return [
-    ...common.map((zone) => option(zone, 'Suggested')),
+    ...common.map((zone) => option(zone, translate('suggested'))),
     ...all
       .filter((zone) => !common.includes(zone))
-      .map((zone) => option(zone, zone.includes('/') ? zone.slice(0, zone.indexOf('/')) : 'Other')),
+      .map((zone) =>
+        option(zone, zone.includes('/') ? zone.slice(0, zone.indexOf('/')) : translate('other')),
+      ),
   ]
 }
 
@@ -127,7 +129,7 @@ export function GeneralCard({
   const form = useSectionForm({
     initial: { name, timezone },
     sections: [{ id: 'general', fields: ['name', 'timezone'] }],
-    validate: (values) => (values.name.trim() ? {} : { name: 'Give the workspace a name.' }),
+    validate: (values) => (values.name.trim() ? {} : { name: translate('giveTheWorkspaceAName') }),
     save: (values, _, before) => {
       const changes: WorkspaceUpdate = {
         ...(values.name.trim() !== before.name.trim() && { name: values.name.trim() }),
@@ -138,10 +140,10 @@ export function GeneralCard({
     fieldErrors: (error) => {
       const fields = apiFieldErrors(error)
       return fields?.timezone
-        ? { ...fields, timezone: 'Choose a time zone from the list.' }
+        ? { ...fields, timezone: translate('chooseATimeZoneFromTheList') }
         : fields
     },
-    savedMessage: () => 'Workspace saved.',
+    savedMessage: () => translate('workspaceSaved'),
   })
   const section = form.section('general')
 
@@ -149,8 +151,8 @@ export function GeneralCard({
     <SettingsSection
       id="workspace-general"
       icon={Building2}
-      title="Name and time zone"
-      description="The name is shown in the workspace menu and to the people you invite."
+      title={translate('nameAndTimeZone')}
+      description={translate('theNameIsShownInTheWorkspaceMenuAnd')}
       section={canZone ? section : undefined}
     >
       <form
@@ -164,10 +166,10 @@ export function GeneralCard({
           <FormField
             id="workspace-name"
             required
-            label="Workspace name"
+            label={translate('workspaceName')}
             width="md"
             error={form.errors.name}
-            hint={owner ? undefined : 'Only an owner can rename the workspace.'}
+            hint={owner ? undefined : translate('onlyAnOwnerCanRenameTheWorkspace')}
           >
             <Input
               {...describedBy('workspace-name', form.errors.name)}
@@ -181,11 +183,11 @@ export function GeneralCard({
           <FormField
             id="workspace-timezone"
             required
-            label="Time zone"
+            label={translate('timeZone')}
             width="md"
             error={form.errors.timezone}
-            tip="Used for today’s date, due dates, engagement periods and the daily digest. Issued invoices keep their dates."
-            hint={canZone ? undefined : 'Only an owner or admin can change the time zone.'}
+            tip={translate('usedForTodaySDateDueDatesEngagementPeriods')}
+            hint={canZone ? undefined : translate('onlyAnOwnerOrAdminCanChangeTheTime')}
           >
             {canZone ? (
               <Combobox
@@ -200,7 +202,7 @@ export function GeneralCard({
                 )}
                 contentClassName="w-96"
                 invalid={Boolean(form.errors.timezone)}
-                placeholder="Choose a time zone"
+                placeholder={translate('chooseATimeZone')}
                 onChange={(next) => form.set('timezone', next)}
               />
             ) : (
@@ -215,14 +217,14 @@ export function GeneralCard({
 
 function ExportCard() {
   return (
-    <SettingsSection id="export-workspace" icon={FolderArchive} title="Your data">
+    <SettingsSection id="export-workspace" icon={FolderArchive} title={translate('yourData')}>
       <ActionRow
-        title="Export all data"
-        description="A ZIP with every record of this workspace as JSON, deleted and voided ones included, and its stored files: documents, receipts, issued invoices and e-invoices. Large workspaces take a while."
+        title={translate('exportAllData')}
+        description={translate('aZIPWithEveryRecordOfThisWorkspaceAs')}
       >
         <Button asChild size="sm" variant="outline">
           <a href="/api/v1/workspace/export" download>
-            Download export
+            {translate('downloadExport')}
           </a>
         </Button>
       </ActionRow>
@@ -235,8 +237,10 @@ function DeleteCard({ name }: { name: string }) {
   return (
     <DangerZone id="delete-workspace">
       <DangerRow
-        title="Delete workspace"
-        description={`Everyone loses access to ${name}. Invoices and receipts stay archived for the ten years Swiss law requires; a paid plan ends at once. This can’t be undone.`}
+        title={translate('deleteWorkspace')}
+        description={translate('everyoneLosesAccessToInvoicesAndReceiptsStayArchived', {
+          name: name,
+        })}
         action="Delete workspace"
         onAction={() => setOpen(true)}
       />
@@ -256,7 +260,7 @@ function DeleteDialog({ name, onClose }: { name: string; onClose: () => void }) 
     event.preventDefault()
     remove.mutate(typed.trim(), {
       onSuccess: ({ moved }) => {
-        toast.success(`${name} was deleted.`)
+        toast.success(translate('wasDeleted', { name: name }))
         if (moved) return router.replace('/')
         setCsrfToken('')
         router.replace('/login')
@@ -269,15 +273,17 @@ function DeleteDialog({ name, onClose }: { name: string; onClose: () => void }) 
     <Dialog open onOpenChange={(next) => !next && !remove.isPending && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete “{name}”?</DialogTitle>
+          <DialogTitle>
+            {translate('delete7')}
+            {name}”?
+          </DialogTitle>
           <DialogDescription>
-            Members, invitations and sessions end now and nobody can open it again.
-            {paid &&
-              ' Its subscription is cancelled immediately, without a refund for the rest of the period.'}
+            {translate('membersInvitationsAndSessionsEndNowAndNobodyCan')}
+            {paid && translate('itsSubscriptionIsCancelledImmediatelyWithoutARefundFor')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5">
-          <FormField id="delete-confirm" label={`Type ${name} to confirm`}>
+          <FormField id="delete-confirm" label={translate('typeToConfirm2', { name: name })}>
             <Input
               id="delete-confirm"
               autoComplete="off"
@@ -287,14 +293,14 @@ function DeleteDialog({ name, onClose }: { name: string; onClose: () => void }) 
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={remove.isPending}>
-              Keep it
+              {translate('keepIt')}
             </Button>
             <Button
               type="submit"
               variant="destructive"
               disabled={typed.trim() !== name || remove.isPending}
             >
-              <Trash2 /> {remove.isPending ? 'Deleting…' : 'Delete workspace'}
+              <Trash2 /> {remove.isPending ? translate('deleting') : translate('deleteWorkspace')}
             </Button>
           </DialogFooter>
         </form>

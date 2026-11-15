@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { useQuery } from '@tanstack/react-query'
@@ -11,6 +10,7 @@ import { EngagementForm } from '@/components/engagements/engagement-form'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { listEngagements, periodLabel } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 
 /** The client's scheduled and active engagements (the list's default status), with a "New engagement" start. */
@@ -25,9 +25,10 @@ export function ClientEngagements({ clientId }: { clientId: string }) {
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-medium">Engagements</h2>
+        <h2 className="text-[14px] font-medium">{translate('engagements')}</h2>
         <Button onClick={() => setCreating(true)}>
-          <Plus /> New engagement
+          <Plus />
+          {translate('newEngagement')}
         </Button>
       </div>
       {list.error ? (
@@ -38,7 +39,7 @@ export function ClientEngagements({ clientId }: { clientId: string }) {
         <Loader className="min-h-32" />
       ) : rows.length === 0 ? (
         <p className="rounded-xl bg-card px-6 py-12 text-center text-[13px] text-muted-foreground shadow-elevation-1">
-          No running engagements for this client.
+          {translate('noRunningEngagementsForThisClient')}
         </p>
       ) : (
         <ul className="divide-y divide-border/60 rounded-xl bg-card shadow-elevation-1">

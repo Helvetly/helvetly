@@ -1,5 +1,4 @@
 'use client'
-
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { formatSize } from '@helvetly/ui/lib/format'
@@ -9,6 +8,7 @@ import { FolderOpen, Search, SearchX } from 'lucide-react'
 import { useState } from 'react'
 
 import { civilToday, sharedText } from '@/lib/dates'
+import { translate } from '@/lib/i18n'
 import { listPortalDocuments, portalDocumentUrl, portalKeys } from '@/lib/portal'
 
 import {
@@ -33,14 +33,14 @@ export function PortalDocuments() {
     if (query.error)
       return (
         <div className={cn(cardClass, 'p-4 sm:p-5')}>
-          <RetryAlert what="Your documents" onRetry={() => void query.refetch()} />
+          <RetryAlert what={translate('yourDocuments')} onRetry={() => void query.refetch()} />
         </div>
       )
     if (query.data.length === 0)
       return (
         <div className={cardClass}>
-          <EmptyState icon={FolderOpen} title="Nothing has been shared with you yet">
-            Contracts, reports and other files appear here when they are shared with you.
+          <EmptyState icon={FolderOpen} title={translate('nothingHasBeenSharedWithYouYet')}>
+            {translate('contractsReportsAndOtherFilesAppearHereWhenThey')}
           </EmptyState>
         </div>
       )
@@ -56,8 +56,8 @@ export function PortalDocuments() {
             />
             <Input
               type="search"
-              aria-label="Search documents"
-              placeholder="Search documents"
+              aria-label={translate('searchDocuments')}
+              placeholder={translate('searchDocuments')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="bg-card pl-8"
@@ -66,8 +66,8 @@ export function PortalDocuments() {
         )}
         {shown.length === 0 ? (
           <div className={cardClass}>
-            <EmptyState icon={SearchX} title="No matching documents">
-              Try another name.
+            <EmptyState icon={SearchX} title={translate('noMatchingDocuments')}>
+              {translate('tryAnotherName')}
             </EmptyState>
           </div>
         ) : (
@@ -84,8 +84,8 @@ export function PortalDocuments() {
                 </span>
                 <DownloadLink
                   href={portalDocumentUrl(doc.id)}
-                  label={`Download ${doc.name}`}
-                  text="Download"
+                  label={translate('download2', { name: doc.name })}
+                  text={translate('download')}
                 />
               </li>
             ))}
@@ -97,8 +97,8 @@ export function PortalDocuments() {
 
   return (
     <div className="grid gap-5 sm:gap-6">
-      <PageHeader title="Documents">
-        Files shared with you. Download any of them at any time.
+      <PageHeader title={translate('documents')}>
+        {translate('filesSharedWithYouDownloadAnyOfThemAt')}
       </PageHeader>
       {body()}
     </div>

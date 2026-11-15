@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -35,6 +34,7 @@ import {
   resumeEngagement,
   type Engagement,
 } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { canManage } from '@/lib/members'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, useSession } from '@/lib/queries'
@@ -45,10 +45,10 @@ import { EntriesPanel, friendlyError, QuickLog, today, useRefreshEngagement } fr
 import { PeriodsPanel } from './periods-panel'
 
 const STATUS = {
-  scheduled: ['blue', 'Scheduled'],
-  active: ['green', 'Active'],
-  ended: ['gray', 'Ended'],
-  cancelled: ['amber', 'Cancelled'],
+  scheduled: ['blue', translate('scheduled')],
+  active: ['green', translate('active')],
+  ended: ['gray', translate('ended')],
+  cancelled: ['amber', translate('cancelled')],
 } as const
 
 const daysLeft = (endsOn: string) =>
@@ -71,22 +71,24 @@ export function EngagementDetail({
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(680px,100vw)]! dark:bg-background"
       >
-        <SheetTitle className="sr-only">{engagement?.title ?? 'Engagement'}</SheetTitle>
-        <SheetDescription className="sr-only">Engagement details and delivery log</SheetDescription>
+        <SheetTitle className="sr-only">{engagement?.title ?? translate('engagement2')}</SheetTitle>
+        <SheetDescription className="sr-only">
+          {translate('engagementDetailsAndDeliveryLog')}
+        </SheetDescription>
         {engagement ? (
           <Detail engagement={engagement} onClose={() => onOpenChange(false)} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-title-sm">This engagement couldn’t be loaded.</p>
+            <p className="text-title-sm">{translate('thisEngagementCouldnTBeLoaded')}</p>
             <p className="text-sm text-muted-foreground">
-              {loadProblemText(query.error, 'This engagement')}
+              {loadProblemText(query.error, translate('thisEngagement'))}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -123,14 +125,14 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
     mutationFn: () => deleteEngagement(engagement.id),
     onSuccess: () => {
       refresh()
-      toast.success('Engagement deleted.')
+      toast.success(translate('engagementDeleted'))
       onClose()
     },
     onError: (error: unknown) => {
       setDeleting(false)
       toast.error(
         error instanceof ApiError && error.code === 'engagement_invoiced'
-          ? 'This engagement has invoices. Void or delete them first.'
+          ? translate('thisEngagementHasInvoicesVoidOrDeleteThemFirst')
           : errorMessage(error),
       )
     },
@@ -147,18 +149,21 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 px-3">
           <span className="text-body-sm text-muted-foreground">
-            Engagement #{engagement.number}
+            {translate('engagement')}
+            {engagement.number}
           </span>
           <div className="ml-auto flex items-center gap-1">
             {writable && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                  <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
                     <Ellipsis />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-44">
-                  <DropdownMenuItem onSelect={() => setEditing(true)}>Edit</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setEditing(true)}>
+                    {translate('edit')}
+                  </DropdownMenuItem>
                   {engagement.recurrence === 'none' && (
                     <DropdownMenuItem
                       // A second renew while the first runs would renew twice.
@@ -166,11 +171,11 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
                       onSelect={() =>
                         act.mutate(async () => {
                           await renewEngagement(engagement.id)
-                          toast.success('Renewed for the next period.')
+                          toast.success(translate('renewedForTheNextPeriod'))
                         })
                       }
                     >
-                      Renew
+                      {translate('renew')}
                     </DropdownMenuItem>
                   )}
                   {privileged && (cancellable || engagement.status === 'cancelled') && (
@@ -184,14 +189,15 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
                         )
                       }
                     >
-                      {cancellable ? 'Cancel engagement' : 'Resume'}
+                      {cancellable ? translate('cancelEngagement') : translate('resume')}
                     </DropdownMenuItem>
                   )}
                   {privileged && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                        <Trash2 /> Delete
+                        <Trash2 />
+                        {translate('delete')}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -199,7 +205,12 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
               </DropdownMenu>
             )}
             <RecordPageButton />
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('close')}
+              onClick={onClose}
+            >
               <X />
             </Button>
           </div>
@@ -214,7 +225,9 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
               {engagement.client.name}
             </RecordLink>
             <StatusBadge tone={tone}>{label}</StatusBadge>
-            {engagement.auto_invoice && <StatusBadge tone="gray">Drafts automatic</StatusBadge>}
+            {engagement.auto_invoice && (
+              <StatusBadge tone="gray">{translate('draftsAutomatic')}</StatusBadge>
+            )}
             <AttentionBadges attention={engagement.attention} />
           </div>
         </div>
@@ -223,7 +236,7 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
       <div className="grid content-start gap-3 p-4 sm:p-5">
         {period && (
           <Panel
-            title="Current period"
+            title={translate('currentPeriod')}
             action={
               <span className="text-caption text-muted-foreground tabular-nums">
                 {periodLabel(period)}
@@ -240,30 +253,33 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
               {(Number(period.carried_in) > 0 || period.full_quantity !== period.quantity) && (
                 <p className="-mt-1.5 text-body-sm text-muted-foreground">
                   {Number(period.carried_in) > 0 &&
-                    `+${withUnit(period.carried_in, unit)} carried over`}
+                    translate('carriedOver', { value1: withUnit(period.carried_in, unit) })}
                   {Number(period.carried_in) > 0 &&
                     period.full_quantity !== period.quantity &&
                     ' · '}
                   {period.full_quantity !== period.quantity &&
-                    `prorated from ${withUnit(period.full_quantity, unit)}`}
+                    translate('proratedFrom', { value1: withUnit(period.full_quantity, unit) })}
                 </p>
               )}
               <ProgressBar period={period} unit={unit} size="lg" caption={false} />
               <dl className="grid grid-cols-3 gap-3">
                 {Number(period.overage) > 0 ? (
-                  <Stat label="Over" value={withUnit(period.overage, unit)} danger />
+                  <Stat label={translate('over2')} value={withUnit(period.overage, unit)} danger />
                 ) : (
-                  <Stat label="Left" value={withUnit(period.remaining, unit)} />
+                  <Stat label={translate('left2')} value={withUnit(period.remaining, unit)} />
                 )}
-                <Stat label="Days left" value={String(daysLeft(period.ends_on))} />
-                <Stat label="Expected by now" value={withUnit(approx(period.expected), unit)} />
+                <Stat label={translate('daysLeft')} value={String(daysLeft(period.ends_on))} />
+                <Stat
+                  label={translate('expectedByNow')}
+                  value={withUnit(approx(period.expected), unit)}
+                />
               </dl>
             </div>
           </Panel>
         )}
 
         {writable && (
-          <Panel title="Log delivery">
+          <Panel title={translate('logDelivery')}>
             <QuickLog engagementId={engagement.id} unit={unit} current={current} />
           </Panel>
         )}
@@ -276,21 +292,24 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
           writable={writable}
         />
 
-        <Panel title="Periods">
+        <Panel title={translate('periods')}>
           <PeriodsPanel engagement={engagement} periods={periods.data ?? []} />
         </Panel>
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Added {formatDate(engagement.created_at)} · Updated {formatDate(engagement.updated_at)}
+          {translate('added2')}
+          {formatDate(engagement.created_at)}
+          {translate('updated')}
+          {formatDate(engagement.updated_at)}
         </p>
       </div>
 
       {editing && <EngagementForm open onOpenChange={setEditing} engagement={engagement} />}
       {deleting && (
         <ConfirmDialog
-          title="Delete this engagement?"
-          body="Its log and periods are removed. This can’t be undone."
-          confirmLabel="Delete"
+          title={translate('deleteThisEngagement')}
+          body={translate('itsLogAndPeriodsAreRemovedThisCanT')}
+          confirmLabel={translate('delete3')}
           tone="destructive"
           onDecide={(approved) => (approved ? remove.mutate() : setDeleting(false))}
         />

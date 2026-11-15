@@ -20,16 +20,17 @@ are the reference.
 
 ## 2. Layout
 
-| Path                         | Package                       | What it is                                           |
-| ---------------------------- | ----------------------------- | ---------------------------------------------------- |
-| `apps/api`                   | `@helvetly/api`               | Go HTTP API; builds the single `helvetly` binary     |
-| `apps/platform`              | `@helvetly/platform`          | Next.js app for signed-in users, static export       |
-| `apps/portal`                | `@helvetly/portal`            | Next.js client portal (own host), static export      |
-| `apps/web`                   | `@helvetly/web`               | Next.js public website, static export                |
-| `packages/ui`                | `@helvetly/ui`                | shadcn/ui components, theme, `globals.css`, `cn`     |
-| `packages/typescript-config` | `@helvetly/typescript-config` | `base.json`, `nextjs.json`                           |
-| `packages/vitest-config`     | `@helvetly/vitest-config`     | Shared Vitest config and test setup                  |
-| `e2e`                        | `@helvetly/e2e`               | Playwright E2E and visual tests against the real API |
+| Path                         | Package                       | What it is                                                      |
+| ---------------------------- | ----------------------------- | --------------------------------------------------------------- |
+| `apps/api`                   | `@helvetly/api`               | Go HTTP API; builds the single `helvetly` binary                |
+| `apps/platform`              | `@helvetly/platform`          | Next.js app for signed-in users, static export                  |
+| `apps/portal`                | `@helvetly/portal`            | Next.js client portal (own host), static export                 |
+| `apps/web`                   | `@helvetly/web`               | Next.js public website, static export                           |
+| `packages/i18n`              | `@helvetly/i18n`              | Typed ICU translations, locales and static-export configuration |
+| `packages/ui`                | `@helvetly/ui`                | shadcn/ui components, theme, `globals.css`, `cn`                |
+| `packages/typescript-config` | `@helvetly/typescript-config` | `base.json`, `nextjs.json`                                      |
+| `packages/vitest-config`     | `@helvetly/vitest-config`     | Shared Vitest config and test setup                             |
+| `e2e`                        | `@helvetly/e2e`               | Playwright E2E and visual tests against the real API            |
 
 ## 3. Architecture
 
@@ -39,6 +40,7 @@ are the reference.
 - **No server runtime in the frontends.** Platform and portal are `output: 'export'`: no route handlers, server
   actions, middleware or request-time rendering, no dynamic routes without `generateStaticParams`. Data comes from
   the Go API via relative `fetch('/api/...')`; in development `next dev` rewrites `/api/*` to `API_URL`.
+- **Languages.** Each locale is a separate static build through `scripts/build-locales.mjs`; English keeps root URLs, other locales use a path prefix. Put interface text in the owning app's `src/messages/en.json` (shared controls in `packages/ui`). Use `localizedHref` for native and cross-site application links; API paths and protocol identifiers remain stable. Never use mutable global locale state or add request-time rendering.
 - **Website.** `apps/web` is its own static export (every route known at build time); `build` also runs the internal
   link check (`scripts/check-links.mjs`). It renders the legal texts in `apps/web/content/legal`.
 - **API mocks** (`src/mocks` in platform and portal) are test fixtures only: Vitest (`msw/node`) and Storybook.

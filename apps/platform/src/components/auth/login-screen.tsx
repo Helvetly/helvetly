@@ -1,5 +1,7 @@
 'use client'
+import { localizedHref } from '@helvetly/i18n'
 
+import { translate } from '@/lib/i18n'
 import { siteUrl } from '@/lib/site'
 
 import { LoginShowcase } from './login-showcase'
@@ -21,13 +23,19 @@ export function LoginScreen() {
           </div>
         </div>
         <p className="pt-10 text-center text-xs text-muted-foreground">
-          By continuing, you agree to our{' '}
-          <a href={siteUrl('/terms')} className="font-medium text-foreground underline">
-            Terms of Service
+          {translate('byContinuingYouAgreeToOur')}{' '}
+          <a
+            href={localizedHref(siteUrl('/terms'))}
+            className="font-medium text-foreground underline"
+          >
+            {translate('termsOfService')}
           </a>{' '}
-          and{' '}
-          <a href={siteUrl('/privacy')} className="font-medium text-foreground underline">
-            Privacy Policy
+          {translate('and')}{' '}
+          <a
+            href={localizedHref(siteUrl('/privacy'))}
+            className="font-medium text-foreground underline"
+          >
+            {translate('privacyPolicy')}
           </a>
           .
         </p>

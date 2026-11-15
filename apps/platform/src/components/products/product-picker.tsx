@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
@@ -13,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components
 import { Package, PackageSearch, Wrench } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { formatMoney, type VatMode } from '@/lib/invoices'
 import { lineFromProduct, useProductSearch, type PickedLine, type Product } from '@/lib/products'
 
@@ -56,27 +56,30 @@ export function ProductPicker({
       <PopoverTrigger asChild>
         {trigger ?? (
           <Button type="button" variant="secondary" size="sm" className="w-fit">
-            <PackageSearch /> Add from catalogue
+            <PackageSearch />
+            {translate('addFromCatalogue')}
           </Button>
         )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
-        <Command shouldFilter={false} label="Products and services">
+        <Command shouldFilter={false} label={translate('productsAndServices')}>
           <CommandInput
-            placeholder="Search name, SKU or GTIN…"
+            placeholder={translate('searchNameSKUOrGTIN')}
             value={term}
             onValueChange={setTerm}
           />
           <CommandList>
             <CommandEmpty>
               {search.isPending
-                ? 'Searching…'
+                ? translate('searching')
                 : debounced
-                  ? 'Nothing matches.'
-                  : 'Your catalogue is empty.'}
+                  ? translate('nothingMatches4')
+                  : translate('yourCatalogueIsEmpty')}
             </CommandEmpty>
             {items.length > 0 && (
-              <CommandGroup heading={debounced ? 'Matches' : 'Recently updated'}>
+              <CommandGroup
+                heading={debounced ? translate('matches') : translate('recentlyUpdated')}
+              >
                 {items.map((product) => {
                   const line = lineFromProduct(product, vatMode)
                   const unit = unitShort(product.unit)
@@ -102,7 +105,10 @@ export function ProductPicker({
                         <span className="text-xs text-muted-foreground">
                           {[product.sku, foreign && `in ${product.currency}`]
                             .filter(Boolean)
-                            .join(' · ') || (product.type === 'product' ? 'Product' : 'Service')}
+                            .join(' · ') ||
+                            (product.type === 'product'
+                              ? translate('product')
+                              : translate('service'))}
                         </span>
                       </span>
                       <span className="shrink-0 text-right text-[13px] whitespace-nowrap tabular-nums">

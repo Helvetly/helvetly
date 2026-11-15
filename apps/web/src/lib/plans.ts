@@ -1,7 +1,8 @@
+import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
 // The plans as the API sells them: prices from apps/api/internal/billing/plans.go, limits from the
 // plan_limits migrations. plans.test.ts reads both files, so a price or limit change there fails here.
 
-import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
+import { translate } from '@/lib/i18n'
 
 export type PlanId = 'basic' | 'pro' | 'business'
 export type Interval = 'month' | 'year'
@@ -36,14 +37,14 @@ export const TRIAL_DAYS = 7
 export const PLANS: Plan[] = [
   {
     id: 'basic',
-    name: 'Basic',
+    name: translate('basic'),
     monthly: 19,
-    pitch: 'For one person or a pair: invoices with QR bills, expenses, clients and documents.',
+    pitch: translate('forOnePersonOrAPairInvoicesWithQR'),
     highlights: [
-      'Any number of people',
-      '30 invoices and 60 expenses a month',
-      '5 signature requests a month',
-      '5 GB for documents and receipts',
+      translate('anyNumberOfPeople'),
+      translate('message30InvoicesAnd60ExpensesAMonth'),
+      translate('message5SignatureRequestsAMonth'),
+      translate('message5GBForDocumentsAndReceipts'),
     ],
     limits: {
       members: 2,
@@ -59,14 +60,14 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'pro',
-    name: 'Pro',
+    name: translate('pro'),
     monthly: 49,
-    pitch: 'For a growing team: room for many clients, engagements and signatures every month.',
+    pitch: translate('forAGrowingTeamRoomForManyClientsEngagements'),
     highlights: [
-      'Any number of people',
-      '300 invoices and 600 expenses a month',
-      '50 signature requests a month',
-      '100 GB for documents and receipts',
+      translate('anyNumberOfPeople'),
+      translate('message300InvoicesAnd600ExpensesAMonth'),
+      translate('message50SignatureRequestsAMonth'),
+      translate('message100GBForDocumentsAndReceipts'),
     ],
     limits: {
       members: 10,
@@ -82,14 +83,14 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'business',
-    name: 'Business',
+    name: translate('business'),
     monthly: 99,
-    pitch: 'For larger teams: no ceilings, and the most storage.',
+    pitch: translate('forLargerTeamsNoCeilingsAndTheMostStorage'),
     highlights: [
-      'Any number of people, unlimited clients',
-      'Unlimited invoices, expenses and signatures',
-      '1 TB for documents and receipts',
-      '20 M AI tokens a month for Heidi',
+      translate('anyNumberOfPeopleUnlimitedClients'),
+      translate('unlimitedInvoicesExpensesAndSignatures'),
+      translate('message1TBForDocumentsAndReceipts'),
+      translate('message20MAITokensAMonthForHeidi'),
     ],
     limits: {
       members: null,

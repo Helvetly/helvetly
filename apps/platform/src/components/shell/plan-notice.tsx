@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Meter } from '@helvetly/ui/components/meter'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@helvetly/ui/components/sidebar'
@@ -27,6 +26,7 @@ import {
   type Billing,
   type Discount,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 type Tone = 'brand' | 'warning' | 'danger'
 export type PlanNotice = {
@@ -44,7 +44,7 @@ export type PlanNotice = {
 
 const PLANS = '/settings/billing/plans'
 const BILLING = '/settings/billing'
-const ASK = 'Ask an owner or admin'
+const ASK = translate('askAnOwnerOrAdmin')
 const failing = (status: string) => status === 'past_due' || status === 'unpaid'
 const planName = (billing: Billing) =>
   billing.plans.find((plan) => plan.id === billing.plan)?.name ?? capitalizeId(billing.plan)
@@ -53,10 +53,10 @@ const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`
 
 /** What the trial turns into under the subscription's promotion code: "free forever with code X". */
 function afterDiscount(billing: Billing, discount: Discount): string {
-  if (freeForever(billing)) return `free forever with code ${discount.code}`
+  if (freeForever(billing)) return translate('freeForeverWithCode', { code: discount.code })
   const charge = nextCharge(billing)
   const price = charge && 'amount' in charge ? charge.amount : null
-  const terms = `code ${discount.code} (${describeDiscount(discount)})`
+  const terms = translate('code2', { code: discount.code, value2: describeDiscount(discount) })
   return price && billing.interval
     ? `${formatPrice(price)} / ${billing.interval} with ${terms}`
     : `${terms} applies`
@@ -65,10 +65,10 @@ function afterDiscount(billing: Billing, discount: Discount): string {
 /** The workspace's plan under its name in the switcher: "Pro", "Basic · Trial"; null without billing. */
 export function planLabel(billing: Billing | undefined): string | null {
   if (!billing?.enabled) return null
-  if (billing.locked || billing.plan === '') return 'No plan · Read-only'
+  if (billing.locked || billing.plan === '') return translate('noPlanReadOnly')
   const name = planName(billing)
-  if (billing.status === 'trialing') return `${name} · Trial`
-  if (failing(billing.status)) return `${name} · Payment due`
+  if (billing.status === 'trialing') return translate('trial2', { name: name })
+  if (failing(billing.status)) return translate('paymentDue', { name: name })
   return name
 }
 
@@ -91,46 +91,53 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
     return {
       kind: 'locked',
       tone: 'danger',
-      title: 'Read-only workspace',
+      title: translate('readOnlyWorkspace'),
       text: manage
-        ? 'There is no active plan. Choose one to make changes again.'
-        : `There is no active plan. ${ASK} to choose one.`,
-      action: manage ? { label: 'Choose a plan', href: PLANS } : null,
+        ? translate('thereIsNoActivePlanChooseOneToMake')
+        : translate('thereIsNoActivePlanToChooseOne', { ASK: ASK }),
+      action: manage ? { label: translate('chooseAPlan'), href: PLANS } : null,
       dismissable: false,
     }
   if (failing(billing.status))
     return {
       kind: 'payment',
       tone: 'danger',
-      title: 'Payment failed',
+      title: translate('paymentFailed'),
       text: manage
-        ? 'Update the card so the workspace stays open.'
-        : `${ASK} to update the card so the workspace stays open.`,
-      action: manage ? { label: 'Update payment', href: BILLING } : null,
+        ? translate('updateTheCardSoTheWorkspaceStaysOpen')
+        : translate('toUpdateTheCardSoTheWorkspaceStaysOpen', { ASK: ASK }),
+      action: manage ? { label: translate('updatePayment'), href: BILLING } : null,
       dismissable: false,
     }
   if (billing.disputed)
     return {
       kind: 'disputed',
       tone: 'warning',
-      title: 'Payment disputed',
-      text: 'A payment is disputed with the card issuer. The plan keeps working while the dispute is open; if it is lost, what the payment bought ends.',
+      title: translate('paymentDisputed'),
+      text: translate('aPaymentIsDisputedWithTheCardIssuerThe'),
       action: null,
       dismissable: true,
     }
   if (billing.status === 'trialing' && billing.trial_end) {
     const left = trialDaysLeft(billing.trial_end, now)
     const ends = formatDate(billing.trial_end)
-    const after = billing.cancel_at_period_end ? 'the workspace turns read-only' : 'billing starts'
-    const title = left === 0 ? 'Trial ends today' : `Trial · ${days(left)} left`
+    const after = billing.cancel_at_period_end
+      ? translate('theWorkspaceTurnsReadOnly')
+      : translate('billingStarts')
+    const title =
+      left === 0 ? translate('trialEndsToday') : translate('trialLeft', { value1: days(left) })
     const progress = { left, of: Math.max(billing.trial_days, left, 1) }
     if (billing.discount && !billing.cancel_at_period_end)
       return {
         kind: 'trial',
         tone: 'brand',
         title,
-        text: `${planName(billing)} until ${ends}, then ${afterDiscount(billing, billing.discount)}.`,
-        action: manage ? { label: 'View plan', href: BILLING } : null,
+        text: translate('untilThen', {
+          value1: planName(billing),
+          ends: ends,
+          value3: afterDiscount(billing, billing.discount),
+        }),
+        action: manage ? { label: translate('viewPlan'), href: BILLING } : null,
         progress,
         dismissable: true,
       }
@@ -139,9 +146,13 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
       tone: 'brand',
       title,
       text: manage
-        ? `${planName(billing)} until ${ends}, then ${after}. Pick the plan that fits.`
-        : `${planName(billing)} until ${ends}. ${ASK} to pick a plan.`,
-      action: manage ? { label: 'Upgrade', href: PLANS } : null,
+        ? translate('untilThenPickThePlanThatFits', {
+            value1: planName(billing),
+            ends: ends,
+            after: after,
+          })
+        : translate('untilToPickAPlan', { value1: planName(billing), ends: ends, ASK: ASK }),
+      action: manage ? { label: translate('upgrade'), href: PLANS } : null,
       progress,
       dismissable: true,
     }
@@ -150,11 +161,11 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
     return {
       kind: 'ending',
       tone: 'warning',
-      title: `Plan ends ${formatDate(billing.current_period_end)}`,
+      title: translate('planEnds', { value1: formatDate(billing.current_period_end) }),
       text: manage
-        ? 'After that the workspace is read-only. Renew to keep working.'
-        : `After that the workspace is read-only. ${ASK} to renew.`,
-      action: manage ? { label: 'Renew plan', href: BILLING } : null,
+        ? translate('afterThatTheWorkspaceIsReadOnlyRenewTo')
+        : translate('afterThatTheWorkspaceIsReadOnlyToRenew', { ASK: ASK }),
+      action: manage ? { label: translate('renewPlan'), href: BILLING } : null,
       dismissable: true,
     }
   return null
@@ -250,7 +261,7 @@ export function SidebarPlanNotice({
         </SidebarMenuItem>
       </SidebarMenu>
       <section
-        aria-label="Plan"
+        aria-label={translate('plan')}
         data-testid="plan-notice"
         data-kind={notice.kind}
         className={cn(
@@ -268,13 +279,13 @@ export function SidebarPlanNotice({
                   variant="ghost"
                   size="icon-xs"
                   className="-mt-1 -mr-1 text-muted-foreground"
-                  aria-label="Hide for this session"
+                  aria-label={translate('hideForThisSession')}
                   onClick={hide}
                 >
                   <X />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Hide for this session</TooltipContent>
+              <TooltipContent>{translate('hideForThisSession')}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -283,7 +294,7 @@ export function SidebarPlanNotice({
             value={notice.progress.left}
             max={notice.progress.of}
             tone="brand"
-            label="Trial days left"
+            label={translate('trialDaysLeft')}
           />
         )}
         <p className="text-caption text-pretty text-muted-foreground">{notice.text}</p>

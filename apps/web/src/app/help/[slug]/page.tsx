@@ -1,10 +1,13 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { ArticleView } from '@/components/article'
+import { categoryLabel } from '@/lib/categories'
 import { readArticle, readCollection } from '@/lib/content'
 import { topicSlug } from '@/lib/help-topics'
+import { translate } from '@/lib/i18n'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -16,7 +19,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = readArticle('help', (await params).slug)
-  return article ? { title: article.title, description: article.description } : {}
+  return article
+    ? {
+        alternates: localizedAlternates(`/help/${(await params).slug}`),
+        title: article.title,
+        description: article.description,
+      }
+    : {}
 }
 
 export default async function HelpArticlePage({ params }: Props) {
@@ -29,21 +38,21 @@ export default async function HelpArticlePage({ params }: Props) {
       kicker={
         <>
           <Link href="/help" className="underline underline-offset-4 hover:text-foreground">
-            Help center
+            {translate('helpCenter')}
           </Link>{' '}
           ·{' '}
           <Link
             href={`/help/topic/${topicSlug(article.category)}`}
             className="underline underline-offset-4 hover:text-foreground"
           >
-            {article.category}
+            {categoryLabel(article.category)}
           </Link>
         </>
       }
       aside={
         <>
           <p className="px-3 text-caption font-medium text-muted-foreground uppercase">
-            {article.category}
+            {categoryLabel(article.category)}
           </p>
           {siblings.map((a) => (
             <Link

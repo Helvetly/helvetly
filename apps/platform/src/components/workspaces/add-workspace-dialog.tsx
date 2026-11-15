@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -15,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { useCreateWorkspace } from '@/lib/members'
 
 /**
@@ -30,7 +30,7 @@ export function AddWorkspaceDialog({ onClose }: { onClose: () => void }) {
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (!name.trim()) {
-      setError('Give the workspace a name, such as Muster GmbH.')
+      setError(translate('giveTheWorkspaceANameSuchAsMusterGmbH'))
       return
     }
     create.mutate(name.trim(), {
@@ -43,24 +43,23 @@ export function AddWorkspaceDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(open) => !open && !create.isPending && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add workspace</DialogTitle>
+          <DialogTitle>{translate('addWorkspace')}</DialogTitle>
           <DialogDescription>
-            A separate company or project with its own clients, invoices and members. You are its
-            owner, and it needs its own plan.
+            {translate('aSeparateCompanyOrProjectWithItsOwnClients')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5" noValidate>
           <FormField
             id="workspace-name"
-            label="Name"
+            label={translate('name')}
             required
             error={error}
-            hint="You can rename it later in Settings."
+            hint={translate('youCanRenameItLaterInSettings')}
           >
             <Input
               {...describedBy('workspace-name', error)}
               maxLength={100}
-              placeholder="Muster GmbH"
+              placeholder={translate('musterGmbH')}
               value={name}
               onChange={(event) => {
                 setName(event.target.value)
@@ -70,10 +69,10 @@ export function AddWorkspaceDialog({ onClose }: { onClose: () => void }) {
           </FormField>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={create.isPending}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Creating…' : 'Create workspace'}
+              {create.isPending ? translate('creating') : translate('createWorkspace')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -52,6 +52,7 @@ import { Initials } from '@/components/initials'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import {
   addDays,
   canManageInvoices,
@@ -104,13 +105,13 @@ const newHref = (kind: InvoiceKind) =>
   kind === 'invoice' ? '/invoices/new' : `/invoices/new?kind=${kind}`
 
 const STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'open', label: 'Open' },
-  { value: 'overdue', label: 'Overdue' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'void', label: 'Void' },
-  { value: 'replaced', label: 'Replaced' },
-  { value: 'refund_due', label: 'Refund due' },
+  { value: 'draft', label: translate('draft') },
+  { value: 'open', label: translate('open') },
+  { value: 'overdue', label: translate('overdue3') },
+  { value: 'paid', label: translate('paid') },
+  { value: 'void', label: translate('void2') },
+  { value: 'replaced', label: translate('replaced') },
+  { value: 'refund_due', label: translate('refundDue') },
 ]
 
 /** Date presets for the issue date filter, relative to today in the workspace time zone. */
@@ -120,15 +121,15 @@ export function datePresets(day = today()) {
   const lastMonthEnd = addDays(startOfMonth, -1)
   const quarter = Math.floor((Number(day.slice(5, 7)) - 1) / 3) * 3 + 1
   return [
-    { label: 'This month', from: startOfMonth, to: day },
-    { label: 'Last month', from: `${lastMonthEnd.slice(0, 7)}-01`, to: lastMonthEnd },
+    { label: translate('thisMonth2'), from: startOfMonth, to: day },
+    { label: translate('lastMonth'), from: `${lastMonthEnd.slice(0, 7)}-01`, to: lastMonthEnd },
     {
-      label: 'This quarter',
+      label: translate('thisQuarter'),
       from: `${day.slice(0, 4)}-${String(quarter).padStart(2, '0')}-01`,
       to: day,
     },
-    { label: 'Last 90 days', from: addDays(day, -89), to: day },
-    { label: 'This year', from: `${day.slice(0, 4)}-01-01`, to: day },
+    { label: translate('last90Days2'), from: addDays(day, -89), to: day },
+    { label: translate('thisYear'), from: `${day.slice(0, 4)}-01-01`, to: day },
   ]
 }
 
@@ -171,7 +172,7 @@ function DueCell({ invoice }: { invoice: InvoiceListItem }) {
 const COLUMNS: ColumnDef[] = [
   {
     id: 'number',
-    label: 'Number',
+    label: translate('number'),
     width: 'w-[128px]',
     sort: 'number',
     cell: (invoice) => (
@@ -181,14 +182,14 @@ const COLUMNS: ColumnDef[] = [
           <PaymentMarks methods={invoice.payment_methods} />
         </span>
         {invoice.kind === 'credit_note' && (
-          <span className="text-[12.5px] text-muted-foreground">Credit note</span>
+          <span className="text-[12.5px] text-muted-foreground">{translate('creditNote2')}</span>
         )}
       </span>
     ),
   },
   {
     id: 'client',
-    label: 'Client',
+    label: translate('client'),
     width: 'w-[30%]',
     sort: 'client',
     cell: (invoice) => (
@@ -200,7 +201,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'issued',
-    label: 'Issued',
+    label: translate('issued4'),
     width: 'w-[128px]',
     sort: 'issue_date',
     wide: true,
@@ -210,14 +211,14 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'due',
-    label: 'Due',
+    label: translate('due'),
     width: 'w-[128px]',
     sort: 'due_date',
     cell: (invoice) => <DueCell invoice={invoice} />,
   },
   {
     id: 'total',
-    label: 'Amount',
+    label: translate('amount'),
     width: 'w-[17%]',
     sort: 'total',
     align: 'right',
@@ -231,7 +232,8 @@ const COLUMNS: ColumnDef[] = [
         {/* Less due than the amount: partly paid or credited. */}
         {invoice.status === 'open' && invoice.amount_due !== invoice.payable_total && (
           <span className="text-[12.5px] text-muted-foreground tabular-nums">
-            {formatAmount(invoice.amount_due)} due
+            {formatAmount(invoice.amount_due)}
+            {translate('due6')}
           </span>
         )}
       </span>
@@ -239,7 +241,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'status',
-    label: 'Status',
+    label: translate('status'),
     width: 'w-[112px]',
     cell: (invoice) => (
       <span className="flex items-center gap-1.5">
@@ -346,9 +348,14 @@ export function InvoicesPage() {
     const failed = results.filter((result) => result.status === 'rejected').length
     void queryClient.invalidateQueries({ queryKey: ['invoices'] })
     setSelected(new Set())
-    if (failed) toast.error(`${failed} of ${targets.length} drafts couldn’t be deleted.`)
+    if (failed)
+      toast.error(translate('ofDraftsCouldnTBeDeleted', { failed: failed, length: targets.length }))
     else
-      toast.success(targets.length === 1 ? 'Draft deleted.' : `${targets.length} drafts deleted.`)
+      toast.success(
+        targets.length === 1
+          ? translate('draftDeleted2')
+          : translate('draftsDeleted', { length: targets.length }),
+      )
   }
 
   const kind = kindInfo(params.kind)
@@ -375,17 +382,21 @@ export function InvoicesPage() {
     <>
       {canWrite && (
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import
+          <FileUp />
+          {translate('import')}
         </Item>
       )}
       <Item asChild>
-        <a href={exportUrl(params)} download>
-          <Download /> Export CSV{filtered ? ' (filtered)' : ''}
+        <a href={localizedHref(exportUrl(params))} download>
+          <Download />
+          {translate('exportCSV2')}
+          {filtered ? ' (filtered)' : ''}
         </a>
       </Item>
       <Item asChild>
         <Link href="/settings/invoices">
-          <ReceiptText /> Invoice settings
+          <ReceiptText />
+          {translate('invoiceSettings2')}
         </Link>
       </Item>
     </>
@@ -399,15 +410,15 @@ export function InvoicesPage() {
         savedViews={false}
         active={active}
         onSelect={selectTab}
-        primary="New invoice"
+        primary={translate('newInvoice')}
         onPrimary={newInvoice}
         primaryMenu={<NewMenuItems onNew={(next) => router.push(newHref(next))} />}
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="invoices" onClose={importDrawer.close} />}
       <PageContextMenu
-        title="Invoices"
-        primary={{ label: 'New invoice', onSelect: newInvoice }}
+        title={translate('invoices')}
+        primary={{ label: translate('newInvoice'), onSelect: newInvoice }}
         items={pageItems}
         views={{
           tabs,
@@ -429,8 +440,8 @@ export function InvoicesPage() {
               <Search className="size-4 shrink-0 stroke-[1.5]" />
               <input
                 type="search"
-                aria-label="Search invoices"
-                placeholder="Search number, client or reference"
+                aria-label={translate('searchInvoices')}
+                placeholder={translate('searchNumberClientOrReference')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
@@ -442,11 +453,11 @@ export function InvoicesPage() {
           {list.error ? (
             <State
               icon={<CloudOff />}
-              title="Couldn’t load invoices"
+              title={translate('couldnTLoadInvoices')}
               text={errorMessage(list.error)}
               action={
                 <Button variant="outline" size="sm" onClick={() => void list.refetch()}>
-                  Try again
+                  {translate('tryAgain')}
                 </Button>
               }
             />
@@ -458,10 +469,13 @@ export function InvoicesPage() {
                 icon={<SearchX />}
                 title={
                   params.search
-                    ? `No ${kind.plural.toLowerCase()} match “${params.search}”`
-                    : 'Nothing in this view'
+                    ? translate('noMatch', {
+                        value1: kind.plural.toLowerCase(),
+                        search: params.search,
+                      })
+                    : translate('nothingInThisView')
                 }
-                text="Try another search or clear the filters."
+                text={translate('tryAnotherSearchOrClearTheFilters')}
                 action={
                   <Button
                     variant="outline"
@@ -476,24 +490,25 @@ export function InvoicesPage() {
                       )
                     }}
                   >
-                    Clear search and filters
+                    {translate('clearSearchAndFilters')}
                   </Button>
                 }
               />
             ) : (
               <State
                 icon={<FilePlus2 />}
-                title={`No ${kind.plural.toLowerCase()} yet`}
+                title={translate('noYet', { value1: kind.plural.toLowerCase() })}
                 text={
                   CREATABLE_KINDS.includes(params.kind)
-                    ? 'Pick a client, add a few lines and issue it: totals and VAT are done for you.'
-                    : 'Make one from an issued invoice, in its actions.'
+                    ? translate('pickAClientAddAFewLinesAndIssue')
+                    : translate('makeOneFromAnIssuedInvoiceInItsActions')
                 }
                 action={
                   canWrite &&
                   CREATABLE_KINDS.includes(params.kind) && (
                     <Button size="sm" onClick={() => router.push(newHref(params.kind))}>
-                      New {kind.label.toLowerCase()}
+                      {translate('new2')}
+                      {kind.label.toLowerCase()}
                     </Button>
                   )
                 }
@@ -511,7 +526,7 @@ export function InvoicesPage() {
                   <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
                     <th className="w-12 pl-5">
                       <Checkbox
-                        aria-label="Select all invoices on this page"
+                        aria-label={translate('selectAllInvoicesOnThisPage')}
                         className="bg-card"
                         checked={allSelected}
                         onCheckedChange={(checked) =>
@@ -558,7 +573,7 @@ export function InvoicesPage() {
                       )
                     })}
                     <th className="w-12">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
                 </thead>
@@ -593,30 +608,35 @@ export function InvoicesPage() {
 
               {meta && (
                 <nav
-                  aria-label="Pages"
+                  aria-label={translate('pages')}
                   className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
                 >
                   <span className="tabular-nums">
                     {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)} of {meta.total}
+                    {Math.min(meta.page * meta.page_size, meta.total)}
+                    {translate('of5')}
+                    {meta.total}
                   </span>
                   <span className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Previous page"
+                      aria-label={translate('previousPage')}
                       disabled={meta.page <= 1}
                       onClick={() => update({ page: meta.page - 1 })}
                     >
                       <ChevronLeft />
                     </Button>
                     <span className="tabular-nums">
-                      Page {meta.page} of {Math.max(meta.total_pages, 1)}
+                      {translate('page')}
+                      {meta.page}
+                      {translate('of5')}
+                      {Math.max(meta.total_pages, 1)}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Next page"
+                      aria-label={translate('nextPage')}
                       disabled={meta.page >= meta.total_pages}
                       onClick={() => update({ page: meta.page + 1 })}
                     >
@@ -651,13 +671,23 @@ export function InvoicesPage() {
       {commands.dialogs}
       {deleting && deleting.length > 0 && (
         <ConfirmDialog
-          title={deleting.length === 1 ? 'Delete this draft?' : `Delete ${deleting.length} drafts?`}
+          title={
+            deleting.length === 1
+              ? translate('deleteThisDraft')
+              : translate('deleteDrafts4', { length: deleting.length })
+          }
           body={
             deleting.length === selected.size
-              ? 'Drafts have no number, so nothing goes missing in your numbering. This can’t be undone.'
-              : `Only the ${deleting.length} drafts in your selection are deleted; issued invoices stay, they can only be credited.`
+              ? translate('draftsHaveNoNumberSoNothingGoesMissingIn')
+              : translate('onlyTheDraftsInYourSelectionAreDeletedIssued', {
+                  length: deleting.length,
+                })
           }
-          confirmLabel={deleting.length === 1 ? 'Delete draft' : `Delete ${deleting.length} drafts`}
+          confirmLabel={
+            deleting.length === 1
+              ? translate('deleteDraft2')
+              : translate('deleteDrafts3', { length: deleting.length })
+          }
           tone="destructive"
           onDecide={(approved) => void confirmDelete(approved)}
         />
@@ -686,7 +716,9 @@ function NewMenuItems({ onNew }: { onNew: (kind: InvoiceKind) => void }) {
             <Icon />
             <span className="grid leading-tight">
               {kindInfo(kind).label}
-              <span className="text-xs text-muted-foreground">From an issued invoice</span>
+              <span className="text-xs text-muted-foreground">
+                {translate('fromAnIssuedInvoice')}
+              </span>
             </span>
           </DropdownMenuItem>
         )
@@ -701,12 +733,15 @@ export function bulkActions(
   run: { exportCsv: () => void; downloadPdfs: () => void; removeDrafts: () => void },
 ) {
   return [
-    { label: 'Export CSV', icon: <Download />, onClick: run.exportCsv },
-    { label: 'Download PDFs', icon: <FileDown />, onClick: run.downloadPdfs },
+    { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
+    { label: translate('downloadPDFs'), icon: <FileDown />, onClick: run.downloadPdfs },
     ...(drafts > 0
       ? [
           {
-            label: drafts === 1 ? 'Delete draft' : `Delete ${drafts} drafts`,
+            label:
+              drafts === 1
+                ? translate('deleteDraft2')
+                : translate('deleteDrafts2', { drafts: drafts }),
             icon: <Trash2 />,
             onClick: run.removeDrafts,
             destructive: true,
@@ -724,7 +759,7 @@ function invoiceMenu(
   run: ReturnType<typeof useInvoiceCommands>['run'],
 ): RowMenuSpec {
   return {
-    title: `${invoice.number ?? 'Draft'} · ${invoice.client.name}`,
+    title: `${invoice.number ?? translate('draft')} · ${invoice.client.name}`,
     items: (kit) => (
       <CommandItems kit={kit} invoice={invoice} canManage={canManage} run={run} showOpen />
     ),
@@ -742,12 +777,18 @@ function ActiveFilters({
   const client = useClient(params.client).data
   const chips: { label: string; clear: Partial<ListParams> }[] = []
   if (params.client)
-    chips.push({ label: `Client: ${client?.name ?? '…'}`, clear: { client: null } })
+    chips.push({
+      label: translate('client5', { value1: client?.name ?? '…' }),
+      clear: { client: null },
+    })
   if (params.credited)
-    chips.push({ label: 'Credit notes of one invoice', clear: { credited: null } })
+    chips.push({ label: translate('creditNotesOfOneInvoice'), clear: { credited: null } })
   if (params.from || params.to)
     chips.push({
-      label: `Issued ${params.from ? formatDay(params.from) : '…'} – ${params.to ? formatDay(params.to) : 'today'}`,
+      label: translate('issued5', {
+        value1: params.from ? formatDay(params.from) : '…',
+        value2: params.to ? formatDay(params.to) : translate('today2'),
+      }),
       clear: { from: null, to: null },
     })
   if (chips.length === 0) return null
@@ -761,7 +802,7 @@ function ActiveFilters({
           {chip.label}
           <button
             type="button"
-            aria-label={`Remove filter ${chip.label}`}
+            aria-label={translate('removeFilter', { label: chip.label })}
             onClick={() => onChange(chip.clear)}
             className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground"
           >
@@ -791,7 +832,8 @@ function Filters({
     <Popover onOpenChange={(open) => !open && setPicking(false)}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
-          <ListFilter className="stroke-[1.5]" /> Filters
+          <ListFilter className="stroke-[1.5]" />
+          {translate('filters')}
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}
@@ -817,7 +859,9 @@ function Filters({
         ) : (
           <>
             <fieldset className="grid gap-0.5">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">Status</legend>
+              <legend className="px-2 pb-1 text-xs text-muted-foreground">
+                {translate('status')}
+              </legend>
               {STATUS_OPTIONS.map((status) => (
                 <label key={status.value} className={option}>
                   <Checkbox
@@ -831,7 +875,9 @@ function Filters({
               ))}
             </fieldset>
             <fieldset className="grid gap-1">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">Client</legend>
+              <legend className="px-2 pb-1 text-xs text-muted-foreground">
+                {translate('client')}
+              </legend>
               <div className="relative">
                 <button
                   type="button"
@@ -839,14 +885,16 @@ function Filters({
                   className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 text-left text-sm shadow-xs hover:bg-muted/60"
                 >
                   <span className={cn('truncate', !params.client && 'text-muted-foreground')}>
-                    {params.client ? (client?.name ?? 'Loading…') : 'Any client'}
+                    {params.client
+                      ? (client?.name ?? translate('loading'))
+                      : translate('anyClient')}
                   </span>
                   {!params.client && <Search className="size-3.5 text-muted-foreground" />}
                 </button>
                 {params.client && (
                   <button
                     type="button"
-                    aria-label="Any client"
+                    aria-label={translate('anyClient')}
                     onClick={() => onChange({ client: null })}
                     className="absolute top-2 right-2 flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
@@ -856,7 +904,9 @@ function Filters({
               </div>
             </fieldset>
             <fieldset className="grid gap-1.5">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">Issue date</legend>
+              <legend className="px-2 pb-1 text-xs text-muted-foreground">
+                {translate('issueDate')}
+              </legend>
               <div className="flex flex-wrap gap-1 px-1">
                 {presets.map((preset) => {
                   const active = params.from === preset.from && params.to === preset.to
@@ -880,7 +930,7 @@ function Filters({
               <div className="grid grid-cols-2 gap-2 px-1">
                 <input
                   type="date"
-                  aria-label="Issued from"
+                  aria-label={translate('issuedFrom')}
                   value={params.from ?? ''}
                   max={params.to ?? undefined}
                   onChange={(event) => onChange({ from: event.target.value || null })}
@@ -888,7 +938,7 @@ function Filters({
                 />
                 <input
                   type="date"
-                  aria-label="Issued to"
+                  aria-label={translate('issuedTo')}
                   value={params.to ?? ''}
                   min={params.from ?? undefined}
                   onChange={(event) => onChange({ to: event.target.value || null })}
@@ -903,7 +953,7 @@ function Filters({
                 className="justify-self-start text-muted-foreground"
                 onClick={() => onChange({ status: [], client: null, from: null, to: null })}
               >
-                Clear filters
+                {translate('clearFilters')}
               </Button>
             )}
           </>
@@ -960,7 +1010,10 @@ const InvoiceRow = memo(function InvoiceRow({
       >
         <td className="pl-5">
           <Checkbox
-            aria-label={`Select ${invoice.number ?? 'draft'} for ${invoice.client.name}`}
+            aria-label={translate('selectFor', {
+              value1: invoice.number ?? translate('draft4'),
+              name: invoice.client.name,
+            })}
             className="bg-card"
             checked={selected}
             onCheckedChange={() => act.toggle(invoice.id)}
@@ -980,7 +1033,10 @@ const InvoiceRow = memo(function InvoiceRow({
         ))}
         <td className="pr-3 text-right">
           <RowMenuButton
-            label={`Actions for ${invoice.number ?? 'draft'} · ${invoice.client.name}`}
+            label={translate('actionsFor2', {
+              value1: invoice.number ?? translate('draft4'),
+              name: invoice.client.name,
+            })}
             menu={menu}
           />
         </td>
@@ -999,7 +1055,10 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
         className="flex items-center gap-3 px-4 py-3 data-selected:bg-muted/50"
       >
         <Checkbox
-          aria-label={`Select ${invoice.number ?? 'draft'} for ${invoice.client.name}`}
+          aria-label={translate('selectFor', {
+            value1: invoice.number ?? translate('draft4'),
+            name: invoice.client.name,
+          })}
           className="bg-card"
           checked={selected}
           onCheckedChange={() => act.toggle(invoice.id)}
@@ -1012,7 +1071,9 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="truncate text-[15px]">{invoice.client.name}</span>
             <span className="truncate text-[13px] text-muted-foreground">
-              {invoice.number && `${invoice.number} · `}due {formatDay(invoice.due_date)}
+              {invoice.number && `${invoice.number} · `}
+              {translate('due5')}
+              {formatDay(invoice.due_date)}
             </span>
           </span>
           <span className="grid justify-items-end gap-1">

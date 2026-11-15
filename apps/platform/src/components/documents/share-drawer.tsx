@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Sheet,
@@ -21,6 +20,7 @@ import {
   useShares,
   type DocFile,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 /** Who a document is shared with in the client portal: add a client, remove one. */
 export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => void }) {
@@ -41,7 +41,7 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full gap-0 sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Share with client</SheetTitle>
+          <SheetTitle>{translate('shareWithClient2')}</SheetTitle>
           <SheetDescription>{file.name}</SheetDescription>
         </SheetHeader>
         <div className="grid gap-6 px-4 pb-4">
@@ -53,7 +53,7 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
             }}
           >
             <label htmlFor="share-client" className="text-sm font-medium">
-              Client
+              {translate('client')}
             </label>
             <div className="flex gap-2">
               <select
@@ -64,7 +64,9 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
                 className="h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
               >
                 <option value="">
-                  {options.length === 0 ? 'No clients to share with' : 'Choose a client'}
+                  {options.length === 0
+                    ? translate('noClientsToShareWith')
+                    : translate('chooseAClient')}
                 </option>
                 {options.map((client) => (
                   <option key={client.id} value={client.id}>
@@ -73,7 +75,7 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
                 ))}
               </select>
               <Button type="submit" disabled={!value || add.isPending}>
-                {add.isPending ? 'Sharing…' : 'Share'}
+                {add.isPending ? translate('sharing') : translate('share')}
               </Button>
             </div>
           </form>
@@ -82,10 +84,10 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
               {errorMessage(error)}
             </p>
           )}
-          <section className="grid gap-2" aria-label="Shared with">
-            <h3 className="text-sm font-medium">Shared with</h3>
+          <section className="grid gap-2" aria-label={translate('sharedWith')}>
+            <h3 className="text-sm font-medium">{translate('sharedWith')}</h3>
             {shares.data?.length === 0 && (
-              <p className="text-sm text-muted-foreground">Not shared with anyone yet.</p>
+              <p className="text-sm text-muted-foreground">{translate('notSharedWithAnyoneYet')}</p>
             )}
             <ul className="grid gap-1">
               {shares.data?.map((share) => (
@@ -95,11 +97,12 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
                   <Button
                     variant="destructive-ghost"
                     size="sm"
-                    aria-label={`Remove ${share.client_name}`}
+                    aria-label={translate('remove6', { client_name: share.client_name })}
                     disabled={remove.isPending}
                     onClick={() => remove.mutate(share.client_id)}
                   >
-                    <Trash2 /> Remove
+                    <Trash2 />
+                    {translate('remove')}
                   </Button>
                 </li>
               ))}

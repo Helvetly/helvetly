@@ -1,11 +1,14 @@
 'use client'
 
+import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Maximize2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createContext, useContext, type ComponentProps, type MouseEvent } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 /** A record with a detail drawer of its own, which opens on top of whatever is on screen. */
 export type RecordRef = {
@@ -29,7 +32,7 @@ const ROUTES: {
   { kind: 'signature', path: '/documents', key: 'request', fixed: { view: 'signatures' } },
 ]
 
-const pathOf = (url: URL) => url.pathname.replace(/\/$/, '') || '/'
+const pathOf = (url: URL) => localizedHref(url.pathname, defaultLocale).replace(/\/$/, '') || '/'
 
 /** The record a link points at (`/invoices?id=…`), or null for anything else, such as a filtered list. */
 export function parseRecordHref(href: string): RecordRef | null {
@@ -88,12 +91,12 @@ export function RecordPageButton() {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href={page.href} aria-label="Open full page" onClick={page.leave}>
+          <Link href={page.href} aria-label={translate('openFullPage')} onClick={page.leave}>
             <Maximize2 />
           </Link>
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Open full page</TooltipContent>
+      <TooltipContent>{translate('openFullPage')}</TooltipContent>
     </Tooltip>
   )
 }

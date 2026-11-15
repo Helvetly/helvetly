@@ -8,6 +8,7 @@ import { Trust } from '@/components/home/trust'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { GENERAL_FAQ } from '@/lib/faq'
+import { translate } from '@/lib/i18n'
 
 export default function HomePage() {
   return (
@@ -21,13 +22,15 @@ export default function HomePage() {
       <section id="pricing" className="py-12 sm:py-16">
         <Container>
           <SectionHeading
-            eyebrow="Pricing"
+            eyebrow={translate('pricing')}
             title={
               <>
-                Simple plans, <span className="accent">one price</span> per person
+                {translate('simplePlans')}
+                <span className="accent">{translate('onePrice')}</span>
+                {translate('perPerson')}
               </>
             }
-            lead={'One price per person, every feature in every plan. Pay yearly and save 20%.'}
+            lead={translate('onePricePerPersonEveryFeatureInEveryPlan')}
           />
           <div className="mt-12">
             <PricingCards />
@@ -36,18 +39,19 @@ export default function HomePage() {
       </section>
       <FaqSection
         id="faq"
-        eyebrow="Questions"
+        eyebrow={translate('questions')}
         title={
           <>
-            Good to <span className="accent">know</span>
+            {translate('goodTo')}
+            <span className="accent">{translate('know')}</span>
           </>
         }
-        lead="What people ask before they move their books to Helvetly."
+        lead={translate('whatPeopleAskBeforeTheyMoveTheirBooksTo')}
         card={{
-          title: 'Heidi answers the rest',
-          body: 'Inside Helvetly, press ⌘J on any page and ask how something works. She knows every screen.',
+          title: translate('heidiAnswersTheRest'),
+          body: translate('insideHelvetlyPressJOnAnyPageAndAsk'),
           href: '/security',
-          link: 'How Heidi treats your data',
+          link: translate('howHeidiTreatsYourData'),
         }}
         items={GENERAL_FAQ}
       />

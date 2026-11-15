@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -17,6 +16,7 @@ import { CONSENT_TEXT } from '@/components/heidi/ai-consent'
 import { usageKey } from '@/components/heidi/use-heidi'
 import { errorMessage } from '@/lib/api'
 import { heidiApi } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import {
   commitSummary,
   conflictsOf,
@@ -136,10 +136,11 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted px-4 py-3 text-[13px]">
             <History className="size-4 shrink-0 stroke-[1.75] text-muted-foreground" />
             <p className="min-w-0 flex-1">
-              You have an unfinished import from {formatDate(resume.created_at)}.
+              {translate('youHaveAnUnfinishedImportFrom')}
+              {formatDate(resume.created_at)}.
             </p>
             <Button size="sm" variant="outline" onClick={() => setFresh(true)}>
-              Start a new one
+              {translate('startANewOne')}
             </Button>
             <Button
               size="sm"
@@ -148,7 +149,8 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
                 setFresh(true)
               }}
             >
-              Continue the import from {formatDate(resume.created_at)}
+              {translate('continueTheImportFrom')}
+              {formatDate(resume.created_at)}
             </Button>
           </div>
         )}
@@ -156,21 +158,20 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         <DropZone files={files} disabled={upload.isPending} onChange={setFiles} />
         <p className="text-[12.5px] text-pretty text-muted-foreground">
           {config
-            ? `Heidi’s AI reads the files and suggests ${noun}.`
-            : 'Heidi’s AI works out what each file is (an invoice you issued, a bill you received, a contract, a client or price list) and suggests the clients, invoices, engagements, expenses or products in it.'}{' '}
-          You check and fix them first: nothing is created until you choose rows and press Import.
-          The files are kept in Documents.
+            ? translate('importSuggestions', { noun })
+            : translate('importAutoSuggestions')}{' '}
+          {translate('importReviewFirst')}
         </p>
       </div>
     )
     status = upload.isPending
-      ? 'Uploading…'
+      ? translate('uploading3')
       : files.length
         ? `${files.length} ${files.length === 1 ? 'file' : 'files'} chosen`
-        : 'No files chosen yet'
+        : translate('noFilesChosenYet')
     actions = (
       <Button disabled={!files.length || upload.isPending} onClick={read}>
-        {upload.isPending ? 'Uploading…' : 'Read files'}
+        {upload.isPending ? translate('uploading3') : translate('readFiles')}
       </Button>
     )
   } else if (!batch.data) {
@@ -183,16 +184,16 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
     body = (
       <div className="grid gap-3">
         <p className="text-[13px] text-muted-foreground">
-          Reading your files. This can take a minute for long spreadsheets; you can close this and
-          come back later.
+          {translate('readingYourFilesThisCanTakeAMinuteFor')}
         </p>
         <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
       </div>
     )
-    status = `Read ${filesDone} of ${batch.data.files.length} files…`
+    status = translate('readOfFiles', { filesDone: filesDone, length: batch.data.files.length })
     actions = (
       <Button variant="destructive-ghost" onClick={() => setConfirmDiscard(true)}>
-        <Trash2 /> Discard
+        <Trash2 />
+        {translate('discard2')}
       </Button>
     )
   } else if (editingRecord) {
@@ -209,7 +210,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         }}
       />
     )
-    status = 'Editing a row'
+    status = translate('editingARow')
   } else {
     body = (
       <div className="grid gap-4">
@@ -238,8 +239,8 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
     status =
       summary ??
       (config || !records.length
-        ? `${chosen.length} of ${open.length} selected`
-        : `Found ${foundSummary(records)} · ${chosen.length} selected`)
+        ? translate('ofSelected', { length: chosen.length, value2: open.length })
+        : translate('importFoundSelected', { summary: foundSummary(records), count: chosen.length }))
     error = commit.error ? errorMessage(commit.error) : null
     actions = (
       <>
@@ -250,18 +251,21 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         >
           {open.length ? (
             <>
-              <Trash2 /> Discard
+              <Trash2 />
+              {translate('discard2')}
             </>
           ) : (
-            'Start a new import'
+            translate('startANewImport')
           )}
         </Button>
         {open.length > 0 || !summary ? (
           <Button disabled={!chosen.length || commit.isPending} onClick={() => runCommit(chosen)}>
-            {commit.isPending ? 'Importing…' : `Import ${chosen.length}`}
+            {commit.isPending
+              ? translate('importing')
+              : translate('import3', { length: chosen.length })}
           </Button>
         ) : (
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose}>{translate('done')}</Button>
         )}
       </>
     )
@@ -277,12 +281,12 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
           <div className="grid min-w-0 gap-0.5">
             <SheetTitle className="truncate text-lg font-semibold">
-              {config ? `Import ${noun}` : 'Import documents'}
+              {config ? translate('importKind', { noun }) : translate('importDocuments')}
             </SheetTitle>
             <SheetDescription className="text-[13px] text-pretty text-muted-foreground">
               {config
-                ? 'From spreadsheets, PDFs, photos or Word files, read by AI and checked by you.'
-                : 'Drop invoices, bills, contracts or lists, even as a ZIP: the AI sorts them, you check.'}
+                ? translate('fromSpreadsheetsPDFsPhotosOrWordFilesReadBy')
+                : translate('importAutoDescription')}
             </SheetDescription>
           </div>
           <Tooltip>
@@ -290,14 +294,14 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Close"
+                aria-label={translate('close')}
                 disabled={upload.isPending}
                 onClick={onClose}
               >
                 <X />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Close</TooltipContent>
+            <TooltipContent>{translate('close')}</TooltipContent>
           </Tooltip>
         </header>
 
@@ -341,10 +345,13 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         {confirmDiscard && (
           <ConfirmDialog
             tone="destructive"
-            title="Discard this import?"
-            body={`The ${noun} not created yet are dropped. Created ${noun} and the files in Documents stay.`}
-            confirmLabel="Discard"
-            cancelLabel="Keep"
+            title={translate('discardThisImport')}
+            body={translate('theNotCreatedYetAreDroppedCreatedAndThe', {
+              noun: noun,
+              value2: noun,
+            })}
+            confirmLabel={translate('discard')}
+            cancelLabel={translate('keep')}
             onDecide={(approved) => {
               setConfirmDiscard(false)
               if (approved) runDiscard()
@@ -359,14 +366,13 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
 /** Invoices issued elsewhere count in the VAT return: months the old system declared must be closed first. */
 function DeclaredVatNote() {
   return (
-    <Callout role="note" tone="warning" title="Already declared for VAT?">
+    <Callout role="note" tone="warning" title={translate('alreadyDeclaredForVAT')}>
       <p>
-        Invoices issued elsewhere count in Helvetly&apos;s VAT return for their date. If your old
-        system already declared those months, close them in{' '}
+        {translate('invoicesIssuedElsewhereCountInHelvetlySVATReturn')}{' '}
         <Link href="/settings/periods" className="underline underline-offset-2">
-          Settings → Closing
+          {translate('settingsClosing')}
         </Link>{' '}
-        first: invoices dated in a closed month are not imported, so nothing is counted twice.
+        {translate('firstInvoicesDatedInAClosedMonthAreNot')}
       </p>
     </Callout>
   )
@@ -387,12 +393,12 @@ function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
       {problem.kind === 'consent' && <AllowAI onAllowed={onRetry} />}
       {problem.kind === 'plan' && (
         <Button asChild size="sm" variant="outline" className="w-fit">
-          <Link href="/settings/billing/plans">See plans</Link>
+          <Link href="/settings/billing/plans">{translate('seePlans')}</Link>
         </Button>
       )}
       {problem.kind === 'retry' && (
         <Button size="sm" variant="outline" className="w-fit" onClick={onRetry}>
-          Try again
+          {translate('tryAgain')}
         </Button>
       )}
     </div>
@@ -411,12 +417,12 @@ function AllowAI({ onAllowed }: { onAllowed: () => void }) {
     },
   })
   if (role !== 'owner' && role !== 'admin')
-    return <p className="text-muted-foreground">Ask an owner or admin of this workspace.</p>
+    return <p className="text-muted-foreground">{translate('askAnOwnerOrAdminOfThisWorkspace')}</p>
   return (
     <div className="grid gap-2">
       <p className="text-[12.5px] text-pretty text-muted-foreground">{CONSENT_TEXT}</p>
       <Button size="sm" className="w-fit" disabled={allow.isPending} onClick={() => allow.mutate()}>
-        {allow.isPending ? 'Allowing…' : 'Allow OpenAI'}
+        {allow.isPending ? translate('allowing') : translate('allowOpenAI')}
       </Button>
       {allow.error && <p className="text-destructive">{errorMessage(allow.error)}</p>}
     </div>

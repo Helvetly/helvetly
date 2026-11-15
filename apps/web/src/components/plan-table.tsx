@@ -18,6 +18,7 @@ import {
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { type Limits, type Plan, type PlanId, PLANS, priceOf } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { type Tone, TONES } from '@/lib/tones'
@@ -41,49 +42,59 @@ type Row = {
 
 const ROWS: Row[] = [
   // Every person is billed at the plan's price, so no plan caps how many there are.
-  { label: 'People', hint: 'Billed per person', icon: UsersRound, format: () => 'Any number' },
-  { label: 'Clients', icon: Building2, amount: (l) => l.clients, format: (l) => fmt(l.clients) },
   {
-    label: 'Invoices a month',
-    hint: 'Credit notes and corrections do not count',
+    label: translate('people'),
+    hint: translate('billedPerPerson'),
+    icon: UsersRound,
+    format: () => translate('anyNumber'),
+  },
+  {
+    label: translate('clients'),
+    icon: Building2,
+    amount: (l) => l.clients,
+    format: (l) => fmt(l.clients),
+  },
+  {
+    label: translate('invoicesAMonth'),
+    hint: translate('creditNotesAndCorrectionsDoNotCount'),
     icon: FileText,
     amount: (l) => l.invoicesPerMonth,
     format: (l) => fmt(l.invoicesPerMonth),
   },
   {
-    label: 'Expenses a month',
+    label: translate('expensesAMonth'),
     icon: Receipt,
     amount: (l) => l.expensesPerMonth,
     format: (l) => fmt(l.expensesPerMonth),
   },
   {
-    label: 'Products and services',
+    label: translate('productsAndServices'),
     icon: Package,
     amount: (l) => l.products,
     format: (l) => fmt(l.products),
   },
   {
-    label: 'Active engagements',
+    label: translate('activeEngagements'),
     icon: CalendarRange,
     amount: (l) => l.engagements,
     format: (l) => fmt(l.engagements),
   },
   {
-    label: 'Signature requests a month',
+    label: translate('signatureRequestsAMonth'),
     icon: FileSignature,
     amount: (l) => l.signaturesPerMonth,
     format: (l) => fmt(l.signaturesPerMonth),
   },
   {
-    label: 'Storage',
-    hint: 'Documents and receipts',
+    label: translate('storage'),
+    hint: translate('documentsAndReceipts'),
     icon: HardDrive,
     amount: (l) => l.storageGb,
     format: (l) => storage(l.storageGb),
   },
   {
-    label: 'AI tokens a month',
-    hint: 'For Heidi and the AI import',
+    label: translate('aiTokensAMonth'),
+    hint: translate('forHeidiAndTheAIImport'),
     icon: Sparkles,
     amount: (l) => l.aiTokensPerMonth,
     format: (l) => tokens(l.aiTokensPerMonth),
@@ -91,7 +102,7 @@ const ROWS: Row[] = [
 ]
 
 function fmt(n: number | null) {
-  return n === null ? 'Unlimited' : count(n)
+  return n === null ? translate('unlimited') : count(n)
 }
 
 /** How full a plan's bar is: its share of the largest finite limit in the row; unlimited fills it. */
@@ -111,42 +122,42 @@ function share(row: Row, plan: Plan): number | null {
 // Every plan has every feature; only the limits above differ.
 const FEATURES: { group: string; icon: LucideIcon; tone: Tone; items: string[] }[] = [
   {
-    group: 'Invoicing',
+    group: translate('invoicing'),
     icon: FileText,
     tone: 'sky',
     items: [
-      'Swiss QR bill with QR-IBAN, QRR or SCOR',
-      'Eight document types, gapless numbering',
-      'Invoices in German, French, Italian and English',
-      'Automatic reminders, fees and default interest',
-      'Instalment schedules and plans',
-      'E-invoices: XRechnung, Peppol BIS, KSeF, e-Factura',
+      translate('swissQRBillWithQRIBANQRROrSCOR'),
+      translate('eightDocumentTypesGaplessNumbering'),
+      translate('invoicesInGermanFrenchItalianAndEnglish'),
+      translate('automaticRemindersFeesAndDefaultInterest'),
+      translate('instalmentSchedulesAndPlans'),
+      translate('eInvoicesXRechnungPeppolBISKSeFEFactura'),
     ],
   },
   {
-    group: 'Back office',
+    group: translate('backOffice2'),
     icon: Wallet,
     tone: 'mint',
     items: [
-      'Expenses with receipts and reverse charge',
-      'Clients, contacts and a client portal',
-      'Documents with sharing and duplicate detection',
-      'Templates and simple electronic signatures',
-      'Engagements, retainers and service reports',
-      'VAT return with eCH-0217 export',
+      translate('expensesWithReceiptsAndReverseCharge'),
+      translate('clientsContactsAndAClientPortal'),
+      translate('documentsWithSharingAndDuplicateDetection'),
+      translate('templatesAndSimpleElectronicSignatures'),
+      translate('engagementsRetainersAndServiceReports'),
+      translate('vatReturnWithECH0217Export'),
     ],
   },
   {
-    group: 'AI and security',
+    group: translate('aiAndSecurity'),
     icon: ShieldCheck,
     tone: 'lilac',
     items: [
-      'Heidi, the assistant (after consent)',
-      'AI import from PDF, images, Excel, Word and ZIP',
-      'Passkeys, Google sign-in and two-factor authentication',
-      'Closed periods and a hash-chained audit log',
-      'Roles for owners, admins and members',
-      'Full workspace export as a ZIP',
+      translate('heidiTheAssistantAfterConsent'),
+      translate('aiImportFromPDFImagesExcelWordAndZIP'),
+      translate('passkeysGoogleSignInAndTwoFactorAuthentication'),
+      translate('closedPeriodsAndAHashChainedAuditLog'),
+      translate('rolesForOwnersAdminsAndMembers'),
+      translate('fullWorkspaceExportAsAZIP'),
     ],
   },
 ]
@@ -193,7 +204,7 @@ function PlanHead({ plan }: { plan: Plan }) {
         <span className="text-title-sm font-semibold">{plan.name}</span>
         {featured && (
           <span className="ml-auto rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2 py-0.5 text-caption font-medium text-white">
-            Most popular
+            {translate('mostPopular')}
           </span>
         )}
       </span>
@@ -203,7 +214,8 @@ function PlanHead({ plan }: { plan: Plan }) {
           featured ? 'text-white/70' : 'text-muted-foreground',
         )}
       >
-        {formatPrice(priceOf(plan, 'month'))} / person / month
+        {formatPrice(priceOf(plan, 'month'))}
+        {translate('personMonth')}
       </span>
     </>
   )
@@ -216,12 +228,12 @@ export function PlanTable() {
       {/* Wide screens: one table, Pro's column a lit band down the middle. */}
       <div className="hidden md:block">
         <table className="w-full border-separate border-spacing-0 text-left text-body">
-          <caption className="sr-only">Limits of each plan</caption>
+          <caption className="sr-only">{translate('limitsOfEachPlan')}</caption>
           <thead>
             <tr>
               <th scope="col" className="w-[31%] p-5 align-bottom">
                 <span className="text-body-sm font-medium text-muted-foreground">
-                  Limits per workspace
+                  {translate('limitsPerWorkspace')}
                 </span>
               </th>
               {PLANS.map((plan) => (
@@ -242,7 +254,8 @@ export function PlanTable() {
                     arrow={false}
                     className="mt-4 h-9 w-full px-4 text-body-sm"
                   >
-                    Start with {plan.name}
+                    {translate('startWith')}
+                    {plan.name}
                   </Cta>
                 </th>
               ))}
@@ -299,7 +312,7 @@ export function PlanTable() {
           return (
             <section
               key={plan.id}
-              aria-label={`${plan.name} limits`}
+              aria-label={translate('limits', { name: plan.name })}
               className={cn(
                 'rounded-3xl border p-6',
                 featured
@@ -327,10 +340,9 @@ export function PlanTable() {
       </div>
 
       <div>
-        <h3 className="text-center text-title font-semibold">Included in every plan</h3>
+        <h3 className="text-center text-title font-semibold">{translate('includedInEveryPlan')}</h3>
         <p className="mx-auto mt-2 max-w-xl text-center text-body text-muted-foreground">
-          Plans differ only in the limits above. Every feature is in every plan, from the first day
-          of the trial.
+          {translate('plansDifferOnlyInTheLimitsAboveEveryFeature')}
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {FEATURES.map(({ group, icon: Icon, tone, items }, i) => (

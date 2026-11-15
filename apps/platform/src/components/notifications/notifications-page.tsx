@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -13,6 +12,7 @@ import { PrefsLink } from '@/components/notifications/prefs-drawer'
 import { parseRecordHref, RecordLink } from '@/components/record-link'
 import { PAGE_WIDTH, PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   byDay,
   useLatestNotifications,
@@ -42,7 +42,7 @@ export function NotificationsPage() {
   return (
     <>
       <PageHeader
-        tabs={['Notifications']}
+        tabs={[translate('notifications')]}
         tabIcons={[Bell]}
         savedViews={false}
         actions={
@@ -50,17 +50,17 @@ export function NotificationsPage() {
             <Button
               variant="outline"
               size="sm"
-              title="Mark all as read"
+              title={translate('markAllAsRead2')}
               disabled={unread === 0 || markAll.isPending}
               onClick={() => markAll.mutate(undefined, { onError: toastError })}
             >
               <CheckCheck />
-              <span className="max-sm:sr-only">Mark all as read</span>
+              <span className="max-sm:sr-only">{translate('markAllAsRead2')}</span>
             </Button>
             <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-              <PrefsLink title="Notification preferences">
+              <PrefsLink title={translate('notificationPreferences')}>
                 <Settings2 />
-                <span className="max-md:sr-only">Preferences</span>
+                <span className="max-md:sr-only">{translate('preferences')}</span>
               </PrefsLink>
             </Button>
           </>
@@ -76,17 +76,19 @@ export function NotificationsPage() {
         >
           <div className="flex items-end justify-between gap-3">
             <div className="grid gap-1">
-              <h1 className="text-lg font-medium tracking-tight">Notifications</h1>
+              <h1 className="text-lg font-medium tracking-tight">{translate('notifications')}</h1>
               <p className="text-sm text-pretty text-muted-foreground">
                 {unread > 0
-                  ? `${unread} unread · what happened in this workspace that concerns you.`
-                  : 'What happened in this workspace that concerns you.'}
+                  ? translate('unreadWhatHappenedInThisWorkspaceThatConcernsYou', {
+                      unread: unread,
+                    })
+                  : translate('whatHappenedInThisWorkspaceThatConcernsYou')}
               </p>
             </div>
           </div>
           <div className="grid min-w-0 content-start gap-6">
             {pages.isPending ? (
-              <Loader label="Loading notifications" className="min-h-96" />
+              <Loader label={translate('loadingNotifications')} className="min-h-96" />
             ) : pages.isError && !pages.data ? (
               <LoadError
                 what="notifications"
@@ -128,7 +130,7 @@ export function NotificationsPage() {
 function Row({ n }: { n: Notification }) {
   const setRead = useSetRead()
   const toggle = () => setRead.mutate({ id: n.id, read: !n.read }, { onError: toastError })
-  const label = n.read ? 'Mark as unread' : 'Mark as read'
+  const label = n.read ? translate('markAsUnread') : translate('markAsRead')
   return (
     <li
       data-unread={!n.read || undefined}
@@ -177,7 +179,8 @@ function Row({ n }: { n: Notification }) {
             onClick={() => !n.read && setRead.mutate({ id: n.id, read: true })}
           >
             {/* A record opens in place; anything else is another page. */}
-            Open {!parseRecordHref(n.href) && <ArrowUpRight />}
+            {translate('open4')}
+            {!parseRecordHref(n.href) && <ArrowUpRight />}
           </RecordLink>
         </Button>
       </div>
@@ -189,8 +192,8 @@ function Empty() {
   return (
     <State
       icon={<Bell />}
-      title="No notifications yet"
-      text="Payments, overdue invoices, signatures, client portal activity, imports and team changes show up here."
+      title={translate('noNotificationsYet')}
+      text={translate('paymentsOverdueInvoicesSignaturesClientPortalActivityImportsAnd')}
       action={null}
     />
   )
@@ -228,7 +231,7 @@ function MorePages({
         </p>
       )}
       <Button variant="outline" disabled={loading} onClick={onMore}>
-        {loading ? 'Loading…' : 'Load more'}
+        {loading ? translate('loading') : translate('loadMore')}
       </Button>
     </div>
   )

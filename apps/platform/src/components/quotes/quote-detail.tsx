@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -39,6 +39,7 @@ import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { formatAmount, formatDay, formatMoney, isZero, UNITS } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import {
@@ -74,8 +75,10 @@ export function QuoteDetail({ id, onClose }: { id: string; onClose: () => void }
           editing ? EDITOR_WIDTH : 'sm:w-[min(680px,100vw)]!',
         )}
       >
-        <SheetTitle className="sr-only">{quote ? quoteName(quote) : 'Quote'}</SheetTitle>
-        <SheetDescription className="sr-only">Quote details</SheetDescription>
+        <SheetTitle className="sr-only">
+          {quote ? quoteName(quote) : translate('quote2')}
+        </SheetTitle>
+        <SheetDescription className="sr-only">{translate('quoteDetails')}</SheetDescription>
         {quote && editing ? (
           <QuoteEditor
             quote={quote}
@@ -86,14 +89,14 @@ export function QuoteDetail({ id, onClose }: { id: string; onClose: () => void }
           <Detail quote={quote} onClose={onClose} onEdit={() => setEditing(true)} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-title-sm">This quote couldn’t be loaded.</p>
+            <p className="text-title-sm">{translate('thisQuoteCouldnTBeLoaded')}</p>
             <p className="text-sm text-muted-foreground">{errorMessage(query.error)}</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -108,13 +111,13 @@ export function QuoteDetail({ id, onClose }: { id: string; onClose: () => void }
 type Action = { command: QuoteCommand; label: string; icon: LucideIcon }
 
 const ACTIONS: Record<QuoteCommand, Action> = {
-  edit: { command: 'edit', label: 'Edit draft', icon: Pencil },
-  send: { command: 'send', label: 'Send', icon: Send },
-  accept: { command: 'accept', label: 'Accept', icon: Check },
-  decline: { command: 'decline', label: 'Decline', icon: X },
-  revise: { command: 'revise', label: 'Revise', icon: FilePen },
-  invoice: { command: 'invoice', label: 'Create invoice', icon: ReceiptText },
-  delete: { command: 'delete', label: 'Delete draft', icon: Trash2 },
+  edit: { command: 'edit', label: translate('editDraft2'), icon: Pencil },
+  send: { command: 'send', label: translate('send'), icon: Send },
+  accept: { command: 'accept', label: translate('accept'), icon: Check },
+  decline: { command: 'decline', label: translate('decline'), icon: X },
+  revise: { command: 'revise', label: translate('revise'), icon: FilePen },
+  invoice: { command: 'invoice', label: translate('createInvoice'), icon: ReceiptText },
+  delete: { command: 'delete', label: translate('deleteDraft2'), icon: Trash2 },
 }
 
 /** The "…" menu's order; Edit has its own button. */
@@ -160,7 +163,9 @@ function Detail({
     if (command === 'revise')
       revise.mutate(undefined, {
         onSuccess: (revised) => {
-          toast.success(`${quoteName(revised)} is a draft again. Change it, then send it.`)
+          toast.success(
+            translate('isADraftAgainChangeItThenSendIt', { value1: quoteName(revised) }),
+          )
           onEdit()
         },
         onError: failQuote,
@@ -168,7 +173,7 @@ function Detail({
     if (command === 'invoice')
       invoice.mutate(undefined, {
         onSuccess: (converted) => {
-          toast.success(`Draft invoice created from ${name}.`)
+          toast.success(translate('draftInvoiceCreatedFrom', { name: name }))
           if (converted.invoice)
             router.push(`/invoices?id=${encodeURIComponent(converted.invoice.id)}`)
         },
@@ -177,7 +182,7 @@ function Detail({
     if (command === 'delete')
       remove.mutate(quote.id, {
         onSuccess: () => {
-          toast.success('Draft quote deleted.')
+          toast.success(translate('draftQuoteDeleted'))
           onClose()
         },
         onError: failQuote,
@@ -191,18 +196,18 @@ function Detail({
           <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption font-medium text-muted-foreground tabular-nums">
             {quoteNumber(quote)}
           </span>
-          <span className="ml-1.5 text-body-sm text-muted-foreground">Quote</span>
+          <span className="ml-1.5 text-body-sm text-muted-foreground">{translate('quote2')}</span>
           <div className="ml-auto flex items-center gap-1">
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                    <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
                       <Ellipsis />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent>More actions</TooltipContent>
+                <TooltipContent>{translate('moreActions')}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" className="min-w-52">
                 {menu
@@ -211,20 +216,23 @@ function Detail({
                     const { label, icon: Icon } = ACTIONS[command]
                     return (
                       <DropdownMenuItem key={command} onSelect={() => run(command)}>
-                        <Icon /> {command === 'send' && quote.sent_at ? 'Send again' : label}
+                        <Icon />{' '}
+                        {command === 'send' && quote.sent_at ? translate('sendAgain') : label}
                       </DropdownMenuItem>
                     )
                   })}
                 <DropdownMenuItem asChild>
-                  <a href={quotePdfUrl(quote.id, true)} download>
-                    <Download /> Download PDF
+                  <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
+                    <Download />
+                    {translate('downloadPDF2')}
                   </a>
                 </DropdownMenuItem>
                 {menu.includes('delete') && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onSelect={() => run('delete')}>
-                      <Trash2 /> Delete draft
+                      <Trash2 />
+                      {translate('deleteDraft')}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -232,17 +240,23 @@ function Detail({
             </DropdownMenu>
             {writable && can.edit && (
               <Button variant="outline" className="gap-1.5" onClick={onEdit}>
-                <Pencil className="size-3.5" /> Edit
+                <Pencil className="size-3.5" />
+                {translate('edit4')}
               </Button>
             )}
             <PrimaryButton quote={quote} command={primary} busy={busy} onRun={run} />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={translate('close')}
+                  onClick={onClose}
+                >
                   <X />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
+              <TooltipContent>{translate('close')}</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -250,7 +264,7 @@ function Detail({
         <div className="grid gap-5 px-6 pt-6">
           <div className="grid gap-2">
             <p className="flex flex-wrap items-baseline gap-x-1.5 text-body-sm text-muted-foreground">
-              Quote for
+              {translate('quoteFor')}
               <RecordLink
                 href={`/clients?id=${encodeURIComponent(quote.client.id)}`}
                 className="group inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2 hover:no-underline"
@@ -258,7 +272,10 @@ function Detail({
                 {quote.client.name}
                 <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </RecordLink>
-              <span className="text-caption tabular-nums">· client {quote.client.number}</span>
+              <span className="text-caption tabular-nums">
+                {translate('client4')}
+                {quote.client.number}
+              </span>
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="flex items-baseline gap-2 text-display font-normal tabular-nums">
@@ -276,11 +293,12 @@ function Detail({
               icon={quote.status === 'accepted' ? Check : X}
             >
               <span className="font-medium">
-                {quote.status === 'accepted' ? 'Accepted' : 'Declined'}{' '}
+                {quote.status === 'accepted' ? translate('accepted') : translate('declined')}{' '}
                 {quote.decided_by === 'client'
-                  ? 'by the client in the portal'
-                  : 'as recorded by your team'}{' '}
-                on {formatDate(quote.decided_at)}
+                  ? translate('byTheClientInThePortal')
+                  : translate('asRecordedByYourTeam')}{' '}
+                {translate('on3')}
+                {formatDate(quote.decided_at)}
               </span>
               {quote.decision_note && (
                 <span className="block text-muted-foreground">“{quote.decision_note}”</span>
@@ -290,20 +308,20 @@ function Detail({
 
           {quote.invoice && (
             <Callout tone="info" icon={ReceiptText}>
-              {quote.invoice.number ? 'Invoiced as ' : 'Turned into a '}
+              {quote.invoice.number ? translate('invoicedAs') : translate('turnedIntoA')}
               <RecordLink
                 href={`/invoices?id=${encodeURIComponent(quote.invoice.id)}`}
                 className="font-medium underline underline-offset-4 hover:no-underline"
               >
-                {quote.invoice.number || 'draft invoice'}
+                {quote.invoice.number || translate('draftInvoice')}
               </RecordLink>
-              {quote.invoice.number ? '.' : ': issue it from there.'}
+              {quote.invoice.number ? '.' : translate('issueItFromThere')}
             </Callout>
           )}
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[
-              { value: 'overview', label: 'Overview' },
+              { value: 'overview', label: translate('overview') },
               { value: 'pdf', label: 'PDF' },
             ].map((tab) => (
               <TabsTrigger
@@ -320,7 +338,7 @@ function Detail({
       </header>
 
       <TabsContent value="overview" className="grid content-start gap-3 p-4 sm:p-5">
-        <Panel title="Lines">
+        <Panel title={translate('lines')}>
           <ul className="divide-y divide-border/60">
             {quote.lines.map((line) => (
               <li key={line.id} className="flex items-start gap-3 py-2.5 first:pt-1">
@@ -336,7 +354,9 @@ function Detail({
                     × {formatMoney(line.unit_price, quote.currency)}
                     {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
                     {quote.vat_mode !== 'none' &&
-                      ` · VAT ${line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category}`}
+                      translate('vat3', {
+                        value1: line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
+                      })}
                   </span>
                 </span>
                 <Money value={line.amount} currency={quote.currency} className="text-body" />
@@ -344,10 +364,13 @@ function Detail({
             ))}
           </ul>
           <dl className="mt-2 grid gap-1.5 border-t border-border/60 pt-3 text-body-sm">
-            <Total label="Subtotal" value={formatMoney(quote.subtotal, quote.currency)} />
+            <Total
+              label={translate('subtotal')}
+              value={formatMoney(quote.subtotal, quote.currency)}
+            />
             {!isZero(quote.discount_amount) && (
               <Total
-                label={`Discount ${quote.discount_percent}%`}
+                label={translate('discount', { discount_percent: quote.discount_percent })}
                 value={`−${formatMoney(quote.discount_amount, quote.currency)}`}
               />
             )}
@@ -356,45 +379,52 @@ function Detail({
                 <Total
                   key={`${group.category}${group.rate}`}
                   muted
-                  label={`VAT ${group.category === 'S' ? `${group.rate}%` : group.category} on ${formatMoney(group.taxable_amount, quote.currency)}`}
+                  label={translate('vatOn2', {
+                    value1: group.category === 'S' ? `${group.rate}%` : group.category,
+                    value2: formatMoney(group.taxable_amount, quote.currency),
+                  })}
                   value={formatMoney(group.vat_amount, quote.currency)}
                 />
               ))}
             {!isZero(quote.rounding_amount) && (
               <Total
                 muted
-                label="Rounding"
+                label={translate('rounding')}
                 value={formatMoney(quote.rounding_amount, quote.currency)}
               />
             )}
-            <Total strong label="Total" value={formatMoney(quote.payable_total, quote.currency)} />
+            <Total
+              strong
+              label={translate('total')}
+              value={formatMoney(quote.payable_total, quote.currency)}
+            />
           </dl>
         </Panel>
 
-        <Panel title="Details">
-          <Row label="Date">{formatDay(quote.issue_date)}</Row>
-          <Row label="Valid until">{formatDay(quote.valid_until)}</Row>
-          {quote.revision > 1 && <Row label="Revision">{quote.revision}</Row>}
-          {quote.reference && <Row label="Reference">{quote.reference}</Row>}
-          <Row label="Language · VAT">
+        <Panel title={translate('details')}>
+          <Row label={translate('date')}>{formatDay(quote.issue_date)}</Row>
+          <Row label={translate('validUntil3')}>{formatDay(quote.valid_until)}</Row>
+          {quote.revision > 1 && <Row label={translate('revision')}>{quote.revision}</Row>}
+          {quote.reference && <Row label={translate('reference')}>{quote.reference}</Row>}
+          <Row label={translate('languageVAT')}>
             {quote.language.toUpperCase()} ·{' '}
             {quote.vat_mode === 'none'
-              ? 'No VAT'
+              ? translate('noVAT')
               : quote.vat_mode === 'inclusive'
-                ? 'Prices incl. VAT'
-                : 'Prices excl. VAT'}
+                ? translate('pricesInclVAT')
+                : translate('pricesExclVAT')}
           </Row>
-          {quote.sent_at && <Row label="Last sent">{formatDate(quote.sent_at)}</Row>}
+          {quote.sent_at && <Row label={translate('lastSent')}>{formatDate(quote.sent_at)}</Row>}
         </Panel>
 
         {(quote.intro || quote.footer || quote.note) && (
-          <Panel title="Texts">
-            {quote.intro && <Row label="Intro">{quote.intro}</Row>}
-            {quote.footer && <Row label="Footer">{quote.footer}</Row>}
+          <Panel title={translate('texts')}>
+            {quote.intro && <Row label={translate('intro')}>{quote.intro}</Row>}
+            {quote.footer && <Row label={translate('footer')}>{quote.footer}</Row>}
             {quote.note && (
               <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2.5 text-body-sm leading-relaxed whitespace-pre-wrap">
                 <span className="mb-0.5 block text-caption text-muted-foreground">
-                  Internal note
+                  {translate('internalNote')}
                 </span>
                 {quote.note}
               </p>
@@ -403,7 +433,10 @@ function Detail({
         )}
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Created {formatDate(quote.created_at)} · Updated {formatDate(quote.updated_at)}
+          {translate('created5')}
+          {formatDate(quote.created_at)}
+          {translate('updated')}
+          {formatDate(quote.updated_at)}
         </p>
       </TabsContent>
 
@@ -411,25 +444,27 @@ function Detail({
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-body-sm text-muted-foreground">
             {quote.status === 'draft'
-              ? 'Draft: printed with a DRAFT mark until it is sent'
+              ? translate('draftPrintedWithADRAFTMarkUntilItIs')
               : pages
-                ? `${pages} ${pages === 1 ? 'page' : 'pages'}, as last sent`
-                : 'Loading…'}
+                ? translate('asLastSent', { pages: pages, value2: pages === 1 ? 'page' : 'pages' })
+                : translate('loading')}
           </span>
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <a href={quotePdfUrl(quote.id)} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-3.5" /> Open in new tab
+            <a href={localizedHref(quotePdfUrl(quote.id))} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-3.5" />
+              {translate('openInNewTab')}
             </a>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <a href={quotePdfUrl(quote.id, true)} download>
-              <Download className="size-3.5" /> Download
+            <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
+              <Download className="size-3.5" />
+              {translate('download3')}
             </a>
           </Button>
         </div>
         <PdfView
           key={quote.updated_at}
-          title={`PDF of ${name}`}
+          title={translate('pdfOf2', { name: name })}
           src={quotePdfUrl(quote.id)}
           onPages={setPages}
           className="overflow-visible rounded-xl"
@@ -446,27 +481,27 @@ function Detail({
       )}
       {dialog === 'revise' && (
         <ConfirmDialog
-          title={`Revise ${name}?`}
-          body={`It becomes a draft again as revision ${quote.revision + 1}, with the same number. The client sees it again once you send it.`}
-          confirmLabel="Revise"
+          title={translate('revise2', { name: name })}
+          body={translate('itBecomesADraftAgainAsRevisionWithThe', { value1: quote.revision + 1 })}
+          confirmLabel={translate('revise')}
           tone="default"
           onDecide={decide}
         />
       )}
       {dialog === 'invoice' && (
         <ConfirmDialog
-          title={`Create an invoice from ${name}?`}
-          body="A draft invoice with this quote’s client, lines and texts opens. Its dates and payment methods are your invoice defaults."
-          confirmLabel="Create invoice"
+          title={translate('createAnInvoiceFrom', { name: name })}
+          body={translate('aDraftInvoiceWithThisQuoteSClientLines')}
+          confirmLabel={translate('createInvoice')}
           tone="default"
           onDecide={decide}
         />
       )}
       {dialog === 'delete' && (
         <ConfirmDialog
-          title="Delete this draft quote?"
-          body={`The draft for ${quote.client.name} is removed for good. It was never sent, so no number goes missing.`}
-          confirmLabel="Delete draft"
+          title={translate('deleteThisDraftQuote')}
+          body={translate('theDraftForIsRemovedForGoodItWas', { name: quote.client.name })}
+          confirmLabel={translate('deleteDraft2')}
           tone="destructive"
           onDecide={decide}
         />
@@ -479,10 +514,13 @@ function Detail({
 function validity(quote: Quote) {
   const until = formatDay(quote.valid_until)
   if (quote.status === 'draft')
-    return `${quote.number ? 'Revised, not sent again yet' : 'Not sent yet'} · dated ${formatDay(quote.issue_date)}`
-  if (quote.status === 'expired') return `Expired on ${until}`
-  if (quote.status === 'sent') return `Valid until ${until}`
-  return `Dated ${formatDay(quote.issue_date)} · valid until ${until}`
+    return translate('dated', {
+      value1: quote.number ? translate('revisedNotSentAgainYet') : translate('notSentYet'),
+      value2: formatDay(quote.issue_date),
+    })
+  if (quote.status === 'expired') return translate('expiredOn', { until: until })
+  if (quote.status === 'sent') return translate('validUntil2', { until: until })
+  return translate('datedValidUntil', { value1: formatDay(quote.issue_date), until: until })
 }
 
 function PrimaryButton({
@@ -500,20 +538,22 @@ function PrimaryButton({
     return quote.invoice ? (
       <Button asChild className="gap-1.5">
         <RecordLink href={`/invoices?id=${encodeURIComponent(quote.invoice.id)}`}>
-          <ReceiptText /> Open invoice
+          <ReceiptText />
+          {translate('openInvoice')}
         </RecordLink>
       </Button>
     ) : (
       <Button asChild className="gap-1.5">
-        <a href={quotePdfUrl(quote.id, true)} download>
-          <Download /> Download PDF
+        <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
+          <Download />
+          {translate('downloadPDF2')}
         </a>
       </Button>
     )
   const { label, icon: Icon } = ACTIONS[command]
   return (
     <Button className="gap-1.5" disabled={busy} onClick={() => onRun(command)}>
-      <Icon /> {command === 'send' && quote.sent_at ? 'Send again' : label}
+      <Icon /> {command === 'send' && quote.sent_at ? translate('sendAgain') : label}
     </Button>
   )
 }

@@ -1,5 +1,5 @@
 'use client'
-
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from 'cn'
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
@@ -32,7 +32,7 @@ function useChart() {
   const context = React.useContext(ChartContext)
 
   if (!context) {
-    throw new Error('useChart must be used within a <ChartContainer />')
+    throw new Error(translate('usechartMustBeUsedWithinAChartContainer'))
   }
 
   return context

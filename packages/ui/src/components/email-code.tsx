@@ -1,10 +1,10 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Field, FieldError, FieldLabel } from '@helvetly/ui/components/field'
 import { Input } from '@helvetly/ui/components/input'
 import { Logo } from '@helvetly/ui/components/logo'
 import { ApiError, errorMessage, type EmailCodeSent } from '@helvetly/ui/lib/http'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
@@ -18,19 +18,19 @@ export function codeErrorMessage(error: unknown): string {
   switch (error.code) {
     case 'code_invalid': {
       const left = Number(error.details.attempts_left)
-      if (!Number.isFinite(left)) return 'That code is not right.'
-      return `That code is not right. ${left} ${left === 1 ? 'try' : 'tries'} left.`
+      if (!Number.isFinite(left)) return translate('thatCodeIsNotRight')
+      return translate('thatCodeIsNotRightLeft', { count: left })
     }
     case 'code_expired':
-      return 'This code no longer works: it expired, was used or had too many wrong tries. Send a new one.'
+      return translate('thisCodeNoLongerWorksItExpiredWasUsed')
     case 'code_cooldown':
-      return 'A code was just sent. Wait a few seconds before asking for another.'
+      return translate('aCodeWasJustSentWaitAFewSeconds')
     case 'rate_limited':
-      return 'Too many attempts. Wait a few minutes and try again.'
+      return translate('tooManyAttemptsWaitAFewMinutesAndTry')
     case 'mail_failed':
-      return 'The email could not be sent. Try again in a minute.'
+      return translate('theEmailCouldNotBeSentTryAgainIn')
     case 'invalid_email':
-      return 'Enter an email address such as ana@example.com.'
+      return translate('enterAnEmailAddressSuchAsAnaExampleCom')
     default:
       return error.message
   }
@@ -77,7 +77,7 @@ export function EmailAddressForm({
         event.preventDefault()
         const address = email.trim().toLowerCase()
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
-          setError('Enter an email address such as ana@example.com.')
+          setError(translate('enterAnEmailAddressSuchAsAnaExampleCom'))
           return
         }
         setError('')
@@ -85,14 +85,14 @@ export function EmailAddressForm({
       }}
     >
       <Field data-invalid={!!error}>
-        <FieldLabel htmlFor="email">Email</FieldLabel>
+        <FieldLabel htmlFor="email">{translate('email')}</FieldLabel>
         <Input
           id="email"
           type="email"
           inputMode="email"
           autoComplete={autoComplete}
           spellCheck={false}
-          placeholder="you@company.com"
+          placeholder={translate('youCompanyCom')}
           className="h-10"
           value={email}
           aria-invalid={!!error}
@@ -101,7 +101,7 @@ export function EmailAddressForm({
         <FieldError>{error}</FieldError>
       </Field>
       <Button type="submit" size="xl" disabled={start.isPending}>
-        {start.isPending ? 'Sending code…' : 'Continue'}
+        {start.isPending ? translate('sendingCode') : translate('continue')}
       </Button>
     </form>
   )
@@ -150,7 +150,9 @@ export function EmailCodeForm<Result>({
       setResendAt(Date.now() + next.resend_in * 1000)
       setError('')
       // A toast (an aria-live region) instead of a line under the boxes, which are for errors.
-      toast.success('New code sent', { description: 'The previous one no longer works.' })
+      toast.success(translate('newCodeSent'), {
+        description: translate('thePreviousOneNoLongerWorks'),
+      })
     },
     onError: (e) => {
       const retryIn = e instanceof ApiError ? Number(e.details.resend_in) : Number.NaN
@@ -161,7 +163,7 @@ export function EmailCodeForm<Result>({
 
   const submit = (value: string) => {
     if (value.length !== CODE_LENGTH) {
-      setError('Enter the 6-digit code from the email.')
+      setError(translate('enterThe6DigitCodeFromTheEmail'))
       return
     }
     if (check.isPending) return
@@ -173,10 +175,13 @@ export function EmailCodeForm<Result>({
     <div className="grid gap-6">
       <div className="grid justify-items-center gap-2 text-center">
         <Logo className="mb-4 size-11" />
-        <h1 className="text-xl font-semibold tracking-tight">Check your email</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{translate('checkYourEmail')}</h1>
         <p className="text-sm text-balance text-muted-foreground">
-          We sent a 6-digit code to <strong className="font-medium text-foreground">{email}</strong>
-          . It works once, for {Math.round(sent.expires_in / 60)} minutes.
+          {translate('weSentA6DigitCodeTo')}
+          <strong className="font-medium text-foreground">{email}</strong>
+          {translate('itWorksOnceFor')} {translate('message')}
+          {Math.round(sent.expires_in / 60)}
+          {translate('minutes')}
         </p>
       </div>
       <form
@@ -189,7 +194,7 @@ export function EmailCodeForm<Result>({
       >
         <Field data-invalid={!!error}>
           <FieldLabel htmlFor="code" className="sr-only">
-            Code
+            {translate('code')}
           </FieldLabel>
           <div className="relative">
             <div aria-hidden className="grid grid-cols-6 gap-2">
@@ -231,12 +236,13 @@ export function EmailCodeForm<Result>({
           <FieldError>{error}</FieldError>
         </Field>
         <Button type="submit" size="xl" disabled={check.isPending}>
-          {check.isPending ? 'Checking…' : 'Continue'}
+          {check.isPending ? translate('checking') : translate('continue')}
         </Button>
       </form>
       <div className="flex items-center justify-between gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft /> Use a different email
+          <ArrowLeft />
+          {translate('useADifferentEmail')}
         </Button>
         <Button
           type="button"
@@ -246,7 +252,11 @@ export function EmailCodeForm<Result>({
           disabled={wait > 0 || again.isPending}
           onClick={() => again.mutate()}
         >
-          {wait > 0 ? `Resend code in ${wait}s` : again.isPending ? 'Sending…' : 'Resend code'}
+          {wait > 0
+            ? translate('resendCodeInS', { wait: wait })
+            : again.isPending
+              ? translate('sending')
+              : translate('resendCode')}
         </Button>
       </div>
     </div>

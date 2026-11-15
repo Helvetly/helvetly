@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import {
@@ -56,6 +56,7 @@ import {
   type DocFile,
   type DocLink,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
 import { FolderMark } from './folder-art'
@@ -128,30 +129,34 @@ export function Preview({
           {file ? <KindIcon kind={file.kind} /> : <Loader className="size-7 min-h-0 shrink-0" />}
           <div className="min-w-0 flex-1">
             <SheetTitle className="truncate text-[15px] font-medium">
-              {file?.name ?? 'Loading…'}
+              {file?.name ?? translate('loading')}
             </SheetTitle>
             {file && (
               <p className="truncate text-[12px] text-muted-foreground">
                 {trashed
-                  ? `In the Trash · deleted for good in ${daysLeft(file.purge_at ?? '')} days`
+                  ? translate('inTheTrashDeletedForGoodInDays', {
+                      value1: daysLeft(file.purge_at ?? ''),
+                    })
                   : `${KIND_LABELS[file.kind]} · ${formatSize(file.size)}`}
               </p>
             )}
           </div>
           {siblings.length > 1 && index >= 0 && (
             <span className="hidden text-[12px] text-muted-foreground tabular-nums md:block">
-              {index + 1} of {siblings.length}
+              {index + 1}
+              {translate('of5')}
+              {siblings.length}
             </span>
           )}
           <HeaderButton
-            label="Previous (←)"
+            label={translate('previous')}
             disabled={!prev}
             onClick={() => prev && onNavigate(prev.id)}
           >
             <ChevronLeft />
           </HeaderButton>
           <HeaderButton
-            label="Next (→)"
+            label={translate('next')}
             disabled={!next}
             onClick={() => next && onNavigate(next.id)}
           >
@@ -160,16 +165,21 @@ export function Preview({
           <span className="mx-1 h-5 w-px bg-border" />
           {file && (
             <Button asChild variant="outline" className="cursor-pointer gap-1.5">
-              <a href={downloadUrl(file.id)}>
+              <a href={localizedHref(downloadUrl(file.id))}>
                 <Download className="size-4" />
-                <span className="max-sm:sr-only">Download</span>
+                <span className="max-sm:sr-only">{translate('download')}</span>
               </a>
             </Button>
           )}
           {canWrite && file && !trashed && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More" className="cursor-pointer">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={translate('more')}
+                  className="cursor-pointer"
+                >
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -177,19 +187,23 @@ export function Preview({
                 {file.kind === 'pdf' && (
                   <>
                     <DropdownMenuItem onSelect={() => commands.sign(file)}>
-                      <FileSignature /> Send for signature…
+                      <FileSignature />
+                      {translate('sendForSignature')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
                 <DropdownMenuItem onSelect={() => commands.rename(file)}>
-                  <Pencil /> Rename
+                  <Pencil />
+                  {translate('rename2')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => commands.move(file)}>
-                  <FolderInput /> Move to…
+                  <FolderInput />
+                  {translate('moveTo2')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => commands.copy(file)}>
-                  <Copy /> Make a copy
+                  <Copy />
+                  {translate('makeACopy')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -197,18 +211,20 @@ export function Preview({
                   disabled={isRetained(file.retained_until)}
                   onSelect={() => commands.trash(file)}
                 >
-                  <Trash2 /> Move to Trash
+                  <Trash2 />
+                  {translate('moveToTrash3')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
           {canWrite && file && trashed && (
             <Button className="cursor-pointer gap-1.5" onClick={() => commands.restore(file)}>
-              <RotateCcw className="size-4" /> Restore
+              <RotateCcw className="size-4" />
+              {translate('restore2')}
             </Button>
           )}
           <RecordPageButton />
-          <HeaderButton label="Close (Esc)" onClick={onClose}>
+          <HeaderButton label={translate('closeEsc')} onClick={onClose}>
             <X />
           </HeaderButton>
         </header>
@@ -284,12 +300,16 @@ function Stage({ file }: { file: DocFile }) {
           <Icon className="size-7 stroke-[1.5]" />
         </span>
         <p className="text-[15px] font-medium">
-          No preview for {KIND_LABELS[file.kind].toLowerCase()} files
+          {translate('noPreviewFor')}
+          {KIND_LABELS[file.kind].toLowerCase()}
+          {translate('files2')}
         </p>
-        <p className="text-sm text-muted-foreground">Download it to open it in its app.</p>
+        <p className="text-sm text-muted-foreground">{translate('downloadItToOpenItInItsApp')}</p>
         <Button asChild size="sm" className="mt-1 cursor-pointer">
-          <a href={downloadUrl(file.id)}>
-            <Download className="size-4" /> Download {formatSize(file.size)}
+          <a href={localizedHref(downloadUrl(file.id))}>
+            <Download className="size-4" />
+            {translate('download4')}
+            {formatSize(file.size)}
           </a>
         </Button>
       </div>
@@ -301,10 +321,10 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
   const canWrite = useCan('write:documents')
   const retained = isRetained(file.retained_until)
   const rows: [string, ReactNode][] = [
-    ['Kind', KIND_LABELS[file.kind]],
-    ['Size', formatSize(file.size)],
+    [translate('kind'), KIND_LABELS[file.kind]],
+    [translate('size'), formatSize(file.size)],
     [
-      'Location',
+      translate('location'),
       <button
         key="location"
         type="button"
@@ -312,14 +332,14 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
         className="inline-flex max-w-full cursor-pointer items-center gap-1.5 underline underline-offset-2 hover:no-underline"
       >
         <FolderMark className="size-3.5" />
-        <span className="truncate">{file.folder?.name ?? 'All documents'}</span>
+        <span className="truncate">{file.folder?.name ?? translate('allDocuments')}</span>
       </button>,
     ],
     [
-      'Uploaded',
+      translate('uploaded2'),
       `${formatDate(file.created_at)}${file.uploaded_by?.name ? ` by ${file.uploaded_by.name}` : ''}`,
     ],
-    ['Modified', formatDate(file.updated_at)],
+    [translate('modified'), formatDate(file.updated_at)],
   ]
   return (
     // minmax(0, 1fr): a long link label truncates instead of widening the column.
@@ -327,12 +347,13 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
       {retained && (
         <Callout tone="warning" icon={Lock}>
           <p>
-            Business record: kept until {formatDate(file.retained_until ?? '')} (OR Art. 958f). It
-            can’t be moved to the Trash before then.
+            {translate('businessRecordKeptUntil2')}
+            {formatDate(file.retained_until ?? '')}
+            {translate('orArt958fItCanTBeMovedTo')}
           </p>
         </Callout>
       )}
-      <Panel title="Details" className="grid grid-cols-[minmax(0,1fr)]">
+      <Panel title={translate('details')} className="grid grid-cols-[minmax(0,1fr)]">
         <dl className="grid text-[13.5px]">
           {rows.map(([label, value]) => (
             <div
@@ -346,7 +367,7 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
         </dl>
       </Panel>
       <Panel
-        title="Linked to"
+        title={translate('linkedTo')}
         className="grid grid-cols-[minmax(0,1fr)]"
         action={
           canWrite &&
@@ -355,7 +376,7 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
       >
         {file.links.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">
-            Not linked yet. Attach it to a client to see it on their page.
+            {translate('notLinkedYetAttachItToAClientTo')}
           </p>
         ) : (
           <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
@@ -374,13 +395,16 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
                     {link.label}
                   </Link>
                   {link.retains ? (
-                    <Lock aria-label="Keeps this file" className="size-3.5 text-muted-foreground" />
+                    <Lock
+                      aria-label={translate('keepsThisFile')}
+                      className="size-3.5 text-muted-foreground"
+                    />
                   ) : (
                     canWrite &&
                     !file.deleted_at && (
                       <button
                         type="button"
-                        aria-label={`Unlink ${link.label}`}
+                        aria-label={translate('unlink', { label: link.label })}
                         onClick={() => commands.unlink(file, link)}
                         className="cursor-pointer rounded p-1 text-destructive opacity-0 group-hover/link:opacity-100 hover:bg-destructive/10 focus-visible:opacity-100"
                       >
@@ -395,18 +419,21 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
         )}
       </Panel>
       {file.sha256 && (
-        <Panel title="Integrity" className="grid grid-cols-[minmax(0,1fr)]">
+        <Panel title={translate('integrity')} className="grid grid-cols-[minmax(0,1fr)]">
           <button
             type="button"
-            aria-label={`Copy SHA-256 ${file.sha256}`}
+            aria-label={translate('copySHA256', { sha256: file.sha256 })}
             onClick={() =>
               void navigator.clipboard
                 .writeText(file.sha256 ?? '')
-                .then(() => toast('SHA-256 copied.'))
+                .then(() => toast(translate('sha256Copied')))
             }
             className="group/sha flex w-full cursor-pointer items-center gap-2 rounded-lg bg-muted/60 py-2 pr-2 pl-2.5 text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            <span className="min-w-0 flex-1 truncate">SHA-256 {file.sha256}</span>
+            <span className="min-w-0 flex-1 truncate">
+              {translate('sha256')}
+              {file.sha256}
+            </span>
             <Copy className="size-3.5 shrink-0 opacity-60 transition-opacity group-hover/sha:opacity-100" />
           </button>
         </Panel>
@@ -425,15 +452,16 @@ function AttachClient({ onPick }: { onPick: (clientId: string) => void }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="cursor-pointer gap-1 px-2">
-          <Plus className="size-3.5" /> Client
+          <Plus className="size-3.5" />
+          {translate('client3')}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 gap-1 p-1.5">
         <label className="flex h-8 items-center gap-2 rounded-md px-2 text-muted-foreground">
           <Search className="size-4 shrink-0" />
           <input
-            aria-label="Search clients"
-            placeholder="Search clients"
+            aria-label={translate('searchClients')}
+            placeholder={translate('searchClients')}
             value={term}
             onChange={(event) => setTerm(event.target.value)}
             className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-placeholder"
@@ -442,7 +470,7 @@ function AttachClient({ onPick }: { onPick: (clientId: string) => void }) {
         <div className="max-h-60 overflow-y-auto">
           {clients.length === 0 ? (
             <p className="px-2 py-3 text-center text-[13px] text-muted-foreground">
-              {search.isPending ? 'Searching…' : 'No clients found.'}
+              {search.isPending ? translate('searching') : translate('noClientsFound')}
             </p>
           ) : (
             clients.map((client) => (

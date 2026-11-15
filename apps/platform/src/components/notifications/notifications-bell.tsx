@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -11,6 +10,7 @@ import { useId, useState } from 'react'
 
 import { LoadError } from '@/components/load-error'
 import { WithShortcut } from '@/components/shortcuts/shortcut-keys'
+import { translate } from '@/lib/i18n'
 import {
   useLatestNotifications,
   useMarkAllRead,
@@ -67,11 +67,12 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
   const content = (
     <>
       <Bell />
-      <span>Notifications</span>
+      <span>{translate('notifications')}</span>
       {/* The name stays the visible word; the count is the item's description. */}
       {unread > 0 && (
         <span id={countId} hidden>
-          {countText(unread)} unread
+          {countText(unread)}
+          {translate('unread')}
         </span>
       )}
       {unread > 0 && (
@@ -107,7 +108,9 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
     <Popover open={open} onOpenChange={toggle}>
       <SidebarMenuButton
         asChild
-        tooltip={{ children: <WithShortcut label="Notifications" id="notifications" /> }}
+        tooltip={{
+          children: <WithShortcut label={translate('notifications')} id="notifications" />,
+        }}
         aria-describedby={describedBy}
         className={cn(className, 'relative aria-expanded:bg-sidebar-accent')}
       >
@@ -122,7 +125,7 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
       >
         <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
           <h2 id="notifications-title" className="text-[15px] font-medium">
-            Notifications
+            {translate('notifications')}
           </h2>
           <Button
             asChild
@@ -132,8 +135,8 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
           >
             <PrefsLink
               onClick={go}
-              aria-label="Notification preferences"
-              title="Notification preferences"
+              aria-label={translate('notificationPreferences')}
+              title={translate('notificationPreferences')}
             >
               <Settings2 />
             </PrefsLink>
@@ -154,9 +157,9 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
             <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <CheckCheck className="size-5 stroke-[1.5]" />
             </span>
-            <p className="text-sm font-medium">You’re all caught up</p>
+            <p className="text-sm font-medium">{translate('youReAllCaughtUp')}</p>
             <p className="text-[13px] text-pretty text-muted-foreground">
-              Payments, signatures, client activity and team changes show up here.
+              {translate('paymentsSignaturesClientActivityAndTeamChangesShowUp')}
             </p>
           </div>
         ) : (
@@ -173,11 +176,12 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
             disabled={unread === 0 || markAll.isPending}
             onClick={() => markAll.mutate()}
           >
-            <CheckCheck /> Mark all as read
+            <CheckCheck />
+            {translate('markAllAsRead')}
           </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href="/notifications" onClick={go}>
-              All notifications
+              {translate('allNotifications')}
             </Link>
           </Button>
         </div>

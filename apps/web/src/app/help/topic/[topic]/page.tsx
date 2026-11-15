@@ -1,3 +1,4 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -5,9 +6,11 @@ import { notFound } from 'next/navigation'
 
 import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
+import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import { readCollection } from '@/lib/content'
 import { topicsWithArticles } from '@/lib/help-topics'
+import { translate } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 type Props = { params: Promise<{ topic: string }> }
@@ -23,7 +26,13 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = (await params).topic
   const topic = topics().find((t) => t.slug === slug)
-  return topic ? { title: `${topic.name} · Help center`, description: topic.blurb } : {}
+  return topic
+    ? {
+        alternates: localizedAlternates(`/help/topic/${(await params).topic}`),
+        title: translate('helpCenter2', { name: categoryLabel(topic.name) }),
+        description: topic.blurb,
+      }
+    : {}
 }
 
 export default async function HelpTopicPage({ params }: Props) {
@@ -37,10 +46,10 @@ export default async function HelpTopicPage({ params }: Props) {
       <PageHero
         eyebrow={
           <Link href="/help" className="underline-offset-4 hover:underline">
-            Help center
+            {translate('helpCenter')}
           </Link>
         }
-        title={topic.name}
+        title={categoryLabel(topic.name)}
         lead={topic.blurb}
       />
       <section className="pb-24">
@@ -97,9 +106,12 @@ export default async function HelpTopicPage({ params }: Props) {
                 {topic.articles.length} {topic.articles.length === 1 ? 'article' : 'articles'}
               </p>
             </div>
-            <nav aria-label="Other topics" className="mt-6 flex flex-col gap-1 text-body-sm">
+            <nav
+              aria-label={translate('otherTopics')}
+              className="mt-6 flex flex-col gap-1 text-body-sm"
+            >
               <p className="px-3 text-caption font-medium text-muted-foreground uppercase">
-                Other topics
+                {translate('otherTopics')}
               </p>
               {all
                 .filter((t) => t.slug !== topic.slug)

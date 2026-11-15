@@ -1,11 +1,12 @@
 'use client'
+import { cn } from '@helvetly/ui/lib/utils'
 
 import './settings.css'
-import { cn } from '@helvetly/ui/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { SectionFooter, type SectionState } from '@/components/section-form'
+import { translate } from '@/lib/i18n'
 
 /**
  * A settings page under the settings tabs: its title, what it is for, and its sections as bands
@@ -57,7 +58,7 @@ export function SettingsPage({
         </div>
         {nav && (
           <nav
-            aria-label="Sections"
+            aria-label={translate('sections')}
             className="hidden h-fit gap-0.5 @4xl:sticky @4xl:top-[76px] @4xl:grid"
           >
             {nav}

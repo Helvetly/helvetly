@@ -1,8 +1,8 @@
 'use client'
-
 import { createContext, use, useState, type DragEvent } from 'react'
 
 import type { Folder } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 import {
   activeDrag,
@@ -51,8 +51,13 @@ export function useDropTarget(target: string | null | 'trash') {
         setOver(true)
         setDropHint(
           target === 'trash'
-            ? 'Move to Trash'
-            : `Move to ${target === null ? 'All documents' : (actions?.folders.find((folder) => folder.id === target)?.name ?? 'folder')}`,
+            ? translate('moveToTrash')
+            : translate('moveTo3', {
+                value1:
+                  target === null
+                    ? translate('allDocuments')
+                    : (actions?.folders.find((folder) => folder.id === target)?.name ?? 'folder'),
+              }),
         )
       },
       onDragLeave: (event: DragEvent) => {
@@ -84,7 +89,7 @@ export function useDropTarget(target: string | null | 'trash') {
 // Plain DOM, not React: it lives outside the page tree and must update on every dragover.
 let chip: { root: HTMLDivElement; hint: HTMLSpanElement; stop: () => void } | null = null
 
-const IDLE_HINT = 'Drop on a folder or the Trash'
+const IDLE_HINT = translate('dropOnAFolderOrTheTrash')
 
 function setDropHint(text: string | null) {
   if (!chip) return

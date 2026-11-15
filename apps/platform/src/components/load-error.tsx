@@ -2,6 +2,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { CloudOff, RotateCw } from 'lucide-react'
 
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 /** A part of a page that could not be loaded: what failed, in words, and a way to try again. */
 export function LoadError({
@@ -24,13 +25,17 @@ export function LoadError({
         <CloudOff aria-hidden />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
-        <span className="font-medium">Couldn’t load {what}</span>
+        <span className="font-medium">
+          {translate('couldnTLoad2')}
+          {what}
+        </span>
         <span className="text-muted-foreground">
-          {missing ? 'This isn’t available on this server yet.' : errorMessage(error)}
+          {missing ? translate('thisIsnTAvailableOnThisServerYet') : errorMessage(error)}
         </span>
       </span>
       <Button variant="outline" size="sm" className="gap-1.5" onClick={onRetry}>
-        <RotateCw className="size-3.5" aria-hidden /> Try again
+        <RotateCw className="size-3.5" aria-hidden />
+        {translate('tryAgain2')}
       </Button>
     </div>
   )

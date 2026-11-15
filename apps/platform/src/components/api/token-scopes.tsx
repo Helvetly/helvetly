@@ -1,15 +1,19 @@
 'use client'
-
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Ban, CalendarClock, Eye, PencilLine, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 import { scopeSummary, TOKEN_RESOURCES, type ScopeMatrix } from '@/lib/token-scopes'
 
-const ROLE: Record<string, string> = { owner: 'Owner', admin: 'Admin', member: 'Member' }
+const ROLE: Record<string, string> = {
+  owner: translate('owner'),
+  admin: translate('admin'),
+  member: translate('member'),
+}
 
 /**
  * Custom access: one row per resource with Read and Write checkboxes. Write implies read, so ticking
@@ -27,19 +31,19 @@ export function ScopeMatrixField({
   const errorId = 'token-scopes-error'
   return (
     <fieldset aria-describedby={error ? errorId : undefined} className="-mt-2 grid gap-1.5">
-      <legend className="sr-only">Custom access</legend>
+      <legend className="sr-only">{translate('customAccess')}</legend>
       <div className={cn('overflow-hidden rounded-lg border', error && 'border-destructive/60')}>
-        <table aria-label="Custom access" className="w-full text-body-sm">
+        <table aria-label={translate('customAccess')} className="w-full text-body-sm">
           <thead className="bg-muted/50 text-caption text-muted-foreground">
             <tr>
               <th scope="col" className="px-3 py-1.5 text-left font-medium">
-                Resource
+                {translate('resource')}
               </th>
               <th scope="col" className="w-18 py-1.5 font-medium">
-                Read
+                {translate('read4')}
               </th>
               <th scope="col" className="w-18 py-1.5 font-medium">
-                Write
+                {translate('write3')}
               </th>
             </tr>
           </thead>
@@ -53,7 +57,7 @@ export function ScopeMatrixField({
                   </th>
                   <td className="text-center align-middle">
                     <Checkbox
-                      aria-label={`Read ${label}`}
+                      aria-label={translate('read3', { label: label })}
                       className="mx-auto"
                       checked={access !== 'none'}
                       onCheckedChange={(checked) =>
@@ -64,7 +68,7 @@ export function ScopeMatrixField({
                   <td className="text-center align-middle">
                     {writable ? (
                       <Checkbox
-                        aria-label={`Write ${label}`}
+                        aria-label={translate('write2', { label: label })}
                         className="mx-auto"
                         checked={access === 'write'}
                         onCheckedChange={(checked) =>
@@ -74,7 +78,7 @@ export function ScopeMatrixField({
                     ) : (
                       <span className="text-muted-foreground/60">
                         <span aria-hidden>—</span>
-                        <span className="sr-only">Read only through the API</span>
+                        <span className="sr-only">{translate('readOnlyThroughTheAPI')}</span>
                       </span>
                     )}
                   </td>
@@ -85,7 +89,7 @@ export function ScopeMatrixField({
         </table>
       </div>
       <p className="text-caption text-muted-foreground">
-        Write ticks Read too. A dash: the API can only read it for now.
+        {translate('writeTicksReadTooADashTheAPICan')}
       </p>
       {error && (
         <p id={errorId} className="text-body-sm text-destructive">
@@ -120,54 +124,61 @@ export function TokenSummary({
   const summary = scopeSummary(scopes)
   const until =
     expiresInDays === null
-      ? 'Never expires. Revoke it here when you no longer need it.'
-      : `Works until ${formatDate(new Date(openedAt + expiresInDays * 86_400_000).toISOString())}.`
+      ? translate('neverExpiresRevokeItHereWhenYouNoLonger')
+      : translate('worksUntil', {
+          value1: formatDate(new Date(openedAt + expiresInDays * 86_400_000).toISOString()),
+        })
   return (
     <section
-      aria-label="What this token can do"
+      aria-label={translate('whatThisTokenCanDo')}
       className="grid gap-2.5 rounded-lg bg-muted/50 px-4 py-3.5 text-body-sm"
     >
-      <h3 className="text-body-sm font-medium">What this token can do</h3>
+      <h3 className="text-body-sm font-medium">{translate('whatThisTokenCanDo')}</h3>
       <ul className="grid gap-2 text-muted-foreground">
         <Line icon={Eye}>
           {summary.readsAll ? (
             <>
-              <span className="text-foreground">Read everything</span> the API offers.
+              <span className="text-foreground">{translate('readEverything')}</span>
+              {translate('theAPIOffers')}
             </>
           ) : summary.reads.length > 0 ? (
             <>
-              Read <span className="text-foreground">{list(summary.reads)}</span>.
+              {translate('read')}
+              <span className="text-foreground">{list(summary.reads)}</span>.
             </>
           ) : (
-            'Read nothing yet: choose at least one resource.'
+            translate('readNothingYetChooseAtLeastOneResource')
           )}
         </Line>
         <Line icon={PencilLine}>
           {summary.writesAll ? (
             <>
-              <span className="text-foreground">Create, edit and issue</span> anything the API
-              offers.
+              <span className="text-foreground">{translate('createEditAndIssue')}</span>
+              {translate('anythingTheAPIOffers')}
             </>
           ) : summary.writes.length > 0 ? (
             <>
-              Create and edit <span className="text-foreground">{list(summary.writes)}</span>.
+              {translate('createAndEdit')}
+              <span className="text-foreground">{list(summary.writes)}</span>.
             </>
           ) : (
-            'Change nothing.'
+            translate('changeNothing')
           )}
         </Line>
         <Line icon={ShieldCheck}>
-          Acts as you
+          {translate('actsAsYou')}
           {session && (
             <>
               {' '}
-              in <span className="text-foreground">{session.workspace.name}</span>, never beyond
-              your role ({ROLE[session.role] ?? session.role})
+              {translate('in')}
+              <span className="text-foreground">{session.workspace.name}</span>
+              {translate('neverBeyondYourRole')}
+              {ROLE[session.role] ?? session.role})
             </>
           )}
           .
         </Line>
-        <Line icon={Ban}>Can never manage members, billing, API tokens or your account.</Line>
+        <Line icon={Ban}>{translate('canNeverManageMembersBillingAPITokensOrYour')}</Line>
         <Line icon={CalendarClock}>{until}</Line>
       </ul>
     </section>

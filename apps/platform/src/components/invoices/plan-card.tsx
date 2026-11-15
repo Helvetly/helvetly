@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -10,6 +9,7 @@ import { toast } from 'sonner'
 
 import { RecordLink } from '@/components/record-link'
 import { errorMessage, type ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { instalmentsApi, issuedCount, PLAN_STATUS_LABELS, type Plan } from '@/lib/instalments'
 import { formatDay, INTERVALS, invoiceKeys } from '@/lib/invoices'
 
@@ -47,9 +47,9 @@ function usePlanAction() {
 }
 
 const DONE: Record<Action, string> = {
-  pause: 'Plan paused: nothing is issued until you resume it.',
-  resume: 'Plan resumed.',
-  cancel: 'Plan cancelled. Issued invoices stay as they are.',
+  pause: translate('planPausedNothingIsIssuedUntilYouResumeIt'),
+  resume: translate('planResumed'),
+  cancel: translate('planCancelledIssuedInvoicesStayAsTheyAre'),
 }
 
 /** A plan's progress (2 of 6 issued), its items, and pause / resume / cancel. */
@@ -71,7 +71,7 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
   if (!plan)
     return (
       <section className="rounded-xl bg-card px-4 py-4 text-[13.5px] text-muted-foreground shadow-elevation-1">
-        {query.error ? errorMessage(query.error) : 'Loading the instalment plan…'}
+        {query.error ? errorMessage(query.error) : translate('loadingTheInstalmentPlan')}
       </section>
     )
 
@@ -79,16 +79,22 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
   const interval = INTERVALS.find((entry) => entry.value === plan.interval)?.label ?? plan.interval
   return (
     <section
-      aria-label="Instalment plan"
+      aria-label={translate('instalmentPlan2')}
       className="grid gap-3 rounded-xl bg-card px-4 pt-3 pb-4 shadow-elevation-1"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-[13px] font-medium text-muted-foreground">Instalment plan</h3>
+        <h3 className="text-[13px] font-medium text-muted-foreground">
+          {translate('instalmentPlan2')}
+        </h3>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[12px]">
           {PLAN_STATUS_LABELS[plan.status]}
         </span>
         <span className="text-[13px] text-muted-foreground">
-          {issued} of {plan.count} issued · {interval}
+          {issued}
+          {translate('of5')}
+          {plan.count}
+          {translate('issued6')}
+          {interval}
         </span>
         {canManage && (
           <span className="ml-auto flex gap-1">
@@ -99,7 +105,8 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
                 disabled={act.isPending}
                 onClick={() => run('pause')}
               >
-                <Pause className="size-3.5" /> Pause
+                <Pause className="size-3.5" />
+                {translate('pause2')}
               </Button>
             )}
             {plan.status === 'paused' && (
@@ -109,7 +116,8 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
                 disabled={act.isPending}
                 onClick={() => run('resume')}
               >
-                <Play className="size-3.5" /> Resume
+                <Play className="size-3.5" />
+                {translate('resume2')}
               </Button>
             )}
             {(plan.status === 'active' || plan.status === 'paused') && (
@@ -119,7 +127,8 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
                 disabled={act.isPending}
                 onClick={() => setCancelling(true)}
               >
-                <Ban className="size-3.5" /> Cancel plan
+                <Ban className="size-3.5" />
+                {translate('cancelPlan2')}
               </Button>
             )}
           </span>
@@ -138,13 +147,16 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
             <span className="w-12 text-muted-foreground tabular-nums">
               {item.seq}/{plan.count}
             </span>
-            <span className="flex-1 tabular-nums">due {formatDay(item.due_date)}</span>
+            <span className="flex-1 tabular-nums">
+              {translate('due5')}
+              {formatDay(item.due_date)}
+            </span>
             {item.invoice_id ? (
               <RecordLink
                 href={`/invoices?id=${encodeURIComponent(item.invoice_id)}`}
                 className="underline-offset-4 hover:underline"
               >
-                {item.number ?? 'Issued'}
+                {item.number ?? translate('issued4')}
               </RecordLink>
             ) : (
               <span
@@ -153,7 +165,9 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
                   item.status === 'cancelled' && 'line-through',
                 )}
               >
-                {item.status === 'cancelled' ? 'Cancelled' : `issued ${formatDay(item.issue_on)}`}
+                {item.status === 'cancelled'
+                  ? translate('cancelled')
+                  : `issued ${formatDay(item.issue_on)}`}
               </span>
             )}
           </li>
@@ -161,9 +175,9 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
       </ol>
       {cancelling && (
         <ConfirmDialog
-          title="Cancel this plan?"
-          body="The invoices it issued stay as they are; the rest are never issued. This can’t be undone."
-          confirmLabel="Cancel plan"
+          title={translate('cancelThisPlan')}
+          body={translate('theInvoicesItIssuedStayAsTheyAreThe')}
+          confirmLabel={translate('cancelPlan')}
           tone="destructive"
           confirmIcon={<Ban />}
           onDecide={(approved) => {

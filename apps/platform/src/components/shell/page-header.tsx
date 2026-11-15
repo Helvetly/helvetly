@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
@@ -22,12 +21,13 @@ import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode }
 import { toast } from 'sonner'
 
 import { WithShortcut } from '@/components/shortcuts/shortcut-keys'
+import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 import { SHORTCUTS, useApple, useShortcut } from '@/lib/shortcuts'
 
 import { usePublishPrimary } from './primary-action'
 
-const soon = (what: string) => () => toast(`${what} coming soon.`)
+const soon = (what: string) => () => toast(translate('comingSoon', { what: what }))
 
 /** The gap between tabs in the row (Tailwind `gap-1`). */
 const GAP = 4
@@ -175,16 +175,17 @@ export function PageHeader({
     <Button
       variant="ghost"
       size="icon-sm"
-      aria-label="Save a view"
+      aria-label={translate('saveAView')}
       className="shrink-0 self-center text-muted-foreground"
-      onClick={soon('Saved views are')}
+      onClick={soon(translate('savedViewsAre'))}
     >
       <Plus className="stroke-[1.5]" />
     </Button>
   )
   const moreLabel = (
     <>
-      More<span className="sr-only"> views</span>
+      {translate('more')}
+      <span className="sr-only">{translate('views2')}</span>
       {hiddenCount > 0 && <TabCount count={hiddenCount} />}
       <ChevronDown className="ml-1.5 size-4 shrink-0 stroke-[1.5] opacity-80" />
     </>
@@ -204,13 +205,13 @@ export function PageHeader({
         <TooltipTrigger asChild>
           <SidebarTrigger
             data-header-fixed
-            aria-label="Toggle sidebar"
+            aria-label={translate('toggleSidebar')}
             aria-keyshortcuts={ariaKeyShortcuts(SHORTCUTS.sidebar.keys, apple)}
             className="-ml-1 shrink-0 text-muted-foreground hover:text-foreground max-lg:hidden [&_svg]:size-[18px]! [&_svg]:stroke-[1.5]"
           />
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          <WithShortcut label="Toggle sidebar" id="sidebar" />
+          <WithShortcut label={translate('toggleSidebar')} id="sidebar" />
         </TooltipContent>
       </Tooltip>
       {/* One tab is no choice and needs no label: the sidebar already says where you are. The name
@@ -235,7 +236,7 @@ export function PageHeader({
             </span>
           ))}
           <span className={`${TAB} shrink-0`}>
-            More
+            {translate('more')}
             <TabCount count={tabCounts?.reduce<number>((sum, n) => sum + (n ?? 0), 0) ?? 0} />
             <ChevronDown className="ml-1.5 size-4" />
           </span>
@@ -246,7 +247,7 @@ export function PageHeader({
           never scrolls, so no tab is ever out of sight without a way back to it. */}
       <nav
         ref={row}
-        aria-label="Views"
+        aria-label={translate('views')}
         hidden={!showTabs}
         className="flex h-full min-w-0 flex-1 items-center gap-1 px-2.5"
       >
@@ -309,9 +310,9 @@ export function PageHeader({
               {canSave && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={soon('Saved views are')}>
+                  <DropdownMenuItem onSelect={soon(translate('savedViewsAre'))}>
                     <Plus className="stroke-[1.5]" />
-                    Save a view
+                    {translate('saveAView')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -324,7 +325,7 @@ export function PageHeader({
         {menu && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More">
+              <Button variant="ghost" size="icon-sm" aria-label={translate('more')}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
@@ -384,7 +385,7 @@ function TabLabel({
         // right-click "Close tab" are the accessible ways to close it.
         <span
           aria-hidden
-          title="Close tab"
+          title={translate('closeTab2')}
           onClick={(event) => {
             event.stopPropagation()
             onClose?.()
@@ -425,7 +426,7 @@ function PrimaryButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            aria-label={`${label} options`}
+            aria-label={translate('options', { label: label })}
             className="cursor-pointer rounded-l-none border-l border-primary-foreground/20 px-1.5"
           >
             <ChevronDown />

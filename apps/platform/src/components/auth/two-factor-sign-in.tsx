@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Field, FieldError, FieldLabel } from '@helvetly/ui/components/field'
 import { Input } from '@helvetly/ui/components/input'
@@ -7,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { api, errorMessage, type SignedIn } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export function TwoFactorSignIn({
   challengeId,
@@ -28,9 +28,11 @@ export function TwoFactorSignIn({
   return (
     <div className="grid gap-6">
       <div className="grid gap-2 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Two-factor authentication</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {translate('twoFactorAuthentication')}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Enter a code from your authenticator app or one of your unused recovery codes.
+          {translate('enterACodeFromYourAuthenticatorAppOrOne')}
         </p>
       </div>
       <form
@@ -39,7 +41,7 @@ export function TwoFactorSignIn({
           event.preventDefault()
           if (check.isPending) return
           if (!/^(?:\d{6}|[a-z2-7]{5}-[a-z2-7]{5})$/i.test(code.trim())) {
-            setValidation('Enter a 6-digit code or a recovery code in xxxxx-xxxxx format.')
+            setValidation(translate('enterA6DigitCodeOrARecoveryCode'))
             return
           }
           setValidation('')
@@ -47,7 +49,9 @@ export function TwoFactorSignIn({
         }}
       >
         <Field data-invalid={!!validation || check.isError}>
-          <FieldLabel htmlFor="two-factor-code">Authenticator or recovery code</FieldLabel>
+          <FieldLabel htmlFor="two-factor-code">
+            {translate('authenticatorOrRecoveryCode')}
+          </FieldLabel>
           <Input
             id="two-factor-code"
             autoComplete="one-time-code"
@@ -61,11 +65,11 @@ export function TwoFactorSignIn({
           <FieldError>{validation || (check.error ? errorMessage(check.error) : '')}</FieldError>
         </Field>
         <Button type="submit" size="xl" disabled={check.isPending}>
-          {check.isPending ? 'Checking…' : 'Verify and sign in'}
+          {check.isPending ? translate('checking') : translate('verifyAndSignIn')}
         </Button>
       </form>
       <Button type="button" variant="ghost" size="sm" disabled={check.isPending} onClick={onBack}>
-        Start sign-in again
+        {translate('startSignInAgain')}
       </Button>
     </div>
   )

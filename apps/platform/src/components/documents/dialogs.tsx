@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -15,6 +14,7 @@ import { ChevronRight, HardDrive } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 
 import { childrenOf, isWithin, pathTo, type Folder } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 import { FolderMark } from './folder-art'
 import { TreeGuide } from './folder-tree'
@@ -52,8 +52,11 @@ export function NewFolderDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>New folder</DialogTitle>
-          <DialogDescription>In {parentName}</DialogDescription>
+          <DialogTitle>{translate('newFolder')}</DialogTitle>
+          <DialogDescription>
+            {translate('in2')}
+            {parentName}
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-1.5"
@@ -64,9 +67,9 @@ export function NewFolderDialog({
         >
           <Input
             ref={field}
-            aria-label="Folder name"
+            aria-label={translate('folderName')}
             aria-invalid={error ? true : undefined}
-            placeholder="e.g. Contracts 2026"
+            placeholder={translate('eGContracts2026')}
             value={name}
             maxLength={255}
             onChange={(event) => {
@@ -77,10 +80,10 @@ export function NewFolderDialog({
           {error && <p className="text-[13px] text-destructive">{error}</p>}
           <DialogFooter className="mt-3">
             <Button type="button" variant="outline" className="cursor-pointer" onClick={onClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" className="cursor-pointer" disabled={!name.trim() || busy}>
-              Create
+              {translate('create')}
             </Button>
           </DialogFooter>
         </form>
@@ -148,27 +151,29 @@ export function FolderPickerDialog({
       )
     })
 
-  const where = picked ? (pathTo(folders, picked).at(-1)?.name ?? '') : 'All documents'
+  const where = picked ? (pathTo(folders, picked).at(-1)?.name ?? '') : translate('allDocuments')
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Choose a folder.</DialogDescription>
+          <DialogDescription>{translate('chooseAFolder')}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[340px] overflow-y-auto rounded-lg border p-1.5">
           <Row depth={0} selected={picked === null} onClick={() => setPicked(null)}>
             <HardDrive className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="truncate">All documents</span>
+            <span className="truncate">{translate('allDocuments')}</span>
           </Row>
           {branch('', 1)}
         </div>
         <DialogFooter>
           <Button variant="outline" className="cursor-pointer" onClick={onClose}>
-            Cancel
+            {translate('cancel')}
           </Button>
           <Button className="cursor-pointer" onClick={() => onPick(picked)}>
-            {action} to {where}
+            {action}
+            {translate('to2')}
+            {where}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -215,7 +220,7 @@ function Row({
       {toggle && (
         <button
           type="button"
-          aria-label={toggle.expanded ? 'Collapse' : 'Expand'}
+          aria-label={toggle.expanded ? translate('collapse') : translate('expand')}
           onClick={toggle.onToggle}
           className="-mr-1 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-foreground/[0.06]"
         >

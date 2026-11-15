@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
@@ -13,6 +12,7 @@ import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fie
 import { FormSection } from '@/components/form-section'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useHabits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import { formatMoney, UNITS, VAT_CATEGORIES, VAT_RATES, type VatCategory } from '@/lib/invoices'
 import { useSaveProduct, type Product } from '@/lib/products'
 
@@ -108,7 +108,11 @@ export function ProductForm({
       {
         onSuccess: (saved) => {
           if (!product) remember('product', values, PRODUCT_HABITS)
-          toast.success(product ? `${saved.name} saved.` : `${saved.name} added to the catalogue.`)
+          toast.success(
+            product
+              ? translate('saved', { name: saved.name })
+              : translate('addedToTheCatalogue', { name: saved.name }),
+          )
           onSaved(saved, !product)
         },
         onError: (error) => {
@@ -150,7 +154,9 @@ export function ProductForm({
     'aria-invalid': errors[field] ? true : undefined,
     'aria-describedby': errors[field] ? `${fieldId(field)}-error` : undefined,
   })
-  const title = product ? `Edit ${product.name}` : 'New product or service'
+  const title = product
+    ? translate('edit3', { name: product.name })
+    : translate('newProductOrService')
 
   return (
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
@@ -160,7 +166,7 @@ export function ProductForm({
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        <SheetDescription className="sr-only">Catalogue item</SheetDescription>
+        <SheetDescription className="sr-only">{translate('catalogueItem')}</SheetDescription>
         <form
           ref={form}
           noValidate
@@ -174,15 +180,15 @@ export function ProductForm({
             <div className="grid min-w-0 gap-0.5">
               <h2 className="truncate text-lg font-semibold">{title}</h2>
               <p className="text-[13px] text-muted-foreground">
-                A name and a price are enough; invoices copy the rest into the line.
+                {translate('aNameAndAPriceAreEnoughInvoicesCopy')}
               </p>
             </div>
             <Segmented
-              label="Item type"
+              label={translate('itemType')}
               value={values.type}
               options={[
-                { value: 'service', label: 'Service' },
-                { value: 'product', label: 'Product' },
+                { value: 'service', label: translate('service') },
+                { value: 'product', label: translate('product') },
               ]}
               onChange={(type) => set('type', type)}
             />
@@ -190,25 +196,27 @@ export function ProductForm({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <FormSection
-              title="Basics"
-              description="What you sell, as it appears on invoice lines."
+              title={translate('basics')}
+              description={translate('whatYouSellAsItAppearsOnInvoiceLines')}
             >
-              <FormField field="name" label="Name" error={errors.name} required>
+              <FormField field="name" label={translate('name')} error={errors.name} required>
                 <input
                   {...describe('name')}
                   value={values.name}
                   onChange={(event) => set('name', event.target.value)}
                   placeholder={
-                    values.type === 'product' ? 'Ergonomic office chair' : 'Web design, hourly'
+                    values.type === 'product'
+                      ? translate('ergonomicOfficeChair')
+                      : translate('webDesignHourly')
                   }
                   className={inputClass}
                 />
               </FormField>
               <FormField
                 field="description"
-                label="Description"
+                label={translate('description')}
                 error={errors.description}
-                tip="Printed under the name on the invoice line."
+                tip={translate('printedUnderTheNameOnTheInvoiceLine')}
                 hint={
                   <span className="flex justify-end">
                     <span
@@ -227,24 +235,24 @@ export function ProductForm({
                   rows={3}
                   value={values.description}
                   onChange={(event) => set('description', event.target.value)}
-                  placeholder="What the client gets, e.g. design, two revision rounds, handover"
+                  placeholder={translate('whatTheClientGetsEGDesignTwoRevision')}
                   className={cn(inputClass, 'h-auto min-h-20 resize-y py-2')}
                 />
               </FormField>
             </FormSection>
 
             <FormSection
-              title="Price"
-              description="What you charge. The preview shows the amounts per unit."
+              title={translate('price2')}
+              description={translate('whatYouChargeThePreviewShowsTheAmountsPer')}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   field="unit_price"
-                  label="Unit price"
+                  label={translate('unitPrice')}
                   className="sm:col-span-2"
                   error={errors.unit_price}
                   required
-                  tip="Enter the price as you quote it: net (without VAT) or gross (VAT included)."
+                  tip={translate('enterThePriceAsYouQuoteItNetWithout')}
                 >
                   <div className="flex gap-1.5">
                     <input
@@ -256,39 +264,44 @@ export function ProductForm({
                       className={cn(inputClass, 'min-w-0 text-right tabular-nums')}
                     />
                     <Segmented
-                      label="Price basis"
+                      label={translate('priceBasis')}
                       value={values.price_basis}
                       options={[
-                        { value: 'net', label: 'Net' },
-                        { value: 'gross', label: 'Gross' },
+                        { value: 'net', label: translate('net2') },
+                        { value: 'gross', label: translate('gross') },
                       ]}
                       onChange={(basis) => set('price_basis', basis)}
                     />
                   </div>
                 </FormField>
-                <FormField field="currency" label="Currency" error={errors.currency} required>
+                <FormField
+                  field="currency"
+                  label={translate('currency')}
+                  error={errors.currency}
+                  required
+                >
                   <Combobox
                     id={fieldId('currency')}
                     value={values.currency}
                     options={CURRENCY_OPTIONS}
                     renderValue={(option) => `${option.value} · ${option.label}`}
-                    placeholder="Choose a currency"
+                    placeholder={translate('chooseACurrency2')}
                     invalid={Boolean(errors.currency)}
                     onChange={(code) => set('currency', code)}
                   />
                 </FormField>
                 <FormField
                   field="vat_category"
-                  label="VAT"
+                  label={translate('vat')}
                   error={errors.vat_category}
                   required
-                  tip="The EN 16931 category the invoice line gets. Standard covers the normal and reduced Swiss rates."
+                  tip={translate('theEN16931CategoryTheInvoiceLineGetsStandard')}
                 >
                   <Combobox
                     id={fieldId('vat_category')}
                     value={values.vat_category}
                     options={CATEGORY_OPTIONS}
-                    placeholder="Choose a VAT category"
+                    placeholder={translate('chooseAVATCategory')}
                     onChange={(code) => {
                       const category = VAT_CATEGORIES.find((entry) => entry.value === code)?.value
                       if (!category) return
@@ -300,7 +313,7 @@ export function ProductForm({
                 </FormField>
                 <FormField
                   field="vat_rate"
-                  label="VAT rate"
+                  label={translate('vatRate')}
                   error={errors.vat_rate}
                   required={standard}
                 >
@@ -344,14 +357,18 @@ export function ProductForm({
                 </FormField>
               </div>
               <output
-                aria-label="Price per unit"
+                aria-label={translate('pricePerUnit')}
                 className="grid grid-cols-3 divide-x divide-border/70 rounded-lg ring-1 ring-border/70"
               >
                 {(['net', 'vat', 'gross'] as const).map((key) => (
                   <span key={key} className="grid gap-0.5 px-3 py-2.5">
                     <span className="text-[12px] text-muted-foreground">
-                      {key === 'net' ? 'Net' : key === 'vat' ? 'VAT' : 'Gross'}
-                      {key === values.price_basis && ' · entered'}
+                      {key === 'net'
+                        ? translate('net2')
+                        : key === 'vat'
+                          ? translate('vat')
+                          : translate('gross')}
+                      {key === values.price_basis && translate('entered')}
                     </span>
                     <span className="text-[15px] font-medium tabular-nums">
                       {preview ? formatMoney(preview[key], values.currency || '—') : '—'}
@@ -361,19 +378,22 @@ export function ProductForm({
               </output>
             </FormSection>
 
-            <FormSection title="Details" description="Optional codes for your own records.">
+            <FormSection
+              title={translate('details')}
+              description={translate('optionalCodesForYourOwnRecords')}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   field="unit"
-                  label="Unit"
+                  label={translate('unit')}
                   error={errors.unit}
-                  tip="How the quantity is counted on the invoice."
+                  tip={translate('howTheQuantityIsCountedOnTheInvoice')}
                 >
                   <Combobox
                     id={fieldId('unit')}
                     value={values.unit}
                     options={UNIT_OPTIONS}
-                    placeholder="No unit"
+                    placeholder={translate('noUnit')}
                     onChange={(code) =>
                       set('unit', UNITS.find((unit) => unit.value === code)?.value ?? '')
                     }
@@ -383,22 +403,22 @@ export function ProductForm({
                   field="sku"
                   label="SKU"
                   error={errors.sku}
-                  tip="Your internal code. Unique among your active items."
+                  tip={translate('yourInternalCodeUniqueAmongYourActiveItems')}
                 >
                   <input
                     {...describe('sku')}
                     value={values.sku}
                     onChange={(event) => set('sku', event.target.value)}
-                    placeholder="WEB-HOUR"
+                    placeholder={translate('webHOUR')}
                     className={cn(inputClass, 'font-mono text-[13px]')}
                   />
                 </FormField>
                 {values.type === 'product' && (
                   <FormField
                     field="gtin"
-                    label="GTIN / EAN"
+                    label={translate('gtinEAN')}
                     error={errors.gtin}
-                    tip="The barcode number (GTIN-8, 12, 13 or 14). Only for physical products."
+                    tip={translate('theBarcodeNumberGTIN81213Or14')}
                   >
                     <input
                       {...describe('gtin')}
@@ -416,22 +436,27 @@ export function ProductForm({
 
           <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3 md:px-7">
             <span className="hidden text-xs text-muted-foreground sm:block">
-              <kbd className="font-sans">⌘</kbd> Enter to save
+              <kbd className="font-sans">⌘</kbd>
+              {translate('enterToSave')}
             </span>
             <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : product ? 'Save changes' : 'Add item'}
+              {save.isPending
+                ? translate('saving')
+                : product
+                  ? translate('saveChanges')
+                  : translate('addItem')}
             </Button>
           </div>
 
           {discarding && (
             <ConfirmDialog
-              title="Discard your changes?"
-              body="What you entered in this form will be lost."
-              confirmLabel="Discard"
-              cancelLabel="Keep editing"
+              title={translate('discardYourChanges')}
+              body={translate('whatYouEnteredInThisFormWillBeLost')}
+              confirmLabel={translate('discard')}
+              cancelLabel={translate('keepEditing')}
               tone="destructive"
               onDecide={(discard) => {
                 setDiscarding(false)

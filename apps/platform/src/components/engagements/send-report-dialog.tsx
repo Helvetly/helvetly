@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -16,6 +15,7 @@ import { toast } from 'sonner'
 import { inputClass as fieldClass } from '@/components/clients/fields'
 import { errorMessage } from '@/lib/api'
 import { getEngagement, periodLabel, sendReport, type PeriodSummary } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 
 const emails = (text: string) =>
@@ -51,12 +51,15 @@ export function SendReportDialog({
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const recipients = to ?? defaultTo ?? ''
-  const defaultSubject = `Service report – ${engagement?.title ?? ''} – ${periodLabel(period)}`
+  const defaultSubject = translate('serviceReport', {
+    value1: engagement?.title ?? '',
+    value2: periodLabel(period),
+  })
   const send = useMutation({
     mutationFn: (body: Parameters<typeof sendReport>[2]) =>
       sendReport(engagementId, period.id, body),
     onSuccess: ({ to: sent }) => {
-      toast.success(`Service report sent to ${sent.join(', ')}.`)
+      toast.success(translate('serviceReportSentTo', { value1: sent.join(', ') }))
       onOpenChange(false)
     },
     onError: (error: unknown) => toast.error(errorMessage(error)),
@@ -67,10 +70,10 @@ export function SendReportDialog({
     const copies = emails(cc)
     const bad = [...list, ...copies].find((address) => !EMAIL.test(address))
     const found: Record<string, string> = {}
-    if (list.length === 0) found.to = 'Add at least one email address.'
-    else if (list.length > 10) found.to = 'At most 10 recipients.'
-    else if (bad) found.to = `“${bad}” isn’t an email address.`
-    if (copies.length > 10) found.cc = 'At most 10 addresses in Cc.'
+    if (list.length === 0) found.to = translate('addAtLeastOneEmailAddress')
+    else if (list.length > 10) found.to = translate('atMost10Recipients')
+    else if (bad) found.to = translate('isnTAnEmailAddress', { bad: bad })
+    if (copies.length > 10) found.cc = translate('atMost10AddressesInCc')
     setErrors(found)
     if (Object.keys(found).length) return
     send.mutate({
@@ -93,20 +96,21 @@ export function SendReportDialog({
         >
           <div className="grid gap-1 px-6 pt-6">
             <DialogTitle className="text-[17px] font-medium tracking-[-0.01em]">
-              Send service report
+              {translate('sendServiceReport')}
             </DialogTitle>
             <DialogDescription className="text-[13.5px]">
-              {engagement?.client.name ?? 'The client'} receives the report for{' '}
-              {periodLabel(period)} as a PDF.
+              {engagement?.client.name ?? translate('theClient')}
+              {translate('receivesTheReportFor')} {periodLabel(period)}
+              {translate('asAPDF')}
             </DialogDescription>
           </div>
           <div className="grid gap-4 px-6 pt-5 pb-6">
             <FormField
               id="report-to"
-              label="To"
+              label={translate('to3')}
               required
               error={errors.to}
-              tip="Separate several addresses with commas. Defaults to the client’s billing email."
+              tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
             >
               <input
                 {...describedBy('report-to', errors.to)}
@@ -114,22 +118,22 @@ export function SendReportDialog({
                 multiple
                 value={recipients}
                 onChange={(event) => setTo(event.target.value)}
-                placeholder="accounts@client.ch"
+                placeholder={translate('accountsClientCh')}
                 className={fieldClass}
               />
             </FormField>
-            <FormField id="report-cc" label="Cc" error={errors.cc}>
+            <FormField id="report-cc" label={translate('cc')} error={errors.cc}>
               <input
                 {...describedBy('report-cc', errors.cc)}
                 type="email"
                 multiple
                 value={cc}
                 onChange={(event) => setCc(event.target.value)}
-                placeholder="Optional"
+                placeholder={translate('optional')}
                 className={fieldClass}
               />
             </FormField>
-            <FormField id="report-subject" label="Subject">
+            <FormField id="report-subject" label={translate('subject')}>
               <input
                 {...describedBy('report-subject')}
                 value={subject ?? defaultSubject}
@@ -137,13 +141,13 @@ export function SendReportDialog({
                 className={fieldClass}
               />
             </FormField>
-            <FormField id="report-message" label="Message">
+            <FormField id="report-message" label={translate('message')}>
               <textarea
                 {...describedBy('report-message')}
                 rows={4}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Optional. A short note above the attached report."
+                placeholder={translate('optionalAShortNoteAboveTheAttachedReport')}
                 className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
               />
             </FormField>
@@ -155,10 +159,10 @@ export function SendReportDialog({
               className="ml-auto"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={send.isPending}>
-              {send.isPending ? 'Working…' : 'Send'}
+              {send.isPending ? translate('working') : translate('send')}
             </Button>
           </div>
         </form>

@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -28,6 +27,7 @@ import {
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { ProductPicker } from '@/components/products/product-picker'
+import { translate } from '@/lib/i18n'
 import {
   defaultExemptionCode,
   EXEMPTION_CATEGORIES,
@@ -85,12 +85,12 @@ const cellInput =
   'h-8 w-full min-w-0 rounded-md bg-transparent px-2 text-[14px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/60 focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:bg-destructive/5 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
 const VAT_SHORT: Record<string, string> = {
-  Z: 'Zero',
-  E: 'Exempt',
+  Z: translate('zero'),
+  E: translate('exempt'),
   AE: 'RC',
   K: 'EU',
-  G: 'Export',
-  O: 'None',
+  G: translate('export'),
+  O: translate('none2'),
 }
 const vatLabel = (line: EditorLine) =>
   line.vat_category === 'S'
@@ -229,9 +229,11 @@ export function LinesEditor({
   const describe = (line: EditorLine, field: string) => {
     const error =
       errors[`${line.key}.${field}`] ??
-      (field === 'unit_price' && needsPrice(line) ? `Enter the ${currency} price.` : undefined) ??
+      (field === 'unit_price' && needsPrice(line)
+        ? translate('enterThePrice2', { currency: currency })
+        : undefined) ??
       (field === 'vat_exemption_code' && !line.vat_exemption_code
-        ? 'Choose the exemption basis.'
+        ? translate('chooseTheExemptionBasis')
         : undefined)
     return {
       'data-line': line.key,
@@ -243,7 +245,7 @@ export function LinesEditor({
 
   return (
     <fieldset className="grid min-w-0">
-      <legend className="sr-only">Lines</legend>
+      <legend className="sr-only">{translate('lines')}</legend>
       <div
         aria-hidden
         className={cn(
@@ -252,13 +254,13 @@ export function LinesEditor({
         )}
       >
         <span />
-        <span className="px-2">Description</span>
-        <span className="px-2 text-right">Qty</span>
-        <span className="px-2">Unit</span>
-        <span className="px-2 text-right">Price</span>
-        {showDiscount && <span className="px-2 text-right">Disc.</span>}
-        {withVat && <span className="px-2">VAT</span>}
-        <span className="px-2 text-right">Amount</span>
+        <span className="px-2">{translate('description')}</span>
+        <span className="px-2 text-right">{translate('qty')}</span>
+        <span className="px-2">{translate('unit')}</span>
+        <span className="px-2 text-right">{translate('price2')}</span>
+        {showDiscount && <span className="px-2 text-right">{translate('disc')}</span>}
+        {withVat && <span className="px-2">{translate('vat')}</span>}
+        <span className="px-2 text-right">{translate('amount')}</span>
         <span />
       </div>
 
@@ -283,7 +285,7 @@ export function LinesEditor({
             <button
               type="button"
               draggable
-              aria-label={`Move line ${index + 1} (drag, or ⌥↑ ⌥↓)`}
+              aria-label={translate('moveLineDragOr', { value1: index + 1 })}
               onKeyDown={(event) => onKeyDown(event, index, 'description')}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = 'move'
@@ -306,14 +308,16 @@ export function LinesEditor({
             <span className="grid">
               <textarea
                 {...describe(line, 'description')}
-                aria-label={`Line ${index + 1} description`}
+                aria-label={translate('lineDescription', { value1: index + 1 })}
                 rows={1}
                 value={line.description}
                 maxLength={500}
                 onChange={(event) => set(index, { description: event.target.value })}
                 onKeyDown={(event) => onKeyDown(event, index, 'description')}
                 placeholder={
-                  index === 0 ? 'What did you deliver? e.g. Website design' : 'Description'
+                  index === 0
+                    ? translate('whatDidYouDeliverEGWebsiteDesign')
+                    : translate('description')
                 }
                 className={cn(
                   cellInput,
@@ -327,14 +331,14 @@ export function LinesEditor({
                 <>
                   <select
                     {...describe(line, 'vat_exemption_code')}
-                    aria-label={`Line ${index + 1} VAT exemption code`}
+                    aria-label={translate('lineVATExemptionCode', { value1: index + 1 })}
                     value={line.vat_exemption_code ?? ''}
                     onChange={(event) =>
                       set(index, { vat_exemption_code: event.target.value || null })
                     }
                     className={cn(cellInput, 'text-[12.5px] text-muted-foreground')}
                   >
-                    <option value="">Exemption basis…</option>
+                    <option value="">{translate('exemptionBasis')}</option>
                     {VATEX_CODES.map((code) => (
                       <option key={code.value} value={code.value}>
                         {code.value} – {code.label}
@@ -343,11 +347,11 @@ export function LinesEditor({
                   </select>
                   <input
                     {...describe(line, 'vat_exemption_reason')}
-                    aria-label={`Line ${index + 1} VAT exemption reason`}
+                    aria-label={translate('lineVATExemptionReason', { value1: index + 1 })}
                     value={line.vat_exemption_reason}
                     maxLength={300}
                     onChange={(event) => set(index, { vat_exemption_reason: event.target.value })}
-                    placeholder="Reason (optional), e.g. Art. 21 MWSTG"
+                    placeholder={translate('reasonOptionalEGArt21MWSTG')}
                     className={cn(cellInput, 'text-[12.5px] text-muted-foreground')}
                   />
                 </>
@@ -356,7 +360,7 @@ export function LinesEditor({
             <span>
               <input
                 {...describe(line, 'quantity')}
-                aria-label={`Line ${index + 1} quantity`}
+                aria-label={translate('lineQuantity', { value1: index + 1 })}
                 inputMode="decimal"
                 value={line.quantity}
                 onChange={(event) => set(index, { quantity: event.target.value })}
@@ -370,7 +374,7 @@ export function LinesEditor({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    aria-label={`Line ${index + 1} unit`}
+                    aria-label={translate('lineUnit', { value1: index + 1 })}
                     className={cn(
                       cellInput,
                       'flex items-center gap-1.5 text-left',
@@ -396,7 +400,7 @@ export function LinesEditor({
                       })
                     }
                   >
-                    <DropdownMenuRadioItem value="">No unit</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="">{translate('noUnit')}</DropdownMenuRadioItem>
                     {UNITS.map((unit) => (
                       <DropdownMenuRadioItem key={unit.value} value={unit.value}>
                         {unit.label}
@@ -410,7 +414,7 @@ export function LinesEditor({
             <span>
               <input
                 {...describe(line, 'unit_price')}
-                aria-label={`Line ${index + 1} price`}
+                aria-label={translate('linePrice', { value1: index + 1 })}
                 inputMode="decimal"
                 value={line.unit_price}
                 onChange={(event) => set(index, { unit_price: event.target.value })}
@@ -426,7 +430,12 @@ export function LinesEditor({
               />
               {needsPrice(line) && (
                 <span className="block px-2 pt-0.5 text-[12px] text-destructive">
-                  Priced in {line.price_currency}. Enter the {currency} price.
+                  {translate('pricedIn')}
+                  {line.price_currency}
+                  {translate('enterThe')}
+                  {currency}
+                  {translate('message5')}
+                  {translate('price')}
                 </span>
               )}
             </span>
@@ -434,7 +443,7 @@ export function LinesEditor({
               <span>
                 <input
                   {...describe(line, 'discount_percent')}
-                  aria-label={`Line ${index + 1} discount percent`}
+                  aria-label={translate('lineDiscountPercent', { value1: index + 1 })}
                   inputMode="decimal"
                   value={line.discount_percent}
                   onChange={(event) => set(index, { discount_percent: event.target.value })}
@@ -462,7 +471,7 @@ export function LinesEditor({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Actions for line ${index + 1}`}
+                    aria-label={translate('actionsForLine', { value1: index + 1 })}
                     className="text-muted-foreground opacity-0 group-hover/line:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 max-md:opacity-100"
                   >
                     <Ellipsis />
@@ -470,14 +479,16 @@ export function LinesEditor({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-48">
                   <DropdownMenuItem disabled={index === 0} onSelect={() => move(index, index - 1)}>
-                    <ArrowUp /> Move up{' '}
+                    <ArrowUp />
+                    {translate('moveUp')}{' '}
                     <span className="ml-auto text-xs text-muted-foreground">⌥↑</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     disabled={index === lines.length - 1}
                     onSelect={() => move(index, index + 1)}
                   >
-                    <ArrowDown /> Move down{' '}
+                    <ArrowDown />
+                    {translate('moveDown')}{' '}
                     <span className="ml-auto text-xs text-muted-foreground">⌥↓</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -487,11 +498,13 @@ export function LinesEditor({
                       focusCellAfter(copy.key, 'description', true)
                     }}
                   >
-                    <Copy /> Duplicate line
+                    <Copy />
+                    {translate('duplicateLine')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={() => remove(index)}>
-                    <Trash2 /> Delete line
+                    <Trash2 />
+                    {translate('deleteLine')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -507,9 +520,10 @@ export function LinesEditor({
           className="gap-1.5 px-2 text-muted-foreground"
           onClick={() => insertAfter(lines.length - 1)}
         >
-          <Plus className="size-4" /> Add line
+          <Plus className="size-4" />
+          {translate('addLine')}
           <kbd className="ml-1 rounded border border-border px-1 font-sans text-[11px] text-muted-foreground">
-            Enter
+            {translate('enter')}
           </kbd>
         </Button>
         <ProductPicker
@@ -542,7 +556,8 @@ export function LinesEditor({
           }}
           trigger={
             <Button variant="ghost" className="gap-1.5 px-2 text-muted-foreground">
-              <Package className="size-3.5" /> Add from catalogue
+              <Package className="size-3.5" />
+              {translate('addFromCatalogue')}
             </Button>
           }
         />
@@ -552,7 +567,8 @@ export function LinesEditor({
             className="gap-1.5 px-2 text-muted-foreground"
             onClick={() => setShowDiscount(true)}
           >
-            <Percent className="size-3.5" /> Line discounts
+            <Percent className="size-3.5" />
+            {translate('lineDiscounts')}
           </Button>
         )}
       </div>
@@ -576,7 +592,7 @@ function VatPicker({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`Line ${index + 1} VAT: ${vatLabel(line)}`}
+          aria-label={translate('lineVAT', { value1: index + 1, value2: vatLabel(line) })}
           className={cn(cellInput, 'flex items-center gap-1.5 text-left')}
         >
           <span className="whitespace-nowrap">{vatLabel(line)}</span>
@@ -601,13 +617,17 @@ function VatPicker({
           }}
         >
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            Swiss VAT rates
+            {translate('swissVATRates')}
           </DropdownMenuLabel>
           {VAT_RATES.map((rate) => (
             <DropdownMenuRadioItem key={rate} value={`S:${rate}`}>
               {rate}%
               <span className="ml-auto text-xs text-muted-foreground">
-                {rate === '8.1' ? 'Standard' : rate === '3.8' ? 'Accommodation' : 'Reduced'}
+                {rate === '8.1'
+                  ? translate('standard')
+                  : rate === '3.8'
+                    ? translate('accommodation')
+                    : translate('reduced')}
               </span>
             </DropdownMenuRadioItem>
           ))}
@@ -617,7 +637,7 @@ function VatPicker({
             )}
           <div className="flex items-center gap-2 px-2 py-1.5">
             <input
-              aria-label="Other rate"
+              aria-label={translate('otherRate')}
               inputMode="decimal"
               value={custom}
               onChange={(event) => setCustom(event.target.value)}
@@ -630,14 +650,14 @@ function VatPicker({
                     vat_exemption_code: null,
                   })
               }}
-              placeholder="Other rate, e.g. 19"
+              placeholder={translate('otherRateEG19')}
               className="h-7 w-full rounded-md border border-input bg-card px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
             <span className="text-[13px] text-muted-foreground">%</span>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            No VAT on this line
+            {translate('noVATOnThisLine')}
           </DropdownMenuLabel>
           {VAT_CATEGORIES.filter(
             (category) => category.value !== 'S' && category.value !== 'O',

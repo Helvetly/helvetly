@@ -10,10 +10,14 @@ import (
 
 func TestHandler(t *testing.T) {
 	h := handler(false, fstest.MapFS{
-		"index.html":          {Data: []byte("home")},
-		"settings/index.html": {Data: []byte("settings")},
-		"404.html":            {Data: []byte("missing")},
-		"_next/static/app.js": {Data: []byte("js")},
+		"index.html":             {Data: []byte("home")},
+		"settings/index.html":    {Data: []byte("settings")},
+		"404.html":               {Data: []byte("missing")},
+		"_next/static/app.js":    {Data: []byte("js")},
+		"de/index.html":          {Data: []byte("start")},
+		"de/settings/index.html": {Data: []byte("einstellungen")},
+		"de/404.html":            {Data: []byte("nicht gefunden")},
+		"de/_next/static/app.js": {Data: []byte("de-js")},
 	})
 
 	tests := []struct {
@@ -24,6 +28,11 @@ func TestHandler(t *testing.T) {
 		{"/settings/", "settings", "no-cache", http.StatusOK},
 		{"/nope", "missing", "no-cache", http.StatusNotFound},
 		{"/_next/static/app.js", "js", "public, max-age=31536000, immutable", http.StatusOK},
+		{"/de/", "start", "no-cache", http.StatusOK},
+		{"/de/settings/", "einstellungen", "no-cache", http.StatusOK},
+		{"/de/nope", "nicht gefunden", "no-cache", http.StatusNotFound},
+		{"/fr/nope", "missing", "no-cache", http.StatusNotFound},
+		{"/de/_next/static/app.js", "de-js", "public, max-age=31536000, immutable", http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {

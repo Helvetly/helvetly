@@ -3,6 +3,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { Star, StarOff } from 'lucide-react'
 
 import type { Folder } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 
 /** The filled yellow star of a starred folder. */
 export function StarGlyph({ className }: { className?: string }) {
@@ -27,7 +28,8 @@ export function StarItem({
 }) {
   return (
     <ContextMenuItem onSelect={() => onToggle(folder)}>
-      {folder.starred ? <StarOff /> : <Star />} {folder.starred ? 'Unstar' : 'Star'}
+      {folder.starred ? <StarOff /> : <Star />}{' '}
+      {folder.starred ? translate('unstar') : translate('star')}
     </ContextMenuItem>
   )
 }

@@ -1,5 +1,4 @@
 'use client'
-
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,6 +8,7 @@ import { useState } from 'react'
 import { inputClass } from '@/components/clients/fields'
 import { ClientSearch } from '@/components/invoices/client-search'
 import type { Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 /** An imported record's client, chosen among the existing ones (an import never creates clients). */
 export function ImportClientField({
@@ -27,7 +27,7 @@ export function ImportClientField({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <FormField id={id} label="Client" error={error} required className="sm:col-span-2">
+    <FormField id={id} label={translate('client')} error={error} required className="sm:col-span-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -37,8 +37,10 @@ export function ImportClientField({
           >
             <span className={cn('truncate', !clientId && 'text-muted-foreground')}>
               {clientId
-                ? clientName || 'Selected client'
-                : `Choose a client${clientName ? ` (document: ${clientName})` : ''}`}
+                ? clientName || translate('selectedClient')
+                : translate('chooseAClient2', {
+                    value1: clientName ? translate('document2', { clientName: clientName }) : '',
+                  })}
             </span>
             <ChevronsUpDown className="size-4 text-muted-foreground" />
           </button>

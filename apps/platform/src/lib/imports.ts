@@ -1,9 +1,9 @@
 'use client'
-
 // AI-assisted import, typed by hand from docs/imports-contract.md.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
 export type ImportFile = {
@@ -116,27 +116,26 @@ export type ImportKindConfig = {
 }
 
 export const IMPORT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.csv,.txt,.xlsx,.docx,.zip'
-export const IMPORT_FILE_TYPES =
-  'PDF, photos (PNG, JPEG, WEBP), Excel (.xlsx), Word (.docx), CSV or text, or a ZIP of them'
+export const IMPORT_FILE_TYPES = translate('pdfPhotosPNGJPEGWEBPExcelXlsxWordDocx')
 export const MAX_IMPORT_FILES = 10
 export const MAX_IMPORT_FILE_BYTES = MAX_FILE_BYTES
 
 /** The registered kinds (docs/imports-contract.md, "Adding a kind"): one entry per kind the Go API registers. */
 export const IMPORT_KINDS = {
   clients: {
-    label: 'Clients',
+    label: translate('clients'),
     path: '/clients',
     fields: {
-      name: 'Name',
-      email: 'Email',
-      phone: 'Phone',
-      street: 'Street',
-      street_number: 'No.',
-      zip: 'Postcode',
-      city: 'City',
+      name: translate('name'),
+      email: translate('email'),
+      phone: translate('phone'),
+      street: translate('street'),
+      street_number: translate('no'),
+      zip: translate('postcode'),
+      city: translate('city'),
       country: 'Country',
-      vat_number: 'VAT number',
-      registration_number: 'Registration number',
+      vat_number: translate('vatNumber'),
+      registration_number: translate('registrationNumber'),
     },
     columns: ['name', 'email', 'city', 'country', 'vat_number'],
     editable: [
@@ -155,17 +154,17 @@ export const IMPORT_KINDS = {
     entityHref: (id) => `/clients?id=${encodeURIComponent(id)}`,
   },
   products: {
-    label: 'Products & services',
+    label: translate('productsServices'),
     path: '/products',
     fields: {
       type: 'Type',
-      name: 'Name',
-      description: 'Description',
+      name: translate('name'),
+      description: translate('description'),
       sku: 'SKU',
-      unit: 'Unit',
-      unit_price: 'Price',
+      unit: translate('unit'),
+      unit_price: translate('price2'),
       currency: 'Currency',
-      vat_rate: 'VAT rate',
+      vat_rate: translate('vatRate'),
     },
     columns: ['type', 'name', 'sku', 'unit', 'unit_price', 'currency'],
     editable: ['type', 'name', 'description', 'sku', 'unit', 'unit_price', 'currency', 'vat_rate'],
@@ -173,24 +172,24 @@ export const IMPORT_KINDS = {
     entityHref: (id) => `/products?id=${encodeURIComponent(id)}`,
   },
   engagements: {
-    label: 'Engagements',
+    label: translate('engagements'),
     path: '/engagements',
     fields: {
-      client_id: 'Client',
-      client_name: 'Client',
-      title: 'Title',
-      description: 'Description',
-      quantity: 'Quantity',
-      unit: 'Unit',
-      unit_price: 'Price',
+      client_id: translate('client'),
+      client_name: translate('client'),
+      title: translate('title'),
+      description: translate('description'),
+      quantity: translate('quantity'),
+      unit: translate('unit'),
+      unit_price: translate('price2'),
       currency: 'Currency',
-      vat_rate: 'VAT rate',
-      billing: 'Billing',
-      recurrence: 'Repeats',
-      interval: 'Every',
-      start_date: 'Start',
-      end_date: 'End',
-      reference: 'Reference',
+      vat_rate: translate('vatRate'),
+      billing: translate('billing'),
+      recurrence: translate('repeats'),
+      interval: translate('every'),
+      start_date: translate('start'),
+      end_date: translate('end'),
+      reference: translate('reference'),
     },
     columns: ['client_name', 'title', 'quantity', 'unit', 'unit_price', 'recurrence', 'start_date'],
     editable: [
@@ -215,22 +214,22 @@ export const IMPORT_KINDS = {
     entityHref: (id) => `/engagements?id=${encodeURIComponent(id)}`,
   },
   invoices: {
-    label: 'Invoices',
+    label: translate('invoices'),
     path: '/invoices',
     labelKey: 'number',
     fields: {
-      client_id: 'Client',
-      client_name: 'Billed to',
-      number: 'Number',
-      reference: 'Reference',
-      issue_date: 'Date',
-      due_date: 'Due',
+      client_id: translate('client'),
+      client_name: translate('billedTo'),
+      number: translate('number'),
+      reference: translate('reference'),
+      issue_date: translate('date'),
+      due_date: translate('due'),
       currency: 'Currency',
-      total: 'Total',
-      lines: 'Lines',
-      issued_elsewhere: 'Already issued',
-      paid_amount: 'Already paid',
-      paid_on: 'Paid on',
+      total: translate('total'),
+      lines: translate('lines'),
+      issued_elsewhere: translate('alreadyIssued'),
+      paid_amount: translate('alreadyPaid'),
+      paid_on: translate('paidOn'),
     },
     columns: [
       'number',
@@ -255,33 +254,31 @@ export const IMPORT_KINDS = {
     ],
     toggles: ['issued_elsewhere'],
     tips: {
-      issued_elsewhere:
-        'Ticked: the invoice was already issued in another system. It keeps its number and stays open for what is unpaid; the uploaded file is its original. Unticked: it becomes a draft you issue yourself.',
-      paid_amount:
-        'What the client already paid on an invoice issued elsewhere. Leave it empty when nothing was paid.',
+      issued_elsewhere: translate('tickedTheInvoiceWasAlreadyIssuedInAnotherSystem'),
+      paid_amount: translate('whatTheClientAlreadyPaidOnAnInvoiceIssued'),
     },
     pickClient: true,
     listKey: ['invoices'],
     entityHref: (id) => `/invoices?id=${encodeURIComponent(id)}`,
   },
   expenses: {
-    label: 'Expenses',
+    label: translate('expenses'),
     labelKey: 'supplier_name',
     path: '/expenses',
     fields: {
-      supplier_name: 'Supplier',
-      supplier_vat_number: 'Supplier VAT number',
-      supplier_country: 'Supplier country',
-      reference: 'Reference',
-      description: 'Description',
-      document_date: 'Date',
-      due_date: 'Due date',
+      supplier_name: translate('supplier'),
+      supplier_vat_number: translate('supplierVATNumber'),
+      supplier_country: translate('supplierCountry'),
+      reference: translate('reference'),
+      description: translate('description'),
+      document_date: translate('date'),
+      due_date: translate('dueDate'),
       currency: 'Currency',
-      amount: 'Amount',
-      vat_rate: 'VAT rate',
-      amount_2: 'Amount at 2nd rate',
-      vat_rate_2: '2nd VAT rate',
-      reverse_charge: 'Reverse charge',
+      amount: translate('amount'),
+      vat_rate: translate('vatRate'),
+      amount_2: translate('amountAt2ndRate'),
+      vat_rate_2: translate('message2ndVATRate'),
+      reverse_charge: translate('reverseCharge'),
     },
     columns: ['supplier_name', 'document_date', 'amount', 'currency', 'vat_rate', 'reference'],
     editable: [
@@ -424,11 +421,7 @@ function isCommitResult(value: unknown): value is CommitResult {
 /** `body.data` when it passes `guard`; anything else is a broken answer, not data to show. */
 function dataOf<T>(body: unknown, guard: (value: unknown) => value is T): T {
   if (isObject(body) && guard(body.data)) return body.data
-  throw new ApiError(
-    0,
-    'invalid_response',
-    'Helvetly sent an answer the page cannot read. Try again.',
-  )
+  throw new ApiError(0, 'invalid_response', translate('helvetlySentAnAnswerThePageCannotReadTry'))
 }
 
 const isSummaries = (value: unknown): value is ImportSummary[] =>
@@ -647,7 +640,7 @@ export function recordChanges(
 
 export function displayValue(value: ImportValue | undefined) {
   if (value === undefined) return ''
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'boolean') return value ? translate('yes') : translate('no4')
   if (Array.isArray(value)) return `${value.length} ${value.length === 1 ? 'line' : 'lines'}`
   return String(value)
 }
@@ -664,8 +657,8 @@ export function importProblem(error: unknown): ImportProblem {
   if (error instanceof ApiError && error.status === 413 && error.code !== 'payload_too_large')
     return {
       kind: 'file',
-      title: 'These files cannot be read',
-      message: 'The upload is too large: up to 10 files of 25 MB each, 95 MB in all.',
+      title: translate('theseFilesCannotBeRead'),
+      message: translate('theUploadIsTooLargeUpTo10Files'),
     }
   const code = error instanceof ApiError ? error.code : ''
   const message = error instanceof Error ? error.message : ''
@@ -673,30 +666,28 @@ export function importProblem(error: unknown): ImportProblem {
     case 'ai_consent_required':
       return {
         kind: 'consent',
-        title: 'AI reading is not allowed yet',
-        message:
-          'Reading files uses Heidi’s AI model (OpenAI). An owner or admin has to allow Heidi to use OpenAI first, in Heidi’s panel.',
+        title: translate('aiReadingIsNotAllowedYet'),
+        message: translate('readingFilesUsesHeidiSAIModelOpenAIAn'),
       }
     case 'ai_not_configured':
       return {
         kind: 'not_configured',
-        title: 'No AI model is set up',
-        message:
-          'This Helvetly server has no AI model configured, so it cannot read files. Ask whoever runs it to set one up.',
+        title: translate('noAIModelIsSetUp'),
+        message: translate('thisHelvetlyServerHasNoAIModelConfiguredSo'),
       }
     case 'limit_reached':
     case 'plan_required':
-      return { kind: 'plan', title: 'Your plan does not allow this', message }
+      return { kind: 'plan', title: translate('yourPlanDoesNotAllowThis'), message }
     case 'unsupported_file':
     case 'duplicate_file':
     case 'payload_too_large':
     case 'invalid_request':
-      return { kind: 'file', title: 'These files cannot be read', message }
+      return { kind: 'file', title: translate('theseFilesCannotBeRead'), message }
     default:
       return {
         kind: 'retry',
-        title: 'Something went wrong',
-        message: message || 'Something went wrong. Try again.',
+        title: translate('somethingWentWrong'),
+        message: message || translate('somethingWentWrongTryAgain'),
       }
   }
 }

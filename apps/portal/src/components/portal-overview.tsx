@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { TONES } from '@helvetly/ui/components/status-badge'
@@ -11,6 +10,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import { civilToday, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
+import { translate } from '@/lib/i18n'
 import { byUrgency, sumByCurrency } from '@/lib/invoices'
 import {
   getPortalSession,
@@ -61,8 +61,8 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
           <CircleCheck className="size-5" aria-hidden />
         </span>
         <div className="grid">
-          <p className="font-medium">You’re all set — nothing is due</p>
-          <p className="text-sm text-muted-foreground">New invoices will show up here.</p>
+          <p className="font-medium">{translate('youReAllSetNothingIsDue')}</p>
+          <p className="text-sm text-muted-foreground">{translate('newInvoicesWillShowUpHere')}</p>
         </div>
       </div>
     )
@@ -73,7 +73,10 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
         <p className={cn('flex items-start gap-2 rounded-lg px-3 py-2 text-sm', TONES.red)}>
           <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
-            {overdue.length === 1 ? '1 invoice is' : `${overdue.length} invoices are`} overdue:{' '}
+            {overdue.length === 1
+              ? translate('message1InvoiceIs')
+              : translate('invoicesAre', { length: overdue.length })}
+            {translate('overdue2')}{' '}
             <strong className="font-medium whitespace-nowrap tabular-nums">
               {moneyList(sumByCurrency(overdue, (i) => i.amount_due))}
             </strong>
@@ -88,12 +91,14 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
             </p>
           ))}
           <p className="text-sm text-muted-foreground">
-            {urgent.length === 1 ? '1 open invoice' : `${urgent.length} open invoices`}
+            {urgent.length === 1
+              ? translate('message1OpenInvoice')
+              : translate('openInvoices', { length: urgent.length })}
             {next && ` · ${dueText(next, today).replace(/^Due/, 'next due')} (${formatDate(next)})`}
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/invoices">View invoices</Link>
+          <Link href="/invoices">{translate('viewInvoices')}</Link>
         </Button>
       </div>
     </div>
@@ -108,8 +113,8 @@ function Attention({ invoices, today }: { invoices: PortalInvoice[]; today: stri
       aria-labelledby="overview-attention"
       className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}
     >
-      <SectionTitle id="overview-attention" action={viewAll('/invoices', 'All invoices')}>
-        Needs your attention
+      <SectionTitle id="overview-attention" action={viewAll('/invoices', translate('allInvoices'))}>
+        {translate('needsYourAttention')}
       </SectionTitle>
       <ul className="-mx-2 grid">
         {top.map((invoice) => (
@@ -119,7 +124,7 @@ function Attention({ invoices, today }: { invoices: PortalInvoice[]; today: stri
               <span
                 className={`text-body-sm ${invoice.is_overdue ? 'text-destructive' : 'text-muted-foreground'}`}
               >
-                {invoice.due_date ? dueText(invoice.due_date, today) : 'No due date'}
+                {invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate')}
               </span>
             </span>
             <span className="max-sm:hidden">
@@ -143,8 +148,8 @@ function QuotesToAnswer() {
   if (awaiting.length === 0) return null
   return (
     <section aria-labelledby="overview-quotes" className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}>
-      <SectionTitle id="overview-quotes" action={viewAll('/quotes', 'Answer quotes')}>
-        Quotes to answer
+      <SectionTitle id="overview-quotes" action={viewAll('/quotes', translate('answerQuotes'))}>
+        {translate('quotesToAnswer')}
       </SectionTitle>
       <ul className="-mx-2 grid">
         {awaiting.slice(0, 3).map((quote) => (
@@ -152,7 +157,8 @@ function QuotesToAnswer() {
             <span className="grid min-w-0 flex-1 leading-tight">
               <span className="truncate text-body font-medium">{quoteName(quote)}</span>
               <span className="text-body-sm text-muted-foreground">
-                Valid until {formatDate(quote.valid_until)}
+                {translate('validUntil')}
+                {formatDate(quote.valid_until)}
               </span>
             </span>
             <span className="text-right text-body font-medium tabular-nums">
@@ -175,13 +181,16 @@ function Engagements({ today }: { today: string }) {
       aria-labelledby="overview-engagements"
       className={cn(cardClass, 'grid gap-3 p-4 sm:p-5')}
     >
-      <SectionTitle id="overview-engagements" action={viewAll('/engagements', 'Details')}>
-        Engagements
+      <SectionTitle
+        id="overview-engagements"
+        action={viewAll('/engagements', translate('details'))}
+      >
+        {translate('engagements')}
       </SectionTitle>
       {query.isPending ? (
         <Loader className="min-h-12" />
       ) : query.error ? (
-        <RetryAlert what="Engagements" onRetry={() => void query.refetch()} />
+        <RetryAlert what={translate('engagements')} onRetry={() => void query.refetch()} />
       ) : (
         <ul className="grid gap-4">
           {running.map((engagement) => {
@@ -196,12 +205,15 @@ function Engagements({ today }: { today: string }) {
                 <div className="flex items-baseline justify-between gap-3 text-body">
                   <span className="truncate font-medium">{engagement.name}</span>
                   <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
-                    {Math.round(share * 100)}% used
+                    {Math.round(share * 100)}
+                    {translate('used')}
                   </span>
                 </div>
                 <UsageBar engagement={engagement} />
                 <p className="text-body-sm text-muted-foreground">
-                  {Number(period.used)} of {Number(engagement.quantity)} {engagement.unit} ·{' '}
+                  {Number(period.used)}
+                  {translate('of')}
+                  {Number(engagement.quantity)} {engagement.unit} ·{' '}
                   {daysLeftText(period.ends_on, today)}
                 </p>
               </li>
@@ -221,13 +233,16 @@ function RecentDocuments({ today }: { today: string }) {
       aria-labelledby="overview-documents"
       className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}
     >
-      <SectionTitle id="overview-documents" action={viewAll('/documents', 'All documents')}>
-        Recently shared
+      <SectionTitle
+        id="overview-documents"
+        action={viewAll('/documents', translate('allDocuments'))}
+      >
+        {translate('recentlyShared')}
       </SectionTitle>
       {query.isPending ? (
         <Loader className="mt-2 min-h-12" />
       ) : query.error ? (
-        <RetryAlert what="Documents" onRetry={() => void query.refetch()} />
+        <RetryAlert what={translate('documents')} onRetry={() => void query.refetch()} />
       ) : (
         <ul className="-mx-2 grid">
           {query.data.slice(0, 3).map((doc) => (
@@ -240,7 +255,10 @@ function RecentDocuments({ today }: { today: string }) {
                   {sharedText(doc.shared_at, today)}
                 </span>
               </span>
-              <DownloadLink href={portalDocumentUrl(doc.id)} label={`Download ${doc.name}`} />
+              <DownloadLink
+                href={portalDocumentUrl(doc.id)}
+                label={translate('download2', { name: doc.name })}
+              />
             </li>
           ))}
         </ul>
@@ -265,19 +283,22 @@ export function PortalOverview() {
     <div className="grid gap-5 sm:gap-6">
       <PageHeader title={`${greeting(hour)}${name ? `, ${name}` : ''}`}>
         {session.data &&
-          `${session.data.workspace.name} shares your invoices, work and documents here.`}
+          translate('sharesYourInvoicesWorkAndDocumentsHere', {
+            name: session.data.workspace.name,
+          })}
       </PageHeader>
       <section aria-labelledby="overview-due" className={cn(cardClass, 'grid gap-4 p-4 sm:p-6')}>
         <h2
           id="overview-due"
           className="flex items-center gap-2 text-body-sm font-medium text-muted-foreground"
         >
-          <Wallet className="size-4 text-brand" aria-hidden /> Amount due
+          <Wallet className="size-4 text-brand" aria-hidden />
+          {translate('amountDue')}
         </h2>
         {invoices.isPending ? (
           <Loader className="min-h-16" />
         ) : invoices.error ? (
-          <RetryAlert what="Your invoices" onRetry={() => void invoices.refetch()} />
+          <RetryAlert what={translate('yourInvoices')} onRetry={() => void invoices.refetch()} />
         ) : (
           <AmountDue invoices={invoices.data} today={today} />
         )}

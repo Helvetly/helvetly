@@ -1,5 +1,4 @@
 'use client'
-
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -14,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { translate } from '@/lib/i18n'
 import {
   displayStatus,
   formatAmount,
@@ -63,7 +63,7 @@ export function RowStatus({
   invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'refund_due'>
 }) {
   return isPositive(invoice.refund_due) ? (
-    <StatusBadge tone="amber">Refund due</StatusBadge>
+    <StatusBadge tone="amber">{translate('refundDue')}</StatusBadge>
   ) : (
     <InvoiceStatusBadge invoice={invoice} />
   )
@@ -97,7 +97,7 @@ export function InvoiceNumber({ invoice }: { invoice: Pick<Invoice, 'number'> })
   ) : (
     <span className="text-muted-foreground">
       <span aria-hidden>—</span>
-      <span className="sr-only">No number yet</span>
+      <span className="sr-only">{translate('noNumberYet')}</span>
     </span>
   )
 }

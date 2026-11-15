@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -25,6 +24,7 @@ import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClientSearch } from '@/lib/clients'
 import { contentUrl, refreshDocuments, type DocFile } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import {
   buildCreateBody,
   checkSigners,
@@ -48,7 +48,12 @@ import { Placement } from './placement'
 /** The day links stop working, sent today. */
 const expiryDate = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString()
 
-const STEPS = ['Document', 'Signers', 'Place fields', 'Review & send'] as const
+const STEPS = [
+  translate('document'),
+  translate('signers'),
+  translate('placeFields'),
+  translate('reviewSend'),
+] as const
 
 /** A signer row in the wizard: `id` keeps its identity through edits, moves and removals; never sent. */
 type SignerRow = DraftSigner & { id: string }
@@ -76,21 +81,23 @@ export function stepProblem(
   state: { document: DocFile | null; title: string; signers: DraftSigner[]; fields: DraftField[] },
 ): string | null {
   if (step === 0) {
-    if (!state.document) return 'Choose a PDF to send.'
-    if (!state.title.trim()) return 'Give the request a title.'
+    if (!state.document) return translate('chooseAPDFToSend')
+    if (!state.title.trim()) return translate('giveTheRequestATitle')
   }
   if (step === 1) {
     const check = checkSigners(state.signers)
-    if (!check.ok) return check.list || 'Check the signers’ names and email addresses.'
+    if (!check.ok) return check.list || translate('checkTheSignersNamesAndEmailAddresses')
   }
   if (step === 2) {
     const missing = signersWithoutSignature(state.fields, state.signers.length)
     if (missing.length > 0) {
-      const names = missing.map((index) => state.signers[index]?.name || `Signer ${index + 1}`)
-      return `Add a signature field for ${names.join(', ')}.`
+      const names = missing.map(
+        (index) => state.signers[index]?.name || translate('signer', { value1: index + 1 }),
+      )
+      return translate('addASignatureFieldFor', { value1: names.join(', ') })
     }
     if (state.fields.some((field) => field.kind === 'text' && !field.label?.trim()))
-      return 'Say what to enter in each text field.'
+      return translate('sayWhatToEnterInEachTextField')
   }
   return null
 }
@@ -171,8 +178,13 @@ export function CreateSignatureDrawer({
       refreshDocuments(queryClient)
       toast.success(
         order === 'sequential'
-          ? `Sent to ${signers[0]?.name}. The others follow in order.`
-          : `Sent for signature to ${signers.length === 1 ? signers[0]?.name : `${signers.length} people`}.`,
+          ? translate('sentToTheOthersFollowInOrder', { value1: signers[0]?.name })
+          : translate('sentForSignatureTo', {
+              value1:
+                signers.length === 1
+                  ? signers[0]?.name
+                  : translate('people2', { length: signers.length }),
+            }),
       )
       onSent(data.id)
     } catch (error) {
@@ -195,25 +207,25 @@ export function CreateSignatureDrawer({
   return (
     <WizardSheet
       icon={<FileSignature />}
-      title={title.trim() || 'PDF for signature'}
+      title={title.trim() || translate('pdfForSignature2')}
       steps={STEPS}
       step={step}
       onStep={setStep}
       dirty={dirty}
       busy={sending}
-      discardTitle="Discard this request?"
+      discardTitle={translate('discardThisRequest')}
       onClose={onClose}
       status={summary}
       error={serverError ?? (tried ? problem : null)}
       action={
         step < STEPS.length - 1 ? (
           <Button className="cursor-pointer" onClick={next}>
-            Next
+            {translate('next2')}
           </Button>
         ) : (
           <Button className="cursor-pointer gap-1.5" disabled={sending} onClick={() => void send()}>
             {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            Send for signature
+            {translate('sendForSignature2')}
           </Button>
         )
       }
@@ -221,8 +233,8 @@ export function CreateSignatureDrawer({
       {step === 0 && (
         <Split preview={preview}>
           <StepTitle
-            title="What should be signed?"
-            text="A PDF from Documents. What you send is frozen: later changes to the file don’t touch it. To fill a contract from a client’s details, use a template instead."
+            title={translate('whatShouldBeSigned')}
+            text={translate('aPDFFromDocumentsWhatYouSendIsFrozen')}
           />
           <PdfPicker document={document} folderId={folderId} onChoose={choose} />
           <MessageFields
@@ -303,9 +315,9 @@ export function MessageFields({
     <>
       <FormField
         id="sig-title"
-        label="Title"
+        label={translate('title')}
         required
-        error={tried && !title.trim() ? 'Enter a title.' : undefined}
+        error={tried && !title.trim() ? translate('enterATitle2') : undefined}
       >
         <Input
           id="sig-title"
@@ -314,13 +326,17 @@ export function MessageFields({
           onChange={(event) => onTitle(event.target.value)}
         />
       </FormField>
-      <FormField id="sig-message" label="Message" tip="Shown in the email and on the signing page.">
+      <FormField
+        id="sig-message"
+        label={translate('message')}
+        tip={translate('shownInTheEmailAndOnTheSigningPage')}
+      >
         <Textarea
           id="sig-message"
           value={message}
           maxLength={2000}
           rows={4}
-          placeholder="Hello, please review and sign the attached agreement."
+          placeholder={translate('helloPleaseReviewAndSignTheAttachedAgreement')}
           onChange={(event) => onMessage(event.target.value)}
         />
       </FormField>
@@ -374,8 +390,8 @@ function SignersStep({
   return (
     <>
       <StepTitle
-        title="Who signs?"
-        text="Each signer gets their own link by email. Nobody needs an account."
+        title={translate('whoSigns')}
+        text={translate('eachSignerGetsTheirOwnLinkByEmailNobody')}
       />
       <section className="grid gap-2">
         <ol className="grid gap-2">
@@ -392,8 +408,8 @@ function SignersStep({
                 <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
                   <div className="grid gap-1">
                     <Input
-                      aria-label={`Signer ${index + 1} name`}
-                      placeholder="Full name"
+                      aria-label={translate('signerName', { value1: index + 1 })}
+                      placeholder={translate('fullName')}
                       value={signer.name}
                       maxLength={200}
                       aria-invalid={tried && !!row?.name}
@@ -404,8 +420,8 @@ function SignersStep({
                   <div className="grid gap-1">
                     <Input
                       type="email"
-                      aria-label={`Signer ${index + 1} email`}
-                      placeholder="name@company.ch"
+                      aria-label={translate('signerEmail', { value1: index + 1 })}
+                      placeholder={translate('nameCompanyCh')}
                       value={signer.email}
                       aria-invalid={tried && !!row?.email}
                       onChange={(event) => set(index, { email: event.target.value })}
@@ -417,7 +433,7 @@ function SignersStep({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Move up"
+                    aria-label={translate('moveUp2')}
                     disabled={index === 0}
                     className="cursor-pointer"
                     onClick={() => swap(index, index - 1)}
@@ -427,7 +443,7 @@ function SignersStep({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Move down"
+                    aria-label={translate('moveDown2')}
                     disabled={index === signers.length - 1}
                     className="cursor-pointer"
                     onClick={() => swap(index, index + 1)}
@@ -437,7 +453,7 @@ function SignersStep({
                   <Button
                     variant="destructive-ghost"
                     size="icon-sm"
-                    aria-label={`Remove signer ${index + 1}`}
+                    aria-label={translate('removeSigner', { value1: index + 1 })}
                     disabled={signers.length === 1}
                     className="cursor-pointer"
                     onClick={() =>
@@ -461,14 +477,15 @@ function SignersStep({
             disabled={signers.length >= 10}
             onClick={() => onSigners([...signers, signerRow()])}
           >
-            <Plus className="size-4" /> Add signer
+            <Plus className="size-4" />
+            {translate('addSigner')}
           </Button>
           <ContactPicker onPick={addPerson} disabled={signers.length >= 10} />
         </div>
       </section>
 
       <fieldset className="grid gap-2">
-        <legend className="mb-2 text-[13px] font-medium">Signing order</legend>
+        <legend className="mb-2 text-[13px] font-medium">{translate('signingOrder')}</legend>
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
           {(
             [
@@ -496,8 +513,8 @@ function SignersStep({
 
       <FormField
         id="sig-days"
-        label="Expires after"
-        hint={`Links stop working on ${formatDate(expiryDate(days))}.`}
+        label={translate('expiresAfter')}
+        hint={translate('linksStopWorkingOn', { value1: formatDate(expiryDate(days)) })}
       >
         <div className="flex items-center gap-2">
           <Input
@@ -511,7 +528,7 @@ function SignersStep({
               onDays(Math.min(365, Math.max(1, Math.round(Number(event.target.value) || 1))))
             }
           />
-          <span className="text-sm text-muted-foreground">days</span>
+          <span className="text-sm text-muted-foreground">{translate('days')}</span>
         </div>
       </FormField>
     </>
@@ -543,7 +560,7 @@ function ContactPicker({
         key: client.id,
         name: client.name,
         email: client.email,
-        detail: `Client #${client.number}`,
+        detail: translate('client6', { number: client.number }),
       })
     return list
   })
@@ -551,15 +568,16 @@ function ContactPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="cursor-pointer gap-1.5" disabled={disabled}>
-          <Building2 className="size-4" /> From clients
+          <Building2 className="size-4" />
+          {translate('fromClients')}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 gap-1 p-1.5">
         <label className="flex h-8 items-center gap-2 rounded-md px-2 text-muted-foreground">
           <Search className="size-4 shrink-0" />
           <input
-            aria-label="Search clients"
-            placeholder="Search clients"
+            aria-label={translate('searchClients')}
+            placeholder={translate('searchClients')}
             value={term}
             onChange={(event) => setTerm(event.target.value)}
             className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-placeholder"
@@ -568,7 +586,9 @@ function ContactPicker({
         <div className="max-h-64 overflow-y-auto">
           {people.length === 0 ? (
             <p className="px-2 py-3 text-center text-[13px] text-muted-foreground">
-              {search.isPending ? 'Searching…' : 'No contacts with an email address.'}
+              {search.isPending
+                ? translate('searching')
+                : translate('noContactsWithAnEmailAddress')}
             </p>
           ) : (
             people.map((person) => (
@@ -626,33 +646,41 @@ function ReviewStep({
   return (
     <>
       <StepTitle
-        title="Ready to send"
-        text="Check everything once more: a sent request can’t be edited, only revoked."
+        title={translate('readyToSend')}
+        text={translate('checkEverythingOnceMoreASentRequestCanT')}
       />
       <dl className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-3 rounded-xl border p-4 text-[13.5px]">
-        <dt className="text-muted-foreground">Title</dt>
+        <dt className="text-muted-foreground">{translate('title')}</dt>
         <dd className="font-medium">{title.trim()}</dd>
-        <dt className="text-muted-foreground">Document</dt>
+        <dt className="text-muted-foreground">{translate('document')}</dt>
         <dd className="flex min-w-0 items-center gap-2">
           <span className="truncate">{document.name}</span>
-          {pages > 0 && <span className="shrink-0 text-muted-foreground">· {pages} pages</span>}
+          {pages > 0 && (
+            <span className="shrink-0 text-muted-foreground">
+              · {pages}
+              {translate('pages2')}
+            </span>
+          )}
         </dd>
         {message.trim() && (
           <>
-            <dt className="text-muted-foreground">Message</dt>
+            <dt className="text-muted-foreground">{translate('message')}</dt>
             <dd className="whitespace-pre-line">{message.trim()}</dd>
           </>
         )}
-        <dt className="text-muted-foreground">Order</dt>
-        <dd>{order === 'parallel' ? 'Everyone at once' : 'One after another'}</dd>
-        <dt className="text-muted-foreground">Expires</dt>
+        <dt className="text-muted-foreground">{translate('order')}</dt>
+        <dd>{order === 'parallel' ? translate('everyoneAtOnce') : translate('oneAfterAnother')}</dd>
+        <dt className="text-muted-foreground">{translate('expires')}</dt>
         <dd>
-          In {days} days ({formatDate(expiryDate(days))})
+          {translate('in2')}
+          {days}
+          {translate('days6')}
+          {formatDate(expiryDate(days))})
         </dd>
       </dl>
       <section className="grid gap-2">
         <h3 className="text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase">
-          Signers
+          {translate('signers')}
         </h3>
         <ol className="grid gap-1.5">
           {signers.map((signer, index) => (
@@ -675,8 +703,7 @@ function ReviewStep({
         </ol>
       </section>
       <p className="text-[13px] text-pretty text-muted-foreground">
-        When everyone has signed, the signed PDF with a certificate of completion is saved next to
-        the original and emailed to all signers and you.
+        {translate('whenEveryoneHasSignedTheSignedPDFWithA')}
       </p>
       <SesLine />
     </>

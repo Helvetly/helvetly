@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -7,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 
 import { State } from '@/components/data/table-page'
+import { translate } from '@/lib/i18n'
 import { can, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
 
 import { NAV } from './nav'
@@ -29,11 +29,11 @@ export function AccessGate({ children }: { children: ReactNode }) {
       <PageHeader tabs={[labelOf(resource)]} tabIcons={[iconOf(resource)]} savedViews={false} />
       <State
         icon={<Lock />}
-        title={`You don't have access to ${what}`}
-        text="Ask an owner or admin of this workspace to change your access."
+        title={translate('youDonTHaveAccessTo', { what: what })}
+        text={translate('askAnOwnerOrAdminOfThisWorkspaceTo')}
         action={
           <Button asChild variant="outline">
-            <Link href="/">Back to the dashboard</Link>
+            <Link href="/">{translate('backToTheDashboard')}</Link>
           </Button>
         }
       />

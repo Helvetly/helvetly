@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,6 +16,7 @@ import {
   useDocList,
   type DocFile,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { signerColor, type DraftField } from '@/lib/signatures'
 
 import { KindIcon } from '../documents/kind'
@@ -62,8 +62,8 @@ export function PdfPicker({
           <Search className="size-4 shrink-0 stroke-[1.5]" />
           <input
             type="search"
-            aria-label="Search PDFs"
-            placeholder="Search PDFs"
+            aria-label={translate('searchPDFs')}
+            placeholder={translate('searchPDFs')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full bg-transparent text-[14px] text-foreground outline-none placeholder:text-placeholder"
@@ -95,13 +95,14 @@ export function PdfPicker({
             </>
           ) : (
             <>
-              <Upload className="size-4" /> Upload PDF
+              <Upload className="size-4" />
+              {translate('uploadPDF')}
             </>
           )}
         </Button>
       </div>
       <div
-        aria-label="PDFs"
+        aria-label={translate('pdfs')}
         className="grid max-h-[min(46vh,440px)] overflow-y-auto rounded-xl border p-1"
       >
         {document && !files.some((file) => file.id === document.id) && (
@@ -117,7 +118,11 @@ export function PdfPicker({
         ))}
         {files.length === 0 && !document && (
           <p className="px-3 py-8 text-center text-[13px] text-muted-foreground">
-            {list.isPending ? 'Loading…' : search ? 'No PDF matches.' : 'No PDFs yet. Upload one.'}
+            {list.isPending
+              ? translate('loading')
+              : search
+                ? translate('noPDFMatches')
+                : translate('noPDFsYetUploadOne')}
           </p>
         )}
       </div>
@@ -143,7 +148,7 @@ function DocRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px]">{file.name}</span>
         <span className="block truncate text-[12px] text-muted-foreground">
-          {file.folder?.name ?? 'All documents'} · {formatSize(file.size)} ·{' '}
+          {file.folder?.name ?? translate('allDocuments')} · {formatSize(file.size)} ·{' '}
           {formatDate(file.updated_at)}
         </span>
       </span>
@@ -170,7 +175,7 @@ export function DocPreview<K extends string>({
   caption,
   pages,
   onPages,
-  empty = 'Choose a PDF to see it here.',
+  empty = translate('chooseAPDFToSeeItHere'),
 }: {
   document: { id: string; name: string } | null
   fields: DraftField<K>[]
@@ -216,7 +221,8 @@ export function DocPreview<K extends string>({
         }
       />
       <span className="pointer-events-none absolute top-3 left-4 z-10 rounded-full bg-card/90 px-2.5 py-1 text-[12px] text-muted-foreground shadow-elevation-1 backdrop-blur">
-        Preview{pages > 0 && ` · ${pages} ${pages === 1 ? 'page' : 'pages'}`}
+        {translate('preview')}
+        {pages > 0 && ` · ${pages} ${pages === 1 ? 'page' : 'pages'}`}
       </span>
     </>
   )

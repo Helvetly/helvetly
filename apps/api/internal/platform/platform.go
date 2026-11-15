@@ -62,10 +62,10 @@ func handler(secure bool, files fs.FS) http.Handler {
 		}
 		if _, err := fs.Stat(files, name); err != nil {
 			h.Set("Cache-Control", "no-cache")
-			notFound(w, files)
+			notFound(w, files, name)
 			return
 		}
-		if strings.HasPrefix(name, "_next/static/") {
+		if strings.HasPrefix(name, "_next/static/") || strings.Contains(name, "/_next/static/") {
 			h.Set("Cache-Control", "public, max-age=31536000, immutable") // content-hashed
 		} else {
 			h.Set("Cache-Control", "no-cache") // pages name the current build's assets: revalidate after a deploy
@@ -74,8 +74,11 @@ func handler(secure bool, files fs.FS) http.Handler {
 	})
 }
 
-func notFound(w http.ResponseWriter, files fs.FS) {
-	page, err := fs.ReadFile(files, "404.html")
+func notFound(w http.ResponseWriter, files fs.FS, name string) {
+	page, err := fs.ReadFile(files, strings.SplitN(name, "/", 2)[0]+"/404.html")
+	if err != nil {
+		page, err = fs.ReadFile(files, "404.html")
+	}
 	if err != nil {
 		http.NotFound(w, nil)
 		return

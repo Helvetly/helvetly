@@ -3,6 +3,7 @@ import { formatDate } from '@helvetly/ui/lib/format'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import type { Decimal } from '@/lib/invoices'
 
 export type DunningNotice = {
@@ -67,11 +68,16 @@ export function useDunningAction(id: string) {
 
 /** What happens next, in a few words, for the invoice's dunning card. */
 export function dunningSummary(dunning: Dunning): string {
-  if (!dunning.applies) return 'Reminders follow the instalments of this invoice.'
+  if (!dunning.applies) return translate('remindersFollowTheInstalmentsOfThisInvoice')
   if (!dunning.next)
-    return dunning.notices.length > 0 ? 'All reminders were sent.' : 'Nothing is due.'
-  if (!dunning.enabled) return 'Dunning is off in the invoice settings; you can send by hand.'
-  if (!dunning.client_enabled) return 'This client gets no reminders; you can send by hand.'
-  if (dunning.paused) return 'Paused: no reminder goes out until you resume.'
-  return `${dunning.next.title} goes out on ${formatDate(dunning.next.due_on)}.`
+    return dunning.notices.length > 0
+      ? translate('allRemindersWereSent')
+      : translate('nothingIsDue')
+  if (!dunning.enabled) return translate('dunningIsOffInTheInvoiceSettingsYouCan')
+  if (!dunning.client_enabled) return translate('thisClientGetsNoRemindersYouCanSendBy')
+  if (dunning.paused) return translate('pausedNoReminderGoesOutUntilYouResume')
+  return translate('goesOutOn', {
+    title: dunning.next.title,
+    value2: formatDate(dunning.next.due_on),
+  })
 }

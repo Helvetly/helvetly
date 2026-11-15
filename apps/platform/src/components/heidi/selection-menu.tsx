@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, Copy, TextQuote } from 'lucide-react'
@@ -11,6 +10,8 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 import { toQuote } from './quote'
 
@@ -168,7 +169,7 @@ export function SelectionMenu({
     <div
       ref={menu}
       role="toolbar"
-      aria-label="Selected text"
+      aria-label={translate('selectedText')}
       aria-orientation="horizontal"
       tabIndex={-1}
       onKeyDown={onKeyDown}
@@ -181,11 +182,12 @@ export function SelectionMenu({
       style={{ top: spot.top, left: spot.left }}
     >
       <Button type="button" variant="ghost" size="sm" onClick={quote}>
-        <TextQuote /> Quote
+        <TextQuote />
+        {translate('quote')}
       </Button>
       <Button type="button" variant="ghost" size="sm" tabIndex={-1} onClick={() => void copy()}>
         {copied ? <Check className="text-success" /> : <Copy />}
-        <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+        <span aria-live="polite">{copied ? translate('copied2') : translate('copy5')}</span>
       </Button>
     </div>
   )

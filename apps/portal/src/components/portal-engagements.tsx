@@ -1,5 +1,4 @@
 'use client'
-
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
 import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
@@ -10,6 +9,7 @@ import { Gauge } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { civilToday, daysLeftText } from '@/lib/dates'
+import { translate } from '@/lib/i18n'
 import { listPortalEngagements, portalKeys, type PortalEngagement } from '@/lib/portal'
 
 import { cardClass, EmptyState, PageHeader, RetryAlert } from './portal-bits'
@@ -23,7 +23,11 @@ export function UsageBar({ engagement }: { engagement: PortalEngagement }) {
   const quantity = Number(engagement.quantity)
   return (
     <Meter
-      label={`${Number(period.used)} of ${quantity} ${engagement.unit} used`}
+      label={translate('ofUsed', {
+        value1: Number(period.used),
+        quantity: quantity,
+        unit: engagement.unit,
+      })}
       value={Math.min(Number(period.used), quantity * (1 + MAX_OVER_SHARE))}
       max={quantity}
       size="lg"
@@ -40,7 +44,7 @@ const PER: Record<string, string> = {
 
 /** "10 hours per month"; a one-off ('none') is "10 hours in total". */
 const commitment = ({ quantity, unit, recurrence }: PortalEngagement) =>
-  `${Number(quantity)} ${unit} ${PER[recurrence] ? `per ${PER[recurrence]}` : 'in total'}`
+  `${Number(quantity)} ${unit} ${PER[recurrence] ? `per ${PER[recurrence]}` : translate('inTotal')}`
 
 function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
@@ -82,11 +86,13 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
           <div className="flex flex-wrap gap-2">
             {Number(period.overage) > 0 ? (
               <Chip tone="amber">
-                Overage {Number(period.overage)} {engagement.unit}
+                {translate('overage')}
+                {Number(period.overage)} {engagement.unit}
               </Chip>
             ) : (
               <Chip tone="gray">
-                Remaining {Number(period.remaining)} {engagement.unit}
+                {translate('remaining')}
+                {Number(period.remaining)} {engagement.unit}
               </Chip>
             )}
           </div>
@@ -98,7 +104,7 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
           </p>
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">No period is running right now.</p>
+        <p className="text-sm text-muted-foreground">{translate('noPeriodIsRunningRightNow')}</p>
       )}
     </li>
   )
@@ -109,19 +115,19 @@ export function PortalEngagements() {
   const today = civilToday()
   return (
     <div className="grid gap-5 sm:gap-6">
-      <PageHeader title="Engagements">
-        The work agreed with you and how much of it is used.
+      <PageHeader title={translate('engagements')}>
+        {translate('theWorkAgreedWithYouAndHowMuchOf')}
       </PageHeader>
       {query.isPending ? (
         <Loader className="min-h-52" />
       ) : query.error ? (
         <div className={cn(cardClass, 'p-4 sm:p-5')}>
-          <RetryAlert what="Your engagements" onRetry={() => void query.refetch()} />
+          <RetryAlert what={translate('yourEngagements')} onRetry={() => void query.refetch()} />
         </div>
       ) : query.data.length === 0 ? (
         <div className={cardClass}>
-          <EmptyState icon={Gauge} title="No active engagements">
-            Agreed work, such as a monthly support retainer, shows up here.
+          <EmptyState icon={Gauge} title={translate('noActiveEngagements')}>
+            {translate('agreedWorkSuchAsAMonthlySupportRetainerShows')}
           </EmptyState>
         </div>
       ) : (

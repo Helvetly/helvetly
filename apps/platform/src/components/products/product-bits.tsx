@@ -1,17 +1,18 @@
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 
+import { translate } from '@/lib/i18n'
 import { formatAmount, UNITS, VAT_CATEGORIES } from '@/lib/invoices'
 import type { Product } from '@/lib/products'
 
 export function ProductTypeBadge({ type }: { type: Product['type'] }) {
   return type === 'product' ? (
-    <StatusBadge tone="blue">Product</StatusBadge>
+    <StatusBadge tone="blue">{translate('product')}</StatusBadge>
   ) : (
-    <StatusBadge tone="green">Service</StatusBadge>
+    <StatusBadge tone="green">{translate('service')}</StatusBadge>
   )
 }
 
-export const ArchivedBadge = () => <StatusBadge tone="amber">Archived</StatusBadge>
+export const ArchivedBadge = () => <StatusBadge tone="amber">{translate('archived')}</StatusBadge>
 
 /** "h", "pcs" … for a price "per unit"; nothing without a unit. */
 export const unitShort = (unit: Product['unit']) =>

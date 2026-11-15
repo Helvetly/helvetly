@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -14,6 +13,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { isManager } from '@/components/settings/settings-tabs'
 import { ApiError, errorMessage } from '@/lib/api'
 import { booksApi, type AgreementInput } from '@/lib/books'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 const EMPTY = { starts_on: '', ends_on: '', accepted_by: '', note: '' }
@@ -37,7 +37,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
     onSuccess: async () => {
       setAdding(false)
       setValues(EMPTY)
-      toast.success('Agreement added.')
+      toast.success(translate('agreementAdded'))
       await refresh()
     },
     onError: (error) => {
@@ -56,7 +56,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
   const remove = useMutation({
     mutationFn: (id: string) => booksApi.deleteAgreement(clientId, id),
     onSuccess: async () => {
-      toast.success('Agreement deleted.')
+      toast.success(translate('agreementDeleted'))
       await refresh()
     },
     onError: toastError,
@@ -64,7 +64,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!values.starts_on) return setErrors({ starts_on: 'Enter the start date.' })
+    if (!values.starts_on) return setErrors({ starts_on: translate('enterTheStartDate') })
     create.mutate({
       starts_on: values.starts_on,
       ends_on: values.ends_on || null,
@@ -85,10 +85,11 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-medium">Self-billing agreements</h2>
+        <h2 className="text-[14px] font-medium">{translate('selfBillingAgreements')}</h2>
         {manager && !adding && (
           <Button variant="outline" onClick={() => setAdding(true)}>
-            <Plus /> Add agreement
+            <Plus />
+            {translate('addAgreement')}
           </Button>
         )}
       </div>
@@ -100,33 +101,42 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
           className="grid gap-3 rounded-xl bg-card p-4 shadow-elevation-1"
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField id="sba-starts_on" required label="Starts on" error={errors.starts_on}>
+            <FormField
+              id="sba-starts_on"
+              required
+              label={translate('startsOn')}
+              error={errors.starts_on}
+            >
               <Input type="date" {...field('starts_on')} />
             </FormField>
-            <FormField id="sba-ends_on" label="Ends on (optional)" error={errors.ends_on}>
+            <FormField id="sba-ends_on" label={translate('endsOnOptional')} error={errors.ends_on}>
               <Input type="date" {...field('ends_on')} />
             </FormField>
           </div>
-          <FormField id="sba-accepted_by" label="Accepted by (optional)" error={errors.accepted_by}>
+          <FormField
+            id="sba-accepted_by"
+            label={translate('acceptedByOptional')}
+            error={errors.accepted_by}
+          >
             <Input
               maxLength={200}
-              placeholder="Name and role at the supplier"
+              placeholder={translate('nameAndRoleAtTheSupplier')}
               {...field('accepted_by')}
             />
           </FormField>
-          <FormField id="sba-note" label="Note (optional)" error={errors.note}>
+          <FormField id="sba-note" label={translate('noteOptional')} error={errors.note}>
             <Input
               maxLength={1000}
-              placeholder="Where the signed agreement is filed"
+              placeholder={translate('whereTheSignedAgreementIsFiled')}
               {...field('note')}
             />
           </FormField>
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={create.isPending}>
-              {create.isPending ? 'Saving…' : 'Save agreement'}
+              {create.isPending ? translate('saving') : translate('saveAgreement')}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
-              Cancel
+              {translate('cancel')}
             </Button>
           </div>
         </form>
@@ -138,7 +148,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
         <Loader className="min-h-16" />
       ) : list.data.length === 0 ? (
         <p className="rounded-xl bg-card px-6 py-8 text-center text-[13px] text-muted-foreground shadow-elevation-1">
-          No agreement yet. A self-billed invoice for this client needs one covering its issue date.
+          {translate('noAgreementYetASelfBilledInvoiceForThis')}
         </p>
       ) : (
         <ul className="divide-y divide-border/60 rounded-xl bg-card shadow-elevation-1">
@@ -164,7 +174,9 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
                 <Button
                   variant="destructive-ghost"
                   size="icon-xs"
-                  aria-label={`Delete agreement from ${formatDate(agreement.starts_on)}`}
+                  aria-label={translate('deleteAgreementFrom', {
+                    value1: formatDate(agreement.starts_on),
+                  })}
                   disabled={remove.isPending}
                   onClick={() => remove.mutate(agreement.id)}
                 >

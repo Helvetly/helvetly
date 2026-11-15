@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -15,6 +14,7 @@ import { toast } from 'sonner'
 
 import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import type { Plan } from '@/lib/instalments'
 import {
   formatDay,
@@ -74,10 +74,10 @@ export function PlanDialog({
     event.preventDefault()
     const found: Record<string, string> = {}
     const n = Number(count)
-    if (!/^\d+$/.test(count) || n < 2 || n > 12) found.count = 'From 2 to 12 instalments.'
-    if (!first || first < today()) found.first_due_date = 'Not before today.'
+    if (!/^\d+$/.test(count) || n < 2 || n > 12) found.count = translate('from2To12Instalments')
+    if (!first || first < today()) found.first_due_date = translate('notBeforeToday')
     const days = Number(lead)
-    if (!/^\d+$/.test(lead) || days > 60) found.lead_days = 'From 0 to 60 days.'
+    if (!/^\d+$/.test(lead) || days > 60) found.lead_days = translate('from0To60Days')
     setErrors(found)
     if (Object.keys(found).length) return
     create.mutate(
@@ -86,7 +86,10 @@ export function PlanDialog({
         onSuccess: (plan) => {
           const next = plan.items[0]
           toast.success(
-            `Plan created: ${plan.count} invoices${next ? `, the first issued ${formatDay(next.issue_on)}` : ''}.`,
+            translate('planCreatedInvoices', {
+              count: plan.count,
+              value2: next ? translate('theFirstIssued', { value1: formatDay(next.issue_on) }) : '',
+            }),
           )
           onCreated(plan)
         },
@@ -105,16 +108,20 @@ export function PlanDialog({
         <form noValidate onSubmit={submit}>
           <div className="grid gap-1 px-6 pt-6">
             <DialogTitle className="text-[17px] font-medium tracking-[-0.01em]">
-              Split into instalment invoices
+              {translate('splitIntoInstalmentInvoices')}
             </DialogTitle>
             <DialogDescription className="text-[13.5px]">
-              Each instalment becomes its own partial invoice, issued before its due date. This
-              draft stays as the plan’s template and can no longer be edited or issued.
+              {translate('eachInstalmentBecomesItsOwnPartialInvoiceIssuedBefore')}
             </DialogDescription>
           </div>
           <div className="grid gap-4 px-6 pt-5 pb-6">
             <div className="grid grid-cols-2 gap-3">
-              <FormField id="plan-count" label="Instalments" required error={errors.count}>
+              <FormField
+                id="plan-count"
+                label={translate('instalments2')}
+                required
+                error={errors.count}
+              >
                 <input
                   {...describedBy('plan-count', errors.count)}
                   inputMode="numeric"
@@ -123,7 +130,7 @@ export function PlanDialog({
                   className={inputClass}
                 />
               </FormField>
-              <FormField id="plan-interval" label="Every" error={errors.interval}>
+              <FormField id="plan-interval" label={translate('every')} error={errors.interval}>
                 <NativeSelect
                   {...describedBy('plan-interval', errors.interval)}
                   value={interval}
@@ -142,13 +149,13 @@ export function PlanDialog({
             </div>
             <FormField
               id="plan-first"
-              label="First due date"
+              label={translate('firstDueDate')}
               required
               error={errors.first_due_date}
             >
               <DateField
                 id="plan-first"
-                label="First due date"
+                label={translate('firstDueDate')}
                 value={first}
                 min={today()}
                 invalid={Boolean(errors.first_due_date)}
@@ -158,9 +165,9 @@ export function PlanDialog({
             <FormField
               id="plan-lead"
               required
-              label="Issue days before due"
+              label={translate('issueDaysBeforeDue')}
               error={errors.lead_days}
-              tip="Each invoice is issued this many days before its due date."
+              tip={translate('eachInvoiceIsIssuedThisManyDaysBeforeIts')}
             >
               <input
                 {...describedBy('plan-lead', errors.lead_days)}
@@ -172,18 +179,18 @@ export function PlanDialog({
             </FormField>
             <SwitchRow
               id="plan-auto-send"
-              label="Send automatically"
-              description="Email each invoice to the client when issued."
+              label={translate('sendAutomatically')}
+              description={translate('emailEachInvoiceToTheClientWhenIssued')}
               checked={autoSend}
               onCheckedChange={setAutoSend}
             />
           </div>
           <div className="flex items-center gap-2 border-t border-border/70 px-6 py-3">
             <Button type="button" variant="ghost" className="ml-auto" onClick={onClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Working…' : 'Create plan'}
+              {create.isPending ? translate('working') : translate('createPlan')}
             </Button>
           </div>
         </form>

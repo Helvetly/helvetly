@@ -1,5 +1,4 @@
 'use client'
-
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -13,6 +12,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadError } from '@/components/load-error'
 import { SettingsRow, SettingsSection } from '@/components/settings/layout'
 import { lastActive, useAccountSessions, useRevokeSession, type DeviceKind } from '@/lib/account'
+import { translate } from '@/lib/i18n'
 
 const ICONS: Record<DeviceKind, typeof Monitor> = {
   desktop: Monitor,
@@ -33,7 +33,9 @@ export function Sessions() {
   const signOut = (id: string | null) =>
     revoke.mutate(id, {
       onSuccess: () =>
-        toast.success(id ? 'Signed out of that device.' : 'Signed out everywhere else.'),
+        toast.success(
+          id ? translate('signedOutOfThatDevice') : translate('signedOutEverywhereElse'),
+        ),
       onError: toastError,
     })
 
@@ -41,13 +43,17 @@ export function Sessions() {
     <SettingsSection
       id="sessions"
       icon={MonitorSmartphone}
-      title="Active sessions"
-      description="The browsers and devices signed in to your account. Sign out of any you don’t recognise."
+      title={translate('activeSessions')}
+      description={translate('theBrowsersAndDevicesSignedInToYourAccount')}
     >
       {sessions.isPending ? (
         <Loader />
       ) : sessions.error ? (
-        <LoadError what="your sessions" error={sessions.error} onRetry={() => sessions.refetch()} />
+        <LoadError
+          what={translate('yourSessions')}
+          error={sessions.error}
+          onRetry={() => sessions.refetch()}
+        />
       ) : (
         <div>
           <ul className="divide-y">
@@ -62,7 +68,9 @@ export function Sessions() {
                     <>
                       {label}
                       {session.current && (
-                        <Badge className="bg-success-surface text-success">This device</Badge>
+                        <Badge className="bg-success-surface text-success">
+                          {translate('thisDevice')}
+                        </Badge>
                       )}
                     </>
                   }
@@ -77,11 +85,12 @@ export function Sessions() {
                     <Button
                       variant="destructive-ghost"
                       size="sm"
-                      aria-label={`Sign out ${label}`}
+                      aria-label={translate('signOut3', { label: label })}
                       disabled={revoke.isPending && revoke.variables === session.id}
                       onClick={() => signOut(session.id)}
                     >
-                      <LogOut /> Sign out
+                      <LogOut />
+                      {translate('signOut2')}
                     </Button>
                   )}
                 </SettingsRow>
@@ -94,7 +103,10 @@ export function Sessions() {
               className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t pt-3.5"
             >
               <p className="text-body-sm text-muted-foreground">
-                {others === 1 ? '1 other session' : `${others} other sessions`} signed in
+                {others === 1
+                  ? translate('message1OtherSession')
+                  : translate('otherSessions', { others: others })}
+                {translate('signedIn')}
               </p>
               <Button
                 variant="destructive-outline"
@@ -102,7 +114,8 @@ export function Sessions() {
                 disabled={revoke.isPending}
                 onClick={() => setConfirming(true)}
               >
-                <LogOut /> Sign out of all other sessions
+                <LogOut />
+                {translate('signOutOfAllOtherSessions2')}
               </Button>
             </div>
           )}
@@ -111,10 +124,15 @@ export function Sessions() {
       {confirming && (
         <ConfirmDialog
           tone="destructive"
-          title="Sign out of all other sessions?"
-          body={`${others === 1 ? 'The other browser or device' : `The ${others} other browsers and devices`} will need to sign in again. You stay signed in here.`}
-          confirmLabel="Sign out"
-          cancelLabel="Cancel"
+          title={translate('signOutOfAllOtherSessions')}
+          body={translate('willNeedToSignInAgainYouStaySigned', {
+            value1:
+              others === 1
+                ? translate('theOtherBrowserOrDevice')
+                : translate('theOtherBrowsersAndDevices', { others: others }),
+          })}
+          confirmLabel={translate('signOut')}
+          cancelLabel={translate('cancel')}
           confirmIcon={<LogOut />}
           onDecide={(approved) => {
             setConfirming(false)

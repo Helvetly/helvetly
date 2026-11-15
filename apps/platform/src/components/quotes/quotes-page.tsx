@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
@@ -22,6 +21,7 @@ import { Initials } from '@/components/initials'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { formatDay } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch } from '@/lib/queries'
@@ -49,7 +49,7 @@ const STATUS_ICONS: Record<QuoteStatus, LucideIcon> = {
 }
 
 const VIEWS: { status: QuoteStatus | null; label: string; icon: LucideIcon }[] = [
-  { status: null, label: 'All quotes', icon: Files },
+  { status: null, label: translate('allQuotes'), icon: Files },
   ...QUOTE_STATUSES.map((entry) => ({
     status: entry.value,
     label: entry.plural,
@@ -90,12 +90,12 @@ export function QuotesPage() {
         savedViews={false}
         active={active}
         onSelect={(index) => navigate({ status: VIEWS[index]?.status ?? null })}
-        primary="New quote"
+        primary={translate('newQuote2')}
         onPrimary={newQuote}
       />
       <PageContextMenu
-        title="Quotes"
-        primary={{ label: 'New quote', onSelect: newQuote }}
+        title={translate('quotes')}
+        primary={{ label: translate('newQuote2'), onSelect: newQuote }}
         views={{
           tabs: VIEWS.map((view) => view.label),
           active,
@@ -107,11 +107,11 @@ export function QuotesPage() {
           {list.error ? (
             <State
               icon={<CloudOff />}
-              title="Couldn’t load quotes"
+              title={translate('couldnTLoadQuotes')}
               text={errorMessage(list.error)}
               action={
                 <Button variant="outline" size="sm" onClick={() => void list.refetch()}>
-                  Try again
+                  {translate('tryAgain')}
                 </Button>
               }
             />
@@ -121,23 +121,23 @@ export function QuotesPage() {
             status ? (
               <State
                 icon={<Files />}
-                title="Nothing in this view"
-                text="Quotes show up here as their status changes."
+                title={translate('nothingInThisView')}
+                text={translate('quotesShowUpHereAsTheirStatusChanges')}
                 action={
                   <Button variant="outline" size="sm" onClick={() => navigate({ status: null })}>
-                    Show all quotes
+                    {translate('showAllQuotes')}
                   </Button>
                 }
               />
             ) : (
               <State
                 icon={<FilePlus2 />}
-                title="No quotes yet"
-                text="Offer your work before you invoice it: the client accepts it in the portal, and it becomes an invoice in one click."
+                title={translate('noQuotesYet')}
+                text={translate('offerYourWorkBeforeYouInvoiceItTheClient')}
                 action={
                   canWrite && (
                     <Button size="sm" onClick={newQuote}>
-                      New quote
+                      {translate('newQuote2')}
                     </Button>
                   )
                 }
@@ -148,12 +148,14 @@ export function QuotesPage() {
               <table className="hidden w-full table-fixed text-title-sm @4xl:table">
                 <thead>
                   <tr className="h-11 border-b bg-muted/50 text-left text-xs tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-[180px] pl-5 font-medium">Number</th>
-                    <th className="px-3 font-medium">Client</th>
-                    <th className="hidden w-[128px] px-3 font-medium @6xl:table-cell">Date</th>
-                    <th className="w-[128px] px-3 font-medium">Valid until</th>
-                    <th className="w-[17%] px-3 text-right font-medium">Total</th>
-                    <th className="w-[120px] px-3 pr-5 font-medium">Status</th>
+                    <th className="w-[180px] pl-5 font-medium">{translate('number')}</th>
+                    <th className="px-3 font-medium">{translate('client')}</th>
+                    <th className="hidden w-[128px] px-3 font-medium @6xl:table-cell">
+                      {translate('date')}
+                    </th>
+                    <th className="w-[128px] px-3 font-medium">{translate('validUntil3')}</th>
+                    <th className="w-[17%] px-3 text-right font-medium">{translate('total')}</th>
+                    <th className="w-[120px] px-3 pr-5 font-medium">{translate('status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,7 +242,9 @@ function QuoteItem({ quote, onOpen }: { quote: Quote; onOpen: (id: string) => vo
         <span className="grid min-w-0 flex-1 leading-snug">
           <span className="truncate text-title-sm">{quote.client.name}</span>
           <span className="truncate text-body-sm text-muted-foreground">
-            {quoteNumber(quote)} · valid until {formatDay(quote.valid_until)}
+            {quoteNumber(quote)}
+            {translate('validUntil')}
+            {formatDay(quote.valid_until)}
           </span>
         </span>
         <span className="grid justify-items-end gap-1">

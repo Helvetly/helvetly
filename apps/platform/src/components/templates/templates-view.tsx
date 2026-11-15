@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -19,6 +18,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
+import { translate } from '@/lib/i18n'
 import {
   isDataKind,
   templatesApi,
@@ -44,18 +44,23 @@ export function TemplatesView({
 
   if (list.error)
     return (
-      <LoadProblem error={list.error} what="The templates" onRetry={() => void list.refetch()} />
+      <LoadProblem
+        error={list.error}
+        what={translate('theTemplates')}
+        onRetry={() => void list.refetch()}
+      />
     )
   if (list.isPending) return <LoadingRows />
   if (templates.length === 0)
     return (
       <State
         icon={<LayoutTemplate />}
-        title="No templates yet"
-        text="Turn a contract, offer or letter into a template: place the client’s name, address and contact on it once, then make a filled-in copy for any client in a few clicks. Add signature fields to send it for signing."
+        title={translate('noTemplatesYet')}
+        text={translate('turnAContractOfferOrLetterIntoATemplate')}
         action={
           <Button size="sm" className="cursor-pointer gap-1.5" onClick={onCreate}>
-            <Plus className="size-4" /> New template
+            <Plus className="size-4" />
+            {translate('newTemplate')}
           </Button>
         }
       />
@@ -77,7 +82,7 @@ export function TemplatesView({
                   <span className="block truncate text-[14.5px]">{template.name}</span>
                   <span className="block truncate text-[12.5px] text-muted-foreground">
                     {template.description ||
-                      `${template.document?.name ?? 'PDF removed'} · ${countLabel(template)}`}
+                      `${template.document?.name ?? translate('pdfRemoved')} · ${countLabel(template)}`}
                   </span>
                 </span>
               </span>
@@ -88,13 +93,13 @@ export function TemplatesView({
                     {template.signers.length === 1 ? 'signer' : 'signers'}
                   </StatusBadge>
                 ) : (
-                  <StatusBadge tone="gray">No signatures</StatusBadge>
+                  <StatusBadge tone="gray">{translate('noSignatures')}</StatusBadge>
                 )}
               </span>
               <span className="text-[12.5px] text-muted-foreground max-md:hidden">
                 {template.last_used_at
-                  ? `Used ${formatRelative(template.last_used_at)}`
-                  : 'Not used yet'}
+                  ? translate('used2', { value1: formatRelative(template.last_used_at) })
+                  : translate('notUsedYet')}
               </span>
             </button>
             <DropdownMenu>
@@ -102,7 +107,7 @@ export function TemplatesView({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`More for ${template.name}`}
+                  aria-label={translate('moreFor', { name: template.name })}
                   className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer"
                 >
                   <Ellipsis />
@@ -110,14 +115,17 @@ export function TemplatesView({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-48">
                 <DropdownMenuItem onSelect={() => onUse(template)}>
-                  <LayoutTemplate /> Use for a client…
+                  <LayoutTemplate />
+                  {translate('useForAClient')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onEdit(template)}>
-                  <Pencil /> Edit template
+                  <Pencil />
+                  {translate('editTemplate')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(template)}>
-                  <Trash2 /> Delete
+                  <Trash2 />
+                  {translate('delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -127,16 +135,16 @@ export function TemplatesView({
       {deleting && (
         <ConfirmDialog
           tone="destructive"
-          title={`Delete “${deleting.name}”?`}
-          body="Documents already made from it stay in Documents. The PDF it is built on stays too."
-          confirmLabel="Delete template"
-          cancelLabel="Cancel"
+          title={translate('delete8', { name: deleting.name })}
+          body={translate('documentsAlreadyMadeFromItStayInDocumentsThe')}
+          confirmLabel={translate('deleteTemplate')}
+          cancelLabel={translate('cancel')}
           onDecide={(confirmed) => {
             const target = deleting
             setDeleting(null)
             if (confirmed)
               remove.mutate(target.id, {
-                onSuccess: () => toast.success('Template deleted.'),
+                onSuccess: () => toast.success(translate('templateDeleted')),
                 onError: toastError,
               })
           }}
