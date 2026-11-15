@@ -20,12 +20,27 @@ type Source interface {
 	ProxyDownloads() bool
 }
 
+// mediaLinker: a Source that can sign MEDIA_URL links (*S3 with UseMedia); "" when it has no media origin.
+type mediaLinker interface {
+	MediaLink(ctx context.Context, key, filename, contentType string) (string, error)
+}
+
 // Serve answers a download of the object at key, saved as filename, once the caller has checked access: a 302 to a
-// presigned URL or, with S3_PROXY_DOWNLOADS, the bytes through the API (range and conditional requests included) for
-// a bucket the browser cannot reach. contentType "" falls back to the object's own, then to sniffing.
+// signed MEDIA_URL link, else to a presigned URL or, with S3_PROXY_DOWNLOADS, the bytes through the API (range and
+// conditional requests included) for a bucket the browser cannot reach. contentType "" falls back to the object's
+// own, then to sniffing.
 func Serve(w http.ResponseWriter, r *http.Request, src Source, key, filename, contentType string) error {
-	h := w.Header()
-	h.Set("Cache-Control", "private, no-store")
+	w.Header().Set("Cache-Control", "private, no-store")
+	if m, ok := src.(mediaLinker); ok {
+		link, err := m.MediaLink(r.Context(), key, filename, contentType)
+		if err != nil {
+			return err
+		}
+		if link != "" {
+			http.Redirect(w, r, link, http.StatusFound)
+			return nil
+		}
+	}
 	if !src.ProxyDownloads() {
 		link, err := src.PresignDownload(r.Context(), key, DownloadTTL, filename)
 		if err != nil {
@@ -39,6 +54,13 @@ func Serve(w http.ResponseWriter, r *http.Request, src Source, key, filename, co
 		return err
 	}
 	defer obj.Close()
+	stream(w, r, obj, filename, contentType)
+	return nil
+}
+
+// stream sends an opened object as an attachment, with range and conditional requests.
+func stream(w http.ResponseWriter, r *http.Request, obj io.ReadSeeker, filename, contentType string) {
+	h := w.Header()
 	var modified time.Time
 	if o, ok := obj.(*minio.Object); ok {
 		if info, err := o.Stat(); err == nil { // already fetched by Open
@@ -59,5 +81,4 @@ func Serve(w http.ResponseWriter, r *http.Request, src Source, key, filename, co
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	http.ServeContent(w, r, "", modified, obj)
-	return nil
 }

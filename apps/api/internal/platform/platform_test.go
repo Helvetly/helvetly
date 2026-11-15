@@ -68,6 +68,7 @@ func TestByHost(t *testing.T) {
 		{"portal.example.com", "portal"},
 		{"Portal.Example.com", "portal"},
 		{"app.example.com", "platform"},
+		{"media.example.com", "platform"}, // any other host, e.g. MEDIA_URL: its /api/media/ never reaches here
 		{"portal.example.com:8443", "platform"},
 	} {
 		t.Run(tt.host, func(t *testing.T) {
