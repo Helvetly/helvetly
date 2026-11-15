@@ -14,17 +14,19 @@ import (
 )
 
 type openAI struct {
-	key, model, url string
-	client          *http.Client
+	key, url string
+	card     RateCard
+	client   *http.Client
 }
 
 // NewOpenAI keeps credentials on the server. baseURL is the API root of OpenAI or a compatible gateway
-// (https://api.openai.com/v1, validated at startup).
+// (https://api.openai.com/v1, validated at startup); model is one of Cards (validated at startup), asked for at its
+// card's tier, never upgraded to a faster or dearer one.
 func NewOpenAI(key, baseURL, model string) Provider {
 	if key == "" {
 		return nil
 	}
-	return &openAI{key: key, model: model, url: baseURL + "/responses", client: &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	return &openAI{key: key, card: Cards[model], url: baseURL + "/responses", client: &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 }
 
 type inputPart struct {
@@ -45,6 +47,7 @@ type responseInput struct {
 	Instructions    string         `json:"instructions"`
 	Input           []inputMessage `json:"input"`
 	MaxOutputTokens int64          `json:"max_output_tokens"`
+	ServiceTier     string         `json:"service_tier"`
 	Text            *textOptions   `json:"text,omitempty"`
 }
 
@@ -78,7 +81,7 @@ func (p *openAI) input(in Request) responseInput {
 		}
 	}
 	input = append(input, inputMessage{Role: "user", Content: parts})
-	out := responseInput{Model: p.model, Store: false, Instructions: in.Instructions, Input: input, MaxOutputTokens: in.MaxOutputTokens}
+	out := responseInput{Model: p.card.Model, ServiceTier: p.card.Tier, Store: false, Instructions: in.Instructions, Input: input, MaxOutputTokens: in.MaxOutputTokens}
 	if in.Schema != nil {
 		out.Text = &textOptions{}
 		out.Text.Format.Type, out.Text.Format.Name, out.Text.Format.Schema, out.Text.Format.Strict = "json_schema", in.Schema.Name, in.Schema.JSON, true
@@ -106,8 +109,8 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 	zero := int64(0)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		reply := Reply{}
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-			reply.Tokens = &zero
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 { // refused before generating: nothing billed
+			reply.Tokens, reply.Usage = &zero, &Usage{Model: p.card.Model, Tier: p.card.Tier}
 		}
 		return reply, fmt.Errorf("OpenAI returned HTTP %d", resp.StatusCode)
 	}
@@ -116,8 +119,11 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 		return Reply{}, errors.New("OpenAI response is unreadable or too large")
 	}
 	var out struct {
-		Status string `json:"status"`
-		Output []struct {
+		ID          string `json:"id"`
+		Model       string `json:"model"`
+		ServiceTier string `json:"service_tier"`
+		Status      string `json:"status"`
+		Output      []struct {
 			Type    string `json:"type"`
 			Content []struct {
 				Type    string `json:"type"`
@@ -126,15 +132,29 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 			} `json:"content"`
 		} `json:"output"`
 		Usage *struct {
-			TotalTokens *int64 `json:"total_tokens"`
+			InputTokens  *int64 `json:"input_tokens"`
+			OutputTokens *int64 `json:"output_tokens"`
+			TotalTokens  *int64 `json:"total_tokens"`
+			InputDetails *struct {
+				CachedTokens *int64 `json:"cached_tokens"`
+			} `json:"input_tokens_details"`
+			OutputDetails *struct {
+				ReasoningTokens *int64 `json:"reasoning_tokens"`
+			} `json:"output_tokens_details"`
 		} `json:"usage"`
 	}
 	if err = json.Unmarshal(b, &out); err != nil {
 		return Reply{}, errors.New("OpenAI returned invalid JSON")
 	}
 	reply := Reply{}
-	if out.Usage != nil {
-		reply.Tokens = out.Usage.TotalTokens
+	if u := out.Usage; u != nil {
+		reply.Tokens = u.TotalTokens
+		// Without every part of the breakdown the call is not priced: its cost is reconciled, never guessed.
+		if u.InputTokens != nil && u.OutputTokens != nil && u.InputDetails != nil && u.InputDetails.CachedTokens != nil &&
+			u.OutputDetails != nil && u.OutputDetails.ReasoningTokens != nil {
+			reply.Usage = &Usage{Input: *u.InputTokens, CachedInput: *u.InputDetails.CachedTokens, Output: *u.OutputTokens,
+				Reasoning: *u.OutputDetails.ReasoningTokens, Model: out.Model, Tier: out.ServiceTier, RequestID: out.ID}
+		}
 	}
 	for _, item := range out.Output {
 		if item.Type != "message" {
@@ -190,3 +210,5 @@ func (p *openAI) InputTokens(ctx context.Context, in Request) (int64, error) {
 	}
 	return *out.InputTokens, nil
 }
+
+func (p *openAI) Card() RateCard { return p.card }

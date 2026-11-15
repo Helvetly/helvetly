@@ -15,19 +15,23 @@ import (
 // fixed text, a scope classification (Heidi) always in scope. Files are not read.
 type Fake struct{}
 
+// Card prices the fake as the default model, so development and tests exercise the cost guard.
+func (Fake) Card() RateCard { return Cards[DefaultModel] }
+
 func (Fake) InputTokens(_ context.Context, r Request) (int64, error) {
 	return int64(len(r.Instructions)+len(r.Message))/4 + 1, nil
 }
 
 func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
-	tokens, _ := f.InputTokens(ctx, r)
-	tokens += 50
+	input, _ := f.InputTokens(ctx, r)
+	tokens := input + 50
+	usage := &Usage{Input: input, Output: 50, Model: f.Card().Model, Tier: f.Card().Tier, RequestID: "fake"}
 	if r.Schema == nil {
-		return Reply{Text: "This is the development model's answer.", Tokens: &tokens}, nil
+		return Reply{Text: "This is the development model's answer.", Tokens: &tokens, Usage: usage}, nil
 	}
 	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["in_scope"] != nil {
 		// Heidi's scope classifier: obvious off-topic messages never reach it, so the fake lets the rest through.
-		return Reply{Text: `{"in_scope":true,"reason":"development model"}`, Tokens: &tokens}, nil
+		return Reply{Text: `{"in_scope":true,"reason":"development model"}`, Tokens: &tokens, Usage: usage}, nil
 	}
 	// An import that works out the document type (one array per kind) reads the CSV as a client list.
 	key := "records"
@@ -65,7 +69,7 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, errors.New("fake model could not encode its answer")
 	}
-	return Reply{Text: string(b), Tokens: &tokens}, nil
+	return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 }
 
 // recordProperties: the JSON types of each property of the items of the schema's array at key.
