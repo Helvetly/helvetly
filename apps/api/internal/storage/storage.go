@@ -47,6 +47,7 @@ type S3 struct {
 	lockDays int
 	lockMode minio.RetentionMode
 	proxy    bool
+	media    *Media
 	now      func() time.Time
 }
 
@@ -267,6 +268,11 @@ func (s *S3) Open(ctx context.Context, key string) (io.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.OpenVersion(ctx, key, v)
+}
+
+// OpenVersion streams one version of an object ("" = the current one), as recorded when a media link was signed.
+func (s *S3) OpenVersion(ctx context.Context, key, v string) (io.ReadSeekCloser, error) {
 	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{VersionID: v})
 	if err != nil {
 		return nil, fmt.Errorf("storage open %s: %w", key, classify(err))
@@ -280,6 +286,21 @@ func (s *S3) Open(ctx context.Context, key string) (io.ReadSeekCloser, error) {
 
 // ProxyDownloads: S3_PROXY_DOWNLOADS, see Serve.
 func (s *S3) ProxyDownloads() bool { return s.proxy }
+
+// UseMedia makes Serve redirect downloads to m's signed links (MEDIA_URL), ahead of presigning or proxying.
+func (s *S3) UseMedia(m *Media) { s.media = m }
+
+// MediaLink: a signed MEDIA_URL link to the recorded version of the object, or "" without UseMedia.
+func (s *S3) MediaLink(ctx context.Context, key, filename, contentType string) (string, error) {
+	if s.media == nil {
+		return "", nil
+	}
+	v, err := s.version(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	return s.media.link(key, v, filename, contentType), nil
+}
 
 // Copy duplicates the recorded version of src inside the bucket, without the bytes passing through the API, and
 // records the version the copy made.

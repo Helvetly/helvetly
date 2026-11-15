@@ -26,6 +26,9 @@ type Config struct {
 	// DocsURL is the developer docs' origin (DOCS_URL): its API playground may call the public catalogue with a
 	// bearer token (CORS, no credentials). Empty = no cross-origin access.
 	DocsURL string
+	// MediaURL is the origin downloads are redirected to (MEDIA_URL), signed links under /api/media/ served by this
+	// binary on another host. Empty = presigned or proxied downloads (S3_PROXY_DOWNLOADS).
+	MediaURL string
 	// SecretKey seals the Google sign-in cookie and keys the client-address HMAC (32 bytes).
 	SecretKey []byte
 	// DevSecretKey: SECRET_KEY was empty and a fixed development key is in use.
@@ -211,6 +214,20 @@ func Load() (Config, error) {
 			fail("DOCS_URL must be a public https origin with a public PUBLIC_URL, got %q", c.DocsURL)
 		default:
 			c.DocsURL = d.Scheme + "://" + strings.ToLower(d.Host)
+		}
+	}
+	if c.MediaURL = env("MEDIA_URL", ""); c.MediaURL != "" {
+		m, err := url.Parse(c.MediaURL)
+		switch {
+		case err != nil || (m.Scheme != "http" && m.Scheme != "https") || m.Host == "" || (m.Path != "" && m.Path != "/") ||
+			m.RawQuery != "" || m.Fragment != "" || m.User != nil:
+			fail("MEDIA_URL must be an origin such as https://media.helvetly.com, got %q", c.MediaURL)
+		case (u != nil && strings.EqualFold(m.Host, u.Host)) || (p != nil && strings.EqualFold(m.Host, p.Host)):
+			fail("MEDIA_URL must be on another host than PUBLIC_URL and PORTAL_URL, got %q", m.Host)
+		case !localHost(m.Hostname()) && m.Scheme != "https":
+			fail("MEDIA_URL must be https on a public host, got %q", c.MediaURL)
+		default:
+			c.MediaURL = m.Scheme + "://" + strings.ToLower(m.Host)
 		}
 	}
 	c.CookieSecure = boolean("COOKIE_SECURE", u != nil && u.Scheme == "https")

@@ -106,8 +106,17 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	var media *storage.Media // MEDIA_URL: downloads redirect to signed links on that host, served below
+	downloads := map[bool]string{true: "proxy", false: "presigned"}[cfg.S3.ProxyDownloads]
+	if cfg.MediaURL != "" {
+		if media, err = storage.NewMedia(cfg.MediaURL, cfg.SecretKey); err != nil {
+			return err
+		}
+		files.UseMedia(media)
+		downloads = "media"
+	}
 	slog.Info("object storage", "addressing", map[bool]string{true: "virtual", false: "path"}[cfg.S3.VirtualHosted],
-		"downloads", map[bool]string{true: "proxy", false: "presigned"}[cfg.S3.ProxyDownloads],
+		"downloads", downloads,
 		"protection", describeMode(retention.Mode(files), cfg.S3.ObjectLockDays))
 	clientsSvc := clients.New(db, authSvc, files, slog.Default())
 	var mailer invoices.Mailer // stays a nil interface without a mail server: sending answers 503
@@ -191,6 +200,9 @@ func run() error {
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", server.Ready(db.Ping))
+		if media != nil {
+			mux.Handle("GET /api/media/{token}", media.Handler(files)) // public: the signature is the permission
+		}
 		openapi.Register(mux)
 		mcpSvc.Register(mux)
 		authSvc.Register(mux)
