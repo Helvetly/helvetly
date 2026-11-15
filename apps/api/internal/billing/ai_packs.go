@@ -24,7 +24,23 @@ type aiPack struct {
 	Tokens   int64  `json:"tokens"`
 	Amount   int64  `json:"amount"` // minor units, VAT included
 	Currency string `json:"currency"`
-	price    string
+	price    price
+}
+
+// packsIn is the packs priced in cur, or all in the prices' own currency when one of them is not sold in cur.
+func packsIn(packs []aiPack, cur string) []aiPack {
+	prices := make([]price, len(packs))
+	for i, p := range packs {
+		prices[i] = p.price
+	}
+	cur = offered(cur, prices)
+	out := make([]aiPack, len(packs))
+	for i, p := range packs {
+		p.Amount, _ = p.price.amountIn(cur)
+		p.Currency = cur
+		out[i] = p
+	}
+	return out
 }
 
 var errNoPack = auth.Error(http.StatusUnprocessableEntity, "ai_pack_unavailable", "This AI token pack is not on sale.",
@@ -41,7 +57,8 @@ func (s *Service) aiPacks(ctx context.Context) []aiPack {
 		return s.packs
 	}
 	var found list[price]
-	form := url.Values{"product": {AITokensProduct}, "active": {"true"}, "type": {"one_time"}, "limit": {"20"}}
+	form := url.Values{"product": {AITokensProduct}, "active": {"true"}, "type": {"one_time"}, "limit": {"20"},
+		"expand[]": {"data.currency_options"}}
 	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/prices", form, "", &found); err != nil {
 		s.log.WarnContext(ctx, "reading the AI token packs failed", "error", err)
 		return []aiPack{} // not cached: the next read tries again
@@ -49,7 +66,7 @@ func (s *Service) aiPacks(ctx context.Context) []aiPack {
 	out := []aiPack{}
 	for _, p := range found.Data {
 		if n, err := strconv.ParseInt(p.Metadata[AITokensKey], 10, 64); err == nil && n > 0 && p.UnitAmount > 0 {
-			out = append(out, aiPack{n, p.UnitAmount, p.Currency, p.ID})
+			out = append(out, aiPack{n, p.UnitAmount, p.Currency, p})
 		}
 	}
 	slices.SortFunc(out, func(a, b aiPack) int { return int(a.Tokens - b.Tokens) })
@@ -67,12 +84,6 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 		return nil
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
-	packs := s.aiPacks(ctx)
-	i := slices.IndexFunc(packs, func(p aiPack) bool { return p.Tokens == in.Tokens })
-	if i < 0 {
-		return errNoPack
-	}
-	pack := packs[i]
 	b, err := s.db.WorkspaceBilling(ctx, ws)
 	if err != nil {
 		return err
@@ -83,11 +94,21 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 	if b.CustomerID == "" {
 		return errNoCustomer
 	}
+	cur, err := s.currencyFor(ctx, b.CustomerID, auth.Country(r), sess.Workspace.Timezone)
+	if err != nil {
+		return err
+	}
+	packs := packsIn(s.aiPacks(ctx), cur)
+	i := slices.IndexFunc(packs, func(p aiPack) bool { return p.Tokens == in.Tokens })
+	if i < 0 {
+		return errNoPack
+	}
+	pack := packs[i]
 	tokens := strconv.FormatInt(pack.Tokens, 10)
 	back := s.publicURL + "/settings/billing?checkout="
 	form := url.Values{
-		"mode": {"payment"}, "customer": {b.CustomerID}, "client_reference_id": {ws},
-		"line_items[0][price]": {pack.price}, "line_items[0][quantity]": {"1"},
+		"mode": {"payment"}, "customer": {b.CustomerID}, "client_reference_id": {ws}, "currency": {pack.Currency},
+		"line_items[0][price]": {pack.price.ID}, "line_items[0][quantity]": {"1"},
 		"metadata[workspace_id]": {ws}, "metadata[" + AITokensKey + "]": {tokens},
 		"payment_intent_data[metadata][workspace_id]": {ws}, "invoice_creation[enabled]": {"true"},
 		"billing_address_collection": {"required"}, "tax_id_collection[enabled]": {"true"},

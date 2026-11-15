@@ -12,7 +12,7 @@ import { START_URL } from '@/lib/site'
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Basic, Pro and Business: prices per person in CHF, incl. VAT, every feature in every plan, 20% off when you pay yearly.',
+    'Basic, Pro and Business: prices per person in CHF, EUR or USD, tax included, every feature in every plan, 20% off when you pay yearly.',
 }
 
 export default function PricingPage() {

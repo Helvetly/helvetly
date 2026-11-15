@@ -26,6 +26,7 @@ import {
   nextPlan,
   people,
   planTotal,
+  taxNoteLong,
   seatPrice,
   trialDaysLeft,
   type Billing,
@@ -90,7 +91,7 @@ export function PlanSummary({
               <p className="text-body-sm text-muted-foreground">
                 {!plan
                   ? 'This workspace is read-only until it has a plan.'
-                  : `${billing.interval === 'year' ? 'Billed yearly' : 'Billed monthly'} · incl. Swiss VAT`}
+                  : `${billing.interval === 'year' ? 'Billed yearly' : 'Billed monthly'} · ${taxNoteLong(billing.currency)}`}
               </p>
             </div>
             {plan && <Price billing={billing} />}

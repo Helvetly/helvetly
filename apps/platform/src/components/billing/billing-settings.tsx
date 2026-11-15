@@ -16,6 +16,7 @@ import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { errorMessage } from '@/lib/api'
 import {
   formatPrice,
+  taxNoteLong,
   useBilling,
   useBillingDetails,
   usePortal,
@@ -78,7 +79,11 @@ export function BillingSettings() {
             <AITokenPacks billing={data} />
             {payments && (
               <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                <PaymentMethod onPortal={openPortal} portalPending={portal.isPending} />
+                <PaymentMethod
+                  currency={data.currency}
+                  onPortal={openPortal}
+                  portalPending={portal.isPending}
+                />
                 <Invoices />
               </div>
             )}
@@ -124,9 +129,11 @@ function useCheckoutReturn() {
 
 /** The card Stripe charges, drawn as a card, and the way to change it in Stripe's portal. */
 function PaymentMethod({
+  currency,
   onPortal,
   portalPending,
 }: {
+  currency: string
   onPortal: () => void
   portalPending: boolean
 }) {
@@ -153,7 +160,8 @@ function PaymentMethod({
         )}
       </div>
       <p className="border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground">
-        Charged in CHF incl. Swiss VAT. A change of plan applies now and is prorated to the day.
+        Charged in {currency.toUpperCase()} {taxNoteLong(currency)}. A change of plan applies now
+        and is prorated to the day.
       </p>
     </BillingCard>
   )

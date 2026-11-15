@@ -562,3 +562,29 @@ export const PlansNoPlan: Story = {
     )
   },
 }
+
+/** A workspace in the EU: the plans in euros, with VAT and no mention of Swiss VAT. */
+export const PlansNoPlanEuro: Story = {
+  ...plansPage(billingFixture({ currency: 'eur' })),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await plansLoaded(canvas)
+    const proCard = card(canvas, 'Pro')
+    await expect(await proCard.findByText('EUR 49')).toBeVisible()
+    await expect(proCard.getByText('per person / month · incl. VAT')).toBeVisible()
+    await expect(canvas.getByText(/Prices incl\. VAT/)).toBeVisible()
+    await expect(canvas.queryByText(/Swiss VAT/)).toBeNull()
+  },
+}
+
+/** Anywhere else: the plans in dollars, tax included. */
+export const PlansNoPlanDollar: Story = {
+  ...plansPage(billingFixture({ currency: 'usd' })),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await plansLoaded(canvas)
+    await expect(await card(canvas, 'Basic').findByText('USD 19')).toBeVisible()
+    await expect(card(canvas, 'Basic').getByText('per person / month · incl. tax')).toBeVisible()
+    await expect(canvas.getByText(/Prices incl\. tax/)).toBeVisible()
+  },
+}

@@ -117,6 +117,11 @@ func TestLoad(t *testing.T) {
 			func(c Config) bool {
 				return len(c.TrustedProxies) == 3 && c.TrustedProxies[1].String() == "192.168.1.7/32" && c.TrustedProxies[2].String() == "fd00::/8"
 			}},
+		{"cloudflare stands for its edge ranges", map[string]string{"AUTH_DEV_SIGNIN": "true", "TRUSTED_PROXY_CIDRS": "172.18.0.2,cloudflare"}, "",
+			func(c Config) bool {
+				return len(c.TrustedProxies) == 1+len(CloudflareIPs) && c.TrustedProxies[0].String() == "172.18.0.2/32" &&
+					c.TrustedProxies[1] == CloudflareIPs[0]
+			}},
 		{"no trusted proxies by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.TrustedProxies == nil }},
 		{"bad trusted proxy", map[string]string{"AUTH_DEV_SIGNIN": "true", "TRUSTED_PROXY_CIDRS": "10.0.0.0/8,proxy.internal"}, "TRUSTED_PROXY_CIDRS", nil},
 		{"KSeF off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.KSeFAPI == "" }},
