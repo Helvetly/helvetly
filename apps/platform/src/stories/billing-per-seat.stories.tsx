@@ -292,7 +292,8 @@ export const RemoveMemberFlatNoSaving: Story = {
   ...members(flat()),
   play: async ({ canvasElement }) => {
     const dialog = await askRemove(canvasElement)
-    await expect(dialog.getByText(/They lose access/)).toBeVisible()
+    // The dialog fades in.
+    await waitFor(() => expect(dialog.getByText(/They lose access/)).toBeVisible())
     await expect(dialog.queryByText(/Saves/)).not.toBeInTheDocument()
   },
 }
