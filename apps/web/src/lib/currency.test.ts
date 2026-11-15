@@ -40,6 +40,7 @@ describe('currency', () => {
     ['', 'Europe/Vaduz', 'chf'],
     ['', 'Europe/Berlin', 'eur'],
     ['', 'Atlantic/Canary', 'eur'],
+    ['', 'America/Marigot', 'eur'],
     ['', 'Europe/London', 'usd'],
     ['', 'UTC', 'usd'],
   ])('country %j, zone %j pays in %s', (country, zone, currency) => {

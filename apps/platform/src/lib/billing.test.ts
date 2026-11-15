@@ -9,6 +9,7 @@ import {
   discounted,
   isUpgrade,
   limitReached,
+  paymentFailed,
   planRequired,
   promoApplies,
   meterState,
@@ -24,6 +25,7 @@ import {
   seatTotal,
   taxNote,
   taxNoteLong,
+  withZone,
   trialDaysLeft,
   yearlySaving,
   type Billing,
@@ -98,6 +100,23 @@ test('planRequired reads only a 402 plan_required', () => {
   expect(planRequired(new ApiError(402, 'plan_required', 'No plan.'))).toBe(true)
   expect(planRequired(new ApiError(402, 'limit_reached', 'Full.'))).toBe(false)
   expect(planRequired(new ApiError(403, 'plan_required', 'x'))).toBe(false)
+})
+
+const unpaid = (payUrl: unknown) =>
+  new ApiError(402, 'payment_failed', 'The card was declined.', {
+    reason: 'card_declined',
+    pay_url: payUrl,
+  })
+
+test('paymentFailed reads a 402 payment_failed and keeps only a Stripe pay link', () => {
+  expect(paymentFailed(unpaid('https://invoice.stripe.com/i/1'))).toEqual({
+    message: 'The card was declined.',
+    payUrl: 'https://invoice.stripe.com/i/1',
+  })
+  expect(paymentFailed(unpaid('https://stripe.com.evil.test/i/1'))?.payUrl).toBeNull()
+  expect(paymentFailed(unpaid('http://invoice.stripe.com/i/1'))?.payUrl).toBeNull()
+  expect(paymentFailed(unpaid(undefined))?.payUrl).toBeNull()
+  expect(paymentFailed(new ApiError(402, 'plan_required', 'No plan.'))).toBeNull()
 })
 
 test('discounted prices, descriptions and which plans a code covers', () => {
@@ -286,4 +305,9 @@ test('freeForever: only a code that leaves nothing to pay, for good', () => {
   const fixed = { ...code, percent_off: null, amount_off: 99_900, currency: 'chf' }
   expect(freeForever({ ...billing, discount: fixed })).toBe(true)
   expect(freeForever(billing)).toBe(false)
+})
+
+test('billing requests carry the browser time zone', () => {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  expect(withZone('/billing')).toBe(`/billing?tz=${encodeURIComponent(zone)}`)
 })

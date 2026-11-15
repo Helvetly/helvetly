@@ -3,7 +3,9 @@ package billing
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"testing"
+	"time"
 )
 
 func seatsOf(e *env, ws string) int64 {
@@ -129,7 +131,11 @@ func TestSyncSeats(t *testing.T) {
 
 	e.join(owner.workspace, "member")
 	e.svc.SyncSeats(ctx, owner.workspace)
-	if f := e.stripe.form(path); f.Get("items[0][quantity]") != "2" || f.Get("proration_behavior") != "create_prorations" || f.Has("items[0][price]") {
+	// Charged at once, prorated from the membership change.
+	f := e.stripe.form(path)
+	at, _ := strconv.ParseInt(f.Get("proration_date"), 10, 64)
+	if f.Get("items[0][quantity]") != "2" || f.Get("proration_behavior") != "always_invoice" || f.Has("items[0][price]") ||
+		at < periodStart || at > time.Now().Unix() {
 		t.Fatalf("sync form %v", f)
 	}
 	if seatsOf(e, owner.workspace) != 2 {
@@ -172,5 +178,62 @@ func TestSyncSeatsWithoutBilling(t *testing.T) {
 	e.svc.SyncSeats(context.Background(), owner.workspace)
 	if err := e.svc.SeatsTick(context.Background()); err != nil || len(e.stripe.calls) != 0 {
 		t.Fatalf("billing off: %v %v", err, e.stripe.calls)
+	}
+}
+
+// A subscription read from Stripe that bills another number of seats than the workspace's people is synced.
+func TestApplyResyncsSeatsOutOfStep(t *testing.T) {
+	e := newEnv(t, true)
+	e.stripe.setPerSeat()
+	owner := e.workspace()
+	e.join(owner.workspace, "member")
+	e.join(owner.workspace, "admin")
+	e.subscribe(owner.workspace, "price_pm") // Stripe bills 1 seat
+	if f := e.stripe.form("POST /v1/subscriptions/sub_" + owner.workspace); f.Get("items[0][quantity]") != "3" {
+		t.Fatalf("resync form %v", f)
+	}
+	if seatsOf(e, owner.workspace) != 3 {
+		t.Fatalf("seats %d, want 3", seatsOf(e, owner.workspace))
+	}
+	calls := e.stripe.called("POST /v1/subscriptions/sub_" + owner.workspace)
+	e.event("evt_again", "customer.subscription.updated", map[string]any{"id": "sub_" + owner.workspace})
+	if n := e.stripe.called("POST /v1/subscriptions/sub_" + owner.workspace); n != calls {
+		t.Fatalf("resynced a subscription in step: %d calls", n)
+	}
+}
+
+// During the trial seats are free: the quantity follows without proration.
+func TestSyncSeatsInTheTrial(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t, true)
+	e.stripe.setPerSeat()
+	owner := e.workspace()
+	e.stripe.put("sub_"+owner.workspace, owner.workspace, "cus_"+owner.workspace, "trialing", "price_bm")
+	e.event("evt_trial", "customer.subscription.created", map[string]any{"id": "sub_" + owner.workspace})
+	e.join(owner.workspace, "member")
+	e.svc.SyncSeats(ctx, owner.workspace)
+	if f := e.stripe.form("POST /v1/subscriptions/sub_" + owner.workspace); f.Get("proration_behavior") != "none" || f.Has("proration_date") ||
+		f.Get("items[0][quantity]") != "2" {
+		t.Fatalf("sync form %v", f)
+	}
+}
+
+func TestProrationDate(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
+	for _, tc := range []struct {
+		name    string
+		changed *time.Time
+		start   int64
+		want    int64
+	}{
+		{"the membership change", at(-time.Hour), now.Add(-48 * time.Hour).Unix(), now.Add(-time.Hour).Unix()},
+		{"unknown: now", nil, now.Add(-48 * time.Hour).Unix(), now.Unix()},
+		{"before the period: its start", at(-72 * time.Hour), now.Add(-48 * time.Hour).Unix(), now.Add(-48 * time.Hour).Unix()},
+		{"in the future: now", at(time.Hour), now.Add(-48 * time.Hour).Unix(), now.Unix()},
+	} {
+		if got := prorationDate(tc.changed, tc.start, now); got != tc.want {
+			t.Errorf("%s: %d, want %d", tc.name, got, tc.want)
+		}
 	}
 }

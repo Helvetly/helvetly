@@ -167,6 +167,18 @@ test('the trial card links to the plans and hides for the session', async () => 
   expect(screen.queryByRole('region', { name: 'Plan' })).not.toBeInTheDocument()
 })
 
+test('a renewal unpaid past the grace says to pay the open invoice', () => {
+  const notice = planNotice(
+    live({ locked: true, plan: '', status: 'past_due', payment_overdue: true }),
+    NOW,
+  )
+  expect(notice).toMatchObject({
+    kind: 'locked',
+    action: { label: 'Update payment', href: '/settings/billing' },
+  })
+  expect(notice?.text).toMatch(/Pay the open invoice/)
+})
+
 test('a failed payment cannot be hidden', () => {
   window.sessionStorage.setItem('helvetly:plan-notice:w1:payment', '1')
   renderNotice(live({ status: 'past_due' }))

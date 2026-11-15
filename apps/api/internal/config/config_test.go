@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -112,6 +113,12 @@ func TestLoad(t *testing.T) {
 		}},
 		{"billing needs the webhook secret", map[string]string{"AUTH_DEV_SIGNIN": "true", "STRIPE_SECRET_KEY": "sk_test_x"},
 			"STRIPE_WEBHOOK_SECRET", nil},
+		{"two webhook secrets while switching endpoints", map[string]string{"AUTH_DEV_SIGNIN": "true", "STRIPE_SECRET_KEY": "sk_test_x",
+			"STRIPE_WEBHOOK_SECRET": "whsec_new, whsec_old,"}, "", func(c Config) bool {
+			return slices.Equal(c.Stripe.WebhookSecrets(), []string{"whsec_new", "whsec_old"})
+		}},
+		{"every webhook secret is one", map[string]string{"AUTH_DEV_SIGNIN": "true", "STRIPE_SECRET_KEY": "sk_test_x",
+			"STRIPE_WEBHOOK_SECRET": "whsec_new,sk_old"}, "STRIPE_WEBHOOK_SECRET", nil},
 		{"billing needs a secret key", map[string]string{"AUTH_DEV_SIGNIN": "true", "STRIPE_SECRET_KEY": "pk_test_x"},
 			"STRIPE_SECRET_KEY", nil},
 		{"trusted proxies", map[string]string{"AUTH_DEV_SIGNIN": "true", "TRUSTED_PROXY_CIDRS": "10.0.0.0/8, 192.168.1.7,fd00::/8"}, "",

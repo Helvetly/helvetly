@@ -9,7 +9,14 @@ import { toast } from 'sonner'
 import type { Billing } from '@/lib/billing'
 
 import { billingFixture as billing, flatBillingFixture } from './billing-fixture'
-import { choiceLabel, limitLine, PlanCards, planFact, planFeatures } from './plan-cards'
+import {
+  choiceLabel,
+  confirmBody,
+  limitLine,
+  PlanCards,
+  planFact,
+  planFeatures,
+} from './plan-cards'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
@@ -21,6 +28,30 @@ const server = setupServer(
   }),
   http.post('/api/v1/billing/promotion-code', async ({ request }) => {
     const { code } = (await request.json()) as { code: string }
+    if (code === 'FRANCS')
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'promotion_code_invalid',
+            message: 'This code is for payments in CHF.',
+            details: { fields: { code: 'invalid' }, reason: 'currency' },
+          },
+        },
+        { status: 422 },
+      )
+    if (code === 'TENOFF')
+      return HttpResponse.json({
+        data: {
+          code,
+          percent_off: null,
+          amount_off: 1000,
+          currency: 'chf',
+          duration: 'once',
+          duration_in_months: null,
+          plans: null,
+          expires_at: null,
+        },
+      })
     if (code !== 'LAUNCH20')
       return HttpResponse.json(
         {
@@ -49,6 +80,7 @@ const server = setupServer(
 beforeAll(() => server.listen())
 afterEach(() => {
   checkout = undefined
+  server.resetHandlers()
 })
 afterAll(() => server.close())
 
@@ -130,6 +162,56 @@ test('while trialing, another plan says the trial ends and the plan is charged n
   await waitFor(() => expect(checkout).toEqual({ plan: 'pro', interval: 'month' }))
 })
 
+test.each<[string, Partial<Billing>, 'basic' | 'pro' | 'business', 'month' | 'year', RegExp]>([
+  [
+    'an upgrade waits for its payment',
+    { plan: 'basic' },
+    'pro',
+    'month',
+    /changes once that payment/,
+  ],
+  ['monthly to yearly waits too', { plan: 'pro' }, 'pro', 'year', /changes once that payment/],
+  [
+    'a downgrade credits the rest',
+    { plan: 'business' },
+    'pro',
+    'month',
+    /credited to your balance/,
+  ],
+  ['yearly to monthly credits too', { plan: 'pro', interval: 'year' }, 'pro', 'month', /credited/],
+])('confirmBody: %s', (_, over, plan, interval, expected) => {
+  const b = billing({ status: 'active', interval: 'month', ...over })
+  const target = b.plans.find((p) => p.id === plan)
+  if (!target) throw new Error('no plan ' + plan)
+  expect(confirmBody(b, target, interval)).toMatch(expected)
+})
+
+test('an unpaid upgrade says why and offers Stripe’s page to pay', async () => {
+  server.use(
+    http.post('/api/v1/billing/checkout', () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'payment_failed',
+            message: 'The card was declined, so your current plan stays as it was.',
+            details: { reason: 'card_declined', pay_url: 'https://invoice.stripe.com/i/1' },
+          },
+        },
+        { status: 402 },
+      ),
+    ),
+  )
+  renderCards(billing({ plan: 'basic', status: 'active', interval: 'month' }))
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Upgrade to Pro' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Upgrade' }))
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledWith(
+      'The card was declined, so your current plan stays as it was.',
+      expect.objectContaining({ action: expect.objectContaining({ label: 'Pay' }) }),
+    ),
+  )
+})
+
 test('a subscribed workspace can move down', async () => {
   renderCards(billing({ plan: 'business', status: 'active', interval: 'month' }))
   expect(within(card('Pro')).getByRole('button', { name: 'Switch to Pro' })).toBeEnabled()
@@ -179,6 +261,24 @@ test('an invalid promotion code is a field error', async () => {
   expect(screen.queryByText(/NOPE ·/)).toBeNull()
 })
 
+test('a refused code shows the reason the API gives', async () => {
+  renderCards(billing())
+  await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'FRANCS')
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText('This code is for payments in CHF.')).toBeInTheDocument()
+})
+
+test('an amount off takes the amount the API gives in the workspace currency', async () => {
+  renderCards(billing({ trial_available: false }))
+  await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'TENOFF')
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText('TENOFF · −CHF 10 once')).toBeInTheDocument()
+  expect(card('Pro')).toHaveTextContent('CHF 39')
+  expect(card('Pro').querySelector('s')).toHaveTextContent('CHF 49')
+})
+
 test('people who cannot manage billing see the plans without the way to change them', () => {
   renderCards(billing({ can_manage: false }))
   expect(within(card('Pro')).getByRole('button', { name: 'Choose Pro' })).toBeDisabled()
@@ -225,7 +325,8 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
         {
           error: {
             code: 'plan_limits_exceeded',
-            message: 'The workspace has more than the Basic plan allows: remove some first.',
+            message:
+              'Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first.',
             details: { plan: 'basic', overages: [{ limit: 'members', used: 3, max: 2 }] },
           },
         },
@@ -239,7 +340,7 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
   )
   await waitFor(() =>
     expect(toast.error).toHaveBeenCalledWith(
-      'The workspace has more than the Basic plan allows: remove some first.',
+      'Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first.',
     ),
   )
   expect(assign).not.toHaveBeenCalled()

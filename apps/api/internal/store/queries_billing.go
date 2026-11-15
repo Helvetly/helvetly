@@ -21,6 +21,8 @@ type Billing struct {
 	Discount                   json.RawMessage // the subscription's discount as billing stored it; nil when none
 	PerSeat                    bool            // the subscription's price is per seat (else an earlier flat price)
 	Seats                      *int64          // the quantity Stripe bills; nil before a subscription is recorded
+	PlanExpiresAt              *time.Time      // the paid end plus the billing grace; nil when not known yet
+	SeatsChangedAt             *time.Time      // when the membership last changed (MarkSeatsChanged)
 }
 
 // Subscription is what a Stripe subscription says, written by ApplySubscription.
@@ -31,6 +33,7 @@ type Subscription struct {
 	Discount                   json.RawMessage
 	PerSeat                    bool
 	Seats                      int64 // the subscription item's quantity
+	PlanExpiresAt              *time.Time
 }
 
 // Usage is what the plan limits count.
@@ -69,10 +72,11 @@ func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, e
 	var b Billing
 	var customer, sub *string
 	err := q.db.QueryRow(ctx, `SELECT stripe_customer_id, stripe_subscription_id, status, plan, billing_interval,
-			current_period_end, trial_end, cancel_at_period_end, trial_used, discount, per_seat, seats
+			current_period_end, trial_end, cancel_at_period_end, trial_used, discount, per_seat, seats, plan_expires_at,
+			seats_changed_at
 		FROM workspace_billing WHERE workspace_id = $1`, workspaceID).
 		Scan(&customer, &sub, &b.Status, &b.Plan, &b.Interval, &b.CurrentPeriodEnd, &b.TrialEnd, &b.CancelAtPeriodEnd, &b.TrialUsed,
-			&b.Discount, &b.PerSeat, &b.Seats)
+			&b.Discount, &b.PerSeat, &b.Seats, &b.PlanExpiresAt, &b.SeatsChangedAt)
 	if errors.Is(err, ErrNotFound) {
 		return Billing{}, nil
 	}
@@ -106,17 +110,31 @@ func (q Q) ApplySubscription(ctx context.Context, workspaceID, customerID string
 	}
 	_, err := q.db.Exec(ctx, `INSERT INTO workspace_billing (workspace_id, stripe_customer_id, stripe_subscription_id, status,
 			plan, billing_interval, current_period_end, trial_end, cancel_at_period_end, trial_used, updated_at, discount,
-			per_seat, seats)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9, $8::timestamptz IS NOT NULL, $10, $11::jsonb, $12, $13)
+			per_seat, seats, plan_expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9, $8::timestamptz IS NOT NULL, $10, $11::jsonb, $12, $13, $14)
 		ON CONFLICT (workspace_id) DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id,
 			stripe_subscription_id = EXCLUDED.stripe_subscription_id, status = EXCLUDED.status, plan = EXCLUDED.plan,
 			billing_interval = EXCLUDED.billing_interval, current_period_end = EXCLUDED.current_period_end,
 			trial_end = EXCLUDED.trial_end, cancel_at_period_end = EXCLUDED.cancel_at_period_end,
 			trial_used = workspace_billing.trial_used OR EXCLUDED.trial_used, updated_at = EXCLUDED.updated_at,
-			discount = EXCLUDED.discount, per_seat = EXCLUDED.per_seat, seats = EXCLUDED.seats`,
+			discount = EXCLUDED.discount, per_seat = EXCLUDED.per_seat, seats = EXCLUDED.seats,
+			plan_expires_at = EXCLUDED.plan_expires_at`,
 		workspaceID, customerID, s.ID, s.Status, s.Plan, s.Interval, s.CurrentPeriodEnd, s.TrialEnd, s.CancelAtPeriodEnd, now, discount,
-		s.PerSeat, s.Seats)
+		s.PerSeat, s.Seats, s.PlanExpiresAt)
 	return err
+}
+
+// MarkSeatsChanged notes when the workspace's membership changed, the date its seat change is prorated from.
+func (q Q) MarkSeatsChanged(ctx context.Context, workspaceID string, at time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE workspace_billing SET seats_changed_at = $2 WHERE workspace_id = $1`, workspaceID, at)
+	return err
+}
+
+// PlansLapsed are the workspaces whose subscription is recorded live but whose plan expired, for the job that reads
+// them again from Stripe (a renewal whose event was lost moves the end on; a failed one stays locked).
+func (q Q) PlansLapsed(ctx context.Context, now time.Time) ([]string, error) {
+	return q.workspaceIDs(ctx, `SELECT b.workspace_id FROM workspace_billing b JOIN workspaces w ON w.id = b.workspace_id
+		WHERE w.deleted_at IS NULL AND b.status IN ('active', 'trialing', 'past_due') AND b.plan_expires_at <= $1`, now)
 }
 
 // RecordStripeEvent reports false when the event was recorded before (Stripe delivers at least once).
@@ -161,9 +179,13 @@ func (q Q) Seats(ctx context.Context, workspaceID string) (int64, error) {
 // SeatsOutOfStep are the workspaces whose live per-seat subscription bills another quantity than their members,
 // for the job that catches up on a missed sync.
 func (q Q) SeatsOutOfStep(ctx context.Context) ([]string, error) {
-	rows, err := q.db.Query(ctx, `SELECT b.workspace_id FROM workspace_billing b JOIN workspaces w ON w.id = b.workspace_id
+	return q.workspaceIDs(ctx, `SELECT b.workspace_id FROM workspace_billing b JOIN workspaces w ON w.id = b.workspace_id
 		WHERE w.deleted_at IS NULL AND b.per_seat AND b.status IN ('active', 'trialing', 'past_due')
 			AND b.seats IS DISTINCT FROM (SELECT count(*) FROM workspace_members m WHERE m.workspace_id = b.workspace_id)`)
+}
+
+func (q Q) workspaceIDs(ctx context.Context, sql string, args ...any) ([]string, error) {
+	rows, err := q.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,20 +245,22 @@ func (q Q) AITokenPacks(ctx context.Context, workspaceID, period string) (int64,
 	return n, err
 }
 
-// RevokeAITokenPack takes back a refunded or charged-back pack, once: up to max of its tokens when it counts for
-// period, none when it has lapsed. A pack not recorded yet is recorded taken back whole, so its late credit adds
-// nothing. ok is false when the pack was taken back before (or is another workspace's).
-func (q Q) RevokeAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens, max int64, now time.Time) (taken int64, ok bool, err error) {
+// RevokeAITokenPack takes back up to want of a refunded or charged-back pack's tokens in total: what more than taken
+// before, at most max more when it counts for period, none more when it has lapsed; never less than before. A pack not
+// recorded yet is recorded with want taken back, so its late credit adds only the rest. revoked is the pack's total
+// taken back; ok is false when nothing changed (or the pack is another workspace's).
+func (q Q) RevokeAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens, want, max int64, now time.Time) (revoked int64, ok bool, err error) {
 	err = q.db.QueryRow(ctx, `INSERT INTO ai_token_packs (checkout_session_id, workspace_id, period, tokens, revoked, revoked_at, created_at)
-		VALUES ($1, $2, $3, $4, $4, $6, $6)
-		ON CONFLICT (checkout_session_id) DO UPDATE SET revoked_at = $6,
-			revoked = CASE WHEN ai_token_packs.period = EXCLUDED.period THEN least(ai_token_packs.tokens, greatest($5::bigint, 0)) ELSE 0 END
-		WHERE ai_token_packs.revoked_at IS NULL AND ai_token_packs.workspace_id = EXCLUDED.workspace_id
-		RETURNING revoked`, sessionID, workspaceID, period, tokens, max, now).Scan(&taken)
+		VALUES ($1, $2, $3, $4, $5, $7, $7)
+		ON CONFLICT (checkout_session_id) DO UPDATE SET revoked_at = $7,
+			revoked = least(EXCLUDED.revoked, ai_token_packs.revoked + greatest($6::bigint, 0))
+		WHERE ai_token_packs.workspace_id = EXCLUDED.workspace_id AND ai_token_packs.period = EXCLUDED.period
+			AND least(EXCLUDED.revoked, ai_token_packs.revoked + greatest($6::bigint, 0)) > ai_token_packs.revoked
+		RETURNING revoked`, sessionID, workspaceID, period, tokens, min(want, tokens), max, now).Scan(&revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, nil
 	}
-	return taken, err == nil, err
+	return revoked, err == nil, err
 }
 
 // SaveDispute records a dispute's latest status; fresh is true the first time the dispute is seen.

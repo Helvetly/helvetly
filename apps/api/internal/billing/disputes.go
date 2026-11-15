@@ -13,8 +13,9 @@ import (
 
 // Chargebacks (charge.dispute.*) and refunds (charge.refunded). Each event reads its dispute or charge again from
 // Stripe, and every effect follows the state read, not the event: a lost dispute's subscription is cancelled while
-// it still runs, and a pack's tokens are taken back once (ai_token_packs.revoked_at). Replays and any order of
-// delivery therefore end the same way.
+// it still runs, and a pack's tokens are taken back in proportion to what was refunded, all of them on a lost
+// dispute, never less than before (ai_token_packs.revoked). Replays and any order of delivery therefore end the same
+// way; each event is also recorded (stripe_events) in the transaction that applies it.
 
 type stripeCharge struct {
 	ID             string `json:"id"`
@@ -22,9 +23,33 @@ type stripeCharge struct {
 	PaymentIntent  string `json:"payment_intent"`
 	Amount         int64  `json:"amount"`
 	AmountRefunded int64  `json:"amount_refunded"`
-	Invoice        *struct {
-		Subscription string `json:"subscription"`
-	} `json:"invoice"` // expanded; null for a payment without an invoice
+}
+
+// invoicePayment is an invoice's payment, with the invoice expanded: a subscription invoice names its subscription
+// in parent.subscription_details (a pack's invoice has no parent).
+type invoicePayment struct {
+	Invoice struct {
+		Parent *struct {
+			SubscriptionDetails *struct {
+				Subscription string `json:"subscription"`
+			} `json:"subscription_details"`
+		} `json:"parent"`
+	} `json:"invoice"`
+}
+
+// subscriptionPaid is the subscription whose invoice the payment intent paid; "" for any other payment.
+func (s *Service) subscriptionPaid(ctx context.Context, paymentIntent string) (string, error) {
+	var found list[invoicePayment]
+	form := url.Values{"payment[type]": {"payment_intent"}, "payment[payment_intent]": {paymentIntent}, "expand[]": {"data.invoice"}}
+	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/invoice_payments", form, "", &found); err != nil {
+		return "", err
+	}
+	for _, p := range found.Data {
+		if p.Invoice.Parent != nil && p.Invoice.Parent.SubscriptionDetails != nil {
+			return p.Invoice.Parent.SubscriptionDetails.Subscription, nil
+		}
+	}
+	return "", nil
 }
 
 type stripeDispute struct {
@@ -34,25 +59,35 @@ type stripeDispute struct {
 }
 
 type checkoutSession struct {
-	ID       string            `json:"id"`
-	Mode     string            `json:"mode"`
-	Metadata map[string]string `json:"metadata"`
+	ID            string            `json:"id"`
+	Mode          string            `json:"mode"`
+	Customer      string            `json:"customer"`
+	Subscription  string            `json:"subscription"`
+	PaymentStatus string            `json:"payment_status"`
+	Metadata      map[string]string `json:"metadata"`
 }
 
 // paidFor: what a charge paid for one of our workspaces — a subscription invoice (subID) or an AI token pack (pack).
 // ws is "" for a charge billing does not know, for an unknown workspace, or for another customer than the workspace's
 // (one not recorded yet is fine, as in apply: the dispute may arrive before the subscription).
 func (s *Service) paidFor(ctx context.Context, ch stripeCharge) (ws, subID string, pack *checkoutSession, err error) {
+	if ch.PaymentIntent == "" {
+		return "", "", nil, nil
+	}
+	paid, err := s.subscriptionPaid(ctx, ch.PaymentIntent)
+	if err != nil {
+		return "", "", nil, err
+	}
 	switch {
-	case ch.Invoice != nil && ch.Invoice.Subscription != "":
-		sub, err := s.getSubscription(ctx, ch.Invoice.Subscription)
+	case paid != "":
+		sub, err := s.getSubscription(ctx, paid)
 		if err != nil {
 			return "", "", nil, err
 		}
 		if sub.Customer == ch.Customer {
 			ws, subID = sub.Metadata["workspace_id"], sub.ID
 		}
-	case ch.PaymentIntent != "":
+	default:
 		var found list[checkoutSession]
 		form := url.Values{"payment_intent": {ch.PaymentIntent}, "limit": {"1"}}
 		if err := s.stripe.Call(ctx, http.MethodGet, "/v1/checkout/sessions", form, "", &found); err != nil {
@@ -84,13 +119,13 @@ func (s *Service) paidFor(ctx context.Context, ch stripeCharge) (ws, subID strin
 }
 
 func (s *Service) getDispute(ctx context.Context, id string) (d stripeDispute, err error) {
-	err = s.stripe.Call(ctx, http.MethodGet, "/v1/disputes/"+url.PathEscape(id), url.Values{"expand[]": {"charge.invoice"}}, "", &d)
+	err = s.stripe.Call(ctx, http.MethodGet, "/v1/disputes/"+url.PathEscape(id), url.Values{"expand[]": {"charge"}}, "", &d)
 	return d, err
 }
 
 // dispute follows a chargeback. Opened: the owners and admins hear once and the billing alert shows; the plan keeps
 // working. Lost: the subscription it paid ends now, or the pack's tokens are taken back. Won or lost: the alert goes.
-func (s *Service) dispute(ctx context.Context, id string) error {
+func (s *Service) dispute(ctx context.Context, ev event, id string) error {
 	d, err := s.getDispute(ctx, id)
 	if err != nil {
 		return err
@@ -101,6 +136,9 @@ func (s *Service) dispute(ctx context.Context, id string) error {
 	}
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockBilling(ctx, ws); err != nil {
+			return err
+		}
+		if err := s.record(ctx, q, ev); err != nil {
 			return err
 		}
 		// A dispute read before this lock may be older than another delivery's commit.
@@ -118,10 +156,14 @@ func (s *Service) dispute(ctx context.Context, id string) error {
 			}
 		}
 		if d.Status == "lost" && pack != nil {
-			return s.revokePack(ctx, q, ws, *pack)
+			return s.revokePack(ctx, q, ws, *pack, 1, 1)
 		}
 		return nil
 	})
+	// A replay still cancels: a cancellation that failed after the commit is retried by Stripe's redelivery.
+	if errors.Is(err, errSeen) {
+		err = nil
+	}
 	if err != nil || d.Status != "lost" || subID == "" {
 		return err
 	}
@@ -152,40 +194,49 @@ func (s *Service) cancelNow(ctx context.Context, subID string) error {
 			return err
 		}
 	}
-	return s.apply(ctx, sub, "", "")
+	return s.apply(ctx, sub, event{})
 }
 
-// refund follows charge.refunded. A pack refunded in full loses its tokens. A subscription payment is refunded by
-// the operator, who also decides whether it ends: that, and any partial refund, is only logged.
-func (s *Service) refund(ctx context.Context, chargeID string) error {
+// refund follows charge.refunded. A pack loses its tokens in proportion to the amount refunded so far (all on a
+// full refund). A subscription payment is refunded by the operator, who also decides whether it ends: that is only
+// logged.
+func (s *Service) refund(ctx context.Context, ev event, chargeID string) error {
 	var ch stripeCharge
-	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/charges/"+url.PathEscape(chargeID), url.Values{"expand[]": {"invoice"}}, "", &ch); err != nil {
+	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/charges/"+url.PathEscape(chargeID), nil, "", &ch); err != nil {
 		return err
 	}
 	ws, subID, pack, err := s.paidFor(ctx, ch)
 	if err != nil || ws == "" {
 		return err
 	}
-	full := ch.AmountRefunded >= ch.Amount
-	if !full || pack == nil {
+	if pack == nil || ch.Amount <= 0 || ch.AmountRefunded <= 0 {
 		s.log.InfoContext(ctx, "a payment was refunded; nothing changes", "charge", ch.ID, "workspace", ws,
-			"subscription", subID, "full", full, "refunded", ch.AmountRefunded, "amount", ch.Amount)
+			"subscription", subID, "refunded", ch.AmountRefunded, "amount", ch.Amount)
 		return nil
 	}
-	return s.db.Tx(ctx, func(q store.Q) error {
+	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockBilling(ctx, ws); err != nil {
 			return err
 		}
-		return s.revokePack(ctx, q, ws, *pack)
+		if err := s.record(ctx, q, ev); err != nil {
+			return err
+		}
+		return s.revokePack(ctx, q, ws, *pack, min(ch.AmountRefunded, ch.Amount), ch.Amount)
 	})
+	if errors.Is(err, errSeen) {
+		return nil
+	}
+	return err
 }
 
-// revokePack takes back a pack's tokens, once: never more than the workspace has left this month, never below 0.
-func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack checkoutSession) error {
+// revokePack takes back share/of of a pack's tokens (rounded down, in the customer's favour) in total, on top of
+// what was taken before and never less: never more than the workspace has left this month, never below 0.
+func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack checkoutSession, share, of int64) error {
 	tokens, err := strconv.ParseInt(pack.Metadata[AITokensKey], 10, 64)
 	if err != nil || tokens <= 0 {
 		return nil
 	}
+	want := tokens * share / of
 	w, err := q.AdmissionWorkspace(ctx, ws)
 	if err != nil {
 		return err
@@ -197,7 +248,7 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		return err
 	}
 	var monthly int64 // without a plan only the packs are left to take from
-	if plan := PlanOf(b); plan != "" {
+	if plan := PlanOf(b, s.now()); plan != "" {
 		monthly = s.plans.of(plan, AITokens)
 	}
 	left := tokens
@@ -212,9 +263,9 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		}
 		left = monthly + bought - used.TokensUsed
 	}
-	taken, ok, err := q.RevokeAITokenPack(ctx, pack.ID, ws, period, tokens, left, now)
+	revoked, ok, err := q.RevokeAITokenPack(ctx, pack.ID, ws, period, tokens, want, left, now)
 	if ok {
-		s.log.InfoContext(ctx, "AI token pack taken back", "workspace", ws, "session", pack.ID, "tokens", taken, "of", tokens)
+		s.log.InfoContext(ctx, "AI token pack taken back", "workspace", ws, "session", pack.ID, "revoked", revoked, "of", tokens)
 	}
 	return err
 }

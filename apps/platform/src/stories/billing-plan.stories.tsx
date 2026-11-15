@@ -1,4 +1,5 @@
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
+import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
@@ -551,9 +552,64 @@ export const PlansProToBusiness: Story = {
     ).toBeEnabled()
     await userEvent.click(businessCard.getByRole('button', { name: 'Upgrade to Business' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
-    await waitFor(() => expect(dialog.getByText(/prorated on your next invoice/)).toBeVisible())
+    await waitFor(() =>
+      expect(
+        dialog.getByText(
+          /charged now, prorated, and the plan changes once that payment goes through/,
+        ),
+      ).toBeVisible(),
+    )
     await userEvent.click(dialog.getByRole('button', { name: 'Not now' }))
     await expect(checkoutRequest).not.toHaveBeenCalled()
+  },
+}
+
+/** An upgrade whose payment is declined: the plan stays, the toast says why and offers Stripe's page to pay. */
+export const PlansUpgradeUnpaid: Story = {
+  render: () => (
+    <>
+      <ChangePlan />
+      <Toaster />
+    </>
+  ),
+  parameters: {
+    ...plansPage(pro).parameters,
+    msw: {
+      handlers: [
+        http.post('/api/v1/billing/checkout', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'payment_failed',
+                message:
+                  'The card was declined, so your current plan stays as it was. Pay with another card or update it, then try again.',
+                details: {
+                  reason: 'insufficient_funds',
+                  pay_url: 'https://invoice.stripe.com/i/acct_1/test_pending',
+                  plan: 'business',
+                },
+              },
+            },
+            { status: 402 },
+          ),
+        ),
+        ...handlers(pro),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await plansLoaded(canvas)
+    await userEvent.click(
+      card(canvas, 'Business').getByRole('button', { name: 'Upgrade to Business' }),
+    )
+    const dialog = within(await within(document.body).findByRole('dialog'))
+    await userEvent.click(dialog.getByRole('button', { name: 'Upgrade' }))
+    const page = within(document.body)
+    // The toast slides in: wait until it is shown.
+    await waitFor(() => expect(page.getByText(/The card was declined/)).toBeVisible())
+    await waitFor(() => expect(page.getByRole('button', { name: 'Pay' })).toBeVisible())
+    await expect(card(canvas, 'Pro').getByText('Current')).toBeVisible()
   },
 }
 

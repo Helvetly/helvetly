@@ -149,7 +149,15 @@ Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_su
 `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `charge.refunded`. An opened dispute
 alerts the owners and admins; a lost one ends the subscription it paid at once, or takes back the AI token pack's
 tokens (as much as is left this month). A full refund takes back a pack's tokens; a refunded subscription payment
-changes nothing, since you cancel the subscription yourself if you mean to.
+changes nothing, since you cancel the subscription yourself if you mean to. To move the endpoint to another API
+version, add a second endpoint and set `STRIPE_WEBHOOK_SECRET=whsec_new,whsec_old` until the old one is removed: both
+verify, and an event delivered to both is applied once.
+
+Plan changes and seats are invoiced at once: added seats and upgrades are charged, removed seats and downgrades
+credited to the customer's Stripe balance. An upgrade, monthly to yearly and leaving the trial take effect once that
+invoice is paid. When a renewal fails, the plan keeps working until three days after the paid period ended; then
+the workspace is read-only until the invoice is paid (Stripe's retries continue meanwhile). A second subscription
+of the same workspace is cancelled with its unused time credited.
 
 Optional extra AI tokens: one-time prices of the product `helvetly_ai_tokens`, each with the metadata
 `helvetly_ai_tokens=<tokens>`. A workspace on a plan buys one through Checkout; once paid, its tokens add to the

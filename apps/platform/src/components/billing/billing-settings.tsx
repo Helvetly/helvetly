@@ -161,8 +161,8 @@ function PaymentMethod({
         )}
       </div>
       <p className="border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground">
-        Charged in {currency.toUpperCase()} {taxNoteLong(currency)}. A change of plan applies now
-        and is prorated to the day.
+        Charged in {currency.toUpperCase()} {taxNoteLong(currency)}. A change of plan is invoiced
+        now, prorated to the day.
       </p>
     </BillingCard>
   )

@@ -11,16 +11,29 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// SyncSeats sets a live per-seat subscription's quantity to the workspace's seats, after a member joined or left.
-// Stripe prorates the change (its default, create_prorations): an added seat is charged and a removed one credited
-// for the rest of the period, on the next invoice. A flat or ended subscription, or billing off, changes nothing.
-// A failure is logged, not returned: the membership change stands, and the hourly job (Run) catches up.
+// SyncSeats sets a live per-seat subscription's quantity to the workspace's seats, after a member joined or left;
+// the change is prorated from now (resyncSeats). A flat or ended subscription, or billing off, changes nothing. A
+// failure is logged, not returned: the membership change stands, and the hourly job (Run) catches up.
 func (s *Service) SyncSeats(ctx context.Context, workspaceID string) {
+	ctx = context.WithoutCancel(ctx)
+	if s.enabled {
+		if err := s.db.MarkSeatsChanged(ctx, workspaceID, s.now()); err != nil {
+			s.log.ErrorContext(ctx, "noting a membership change failed", "workspace", workspaceID, "error", err)
+		}
+	}
+	s.resyncSeats(ctx, workspaceID)
+}
+
+func (s *Service) resyncSeats(ctx context.Context, workspaceID string) {
 	if err := s.syncSeats(context.WithoutCancel(ctx), workspaceID); err != nil {
 		s.log.ErrorContext(ctx, "syncing the subscription's seats failed", "workspace", workspaceID, "error", err)
 	}
 }
 
+// syncSeats sets the quantity, prorated from the latest membership change (clamped to the current period and now),
+// so a person pays for the days they were a member: always_invoice charges more seats at once and credits fewer at
+// once (the invoice's negative total goes on the customer's balance and pays the next invoices). During the trial
+// seats are free, so nothing is prorated. Idempotent: nothing changes when Stripe already bills the members.
 func (s *Service) syncSeats(ctx context.Context, workspaceID string) error {
 	if !s.enabled {
 		return nil
@@ -49,17 +62,35 @@ func (s *Service) syncSeats(ctx context.Context, workspaceID string) error {
 		if len(sub.Items.Data) == 0 {
 			return fmt.Errorf("billing: subscription %s has no items", sub.ID)
 		}
-		form := url.Values{"items[0][id]": {sub.Items.Data[0].ID}, "items[0][quantity]": {strconv.FormatInt(seats, 10)},
-			"proration_behavior": {"create_prorations"}, "expand[]": {"discount.promotion_code"}}
-		if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
-			return err
+		if sub.quantity() != seats && live(sub.Status) {
+			form := url.Values{"items[0][id]": {sub.Items.Data[0].ID}, "items[0][quantity]": {strconv.FormatInt(seats, 10)},
+				"proration_behavior": {"always_invoice"}, "expand[]": subscriptionExpand}
+			if sub.Status == "trialing" {
+				form.Set("proration_behavior", "none")
+			} else {
+				form.Set("proration_date", strconv.FormatInt(prorationDate(b.SeatsChangedAt, sub.periodStart(), s.now()), 10))
+			}
+			if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
+				return err
+			}
 		}
-		return q.ApplySubscription(ctx, workspaceID, sub.Customer, s.toStore(sub), s.now())
+		return q.ApplySubscription(ctx, workspaceID, sub.Customer, s.toStore(sub, b), s.now())
 	})
 }
 
+// prorationDate is when a seat change counts from: the membership change (now when unknown), never before the
+// period's start (Stripe wants a date inside the current period) nor after now.
+func prorationDate(changed *time.Time, periodStart int64, now time.Time) int64 {
+	at := now.Unix()
+	if changed != nil {
+		at = min(changed.Unix(), at)
+	}
+	return max(at, periodStart)
+}
+
 // Run keeps per-seat subscriptions in step with their members every hour: a sync that failed, or a membership
-// that ended without one (a closed account), is billed right on the next run.
+// that ended without one (a closed account), is billed right on the next run. It also reads again the
+// subscriptions whose plan expired (LapsedTick).
 func (s *Service) Run(ctx context.Context) {
 	if !s.enabled {
 		return
@@ -69,6 +100,9 @@ func (s *Service) Run(ctx context.Context) {
 	for {
 		if err := s.SeatsTick(ctx); err != nil {
 			s.log.ErrorContext(ctx, "seats job", "error", err)
+		}
+		if err := s.LapsedTick(ctx); err != nil {
+			s.log.ErrorContext(ctx, "lapsed plans job", "error", err)
 		}
 		select {
 		case <-ctx.Done():
@@ -86,7 +120,29 @@ func (s *Service) SeatsTick(ctx context.Context) error {
 		return fmt.Errorf("list workspaces with seats out of step: %w", err)
 	}
 	for _, id := range ids {
-		s.SyncSeats(ctx, id)
+		s.resyncSeats(ctx, id)
+	}
+	return nil
+}
+
+// LapsedTick reads again from Stripe every subscription recorded live whose plan expired: a renewal whose event was
+// lost moves the end on, an unpaid one stays locked. A failure on one is logged and retried on the next run.
+func (s *Service) LapsedTick(ctx context.Context) error {
+	ids, err := s.db.PlansLapsed(ctx, s.now())
+	if err != nil {
+		return fmt.Errorf("list workspaces whose plan expired: %w", err)
+	}
+	for _, id := range ids {
+		b, err := s.db.WorkspaceBilling(ctx, id)
+		if err == nil {
+			var sub subscription
+			if sub, err = s.getSubscription(ctx, b.SubscriptionID); err == nil {
+				err = s.apply(ctx, sub, event{})
+			}
+		}
+		if err != nil {
+			s.log.ErrorContext(ctx, "reading a lapsed subscription failed", "workspace", id, "error", err)
+		}
 	}
 	return nil
 }

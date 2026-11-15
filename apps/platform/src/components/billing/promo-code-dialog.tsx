@@ -13,7 +13,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { useState, type FormEvent } from 'react'
 
-import { ApiError, errorMessage } from '@/lib/api'
+import { errorMessage } from '@/lib/api'
 import { usePromotionCode, type Promotion } from '@/lib/billing'
 
 /** Checks a promotion code with the API; the plan cards then show its price. */
@@ -39,12 +39,8 @@ export function PromoCodeDialog({
         onApplied(promotion)
         onClose()
       },
-      onError: (err) =>
-        setError(
-          err instanceof ApiError && err.code === 'promotion_code_invalid'
-            ? "This code isn't valid."
-            : errorMessage(err),
-        ),
+      // the API says why: not valid, another currency, another plan, a discount already running
+      onError: (err) => setError(errorMessage(err)),
     })
   }
 

@@ -91,6 +91,7 @@ export const EUR_ZONES = [
   'America/Martinique',
   'Indian/Reunion',
   'Indian/Mayotte',
+  'America/Marigot',
 ]
 
 /** The currency of a country (ISO 3166-1 alpha-2), else, without one, of an IANA time zone. */

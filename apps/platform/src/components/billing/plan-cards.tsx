@@ -21,6 +21,7 @@ import {
   isUpgrade,
   monthOf,
   nextPlan,
+  paymentFailed,
   people,
   seatsCost,
   promoApplies,
@@ -45,7 +46,16 @@ const TAGLINES: Record<Plan['id'], string> = {
   business: 'For larger teams with no ceilings.',
 }
 
-const fail = (error: unknown) => toast.error(errorMessage(error))
+/** A refused change says why; an unpaid one also offers Stripe's page to pay it, and stays until dismissed. */
+const fail = (error: unknown) => {
+  const unpaid = paymentFailed(error)
+  if (!unpaid) return toast.error(errorMessage(error))
+  const { payUrl } = unpaid
+  return toast.error(unpaid.message, {
+    duration: Infinity,
+    action: payUrl ? { label: 'Pay', onClick: () => window.location.assign(payUrl) } : undefined,
+  })
+}
 
 const textLink = 'underline underline-offset-2 hover:no-underline'
 
@@ -94,7 +104,7 @@ export function usePlanCheckout() {
     // A plan change answers with this page: refresh in place instead of reloading.
     if (url.startsWith(window.location.origin)) {
       void queryClient.invalidateQueries({ queryKey: billingKeys.overview })
-      toast.success('Plan changed. The difference is prorated on your next invoice.')
+      toast.success('Plan changed. The difference for this period is invoiced now.')
       return
     }
     window.location.assign(url)
@@ -116,7 +126,11 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
     : ''
   if (billing.status === 'trialing')
     return `Your trial ends now and ${plan.name} is charged today: ${charge}.`
-  return `${plan.name} applies now at ${charge}. The difference for the rest of this period is prorated on your next invoice.`
+  const payNow =
+    isUpgrade(billing.plan, plan.id) || (interval === 'year' && billing.interval === 'month')
+  if (payNow)
+    return `${plan.name} at ${charge}. The rest of this period is charged now, prorated, and the plan changes once that payment goes through.`
+  return `${plan.name} applies now at ${charge}. The unused rest of this period is credited to your balance and pays your next invoices.`
 }
 
 /** A limit as a short fact with its key number first: "50" clients, "Unlimited" invoices / month. */
