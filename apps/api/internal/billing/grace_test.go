@@ -26,16 +26,16 @@ func (f *fakeStripe) startedAt(id string, t time.Time) {
 func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 	for _, tc := range []struct {
 		name, status, from, plan, interval string
-		waits, trialEnds                   bool
+		how                                string // pays: charged now, granted once paid; scheduled: at the period's end; trial: for after it
 	}{
-		{"upgrade", "active", "price_bm", Pro, "month", true, false},
-		{"monthly to yearly, same plan", "active", "price_pm", Pro, "year", true, false},
-		{"monthly to yearly, lower plan", "active", "price_pm", Basic, "year", true, false},
-		{"downgrade", "active", "price_pm", Basic, "month", false, false},
-		{"yearly to monthly", "active", "price_py", Pro, "month", false, false},
-		{"leaving the trial", "trialing", "price_bm", Pro, "month", true, true},
-		{"the trial plan's other interval keeps the trial", "trialing", "price_bm", Basic, "year", false, false},
-		{"past due: an upgrade does not wait", "past_due", "price_bm", Pro, "month", false, false},
+		{"upgrade", "active", "price_bm", Pro, "month", "pays"},
+		{"monthly to yearly, same plan", "active", "price_pm", Pro, "year", "pays"},
+		{"monthly to yearly, lower plan", "active", "price_pm", Basic, "year", "scheduled"},
+		{"downgrade", "active", "price_pm", Basic, "month", "scheduled"},
+		{"yearly to monthly", "active", "price_py", Pro, "month", "scheduled"},
+		{"past due: an upgrade waits for its payment", "past_due", "price_bm", Pro, "month", "pays"},
+		{"trial: another plan for after it", "trialing", "price_xm", Basic, "month", "trial"},
+		{"trial: another interval", "trialing", "price_xm", Business, "year", "trial"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEnv(t, true)
@@ -43,17 +43,29 @@ func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 			ws := owner.workspace
 			e.stripe.put("sub_1", ws, "cus_1", tc.status, tc.from)
 			e.event("evt_1", "customer.subscription.created", map[string]any{"id": "sub_1"})
+			before := e.billing(ws)
 			code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": tc.plan, "interval": tc.interval})
 			if code != http.StatusOK {
 				t.Fatalf("change: %d %v", code, body)
 			}
-			f := e.stripe.form("POST /v1/subscriptions/sub_1")
-			if f.Get("proration_behavior") != "always_invoice" || (f.Get("payment_behavior") == "pending_if_incomplete") != tc.waits ||
-				(f.Get("trial_end") == "now") != tc.trialEnds || f.Has("metadata[plan]") == tc.waits {
-				t.Fatalf("update form %v", f)
-			}
-			if b := e.billing(ws); b.Plan != tc.plan || b.Interval != tc.interval {
-				t.Fatalf("billing %+v", b)
+			f, b := e.stripe.form("POST /v1/subscriptions/sub_1"), e.billing(ws)
+			switch tc.how {
+			case "pays":
+				if f.Get("proration_behavior") != "always_invoice" || f.Get("payment_behavior") != "pending_if_incomplete" ||
+					f.Has("metadata[plan]") || b.Plan != tc.plan || b.Interval != tc.interval {
+					t.Fatalf("update form %v, billing %+v", f, b)
+				}
+			case "scheduled":
+				sf := e.stripe.form("POST /v1/subscription_schedules/sub_sched_sub_1")
+				if e.stripe.called("POST /v1/subscriptions/sub_1") != 0 || sf.Get("phases[1][items][0][price]") != priceIDs[LookupKey(tc.plan, tc.interval)] ||
+					b.Plan != before.Plan || b.Interval != before.Interval || b.PendingPlan != tc.plan || b.PendingInterval != tc.interval {
+					t.Fatalf("schedule form %v, billing %+v", sf, b)
+				}
+			case "trial":
+				if f.Get("proration_behavior") != "none" || f.Has("payment_behavior") || f.Has("trial_end") ||
+					b.Plan != tc.plan || b.Interval != tc.interval || b.Status != "trialing" {
+					t.Fatalf("update form %v, billing %+v", f, b)
+				}
 			}
 		})
 	}
@@ -115,24 +127,6 @@ func TestPaymentReasonAndStripeURL(t *testing.T) {
 		"http://invoice.stripe.com/i/1": false, "https://stripe.com.evil.test/": false, "https://evilstripe.com/": false} {
 		if safeStripeURL(raw) != want {
 			t.Errorf("safeStripeURL(%q) = %v", raw, !want)
-		}
-	}
-}
-
-func TestOverageMessage(t *testing.T) {
-	for _, tc := range []struct {
-		over []overage
-		want string
-	}{
-		{[]overage{{Members, 5, 2}}, "Basic allows 2 members besides the owner; this workspace has 5. Remove 3 members first."},
-		{[]overage{{Clients, 300, 250}}, "Basic allows 250 clients; this workspace has 300. Delete 50 clients first."},
-		{[]overage{{Engagements, 11, 10}, {Products, 101, 100}}, "Basic allows 10 running engagements; this workspace has 11. " +
-			"End or cancel 1 running engagement first. Basic allows 100 products and services; this workspace has 101. " +
-			"Delete 1 product or service first."},
-		{[]overage{{Storage, 12 * gb, 10 * gb}}, "Basic allows 10 GB of storage; this workspace uses 12 GB. Remove 2 GB of files first."},
-	} {
-		if got := overageMessage(Basic, tc.over); got != tc.want {
-			t.Errorf("got  %q\nwant %q", got, tc.want)
 		}
 	}
 }

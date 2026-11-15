@@ -36,6 +36,7 @@ type Rights struct {
 	Plan       string // "" without a plan: the workspace is read-only
 	OfferID    string
 	Seats      int64 // the paid seats pooled limits grow by
+	Trial      bool  // the workspace is in its trial: the trial's limits, for the whole trial (trialRights)
 	Items      map[string]Entitlement
 	Order      []string // Items' keys in the offer's order
 }
@@ -67,13 +68,13 @@ func (r Rights) Cap(key Limit) (int64, error) {
 	return 0, errEntitlementsUnavailable
 }
 
-// capFor is Cap for the earlier limits' semantics: Members, besides the owner, are uncapped on a per-seat price (each
-// is billed) and limited to the self-service seats less the owner on an earlier flat price.
-func (r Rights) capFor(perSeat bool, l Limit) (int64, error) {
+// capFor is Cap with Members, the people besides the owner, limited to the self-service seats less the owner (on a
+// per-seat price every one of them is billed; the trial allows its own seats).
+func (r Rights) capFor(l Limit) (int64, error) {
 	if l != Members {
 		return r.Cap(l)
 	}
-	if perSeat || r.SelfHosted {
+	if r.SelfHosted {
 		return Unlimited, nil
 	}
 	n, err := r.Cap(MaxSeats)
@@ -107,8 +108,9 @@ func (s *Service) Entitlements(ctx context.Context, q store.Q, workspaceID strin
 	return s.entitlementsOf(ctx, q, workspaceID, b)
 }
 
-// entitlementsOf is Entitlements for the workspace's billing b, read already.
-func (s *Service) entitlementsOf(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (Rights, error) {
+// baseRights are the rights of the workspace's plan in full, for its billing b: the trial's while it lasts, else its
+// plan's for its paid seats.
+func (s *Service) baseRights(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (Rights, error) {
 	if !s.enabled {
 		return Rights{SelfHosted: true}, nil
 	}
@@ -120,7 +122,29 @@ func (s *Service) entitlementsOf(ctx context.Context, q store.Q, workspaceID str
 	if err != nil {
 		return Rights{}, err
 	}
+	if b.Status == "trialing" {
+		return s.trialRights(ctx, q, workspaceID, offer)
+	}
 	return s.rightsOn(ctx, q, workspaceID, offer, plan, paidSeats(b))
+}
+
+// entitlementsOf is Entitlements for the workspace's billing b, read already: baseRights with this month's costly
+// allowances granted pro rata (allowances.go) and, while a payment is overdue, no new model cost.
+func (s *Service) entitlementsOf(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (Rights, error) {
+	r, err := s.baseRights(ctx, q, workspaceID, b)
+	if err != nil || r.Plan == "" || r.SelfHosted || r.Trial {
+		return r, err
+	}
+	r.prorate(b, s.now())
+	if b.Status == "past_due" { // a payment is overdue: no new model cost until it is paid, the rest works on in the grace
+		for _, l := range []Limit{AITokens, AICost} {
+			if e, ok := r.Items[string(l)]; ok {
+				e.State, e.Value, e.Source = StateLimited, 0, SourcePaymentOverdue
+				r.Items[string(l)] = e
+			}
+		}
+	}
+	return r, nil
 }
 
 // rightsOn resolves a workspace's rights on plan of offer with seats paid seats, in one query.
@@ -142,12 +166,18 @@ func (s *Service) rightsOn(ctx context.Context, q store.Q, workspaceID, offer, p
 	return r, nil
 }
 
-// paidSeats is the seats a subscription pays for: its quantity on a per-seat price, one on an earlier flat price.
+// paidSeats is the seats a subscription pays for: on a per-seat price its quantity, or the seats paid for the
+// current period when a reduction waits for the renewal; one on an earlier flat price. A seat whose payment is pending
+// is not in the quantity yet, so it grants nothing.
 func paidSeats(b store.Billing) int64 {
-	if b.PerSeat && b.Seats != nil && *b.Seats > 1 {
-		return *b.Seats
+	if !b.PerSeat || b.Seats == nil {
+		return 1
 	}
-	return 1
+	n := *b.Seats
+	if b.PaidSeats != nil {
+		n = max(n, *b.PaidSeats)
+	}
+	return max(n, 1)
 }
 
 // resolve computes every entitlement: the workspace's own unexpired value replaces the whole result; otherwise the

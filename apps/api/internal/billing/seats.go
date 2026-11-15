@@ -11,8 +11,8 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// SyncSeats sets a live per-seat subscription's quantity to the workspace's seats, after a member joined or left;
-// the change is prorated from now (resyncSeats). A flat or ended subscription, or billing off, changes nothing. A
+// SyncSeats sets a live per-seat subscription's quantity to the workspace's seats, after a member joined or left
+// (syncSeats). A flat or ended subscription, or billing off, changes nothing. A
 // failure is logged, not returned: the membership change stands, and the hourly job (Run) catches up.
 func (s *Service) SyncSeats(ctx context.Context, workspaceID string) {
 	ctx = context.WithoutCancel(ctx)
@@ -30,10 +30,12 @@ func (s *Service) resyncSeats(ctx context.Context, workspaceID string) {
 	}
 }
 
-// syncSeats sets the quantity, prorated from the latest membership change (clamped to the current period and now),
-// so a person pays for the days they were a member: always_invoice charges more seats at once and credits fewer at
-// once (the invoice's negative total goes on the customer's balance and pays the next invoices). During the trial
-// seats are free, so nothing is prorated. Idempotent: nothing changes when Stripe already bills the members.
+// syncSeats sets the quantity to the workspace's people. More people than the seats paid for the period are charged
+// at once, prorated from the latest membership change (clamped to the current period and now), and granted only once
+// paid (pending_if_incomplete: an unpaid seat adds nothing to the pooled allowances). Fewer people, or a person
+// replacing one within the paid seats, change nothing now: a reduction is billed from the renewal and the seats stay
+// paid until then (paidSeats), without a refund or a fresh monthly allowance. During the trial seats are free.
+// Idempotent: nothing changes when Stripe already bills the members, or while a seat change waits for its payment.
 func (s *Service) syncSeats(ctx context.Context, workspaceID string) error {
 	if !s.enabled {
 		return nil
@@ -62,19 +64,20 @@ func (s *Service) syncSeats(ctx context.Context, workspaceID string) error {
 		if len(sub.Items.Data) == 0 {
 			return fmt.Errorf("billing: subscription %s has no items", sub.ID)
 		}
-		if sub.quantity() != seats && live(sub.Status) {
+		if sub.quantity() != seats && live(sub.Status) && sub.PendingUpdate == nil {
 			form := url.Values{"items[0][id]": {sub.Items.Data[0].ID}, "items[0][quantity]": {strconv.FormatInt(seats, 10)},
-				"proration_behavior": {"always_invoice"}, "expand[]": subscriptionExpand}
-			if sub.Status == "trialing" {
-				form.Set("proration_behavior", "none")
-			} else {
+				"proration_behavior": {"none"}, "expand[]": subscriptionExpand}
+			if sub.Status != "trialing" && seats > paidSeats(b) {
+				form.Set("proration_behavior", "always_invoice")
+				form.Set("payment_behavior", "pending_if_incomplete")
 				form.Set("proration_date", strconv.FormatInt(prorationDate(b.SeatsChangedAt, sub.periodStart(), s.now()), 10))
 			}
 			if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
 				return err
 			}
 		}
-		return q.ApplySubscription(ctx, workspaceID, sub.Customer, s.toStore(sub, b), s.now())
+		_, err = s.save(ctx, q, workspaceID, b, sub)
+		return err
 	})
 }
 

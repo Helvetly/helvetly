@@ -66,10 +66,6 @@ func TestSoldOnlyInItsCurrencies(t *testing.T) {
 			t.Errorf("%s: amountIn = %d %v", tt.name, amount, ok)
 		}
 	}
-	packs := packsIn([]aiPack{{Tokens: 1, price: withOptions}, {Tokens: 2, price: chfOnly}}, EUR)
-	if len(packs) != 1 || packs[0].Tokens != 1 || packs[0].Currency != EUR || packs[0].Amount != 1900 {
-		t.Fatalf("packs in euros: %+v", packs)
-	}
 }
 
 // overviewCurrency is the overview's currency and Pro's monthly price in it.
@@ -146,18 +142,6 @@ func TestExistingCustomerKeepsItsCurrency(t *testing.T) {
 	if cur != "chf" || pro["currency"] != "chf" {
 		t.Fatalf("a francs customer in Germany sees %q, Pro %v", cur, pro)
 	}
-	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
-	for _, p := range body["data"].(map[string]any)["ai_packs"].([]any) {
-		if p.(map[string]any)["currency"] != "chf" {
-			t.Fatalf("AI pack %v", p)
-		}
-	}
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 1_000_000}); code != http.StatusOK {
-		t.Fatalf("buy pack: %d", code)
-	}
-	if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("currency") != "chf" || f.Get("line_items[0][price]") != "price_ai_1000000" {
-		t.Fatalf("pack checkout form %v", f)
-	}
 	// Stripe never changes a customer's currency, so it is read once.
 	e.overviewCurrency(owner)
 	if n := e.stripe.called("GET /v1/customers/cus_" + owner.workspace); n != 1 {
@@ -190,10 +174,6 @@ func TestCatalogueWithoutCurrencyOptionsSellsOnlyInFrancs(t *testing.T) {
 	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"})
 	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "plan_unavailable" {
 		t.Fatalf("checkout: %d %v", code, body)
-	}
-	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 1_000_000})
-	if errBody, _ := body["error"].(map[string]any); code != http.StatusUnprocessableEntity || errBody["code"] != "ai_pack_unavailable" {
-		t.Fatalf("pack: %d %v", code, body)
 	}
 	if n := e.stripe.called("POST /v1/checkout/sessions"); n != 0 {
 		t.Fatalf("Checkout sessions made: %d", n)

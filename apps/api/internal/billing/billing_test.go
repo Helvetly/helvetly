@@ -208,6 +208,20 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		d := maps.Clone(f.disputes[parts[1]])
 		d["charge"] = f.charges[d["charge"].(string)]
 		reply(d)
+	case key == "POST /v1/subscription_schedules":
+		sub := r.Form.Get("from_subscription")
+		id := "sub_sched_" + sub
+		f.subs[sub]["schedule"] = id
+		reply(map[string]any{"id": id, "phases": []map[string]any{{"start_date": periodStart, "end_date": periodEnd}}})
+	case parts[0] == "subscription_schedules" && len(parts) == 3 && parts[2] == "release":
+		for _, s := range f.subs {
+			if s["schedule"] == parts[1] {
+				delete(s, "schedule")
+			}
+		}
+		reply(map[string]any{"id": parts[1], "status": "released"})
+	case parts[0] == "subscription_schedules" && len(parts) == 2:
+		reply(map[string]any{"id": parts[1]})
 	case key == "POST /v1/checkout/sessions":
 		reply(map[string]string{"url": "https://checkout.stripe.test/c"})
 	case key == "POST /v1/billing_portal/sessions":
@@ -285,6 +299,10 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s["items"] = items(p, f.perSeat, qty)
 			} else {
 				item["quantity"] = qty
+			}
+			if r.Form.Get("trial_end") == "now" {
+				s["status"] = "active"
+				delete(s, "trial_end")
 			}
 		case http.MethodDelete:
 			s["status"] = "canceled"
@@ -368,13 +386,15 @@ func (f *fakeStripe) setPerSeat() {
 	}
 }
 
-// subscribe puts the workspace on a live subscription to a price, as the webhook would.
+// subscribe puts the workspace on a live subscription to a price, as the webhook would, as if since before this month:
+// with the month's whole allowances (a subscription begun mid-month gets the costly ones pro rata, allowances.go).
 func (e *env) subscribe(ws, price string) {
 	e.t.Helper()
 	e.stripe.put("sub_"+ws, ws, "cus_"+ws, "active", price)
 	if code := e.event(auth.NewID("evt"), "customer.subscription.updated", map[string]any{"id": "sub_" + ws}); code != http.StatusOK {
 		e.t.Fatalf("subscribe: %d", code)
 	}
+	e.exec(`UPDATE workspace_billing SET allowance_period = '', allowances = '{}' WHERE workspace_id = $1`, ws)
 }
 
 type env struct {
@@ -513,7 +533,7 @@ func (e *env) eventSigned(id, typ string, object map[string]any, secret string) 
 	e.t.Helper()
 	payload, _ := json.Marshal(map[string]any{"id": id, "type": typ, "data": map[string]any{"object": object}})
 	req, _ := http.NewRequest(http.MethodPost, e.srv.URL+"/api/webhooks/stripe", bytes.NewReader(payload))
-	req.Header.Set("Stripe-Signature", sign(payload, secret, time.Now()))
+	req.Header.Set("Stripe-Signature", sign(payload, secret, e.svc.now())) // signed on the service's clock
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		e.t.Fatal(err)
@@ -840,7 +860,7 @@ func TestOverview(t *testing.T) {
 	pro, _ := plansList[1].(map[string]any)
 	proPrices, _ := pro["prices"].(map[string]any)
 	proLimits, _ := pro["limits"].(map[string]any)
-	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Basic ||
+	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Business ||
 		data["trial_days"] != 7.0 || data["discount"] != nil || data["can_manage"] != true ||
 		members["used"] != 0.0 || members["max"] != nil || proLimits["clients"] != 300.0 || proPrices["month"] == nil {
 		t.Fatalf("overview: %d %v", code, body)
@@ -867,8 +887,9 @@ func TestCheckout(t *testing.T) {
 	f := e.stripe.form("POST /v1/checkout/sessions")
 	for k, want := range map[string]string{
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
-		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "7",
-		"tax_id_collection[enabled]": "true", "success_url": "https://helvetly.example.com/settings/billing?checkout=success",
+		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "",
+		"subscription_data[metadata][offer_id]": "helvetly-2026-11-v2",
+		"tax_id_collection[enabled]":            "true", "success_url": "https://helvetly.example.com/settings/billing?checkout=success",
 		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
 	} {
 		if f.Get(k) != want {
@@ -894,14 +915,22 @@ func TestCheckout(t *testing.T) {
 		t.Fatalf("update form %v", f)
 	}
 
-	// A smaller plan must fit: 3 members besides the owner are more than Basic's 2 on an offer with 3 seats.
-	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
-	e.join(owner.workspace, "member")
-	e.join(owner.workspace, "member")
+	// A smaller plan waits for the paid period's end, whatever the workspace holds beyond it.
+	e.setPlanValue(Basic, Clients, StateLimited, n64(0))
+	e.exec(`INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at) VALUES ('cli_over', $1, 1, 'Over', now(), now())`, owner.workspace)
 	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year"})
-	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "plan_limits_exceeded" ||
-		errBody["message"] != "Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first." {
-		t.Fatalf("downgrade over the limits: %d %v", code, body)
+	if b := e.billing(owner.workspace); code != http.StatusOK || body["url"] != "https://helvetly.example.com/settings/billing?checkout=scheduled" ||
+		b.Plan != Pro || b.PendingPlan != Basic || b.PendingInterval != "year" || b.PendingAt == nil || b.PendingAt.Unix() != periodEnd {
+		t.Fatalf("downgrade: %d %v %+v", code, body, b)
+	}
+	if f := e.stripe.form("POST /v1/subscription_schedules/sub_sched_sub_1"); f.Get("phases[1][items][0][price]") != "price_by" ||
+		f.Get("phases[0][end_date]") != fmt.Sprint(periodEnd) || f.Get("phases[1][proration_behavior]") != "none" || f.Get("end_behavior") != "release" {
+		t.Fatalf("schedule form %v", f)
+	}
+	// Choosing the current plan again cancels the scheduled change.
+	if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "year"}); code != http.StatusOK ||
+		e.billing(owner.workspace).PendingPlan != "" || e.stripe.called("POST /v1/subscription_schedules/sub_sched_sub_1/release") != 1 {
+		t.Fatalf("keep the plan: %d %v %+v", code, body, e.billing(owner.workspace))
 	}
 }
 
@@ -1026,23 +1055,23 @@ func TestMonthStart(t *testing.T) {
 	}
 }
 
-func TestCheckoutRefusesAPlanTheWorkspaceIsOver(t *testing.T) {
+func TestCheckoutRefusesMoreThanTheSelfServiceSeats(t *testing.T) {
 	e := newEnv(t, true)
+	e.stripe.setPerSeat()
 	owner := e.workspace()
 	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
-	for range 3 { // three members besides the owner are more than Basic's 2 on an offer with 3 seats
+	for range 3 { // four people are more than the 3 seats a workspace may buy itself
 		e.join(owner.workspace, "member")
 	}
 	code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "month"})
-	errBody, _ := body["error"].(map[string]any)
-	details, _ := errBody["details"].(map[string]any)
-	if code != http.StatusConflict || errBody["code"] != "plan_limits_exceeded" || details["plan"] != Basic || details["overages"] == nil {
-		t.Fatalf("checkout over the limits: %d %v", code, body)
+	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "too_many_seats" {
+		t.Fatalf("checkout for too many people: %d %v", code, body)
 	}
 	if n := e.stripe.called("POST /v1/checkout/sessions") + e.stripe.called("POST /v1/customers"); n != 0 {
 		t.Fatalf("Stripe called %d times for a refused checkout", n)
 	}
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
-		t.Fatalf("checkout of a plan that fits: %d", code)
+	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK ||
+		e.stripe.form("POST /v1/checkout/sessions").Get("line_items[0][quantity]") != "4" {
+		t.Fatalf("checkout on a plan with the seats: %d %v", code, e.stripe.form("POST /v1/checkout/sessions"))
 	}
 }

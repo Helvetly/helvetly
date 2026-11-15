@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -40,10 +41,6 @@ type Service struct {
 	pricesMu sync.Mutex
 	prices   map[string]price // by plan_interval key, read from Stripe by lookup key
 	pricedAt time.Time
-
-	packsMu  sync.Mutex
-	packs    []aiPack // the AI token packs on sale, read from Stripe
-	packedAt time.Time
 
 	customerCurrency sync.Map // Stripe customer id -> the currency Stripe fixed for it
 }
@@ -152,7 +149,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		return err
 	}
 	now := s.now()
-	u, err := s.db.WorkspaceUsage(r.Context(), sess.Workspace.ID, monthStart(now, sess.Workspace.Location()), now)
+	start := quotaStart(b, now, sess.Workspace.Location())
+	u, err := s.db.WorkspaceUsage(r.Context(), sess.Workspace.ID, start, now)
 	if err != nil {
 		return err
 	}
@@ -173,15 +171,27 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	trial, err := offerTrial(r.Context(), s.db.Q, cat.offer.ID)
+	if err != nil {
+		return err
+	}
+	seats, err := s.db.Seats(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	offered, err := trialOffered(r.Context(), s.db.Q, b, trial, seats, sess.User)
+	if err != nil {
+		return err
+	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
 		max := Unlimited // without a plan nothing is capped: the workspace is read-only
 		if plan != "" || rights.SelfHosted {
-			if max, err = rights.capFor(b.PerSeat, l); err != nil {
+			if max, err = rights.capFor(l); err != nil {
 				return err
 			}
 		}
-		if l == AITokens && max != Unlimited && plan != "" {
+		if l == AITokens && max != Unlimited && plan != "" && !rights.Trial && rights.Items[string(AITokens)].Source != SourcePaymentOverdue {
 			max += bought // the packs bought this month count on top of the plan's allowance
 		}
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
@@ -205,8 +215,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		for _, l := range limitOrder {
 			p.Limits[l] = maxOf(cat.limitOf(id, l))
 		}
-		p.Limits[Members] = nil // what a new subscription or a plan change gets: per seat, or the seats less the owner
-		if seats := cat.limitOf(id, MaxSeats); !prices[id+"_month"].perSeat() && seats != Unlimited {
+		p.Limits[Members] = nil // the people besides the owner: the self-service seats less the owner
+		if seats := cat.limitOf(id, MaxSeats); seats != Unlimited {
 			p.Limits[Members] = maxOf(max(seats-1, 0))
 		}
 		for _, interval := range []string{"month", "year"} {
@@ -221,18 +231,28 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	out := map[string]any{
 		"enabled": s.enabled, "locked": s.enabled && plan == "", "plan": plan, "status": b.Status, "interval": b.Interval,
 		"current_period_end": b.CurrentPeriodEnd, "cancel_at_period_end": b.CancelAtPeriodEnd, "trial_end": b.TrialEnd,
-		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
-		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
-		"usage": usage, "features": features, "offer_id": nil, "entitlements": nil, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
-		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
+		"trial_days": trial.Days, "trial_plan": trial.AccessPlan, "trial_seats": trial.Seats, "trial_available": offered,
+		"trial": rights.Trial, "has_customer": b.CustomerID != "",
+		"can_manage": members.CanManage(sess.Role), "period_start": start.Format(time.DateOnly),
+		"usage": usage, "features": features, "offer_id": nil, "entitlements": nil, "plans": list, "currency": cur, "discount": nil,
+		"pricing": "", "seats": seats, "paid_seats": nil, "pending_plan": nil, "pending_interval": nil, "pending_at": nil,
+		"ai_tokens_bought": bought, "ai_packs": []struct{}{}, "disputed": disputed, // packs are no longer sold
 		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
 	}
 	if plan != "" {
 		out["offer_id"] = rights.OfferID
-		out["entitlements"] = entitlementItems(rights, u, monthStart(now, sess.Workspace.Location()).AddDate(0, 1, 0))
+		var reset *time.Time // a trial's allowances last the whole trial
+		if !rights.Trial {
+			next := monthStart(now, sess.Workspace.Location()).AddDate(0, 1, 0)
+			reset = &next
+		}
+		out["entitlements"] = entitlementItems(rights, u, reset)
+		if b.PerSeat {
+			out["paid_seats"] = paidSeats(b)
+		}
 	}
-	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
-		out["ai_packs"] = packsIn(s.aiPacks(r.Context()), cur)
+	if b.PendingPlan != "" {
+		out["pending_plan"], out["pending_interval"], out["pending_at"] = b.PendingPlan, b.PendingInterval, b.PendingAt
 	}
 	if !live(b.Status) {
 		out["interval"] = ""
@@ -442,7 +462,8 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	var next string
 	var checkout *store.Billing
-	var seats int64
+	var co store.BillingCheckout
+	var trialDays int
 	var known bool // the customer existed before this checkout
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockBilling(ctx, ws); err != nil {
@@ -456,10 +477,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 			next, err = s.changePlan(ctx, q, sess.Workspace, b, in.Plan, in.Interval, target, promoID)
 			return err
 		}
-		if err := s.fits(ctx, q, sess.Workspace, in.Plan, target.perSeat()); err != nil {
-			return err
-		}
-		if seats, err = quantity(ctx, q, ws, target); err != nil {
+		if co, trialDays, err = s.newCheckout(ctx, q, sess, b, in.Plan, in.Interval, cur, target); err != nil {
 			return err
 		}
 		known = b.CustomerID != ""
@@ -469,7 +487,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 			}
 		}
 		checkout = &b
-		return nil
+		return q.InsertBillingCheckout(ctx, co, s.now())
 	})
 	if err != nil {
 		return err
@@ -482,7 +500,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 				s.log.WarnContext(ctx, "expiring open Checkout sessions failed", "workspace", ws, "error", err)
 			}
 		}
-		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, cur, seats, promoID); err != nil {
+		if next, err = s.checkoutSession(ctx, *checkout, co, trialDays, promoID); err != nil {
 			return err
 		}
 	}
@@ -516,6 +534,51 @@ func quantity(ctx context.Context, q store.Q, workspaceID string, p price) (int6
 	return max(n, 1), err
 }
 
+// newCheckout is what a first subscription is sold on, recorded before Stripe is asked: the offer on sale, the plan,
+// interval, currency and price, every member as a full-price seat (no more than the plan's self-service seats), and
+// whether it starts the trial (to the trial's plan, once per customer); with the trial's days.
+func (s *Service) newCheckout(ctx context.Context, q store.Q, sess store.Session, b store.Billing, plan, interval, cur string, target price) (store.BillingCheckout, int, error) {
+	ws := sess.Workspace.ID
+	offer, err := q.CurrentOffer(ctx)
+	if errors.Is(err, store.ErrNotFound) {
+		return store.BillingCheckout{}, 0, errEntitlementsUnavailable
+	}
+	if err != nil {
+		return store.BillingCheckout{}, 0, err
+	}
+	seats, err := quantity(ctx, q, ws, target)
+	if err != nil {
+		return store.BillingCheckout{}, 0, err
+	}
+	r, err := s.rightsOn(ctx, q, ws, offer.ID, plan, seats)
+	if err != nil {
+		return store.BillingCheckout{}, 0, err
+	}
+	if most, err := r.Cap(MaxSeats); err != nil {
+		return store.BillingCheckout{}, 0, err
+	} else if most != Unlimited && seats > most {
+		return store.BillingCheckout{}, 0, auth.Error(http.StatusConflict, "too_many_seats",
+			fmt.Sprintf("Plans bought here are for up to %d people; this workspace has %d. Contact us for a larger team.", most, seats),
+			map[string]any{"seats": seats, "max": most})
+	}
+	trial, err := offerTrial(ctx, q, offer.ID)
+	if err != nil {
+		return store.BillingCheckout{}, 0, err
+	}
+	withTrial := false
+	if plan == trial.AccessPlan {
+		people, err := q.Seats(ctx, ws) // the trial's limit is on people, whatever the price bills
+		if err != nil {
+			return store.BillingCheckout{}, 0, err
+		}
+		if withTrial, err = trialOffered(ctx, q, b, trial, people, sess.User); err != nil {
+			return store.BillingCheckout{}, 0, err
+		}
+	}
+	return store.BillingCheckout{ID: auth.NewID("bco"), WorkspaceID: ws, OfferID: offer.ID, Plan: plan, Interval: interval,
+		Currency: cur, PriceID: target.ID, Seats: seats, Trial: withTrial, CreatedBy: sess.User.ID}, trial.Days, nil
+}
+
 // managedPayments turns a Checkout Session into a Managed Payments one: Stripe then collects the name, address and
 // tax itself and refuses the parameters for doing that ourselves, so they go.
 func managedPayments(form url.Values) {
@@ -526,17 +589,21 @@ func managedPayments(form url.Values) {
 	form.Set("managed_payments[enabled]", "true")
 }
 
-func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID, cur string, seats int64, promoID string) (string, error) {
+// checkoutSession opens the Checkout for co: every seat at the full price (Checkout shows the quantity and the total
+// before the customer agrees), and the checkout and its offer in the subscription's metadata, which the webhook
+// settles against co (settleCheckout).
+func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store.BillingCheckout, trialDays int, promoID string) (string, error) {
 	back := s.publicURL + "/settings/billing?checkout="
 	// Checkout runs only without a live plan, so leaving it goes back to the plan picker to choose again.
 	canceled := s.publicURL + "/choose-plan?checkout=canceled"
 	form := url.Values{
-		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {ws}, "currency": {cur},
-		"line_items[0][price]": {priceID}, "line_items[0][quantity]": {strconv.FormatInt(seats, 10)},
-		"subscription_data[metadata][workspace_id]": {ws}, "subscription_data[metadata][plan]": {plan},
-		"subscription_data[metadata][interval]": {interval},
-		"payment_method_collection":             {"always"},
-		"billing_address_collection":            {"required"}, "tax_id_collection[enabled]": {"true"},
+		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {co.WorkspaceID}, "currency": {co.Currency},
+		"line_items[0][price]": {co.PriceID}, "line_items[0][quantity]": {strconv.FormatInt(co.Seats, 10)},
+		"subscription_data[metadata][workspace_id]": {co.WorkspaceID}, "subscription_data[metadata][plan]": {co.Plan},
+		"subscription_data[metadata][interval]":    {co.Interval},
+		"subscription_data[metadata][checkout_id]": {co.ID}, "subscription_data[metadata][offer_id]": {co.OfferID},
+		"payment_method_collection":  {"always"},
+		"billing_address_collection": {"required"}, "tax_id_collection[enabled]": {"true"},
 		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
 		"success_url": {back + "success"}, "cancel_url": {canceled},
 	}
@@ -551,9 +618,10 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan
 	} else {
 		form.Set("allow_promotion_codes", "true")
 	}
-	if plan == TrialPlan && trialAvailable(b) {
-		form.Set("subscription_data[trial_period_days]", strconv.Itoa(TrialDays))
+	if co.Trial {
+		form.Set("subscription_data[trial_period_days]", strconv.Itoa(trialDays))
 		form.Set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel")
+		form.Set("subscription_data[metadata][trial_user]", co.CreatedBy)
 	}
 	var cs struct {
 		URL string `json:"url"`
@@ -564,60 +632,29 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan
 	return cs.URL, nil
 }
 
-// fits refuses a plan smaller than what the workspace already has, for a new subscription as for a change.
-func (s *Service) fits(ctx context.Context, q store.Q, ws store.Workspace, plan string, perSeat bool) error {
-	now := s.now()
-	u, err := q.WorkspaceUsage(ctx, ws.ID, monthStart(now, ws.Location()), now)
-	if err != nil {
-		return err
-	}
-	offer, err := q.WorkspaceOffer(ctx, ws.ID)
-	if err == nil && offer == "" { // a first subscription gets the offer on sale
-		var cur store.OfferVersion
-		cur, err = q.CurrentOffer(ctx)
-		offer = cur.ID
-	}
-	if err != nil {
-		return err
-	}
-	seats := int64(1)
-	if perSeat {
-		if seats, err = q.Seats(ctx, ws.ID); err != nil {
-			return err
-		}
-	}
-	r, err := s.rightsOn(ctx, q, ws.ID, offer, plan, seats)
-	if err != nil {
-		return err
-	}
-	over, err := r.overages(perSeat, u)
-	if err != nil {
-		return err
-	}
-	if len(over) > 0 {
-		return auth.Error(http.StatusConflict, "plan_limits_exceeded", overageMessage(plan, over),
-			map[string]any{"plan": plan, "overages": over})
-	}
-	return nil
-}
-
-// changePlan moves a live subscription to another price; a smaller plan must fit what exists. A per-seat price bills
-// the workspace's seats, so a subscription on an earlier flat price moves to per seat here. Every change is invoiced
-// at once (always_invoice). One the customer pays for now waits for that payment (a pending update; 402 with why and
-// where to pay while it is unpaid): an upgrade of an active subscription, monthly to yearly on any plan, and leaving
-// the trial for another plan (the trial plan's other interval keeps the trial). Anything else (a lower or the same
-// plan, yearly to monthly) does not wait: its credit is the invoice's negative total, which Stripe puts on the
-// customer's balance at once. With a promotion code on the same plan and interval, only the code is applied; one
-// discount at a time.
+// changePlan moves a live subscription to another price; the workspace keeps its offer and its usage. During the
+// trial any plan or interval may be chosen for after it, at no charge, and the trial still ends when it would. After
+// it, a change the customer pays more for (a bigger plan, monthly to yearly) is invoiced at once and waits for that
+// payment (a pending update; 402 with why and where to pay while it is unpaid), so nothing is granted unpaid. A change
+// to less (a smaller plan, yearly to monthly) is scheduled for the paid period's end (scheduleChange): nothing is
+// credited and the data stays, even beyond the smaller plan's limits, where new growth is refused. Choosing the
+// current plan again cancels a scheduled change. A per-seat price bills the workspace's seats, so a subscription on
+// an earlier flat price moves to per seat here. With a promotion code on the same plan and interval, only the code is
+// applied; one discount at a time.
 func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, plan, interval string, target price, promoID string) (string, error) {
 	same := b.Plan == plan && b.Interval == interval
-	if same && promoID == "" {
-		return "", auth.Error(http.StatusConflict, "same_plan", "The workspace is on this plan already.", nil)
-	}
-	now := s.now()
 	sub, err := s.getSubscription(ctx, b.SubscriptionID)
 	if err != nil {
 		return "", err
+	}
+	if same && promoID == "" {
+		if sub.schedule() == "" {
+			return "", auth.Error(http.StatusConflict, "same_plan", "The workspace is on this plan already.", nil)
+		}
+		if err := s.releaseSchedule(ctx, sub); err != nil {
+			return "", err
+		}
+		return s.recordChange(ctx, q, ws.ID, b)
 	}
 	if promoID != "" && len(sub.Discounts) > 0 {
 		return "", errDiscounted
@@ -625,16 +662,20 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 	if len(sub.Items.Data) == 0 {
 		return "", errors.New("billing: subscription " + sub.ID + " has no items")
 	}
+	trialing := sub.Status == "trialing"
+	if current, currentInterval := sub.price().planAndInterval(); !same && !trialing &&
+		(planRank(plan) < planRank(current) || plan == current && interval == "month" && currentInterval == "year") {
+		return s.scheduleChange(ctx, q, ws.ID, b, sub, plan, interval, target, promoID)
+	}
+	if err := s.releaseSchedule(ctx, sub); err != nil { // a change now replaces one scheduled
+		return "", err
+	}
 	form := url.Values{"expand[]": subscriptionExpand}
 	if promoID != "" {
 		form.Set("discounts[0][promotion_code]", promoID)
 	}
-	var waits bool
-	keeps := "your current plan"
+	waits := false
 	if !same {
-		if err := s.fits(ctx, q, ws, plan, target.perSeat()); err != nil {
-			return "", err
-		}
 		seats, err := quantity(ctx, q, ws.ID, target)
 		if err != nil {
 			return "", err
@@ -642,19 +683,14 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 		form.Set("items[0][id]", sub.Items.Data[0].ID)
 		form.Set("items[0][price]", target.ID)
 		form.Set("items[0][quantity]", strconv.FormatInt(seats, 10))
-		form.Set("proration_behavior", "always_invoice")
-		current, currentInterval := sub.price().planAndInterval()
-		trial := sub.Status == "trialing" && current != plan
-		toYear := interval == "year" && currentInterval == "month"
-		upgrade := sub.Status == "active" && current != "" && planRank(plan) > planRank(current)
-		waits = trial || sub.Status != "trialing" && (toYear || upgrade)
-		if trial {
-			form.Set("trial_end", "now")
-			keeps = "the trial"
-		}
-		if waits {
+		if trialing { // the trial runs on to its end, then bills the plan chosen now
+			form.Set("proration_behavior", "none")
+		} else {
+			form.Set("proration_behavior", "always_invoice")
 			form.Set("payment_behavior", "pending_if_incomplete")
-		} else { // metadata would change before the payment; the plan is read from the price either way
+			waits = true
+		}
+		if !waits { // metadata would change before the payment; the plan is read from the price either way
 			form.Set("metadata[plan]", plan)
 			form.Set("metadata[interval]", interval)
 		}
@@ -663,9 +699,76 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 		return "", err
 	}
 	if waits && sub.PendingUpdate != nil {
-		return "", s.paymentOf(ctx, *sub.PendingUpdate, sub.LatestInvoice, plan).error(keeps)
+		return "", s.paymentOf(ctx, *sub.PendingUpdate, sub.LatestInvoice, plan).error("your current plan")
 	}
-	if err := q.ApplySubscription(ctx, ws.ID, sub.Customer, s.toStore(sub, b), now); err != nil {
+	if _, err := s.save(ctx, q, ws.ID, b, sub); err != nil {
+		return "", err
+	}
+	return s.publicURL + "/settings/billing?checkout=switched", nil
+}
+
+// scheduleChange moves the subscription to target from the end of its paid period, through a subscription schedule
+// Stripe applies then (and releases); nothing is charged or credited now. The change is recorded as pending.
+func (s *Service) scheduleChange(ctx context.Context, q store.Q, workspaceID string, b store.Billing, sub subscription, plan, interval string, target price, promoID string) (string, error) {
+	if err := s.releaseSchedule(ctx, sub); err != nil {
+		return "", err
+	}
+	seats, err := quantity(ctx, q, workspaceID, target)
+	if err != nil {
+		return "", err
+	}
+	var sched struct {
+		ID     string `json:"id"`
+		Phases []struct {
+			StartDate int64 `json:"start_date"`
+		} `json:"phases"`
+	}
+	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscription_schedules", url.Values{"from_subscription": {sub.ID}}, "", &sched); err != nil {
+		return "", err
+	}
+	if len(sched.Phases) == 0 {
+		return "", fmt.Errorf("billing: subscription schedule %s has no phases", sched.ID)
+	}
+	end := sub.periodEnd()
+	form := url.Values{"end_behavior": {"release"},
+		"phases[0][items][0][price]": {sub.priceID()}, "phases[0][items][0][quantity]": {strconv.FormatInt(sub.quantity(), 10)},
+		"phases[0][start_date]": {strconv.FormatInt(sched.Phases[0].StartDate, 10)}, "phases[0][end_date]": {strconv.FormatInt(end, 10)},
+		"phases[1][items][0][price]": {target.ID}, "phases[1][items][0][quantity]": {strconv.FormatInt(seats, 10)},
+		"phases[1][proration_behavior]": {"none"}}
+	if promoID != "" {
+		form.Set("phases[1][discounts][0][promotion_code]", promoID)
+	}
+	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscription_schedules/"+url.PathEscape(sched.ID), form, "", nil); err != nil {
+		return "", err
+	}
+	if sub, err = s.getSubscription(ctx, sub.ID); err != nil {
+		return "", err
+	}
+	if _, err := s.save(ctx, q, workspaceID, b, sub); err != nil {
+		return "", err
+	}
+	at := time.Unix(end, 0).UTC()
+	if err := q.SetPendingPlan(ctx, workspaceID, plan, interval, &at); err != nil {
+		return "", err
+	}
+	return s.publicURL + "/settings/billing?checkout=scheduled", nil
+}
+
+// releaseSchedule lets go of the subscription's schedule, cancelling the change it holds; none: nothing to do.
+func (s *Service) releaseSchedule(ctx context.Context, sub subscription) error {
+	if sub.schedule() == "" {
+		return nil
+	}
+	return s.stripe.Call(ctx, http.MethodPost, "/v1/subscription_schedules/"+url.PathEscape(sub.schedule())+"/release", nil, "", nil)
+}
+
+// recordChange reads the subscription again after a change at Stripe and records it.
+func (s *Service) recordChange(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (string, error) {
+	sub, err := s.getSubscription(ctx, b.SubscriptionID)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.save(ctx, q, workspaceID, b, sub); err != nil {
 		return "", err
 	}
 	return s.publicURL + "/settings/billing?checkout=switched", nil

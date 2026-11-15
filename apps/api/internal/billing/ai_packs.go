@@ -4,128 +4,29 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/url"
-	"slices"
 	"strconv"
-	"time"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 )
 
-// The AI token packs (Helvetly/billing's catalogue): one-time prices of the product AITokensProduct, each with the
-// token count in its metadata. A paid pack adds its tokens to the workspace's allowance for the month it was paid
-// in (ai_token_packs), after the plan's own; what is left lapses with the month.
+// The AI token packs (Helvetly/billing's earlier catalogue): one-time prices of the product AITokensProduct, each with
+// the token count in its metadata. They are no longer sold (offer v2 has no top-ups); a pack paid in a Checkout opened
+// before still adds its tokens to the workspace's allowance for the month it was paid in (ai_token_packs), after the
+// plan's own; what is left lapses with the month.
 const (
 	AITokensProduct = "helvetly_ai_tokens"
 	AITokensKey     = "helvetly_ai_tokens" // price metadata: the pack's tokens
 )
 
-type aiPack struct {
-	Tokens   int64  `json:"tokens"`
-	Amount   int64  `json:"amount"` // minor units, VAT included
-	Currency string `json:"currency"`
-	price    price
-}
+// errPacksRetired: offer v2 sells no top-ups; the monthly AI tokens grow with the plan and its paid seats.
+var errPacksRetired = auth.Error(http.StatusGone, "ai_pack_unavailable",
+	"AI token packs are no longer sold. Your plan's AI tokens grow with every person in the workspace; upgrade or add people for more.",
+	nil)
 
-// packsIn is the packs priced in cur; a pack not sold in cur is left out.
-func packsIn(packs []aiPack, cur string) []aiPack {
-	out := []aiPack{}
-	for _, p := range packs {
-		if amount, ok := p.price.amountIn(cur); ok {
-			p.Amount, p.Currency = amount, cur
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-var errNoPack = auth.Error(http.StatusUnprocessableEntity, "ai_pack_unavailable", "This AI token pack is not on sale.",
-	map[string]any{"fields": map[string]string{"tokens": "invalid"}})
-
-// aiPacks reads the packs on sale from Stripe, smallest first, cached for ten minutes; a failure leaves none.
-func (s *Service) aiPacks(ctx context.Context) []aiPack {
-	if !s.enabled {
-		return []aiPack{}
-	}
-	s.packsMu.Lock()
-	defer s.packsMu.Unlock()
-	if s.packs != nil && s.now().Sub(s.packedAt) < 10*time.Minute {
-		return s.packs
-	}
-	var found list[price]
-	form := url.Values{"product": {AITokensProduct}, "active": {"true"}, "type": {"one_time"}, "limit": {"20"},
-		"expand[]": {"data.currency_options"}}
-	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/prices", form, "", &found); err != nil {
-		s.log.WarnContext(ctx, "reading the AI token packs failed", "error", err)
-		return []aiPack{} // not cached: the next read tries again
-	}
-	out := []aiPack{}
-	for _, p := range found.Data {
-		if n, err := strconv.ParseInt(p.Metadata[AITokensKey], 10, 64); err == nil && n > 0 && p.UnitAmount > 0 {
-			out = append(out, aiPack{n, p.UnitAmount, p.Currency, p})
-		}
-	}
-	slices.SortFunc(out, func(a, b aiPack) int { return int(a.Tokens - b.Tokens) })
-	s.packs, s.packedAt = out, s.now()
-	return out
-}
-
-// buyAITokens opens a Checkout Session (payment mode) for one pack. Only a workspace on a plan can buy: the tokens
-// add to the plan's allowance. The webhook records the pack once Stripe says it is paid.
-func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	var in struct {
-		Tokens int64 `json:"tokens"`
-	}
-	if !s.auth.Decode(w, r, &in) {
-		return nil
-	}
-	ctx, ws := r.Context(), sess.Workspace.ID
-	b, err := s.db.WorkspaceBilling(ctx, ws)
-	if err != nil {
-		return err
-	}
-	if PlanOf(b, s.now()) == "" {
-		return errPlanRequired
-	}
-	if b.CustomerID == "" {
-		return errNoCustomer
-	}
-	cur, err := s.requestCurrency(r, sess, b.CustomerID)
-	if err != nil {
-		return err
-	}
-	packs := packsIn(s.aiPacks(ctx), cur)
-	i := slices.IndexFunc(packs, func(p aiPack) bool { return p.Tokens == in.Tokens })
-	if i < 0 {
-		return errNoPack
-	}
-	pack := packs[i]
-	tokens := strconv.FormatInt(pack.Tokens, 10)
-	back := s.publicURL + "/settings/billing?checkout="
-	form := url.Values{
-		"mode": {"payment"}, "customer": {b.CustomerID}, "client_reference_id": {ws}, "currency": {pack.Currency},
-		"line_items[0][price]": {pack.price.ID}, "line_items[0][quantity]": {"1"},
-		"metadata[workspace_id]": {ws}, "metadata[" + AITokensKey + "]": {tokens},
-		"payment_intent_data[metadata][workspace_id]": {ws}, "invoice_creation[enabled]": {"true"},
-		"billing_address_collection": {"required"}, "tax_id_collection[enabled]": {"true"},
-		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
-		"success_url": {back + "ai_tokens"}, "cancel_url": {back + "canceled"},
-	}
-	if s.cfg.AutomaticTax {
-		form.Set("automatic_tax[enabled]", "true")
-	}
-	if s.cfg.ManagedPayments {
-		managedPayments(form)
-	}
-	var cs struct {
-		URL string `json:"url"`
-	}
-	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/checkout/sessions", form, "", &cs); err != nil {
-		return err
-	}
-	auth.WriteJSON(w, http.StatusOK, map[string]any{"url": cs.URL})
-	return nil
+// buyAITokens refuses: packs are no longer sold. Packs paid before keep their tokens (creditAITokens, AITokens).
+func (s *Service) buyAITokens(http.ResponseWriter, *http.Request, store.Session) error {
+	return errPacksRetired
 }
 
 // creditAITokens records a paid pack Checkout Session on its workspace, once, for the workspace's current month, and

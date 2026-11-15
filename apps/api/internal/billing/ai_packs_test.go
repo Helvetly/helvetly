@@ -19,30 +19,22 @@ func TestAITokenPacks(t *testing.T) {
 		return n
 	}
 
-	// Without a plan there is nothing to add tokens to.
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 5_000_000}); code != http.StatusPaymentRequired {
-		t.Fatalf("no plan: %d", code)
-	}
-	e.subscribe(owner.workspace, "price_bm")
-	e.override(owner.workspace, AITokens, StateLimited, n64(1_000_000), nil) // the plan allowance the packs add to
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 7}); code != http.StatusUnprocessableEntity {
-		t.Fatalf("a pack not on sale: %d", code)
-	}
-	code, body := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 5_000_000})
-	if code != http.StatusOK || body["url"] != "https://checkout.stripe.test/c" {
-		t.Fatalf("buy: %d %v", code, body)
-	}
-	f := e.stripe.form("POST /v1/checkout/sessions")
-	for k, want := range map[string]string{
-		"mode": "payment", "customer": "cus_" + owner.workspace, "line_items[0][price]": "price_ai_5000000",
-		"metadata[workspace_id]": owner.workspace, "metadata[helvetly_ai_tokens]": "5000000", "invoice_creation[enabled]": "true",
-		"success_url": "https://helvetly.example.com/settings/billing?checkout=ai_tokens",
-	} {
-		if f.Get(k) != want {
-			t.Errorf("checkout %s = %q, want %q", k, f.Get(k), want)
+	// Packs are no longer sold (offer v2 has no top-ups), with a plan or without.
+	for _, subscribed := range []bool{false, true} {
+		if subscribed {
+			e.subscribe(owner.workspace, "price_bm")
+			e.override(owner.workspace, AITokens, StateLimited, n64(1_000_000), nil) // the plan allowance packs add to
+		}
+		code, body := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 5_000_000})
+		if errBody, _ := body["error"].(map[string]any); code != http.StatusGone || errBody["code"] != "ai_pack_unavailable" {
+			t.Fatalf("buy (subscribed %v): %d %v", subscribed, code, body)
 		}
 	}
+	if n := e.stripe.called("POST /v1/checkout/sessions"); n != 0 {
+		t.Fatalf("pack Checkouts opened: %d", n)
+	}
 
+	// A pack paid in a Checkout opened before is honoured.
 	session := func(id, customer, status string) map[string]any {
 		return map[string]any{"id": id, "mode": "payment", "customer": customer, "payment_status": status,
 			"metadata": map[string]string{"workspace_id": owner.workspace, AITokensKey: "5000000"}}
@@ -59,9 +51,9 @@ func TestAITokenPacks(t *testing.T) {
 	if n := allowance(); n != 6_000_000 {
 		t.Fatalf("after a paid pack: %d", n)
 	}
-	_, body = e.do(owner, http.MethodGet, "/api/v1/billing", nil)
+	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 	data := body["data"].(map[string]any)
-	if data["ai_tokens_bought"] != float64(5_000_000) || len(data["ai_packs"].([]any)) != 2 {
+	if data["ai_tokens_bought"] != float64(5_000_000) || len(data["ai_packs"].([]any)) != 0 {
 		t.Fatalf("overview %v %v", data["ai_tokens_bought"], data["ai_packs"])
 	}
 	for _, u := range data["usage"].([]any) {

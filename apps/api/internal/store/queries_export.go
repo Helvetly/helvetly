@@ -165,4 +165,6 @@ var ExportExcluded = map[string]string{
 	"offer_versions":           "global published offers, not workspace data",
 	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
+	"billing_checkouts":        "what a plan Checkout was opened for, to settle its subscription; not business data",
+	"trial_claims":             "digests that recognise a customer's one trial, kept across workspaces; not business data",
 }
