@@ -1,12 +1,8 @@
 # Terms of service
 
-> **DRAFT — to be reviewed by a Swiss lawyer before publication.** Written for what the code does on
-> 14 November 2026, for business customers, under Swiss law. Fill in every `[…]`.
-
 ## 1. Parties and scope
 
-These terms are a contract between [Helvetly company name, legal form], [address], [UID/CHE number]
-("Helvetly", "we") and the business that signs up for the Helvetly platform ("Customer", "you").
+These terms are a contract between Helvetly ("Helvetly", "we") and the business that signs up for the Helvetly platform ("Customer", "you").
 Helvetly is for businesses only, not for consumers. Whoever accepts these terms for a business
 confirms that they may bind it. The [data processing agreement](dpa.md) and the
 [privacy policy](privacy-policy.md) are part of them. Your own general terms do not apply.
@@ -34,7 +30,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   franc (CHF 183, 471 and 951 per seat and year).
 - Prices are in **CHF and include Swiss VAT** where we charge it: the price shown is the price paid.
   Where your business is abroad and the reverse charge applies, the same amount is charged without
-  VAT and you account for the tax yourself. [Confirm Helvetly's VAT registration.]
+  VAT and you account for the tax yourself.
 - When people join or leave the workspace, the number of seats follows: an added seat is charged and
   a freed seat credited, prorated for the rest of the period, on the next invoice. Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
@@ -54,8 +50,8 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - **Cancelling:** an owner or admin can cancel any time in Settings → Billing. The plan stays until
   the end of the paid period and is not renewed.
 - **Refunds:** paid periods are not refunded, including when a workspace is deleted, unless Swiss
-  law requires otherwise. [Confirm the refund policy.]
-- We may change prices with at least [30] days' notice by email. A new price applies from your next
+  law requires otherwise.
+- We may change prices with at least 30 days' notice by email. A new price applies from your next
   renewal; you may cancel before it does.
 
 ## 5. Read-only workspaces and data export
@@ -80,10 +76,10 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   owner of first. Your sign-in methods, sessions and memberships are then removed and your profile
   anonymised; the workspaces' business records, including what you wrote in them (such as Heidi
   conversations and feedback you sent), stay with the workspace without your name or address.
-- [Owner decision, for customers in the EU: switching and export terms under the EU Data Act,
-  Chapter VI (notice period, transition period, export formats, switching charges).]
+- Customers in the EU may switch to another provider under the EU Data Act: the export in section 5
+  gives all records and files in common formats, free of charge, at any time.
 - We may suspend or end access with immediate effect for a serious breach of these terms, in
-  particular of section 8. Otherwise we end the service only with [3] months' notice.
+  particular of section 8. Otherwise we end the service only with 3 months' notice.
 
 ## 7. Your data
 
@@ -140,11 +136,10 @@ figures before you issue, send or file them.
 ## 12. Availability and support
 
 - We aim to keep Helvetly available at all times but do not guarantee uninterrupted service.
-  Maintenance, updates and events outside our control can interrupt it. [Add a target availability
-  if one is promised.]
+  Maintenance, updates and events outside our control can interrupt it.
 - We may improve and change features. We will not remove an essential feature of a paid plan during
   a paid period without telling you in advance.
-- Support: [support@helvetly.com], [support hours and response times].
+- Support: [support@helvetly.com](mailto:support@helvetly.com), answered on Swiss business days.
 
 ## 13. Intellectual property
 
@@ -166,7 +161,7 @@ us feedback or suggestions, we may use them freely.
 
 ## 15. Changes to these terms
 
-We may change these terms. We email the owners of every workspace at least [30] days before a change
+We may change these terms. We email the owners of every workspace at least 30 days before a change
 takes effect. If you do not agree, you may cancel before then; continuing to use Helvetly after that
 date means you accept the change.
 
@@ -174,8 +169,8 @@ date means you accept the change.
 
 - Swiss law applies, excluding the UN Convention on Contracts for the International Sale of Goods
   (CISG).
-- Place of jurisdiction: [city], Switzerland.
+- Place of jurisdiction is the registered office of Helvetly in Switzerland.
 - If any provision is invalid, the rest remains in force and the invalid one is replaced by what
   comes closest to its purpose.
 
-Last change: [date].
+Last change: 15 November 2026.
