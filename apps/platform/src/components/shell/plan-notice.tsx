@@ -76,6 +76,17 @@ export function planLabel(billing: Billing | undefined): string | null {
 export function planNotice(billing: Billing | undefined, now = Date.now()): PlanNotice | null {
   if (!billing?.enabled) return null
   const manage = billing.can_manage
+  if (billing.locked && billing.payment_overdue)
+    return {
+      kind: 'locked',
+      tone: 'danger',
+      title: 'Read-only workspace',
+      text: manage
+        ? 'The last payment failed and the three days of grace have passed. Pay the open invoice to make changes again.'
+        : `The last payment failed and the three days of grace have passed. ${ASK} to pay the open invoice.`,
+      action: manage ? { label: 'Update payment', href: BILLING } : null,
+      dismissable: false,
+    }
   if (billing.locked || billing.plan === '')
     return {
       kind: 'locked',

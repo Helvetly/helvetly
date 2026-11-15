@@ -84,8 +84,11 @@ func (s *Service) Guard(next http.Handler) http.Handler {
 	// A workspace without a live subscription is read-only: every change but the exempt routes answers 402.
 	needsPlan := s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
 		b, err := s.db.WorkspaceBilling(r.Context(), sess.Workspace.ID)
-		if err == nil && PlanOf(b) == "" {
+		if err == nil && PlanOf(b, s.now()) == "" {
 			err = errPlanRequired
+			if lapsed(b, s.now()) {
+				err = errPaymentOverdue
+			}
 		}
 		if err != nil {
 			s.writeError(w, r, err)
@@ -142,7 +145,7 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if err != nil {
 		return 0, err
 	}
-	plan := PlanOf(b)
+	plan := PlanOf(b, s.now())
 	if plan == "" {
 		return 0, nil
 	}
@@ -181,11 +184,11 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	if err != nil {
 		return err
 	}
-	plan := PlanOf(b)
+	plan := PlanOf(b, s.now())
 	if plan == "" {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
 	}
-	max := s.plans.forBilling(b, limit)
+	max := s.plans.forBilling(b, limit, s.now())
 	if max == Unlimited {
 		return nil
 	}
@@ -227,8 +230,8 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 	if err != nil {
 		return "", 0, 0, false, err
 	}
-	plan = PlanOf(b)
-	max = s.plans.forBilling(b, limit)
+	plan = PlanOf(b, s.now())
+	max = s.plans.forBilling(b, limit, s.now())
 	if max == Unlimited {
 		return plan, 0, max, true, nil
 	}

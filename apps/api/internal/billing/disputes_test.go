@@ -95,7 +95,7 @@ func (c chargeback) outcome() outcome {
 		c.ws).Scan(&notified); err != nil {
 		c.e.t.Fatal(err)
 	}
-	return outcome{PlanOf(c.e.billing(c.ws)), disputed, allowance, notified, c.e.stripe.called("DELETE /v1/subscriptions/sub_" + c.ws)}
+	return outcome{PlanOf(c.e.billing(c.ws), time.Now()), disputed, allowance, notified, c.e.stripe.called("DELETE /v1/subscriptions/sub_" + c.ws)}
 }
 
 func TestChargebacksAndRefunds(t *testing.T) {

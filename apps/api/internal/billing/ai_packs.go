@@ -85,7 +85,7 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 	if err != nil {
 		return err
 	}
-	if PlanOf(b) == "" {
+	if PlanOf(b, s.now()) == "" {
 		return errPlanRequired
 	}
 	if b.CustomerID == "" {

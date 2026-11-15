@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestDelayedSubscriptionReadCannotRestoreAnOldPlan(t *testing.T) {
@@ -25,7 +26,7 @@ func TestDelayedSubscriptionReadCannotRestoreAnOldPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != "canceled" || PlanOf(got) != "" {
+	if got.Status != "canceled" || PlanOf(got, time.Now()) != "" {
 		t.Fatalf("stale delivery restored canceled plan: %+v", got)
 	}
 }

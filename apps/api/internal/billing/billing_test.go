@@ -90,6 +90,9 @@ type fakeStripe struct {
 	invoiced  map[string]string         // the subscription whose invoice a payment intent paid
 	disputes  map[string]map[string]any // by id, charge is the charge's id
 	sessions  []map[string]any          // Checkout Sessions, found by payment_intent or by customer and status
+	declines  bool                      // a change that waits for its payment (pending_if_incomplete) is declined
+	invoices  map[string]map[string]any // by id, beyond the customer's listed ones
+	voided    []string                  // the invoices voided, in order
 	// held, when set, pauses the first request to that "METHOD path" (reached closes) until resume closes
 	held            string
 	reached, resume chan struct{}
@@ -154,6 +157,15 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		reply(map[string]any{"data": data})
+	case parts[0] == "checkout" && len(parts) == 3 && r.Method == http.MethodGet:
+		for _, cs := range f.sessions {
+			if cs["id"] == parts[2] {
+				reply(cs)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","code":"resource_missing","message":"No such session"}}`)
 	case parts[0] == "checkout" && len(parts) == 4 && parts[3] == "expire":
 		for _, cs := range f.sessions {
 			if cs["id"] == parts[2] {
@@ -161,6 +173,26 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		reply(map[string]any{"id": parts[2], "status": "expired"})
+	case key == "GET /v1/invoice_payments" && r.Form.Has("invoice"):
+		reply(map[string]any{"data": []map[string]any{{"is_default": true,
+			"payment": map[string]any{"type": "payment_intent", "payment_intent": "pi_" + r.Form.Get("invoice")}}}})
+	case parts[0] == "payment_intents" && len(parts) == 2:
+		reply(map[string]any{"id": parts[1], "status": "requires_payment_method",
+			"last_payment_error": map[string]any{"code": "card_declined", "decline_code": "insufficient_funds"}})
+	case parts[0] == "invoices" && len(parts) == 2 && r.Method == http.MethodGet:
+		reply(f.invoices[parts[1]])
+	case parts[0] == "invoices" && len(parts) == 3 && parts[2] == "void":
+		f.voided = append(f.voided, parts[1])
+		f.invoices[parts[1]]["status"] = "void"
+		reply(f.invoices[parts[1]])
+	case key == "GET /v1/invoices" && r.Form.Has("subscription"):
+		data := []map[string]any{}
+		for _, inv := range f.invoices {
+			if inv["subscription"] == r.Form.Get("subscription") && inv["status"] == r.Form.Get("status") {
+				data = append(data, inv)
+			}
+		}
+		reply(map[string]any{"data": data})
 	case key == "GET /v1/invoice_payments":
 		data := []map[string]any{}
 		if r.Form.Get("payment[type]") == "payment_intent" {
@@ -231,6 +263,17 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","code":"resource_missing","message":"No such subscription"}}`)
 			return
 		}
+		if r.Method == http.MethodPost && r.Form.Get("payment_behavior") == "pending_if_incomplete" && f.declines {
+			// Stripe keeps the change as a pending update and its invoice open until it is paid.
+			s = maps.Clone(s)
+			s["pending_update"] = map[string]any{"expires_at": time.Now().Add(23 * time.Hour).Unix(),
+				"subscription_items": []map[string]any{{"price": map[string]any{"id": r.Form.Get("items[0][price]"),
+					"lookup_key": lookupKeyOf(r.Form.Get("items[0][price]"))}}}}
+			s["latest_invoice"] = map[string]any{"id": "in_pending", "status": "open", "billing_reason": "subscription_update",
+				"hosted_invoice_url": "https://invoice.stripe.com/i/pending"}
+			reply(s)
+			return
+		}
 		switch r.Method {
 		case http.MethodPost:
 			item := s["items"].(map[string]any)["data"].([]map[string]any)[0]
@@ -250,6 +293,19 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+// session adds a Checkout Session, or updates the one with its id.
+func (f *fakeStripe) session(cs map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, known := range f.sessions {
+		if known["id"] == cs["id"] {
+			maps.Copy(known, cs)
+			return
+		}
+	}
+	f.sessions = append(f.sessions, maps.Clone(cs))
 }
 
 func (f *fakeStripe) setFail(fail bool) {
@@ -279,10 +335,10 @@ func (f *fakeStripe) form(key string) url.Values {
 func (f *fakeStripe) put(id, ws, customer, status, price string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.subs[id] = map[string]any{"id": id, "status": status, "customer": customer, "current_period_end": 1767225600,
+	f.subs[id] = map[string]any{"id": id, "status": status, "customer": customer, "current_period_end": periodEnd,
 		"cancel_at_period_end": false, "metadata": map[string]string{"workspace_id": ws}, "items": items(price, f.perSeat, 1)}
 	if status == "trialing" {
-		f.subs[id]["trial_end"] = 1767225600
+		f.subs[id]["trial_end"] = periodEnd
 	}
 }
 
@@ -292,8 +348,14 @@ func items(price string, perSeat bool, quantity int64) map[string]any {
 	if perSeat {
 		p["metadata"] = map[string]string{PricingKey: PerSeat}
 	}
-	return map[string]any{"data": []map[string]any{{"id": "si_1", "price": p, "quantity": quantity}}}
+	return map[string]any{"data": []map[string]any{{"id": "si_1", "price": p, "quantity": quantity, "current_period_start": periodStart}}}
 }
+
+// periodStart and periodEnd are the fake subscriptions' current period: begun yesterday, ending in a month.
+var (
+	periodStart = time.Now().Add(-24 * time.Hour).Unix()
+	periodEnd   = time.Now().Add(30 * 24 * time.Hour).Unix()
+)
 
 // setPerSeat makes the catalogue's prices per seat, as the catalogue tool does; subscriptions made before
 // keep their flat price.
@@ -331,7 +393,8 @@ func newEnv(t *testing.T, enabled bool) *env {
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, keys: map[string]string{}, catalog: catalog(), currency: map[string]string{},
 		promos: map[string]map[string]any{}, coupons: map[string]map[string]any{},
-		charges: map[string]map[string]any{}, invoiced: map[string]string{}, disputes: map[string]map[string]any{}}
+		charges: map[string]map[string]any{}, invoiced: map[string]string{}, disputes: map[string]map[string]any{},
+		invoices: map[string]map[string]any{}}
 	stripeSrv := httptest.NewServer(fake)
 	t.Cleanup(stripeSrv.Close)
 	cfg := config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32), SessionTTL: time.Hour}
@@ -437,12 +500,20 @@ func sign(payload []byte, secret string, at time.Time) string {
 	return "t=" + ts + ",v1=" + hex.EncodeToString(mac.Sum(nil))
 }
 
-// event posts a signed Stripe event.
+// event posts a signed Stripe event; a Checkout Session in it is what Stripe then has (billing reads it again).
 func (e *env) event(id, typ string, object map[string]any) int {
+	e.t.Helper()
+	if strings.HasPrefix(typ, "checkout.session.") {
+		e.stripe.session(object)
+	}
+	return e.eventSigned(id, typ, object, whsec)
+}
+
+func (e *env) eventSigned(id, typ string, object map[string]any, secret string) int {
 	e.t.Helper()
 	payload, _ := json.Marshal(map[string]any{"id": id, "type": typ, "data": map[string]any{"object": object}})
 	req, _ := http.NewRequest(http.MethodPost, e.srv.URL+"/api/webhooks/stripe", bytes.NewReader(payload))
-	req.Header.Set("Stripe-Signature", sign(payload, whsec, time.Now()))
+	req.Header.Set("Stripe-Signature", sign(payload, secret, time.Now()))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		e.t.Fatal(err)
@@ -534,11 +605,11 @@ func TestWebhookStateTransitions(t *testing.T) {
 			t.Fatalf("%s: status %d", s.name, code)
 		}
 		b := e.billing(ws)
-		if PlanOf(b) != s.plan || (s.interval != "" && b.Interval != s.interval) || b.Status != s.status {
+		if PlanOf(b, time.Now()) != s.plan || (s.interval != "" && b.Interval != s.interval) || b.Status != s.status {
 			t.Fatalf("%s: billing %+v, want plan %s", s.name, b, s.plan)
 		}
 	}
-	if b := e.billing(ws); !b.TrialUsed || b.CurrentPeriodEnd == nil || b.CurrentPeriodEnd.Unix() != 1767225600 {
+	if b := e.billing(ws); !b.TrialUsed || b.CurrentPeriodEnd == nil || b.CurrentPeriodEnd.Unix() != periodEnd {
 		t.Fatalf("billing %+v", b)
 	}
 }
@@ -596,14 +667,31 @@ func TestWebhookIgnores(t *testing.T) {
 	}
 }
 
-func TestWebhookReplacesASecondLiveSubscription(t *testing.T) {
+// A second live subscription (two checkouts, both paid) is cancelled with its unused time credited; the one on record
+// stays. When the one on record has ended at Stripe (its event lost), it is applied and the newcomer takes its place.
+func TestWebhookSettlesASecondLiveSubscription(t *testing.T) {
 	e := newEnv(t, true)
 	ws := e.workspace().workspace
 	e.stripe.put("sub_1", ws, "cus_1", "active", "price_bm")
 	e.stripe.put("sub_2", ws, "cus_1", "active", "price_pm")
 	e.event("evt_1", "customer.subscription.created", map[string]any{"id": "sub_1"})
 	e.event("evt_2", "customer.subscription.created", map[string]any{"id": "sub_2"})
-	if b := e.billing(ws); b.SubscriptionID != "sub_2" || e.stripe.called("DELETE /v1/subscriptions/sub_1") != 1 {
+	f := e.stripe.form("DELETE /v1/subscriptions/sub_2")
+	if b := e.billing(ws); b.SubscriptionID != "sub_1" || b.Plan != Basic || e.stripe.called("DELETE /v1/subscriptions/sub_1") != 0 ||
+		f.Get("prorate") != "true" || f.Get("invoice_now") != "true" {
+		t.Fatalf("billing %+v, calls %v, form %v", b, e.stripe.calls, f)
+	}
+	// The newcomer's own cancellation event leaves the one on record.
+	e.event("evt_3", "customer.subscription.deleted", map[string]any{"id": "sub_2"})
+	if b := e.billing(ws); b.SubscriptionID != "sub_1" || b.Status != "active" {
+		t.Fatalf("after the newcomer ended: %+v", b)
+	}
+
+	// sub_1 ended at Stripe without its event: a third live one takes its place.
+	e.stripe.put("sub_1", ws, "cus_1", "canceled", "price_bm")
+	e.stripe.put("sub_4", ws, "cus_1", "active", "price_xm")
+	e.event("evt_4", "customer.subscription.created", map[string]any{"id": "sub_4"})
+	if b := e.billing(ws); b.SubscriptionID != "sub_4" || b.Plan != Business || e.stripe.called("DELETE /v1/subscriptions/sub_4") != 0 {
 		t.Fatalf("billing %+v, calls %v", b, e.stripe.calls)
 	}
 }
@@ -799,7 +887,8 @@ func TestCheckout(t *testing.T) {
 	if code != http.StatusOK || body["url"] != "https://helvetly.example.com/settings/billing?checkout=switched" || e.billing(owner.workspace).Plan != Pro {
 		t.Fatalf("upgrade: %d %v %+v", code, body, e.billing(owner.workspace))
 	}
-	if f := e.stripe.form("POST /v1/subscriptions/sub_1"); f.Get("items[0][price]") != "price_py" || f.Get("proration_behavior") != "create_prorations" {
+	if f := e.stripe.form("POST /v1/subscriptions/sub_1"); f.Get("items[0][price]") != "price_py" || f.Get("proration_behavior") != "always_invoice" ||
+		f.Get("payment_behavior") != "pending_if_incomplete" {
 		t.Fatalf("update form %v", f)
 	}
 
@@ -807,7 +896,8 @@ func TestCheckout(t *testing.T) {
 	e.join(owner.workspace, "member")
 	e.join(owner.workspace, "member")
 	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year"})
-	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "plan_limits_exceeded" {
+	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "plan_limits_exceeded" ||
+		errBody["message"] != "Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first." {
 		t.Fatalf("downgrade over the limits: %d %v", code, body)
 	}
 }
@@ -863,7 +953,7 @@ func TestEndSubscription(t *testing.T) {
 		map[string]any{"id": "cs_plan", "mode": "subscription", "customer": "cus_1", "status": "open"},
 		map[string]any{"id": "cs_pack", "mode": "payment", "customer": "cus_1", "status": "open"})
 	e.stripe.mu.Unlock()
-	if err := e.svc.EndSubscription(ctx, ws); err != nil || PlanOf(e.billing(ws)) != "" {
+	if err := e.svc.EndSubscription(ctx, ws); err != nil || PlanOf(e.billing(ws), time.Now()) != "" {
 		t.Fatalf("end: %v %+v", err, e.billing(ws))
 	}
 	for path, want := range map[string]int{

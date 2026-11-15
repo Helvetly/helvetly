@@ -132,12 +132,19 @@ type subscription struct {
 	Currency          string            `json:"currency"`
 	Metadata          map[string]string `json:"metadata"`
 	Discounts         []stripeDiscount  `json:"discounts"` // expanded (subscriptionExpand)
-	Items             struct {
+	// LatestInvoice: an id, or the invoice when expanded (subscriptionExpand), which tells an unpaid renewal.
+	LatestInvoice       json.RawMessage `json:"latest_invoice"`
+	CancellationDetails struct {
+		Reason string `json:"reason"` // cancellation_requested, payment_disputed, payment_failed
+	} `json:"cancellation_details"`
+	PendingUpdate *pendingUpdate `json:"pending_update"` // a change waiting for its payment; nil when none
+	Items         struct {
 		Data []struct {
-			ID               string `json:"id"`
-			CurrentPeriodEnd int64  `json:"current_period_end"` // where newer API versions keep it
-			Price            price  `json:"price"`
-			Quantity         int64  `json:"quantity"`
+			ID                 string `json:"id"`
+			CurrentPeriodStart int64  `json:"current_period_start"`
+			CurrentPeriodEnd   int64  `json:"current_period_end"` // where newer API versions keep it
+			Price              price  `json:"price"`
+			Quantity           int64  `json:"quantity"`
 		} `json:"data"`
 	} `json:"items"`
 }
@@ -218,6 +225,23 @@ func (s subscription) periodEnd() int64 {
 		return s.Items.Data[0].CurrentPeriodEnd
 	}
 	return s.CurrentPeriodEnd
+}
+
+// periodStart: when the current period began, kept on the item (0 when Stripe didn't say).
+func (s subscription) periodStart() int64 {
+	if len(s.Items.Data) == 0 {
+		return 0
+	}
+	return s.Items.Data[0].CurrentPeriodStart
+}
+
+// unpaidRenewal: the latest invoice (expanded) is a renewal's and still open, so the current period isn't paid for.
+func (s subscription) unpaidRenewal() bool {
+	var inv struct {
+		Status        string `json:"status"`
+		BillingReason string `json:"billing_reason"`
+	}
+	return json.Unmarshal(s.LatestInvoice, &inv) == nil && inv.BillingReason == "subscription_cycle" && inv.Status == "open"
 }
 
 type price struct {

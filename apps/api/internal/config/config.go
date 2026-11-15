@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -74,7 +75,9 @@ type AI struct {
 
 // Stripe: subscription billing (docs/billing-contract.md); off when SecretKey is empty, and then no plan limit applies.
 type Stripe struct {
-	SecretKey     string
+	SecretKey string
+	// WebhookSecret (STRIPE_WEBHOOK_SECRET) is one signing secret, or several separated by commas while two endpoints
+	// deliver the same events (switching the endpoint's API version): an event signed with any of them is taken.
 	WebhookSecret string
 	// AutomaticTax turns on Stripe Tax in Checkout (Swiss VAT taken out of VAT-inclusive prices).
 	AutomaticTax bool
@@ -86,6 +89,17 @@ type Stripe struct {
 }
 
 func (c Config) BillingEnabled() bool { return c.Stripe.SecretKey != "" }
+
+// WebhookSecrets are the signing secrets in WebhookSecret, trimmed, empty ones left out.
+func (s Stripe) WebhookSecrets() []string {
+	var out []string
+	for v := range strings.SplitSeq(s.WebhookSecret, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
 
 // S3: the object storage files go to: any service with the S3 API (README, "Object storage"). Nothing here names a
 // provider; behaviour differs only by these settings.
@@ -354,8 +368,9 @@ func Load() (Config, error) {
 		if !strings.HasPrefix(c.Stripe.SecretKey, "sk_") && !strings.HasPrefix(c.Stripe.SecretKey, "rk_") {
 			fail("STRIPE_SECRET_KEY must be a Stripe secret or restricted key (sk_… or rk_…)")
 		}
-		if !strings.HasPrefix(c.Stripe.WebhookSecret, "whsec_") {
-			fail("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY (whsec_…, from `docker compose logs stripe` or the dashboard)")
+		secrets := c.Stripe.WebhookSecrets()
+		if len(secrets) == 0 || slices.ContainsFunc(secrets, func(v string) bool { return !strings.HasPrefix(v, "whsec_") }) {
+			fail("STRIPE_WEBHOOK_SECRET is required with STRIPE_SECRET_KEY (whsec_…, from `docker compose logs stripe` or the dashboard; several separated by commas)")
 		}
 		if u, err := url.Parse(c.Stripe.APIBase); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			fail("STRIPE_API_BASE must be a URL such as https://api.stripe.com, got %q", c.Stripe.APIBase)

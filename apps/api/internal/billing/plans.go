@@ -1,6 +1,6 @@
 // Package billing is subscription billing with Stripe and the plan limits (docs/billing-contract.md). A workspace
-// is on Basic, Pro or Business while its subscription is active, trialing or past due, and locked (read-only)
-// otherwise.
+// is on Basic, Pro or Business while its subscription is active, trialing or past due and its paid end plus the
+// billing grace has not passed, and locked (read-only) otherwise.
 package billing
 
 import (
@@ -144,11 +144,11 @@ func loadPlanLimits(ctx context.Context, db *store.Store) (planLimits, error) {
 
 // forBilling is the cap on a limit for the workspace's subscription: a per-seat one is billed for every member, so
 // it has no member cap; one on an earlier flat price keeps its plan's.
-func (p planLimits) forBilling(b store.Billing, l Limit) int64 {
+func (p planLimits) forBilling(b store.Billing, l Limit, now time.Time) int64 {
 	if l == Members && b.PerSeat {
 		return Unlimited
 	}
-	return p.of(PlanOf(b), l)
+	return p.of(PlanOf(b, now), l)
 }
 
 // of is a plan's cap on a limit; Unlimited when there is no plan to cap it (billing off, or nothing to count).
@@ -177,12 +177,56 @@ func live(status string) bool {
 	return status == "active" || status == "trialing" || status == "past_due"
 }
 
-// PlanOf is the plan the workspace is on; "" when it has none and is locked.
-func PlanOf(b store.Billing) string {
-	if live(b.Status) && planNames[b.Plan] != "" {
+// PlanOf is the plan the workspace is on at now; "" when it has none and is locked.
+func PlanOf(b store.Billing, now time.Time) string {
+	if live(b.Status) && planNames[b.Plan] != "" && (b.PlanExpiresAt == nil || now.Before(*b.PlanExpiresAt)) {
 		return b.Plan
 	}
 	return ""
+}
+
+// lapsed: the subscription is still live at Stripe, but its payment is overdue past the billing grace.
+func lapsed(b store.Billing, now time.Time) bool {
+	return live(b.Status) && b.PlanExpiresAt != nil && !now.Before(*b.PlanExpiresAt)
+}
+
+// billingGrace keeps a plan working a little past its paid end, so a renewal Stripe retries doesn't lock at once.
+const billingGrace = 3 * 24 * time.Hour
+
+// planExpiry is until when a subscription's plan works; prev is the end recorded for the same subscription (nil when
+// none). Active or trialing: the paid period's (or trial's) end plus the grace. Past due: the end stays where it was,
+// and an open renewal invoice pulls it back to the period's start plus the grace (Stripe starts the new period
+// before it charges); an unpaid mid-period extra (a seat) leaves the paid period alone. Anything else (unpaid,
+// canceled, paused, incomplete, incomplete_expired): the plan ends now.
+func planExpiry(sub subscription, prev *time.Time, now time.Time) *time.Time {
+	graced := func(unix int64) *time.Time {
+		t := time.Unix(unix, 0).UTC().Add(billingGrace)
+		return &t
+	}
+	switch sub.Status {
+	case "active", "trialing":
+		end := sub.periodEnd()
+		if sub.Status == "trialing" && sub.TrialEnd != nil {
+			end = *sub.TrialEnd
+		}
+		if end == 0 {
+			return nil
+		}
+		return graced(end)
+	case "past_due":
+		end := prev
+		if end == nil && sub.periodEnd() > 0 {
+			end = graced(sub.periodEnd())
+		}
+		if start := sub.periodStart(); sub.unpaidRenewal() && start > 0 && (end == nil || graced(start).Before(*end)) {
+			end = graced(start)
+		}
+		return end
+	}
+	if prev != nil && prev.Before(now) {
+		return prev
+	}
+	return &now
 }
 
 func used(u store.Usage, l Limit) int64 {
@@ -233,4 +277,34 @@ func (p planLimits) overages(plan string, perSeat bool, u store.Usage) []overage
 		}
 	}
 	return out
+}
+
+var overageWords = map[Limit][3]string{
+	Clients:     {"client", "clients", "Delete"},
+	Products:    {"product or service", "products and services", "Delete"},
+	Engagements: {"running engagement", "running engagements", "End or cancel"},
+}
+
+// overageMessage names what keeps the workspace from moving to plan and what to reduce, one sentence per limit:
+// "Basic allows 2 members besides the owner; this workspace has 5. Remove 3 members first."
+func overageMessage(plan string, over []overage) string {
+	name := planNames[plan]
+	parts := make([]string, 0, len(over))
+	for _, o := range over {
+		n := o.Used - o.Max
+		switch o.Limit {
+		case Storage:
+			parts = append(parts, fmt.Sprintf("%s allows %s of storage; this workspace uses %s. Remove %s of files first.",
+				name, bytesText(o.Max), bytesText(o.Used), bytesText(n)))
+			continue
+		case Members:
+			parts = append(parts, fmt.Sprintf("%s allows %d %s besides the owner; this workspace has %d. Remove %d %s first.",
+				name, o.Max, plural(o.Max, "member", "members"), o.Used, n, plural(n, "member", "members")))
+			continue
+		}
+		w := overageWords[o.Limit] // one, many, what to do
+		parts = append(parts, fmt.Sprintf("%s allows %d %s; this workspace has %d. %s %d %s first.",
+			name, o.Max, plural(o.Max, w[0], w[1]), o.Used, w[2], n, plural(n, w[0], w[1])))
+	}
+	return strings.Join(parts, " ")
 }

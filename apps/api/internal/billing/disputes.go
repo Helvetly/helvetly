@@ -59,9 +59,12 @@ type stripeDispute struct {
 }
 
 type checkoutSession struct {
-	ID       string            `json:"id"`
-	Mode     string            `json:"mode"`
-	Metadata map[string]string `json:"metadata"`
+	ID            string            `json:"id"`
+	Mode          string            `json:"mode"`
+	Customer      string            `json:"customer"`
+	Subscription  string            `json:"subscription"`
+	PaymentStatus string            `json:"payment_status"`
+	Metadata      map[string]string `json:"metadata"`
 }
 
 // paidFor: what a charge paid for one of our workspaces — a subscription invoice (subID) or an AI token pack (pack).
@@ -245,7 +248,7 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		return err
 	}
 	var monthly int64 // without a plan only the packs are left to take from
-	if plan := PlanOf(b); plan != "" {
+	if plan := PlanOf(b, s.now()); plan != "" {
 		monthly = s.plans.of(plan, AITokens)
 	}
 	left := tokens

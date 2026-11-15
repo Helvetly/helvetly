@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -78,7 +79,9 @@ func (s *Service) webhook(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, auth.Error(http.StatusRequestEntityTooLarge, "too_large", "The event is too large.", nil))
 		return
 	}
-	if !verifySignature(payload, r.Header.Get("Stripe-Signature"), s.cfg.WebhookSecret, s.now()) {
+	if !slices.ContainsFunc(s.cfg.WebhookSecrets(), func(secret string) bool {
+		return verifySignature(payload, r.Header.Get("Stripe-Signature"), secret, s.now())
+	}) {
 		s.writeError(w, r, errBadSignature)
 		return
 	}
@@ -94,26 +97,31 @@ func (s *Service) webhook(w http.ResponseWriter, r *http.Request) {
 	auth.WriteJSON(w, http.StatusOK, map[string]bool{"received": true})
 }
 
+// handleEvent reads only what every API version's payload has alike (the event's id and type, and the object's id)
+// and reads the object again from Stripe with the pinned version, so events from an endpoint on an older version
+// apply the same while the endpoints are switched.
 func (s *Service) handleEvent(ctx context.Context, ev event) error {
 	var obj struct {
-		ID            string            `json:"id"`
-		Mode          string            `json:"mode"`
-		Subscription  string            `json:"subscription"`
-		Customer      string            `json:"customer"`
-		PaymentStatus string            `json:"payment_status"`
-		Metadata      map[string]string `json:"metadata"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(ev.Data.Object, &obj); err != nil {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "The event's object is not valid.", nil)
 	}
+	if obj.ID == "" {
+		return nil // nothing billing could read again
+	}
 	var subID string
 	switch ev.Type {
 	case "checkout.session.completed", "checkout.session.async_payment_succeeded":
-		if obj.Mode == "subscription" {
-			subID = obj.Subscription
+		var cs checkoutSession
+		if err := s.stripe.Call(ctx, http.MethodGet, "/v1/checkout/sessions/"+url.PathEscape(obj.ID), nil, "", &cs); err != nil {
+			return err
 		}
-		if obj.Mode == "payment" { // an AI token pack
-			return s.creditAITokens(ctx, ev, obj.ID, obj.Customer, obj.Metadata["workspace_id"], obj.Metadata[AITokensKey], obj.PaymentStatus)
+		if cs.Mode == "payment" { // an AI token pack
+			return s.creditAITokens(ctx, ev, cs.ID, cs.Customer, cs.Metadata["workspace_id"], cs.Metadata[AITokensKey], cs.PaymentStatus)
+		}
+		if cs.Mode == "subscription" {
+			subID = cs.Subscription
 		}
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
 		"customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.trial_will_end":
@@ -149,11 +157,10 @@ func (s *Service) record(ctx context.Context, q store.Q, ev event) error {
 
 // apply records a subscription read from Stripe on the workspace in its metadata. ev, when set, is applied once. A
 // subscription for another customer than the workspace's, or an older one ending while a newer one is stored,
-// changes nothing; a second live subscription replaces the stored one, which is then cancelled. A per-seat one that
-// bills another number than the workspace's people is then synced.
+// changes nothing; a second live subscription never replaces the live one on record (settleDuplicate). A per-seat
+// one that bills another number than the workspace's people is then synced.
 func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 	ws := sub.Metadata["workspace_id"]
-	var replaced string
 	var resync bool
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		if err := s.record(ctx, q, ev); err != nil {
@@ -189,15 +196,10 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 			s.log.WarnContext(ctx, "ignoring a subscription for another customer", "subscription", sub.ID, "workspace", ws)
 			return nil
 		}
-		if b.SubscriptionID != "" && b.SubscriptionID != sub.ID {
-			if !live(sub.Status) {
-				return nil
-			}
-			if live(b.Status) {
-				replaced = b.SubscriptionID
-			}
+		if b.SubscriptionID != "" && b.SubscriptionID != sub.ID && (!live(sub.Status) || live(b.Status)) {
+			return nil // an older one ending, or a second live one (settleDuplicate), leaves the one on record
 		}
-		after := s.toStore(sub)
+		after := s.toStore(sub, b)
 		if err := q.ApplySubscription(ctx, ws, sub.Customer, after, s.now()); err != nil {
 			return err
 		}
@@ -213,34 +215,98 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 		}
 		return nil
 	})
-	if errors.Is(err, errSeen) {
+	if err != nil && !errors.Is(err, errSeen) {
+		return err
+	}
+	// Both read the state as it is, so a re-delivered event runs them again until they went through.
+	if err := s.settleDuplicate(ctx, sub); err != nil {
+		return err
+	}
+	s.voidUnpaidInvoices(ctx, sub)
+	if resync {
+		s.resyncSeats(ctx, ws)
+	}
+	return nil
+}
+
+// otherLive: the workspace has a live subscription on record and sub is another live one of its customer.
+func otherLive(b store.Billing, sub subscription) bool {
+	return b.SubscriptionID != "" && b.SubscriptionID != sub.ID && b.CustomerID == sub.Customer && live(b.Status) && live(sub.Status)
+}
+
+// settleDuplicate keeps one subscription per workspace. A live one arriving while another is live on record (two
+// checkouts, both paid) is cancelled at Stripe, its unused time credited to the customer's balance (which pays the
+// kept one's next invoices). When the one on record turns out to have ended at Stripe (its event lost), that is
+// applied first and sub takes its place.
+func (s *Service) settleDuplicate(ctx context.Context, sub subscription) error {
+	ws := sub.Metadata["workspace_id"]
+	if ws == "" || !live(sub.Status) {
 		return nil
 	}
-	if err == nil && replaced != "" {
-		s.log.WarnContext(ctx, "cancelling a replaced subscription", "subscription", replaced, "workspace", ws)
-		// The event is recorded, so a retry would not get here again: a failure is for a person to follow up.
-		if err := s.stripe.Call(ctx, http.MethodDelete, "/v1/subscriptions/"+url.PathEscape(replaced), nil, "", nil); err != nil {
-			s.log.ErrorContext(ctx, "cancelling a replaced subscription failed", "subscription", replaced, "error", err)
+	b, err := s.db.WorkspaceBilling(ctx, ws)
+	if err != nil || !otherLive(b, sub) {
+		return err
+	}
+	kept, err := s.getSubscription(ctx, b.SubscriptionID)
+	if err != nil {
+		return err
+	}
+	if !live(kept.Status) {
+		if err := s.apply(ctx, kept, event{}); err != nil {
+			return err
+		}
+		return s.apply(ctx, sub, event{})
+	}
+	s.log.WarnContext(ctx, "cancelling a second live subscription, unused time credited", "workspace", ws, "kept", kept.ID,
+		"cancelled", sub.ID)
+	return s.stripe.Call(ctx, http.MethodDelete, "/v1/subscriptions/"+url.PathEscape(sub.ID),
+		url.Values{"prorate": {"true"}, "invoice_now": {"true"}}, "", nil)
+}
+
+// voidUnpaidInvoices: a subscription Stripe cancelled because a payment kept failing leaves its other open invoices
+// to be collected, so a card added later would be charged for a plan that is over. They are voided. An unpaid (not
+// cancelled) subscription keeps its invoices: paying them is what opens it again. Best effort, logged.
+func (s *Service) voidUnpaidInvoices(ctx context.Context, sub subscription) {
+	if sub.Status != "canceled" || sub.CancellationDetails.Reason != "payment_failed" || sub.Metadata["workspace_id"] == "" {
+		return
+	}
+	// Only the subscription on record: another customer's, or one of a workspace this server doesn't have, is left.
+	if b, err := s.db.WorkspaceBilling(ctx, sub.Metadata["workspace_id"]); err != nil || b.SubscriptionID != sub.ID || b.CustomerID != sub.Customer {
+		return
+	}
+	var open list[invoice]
+	form := url.Values{"subscription": {sub.ID}, "status": {"open"}, "limit": {"100"}}
+	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/invoices", form, "", &open); err != nil {
+		s.log.WarnContext(ctx, "reading the open invoices of an ended subscription failed", "subscription", sub.ID, "error", err)
+		return
+	}
+	for _, inv := range open.Data {
+		// One paid or voided meanwhile is refused by Stripe: logged, and not listed as open the next time.
+		if err := s.stripe.Call(ctx, http.MethodPost, "/v1/invoices/"+url.PathEscape(inv.ID)+"/void", nil, "", nil); err != nil {
+			s.log.WarnContext(ctx, "voiding an open invoice of an ended subscription failed", "invoice", inv.ID, "error", err)
 		}
 	}
-	if err == nil && resync && replaced == "" {
-		s.SyncSeats(ctx, ws)
-	}
-	return err
 }
 
 // subscriptionExpand reads a subscription's discounts with their coupon and promotion code, so the discount can name
-// the code.
-var subscriptionExpand = []string{"discounts.source.coupon", "discounts.promotion_code"}
+// the code,
+// and the latest invoice, which tells an unpaid renewal (planExpiry).
+var subscriptionExpand = []string{"discounts.source.coupon", "discounts.promotion_code", "latest_invoice"}
 
 func (s *Service) getSubscription(ctx context.Context, id string) (sub subscription, err error) {
 	err = s.stripe.Call(ctx, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(id), url.Values{"expand[]": subscriptionExpand}, "", &sub)
 	return sub, err
 }
 
-// toStore maps the price to its plan and interval (an unknown price is no plan) and keeps the discount.
-func (s *Service) toStore(sub subscription) store.Subscription {
+// toStore maps the price to its plan and interval (an unknown price is no plan), keeps the discount and works out
+// until when the plan works (planExpiry) from what before recorded.
+func (s *Service) toStore(sub subscription, before store.Billing) store.Subscription {
 	out := store.Subscription{ID: sub.ID, Status: sub.Status, CancelAtPeriodEnd: sub.CancelAtPeriodEnd || sub.CancelAt != nil}
+	var prev *time.Time
+	if before.SubscriptionID == sub.ID {
+		prev = before.PlanExpiresAt
+	}
+	out.PlanExpiresAt = planExpiry(sub, prev, s.now())
 	out.Plan, out.Interval = sub.price().planAndInterval()
 	out.PerSeat, out.Seats = sub.price().perSeat(), sub.quantity()
 	if out.Plan == "" {

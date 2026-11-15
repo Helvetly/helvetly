@@ -85,6 +85,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/billing/ai-tokens", true, s.buyAITokens)
 	handle("POST /api/v1/billing/portal", true, s.portal)
 	handle("POST /api/v1/billing/sync", true, s.sync)
+	handle("GET /api/v1/billing/pending-payment", true, s.pendingPayment)
 	mux.HandleFunc("POST /api/webhooks/stripe", s.webhook)
 }
 
@@ -95,6 +96,10 @@ var (
 		"This workspace has no billing account yet: choose a plan first.", nil)
 	errPlanRequired = auth.Error(http.StatusPaymentRequired, "plan_required",
 		"This workspace has no active plan. Choose a plan to keep working.", map[string]any{})
+	// errPaymentOverdue is errPlanRequired for a workspace whose renewal stayed unpaid past the billing grace.
+	errPaymentOverdue = auth.Error(http.StatusPaymentRequired, "plan_required",
+		"The last payment for this workspace's plan failed, so it is read-only. Pay the open invoice in Billing to keep working.",
+		map[string]any{"reason": "payment_overdue"})
 	errUnavailable = auth.Error(http.StatusConflict, "plan_unavailable", "This plan is not available right now: try again later.", nil)
 	errBadCode     = badCode("invalid", "This code isn't valid.")
 	errDiscounted  = badCode("has_discount", "This workspace already has a discount; another code can be added once it ends.")
@@ -154,7 +159,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	plan := PlanOf(b)
+	plan := PlanOf(b, s.now())
 	bought, err := s.db.AITokenPacks(r.Context(), sess.Workspace.ID, now.In(sess.Workspace.Location()).Format("2006-01"))
 	if err != nil {
 		return err
@@ -165,7 +170,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
-		max := s.plans.forBilling(b, l)
+		max := s.plans.forBilling(b, l, s.now())
 		if l == AITokens && max != Unlimited && plan != "" {
 			max += bought // the packs bought this month count on top of the plan's allowance
 		}
@@ -202,6 +207,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
 		"usage": usage, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
 		"ai_tokens_bought": bought, "ai_packs": []aiPack{}, "disputed": disputed,
+		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
 	}
 	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
 		out["ai_packs"] = packsIn(s.aiPacks(r.Context()), cur)
@@ -544,16 +550,20 @@ func (s *Service) fits(ctx context.Context, q store.Q, ws store.Workspace, plan 
 		return err
 	}
 	if over := s.plans.overages(plan, perSeat, u); len(over) > 0 {
-		return auth.Error(http.StatusConflict, "plan_limits_exceeded",
-			"The workspace has more than the "+planNames[plan]+" plan allows: remove some first.",
+		return auth.Error(http.StatusConflict, "plan_limits_exceeded", overageMessage(plan, over),
 			map[string]any{"plan": plan, "overages": over})
 	}
 	return nil
 }
 
-// changePlan moves a live subscription to another price at once, prorated; a smaller plan must fit what exists. A
-// per-seat price bills the workspace's seats, so a subscription on an earlier flat price moves to per seat here.
-// With a promotion code on the same plan and interval, only the code is applied; one discount at a time.
+// changePlan moves a live subscription to another price; a smaller plan must fit what exists. A per-seat price bills
+// the workspace's seats, so a subscription on an earlier flat price moves to per seat here. Every change is invoiced
+// at once (always_invoice). One the customer pays for now waits for that payment (a pending update; 402 with why and
+// where to pay while it is unpaid): an upgrade of an active subscription, monthly to yearly on any plan, and leaving
+// the trial for another plan (the trial plan's other interval keeps the trial). Anything else (a lower or the same
+// plan, yearly to monthly) does not wait: its credit is the invoice's negative total, which Stripe puts on the
+// customer's balance at once. With a promotion code on the same plan and interval, only the code is applied; one
+// discount at a time.
 func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, plan, interval string, target price, promoID string) (string, error) {
 	same := b.Plan == plan && b.Interval == interval
 	if same && promoID == "" {
@@ -574,6 +584,8 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 	if promoID != "" {
 		form.Set("discounts[0][promotion_code]", promoID)
 	}
+	var waits bool
+	keeps := "your current plan"
 	if !same {
 		if err := s.fits(ctx, q, ws, plan, target.perSeat()); err != nil {
 			return "", err
@@ -585,21 +597,37 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 		form.Set("items[0][id]", sub.Items.Data[0].ID)
 		form.Set("items[0][price]", target.ID)
 		form.Set("items[0][quantity]", strconv.FormatInt(seats, 10))
-		form.Set("proration_behavior", "create_prorations")
-		form.Set("metadata[plan]", plan)
-		form.Set("metadata[interval]", interval)
-		if b.Status == "trialing" && plan != TrialPlan {
-			form.Set("trial_end", "now") // the other plans are charged at once
+		form.Set("proration_behavior", "always_invoice")
+		current, currentInterval := sub.price().planAndInterval()
+		trial := sub.Status == "trialing" && current != plan
+		toYear := interval == "year" && currentInterval == "month"
+		upgrade := sub.Status == "active" && current != "" && planRank(plan) > planRank(current)
+		waits = trial || sub.Status != "trialing" && (toYear || upgrade)
+		if trial {
+			form.Set("trial_end", "now")
+			keeps = "the trial"
+		}
+		if waits {
+			form.Set("payment_behavior", "pending_if_incomplete")
+		} else { // metadata would change before the payment; the plan is read from the price either way
+			form.Set("metadata[plan]", plan)
+			form.Set("metadata[interval]", interval)
 		}
 	}
 	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
 		return "", err
 	}
-	if err := q.ApplySubscription(ctx, ws.ID, sub.Customer, s.toStore(sub), now); err != nil {
+	if waits && sub.PendingUpdate != nil {
+		return "", s.paymentOf(ctx, *sub.PendingUpdate, sub.LatestInvoice, plan).error(keeps)
+	}
+	if err := q.ApplySubscription(ctx, ws.ID, sub.Customer, s.toStore(sub, b), now); err != nil {
 		return "", err
 	}
 	return s.publicURL + "/settings/billing?checkout=switched", nil
 }
+
+// planRank is a plan's place in planOrder (cheapest first), -1 for one that isn't sold.
+func planRank(plan string) int { return slices.Index(planOrder, plan) }
 
 // ---- portal, sync and details ----
 
@@ -631,7 +659,7 @@ func (s *Service) sync(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if b.CustomerID != "" {
 		var subs list[subscription]
 		form := url.Values{"customer": {b.CustomerID}, "status": {"all"}, "limit": {"10"},
-			"expand[]": {"data.discounts.source.coupon", "data.discounts.promotion_code"}}
+			"expand[]": {"data.discounts.source.coupon", "data.discounts.promotion_code", "data.latest_invoice"}}
 		if err := s.stripe.Call(r.Context(), http.MethodGet, "/v1/subscriptions", form, "", &subs); err != nil {
 			return err
 		}
@@ -736,7 +764,7 @@ func (s *Service) EndSubscription(ctx context.Context, workspaceID string) error
 			return err
 		}
 		if sub.ID == b.SubscriptionID {
-			if err := s.db.ApplySubscription(ctx, workspaceID, b.CustomerID, s.toStore(sub), s.now()); err != nil {
+			if err := s.db.ApplySubscription(ctx, workspaceID, b.CustomerID, s.toStore(sub, b), s.now()); err != nil {
 				return err
 			}
 		}

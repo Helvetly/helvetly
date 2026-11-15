@@ -78,6 +78,8 @@ export type Billing = {
   ai_packs: AIPack[]
   /** A payment of the workspace is in a chargeback that is not closed yet. */
   disputed: boolean
+  /** The renewal stayed unpaid past the grace (three days after the paid period): read-only until it is paid. */
+  payment_overdue: boolean
 }
 /** A one-time AI token pack: tokens for a price incl. VAT. */
 export type AIPack = { tokens: number; amount: number; currency: string }
@@ -162,6 +164,30 @@ export function usePromotionCode() {
         })
       ).data,
   })
+}
+
+/**
+ * A 402 from a plan change charged at once (an upgrade, monthly to yearly, leaving the trial) whose payment didn't go
+ * through: the plan stays as it was, the message says why, and `payUrl` is Stripe's page to confirm or pay it.
+ */
+export function paymentFailed(error: unknown): { message: string; payUrl: string | null } | null {
+  if (!(error instanceof ApiError) || error.status !== 402 || error.code !== 'payment_failed')
+    return null
+  const url = error.details.pay_url
+  return {
+    message: error.message,
+    payUrl: typeof url === 'string' && isStripeURL(url) ? url : null,
+  }
+}
+
+/** An https link on a Stripe host: the only pages a pay link may open. */
+const isStripeURL = (raw: string) => {
+  try {
+    const { protocol, hostname } = new URL(raw)
+    return protocol === 'https:' && (hostname === 'stripe.com' || hostname.endsWith('.stripe.com'))
+  } catch {
+    return false
+  }
 }
 
 /** A 402 from any change: the workspace has no active plan and is read-only. */
