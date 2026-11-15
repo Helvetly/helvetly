@@ -44,6 +44,8 @@ func (s *Service) candidates(r *http.Request, q store.Q, sess store.Session, upT
 		c := &list[i]
 		p := c.Entry
 		switch {
+		case c.Date > upTo:
+			c.Blocked = "Dated after the booking date."
 		case c.Kind != "payment" && !p.Complete:
 			c.Blocked = blockIncomplete
 		case c.Kind == "payment" && p.Net == nil:
@@ -54,6 +56,14 @@ func (s *Service) candidates(r *http.Request, q store.Q, sess store.Session, upT
 			c.Blocked = "In " + p.Currency + ", not the base currency " + d.Currency + ": book it in your accounting with the rate you use."
 		case c.Kind == "payment" && p.SupersededBy == nil && !slices.Contains(p.Booked, "accrual") && !accrued[p.ID]:
 			c.Blocked = "Its accrual is not booked yet."
+		}
+		if c.Blocked == "" {
+			err := q.CheckOpen(r.Context(), sess.Workspace.ID, c.Date)
+			if errors.Is(err, store.ErrPeriodClosed) {
+				c.Blocked = "That month is closed in the books."
+			} else if err != nil {
+				return nil, "", err
+			}
 		}
 		if c.Kind == "accrual" && c.Blocked == "" {
 			accrued[p.ID] = true
@@ -197,15 +207,16 @@ func (s *Service) bookingRows(r *http.Request, sess store.Session, b store.Payro
 			}
 			item.Date = by.PeriodEnd
 		case "payment":
-			item.Date, item.Amount = *p.PaidOn, *p.Net
-			if p.SupersedesID != nil {
-				prev, err := load(*p.SupersedesID)
+			var loadErr error
+			item.Date, item.Amount = *p.PaidOn, *p.Net-store.PaidBefore(p, func(id string) (store.PayrollEntry, bool) {
+				prev, err := load(id)
 				if err != nil {
-					return nil, err
+					loadErr = err
 				}
-				if prev.PaymentStatus == "paid" && prev.Net != nil {
-					item.Amount -= *prev.Net
-				}
+				return prev, err == nil
+			})
+			if loadErr != nil {
+				return nil, loadErr
 			}
 		}
 		list = append(list, item)

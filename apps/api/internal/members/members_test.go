@@ -325,3 +325,14 @@ func TestOnlyOwnersChangeHRScopes(t *testing.T) {
 	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:employees", "read:payroll"}}, 200, "") // HR part unchanged
 	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*"}}, 403, "forbidden")                          // nor withdrawn
 }
+
+// An admin cannot withdraw a member's HR access by changing the role either.
+func TestAdminCannotDropHRScopesByRole(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	m, admin := e.join(owner.workspace, "member"), e.join(owner.workspace, "admin")
+	path := "/api/v1/members/" + e.id(m)
+	e.want(owner, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:payroll"}}, 200, "")
+	e.want(admin, "PATCH", path, map[string]any{"role": "admin"}, 403, "forbidden")
+	e.want(owner, "PATCH", path, map[string]any{"role": "admin"}, 200, "")
+}

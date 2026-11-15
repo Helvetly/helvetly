@@ -147,3 +147,34 @@ func TestHeidiIsNotOfferedPayroll(t *testing.T) {
 		t.Fatal("Heidi offers the payroll import")
 	}
 }
+
+// Discarding a payroll batch deletes its HR file with what was read from it; two employees sharing an email are
+// never guessed between.
+func TestPayrollBatchDiscardAndAmbiguousEmail(t *testing.T) {
+	e := newEnv(t)
+	a, b := e.staff("E-1"), e.staff("E-2")
+	ctx := context.Background()
+	for _, id := range []string{a, b} {
+		mail := "shared@example.test"
+		emp, err := e.db.Employee(ctx, "ws_a", id, "2026-11-16")
+		if err != nil {
+			t.Fatal(err)
+		}
+		emp.Email = &mail
+		if err := e.db.SaveEmployee(ctx, "ws_a", emp, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w := e.upload("payroll", map[string][]byte{"p.csv": []byte("email,period_start,period_end,currency,gross\nshared@example.test,2026-10-01,2026-10-31,CHF,1.00\n")})
+	batch := e.extracted(decode[store.ImportBatch](t, w).ID)
+	if len(batch.Records) != 1 || batch.Records[0].Issues["email"] == "" {
+		t.Fatalf("ambiguous email: %+v", batch.Records)
+	}
+	before := len(e.files.objects)
+	if w := e.do("DELETE", "/api/v1/imports/"+batch.ID, nil); w.Code >= 300 {
+		t.Fatalf("discard: %d %s", w.Code, w.Body)
+	}
+	if len(e.files.objects) != before-1 {
+		t.Fatalf("the payroll file stayed after discarding its batch: %d -> %d objects", before, len(e.files.objects))
+	}
+}

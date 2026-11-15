@@ -179,6 +179,9 @@ func (s *Service) entries(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if f.Status != "" && f.Status != "draft" && f.Status != "approved" {
 		return badRequest("status must be draft or approved.")
 	}
+	if f.Month == "" && f.EmployeeID == "" {
+		f.Limit = 500 // an unfiltered list is the newest; months and employees list everything
+	}
 	list, err := s.db.ListPayrollEntries(r.Context(), sess.Workspace.ID, f)
 	if err != nil {
 		return err
@@ -301,12 +304,13 @@ func (s *Service) updateEntry(w http.ResponseWriter, r *http.Request, sess store
 		if p.Version != v {
 			return errStale
 		}
-		before := p.EmployeeID
+		before := p
 		if f := parseEntry(&p, body); len(f) > 0 {
 			return validationFailed(f)
 		}
-		if p.SupersedesID != nil && p.EmployeeID != before {
-			return validationFailed(map[string]string{"employee_id": "A correction stays with the employee of the entry it corrects."})
+		if p.SupersedesID != nil && (p.EmployeeID != before.EmployeeID || p.Currency != before.Currency ||
+			p.PeriodStart != before.PeriodStart || p.PeriodEnd != before.PeriodEnd) {
+			return validationFailed(map[string]string{"employee_id": "A correction keeps the employee, period and currency of the entry it corrects."})
 		}
 		if invalid := CheckEntry(p); len(invalid) > 0 {
 			return validationFailed(invalid)
@@ -339,6 +343,17 @@ func (s *Service) updateEntry(w http.ResponseWriter, r *http.Request, sess store
 }
 
 func (s *Service) deleteEntry(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	p, err := s.db.PayrollEntry(r.Context(), sess.Workspace.ID, r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	e, err := s.db.Employee(r.Context(), sess.Workspace.ID, p.EmployeeID, s.today(sess))
+	if err != nil {
+		return err
+	}
+	if e.Restricted {
+		return errRestricted
+	}
 	ok, err := s.db.DeletePayrollDraft(r.Context(), sess.Workspace.ID, r.PathValue("id"))
 	if err != nil {
 		return err

@@ -410,3 +410,46 @@ func TestPaymentBeforeCorrectionIsBooked(t *testing.T) {
 		t.Fatalf("net pay owed %d, bank %d: %v", balance["2279"], balance["1020"], rows)
 	}
 }
+
+// TestReviewRegressions covers what an independent review found: a correction keeps its employee, period and currency;
+// a payment in a chain books only what the nearest paid ancestor did not; erasure is an owner's; payroll activity and
+// protected hints need read:payroll.
+func TestReviewRegressions(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, with(anna, "bank_account", "CH93 0076 2011 6238 5295 7"))
+	a := e.must(owner, 201, "POST", "/api/v1/payroll/entries", october(id))["id"].(string)
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+a+"/approve", map[string]any{"version": 1})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+a+"/payment", map[string]any{"version": 2, "status": "paid", "paid_on": "2026-10-25"})
+	b := e.must(owner, 201, "POST", "/api/v1/payroll/entries/"+a+"/correct", nil)["id"].(string)
+	for _, change := range []map[string]any{{"currency": "EUR"}, {"period_start": "2026-09-01", "period_end": "2026-09-30"}} {
+		if status, m := e.send(owner, "PATCH", "/api/v1/payroll/entries/"+b, with(change, "version", 1)); status != 422 {
+			t.Fatalf("a correction changed %v: %d %v", change, status, m)
+		}
+	}
+	e.must(owner, 200, "PATCH", "/api/v1/payroll/entries/"+b, map[string]any{"version": 1, "gross": "6050.00", "net": "5230.00"})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+b+"/approve", map[string]any{"version": 2}) // B stays unpaid
+	c := e.must(owner, 201, "POST", "/api/v1/payroll/entries/"+b+"/correct", nil)["id"].(string)
+	e.must(owner, 200, "PATCH", "/api/v1/payroll/entries/"+c, map[string]any{"version": 1, "gross": "6100.00", "net": "5280.00"})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+c+"/approve", map[string]any{"version": 2})
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+c+"/payment", map[string]any{"version": 3, "status": "paid", "paid_on": "2026-11-05"})
+	bk := e.must(owner, 201, "POST", "/api/v1/payroll/bookings", map[string]any{"to": "2026-11-30"})
+	_, body := e.do(owner, "GET", "/api/v1/payroll/bookings/"+bk["id"].(string)+"/export?format=csv", nil, "")
+	if !strings.Contains(string(body), "2279,1020,100.00") || strings.Contains(string(body), "2279,1020,5280.00") {
+		t.Fatalf("C's payment books 5280.00 - 5180.00 (A paid, B not): %s", body)
+	}
+
+	hr := e.join(owner.workspace, "member", []string{"write:employees"})
+	if status, _ := e.send(hr, "POST", "/api/v1/employees/"+id+"/erase", nil); status != 403 {
+		t.Fatalf("a non-owner erased: %d", status)
+	}
+	got := e.must(hr, 200, "GET", "/api/v1/employees/"+id, nil)
+	if got["bank_account_hint"] != nil {
+		t.Fatalf("records access shows the bank account hint: %v", got)
+	}
+	for _, h := range e.list(hr, "/api/v1/employees/"+id+"/history") {
+		if h.(map[string]any)["subject_type"] == "payroll_entry" {
+			t.Fatal("records access shows payroll activity")
+		}
+	}
+}

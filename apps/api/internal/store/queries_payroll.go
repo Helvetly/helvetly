@@ -79,7 +79,7 @@ func (e *PayrollEntry) Derive() {
 
 const payrollColumns = `p.id, p.employee_id, e.first_name || ' ' || e.last_name, e.employee_number, p.employing_entity,
 	p.period_start::text, p.period_end::text, p.pay_date::text, p.currency, p.gross, p.deductions, p.net, p.employer_costs,
-	p.source, p.source_ref, p.document_id, (SELECT name FROM documents d WHERE d.id = p.document_id), p.status, p.payment_status, p.paid_on::text, nullif(a.name, ''), p.approved_at, p.supersedes_id,
+	p.source, p.source_ref, p.document_id, (SELECT name FROM documents d WHERE d.id = p.document_id AND d.workspace_id = p.workspace_id), p.status, p.payment_status, p.paid_on::text, nullif(a.name, ''), p.approved_at, p.supersedes_id,
 	p.superseded_by, p.version, p.note, nullif(c.name, ''), p.created_at, p.updated_at,
 	coalesce((SELECT jsonb_agg(jsonb_build_object('kind', k.kind, 'label', k.label, 'amount', k.amount) ORDER BY k.position)
 		FROM payroll_components k WHERE k.entry_id = p.id), '[]'),
@@ -119,6 +119,7 @@ func scanPayroll(row interface{ Scan(...any) error }) (PayrollEntry, error) {
 type PayrollFilter struct {
 	Month, EmployeeID, Status string
 	Superseded                bool
+	Limit                     int // 0: every entry (bookings and exports must see all)
 }
 
 func (q Q) ListPayrollEntries(ctx context.Context, workspaceID string, f PayrollFilter) ([]PayrollEntry, error) {
@@ -136,8 +137,12 @@ func (q Q) ListPayrollEntries(ctx context.Context, workspaceID string, f Payroll
 	if !f.Superseded {
 		where = append(where, "p.superseded_by IS NULL")
 	}
+	limit := ""
+	if f.Limit > 0 {
+		limit = " LIMIT " + arg(f.Limit)
+	}
 	rows, err := q.db.Query(ctx, `SELECT `+payrollColumns+payrollFrom+` WHERE `+strings.Join(where, " AND ")+`
-		ORDER BY p.period_end DESC, lower(e.last_name), lower(e.first_name), p.created_at LIMIT 2000`, args...)
+		ORDER BY p.period_end DESC, lower(e.last_name), lower(e.first_name), p.created_at`+limit, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -370,16 +375,27 @@ func (q Q) BookingCandidates(ctx context.Context, workspaceID, upTo string) ([]B
 		}
 		// A payment happened even when its entry was corrected later, so it is booked either way.
 		if p.PaidOn != nil && *p.PaidOn <= upTo && !booked(p, "payment") {
-			c := BookingCandidate{Entry: p, Kind: "payment", Date: *p.PaidOn}
-			if p.SupersedesID != nil {
-				if prev, ok := byID[*p.SupersedesID]; ok && prev.PaymentStatus == "paid" && prev.Net != nil {
-					c.PaidBefore = *prev.Net
-				}
-			}
-			out = append(out, c)
+			out = append(out, BookingCandidate{Entry: p, Kind: "payment", Date: *p.PaidOn,
+				PaidBefore: PaidBefore(p, func(id string) (PayrollEntry, bool) { e, ok := byID[id]; return e, ok })})
 		}
 	}
 	return out, nil
+}
+
+// PaidBefore is the net pay already paid in an entry's correction chain: the net of its nearest paid ancestor, since
+// each payment in a chain books the difference to the one before. Corrections keep the currency, so it never mixes.
+func PaidBefore(p PayrollEntry, get func(id string) (PayrollEntry, bool)) invoicecalc.Money {
+	for id := p.SupersedesID; id != nil; {
+		prev, ok := get(*id)
+		if !ok {
+			return 0
+		}
+		if prev.PaymentStatus == "paid" && prev.Net != nil {
+			return *prev.Net
+		}
+		id = prev.SupersedesID
+	}
+	return 0
 }
 
 // CreatePayrollBooking records a booking and its items; an item already booked (a concurrent booking) fails the whole
@@ -463,13 +479,65 @@ func (q Q) PayrollBookingItems(ctx context.Context, workspaceID, id string) (Pay
 	return b, items, rows.Err()
 }
 
-// EmployeeIDByNumberOrEmail finds an employee of the workspace by number (preferred) or email, for the import.
+// ErrAmbiguousEmployee: more than one employee has the email an import names.
+var ErrAmbiguousEmployee = errors.New("ambiguous employee")
+
+// EmployeeIDByNumberOrEmail finds an employee of the workspace by number (unique) or, without one, by email, which is
+// refused when two employees share it.
 func (q Q) EmployeeIDByNumberOrEmail(ctx context.Context, workspaceID, number, email string) (string, error) {
 	var id string
-	err := q.db.QueryRow(ctx, `SELECT id FROM employees WHERE workspace_id = $1 AND
-		(($2 <> '' AND lower(employee_number) = lower($2)) OR ($2 = '' AND $3 <> '' AND lower(email) = lower($3)))
-		ORDER BY archived_at NULLS FIRST LIMIT 1`, workspaceID, number, email).Scan(&id)
-	return id, err
+	var n int
+	err := q.db.QueryRow(ctx, `SELECT coalesce(min(id), ''), count(*) FROM employees WHERE workspace_id = $1 AND
+		(($2 <> '' AND lower(employee_number) = lower($2)) OR ($2 = '' AND $3 <> '' AND lower(email) = lower($3)))`,
+		workspaceID, number, email).Scan(&id, &n)
+	switch {
+	case err != nil:
+		return "", err
+	case n == 0:
+		return "", ErrNotFound
+	case n > 1:
+		return "", ErrAmbiguousEmployee
+	}
+	return id, nil
+}
+
+// PrivateImportSources are the HR files a batch's files were stored as.
+func (q Q) PrivateImportSources(ctx context.Context, workspaceID, batchID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, `SELECT DISTINCT f.document_id FROM import_files f JOIN documents d ON d.id = f.document_id
+		AND d.hr_private AND d.employee_id IS NULL WHERE f.workspace_id = $1 AND f.batch_id = $2`, workspaceID, batchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// DeleteUnusedImportSources deletes those HR files no import batch refers to any more, returning their object keys.
+func (q Q) DeleteUnusedImportSources(ctx context.Context, workspaceID string, ids []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, `DELETE FROM documents d WHERE d.workspace_id = $1 AND d.id = ANY($2) AND d.hr_private
+		AND d.employee_id IS NULL AND NOT EXISTS (SELECT 1 FROM import_files f WHERE f.document_id = d.id)
+		AND NOT EXISTS (SELECT 1 FROM payroll_entries p WHERE p.document_id = d.id) RETURNING d.object_key`, workspaceID, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var keys []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
 }
 
 // PayrollOriginal is the original entry of an employee for exactly this period.

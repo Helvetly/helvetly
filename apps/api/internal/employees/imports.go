@@ -43,6 +43,8 @@ func importEntry(ctx context.Context, q store.Q, workspaceID string, data map[st
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			f.fail("employee_number", "No employee of this workspace has this number or email.")
+		case errors.Is(err, store.ErrAmbiguousEmployee):
+			f.fail("email", "Several employees have this email; name the employee by number.")
 		case err != nil:
 			return p, nil, err
 		}
@@ -135,11 +137,22 @@ func OverwriteImport(ctx context.Context, q store.Q, sess store.Session, data ma
 	if existing.Status != "draft" {
 		return "", errApproved
 	}
-	p.ID, p.EmployingEntity, p.SupersedesID = existing.ID, existing.EmployingEntity, nil
+	if existing.EmployeeID != p.EmployeeID {
+		return "", validationFailed(map[string]string{"employee_number": "This row names another employee than the entry it would overwrite."})
+	}
+	now := time.Now().UTC()
+	e, err := q.EmployeeForUpdate(ctx, sess.Workspace.ID, p.EmployeeID, sess.Workspace.Today(now))
+	if err != nil {
+		return "", err
+	}
+	if err := checkEmployment(ctx, q, sess.Workspace.ID, e, p); err != nil {
+		return "", err
+	}
+	p.ID, p.EmployingEntity, p.SupersedesID, p.DocumentID = existing.ID, existing.EmployingEntity, nil, existing.DocumentID
 	if p.Components == nil {
 		p.Components = []store.PayrollComponent{}
 	}
-	ok, err := q.SavePayrollDraft(ctx, sess.Workspace.ID, p, existing.Version, time.Now().UTC())
+	ok, err := q.SavePayrollDraft(ctx, sess.Workspace.ID, p, existing.Version, now)
 	if err != nil {
 		return "", err
 	}

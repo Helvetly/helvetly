@@ -118,6 +118,13 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return err
 	}
 	id, err := s.files.UploadEmployeeFile(w, r, sess, employeeID, func(q store.Q, doc store.Document, form *multipart.Form) error {
+		locked, err := q.EmployeeForUpdate(r.Context(), sess.Workspace.ID, employeeID, s.today(sess))
+		if err != nil {
+			return err
+		}
+		if err := writable(locked); err != nil { // checked again under the lock: a restriction may have just been set
+			return err
+		}
 		f := fields{}
 		d := store.EmployeeDocument{ID: doc.ID}
 		if v := f.text("type", jsonString(formValue(form, "type")), 20, oneOf(documentTypes...)); v != nil {

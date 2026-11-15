@@ -11,6 +11,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/employment"
+	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
 )
 
@@ -46,6 +47,9 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err != nil {
 		return err
 	}
+	for i := range list {
+		list[i] = hideHints(sess, list[i])
+	}
 	departments, err := s.db.EmployeeDepartments(r.Context(), sess.Workspace.ID)
 	if err != nil {
 		return err
@@ -71,8 +75,16 @@ func (s *Service) respond(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, status, data(e))
+	auth.WriteJSON(w, status, data(hideHints(sess, e)))
 	return nil
+}
+
+// hideHints leaves the bank account and tax id hints to those who may see pay.
+func hideHints(sess store.Session, e store.Employee) store.Employee {
+	if !permissions.Allows(sess.Role, sess.Scopes, "read:payroll") {
+		e.BankAccountHint, e.TaxIDHint = nil, nil
+	}
+	return e
 }
 
 func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -388,6 +400,9 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 // cleared, documents whose retention has passed are deleted. Pay terms, payroll and documents still under a retention
 // duty or legal hold stay (with only the name and employment dates left on the record). Consent is not the basis.
 func (s *Service) erase(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	if sess.Role != "owner" { // it restricts processing and deletes files: an owner's decision, like a legal hold
+		return auth.Error(http.StatusForbidden, "forbidden", "Only an owner can erase an employee's personal data.", nil)
+	}
 	id, today := r.PathValue("id"), s.today(sess)
 	var deleted []string
 	kept := 0
@@ -444,7 +459,7 @@ func (s *Service) erase(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": e, "deleted_documents": len(deleted), "kept_documents": kept})
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": hideHints(sess, e), "deleted_documents": len(deleted), "kept_documents": kept})
 	return nil
 }
 
@@ -505,7 +520,7 @@ func (s *Service) history(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if _, err := s.db.Employee(r.Context(), sess.Workspace.ID, id, s.today(sess)); err != nil {
 		return err
 	}
-	list, err := s.db.EmployeeHistory(r.Context(), sess.Workspace.ID, id)
+	list, err := s.db.EmployeeHistory(r.Context(), sess.Workspace.ID, id, permissions.Allows(sess.Role, sess.Scopes, "read:payroll"))
 	if err != nil {
 		return err
 	}

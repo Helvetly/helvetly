@@ -433,12 +433,13 @@ type HistoryEvent struct {
 	At          time.Time `json:"at"`
 }
 
-// EmployeeHistory: the audit entries about the employee and their payroll entries, newest first (at most 200).
-func (q Q) EmployeeHistory(ctx context.Context, workspaceID, employeeID string) ([]HistoryEvent, error) {
+// EmployeeHistory: the audit entries about the employee and, with payroll, their payroll entries, newest first (at
+// most 200).
+func (q Q) EmployeeHistory(ctx context.Context, workspaceID, employeeID string, payroll bool) ([]HistoryEvent, error) {
 	rows, err := q.db.Query(ctx, `SELECT f.kind, f.subject_type, f.subject_id, nullif(u.name, ''), f.at FROM financial_events f
 		LEFT JOIN users u ON u.id = f.actor_id WHERE f.workspace_id = $1 AND (f.subject_type = 'employee' AND f.subject_id = $2
-		OR f.subject_type = 'payroll_entry' AND f.subject_id IN (SELECT id FROM payroll_entries WHERE workspace_id = $1 AND employee_id = $2))
-		ORDER BY f.seq DESC LIMIT 200`, workspaceID, employeeID)
+		OR $3 AND f.subject_type = 'payroll_entry' AND f.subject_id IN (SELECT id FROM payroll_entries WHERE workspace_id = $1 AND employee_id = $2))
+		ORDER BY f.seq DESC LIMIT 200`, workspaceID, employeeID, payroll)
 	if err != nil {
 		return nil, err
 	}

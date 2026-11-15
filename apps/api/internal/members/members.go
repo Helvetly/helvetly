@@ -154,12 +154,20 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if body.Scopes == nil {
 			scopes = nil // the store keeps a member's scopes, or gives a demoted person full access
-		} else if actor != "owner" {
+		}
+		if actor != "owner" {
 			old, err := q.MemberScopes(r.Context(), sess.Workspace.ID, r.PathValue("user_id"))
 			if err != nil {
 				return err
 			}
-			if !slices.Equal(permissions.HRScopes(old), permissions.HRScopes(scopes)) {
+			kept := old // what the member holds after the change: the same scopes, new ones, or none as an admin
+			if body.Scopes != nil {
+				kept = scopes
+			}
+			if to != "member" {
+				kept = nil
+			}
+			if !slices.Equal(permissions.HRScopes(old), permissions.HRScopes(kept)) {
 				return errHRScopes
 			}
 		}
