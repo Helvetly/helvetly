@@ -174,3 +174,24 @@ func TestSyncSeatsWithoutBilling(t *testing.T) {
 		t.Fatalf("billing off: %v %v", err, e.stripe.calls)
 	}
 }
+
+// A subscription read from Stripe that bills another number of seats than the workspace's people is synced.
+func TestApplyResyncsSeatsOutOfStep(t *testing.T) {
+	e := newEnv(t, true)
+	e.stripe.setPerSeat()
+	owner := e.workspace()
+	e.join(owner.workspace, "member")
+	e.join(owner.workspace, "admin")
+	e.subscribe(owner.workspace, "price_pm") // Stripe bills 1 seat
+	if f := e.stripe.form("POST /v1/subscriptions/sub_" + owner.workspace); f.Get("items[0][quantity]") != "3" {
+		t.Fatalf("resync form %v", f)
+	}
+	if seatsOf(e, owner.workspace) != 3 {
+		t.Fatalf("seats %d, want 3", seatsOf(e, owner.workspace))
+	}
+	calls := e.stripe.called("POST /v1/subscriptions/sub_" + owner.workspace)
+	e.event("evt_again", "customer.subscription.updated", map[string]any{"id": "sub_" + owner.workspace})
+	if n := e.stripe.called("POST /v1/subscriptions/sub_" + owner.workspace); n != calls {
+		t.Fatalf("resynced a subscription in step: %d calls", n)
+	}
+}

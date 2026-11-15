@@ -50,7 +50,7 @@ func (s *Service) syncSeats(ctx context.Context, workspaceID string) error {
 			return fmt.Errorf("billing: subscription %s has no items", sub.ID)
 		}
 		form := url.Values{"items[0][id]": {sub.Items.Data[0].ID}, "items[0][quantity]": {strconv.FormatInt(seats, 10)},
-			"proration_behavior": {"create_prorations"}, "expand[]": {"discount.promotion_code"}}
+			"proration_behavior": {"create_prorations"}, "expand[]": subscriptionExpand}
 		if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
 			return err
 		}

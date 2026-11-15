@@ -47,7 +47,8 @@ func TestForwardedForKeepsCountryOnlyFromCloudflare(t *testing.T) {
 }
 
 func TestCountry(t *testing.T) {
-	for in, want := range map[string]string{"DE": "DE", "XX": "", "T1": "", "": "", "DEU": ""} {
+	for in, want := range map[string]string{"DE": "DE", "XX": "", "T1": "", "": "", "DEU": "", " ch ": "CH", "de": "DE", "xx": "",
+		"t1": "", "D1": "", "1E": "", "D-": "", "ÄB": ""} {
 		r := httptest.NewRequest("GET", "/", nil)
 		r.Header.Set(CountryHeader, in)
 		if got := Country(r); got != want {

@@ -77,6 +77,7 @@ type fakeStripe struct {
 	subs      map[string]map[string]any
 	calls     []string
 	forms     map[string]url.Values // last form per "METHOD path"
+	keys      map[string]string     // last Idempotency-Key per "METHOD path"
 	customers int
 	currency  map[string]string // the currency Stripe fixed for a customer id; none until set
 	noOptions bool              // the prices have no currency options (a catalogue from before them)
@@ -85,9 +86,10 @@ type fakeStripe struct {
 	perSeat   bool                      // the catalogue's prices are per seat (setPerSeat)
 	promos    map[string]map[string]any // promotion codes by code
 	coupons   map[string]map[string]any
-	charges   map[string]map[string]any // by id, invoice expanded
+	charges   map[string]map[string]any // by id
+	invoiced  map[string]string         // the subscription whose invoice a payment intent paid
 	disputes  map[string]map[string]any // by id, charge is the charge's id
-	sessions  []map[string]any          // Checkout Sessions, found by payment_intent
+	sessions  []map[string]any          // Checkout Sessions, found by payment_intent or by customer and status
 	// held, when set, pauses the first request to that "METHOD path" (reached closes) until resume closes
 	held            string
 	reached, resume chan struct{}
@@ -103,7 +105,7 @@ func (f *fakeStripe) promo(code string, active bool, expiresAt int64, max, redee
 	}
 	f.coupons[coupon["id"].(string)] = coupon
 	p := map[string]any{"id": "promo_" + code, "code": code, "active": active, "max_redemptions": max, "times_redeemed": redeemed,
-		"coupon": map[string]any{"id": coupon["id"], "valid": true}}
+		"promotion": map[string]any{"type": "coupon", "coupon": coupon["id"]}}
 	if expiresAt != 0 {
 		p["expires_at"] = expiresAt
 	}
@@ -124,6 +126,7 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := r.Method + " " + r.URL.Path
 	f.calls = append(f.calls, key)
 	f.forms[key] = r.Form
+	f.keys[key] = r.Header.Get("Idempotency-Key")
 	if f.fail {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","code":"resource_missing","message":"No such thing"}}`)
@@ -144,8 +147,26 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case key == "GET /v1/checkout/sessions":
 		data := []map[string]any{}
 		for _, cs := range f.sessions {
-			if cs["payment_intent"] == r.Form.Get("payment_intent") {
+			byIntent := r.Form.Has("payment_intent") && cs["payment_intent"] == r.Form.Get("payment_intent")
+			byCustomer := r.Form.Has("customer") && cs["customer"] == r.Form.Get("customer") && cs["status"] == r.Form.Get("status")
+			if byIntent || byCustomer {
 				data = append(data, cs)
+			}
+		}
+		reply(map[string]any{"data": data})
+	case parts[0] == "checkout" && len(parts) == 4 && parts[3] == "expire":
+		for _, cs := range f.sessions {
+			if cs["id"] == parts[2] {
+				cs["status"] = "expired"
+			}
+		}
+		reply(map[string]any{"id": parts[2], "status": "expired"})
+	case key == "GET /v1/invoice_payments":
+		data := []map[string]any{}
+		if r.Form.Get("payment[type]") == "payment_intent" {
+			if sub, ok := f.invoiced[r.Form.Get("payment[payment_intent]")]; ok {
+				data = append(data, map[string]any{"invoice": map[string]any{"id": "in_" + sub, "parent": map[string]any{
+					"type": "subscription_details", "subscription_details": map[string]any{"subscription": sub}}}})
 			}
 		}
 		reply(map[string]any{"data": data})
@@ -197,8 +218,8 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(f.coupons[parts[1]])
 	case key == "GET /v1/subscriptions":
 		var out []map[string]any
-		for _, s := range f.subs {
-			if s["customer"] == r.Form.Get("customer") {
+		for _, s := range f.subs { // without status=all Stripe leaves out the cancelled ones
+			if s["customer"] == r.Form.Get("customer") && (r.Form.Get("status") == "all" || s["status"] != "canceled") {
 				out = append(out, s)
 			}
 		}
@@ -308,9 +329,9 @@ func newEnv(t *testing.T, enabled bool) *env {
 	t.Parallel()
 	st, raw := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, catalog: catalog(), currency: map[string]string{},
+	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, keys: map[string]string{}, catalog: catalog(), currency: map[string]string{},
 		promos: map[string]map[string]any{}, coupons: map[string]map[string]any{},
-		charges: map[string]map[string]any{}, disputes: map[string]map[string]any{}}
+		charges: map[string]map[string]any{}, invoiced: map[string]string{}, disputes: map[string]map[string]any{}}
 	stripeSrv := httptest.NewServer(fake)
 	t.Cleanup(stripeSrv.Close)
 	cfg := config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32), SessionTTL: time.Hour}
@@ -829,12 +850,72 @@ func TestEndSubscription(t *testing.T) {
 	ws := e.workspace().workspace
 	ctx := context.Background()
 	if err := e.svc.EndSubscription(ctx, ws); err != nil || len(e.stripe.calls) != 0 {
-		t.Fatalf("no subscription: %v %v", err, e.stripe.calls)
+		t.Fatalf("no customer: %v %v", err, e.stripe.calls)
 	}
 	e.stripe.put("sub_1", ws, "cus_1", "active", "price_bm")
 	e.event("evt_1", "customer.subscription.created", map[string]any{"id": "sub_1"})
-	if err := e.svc.EndSubscription(ctx, ws); err != nil || e.stripe.called("DELETE /v1/subscriptions/sub_1") != 1 || PlanOf(e.billing(ws)) != "" {
+	// A second subscription that was paid, an unpaid one, one over for good, and open Checkouts of a plan and a pack.
+	e.stripe.put("sub_2", ws, "cus_1", "trialing", "price_pm")
+	e.stripe.put("sub_3", ws, "cus_1", "incomplete", "price_pm")
+	e.stripe.put("sub_4", ws, "cus_1", "canceled", "price_pm")
+	e.stripe.mu.Lock()
+	e.stripe.sessions = append(e.stripe.sessions,
+		map[string]any{"id": "cs_plan", "mode": "subscription", "customer": "cus_1", "status": "open"},
+		map[string]any{"id": "cs_pack", "mode": "payment", "customer": "cus_1", "status": "open"})
+	e.stripe.mu.Unlock()
+	if err := e.svc.EndSubscription(ctx, ws); err != nil || PlanOf(e.billing(ws)) != "" {
 		t.Fatalf("end: %v %+v", err, e.billing(ws))
+	}
+	for path, want := range map[string]int{
+		"DELETE /v1/subscriptions/sub_1": 1, "DELETE /v1/subscriptions/sub_2": 1, "DELETE /v1/subscriptions/sub_3": 1,
+		"DELETE /v1/subscriptions/sub_4": 0, "POST /v1/checkout/sessions/cs_plan/expire": 1, "POST /v1/checkout/sessions/cs_pack/expire": 0,
+	} {
+		if n := e.stripe.called(path); n != want {
+			t.Errorf("%s: %d calls, want %d", path, n, want)
+		}
+	}
+}
+
+func TestCheckoutExpiresTheCustomersOpenPlanCheckouts(t *testing.T) {
+	e := newEnv(t, true)
+	owner := e.workspace()
+	checkout := func() {
+		t.Helper()
+		if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
+			t.Fatalf("checkout: %d %v", code, body)
+		}
+	}
+	checkout() // a new customer has no open Checkout
+	if n := e.stripe.called("GET /v1/checkout/sessions"); n != 0 {
+		t.Fatalf("listed sessions of a new customer: %d", n)
+	}
+	e.stripe.mu.Lock()
+	e.stripe.sessions = append(e.stripe.sessions,
+		map[string]any{"id": "cs_tab", "mode": "subscription", "customer": "cus_1", "status": "open"},
+		map[string]any{"id": "cs_pack", "mode": "payment", "customer": "cus_1", "status": "open"},
+		map[string]any{"id": "cs_old", "mode": "subscription", "customer": "cus_1", "status": "expired"})
+	e.stripe.mu.Unlock()
+	checkout()
+	if e.stripe.called("POST /v1/checkout/sessions/cs_tab/expire") != 1 || e.stripe.called("POST /v1/checkout/sessions/cs_pack/expire") != 0 ||
+		e.stripe.called("POST /v1/checkout/sessions/cs_old/expire") != 0 {
+		t.Fatalf("calls %v", e.stripe.calls)
+	}
+}
+
+func TestCustomerIdempotencyKeyCoversItsParameters(t *testing.T) {
+	e := newEnv(t, true)
+	owner := e.workspace()
+	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
+		t.Fatalf("checkout: %d", code)
+	}
+	f := e.stripe.form("POST /v1/customers")
+	sent := url.Values{}
+	for _, k := range []string{"email", "name", "description", "metadata[workspace_id]"} {
+		sent.Set(k, f.Get(k))
+	}
+	sum := sha256.Sum256([]byte(sent.Encode()))
+	if want := "helvetly-customer-" + owner.workspace + "-" + hex.EncodeToString(sum[:8]); e.stripe.keys["POST /v1/customers"] != want {
+		t.Fatalf("key %q, want %q", e.stripe.keys["POST /v1/customers"], want)
 	}
 }
 

@@ -2,9 +2,10 @@ package billing
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log/slog"
-	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -95,9 +96,15 @@ var (
 	errPlanRequired = auth.Error(http.StatusPaymentRequired, "plan_required",
 		"This workspace has no active plan. Choose a plan to keep working.", map[string]any{})
 	errUnavailable = auth.Error(http.StatusConflict, "plan_unavailable", "This plan is not available right now: try again later.", nil)
-	errBadCode     = auth.Error(http.StatusUnprocessableEntity, "promotion_code_invalid", "This code isn't valid.",
-		map[string]any{"fields": map[string]string{"code": "invalid"}})
+	errBadCode     = badCode("invalid", "This code isn't valid.")
+	errDiscounted  = badCode("has_discount", "This workspace already has a discount; another code can be added once it ends.")
 )
+
+// badCode refuses a promotion code; reason is invalid, currency, plan or has_discount, message what the person reads.
+func badCode(reason, message string) error {
+	return auth.Error(http.StatusUnprocessableEntity, "promotion_code_invalid", message,
+		map[string]any{"fields": map[string]string{"code": "invalid"}, "reason": reason})
+}
 
 // writeError answers a refused Stripe call with 502 and logs it; everything else goes to auth.
 func (s *Service) writeError(w http.ResponseWriter, r *http.Request, err error) {
@@ -165,12 +172,11 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
 	}
 	prices := s.planPrices(r.Context())
-	cur, err := s.currencyFor(r.Context(), b.CustomerID, auth.Country(r), sess.Workspace.Timezone)
+	cur, err := s.requestCurrency(r, sess, b.CustomerID)
 	if err != nil {
 		s.log.WarnContext(r.Context(), "reading the Stripe customer's currency failed", "error", err)
-		cur = CurrencyOf(auth.Country(r), sess.Workspace.Timezone)
+		cur = CurrencyOf(auth.Country(r), sess.Workspace.Timezone, pageZone(r))
 	}
-	cur = offered(cur, slices.Collect(maps.Values(prices)))
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
 		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Prices: map[string]*planPrice{}}
@@ -262,8 +268,9 @@ type Promotion struct {
 	ExpiresAt        *time.Time `json:"expires_at"`
 }
 
-// promotionFor finds a usable promotion code as typed (upper-cased: the CLI makes them so) and the plans it fits.
-func (s *Service) promotionFor(ctx context.Context, code string) (id string, p Promotion, err error) {
+// promotionFor finds a usable promotion code as typed (upper-cased: the CLI makes them so) for a workspace paying
+// in cur, and the plans it fits. An amount off is given in cur: a code without an amount in cur is refused.
+func (s *Service) promotionFor(ctx context.Context, code, cur string) (id string, p Promotion, err error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" || len(code) > 100 {
 		return "", p, errBadCode
@@ -273,21 +280,35 @@ func (s *Service) promotionFor(ctx context.Context, code string) (id string, p P
 		return "", p, err
 	}
 	// Stripe matches codes case-insensitively; only the code as made is taken.
-	if len(found.Data) == 0 || found.Data[0].Code != code {
+	if len(found.Data) == 0 || found.Data[0].Code != code || found.Data[0].Promotion.Coupon == "" {
 		return "", p, errBadCode
 	}
 	pc := found.Data[0]
 	exhausted := pc.MaxRedemptions > 0 && pc.TimesRedeemed >= pc.MaxRedemptions
 	expired := pc.ExpiresAt != nil && !time.Unix(*pc.ExpiresAt, 0).After(s.now())
-	if !pc.Active || exhausted || expired || (pc.Coupon.Valid != nil && !*pc.Coupon.Valid) {
+	if !pc.Active || exhausted || expired {
 		return "", p, errBadCode
 	}
 	var coupon stripeCoupon
-	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/coupons/"+url.PathEscape(pc.Coupon.ID), url.Values{"expand[]": {"applies_to"}}, "", &coupon); err != nil {
+	form := url.Values{"expand[]": {"applies_to", "currency_options"}}
+	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/coupons/"+url.PathEscape(pc.Promotion.Coupon), form, "", &coupon); err != nil {
 		return "", p, err
 	}
-	p = Promotion{Code: code, PercentOff: coupon.PercentOff, AmountOff: coupon.AmountOff, Currency: coupon.Currency,
-		Duration: coupon.Duration, DurationInMonths: coupon.DurationInMonths}
+	if coupon.Valid != nil && !*coupon.Valid {
+		return "", p, errBadCode
+	}
+	amount, ok := coupon.amountIn(cur)
+	if !ok {
+		other := "another currency"
+		if coupon.Currency != nil {
+			other = strings.ToUpper(*coupon.Currency)
+		}
+		return "", p, badCode("currency", "This code is for payments in "+other+".")
+	}
+	p = Promotion{Code: code, PercentOff: coupon.PercentOff, Duration: coupon.Duration, DurationInMonths: coupon.DurationInMonths}
+	if amount > 0 {
+		p.AmountOff, p.Currency = &amount, &cur
+	}
 	if pc.ExpiresAt != nil {
 		t := time.Unix(*pc.ExpiresAt, 0).UTC()
 		p.ExpiresAt = &t
@@ -303,20 +324,44 @@ func (s *Service) promotionFor(ctx context.Context, code string) (id string, p P
 			}
 		}
 		if len(p.Plans) == 0 {
-			return "", p, errBadCode
+			return "", p, badCode("plan", "This code doesn't apply to any plan.")
 		}
 	}
 	return pc.ID, p, nil
 }
 
-func (s *Service) promotionCode(w http.ResponseWriter, r *http.Request, _ store.Session) error {
+// errPlanCode refuses a code limited to other plans than plan.
+func errPlanCode(plan string) error {
+	return badCode("plan", "This code doesn't apply to the "+planNames[plan]+" plan.")
+}
+
+func (s *Service) promotionCode(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var in struct {
 		Code string `json:"code"`
 	}
 	if !s.auth.Decode(w, r, &in) {
 		return nil
 	}
-	_, p, err := s.promotionFor(r.Context(), in.Code)
+	ctx := r.Context()
+	b, err := s.db.WorkspaceBilling(ctx, sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	// One discount at a time: Stripe drops it from the subscription when it ends; until then no other code is taken.
+	if live(b.Status) && b.SubscriptionID != "" {
+		sub, err := s.getSubscription(ctx, b.SubscriptionID)
+		if err != nil {
+			return err
+		}
+		if len(sub.Discounts) > 0 {
+			return errDiscounted
+		}
+	}
+	cur, err := s.requestCurrency(r, sess, b.CustomerID)
+	if err != nil {
+		return err
+	}
+	_, p, err := s.promotionFor(ctx, in.Code, cur)
 	if err != nil {
 		return err
 	}
@@ -344,21 +389,34 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	if target.ID == "" {
 		return errUnavailable
 	}
+	// The customer's currency is fixed by Stripe once set, so it is read before the lock.
+	before, err := s.db.WorkspaceBilling(ctx, ws)
+	if err != nil {
+		return err
+	}
+	cur, err := s.requestCurrency(r, sess, before.CustomerID)
+	if err != nil {
+		return err
+	}
+	if _, ok := target.amountIn(cur); !ok {
+		return errUnavailable // a price is sold only in the currencies it carries
+	}
 	var promoID string
 	if strings.TrimSpace(in.PromotionCode) != "" {
-		id, p, err := s.promotionFor(ctx, in.PromotionCode)
+		id, p, err := s.promotionFor(ctx, in.PromotionCode, cur)
 		if err != nil {
 			return err
 		}
 		if p.Plans != nil && !slices.Contains(p.Plans, in.Plan) {
-			return errBadCode
+			return errPlanCode(in.Plan)
 		}
 		promoID = id
 	}
 	var next string
 	var checkout *store.Billing
 	var seats int64
-	err := s.db.Tx(ctx, func(q store.Q) error {
+	var known bool // the customer existed before this checkout
+	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockBilling(ctx, ws); err != nil {
 			return err
 		}
@@ -376,7 +434,8 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 		if seats, err = quantity(ctx, q, ws, target); err != nil {
 			return err
 		}
-		if b.CustomerID == "" {
+		known = b.CustomerID != ""
+		if !known {
 			if b.CustomerID, err = s.createCustomer(ctx, q, sess); err != nil {
 				return err
 			}
@@ -389,11 +448,12 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	// a Checkout session writes nothing of ours, so Stripe is called after the lock is released
 	if checkout != nil {
-		cur, err := s.currencyFor(ctx, checkout.CustomerID, auth.Country(r), sess.Workspace.Timezone)
-		if err != nil {
-			return err
+		if known {
+			// Another tab's open Checkout could be paid too: one plan Checkout at a time (best effort).
+			if err := s.expireOpenCheckouts(ctx, checkout.CustomerID); err != nil {
+				s.log.WarnContext(ctx, "expiring open Checkout sessions failed", "workspace", ws, "error", err)
+			}
 		}
-		cur = offered(cur, []price{target})
 		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, cur, seats, promoID); err != nil {
 			return err
 		}
@@ -408,8 +468,11 @@ func (s *Service) createCustomer(ctx context.Context, q store.Q, sess store.Sess
 	}
 	form := url.Values{"email": {sess.User.Email}, "name": {sess.Workspace.Name},
 		"description": {"Helvetly workspace " + sess.Workspace.Name}, "metadata[workspace_id]": {sess.Workspace.ID}}
-	// The key makes a retried request return the same customer instead of a second one.
-	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/customers", form, "helvetly-customer-"+sess.Workspace.ID+"-"+sess.User.ID, &c); err != nil {
+	// The key makes a retried request return the same customer instead of a second one; it covers the parameters, as
+	// Stripe refuses a key reused with others (a renamed workspace, another email).
+	sum := sha256.Sum256([]byte(form.Encode()))
+	key := "helvetly-customer-" + sess.Workspace.ID + "-" + hex.EncodeToString(sum[:8])
+	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/customers", form, key, &c); err != nil {
 		return "", err
 	}
 	return c.ID, q.SetStripeCustomer(ctx, sess.Workspace.ID, c.ID, s.now())
@@ -490,34 +553,44 @@ func (s *Service) fits(ctx context.Context, q store.Q, ws store.Workspace, plan 
 
 // changePlan moves a live subscription to another price at once, prorated; a smaller plan must fit what exists. A
 // per-seat price bills the workspace's seats, so a subscription on an earlier flat price moves to per seat here.
+// With a promotion code on the same plan and interval, only the code is applied; one discount at a time.
 func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, plan, interval string, target price, promoID string) (string, error) {
-	if b.Plan == plan && b.Interval == interval {
+	same := b.Plan == plan && b.Interval == interval
+	if same && promoID == "" {
 		return "", auth.Error(http.StatusConflict, "same_plan", "The workspace is on this plan already.", nil)
-	}
-	if err := s.fits(ctx, q, ws, plan, target.perSeat()); err != nil {
-		return "", err
-	}
-	seats, err := quantity(ctx, q, ws.ID, target)
-	if err != nil {
-		return "", err
 	}
 	now := s.now()
 	sub, err := s.getSubscription(ctx, b.SubscriptionID)
 	if err != nil {
 		return "", err
 	}
+	if promoID != "" && len(sub.Discounts) > 0 {
+		return "", errDiscounted
+	}
 	if len(sub.Items.Data) == 0 {
 		return "", errors.New("billing: subscription " + sub.ID + " has no items")
 	}
-	form := url.Values{"items[0][id]": {sub.Items.Data[0].ID}, "items[0][price]": {target.ID},
-		"items[0][quantity]": {strconv.FormatInt(seats, 10)},
-		"proration_behavior": {"create_prorations"}, "metadata[plan]": {plan}, "metadata[interval]": {interval},
-		"expand[]": {"discount.promotion_code"}}
+	form := url.Values{"expand[]": subscriptionExpand}
 	if promoID != "" {
 		form.Set("discounts[0][promotion_code]", promoID)
 	}
-	if b.Status == "trialing" && plan != TrialPlan {
-		form.Set("trial_end", "now") // the other plans are charged at once
+	if !same {
+		if err := s.fits(ctx, q, ws, plan, target.perSeat()); err != nil {
+			return "", err
+		}
+		seats, err := quantity(ctx, q, ws.ID, target)
+		if err != nil {
+			return "", err
+		}
+		form.Set("items[0][id]", sub.Items.Data[0].ID)
+		form.Set("items[0][price]", target.ID)
+		form.Set("items[0][quantity]", strconv.FormatInt(seats, 10))
+		form.Set("proration_behavior", "create_prorations")
+		form.Set("metadata[plan]", plan)
+		form.Set("metadata[interval]", interval)
+		if b.Status == "trialing" && plan != TrialPlan {
+			form.Set("trial_end", "now") // the other plans are charged at once
+		}
 	}
 	if err := s.stripe.Call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(sub.ID), form, "", &sub); err != nil {
 		return "", err
@@ -557,12 +630,13 @@ func (s *Service) sync(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	if b.CustomerID != "" {
 		var subs list[subscription]
-		form := url.Values{"customer": {b.CustomerID}, "status": {"all"}, "limit": {"10"}, "expand[]": {"data.discount.promotion_code"}}
+		form := url.Values{"customer": {b.CustomerID}, "status": {"all"}, "limit": {"10"},
+			"expand[]": {"data.discounts.source.coupon", "data.discounts.promotion_code"}}
 		if err := s.stripe.Call(r.Context(), http.MethodGet, "/v1/subscriptions", form, "", &subs); err != nil {
 			return err
 		}
 		if sub, ok := current(subs.Data); ok {
-			if err := s.apply(r.Context(), sub, "", ""); err != nil {
+			if err := s.apply(r.Context(), sub, event{}); err != nil {
 				return err
 			}
 		}
@@ -636,20 +710,54 @@ func (s *Service) details(w http.ResponseWriter, r *http.Request, sess store.Ses
 
 // ---- for internal/workspaces ----
 
-// EndSubscription cancels the workspace's live subscription at once (the workspace is being deleted).
+// EndSubscription ends billing for a workspace being deleted: its open plan Checkouts expire (one paid afterwards
+// would start a subscription nobody can reach) and every subscription of its customer Stripe could still bill or
+// resume is cancelled at once.
 func (s *Service) EndSubscription(ctx context.Context, workspaceID string) error {
 	if !s.enabled {
 		return nil
 	}
 	b, err := s.db.WorkspaceBilling(ctx, workspaceID)
-	if err != nil || b.SubscriptionID == "" || !live(b.Status) {
+	if err != nil || b.CustomerID == "" {
 		return err
 	}
-	var sub subscription
-	if err := s.stripe.Call(ctx, http.MethodDelete, "/v1/subscriptions/"+url.PathEscape(b.SubscriptionID), nil, "", &sub); err != nil {
+	if err := s.expireOpenCheckouts(ctx, b.CustomerID); err != nil {
 		return err
 	}
-	return s.db.ApplySubscription(ctx, workspaceID, b.CustomerID, s.toStore(sub), s.now())
+	var subs list[subscription] // Stripe lists the ones not cancelled
+	if err := s.stripe.Call(ctx, http.MethodGet, "/v1/subscriptions", url.Values{"customer": {b.CustomerID}, "limit": {"100"}}, "", &subs); err != nil {
+		return err
+	}
+	for _, sub := range subs.Data {
+		if sub.Status == "canceled" || sub.Status == "incomplete_expired" {
+			continue
+		}
+		if err := s.stripe.Call(ctx, http.MethodDelete, "/v1/subscriptions/"+url.PathEscape(sub.ID), nil, "", &sub); err != nil {
+			return err
+		}
+		if sub.ID == b.SubscriptionID {
+			if err := s.db.ApplySubscription(ctx, workspaceID, b.CustomerID, s.toStore(sub), s.now()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// expireOpenCheckouts expires the customer's open plan Checkout sessions (a pack's are left alone).
+func (s *Service) expireOpenCheckouts(ctx context.Context, customerID string) error {
+	var open list[checkoutSession]
+	form := url.Values{"customer": {customerID}, "status": {"open"}, "limit": {"100"}}
+	err := s.stripe.Call(ctx, http.MethodGet, "/v1/checkout/sessions", form, "", &open)
+	for _, cs := range open.Data {
+		if cs.Mode != "subscription" {
+			continue
+		}
+		if e := s.stripe.Call(ctx, http.MethodPost, "/v1/checkout/sessions/"+url.PathEscape(cs.ID)+"/expire", nil, "", nil); e != nil {
+			err = e
+		}
+	}
+	return err
 }
 
 // WriteError answers like the billing handlers do (a refused Stripe call is a 502).

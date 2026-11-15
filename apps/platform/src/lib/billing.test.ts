@@ -24,6 +24,7 @@ import {
   seatTotal,
   taxNote,
   taxNoteLong,
+  withZone,
   trialDaysLeft,
   yearlySaving,
   type Billing,
@@ -286,4 +287,9 @@ test('freeForever: only a code that leaves nothing to pay, for good', () => {
   const fixed = { ...code, percent_off: null, amount_off: 99_900, currency: 'chf' }
   expect(freeForever({ ...billing, discount: fixed })).toBe(true)
   expect(freeForever(billing)).toBe(false)
+})
+
+test('billing requests carry the browser time zone', () => {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  expect(withZone('/billing')).toBe(`/billing?tz=${encodeURIComponent(zone)}`)
 })

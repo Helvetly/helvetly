@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
 	"slices"
@@ -27,18 +28,14 @@ type aiPack struct {
 	price    price
 }
 
-// packsIn is the packs priced in cur, or all in the prices' own currency when one of them is not sold in cur.
+// packsIn is the packs priced in cur; a pack not sold in cur is left out.
 func packsIn(packs []aiPack, cur string) []aiPack {
-	prices := make([]price, len(packs))
-	for i, p := range packs {
-		prices[i] = p.price
-	}
-	cur = offered(cur, prices)
-	out := make([]aiPack, len(packs))
-	for i, p := range packs {
-		p.Amount, _ = p.price.amountIn(cur)
-		p.Currency = cur
-		out[i] = p
+	out := []aiPack{}
+	for _, p := range packs {
+		if amount, ok := p.price.amountIn(cur); ok {
+			p.Amount, p.Currency = amount, cur
+			out = append(out, p)
+		}
 	}
 	return out
 }
@@ -94,7 +91,7 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 	if b.CustomerID == "" {
 		return errNoCustomer
 	}
-	cur, err := s.currencyFor(ctx, b.CustomerID, auth.Country(r), sess.Workspace.Timezone)
+	cur, err := s.requestCurrency(r, sess, b.CustomerID)
 	if err != nil {
 		return err
 	}
@@ -131,14 +128,17 @@ func (s *Service) buyAITokens(w http.ResponseWriter, r *http.Request, sess store
 	return nil
 }
 
-// creditAITokens records a paid pack Checkout Session on its workspace, once, for the workspace's current month. A
-// session for another customer than the workspace's, or not paid yet, adds nothing.
-func (s *Service) creditAITokens(ctx context.Context, sessionID, customer, workspaceID, tokens, paymentStatus string) error {
+// creditAITokens records a paid pack Checkout Session on its workspace, once, for the workspace's current month, and
+// the event with it. A session for another customer than the workspace's, or not paid yet, adds nothing.
+func (s *Service) creditAITokens(ctx context.Context, ev event, sessionID, customer, workspaceID, tokens, paymentStatus string) error {
 	n, err := strconv.ParseInt(tokens, 10, 64)
 	if err != nil || n <= 0 || workspaceID == "" || paymentStatus != "paid" {
 		return nil
 	}
-	return s.db.Tx(ctx, func(q store.Q) error {
+	err = s.db.Tx(ctx, func(q store.Q) error {
+		if err := s.record(ctx, q, ev); err != nil {
+			return err
+		}
 		b, err := q.WorkspaceBilling(ctx, workspaceID)
 		if err != nil || b.CustomerID == "" || b.CustomerID != customer {
 			return err
@@ -154,4 +154,8 @@ func (s *Service) creditAITokens(ctx context.Context, sessionID, customer, works
 		}
 		return err
 	})
+	if errors.Is(err, errSeen) {
+		return nil
+	}
+	return err
 }

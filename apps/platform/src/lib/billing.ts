@@ -96,6 +96,13 @@ export type BillingDetails = {
   invoices: BillingInvoice[]
 }
 
+/**
+ * A billing path with the browser's time zone: the API prices in its currency when Cloudflare names no country and
+ * the workspace's own zone says nothing (UTC).
+ */
+export const withZone = (path: string) =>
+  `${path}?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`
+
 export const billingKeys = {
   overview: ['billing'],
   details: ['billing', 'details'],
@@ -104,7 +111,7 @@ export const billingKeys = {
 export function useBilling() {
   return useQuery({
     queryKey: billingKeys.overview,
-    queryFn: async () => (await request<{ data: Billing }>('/billing')).data,
+    queryFn: async () => (await request<{ data: Billing }>(withZone('/billing'))).data,
   })
 }
 
@@ -123,14 +130,14 @@ export function useCheckout() {
     ApiError,
     { plan: PlanId; interval: Interval; promotion_code?: string }
   >({
-    mutationFn: (input) => request('/billing/checkout', { method: 'POST', json: input }),
+    mutationFn: (input) => request(withZone('/billing/checkout'), { method: 'POST', json: input }),
   })
 }
 
 /** Opens Checkout for one AI token pack; the answer is Checkout's URL. */
 export function useBuyAITokens() {
   return useMutation<{ url: string }, ApiError, { tokens: number }>({
-    mutationFn: (input) => request('/billing/ai-tokens', { method: 'POST', json: input }),
+    mutationFn: (input) => request(withZone('/billing/ai-tokens'), { method: 'POST', json: input }),
   })
 }
 
@@ -141,12 +148,15 @@ export function formatTokens(tokens: number): string {
   return `${tokens}`
 }
 
-/** Checks a promotion code; a bad one is a 422 `promotion_code_invalid`. */
+/**
+ * Checks a promotion code; a bad one is a 422 `promotion_code_invalid` whose message says why (`details.reason`:
+ * invalid, currency, plan or has_discount). An amount off comes in the workspace's currency.
+ */
 export function usePromotionCode() {
   return useMutation<Promotion, ApiError, string>({
     mutationFn: async (code) =>
       (
-        await request<{ data: Promotion }>('/billing/promotion-code', {
+        await request<{ data: Promotion }>(withZone('/billing/promotion-code'), {
           method: 'POST',
           json: { code },
         })
@@ -169,7 +179,7 @@ export function useSyncBilling() {
   const queryClient = useQueryClient()
   return useMutation<Billing, ApiError, void>({
     mutationFn: async () =>
-      (await request<{ data: Billing }>('/billing/sync', { method: 'POST' })).data,
+      (await request<{ data: Billing }>(withZone('/billing/sync'), { method: 'POST' })).data,
     onSuccess: (data) => {
       queryClient.setQueryData(billingKeys.overview, data)
       void queryClient.invalidateQueries({ queryKey: billingKeys.details })
@@ -282,7 +292,7 @@ export const isUpgrade = (from: PlanId | '', to: PlanId) => RANK[to] > RANK[from
 export const promoApplies = (promo: Promotion | Discount, plan: PlanId) =>
   !('plans' in promo) || promo.plans === null || promo.plans.includes(plan)
 
-/** The price after the code, in minor units (never below zero). */
+/** The price after the code, in minor units (never below zero); an amount off counts in its own currency only. */
 export function discounted(
   price: PlanPrice,
   promo: Pick<Discount, 'percent_off' | 'amount_off' | 'currency'>,

@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,12 +12,16 @@ import (
 	"time"
 )
 
-// stripeVersion pins the shape of every answer (current_period_end on the subscription, among others).
-const stripeVersion = "2024-06-20"
+// stripeVersion pins the shape of every answer: the subscription's discounts, the promotion code's
+// promotion.coupon, the invoice's parent.subscription_details, the item's current_period_end.
+const stripeVersion = "2026-09-30.endive"
 
-// managedPaymentsVersion is the oldest version Stripe accepts Managed Payments on; only those Checkout calls use it,
-// and billing reads nothing but the session's url from their answer.
-const managedPaymentsVersion = "2025-03-31.basil"
+// stripeRetries: how often a request Stripe asks to repeat is sent again (see Call), and the pause before each
+// attempt, doubled every time.
+const (
+	stripeRetries    = 3
+	stripeRetryPause = 300 * time.Millisecond
+)
 
 // StripeClient is the few Stripe API calls billing needs, form-encoded over net/http: no SDK for a handful
 // of endpoints (docs/billing-contract.md).
@@ -33,16 +38,42 @@ func NewStripeClient(key, base string) *StripeClient {
 type StripeError struct {
 	Status                     int
 	Type, Code, Message, Param string
+	retry                      bool // Stripe says the request may be sent again
 }
 
 func (e *StripeError) Error() string {
 	return fmt.Sprintf("stripe %d %s/%s: %s", e.Status, e.Type, e.Code, e.Message)
 }
 
-// call sends one request; idempotencyKey may be empty. A 2xx answer is decoded into out (when non-nil).
+// Call sends one request; idempotencyKey may be empty. A 2xx answer is decoded into out (when non-nil). A request
+// Stripe did not process and says may be sent again is retried, within the call's 20 s: Stripe-Should-Retry: true,
+// else a 429 (rate limit, or lock_timeout), and a 409 idempotency_key_in_use (the same key still in flight). Never a
+// network error or another 5xx: Stripe may have done it.
 func (c *StripeClient) Call(ctx context.Context, method, path string, form url.Values, idempotencyKey string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
+	for attempt := 0; ; attempt++ {
+		raw, err := c.once(ctx, method, path, form, idempotencyKey)
+		var se *StripeError
+		if errors.As(err, &se) && se.retry && attempt < stripeRetries {
+			select {
+			case <-ctx.Done():
+			case <-time.After(stripeRetryPause << attempt):
+				continue
+			}
+		}
+		if err != nil || out == nil {
+			return err
+		}
+		if err := json.Unmarshal(raw, out); err != nil {
+			return fmt.Errorf("stripe %s %s: %w", method, path, err)
+		}
+		return nil
+	}
+}
+
+// once sends one request: the body of a 2xx answer, else a *StripeError that says whether it may be sent again.
+func (c *StripeClient) once(ctx context.Context, method, path string, form url.Values, idempotencyKey string) ([]byte, error) {
 	target := c.base + path
 	var body io.Reader
 	if method == http.MethodGet || method == http.MethodDelete {
@@ -54,14 +85,10 @@ func (c *StripeClient) Call(ctx context.Context, method, path string, form url.V
 	}
 	req, err := http.NewRequestWithContext(ctx, method, target, body)
 	if err != nil {
-		return fmt.Errorf("stripe: %w", err)
+		return nil, fmt.Errorf("stripe: %w", err)
 	}
 	req.SetBasicAuth(c.key, "")
-	version := stripeVersion
-	if form.Get("managed_payments[enabled]") == "true" {
-		version = managedPaymentsVersion
-	}
-	req.Header.Set("Stripe-Version", version)
+	req.Header.Set("Stripe-Version", stripeVersion)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
@@ -70,27 +97,27 @@ func (c *StripeClient) Call(ctx context.Context, method, path string, form url.V
 	}
 	res, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("stripe %s %s: %w", method, path, err)
+		return nil, fmt.Errorf("stripe %s %s: %w", method, path, err)
 	}
 	defer res.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
 	if err != nil {
-		return fmt.Errorf("stripe %s %s: %w", method, path, err)
+		return nil, fmt.Errorf("stripe %s %s: %w", method, path, err)
 	}
-	if res.StatusCode >= 300 {
-		var e struct {
-			Error struct{ Type, Code, Message, Param string } `json:"error"`
-		}
-		_ = json.Unmarshal(raw, &e) // a body that isn't Stripe's error shape still fails with its status
-		return &StripeError{Status: res.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message, Param: e.Error.Param}
+	if res.StatusCode < 300 {
+		return raw, nil
 	}
-	if out == nil {
-		return nil
+	var e struct {
+		Error struct{ Type, Code, Message, Param string } `json:"error"`
 	}
-	if err := json.Unmarshal(raw, out); err != nil {
-		return fmt.Errorf("stripe %s %s: %w", method, path, err)
+	_ = json.Unmarshal(raw, &e) // a body that isn't Stripe's error shape still fails with its status
+	se := &StripeError{Status: res.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message, Param: e.Error.Param}
+	se.retry = res.StatusCode == http.StatusTooManyRequests
+	if h := res.Header.Get("Stripe-Should-Retry"); h != "" {
+		se.retry = h == "true"
 	}
-	return nil
+	se.retry = se.retry || (res.StatusCode == http.StatusConflict && se.Code == "idempotency_key_in_use")
+	return nil, se
 }
 
 // subscription is the part of a Stripe subscription billing reads.
@@ -102,8 +129,9 @@ type subscription struct {
 	TrialEnd          *int64            `json:"trial_end"`
 	CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
 	CancelAt          *int64            `json:"cancel_at"`
+	Currency          string            `json:"currency"`
 	Metadata          map[string]string `json:"metadata"`
-	Discount          *stripeDiscount   `json:"discount"`
+	Discounts         []stripeDiscount  `json:"discounts"` // expanded (subscriptionExpand)
 	Items             struct {
 		Data []struct {
 			ID               string `json:"id"`
@@ -115,7 +143,9 @@ type subscription struct {
 }
 
 type stripeDiscount struct {
-	Coupon        stripeCoupon    `json:"coupon"`
+	Source struct {
+		Coupon stripeCoupon `json:"coupon"` // expanded
+	} `json:"source"`
 	PromotionCode json.RawMessage `json:"promotion_code"` // an id, or the object when expanded
 	End           *int64          `json:"end"`
 }
@@ -131,16 +161,35 @@ type stripeCoupon struct {
 	AppliesTo        *struct { // only when expanded
 		Products []string `json:"products"`
 	} `json:"applies_to"`
+	// CurrencyOptions are an amount-off coupon's amounts in its other currencies (when expanded).
+	CurrencyOptions map[string]struct {
+		AmountOff int64 `json:"amount_off"`
+	} `json:"currency_options"`
+}
+
+// amountIn is what the coupon takes off in cur (0 for a percent-off coupon), and whether it can be used there at
+// all: Stripe refuses an amount-off coupon on a payment in a currency it has no amount for.
+func (c stripeCoupon) amountIn(cur string) (int64, bool) {
+	switch {
+	case c.AmountOff == nil || *c.AmountOff == 0:
+		return 0, true
+	case c.Currency != nil && *c.Currency == cur:
+		return *c.AmountOff, true
+	}
+	o, ok := c.CurrencyOptions[cur]
+	return o.AmountOff, ok && o.AmountOff > 0
 }
 
 type promotionCode struct {
-	ID             string       `json:"id"`
-	Code           string       `json:"code"`
-	Active         bool         `json:"active"`
-	ExpiresAt      *int64       `json:"expires_at"`
-	MaxRedemptions int          `json:"max_redemptions"`
-	TimesRedeemed  int          `json:"times_redeemed"`
-	Coupon         stripeCoupon `json:"coupon"`
+	ID             string `json:"id"`
+	Code           string `json:"code"`
+	Active         bool   `json:"active"`
+	ExpiresAt      *int64 `json:"expires_at"`
+	MaxRedemptions int    `json:"max_redemptions"`
+	TimesRedeemed  int    `json:"times_redeemed"`
+	Promotion      struct {
+		Coupon string `json:"coupon"` // the coupon's id
+	} `json:"promotion"`
 }
 
 func (s subscription) priceID() string {

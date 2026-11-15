@@ -178,13 +178,21 @@ func TestPromotionCode(t *testing.T) {
 	if plans, _ := data["plans"].([]any); code != http.StatusOK || len(plans) != 2 || plans[0] != "pro" || plans[1] != "business" || data["expires_at"] != nil {
 		t.Fatalf("limited to plans: %d %v", code, body)
 	}
-	for _, c := range []string{"OFF", "OLD", "USEDUP", "NOPLAN", "UNKNOWN", ""} {
-		code, body := post(owner, c)
+	for _, tc := range []struct{ code, reason, message string }{
+		{"OFF", "invalid", "This code isn't valid."},
+		{"OLD", "invalid", "This code isn't valid."},
+		{"USEDUP", "invalid", "This code isn't valid."},
+		{"UNKNOWN", "invalid", "This code isn't valid."},
+		{"", "invalid", "This code isn't valid."},
+		{"NOPLAN", "plan", "This code doesn't apply to any plan."},
+	} {
+		code, body := post(owner, tc.code)
 		errBody, _ := body["error"].(map[string]any)
 		details, _ := errBody["details"].(map[string]any)
 		fields, _ := details["fields"].(map[string]any)
-		if code != http.StatusUnprocessableEntity || errBody["code"] != "promotion_code_invalid" || errBody["message"] != "This code isn't valid." || fields["code"] != "invalid" {
-			t.Fatalf("code %q: %d %v", c, code, body)
+		if code != http.StatusUnprocessableEntity || errBody["code"] != "promotion_code_invalid" || errBody["message"] != tc.message ||
+			details["reason"] != tc.reason || fields["code"] != "invalid" {
+			t.Fatalf("code %q: %d %v", tc.code, code, body)
 		}
 	}
 	if code, _ := post(member, "LAUNCH20"); code != http.StatusForbidden {
@@ -225,6 +233,9 @@ func TestCheckoutWithCode(t *testing.T) {
 	if code, _ := checkout(Business, "PROONLY"); code != http.StatusUnprocessableEntity {
 		t.Fatalf("Business is not in the code's products: %d", code)
 	}
+	if errBody, _ := body["error"].(map[string]any); errBody["message"] != "This code doesn't apply to the Basic plan." {
+		t.Fatalf("wrong plan message: %v", body)
+	}
 	if code, _ := checkout(Pro, "PROONLY"); code != http.StatusOK {
 		t.Fatalf("right plan: %d", code)
 	}
@@ -240,14 +251,116 @@ func TestCheckoutWithCode(t *testing.T) {
 	}
 }
 
+// amountPromo adds an amount-off code: 10 off in francs, and in the other currencies given.
+func (f *fakeStripe) amountPromo(code string, others ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	options := map[string]any{"chf": map[string]any{"amount_off": 1000}}
+	for _, cur := range others {
+		options[cur] = map[string]any{"amount_off": 1000}
+	}
+	f.coupons["co_"+code] = map[string]any{"id": "co_" + code, "amount_off": 1000, "currency": "chf", "duration": "once", "valid": true,
+		"currency_options": options}
+	f.promos[code] = map[string]any{"id": "promo_" + code, "code": code, "active": true, "promotion": map[string]any{"type": "coupon", "coupon": "co_" + code}}
+}
+
+func TestAmountOffCodeNeedsTheWorkspaceCurrency(t *testing.T) {
+	e := newEnv(t, true)
+	e.stripe.amountPromo("TENOFF", EUR)
+	e.stripe.amountPromo("FRANCS")
+	for _, tc := range []struct {
+		name, tz, code string
+		status         int
+		reason         string
+		amount         any
+		currency       any
+	}{
+		{"francs in Switzerland", "Europe/Zurich", "FRANCS", http.StatusOK, "", 1000.0, "chf"},
+		{"the euro option in Germany", "Europe/Berlin", "TENOFF", http.StatusOK, "", 1000.0, "eur"},
+		{"no dollar amount", "America/New_York", "TENOFF", http.StatusUnprocessableEntity, "currency", nil, nil},
+		{"a francs-only code in Germany", "Europe/Berlin", "FRANCS", http.StatusUnprocessableEntity, "currency", nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			owner := e.workspaceIn(tc.tz)
+			code, body := e.do(owner, http.MethodPost, "/api/v1/billing/promotion-code", map[string]string{"code": tc.code})
+			if code != tc.status {
+				t.Fatalf("check: %d %v", code, body)
+			}
+			if tc.status != http.StatusOK {
+				errBody, _ := body["error"].(map[string]any)
+				details, _ := errBody["details"].(map[string]any)
+				if details["reason"] != tc.reason || errBody["message"] != "This code is for payments in CHF." {
+					t.Fatalf("refusal: %v", body)
+				}
+				code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month", "promotion_code": tc.code})
+				if code != http.StatusUnprocessableEntity {
+					t.Fatalf("checkout with the code: %d", code)
+				}
+				return
+			}
+			data, _ := body["data"].(map[string]any)
+			if data["amount_off"] != tc.amount || data["currency"] != tc.currency {
+				t.Fatalf("promotion: %v", data)
+			}
+		})
+	}
+}
+
+func TestOneDiscountAtATime(t *testing.T) {
+	e := newEnv(t, true)
+	owner := e.workspace()
+	e.stripe.promo("LAUNCH20", true, 0, 0, 0)
+	e.subscribe(owner.workspace, "price_bm")
+	checkout := func(plan, code string) (int, map[string]any) {
+		return e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": "month", "promotion_code": code})
+	}
+
+	// The same plan and interval with a code: only the code is applied.
+	if code, body := checkout(Basic, "LAUNCH20"); code != http.StatusOK {
+		t.Fatalf("code on the same plan: %d %v", code, body)
+	}
+	f := e.stripe.form("POST /v1/subscriptions/sub_" + owner.workspace)
+	if f.Get("discounts[0][promotion_code]") != "promo_LAUNCH20" || f.Has("items[0][price]") || f.Has("proration_behavior") {
+		t.Fatalf("code only: %v", f)
+	}
+	if code, _ := checkout(Basic, ""); code != http.StatusConflict {
+		t.Fatalf("same plan without a code: %d", code)
+	}
+
+	// Now the subscription has a discount: no other code until it ends.
+	e.stripe.mu.Lock()
+	e.stripe.subs["sub_"+owner.workspace]["discounts"] = []map[string]any{{"source": map[string]any{"type": "coupon",
+		"coupon": map[string]any{"percent_off": 20.0, "duration": "repeating", "duration_in_months": 3}}}}
+	e.stripe.mu.Unlock()
+	for _, tc := range []struct {
+		name string
+		do   func() (int, map[string]any)
+	}{
+		{"check", func() (int, map[string]any) {
+			return e.do(owner, http.MethodPost, "/api/v1/billing/promotion-code", map[string]string{"code": "LAUNCH20"})
+		}},
+		{"switch", func() (int, map[string]any) { return checkout(Pro, "LAUNCH20") }},
+	} {
+		code, body := tc.do()
+		errBody, _ := body["error"].(map[string]any)
+		details, _ := errBody["details"].(map[string]any)
+		if code != http.StatusUnprocessableEntity || details["reason"] != "has_discount" {
+			t.Fatalf("%s with a discount: %d %v", tc.name, code, body)
+		}
+	}
+	if code, body := checkout(Pro, ""); code != http.StatusOK {
+		t.Fatalf("switch without a code keeps the discount: %d %v", code, body)
+	}
+}
+
 func TestOverviewDiscount(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	e.subscribe(owner.workspace, "price_bm")
 	e.stripe.mu.Lock()
-	e.stripe.subs["sub_"+owner.workspace]["discount"] = map[string]any{
-		"coupon":         map[string]any{"percent_off": 20.0, "duration": "repeating", "duration_in_months": 3},
-		"promotion_code": map[string]any{"id": "promo_1", "code": "LAUNCH20"}, "end": 1786000000}
+	e.stripe.subs["sub_"+owner.workspace]["discounts"] = []map[string]any{{
+		"source":         map[string]any{"type": "coupon", "coupon": map[string]any{"percent_off": 20.0, "duration": "repeating", "duration_in_months": 3}},
+		"promotion_code": map[string]any{"id": "promo_1", "code": "LAUNCH20"}, "end": 1786000000}}
 	e.stripe.mu.Unlock()
 	code, body := e.do(owner, http.MethodPost, "/api/v1/billing/sync", nil)
 	data, _ := body["data"].(map[string]any)

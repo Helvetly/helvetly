@@ -223,20 +223,22 @@ func (q Q) AITokenPacks(ctx context.Context, workspaceID, period string) (int64,
 	return n, err
 }
 
-// RevokeAITokenPack takes back a refunded or charged-back pack, once: up to max of its tokens when it counts for
-// period, none when it has lapsed. A pack not recorded yet is recorded taken back whole, so its late credit adds
-// nothing. ok is false when the pack was taken back before (or is another workspace's).
-func (q Q) RevokeAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens, max int64, now time.Time) (taken int64, ok bool, err error) {
+// RevokeAITokenPack takes back up to want of a refunded or charged-back pack's tokens in total: what more than taken
+// before, at most max more when it counts for period, none more when it has lapsed; never less than before. A pack not
+// recorded yet is recorded with want taken back, so its late credit adds only the rest. revoked is the pack's total
+// taken back; ok is false when nothing changed (or the pack is another workspace's).
+func (q Q) RevokeAITokenPack(ctx context.Context, sessionID, workspaceID, period string, tokens, want, max int64, now time.Time) (revoked int64, ok bool, err error) {
 	err = q.db.QueryRow(ctx, `INSERT INTO ai_token_packs (checkout_session_id, workspace_id, period, tokens, revoked, revoked_at, created_at)
-		VALUES ($1, $2, $3, $4, $4, $6, $6)
-		ON CONFLICT (checkout_session_id) DO UPDATE SET revoked_at = $6,
-			revoked = CASE WHEN ai_token_packs.period = EXCLUDED.period THEN least(ai_token_packs.tokens, greatest($5::bigint, 0)) ELSE 0 END
-		WHERE ai_token_packs.revoked_at IS NULL AND ai_token_packs.workspace_id = EXCLUDED.workspace_id
-		RETURNING revoked`, sessionID, workspaceID, period, tokens, max, now).Scan(&taken)
+		VALUES ($1, $2, $3, $4, $5, $7, $7)
+		ON CONFLICT (checkout_session_id) DO UPDATE SET revoked_at = $7,
+			revoked = least(EXCLUDED.revoked, ai_token_packs.revoked + greatest($6::bigint, 0))
+		WHERE ai_token_packs.workspace_id = EXCLUDED.workspace_id AND ai_token_packs.period = EXCLUDED.period
+			AND least(EXCLUDED.revoked, ai_token_packs.revoked + greatest($6::bigint, 0)) > ai_token_packs.revoked
+		RETURNING revoked`, sessionID, workspaceID, period, tokens, min(want, tokens), max, now).Scan(&revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, nil
 	}
-	return taken, err == nil, err
+	return revoked, err == nil, err
 }
 
 // SaveDispute records a dispute's latest status; fresh is true the first time the dispute is seen.

@@ -113,15 +113,15 @@ func (s *Service) handleEvent(ctx context.Context, ev event) error {
 			subID = obj.Subscription
 		}
 		if obj.Mode == "payment" { // an AI token pack
-			return s.creditAITokens(ctx, obj.ID, obj.Customer, obj.Metadata["workspace_id"], obj.Metadata[AITokensKey], obj.PaymentStatus)
+			return s.creditAITokens(ctx, ev, obj.ID, obj.Customer, obj.Metadata["workspace_id"], obj.Metadata[AITokensKey], obj.PaymentStatus)
 		}
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
 		"customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.trial_will_end":
 		subID = obj.ID
 	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed":
-		return s.dispute(ctx, obj.ID)
+		return s.dispute(ctx, ev, obj.ID)
 	case "charge.refunded":
-		return s.refund(ctx, obj.ID)
+		return s.refund(ctx, ev, obj.ID)
 	}
 	if subID == "" {
 		return nil // not an event billing follows
@@ -130,26 +130,34 @@ func (s *Service) handleEvent(ctx context.Context, ev event) error {
 	if err != nil {
 		return err
 	}
-	return s.apply(ctx, sub, ev.ID, ev.Type)
+	return s.apply(ctx, sub, ev)
 }
 
 var errSeen = errors.New("event applied before")
 
-// apply records a subscription read from Stripe on the workspace in its metadata. eventID, when set, is applied
-// once. A subscription for another customer than the workspace's, or an older one ending while a newer one is
-// stored, changes nothing; a second live subscription replaces the stored one, which is then cancelled.
-func (s *Service) apply(ctx context.Context, sub subscription, eventID, eventType string) error {
+// record notes the event (none for a zero ev) in the transaction that applies it: errSeen when it was applied before.
+func (s *Service) record(ctx context.Context, q store.Q, ev event) error {
+	if ev.ID == "" {
+		return nil
+	}
+	fresh, err := q.RecordStripeEvent(ctx, ev.ID, ev.Type, s.now())
+	if err == nil && !fresh {
+		err = errSeen
+	}
+	return err
+}
+
+// apply records a subscription read from Stripe on the workspace in its metadata. ev, when set, is applied once. A
+// subscription for another customer than the workspace's, or an older one ending while a newer one is stored,
+// changes nothing; a second live subscription replaces the stored one, which is then cancelled. A per-seat one that
+// bills another number than the workspace's people is then synced.
+func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 	ws := sub.Metadata["workspace_id"]
 	var replaced string
+	var resync bool
 	err := s.db.Tx(ctx, func(q store.Q) error {
-		if eventID != "" {
-			fresh, err := q.RecordStripeEvent(ctx, eventID, eventType, s.now())
-			if err != nil {
-				return err
-			}
-			if !fresh {
-				return errSeen
-			}
+		if err := s.record(ctx, q, ev); err != nil {
+			return err
 		}
 		if ws == "" {
 			s.log.InfoContext(ctx, "ignoring a subscription without a workspace", "subscription", sub.ID)
@@ -193,7 +201,14 @@ func (s *Service) apply(ctx context.Context, sub subscription, eventID, eventTyp
 		if err := q.ApplySubscription(ctx, ws, sub.Customer, after, s.now()); err != nil {
 			return err
 		}
-		if event, data := subscriptionNews(eventType, b, after); event != "" {
+		if after.PerSeat && live(after.Status) {
+			seats, err := q.Seats(ctx, ws)
+			if err != nil {
+				return err
+			}
+			resync = after.Seats != max(seats, 1)
+		}
+		if event, data := subscriptionNews(ev.Type, b, after); event != "" {
 			return notifications.Notify(ctx, q, ws, event, data, store.NotifyTo{Roles: notifications.Owners}, s.now())
 		}
 		return nil
@@ -208,12 +223,18 @@ func (s *Service) apply(ctx context.Context, sub subscription, eventID, eventTyp
 			s.log.ErrorContext(ctx, "cancelling a replaced subscription failed", "subscription", replaced, "error", err)
 		}
 	}
+	if err == nil && resync && replaced == "" {
+		s.SyncSeats(ctx, ws)
+	}
 	return err
 }
 
-// getSubscription reads a subscription with its promotion code, so the discount can name the code.
+// subscriptionExpand reads a subscription's discounts with their coupon and promotion code, so the discount can name
+// the code.
+var subscriptionExpand = []string{"discounts.source.coupon", "discounts.promotion_code"}
+
 func (s *Service) getSubscription(ctx context.Context, id string) (sub subscription, err error) {
-	err = s.stripe.Call(ctx, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(id), url.Values{"expand[]": {"discount.promotion_code"}}, "", &sub)
+	err = s.stripe.Call(ctx, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(id), url.Values{"expand[]": subscriptionExpand}, "", &sub)
 	return sub, err
 }
 
@@ -233,15 +254,17 @@ func (s *Service) toStore(sub subscription) store.Subscription {
 		t := time.Unix(*sub.TrialEnd, 0).UTC()
 		out.TrialEnd = &t
 	}
-	out.Discount = discountJSON(sub.Discount)
+	out.Discount = discountJSON(sub)
 	return out
 }
 
-// discountJSON is the discount as the overview shows it; nil when the subscription has none.
-func discountJSON(d *stripeDiscount) json.RawMessage {
-	if d == nil {
+// discountJSON is the subscription's discount as the overview shows it, an amount off in the subscription's
+// currency; nil when it has none (one discount at a time).
+func discountJSON(sub subscription) json.RawMessage {
+	if len(sub.Discounts) == 0 {
 		return nil
 	}
+	d, cur := sub.Discounts[0], sub.Currency
 	out := struct {
 		Code             string     `json:"code"`
 		PercentOff       *float64   `json:"percent_off"`
@@ -250,8 +273,10 @@ func discountJSON(d *stripeDiscount) json.RawMessage {
 		Duration         string     `json:"duration"`
 		DurationInMonths *int       `json:"duration_in_months"`
 		EndsAt           *time.Time `json:"ends_at"`
-	}{PercentOff: d.Coupon.PercentOff, AmountOff: d.Coupon.AmountOff, Currency: d.Coupon.Currency,
-		Duration: d.Coupon.Duration, DurationInMonths: d.Coupon.DurationInMonths}
+	}{PercentOff: d.Source.Coupon.PercentOff, Duration: d.Source.Coupon.Duration, DurationInMonths: d.Source.Coupon.DurationInMonths}
+	if amount, _ := d.Source.Coupon.amountIn(cur); amount > 0 {
+		out.AmountOff, out.Currency = &amount, &cur
+	}
 	var pc struct {
 		Code string `json:"code"`
 	}

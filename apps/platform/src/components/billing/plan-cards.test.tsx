@@ -21,6 +21,30 @@ const server = setupServer(
   }),
   http.post('/api/v1/billing/promotion-code', async ({ request }) => {
     const { code } = (await request.json()) as { code: string }
+    if (code === 'FRANCS')
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'promotion_code_invalid',
+            message: 'This code is for payments in CHF.',
+            details: { fields: { code: 'invalid' }, reason: 'currency' },
+          },
+        },
+        { status: 422 },
+      )
+    if (code === 'TENOFF')
+      return HttpResponse.json({
+        data: {
+          code,
+          percent_off: null,
+          amount_off: 1000,
+          currency: 'chf',
+          duration: 'once',
+          duration_in_months: null,
+          plans: null,
+          expires_at: null,
+        },
+      })
     if (code !== 'LAUNCH20')
       return HttpResponse.json(
         {
@@ -177,6 +201,24 @@ test('an invalid promotion code is a field error', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   expect(await screen.findByText("This code isn't valid.")).toBeInTheDocument()
   expect(screen.queryByText(/NOPE ·/)).toBeNull()
+})
+
+test('a refused code shows the reason the API gives', async () => {
+  renderCards(billing())
+  await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'FRANCS')
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText('This code is for payments in CHF.')).toBeInTheDocument()
+})
+
+test('an amount off takes the amount the API gives in the workspace currency', async () => {
+  renderCards(billing({ trial_available: false }))
+  await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'TENOFF')
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText('TENOFF · −CHF 10 once')).toBeInTheDocument()
+  expect(card('Pro')).toHaveTextContent('CHF 39')
+  expect(card('Pro').querySelector('s')).toHaveTextContent('CHF 49')
 })
 
 test('people who cannot manage billing see the plans without the way to change them', () => {

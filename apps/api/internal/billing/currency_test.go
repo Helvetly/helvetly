@@ -6,56 +6,69 @@ import (
 )
 
 func TestCurrencyOf(t *testing.T) {
-	for _, tt := range []struct{ country, tz, want string }{
-		{"CH", "", "chf"},
-		{"LI", "America/New_York", "chf"}, // the country wins over the time zone
-		{"DE", "Europe/Zurich", "eur"},
-		{"FR", "", "eur"},
-		{"RE", "", "eur"}, // Réunion, an outermost region
-		{"GB", "Europe/Berlin", "usd"},
-		{"NO", "", "usd"},
-		{"MC", "", "usd"}, // pays in euros, not in the EU
-		{"US", "", "usd"},
+	for _, tt := range []struct {
+		country string
+		zones   []string
+		want    string
+	}{
+		{"CH", nil, "chf"},
+		{"LI", []string{"America/New_York"}, "chf"}, // the country wins over the time zone
+		{"DE", []string{"Europe/Zurich"}, "eur"},
+		{"FR", nil, "eur"},
+		{"RE", nil, "eur"}, // Réunion, an outermost region
+		{"GB", []string{"Europe/Berlin"}, "usd"},
+		{"NO", nil, "usd"},
+		{"MC", nil, "usd"}, // pays in euros, not in the EU
+		{"US", nil, "usd"},
 		// No country from Cloudflare: the workspace's time zone.
-		{"", "Europe/Zurich", "chf"},
-		{"", "Europe/Vaduz", "chf"},
-		{"", "Europe/Berlin", "eur"},
-		{"", "Europe/Busingen", "eur"}, // German, on Swiss time
-		{"", "Atlantic/Canary", "eur"},
-		{"", "Asia/Nicosia", "eur"},
-		{"", "Europe/London", "usd"},
-		{"", "Europe/Monaco", "usd"},
-		{"", "UTC", "usd"},
-		{"", "", "usd"},
+		{"", []string{"Europe/Zurich"}, "chf"},
+		{"", []string{"Europe/Vaduz"}, "chf"},
+		{"", []string{"Europe/Berlin"}, "eur"},
+		{"", []string{"Europe/Busingen"}, "eur"}, // German, on Swiss time
+		{"", []string{"Atlantic/Canary"}, "eur"},
+		{"", []string{"Asia/Nicosia"}, "eur"},
+		{"", []string{"America/Marigot"}, "eur"}, // Saint-Martin
+		{"", []string{"Europe/London"}, "usd"},
+		{"", []string{"Europe/Monaco"}, "usd"},
+		{"", []string{"UTC"}, "usd"},
+		{"", []string{""}, "usd"},
+		{"", nil, "usd"},
+		// A workspace zone that says nothing gives way to the page's; one that says something wins.
+		{"", []string{"UTC", "Europe/Berlin"}, "eur"},
+		{"", []string{"Etc/UTC", "Europe/Zurich"}, "chf"},
+		{"", []string{"", "Europe/Vienna"}, "eur"},
+		{"", []string{"America/New_York", "Europe/Berlin"}, "usd"},
+		{"", []string{"Europe/Zurich", "Europe/Berlin"}, "chf"},
 	} {
-		if got := CurrencyOf(tt.country, tt.tz); got != tt.want {
-			t.Errorf("CurrencyOf(%q, %q) = %q, want %q", tt.country, tt.tz, got, tt.want)
+		if got := CurrencyOf(tt.country, tt.zones...); got != tt.want {
+			t.Errorf("CurrencyOf(%q, %q) = %q, want %q", tt.country, tt.zones, got, tt.want)
 		}
 	}
 }
 
-func TestOffered(t *testing.T) {
+func TestSoldOnlyInItsCurrencies(t *testing.T) {
 	withOptions := price{Currency: "chf", UnitAmount: 1900, CurrencyOptions: map[string]struct {
 		UnitAmount int64 `json:"unit_amount"`
 	}{EUR: {1900}, USD: {1900}}}
 	chfOnly := price{Currency: "chf", UnitAmount: 1900}
 	for _, tt := range []struct {
-		name   string
-		cur    string
-		prices []price
-		want   string
+		name string
+		p    price
+		cur  string
+		ok   bool
 	}{
-		{"every price sold in it", EUR, []price{withOptions, withOptions}, EUR},
-		{"the prices' own currency", Currency, []price{chfOnly}, Currency},
-		{"one price without the option", USD, []price{withOptions, chfOnly}, Currency},
-		{"a currency no price has", "gbp", []price{withOptions}, Currency},
+		{"own currency", chfOnly, Currency, true},
+		{"a currency option", withOptions, USD, true},
+		{"no option: no francs fallback", chfOnly, EUR, false},
+		{"a currency no price has", withOptions, "gbp", false},
 	} {
-		if got := offered(tt.cur, tt.prices); got != tt.want {
-			t.Errorf("%s: offered = %q, want %q", tt.name, got, tt.want)
+		if amount, ok := tt.p.amountIn(tt.cur); ok != tt.ok || (ok && amount != 1900) {
+			t.Errorf("%s: amountIn = %d %v", tt.name, amount, ok)
 		}
 	}
-	if amount, ok := withOptions.amountIn(USD); !ok || amount != 1900 {
-		t.Fatalf("amountIn(usd) = %d %v", amount, ok)
+	packs := packsIn([]aiPack{{Tokens: 1, price: withOptions}, {Tokens: 2, price: chfOnly}}, EUR)
+	if len(packs) != 1 || packs[0].Tokens != 1 || packs[0].Currency != EUR || packs[0].Amount != 1900 {
+		t.Fatalf("packs in euros: %+v", packs)
 	}
 }
 
@@ -161,19 +174,54 @@ func TestExistingCustomerKeepsItsCurrency(t *testing.T) {
 	}
 }
 
-func TestCatalogueWithoutCurrencyOptionsSellsInFrancs(t *testing.T) {
+func TestCatalogueWithoutCurrencyOptionsSellsOnlyInFrancs(t *testing.T) {
 	e := newEnv(t, true)
 	e.stripe.mu.Lock()
 	e.stripe.noOptions = true
 	e.stripe.mu.Unlock()
 	owner := e.workspaceIn("Europe/Berlin")
-	if cur, pro := e.overviewCurrency(owner); cur != "chf" || pro["currency"] != "chf" || pro["amount"] != 4900.0 {
-		t.Fatalf("overview %q %v", cur, pro)
+	e.subscribe(owner.workspace, "price_bm")
+	code, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
+	data, _ := body["data"].(map[string]any)
+	pro, _ := data["plans"].([]any)[1].(map[string]any)["prices"].(map[string]any)
+	if packs, _ := data["ai_packs"].([]any); code != http.StatusOK || data["currency"] != "eur" || pro["month"] != nil || len(packs) != 0 {
+		t.Fatalf("overview: %d %v", code, body)
 	}
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
-		t.Fatalf("checkout: %d", code)
+	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"})
+	if errBody, _ := body["error"].(map[string]any); code != http.StatusConflict || errBody["code"] != "plan_unavailable" {
+		t.Fatalf("checkout: %d %v", code, body)
 	}
-	if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("currency") != "chf" {
-		t.Fatalf("checkout currency %q", f.Get("currency"))
+	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 1_000_000})
+	if errBody, _ := body["error"].(map[string]any); code != http.StatusUnprocessableEntity || errBody["code"] != "ai_pack_unavailable" {
+		t.Fatalf("pack: %d %v", code, body)
+	}
+	if n := e.stripe.called("POST /v1/checkout/sessions"); n != 0 {
+		t.Fatalf("Checkout sessions made: %d", n)
+	}
+	// In francs everything is on sale.
+	swiss := e.workspaceIn("Europe/Zurich")
+	if cur, pro := e.overviewCurrency(swiss); cur != "chf" || pro["amount"] != 4900.0 {
+		t.Fatalf("overview in francs %q %v", cur, pro)
+	}
+}
+
+func TestPageZoneWhenTheWorkspaceZoneSaysNothing(t *testing.T) {
+	e := newEnv(t, true)
+	for _, tt := range []struct{ tz, page, want string }{
+		{"UTC", "Europe/Berlin", "eur"},
+		{"UTC", "", "usd"},
+		{"Europe/Zurich", "Europe/Berlin", "chf"},
+	} {
+		owner := e.workspaceIn(tt.tz)
+		code, body := e.do(owner, http.MethodGet, "/api/v1/billing?tz="+tt.page, nil)
+		if data, _ := body["data"].(map[string]any); code != http.StatusOK || data["currency"] != tt.want {
+			t.Fatalf("%s + %s: %d %v", tt.tz, tt.page, code, body)
+		}
+		if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout?tz="+tt.page, map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
+			t.Fatalf("checkout %d", code)
+		}
+		if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("currency") != tt.want {
+			t.Fatalf("%s + %s: checkout currency %q", tt.tz, tt.page, f.Get("currency"))
+		}
 	}
 }

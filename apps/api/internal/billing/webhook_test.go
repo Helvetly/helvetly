@@ -18,7 +18,7 @@ func TestDelayedSubscriptionReadCannotRestoreAnOldPlan(t *testing.T) {
 	// A second delivery observes cancellation while the first handler still holds the old response.
 	e.stripe.put("sub_1", b.workspace, "cus_1", "canceled", "price_pm")
 	e.event("evt_canceled", "customer.subscription.deleted", map[string]any{"id": "sub_1"})
-	if err := e.svc.apply(ctx, delayed, "evt_delayed", "customer.subscription.updated"); err != nil {
+	if err := e.svc.apply(ctx, delayed, event{ID: "evt_delayed", Type: "customer.subscription.updated"}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := e.st.WorkspaceBilling(ctx, b.workspace)

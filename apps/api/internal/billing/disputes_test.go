@@ -22,11 +22,12 @@ func newChargeback(t *testing.T) chargeback {
 	e.subscribe(ws, "price_bm")
 	e.stripe.mu.Lock()
 	e.stripe.charges["ch_sub"] = map[string]any{"id": "ch_sub", "customer": cus, "payment_intent": "pi_sub", "amount": 1900,
-		"amount_refunded": 0, "invoice": map[string]any{"id": "in_1", "subscription": "sub_" + ws}}
+		"amount_refunded": 0}
 	e.stripe.charges["ch_pack"] = map[string]any{"id": "ch_pack", "customer": cus, "payment_intent": "pi_pack", "amount": 4000,
-		"amount_refunded": 0, "invoice": nil}
+		"amount_refunded": 0}
 	e.stripe.charges["ch_other"] = map[string]any{"id": "ch_other", "customer": "cus_other", "payment_intent": "pi_other",
-		"amount": 1900, "amount_refunded": 0, "invoice": map[string]any{"id": "in_2", "subscription": "sub_" + ws}}
+		"amount": 1900, "amount_refunded": 0}
+	e.stripe.invoiced["pi_sub"], e.stripe.invoiced["pi_other"] = "sub_"+ws, "sub_"+ws
 	e.stripe.sessions = append(e.stripe.sessions, map[string]any{"id": "cs_pack", "mode": "payment", "payment_intent": "pi_pack",
 		"customer": cus, "payment_status": "paid", "metadata": map[string]string{"workspace_id": ws, AITokensKey: "5000000"}})
 	e.stripe.mu.Unlock()
@@ -155,10 +156,30 @@ func TestChargebacksAndRefunds(t *testing.T) {
 			c.refund("evt_1", "ch_pack", 4000)
 			c.credit()
 		}, outcome{"basic", false, 1_000_000, 0, 0}},
-		{"a partly refunded pack keeps its tokens", func(c chargeback) {
+		{"a partly refunded pack loses that share of its tokens", func(c chargeback) {
+			c.credit()
+			c.refund("evt_1", "ch_pack", 1000) // a quarter of 5M
+		}, outcome{"basic", false, 4_750_000, 0, 0}},
+		{"a second partial refund takes the difference", func(c chargeback) {
 			c.credit()
 			c.refund("evt_1", "ch_pack", 1000)
-		}, outcome{"basic", false, 6_000_000, 0, 0}},
+			c.refund("evt_2", "ch_pack", 3000) // three quarters in all
+			c.refund("evt_2", "ch_pack", 3000) // replay
+		}, outcome{"basic", false, 2_250_000, 0, 0}},
+		{"a partial refund rounds in the customer's favour", func(c chargeback) {
+			c.credit()
+			c.refund("evt_1", "ch_pack", 3) // 5M * 3 / 4000 = 3750
+		}, outcome{"basic", false, 5_996_250, 0, 0}},
+		{"a partial refund takes no more than is left, and a later one never less", func(c chargeback) {
+			c.credit()
+			c.use(5_500_000)                   // of 6M: 500k left
+			c.refund("evt_1", "ch_pack", 2000) // half: 2.5M wanted, 500k taken
+			c.refund("evt_2", "ch_pack", 4000) // all: nothing left to take
+		}, outcome{"basic", false, 5_500_000, 0, 0}},
+		{"a partial refund delivered before the pack's credit leaves the rest", func(c chargeback) {
+			c.refund("evt_1", "ch_pack", 2000)
+			c.credit()
+		}, outcome{"basic", false, 3_500_000, 0, 0}},
 		{"a refunded subscription payment is the operator's call: nothing ends", func(c chargeback) {
 			c.refund("evt_1", "ch_sub", 1900)
 		}, outcome{"basic", false, 1_000_000, 0, 0}},
@@ -171,7 +192,7 @@ func TestChargebacksAndRefunds(t *testing.T) {
 		{"a charge for an unknown workspace changes nothing", func(c chargeback) {
 			c.e.stripe.put("sub_gone", "wsp_gone", "cus_"+c.ws, "active", "price_bm")
 			c.e.stripe.mu.Lock()
-			c.e.stripe.charges["ch_sub"]["invoice"] = map[string]any{"id": "in_3", "subscription": "sub_gone"}
+			c.e.stripe.invoiced["pi_sub"] = "sub_gone"
 			c.e.stripe.mu.Unlock()
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
 			c.dispute("evt_2", closed, "ch_sub", "lost")
@@ -204,5 +225,16 @@ func TestDisputedInOverview(t *testing.T) {
 	c.dispute("evt_1", "charge.dispute.created", "ch_sub", "warning_needs_response")
 	if got := disputed(); got != true {
 		t.Fatalf("open: %v", got)
+	}
+}
+
+func TestPackRefundAndDisputeEventsAreRecorded(t *testing.T) {
+	c := newChargeback(t)
+	c.credit()
+	c.refund("evt_refund", "ch_pack", 1000)
+	c.dispute("evt_dispute", "charge.dispute.created", "ch_pack", "needs_response")
+	var n int
+	if err := c.e.raw.QueryRow(context.Background(), `SELECT count(*) FROM stripe_events WHERE id IN ('evt_credit', 'evt_refund', 'evt_dispute')`).Scan(&n); err != nil || n != 3 {
+		t.Fatalf("events recorded %d, %v", n, err)
 	}
 }

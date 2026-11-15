@@ -3,6 +3,7 @@ package auth
 import (
 	"net/http"
 	"net/netip"
+	"strings"
 
 	"helvetly.com/api/internal/config"
 )
@@ -20,11 +21,11 @@ func fromCloudflare(ip netip.Addr) bool {
 	return false
 }
 
-// Country is the request's trusted visitor country, upper-case; "" when Cloudflare did not send one (or sent XX,
-// unknown, or T1, Tor).
+// Country is the request's trusted visitor country, trimmed and upper-cased; "" unless it is two letters A-Z, and
+// for XX (unknown) and T1 (Tor).
 func Country(r *http.Request) string {
-	c := r.Header.Get(CountryHeader)
-	if len(c) != 2 || c == "XX" || c == "T1" {
+	c := strings.ToUpper(strings.TrimSpace(r.Header.Get(CountryHeader)))
+	if len(c) != 2 || c[0] < 'A' || c[0] > 'Z' || c[1] < 'A' || c[1] > 'Z' || c == "XX" || c == "T1" {
 		return ""
 	}
 	return c
