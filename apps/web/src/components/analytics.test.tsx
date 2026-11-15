@@ -8,19 +8,22 @@ describe('Analytics', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it.each([
-    ['www.helvetly.com', 1],
-    ['helvetly.com', 1],
-    ['localhost', 0],
-    ['helvetly.com.evil.example', 0],
-  ])('on %s starts Google Analytics %i time(s)', (hostname, calls) => {
+    ['www.helvetly.com', 'G-TEST', [['G-TEST']]],
+    ['helvetly.com', 'G-TEST', [['G-TEST']]],
+    ['localhost', 'G-TEST', []],
+    ['helvetly.com.evil.example', 'G-TEST', []],
+    ['www.helvetly.com', '', []],
+  ])('on %s with id "%s" starts Google Analytics with %j', (hostname, gaId, calls) => {
     const initialize = vi.spyOn(ReactGA, 'initialize').mockImplementation(() => {})
     vi.stubGlobal('location', { ...window.location, hostname })
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', gaId)
 
     render(<Analytics />)
 
-    expect(initialize).toHaveBeenCalledTimes(calls)
+    expect(initialize.mock.calls).toEqual(calls)
   })
 })

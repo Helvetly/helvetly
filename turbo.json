@@ -32,7 +32,8 @@
         "AUTH_DEV_SIGNIN",
         "S3_PROXY_DOWNLOADS",
         "NEXT_PUBLIC_PLATFORM_URL",
-        "NEXT_PUBLIC_DOCS_URL"
+        "NEXT_PUBLIC_DOCS_URL",
+        "NEXT_PUBLIC_GA_ID"
       ]
     }
   }
