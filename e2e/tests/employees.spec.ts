@@ -139,8 +139,9 @@ test('payroll CSV import: read without the AI model, bad rows kept back, the sam
 
   const entries = await rows(api, '/payroll/entries?month=2026-09')
   expect(entries).toHaveLength(1)
-  expect(entries[0].employer_costs).toBeNull() // an empty cell stays missing, never 0
-  expect(entries[0].status).toBe('draft') // importing certifies nothing
+  const [imported] = entries
+  expect(imported?.employer_costs).toBeNull() // an empty cell stays missing, never 0
+  expect(imported?.status).toBe('draft') // importing certifies nothing
 
   const again = await upload()
   const first = text(object((again.records as unknown[])[0]).id)
