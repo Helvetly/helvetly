@@ -153,6 +153,7 @@ func run() error {
 		return err
 	}
 	db.SetAdmission(billingSvc.AllowResource)
+	db.SetFeatureGate(billingSvc.RequireFeature)
 	membersSvc.SetSeats(billingSvc)      // a member who leaves frees a seat
 	invitationsSvc.SetSeats(billingSvc)  // an accepted invitation takes one
 	instalmentsSvc.SetLimits(billingSvc) // the job issues invoices outside the guarded routes

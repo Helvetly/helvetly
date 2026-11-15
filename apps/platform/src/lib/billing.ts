@@ -201,6 +201,10 @@ const isStripeURL = (raw: string) => {
 export const planRequired = (error: unknown) =>
   error instanceof ApiError && error.status === 402 && error.code === 'plan_required'
 
+/** A 403 from a module the workspace's plan does not include; `details` names the feature and the plan that has it. */
+export const featureNotInPlan = (error: unknown) =>
+  error instanceof ApiError && error.status === 403 && error.code === 'feature_not_in_plan'
+
 export function usePortal() {
   return useMutation<{ url: string }, ApiError, void>({
     mutationFn: () => request('/billing/portal', { method: 'POST' }),

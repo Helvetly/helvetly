@@ -110,6 +110,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	if clientErr == nil && client.EInvoiceFormat != "none" && s.einvoice != nil {
 		// a client that asked for XML gets it or nothing: a PDF alone would not be the invoice it can process
+		if err := s.db.RequireFeature(ctx, sess.Workspace.ID, store.FeatureEInvoiceXML); err != nil {
+			return err
+		}
 		name, xml, err := s.einvoice(ctx, sess, inv, strings.ReplaceAll(client.EInvoiceFormat, "_", "-"))
 		if err != nil {
 			return err

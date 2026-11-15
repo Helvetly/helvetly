@@ -101,6 +101,16 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	if fields["portal_enabled"] == true {
+		if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil {
+			return err
+		}
+	}
+	if format, ok := fields["einvoice_format"].(string); ok && format != "none" {
+		if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureEInvoiceXML); err != nil {
+			return err
+		}
+	}
 	id := auth.NewID("cli")
 	if err := s.db.CreateClient(r.Context(), sess.Workspace.ID, id, fields, s.now()); err != nil {
 		return err
@@ -142,6 +152,18 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if after, err = q.Client(r.Context(), sess.Workspace.ID, id); err != nil {
 			return err
+		}
+		// Opening the portal, or sending its link to a new address, needs a plan with it; turning it off never does.
+		if after.PortalEnabled && (!before.PortalEnabled || PortalLogin(before) != PortalLogin(after)) {
+			if err := q.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil {
+				return err
+			}
+		}
+		// Asking for XML needs a plan with it; a client that asked before keeps its choice until changed.
+		if after.EInvoiceFormat != "none" && after.EInvoiceFormat != before.EInvoiceFormat {
+			if err := q.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureEInvoiceXML); err != nil {
+				return err
+			}
 		}
 		// Turning the portal off or changing its address ends the sessions at once.
 		if before.PortalEnabled && (!after.PortalEnabled || PortalLogin(before) != PortalLogin(after)) {

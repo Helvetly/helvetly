@@ -676,6 +676,7 @@ export function importProblem(error: unknown): ImportProblem {
       }
     case 'limit_reached':
     case 'plan_required':
+    case 'feature_not_in_plan':
       return { kind: 'plan', title: translate('yourPlanDoesNotAllowThis'), message }
     case 'unsupported_file':
     case 'duplicate_file':

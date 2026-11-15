@@ -258,6 +258,9 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 		if err != nil {
 			return err
 		}
+		if err := k.allowed(ctx, q, sess.Workspace.ID); err != nil {
+			return err
+		}
 		if done, err := s.skip(ctx, q, &rec, resolution); done || err != nil {
 			res.Status = rec.Status
 			return err

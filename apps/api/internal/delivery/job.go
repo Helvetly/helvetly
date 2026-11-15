@@ -130,6 +130,13 @@ func (s *Service) attempt(ctx context.Context, t store.Transmission) (Result, er
 	if c == nil {
 		return Result{}, Permanent{fmt.Errorf("channel %q is not offered by this server", t.Channel)}
 	}
+	// queued on a plan with XML; after a downgrade it ends with the reason, and Retry on a plan with XML sends it
+	if err := s.db.RequireFeature(ctx, t.WorkspaceID, store.FeatureEInvoiceXML); err != nil {
+		if errors.Is(err, store.ErrFeatureDenied) {
+			err = Permanent{err}
+		}
+		return Result{}, err
+	}
 	ws, err := s.db.AdmissionWorkspace(ctx, t.WorkspaceID)
 	if err != nil {
 		return Result{}, fmt.Errorf("load workspace: %w", err)

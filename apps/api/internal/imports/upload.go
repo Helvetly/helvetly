@@ -67,6 +67,9 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err := s.gate(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
 		return err
 	}
+	if err := kind.allowed(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
+		return err
+	}
 	headers := form.File["files[]"]
 	if len(headers) == 0 || len(headers) > maxFiles {
 		return invalid(fmt.Sprintf("Choose 1 to %d files.", maxFiles))

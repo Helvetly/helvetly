@@ -25,6 +25,9 @@ type Kind struct {
 	Label string
 	// Resource is the permission resource: read:<Resource> sees a batch, write:<Resource> uploads, edits and commits.
 	Resource string
+	// Feature is the plan feature (store.Feature*) its records need, "" when every plan has them: checked before a
+	// file of the kind is stored or read and again when each record is created, also from an auto batch.
+	Feature string
 	// LabelField names a record (default "name"): the same-batch duplicate hint compares it.
 	LabelField string
 	// Prompt says what to extract from a document; the engine adds the rules about untrusted content.
@@ -148,4 +151,12 @@ func record(props map[string]any) map[string]any {
 // nullable is an optional property of a JSON type ("string", "number", "integer", "boolean") with a hint.
 func nullable(typ, description string) map[string]any {
 	return map[string]any{"type": []string{typ, "null"}, "description": description}
+}
+
+// allowed refuses a kind whose feature the workspace's plan lacks.
+func (k Kind) allowed(ctx context.Context, q store.Q, workspaceID string) error {
+	if k.Feature == "" {
+		return nil
+	}
+	return q.RequireFeature(ctx, workspaceID, k.Feature)
 }

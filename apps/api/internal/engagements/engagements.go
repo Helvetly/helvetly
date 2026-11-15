@@ -606,6 +606,11 @@ func CheckCreate(ctx context.Context, q store.Q, ws string, body map[string]json
 
 // Create stores an engagement CheckCreate accepted and opens its due periods, in the caller's transaction.
 func Create(ctx context.Context, q store.Q, ws string, e store.Engagement, today string, now time.Time) (string, error) {
+	if e.AutoInvoice {
+		if err := q.RequireFeature(ctx, ws, store.FeatureEngagementAutomation); err != nil {
+			return "", err
+		}
+	}
 	e.ID = auth.NewID("eng")
 	if err := q.CreateEngagement(ctx, ws, &e, now); err != nil {
 		return "", err
@@ -676,6 +681,11 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if err := checkRefs(ctx, q, ws, e); err != nil {
 			return err
+		}
+		if e.AutoInvoice && !old.AutoInvoice {
+			if err := q.RequireFeature(ctx, ws, store.FeatureEngagementAutomation); err != nil {
+				return err
+			}
 		}
 		periods, err := ensurePeriods(ctx, q, old, today)
 		if err != nil {
