@@ -55,7 +55,7 @@ export function ReceiptDrop({
         <span className="font-medium text-foreground">Drop the receipt here</span> or click to
         choose
       </span>
-      <span className="text-xs">PDF or a photo (JPEG, PNG, WebP, HEIC) · up to 20 MB</span>
+      <span className="text-xs">PDF or a photo (JPEG, PNG, WebP, HEIC) · up to 25 MB each</span>
       <input
         type="file"
         multiple
@@ -179,14 +179,17 @@ export function ExpenseReceipts({
           added.length === 1 ? `${added[0]?.name} attached.` : `${added.length} receipts attached.`,
         )
         setChosen(added[0]?.id ?? null)
-        void queryClient.invalidateQueries({ queryKey: expenseKeys.receipts(expenseId) })
-        void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(expenseId), exact: true })
-        void queryClient.invalidateQueries({ queryKey: ['expenses', 'list'] })
       })
       .catch((error: unknown) => {
         if (!promptUpgrade(error)) toast.error(errorMessage(error))
       })
-      .finally(() => setUpload(null))
+      .finally(() => {
+        // A later pack can fail after earlier ones were stored, so the lists refresh either way.
+        setUpload(null)
+        void queryClient.invalidateQueries({ queryKey: expenseKeys.receipts(expenseId) })
+        void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(expenseId), exact: true })
+        void queryClient.invalidateQueries({ queryKey: ['expenses', 'list'] })
+      })
   }
 
   if (receipts.isPending) return <Loader className="min-h-64" />

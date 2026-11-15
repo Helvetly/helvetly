@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, request } from '@/lib/api'
+import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
 export type ImportFile = {
   id: string
@@ -99,7 +100,7 @@ export const IMPORT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.csv,.txt,.xlsx,.docx,.
 export const IMPORT_FILE_TYPES =
   'PDF, photos (PNG, JPEG, WEBP), Excel (.xlsx), Word (.docx), CSV or text, or a ZIP of them'
 export const MAX_IMPORT_FILES = 10
-export const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024
+export const MAX_IMPORT_FILE_BYTES = MAX_FILE_BYTES
 
 /** The registered kinds (docs/imports-contract.md, "Adding a kind"): one entry per kind the Go API registers. */
 export const IMPORT_KINDS = {
@@ -613,7 +614,7 @@ export function importProblem(error: unknown): ImportProblem {
     return {
       kind: 'file',
       title: 'These files cannot be read',
-      message: 'The upload is too large: up to 10 files of 10 MB each.',
+      message: 'The upload is too large: up to 10 files of 25 MB each, 95 MB in all.',
     }
   const code = error instanceof ApiError ? error.code : ''
   const message = error instanceof Error ? error.message : ''

@@ -357,7 +357,8 @@ export function ExpensesPage() {
               Drop to read these receipts into draft expenses
             </p>
             <p className="text-xs text-muted-foreground">
-              PDF, photos or spreadsheets · up to 10 files of 10 MB · you review them first
+              PDF, photos or spreadsheets · up to 10 files of 25 MB, 95 MB in all · you review them
+              first
             </p>
           </div>
         </div>

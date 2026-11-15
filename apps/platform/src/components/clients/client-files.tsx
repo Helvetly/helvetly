@@ -27,7 +27,7 @@ import {
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.doc,.docx,.txt'
 const MAX_FILES = 10
-const TYPES_HINT = 'PDF, images, Office, CSV or text · up to 20 MB each'
+const TYPES_HINT = 'PDF, images, Office, CSV or text · up to 25 MB each'
 
 /** Where Documents previews this file (a client's files are documents linked to it). */
 export const previewHref = (file: Pick<ClientFile, 'id'>) =>
@@ -71,7 +71,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
     if (picked.length > MAX_FILES) toast.error(`Up to ${MAX_FILES} files at once.`)
     const batch = picked.slice(0, MAX_FILES)
     setUpload({ names: batch.map((file) => file.name), progress: 0 })
-    // The server checks type and size (≤20 MB) and says what it refused.
+    // Sizes and same-batch duplicates are checked first; the server checks types and says what it refused.
     uploadClientFiles(clientId, batch, (progress) =>
       setUpload((current) => current && { ...current, progress }),
     )
@@ -79,13 +79,16 @@ export function ClientFiles({ clientId }: { clientId: string }) {
         toast.success(
           added.length === 1 ? `${added[0]?.name} uploaded.` : `${added.length} files uploaded.`,
         )
-        void queryClient.invalidateQueries({ queryKey: clientKeys.files(clientId) })
-        void queryClient.invalidateQueries({ queryKey: clientKeys.detail(clientId), exact: true })
       })
       .catch((error: unknown) => {
         if (!promptUpgrade(error)) toast.error(errorMessage(error))
       })
-      .finally(() => setUpload(null))
+      .finally(() => {
+        // A later pack can fail after earlier ones were stored, so the list refreshes either way.
+        setUpload(null)
+        void queryClient.invalidateQueries({ queryKey: clientKeys.files(clientId) })
+        void queryClient.invalidateQueries({ queryKey: clientKeys.detail(clientId), exact: true })
+      })
   }
 
   const drag = {

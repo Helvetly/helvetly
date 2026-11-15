@@ -1632,7 +1632,7 @@ function Empty({
         </p>
         <p className="mt-1.5 max-w-sm text-sm text-pretty text-muted-foreground">
           Contracts, receipts and statements in one place, in folders you choose. PDFs and images
-          get a preview.
+          get a preview. Files of up to 25 MB each.
         </p>
         {canWrite && (
           <div className="mt-6 flex gap-2">

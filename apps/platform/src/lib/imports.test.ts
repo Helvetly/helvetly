@@ -219,7 +219,7 @@ test('explains errors for novices', () => {
   })
   expect(importProblem(new ApiError(400, 'unsupported_file', 'Save it as .xlsx')).kind).toBe('file')
   expect(importProblem(new ApiError(413, 'http_413', 'Request failed (413).')).message).toMatch(
-    '10 MB',
+    '25 MB',
   )
   expect(importProblem(new ApiError(500, 'http_500', 'Request failed (500).')).kind).toBe('retry')
 })

@@ -23,7 +23,7 @@ import (
 
 const (
 	maxFiles    = 10
-	maxFileSize = 20 << 20
+	maxFileSize = fileuploads.MaxFileBytes
 )
 
 // fileTypes: the allowed extensions, the content type stored for each, and what the first bytes must look like.
@@ -121,11 +121,11 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 	if err := s.clientExists(r, sess); err != nil {
 		return err
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxFiles*maxFileSize+1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, fileuploads.MaxRequestBytes)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large",
-				fmt.Sprintf("Upload at most %d files of up to 20 MB each.", maxFiles), nil)
+				"Send at most 95 MB per request, in files of up to 25 MB each.", nil)
 		}
 		return auth.Error(http.StatusBadRequest, "invalid_request", "Send the files as multipart/form-data in files[].", nil)
 	}
@@ -146,7 +146,7 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 	for i, h := range headers { // check every file before storing any
 		name := displayName(h.Filename)
 		if h.Size > maxFileSize {
-			return validationFailed(map[string]string{"files": name + " is larger than 20 MB."})
+			return validationFailed(map[string]string{"files": name + " is larger than 25 MB."})
 		}
 		head, err := readHead(h)
 		if err != nil {

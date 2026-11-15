@@ -341,8 +341,9 @@ func Load() (Config, error) {
 		fail("S3_OBJECT_LOCK_MODE must be GOVERNANCE or COMPLIANCE, got %q", c.S3.ObjectLockMode)
 	}
 
-	if mb, err := strconv.Atoi(env("DOCUMENTS_MAX_UPLOAD_MB", "100")); err != nil || mb < 1 || mb > 5120 {
-		fail("DOCUMENTS_MAX_UPLOAD_MB must be a whole number of megabytes from 1 to 5120, got %q", env("DOCUMENTS_MAX_UPLOAD_MB", ""))
+	if mb, err := strconv.Atoi(env("DOCUMENTS_MAX_UPLOAD_MB", "25")); err != nil || mb < 1 || mb > 25 {
+		// 25 MB is the largest file any upload entry point takes.
+		fail("DOCUMENTS_MAX_UPLOAD_MB must be a whole number of megabytes from 1 to 25, got %q", env("DOCUMENTS_MAX_UPLOAD_MB", ""))
 	} else {
 		c.DocumentsMaxUpload = int64(mb) << 20
 	}

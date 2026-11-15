@@ -16,7 +16,7 @@ func TestLoad(t *testing.T) {
 	}{
 		{"dev defaults", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool {
 			return c.DevSecretKey && len(c.SecretKey) == 32 && c.PublicURL == "http://localhost:8000" && c.PortalURL == "http://localhost:8002" && !c.CookieSecure &&
-				c.SessionTTL == 720*time.Hour && c.SMTP.Port == 1025 && c.SMTP.TLS == "none" && c.S3.Endpoint == "http://localhost:9300" && c.S3.Region == "us-east-1" && c.S3.Bucket == "helvetly" && c.DocumentsMaxUpload == 100<<20 && c.S3.ObjectLockDays == 0 && c.S3.ObjectLockMode == "COMPLIANCE" && c.EmailSignIn() && !c.MailConfigured() && !c.GoogleSignIn()
+				c.SessionTTL == 720*time.Hour && c.SMTP.Port == 1025 && c.SMTP.TLS == "none" && c.S3.Endpoint == "http://localhost:9300" && c.S3.Region == "us-east-1" && c.S3.Bucket == "helvetly" && c.DocumentsMaxUpload == 25<<20 && c.S3.ObjectLockDays == 0 && c.S3.ObjectLockMode == "COMPLIANCE" && c.EmailSignIn() && !c.MailConfigured() && !c.GoogleSignIn()
 		}},
 		{"production", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com/", "PORTAL_URL": "https://portal.helvetly.com/", "SMTP_HOST": "smtp.example.com",
 			"GOOGLE_CLIENT_ID": "id", "GOOGLE_CLIENT_SECRET": "secret"}, "", func(c Config) bool {
@@ -76,6 +76,7 @@ func TestLoad(t *testing.T) {
 		{"endpoint with credentials", map[string]string{"AUTH_DEV_SIGNIN": "true", "S3_ENDPOINT": "https://key:secret@s3.example.test"}, "scheme and host", nil},
 		{"bad proxy downloads", map[string]string{"AUTH_DEV_SIGNIN": "true", "S3_PROXY_DOWNLOADS": "yes please"}, "S3_PROXY_DOWNLOADS", nil},
 		{"bad upload limit", map[string]string{"AUTH_DEV_SIGNIN": "true", "DOCUMENTS_MAX_UPLOAD_MB": "0"}, "DOCUMENTS_MAX_UPLOAD_MB", nil},
+		{"upload limit over the 25 MB file cap", map[string]string{"AUTH_DEV_SIGNIN": "true", "DOCUMENTS_MAX_UPLOAD_MB": "26"}, "from 1 to 25", nil},
 		{"billing off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool {
 			return !c.BillingEnabled() && c.Stripe.AutomaticTax
 		}},

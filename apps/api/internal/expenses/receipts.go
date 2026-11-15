@@ -22,7 +22,7 @@ import (
 
 const (
 	maxFiles    = 10
-	maxFileSize = 20 << 20
+	maxFileSize = fileuploads.MaxFileBytes
 )
 
 // receiptType: the content type to store for a receipt with this name and these first bytes, or "" when the
@@ -108,11 +108,11 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 	if e.Status == "void" {
 		return invalidState("A voided expense takes no more receipts.")
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxFiles*maxFileSize+1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, fileuploads.MaxRequestBytes)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large",
-				fmt.Sprintf("Upload at most %d receipts of up to 20 MB each.", maxFiles), nil)
+				"Send at most 95 MB per request, in receipts of up to 25 MB each.", nil)
 		}
 		return badRequest("Send the receipts as multipart/form-data in files[].")
 	}
@@ -133,7 +133,7 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 	for i, h := range headers { // check every file before storing any
 		name := displayName(h.Filename)
 		if h.Size > maxFileSize {
-			return validationFailed(map[string]string{"files": name + " is larger than 20 MB."})
+			return validationFailed(map[string]string{"files": name + " is larger than 25 MB."})
 		}
 		head, err := readHead(h)
 		if err != nil {

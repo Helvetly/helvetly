@@ -16,12 +16,13 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"helvetly.com/api/internal/aimodel"
+	"helvetly.com/api/internal/uploads"
 )
 
 // Limits on what one upload may hold (docs/imports-contract.md, "Files").
 const (
 	maxFiles      = 10
-	maxFileBytes  = 10 << 20
+	maxFileBytes  = uploads.MaxFileBytes
 	maxEntries    = 50
 	maxEntryBytes = 10 << 20
 	maxZipBytes   = 50 << 20

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 
 import { expect, object, openPage, signIn, test, text, today, uniqueName } from './fixtures'
 
@@ -250,6 +252,60 @@ test('uploaded bytes are deduplicated after rename and simultaneous retries', as
   const files = object(await linked.json()).data
   if (!Array.isArray(files)) throw new Error('Expected linked client files')
   expect(text(object(files[0]).id)).toBe(documentID)
+})
+
+test('client files over 95 MB go in requests under Cloudflare’s 100 MB, with one batch’s checks', async ({
+  page,
+  api,
+}, testInfo) => {
+  test.setTimeout(180_000)
+  const id = text((await api.client()).id)
+  const endpoint = `/api/v1/clients/${id}/files`
+  const bodies: number[] = []
+  page.on('requestfinished', async (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === endpoint)
+      bodies.push((await request.sizes()).requestBodySize)
+  })
+  // Five distinct files of almost 20 MB: over 95 MB in all. Playwright takes files this big only from disk.
+  const scans = async (prefix: string) => {
+    const paths: string[] = []
+    for (let i = 0; i < 5; i++) {
+      const file = testInfo.outputPath(`${prefix}-${i}.txt`)
+      await writeFile(file, Buffer.alloc(19.5 * 1024 * 1024 - i, `${randomUUID()} ${i}\n`))
+      paths.push(file)
+    }
+    return paths
+  }
+  await page.goto(`/clients?id=${id}`)
+  await page.getByRole('tab', { name: /^Files/ }).click()
+  const picker = page.getByLabel('Upload files', { exact: true })
+  await picker.setInputFiles(await scans('scan'))
+  await expect(page.getByText('5 files uploaded.')).toBeVisible({ timeout: 120_000 })
+  await expect.poll(() => bodies.length).toBe(2)
+  for (const size of bodies) expect(size).toBeLessThan(100_000_000)
+  const listed = object(await (await api.request.get(endpoint)).json()).data
+  if (!Array.isArray(listed)) throw new Error('Expected client files')
+  expect(listed).toHaveLength(5)
+
+  // The same bytes in two packs are refused before anything is sent, as within one request.
+  const fresh = await scans('again')
+  const copy = testInfo.outputPath('again-copy.txt')
+  await copyFile(fresh[0] ?? '', copy)
+  await picker.setInputFiles([...fresh, copy])
+  await expect(
+    page.getByText('again-copy.txt contains the same file as again-0.txt.'),
+  ).toBeVisible()
+  expect(bodies).toHaveLength(2)
+
+  // The API refuses one request over 95 MB, though every file is under 20 MB.
+  const form = new FormData()
+  for (const file of fresh) form.append('files[]', new Blob([await readFile(file)]), basename(file))
+  const refused = await api.request.post(endpoint, {
+    headers: { 'X-CSRF-Token': api.csrf },
+    multipart: form,
+  })
+  expect(refused.status()).toBe(413)
+  expect(object(object(await refused.json()).error).code).toBe('payload_too_large')
 })
 
 test('same filename with different bytes remains a different document', async ({ api }) => {

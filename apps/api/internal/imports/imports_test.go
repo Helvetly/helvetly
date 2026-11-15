@@ -540,3 +540,17 @@ func TestExtractedRecordsAreMarkedAsModelOutput(t *testing.T) {
 		t.Fatalf("marked records %d, want 2: %s", n, w.Body)
 	}
 }
+
+// Ten files of up to 25 MB each, but at most 95 MB in one request, under Cloudflare's 100 MB.
+func TestUploadRequestLimit(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	files := map[string][]byte{}
+	for i := range 4 {
+		files[fmt.Sprintf("part-%d.csv", i)] = bytes.Repeat([]byte{byte('a' + i)}, maxFileBytes-200<<10)
+	}
+	if w := e.upload("clients", files); w.Code != http.StatusRequestEntityTooLarge || code(w) != "payload_too_large" ||
+		!strings.Contains(w.Body.String(), "95 MB") {
+		t.Fatalf("over the request limit: %d %s", w.Code, w.Body)
+	}
+}

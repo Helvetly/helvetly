@@ -33,13 +33,13 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if !s.limit.Allow(r) {
 		return auth.Error(http.StatusTooManyRequests, "rate_limited", "Wait a minute before starting another import.", nil)
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxFiles*maxFileBytes+1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, uploads.MaxRequestBytes)
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		if r.MultipartForm != nil {
 			_ = r.MultipartForm.RemoveAll()
 		}
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "Send at most 10 files of 10 MB each.", nil)
+			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "Send at most 10 files of 25 MB each, 95 MB in all.", nil)
 		}
 		return invalid("Send a multipart form with kind and files[].")
 	}
@@ -98,7 +98,7 @@ func readUpload(filename string, size int64, open func() (io.ReadCloser, error))
 		return upload{}, invalid("A filename is invalid.")
 	}
 	if size <= 0 || size > maxFileBytes {
-		return upload{}, auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", name+": each file must be nonempty and at most 10 MB.", nil)
+		return upload{}, auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", name+": each file must be nonempty and at most 25 MB.", nil)
 	}
 	f, err := open()
 	if err != nil {
