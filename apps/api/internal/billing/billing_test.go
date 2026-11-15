@@ -74,6 +74,9 @@ func (f *fakeStripe) promo(code string, active bool, expiresAt int64, max, redee
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	coupon := map[string]any{"id": "co_" + code, "percent_off": 20.0, "duration": "repeating", "duration_in_months": 3, "valid": true}
+	if strings.HasPrefix(code, "FREE") {
+		coupon = map[string]any{"id": "co_" + code, "percent_off": 100.0, "duration": "forever", "valid": true}
+	}
 	if len(products) > 0 {
 		coupon["applies_to"] = map[string]any{"products": products}
 	}

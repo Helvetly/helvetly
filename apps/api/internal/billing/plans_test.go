@@ -215,6 +215,21 @@ func TestCheckoutWithCode(t *testing.T) {
 		t.Fatalf("without a code: %v", f)
 	}
 
+	// A partial code still needs a card for the invoices it doesn't cover; a code free forever does not, on any plan.
+	if f.Get("payment_method_collection") != "always" {
+		t.Fatalf("a 20%% code skipped the card: %v", f)
+	}
+	e.stripe.promo("FREEFOREVER", true, 0, 1, 0)
+	for _, plan := range []string{Basic, Pro} {
+		if code, body := checkout(plan, "FREEFOREVER"); code != http.StatusOK {
+			t.Fatalf("free code on %s: %d %v", plan, code, body)
+		}
+		f := e.stripe.form("POST /v1/checkout/sessions")
+		if f.Get("payment_method_collection") != "if_required" || f.Has("subscription_data[trial_period_days]") {
+			t.Fatalf("free code on %s still asks for a card or adds a trial: %v", plan, f)
+		}
+	}
+
 	// A code for other plans is refused, and no Checkout session is made.
 	before := e.stripe.called("POST /v1/checkout/sessions")
 	code, body := checkout(Basic, "PROONLY")

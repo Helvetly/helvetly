@@ -249,6 +249,11 @@ type Promotion struct {
 	ExpiresAt        *time.Time `json:"expires_at"`
 }
 
+// free is a code that waives every invoice for good: nothing is ever charged, so Checkout need not ask for a card.
+func (p Promotion) free() bool {
+	return p.PercentOff != nil && *p.PercentOff >= 100 && p.Duration == "forever"
+}
+
 // promotionFor finds a usable promotion code as typed (upper-cased: the CLI makes them so) and the plans it fits.
 func (s *Service) promotionFor(ctx context.Context, code string) (id string, p Promotion, err error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
@@ -332,6 +337,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 		return errUnavailable
 	}
 	var promoID string
+	var free bool
 	if strings.TrimSpace(in.PromotionCode) != "" {
 		id, p, err := s.promotionFor(ctx, in.PromotionCode)
 		if err != nil {
@@ -340,7 +346,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 		if p.Plans != nil && !slices.Contains(p.Plans, in.Plan) {
 			return errBadCode
 		}
-		promoID = id
+		promoID, free = id, p.free()
 	}
 	var next string
 	var checkout *store.Billing
@@ -376,7 +382,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	// a Checkout session writes nothing of ours, so Stripe is called after the lock is released
 	if checkout != nil {
-		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, seats, promoID); err != nil {
+		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, seats, promoID, free); err != nil {
 			return err
 		}
 	}
@@ -417,7 +423,7 @@ func managedPayments(form url.Values) {
 	form.Set("managed_payments[enabled]", "true")
 }
 
-func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID string, seats int64, promoID string) (string, error) {
+func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID string, seats int64, promoID string, free bool) (string, error) {
 	back := s.publicURL + "/settings/billing?checkout="
 	form := url.Values{
 		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {ws},
@@ -440,7 +446,9 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan
 	} else {
 		form.Set("allow_promotion_codes", "true")
 	}
-	if plan == TrialPlan && trialAvailable(b) {
+	if free {
+		form.Set("payment_method_collection", "if_required")
+	} else if plan == TrialPlan && trialAvailable(b) {
 		form.Set("subscription_data[trial_period_days]", strconv.Itoa(TrialDays))
 		form.Set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel")
 	}
