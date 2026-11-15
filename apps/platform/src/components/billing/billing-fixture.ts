@@ -3,7 +3,7 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 2 ** 30
-// The limits seeded in apps/api/internal/store/migrations/00001_init.sql (plan_limits).
+// The limits seeded in apps/api/internal/store/migrations (limits and limit_plans).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 50,
@@ -37,7 +37,7 @@ const business: Record<LimitKey, number | null> = {
   storage_bytes: 1024 * GB,
   ai_tokens_per_month: 20_000_000,
 }
-// The features declared in apps/api/internal/billing/features.go.
+// The features seeded in apps/api/internal/store/migrations/00005_limits.sql.
 const features: Record<PlanId, FeatureKey[]> = {
   basic: [],
   pro: ['api_access'],

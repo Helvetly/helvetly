@@ -7,7 +7,9 @@ import { PLANS, priceOf, YEARLY_DISCOUNT_PERCENT } from './plans'
 
 const api = join(__dirname, '../../../api/internal')
 
-// The latest max_value per plan and limit across the plan_limits migrations.
+// The latest value per plan and limit across the migrations: plan_limits rows (plan, key, max) until 00005, then
+// limit_plans rows (key, plan, value; -1 unlimited). shortcut: a changed default in limits is not read; parse it
+// when a migration changes one.
 function migratedLimits() {
   const dir = join(api, 'store/migrations')
   const out = new Map<string, number | null>()
@@ -15,6 +17,9 @@ function migratedLimits() {
     const up = readFileSync(join(dir, file), 'utf8').split('-- +goose Down')[0] ?? ''
     for (const m of up.matchAll(/\('(basic|pro|business)', '(\w+)', (NULL|\d+)\)/g)) {
       out.set(`${m[1]}.${m[2]}`, m[3] === 'NULL' ? null : Number(m[3]))
+    }
+    for (const m of up.matchAll(/\('(\w+)', '(basic|pro|business)', (-1|\d+)\)/g)) {
+      out.set(`${m[2]}.${m[1]}`, m[3] === '-1' ? null : Number(m[3]))
     }
   }
   return out
@@ -30,7 +35,7 @@ describe('plans', () => {
     expect(go).toContain(`yearlyDiscountPercent = ${YEARLY_DISCOUNT_PERCENT}`)
   })
 
-  it('match the plan_limits migrations', () => {
+  it('match the limit migrations', () => {
     const db = migratedLimits()
     for (const { id, limits } of PLANS) {
       expect(db.get(`${id}.members`)).toBe(limits.members)

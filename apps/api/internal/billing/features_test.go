@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"slices"
 	"testing"
 
 	"helvetly.com/api/internal/auth"
 )
 
 func TestIncludes(t *testing.T) {
-	// Every plan and feature, spelled out: a change to planFeatures has to change this table too.
+	e := newEnv(t, true)
+	plans, err := loadPlanLimits(context.Background(), e.st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Every plan and feature as the migrations seed limits and limit_plans: a change there has to change this too.
 	want := map[string]map[Feature]bool{
 		"":       {APIAccess: false},
 		Basic:    {APIAccess: false},
@@ -20,27 +24,26 @@ func TestIncludes(t *testing.T) {
 	}
 	for plan, features := range want {
 		for _, f := range featureOrder {
-			if got := Includes(plan, f); got != features[f] {
-				t.Errorf("Includes(%q, %s) = %v, want %v", plan, f, got, features[f])
+			if got := plans.includes(plan, f); got != features[f] {
+				t.Errorf("includes(%q, %s) = %v, want %v", plan, f, got, features[f])
 			}
 		}
 	}
-	if got := cheapestWith(APIAccess); got != Pro {
-		t.Fatalf("cheapestWith(api_access) = %q, want pro", got)
+	for from, want := range map[string]string{"": Pro, Basic: Pro, Pro: Business, Business: ""} {
+		if got := plans.cheapestWith(APIAccess, from); got != want {
+			t.Errorf("cheapestWith(api_access, %q) = %q, want %q", from, got, want)
+		}
+	}
+	// A plan without its own value takes the default.
+	if err := e.st.ClearPlanLimit(context.Background(), string(APIAccess), Pro); err != nil {
+		t.Fatal(err)
+	}
+	if plans, err = loadPlanLimits(context.Background(), e.st); err != nil || plans.includes(Pro, APIAccess) {
+		t.Fatalf("pro without its own value: %v", err)
 	}
 }
 
-func TestFeaturesAreDeclared(t *testing.T) {
-	for _, plan := range planOrder {
-		if _, ok := planFeatures[plan]; !ok {
-			t.Errorf("plan %s has no feature list", plan)
-		}
-		for _, f := range planFeatures[plan] {
-			if !slices.Contains(featureOrder, f) {
-				t.Errorf("plan %s lists %s, which featureOrder misses", plan, f)
-			}
-		}
-	}
+func TestFeaturesAreNamed(t *testing.T) {
 	for _, f := range featureOrder {
 		if featureNames[f] == "" {
 			t.Errorf("feature %s has no name", f)
@@ -72,6 +75,19 @@ func TestRequire(t *testing.T) {
 	err := e.svc.Require(ctx, e.st.Q, basic, APIAccess)
 	if status, code, _, ok := auth.Describe(err); !ok || status != http.StatusPaymentRequired || code != "plan_required" {
 		t.Fatalf("basic: %v", err)
+	}
+	// limit_plans is the source of truth: switching a plan's value flips the answer at once.
+	if err := e.st.SetPlanLimit(ctx, string(APIAccess), Pro, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.SetPlanLimit(ctx, string(APIAccess), Basic, 1); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _, ok := auth.Describe(e.svc.Require(ctx, e.st.Q, pro, APIAccess)); !ok || status != http.StatusPaymentRequired {
+		t.Fatal("pro still has api_access after its value was switched off")
+	}
+	if err := e.svc.Require(ctx, e.st.Q, basic, APIAccess); err != nil {
+		t.Fatalf("basic after its value was switched on: %v", err)
 	}
 }
 
@@ -141,5 +157,60 @@ func TestOverviewFeatures(t *testing.T) {
 	}
 	if plans[Basic] == nil || len(plans[Basic]) != 0 || len(plans[Pro]) != 1 || plans[Pro][0] != string(APIAccess) {
 		t.Fatalf("plan features: %v", plans)
+	}
+}
+
+func TestWorkspaceLimits(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t, true)
+	basic, pro, other := e.workspace(), e.workspace(), e.workspace()
+	e.subscribe(basic.workspace, "price_bm")
+	e.subscribe(pro.workspace, "price_pm")
+	e.subscribe(other.workspace, "price_bm")
+	set := func(ws string, l Limit, v int64) {
+		t.Helper()
+		if err := e.st.SetWorkspaceLimit(ctx, ws, string(l), v, "test"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	allowed := func(ws string) bool { return e.svc.Require(ctx, e.st.Q, ws, APIAccess) == nil }
+
+	// A workspace's own value replaces its plan's, for a feature either way.
+	set(basic.workspace, Limit(APIAccess), 1)
+	set(pro.workspace, Limit(APIAccess), 0)
+	if !allowed(basic.workspace) || allowed(pro.workspace) || allowed(other.workspace) {
+		t.Fatalf("feature overrides: basic %v, pro %v, other basic %v", allowed(basic.workspace), allowed(pro.workspace), allowed(other.workspace))
+	}
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/account/tokens", map[string]any{}); code != http.StatusUnprocessableEntity {
+		t.Fatalf("guard ignored the override: %d %v", code, body)
+	}
+
+	// A numeric limit: Basic has 25 catalogue entries; an override of 1 refuses the second, and only here.
+	set(basic.workspace, Products, 1)
+	e.exec(`INSERT INTO products (id, workspace_id, type, name, price_basis, unit_price, currency, vat_category, vat_rate,
+		created_at, updated_at) VALUES ('prd_w', $1, 'service', 'S', 'net', 100, 'CHF', 'S', 810, now(), now())`, basic.workspace)
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusPaymentRequired {
+		t.Fatalf("numeric override: %d %v", code, body)
+	}
+	e.exec(`INSERT INTO products (id, workspace_id, type, name, price_basis, unit_price, currency, vat_category, vat_rate,
+		created_at, updated_at) VALUES ('prd_o', $1, 'service', 'S', 'net', 100, 'CHF', 'S', 810, now(), now())`, other.workspace)
+	if code, body := e.do(other, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusCreated {
+		t.Fatalf("another workspace got the override: %d %v", code, body)
+	}
+
+	// Cleared, the plan's value applies again.
+	for _, l := range []Limit{Limit(APIAccess), Products} {
+		if err := e.st.ClearWorkspaceLimit(ctx, basic.workspace, string(l)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := e.st.ClearWorkspaceLimit(ctx, pro.workspace, string(APIAccess)); err != nil {
+		t.Fatal(err)
+	}
+	if allowed(basic.workspace) || !allowed(pro.workspace) {
+		t.Fatal("clearing the overrides did not fall back to the plans")
+	}
+	if code, body := e.do(basic, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusCreated {
+		t.Fatalf("after clearing: %d %v", code, body)
 	}
 }

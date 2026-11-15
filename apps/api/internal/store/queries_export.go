@@ -159,6 +159,8 @@ var ExportExcluded = map[string]string{
 	"invoice_xml_retention":    "history: the old, unverified mark of an archived XML's object lock",
 	"object_retention":         "storage protection state of the workspace's objects, not business data",
 	"object_versions":          "storage version ids of objects, not business data",
-	"plan_limits":              "global plan configuration, not workspace data",
+	"limits":                   "global plan configuration, not workspace data",
+	"limit_plans":              "global plan configuration, not workspace data",
+	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
 }
