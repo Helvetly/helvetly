@@ -7,7 +7,12 @@ import type { HeidiConversation } from '@/lib/heidi'
 
 import { dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
-const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
+// Earlier today, at a share of the time since midnight: still today (and in order) when the story runs at 00:05.
+const today = (share: number) => {
+  const now = Date.now()
+  const midnight = new Date(now).setHours(0, 0, 0, 0)
+  return new Date(midnight + (now - midnight) * share).toISOString()
+}
 const daysAgo = (days: number) => {
   const at = new Date()
   at.setDate(at.getDate() - days)
@@ -21,14 +26,14 @@ const chats: HeidiConversation[] = [
     title: 'How do I create and send my first invoice?',
     snippet: 'Open Invoices → New invoice, pick the client, add lines, then Issue and send.',
     messages: 2,
-    updated_at: ago(0.5),
+    updated_at: today(0.99),
   },
   {
     id: 'clients',
     title: 'Show recent clients',
     snippet: 'Your five most recent clients are Müller AG, Sophie Meier, …',
     messages: 2,
-    updated_at: ago(0.6),
+    updated_at: today(0.98),
   },
   {
     id: 'overdue-1',

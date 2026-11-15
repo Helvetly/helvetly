@@ -17,6 +17,14 @@ import { clippedRings } from '../src/stories/focus-ring'
 // still fails a story whose expected state never appears.
 configure({ asyncUtilTimeout: 5000 })
 
+// In the test run enter animations end at once: a play asserting a dialog or sheet that was still fading in read
+// opacity 0 under CI load. Exit animations, delays and loops keep their timing; Storybook itself keeps all motion.
+if (import.meta.env.MODE === 'test') {
+  const style = document.createElement('style')
+  style.textContent = `[class*='animate-in'] { animation-duration: 0s !important; }`
+  document.head.append(style)
+}
+
 function StoryProviders({
   children,
   ownMain,
