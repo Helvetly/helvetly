@@ -21,6 +21,8 @@ import {
   seatPrice,
   seatsCost,
   seatTotal,
+  taxNote,
+  taxNoteLong,
   trialDaysLeft,
   yearlySaving,
   type Billing,
@@ -176,6 +178,20 @@ test('seatCostLabel names one person with the interval, only when billing is on'
   expect(seatCostLabel(live({ interval: 'year' }))).toBe('CHF 471 / year incl. VAT')
   expect(seatCostLabel(live({ enabled: false }))).toBeNull()
   expect(seatCostLabel(live({ pricing: 'flat' }))).toBeNull()
+})
+
+test('the tax note follows the currency: Swiss VAT in francs, VAT in euros, tax in dollars', () => {
+  expect([taxNote('chf'), taxNote('eur'), taxNote('usd')]).toEqual([
+    'incl. VAT',
+    'incl. VAT',
+    'incl. tax',
+  ])
+  expect([taxNoteLong('chf'), taxNoteLong('eur'), taxNoteLong('usd')]).toEqual([
+    'incl. Swiss VAT',
+    'incl. VAT',
+    'incl. tax',
+  ])
+  expect(seatCostLabel(live({ currency: 'usd' }))).toBe('USD 49 / month incl. tax')
 })
 
 test('people counts in words', () => {

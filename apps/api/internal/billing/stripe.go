@@ -178,6 +178,10 @@ type price struct {
 	LookupKey  string            `json:"lookup_key"`
 	Product    string            `json:"product"`
 	Metadata   map[string]string `json:"metadata"`
+	// CurrencyOptions are the price in other currencies (EUR, USD), when read with expand[]=data.currency_options.
+	CurrencyOptions map[string]struct {
+		UnitAmount int64 `json:"unit_amount"`
+	} `json:"currency_options"`
 }
 
 // perSeat: the price is billed per seat (its metadata says so); else it is an earlier flat price.

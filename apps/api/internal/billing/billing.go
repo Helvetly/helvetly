@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -43,6 +44,8 @@ type Service struct {
 	packsMu  sync.Mutex
 	packs    []aiPack // the AI token packs on sale, read from Stripe
 	packedAt time.Time
+
+	customerCurrency sync.Map // Stripe customer id -> the currency Stripe fixed for it
 }
 
 // New reads the plan limits seeded in plan_limits; the server does not start without them.
@@ -158,6 +161,12 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
 	}
 	prices := s.planPrices(r.Context())
+	cur, err := s.currencyFor(r.Context(), b.CustomerID, sess.Workspace.Timezone)
+	if err != nil {
+		s.log.WarnContext(r.Context(), "reading the Stripe customer's currency failed", "error", err)
+		cur = CurrencyOf(sess.Workspace.Timezone)
+	}
+	cur = offered(cur, slices.Collect(maps.Values(prices)))
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
 		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Prices: map[string]*planPrice{}}
@@ -168,8 +177,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 			p.Limits[Members] = nil
 		}
 		for _, interval := range []string{"month", "year"} {
-			if pr, ok := prices[id+"_"+interval]; ok {
-				p.Prices[interval] = &planPrice{pr.UnitAmount, pr.Currency}
+			if amount, ok := prices[id+"_"+interval].amountIn(cur); ok {
+				p.Prices[interval] = &planPrice{amount, cur}
 			} else {
 				p.Prices[interval] = nil
 			}
@@ -181,11 +190,11 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"current_period_end": b.CurrentPeriodEnd, "cancel_at_period_end": b.CancelAtPeriodEnd, "trial_end": b.TrialEnd,
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
-		"usage": usage, "plans": list, "discount": nil, "pricing": "", "seats": u.Members + 1,
+		"usage": usage, "plans": list, "currency": cur, "discount": nil, "pricing": "", "seats": u.Members + 1,
 		"ai_tokens_bought": bought, "ai_packs": []aiPack{},
 	}
 	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
-		out["ai_packs"] = s.aiPacks(r.Context())
+		out["ai_packs"] = packsIn(s.aiPacks(r.Context()), cur)
 	}
 	if !live(b.Status) {
 		out["interval"] = ""
@@ -212,7 +221,7 @@ func (s *Service) planPrices(ctx context.Context) map[string]price {
 	if s.prices != nil && s.now().Sub(s.pricedAt) < 10*time.Minute {
 		return s.prices
 	}
-	form := url.Values{"active": {"true"}, "limit": {"100"}}
+	form := url.Values{"active": {"true"}, "limit": {"100"}, "expand[]": {"data.currency_options"}}
 	for _, plan := range planOrder {
 		for _, interval := range intervals {
 			form.Add("lookup_keys[]", LookupKey(plan, interval))
@@ -376,7 +385,12 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	// a Checkout session writes nothing of ours, so Stripe is called after the lock is released
 	if checkout != nil {
-		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, seats, promoID); err != nil {
+		cur, err := s.currencyFor(ctx, checkout.CustomerID, sess.Workspace.Timezone)
+		if err != nil {
+			return err
+		}
+		cur = offered(cur, []price{target})
+		if next, err = s.checkoutSession(ctx, *checkout, ws, in.Plan, in.Interval, target.ID, cur, seats, promoID); err != nil {
 			return err
 		}
 	}
@@ -417,10 +431,10 @@ func managedPayments(form url.Values) {
 	form.Set("managed_payments[enabled]", "true")
 }
 
-func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID string, seats int64, promoID string) (string, error) {
+func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID, cur string, seats int64, promoID string) (string, error) {
 	back := s.publicURL + "/settings/billing?checkout="
 	form := url.Values{
-		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {ws},
+		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {ws}, "currency": {cur},
 		"line_items[0][price]": {priceID}, "line_items[0][quantity]": {strconv.FormatInt(seats, 10)},
 		"subscription_data[metadata][workspace_id]": {ws}, "subscription_data[metadata][plan]": {plan},
 		"subscription_data[metadata][interval]": {interval},

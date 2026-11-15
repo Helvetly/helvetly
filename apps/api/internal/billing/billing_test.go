@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,8 +49,24 @@ func catalog() map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for key, id := range priceIDs {
 		plan, interval := planOfKey(key)
-		out[key] = map[string]any{"id": id, "lookup_key": key, "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan}
+		out[key] = map[string]any{"id": id, "lookup_key": key, "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan,
+			"currency_options": options(PlanAmount(plan, interval))}
 	}
+	return out
+}
+
+// options are a price's EUR and USD currency options at the same figure, as the catalogue tool makes them.
+func options(amount int64) map[string]any {
+	return map[string]any{EUR: map[string]any{"unit_amount": amount}, USD: map[string]any{"unit_amount": amount}}
+}
+
+// expanded is p as Stripe answers: currency_options only when the request expanded them.
+func expanded(r *http.Request, p map[string]any) map[string]any {
+	if slices.Contains(r.Form["expand[]"], "data.currency_options") {
+		return p
+	}
+	out := maps.Clone(p)
+	delete(out, "currency_options")
 	return out
 }
 
@@ -59,6 +77,8 @@ type fakeStripe struct {
 	calls     []string
 	forms     map[string]url.Values // last form per "METHOD path"
 	customers int
+	currency  map[string]string // the currency Stripe fixed for a customer id; none until set
+	noOptions bool              // the prices have no currency options (a catalogue from before them)
 	fail      bool
 	catalog   map[string]map[string]any // prices by lookup key
 	perSeat   bool                      // the catalogue's prices are per seat (setPerSeat)
@@ -111,6 +131,12 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case key == "POST /v1/customers":
 		f.customers++
 		reply(map[string]string{"id": fmt.Sprintf("cus_%d", f.customers)})
+	case parts[0] == "customers" && len(parts) == 2 && r.Method == http.MethodGet:
+		c := map[string]any{"id": parts[1], "currency": nil}
+		if cur := f.currency[parts[1]]; cur != "" {
+			c["currency"] = cur
+		}
+		reply(c)
 	case key == "POST /v1/checkout/sessions":
 		reply(map[string]string{"url": "https://checkout.stripe.test/c"})
 	case key == "POST /v1/billing_portal/sessions":
@@ -127,13 +153,19 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		data := []map[string]any{}
 		for _, k := range r.Form["lookup_keys[]"] {
 			if p, ok := f.catalog[k]; ok {
-				data = append(data, p)
+				data = append(data, expanded(r, p))
 			}
 		}
 		if r.Form.Get("product") == AITokensProduct && r.Form.Get("type") == "one_time" {
 			for tokens, amount := range map[string]int64{"1000000": 1000, "5000000": 4000} {
-				data = append(data, map[string]any{"id": "price_ai_" + tokens, "currency": "chf", "unit_amount": amount,
-					"product": AITokensProduct, "metadata": map[string]string{AITokensKey: tokens}})
+				data = append(data, expanded(r, map[string]any{"id": "price_ai_" + tokens, "currency": "chf", "unit_amount": amount,
+					"product": AITokensProduct, "metadata": map[string]string{AITokensKey: tokens}, "currency_options": options(amount)}))
+			}
+		}
+		if f.noOptions {
+			for i, p := range data {
+				data[i] = maps.Clone(p)
+				delete(data[i], "currency_options")
 			}
 		}
 		reply(map[string]any{"data": data})
@@ -258,7 +290,7 @@ func newEnv(t *testing.T, enabled bool) *env {
 	t.Parallel()
 	st, raw := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, catalog: catalog(),
+	fake := &fakeStripe{subs: map[string]map[string]any{}, forms: map[string]url.Values{}, catalog: catalog(), currency: map[string]string{},
 		promos: map[string]map[string]any{}, coupons: map[string]map[string]any{}}
 	stripeSrv := httptest.NewServer(fake)
 	t.Cleanup(stripeSrv.Close)
@@ -291,8 +323,14 @@ type browser struct{ token, csrf, workspace string }
 
 func (e *env) workspace() *browser {
 	e.t.Helper()
+	return e.workspaceIn("UTC")
+}
+
+// workspaceIn makes a workspace in the IANA time zone tz, with its owner.
+func (e *env) workspaceIn(tz string) *browser {
+	e.t.Helper()
 	ws := auth.NewID("wsp")
-	if err := e.st.CreateWorkspace(context.Background(), store.Workspace{ID: ws, Name: "Acme"}, "UTC", time.Now()); err != nil {
+	if err := e.st.CreateWorkspace(context.Background(), store.Workspace{ID: ws, Name: "Acme"}, tz, time.Now()); err != nil {
 		e.t.Fatal(err)
 	}
 	return e.join(ws, "owner")

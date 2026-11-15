@@ -6,6 +6,7 @@ import { useState } from 'react'
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
+import { taxNote, useCurrency } from '@/lib/currency'
 import { type Interval, PLANS, priceOf, TRIAL_DAYS, YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
@@ -17,6 +18,7 @@ const FEATURED = 'pro'
 
 export function PricingCards() {
   const [interval, setInterval] = useState<Interval>('year')
+  const currency = useCurrency()
 
   return (
     <div className="flex flex-col items-center">
@@ -85,13 +87,13 @@ export function PricingCards() {
                 <span
                   className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
                 >
-                  CHF
+                  {currency.toUpperCase()}
                 </span>
                 <span
                   key={interval}
                   className="pop text-price font-semibold tracking-tight tabular-nums"
                 >
-                  {formatAmount(priceOf(plan, interval))}
+                  {formatAmount(priceOf(plan, interval, currency))}
                 </span>
                 <span
                   className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
@@ -106,8 +108,8 @@ export function PricingCards() {
                 )}
               >
                 {interval === 'year'
-                  ? `${formatPrice(monthOf(priceOf(plan, 'year')))} a month, billed yearly, incl. VAT`
-                  : 'Billed monthly, incl. VAT'}
+                  ? `${formatPrice(monthOf(priceOf(plan, 'year', currency)))} a month, billed yearly, ${taxNote(currency)}`
+                  : `Billed monthly, ${taxNote(currency)}`}
               </p>
               <Cta
                 href={START_URL}
@@ -140,7 +142,8 @@ export function PricingCards() {
       <p className="mt-10 max-w-3xl text-center text-body-sm text-muted-foreground">
         Every plan includes every feature: QR bills, reminders, e-invoicing, signatures, the client
         portal and Heidi. Prices are per person in the workspace; plans differ only in how much you
-        can do.
+        can do. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU and USD everywhere
+        else.
       </p>
     </div>
   )

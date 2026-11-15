@@ -18,7 +18,7 @@ const (
 	Business = "business"
 )
 
-// Currency of every price.
+// Currency is every price's own currency; EUR and USD are its currency options at the same figures (currency.go).
 const Currency = "chf"
 
 // PricingKey and PerSeat mark a price as per seat in its metadata: the subscription's quantity is the workspace's
@@ -29,7 +29,8 @@ const (
 	PerSeat    = "per_seat"
 )
 
-// TaxBehavior of every price: the amounts include Swiss VAT, so the price shown is the price paid. Stripe
+// TaxBehavior of every price, in every currency: the amounts include VAT (or sales tax), so the price shown is the
+// price paid. Stripe
 // cannot change a price's tax behaviour, so the catalogue tool replaces a price with another behaviour.
 const TaxBehavior = "inclusive"
 
@@ -48,7 +49,8 @@ func Plans() []string { return planOrder }
 // PlanName is the display name of a plan id.
 func PlanName(plan string) string { return planNames[plan] }
 
-// PlanAmount is what one seat of a plan costs in an interval ("month" or "year"), in minor units.
+// PlanAmount is what one seat of a plan costs in an interval ("month" or "year"), in minor units of any of the
+// currencies: CHF, EUR and USD have the same figures.
 func PlanAmount(plan, interval string) int64 {
 	if interval == "year" {
 		discounted := monthly[plan] * 12 * (100 - yearlyDiscountPercent) / 100

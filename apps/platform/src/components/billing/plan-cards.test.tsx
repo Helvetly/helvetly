@@ -92,6 +92,20 @@ test('Basic offers the trial with its line; the others are charged today', async
   expect(checkout).toEqual({ plan: 'basic', interval: 'year' })
 })
 
+test('the picker shows the workspace currency and what its prices include', () => {
+  const { unmount } = renderCards(billing({ currency: 'eur' }))
+  expect(card('Pro')).toHaveTextContent('EUR 49')
+  expect(card('Pro')).toHaveTextContent('per person / month · incl. VAT')
+  expect(screen.getByText(/Prices incl. VAT/)).toBeVisible()
+  expect(screen.queryByText(/CHF|Swiss VAT/)).toBeNull()
+  unmount()
+
+  renderCards(billing({ currency: 'usd' }))
+  expect(card('Basic')).toHaveTextContent('Then USD 19 per person a month.')
+  expect(card('Basic')).toHaveTextContent('per person / month · incl. tax')
+  expect(screen.getByText(/Prices incl. tax/)).toBeVisible()
+})
+
 test('without a trial Basic is chosen like the others', () => {
   renderCards(billing({ trial_available: false }))
   expect(within(card('Basic')).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
