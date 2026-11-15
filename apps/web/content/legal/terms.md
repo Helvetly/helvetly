@@ -31,9 +31,8 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - Prices are in **CHF and include Swiss VAT** where we charge it: the price shown is the price paid.
   Where your business is abroad and the reverse charge applies, the same amount is charged without
   VAT and you account for the tax yourself.
-- When people join or leave the workspace, the number of seats follows: an added seat is charged at
-  once and a freed seat credited at once to your balance with Stripe (which pays your next invoices),
-  each prorated from the day of the change. Subscriptions
+- When people join or leave the workspace, the number of seats follows: an added seat is charged and
+  a freed seat credited, prorated for the rest of the period, on the next invoice. Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
 - **Trial:** the first subscription of a workspace to Basic starts with a 7-day trial. A card is
@@ -45,11 +44,9 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 
 - Payments are processed by Stripe. Helvetly never sees your full card details.
 - Subscriptions are paid in advance and **renew automatically** for the same period (a month or a
-  year) until cancelled. If a payment fails, Stripe retries it; the plan stays active until three days
-  after the end of the paid period, then the workspace is read-only until the invoice is paid.
-- **Upgrades** and moving from monthly to yearly are charged at once, prorated, and apply once that
-  payment goes through. **Downgrades** and moving to monthly apply at once; the unused part is credited
-  to your balance with Stripe. A smaller plan must fit what the workspace already holds.
+  year) until cancelled. If a payment fails, Stripe retries it; the plan stays active meanwhile.
+- **Upgrades and downgrades** apply at once, prorated. A smaller plan must fit what the workspace
+  already holds.
 - **Cancelling:** an owner or admin can cancel any time in Settings → Billing. The plan stays until
   the end of the paid period and is not renewed.
 - **Refunds:** paid periods are not refunded, including when a workspace is deleted, unless Swiss
@@ -59,8 +56,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 
 ## 5. Read-only workspaces and data export
 
-- A workspace without a live subscription (trial ended, cancelled, or a payment still unpaid three days
-  after the paid period ended) becomes
+- A workspace without a live subscription (trial ended, cancelled, or payment finally failed) becomes
   **read-only**: you can still see and download everything, but cannot change anything until you
   choose a plan again.
 - The owner can **download the whole workspace** (records and files, as a ZIP) at any time, with
