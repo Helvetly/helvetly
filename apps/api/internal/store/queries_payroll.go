@@ -50,6 +50,8 @@ type PayrollEntry struct {
 	Components      []PayrollComponent `json:"components"`
 	Source          string             `json:"source"`
 	SourceRef       *string            `json:"source_ref"`
+	DocumentID      *string            `json:"document_id"` // the employee\'s HR file behind the figures
+	DocumentName    *string            `json:"document_name"`
 	Status          string             `json:"status"`
 	PaymentStatus   string             `json:"payment_status"`
 	PaidOn          *string            `json:"paid_on"`
@@ -77,7 +79,7 @@ func (e *PayrollEntry) Derive() {
 
 const payrollColumns = `p.id, p.employee_id, e.first_name || ' ' || e.last_name, e.employee_number, p.employing_entity,
 	p.period_start::text, p.period_end::text, p.pay_date::text, p.currency, p.gross, p.deductions, p.net, p.employer_costs,
-	p.source, p.source_ref, p.status, p.payment_status, p.paid_on::text, nullif(a.name, ''), p.approved_at, p.supersedes_id,
+	p.source, p.source_ref, p.document_id, (SELECT name FROM documents d WHERE d.id = p.document_id), p.status, p.payment_status, p.paid_on::text, nullif(a.name, ''), p.approved_at, p.supersedes_id,
 	p.superseded_by, p.version, p.note, nullif(c.name, ''), p.created_at, p.updated_at,
 	coalesce((SELECT jsonb_agg(jsonb_build_object('kind', k.kind, 'label', k.label, 'amount', k.amount) ORDER BY k.position)
 		FROM payroll_components k WHERE k.entry_id = p.id), '[]'),
@@ -91,7 +93,7 @@ func scanPayroll(row interface{ Scan(...any) error }) (PayrollEntry, error) {
 	var components []byte
 	err := row.Scan(&p.ID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeNumber, &p.EmployingEntity, &p.PeriodStart,
 		&p.PeriodEnd, &p.PayDate, &p.Currency, &p.Gross, &p.Deductions, &p.Net, &p.EmployerCosts, &p.Source, &p.SourceRef,
-		&p.Status, &p.PaymentStatus, &p.PaidOn, &p.ApprovedBy, &p.ApprovedAt, &p.SupersedesID, &p.SupersededBy, &p.Version,
+		&p.DocumentID, &p.DocumentName, &p.Status, &p.PaymentStatus, &p.PaidOn, &p.ApprovedBy, &p.ApprovedAt, &p.SupersedesID, &p.SupersededBy, &p.Version,
 		&p.Note, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt, &components, &p.Booked)
 	if err != nil {
 		return p, err
@@ -200,11 +202,11 @@ func (q Q) CreatePayrollEntry(ctx context.Context, workspaceID, userID string, p
 		tx := Q{db: t, admission: q.admission}
 		_, err := tx.db.Exec(ctx, `INSERT INTO payroll_entries (id, workspace_id, employee_id, employing_entity, period_start,
 			period_end, pay_date, currency, gross, deductions, net, employer_costs, source, source_ref, supersedes_id, note,
-			created_by, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, nullif($17, ''), $18, $18)`,
+			created_by, created_at, updated_at, document_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, nullif($17, ''), $18, $18, $19)`,
 			p.ID, workspaceID, p.EmployeeID, p.EmployingEntity, p.PeriodStart, p.PeriodEnd, p.PayDate, p.Currency,
 			money(p.Gross), money(p.Deductions), money(p.Net), money(p.EmployerCosts), p.Source, p.SourceRef, p.SupersedesID,
-			p.Note, userID, p.CreatedAt)
+			p.Note, userID, p.CreatedAt, p.DocumentID)
 		if err != nil {
 			return payrollErr(err)
 		}
@@ -220,10 +222,10 @@ func (q Q) SavePayrollDraft(ctx context.Context, workspaceID string, p PayrollEn
 		tx := Q{db: t, admission: q.admission}
 		tag, err := tx.db.Exec(ctx, `UPDATE payroll_entries SET employee_id = $4, employing_entity = $5, period_start = $6,
 			period_end = $7, pay_date = $8, currency = $9, gross = $10, deductions = $11, net = $12, employer_costs = $13,
-			source_ref = $14, note = $15, version = version + 1, updated_at = $16
+			source_ref = $14, note = $15, version = version + 1, updated_at = $16, document_id = $17
 			WHERE workspace_id = $1 AND id = $2 AND version = $3 AND status = 'draft'`,
 			workspaceID, p.ID, version, p.EmployeeID, p.EmployingEntity, p.PeriodStart, p.PeriodEnd, p.PayDate, p.Currency,
-			money(p.Gross), money(p.Deductions), money(p.Net), money(p.EmployerCosts), p.SourceRef, p.Note, now)
+			money(p.Gross), money(p.Deductions), money(p.Net), money(p.EmployerCosts), p.SourceRef, p.Note, now, p.DocumentID)
 		if err != nil || tag.RowsAffected() == 0 {
 			return payrollErr(err)
 		}

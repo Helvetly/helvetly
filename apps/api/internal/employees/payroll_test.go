@@ -329,3 +329,51 @@ func TestWorkspacePurgeRemovesHRData(t *testing.T) {
 		t.Fatalf("left after the purge: %d %v", left, err)
 	}
 }
+
+// TestEntryLinksAnEmployeeDocument: an entry may point at the HR file behind its figures, of the same employee only.
+func TestEntryLinksAnEmployeeDocument(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, anna)
+	other := e.employee(owner, with(anna, "employee_number", "E-2"))
+	status, m := e.upload(owner, "/api/v1/employees/"+id+"/documents", "payslip-oct.pdf", pdf, map[string]string{"type": "payslip"})
+	if status != 201 {
+		t.Fatalf("upload: %d %v", status, m)
+	}
+	doc := m["data"].(map[string]any)["id"].(string)
+	if status, m := e.send(owner, "POST", "/api/v1/payroll/entries", october(other, "document_id", doc)); status != 422 || field(m, "document_id") == "" {
+		t.Fatalf("another employee's document: %d %v", status, m)
+	}
+	got := e.must(owner, 201, "POST", "/api/v1/payroll/entries", october(id, "document_id", doc))
+	if got["document_id"] != doc || got["document_name"] != "payslip-oct.pdf" {
+		t.Fatalf("linked document: %v", got)
+	}
+}
+
+// TestSimultaneousUploadsStoreOnce: the same bytes uploaded twice at once for one employee are stored once.
+func TestSimultaneousUploadsStoreOnce(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, anna)
+	var wg sync.WaitGroup
+	statuses := make([]int, 2)
+	for i := range 2 {
+		wg.Go(func() {
+			statuses[i], _ = e.upload(owner, "/api/v1/employees/"+id+"/documents", fmt.Sprintf("copy-%d.pdf", i), pdf,
+				map[string]string{"type": "other"})
+		})
+	}
+	wg.Wait()
+	if statuses[0]+statuses[1] != 201+409 {
+		t.Fatalf("simultaneous uploads answered %v", statuses)
+	}
+	if n := len(e.list(owner, "/api/v1/employees/"+id+"/documents")); n != 1 {
+		t.Fatalf("%d documents stored", n)
+	}
+	e.files.mu.Lock()
+	objects := len(e.files.objects)
+	e.files.mu.Unlock()
+	if objects != 1 {
+		t.Fatalf("%d objects left in storage; the refused upload's object must be removed", objects)
+	}
+}

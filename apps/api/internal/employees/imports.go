@@ -74,7 +74,7 @@ func CheckImport(ctx context.Context, q store.Q, workspaceID string, data map[st
 	if err != nil {
 		return nil, err
 	}
-	if err := checkEmployment(e, p); err != nil {
+	if err := checkEmployment(ctx, q, workspaceID, e, p); err != nil {
 		if _, _, msg, ok := auth.Describe(err); ok {
 			return map[string]string{"period_start": msg}, nil
 		}

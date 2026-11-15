@@ -26,7 +26,7 @@ var (
 )
 
 var entryKeys = []string{"employee_id", "employing_entity", "period_start", "period_end", "pay_date", "currency", "gross",
-	"deductions", "net", "employer_costs", "components", "source", "source_ref", "note"}
+	"deductions", "net", "employer_costs", "components", "source", "source_ref", "note", "document_id"}
 
 var componentKinds = []string{"earning", "deduction", "employer_cost"}
 
@@ -78,6 +78,8 @@ func parseEntry(p *store.PayrollEntry, body map[string]json.RawMessage) fields {
 			p.SourceRef = f.text(k, raw, 100, nil)
 		case "note":
 			p.Note = f.text(k, raw, 1000, nil)
+		case "document_id":
+			p.DocumentID = f.text(k, raw, 64, nil)
 		}
 	}
 	return f
@@ -148,9 +150,18 @@ func CheckEntry(p store.PayrollEntry) map[string]string {
 }
 
 // checkEmployment refuses an entry for an employee who cannot take one, or a period outside the employment.
-func checkEmployment(e store.Employee, p store.PayrollEntry) error {
+func checkEmployment(ctx context.Context, q store.Q, workspaceID string, e store.Employee, p store.PayrollEntry) error {
 	if err := writable(e); err != nil {
 		return err
+	}
+	if p.DocumentID != nil {
+		_, err := q.EmployeeDocument(ctx, workspaceID, e.ID, *p.DocumentID)
+		if errors.Is(err, store.ErrNotFound) {
+			return validationFailed(map[string]string{"document_id": "Choose a document of this employee."})
+		}
+		if err != nil {
+			return err
+		}
 	}
 	if p.PeriodEnd < e.EmploymentStart || e.EmploymentEnd != nil && p.PeriodStart > *e.EmploymentEnd {
 		return validationFailed(map[string]string{"period_start": "The period lies outside this employee's employment."})
@@ -202,7 +213,7 @@ func CreateEntry(ctx context.Context, q store.Q, sess store.Session, p store.Pay
 	if err != nil {
 		return "", err
 	}
-	if err := checkEmployment(e, p); err != nil {
+	if err := checkEmployment(ctx, q, sess.Workspace.ID, e, p); err != nil {
 		return "", err
 	}
 	if p.EmployingEntity == "" {
@@ -307,7 +318,7 @@ func (s *Service) updateEntry(w http.ResponseWriter, r *http.Request, sess store
 		if err != nil {
 			return err
 		}
-		if err := checkEmployment(e, p); err != nil {
+		if err := checkEmployment(r.Context(), q, sess.Workspace.ID, e, p); err != nil {
 			return err
 		}
 		ok, err := q.SavePayrollDraft(r.Context(), sess.Workspace.ID, p, v, s.now())

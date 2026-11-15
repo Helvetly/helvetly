@@ -119,6 +119,7 @@ CREATE TABLE payroll_entries (
     employer_costs bigint CHECK (employer_costs >= 0),
     source text NOT NULL CHECK (source IN ('manual', 'import', 'external')),
     source_ref text,
+    document_id text REFERENCES documents(id) ON DELETE SET NULL, -- the employee's HR file behind the figures
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'approved')),
     payment_status text NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'paid')),
     paid_on date,
