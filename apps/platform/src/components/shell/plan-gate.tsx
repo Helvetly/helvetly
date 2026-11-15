@@ -16,6 +16,7 @@ import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 
+import { ShellLoading } from '@/components/auth-gate'
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
@@ -49,11 +50,7 @@ export function PlanGate({ children }: { children: ReactNode }) {
     (billing.isPending && billing.failureCount === 0 && billing.errorUpdateCount === 0) ||
     locked
   ) {
-    return (
-      <div className="flex min-h-svh flex-col bg-background">
-        <Loader size="page" />
-      </div>
-    )
+    return <ShellLoading />
   }
   return children
 }
