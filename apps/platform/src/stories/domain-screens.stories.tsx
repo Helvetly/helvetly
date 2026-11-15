@@ -139,8 +139,8 @@ export const WorkspaceOwner: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button', { name: 'Save' })).toBeNull()
-    await userEvent.clear(canvas.getByLabelText('Workspace name'))
-    await userEvent.type(canvas.getByLabelText('Workspace name'), 'Muster GmbH')
+    await userEvent.clear(canvas.getByLabelText(/^Workspace name\*?$/))
+    await userEvent.type(canvas.getByLabelText(/^Workspace name\*?$/), 'Muster GmbH')
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(savedWorkspace).toHaveBeenCalledWith({ name: 'Muster GmbH' }))
     await expect(await canvas.findByText('Saved')).toBeVisible()
@@ -151,16 +151,16 @@ export const WorkspaceAdmin: Story = {
   render: () => <GeneralCard name="Muster AG" timezone="Europe/Zurich" membershipRole="admin" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Workspace name')).toBeDisabled()
-    await expect(canvas.getByLabelText('Time zone')).toBeEnabled()
+    await expect(canvas.getByLabelText(/^Workspace name\*?$/)).toBeDisabled()
+    await expect(canvas.getByLabelText(/^Time zone\*?$/)).toBeEnabled()
   },
 }
 export const WorkspaceMember: Story = {
   render: () => <GeneralCard name="Muster AG" timezone="Europe/Zurich" membershipRole="member" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Workspace name')).toBeDisabled()
-    await expect(canvas.getByLabelText('Time zone')).toBeDisabled()
+    await expect(canvas.getByLabelText(/^Workspace name\*?$/)).toBeDisabled()
+    await expect(canvas.getByLabelText(/^Time zone\*?$/)).toBeDisabled()
     await expect(canvas.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   },
 }
@@ -176,13 +176,13 @@ export const WorkspaceSaveFailure: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Workspace name'), ' Zurich')
+    await userEvent.type(canvas.getByLabelText(/^Workspace name\*?$/), ' Zurich')
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await expect(
       await within(document.body).findByText('The service is temporarily unavailable.'),
     ).toBeInTheDocument() // the toast
     // The edit stays, still unsaved, ready for another try.
-    await expect(canvas.getByLabelText('Workspace name')).toHaveValue('Muster AG Zurich')
+    await expect(canvas.getByLabelText(/^Workspace name\*?$/)).toHaveValue('Muster AG Zurich')
     await expect(canvas.getByText('Unsaved changes')).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Save' })).toBeEnabled()
   },
@@ -222,7 +222,7 @@ export const AccountProfile: Story = {
     const canvas = within(canvasElement)
     const profile = await canvas.findByRole('region', { name: 'Profile' })
     await expect(within(profile).getByLabelText('Email')).toBeDisabled()
-    await userEvent.type(within(profile).getByLabelText('Full name'), ' Zurich')
+    await userEvent.type(within(profile).getByLabelText(/^Full name\*?$/), ' Zurich')
     await userEvent.click(within(profile).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(savedProfile).toHaveBeenCalledWith({ name: 'Anna Muster Zurich' }))
     await Promise.all(

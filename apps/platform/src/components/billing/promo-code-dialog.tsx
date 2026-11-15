@@ -58,7 +58,7 @@ export function PromoCodeDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5" noValidate>
-          <FormField id="promotion-code" label="Code" error={error}>
+          <FormField id="promotion-code" required label="Code" error={error}>
             <Input
               {...describedBy('promotion-code', error)}
               autoComplete="off"

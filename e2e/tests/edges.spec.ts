@@ -109,7 +109,7 @@ test.describe('core page layouts', () => {
             await expect(
               page.getByRole('heading', { name: 'Account settings', exact: true }),
             ).toBeVisible()
-            await expect(page.getByLabel('Full name', { exact: true })).toBeVisible()
+            await expect(page.getByLabel(/^Full name\*?$/)).toBeVisible()
             await expect(page.getByRole('button', { name: 'Turn on', exact: true })).toBeVisible()
             await expect(
               page.getByRole('button', { name: 'Add passkey', exact: true }),

@@ -126,7 +126,7 @@ test('a subscribed workspace can move down', async () => {
 test('a valid promotion code discounts the plans it covers and goes with the checkout', async () => {
   renderCards(billing({ trial_available: false }))
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
-  await userEvent.type(screen.getByLabelText('Code'), 'launch20')
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'launch20')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   expect(await screen.findByText('LAUNCH20 · −20 % for 3 months')).toBeInTheDocument()
   const pro = card('Pro')
@@ -146,10 +146,10 @@ test('a valid promotion code discounts the plans it covers and goes with the che
 test('the promotion chip can be changed and removed', async () => {
   renderCards(billing())
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
-  await userEvent.type(screen.getByLabelText('Code'), 'LAUNCH20')
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'LAUNCH20')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   await userEvent.click(await screen.findByRole('button', { name: 'Change' }))
-  expect(screen.getByLabelText('Code')).toHaveValue('LAUNCH20')
+  expect(screen.getByLabelText(/^Code\*?$/)).toHaveValue('LAUNCH20')
   await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
   await userEvent.click(screen.getByRole('button', { name: 'Remove' }))
   expect(screen.queryByText(/LAUNCH20/)).toBeNull()
@@ -159,7 +159,7 @@ test('the promotion chip can be changed and removed', async () => {
 test('an invalid promotion code is a field error', async () => {
   renderCards(billing())
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
-  await userEvent.type(screen.getByLabelText('Code'), 'NOPE')
+  await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'NOPE')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   expect(await screen.findByText("This code isn't valid.")).toBeInTheDocument()
   expect(screen.queryByText(/NOPE ·/)).toBeNull()
