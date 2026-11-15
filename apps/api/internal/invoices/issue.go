@@ -73,6 +73,11 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 			return err
 		}
 	}
+	if inv.Instalments != nil && len(inv.Instalments.Items) > 0 { // so is a draft with an instalment schedule
+		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err
+		}
+	}
 	if err := checkOpen(ctx, q, sess.Workspace.ID, inv.IssueDate); err != nil {
 		return err
 	}

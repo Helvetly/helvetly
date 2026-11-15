@@ -6301,7 +6301,7 @@
     },
     "responses": {
       "Error": {
-        "description": "An error: 400 invalid_request, 401 unauthenticated, 402 plan_required or limit_reached, 403 forbidden, token_scope or token_not_allowed, 404 not_found, 409 conflict codes, 422 validation_failed, 429 rate_limited.",
+        "description": "An error: 400 invalid_request, 401 unauthenticated, 402 plan_required or limit_reached, 403 forbidden, token_scope, token_not_allowed or feature_not_in_plan (the plan lacks the module; details: feature, plan, required_plan), 404 not_found, 409 conflict codes, 422 validation_failed, 429 rate_limited.",
         "content": {
           "application/json": {
             "schema": {
