@@ -5,7 +5,7 @@
 # own side (README: Releases).
 #
 # Hand-off: once the image is published, a final release (no '-' in the tag) of Helvetly/helvetly sends a
-# `helvetly-release` repository_dispatch with the tag and commit SHA to the repository in the variable
+# `helvetly-release` dispatch event with the tag and commit SHA to the repository in the variable
 # DEPLOY_DISPATCH_REPO, using the secret DEPLOY_DISPATCH_TOKEN. Forks and prereleases skip it.
 #
 # CI still running when the tag arrives: the run fails at "Check CI"; re-run it once CI is green.
