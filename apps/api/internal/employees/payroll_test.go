@@ -293,3 +293,39 @@ func TestBookingOnceAndExport(t *testing.T) {
 		t.Fatal("block reasons carry amounts")
 	}
 }
+
+// TestWorkspacePurgeRemovesHRData: deleting a whole workspace (helvetly.purge set for its transaction) removes approved
+// and booked payroll, pay terms and HR files despite the triggers that protect them otherwise.
+func TestWorkspacePurgeRemovesHRData(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, anna)
+	e.must(owner, 200, "POST", "/api/v1/employees/"+id+"/pay-terms", map[string]any{"effective_from": "2024-01-01", "basis": "monthly",
+		"amount": "6000.00", "currency": "CHF", "frequency": "monthly"})
+	entry := e.must(owner, 201, "POST", "/api/v1/payroll/entries", october(id))["id"].(string)
+	e.must(owner, 200, "POST", "/api/v1/payroll/entries/"+entry+"/approve", map[string]any{"version": 1})
+	e.must(owner, 201, "POST", "/api/v1/payroll/bookings", map[string]any{"to": "2026-10-31"})
+	if status, m := e.upload(owner, "/api/v1/employees/"+id+"/documents", "c.pdf", pdf, map[string]string{"type": "employment_contract"}); status != 201 {
+		t.Fatalf("upload: %d %v", status, m)
+	}
+	ctx := context.Background()
+	tx, err := e.raw.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `SET LOCAL helvetly.purge = 'on'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM workspaces WHERE id = $1`, owner.workspace); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := e.raw.QueryRow(ctx, `SELECT (SELECT count(*) FROM employees) + (SELECT count(*) FROM payroll_entries)
+		+ (SELECT count(*) FROM employee_pay_terms) + (SELECT count(*) FROM documents WHERE hr_private)`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("left after the purge: %d %v", left, err)
+	}
+}

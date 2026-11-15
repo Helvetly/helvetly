@@ -1,6 +1,7 @@
 -- Employees: the workspace company's own staff (not members), their pay terms, private employment documents and a
 -- payroll register with approval separate from payment. Approved payroll figures never change: a correction is a new
--- entry, and the triggers below refuse edits and deletes of approved entries outside a workspace purge.
+-- entry, and the triggers below refuse edits and deletes of approved entries outside a workspace purge. Child rows
+-- cascade so a purge can delete a workspace; the API itself deletes only employees and entries without history.
 
 -- +goose Up
 CREATE TABLE employment_settings (
@@ -60,7 +61,7 @@ CREATE UNIQUE INDEX employees_member ON employees (workspace_id, member_user_id)
 CREATE TABLE employee_pay_terms (
     id text PRIMARY KEY,
     workspace_id text NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    employee_id text NOT NULL REFERENCES employees(id),
+    employee_id text NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
     effective_from date NOT NULL,
     basis text NOT NULL CHECK (basis IN ('monthly', 'hourly')),
     amount bigint NOT NULL CHECK (amount > 0),
@@ -84,7 +85,7 @@ $$;
 -- +goose StatementEnd
 CREATE TRIGGER pay_terms_append_only BEFORE UPDATE ON employee_pay_terms FOR EACH ROW EXECUTE FUNCTION pay_terms_append_only();
 
-ALTER TABLE documents ADD COLUMN employee_id text REFERENCES employees(id),
+ALTER TABLE documents ADD COLUMN employee_id text REFERENCES employees(id) ON DELETE CASCADE,
     ADD COLUMN hr_private boolean NOT NULL DEFAULT false,
     ADD CONSTRAINT documents_employee_private CHECK (employee_id IS NULL OR hr_private);
 CREATE INDEX documents_employee ON documents (employee_id) WHERE employee_id IS NOT NULL;
@@ -92,7 +93,7 @@ CREATE INDEX documents_employee ON documents (employee_id) WHERE employee_id IS 
 CREATE TABLE employee_documents (
     document_id text PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
     workspace_id text NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    employee_id text NOT NULL REFERENCES employees(id),
+    employee_id text NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
     type text NOT NULL CHECK (type IN ('employment_contract', 'contract_amendment', 'termination_document', 'personnel_file',
         'payslip', 'payroll_record', 'tax_withholding_record', 'social_security_record', 'time_record', 'work_permit_copy',
         'id_document_copy', 'other')),
@@ -106,7 +107,7 @@ CREATE INDEX employee_documents_employee ON employee_documents (employee_id);
 CREATE TABLE payroll_entries (
     id text PRIMARY KEY,
     workspace_id text NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    employee_id text NOT NULL REFERENCES employees(id),
+    employee_id text NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
     employing_entity text NOT NULL,
     period_start date NOT NULL,
     period_end date NOT NULL CHECK (period_end >= period_start),
@@ -123,8 +124,8 @@ CREATE TABLE payroll_entries (
     paid_on date,
     approved_by text REFERENCES users(id) ON DELETE SET NULL,
     approved_at timestamp with time zone,
-    supersedes_id text UNIQUE REFERENCES payroll_entries(id),
-    superseded_by text REFERENCES payroll_entries(id),
+    supersedes_id text UNIQUE REFERENCES payroll_entries(id) ON DELETE CASCADE,
+    superseded_by text REFERENCES payroll_entries(id) ON DELETE CASCADE,
     version integer NOT NULL DEFAULT 1,
     note text,
     created_by text REFERENCES users(id) ON DELETE SET NULL,
@@ -207,7 +208,7 @@ CREATE TABLE payroll_bookings (
 -- An entry is booked once per kind: the accrual, the payment, and the reversal of an accrual a correction replaced.
 CREATE TABLE payroll_booking_items (
     booking_id text NOT NULL REFERENCES payroll_bookings(id) ON DELETE CASCADE,
-    entry_id text NOT NULL REFERENCES payroll_entries(id),
+    entry_id text NOT NULL REFERENCES payroll_entries(id) ON DELETE CASCADE,
     kind text NOT NULL CHECK (kind IN ('accrual', 'payment', 'reversal')),
     PRIMARY KEY (entry_id, kind)
 );
