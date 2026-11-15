@@ -186,5 +186,4 @@ date means you accept the change.
 - If any provision is invalid, the rest remains in force and the invalid one is replaced by what
   comes closest to its purpose.
 
-Last change: 15 November 2026. For customers who subscribed before that date, the changes made then
-to sections 3, 4, 5 and 9 (billing rules and currencies) apply from 15 December 2026 (section 15).
+Last change: 15 November 2026.
