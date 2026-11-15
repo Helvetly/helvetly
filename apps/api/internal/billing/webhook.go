@@ -96,9 +96,12 @@ func (s *Service) webhook(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleEvent(ctx context.Context, ev event) error {
 	var obj struct {
-		ID           string `json:"id"`
-		Mode         string `json:"mode"`
-		Subscription string `json:"subscription"`
+		ID            string            `json:"id"`
+		Mode          string            `json:"mode"`
+		Subscription  string            `json:"subscription"`
+		Customer      string            `json:"customer"`
+		PaymentStatus string            `json:"payment_status"`
+		Metadata      map[string]string `json:"metadata"`
 	}
 	if err := json.Unmarshal(ev.Data.Object, &obj); err != nil {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "The event's object is not valid.", nil)
@@ -108,6 +111,9 @@ func (s *Service) handleEvent(ctx context.Context, ev event) error {
 	case "checkout.session.completed", "checkout.session.async_payment_succeeded":
 		if obj.Mode == "subscription" {
 			subID = obj.Subscription
+		}
+		if obj.Mode == "payment" { // an AI token pack
+			return s.creditAITokens(ctx, obj.ID, obj.Customer, obj.Metadata["workspace_id"], obj.Metadata[AITokensKey], obj.PaymentStatus)
 		}
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
 		"customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.trial_will_end":

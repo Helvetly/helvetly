@@ -130,6 +130,12 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				data = append(data, p)
 			}
 		}
+		if r.Form.Get("product") == AITokensProduct && r.Form.Get("type") == "one_time" {
+			for tokens, amount := range map[string]int64{"1000000": 1000, "5000000": 4000} {
+				data = append(data, map[string]any{"id": "price_ai_" + tokens, "currency": "chf", "unit_amount": amount,
+					"product": AITokensProduct, "metadata": map[string]string{AITokensKey: tokens}})
+			}
+		}
 		reply(map[string]any{"data": data})
 	case key == "GET /v1/promotion_codes":
 		data := []map[string]any{}

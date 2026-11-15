@@ -39,6 +39,10 @@ type Service struct {
 	pricesMu sync.Mutex
 	prices   map[string]price // by plan_interval key, read from Stripe by lookup key
 	pricedAt time.Time
+
+	packsMu  sync.Mutex
+	packs    []aiPack // the AI token packs on sale, read from Stripe
+	packedAt time.Time
 }
 
 // New reads the plan limits seeded in plan_limits; the server does not start without them.
@@ -74,6 +78,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/billing/details", true, s.details)
 	handle("POST /api/v1/billing/promotion-code", true, s.promotionCode)
 	handle("POST /api/v1/billing/checkout", true, s.checkout)
+	handle("POST /api/v1/billing/ai-tokens", true, s.buyAITokens)
 	handle("POST /api/v1/billing/portal", true, s.portal)
 	handle("POST /api/v1/billing/sync", true, s.sync)
 	mux.HandleFunc("POST /api/webhooks/stripe", s.webhook)
@@ -140,9 +145,17 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		return err
 	}
 	plan := PlanOf(b)
+	bought, err := s.db.AITokenPacks(r.Context(), sess.Workspace.ID, now.In(sess.Workspace.Location()).Format("2006-01"))
+	if err != nil {
+		return err
+	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
-		usage = append(usage, usageItem{l, used(u, l), maxOf(s.plans.forBilling(b, l))})
+		max := s.plans.forBilling(b, l)
+		if l == AITokens && max != Unlimited && plan != "" {
+			max += bought // the packs bought this month count on top of the plan's allowance
+		}
+		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
 	}
 	prices := s.planPrices(r.Context())
 	list := make([]planItem, 0, len(planOrder))
@@ -169,6 +182,10 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"trial_days": TrialDays, "trial_plan": TrialPlan, "trial_available": trialAvailable(b), "has_customer": b.CustomerID != "",
 		"can_manage": members.CanManage(sess.Role), "period_start": monthStart(now, sess.Workspace.Location()).Format(time.DateOnly),
 		"usage": usage, "plans": list, "discount": nil, "pricing": "", "seats": u.Members + 1,
+		"ai_tokens_bought": bought, "ai_packs": []aiPack{},
+	}
+	if plan != "" && members.CanManage(sess.Role) { // packs add to a plan; only a manager can buy
+		out["ai_packs"] = s.aiPacks(r.Context())
 	}
 	if !live(b.Status) {
 		out["interval"] = ""
@@ -390,6 +407,16 @@ func quantity(ctx context.Context, q store.Q, workspaceID string, p price) (int6
 	return max(n, 1), err
 }
 
+// managedPayments turns a Checkout Session into a Managed Payments one: Stripe then collects the name, address and
+// tax itself and refuses the parameters for doing that ourselves, so they go.
+func managedPayments(form url.Values) {
+	for _, k := range []string{"automatic_tax[enabled]", "tax_id_collection[enabled]", "customer_update[name]",
+		"customer_update[address]", "invoice_creation[enabled]"} {
+		form.Del(k)
+	}
+	form.Set("managed_payments[enabled]", "true")
+}
+
 func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID string, seats int64, promoID string) (string, error) {
 	back := s.publicURL + "/settings/billing?checkout="
 	form := url.Values{
@@ -404,6 +431,9 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan
 	}
 	if s.cfg.AutomaticTax {
 		form.Set("automatic_tax[enabled]", "true")
+	}
+	if s.cfg.ManagedPayments {
+		managedPayments(form)
 	}
 	if promoID != "" { // Checkout takes a typed code or its own code box, not both
 		form.Set("discounts[0][promotion_code]", promoID)
