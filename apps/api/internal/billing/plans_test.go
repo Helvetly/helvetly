@@ -8,7 +8,7 @@ import (
 
 func TestPricesByLookupKey(t *testing.T) {
 	e := newEnv(t, true)
-	owner := e.workspace()
+	owner := e.workspaceIn("Europe/Zurich")
 	delete(e.stripe.catalog, "helvetly_business_year") // not deployed yet
 	for range 2 {
 		code, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)

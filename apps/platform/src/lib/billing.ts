@@ -69,6 +69,9 @@ export type Billing = {
   discount: Discount | null
   usage: UsageItem[]
   plans: Plan[]
+  /** What the workspace pays in: `chf` in Switzerland and Liechtenstein, `eur` in the EU, `usd` elsewhere; an
+   * existing Stripe customer keeps its own. Plan and pack prices are in it. */
+  currency: string
   /** AI tokens bought this month; they add to the plan's monthly allowance and lapse with the month. */
   ai_tokens_bought: number
   /** The AI token packs on sale (empty without a plan, or for someone who cannot manage billing). */
@@ -255,7 +258,19 @@ export function seatTotal(billing: Billing): PlanPrice | null {
 /** One person's price as a line: "CHF 49 / month incl. VAT"; null unless billing is on and per seat. */
 export function seatCostLabel(billing: Billing): string | null {
   const price = seatPrice(billing)
-  return billing.enabled && price ? `${formatPrice(price)} / ${billing.interval} incl. VAT` : null
+  return billing.enabled && price
+    ? `${formatPrice(price)} / ${billing.interval} ${taxNote(price.currency)}`
+    : null
+}
+
+/** What a price includes, short: VAT in francs and euros, sales tax (where due) in dollars. */
+export function taxNote(currency: string): string {
+  return currency === 'usd' ? 'incl. tax' : 'incl. VAT'
+}
+
+/** The same, naming Swiss VAT for francs: "incl. Swiss VAT", "incl. VAT", "incl. tax". */
+export function taxNoteLong(currency: string): string {
+  return currency === 'chf' ? 'incl. Swiss VAT' : taxNote(currency)
 }
 
 const RANK: Record<PlanId | '', number> = { '': 0, basic: 1, pro: 2, business: 3 }

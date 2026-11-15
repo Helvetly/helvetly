@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { COMPETITORS } from '@/lib/compare'
 
@@ -32,7 +32,40 @@ describe('home page', () => {
   })
 })
 
+const real = Intl.DateTimeFormat.prototype.resolvedOptions
+/** The visitor's time zone, which picks the currency. */
+function inZone(timeZone: string) {
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (
+    this: Intl.DateTimeFormat,
+  ) {
+    return { ...real.call(this), timeZone }
+  })
+}
+
 describe('pricing page', () => {
+  beforeEach(() => inZone('Europe/Zurich'))
+  afterEach(() => vi.restoreAllMocks())
+
+  it('shows the same figures in the visitor’s currency', () => {
+    inZone('Europe/Berlin')
+    render(<PricingPage />)
+    const pro = screen.getAllByRole('article')[1]!
+    expect(within(pro).getByText('EUR')).toBeTruthy()
+    expect(within(pro).getByText('EUR 39.25 a month, billed yearly, incl. VAT')).toBeTruthy()
+  })
+
+  it('prefers the country Cloudflare saw to the time zone', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(async () => new Response('h=helvetly.com\nloc=GB\n')),
+    )
+    render(<PricingPage />)
+    const pro = screen.getAllByRole('article')[1]!
+    expect(await within(pro).findByText('USD 39.25 a month, billed yearly, incl. tax')).toBeTruthy()
+    expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
+    vi.unstubAllGlobals()
+  })
+
   it('shows yearly prices first and monthly ones on request', async () => {
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!

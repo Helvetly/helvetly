@@ -23,7 +23,7 @@ export type Limits = {
 export type Plan = {
   id: PlanId
   name: string
-  /** CHF per team member and month, VAT included. */
+  /** Per team member and month, VAT included; the same figure in CHF, EUR and USD (lib/currency.ts). */
   monthly: number
   pitch: string
   highlights: string[]
@@ -106,7 +106,7 @@ export const PLANS: Plan[] = [
 ]
 
 /** What a plan costs in an interval, as the API charges it (shared with the app, so both round alike). */
-export function priceOf(plan: Plan, interval: Interval): Price {
-  const month = { amount: plan.monthly * 100, currency: 'chf' }
+export function priceOf(plan: Plan, interval: Interval, currency = 'chf'): Price {
+  const month = { amount: plan.monthly * 100, currency }
   return interval === 'month' ? month : yearOf(month)
 }

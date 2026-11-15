@@ -72,7 +72,7 @@ export function SiteFooter() {
               </Cta>
             </div>
             <p className="mt-5 text-body-sm text-white/50">
-              {TRIAL_DAYS}-day trial · Cancel any time · Prices in CHF, incl. VAT
+              {TRIAL_DAYS}-day trial · Cancel any time · Prices in CHF, EUR or USD, tax included
             </p>
           </div>
 

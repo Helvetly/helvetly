@@ -24,6 +24,8 @@ import {
   people,
   seatsCost,
   promoApplies,
+  taxNote,
+  taxNoteLong,
   useCheckout,
   yearlySaving,
   type Billing,
@@ -109,7 +111,9 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
     price && billing.seats > 0
       ? ` (${formatPrice(seatsCost(price, billing.seats))} for ${people(billing.seats)})`
       : ''
-  const charge = price ? `${formatPrice(price)} per person a ${interval}, incl. VAT${total}` : ''
+  const charge = price
+    ? `${formatPrice(price)} per person a ${interval}, ${taxNote(billing.currency)}${total}`
+    : ''
   if (billing.status === 'trialing')
     return `Your trial ends now and ${plan.name} is charged today: ${charge}.`
   return `${plan.name} applies now at ${charge}. The difference for the rest of this period is prorated on your next invoice.`
@@ -241,7 +245,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
                     )}
                   </p>
                   <p className="text-body-sm text-muted-foreground">
-                    per person / {interval} · incl. VAT
+                    per person / {interval} · {taxNote(billing.currency)}
                   </p>
                 </div>
                 <p className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
@@ -343,7 +347,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
           <Lock className="size-3" aria-hidden />
           Secure payment by Stripe
           <span aria-hidden>·</span>
-          Prices incl. Swiss VAT
+          Prices {taxNoteLong(billing.currency)}
           <span aria-hidden>·</span>
           Change or cancel anytime
         </p>

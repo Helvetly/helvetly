@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
@@ -11,6 +12,8 @@ import { billingKeys, useBilling, type Billing } from '@/lib/billing'
 import { queryKeys } from '@/lib/queries'
 
 import { ChoosePlan, PlanGate } from './plan-gate'
+
+vi.mock('sonner', () => ({ toast: vi.fn<(message: string) => void>() }))
 
 const server = setupServer()
 beforeAll(() => server.listen())
@@ -133,4 +136,13 @@ test('billing the person may not read does not hold the page', async () => {
   // The page's own read refetches billing; the gate must not take the page away again.
   await new Promise((resolve) => setTimeout(resolve, 300))
   expect(screen.getByText('The list')).toBeVisible()
+})
+
+test('back from a cancelled Checkout the picker says so and tidies the URL', () => {
+  window.history.replaceState(null, '', '/choose-plan?checkout=canceled')
+  renderWith(<ChoosePlan />, billingFixture())
+  expect(toast).toHaveBeenCalledWith('Checkout cancelled. Nothing was charged.')
+  expect(replace).toHaveBeenCalledWith('/choose-plan')
+  expect(screen.getByRole('region', { name: 'Basic' })).toBeVisible()
+  window.history.replaceState(null, '', '/')
 })

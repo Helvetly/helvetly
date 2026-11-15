@@ -213,6 +213,9 @@ export const FormSection: Story = {
       (await body().findByRole('heading', { name: 'Client portal' })).closest('section') ??
         document.body,
     )
+    // The form puts the cursor in the name shortly after it opens; act after that, as a person would, or the
+    // opening focus lands after the click below on a fast machine.
+    await waitFor(() => expect(document.getElementById('client-name')).toHaveFocus())
     const billing = within(
       body().getByRole('heading', { name: 'Billing defaults' }).closest('section') ?? document.body,
     )

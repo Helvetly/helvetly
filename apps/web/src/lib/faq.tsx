@@ -49,7 +49,7 @@ export const PRICING_FAQ: Question[] = [
   },
   {
     q: 'Is VAT included?',
-    a: 'Yes. Prices are in CHF and include Swiss VAT, so the price you see is the price you pay. Your invoice shows the VAT share; businesses abroad with a VAT number are charged the same amount without Swiss VAT.',
+    a: 'Yes. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU and USD everywhere else, with the same figures, and include the VAT or sales tax that applies, so the price you see is the price you pay. Your invoice shows the tax share; a business with a VAT number that owes the VAT itself pays the same amount, without VAT on the invoice.',
   },
   {
     q: 'Can I change plans later?',

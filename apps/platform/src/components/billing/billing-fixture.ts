@@ -37,13 +37,14 @@ const business: Record<LimitKey, number | null> = {
   storage_bytes: 1024 * GB,
   ai_tokens_per_month: 20_000_000,
 }
-const prices = (month: number) => ({
-  month: { amount: month, currency: 'chf' },
-  year: yearOf({ amount: month, currency: 'chf' }),
+const prices = (month: number, currency: string) => ({
+  month: { amount: month, currency },
+  year: yearOf({ amount: month, currency }),
 })
 
 /** `GET /api/v1/billing` for a workspace without a plan; plan prices are per person (docs/billing-contract.md). */
 export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
+  currency: 'chf',
   enabled: true,
   locked: true,
   plan: '',
@@ -65,9 +66,14 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
   ai_tokens_bought: 0,
   ai_packs: [],
   plans: [
-    { id: 'basic', name: 'Basic', limits: basic, prices: prices(1900) },
-    { id: 'pro', name: 'Pro', limits: pro, prices: prices(4900) },
-    { id: 'business', name: 'Business', limits: business, prices: prices(9900) },
+    { id: 'basic', name: 'Basic', limits: basic, prices: prices(1900, over.currency ?? 'chf') },
+    { id: 'pro', name: 'Pro', limits: pro, prices: prices(4900, over.currency ?? 'chf') },
+    {
+      id: 'business',
+      name: 'Business',
+      limits: business,
+      prices: prices(9900, over.currency ?? 'chf'),
+    },
   ],
   ...over,
 })
