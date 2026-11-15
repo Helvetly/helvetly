@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -19,6 +18,7 @@ import { useState } from 'react'
 
 import { inputClass } from '@/components/clients/fields'
 import type { FieldErrors } from '@/components/section-form'
+import { translate } from '@/lib/i18n'
 import { parseDecimalInput, type DunningTiming } from '@/lib/invoices'
 
 import { SettingsPreview } from './layout'
@@ -63,11 +63,11 @@ export function timingProblems(steps: StepDraft[]): string[] {
   return steps.map((step, i) => {
     const previous = steps[i - 1]
     if (step.timing === 'after_previous' && !previous)
-      return 'The first reminder counts from the due date.'
+      return translate('theFirstReminderCountsFromTheDueDate')
     if (step.timing === 'after_previous' && previous && isNote(previous))
-      return 'Count from the due date after a note before it.'
+      return translate('countFromTheDueDateAfterANoteBefore')
     if (i > 0 && (at[i] ?? 0) <= (at[i - 1] ?? 0))
-      return 'Each reminder must come after the one before it.'
+      return translate('eachReminderMustComeAfterTheOneBeforeIt')
     return ''
   })
 }
@@ -86,9 +86,9 @@ export function stepErrors(step: StepDraft): FieldErrors {
   const most = isNote(step) ? MAX_DAYS_BEFORE : 90
   const days = Number(step.days)
   if (!/^\d{1,3}$/.test(step.days) || days < 1 || days > most)
-    errors.days = `From 1 to ${most} days.`
-  if (!isNote(step) && !validFee(step.fee)) errors.fee = 'From 0 to 1000.00, in steps of 0.05.'
-  if (step.name.trim().length > 60) errors.name = 'At most 60 characters.'
+    errors.days = translate('from1ToDays', { most: most })
+  if (!isNote(step) && !validFee(step.fee)) errors.fee = translate('from0To100000InStepsOf0')
+  if (step.name.trim().length > 60) errors.name = translate('atMost60Characters')
   return errors
 }
 
@@ -106,20 +106,21 @@ export function stepTitle(steps: StepDraft[], index: number): string {
   const step = steps[index]
   if (!step) return ''
   if (step.name.trim()) return step.name.trim()
-  if (isNote(step)) return 'Payment due soon'
+  if (isNote(step)) return translate('paymentDueSoon')
   const ranks = steps.filter((s) => !isNote(s)).length
   const rank = steps.slice(0, index + 1).filter((s) => !isNote(s)).length
-  return rank <= 1 ? 'Payment reminder' : rank >= ranks ? 'Final reminder' : `Reminder ${rank}`
+  return rank <= 1
+    ? translate('paymentReminder')
+    : rank >= ranks
+      ? translate('finalReminder')
+      : translate('reminder', { rank: rank })
 }
 
 const STANDARD = {
-  note: 'A friendly note that invoice [number] of [date] is due on [due date].',
-  first:
-    'According to our records, invoice [number] of [date], due on [due date], has not been paid yet. Please settle the open amount.',
-  middle:
-    'Despite our reminder, invoice [number] of [date], due on [due date], is still open. Please transfer the amount without delay.',
-  final:
-    'Invoice [number] of [date], due on [due date], remains unpaid despite our reminders. Without payment we reserve further steps, in particular debt collection.',
+  note: translate('aFriendlyNoteThatInvoiceNumberOfDateIs'),
+  first: translate('accordingToOurRecordsInvoiceNumberOfDateDue'),
+  middle: translate('despiteOurReminderInvoiceNumberOfDateDueOn'),
+  final: translate('invoiceNumberOfDateDueOnDueDateRemains'),
 }
 
 /** The standard sentence the step sends when it has no own text, in English. */
@@ -135,13 +136,13 @@ export function standardText(steps: StepDraft[], index: number): string {
 
 const dayCount = (typed: string) => {
   const days = Number(typed) || 0
-  return `${days} ${days === 1 ? 'day' : 'days'}`
+  return translate('dunningDayCount', { count: days })
 }
 
 const WHEN: Record<DunningTiming, string> = {
-  before_due: 'before due',
-  after_due: 'after due',
-  after_previous: 'after the previous',
+  before_due: translate('beforeDue2'),
+  after_due: translate('afterDue2'),
+  after_previous: translate('afterThePrevious'),
 }
 
 /** One line on a step: "10 days after due · CHF 20.00 fee · own text". */
@@ -149,10 +150,14 @@ export function stepSummary(step: StepDraft, currency: string): string {
   const fee = Number(parseDecimalInput(step.fee || '0', 2) ?? 0)
   const parts = [
     `${dayCount(step.days)} ${WHEN[step.timing]}`,
-    isNote(step) ? 'friendly note' : fee > 0 ? `${currency} ${fee.toFixed(2)} fee` : 'no fee',
-    step.text.trim() ? 'own text' : 'standard text',
+    isNote(step)
+      ? translate('friendlyNote')
+      : fee > 0
+        ? translate('dynamicFee', { currency: currency, value2: fee.toFixed(2) })
+        : translate('noFee'),
+    step.text.trim() ? translate('ownText2') : translate('standardText2'),
   ]
-  if (!step.qr_bill) parts.push('no QR bill')
+  if (!step.qr_bill) parts.push(translate('noQrBill'))
   return parts.join(' · ')
 }
 
@@ -205,7 +210,7 @@ export function DunningSteps({
 
   return (
     <div className="grid gap-2">
-      <ol aria-label="Reminders" className="grid">
+      <ol aria-label={translate('reminders')} className="grid">
         {entries.map((entry, n) => {
           const rail = { first: n === 0, last: n === entries.length - 1 }
           if (entry === 'due')
@@ -218,7 +223,9 @@ export function DunningSteps({
                 >
                   <CalendarClock className="size-3.5 stroke-[1.75]" />
                 </span>
-                <span className="text-body-sm font-medium text-muted-foreground">Due date</span>
+                <span className="text-body-sm font-medium text-muted-foreground">
+                  {translate('dueDate')}
+                </span>
               </li>
             )
           const step = steps[entry]
@@ -249,10 +256,11 @@ export function DunningSteps({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label={`Edit ${title}`}
+                  aria-label={translate('edit5', { title: title })}
                   onClick={() => setOpen({ index: entry, step })}
                 >
-                  <Pencil aria-hidden /> Edit
+                  <Pencil aria-hidden />
+                  {translate('edit4')}
                 </Button>
               </div>
             </li>
@@ -268,7 +276,8 @@ export function DunningSteps({
           className="justify-self-start"
           onClick={() => setOpen({ index: null, step: newStep(steps) })}
         >
-          <Plus aria-hidden /> Add a reminder
+          <Plus aria-hidden />
+          {translate('addAReminder')}
         </Button>
       )}
       {open && (
@@ -302,15 +311,15 @@ function Rail({ first, last, center }: { first: boolean; last: boolean; center: 
 }
 
 const TIMINGS: { value: DunningTiming; label: string }[] = [
-  { value: 'before_due', label: 'Before due' },
-  { value: 'after_due', label: 'After due' },
-  { value: 'after_previous', label: 'After previous' },
+  { value: 'before_due', label: translate('beforeDue') },
+  { value: 'after_due', label: translate('afterDue') },
+  { value: 'after_previous', label: translate('afterPrevious') },
 ]
 
 const DAYS_SUFFIX: Record<DunningTiming, string> = {
-  before_due: 'days before the due date',
-  after_due: 'days after the due date',
-  after_previous: 'days after the previous one',
+  before_due: translate('daysBeforeTheDueDate'),
+  after_due: translate('daysAfterTheDueDate'),
+  after_previous: translate('daysAfterThePreviousOne'),
 }
 
 const id = (field: string) => `dunning-step-${field}`
@@ -372,8 +381,10 @@ function StepDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{index === null ? 'New reminder' : `Edit ${title}`}</DialogTitle>
-          <DialogDescription>Applies to the section; Save there to keep it.</DialogDescription>
+          <DialogTitle>
+            {index === null ? translate('newReminder') : translate('edit5', { title: title })}
+          </DialogTitle>
+          <DialogDescription>{translate('appliesToTheSectionSaveThereToKeepIt')}</DialogDescription>
         </DialogHeader>
         <form
           noValidate
@@ -385,9 +396,9 @@ function StepDialog({
         >
           <FormField
             id={id('name')}
-            label="Name"
+            label={translate('name')}
             error={errors.name}
-            hint="Leave empty for the standard title in the invoice’s language."
+            hint={translate('leaveEmptyForTheStandardTitleInTheInvoice')}
           >
             <input
               {...describedBy(id('name'), errors.name)}
@@ -404,12 +415,12 @@ function StepDialog({
           <FormField
             id={id('days')}
             required
-            label="When"
+            label={translate('when')}
             error={errors.days ?? errors.timing}
             group
           >
             <Segmented
-              label="When"
+              label={translate('when')}
               fill
               value={draft.timing}
               options={TIMINGS}
@@ -418,7 +429,7 @@ function StepDialog({
             <UnitInput
               {...describedBy(id('days'), errors.days ?? errors.timing)}
               inputMode="numeric"
-              aria-label="Days"
+              aria-label={translate('days2')}
               unit={DAYS_SUFFIX[draft.timing]}
               value={draft.days}
               onChange={(e) => set({ days: e.target.value.replace(/\D/g, '').slice(0, 2) })}
@@ -426,15 +437,15 @@ function StepDialog({
             />
           </FormField>
           {isNote(draft) ? (
-            <SettingsPreview label="About notes">
-              A note before the due date is friendly: no fee, no interest, no overdue wording.
+            <SettingsPreview label={translate('aboutNotes')}>
+              {translate('aNoteBeforeTheDueDateIsFriendlyNo')}
             </SettingsPreview>
           ) : (
             <FormField
               id={id('fee')}
-              label="Fee"
+              label={translate('fee2')}
               error={errors.fee}
-              tip="Charged only if agreed with the client, e.g. in your terms. In the invoice’s currency; 0 for none."
+              tip={translate('chargedOnlyIfAgreedWithTheClientEG')}
             >
               <UnitInput
                 {...describedBy(id('fee'), errors.fee)}
@@ -449,9 +460,9 @@ function StepDialog({
           )}
           <div className="flex items-center justify-between gap-4 text-body">
             <label htmlFor={id('qr')} className="grid gap-0.5">
-              <span className="font-medium">QR bill</span>
+              <span className="font-medium">{translate('qrBill')}</span>
               <span className="text-body-sm text-muted-foreground">
-                Attach a QR bill for the total to the letter.
+                {translate('attachAQRBillForTheTotalToThe')}
               </span>
             </label>
             <Switch
@@ -462,9 +473,9 @@ function StepDialog({
           </div>
           <FormField
             id={id('text')}
-            label="Own text"
+            label={translate('ownText')}
             error={errors.text}
-            hint="Leave empty for the standard text in the invoice’s language."
+            hint={translate('leaveEmptyForTheStandardTextInTheInvoice')}
           >
             <textarea
               {...describedBy(id('text'), errors.text)}
@@ -476,9 +487,9 @@ function StepDialog({
             />
           </FormField>
           {!draft.text.trim() && (
-            <SettingsPreview label="Standard text">
+            <SettingsPreview label={translate('standardText')}>
               <span className="block font-medium text-foreground">
-                Standard text (shown in English)
+                {translate('standardTextShownInEnglish')}
               </span>
               {standardText(withDraft, at)}
             </SettingsPreview>
@@ -491,24 +502,25 @@ function StepDialog({
                 className="sm:mr-auto"
                 onClick={() => setConfirming(true)}
               >
-                <Trash2 aria-hidden /> Remove reminder
+                <Trash2 aria-hidden />
+                {translate('removeReminder')}
               </Button>
             ) : (
               <span />
             )}
             <div className="flex gap-2 max-sm:grid max-sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                {translate('cancel')}
               </Button>
-              <Button type="submit">Apply</Button>
+              <Button type="submit">{translate('apply')}</Button>
             </div>
           </DialogFooter>
         </form>
         {confirming && (
           <ConfirmDialog
-            title={`Remove ${title}?`}
-            body="It goes when you save the Dunning section. Notices already sent stay."
-            confirmLabel="Remove"
+            title={translate('remove9', { title: title })}
+            body={translate('itGoesWhenYouSaveTheDunningSectionNotices')}
+            confirmLabel={translate('remove7')}
             tone="destructive"
             onDecide={(approved) => {
               setConfirming(false)

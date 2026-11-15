@@ -1,3 +1,4 @@
+import { localizedHref } from '@helvetly/i18n'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Children, memo, type ReactNode } from 'react'
@@ -69,7 +70,7 @@ const components: Components = {
   img: ({ alt }) => <>{alt}</>,
   a: ({ children, href }) => (
     <a
-      href={href}
+      href={localizedHref(href)}
       rel="noopener noreferrer"
       className="underline decoration-heidi/40 underline-offset-2 hover:decoration-heidi"
     >

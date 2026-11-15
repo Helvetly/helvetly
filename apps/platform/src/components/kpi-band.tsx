@@ -1,9 +1,10 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 /**
  * The light band of key figures under the tabs: a horizontal snap scroll in a phone-wide panel,
@@ -19,14 +20,14 @@ export function KpiBand({ loading, children }: { loading: boolean; children: Rea
   return (
     <section
       ref={scroll}
-      aria-label="Key figures"
+      aria-label={translate('keyFigures')}
       className="relative flex shrink-0 snap-x snap-mandatory overflow-x-auto border-b @xl:grid @xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] @xl:overflow-visible"
     >
       <Button
         variant="outline"
         size="icon-sm"
-        aria-label="Scroll key figures"
-        title="Use the Left and Right arrow keys to scroll"
+        aria-label={translate('scrollKeyFigures')}
+        title={translate('useTheLeftAndRightArrowKeysToScroll')}
         className="sr-only absolute top-2 right-2 z-10 focus:not-sr-only @xl:hidden"
         onClick={() => page(1)}
         onKeyDown={(event) => {

@@ -5,20 +5,21 @@ import { Repeat } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { type Attention, type Engagement, type PeriodSummary } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { UNITS } from '@/lib/invoices'
 
 const ATTENTION: Record<Attention, { label: string; tone: Tone }> = {
-  to_invoice: { label: 'Needs invoicing', tone: 'blue' },
-  overage: { label: 'Overage', tone: 'red' },
-  under_pace: { label: 'Behind pace', tone: 'amber' },
-  ending_soon: { label: 'Ending soon', tone: 'gray' },
+  to_invoice: { label: translate('needsInvoicing'), tone: 'blue' },
+  overage: { label: translate('overage'), tone: 'red' },
+  under_pace: { label: translate('behindPace'), tone: 'amber' },
+  ending_soon: { label: translate('endingSoon'), tone: 'gray' },
 }
 
 const STATUS: Record<Engagement['status'], { label: string; tone: Tone }> = {
-  scheduled: { label: 'Scheduled', tone: 'gray' },
-  active: { label: 'Active', tone: 'green' },
-  ended: { label: 'Ended', tone: 'gray' },
-  cancelled: { label: 'Cancelled', tone: 'red' },
+  scheduled: { label: translate('scheduled'), tone: 'gray' },
+  active: { label: translate('active'), tone: 'green' },
+  ended: { label: translate('ended'), tone: 'gray' },
+  cancelled: { label: translate('cancelled'), tone: 'red' },
 }
 
 export function EngagementStatusBadge({ status }: { status: Engagement['status'] }) {
@@ -46,9 +47,9 @@ export function BillingLabel({
 }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      {engagement.billing === 'advance' ? 'Advance' : 'Arrears'}
+      {engagement.billing === 'advance' ? translate('advance') : translate('arrears')}
       {engagement.recurrence !== 'none' && (
-        <Repeat aria-label="Recurring" className="size-3.5 text-muted-foreground" />
+        <Repeat aria-label={translate('recurring')} className="size-3.5 text-muted-foreground" />
       )}
     </span>
   )
@@ -103,9 +104,14 @@ export function ProgressBar({
   const available = Number(period.available)
   const used = Number(period.used)
   const expected = Number(period.expected)
-  const label = `${plain(period.used)} of ${withUnit(period.quantity, unit)} used`
+  const label = translate('ofUsed', {
+    value1: plain(period.used),
+    value2: withUnit(period.quantity, unit),
+  })
   const text =
-    Number(period.overage) > 0 ? `${label}, ${withUnit(period.overage, unit)} over` : label
+    Number(period.overage) > 0
+      ? translate('over', { label: label, value2: withUnit(period.overage, unit) })
+      : label
   const showTick = period.state === 'open' && expected > 0 && expected < available
 
   return (

@@ -1,13 +1,14 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { PortalLogin } from '@/components/portal-login'
-
-export const metadata: Metadata = { title: 'Sign in' }
 
 export default function PortalLoginPage() {
   return (
-    <main>
-      <PortalLogin />
-    </main>
+    <>
+      <PageTitle message="signIn" />
+
+      <main>
+        <PortalLogin />
+      </main>
+    </>
   )
 }

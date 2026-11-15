@@ -9,6 +9,7 @@ import {
   type EditorValues,
 } from '@/components/invoices/editor-model'
 import type { Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { addDays, type InvoiceInput, type InvoiceSettings } from '@/lib/invoices'
 import type { Quote, QuoteInput } from '@/lib/quotes'
 
@@ -50,7 +51,7 @@ export function toQuoteInput(values: QuoteValues): {
 } {
   const { input: all, errors, keys } = toInput(values)
   if (values.valid_until < values.issue_date)
-    errors.valid_until = 'The quote must be valid on or after its date.'
+    errors.valid_until = translate('theQuoteMustBeValidOnOrAfterIts')
   // The invoice-only fields (due date, payment methods, …) stay out: the API refuses them.
   const input: Partial<QuoteInput> = {
     ...(all.client_id ? { client_id: all.client_id } : {}),

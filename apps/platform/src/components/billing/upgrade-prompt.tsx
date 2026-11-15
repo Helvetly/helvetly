@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -14,6 +13,7 @@ import { toast } from 'sonner'
 
 import { errorMessage } from '@/lib/api'
 import { LIMIT_LABELS, limitReached, planRequired, type LimitReached } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 import { refusedScope } from '@/lib/permissions'
 
 import { UsageMeter } from './usage-meter'
@@ -48,15 +48,15 @@ const close = () => {
 }
 
 const TITLES: Record<LimitReached['limit'], string> = {
-  members: 'Member limit reached',
-  clients: 'Client limit reached',
-  invoices_per_month: 'Monthly invoice limit reached',
-  expenses_per_month: 'Monthly expense limit reached',
-  products: 'Catalogue limit reached',
-  engagements: 'Engagement limit reached',
-  signatures_per_month: 'Monthly signature limit reached',
-  storage_bytes: 'Storage is full',
-  ai_tokens_per_month: 'Monthly AI allowance used',
+  members: translate('memberLimitReached'),
+  clients: translate('clientLimitReached'),
+  invoices_per_month: translate('monthlyInvoiceLimitReached'),
+  expenses_per_month: translate('monthlyExpenseLimitReached'),
+  products: translate('catalogueLimitReached'),
+  engagements: translate('engagementLimitReached'),
+  signatures_per_month: translate('monthlySignatureLimitReached'),
+  storage_bytes: translate('storageIsFull'),
+  ai_tokens_per_month: translate('monthlyAIAllowanceUsed'),
 }
 
 export function UpgradePrompt() {
@@ -92,10 +92,10 @@ export function UpgradePrompt() {
         />
         <div className="mt-6 grid grid-cols-2 gap-2">
           <Button variant="outline" size="xl" onClick={close}>
-            Not now
+            {translate('notNow')}
           </Button>
           <Button asChild size="xl" onClick={close}>
-            <Link href="/settings/billing/plans">See plans</Link>
+            <Link href="/settings/billing/plans">{translate('seePlans')}</Link>
           </Button>
         </div>
       </DialogContent>

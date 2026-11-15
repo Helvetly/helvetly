@@ -1,6 +1,7 @@
 // Closed periods, the audit log and self-billing agreements, typed by hand from
 // docs/books-contract.md.
 import { request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type Person = { id: string; name: string }
 export type Period = { month: string; closed_at: string; closed_by: Person | null }
@@ -84,19 +85,19 @@ export const booksApi = {
 export const exportUrl = () => '/api/v1/audit-log/export'
 
 export const EVENT_LABELS: Record<string, string> = {
-  'invoice.issued': 'Invoice issued',
-  'invoice.xml_archived': 'E-invoice XML archived',
-  'invoice.voided': 'Invoice voided',
-  'invoice.replaced': 'Invoice replaced',
-  'payment.added': 'Payment added',
-  'payment.deleted': 'Payment deleted',
-  'refund.added': 'Refund added',
-  'credit.issued': 'Credit note issued',
-  'expense.booked': 'Expense booked',
-  'expense.voided': 'Expense voided',
-  'expense.payment_changed': 'Expense payment changed',
-  'period.closed': 'Period closed',
-  'period.reopened': 'Period reopened',
-  'plan.created': 'Instalment plan created',
-  'plan.cancelled': 'Instalment plan cancelled',
+  'invoice.issued': translate('invoiceIssued'),
+  'invoice.xml_archived': translate('eInvoiceXMLArchived'),
+  'invoice.voided': translate('invoiceVoided'),
+  'invoice.replaced': translate('invoiceReplaced'),
+  'payment.added': translate('paymentAdded'),
+  'payment.deleted': translate('paymentDeleted2'),
+  'refund.added': translate('refundAdded'),
+  'credit.issued': translate('creditNoteIssued'),
+  'expense.booked': translate('expenseBooked2'),
+  'expense.voided': translate('expenseVoided2'),
+  'expense.payment_changed': translate('expensePaymentChanged'),
+  'period.closed': translate('periodClosed'),
+  'period.reopened': translate('periodReopened'),
+  'plan.created': translate('instalmentPlanCreated'),
+  'plan.cancelled': translate('instalmentPlanCancelled'),
 }

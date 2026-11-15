@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Disclosure } from '@helvetly/ui/components/disclosure'
 import {
@@ -42,6 +42,7 @@ import { NativeSelect } from '@/components/clients/fields'
 import { fixCount, FixDialog, FixLink, FixList } from '@/components/fix-list'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { saveResponse } from '@/lib/invoice-download'
 import { formatAmount, settingsFix, today } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
@@ -67,13 +68,19 @@ const reportKey = (period: string) => ['vat-return', 'report', period] as const
 const card = 'rounded-xl border border-border bg-card'
 const drawer = 'w-full! max-w-none! gap-0 bg-card p-0 sm:w-[min(720px,100vw)]!'
 
-const METHODS = { effective: 'Effective method', net_tax_rate: 'Net tax rate method' } as const
-const BASES = { agreed: 'Agreed consideration', received: 'Received consideration' } as const
+const METHODS = {
+  effective: translate('effectiveMethod'),
+  net_tax_rate: translate('netTaxRateMethod'),
+} as const
+const BASES = {
+  agreed: translate('agreedConsideration'),
+  received: translate('receivedConsideration'),
+} as const
 const LENGTHS = {
-  quarterly: 'Quarterly',
-  half_yearly: 'Half-yearly',
-  monthly: 'Monthly',
-  yearly: 'Yearly',
+  quarterly: translate('quarterly'),
+  half_yearly: translate('halfYearly'),
+  monthly: translate('monthly2'),
+  yearly: translate('yearly3'),
 } as const
 
 const isKey = <T extends object>(options: T, value: PropertyKey): value is keyof T =>
@@ -131,8 +138,8 @@ export function VATReturnPage() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="VAT return"
-        description="The figures of the ESTV VAT return (MWST-Abrechnung), from issued invoices and booked expenses. Check them, then enter them in the ESTV ePortal."
+        title={translate('vatReturn')}
+        description={translate('theFiguresOfTheESTVVATReturnMWSTAbrechnung')}
       >
         {settings.error ? (
           <p className="text-body text-muted-foreground">{errorMessage(settings.error)}</p>
@@ -188,7 +195,7 @@ function SettleRow({ settings, onEdit }: { settings: VATReturnSettings; onEdit: 
       </span>
       <div className="grid min-w-0 flex-1 gap-0.5">
         <h2 id="vat-settle-title" className="text-body-sm text-muted-foreground">
-          How you settle VAT
+          {translate('howYouSettleVAT')}
         </h2>
         <p className="text-body font-medium text-pretty">
           {[
@@ -200,13 +207,14 @@ function SettleRow({ settings, onEdit }: { settings: VATReturnSettings; onEdit: 
         </p>
         {!manager && (
           <p className="text-body-sm text-muted-foreground">
-            Only an owner or admin can change these.
+            {translate('onlyAnOwnerOrAdminCanChangeThese')}
           </p>
         )}
       </div>
       {manager && (
         <Button variant="outline" size="sm" className="shrink-0" onClick={onEdit}>
-          <PencilLine aria-hidden /> Edit
+          <PencilLine aria-hidden />
+          {translate('edit4')}
         </Button>
       )}
     </section>
@@ -233,7 +241,9 @@ function CurrentReturn({
     <section aria-labelledby="vat-current-title" className={cn(card, 'overflow-hidden')}>
       <header className="flex flex-wrap items-end gap-x-3 gap-y-1.5 border-b border-border/60 px-5 py-4">
         <div className="grid gap-0.5">
-          <span className="text-caption font-medium text-muted-foreground">To file now</span>
+          <span className="text-caption font-medium text-muted-foreground">
+            {translate('toFileNow')}
+          </span>
           <h2 id="vat-current-title" className="text-title-sm font-semibold tabular-nums">
             {report.period}
           </h2>
@@ -243,7 +253,10 @@ function CurrentReturn({
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-1.5 self-center">
           <ClosedBadge report={report} />
-          <StatusBadge tone="gray">Due {formatDate(dueBy(report.to))}</StatusBadge>
+          <StatusBadge tone="gray">
+            {translate('due3')}
+            {formatDate(dueBy(report.to))}
+          </StatusBadge>
         </span>
       </header>
       <Warnings report={report} />
@@ -261,14 +274,16 @@ function CurrentReturn({
               {formatAmount(result.amount)}
             </span>
             <span className="text-caption text-muted-foreground">
-              Ziffer {result.ziffer} · {look.note}
+              {translate('ziffer')}
+              {result.ziffer} · {look.note}
             </span>
           </div>
           <dl className="grid gap-2 text-body-sm">
             {taxDue !== undefined && (
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">
-                  Tax due <span className="text-caption">· 399</span>
+                  {translate('taxDue2')}
+                  <span className="text-caption">· 399</span>
                 </dt>
                 <dd className="tabular-nums">{formatAmount(taxDue)}</dd>
               </div>
@@ -276,7 +291,8 @@ function CurrentReturn({
             {inputTax !== undefined && (
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">
-                  Less input tax <span className="text-caption">· 479</span>
+                  {translate('lessInputTax')}
+                  <span className="text-caption">· 479</span>
                 </dt>
                 <dd className="tabular-nums">
                   {Number(inputTax) > 0 && '− '}
@@ -286,18 +302,17 @@ function CurrentReturn({
             )}
           </dl>
           <Button variant="outline" size="sm" className="justify-self-start" onClick={onDetails}>
-            All figures by Ziffer <ChevronRight aria-hidden />
+            {translate('allFiguresByZiffer')}
+            <ChevronRight aria-hidden />
           </Button>
         </div>
         <div className="grid content-start gap-3 border-t border-border/60 p-5 @3xl/sections:border-t-0 @3xl/sections:border-l">
-          <h3 className="text-body-sm font-medium">How to file</h3>
+          <h3 className="text-body-sm font-medium">{translate('howToFile')}</h3>
           <ol className="grid gap-3 text-body-sm text-pretty text-muted-foreground">
-            <FileStep n={1}>
-              Check the figures and close the period’s months under Settings → Closing.
-            </FileStep>
+            <FileStep n={1}>{translate('checkTheFiguresAndCloseThePeriodSMonths')}</FileStep>
             <FileStep n={2}>
               <span className="grid justify-items-start gap-2">
-                Download the ESTV file.
+                {translate('downloadTheESTVFile')}
                 <ExportButtons
                   period={report.period}
                   exporting={exporting}
@@ -306,8 +321,8 @@ function CurrentReturn({
               </span>
             </FileStep>
             <FileStep n={3}>
-              In the ESTV ePortal, open MWST-Abrechnung pro → Import and upload it. Pay the amount
-              by {formatDate(dueBy(report.to))}.
+              {translate('inTheESTVEPortalOpenMWSTAbrechnungProImport')}
+              {formatDate(dueBy(report.to))}.
             </FileStep>
           </ol>
         </div>
@@ -321,11 +336,13 @@ function ClosedBadge({ report }: { report: VATReturn }) {
   return (
     <span className="flex items-center gap-1">
       <StatusBadge tone={allClosed ? 'green' : 'amber'}>
-        {report.closed_months} of {report.months} months closed
+        {report.closed_months}
+        {translate('of5')}
+        {report.months}
+        {translate('monthsClosed')}
       </StatusBadge>
-      <HelpTip label="About closed months">
-        Close the months of the period under Settings → Closing once their books are done, so these
-        figures can no longer change.
+      <HelpTip label={translate('aboutClosedMonths')}>
+        {translate('closeTheMonthsOfThePeriodUnderSettingsClosing')}
       </HelpTip>
     </span>
   )
@@ -336,7 +353,7 @@ function Warnings({ report }: { report: VATReturn }) {
   return (
     <ul
       className="grid gap-2 border-b border-border/60 bg-warning-surface px-5 py-3"
-      aria-label="Warnings"
+      aria-label={translate('warnings')}
     >
       {report.warnings.map((warning) => (
         <li key={warning.code} className="flex gap-2 text-body-sm text-warning">
@@ -364,22 +381,25 @@ function ExportButtons({
   return (
     <span className="flex flex-wrap gap-2">
       <Button size="sm" disabled={exporting} onClick={onEstv}>
-        <FileCode2 aria-hidden /> {exporting ? 'Exporting…' : 'Export ESTV file (XML)'}
+        <FileCode2 aria-hidden />{' '}
+        {exporting ? translate('exporting') : translate('exportESTVFileXML')}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            More exports <ChevronDown aria-hidden className="text-muted-foreground" />
+            {translate('moreExports')}
+            <ChevronDown aria-hidden className="text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-48">
           <DropdownMenuItem asChild>
-            <a href={vatReturnFileUrl(period, 'pdf')} download>
-              <FileText /> PDF summary
+            <a href={localizedHref(vatReturnFileUrl(period, 'pdf'))} download>
+              <FileText />
+              {translate('pdfSummary')}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <a href={vatReturnFileUrl(period, 'csv')} download>
+            <a href={localizedHref(vatReturnFileUrl(period, 'csv'))} download>
               <SheetIcon /> CSV
             </a>
           </DropdownMenuItem>
@@ -390,9 +410,9 @@ function ExportButtons({
 }
 
 const PERIOD_RESULT = {
-  payable: { label: 'payable', tone: 'text-foreground' },
-  refund: { label: 'refund', tone: 'text-success' },
-  zero: { label: 'Nothing to pay', tone: 'text-muted-foreground' },
+  payable: { label: translate('payable'), tone: 'text-foreground' },
+  refund: { label: translate('refund2'), tone: 'text-success' },
+  zero: { label: translate('nothingToPay'), tone: 'text-muted-foreground' },
 } as const
 
 /** Every ended period as a row: its dates, how many of its months are closed and its result. */
@@ -407,13 +427,13 @@ function PeriodList({
     <section aria-labelledby="vat-periods-title" className={cn(card, 'overflow-hidden')}>
       <header className="border-b border-border/60 px-5 py-3.5">
         <h2 id="vat-periods-title" className="text-body font-semibold">
-          Periods
+          {translate('periods')}
         </h2>
         <p className="text-body-sm text-muted-foreground">
-          Open one for all its figures, the lines to fill in yourself and its exports.
+          {translate('openOneForAllItsFiguresTheLinesTo')}
         </p>
       </header>
-      <ul aria-label="Periods" className="divide-y divide-border/60">
+      <ul aria-label={translate('periods')} className="divide-y divide-border/60">
         {periods.map(({ period, report }) => {
           const result = report && resultOf(report)
           const look = result && PERIOD_RESULT[result.state]
@@ -434,7 +454,10 @@ function PeriodList({
                       <StatusBadge
                         tone={report.closed_months === report.months ? 'green' : 'amber'}
                       >
-                        {report.closed_months} of {report.months} closed
+                        {report.closed_months}
+                        {translate('of5')}
+                        {report.months}
+                        {translate('closed4')}
                       </StatusBadge>
                     ) : null}
                   </span>
@@ -482,11 +505,14 @@ function PeriodDrawer({
     <Sheet open onOpenChange={(next) => !next && onClose()}>
       <SheetContent side="right" className={drawer}>
         <SheetHeader className="border-b border-border/60">
-          <SheetTitle className="text-body font-medium">VAT return {period}</SheetTitle>
+          <SheetTitle className="text-body font-medium">
+            {translate('vatReturn3')}
+            {period}
+          </SheetTitle>
           <SheetDescription className="text-body-sm">
             {report
               ? `${formatDate(report.from)} – ${formatDate(report.to)} · ${METHODS[report.method]} · ${BASES[report.basis]}`
-              : 'Loading the figures…'}
+              : translate('loadingTheFigures')}
           </SheetDescription>
         </SheetHeader>
         {report ? (
@@ -497,7 +523,7 @@ function PeriodDrawer({
             <SheetFooter className="flex-row flex-wrap items-center justify-between border-t border-border/60">
               <ExportButtons period={period} exporting={exporting} onEstv={() => onEstv(period)} />
               <Button variant="ghost" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </SheetFooter>
           </>
@@ -525,12 +551,12 @@ export function ExportBlockersDialog({
   }))
   return (
     <FixDialog
-      title="Can’t export the ESTV file yet"
-      description="No file was made. Fix these, then export again."
+      title={translate('canTExportTheESTVFileYet')}
+      description={translate('noFileWasMadeFixTheseThenExportAgain')}
       onClose={onClose}
       footer={
         <Button variant="ghost" onClick={onClose}>
-          Close
+          {translate('close')}
         </Button>
       }
     >
@@ -553,22 +579,22 @@ export function resultOf(report: VATReturn) {
 
 const RESULTS = {
   payable: {
-    label: 'VAT payable',
-    note: 'Zu bezahlender Betrag',
+    label: translate('vatPayable'),
+    note: translate('zuBezahlenderBetrag'),
     box: 'bg-warning-surface',
     tone: 'text-warning',
     amount: '',
   },
   refund: {
-    label: 'VAT refund',
-    note: 'Guthaben der steuerpflichtigen Person',
+    label: translate('vatRefund'),
+    note: translate('guthabenDerSteuerpflichtigenPerson'),
     box: 'bg-success-surface',
     tone: 'text-success',
     amount: 'text-success',
   },
   zero: {
-    label: 'Nothing to pay',
-    note: 'Zu bezahlender Betrag',
+    label: translate('nothingToPay'),
+    note: translate('zuBezahlenderBetrag'),
     box: 'bg-muted',
     tone: 'text-muted-foreground',
     amount: 'text-muted-foreground',
@@ -590,12 +616,12 @@ function FileStep({ n, children }: { n: number; children: ReactNode }) {
 }
 
 const SECTIONS = [
-  { title: 'Turnover', below: 220 },
-  { title: 'Deductions', below: 300 },
-  { title: 'Tax due', below: 400 },
-  { title: 'Input tax', below: 500 },
-  { title: 'Payable or refund', below: 900 },
-  { title: 'Other cash flows', below: Infinity },
+  { title: translate('turnover'), below: 220 },
+  { title: translate('deductions'), below: 300 },
+  { title: translate('taxDue'), below: 400 },
+  { title: translate('inputTax'), below: 500 },
+  { title: translate('payableOrRefund'), below: 900 },
+  { title: translate('otherCashFlows'), below: Infinity },
 ]
 
 /** The lines in the form's sections; a line without a Ziffer stays in the section before it. */
@@ -616,13 +642,13 @@ export function sectionsOf(lines: VATReturnLine[]) {
 /** Every line of the return by the form's sections; the drawer's title names the period. */
 export function ReturnFigures({ report }: { report: VATReturn }) {
   return (
-    <section aria-label={`VAT return ${report.period}`}>
+    <section aria-label={translate('vatReturn2', { period: report.period })}>
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-5 py-3">
         <ClosedBadge report={report} />
       </div>
       <Warnings report={report} />
       <div className="flex justify-between px-5 pt-3 text-caption font-medium text-muted-foreground">
-        <span>Ziffer · item</span>
+        <span>{translate('zifferItem')}</span>
         <span>CHF</span>
       </div>
       {sectionsOf(report.lines).map((section) => (
@@ -652,9 +678,9 @@ function FigureSection({ title, lines }: { title: string; lines: VATReturnLine[]
         <Disclosure
           className="mx-5 my-2"
           icon={PencilLine}
-          label="Lines to fill in yourself"
+          label={translate('linesToFillInYourself')}
           count={untracked.length}
-          description="Not recorded in Helvetly. Add them in the ePortal if they apply."
+          description={translate('notRecordedInHelvetlyAddThemInTheEPortal')}
         >
           <ul>
             {untracked.map((line) => (
@@ -691,13 +717,15 @@ function FigureRow({ line }: { line: VATReturnLine }) {
           <>
             <span className="block">{formatAmount(line.tax)}</span>
             <span className="block text-caption text-muted-foreground">
-              {formatAmount(line.base)} at {line.rate}%
+              {formatAmount(line.base)}
+              {translate('at')}
+              {line.rate}%
             </span>
           </>
         ) : line.tracked ? (
           formatAmount(line.amount)
         ) : (
-          <span className="text-muted-foreground" title="Not recorded in Helvetly">
+          <span className="text-muted-foreground" title={translate('notRecordedInHelvetly')}>
             —
           </span>
         )}
@@ -716,7 +744,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
     onSuccess: async (data) => {
       queryClient.setQueryData(SETTINGS_KEY, data)
       await queryClient.invalidateQueries({ queryKey: ['vat-return', 'report'] })
-      toast.success('VAT settings saved.')
+      toast.success(translate('vatSettingsSaved'))
       onClose()
     },
     onError: (error) => {
@@ -734,9 +762,9 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
     <Sheet open onOpenChange={(next) => !next && onClose()}>
       <SheetContent side="right" className={cn(drawer, 'sm:w-[min(520px,100vw)]!')}>
         <SheetHeader className="border-b border-border/60">
-          <SheetTitle className="text-body font-medium">How you settle VAT</SheetTitle>
+          <SheetTitle className="text-body font-medium">{translate('howYouSettleVAT')}</SheetTitle>
           <SheetDescription className="text-body-sm">
-            As registered with the ESTV: these decide how every return is worked out.
+            {translate('asRegisteredWithTheESTVTheseDecideHowEvery')}
           </SheetDescription>
         </SheetHeader>
         <form
@@ -751,7 +779,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
             disabled={save.isPending}
             className="grid min-h-0 flex-1 content-start gap-5 overflow-auto p-4"
           >
-            <FormField id="vat-method" required label="Method" error={errors.method}>
+            <FormField id="vat-method" required label={translate('method')} error={errors.method}>
               <NativeSelect
                 id="vat-method"
                 value={draft.method}
@@ -768,7 +796,12 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
               </NativeSelect>
             </FormField>
             <div className="grid gap-5 sm:grid-cols-2">
-              <FormField id="vat-period" required label="Return period" error={errors.period}>
+              <FormField
+                id="vat-period"
+                required
+                label={translate('returnPeriod')}
+                error={errors.period}
+              >
                 <NativeSelect
                   id="vat-period"
                   value={draft.period}
@@ -784,7 +817,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                   ))}
                 </NativeSelect>
               </FormField>
-              <FormField id="vat-basis" required label="Basis" error={errors.basis}>
+              <FormField id="vat-basis" required label={translate('basis')} error={errors.basis}>
                 <NativeSelect
                   id="vat-basis"
                   value={draft.basis}
@@ -808,10 +841,10 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
               >
                 <div className="grid gap-0.5">
                   <p id="vat-net-rates" className="text-body font-medium">
-                    Approved net tax rates
+                    {translate('approvedNetTaxRates')}
                   </p>
                   <p className="text-body-sm text-muted-foreground">
-                    The rates in the ESTV’s approval, one per activity.
+                    {translate('theRatesInTheESTVSApprovalOnePer')}
                   </p>
                 </div>
                 {draft.net_rates.map((rate, index) => (
@@ -819,14 +852,17 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                     key={rate.key}
                     className="grid grid-cols-[minmax(0,1fr)_7rem_auto] items-end gap-2"
                   >
-                    <FormField id={`net-rate-label-${index}`} label={`Activity ${index + 1}`}>
+                    <FormField
+                      id={`net-rate-label-${index}`}
+                      label={translate('activity', { value1: index + 1 })}
+                    >
                       <Input
                         id={`net-rate-label-${index}`}
                         value={rate.label}
                         onChange={(event) => setRate(rate.key, { label: event.target.value })}
                       />
                     </FormField>
-                    <FormField id={`net-rate-${index}`} label="Rate">
+                    <FormField id={`net-rate-${index}`} label={translate('rate2')}>
                       <UnitInput
                         id={`net-rate-${index}`}
                         unit="%"
@@ -839,7 +875,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                       type="button"
                       variant="destructive-ghost"
                       size="icon"
-                      aria-label={`Remove activity ${index + 1}`}
+                      aria-label={translate('removeActivity', { value1: index + 1 })}
                       onClick={() =>
                         set({ net_rates: draft.net_rates.filter((r) => r.key !== rate.key) })
                       }
@@ -862,7 +898,8 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                     })
                   }
                 >
-                  <Plus /> Add a rate
+                  <Plus />
+                  {translate('addARate')}
                 </Button>
                 {rateError && (
                   <p role="alert" className="text-body-sm text-destructive">
@@ -874,10 +911,10 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
           </fieldset>
           <SheetFooter className="flex-row justify-end border-t border-border/60">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? translate('saving') : translate('save2')}
             </Button>
           </SheetFooter>
         </form>

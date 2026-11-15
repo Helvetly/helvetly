@@ -1,7 +1,8 @@
 'use client'
-
 import { cn } from '@helvetly/ui/lib/utils'
 import { useEffect, useRef, useState } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 /**
  * A name edited in place: the base name is selected (not the extension), Enter or leaving the
@@ -41,7 +42,7 @@ export function InlineRename({
   return (
     <input
       ref={input}
-      aria-label="Name"
+      aria-label={translate('name')}
       value={value}
       maxLength={255}
       onChange={(event) => setValue(event.target.value)}

@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -45,6 +45,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { RecordLink } from '@/components/record-link'
 import { RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { downloadEinvoice } from '@/lib/invoice-download'
 import {
   documentName,
@@ -87,7 +88,7 @@ type Run = (command: InvoiceCommand, invoice: InvoiceListItem) => void
 
 /** How the header names the preceding invoice (BT-25). */
 const PRECEDING: Partial<Record<Invoice['kind'], string>> = {
-  debit_note: 'adds to',
+  debit_note: translate('addsTo'),
   corrected: 'corrects',
 }
 
@@ -115,20 +116,22 @@ export function InvoiceDetail({
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(680px,100vw)]! dark:bg-background"
       >
-        <SheetTitle className="sr-only">{invoice ? documentName(invoice) : 'Invoice'}</SheetTitle>
-        <SheetDescription className="sr-only">Invoice details</SheetDescription>
+        <SheetTitle className="sr-only">
+          {invoice ? documentName(invoice) : translate('invoice2')}
+        </SheetTitle>
+        <SheetDescription className="sr-only">{translate('invoiceDetails')}</SheetDescription>
         {invoice ? (
           <Detail invoice={invoice} canManage={canManage} onClose={onClose} run={run} busy={busy} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-[15px]">This invoice couldn’t be loaded.</p>
+            <p className="text-[15px]">{translate('thisInvoiceCouldnTBeLoaded')}</p>
             <p className="text-sm text-muted-foreground">{errorMessage(query.error)}</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('tryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -148,15 +151,19 @@ function primaryFor(invoice: Invoice): {
 } {
   // A plan's source draft is never issued itself: the plan issues its partials.
   if (invoice.status === 'draft' && invoice.plan?.seq !== 0)
-    return { command: 'issue', label: 'Issue', icon: <Stamp /> }
+    return { command: 'issue', label: translate('issue3'), icon: <Stamp /> }
   if (invoice.status === 'open' && invoice.kind !== 'credit_note') {
-    if (!invoice.sent_at) return { command: 'send', label: 'Send', icon: <Send /> }
+    if (!invoice.sent_at) return { command: 'send', label: translate('send'), icon: <Send /> }
     if (invoice.kind === 'proforma')
-      return { command: 'convert_invoice', label: 'Convert to invoice', icon: <ArrowRightLeft /> }
-    return { command: 'payment', label: 'Record payment', icon: <Wallet /> }
+      return {
+        command: 'convert_invoice',
+        label: translate('convertToInvoice2'),
+        icon: <ArrowRightLeft />,
+      }
+    return { command: 'payment', label: translate('recordPayment2'), icon: <Wallet /> }
   }
   // Settled documents: the PDF is what people come for.
-  return { command: null, label: 'Download PDF', icon: <Download /> }
+  return { command: null, label: translate('downloadPDF'), icon: <Download /> }
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -175,21 +182,21 @@ const unitShort = (unit: Invoice['lines'][number]['unit']) =>
 function Timeline({ invoice }: { invoice: Invoice }) {
   const credit = invoice.kind === 'credit_note'
   const steps = [
-    { label: 'Created', at: invoice.created_at },
-    { label: 'Issued', at: invoice.issued_at },
-    ...(credit ? [] : [{ label: 'Sent', at: invoice.sent_at }]),
+    { label: translate('created3'), at: invoice.created_at },
+    { label: translate('issued4'), at: invoice.issued_at },
+    ...(credit ? [] : [{ label: translate('sent3'), at: invoice.sent_at }]),
     // A proforma is never paid: it ends when it is sent (or converted).
     ...(invoice.kind === 'proforma'
       ? []
       : [
           {
             label: credit
-              ? 'Applied'
+              ? translate('applied')
               : invoice.status === 'void'
-                ? 'Voided'
+                ? translate('voided2')
                 : invoice.status === 'replaced'
-                  ? 'Replaced'
-                  : 'Paid',
+                  ? translate('replaced')
+                  : translate('paid'),
             at: ['paid', 'void', 'replaced'].includes(invoice.status) ? invoice.updated_at : null,
           },
         ]),
@@ -227,7 +234,7 @@ function Timeline({ invoice }: { invoice: Invoice }) {
               {step.label}
             </span>
             <span className="-mt-1 text-[12px] text-muted-foreground tabular-nums">
-              {step.at ? formatDate(step.at) : i === current ? 'Next' : '—'}
+              {step.at ? formatDate(step.at) : i === current ? translate('next2') : '—'}
             </span>
           </li>
         )
@@ -267,7 +274,7 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground tabular-nums">
-            {invoice.number ?? 'Draft'}
+            {invoice.number ?? translate('draft')}
           </span>
           <span className="ml-1.5 text-[13px] text-muted-foreground">
             {kindInfo(invoice.kind).label}
@@ -275,7 +282,7 @@ function Detail({
           <div className="ml-auto flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -299,13 +306,14 @@ function Detail({
             {invoice.status === 'draft' && invoice.plan?.seq !== 0 && (
               <Button asChild variant="outline" className="gap-1.5">
                 <Link href={editHref(invoice.id)}>
-                  <Pencil className="size-3.5" /> Edit
+                  <Pencil className="size-3.5" />
+                  {translate('edit4')}
                 </Link>
               </Button>
             )}
             {primary.command === null ? (
               <Button asChild className="gap-1.5">
-                <a href={pdfUrl(invoice.id, true)} download>
+                <a href={localizedHref(pdfUrl(invoice.id, true))} download>
                   {primary.icon} {primary.label}
                 </a>
               </Button>
@@ -319,7 +327,12 @@ function Detail({
               </Button>
             )}
             <RecordPageButton />
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('close')}
+              onClick={onClose}
+            >
               <X />
             </Button>
           </div>
@@ -328,7 +341,7 @@ function Detail({
         <div className="grid gap-5 px-6 pt-6">
           <div className="grid gap-2">
             <p className="flex flex-wrap items-baseline gap-x-1.5 text-[13.5px] text-muted-foreground">
-              {credit ? 'Credit to' : 'Billed to'}
+              {credit ? translate('creditTo') : translate('billedTo')}
               <RecordLink
                 href={`/clients?id=${encodeURIComponent(invoice.client.id)}`}
                 className="group inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2 hover:no-underline"
@@ -336,7 +349,10 @@ function Detail({
                 {invoice.client.name}
                 <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </RecordLink>
-              <span className="text-[12.5px] tabular-nums">· client {invoice.client.number}</span>
+              <span className="text-[12.5px] tabular-nums">
+                {translate('client4')}
+                {invoice.client.number}
+              </span>
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="flex items-baseline gap-2 text-[32px] leading-none font-normal tracking-[-0.025em] tabular-nums">
@@ -357,9 +373,9 @@ function Detail({
                   {dueLabel(invoice.due_date)} · {formatDay(invoice.due_date)}
                 </span>
               ) : invoice.status === 'draft' ? (
-                `Not issued yet · dated ${formatDay(invoice.issue_date)}`
+                translate('notIssuedYetDated', { value1: formatDay(invoice.issue_date) })
               ) : (
-                `Issued ${formatDay(invoice.issue_date)}`
+                translate('issued3', { value1: formatDay(invoice.issue_date) })
               )}
               {invoice.credited_invoice && (
                 <>
@@ -374,7 +390,7 @@ function Detail({
               )}
               {invoice.quote && (
                 <>
-                  {' · from quote '}
+                  {translate('fromQuote')}
                   <RecordLink
                     href={`/quotes?id=${encodeURIComponent(invoice.quote.id)}`}
                     className="text-foreground underline underline-offset-4 hover:no-underline"
@@ -385,7 +401,7 @@ function Detail({
               )}
               {invoice.deducted_on && (
                 <>
-                  {' · deducted on '}
+                  {translate('deductedOn')}
                   <RecordLink
                     href={`/invoices?id=${encodeURIComponent(invoice.deducted_on.id)}`}
                     className="text-foreground underline underline-offset-4 hover:no-underline"
@@ -401,14 +417,17 @@ function Detail({
             <Callout
               tone="warning"
               icon={Undo2}
-              actions={<Button onClick={() => run('refund', invoice)}>Record refund</Button>}
+              actions={
+                <Button onClick={() => run('refund', invoice)}>{translate('recordRefund2')}</Button>
+              }
             >
               <span className="font-medium tabular-nums">
-                Refund due {formatMoney(invoice.refund_due, invoice.currency)}
+                {translate('refundDue2')}
+                {formatMoney(invoice.refund_due, invoice.currency)}
               </span>
               <span className="text-muted-foreground">
                 {' '}
-                — the customer was credited after paying.
+                {translate('theCustomerWasCreditedAfterPaying')}
               </span>
             </Callout>
           )}
@@ -430,14 +449,16 @@ function Detail({
               </div>
               <dl className="grid grid-cols-3 gap-2 text-[13px]">
                 <div>
-                  <dt className="text-muted-foreground">Total</dt>
+                  <dt className="text-muted-foreground">{translate('total')}</dt>
                   <dd className="text-[15px] tabular-nums">
                     {formatMoney(fromCents(payable), invoice.currency)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">
-                    {isZero(invoice.amount_credited) ? 'Paid' : 'Paid · credited'}
+                    {isZero(invoice.amount_credited)
+                      ? translate('paid')
+                      : translate('paidCredited')}
                   </dt>
                   <dd className="text-[15px] tabular-nums">
                     {formatMoney(invoice.amount_paid, invoice.currency)}
@@ -451,7 +472,7 @@ function Detail({
                 </div>
                 <div className="text-right">
                   <dt className="text-muted-foreground">
-                    {isPositive(invoice.refund_due) ? 'Owed back' : 'Due'}
+                    {isPositive(invoice.refund_due) ? translate('owedBack') : translate('due')}
                   </dt>
                   <dd className="text-[15px] font-medium tabular-nums">
                     {formatMoney(
@@ -468,16 +489,16 @@ function Detail({
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[
-              { value: 'overview', label: 'Overview' },
+              { value: 'overview', label: translate('overview') },
               {
                 value: 'payments',
-                label: 'Payments',
+                label: translate('payments'),
                 count: invoice.payments.length + invoice.refunds.length,
                 hidden: credit || proforma || invoice.status === 'draft',
               },
               {
                 value: 'emails',
-                label: 'Emails',
+                label: translate('emails'),
                 count: deliveries.data?.length,
                 hidden: invoice.status === 'draft',
               },
@@ -504,7 +525,7 @@ function Detail({
       </header>
 
       <TabsContent value="overview" className="grid content-start gap-3 p-4 sm:p-5">
-        <Panel title={credit ? 'Credited lines' : 'Lines'}>
+        <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (
               <li key={line.id} className="flex items-start gap-3 py-2.5 first:pt-1">
@@ -519,7 +540,9 @@ function Detail({
                     {formatMoney(line.unit_price, invoice.currency)}
                     {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
                     {invoice.vat_mode !== 'none' &&
-                      ` · VAT ${line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category}`}
+                      translate('vat3', {
+                        value1: line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
+                      })}
                   </span>
                 </span>
                 <Money value={line.amount} currency={invoice.currency} className="text-[14px]" />
@@ -527,10 +550,13 @@ function Detail({
             ))}
           </ul>
           <dl className="mt-2 grid gap-1.5 border-t border-border/60 pt-3 text-[13.5px]">
-            <TotalRow label="Subtotal" value={formatMoney(invoice.subtotal, invoice.currency)} />
+            <TotalRow
+              label={translate('subtotal')}
+              value={formatMoney(invoice.subtotal, invoice.currency)}
+            />
             {!isZero(invoice.discount_amount) && (
               <TotalRow
-                label={`Discount ${invoice.discount_percent}%`}
+                label={translate('discount', { discount_percent: invoice.discount_percent })}
                 value={`−${formatMoney(invoice.discount_amount, invoice.currency)}`}
               />
             )}
@@ -539,14 +565,17 @@ function Detail({
                 <TotalRow
                   key={`${group.category}${group.rate}`}
                   muted
-                  label={`VAT ${group.category === 'S' ? `${group.rate}%` : group.category} on ${formatMoney(group.taxable_amount, invoice.currency)}`}
+                  label={translate('vatOn2', {
+                    value1: group.category === 'S' ? `${group.rate}%` : group.category,
+                    value2: formatMoney(group.taxable_amount, invoice.currency),
+                  })}
                   value={formatMoney(group.vat_amount, invoice.currency)}
                 />
               ))}
             {!isZero(invoice.rounding_amount) && (
               <TotalRow
                 muted
-                label="Rounding"
+                label={translate('rounding')}
                 value={formatMoney(invoice.rounding_amount, invoice.currency)}
               />
             )}
@@ -573,36 +602,40 @@ function Detail({
           <TransmissionsCard invoiceId={invoice.id} canManage={canManage} />
         )}
 
-        <Panel title="Details">
+        <Panel title={translate('details')}>
           {invoice.plan && invoice.plan.seq > 0 && (
-            <Row label="Instalment">
-              {invoice.plan.seq} of {invoice.plan.count}
+            <Row label={translate('instalment')}>
+              {invoice.plan.seq}
+              {translate('of5')}
+              {invoice.plan.count}
             </Row>
           )}
           {invoice.status !== 'draft' && (invoice.instalments || invoice.plan) && (
             <RemindersRow invoice={invoice} canManage={canManage} />
           )}
-          <Row label="Issue date">{formatDay(invoice.issue_date)}</Row>
-          <Row label="Due date">{formatDay(invoice.due_date)}</Row>
+          <Row label={translate('issueDate')}>{formatDay(invoice.issue_date)}</Row>
+          <Row label={translate('dueDate')}>{formatDay(invoice.due_date)}</Row>
           {invoice.service_date && (
-            <Row label="Service">
+            <Row label={translate('service')}>
               {formatDay(invoice.service_date)}
               {invoice.service_date_end && ` – ${formatDay(invoice.service_date_end)}`}
             </Row>
           )}
-          {invoice.reference && <Row label="Client reference">{invoice.reference}</Row>}
-          <Row label="Language · VAT">
+          {invoice.reference && <Row label={translate('clientReference')}>{invoice.reference}</Row>}
+          <Row label={translate('languageVAT')}>
             {invoice.language.toUpperCase()} ·{' '}
             {invoice.vat_mode === 'none'
-              ? 'No VAT'
+              ? translate('noVAT')
               : invoice.vat_mode === 'inclusive'
-                ? 'Prices incl. VAT'
-                : 'Prices excl. VAT'}
+                ? translate('pricesInclVAT')
+                : translate('pricesExclVAT')}
           </Row>
           {invoice.payment.reference && (
             <Row
               label={
-                invoice.payment.reference_type === 'QRR' ? 'QR reference' : 'Creditor reference'
+                invoice.payment.reference_type === 'QRR'
+                  ? translate('qrReference')
+                  : translate('creditorReference')
               }
             >
               <span className="font-mono text-[13px]">
@@ -610,36 +643,37 @@ function Detail({
               </span>
             </Row>
           )}
-          <Row label="Pay to">
+          <Row label={translate('payTo')}>
             <span className="font-mono text-[13px]">
               {invoice.payment.iban ? formatIban(invoice.payment.iban) : '—'}
             </span>
           </Row>
           {isReceivable(invoice.kind) && (
-            <Row label="Payment methods">
+            <Row label={translate('paymentMethods')}>
               <PaymentSummary payment={invoice.payment} />
             </Row>
           )}
           {!isZero(invoice.amount_credited) && (
-            <Row label="Credit notes">
+            <Row label={translate('creditNotes')}>
               <Link
                 href={`/invoices?kind=credit_note&credited=${encodeURIComponent(invoice.id)}`}
                 className="underline underline-offset-4 hover:no-underline"
               >
-                {formatMoney(invoice.amount_credited, invoice.currency)} credited
+                {formatMoney(invoice.amount_credited, invoice.currency)}
+                {translate('credited')}
               </Link>
             </Row>
           )}
         </Panel>
 
         {(invoice.intro || invoice.footer || invoice.note) && (
-          <Panel title="Texts">
-            {invoice.intro && <Row label="Intro">{invoice.intro}</Row>}
-            {invoice.footer && <Row label="Footer">{invoice.footer}</Row>}
+          <Panel title={translate('texts')}>
+            {invoice.intro && <Row label={translate('intro')}>{invoice.intro}</Row>}
+            {invoice.footer && <Row label={translate('footer')}>{invoice.footer}</Row>}
             {invoice.note && (
               <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap">
                 <span className="mb-0.5 block text-[12px] text-muted-foreground">
-                  Internal note
+                  {translate('internalNote')}
                 </span>
                 {invoice.note}
               </p>
@@ -648,7 +682,10 @@ function Detail({
         )}
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
-          Created {formatDate(invoice.created_at)} · Updated {formatDate(invoice.updated_at)}
+          {translate('created5')}
+          {formatDate(invoice.created_at)}
+          {translate('updated')}
+          {formatDate(invoice.updated_at)}
         </p>
       </TabsContent>
 
@@ -658,7 +695,7 @@ function Detail({
 
       <TabsContent value="emails" className="p-4 sm:p-5">
         <Panel
-          title="Sent by email"
+          title={translate('sentByEmail')}
           action={
             invoice.status !== 'draft' && (
               <Button
@@ -682,7 +719,8 @@ function Detail({
                   <span className="grid min-w-0 flex-1 leading-tight">
                     <span className="truncate text-[14px]">{delivery.to.join(', ')}</span>
                     <span className="text-[12.5px] text-muted-foreground">
-                      by {delivery.sent_by.name}
+                      {translate('by2')}
+                      {delivery.sent_by.name}
                     </span>
                   </span>
                   <span className="text-[13px] text-muted-foreground tabular-nums">
@@ -694,8 +732,8 @@ function Detail({
           ) : (
             <p className="py-6 text-center text-[13.5px] text-muted-foreground">
               {deliveries.isLoading
-                ? 'Loading…'
-                : 'Not sent yet. Send it from here, or download the PDF and send it yourself.'}
+                ? translate('loading')
+                : translate('notSentYetSendItFromHereOrDownload')}
             </p>
           )}
         </Panel>
@@ -704,23 +742,25 @@ function Detail({
       <TabsContent value="pdf" className="grid content-start gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-[13px] text-muted-foreground">
-            {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : 'Loading…'}
+            {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : translate('loading')}
           </span>
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <a href={pdfUrl(invoice.id)} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-3.5" /> Open in new tab
+            <a href={localizedHref(pdfUrl(invoice.id))} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-3.5" />
+              {translate('openInNewTab')}
             </a>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <a href={pdfUrl(invoice.id, true)} download>
-              <Download className="size-3.5" /> Download
+            <a href={localizedHref(pdfUrl(invoice.id, true))} download>
+              <Download className="size-3.5" />
+              {translate('download3')}
             </a>
           </Button>
         </div>
         {/* The drawer scrolls the pages; the viewer itself grows with them. */}
         <PdfView
           key={invoice.updated_at}
-          title={`PDF of ${documentName(invoice)}`}
+          title={translate('pdfOf', { value1: documentName(invoice) })}
           src={pdfUrl(invoice.id)}
           onPages={setPages}
           className="overflow-visible rounded-xl"
@@ -756,7 +796,7 @@ function EinvoiceItems({
     <DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">
-        E-invoice XML
+        {translate('eInvoiceXML')}
       </DropdownMenuLabel>
       {einvoiceFormatsFor(sellerCountry, buyerCountry).map((format) => (
         <DropdownMenuItem
@@ -786,24 +826,27 @@ const useToggleReminders = () =>
 function RemindersRow({ invoice, canManage }: { invoice: Invoice; canManage: boolean }) {
   const toggle = useToggleReminders()
   return (
-    <Row label="Reminders">
+    <Row label={translate('reminders')}>
       <span className="flex items-center gap-2">
         <Switch
-          aria-label="Payment reminders"
+          aria-label={translate('paymentReminders')}
           checked={invoice.reminders_enabled}
           disabled={!canManage || toggle.isPending}
           onCheckedChange={(on) =>
             toggle.mutate(
               { id: invoice.id, on },
               {
-                onSuccess: () => toast.success(on ? 'Reminders on.' : 'Reminders off.'),
+                onSuccess: () =>
+                  toast.success(on ? translate('remindersOn') : translate('remindersOff')),
                 onError: toastError,
               },
             )
           }
         />
         <span className="text-[13px] text-muted-foreground">
-          {invoice.reminders_enabled ? 'Sent before and after each due date' : 'Off'}
+          {invoice.reminders_enabled
+            ? translate('sentBeforeAndAfterEachDueDate')
+            : translate('off')}
         </span>
       </span>
     </Row>
@@ -860,7 +903,7 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
   const refundDue = isPositive(invoice.refund_due)
   return (
     <Panel
-      title="Payments and refunds"
+      title={translate('paymentsAndRefunds')}
       action={
         (open || refundDue) && (
           <Button
@@ -895,7 +938,7 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
                 </span>
                 <span className="grid min-w-0 flex-1 leading-tight">
                   <span className="text-[14px]">
-                    {refund && 'Refund · '}
+                    {refund && translate('refund')}
                     {PAYMENT_METHODS.find((method) => method.value === row.method)?.label} ·{' '}
                     {formatDay(row.on)}
                   </span>
@@ -915,7 +958,7 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
                   <Button
                     variant="destructive-ghost"
                     size="icon-xs"
-                    aria-label={`Delete ${row.kind} of ${row.amount}`}
+                    aria-label={translate('deleteOf', { kind: row.kind, amount: row.amount })}
                     className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
                     onClick={() => setDeleting({ kind: row.kind, id: row.id })}
                   >
@@ -928,18 +971,24 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
         </ul>
       ) : (
         <p className="py-6 text-center text-[13.5px] text-muted-foreground">
-          {open ? 'No payments yet.' : 'No payments recorded.'}
+          {open ? translate('noPaymentsYet') : translate('noPaymentsRecorded')}
         </p>
       )}
       {deleting && (
         <ConfirmDialog
-          title={deleting.kind === 'refund' ? 'Delete this refund?' : 'Delete this payment?'}
+          title={
+            deleting.kind === 'refund'
+              ? translate('deleteThisRefund')
+              : translate('deleteThisPayment')
+          }
           body={
             deleting.kind === 'refund'
-              ? 'The amount counts as owed back to the customer again. Use this to fix a mistake.'
-              : 'The amount counts as owed again and the status is recalculated. Use this to fix a mistake.'
+              ? translate('theAmountCountsAsOwedBackToTheCustomer')
+              : translate('theAmountCountsAsOwedAgainAndTheStatus')
           }
-          confirmLabel={deleting.kind === 'refund' ? 'Delete refund' : 'Delete payment'}
+          confirmLabel={
+            deleting.kind === 'refund' ? translate('deleteRefund') : translate('deletePayment')
+          }
           tone="destructive"
           onDecide={(approved) => {
             const target = deleting
@@ -948,7 +997,11 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
             // A payment that funded a refund is refused (409): its message says why.
             const done = {
               onSuccess: () =>
-                toast.success(target.kind === 'refund' ? 'Refund deleted.' : 'Payment deleted.'),
+                toast.success(
+                  target.kind === 'refund'
+                    ? translate('refundDeleted')
+                    : translate('paymentDeleted'),
+                ),
               onError: (error: unknown) => toast.error(errorMessage(error)),
             }
             if (target.kind === 'refund') removeRefund.mutate(target.id, done)

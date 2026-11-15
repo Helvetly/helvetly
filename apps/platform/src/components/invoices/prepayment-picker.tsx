@@ -1,8 +1,8 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 
+import { translate } from '@/lib/i18n'
 import { usePaidPrepayments, type Invoice, type InvoiceListItem } from '@/lib/invoices'
 
 import { Money } from './invoice-bits'
@@ -40,7 +40,7 @@ export function PrepaymentPicker({
   return (
     <section aria-labelledby="deduct-prepayments" className="grid gap-1.5 rounded-xl px-1">
       <h2 id="deduct-prepayments" className="text-[13px] font-medium text-muted-foreground">
-        Deduct prepayments
+        {translate('deductPrepayments')}
       </h2>
       {options.length ? (
         <ul className="grid gap-1">
@@ -52,7 +52,8 @@ export function PrepaymentPicker({
                   onCheckedChange={(checked) => toggle(prepayment, checked === true)}
                 />
                 <span className="min-w-0 flex-1 truncate">
-                  Prepayment {prepayment.number ?? 'draft'}
+                  {translate('prepayment')}
+                  {prepayment.number ?? 'draft'}
                 </span>
                 <Money value={prepayment.payable_total} currency={currency} />
               </label>
@@ -62,8 +63,8 @@ export function PrepaymentPicker({
       ) : (
         <p className="px-2 text-[13px] text-muted-foreground">
           {list.isLoading
-            ? 'Loading…'
-            : `No paid prepayment invoices for this client in ${currency}.`}
+            ? translate('loading')
+            : translate('noPaidPrepaymentInvoicesForThisClientIn', { currency: currency })}
         </p>
       )}
       {list.hasNextPage && (
@@ -74,7 +75,7 @@ export function PrepaymentPicker({
           disabled={list.isFetchingNextPage}
           onClick={() => void list.fetchNextPage()}
         >
-          {list.isFetchingNextPage ? 'Loading…' : 'Load more prepayments'}
+          {list.isFetchingNextPage ? translate('loading') : translate('loadMorePrepayments')}
         </Button>
       )}
     </section>

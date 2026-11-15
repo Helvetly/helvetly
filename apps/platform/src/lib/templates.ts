@@ -1,11 +1,11 @@
 'use client'
-
 // Templates, typed by hand from docs/templates-contract.md.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { refreshDocuments } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 import {
   checkSigners,
@@ -41,15 +41,15 @@ export const DATA_KINDS: readonly DataKind[] = [
 ]
 
 export const DATA_LABELS: Record<DataKind, string> = {
-  'client.name': 'Client name',
-  'client.address': 'Address',
-  'client.email': 'Email',
-  'client.phone': 'Phone',
-  'client.number': 'Client no.',
-  'client.vat_number': 'VAT number',
-  'contact.name': 'Contact person',
-  today: 'Today’s date',
-  custom: 'Ask when filling',
+  'client.name': translate('clientName'),
+  'client.address': translate('address'),
+  'client.email': translate('email'),
+  'client.phone': translate('phone'),
+  'client.number': translate('clientNo'),
+  'client.vat_number': translate('vatNumber'),
+  'contact.name': translate('contactPerson'),
+  today: translate('todaySDate'),
+  custom: translate('askWhenFilling'),
 }
 
 export type TemplateKind = DataKind | FieldKind
@@ -183,13 +183,13 @@ export function templateProblem(
   },
 ): string | null {
   if (step === 0) {
-    if (!state.document) return 'Choose the PDF the template is built on.'
-    if (!state.name.trim()) return 'Give the template a name.'
+    if (!state.document) return translate('chooseThePDFTheTemplateIsBuiltOn')
+    if (!state.name.trim()) return translate('giveTheTemplateAName')
   }
   if (step === 1 && state.signers.some((role) => !role.label.trim()))
-    return 'Name every signer, e.g. “Client” or “Managing director”.'
+    return translate('nameEverySignerEGClientOrManagingDirector')
   if (step === 2) {
-    if (state.fields.length === 0) return 'Place at least one field.'
+    if (state.fields.length === 0) return translate('placeAtLeastOneField')
     const unsigned = state.signers.filter(
       (_, index) =>
         !state.fields.some(
@@ -197,9 +197,11 @@ export function templateProblem(
         ),
     )
     if (unsigned.length > 0)
-      return `Add a signature field for ${unsigned.map((role) => role.label).join(', ')}.`
+      return translate('addASignatureFieldFor', {
+        value1: unsigned.map((role) => role.label).join(', '),
+      })
     if (state.fields.some((field) => asks(field.kind) && !field.label?.trim()))
-      return 'Say what to enter in each text field.'
+      return translate('sayWhatToEnterInEachTextField')
   }
   return null
 }
@@ -289,22 +291,23 @@ export function generateProblem(
   },
 ): string | null {
   if (step === 0) {
-    if (!state.template) return 'Choose a template.'
-    if (!state.client) return 'Choose the client.'
+    if (!state.template) return translate('chooseATemplate')
+    if (!state.client) return translate('chooseTheClient')
   }
   if (step === 1) {
-    if (!state.title.trim()) return 'Give the document a title.'
+    if (!state.title.trim()) return translate('giveTheDocumentATitle')
     const missing = (state.template?.fields ?? []).find(
       (field) => field.kind === 'custom' && !(state.values[field.id] ?? '').trim(),
     )
-    if (missing) return `Fill in “${missing.label ?? 'the custom field'}”.`
+    if (missing)
+      return translate('fillIn2', { value1: missing.label ?? translate('theCustomField') })
   }
   if (step === 2) {
     if (state.delivery === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.emailTo.trim()))
-      return 'Enter the email address to send it to.'
+      return translate('enterTheEmailAddressToSendItTo')
     if (state.delivery === 'signature') {
       const check = checkSigners(state.signers)
-      if (!check.ok) return check.list || 'Check the signers’ names and email addresses.'
+      if (!check.ok) return check.list || translate('checkTheSignersNamesAndEmailAddresses')
     }
   }
   return null

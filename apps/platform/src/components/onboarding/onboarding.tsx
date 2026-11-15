@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { HeidiOrb, HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
@@ -39,6 +38,7 @@ import {
 } from '@/components/clients/fields'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   ibanInfo,
   logoSrc,
@@ -69,10 +69,10 @@ type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
 
 const LANGUAGES: { value: DocLanguage; label: string }[] = [
-  { value: 'de', label: 'Deutsch' },
-  { value: 'fr', label: 'Français' },
-  { value: 'it', label: 'Italiano' },
-  { value: 'en', label: 'English' },
+  { value: 'de', label: translate('deutsch') },
+  { value: 'fr', label: translate('franAis') },
+  { value: 'it', label: translate('italiano') },
+  { value: 'en', label: translate('english') },
 ]
 
 /** What sign-up calls a new workspace (apps/api/internal/auth/signin.go). */
@@ -216,13 +216,13 @@ export function WelcomePage({ session }: { session: Session }) {
         <header className="flex items-center justify-between gap-3">
           <span className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold tracking-tight">
             <Logo className="size-8" />
-            Helvetly
+            {translate('helvetly')}
           </span>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {step !== 'done' && (
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => void leave()}>
-                Skip for now
+                {translate('skipForNow')}
               </Button>
             )}
           </div>
@@ -296,15 +296,16 @@ export function WelcomePage({ session }: { session: Session }) {
         <LoginShowcase className="m-3 hidden lg:flex" />
       ) : (
         <aside
-          aria-label="Invoice preview"
+          aria-label={translate('invoicePreview')}
           className="relative isolate m-3 hidden flex-col items-center justify-center gap-8 overflow-hidden rounded-2xl border bg-muted/70 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:14px_14px] p-10 lg:flex"
         >
           <div className="grid max-w-sm gap-2 text-center">
             <h2 className="text-xl font-semibold tracking-tight">
-              Your first invoice, <span className="text-primary">taking shape.</span>
+              {translate('yourFirstInvoice')}
+              <span className="text-primary">{translate('takingShape')}</span>
             </h2>
             <p className="text-sm text-balance text-muted-foreground">
-              What you fill in on the left is what your clients see, down to the QR bill.
+              {translate('whatYouFillInOnTheLeftIsWhat')}
             </p>
           </div>
           <InvoicePreview values={values} logo={logo} />
@@ -319,9 +320,17 @@ function Progress({ index, total }: { index: number; total: number }) {
   return (
     <div className="grid gap-2.5">
       <p className="text-xs font-medium text-muted-foreground">
-        Step {index + 1} of {total}
+        {translate('step')}
+        {index + 1}
+        {translate('of5')}
+        {total}
       </p>
-      <progress className="sr-only" aria-label="Setup progress" value={index + 1} max={total} />
+      <progress
+        className="sr-only"
+        aria-label={translate('setupProgress')}
+        value={index + 1}
+        max={total}
+      />
       <div aria-hidden className="flex gap-1.5">
         {Array.from({ length: total }, (_, i) => (
           <span key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
@@ -383,7 +392,8 @@ function Actions({
           className={cn(bigButton, '-ml-3 px-3')}
           onClick={onBack}
         >
-          <ArrowLeft /> Back
+          <ArrowLeft />
+          {translate('back')}
         </Button>
       ) : (
         <span />
@@ -396,7 +406,13 @@ function Actions({
   )
 }
 
-function SkipButton({ onClick, children = 'Skip' }: { onClick: () => void; children?: ReactNode }) {
+function SkipButton({
+  onClick,
+  children = translate('skip'),
+}: {
+  onClick: () => void
+  children?: ReactNode
+}) {
   return (
     <Button
       size="xl"
@@ -425,25 +441,26 @@ function WelcomeStep({
   const features = [
     {
       icon: <ReceiptText className="size-[18px] stroke-[1.75]" />,
-      title: 'Get paid',
-      text: 'Invoices with the Swiss QR bill or as e-invoices, instalments, recurring work billed for you and reminders that go out on their own.',
+      title: translate('getPaid'),
+      text: translate('invoicesWithTheSwissQRBillOrAsE'),
     },
     {
       icon: <FolderOpen className="size-[18px] stroke-[1.75]" />,
-      title: 'Clients & documents',
-      text: 'Contracts from templates, e-signatures, and a portal where clients see their invoices and shared files.',
+      title: translate('clientsDocuments'),
+      text: translate('contractsFromTemplatesESignaturesAndAPortalWhere'),
     },
     {
       icon: <FileUp className="size-[18px] stroke-[1.75]" />,
-      title: 'Bring your data',
-      text: 'Drop in spreadsheets, PDFs or receipts: AI turns them into clients, invoices and expenses for you to check.',
+      title: translate('bringYourData'),
+      text: translate('dropInSpreadsheetsPDFsOrReceiptsAITurnsThem'),
     },
     {
       icon: <HeidiSparkle className="size-[18px]" />,
-      title: 'Heidi, your assistant',
+      title: translate('heidiYourAssistant'),
       text: (
         <>
-          Ask about your numbers or let her draft for you. Open her with <Kbd>⌘J</Kbd>.
+          {translate('askAboutYourNumbersOrLetHerDraftFor')}
+          <Kbd>{translate('j')}</Kbd>.
         </>
       ),
       heidi: true,
@@ -455,10 +472,11 @@ function WelcomeStep({
       <div className="mt-8">
         <StepHeader
           heading={heading}
-          title={name ? `Welcome to Helvetly, ${name}` : 'Welcome to Helvetly'}
+          title={
+            name ? translate('welcomeToHelvetly2', { name: name }) : translate('welcomeToHelvetly')
+          }
         >
-          A few quick steps to get your company ready for its first invoice. It takes about two
-          minutes, and you can skip anything.
+          {translate('aFewQuickStepsToGetYourCompanyReady')}
         </StepHeader>
       </div>
       <ul className="mt-8 grid gap-2.5">
@@ -481,7 +499,8 @@ function WelcomeStep({
       </ul>
       <Actions>
         <Button size="xl" type="button" className={bigButton} onClick={onDone}>
-          Get started <ArrowRight />
+          {translate('getStarted')}
+          <ArrowRight />
         </Button>
       </Actions>
     </div>
@@ -528,18 +547,22 @@ function CompanyStep({
         onDone()
       }}
     >
-      <StepHeader heading={heading} title="Your company">
-        Who your invoices come from. Fill in what you have now; the rest can wait for Settings.
+      <StepHeader heading={heading} title={translate('yourCompany')}>
+        {translate('whoYourInvoicesComeFromFillInWhatYou')}
       </StepHeader>
       <div className="mt-7 grid gap-4">
-        <FormField id="onboarding-name" label="Company name" error={errors.name}>
+        <FormField id="onboarding-name" label={translate('companyName')} error={errors.name}>
           {text('name', 70)}
         </FormField>
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
-          <FormField id="onboarding-street" label="Street" error={errors.street}>
+          <FormField id="onboarding-street" label={translate('street')} error={errors.street}>
             {text('street', 70)}
           </FormField>
-          <FormField id="onboarding-street_number" label="Number" error={errors.street_number}>
+          <FormField
+            id="onboarding-street_number"
+            label={translate('number')}
+            error={errors.street_number}
+          >
             {text('street_number', 16)}
           </FormField>
         </div>
@@ -547,20 +570,20 @@ function CompanyStep({
           <FormField id="onboarding-zip" label="ZIP" error={errors.zip}>
             {text('zip', 16)}
           </FormField>
-          <FormField id="onboarding-city" label="City" error={errors.city}>
+          <FormField id="onboarding-city" label={translate('city')} error={errors.city}>
             {text('city', 35)}
           </FormField>
         </div>
         <FormField
           id="onboarding-country"
-          label="Country"
+          label={translate('country')}
           error={errors.country ?? unsupportedSellerCountry(values?.country ?? '')}
         >
           <Combobox
             id="onboarding-country"
             value={values?.country ?? 'CH'}
             options={COUNTRY_OPTIONS}
-            placeholder="Choose a country"
+            placeholder={translate('chooseACountry2')}
             invalid={!!(errors.country ?? unsupportedSellerCountry(values?.country ?? ''))}
             onChange={(country) => onChange({ country })}
           />
@@ -573,15 +596,15 @@ function CompanyStep({
           hint={
             iban.valid
               ? iban.qr
-                ? 'A QR-IBAN: invoices get a QR reference (QRR).'
-                : 'Invoices get a creditor reference (SCOR).'
-              : 'Where clients pay you; printed on the QR bill.'
+                ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
+                : translate('invoicesGetACreditorReferenceSCOR')
+              : translate('whereClientsPayYouPrintedOnTheQRBill')
           }
         >
           <input
             {...describedBy('onboarding-iban', errors.iban)}
             className={cn(inputClass, 'font-mono tracking-wide')}
-            placeholder="CH93 0076 2011 6238 5295 7"
+            placeholder={translate('ch9300762011623852957')}
             autoComplete="off"
             spellCheck={false}
             value={values?.iban ?? ''}
@@ -596,10 +619,10 @@ function CompanyStep({
       </div>
       <Actions
         onBack={onBack}
-        skip={!edited && <SkipButton onClick={onSkip}>I’ll do it later</SkipButton>}
+        skip={!edited && <SkipButton onClick={onSkip}>{translate('iLlDoItLater')}</SkipButton>}
       >
         <Button size="xl" type="submit" className={bigButton} disabled={busy || !values}>
-          {busy ? 'Saving…' : 'Continue'} <ArrowRight />
+          {busy ? translate('saving') : translate('continue')} <ArrowRight />
         </Button>
       </Actions>
     </form>
@@ -630,11 +653,11 @@ function VatCard({
       <SwitchRow
         id="onboarding-vat"
         className="p-4"
-        label="Registered for VAT"
+        label={translate('registeredForVAT')}
         description={
           on
-            ? `Invoices show your UID with ${suffix} and VAT per rate.`
-            : 'Invoices carry no VAT and say so.'
+            ? translate('invoicesShowYourUIDWithAndVATPerRate', { suffix: suffix })
+            : translate('invoicesCarryNoVATAndSaySo')
         }
         checked={on}
         onCheckedChange={(vat_registered) => onChange({ vat_registered })}
@@ -643,13 +666,15 @@ function VatCard({
         <div className="duration-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1">
           <FormField
             id="onboarding-vat_number"
-            label={swiss ? 'UID number' : 'VAT number'}
+            label={swiss ? translate('uidNumber') : translate('vatNumber')}
             error={error}
           >
             {swiss ? (
               <InputGroup className="h-9 bg-card">
                 <InputGroupAddon>
-                  <InputGroupText className="font-mono text-foreground">CHE-</InputGroupText>
+                  <InputGroupText className="font-mono text-foreground">
+                    {translate('che2')}
+                  </InputGroupText>
                 </InputGroupAddon>
                 <InputGroupInput
                   {...describedBy('onboarding-vat_number', error)}
@@ -700,13 +725,14 @@ function LogoStep({
 }) {
   return (
     <div>
-      <StepHeader heading={heading} title="Add your logo">
-        It goes top left on every invoice and credit note.
+      <StepHeader heading={heading} title={translate('addYourLogo')}>
+        {translate('itGoesTopLeftOnEveryInvoiceAndCredit')}
       </StepHeader>
       <div className="mt-7">{ready && <LogoCard url={url} />}</div>
       <Actions onBack={onBack} skip={!url && <SkipButton onClick={onDone} />}>
         <Button size="xl" type="button" className={bigButton} onClick={onDone}>
-          Continue <ArrowRight />
+          {translate('continue2')}
+          <ArrowRight />
         </Button>
       </Actions>
     </div>
@@ -742,41 +768,44 @@ function PreferencesStep({
         onDone()
       }}
     >
-      <StepHeader heading={heading} title="Invoice defaults">
-        What a new invoice starts with. Each client and invoice can still differ.
+      <StepHeader heading={heading} title={translate('invoiceDefaults')}>
+        {translate('whatANewInvoiceStartsWithEachClientAnd')}
       </StepHeader>
       <div className="mt-7 grid gap-5">
         <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-[13px] font-medium">Language</legend>
+          <legend className="mb-1.5 text-[13px] font-medium">{translate('language')}</legend>
           <Segmented
-            label="Invoice language"
+            label={translate('invoiceLanguage')}
             value={values?.language ?? 'de'}
             options={LANGUAGES}
             onChange={(language) => onChange({ language })}
           />
         </fieldset>
-        <FormField id="onboarding-currency" label="Currency" className="max-w-56">
+        <FormField id="onboarding-currency" label={translate('currency')} className="max-w-56">
           <Combobox
             id="onboarding-currency"
             value={values?.currency ?? 'CHF'}
             options={CURRENCY_OPTIONS}
-            placeholder="Choose a currency"
+            placeholder={translate('chooseACurrency2')}
             onChange={(currency) => onChange({ currency })}
           />
         </FormField>
         <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-[13px] font-medium">Payment terms</legend>
+          <legend className="mb-1.5 text-[13px] font-medium">{translate('paymentTerms')}</legend>
           <Segmented
-            label="Payment terms"
+            label={translate('paymentTerms')}
             value={String(days)}
-            options={terms.map((value) => ({ value: String(value), label: `${value} days` }))}
+            options={terms.map((value) => ({
+              value: String(value),
+              label: translate('days5', { value: value }),
+            }))}
             onChange={(value) => onChange({ default_terms_days: Number(value) })}
           />
         </fieldset>
       </div>
       <Actions onBack={onBack} skip={!edited && <SkipButton onClick={onSkip} />}>
         <Button size="xl" type="submit" className={bigButton} disabled={busy || !values}>
-          {busy ? 'Saving…' : 'Continue'} <ArrowRight />
+          {busy ? translate('saving') : translate('continue')} <ArrowRight />
         </Button>
       </Actions>
     </form>
@@ -806,23 +835,23 @@ function DoneStep({
           done: missing.length === 0,
           text:
             missing.length === 0 ? (
-              'Your company is ready to issue invoices'
+              translate('yourCompanyIsReadyToIssueInvoices')
             ) : (
               <>
-                Still needed to issue invoices:{' '}
+                {translate('stillNeededToIssueInvoices')}{' '}
                 {missing.map((field) => MISSING_LABELS[field] ?? field).join(', ')}.{' '}
                 <button
                   type="button"
                   className="font-medium text-foreground underline underline-offset-3"
                   onClick={() => onOpen('/settings/invoices')}
                 >
-                  Finish in Settings
+                  {translate('finishInSettings')}
                 </button>
               </>
             ),
         },
         ...(settings.logo_url
-          ? [{ key: 'logo', done: true, text: 'Your logo is on every PDF' }]
+          ? [{ key: 'logo', done: true, text: translate('yourLogoIsOnEveryPDF') }]
           : []),
       ]
     : []
@@ -832,11 +861,14 @@ function DoneStep({
         <PartyPopper className="size-7 stroke-[1.75] motion-safe:animate-[bounce_1s_ease-in-out_2]" />
       </div>
       <div className="mt-6">
-        <StepHeader heading={heading} title="You’re all set">
-          Here is where most people start. Heidi is one shortcut away whenever you need her.
+        <StepHeader heading={heading} title={translate('youReAllSet')}>
+          {translate('hereIsWhereMostPeopleStartHeidiIsOne')}
         </StepHeader>
       </div>
-      <ul aria-label="What is set up" className="mt-7 grid divide-y rounded-xl border bg-card">
+      <ul
+        aria-label={translate('whatIsSetUp')}
+        className="mt-7 grid divide-y rounded-xl border bg-card"
+      >
         {items.map((item) => (
           <li
             key={item.key}
@@ -857,23 +889,23 @@ function DoneStep({
       <div className="mt-7 grid gap-2.5 sm:grid-cols-2">
         <NextStep
           icon={<UserPlus />}
-          title="Add your first client"
-          description="Who you work for, with their address and contacts."
+          title={translate('addYourFirstClient')}
+          description={translate('whoYouWorkForWithTheirAddressAndContacts')}
           primary
           disabled={busy}
           onClick={() => onOpen('/clients?new=1')}
         />
         <NextStep
           icon={<ReceiptText />}
-          title="Create an invoice"
-          description="Draft it, preview the PDF, issue and send it."
+          title={translate('createAnInvoice')}
+          description={translate('draftItPreviewThePDFIssueAndSendIt')}
           disabled={busy}
           onClick={() => onOpen('/invoices/new')}
         />
         <NextStep
           icon={<FileUp />}
-          title="Import your clients"
-          description="From a spreadsheet, PDF or your old tool; you check them before they’re saved."
+          title={translate('importYourClients')}
+          description={translate('fromASpreadsheetPDFOrYourOldToolYou')}
           disabled={busy}
           onClick={() => onOpen('/clients?import=1')}
         />
@@ -881,10 +913,11 @@ function DoneStep({
           icon={<HeidiSparkle />}
           title={
             <>
-              Ask Heidi <Kbd className="ml-1">⌘J</Kbd>
+              {translate('askHeidi2')}
+              <Kbd className="ml-1">{translate('j')}</Kbd>
             </>
           }
-          description="Ask about anything in your workspace."
+          description={translate('askAboutAnythingInYourWorkspace')}
           heidi
           disabled={busy}
           onClick={onAskHeidi}
@@ -892,7 +925,8 @@ function DoneStep({
       </div>
       <Actions>
         <Button size="xl" type="button" className={bigButton} disabled={busy} onClick={onClose}>
-          Go to the dashboard <ArrowRight />
+          {translate('goToTheDashboard')}
+          <ArrowRight />
         </Button>
       </Actions>
     </div>

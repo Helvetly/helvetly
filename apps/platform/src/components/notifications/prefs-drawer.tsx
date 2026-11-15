@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -17,6 +16,8 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 import { NotificationPrefs } from './notification-prefs'
 
@@ -129,19 +130,25 @@ export function NotificationPrefsDrawer({
         <header className="flex shrink-0 items-start gap-3 border-b px-4 py-3 sm:px-5">
           <IconTile icon={Bell} variant="section" size="md" />
           <div className="grid min-w-0 flex-1 gap-0.5">
-            <SheetTitle className="text-title-sm font-medium">Notification preferences</SheetTitle>
+            <SheetTitle className="text-title-sm font-medium">
+              {translate('notificationPreferences')}
+            </SheetTitle>
             <SheetDescription className="text-body-sm text-pretty text-muted-foreground">
-              What Helvetly tells you about, by email and in the bell. Yours alone, in every
-              workspace.
+              {translate('whatHelvetlyTellsYouAboutByEmailAndIn')}
             </SheetDescription>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={translate('close')}
+                onClick={onClose}
+              >
                 <X />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Close (Esc)</TooltipContent>
+            <TooltipContent>{translate('closeEsc')}</TooltipContent>
           </Tooltip>
         </header>
         <NotificationPrefs />

@@ -1,10 +1,10 @@
 'use client'
-
 import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
 import { ArrowUp, Check, Mail } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 
 // Heidi's console: an example question types itself, she thinks, and her answer appears as the UI she
 // really returns. Each example is something the real Heidi does (docs/heidi-contract.md). The figures
@@ -22,15 +22,38 @@ function Row({ children, d }: { children: ReactNode; d: number }) {
 
 function Overdue() {
   const rows = [
-    ['RC', 'Rhein Consulting AG', '2026-0416', '9’720.00', 12, 'from-peach-solid to-rose-solid'],
-    ['KB', 'Kessler Bau GmbH', '2026-0402', '3’180.00', 26, 'from-sky-solid to-lilac-solid'],
-    ['AN', 'Atelier Nord', '2026-0391', '1’000.00', 41, 'from-mint-solid to-sky-solid'],
+    [
+      'RC',
+      translate('rheinConsultingAG'),
+      '2026-0416',
+      '9’720.00',
+      12,
+      translate('fromPeachSolidToRoseSolid'),
+    ],
+    [
+      'KB',
+      translate('kesslerBauGmbH'),
+      '2026-0402',
+      '3’180.00',
+      26,
+      translate('fromSkySolidToLilacSolid'),
+    ],
+    [
+      'AN',
+      translate('atelierNord'),
+      '2026-0391',
+      '1’000.00',
+      41,
+      translate('fromMintSolidToSkySolid'),
+    ],
   ] as const
   return (
     <div className="flex flex-col gap-2">
       <Row d={0}>
         <p className="text-white/80">
-          Three invoices are overdue, <b className="text-white">CHF 13’900.00</b> in total.
+          {translate('threeInvoicesAreOverdue')}
+          <b className="text-white">{translate('chf1390000')}</b>
+          {translate('inTotal')}
         </p>
       </Row>
       {rows.map(([initials, client, no, amount, days, tone], i) => (
@@ -48,19 +71,24 @@ function Overdue() {
               <span className="block truncate font-medium text-white">{client}</span>
               <span className="block text-caption whitespace-nowrap text-white/50">
                 {no}
-                <span className="text-peach-ink sm:hidden"> · {days} days</span>
+                <span className="text-peach-ink sm:hidden">
+                  {' '}
+                  · {days}
+                  {translate('days')}
+                </span>
               </span>
             </span>
             <span className="text-white tabular-nums">{amount}</span>
             <span className="bg-peach-solid/15 text-peach-ink hidden rounded-full px-2 py-0.5 text-caption whitespace-nowrap sm:inline">
-              {days} days
+              {days}
+              {translate('days')}
             </span>
           </div>
         </Row>
       ))}
       <Row d={480}>
         <span className="mt-1 inline-flex rounded-full border border-white/15 px-3 py-1 text-caption font-medium text-white">
-          Open overdue invoices
+          {translate('openOverdueInvoices')}
         </span>
       </Row>
     </div>
@@ -104,15 +132,16 @@ function Hours() {
         <div className="relative">
           <Ring used={32} total={40} />
           <span className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-title font-semibold text-white">8 h</span>
-            <span className="text-caption text-white/50">left</span>
+            <span className="text-title font-semibold text-white">{translate('message8H')}</span>
+            <span className="text-caption text-white/50">{translate('left')}</span>
           </span>
         </div>
       </Row>
       <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
         <Row d={100}>
           <p className="text-white/80">
-            <b className="text-white">Monthly retainer · Studio Lumen</b>: 32 of 40 hours used.
+            <b className="text-white">{translate('monthlyRetainerStudioLumen')}</b>
+            {translate('message32Of40HoursUsed')}
           </p>
         </Row>
         {[
@@ -134,14 +163,14 @@ function Hours() {
 
 function Vat() {
   const tiles = [
-    ['Expenses recorded', 'CHF 12’480.40', 'from-sky-solid/30'],
-    ['Input VAT booked', 'CHF 846.15', 'from-mint-solid/30'],
-    ['Receipts', '18', 'from-lilac-solid/30'],
+    [translate('expensesRecorded'), translate('chf1248040'), 'from-sky-solid/30'],
+    [translate('inputVATBooked'), translate('chf84615'), 'from-mint-solid/30'],
+    [translate('receipts'), '18', 'from-lilac-solid/30'],
   ]
   return (
     <div className="flex flex-col gap-3">
       <Row d={0}>
-        <p className="text-white/80">Here is November so far, from your booked expenses:</p>
+        <p className="text-white/80">{translate('hereIsNovemberSoFarFromYourBookedExpenses')}</p>
       </Row>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {tiles.map(([label, value, tone], i) => (
@@ -167,25 +196,27 @@ function Log({ done }: { done: boolean }) {
     <Row d={0}>
       <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
         <p className="text-caption font-medium tracking-wide text-heidi-ink uppercase">
-          Please confirm
+          {translate('pleaseConfirm')}
         </p>
         <p className="mt-1.5 text-white/85">
-          Log <b className="text-white">2.5 h</b> on{' '}
-          <b className="text-white">Monthly retainer · Studio Lumen</b> for 11.11.2026, “Homepage
-          review”?
+          {translate('log')}
+          <b className="text-white">{translate('message25H')}</b>
+          {translate('on')} <b className="text-white">{translate('monthlyRetainerStudioLumen')}</b>
+          {translate('for11112026HomepageReview')}
         </p>
         <div className="mt-3 flex items-center gap-2 text-caption font-medium">
           {done ? (
             <span className="pop bg-mint-solid/20 text-mint-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1">
-              <Check aria-hidden className="size-3.5" /> Logged · 34.5 of 40 h used
+              <Check aria-hidden className="size-3.5" />
+              {translate('logged345Of40HUsed')}
             </span>
           ) : (
             <>
               <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-via px-3 py-1 text-white">
-                Log hours
+                {translate('logHours')}
               </span>
               <span className="rounded-full border border-white/15 px-3 py-1 text-white/80">
-                Cancel
+                {translate('cancel')}
               </span>
             </>
           )}
@@ -201,15 +232,12 @@ function Draft() {
       <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
         <div className="flex items-center gap-2 border-b border-white/8 px-4 py-2.5 text-caption text-white/60">
           <Mail aria-hidden className="size-3.5" />
-          Reminder: invoice 2026-0416
+          {translate('reminderInvoice20260416')}
         </div>
         <div className="grid gap-2 px-4 py-3 text-white/80">
-          <p>Dear Mr. Weber,</p>
-          <p>
-            our invoice 2026-0416 of CHF 9’720.00 was due on 30 October. Could you let us know when
-            we can expect the payment? The QR bill is attached again for convenience.
-          </p>
-          <p>Kind regards, Anna Keller</p>
+          <p>{translate('dearMrWeber')}</p>
+          <p>{translate('ourInvoice20260416OfCHF972000')}</p>
+          <p>{translate('kindRegardsAnnaKeller')}</p>
         </div>
       </div>
     </Row>
@@ -221,32 +249,32 @@ type Example = { id: string; label: string; ask: string; answer: (done: boolean)
 const EXAMPLES: Example[] = [
   {
     id: 'overdue',
-    label: 'Overdue',
-    ask: 'Which invoices are overdue?',
+    label: translate('overdue'),
+    ask: translate('whichInvoicesAreOverdue'),
     answer: () => <Overdue />,
   },
   {
     id: 'hours',
-    label: 'Hours left',
-    ask: 'How many hours are left for Studio Lumen?',
+    label: translate('hoursLeft'),
+    ask: translate('howManyHoursAreLeftForStudioLumen'),
     answer: () => <Hours />,
   },
   {
     id: 'vat',
-    label: 'Input VAT',
-    ask: 'How much input VAT did we book this month?',
+    label: translate('inputVAT'),
+    ask: translate('howMuchInputVATDidWeBookThisMonth'),
     answer: () => <Vat />,
   },
   {
     id: 'log',
-    label: 'Log work',
-    ask: 'Log 2.5 h for Studio Lumen: homepage review',
+    label: translate('logWork'),
+    ask: translate('log25HForStudioLumenHomepageReview'),
     answer: (done) => <Log done={done} />,
   },
   {
     id: 'draft',
-    label: 'Draft a reminder',
-    ask: 'Draft a friendly reminder for Rhein Consulting',
+    label: translate('draftAReminder'),
+    ask: translate('draftAFriendlyReminderForRheinConsulting'),
     answer: () => <Draft />,
   },
 ]
@@ -322,7 +350,7 @@ export function HeidiShowcase() {
           )}
         </span>
         <kbd className="hidden rounded-md border border-white/15 px-1.5 py-0.5 font-sans text-caption text-white/60 sm:inline">
-          ⌘ J
+          {translate('j')}
         </kbd>
         <span className="inline-flex size-9 items-center justify-center rounded-xl bg-linear-to-br from-heidi-from to-heidi-to text-white">
           <ArrowUp className="size-4" />
@@ -346,7 +374,7 @@ export function HeidiShowcase() {
             <div className="flex items-center gap-3">
               <HeidiMark className="size-6" animated />
               <span className="bg-[linear-gradient(90deg,rgb(255_255_255/0.4),white,rgb(255_255_255/0.4))] bg-[length:200%_100%] bg-clip-text text-transparent motion-safe:animate-shimmer">
-                Reading your books…
+                {translate('readingYourBooks')}
               </span>
             </div>
           )
@@ -356,7 +384,7 @@ export function HeidiShowcase() {
       {/* The examples, each with its own progress line while it plays. */}
       <div
         role="tablist"
-        aria-label="Examples"
+        aria-label={translate('examples')}
         className="flex [scrollbar-width:none] gap-1.5 overflow-x-auto border-t border-white/8 px-1 pt-3"
       >
         {EXAMPLES.map((ex, i) => (

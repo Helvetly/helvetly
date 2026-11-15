@@ -310,7 +310,7 @@ export const Phone: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
     await page.findByRole('region', { name: CURRENT })
-    await expect(await page.findAllByText(/of 3 closed/)).toHaveLength(8)
+    await waitFor(() => expect(page.getAllByText(/of 3 closed/)).toHaveLength(8))
     const phone = page.getByTestId('phone').getBoundingClientRect()
     const parts = [...canvasElement.querySelectorAll('section, h1')]
     await expect(

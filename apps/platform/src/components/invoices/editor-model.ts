@@ -1,6 +1,7 @@
 // The invoice editor's state as typed (raw text in number fields) and its conversion to the
 // contract's InvoiceInput. Totals are never computed here: they come from POST /invoices/preview.
 import type { Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import {
   addDays,
   defaultExemptionCode,
@@ -34,9 +35,9 @@ export const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
   { value: 'en', label: 'EN' },
 ]
 export const VAT_CHOICES: { value: VatMode; label: string }[] = [
-  { value: 'exclusive', label: 'Excl. VAT' },
-  { value: 'inclusive', label: 'Incl. VAT' },
-  { value: 'none', label: 'No VAT' },
+  { value: 'exclusive', label: translate('exclVAT') },
+  { value: 'inclusive', label: translate('inclVAT') },
+  { value: 'none', label: translate('noVAT') },
 ]
 
 export type EditorLine = {
@@ -235,19 +236,20 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
     const discount = parseDecimalInput(line.discount_percent || '0', 2)
     const rate = parseDecimalInput(line.vat_rate || '0', 2)
     if (quantity === null || quantity.startsWith('-'))
-      errors[`${line.key}.quantity`] = 'A number like 1 or 2.5'
+      errors[`${line.key}.quantity`] = translate('aNumberLike1Or25')
     if (price === null || price.startsWith('-'))
-      errors[`${line.key}.unit_price`] = 'A price like 120.00'
+      errors[`${line.key}.unit_price`] = translate('aPriceLike12000')
     if (discount === null || discount.startsWith('-') || Number(discount) > 100)
-      errors[`${line.key}.discount_percent`] = 'From 0 to 100'
-    if (rate === null || Number(rate) > 100) errors[`${line.key}.vat_rate`] = 'From 0 to 100'
+      errors[`${line.key}.discount_percent`] = translate('from0To100')
+    if (rate === null || Number(rate) > 100)
+      errors[`${line.key}.vat_rate`] = translate('from0To100')
     if (!forPreview && line.price_currency && !line.unit_price.trim())
-      errors[`${line.key}.unit_price`] = `Enter the ${values.currency} price`
+      errors[`${line.key}.unit_price`] = translate('enterThePrice', { currency: values.currency })
     const category = values.vat_mode === 'none' ? 'O' : line.vat_category
     const exempt = EXEMPTION_CATEGORIES.includes(category)
     const reason = exempt ? orNull(line.vat_exemption_reason) : null
     if (reason && reason.length > 300)
-      errors[`${line.key}.vat_exemption_reason`] = 'At most 300 characters'
+      errors[`${line.key}.vat_exemption_reason`] = translate('atMost300Characters')
     keys.push(line.key)
     lines.push({
       description: line.description.trim(),
@@ -264,7 +266,7 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
   const discount = parseDecimalInput(values.discount_percent || '0', 2)
   const schedule = forPreview ? previewInstalments(values) : instalmentInput(values, errors)
   if (discount === null || discount.startsWith('-') || Number(discount) > 100)
-    errors.discount_percent = 'From 0 to 100'
+    errors.discount_percent = translate('from0To100')
   return {
     errors,
     keys,
@@ -312,11 +314,11 @@ function instalmentInput(values: EditorValues, errors: EditorErrors) {
   if (!schedule) return null
   const count = Number(schedule.count)
   if (!/^\d{1,2}$/.test(schedule.count) || count < 2 || count > 12)
-    errors['instalments.count'] = 'From 2 to 12'
+    errors['instalments.count'] = translate('from2To12')
   const items = schedule.items?.map((item, i) => {
     const amount = parseDecimalInput(item.amount, 2, true)
     if (amount === null || !/^\d/.test(amount) || /^0*\.?0*$/.test(amount))
-      errors[`instalments.items.${i}.amount`] = 'An amount like 360.35'
+      errors[`instalments.items.${i}.amount`] = translate('anAmountLike36035')
     return { due_date: item.due_date, amount: amount ?? '0.00' }
   })
   return {
@@ -483,7 +485,7 @@ export function scheduleBlocker(
   if (!schedule || !isReceivable(values.kind)) return null
   const rows = schedule.items ?? generated
   if (rows.some((row) => row.due_date < values.issue_date))
-    return 'An instalment is due before the issue date.'
+    return translate('anInstalmentIsDueBeforeTheIssueDate')
   const gap = schedule.items && payable !== null ? instalmentGap(rows, payable) : null
-  return gap ? `Off by ${formatAmount(gap)}` : null
+  return gap ? translate('offBy', { value1: formatAmount(gap) }) : null
 }

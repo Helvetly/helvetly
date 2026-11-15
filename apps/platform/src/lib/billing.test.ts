@@ -3,6 +3,9 @@ import { ApiError } from '@/lib/api'
 
 import {
   billingPeriod,
+  limitNoun,
+  limitFactLabel,
+  comparisonLimitLabel,
   formatLimit,
   formatPrice,
   describeDiscount,
@@ -330,4 +333,12 @@ describe('lockedFeature', () => {
     const plans = billing.plans.map((each) => ({ ...each, features: [] }))
     expect(lockedFeature({ ...billing, plans }, 'api_access')).toEqual({ plan: null })
   })
+})
+
+test('billing descriptions use count messages and explicit period labels', () => {
+  expect(limitNoun('invoices_per_month', 1)).toBe('invoice')
+  expect(limitNoun('invoices_per_month', 2)).toBe('invoices')
+  expect(limitFactLabel('invoices_per_month')).toBe('invoices / month')
+  expect(comparisonLimitLabel('invoices_per_month')).toBe('Invoices a month')
+  expect(comparisonLimitLabel('clients')).toBe('Clients')
 })

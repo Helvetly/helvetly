@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Command,
   CommandEmpty,
@@ -15,6 +14,7 @@ import { useState } from 'react'
 
 import { Initials } from '@/components/initials'
 import { useClientSearch, type Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 /** Clients searched on the server, in a command list (for pickers inside a popover). */
 export function ClientSearch({
@@ -36,11 +36,13 @@ export function ClientSearch({
       <CommandInput
         value={term}
         onValueChange={setTerm}
-        placeholder="Search clients by name, city or #number…"
+        placeholder={translate('searchClientsByNameCityOrNumber')}
       />
       <CommandList className="max-h-80">
-        <CommandEmpty>{search.isFetching ? 'Searching…' : 'No client found.'}</CommandEmpty>
-        <CommandGroup heading={term ? 'Results' : 'Active clients'}>
+        <CommandEmpty>
+          {search.isFetching ? translate('searching') : translate('noClientFound')}
+        </CommandEmpty>
+        <CommandGroup heading={term ? translate('results') : translate('activeClients')}>
           {clients.map((client) => (
             <CommandItem
               key={client.id}
@@ -57,7 +59,7 @@ export function ClientSearch({
                   {client.currency && ` · ${client.currency}`}
                 </span>
               </span>
-              {client.is_draft && <StatusBadge tone="amber">Draft</StatusBadge>}
+              {client.is_draft && <StatusBadge tone="amber">{translate('draft')}</StatusBadge>}
               <Check
                 className={cn('size-4', client.id === selectedId ? 'opacity-100' : 'opacity-0')}
               />
@@ -67,7 +69,8 @@ export function ClientSearch({
         {onCreate && (
           <CommandGroup>
             <CommandItem value="__new" onSelect={onCreate} className="text-muted-foreground">
-              <Plus /> New client
+              <Plus />
+              {translate('newClient2')}
             </CommandItem>
           </CommandGroup>
         )}

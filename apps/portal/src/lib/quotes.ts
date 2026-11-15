@@ -1,6 +1,8 @@
 // The client's quotes in the portal, typed by hand from "Client portal" in docs/quotes-contract.md.
 import { request } from '@helvetly/ui/lib/http'
 
+import { translate } from '@/lib/i18n'
+
 export type PortalQuote = {
   id: string
   number: string
@@ -42,4 +44,4 @@ export const isAwaiting = (quote: PortalQuote) => quote.status === 'sent'
 
 /** "Q-2026-001", "Q-2026-001 · Rev. 2" from the second revision on. */
 export const quoteName = (quote: PortalQuote) =>
-  `${quote.number}${quote.revision > 1 ? ` · Rev. ${quote.revision}` : ''}`
+  `${quote.number}${quote.revision > 1 ? translate('rev', { revision: quote.revision }) : ''}`

@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type TransmissionStatus = 'queued' | 'sent' | 'accepted' | 'rejected' | 'failed'
 
@@ -53,11 +54,11 @@ export function useRetryTransmission(id: string) {
 }
 
 export const STATUS_LABELS: Record<TransmissionStatus, string> = {
-  queued: 'Queued',
-  sent: 'Sent',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  failed: 'Failed',
+  queued: translate('queued'),
+  sent: translate('sent3'),
+  accepted: translate('accepted'),
+  rejected: translate('rejected'),
+  failed: translate('failed'),
 }
 
 /** A failed or rejected transmission can be sent again. */

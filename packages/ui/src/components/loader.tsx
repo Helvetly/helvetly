@@ -1,3 +1,4 @@
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from 'cn'
 import { LoaderCircle } from 'lucide-react'
 
@@ -8,7 +9,7 @@ import { LoaderCircle } from 'lucide-react'
  */
 function Loader({
   size = 'inline',
-  label = 'Loading',
+  label = translate('loading2'),
   className,
   ...props
 }: Omit<React.ComponentProps<'output'>, 'children'> & {
@@ -34,7 +35,7 @@ function Loader({
           size === 'page' ? 'size-5' : 'size-4',
         )}
       />
-      {size === 'page' && 'Loading…'}
+      {size === 'page' && translate('loading')}
     </output>
   )
 }

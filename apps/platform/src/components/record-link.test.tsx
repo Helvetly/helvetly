@@ -79,3 +79,18 @@ describe('RecordLink', () => {
     expect(open).not.toHaveBeenCalled()
   })
 })
+
+vi.mock('@helvetly/i18n/locales.json', () => ({
+  default: {
+    defaultLocale: 'en',
+    locales: {
+      en: { name: 'English', languageTag: 'en-GB', numberLocale: 'de-CH' },
+      de: { name: 'Deutsch', languageTag: 'de-DE', numberLocale: 'de-DE' },
+    },
+  },
+}))
+
+it('recognizes localized records and avoids reopening the current record', () => {
+  expect(parseRecordHref('/de/clients?id=cli_1')).toEqual({ kind: 'client', id: 'cli_1' })
+  expect(nextStack([], { kind: 'invoice', id: 'inv_1' }, '/de/invoices?id=inv_1')).toEqual([])
+})

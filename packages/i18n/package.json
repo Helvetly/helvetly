@@ -1,0 +1,23 @@
+{
+  "name": "@helvetly/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./next": "./src/next.ts",
+    "./locales.json": "./src/locales.json"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "intl-messageformat": "^11.1.2"
+  },
+  "devDependencies": {
+    "@helvetly/typescript-config": "workspace:*",
+    "@helvetly/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

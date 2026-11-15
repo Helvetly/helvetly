@@ -1,8 +1,8 @@
 'use client'
-
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { useId, useState } from 'react'
 
+import { translate } from '@/lib/i18n'
 import {
   describeAccess,
   levelsOf,
@@ -14,9 +14,9 @@ import {
 } from '@/lib/permissions'
 
 const LEVELS: { level: Level; label: string }[] = [
-  { level: 'none', label: 'No access' },
-  { level: 'view', label: 'View' },
-  { level: 'edit', label: 'Edit' },
+  { level: 'none', label: translate('noAccess') },
+  { level: 'view', label: translate('view2') },
+  { level: 'edit', label: translate('edit') },
 ]
 
 /** A preset as a segmented control, and for Custom a matrix: what the member sees and changes. */
@@ -34,14 +34,14 @@ export function AccessEditor({
   const [custom, setCustom] = useState(() => presetOf(value) === 'custom')
   const selected = custom ? 'custom' : presetOf(value)
   const levels = levelsOf(value)
-  const problem = error ?? (value.length === 0 ? 'Give access to at least one area.' : null)
+  const problem = error ?? (value.length === 0 ? translate('giveAccessToAtLeastOneArea') : null)
 
   return (
     <div className="grid gap-2">
       {/* Scrolls sideways on a phone rather than wrapping the four choices. */}
       <div className="min-w-0 [scrollbar-width:none] overflow-x-auto">
         <Segmented
-          label="Access"
+          label={translate('access')}
           value={selected}
           options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
           onChange={(next) => {
@@ -56,7 +56,7 @@ export function AccessEditor({
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="py-1 font-medium">Area</th>
+              <th className="py-1 font-medium">{translate('area')}</th>
               {LEVELS.map(({ level, label }) => (
                 <th key={level} className="w-16 py-1 text-center font-medium">
                   {label}
@@ -76,7 +76,10 @@ export function AccessEditor({
                 {LEVELS.map(({ level, label }) => (
                   <td key={level} className="text-center">
                     {level === 'edit' && 'viewOnly' in resource ? (
-                      <span className="text-muted-foreground" title="Owners and admins manage this">
+                      <span
+                        className="text-muted-foreground"
+                        title={translate('ownersAndAdminsManageThis')}
+                      >
                         –
                       </span>
                     ) : (
@@ -97,7 +100,7 @@ export function AccessEditor({
           <tfoot>
             <tr>
               <td colSpan={4} className="border-t pt-2 text-[12px] text-muted-foreground">
-                Managing members, settings and billing stays with owners and admins.
+                {translate('managingMembersSettingsAndBillingStaysWithOwnersAnd')}
               </td>
             </tr>
           </tfoot>

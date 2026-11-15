@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { PortalQuotes } from '@/components/portal-quotes'
 
-export const metadata: Metadata = { title: 'Quotes' }
-
 export default function PortalQuotesPage() {
-  return <PortalQuotes />
+  return (
+    <>
+      <PageTitle message="quotes" />
+      <PortalQuotes />
+    </>
+  )
 }

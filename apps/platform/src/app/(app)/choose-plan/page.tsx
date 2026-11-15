@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { ChoosePlan } from '@/components/shell/plan-gate'
 
-export const metadata: Metadata = { title: 'Choose a plan' }
-
 export default function ChoosePlanPage() {
-  return <ChoosePlan />
+  return (
+    <>
+      <PageTitle message="chooseAPlan" />
+      <ChoosePlan />
+    </>
+  )
 }

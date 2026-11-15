@@ -13,6 +13,7 @@ import {
 
 import { FIELD_ICONS } from '@/components/signatures/parts'
 import type { Palette } from '@/components/signatures/placement'
+import { translate } from '@/lib/i18n'
 import { FIELD_LABELS } from '@/lib/signatures'
 import {
   DATA_LABELS,
@@ -44,17 +45,21 @@ export const kindIcon = (kind: TemplateKind) =>
 /** Lane 0 is the client's data, lane 1 custom fields, then one lane per signing role. */
 export const templatePalette = (roles: (SignerRole & { id: string })[]): Palette<TemplateKind> => ({
   lanes: [
-    { id: 'client-data', name: 'Client data' },
-    { id: 'custom-fields', name: 'Custom fields' },
+    { id: 'client-data', name: translate('clientData') },
+    { id: 'custom-fields', name: translate('customFields') },
     ...roles.map((role, index) => ({
       id: role.id,
-      name: role.label.trim() || `Signer ${index + 1}`,
+      name: role.label.trim() || translate('signer', { value1: index + 1 }),
     })),
   ],
   kinds: laneKinds,
   label: kindLabel,
   icon: kindIcon,
   prompt: (kind) =>
-    kind === 'text' ? 'What to enter' : kind === 'custom' ? 'What to ask for' : null,
-  hint: 'Or click one, then click where it goes. Client data and custom fields are stamped in when you make a document; signing fields are filled by the signer.',
+    kind === 'text'
+      ? translate('whatToEnter')
+      : kind === 'custom'
+        ? translate('whatToAskFor')
+        : null,
+  hint: translate('orClickOneThenClickWhereItGoesClient'),
 })

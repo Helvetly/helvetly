@@ -1,5 +1,7 @@
 import { cn } from '@helvetly/ui/lib/utils'
 
+import { translate } from '@/lib/i18n'
+
 const SIZE = 96
 const STROKE = 8
 const RADIUS = (SIZE - STROKE) / 2
@@ -63,7 +65,8 @@ export function Countdown({
       <span aria-hidden className="absolute grid justify-items-center leading-none">
         <span className="text-page font-semibold tracking-[-0.02em] tabular-nums">{left}</span>
         <span className="mt-1 text-caption text-muted-foreground">
-          {left === 1 ? 'day' : 'days'} left
+          {left === 1 ? 'day' : 'days'}
+          {translate('left')}
         </span>
       </span>
     </div>

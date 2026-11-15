@@ -20,6 +20,7 @@ import type { ReactNode } from 'react'
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import {
   BENEFITS,
   formatLimit,
@@ -53,7 +54,10 @@ const ICONS: Record<string, LucideIcon> = {
   ledger_exports: BookOpenCheck,
 }
 
-const SCOPE: Record<Scope, string> = { workspace: 'Per workspace', person: 'Per paid person' }
+const SCOPE: Record<Scope, string> = {
+  workspace: translate('perWorkspace'),
+  person: translate('perPaidPerson'),
+}
 
 type Row = {
   key: string
@@ -86,7 +90,7 @@ function Value({ text }: { text: string | null }) {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap opacity-60">
         <Minus aria-hidden className="size-4 shrink-0" />
-        Not included
+        {translate('notIncluded')}
       </span>
     )
   return (
@@ -111,7 +115,7 @@ function PlanHead({ plan }: { plan: Plan }) {
         <span className="text-title-sm font-semibold">{plan.name}</span>
         {recommended && (
           <span className="ml-auto rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2 py-0.5 text-caption font-medium text-white">
-            Recommended
+            {translate('recommended')}
           </span>
         )}
       </span>
@@ -121,7 +125,8 @@ function PlanHead({ plan }: { plan: Plan }) {
           recommended ? 'text-white/70' : 'text-muted-foreground',
         )}
       >
-        {formatPrice(priceOf(plan, 'month'))} / person / month
+        {formatPrice(priceOf(plan, 'month'))}
+        {translate('personMonth')}
       </span>
     </>
   )
@@ -166,7 +171,8 @@ function WideTable({
                   arrow={false}
                   className="mt-4 h-9 w-full px-4 text-body-sm"
                 >
-                  Start with {plan.name}
+                  {translate('startWith')}
+                  {plan.name}
                 </Cta>
               )}
             </th>
@@ -250,8 +256,7 @@ function Heading({ children, lead }: { children: ReactNode; lead: string }) {
   )
 }
 
-const ALLOWANCE_LEAD =
-  'What each paid person adds goes into one shared pool for the workspace; clients and products are fixed caps per workspace. Monthly pools start again at 00:00 UTC on the first of the month. Storage is what you keep, not a monthly amount. 1 GB = 1’000 MB.'
+const ALLOWANCE_LEAD = translate('whatEachPaidPersonAddsGoesIntoOneShared')
 
 /** The plans side by side: the business benefits, then the allowances that apply before you buy. */
 export function PlanTable() {
@@ -259,16 +264,16 @@ export function PlanTable() {
     <div className="flex flex-col gap-16">
       <div className="hidden md:flex md:flex-col md:gap-16">
         <WideTable
-          caption="What each plan includes"
-          corner="Business value"
+          caption={translate('whatEachPlanIncludes')}
+          corner={translate('businessValue')}
           rows={BENEFIT_ROWS}
           head
         />
         <div>
-          <Heading lead={ALLOWANCE_LEAD}>Usage allowances</Heading>
+          <Heading lead={ALLOWANCE_LEAD}>{translate('usageAllowances')}</Heading>
           <WideTable
-            caption="Usage allowances of each plan"
-            corner="Allowance"
+            caption={translate('usageAllowancesOfEachPlan')}
+            corner={translate('allowance')}
             rows={LIMIT_ROWS}
             head={false}
           />
@@ -282,7 +287,7 @@ export function PlanTable() {
           return (
             <section
               key={plan.id}
-              aria-label={`${plan.name} plan`}
+              aria-label={translate('plan', { name: plan.name })}
               className={cn(
                 'rounded-3xl border p-6',
                 recommended
@@ -291,8 +296,8 @@ export function PlanTable() {
               )}
             >
               <PlanHead plan={plan} />
-              <PlanList title="Business value" rows={BENEFIT_ROWS} plan={plan.id} />
-              <PlanList title="Usage allowances" rows={LIMIT_ROWS} plan={plan.id} />
+              <PlanList title={translate('businessValue')} rows={BENEFIT_ROWS} plan={plan.id} />
+              <PlanList title={translate('usageAllowances')} rows={LIMIT_ROWS} plan={plan.id} />
             </section>
           )
         })}

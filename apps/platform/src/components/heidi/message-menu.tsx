@@ -1,5 +1,4 @@
 'use client'
-
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,6 +9,8 @@ import {
 import { Copy, FileCode, TextQuote } from 'lucide-react'
 import { useRef, useState, type MouseEvent, type ReactElement } from 'react'
 import { toast } from 'sonner'
+
+import { translate } from '@/lib/i18n'
 
 import { toQuote } from './quote'
 
@@ -30,8 +31,8 @@ export function selectionIn(within: Element) {
 
 function copy(text: string) {
   navigator.clipboard.writeText(text).then(
-    () => toast.success('Copied to the clipboard.'),
-    () => toast.error('Couldn’t copy the text.'),
+    () => toast.success(translate('copiedToTheClipboard')),
+    () => toast.error(translate('couldnTCopyTheText')),
   )
 }
 
@@ -84,7 +85,7 @@ export function MessageMenu({
       </ContextMenuTrigger>
       {opened && (
         <ContextMenuContent
-          aria-label="Message"
+          aria-label={translate('message')}
           // Narrow enough to open beside the pointer on either side in a phone-wide window.
           className="w-48"
           onCloseAutoFocus={(event) => {
@@ -102,25 +103,29 @@ export function MessageMenu({
                   onQuote(opened.quote)
                 }}
               >
-                <TextQuote /> Quote in reply
+                <TextQuote />
+                {translate('quoteInReply')}
               </ContextMenuItem>
               <ContextMenuItem onSelect={() => copy(opened.selection)}>
-                <Copy /> Copy
+                <Copy />
+                {translate('copy4')}
               </ContextMenuItem>
               <ContextMenuSeparator />
             </>
           )}
           <ContextMenuItem onSelect={() => copy(opened.plain)}>
-            <Copy /> Copy message
+            <Copy />
+            {translate('copyMessage')}
           </ContextMenuItem>
           {markdown && markdown.trim() !== opened.plain.trim() && (
             <ContextMenuItem onSelect={() => copy(markdown)}>
-              <FileCode /> Copy as Markdown
+              <FileCode />
+              {translate('copyAsMarkdown')}
             </ContextMenuItem>
           )}
           <ContextMenuSeparator />
           <p className="px-1.5 py-1 text-caption text-balance text-muted-foreground">
-            Shift + right-click for the browser’s menu
+            {translate('shiftRightClickForTheBrowserSMenu')}
           </p>
         </ContextMenuContent>
       )}

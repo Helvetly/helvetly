@@ -13,6 +13,7 @@
     "test:storybook": "vitest run --config vitest.storybook.config.ts"
   },
   "dependencies": {
+    "@helvetly/i18n": "workspace:*",
     "@helvetly/ui": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "lucide-react": "catalog:",

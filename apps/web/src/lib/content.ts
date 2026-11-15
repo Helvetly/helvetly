@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { languageTag } from '@helvetly/i18n'
+
+import { localizedContentFile } from '@/lib/content-locale'
+import { translate } from '@/lib/i18n'
 import { slugify } from '@/lib/legal'
 
 // Guides and help articles are Markdown files in apps/web/content/<collection>, each with a small front
@@ -27,14 +31,17 @@ function contentDir(collection: Collection, from = process.cwd()): string {
   for (const dir of [join(from, 'content', collection), join(from, 'apps/web/content', collection)])
     if (existsSync(dir)) return dir
   const parent = dirname(from)
-  if (parent === from) throw new Error(`content/${collection} not found above ${process.cwd()}`)
+  if (parent === from)
+    throw new Error(
+      translate('contentNotFoundAbove', { collection: collection, value2: process.cwd() }),
+    )
   return contentDir(collection, parent)
 }
 
 /** Splits `---\nkey: value\n---\nbody` into its fields and body; every listed field is required. */
 export function parseFrontMatter(source: string, file: string) {
   const match = /^---\n([\s\S]*?)\n---\n+([\s\S]*)$/.exec(source)
-  if (!match) throw new Error(`${file}: missing front matter`)
+  if (!match) throw new Error(translate('missingFrontMatter', { file: file }))
   const fields = new Map<string, string>()
   for (const line of (match[1] ?? '').split('\n')) {
     const at = line.indexOf(':')
@@ -42,7 +49,7 @@ export function parseFrontMatter(source: string, file: string) {
   }
   const field = (key: string) => {
     const value = fields.get(key)
-    if (!value) throw new Error(`${file}: front matter needs "${key}"`)
+    if (!value) throw new Error(translate('frontMatterNeeds', { file: file, key: key }))
     return value
   }
   return { field, optional: (key: string) => fields.get(key), body: match[2] ?? '' }
@@ -50,7 +57,7 @@ export function parseFrontMatter(source: string, file: string) {
 
 function read(collection: Collection, file: string): Article {
   const { field, optional, body } = parseFrontMatter(
-    readFileSync(join(contentDir(collection), file), 'utf8'),
+    readFileSync(localizedContentFile(contentDir(collection), file), 'utf8'),
     file,
   )
   const markdown = body.replace(/^# .*\n+/, '')
@@ -58,7 +65,10 @@ function read(collection: Collection, file: string): Article {
     slug: file.replace(/\.md$/, ''),
     title: field('title'),
     description: field('description'),
-    category: field('category'),
+    category: parseFrontMatter(
+      readFileSync(join(contentDir(collection), file), 'utf8'),
+      file,
+    ).field('category'),
     updated: field('updated'),
     order: Number(optional('order') ?? 0),
     readingMinutes: optional('readingMinutes') ? Number(optional('readingMinutes')) : null,
@@ -97,7 +107,7 @@ export function byCategory(articles: Article[], order: string[]) {
 
 /** "11 November 2026" from "2026-11-11". */
 export function formatDay(iso: string) {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(languageTag, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

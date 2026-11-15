@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag, localizedHref } from '@helvetly/i18n'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { NativeSelect } from '@/components/clients/fields'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { formatAmount, today } from '@/lib/invoices'
 import {
   fetchLedger,
@@ -48,18 +49,21 @@ const card = 'min-w-0 rounded-xl border border-border'
 const money = 'text-right whitespace-nowrap tabular-nums'
 
 const FORMATS = [
-  ['banana', 'Banana'],
+  ['banana', translate('banana')],
   ['bexio', 'bexio'],
-  ['abacus', 'Abacus'],
+  ['abacus', translate('abacus')],
   ['csv', 'CSV'],
 ] as const
 
 const PARTS = [
-  { value: 'year', label: 'Whole year' },
-  ...[1, 2, 3, 4].map((q) => ({ value: `Q${q}`, label: `Quarter ${q}` })),
+  { value: 'year', label: translate('wholeYear') },
+  ...[1, 2, 3, 4].map((q) => ({ value: `Q${q}`, label: translate('quarter', { q: q }) })),
   ...Array.from({ length: 12 }, (_, i) => ({
     value: String(i + 1).padStart(2, '0'),
-    label: new Date(Date.UTC(2000, i, 1)).toLocaleString('en', { month: 'long', timeZone: 'UTC' }),
+    label: new Date(Date.UTC(2000, i, 1)).toLocaleString(languageTag, {
+      month: 'long',
+      timeZone: 'UTC',
+    }),
   })),
 ]
 
@@ -79,19 +83,19 @@ const quarter = (part: string): [number, number] => {
 const month = (part: string): [number, number] => [Number(part), Number(part)]
 
 const REASONS: Record<string, string> = {
-  self_billed: 'self-billed invoice',
-  no_category: 'expense without a category',
+  self_billed: translate('selfBilledInvoice'),
+  no_category: translate('expenseWithoutACategory'),
 }
 
 const ACCOUNT_FIELDS: { key: Exclude<keyof LedgerAccounts, 'bank'>; label: string }[] = [
-  { key: 'receivables', label: 'Receivables' },
-  { key: 'revenue', label: 'Revenue' },
-  { key: 'output_vat', label: 'Output VAT' },
-  { key: 'rounding', label: 'Rounding' },
-  { key: 'payables', label: 'Payables' },
-  { key: 'member_payable', label: 'Owed to members' },
-  { key: 'input_vat_material', label: 'Input VAT, materials and services' },
-  { key: 'input_vat_other', label: 'Input VAT, investments and other costs' },
+  { key: 'receivables', label: translate('receivables') },
+  { key: 'revenue', label: translate('revenue') },
+  { key: 'output_vat', label: translate('outputVAT') },
+  { key: 'rounding', label: translate('rounding') },
+  { key: 'payables', label: translate('payables') },
+  { key: 'member_payable', label: translate('owedToMembers') },
+  { key: 'input_vat_material', label: translate('inputVATMaterialsAndServices') },
+  { key: 'input_vat_other', label: translate('inputVATInvestmentsAndOtherCosts') },
 ]
 
 const RETENTION_YEARS = 10 // GeBüV: books are kept ten years
@@ -112,12 +116,12 @@ export function LedgerPage() {
     <>
       <SettingsHeader />
       <SettingsPage
-        title="Ledger"
-        description="The trial balance (Saldenliste) from issued invoices, payments and booked expenses. Click an account for its general ledger (Hauptbuch)."
+        title={translate('ledger')}
+        description={translate('theTrialBalanceSaldenlisteFromIssuedInvoicesPaymentsAnd')}
       >
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect
-            aria-label="Year"
+            aria-label={translate('year')}
             value={year}
             onChange={(event) => setYear(Number(event.target.value))}
             wrapperClassName="w-24"
@@ -127,7 +131,7 @@ export function LedgerPage() {
             ))}
           </NativeSelect>
           <NativeSelect
-            aria-label="Period"
+            aria-label={translate('period')}
             value={part}
             onChange={(event) => setPart(event.target.value)}
             wrapperClassName="w-36"
@@ -141,13 +145,15 @@ export function LedgerPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="lg" disabled={none}>
-                <Download /> Export <ChevronDown className="text-muted-foreground" />
+                <Download />
+                {translate('export2')}
+                <ChevronDown className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {FORMATS.map(([format, label]) => (
                 <DropdownMenuItem key={format} asChild>
-                  <a href={ledgerExportUrl(format, from, to)} download>
+                  <a href={localizedHref(ledgerExportUrl(format, from, to))} download>
                     {label}
                   </a>
                 </DropdownMenuItem>
@@ -155,14 +161,19 @@ export function LedgerPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" size="lg" onClick={() => setAccounts(true)}>
-            <ListTree /> Accounts
+            <ListTree />
+            {translate('accounts2')}
           </Button>
         </div>
         {data && data.unposted.length > 0 && (
           <Callout
             tone="warning"
             icon={TriangleAlert}
-            title={`${data.unposted.length} ${data.unposted.length === 1 ? 'document is' : 'documents are'} not in the ledger`}
+            title={translate('notInTheLedger', {
+              length: data.unposted.length,
+              value2:
+                data.unposted.length === 1 ? translate('documentIs') : translate('documentsAre'),
+            })}
           >
             <ul className="grid gap-0.5">
               {data.unposted.map((item) => (
@@ -181,18 +192,18 @@ export function LedgerPage() {
           <section className={card}>
             <EmptyState
               icon={BookOpen}
-              title="Nothing in the ledger for this period"
-              description="Issue an invoice, record a payment or book an expense and it appears here."
+              title={translate('nothingInTheLedgerForThisPeriod')}
+              description={translate('issueAnInvoiceRecordAPaymentOrBookAn')}
             />
           </section>
         ) : (
-          <section className={card} aria-label="Saldenliste">
+          <section className={card} aria-label={translate('saldenliste')}>
             <div className="overflow-x-auto">
               <table className="w-full text-body-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-caption text-muted-foreground">
-                    <th className="px-4 py-2.5 text-left font-medium">Account</th>
-                    <th className="px-4 py-2.5 text-left font-medium">Name</th>
+                    <th className="px-4 py-2.5 text-left font-medium">{translate('account')}</th>
+                    <th className="px-4 py-2.5 text-left font-medium">{translate('name')}</th>
                     {['Opening', 'Debit', 'Credit', 'Closing'].map((h) => (
                       <th key={h} className={`px-4 py-2.5 font-medium ${money}`}>
                         {h}
@@ -267,7 +278,8 @@ function StatementDrawer({
             {account} {balance.name}
           </SheetTitle>
           <SheetDescription className="text-body-sm">
-            Hauptbuch, {formatDate(from)} – {formatDate(to)} · {currency}
+            {translate('hauptbuch')}
+            {formatDate(from)} – {formatDate(to)} · {currency}
           </SheetDescription>
         </SheetHeader>
         {statement.error ? (
@@ -294,7 +306,7 @@ function StatementDrawer({
               <tbody>
                 <tr className="border-b border-border/40 text-muted-foreground">
                   <td className="px-4 py-2" colSpan={6}>
-                    Opening balance
+                    {translate('openingBalance')}
                   </td>
                   <td className={`px-4 py-2 ${money}`}>{formatAmount(s.opening)}</td>
                 </tr>
@@ -314,7 +326,7 @@ function StatementDrawer({
                 ))}
                 <tr className="font-medium">
                   <td className="px-4 py-2" colSpan={6}>
-                    Closing balance
+                    {translate('closingBalance')}
                   </td>
                   <td className={`px-4 py-2 ${money}`}>{formatAmount(s.closing)}</td>
                 </tr>
@@ -366,9 +378,9 @@ function AccountsDrawer({ onClose }: { onClose: () => void }) {
     <Sheet open onOpenChange={(next) => !next && onClose()}>
       <SheetContent side="right" className={drawer}>
         <SheetHeader className="border-b border-border/60">
-          <SheetTitle className="text-body font-medium">Accounts</SheetTitle>
+          <SheetTitle className="text-body font-medium">{translate('accounts')}</SheetTitle>
           <SheetDescription className="text-body-sm">
-            The chart-of-accounts numbers that invoices, payments and expenses post to.
+            {translate('theChartOfAccountsNumbersThatInvoicesPaymentsAnd')}
           </SheetDescription>
         </SheetHeader>
         {settings.error ? (
@@ -400,7 +412,7 @@ function AccountsForm({
     onSuccess: async (data) => {
       queryClient.setQueryData(['ledger', 'settings'], data)
       await queryClient.invalidateQueries({ queryKey: ['ledger'] })
-      toast.success('Accounts saved.')
+      toast.success(translate('accountsSaved'))
       onClose()
     },
     onError: (error) => {
@@ -429,7 +441,9 @@ function AccountsForm({
           onChange={(value) => setDraft({ ...draft, [key]: value })}
         />
       ))}
-      <h3 className="pt-2 text-body font-medium sm:col-span-2">Bank and cash, by payment method</h3>
+      <h3 className="pt-2 text-body font-medium sm:col-span-2">
+        {translate('bankAndCashByPaymentMethod')}
+      </h3>
       {Object.entries(draft.bank).map(([method, code]) => (
         <CodeField
           key={method}
@@ -447,11 +461,11 @@ function AccountsForm({
           className="justify-self-start sm:col-span-2"
           disabled={save.isPending}
         >
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? translate('saving') : translate('save2')}
         </Button>
       ) : (
         <p className="text-body-sm text-muted-foreground">
-          Only an owner or admin can change these.
+          {translate('onlyAnOwnerOrAdminCanChangeThese')}
         </p>
       )}
     </form>

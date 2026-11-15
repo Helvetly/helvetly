@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Meter } from '@helvetly/ui/components/meter'
@@ -17,6 +16,7 @@ import {
   type UsageItem,
   useBuyAITokens,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { BillingCard } from './billing-card'
 
@@ -66,13 +66,12 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
   return (
     <BillingCard
       id="ai-tokens"
-      title="AI tokens"
+      title={translate('aiTokens')}
       description={
         <span className="inline-flex items-center gap-1.5">
-          Used by Heidi and the AI import.
-          <HelpTip label="AI tokens">
-            Each month starts with the tokens your plan includes. A pack adds to them and is used
-            once they run out. Tokens left at the end of the month lapse.
+          {translate('usedByHeidiAndTheAIImport')}
+          <HelpTip label={translate('aiTokens')}>
+            {translate('eachMonthStartsWithTheTokensYourPlanIncludes')}
           </HelpTip>
         </span>
       }
@@ -80,7 +79,7 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
       <div className="grid gap-5 px-5 pt-4 pb-5">
         <TokenUsage item={item} bought={billing.ai_tokens_bought} />
         <fieldset className="grid gap-2.5">
-          <legend className="mb-2.5 text-body-sm font-medium">Add a pack</legend>
+          <legend className="mb-2.5 text-body-sm font-medium">{translate('addAPack')}</legend>
           <div className="grid gap-2 @md:grid-cols-3">
             {billing.ai_packs.map((option) => (
               <label
@@ -95,15 +94,19 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
                   checked={option === pack}
                   disabled={buy.isPending}
                   onChange={() => setChosen(option.tokens)}
-                  aria-label={`${formatTokens(option.tokens)} tokens for ${price(option.amount)}`}
+                  aria-label={translate('tokensFor', {
+                    value1: formatTokens(option.tokens),
+                    value2: price(option.amount),
+                  })}
                   // Covers the whole card, so a click anywhere on it chooses the pack.
                   className="absolute inset-0 cursor-pointer appearance-none rounded-xl opacity-0"
                 />
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body font-medium">
-                  {formatTokens(option.tokens)} tokens
+                  {formatTokens(option.tokens)}
+                  {translate('tokens2')}
                   {option === best && (
                     <span className="rounded-full bg-success-surface px-2 py-px text-caption font-medium text-success">
-                      Best value
+                      {translate('bestValue')}
                     </span>
                   )}
                 </span>
@@ -114,7 +117,8 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
                 <span className="col-span-2 flex flex-wrap items-baseline gap-x-2 tabular-nums">
                   <span className="text-body-sm text-foreground">{price(option.amount)}</span>
                   <span className="text-caption text-muted-foreground">
-                    {price(perMillion(option))} per 1 M
+                    {price(perMillion(option))}
+                    {translate('per1M')}
                   </span>
                 </span>
               </label>
@@ -123,7 +127,7 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
         </fieldset>
         <div className="flex flex-col-reverse gap-3 @md:flex-row @md:items-center @md:justify-between">
           <p className="text-caption text-pretty text-muted-foreground">
-            A one-off payment through Stripe, not a subscription.
+            {translate('aOneOffPaymentThroughStripeNotASubscription')}
           </p>
           <Button
             disabled={buy.isPending}
@@ -136,7 +140,10 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
             ) : (
               <Sparkles data-icon="inline-start" aria-hidden />
             )}
-            Buy {formatTokens(pack.tokens)} tokens · {price(pack.amount)}
+            {translate('buy')}
+            {formatTokens(pack.tokens)}
+            {translate('tokens')}
+            {price(pack.amount)}
           </Button>
         </div>
       </div>
@@ -145,8 +152,8 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
 }
 
 const NOTE = {
-  near: { text: 'Almost used up', className: 'text-warning' },
-  full: { text: 'Used up', className: 'text-destructive' },
+  near: { text: translate('almostUsedUp'), className: 'text-warning' },
+  full: { text: translate('usedUp'), className: 'text-destructive' },
 }
 
 /** "1.2 M of 6 M used this month" over the shared meter, and how the allowance is made up. */
@@ -161,7 +168,9 @@ function TokenUsage({ item, bought }: { item: UsageItem; bought: number }) {
         <p className="flex flex-wrap items-baseline gap-x-1.5 tabular-nums">
           <span className="text-title font-semibold tracking-[-0.01em]">{used}</span>
           <span className="text-body-sm text-muted-foreground">
-            of {max ?? 'unlimited'} used this month
+            {translate('of')}
+            {max ?? 'unlimited'}
+            {translate('usedThisMonth')}
           </span>
         </p>
         {note && (
@@ -171,12 +180,18 @@ function TokenUsage({ item, bought }: { item: UsageItem; bought: number }) {
       {item.max === null ? (
         <div aria-hidden className="h-1.5 rounded-full bg-muted" />
       ) : (
-        <Meter label={`AI tokens: ${used} of ${max} used`} value={item.used} max={item.max} />
+        <Meter
+          label={translate('aiTokensOfUsed', { used: used, max: max })}
+          value={item.used}
+          max={item.max}
+        />
       )}
       {bought > 0 && item.max !== null && (
         <p className="text-caption text-muted-foreground tabular-nums">
-          {formatTokens(Math.max(item.max - bought, 0))} from the plan + {formatTokens(bought)} from
-          packs bought this month
+          {formatTokens(Math.max(item.max - bought, 0))}
+          {translate('fromThePlan')}
+          {formatTokens(bought)}
+          {translate('fromPacksBoughtThisMonth')}
         </p>
       )}
     </div>

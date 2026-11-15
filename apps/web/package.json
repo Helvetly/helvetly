@@ -6,12 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 8001",
-    "build": "next build && node ../../scripts/check-links.mjs out",
+    "build": "node ../../scripts/build-locales.mjs && node ../../scripts/check-links.mjs out",
     "preview": "pnpm dlx serve@latest out -l 8001",
     "typecheck": "next typegen && tsc",
     "test": "vitest run"
   },
   "dependencies": {
+    "@helvetly/i18n": "workspace:*",
     "@helvetly/ui": "workspace:*",
     "cn": "catalog:",
     "lucide-react": "catalog:",

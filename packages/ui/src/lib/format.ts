@@ -1,7 +1,16 @@
-const chf = new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const whole = new Intl.NumberFormat('de-CH', { maximumFractionDigits: 0 })
-const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-const civilDay = new Intl.DateTimeFormat('en-GB', {
+import { languageTag, numberLocale } from '@helvetly/i18n'
+import { translate } from '@helvetly/ui/lib/i18n'
+const chf = new Intl.NumberFormat(numberLocale, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+const whole = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 0 })
+const day = new Intl.DateTimeFormat(languageTag, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+const civilDay = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
@@ -20,7 +29,7 @@ export const formatFileSize = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 export const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
 
-const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+const relative = new Intl.RelativeTimeFormat(languageTag, { numeric: 'auto' })
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 86_400],
   ['month', 30 * 86_400],
@@ -36,7 +45,7 @@ export function formatRelative(iso: string, now = Date.now()) {
   for (const [unit, size] of STEPS) {
     if (Math.abs(seconds) >= size) return relative.format(Math.trunc(seconds / size), unit)
   }
-  return 'just now'
+  return translate('justNow')
 }
 
 /** Exact decimal strings ("1234.5") as "1’234.50"; minus as "−". */
@@ -44,8 +53,11 @@ export function formatAmount(value: string) {
   // "-0.00" is zero: no sign.
   const negative = value.trim().startsWith('-') && /[1-9]/.test(value)
   const [integer = '0', fraction = ''] = value.trim().replace(/^-/, '').split('.')
-  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '’')
-  return `${negative ? '−' : ''}${grouped}.${fraction.padEnd(2, '0').slice(0, Math.max(2, fraction.length))}`
+  const grouped = whole.format(BigInt(integer || '0')).replaceAll("'", '’')
+  const decimal =
+    new Intl.NumberFormat(numberLocale).formatToParts(1.1).find((part) => part.type === 'decimal')
+      ?.value ?? '.'
+  return `${negative ? '−' : ''}${grouped}${decimal}${fraction.padEnd(2, '0').slice(0, Math.max(2, fraction.length))}`
 }
 
 /** "CHF 1’234.50" */

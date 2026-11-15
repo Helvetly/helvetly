@@ -1,5 +1,6 @@
 import { Container } from '@/components/section'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 const DOTS = [
@@ -13,26 +14,26 @@ const DOTS = [
 
 // The formats and rules Helvetly speaks, each one implemented in the API.
 const STANDARDS = [
-  'Swiss QR bill (SIX)',
-  'QR-IBAN · QRR · SCOR',
-  'eCH-0217 VAT return',
-  'Effective & net tax rate',
-  'XRechnung UBL / CII',
-  'Peppol BIS Billing',
-  'KSeF FA(3)',
-  'RO e-Factura',
-  'OR 104 default interest',
-  'nDSG & GDPR',
-  'Passkeys & TOTP',
-  'Simple e-signatures',
+  translate('swissQRBillSIX'),
+  translate('qrIBANQRRSCOR'),
+  translate('ech0217VATReturn'),
+  translate('effectiveNetTaxRate'),
+  translate('xrechnungUBLCII'),
+  translate('peppolBISBilling'),
+  translate('ksefFA3'),
+  translate('roEFactura'),
+  translate('or104DefaultInterest'),
+  translate('ndsgGDPR'),
+  translate('passkeysTOTP'),
+  translate('simpleESignatures'),
 ]
 
 export function Standards() {
   return (
-    <section aria-label="Standards Helvetly supports" className="py-10">
+    <section aria-label={translate('standardsHelvetlySupports')} className="py-10">
       <Container>
         <p data-reveal className="text-center text-body-sm text-muted-foreground">
-          Speaks the formats your trustee, your clients and the ESTV expect
+          {translate('speaksTheFormatsYourTrusteeYourClientsAndThe')}
         </p>
       </Container>
       {/* WCAG 2.2.2: the moving list stops while the pointer rests on it. */}

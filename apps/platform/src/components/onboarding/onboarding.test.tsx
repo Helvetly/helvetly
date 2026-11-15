@@ -75,6 +75,7 @@ const server = setupServer(
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
+  server.resetHandlers()
   onboarded = false
   finished = 0
   saved = []
@@ -176,9 +177,23 @@ describe('the welcome', () => {
 
   test('skipping with an invalid entry stays, so the entry is not silently thrown away', async () => {
     const user = userEvent.setup()
+    const settingsReady = Promise.withResolvers<void>()
+    server.use(
+      http.get('/api/v1/invoice-settings', async () => {
+        await settingsReady.promise
+        return HttpResponse.json({ data: empty })
+      }),
+    )
     wrap(<Welcome />)
     await user.click(await screen.findByRole('button', { name: /Get started/ }))
-    await user.type(await screen.findByLabelText('IBAN'), 'CH00 not an IBAN')
+    const iban = await screen.findByLabelText('IBAN')
+    try {
+      expect(iban).toBeDisabled()
+    } finally {
+      settingsReady.resolve()
+    }
+    await waitFor(() => expect(iban).toBeEnabled())
+    await user.type(iban, 'CH00 not an IBAN')
     await user.click(screen.getByRole('button', { name: 'Skip for now' }))
     expect(await screen.findByLabelText('IBAN')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('heading', { name: 'Your company' })).toBeInTheDocument()

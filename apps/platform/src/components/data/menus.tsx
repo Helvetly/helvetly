@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
@@ -27,6 +26,7 @@ import {
 import { CheckCheck, Ellipsis, Plus, RefreshCw, Rows3 } from 'lucide-react'
 import type { ComponentType, MouseEvent, ReactElement, ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
 import type { BulkAction } from './table-page'
@@ -122,7 +122,7 @@ export function RowContextMenu({
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-52">
         <ContextMenuLabel className={titleClass}>
-          {many ? `${many.count} selected` : menu.title}
+          {many ? translate('dynamicSelected', { count: many.count }) : menu.title}
         </ContextMenuLabel>
         {many ? <BulkItems actions={many.actions} /> : menu.items(contextKit)}
       </ContextMenuContent>
@@ -193,14 +193,16 @@ export function PageContextMenu({
         <ContextMenuSeparator />
         {selectAll && (
           <ContextMenuItem onSelect={selectAll.onSelect}>
-            <CheckCheck /> Select all
+            <CheckCheck />
+            {translate('selectAll')}
             {selectAll.keys && <ContextMenuShortcut>{selectAll.keys}</ContextMenuShortcut>}
           </ContextMenuItem>
         )}
         {views && views.tabs.length > 1 && (
           <ContextMenuSub>
             <ContextMenuSubTrigger>
-              <Rows3 /> View
+              <Rows3 />
+              {translate('view')}
             </ContextMenuSubTrigger>
             <ContextMenuSubContent>
               <ContextMenuRadioGroup
@@ -217,7 +219,8 @@ export function PageContextMenu({
           </ContextMenuSub>
         )}
         <ContextMenuItem onSelect={onRefresh}>
-          <RefreshCw /> Refresh
+          <RefreshCw />
+          {translate('refresh')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

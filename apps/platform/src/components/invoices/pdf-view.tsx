@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -7,6 +7,8 @@ import { Download, FileWarning, RotateCw } from 'lucide-react'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import type * as PdfJsModule from 'pdfjs-dist'
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
+
+import { translate } from '@/lib/i18n'
 
 type PdfJs = typeof PdfJsModule
 let library: Promise<PdfJs> | null = null
@@ -37,31 +39,31 @@ export function pdfProblem(error: unknown): Problem {
   if (error instanceof HttpError)
     return error.status === 404 || error.status === 410
       ? {
-          title: 'This file is no longer here',
-          text: 'It was moved to the Trash or deleted. Choose another one.',
+          title: translate('thisFileIsNoLongerHere'),
+          text: translate('itWasMovedToTheTrashOrDeletedChoose'),
           retry: false,
         }
       : {
-          title: 'The preview couldn’t load',
-          text: `The server answered ${error.status}. Try again in a moment.`,
+          title: translate('thePreviewCouldnTLoad'),
+          text: translate('theServerAnsweredTryAgainInAMoment', { status: error.status }),
           retry: true,
         }
   const name = error instanceof Error ? error.name : ''
   if (name === 'PasswordException')
     return {
-      title: 'This PDF is password-protected',
-      text: 'Remove the password (print it to a new PDF, for example), then upload it again.',
+      title: translate('thisPDFIsPasswordProtected'),
+      text: translate('removeThePasswordPrintItToANewPDF'),
       retry: false,
     }
   if (name === 'InvalidPDFException' || name === 'FormatError')
     return {
-      title: 'This file can’t be opened as a PDF',
-      text: 'It is damaged, or it isn’t really a PDF (a renamed Word or image file, say). Download it to check, or upload a fresh copy.',
+      title: translate('thisFileCanTBeOpenedAsAPDF'),
+      text: translate('itIsDamagedOrItIsnTReallyA'),
       retry: false,
     }
   return {
-    title: 'The preview couldn’t load',
-    text: 'Check your connection and try again.',
+    title: translate('thePreviewCouldnTLoad'),
+    text: translate('checkYourConnectionAndTryAgain'),
     retry: true,
   }
 }
@@ -213,12 +215,14 @@ function ProblemCard({
       <div className="flex gap-2">
         {problem.retry && (
           <Button className="cursor-pointer gap-1.5" onClick={onRetry}>
-            <RotateCw className="size-4" /> Try again
+            <RotateCw className="size-4" />
+            {translate('tryAgain2')}
           </Button>
         )}
         <Button asChild variant="outline" className="gap-1.5">
-          <a href={src} download>
-            <Download className="size-4" /> Download file
+          <a href={localizedHref(src)} download>
+            <Download className="size-4" />
+            {translate('downloadFile')}
           </a>
         </Button>
       </div>
@@ -301,7 +305,8 @@ function PdfPage({
       )}
       <canvas
         ref={canvas}
-        aria-label={`Page ${number}`}
+        aria-label={translate('page2', { number: number })}
+        data-pdf-page={number}
         className={cn(
           'block size-full rounded-[3px] bg-white shadow-elevation-2 transition-opacity duration-300',
           drawn ? 'opacity-100' : 'opacity-0',

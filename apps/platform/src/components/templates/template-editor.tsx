@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -15,6 +14,7 @@ import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
 import { Placement } from '@/components/signatures/placement'
 import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { contentUrl } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { dropSigner, signerColor, titleFromName } from '@/lib/signatures'
 import {
   buildTemplateBody,
@@ -31,12 +31,12 @@ import {
 
 import { kindLabel, templatePalette } from './parts'
 
-const STEPS = ['Document', 'Signing', 'Place fields'] as const
+const STEPS = [translate('document'), translate('signing'), translate('placeFields')] as const
 
 /** A role row in the editor: `id` keeps its identity through edits and removals; never sent. */
 type RoleRow = SignerRole & { id: string }
 const roleRow = (role: SignerRole): RoleRow => ({ ...role, id: crypto.randomUUID() })
-const FIRST_ROLES: SignerRole[] = [{ label: 'Client', fill: 'client' }]
+const FIRST_ROLES: SignerRole[] = [{ label: translate('client'), fill: 'client' }]
 
 const caption = (field: TemplateDraftField) =>
   (field.kind === 'text' || field.kind === 'custom') && field.label
@@ -113,7 +113,9 @@ export function TemplateEditor({
     setServerError(null)
     save.mutate(draft, {
       onSuccess: ({ data }) => {
-        toast.success(template ? 'Template saved.' : `Template “${data.name}” created.`)
+        toast.success(
+          template ? translate('templateSaved') : translate('templateCreated', { name: data.name }),
+        )
         onSaved(data)
       },
       onError: (error) => setServerError(serverProblem(error)),
@@ -141,13 +143,13 @@ export function TemplateEditor({
   return (
     <WizardSheet
       icon={<LayoutTemplate />}
-      title={name.trim() || 'New template'}
+      title={name.trim() || translate('newTemplate2')}
       steps={STEPS}
       step={step}
       onStep={setStep}
       dirty={dirty}
       busy={save.isPending}
-      discardTitle={template ? 'Discard your changes?' : 'Discard this template?'}
+      discardTitle={template ? translate('discardYourChanges') : translate('discardThisTemplate')}
       onClose={onClose}
       status={summary}
       error={serverError ?? (tried ? problem : null)}
@@ -161,11 +163,11 @@ export function TemplateEditor({
                 disabled={save.isPending}
                 onClick={finish}
               >
-                Save
+                {translate('save2')}
               </Button>
             )}
             <Button className="cursor-pointer" onClick={next}>
-              Next
+              {translate('next2')}
             </Button>
           </div>
         ) : (
@@ -179,8 +181,8 @@ export function TemplateEditor({
       {step === 0 && (
         <Split preview={preview}>
           <StepTitle
-            title="What is the template built on?"
-            text="A PDF from Documents: a contract, an offer, a letter. Made in Word or Google Docs? Download it as PDF first. You place the client’s details on it next."
+            title={translate('whatIsTheTemplateBuiltOn')}
+            text={translate('aPDFFromDocumentsAContractAnOfferA')}
           />
           <PdfPicker
             document={document}
@@ -194,25 +196,29 @@ export function TemplateEditor({
           />
           <FormField
             id="tpl-name"
-            label="Name"
+            label={translate('name')}
             required
-            error={tried && !name.trim() ? 'Enter a name.' : undefined}
+            error={tried && !name.trim() ? translate('enterAName') : undefined}
           >
             <Input
               id="tpl-name"
               value={name}
               maxLength={200}
-              placeholder="e.g. Consulting agreement"
+              placeholder={translate('eGConsultingAgreement')}
               onChange={(event) => setName(event.target.value)}
             />
           </FormField>
-          <FormField id="tpl-description" label="Description" hint="Only you and your team see it.">
+          <FormField
+            id="tpl-description"
+            label={translate('description')}
+            hint={translate('onlyYouAndYourTeamSeeIt')}
+          >
             <Textarea
               id="tpl-description"
               value={description}
               maxLength={500}
               rows={3}
-              placeholder="When to use it and what to check before sending"
+              placeholder={translate('whenToUseItAndWhatToCheckBefore')}
               onChange={(event) => setDescription(event.target.value)}
             />
           </FormField>
@@ -221,8 +227,8 @@ export function TemplateEditor({
       {step === 1 && (
         <Split preview={preview}>
           <StepTitle
-            title="Does it need signatures?"
-            text="A document made from the template can simply be saved or emailed. Ask for signatures, and it goes out to sign online instead."
+            title={translate('doesItNeedSignatures')}
+            text={translate('aDocumentMadeFromTheTemplateCanSimplyBe')}
           />
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
             {(
@@ -299,7 +305,7 @@ function RolesEditor({
     onRoles(roles.map((role, i) => (i === index ? { ...role, ...change } : role)))
   return (
     <section className="grid gap-2">
-      <h3 className="text-[13px] font-medium">Who signs</h3>
+      <h3 className="text-[13px] font-medium">{translate('whoSigns2')}</h3>
       <ol className="grid gap-2">
         {roles.map((role, index) => (
           <li key={role.id} className="flex items-start gap-2 rounded-xl border p-2.5">
@@ -313,8 +319,8 @@ function RolesEditor({
             <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
               <div className="grid gap-1">
                 <Input
-                  aria-label={`Signer ${index + 1} role`}
-                  placeholder="Role, e.g. Client"
+                  aria-label={translate('signerRole', { value1: index + 1 })}
+                  placeholder={translate('roleEGClient')}
                   value={role.label}
                   maxLength={60}
                   aria-invalid={tried && !role.label.trim()}
@@ -322,20 +328,22 @@ function RolesEditor({
                 />
               </div>
               <NativeSelect
-                aria-label={`Who signs as ${role.label || `signer ${index + 1}`}`}
+                aria-label={translate('whoSignsAs', {
+                  value1: role.label || translate('signer3', { value1: index + 1 }),
+                })}
                 value={role.fill}
                 onChange={(event) =>
                   set(index, { fill: event.target.value === 'client' ? 'client' : 'manual' })
                 }
               >
-                <option value="client">The client’s contact</option>
-                <option value="manual">Chosen when sending</option>
+                <option value="client">{translate('theClientSContact')}</option>
+                <option value="manual">{translate('chosenWhenSending')}</option>
               </NativeSelect>
             </div>
             <Button
               variant="destructive-ghost"
               size="icon-sm"
-              aria-label={`Remove signer ${index + 1}`}
+              aria-label={translate('removeSigner', { value1: index + 1 })}
               disabled={roles.length === 1}
               className="mt-0.5 cursor-pointer"
               onClick={() => onRemove(index)}
@@ -352,12 +360,12 @@ function RolesEditor({
           disabled={roles.length >= 10}
           onClick={() => onRoles([...roles, roleRow({ label: '', fill: 'manual' })])}
         >
-          <Plus className="size-4" /> Add signer
+          <Plus className="size-4" />
+          {translate('addSigner')}
         </Button>
       </div>
       <p className="text-[12.5px] text-muted-foreground">
-        The client’s contact is filled from the client you make the document for; you can change it
-        before sending.
+        {translate('theClientSContactIsFilledFromTheClient')}
       </p>
     </section>
   )

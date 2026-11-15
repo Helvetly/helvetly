@@ -1,9 +1,9 @@
 'use client'
-
 import { TONES } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { QrCode } from 'lucide-react'
 
+import { translate } from '@/lib/i18n'
 import {
   formatDay,
   formatMoney,
@@ -32,27 +32,29 @@ export function InstalmentSchedule({
   const interval = INTERVALS.find((entry) => entry.value === schedule.interval)?.label
   return (
     <section
-      aria-label="Instalments"
+      aria-label={translate('instalments2')}
       className="rounded-xl bg-card px-4 pt-3 pb-4 shadow-elevation-1"
     >
       <div className="flex h-7 items-center justify-between gap-2">
         <h3 className="text-[13px] font-medium text-muted-foreground">
-          Instalments · {schedule.items.length} {interval && `· ${interval.toLowerCase()}`}
+          {translate('instalments')}
+          {schedule.items.length} {interval && `· ${interval.toLowerCase()}`}
         </h3>
         {invoice.payment.qr_bill && (
           <span className="flex items-center gap-1 text-[12px] text-muted-foreground">
-            <QrCode className="size-3.5" /> One QR bill per instalment
+            <QrCode className="size-3.5" />
+            {translate('oneQRBillPerInstalment')}
           </span>
         )}
       </div>
       <table className="mt-2 w-full text-[13.5px]">
         <thead className="sr-only">
           <tr>
-            <th>No.</th>
-            <th>Due</th>
-            <th>Amount</th>
-            <th>Open</th>
-            <th>Status</th>
+            <th>{translate('no')}</th>
+            <th>{translate('due')}</th>
+            <th>{translate('amount')}</th>
+            <th>{translate('open')}</th>
+            <th>{translate('status')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">

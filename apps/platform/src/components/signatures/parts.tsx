@@ -4,6 +4,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { CalendarCheck, Info, Signature, TextCursorInput, UserRound } from 'lucide-react'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
 
+import { translate } from '@/lib/i18n'
 import {
   FIELD_LABELS,
   type Box,
@@ -28,24 +29,24 @@ export const signingPalette = {
   kinds: () => SIGNING_KINDS,
   label: (kind: FieldKind) => FIELD_LABELS[kind],
   icon: (kind: FieldKind) => FIELD_ICONS[kind],
-  prompt: (kind: FieldKind) => (kind === 'text' ? 'What to enter' : null),
-  hint: 'Or click one, then click where it goes. Date and name fill in on signing.',
+  prompt: (kind: FieldKind) => (kind === 'text' ? translate('whatToEnter') : null),
+  hint: translate('orClickOneThenClickWhereItGoesDate'),
 } satisfies Omit<Palette<FieldKind>, 'lanes'>
 
 const REQUEST_TONES: Record<RequestStatus, [Tone, string]> = {
-  pending: ['blue', 'Out for signature'],
-  completed: ['green', 'Completed'],
-  declined: ['red', 'Declined'],
-  revoked: ['gray', 'Revoked'],
-  expired: ['amber', 'Expired'],
+  pending: ['blue', translate('outForSignature')],
+  completed: ['green', translate('completed')],
+  declined: ['red', translate('declined')],
+  revoked: ['gray', translate('revoked')],
+  expired: ['amber', translate('expired')],
 }
 
 const SIGNER_TONES: Record<SignerStatus, [Tone, string]> = {
-  waiting: ['gray', 'Waiting'],
-  sent: ['blue', 'Sent'],
-  viewed: ['amber', 'Viewed'],
-  signed: ['green', 'Signed'],
-  declined: ['red', 'Declined'],
+  waiting: ['gray', translate('waiting')],
+  sent: ['blue', translate('sent3')],
+  viewed: ['amber', translate('viewed')],
+  signed: ['green', translate('signed')],
+  declined: ['red', translate('declined')],
 }
 
 export function RequestBadge({ status }: { status: RequestStatus }) {
@@ -58,22 +59,21 @@ export function SignerBadge({ status }: { status: SignerStatus }) {
   return <StatusBadge tone={tone}>{label}</StatusBadge>
 }
 
-const SES_DETAIL =
-  'Under Swiss ZertES and EU eIDAS this is a simple electronic signature (SES), not a qualified one (QES). It binds for most contracts, but not where the law requires the written form or a handwritten signature (e.g. guarantees, some employment or lease clauses).'
+const SES_DETAIL = translate('underSwissZertESAndEUEIDASThisIsA')
 
 /** The legal line in one row: what kind of signature this is, the details behind "Learn more". */
 export function SesLine({ className }: { className?: string }) {
   return (
     <p className={cn('flex items-center gap-1.5 text-[12.5px] text-muted-foreground', className)}>
       <Info className="size-3.5 shrink-0 stroke-[1.75]" />
-      <span className="truncate">Simple electronic signature (SES), not a qualified one.</span>
+      <span className="truncate">{translate('simpleElectronicSignatureSESNotAQualifiedOne')}</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             className="shrink-0 cursor-help font-medium text-foreground/80 underline decoration-dotted underline-offset-2 hover:text-foreground"
           >
-            Learn more
+            {translate('learnMore')}
           </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-72 text-pretty">{SES_DETAIL}</TooltipContent>
@@ -92,11 +92,7 @@ export function SesNote({ className }: { className?: string }) {
       )}
     >
       <Info className="mt-px size-3.5 shrink-0 stroke-[1.75]" />
-      <span>
-        A simple electronic signature (SES) under Swiss ZertES and EU eIDAS, not a qualified one
-        (QES). It binds for most contracts, but not where the law requires the written form or a
-        handwritten signature.
-      </span>
+      <span>{translate('aSimpleElectronicSignatureSESUnderSwissZertESAnd')}</span>
     </p>
   )
 }

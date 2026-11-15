@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { periodLabel, type PeriodSummary } from '@/lib/engagements'
+import { translate } from '@/lib/i18n'
 import { formatMoney, parseDecimalInput, today, UNITS, VAT_CATEGORIES } from '@/lib/invoices'
 
 import { BillingLabel, ProgressBar } from './engagement-bits'
@@ -97,18 +98,20 @@ function ListPreview({ values, clientName }: { values: FormValues; clientName: s
       <div className="flex items-start justify-between gap-2">
         <span className="grid min-w-0 leading-tight">
           <span className="truncate text-sm">
-            <Soft filled={Boolean(title)}>{title || 'Engagement title'}</Soft>
+            <Soft filled={Boolean(title)}>{title || translate('engagementTitle')}</Soft>
           </span>
           <span className="mt-1 truncate text-muted-foreground">
-            <Soft filled={Boolean(clientName)}>{clientName || 'Client'}</Soft>
+            <Soft filled={Boolean(clientName)}>{clientName || translate('client')}</Soft>
             {' · '}
             <Soft filled={dated}>
-              {dated ? periodLabel({ starts_on: first.start, ends_on: first.end }) : 'Period'}
+              {dated
+                ? periodLabel({ starts_on: first.start, ends_on: first.end })
+                : translate('period')}
             </Soft>
           </span>
         </span>
         <StatusBadge tone={upcoming ? 'gray' : 'green'}>
-          {upcoming ? 'Scheduled' : 'Active'}
+          {upcoming ? translate('scheduled') : translate('active')}
         </StatusBadge>
       </div>
       <div className={cn(!hasQuantity && 'opacity-60')}>
@@ -118,7 +121,9 @@ function ListPreview({ values, clientName }: { values: FormValues; clientName: s
         <StatusBadge tone="blue">
           <BillingLabel engagement={values} />
         </StatusBadge>
-        {values.auto_invoice && <StatusBadge tone="amber">Drafts automatic</StatusBadge>}
+        {values.auto_invoice && (
+          <StatusBadge tone="amber">{translate('draftsAutomatic')}</StatusBadge>
+        )}
       </div>
     </div>
   )
@@ -143,24 +148,24 @@ export function EngagementSummary({
 
   return (
     <aside
-      aria-label="Summary"
+      aria-label={translate('summary')}
       className="grid shrink-0 content-start gap-5 border-b bg-muted/50 p-5 max-lg:order-first lg:w-[340px] lg:overflow-y-auto lg:border-b-0 lg:border-l xl:w-[380px] dark:bg-background"
     >
-      <Block title="Preview">
+      <Block title={translate('preview')}>
         <ListPreview values={values} clientName={clientName} />
         {sentence ? (
           <p className="text-[13px] leading-snug text-pretty">{sentence}</p>
         ) : (
           <p className="text-[13px] text-muted-foreground lg:hidden">
-            Add a quantity and a start date to see what you are setting up.
+            {translate('addAQuantityAndAStartDateToSee')}
           </p>
         )}
       </Block>
 
-      <Block title="Key figures" className="border-t pt-4">
+      <Block title={translate('keyFigures')} className="border-t pt-4">
         <dl className="grid gap-1.5 text-[13px]">
           <Figure
-            label={recurring ? 'Per period' : 'Committed value'}
+            label={recurring ? translate('perPeriod') : translate('committedValue')}
             value={
               <Soft filled={perPeriod !== null}>
                 {perPeriod === null ? `${values.currency} 0.00` : `${money(perPeriod)} ${basis}`}
@@ -169,19 +174,19 @@ export function EngagementSummary({
           />
           {recurring && (
             <Figure
-              label="Committed value"
+              label={translate('committedValue')}
               value={committed === null ? 'Open-ended' : `${money(committed)} ${basis}`}
             />
           )}
           <Figure
-            label="VAT"
+            label={translate('vat')}
             value={values.vat_category === 'S' ? `${values.vat_rate}%` : (category?.label ?? '')}
           />
         </dl>
       </Block>
 
       {recurring && periods.length > 0 && (
-        <Block title="First periods" className="border-t pt-4 max-lg:hidden">
+        <Block title={translate('firstPeriods')} className="border-t pt-4 max-lg:hidden">
           <ol className="grid gap-2 text-[13px] tabular-nums">
             {periods.slice(0, 3).map((period, index) => (
               <li key={period.start} className="flex items-center gap-2.5">
@@ -199,7 +204,7 @@ export function EngagementSummary({
         </Block>
       )}
 
-      <Block title="What happens next" className="border-t pt-4 max-lg:hidden">
+      <Block title={translate('whatHappensNext')} className="border-t pt-4 max-lg:hidden">
         <ul className="grid gap-1.5 text-[13px]">
           {nextSteps(values).map((step) => (
             <li key={step} className="flex gap-2 text-muted-foreground">

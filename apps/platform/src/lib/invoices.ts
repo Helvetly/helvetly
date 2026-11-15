@@ -1,4 +1,5 @@
 'use client'
+import { languageTag } from '@helvetly/i18n'
 import { formatAmount } from '@helvetly/ui/lib/format'
 // Invoices, typed by hand from docs/invoices-contract.md. Money travels as decimal strings and is
 // never turned into a float for arithmetic: totals come from the server (or POST /preview); the
@@ -15,6 +16,7 @@ import { useState } from 'react'
 
 import { ApiError, errorFromBody, getCsrfToken, request, respond } from '@/lib/api'
 import type { ElectronicAddress, Page } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import type { Plan } from '@/lib/instalments'
 import { queryKeys } from '@/lib/queries'
 import { todayIn } from '@/lib/timezone'
@@ -39,47 +41,59 @@ export const INVOICE_KINDS: {
   code: string
   receivable: boolean
 }[] = [
-  { kind: 'invoice', label: 'Invoice', plural: 'Invoices', code: '380', receivable: true },
+  {
+    kind: 'invoice',
+    label: translate('invoice2'),
+    plural: translate('invoices'),
+    code: '380',
+    receivable: true,
+  },
   {
     kind: 'partial',
-    label: 'Partial invoice',
-    plural: 'Partial invoices',
+    label: translate('partialInvoice'),
+    plural: translate('partialInvoices'),
     code: '326',
     receivable: true,
   },
   {
     kind: 'prepayment',
-    label: 'Prepayment invoice',
-    plural: 'Prepayments',
+    label: translate('prepaymentInvoice'),
+    plural: translate('prepayments'),
     code: '386',
     receivable: true,
   },
-  { kind: 'debit_note', label: 'Debit note', plural: 'Debit notes', code: '383', receivable: true },
+  {
+    kind: 'debit_note',
+    label: translate('debitNote2'),
+    plural: translate('debitNotes'),
+    code: '383',
+    receivable: true,
+  },
   {
     kind: 'corrected',
-    label: 'Corrected invoice',
-    plural: 'Corrections',
+    label: translate('correctedInvoice'),
+    plural: translate('corrections'),
     code: '384',
     receivable: true,
   },
   {
     kind: 'credit_note',
-    label: 'Credit note',
-    plural: 'Credit notes',
+    label: translate('creditNote2'),
+    plural: translate('creditNotes'),
     code: '381',
     receivable: false,
   },
   {
     kind: 'proforma',
-    label: 'Proforma invoice',
-    plural: 'Proforma',
+    label: translate('proformaInvoice'),
+    plural: translate('proforma'),
     code: '325',
     receivable: false,
   },
   {
     kind: 'self_billed',
-    label: 'Self-billed invoice',
-    plural: 'Self-billed',
+    label: translate('selfBilledInvoice2'),
+    plural: translate('selfBilled'),
     code: '389',
     receivable: false,
   },
@@ -87,7 +101,7 @@ export const INVOICE_KINDS: {
 
 export function kindInfo(kind: InvoiceKind) {
   const info = INVOICE_KINDS.find((entry) => entry.kind === kind)
-  if (!info) throw new Error(`Unknown invoice kind: ${kind}`)
+  if (!info) throw new Error(translate('unknownInvoiceKind', { kind: kind }))
   return info
 }
 export const isReceivable = (kind: InvoiceKind) => kindInfo(kind).receivable
@@ -432,14 +446,14 @@ export type Summary = {
 
 /** The named periods GET /invoices/summary resolves on the workspace's civil date. */
 export const SUMMARY_PERIODS = [
-  { value: 'this_month', label: 'This month', phrase: 'this month' },
-  { value: 'last_month', label: 'Last month', phrase: 'last month' },
-  { value: 'this_quarter', label: 'This quarter', phrase: 'this quarter' },
-  { value: 'this_year', label: 'This year', phrase: 'this year' },
+  { value: 'this_month', label: translate('thisMonth2'), phrase: translate('thisMonth') },
+  { value: 'last_month', label: translate('lastMonth'), phrase: translate('lastMonth2') },
+  { value: 'this_quarter', label: translate('thisQuarter'), phrase: translate('thisQuarter2') },
+  { value: 'this_year', label: translate('thisYear'), phrase: translate('thisYear2') },
   {
     value: 'last_12_months',
-    label: 'Last 12 months',
-    phrase: 'in the last 12 months',
+    label: translate('last12Months'),
+    phrase: translate('inTheLast12Months'),
   },
 ] as const
 
@@ -493,230 +507,240 @@ export type RefundInput = {
 // Labels
 
 export const UNITS: { value: Unit; label: string; short: string }[] = [
-  { value: 'hour', label: 'Hours', short: 'h' },
-  { value: 'day', label: 'Days', short: 'd' },
-  { value: 'piece', label: 'Pieces', short: 'pcs' },
-  { value: 'month', label: 'Months', short: 'mo' },
-  { value: 'km', label: 'Kilometres', short: 'km' },
-  { value: 'flat', label: 'Flat rate', short: 'flat' },
+  { value: 'hour', label: translate('hours'), short: 'h' },
+  { value: 'day', label: translate('days2'), short: 'd' },
+  { value: 'piece', label: translate('pieces'), short: 'pcs' },
+  { value: 'month', label: translate('months'), short: 'mo' },
+  { value: 'km', label: translate('kilometres'), short: 'km' },
+  { value: 'flat', label: translate('flatRate'), short: 'flat' },
 ]
 
 export const VAT_CATEGORIES: { value: VatCategory; label: string; hint: string }[] = [
-  { value: 'S', label: 'Standard', hint: 'Standard or reduced rate' },
-  { value: 'Z', label: 'Zero rated', hint: '0% with the right to deduct input tax' },
-  { value: 'E', label: 'Exempt', hint: 'Prints the exemption note' },
-  { value: 'AE', label: 'Reverse charge', hint: 'The client pays the VAT; needs their VAT number' },
-  { value: 'K', label: 'Intra-EU supply', hint: 'Needs the client’s VAT number' },
-  { value: 'G', label: 'Export', hint: 'Outside the VAT area' },
-  { value: 'O', label: 'Not subject', hint: 'Seller not VAT-registered' },
+  { value: 'S', label: translate('standard'), hint: translate('standardOrReducedRate') },
+  { value: 'Z', label: translate('zeroRated'), hint: '0% with the right to deduct input tax' },
+  { value: 'E', label: translate('exempt'), hint: translate('printsTheExemptionNote') },
+  {
+    value: 'AE',
+    label: translate('reverseCharge'),
+    hint: translate('theClientPaysTheVATNeedsTheirVATNumber'),
+  },
+  { value: 'K', label: translate('intraEUSupply'), hint: translate('needsTheClientSVATNumber') },
+  { value: 'G', label: translate('export'), hint: translate('outsideTheVATArea') },
+  { value: 'O', label: translate('notSubject'), hint: translate('sellerNotVATRegistered') },
 ]
 
 export const INTERVALS: { value: Interval; label: string }[] = [
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Every two weeks' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'yearly', label: 'Yearly' },
+  { value: 'weekly', label: translate('weekly') },
+  { value: 'biweekly', label: translate('everyTwoWeeks') },
+  { value: 'monthly', label: translate('monthly2') },
+  { value: 'quarterly', label: translate('quarterly') },
+  { value: 'yearly', label: translate('yearly3') },
 ]
 
 export const INSTALMENT_STATUS_LABELS: Record<InstalmentStatus, string> = {
-  paid: 'Paid',
-  part_paid: 'Part paid',
-  open: 'Open',
-  overdue: 'Overdue',
+  paid: translate('paid'),
+  part_paid: translate('partPaid'),
+  open: translate('open'),
+  overdue: translate('overdue3'),
 }
 
 /** The official VATEX-EU codes (CEF code list); the API accepts no others. */
 export const VATEX_CODES: { value: string; label: string }[] = [
   {
     value: 'VATEX-EU-79-C',
-    label: 'Exempt based on article 79, point c of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle79PointCOfCouncil'),
   },
-  { value: 'VATEX-EU-132', label: 'Exempt based on article 132 of Council Directive 2006/112/EC' },
+  { value: 'VATEX-EU-132', label: translate('exemptBasedOnArticle132OfCouncilDirective2006') },
   {
     value: 'VATEX-EU-132-1A',
-    label: 'Exempt based on article 132, section 1 (a) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1AOf'),
   },
   {
     value: 'VATEX-EU-132-1B',
-    label: 'Exempt based on article 132, section 1 (b) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1BOf'),
   },
   {
     value: 'VATEX-EU-132-1C',
-    label: 'Exempt based on article 132, section 1 (c) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1COf'),
   },
   {
     value: 'VATEX-EU-132-1D',
-    label: 'Exempt based on article 132, section 1 (d) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1DOf'),
   },
   {
     value: 'VATEX-EU-132-1E',
-    label: 'Exempt based on article 132, section 1 (e) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1EOf'),
   },
   {
     value: 'VATEX-EU-132-1F',
-    label: 'Exempt based on article 132, section 1 (f) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1FOf'),
   },
   {
     value: 'VATEX-EU-132-1G',
-    label: 'Exempt based on article 132, section 1 (g) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1GOf'),
   },
   {
     value: 'VATEX-EU-132-1H',
-    label: 'Exempt based on article 132, section 1 (h) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1HOf'),
   },
   {
     value: 'VATEX-EU-132-1I',
-    label: 'Exempt based on article 132, section 1 (i) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1IOf'),
   },
   {
     value: 'VATEX-EU-132-1J',
-    label: 'Exempt based on article 132, section 1 (j) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1JOf'),
   },
   {
     value: 'VATEX-EU-132-1K',
-    label: 'Exempt based on article 132, section 1 (k) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1KOf'),
   },
   {
     value: 'VATEX-EU-132-1L',
-    label: 'Exempt based on article 132, section 1 (l) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1LOf'),
   },
   {
     value: 'VATEX-EU-132-1M',
-    label: 'Exempt based on article 132, section 1 (m) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1MOf'),
   },
   {
     value: 'VATEX-EU-132-1N',
-    label: 'Exempt based on article 132, section 1 (n) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1NOf'),
   },
   {
     value: 'VATEX-EU-132-1O',
-    label: 'Exempt based on article 132, section 1 (o) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1OOf'),
   },
   {
     value: 'VATEX-EU-132-1P',
-    label: 'Exempt based on article 132, section 1 (p) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1POf'),
   },
   {
     value: 'VATEX-EU-132-1Q',
-    label: 'Exempt based on article 132, section 1 (q) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle132Section1QOf'),
   },
-  { value: 'VATEX-EU-143', label: 'Exempt based on article 143 of Council Directive 2006/112/EC' },
+  { value: 'VATEX-EU-143', label: translate('exemptBasedOnArticle143OfCouncilDirective2006') },
   {
     value: 'VATEX-EU-143-1A',
-    label: 'Exempt based on article 143, section 1 (a) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1AOf'),
   },
   {
     value: 'VATEX-EU-143-1B',
-    label: 'Exempt based on article 143, section 1 (b) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1BOf'),
   },
   {
     value: 'VATEX-EU-143-1C',
-    label: 'Exempt based on article 143, section 1 (c) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1COf'),
   },
   {
     value: 'VATEX-EU-143-1D',
-    label: 'Exempt based on article 143, section 1 (d) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1DOf'),
   },
   {
     value: 'VATEX-EU-143-1E',
-    label: 'Exempt based on article 143, section 1 (e) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1EOf'),
   },
   {
     value: 'VATEX-EU-143-1F',
-    label: 'Exempt based on article 143, section 1 (f) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1FOf'),
   },
   {
     value: 'VATEX-EU-143-1FA',
-    label: 'Exempt based on article 143, section 1 (fa) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1FaOf'),
   },
   {
     value: 'VATEX-EU-143-1G',
-    label: 'Exempt based on article 143, section 1 (g) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1GOf'),
   },
   {
     value: 'VATEX-EU-143-1H',
-    label: 'Exempt based on article 143, section 1 (h) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1HOf'),
   },
   {
     value: 'VATEX-EU-143-1I',
-    label: 'Exempt based on article 143, section 1 (i) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1IOf'),
   },
   {
     value: 'VATEX-EU-143-1J',
-    label: 'Exempt based on article 143, section 1 (j) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1JOf'),
   },
   {
     value: 'VATEX-EU-143-1K',
-    label: 'Exempt based on article 143, section 1 (k) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1KOf'),
   },
   {
     value: 'VATEX-EU-143-1L',
-    label: 'Exempt based on article 143, section 1 (l) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle143Section1LOf'),
   },
-  { value: 'VATEX-EU-148', label: 'Exempt based on article 148 of Council Directive 2006/112/EC' },
+  { value: 'VATEX-EU-148', label: translate('exemptBasedOnArticle148OfCouncilDirective2006') },
   {
     value: 'VATEX-EU-148-A',
-    label: 'Exempt based on article 148, section (a) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionAOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-B',
-    label: 'Exempt based on article 148, section (b) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionBOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-C',
-    label: 'Exempt based on article 148, section (c) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionCOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-D',
-    label: 'Exempt based on article 148, section (d) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionDOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-E',
-    label: 'Exempt based on article 148, section (e) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionEOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-F',
-    label: 'Exempt based on article 148, section (f) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionFOfCouncil'),
   },
   {
     value: 'VATEX-EU-148-G',
-    label: 'Exempt based on article 148, section (g) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle148SectionGOfCouncil'),
   },
-  { value: 'VATEX-EU-151', label: 'Exempt based on article 151 of Council Directive 2006/112/EC' },
+  { value: 'VATEX-EU-151', label: translate('exemptBasedOnArticle151OfCouncilDirective2006') },
   {
     value: 'VATEX-EU-151-1A',
-    label: 'Exempt based on article 151, section 1 (a) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1AOf'),
   },
   {
     value: 'VATEX-EU-151-1AA',
-    label: 'Exempt based on article 151, section 1 (aa) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1AaOf'),
   },
   {
     value: 'VATEX-EU-151-1B',
-    label: 'Exempt based on article 151, section 1 (b) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1BOf'),
   },
   {
     value: 'VATEX-EU-151-1C',
-    label: 'Exempt based on article 151, section 1 (c) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1COf'),
   },
   {
     value: 'VATEX-EU-151-1D',
-    label: 'Exempt based on article 151, section 1 (d) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1DOf'),
   },
   {
     value: 'VATEX-EU-151-1E',
-    label: 'Exempt based on article 151, section 1 (e) of Council Directive 2006/112/EC',
+    label: translate('exemptBasedOnArticle151Section1EOf'),
   },
-  { value: 'VATEX-EU-309', label: 'Exempt based on article 309 of Council Directive 2006/112/EC' },
-  { value: 'VATEX-EU-AE', label: 'Reverse charge' },
-  { value: 'VATEX-EU-D', label: 'Intra-Community acquisition from second hand means of transport' },
-  { value: 'VATEX-EU-F', label: 'Intra-Community acquisition of second hand goods' },
-  { value: 'VATEX-EU-G', label: 'Export outside the EU' },
-  { value: 'VATEX-EU-I', label: 'Intra-Community acquisition of works of art' },
-  { value: 'VATEX-EU-IC', label: 'Intra-Community supply' },
-  { value: 'VATEX-EU-O', label: 'Not subject to VAT' },
-  { value: 'VATEX-EU-J', label: 'Intra-Community acquisition of collectors items and antiques' },
+  { value: 'VATEX-EU-309', label: translate('exemptBasedOnArticle309OfCouncilDirective2006') },
+  { value: 'VATEX-EU-AE', label: translate('reverseCharge') },
+  {
+    value: 'VATEX-EU-D',
+    label: translate('intraCommunityAcquisitionFromSecondHandMeansOfTransport'),
+  },
+  { value: 'VATEX-EU-F', label: translate('intraCommunityAcquisitionOfSecondHandGoods') },
+  { value: 'VATEX-EU-G', label: translate('exportOutsideTheEU') },
+  { value: 'VATEX-EU-I', label: translate('intraCommunityAcquisitionOfWorksOfArt') },
+  { value: 'VATEX-EU-IC', label: translate('intraCommunitySupply') },
+  { value: 'VATEX-EU-O', label: translate('notSubjectToVAT') },
+  {
+    value: 'VATEX-EU-J',
+    label: translate('intraCommunityAcquisitionOfCollectorsItemsAndAntiques'),
+  },
 ]
 
 /** Categories whose lines carry a VATEX code; O falls back to VATEX-EU-O on the server. */
@@ -732,13 +756,13 @@ export function defaultExemptionCode(category: VatCategory): string | null {
 }
 
 export const EINVOICE_FORMATS: { value: EinvoiceFormat; label: string; hint?: string }[] = [
-  { value: 'xrechnung-ubl', label: 'XRechnung (UBL)' },
-  { value: 'xrechnung-cii', label: 'XRechnung (CII)' },
-  { value: 'peppol', label: 'Peppol BIS 3.0' },
+  { value: 'xrechnung-ubl', label: translate('xrechnungUBL') },
+  { value: 'xrechnung-cii', label: translate('xrechnungCII') },
+  { value: 'peppol', label: translate('peppolBIS30') },
   {
     value: 'ro-cius',
-    label: 'e-Factura (CIUS-RO)',
-    hint: 'Upload it in SPV (Spațiul Privat Virtual)',
+    label: translate('eFacturaCIUSRO'),
+    hint: translate('uploadItInSPVSpaIulPrivatVirtual'),
   },
 ]
 
@@ -753,7 +777,7 @@ export const einvoiceFormatsFor = (
 ) => [
   ...EINVOICE_FORMATS.filter((format) => buyerCountry === 'RO' || format.value !== 'ro-cius'),
   ...(sellerCountry === 'PL'
-    ? [{ value: 'ksef-fa3' as const, label: 'KSeF FA(3) · upload in Aplikacja Podatnika' }]
+    ? [{ value: 'ksef-fa3' as const, label: translate('ksefFA3UploadInAplikacjaPodatnika') }]
     : []),
 ]
 
@@ -761,11 +785,11 @@ export const einvoiceFormatsFor = (
 export const VAT_RATES = ['8.1', '3.8', '2.6'] as const
 
 export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'bank_transfer', label: translate('bankTransfer') },
   { value: 'twint', label: 'TWINT' },
-  { value: 'card', label: 'Card' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'other', label: 'Other' },
+  { value: 'card', label: translate('card') },
+  { value: 'cash', label: translate('cash') },
+  { value: 'other', label: translate('other') },
 ]
 
 export const NUMBER_FORMATS: NumberFormat[] = ['YYYY-NNN', 'YYYY/NNN', 'NNN/YYYY', 'RE-YYYY-NNN']
@@ -778,26 +802,26 @@ export function exampleNumber(format: NumberFormat, year: number, seq: number, c
 
 /** What each missing_fields entry is called, as the settings form labels it. */
 export const MISSING_LABELS: Record<string, string> = {
-  'seller.name': 'Company name',
-  'seller.street': 'Street',
-  'seller.street_number': 'Number',
+  'seller.name': translate('companyName'),
+  'seller.street': translate('street'),
+  'seller.street_number': translate('number'),
   'seller.zip': 'ZIP',
-  'seller.city': 'City',
-  'seller.country': 'Country',
-  'seller.vat_number': 'VAT number',
+  'seller.city': translate('city'),
+  'seller.country': translate('country'),
+  'seller.vat_number': translate('vatNumber'),
   iban: 'IBAN',
 }
 /** The invoice settings section each field is in, and the link's name; the rest is Company. */
 const SETTINGS_SECTIONS: Record<string, [section: string, label: string]> = {
-  'seller.vat_number': ['vat', 'VAT settings'],
-  iban: ['bank', 'Bank account'],
-  'seller.registration_number': ['einvoice', 'E-invoice settings'],
-  'seller.electronic_address': ['einvoice', 'E-invoice settings'],
+  'seller.vat_number': ['vat', translate('vatSettings')],
+  iban: ['bank', translate('bankAccount')],
+  'seller.registration_number': ['einvoice', translate('eInvoiceSettings')],
+  'seller.electronic_address': ['einvoice', translate('eInvoiceSettings')],
 }
 
 /** The invoice settings opened on a field's section, the field in focus. */
 export function settingsFix(field: string): { label: string; href: string } {
-  const [section, label] = SETTINGS_SECTIONS[field] ?? ['company', 'Company details']
+  const [section, label] = SETTINGS_SECTIONS[field] ?? ['company', translate('companyDetails')]
   return {
     label,
     href: `/settings/invoices${field ? `?focus=${encodeURIComponent(field)}` : ''}#${section}`,
@@ -827,21 +851,20 @@ const swissIban = (iban: string) => /^(CH|LI)/.test(iban)
 
 /** Why the QR bill cannot be offered on an invoice in currency, or null when it can. */
 export function qrBillBlocker(settings: InvoiceSettings, currency: string): string | null {
-  if (!settings.qr_bill_enabled) return 'Turned off in the invoice settings.'
-  if (!settings.iban) return 'Add your IBAN in the invoice settings first.'
-  if (!swissIban(settings.iban))
-    return 'Needs a Swiss or Liechtenstein IBAN in the invoice settings.'
-  if (!qrBillCurrency(currency)) return `Only for CHF and EUR, not ${currency}.`
+  if (!settings.qr_bill_enabled) return translate('turnedOffInTheInvoiceSettings')
+  if (!settings.iban) return translate('addYourIBANInTheInvoiceSettingsFirst')
+  if (!swissIban(settings.iban)) return translate('needsASwissOrLiechtensteinIBANInTheInvoice')
+  if (!qrBillCurrency(currency)) return translate('onlyForCHFAndEURNot', { currency: currency })
   return null
 }
 
 /** Why Revolut cannot be offered, or null when it can. */
 export const revolutBlocker = (settings: InvoiceSettings): string | null =>
   !settings.revolut_enabled
-    ? 'Turned off in the invoice settings.'
+    ? translate('turnedOffInTheInvoiceSettings')
     : settings.revolut_username
       ? null
-      : 'Add your revolut.me username in the invoice settings.'
+      : translate('addYourRevolutMeUsernameInTheInvoiceSettings')
 
 /** The chosen methods that can apply: the editor sends only these, as the API keeps only these. */
 export const usableMethods = (
@@ -862,7 +885,7 @@ export const defaultPaymentMethods = (settings: InvoiceSettings, currency: strin
 /** Exact cents of a money string ("-1234.5" → -123450n); rejects anything else. */
 export function toCents(value: Decimal): bigint {
   const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim())
-  if (!match) throw new Error(`Not a money amount: "${value}"`)
+  if (!match) throw new Error(translate('notAMoneyAmount', { value: value }))
   const cents = BigInt(match[2] ?? '0') * 100n + BigInt((match[3] ?? '').padEnd(2, '0'))
   return match[1] ? -cents : cents
 }
@@ -922,7 +945,7 @@ export function daysBetween(from: string, to: string) {
 
 /** "12 Nov 2026" for a civil date, without time zone drift. */
 export const formatDay = (date: string) =>
-  new Intl.DateTimeFormat('en-GB', {
+  new Intl.DateTimeFormat(languageTag, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -938,9 +961,10 @@ export function formatRange(from: string, to: string) {
 /** "Due in 5 days", "Due today", "12 days overdue". */
 export function dueLabel(due: string, now = today()) {
   const days = daysBetween(now, due)
-  if (days === 0) return 'Due today'
-  if (days > 0) return days === 1 ? 'Due tomorrow' : `Due in ${days} days`
-  return -days === 1 ? '1 day overdue' : `${-days} days overdue`
+  if (days === 0) return translate('dueToday')
+  if (days > 0)
+    return days === 1 ? translate('dueTomorrow') : translate('dueInDays', { days: days })
+  return -days === 1 ? translate('message1DayOverdue') : translate('daysOverdue', { value1: -days })
 }
 
 // Status
@@ -963,14 +987,14 @@ export function displayStatus(item: Pick<Invoice, 'kind' | 'status' | 'is_overdu
 }
 
 export const STATUS_LABELS: Record<DisplayStatus, string> = {
-  draft: 'Draft',
-  open: 'Open',
-  overdue: 'Overdue',
-  paid: 'Paid',
-  void: 'Void',
-  replaced: 'Replaced',
-  credit_draft: 'Draft',
-  credit_applied: 'Applied',
+  draft: translate('draft'),
+  open: translate('open'),
+  overdue: translate('overdue3'),
+  paid: translate('paid'),
+  void: translate('void2'),
+  replaced: translate('replaced'),
+  credit_draft: translate('draft'),
+  credit_applied: translate('applied'),
 }
 
 /** Owners and admins void and delete payments; members do everything else. */
@@ -979,7 +1003,9 @@ export const canManageInvoices = (role: string | undefined) => role === 'owner' 
 /** "Invoice 2026-004", "Draft invoice", "Credit note CN-2026-001". */
 export function documentName(invoice: Pick<Invoice, 'kind' | 'number'>) {
   const noun = kindInfo(invoice.kind).label
-  return invoice.number ? `${noun} ${invoice.number}` : `Draft ${noun.toLowerCase()}`
+  return invoice.number
+    ? `${noun} ${invoice.number}`
+    : translate('draft3', { value1: noun.toLowerCase() })
 }
 
 /** Payment references read in groups of five ("RF18 5390 0754 7034"). */
@@ -1462,8 +1488,8 @@ export const LOGO_MAX_BYTES = 2 * 1024 * 1024
 
 /** Why `file` can't be a logo, before it is sent; null when it can. */
 export function logoProblem(file: File) {
-  if (!LOGO_TYPES.includes(file.type)) return 'Use a PNG or JPEG image.'
-  if (file.size > LOGO_MAX_BYTES) return 'The logo can be at most 2 MB.'
+  if (!LOGO_TYPES.includes(file.type)) return translate('useAPNGOrJPEGImage')
+  if (file.size > LOGO_MAX_BYTES) return translate('theLogoCanBeAtMost2MB')
   return null
 }
 
@@ -1477,7 +1503,7 @@ export function uploadLogo(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('PUT', '/api/v1/invoice-settings/logo')
-    xhr.setRequestHeader('Accept', 'application/json')
+    xhr.setRequestHeader(translate('accept'), 'application/json')
     const token = getCsrfToken()
     if (token) xhr.setRequestHeader('X-CSRF-Token', token)
     xhr.responseType = 'json'
@@ -1498,7 +1524,7 @@ export function uploadLogo(
       }
     })
     xhr.addEventListener('error', () =>
-      reject(new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')),
+      reject(new ApiError(0, 'network_error', translate('cannotReachHelvetlyCheckYourConnection'))),
     )
     xhr.send(form)
   })
@@ -1529,15 +1555,15 @@ export function useLogo() {
 }
 
 const UNSUPPORTED_SELLER_SYSTEMS: Record<string, string> = {
-  HU: 'the NAV Online Számla real-time reporting',
-  PT: 'certified invoicing software (ATCUD, QR code, SAF-T)',
-  RO: 'RO e-Factura',
+  HU: translate('theNAVOnlineSzMlaRealTimeReporting'),
+  PT: translate('certifiedInvoicingSoftwareATCUDQRCodeSAFT'),
+  RO: translate('roEFactura'),
 }
 
 /** Why a seller in this country cannot invoice here yet (the server refuses it too); undefined when it can. */
 export function unsupportedSellerCountry(country: string): string | undefined {
   const system = UNSUPPORTED_SELLER_SYSTEMS[country]
   return system
-    ? `Helvetly cannot issue invoices for a seller in ${country} yet: invoices there must go through ${system}, which Helvetly does not support.`
+    ? translate('helvetlyCannotIssueInvoicesForASellerInYet', { country: country, system: system })
     : undefined
 }

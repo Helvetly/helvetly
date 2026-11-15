@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Input } from '@helvetly/ui/components/input'
 import { Separator } from '@helvetly/ui/components/separator'
@@ -12,6 +11,7 @@ import {
 } from '@helvetly/ui/components/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { useIsMobile } from '@helvetly/ui/hooks/use-mobile'
+import { translate } from '@helvetly/ui/lib/i18n'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from 'cn'
 import { PanelLeftCloseIcon, PanelLeftIcon, PanelLeftOpenIcon } from 'lucide-react'
@@ -40,7 +40,7 @@ const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
-    throw new Error('useSidebar must be used within a SidebarProvider.')
+    throw new Error(translate('usesidebarMustBeUsedWithinASidebarProvider'))
   }
 
   return context
@@ -190,8 +190,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{translate('sidebar')}</SheetTitle>
+            <SheetDescription>{translate('displaysTheMobileSidebar')}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -269,7 +269,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       {...props}
     >
       <Icon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{translate('toggleSidebar')}</span>
     </Button>
   )
 }
@@ -281,10 +281,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label={translate('toggleSidebar')}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={translate('toggleSidebar')}
       className={cn(
         'absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2',
         'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',

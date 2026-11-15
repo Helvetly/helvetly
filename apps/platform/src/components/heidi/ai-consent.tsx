@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -29,13 +28,13 @@ import { toast } from 'sonner'
 import { SettingsSection } from '@/components/settings/layout'
 import { errorMessage, type ApiError } from '@/lib/api'
 import { heidiApi, type HeidiConsent } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 import { usageKey } from './use-heidi'
 
 /** What turning consent on means, in one place for the panel and the settings card. */
-export const CONSENT_TEXT =
-  'Heidi then sends OpenAI (USA) the message you write, the last 20 messages of that conversation, which can include figures Heidi showed you, and the files you attach to it. Workspace records are not sent otherwise. OpenAI does not train on this data and may keep it for up to 30 days to detect abuse. Owners and admins can turn this off at any time.'
+export const CONSENT_TEXT = translate('heidiThenSendsOpenAIUSATheMessageYouWrite')
 
 function useAIConsent() {
   const queryClient = useQueryClient()
@@ -63,42 +62,46 @@ export function AIConsentNotice() {
       className="mb-2 grid gap-2 rounded-lg bg-muted px-3 py-2.5 text-[12.5px] text-muted-foreground"
     >
       <p className="text-pretty">
-        <span className="font-medium text-foreground">AI answers are off.</span> Heidi answers from
-        your records only. {CONSENT_TEXT}
+        <span className="font-medium text-foreground">{translate('aiAnswersAreOff')}</span>
+        {translate('heidiAnswersFromYourRecordsOnly')}
+        {CONSENT_TEXT}
       </p>
       {canManage ? (
         <div>
           <Button size="sm" disabled={change.isPending} onClick={() => change.mutate(true)}>
-            {change.isPending ? 'Allowing…' : 'Allow OpenAI'}
+            {change.isPending ? translate('allowing') : translate('allowOpenAI')}
           </Button>
         </div>
       ) : (
-        <p>An owner or admin can allow it.</p>
+        <p>{translate('anOwnerOrAdminCanAllowIt')}</p>
       )}
     </div>
   )
 }
 
 const SHARED: { icon: LucideIcon; text: string; sent?: boolean }[] = [
-  { icon: MessageSquare, text: 'The message you write', sent: true },
+  { icon: MessageSquare, text: translate('theMessageYouWrite'), sent: true },
   {
     icon: History,
-    text: 'The last 20 messages of that conversation, including figures Heidi showed you',
+    text: translate('theLast20MessagesOfThatConversationIncludingFigures'),
     sent: true,
   },
-  { icon: Paperclip, text: 'Files you attach to it', sent: true },
-  { icon: DatabaseZap, text: 'Not sent: any other workspace records' },
-  { icon: GraduationCap, text: 'OpenAI doesn’t train on it' },
-  { icon: Clock, text: 'Kept up to 30 days, only for abuse checks' },
-  { icon: Globe, text: 'Processed by OpenAI in the USA' },
+  { icon: Paperclip, text: translate('filesYouAttachToIt'), sent: true },
+  { icon: DatabaseZap, text: translate('notSentAnyOtherWorkspaceRecords') },
+  { icon: GraduationCap, text: translate('openaiDoesnTTrainOnIt') },
+  { icon: Clock, text: translate('keptUpTo30DaysOnlyForAbuseChecks') },
+  { icon: Globe, text: translate('processedByOpenAIInTheUSA') },
 ]
 
 /** Who turned the consent on or off, and when; or that nobody has chosen yet. */
 function consentStatus(consent: HeidiConsent | undefined): string {
-  const off = 'Off: Heidi answers from your data only'
+  const off = translate('offHeidiAnswersFromYourDataOnly')
   if (!consent?.changed_at) return off
-  const since = `since ${formatDate(consent.changed_at)} · by ${consent.changed_by}`
-  return consent.granted ? `On ${since}` : `${off} · ${since}`
+  const since = translate('sinceBy', {
+    value1: formatDate(consent.changed_at),
+    changed_by: consent.changed_by,
+  })
+  return consent.granted ? translate('on2', { since: since }) : `${off} · ${since}`
 }
 
 /** Workspace settings: the same consent as a switch, its status, and what it shares. */
@@ -110,32 +113,30 @@ export function AIConsentCard() {
     <SettingsSection
       id="ai-provider"
       icon={Sparkles}
-      title="AI answers with OpenAI"
-      description="Let Heidi use OpenAI for smarter answers. Owners and admins decide."
+      title={translate('aiAnswersWithOpenAI')}
+      description={translate('letHeidiUseOpenAIForSmarterAnswersOwnersAnd')}
     >
       <SwitchRow
         id="ai-consent"
-        label="Allow Heidi to use OpenAI"
+        label={translate('allowHeidiToUseOpenAI')}
         description={consentStatus(usage.consent)}
         checked={granted}
         disabled={change.isPending}
-        disabledReason={canManage ? undefined : 'Only an owner or admin can change this.'}
+        disabledReason={canManage ? undefined : translate('onlyAnOwnerOrAdminCanChangeThis')}
         onCheckedChange={(next) => change.mutate(next)}
       />
       <Dialog>
         <div>
           <DialogTrigger asChild>
             <Button variant="link" size="sm" className="h-auto px-0">
-              What Heidi shares with OpenAI
+              {translate('whatHeidiSharesWithOpenAI')}
             </Button>
           </DialogTrigger>
         </div>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>What Heidi shares with OpenAI</DialogTitle>
-            <DialogDescription>
-              Only while AI answers are on, and only for your own chats.
-            </DialogDescription>
+            <DialogTitle>{translate('whatHeidiSharesWithOpenAI')}</DialogTitle>
+            <DialogDescription>{translate('onlyWhileAIAnswersAreOnAndOnlyFor')}</DialogDescription>
           </DialogHeader>
           <ul className="grid gap-2.5 text-body-sm">
             {SHARED.map(({ icon: Icon, text, sent }) => (

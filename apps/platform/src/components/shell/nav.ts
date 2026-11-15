@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { can, resourceForPath, type Need } from '@/lib/permissions'
 
 export type NavItem = {
@@ -31,24 +32,27 @@ export type NavItem = {
 // Items without a page yet have no href: they look the same and say "coming soon".
 export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
   {
-    label: 'Work',
+    label: translate('work'),
     items: [
-      { label: 'Dashboard', icon: LayoutGrid, href: '/' },
-      { label: 'Clients', icon: Building2, href: '/clients' },
-      { label: 'Invoices', icon: ReceiptText, href: '/invoices' },
-      { label: 'Quotes', icon: ScrollText, href: '/quotes' },
-      { label: 'Products & services', icon: Package, href: '/products' },
-      { label: 'Expenses', icon: Wallet, href: '/expenses' },
-      { label: 'Engagements', icon: ClipboardCheck, href: '/engagements' },
-      { label: 'Documents', icon: FileText, href: '/documents' },
+      { label: translate('dashboard'), icon: LayoutGrid, href: '/' },
+      { label: translate('clients'), icon: Building2, href: '/clients' },
+      { label: translate('invoices'), icon: ReceiptText, href: '/invoices' },
+      { label: translate('quotes'), icon: ScrollText, href: '/quotes' },
+      { label: translate('productsServices'), icon: Package, href: '/products' },
+      { label: translate('expenses'), icon: Wallet, href: '/expenses' },
+      { label: translate('engagements'), icon: ClipboardCheck, href: '/engagements' },
+      { label: translate('documents'), icon: FileText, href: '/documents' },
     ],
   },
-  { label: 'Team', items: [{ label: 'Members', icon: Users, href: '/members' }] },
+  {
+    label: translate('team'),
+    items: [{ label: translate('members'), icon: Users, href: '/members' }],
+  },
   {
     bottom: true,
     items: [
-      { label: 'Ask Heidi', icon: HeidiSparkle, heidi: true, isNew: true },
-      { label: 'Notifications', icon: Bell, href: '/notifications', bell: true },
+      { label: translate('askHeidi'), icon: HeidiSparkle, heidi: true, isNew: true },
+      { label: translate('notifications'), icon: Bell, href: '/notifications', bell: true },
     ],
   },
 ]
@@ -72,16 +76,26 @@ export const CREATE_ACTIONS: {
   need: Need
   href?: string
 }[] = [
-  { label: 'New invoice', icon: ReceiptText, need: 'write:invoices', href: '/invoices/new' },
-  { label: 'New expense', icon: Wallet, need: 'write:expenses', href: '/expenses?new=1' },
-  { label: 'New client', icon: Building2, need: 'write:clients', href: '/clients?new=1' },
   {
-    label: 'New engagement',
+    label: translate('newInvoice'),
+    icon: ReceiptText,
+    need: 'write:invoices',
+    href: '/invoices/new',
+  },
+  { label: translate('newExpense'), icon: Wallet, need: 'write:expenses', href: '/expenses?new=1' },
+  { label: translate('newClient'), icon: Building2, need: 'write:clients', href: '/clients?new=1' },
+  {
+    label: translate('newEngagement2'),
     icon: ClipboardCheck,
     need: 'write:engagements',
     href: '/engagements?new=1',
   },
-  { label: 'New product', icon: Package, need: 'write:products', href: '/products?new=1' },
-  { label: 'Upload document', icon: FileUp, need: 'write:documents' },
-  { label: 'Invite member', icon: UserPlus, need: 'write:members' },
+  {
+    label: translate('newProduct'),
+    icon: Package,
+    need: 'write:products',
+    href: '/products?new=1',
+  },
+  { label: translate('uploadDocument'), icon: FileUp, need: 'write:documents' },
+  { label: translate('inviteMember'), icon: UserPlus, need: 'write:members' },
 ]

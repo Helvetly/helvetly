@@ -1,5 +1,5 @@
 'use client'
-
+import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { useOpenHref } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import type { HeidiAction } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { documentName, useSendInvoice } from '@/lib/invoices'
 
 import { ActivityLine } from './activity-line'
@@ -60,9 +61,9 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
       {sending && (
         <ConfirmDialog
           key={sending.invoice_id}
-          title="Send this invoice?"
-          body={`It goes to the client by email with the subject “${sending.subject}”.`}
-          confirmLabel="Send invoice"
+          title={translate('sendThisInvoice')}
+          body={translate('itGoesToTheClientByEmailWithThe', { subject: sending.subject })}
+          confirmLabel={translate('sendInvoice')}
           tone="default"
           onDecide={(approved) => {
             setSending(null)
@@ -70,7 +71,8 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
               send.mutate(
                 { id: sending.invoice_id, input: { subject: sending.subject } },
                 {
-                  onSuccess: (invoice) => toast.success(`${documentName(invoice)} sent.`),
+                  onSuccess: (invoice) =>
+                    toast.success(translate('sent2', { value1: documentName(invoice) })),
                   onError: (error) => toast.error(errorMessage(error)),
                 },
               )
@@ -84,7 +86,7 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
 /** A quiet icon button under a finished answer; a check confirms the copy. */
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
-  const label = copied ? 'Copied' : 'Copy'
+  const label = copied ? translate('copied2') : translate('copy5')
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -101,7 +103,7 @@ function CopyButton({ text }: { text: string }) {
                 setCopied(true)
                 setTimeout(() => setCopied(false), 1500)
               },
-              () => toast.error('Couldn’t copy the answer.'),
+              () => toast.error(translate('couldnTCopyTheAnswer')),
             )
           }
         >
@@ -113,14 +115,14 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
-const dayAndClock = new Intl.DateTimeFormat('en-GB', {
+const clock = new Intl.DateTimeFormat(languageTag, { hour: '2-digit', minute: '2-digit' })
+const dayAndClock = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
   hour: '2-digit',
   minute: '2-digit',
 })
-const fullDate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'short' })
+const fullDate = new Intl.DateTimeFormat(languageTag, { dateStyle: 'full', timeStyle: 'short' })
 
 /** "08:31" today, "10 Nov, 08:31" on another day. */
 export function messageTime(at: Date, now = new Date()) {
@@ -206,7 +208,7 @@ export function Message({
     >
       <div className="flex items-center gap-1.5 px-1 text-caption text-muted-foreground">
         <HeidiSparkle className="size-3.5" />
-        <span className="font-medium text-foreground">Heidi</span>
+        <span className="font-medium text-foreground">{translate('heidi')}</span>
         <Time at={message.at} />
       </div>
       <MessageMenu
@@ -257,7 +259,7 @@ export function Message({
             <Actions actions={message.actions} />
           )}
           {message.state === 'stopped' && (
-            <p className="mt-1 text-body-sm text-muted-foreground">Stopped.</p>
+            <p className="mt-1 text-body-sm text-muted-foreground">{translate('stopped')}</p>
           )}
           {message.state === 'error' && (
             <div
@@ -265,7 +267,7 @@ export function Message({
               className="mt-2 flex items-center gap-2 rounded-lg bg-destructive-surface/60 px-3 py-2 text-body-sm text-destructive"
             >
               <AlertCircle className="size-4 shrink-0" />
-              <span className="flex-1">{message.error ?? 'Something went wrong.'}</span>
+              <span className="flex-1">{message.error ?? translate('somethingWentWrong2')}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -273,7 +275,8 @@ export function Message({
                 disabled={busy}
                 onClick={onRetry}
               >
-                <RotateCw /> Retry
+                <RotateCw />
+                {translate('retry2')}
               </Button>
             </div>
           )}

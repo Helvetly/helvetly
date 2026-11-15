@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -12,6 +11,7 @@ import {
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { translate } from '@/lib/i18n'
 import {
   applyToAll,
   displayValue,
@@ -56,38 +56,41 @@ export function ImportConflicts({
       <DialogContent className="w-[min(560px,calc(100vw-2rem))] max-w-none! gap-4">
         <DialogHeader>
           <DialogTitle>
-            {count === 1 ? 'This number is already used' : `${count} numbers are already used`}
+            {count === 1
+              ? translate('thisNumberIsAlreadyUsed')
+              : translate('numbersAreAlreadyUsed', { count: count })}
           </DialogTitle>
           <DialogDescription className="text-pretty">
-            {count === 1 ? 'An invoice with this number' : 'Invoices with these numbers'} already
-            exist in Helvetly. Choose for each row: overwrite the existing invoice with the imported
-            one, or skip the row.
+            {count === 1
+              ? translate('anInvoiceWithThisNumber')
+              : translate('invoicesWithTheseNumbers')}
+            {translate('alreadyExistInHelvetlyChooseForEachRowOverwrite')}
           </DialogDescription>
         </DialogHeader>
 
         {count > 1 && (
           <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-            <span>Apply to all:</span>
+            <span>{translate('applyToAll')}</span>
             <Button
               size="sm"
               variant="outline"
               disabled={!anyOverwritable}
               onClick={() => setChoices(applyToAll(conflicts, 'overwrite'))}
             >
-              Overwrite all
+              {translate('overwriteAll')}
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={() => setChoices(applyToAll(conflicts, 'skip'))}
             >
-              Skip all
+              {translate('skipAll')}
             </Button>
           </div>
         )}
 
         <ul
-          aria-label="Conflicts"
+          aria-label={translate('conflicts')}
           className="max-h-[50vh] divide-y overflow-y-auto rounded-lg border"
         >
           {conflicts.map(({ id, conflict }) => {
@@ -98,7 +101,7 @@ export function ImportConflicts({
                 <div className="grid min-w-0 gap-0.5">
                   <span className="truncate font-medium">{label}</span>
                   <span className="text-muted-foreground">
-                    Already used by{' '}
+                    {translate('alreadyUsedBy')}{' '}
                     <Link
                       href={config.entityHref(conflict.id)}
                       target="_blank"
@@ -109,22 +112,26 @@ export function ImportConflicts({
                   </span>
                   {conflict.why_not && (
                     <span className="text-[12px] text-pretty text-muted-foreground">
-                      Cannot be overwritten: {conflict.why_not}
+                      {translate('cannotBeOverwritten')}
+                      {conflict.why_not}
                     </span>
                   )}
                 </div>
-                <fieldset aria-label={`Choice for ${label}`} className="flex gap-1 self-start">
+                <fieldset
+                  aria-label={translate('choiceFor', { label: label })}
+                  className="flex gap-1 self-start"
+                >
                   {(['overwrite', 'skip'] as const).map((option) => (
                     <Button
                       key={option}
                       size="sm"
                       variant={choice === option ? 'default' : 'outline'}
                       aria-pressed={choice === option}
-                      aria-label={`${option === 'overwrite' ? 'Overwrite' : 'Skip'} ${label}`}
+                      aria-label={`${option === 'overwrite' ? translate('overwrite') : translate('skip')} ${label}`}
                       disabled={option === 'overwrite' && !conflict.can_overwrite}
                       onClick={() => setChoices((current) => ({ ...current, [id]: option }))}
                     >
-                      {option === 'overwrite' ? 'Overwrite' : 'Skip'}
+                      {option === 'overwrite' ? translate('overwrite') : translate('skip')}
                     </Button>
                   ))}
                 </fieldset>
@@ -135,10 +142,10 @@ export function ImportConflicts({
 
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onCancel}>
-            Decide later
+            {translate('decideLater')}
           </Button>
           <Button disabled={pending} onClick={() => onConfirm(choices)}>
-            {pending ? 'Importing…' : 'Confirm'}
+            {pending ? translate('importing') : translate('confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

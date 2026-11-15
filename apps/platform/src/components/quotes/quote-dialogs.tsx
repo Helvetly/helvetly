@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
@@ -18,6 +17,7 @@ import {
 } from '@/components/invoices/invoice-dialogs'
 import { ApiError } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { useInvoiceSettings } from '@/lib/invoices'
 import {
   quoteErrorMessage,
@@ -80,17 +80,22 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         ...(subject.trim() ? { subject: subject.trim() } : {}),
         ...(message.trim() ? { message: message.trim() } : {}),
       },
-      (sent) => `${quoteName(sent)} sent to ${list.join(', ')}.`,
+      (sent) => translate('sentTo', { value1: quoteName(sent), value2: list.join(', ') }),
     )
   }
 
   const markSent = () =>
-    run({ email: false }, (sent) => `${quoteName(sent)} marked as sent. Send its PDF yourself.`)
+    run({ email: false }, (sent) =>
+      translate('markedAsSentSendItsPDFYourself', { value1: quoteName(sent) }),
+    )
 
   return (
     <FormDialog
-      title={quote.sent_at ? 'Send again' : 'Send quote'}
-      description={`${name} for ${quote.client.name} goes out with its PDF attached. Sending gives a draft its number.`}
+      title={quote.sent_at ? translate('sendAgain') : translate('sendQuote')}
+      description={translate('forGoesOutWithItsPDFAttachedSendingGives', {
+        name: name,
+        value2: quote.client.name,
+      })}
       action="Send"
       pending={send.isPending}
       onSubmit={submit}
@@ -103,21 +108,21 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           disabled={send.isPending}
           onClick={markSent}
         >
-          Mark as sent without email
+          {translate('markAsSentWithoutEmail')}
         </Button>
       }
     >
       {mailDown && (
         <Callout tone="warning" icon={MailX}>
-          Email isn’t set up on this server. Mark the quote as sent, then send the PDF yourself.
+          {translate('emailIsnTSetUpOnThisServerMark')}
         </Callout>
       )}
       <FormField
         id="quote-send-to"
-        label="To"
+        label={translate('to3')}
         required
         error={errors.to}
-        tip="Separate several addresses with commas. Defaults to the client’s email."
+        tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient2')}
       >
         <input
           {...describedBy('quote-send-to', errors.to)}
@@ -125,37 +130,40 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           multiple
           value={recipients}
           onChange={(event) => setTo(event.target.value)}
-          placeholder="hello@client.ch"
+          placeholder={translate('helloClientCh')}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="quote-send-cc" label="Cc" error={errors.cc}>
+      <FormField id="quote-send-cc" label={translate('cc')} error={errors.cc}>
         <input
           {...describedBy('quote-send-cc', errors.cc)}
           type="email"
           multiple
           value={cc}
           onChange={(event) => setCc(event.target.value)}
-          placeholder="Optional"
+          placeholder={translate('optional')}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="quote-send-subject" label="Subject" error={errors.subject}>
+      <FormField id="quote-send-subject" label={translate('subject')} error={errors.subject}>
         <input
           {...describedBy('quote-send-subject', errors.subject)}
           value={subject}
           onChange={(event) => setSubject(event.target.value)}
-          placeholder={`${name}${seller ? ` from ${seller}` : ''} (in the quote’s language)`}
+          placeholder={translate('inTheQuoteSLanguage', {
+            name: name,
+            value2: seller ? translate('from2', { seller: seller }) : '',
+          })}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="quote-send-message" label="Message" error={errors.message}>
+      <FormField id="quote-send-message" label={translate('message')} error={errors.message}>
         <textarea
           {...describedBy('quote-send-message', errors.message)}
           rows={4}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder={'Hello,\n\nplease find our quote attached.\n\nKind regards'}
+          placeholder={translate('helloPleaseFindOurQuoteAttachedKindRegards')}
           className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
         />
       </FormField>
@@ -181,10 +189,10 @@ export function QuoteDecisionDialog({
   const name = quoteName(quote)
 
   const submit = () => {
-    if (note.trim().length > 1000) return setError('At most 1000 characters.')
+    if (note.trim().length > 1000) return setError(translate('atMost1000Characters'))
     decide.mutate(note.trim(), {
       onSuccess: () => {
-        toast.success(`${name} ${accept ? 'accepted' : 'declined'}.`)
+        toast.success(`${name} ${accept ? translate('accepted2') : translate('declined2')}.`)
         onClose()
       },
       onError: (failure) => {
@@ -197,11 +205,11 @@ export function QuoteDecisionDialog({
 
   return (
     <FormDialog
-      title={accept ? `Accept ${name}?` : `Decline ${name}?`}
+      title={accept ? translate('accept2', { name: name }) : translate('decline2', { name: name })}
       description={
         accept
-          ? `Record that ${quote.client.name} accepted. You can then turn it into an invoice.`
-          : `Record that ${quote.client.name} declined. You can revise it and send it again.`
+          ? translate('recordThatAcceptedYouCanThenTurnItInto', { name: quote.client.name })
+          : translate('recordThatDeclinedYouCanReviseItAndSend', { name: quote.client.name })
       }
       action={accept ? 'Accept quote' : 'Decline quote'}
       pending={decide.isPending}
@@ -210,9 +218,9 @@ export function QuoteDecisionDialog({
     >
       <FormField
         id="quote-decision-note"
-        label="Note"
+        label={translate('note')}
         error={error}
-        tip="Optional, e.g. how the client answered. The client also sees it in the portal."
+        tip={translate('optionalEGHowTheClientAnsweredTheClient')}
       >
         <textarea
           {...describedBy('quote-decision-note', error)}
@@ -220,7 +228,9 @@ export function QuoteDecisionDialog({
           value={note}
           maxLength={1000}
           onChange={(event) => setNote(event.target.value)}
-          placeholder={accept ? 'Confirmed by phone on Monday' : 'Went with another offer'}
+          placeholder={
+            accept ? translate('confirmedByPhoneOnMonday') : translate('wentWithAnotherOffer')
+          }
           className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
         />
       </FormField>

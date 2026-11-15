@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
@@ -24,6 +23,7 @@ import {
 import { Suspense, useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 
 import { heidiApi } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 
 import { AIConsentNotice } from './ai-consent'
 import { ChatHistory } from './chat-history'
@@ -76,14 +76,15 @@ function UsageStrip() {
       : null
   return (
     <p className="truncate px-1 pt-2 text-center text-[11.5px] text-muted-foreground">
-      Heidi can make mistakes
-      {data?.mode === 'local' && <> · Local assistance</>}
-      {data?.usage_uncertain && <> · Model usage needs reconciliation</>}
+      {translate('heidiCanMakeMistakes')}
+      {data?.mode === 'local' && <>{translate('localAssistance')}</>}
+      {data?.usage_uncertain && <>{translate('modelUsageNeedsReconciliation')}</>}
       {share !== null && (
         <>
           {' · '}
-          <span title="Share of this month’s model token budget used">
-            {share}% of model token budget used
+          <span title={translate('shareOfThisMonthSModelTokenBudgetUsed')}>
+            {share}
+            {translate('ofModelTokenBudgetUsed')}
           </span>
         </>
       )}
@@ -109,8 +110,8 @@ export function HeidiPanel() {
     return (
       <Sheet open={heidi.open} onOpenChange={heidi.setOpen}>
         <SheetContent side="right" className="w-full! max-w-none! gap-0 p-0 [&>button]:hidden">
-          <SheetTitle className="sr-only">Heidi</SheetTitle>
-          <SheetDescription className="sr-only">Your assistant</SheetDescription>
+          <SheetTitle className="sr-only">{translate('heidi')}</SheetTitle>
+          <SheetDescription className="sr-only">{translate('yourAssistant')}</SheetDescription>
           {body}
         </SheetContent>
       </Sheet>
@@ -118,7 +119,7 @@ export function HeidiPanel() {
 
   return (
     <aside
-      aria-label="Heidi"
+      aria-label={translate('heidi')}
       inert={!heidi.open}
       // Closed, a negative margin pulls the panel out of the row so the page widens as it slides.
       style={
@@ -161,8 +162,8 @@ function ResizeHandle() {
     <div className="group absolute inset-y-3 -left-2.5 z-10 w-3 max-lg:hidden">
       <input
         type="range"
-        aria-label="Resize Heidi"
-        aria-valuetext={`${width} pixels wide`}
+        aria-label={translate('resizeHeidi')}
+        aria-valuetext={translate('pixelsWide', { width: width })}
         // Negative so that the right arrow, like dragging right, makes the panel narrower.
         min={-max}
         max={-MIN_WIDTH}
@@ -235,7 +236,7 @@ function PanelBody() {
     const element = root.current
     if (!element) return
     const over = (event: DragEvent) => {
-      if (!event.dataTransfer?.types.includes('Files')) return
+      if (!event.dataTransfer?.types.includes(translate('files'))) return
       event.preventDefault()
       setDragging(true)
     }
@@ -298,11 +299,13 @@ function PanelBody() {
       <header className="flex h-[52px] shrink-0 items-center gap-1 border-b border-border/60 px-3">
         <HeidiSparkle className="mr-1.5 size-5" />
         <div className="mr-auto flex min-w-0 items-baseline gap-2">
-          <h2 className="text-[15px] font-medium">Heidi</h2>
-          <span className="truncate text-[13px] text-muted-foreground">Your AI assistant</span>
+          <h2 className="text-[15px] font-medium">{translate('heidi')}</h2>
+          <span className="truncate text-[13px] text-muted-foreground">
+            {translate('yourAIAssistant')}
+          </span>
         </div>
         <IconButton
-          label="Chats"
+          label={translate('chats')}
           pressed={history}
           onClick={() => {
             setHistory(!history)
@@ -313,7 +316,7 @@ function PanelBody() {
           <History />
         </IconButton>
         <IconButton
-          label={history ? 'Search chats' : 'Search in conversation'}
+          label={history ? translate('searchChats') : translate('searchInConversation')}
           pressed={searching}
           onClick={() => {
             if (searching) return closeSearch()
@@ -324,7 +327,7 @@ function PanelBody() {
           <Search />
         </IconButton>
         <IconButton
-          label="New chat"
+          label={translate('newChat')}
           onClick={() => {
             setQuote(null)
             setHistory(false)
@@ -334,12 +337,12 @@ function PanelBody() {
           <SquarePen />
         </IconButton>
         <IconButton
-          label={heidi.max ? 'Classic view' : 'Max view'}
+          label={heidi.max ? translate('classicView') : translate('maxView')}
           onClick={() => heidi.setMax(!heidi.max)}
         >
           {heidi.max ? <Minimize2 /> : <Maximize2 />}
         </IconButton>
-        <IconButton label="Collapse" onClick={() => heidi.setOpen(false)}>
+        <IconButton label={translate('collapse')} onClick={() => heidi.setOpen(false)}>
           <PanelRightClose />
         </IconButton>
       </header>
@@ -350,8 +353,8 @@ function PanelBody() {
           <input
             ref={searchInput}
             type="search"
-            aria-label={history ? 'Search chats' : 'Search in conversation'}
-            placeholder={history ? 'Search chats' : 'Search in conversation'}
+            aria-label={history ? translate('searchChats') : translate('searchInConversation')}
+            placeholder={history ? translate('searchChats') : translate('searchInConversation')}
             value={term}
             onChange={(event) => {
               setTerm(event.target.value)
@@ -375,14 +378,14 @@ function PanelBody() {
               >
                 {needle.length >= 2
                   ? matches.length
-                    ? `${matchIndex + 1} of ${matches.length}`
-                    : 'No matches'
+                    ? translate('dynamicOf3', { value1: matchIndex + 1, length: matches.length })
+                    : translate('noMatches')
                   : ''}
               </span>
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Previous match"
+                aria-label={translate('previousMatch')}
                 disabled={!matches.length}
                 onClick={() =>
                   setMatchIndex((index) => (index - 1 + matches.length) % matches.length)
@@ -393,7 +396,7 @@ function PanelBody() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Next match"
+                aria-label={translate('nextMatch')}
                 disabled={!matches.length}
                 onClick={() => setMatchIndex((index) => (index + 1) % matches.length)}
               >
@@ -401,7 +404,12 @@ function PanelBody() {
               </Button>
             </>
           )}
-          <Button variant="ghost" size="icon-xs" aria-label="Close search" onClick={closeSearch}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={translate('closeSearch')}
+            onClick={closeSearch}
+          >
             <X />
           </Button>
         </div>
@@ -439,7 +447,7 @@ function PanelBody() {
           ) : messages.length === 0 ? (
             chat.restoring ? (
               <p className="m-auto text-[13px] text-muted-foreground">
-                Picking up where you left off…
+                {translate('pickingUpWhereYouLeftOff')}
               </p>
             ) : (
               // The welcome reads the open record from the URL, which needs a boundary in a static export.
@@ -452,7 +460,7 @@ function PanelBody() {
               </Suspense>
             )
           ) : (
-            <div role="log" aria-live="polite" aria-label="Conversation">
+            <div role="log" aria-live="polite" aria-label={translate('conversation')}>
               <ol className="grid grid-cols-[minmax(0,1fr)] gap-6 py-6">
                 {messages.map((message, index) => {
                   const next = messages[index + 1]
@@ -488,7 +496,8 @@ function PanelBody() {
             onClick={() => setPinned(true)}
             className="absolute -top-11 left-1/2 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full bg-card px-3 text-[12.5px] shadow-elevation-2 transition-colors duration-150 hover:bg-muted"
           >
-            <ArrowDown className="size-3.5" /> Jump to latest
+            <ArrowDown className="size-3.5" />
+            {translate('jumpToLatest')}
           </button>
         )}
         <AIConsentNotice />
@@ -502,7 +511,7 @@ function PanelBody() {
           onSend={send}
           onStop={chat.stop}
           busy={chat.busy}
-          placeholder="Ask Heidi about your invoices, clients, expenses…"
+          placeholder={translate('askHeidiAboutYourInvoicesClientsExpenses')}
           quote={quote}
           onClearQuote={() => {
             setQuote(null)
@@ -516,7 +525,8 @@ function PanelBody() {
 
       {dragging && (
         <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-heidi/60 bg-heidi-soft/60 text-[14px] text-heidi-ink backdrop-blur-sm">
-          <Upload className="size-5" /> Drop files to attach
+          <Upload className="size-5" />
+          {translate('dropFilesToAttach')}
         </div>
       )}
 

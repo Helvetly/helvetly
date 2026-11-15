@@ -4,28 +4,29 @@ import { Languages, type LucideIcon, ShieldCheck, ThumbsUp } from 'lucide-react'
 import { HeidiShowcase } from '@/components/home/heidi-showcase'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
+import { translate } from '@/lib/i18n'
 import { plansWith } from '@/lib/plans'
 
 // What circles the orb: the jobs Heidi does. Both orbits turn together and their chips sit between each
 // other's, so no two ever overlap.
-const INNER = ['Overdue invoices', 'Hours left', 'Input VAT']
-const OUTER = ['Draft a reminder', 'Log work', 'Import receipts']
+const INNER = [translate('overdueInvoices'), translate('hoursLeft'), translate('inputVAT')]
+const OUTER = [translate('draftAReminder'), translate('logWork'), translate('importReceipts')]
 
 const PROMISES: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ThumbsUp,
-    title: 'Nothing happens without a yes',
-    body: 'Heidi shows exactly what she will change, in words built from your records, and waits for you.',
+    title: translate('nothingHappensWithoutAYes'),
+    body: translate('heidiShowsExactlyWhatSheWillChangeInWords'),
   },
   {
     icon: ShieldCheck,
-    title: 'Off until you switch it on',
-    body: 'No AI model sees your data until an owner or admin consents for the workspace. She reads only what you may read.',
+    title: translate('offUntilYouSwitchItOn'),
+    body: translate('noAIModelSeesYourDataUntilAnOwner'),
   },
   {
     icon: Languages,
-    title: 'Speaks your language',
-    body: 'Ask in English, German, French, Italian or Polish. She stays on your business and Helvetly.',
+    title: translate('speaksYourLanguage'),
+    body: translate('askInEnglishGermanFrenchItalianOrPolishShe'),
   },
 ]
 
@@ -118,16 +119,15 @@ export function HeidiSection() {
             >
               <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1 text-body-sm font-medium text-heidi-ink">
                 <span aria-hidden className="size-1.5 rounded-full bg-heidi-to" />
-                Heidi · your AI assistant
+                {translate('heidiYourAIAssistant')}
               </span>
               <h2 className="text-hero font-semibold text-balance">
-                Ask your books <span className="accent ink-gradient pr-2">anything.</span>
+                {translate('askYourBooks')}
+                <span className="accent ink-gradient pr-2">{translate('anything')}</span>
               </h2>
               <p className="text-lead max-w-2xl text-balance text-white/70">
-                Press ⌘J on any page. Heidi knows what is overdue, how many hours are left and what
-                you booked this month, and she does the busywork once you say yes. Heidi is included
-                in
-                {plansWith('heidi', ' and ')}.
+                {translate('pressJOnAnyPageHeidiKnowsWhatIs2')}
+                {plansWith('heidi', 'conjunction')}.
               </p>
             </div>
           </div>

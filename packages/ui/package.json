@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@helvetly/i18n": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",

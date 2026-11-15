@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -75,6 +75,7 @@ import {
   type ListParams,
   type SortField,
 } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -102,16 +103,23 @@ type ColumnDef = {
 const COLUMNS: ColumnDef[] = [
   {
     id: 'number',
-    label: 'No.',
+    label: translate('no'),
     width: 'w-[76px]',
     sort: 'number',
     visible: true,
     cell: (client) => <span className="text-muted-foreground tabular-nums">#{client.number}</span>,
   },
-  { id: 'name', label: 'Name', width: 'w-[30%]', sort: 'name', visible: true, cell: () => null },
+  {
+    id: 'name',
+    label: translate('name'),
+    width: 'w-[30%]',
+    sort: 'name',
+    visible: true,
+    cell: () => null,
+  },
   {
     id: 'type',
-    label: 'Type',
+    label: translate('type'),
     width: 'w-[110px]',
     visible: true,
     cell: (client) => <ClientTypeBadge company={client.is_company} />,
@@ -119,7 +127,7 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'phone',
     wide: true,
-    label: 'Phone',
+    label: translate('phone'),
     width: 'w-[15%]',
     visible: true,
     cell: (client) =>
@@ -131,7 +139,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'city',
-    label: 'City',
+    label: translate('city'),
     width: 'w-[15%]',
     sort: 'city',
     visible: true,
@@ -149,7 +157,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'tags',
-    label: 'Tags',
+    label: translate('tags'),
     width: 'w-[14%]',
     visible: false,
     cell: (client) => (
@@ -167,7 +175,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'status',
-    label: 'Status',
+    label: translate('status'),
     width: 'w-[100px]',
     visible: true,
     cell: (client) => <ClientStatusBadge client={client} />,
@@ -175,7 +183,7 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'created',
     wide: true,
-    label: 'Added',
+    label: translate('added3'),
     width: 'w-[120px]',
     sort: 'created_at',
     visible: true,
@@ -284,7 +292,10 @@ export function ClientsPage() {
     save.mutate(
       { id: client.id, input: { is_active: active } },
       {
-        onSuccess: () => toast.success(`${client.name} ${active ? 'activated' : 'deactivated'}.`),
+        onSuccess: () =>
+          toast.success(
+            `${client.name} ${active ? translate('activated') : translate('deactivated')}.`,
+          ),
         onError: toastError,
       },
     )
@@ -301,7 +312,11 @@ export function ClientsPage() {
       { ids: [...selected], action },
       {
         onSuccess: ({ data }) => {
-          toast.success(`${data.updated} ${data.updated === 1 ? 'client' : 'clients'} ${action}d.`)
+          toast.success(
+            translate(action === 'activate' ? 'clientsActivated' : 'clientsDeactivated', {
+              count: data.updated,
+            }),
+          )
           setSelected(new Set())
         },
         onError: toastError,
@@ -315,8 +330,8 @@ export function ClientsPage() {
     const done = () => {
       toast.success(
         targets.length === 1
-          ? `${targets[0]?.name} deleted.`
-          : `${targets.length} clients deleted.`,
+          ? translate('deleted', { value1: targets[0]?.name })
+          : translate('clientsDeleted', { length: targets.length }),
       )
       setSelected(new Set())
       if (targets.some((client) => client.id === openId)) openClient(null)
@@ -346,12 +361,15 @@ export function ClientsPage() {
     <>
       {canWrite && (
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import
+          <FileUp />
+          {translate('import')}
         </Item>
       )}
       <Item asChild>
-        <a href={exportUrl(params)} download>
-          <Download /> Export CSV{filtered ? ' (filtered)' : ''}
+        <a href={localizedHref(exportUrl(params))} download>
+          <Download />
+          {translate('exportCSV2')}
+          {filtered ? ' (filtered)' : ''}
         </a>
       </Item>
     </>
@@ -368,17 +386,17 @@ export function ClientsPage() {
   return (
     <>
       <PageHeader
-        tabs={['Clients']}
+        tabs={[translate('clients')]}
         tabIcons={[Users]}
         savedViews={false}
-        primary="New client"
+        primary={translate('newClient')}
         onPrimary={() => setForm({})}
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="clients" onClose={importDrawer.close} />}
       <PageContextMenu
-        title="Clients"
-        primary={{ label: 'New client', onSelect: () => setForm({}) }}
+        title={translate('clients')}
+        primary={{ label: translate('newClient'), onSelect: () => setForm({}) }}
         items={pageItems}
         selectAll={
           rows.length && !allSelected
@@ -395,8 +413,8 @@ export function ClientsPage() {
               <Search className="size-4 shrink-0 stroke-[1.5]" />
               <input
                 type="search"
-                aria-label="Search clients"
-                placeholder="Search name, email, city, VAT or #number"
+                aria-label={translate('searchClients')}
+                placeholder={translate('searchNameEmailCityVATOrNumber')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
@@ -406,11 +424,13 @@ export function ClientsPage() {
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-[15px] font-normal">
                   <SlidersHorizontal className="stroke-[1.5]" />
-                  <span className="max-sm:sr-only">Customize</span>
+                  <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 gap-1 p-2">
-                <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">Columns</p>
+                <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
+                  {translate('columns')}
+                </p>
                 {COLUMNS.filter((column) => column.id !== 'name').map((column) => (
                   <label
                     key={column.id}
@@ -420,7 +440,7 @@ export function ClientsPage() {
                       checked={!columns.hidden.includes(column.id)}
                       onCheckedChange={() => columns.toggle(column.id)}
                     />
-                    {column.label === 'No.' ? 'Number' : column.label}
+                    {column.label === 'No.' ? translate('number') : column.label}
                   </label>
                 ))}
               </PopoverContent>
@@ -431,11 +451,11 @@ export function ClientsPage() {
           {list.error ? (
             <State
               icon={<CloudOff />}
-              title="Couldn’t load clients"
+              title={translate('couldnTLoadClients')}
               text={errorMessage(list.error)}
               action={
                 <Button variant="outline" size="sm" onClick={() => void list.refetch()}>
-                  Try again
+                  {translate('tryAgain')}
                 </Button>
               }
             />
@@ -446,9 +466,11 @@ export function ClientsPage() {
               <State
                 icon={<SearchX />}
                 title={
-                  params.search ? `No clients match “${params.search}”` : 'No clients in this view'
+                  params.search
+                    ? translate('noClientsMatch', { search: params.search })
+                    : translate('noClientsInThisView')
                 }
-                text="Try another search or clear the filters."
+                text={translate('tryAnotherSearchOrClearTheFilters')}
                 action={
                   <Button
                     variant="outline"
@@ -458,19 +480,19 @@ export function ClientsPage() {
                       navigate(listParamsToQuery({ ...parseListParams(new URLSearchParams()) }))
                     }}
                   >
-                    Clear search and filters
+                    {translate('clearSearchAndFilters')}
                   </Button>
                 }
               />
             ) : (
               <State
                 icon={<UserPlus />}
-                title="No clients yet"
-                text="Add the people and companies you work for — the name is enough to start."
+                title={translate('noClientsYet')}
+                text={translate('addThePeopleAndCompaniesYouWorkForThe')}
                 action={
                   canWrite && (
                     <Button size="sm" onClick={() => setForm({})}>
-                      Add your first client
+                      {translate('addYourFirstClient')}
                     </Button>
                   )
                 }
@@ -488,7 +510,7 @@ export function ClientsPage() {
                   <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
                     <th className="w-12 pl-5">
                       <Checkbox
-                        aria-label="Select all clients on this page"
+                        aria-label={translate('selectAllClientsOnThisPage')}
                         className="bg-card"
                         checked={allSelected}
                         onCheckedChange={(checked) =>
@@ -534,7 +556,7 @@ export function ClientsPage() {
                       )
                     })}
                     <th className="w-12">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
                 </thead>
@@ -568,30 +590,35 @@ export function ClientsPage() {
 
               {meta && (
                 <nav
-                  aria-label="Pages"
+                  aria-label={translate('pages')}
                   className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
                 >
                   <span className="tabular-nums">
                     {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)} of {meta.total}
+                    {Math.min(meta.page * meta.page_size, meta.total)}
+                    {translate('of5')}
+                    {meta.total}
                   </span>
                   <span className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Previous page"
+                      aria-label={translate('previousPage')}
                       disabled={meta.page <= 1}
                       onClick={() => update({ page: meta.page - 1 })}
                     >
                       <ChevronLeft />
                     </Button>
                     <span className="tabular-nums">
-                      Page {meta.page} of {Math.max(meta.total_pages, 1)}
+                      {translate('page')}
+                      {meta.page}
+                      {translate('of5')}
+                      {Math.max(meta.total_pages, 1)}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Next page"
+                      aria-label={translate('nextPage')}
                       disabled={meta.page >= meta.total_pages}
                       onClick={() => update({ page: meta.page + 1 })}
                     >
@@ -641,12 +668,14 @@ export function ClientsPage() {
         <ConfirmDialog
           title={
             deleting.length === 1
-              ? `Delete ${deleting[0]?.name}?`
-              : `Delete ${deleting.length} clients?`
+              ? translate('delete5', { value1: deleting[0]?.name })
+              : translate('deleteClients2', { length: deleting.length })
           }
-          body="Invoices and documents that mention them keep their copy of the details. This can’t be undone here."
+          body={translate('invoicesAndDocumentsThatMentionThemKeepTheirCopy')}
           confirmLabel={
-            deleting.length === 1 ? 'Delete client' : `Delete ${deleting.length} clients`
+            deleting.length === 1
+              ? translate('deleteClient')
+              : translate('deleteClients', { length: deleting.length })
           }
           tone="destructive"
           onDecide={confirmDelete}
@@ -662,11 +691,19 @@ export function bulkActions(
   run: { activate: () => void; deactivate: () => void; exportCsv: () => void; remove: () => void },
 ) {
   return [
-    { label: 'Activate', icon: <Power />, onClick: run.activate, write: true },
-    { label: 'Deactivate', icon: <PowerOff />, onClick: run.deactivate, write: true },
-    { label: 'Export CSV', icon: <Download />, onClick: run.exportCsv },
+    { label: translate('activate'), icon: <Power />, onClick: run.activate, write: true },
+    { label: translate('deactivate'), icon: <PowerOff />, onClick: run.deactivate, write: true },
+    { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
     ...(canDelete
-      ? [{ label: 'Delete', icon: <Trash2 />, onClick: run.remove, destructive: true, write: true }]
+      ? [
+          {
+            label: translate('delete3'),
+            icon: <Trash2 />,
+            onClick: run.remove,
+            destructive: true,
+            write: true,
+          },
+        ]
       : []),
   ]
 }
@@ -680,13 +717,25 @@ function NameCell({ client, onOpen }: { client: Client; onOpen: () => void }) {
         action: 'Open',
         drafts: [],
         fields: [
-          { icon: CircleDot, label: 'Status', value: <ClientStatusBadge client={client} /> },
-          { icon: Building2, label: 'Type', value: client.is_company ? 'Company' : 'Person' },
-          { icon: AtSign, label: 'Email', value: client.email ?? '—' },
-          { icon: Phone, label: 'Phone', value: client.phone ? displayPhone(client.phone) : '—' },
+          {
+            icon: CircleDot,
+            label: translate('status'),
+            value: <ClientStatusBadge client={client} />,
+          },
+          {
+            icon: Building2,
+            label: translate('type'),
+            value: client.is_company ? 'Company' : 'Person',
+          },
+          { icon: AtSign, label: translate('email'), value: client.email ?? '—' },
+          {
+            icon: Phone,
+            label: translate('phone'),
+            value: client.phone ? displayPhone(client.phone) : '—',
+          },
           {
             icon: MapPin,
-            label: 'City',
+            label: translate('city'),
             value:
               [client.city, client.country && countryName(client.country)]
                 .filter(Boolean)
@@ -723,11 +772,13 @@ function clientMenu(
     items: ({ Item, Separator }) => (
       <>
         <Item onSelect={onOpen}>
-          <PanelRightOpen /> Open details
+          <PanelRightOpen />
+          {translate('openDetails')}
         </Item>
         {can.canWrite && (
           <Item onSelect={() => onCommand('edit', client)}>
-            <Pencil /> Edit
+            <Pencil />
+            {translate('edit4')}
           </Item>
         )}
         {client.email && (
@@ -735,10 +786,11 @@ function clientMenu(
             onSelect={() =>
               void navigator.clipboard
                 .writeText(client.email ?? '')
-                .then(() => toast('Email copied.'))
+                .then(() => toast(translate('emailCopied')))
             }
           >
-            <Copy /> Copy email
+            <Copy />
+            {translate('copyEmail')}
           </Item>
         )}
         {can.canWrite && (
@@ -746,13 +798,14 @@ function clientMenu(
             <Separator />
             <Item onSelect={() => onCommand('toggle', client)}>
               {client.is_active ? <PowerOff /> : <Power />}
-              {client.is_active ? 'Deactivate' : 'Activate'}
+              {client.is_active ? translate('deactivate') : translate('activate')}
             </Item>
           </>
         )}
         {can.canDelete && (
           <Item variant="destructive" onSelect={() => onCommand('delete', client)}>
-            <Trash2 /> Delete
+            <Trash2 />
+            {translate('delete')}
           </Item>
         )}
       </>
@@ -761,10 +814,10 @@ function clientMenu(
 }
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
-  active: 'Active',
-  inactive: 'Inactive',
-  draft: 'Draft',
-  complete: 'Complete address',
+  active: translate('active'),
+  inactive: translate('inactive'),
+  draft: translate('draft'),
+  complete: translate('completeAddress'),
 }
 
 /** Chips under the toolbar for every filter in use, each with its own ×, and "Clear all". */
@@ -777,7 +830,12 @@ function ActiveFilters({
 }) {
   const chips: { label: string; clear: Partial<ListParams> }[] = [
     ...(params.type
-      ? [{ label: params.type === 'company' ? 'Companies' : 'People', clear: { type: null } }]
+      ? [
+          {
+            label: params.type === 'company' ? translate('companies') : translate('people'),
+            clear: { type: null },
+          },
+        ]
       : []),
     // A quick view shows in the toolbar; only another combination (from a link) needs chips.
     ...(statusView(params.status) === null
@@ -787,7 +845,7 @@ function ActiveFilters({
         }))
       : []),
     ...params.tags.map((tag) => ({
-      label: `Tag: ${tag}`,
+      label: translate('tag', { tag: tag }),
       clear: { tags: params.tags.filter((entry) => entry !== tag) },
     })),
     ...params.countries.map((code) => ({
@@ -806,7 +864,7 @@ function ActiveFilters({
           {chip.label}
           <button
             type="button"
-            aria-label={`Remove filter ${chip.label}`}
+            aria-label={translate('removeFilter', { label: chip.label })}
             onClick={() => onChange(chip.clear)}
             className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground"
           >
@@ -828,7 +886,7 @@ function ActiveFilters({
             })
           }
         >
-          Clear all
+          {translate('clearAll')}
         </Button>
       )}
     </div>
@@ -847,7 +905,7 @@ function StatusViews({
   return (
     <div className="max-sm:order-last max-sm:w-full">
       <Segmented
-        label="Status"
+        label={translate('status')}
         value={statusView(params.status)}
         options={STATUS_VIEWS.map((view) => ({
           value: view.value,
@@ -880,7 +938,8 @@ function Filters({
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
-          <ListFilter className="stroke-[1.5]" /> Filters
+          <ListFilter className="stroke-[1.5]" />
+          {translate('filters')}
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}
@@ -890,19 +949,19 @@ function Filters({
       </PopoverTrigger>
       <PopoverContent align="start" className="grid max-h-[70svh] w-72 gap-3 overflow-y-auto p-3">
         <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">Type</legend>
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">{translate('type')}</legend>
           {(['company', 'person'] as const).map((type) => (
             <label key={type} className={option}>
               <Checkbox
                 checked={params.type === type}
                 onCheckedChange={(on) => onChange({ type: on ? type : null })}
               />
-              {type === 'company' ? 'Companies' : 'People'}
+              {type === 'company' ? translate('companies') : translate('people')}
             </label>
           ))}
         </fieldset>
         <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">Tags</legend>
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">{translate('tags')}</legend>
           {tags.data?.length ? (
             tags.data.map((tag) => (
               <label key={tag.name} className={option}>
@@ -917,11 +976,13 @@ function Filters({
               </label>
             ))
           ) : (
-            <p className="px-2 text-[13px] text-muted-foreground">No tags yet.</p>
+            <p className="px-2 text-[13px] text-muted-foreground">{translate('noTagsYet')}</p>
           )}
         </fieldset>
         <fieldset className="grid gap-1.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">Country</legend>
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">
+            {translate('country')}
+          </legend>
           {params.countries.length > 0 && (
             <div className="flex flex-wrap gap-1 px-1">
               {params.countries.map((code) => (
@@ -932,7 +993,7 @@ function Filters({
                   {countryName(code)}
                   <button
                     type="button"
-                    aria-label={`Remove ${countryName(code)}`}
+                    aria-label={translate('remove4', { value1: countryName(code) })}
                     onClick={() =>
                       onChange({ countries: params.countries.filter((entry) => entry !== code) })
                     }
@@ -946,9 +1007,9 @@ function Filters({
           )}
           <Combobox
             value=""
-            label="Add a country"
+            label={translate('addACountry2')}
             options={COUNTRY_OPTIONS.filter((country) => !params.countries.includes(country.value))}
-            placeholder="Add a country…"
+            placeholder={translate('addACountry')}
             onChange={(code) => onChange({ countries: [...params.countries, code] })}
           />
         </fieldset>
@@ -959,7 +1020,7 @@ function Filters({
             className="justify-self-start text-muted-foreground"
             onClick={() => onChange({ type: null, tags: [], countries: [] })}
           >
-            Clear filters
+            {translate('clearFilters')}
           </Button>
         )}
       </PopoverContent>
@@ -1013,7 +1074,7 @@ const ClientRow = memo(function ClientRow({
       >
         <td className="pl-5">
           <Checkbox
-            aria-label={`Select ${client.name}`}
+            aria-label={translate('select', { name: client.name })}
             className="bg-card"
             checked={selected}
             onCheckedChange={() => act.toggle(client.id)}
@@ -1032,7 +1093,7 @@ const ClientRow = memo(function ClientRow({
           </td>
         ))}
         <td className="pr-3 text-right">
-          <RowMenuButton label={`Actions for ${client.name}`} menu={menu} />
+          <RowMenuButton label={translate('actionsFor', { name: client.name })} menu={menu} />
         </td>
       </tr>
     </RowContextMenu>
@@ -1049,7 +1110,7 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
         className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
       >
         <Checkbox
-          aria-label={`Select ${client.name}`}
+          aria-label={translate('select', { name: client.name })}
           className="bg-card"
           checked={selected}
           onCheckedChange={() => act.toggle(client.id)}
@@ -1067,7 +1128,8 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
               </span>
             </span>
             <span className="truncate text-[13px] text-muted-foreground">
-              {[client.email, client.city].filter(Boolean).join(' · ') || 'No contact details'}
+              {[client.email, client.city].filter(Boolean).join(' · ') ||
+                translate('noContactDetails')}
             </span>
           </span>
           <span className="flex shrink-0 flex-wrap justify-end gap-1">

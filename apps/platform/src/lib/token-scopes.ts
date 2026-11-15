@@ -1,19 +1,20 @@
+import { translate } from '@/lib/i18n'
 /**
  * API token scopes (docs/api-tokens-contract.md): "read:<resource>" or "write:<resource>", "*" for every
  * resource; write implies read. The resources are the public catalogue's tags (openapi.json), in the
  * order the drawer lists them; `writable` marks those with operations that change something.
  */
 export const TOKEN_RESOURCES = [
-  { name: 'clients', label: 'Clients', writable: true },
-  { name: 'invoices', label: 'Invoices and payments', writable: true },
-  { name: 'quotes', label: 'Quotes', writable: true },
-  { name: 'instalments', label: 'Instalment plans', writable: true },
-  { name: 'expenses', label: 'Expenses', writable: true },
-  { name: 'documents', label: 'Documents', writable: true },
-  { name: 'engagements', label: 'Engagements', writable: true },
-  { name: 'products', label: 'Products and services', writable: true },
-  { name: 'books', label: 'Books, VAT and ledger', writable: true },
-  { name: 'reports', label: 'Reports (key figures)', writable: false },
+  { name: 'clients', label: translate('clients'), writable: true },
+  { name: 'invoices', label: translate('invoicesAndPayments'), writable: true },
+  { name: 'quotes', label: translate('quotes'), writable: true },
+  { name: 'instalments', label: translate('instalmentPlans'), writable: true },
+  { name: 'expenses', label: translate('expenses'), writable: true },
+  { name: 'documents', label: translate('documents'), writable: true },
+  { name: 'engagements', label: translate('engagements'), writable: true },
+  { name: 'products', label: translate('productsAndServices'), writable: true },
+  { name: 'books', label: translate('booksVATAndLedger'), writable: true },
+  { name: 'reports', label: translate('reportsKeyFigures'), writable: false },
 ] as const
 
 export type TokenResource = (typeof TOKEN_RESOURCES)[number]['name']
@@ -30,9 +31,9 @@ export type Access = 'none' | 'read' | 'write'
 export type ScopeMatrix = Record<TokenResource, Access>
 
 export const PRESETS = [
-  { value: 'read', label: 'Read everything', scopes: ['read:*'] },
-  { value: 'full', label: 'Full access', scopes: ['read:*', 'write:*'] },
-  { value: 'custom', label: 'Custom', scopes: [] },
+  { value: 'read', label: translate('readEverything'), scopes: ['read:*'] },
+  { value: 'full', label: translate('fullAccess'), scopes: ['read:*', 'write:*'] },
+  { value: 'custom', label: translate('custom'), scopes: [] },
 ] as const satisfies readonly { value: string; label: string; scopes: readonly TokenScope[] }[]
 export type Preset = (typeof PRESETS)[number]['value']
 
@@ -77,12 +78,13 @@ export type ScopeBadge = { label: string; tone: 'gray' | 'amber' }
  */
 export function scopeBadges(scopes: readonly string[]): ScopeBadge[] {
   const readAll = scopes.includes('read:*') || scopes.includes('write:*')
-  if (scopes.includes('write:*')) return [{ label: 'Full access', tone: 'amber' }]
-  const badges: ScopeBadge[] = readAll ? [{ label: 'Read everything', tone: 'gray' }] : []
+  if (scopes.includes('write:*')) return [{ label: translate('fullAccess'), tone: 'amber' }]
+  const badges: ScopeBadge[] = readAll ? [{ label: translate('readEverything'), tone: 'gray' }] : []
   for (const { name, label } of TOKEN_RESOURCES) {
-    if (scopes.includes(`write:${name}`)) badges.push({ label: `${label} · write`, tone: 'amber' })
+    if (scopes.includes(`write:${name}`))
+      badges.push({ label: translate('write4', { label: label }), tone: 'amber' })
     else if (!readAll && scopes.includes(`read:${name}`))
-      badges.push({ label: `${label} · read`, tone: 'gray' })
+      badges.push({ label: translate('read5', { label: label }), tone: 'gray' })
   }
   return badges
 }

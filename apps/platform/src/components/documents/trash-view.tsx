@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -11,6 +10,7 @@ import type { ReactNode } from 'react'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { daysLeft, formatSize, isRetained, type TrashItem } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
 import { FolderMark } from './folder-art'
@@ -43,14 +43,14 @@ export function TrashView({
   canDelete: boolean
 }) {
   const canWrite = useCan('write:documents')
-  if (error) return <LoadProblem error={error} what="The Trash" onRetry={onRetry} />
+  if (error) return <LoadProblem error={error} what={translate('theTrash')} onRetry={onRetry} />
   if (!items) return <LoadingRows />
   if (items.length === 0)
     return (
       <State
         icon={<Trash2 />}
-        title="The Trash is empty"
-        text="Deleted files and folders stay here for 30 days, so you can bring them back."
+        title={translate('theTrashIsEmpty')}
+        text={translate('deletedFilesAndFoldersStayHereFor30Days')}
         action={null}
       />
     )
@@ -58,9 +58,7 @@ export function TrashView({
   return (
     <div className="grid content-start">
       <div className="flex min-h-11 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2 text-[13px] text-muted-foreground">
-        <span className="flex-1">
-          Items are deleted for good 30 days after they were moved here. Business records stay.
-        </span>
+        <span className="flex-1">{translate('itemsAreDeletedForGood30DaysAfterThey')}</span>
         {canDelete && (
           <Button
             size="sm"
@@ -68,7 +66,8 @@ export function TrashView({
             className="cursor-pointer"
             onClick={onEmpty}
           >
-            <Trash2 /> Empty Trash
+            <Trash2 />
+            {translate('emptyTrash2')}
           </Button>
         )}
       </div>
@@ -77,18 +76,22 @@ export function TrashView({
           <tr className="h-10 border-b text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
             <th className="w-12 pl-4">
               <Checkbox
-                aria-label="Select everything in the Trash"
+                aria-label={translate('selectEverythingInTheTrash')}
                 checked={all}
                 onCheckedChange={(checked) => onToggleAll(checked === true)}
               />
             </th>
-            <th className="px-3 font-medium">Name</th>
-            <th className="hidden w-[18%] px-3 font-medium @4xl:table-cell">Was in</th>
-            <th className="hidden w-[18%] px-3 font-medium @5xl:table-cell">Deleted</th>
-            <th className="w-[10%] px-3 text-right font-medium">Size</th>
-            <th className="w-[150px] px-3 font-medium">Deleted for good</th>
+            <th className="px-3 font-medium">{translate('name')}</th>
+            <th className="hidden w-[18%] px-3 font-medium @4xl:table-cell">
+              {translate('wasIn')}
+            </th>
+            <th className="hidden w-[18%] px-3 font-medium @5xl:table-cell">
+              {translate('deleted2')}
+            </th>
+            <th className="w-[10%] px-3 text-right font-medium">{translate('size')}</th>
+            <th className="w-[150px] px-3 font-medium">{translate('deletedForGood')}</th>
             <th className="w-[92px] pr-4">
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{translate('actions')}</span>
             </th>
           </tr>
         </thead>
@@ -105,7 +108,7 @@ export function TrashView({
               >
                 <td className="pl-4">
                   <Checkbox
-                    aria-label={`Select ${item.name}`}
+                    aria-label={translate('select', { name: item.name })}
                     checked={selected.has(item.id)}
                     onCheckedChange={() => onToggle(item)}
                   />
@@ -127,14 +130,17 @@ export function TrashView({
                       <span className="block truncate">{item.name}</span>
                       {item.type === 'folder' && (
                         <span className="block text-[12px] text-muted-foreground">
-                          {item.item_count} {item.item_count === 1 ? 'item' : 'items'} inside
+                          {item.item_count} {item.item_count === 1 ? 'item' : 'items'}
+                          {translate('inside')}
                         </span>
                       )}
                     </span>
                   </button>
                 </td>
                 <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
-                  <span className="block truncate">{item.location?.name ?? 'All documents'}</span>
+                  <span className="block truncate">
+                    {item.location?.name ?? translate('allDocuments')}
+                  </span>
                 </td>
                 <td className="hidden px-3 text-muted-foreground @5xl:table-cell">
                   <span className="block truncate">
@@ -148,7 +154,8 @@ export function TrashView({
                 <td className="px-3">
                   {kept ? (
                     <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-[#ece9d5] px-1.5 text-[13px] text-[#675d3a] dark:bg-amber-500/15 dark:text-amber-300">
-                      <Lock className="size-3" /> Kept
+                      <Lock className="size-3" />
+                      {translate('kept')}
                     </span>
                   ) : (
                     <span
@@ -159,20 +166,22 @@ export function TrashView({
                           : 'bg-[#ededed] text-[#626266] dark:bg-muted dark:text-muted-foreground',
                       )}
                     >
-                      {left === 0 ? 'Today' : `In ${left} ${left === 1 ? 'day' : 'days'}`}
+                      {left === 0
+                        ? translate('today')
+                        : translate('in3', { left: left, value2: left === 1 ? 'day' : 'days' })}
                     </span>
                   )}
                 </td>
                 <td className="pr-4">
                   <span className="flex justify-end gap-0.5">
                     {canWrite && (
-                      <RowAction label="Restore" onClick={() => onRestore([item])}>
+                      <RowAction label={translate('restore')} onClick={() => onRestore([item])}>
                         <RotateCcw />
                       </RowAction>
                     )}
                     {canDelete && (
                       <RowAction
-                        label="Delete forever"
+                        label={translate('deleteForever')}
                         destructive
                         onClick={() => onDelete([item])}
                       >

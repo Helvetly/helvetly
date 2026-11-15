@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     projects: [
+      'packages/i18n/vitest.config.ts',
       'apps/platform/vitest.config.ts',
       'apps/platform/vitest.storybook.config.ts',
       {
@@ -32,6 +33,7 @@ export default defineConfig({
         'apps/platform/src/**/*.{ts,tsx}',
         'apps/portal/src/**/*.{ts,tsx}',
         'packages/ui/src/**/*.{ts,tsx}',
+        'packages/i18n/src/**/*.ts',
         'apps/web/src/**/*.{ts,tsx}',
       ],
       exclude: ['**/*.test.*', '**/stories/**', '**/mocks/**', '**/test/**', '**/*.d.ts'],

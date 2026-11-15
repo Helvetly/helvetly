@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
+import { PageTitle } from '@/components/page-title'
 import { PeriodsSettings } from '@/components/settings/periods-settings'
 
-export const metadata: Metadata = { title: 'Month-end close' }
-
 export default function Page() {
-  return <PeriodsSettings />
+  return (
+    <>
+      <PageTitle message="monthEndClose" />
+      <PeriodsSettings />
+    </>
+  )
 }

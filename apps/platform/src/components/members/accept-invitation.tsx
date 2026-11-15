@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { MailX, UserPlus } from 'lucide-react'
@@ -8,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { api, ApiError, errorMessage, setCsrfToken } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { useAcceptInvitation, useInvitationPreview } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import { loginHref } from '@/lib/safe'
@@ -42,8 +42,8 @@ export function AcceptInvitation() {
     body = (
       <State
         icon={<MailX />}
-        title="This invitation link is not valid"
-        text="It may have been used already or withdrawn. Ask for a new invitation."
+        title={translate('thisInvitationLinkIsNotValid')}
+        text={translate('itMayHaveBeenUsedAlreadyOrWithdrawnAsk')}
         action={null}
       />
     )
@@ -51,8 +51,10 @@ export function AcceptInvitation() {
     body = (
       <State
         icon={<MailX />}
-        title="This invitation has expired"
-        text={`This invitation has expired. Ask ${invitation.invited_by} for a new one.`}
+        title={translate('thisInvitationHasExpired')}
+        text={translate('thisInvitationHasExpiredAskForANewOne', {
+          invited_by: invitation.invited_by,
+        })}
         action={null}
       />
     )
@@ -60,25 +62,32 @@ export function AcceptInvitation() {
     body = (
       <State
         icon={<UserPlus />}
-        title={`${invitation.invited_by} invited you to join ${invitation.workspace_name} as ${invitation.role}`}
+        title={translate('invitedYouToJoinAs', {
+          invited_by: invitation.invited_by,
+          workspace_name: invitation.workspace_name,
+          role: invitation.role,
+        })}
         text={
           mismatch
-            ? `This invitation is for ${String(error.details.email ?? invitation.email)}. You're signed in as ${session?.user.email ?? ''}.`
+            ? translate('thisInvitationIsForYouReSignedInAs', {
+                value1: String(error.details.email ?? invitation.email),
+                value2: session?.user.email ?? '',
+              })
             : error
               ? errorMessage(error)
-              : 'Accept to add this workspace to your account.'
+              : translate('acceptToAddThisWorkspaceToYourAccount')
         }
         action={
           mismatch ? (
             <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
-              Sign out
+              {translate('signOut')}
             </Button>
           ) : (
             <Button
               disabled={accept.isPending}
               onClick={() => accept.mutate(token, { onSuccess: () => router.replace('/') })}
             >
-              Accept
+              {translate('accept')}
             </Button>
           )
         }
@@ -89,7 +98,7 @@ export function AcceptInvitation() {
   return (
     <>
       <PageHeader
-        tabs={['Join workspace']}
+        tabs={[translate('joinWorkspace')]}
         tabIcons={[UserPlus]}
         savedViews={false}
         actions={<span />}

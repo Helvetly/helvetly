@@ -1,5 +1,5 @@
 'use client'
-
+import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,6 +9,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ApiError, errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type FieldErrors = Partial<Record<string, string>>
 
@@ -118,7 +119,7 @@ export function useSectionForm<V extends object, S extends string>({
     if (refused.length > 0) {
       setTouched((current) => new Set([...current, ...fields]))
       setErrors((current) => ({ ...current, ...Object.fromEntries(refused) }))
-      return void toast.error('Couldn’t save: check the highlighted fields.')
+      return void toast.error(translate('couldnTSaveCheckTheHighlightedFields'))
     }
     setSaving(id)
     save(next, id, base).then(
@@ -136,7 +137,7 @@ export function useSectionForm<V extends object, S extends string>({
         const server = fieldErrors?.(error) ?? null
         if (server && Object.keys(server).length > 0) {
           setErrors((current) => ({ ...current, ...server }))
-          toast.error('Couldn’t save: check the highlighted fields.')
+          toast.error(translate('couldnTSaveCheckTheHighlightedFields'))
         } else toast.error(errorMessage(error))
       },
     )
@@ -206,7 +207,10 @@ export function useLeaveGuard() {
       // Before Next's own link handler, so the navigation waits for the answer.
       event.preventDefault()
       event.stopPropagation()
-      setPending({ go: () => router.push(`${url.pathname}${url.search}${url.hash}`) })
+      setPending({
+        go: () =>
+          router.push(localizedHref(`${url.pathname}${url.search}${url.hash}`, defaultLocale)),
+      })
     }
     window.addEventListener('beforeunload', unload)
     document.addEventListener('click', click, true)
@@ -219,10 +223,10 @@ export function useLeaveGuard() {
   const leave = (go: () => void) => (dirtyForms.size > 0 ? setPending({ go }) : go())
   const dialog = pending && (
     <ConfirmDialog
-      title="Leave without saving?"
-      body="Some sections have changes that aren’t saved yet. Leaving discards them."
-      confirmLabel="Discard and leave"
-      cancelLabel="Stay"
+      title={translate('leaveWithoutSaving')}
+      body={translate('someSectionsHaveChangesThatArenTSavedYet')}
+      confirmLabel={translate('discardAndLeave')}
+      cancelLabel={translate('stay')}
       tone="destructive"
       onDecide={(approved) => {
         setPending(null)
@@ -278,11 +282,13 @@ export function SectionFooter({ state, className }: { state: SectionState; class
         {/* Fades out over the last half second before it goes. */}
         {state.saved && !state.dirty ? (
           <span className="flex animate-out items-center gap-1.5 font-medium text-success delay-1500 duration-500 fill-mode-forwards fade-out">
-            <Check className="size-4" aria-hidden /> Saved
+            <Check className="size-4" aria-hidden />
+            {translate('saved3')}
           </span>
         ) : state.dirty ? (
           <span className="flex items-center gap-2 font-medium text-foreground">
-            <UnsavedDot /> Unsaved changes
+            <UnsavedDot />
+            {translate('unsavedChanges')}
           </span>
         ) : null}
       </output>
@@ -295,17 +301,17 @@ export function SectionFooter({ state, className }: { state: SectionState; class
             disabled={state.saving}
             onClick={state.discard}
           >
-            Discard
+            {translate('discard')}
           </Button>
         )}
         <Button
           type="button"
           size="sm"
-          aria-keyshortcuts="Meta+Enter Control+Enter"
+          aria-keyshortcuts={translate('metaEnterControlEnter')}
           disabled={!state.dirty || state.saving || state.blocked}
           onClick={state.save}
         >
-          {state.saving ? 'Saving…' : 'Save'}
+          {state.saving ? translate('saving') : translate('save2')}
         </Button>
       </div>
     </div>

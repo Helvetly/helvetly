@@ -5,13 +5,22 @@ import { ArrowRight, BookOpen, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import { helpTopic, HELP_TOPICS, POPULAR_HELP, topicSlug } from '@/lib/help-topics'
+import { translate } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 export type HelpEntry = { slug: string; title: string; description: string; category: string }
 
-const QUICK = ['QR bill', 'reminder', 'VAT return', 'passkey', 'import', 'invite']
+const QUICK = [
+  translate('qrBill'),
+  'reminder',
+  translate('vatReturn'),
+  'passkey',
+  'import',
+  'invite',
+]
 
 function TopicIcon({ category, size = 'md' }: { category: string; size?: 'sm' | 'md' }) {
   const topic = helpTopic(category)
@@ -65,20 +74,20 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
     <>
       <div className="mx-auto max-w-2xl">
         <label className="relative flex items-center">
-          <span className="sr-only">Search the help center</span>
+          <span className="sr-only">{translate('searchTheHelpCenter')}</span>
           <Search aria-hidden className="absolute left-5 size-5 text-muted-foreground" />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search for an answer"
+            placeholder={translate('searchForAnAnswer')}
             className="text-lead h-14 w-full rounded-full border border-foreground/15 bg-card pr-12 pl-13 shadow-[0_20px_50px_-30px_rgb(85_39_201/0.45)] outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              aria-label="Clear the search"
+              aria-label={translate('clearTheSearch')}
               className="hover:bg-site-tint absolute right-4 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
             >
               <X aria-hidden className="size-4" />
@@ -86,7 +95,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
           )}
         </label>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-body-sm">
-          <span className="text-muted-foreground">Popular:</span>
+          <span className="text-muted-foreground">{translate('popular')}</span>
           {QUICK.map((word) => (
             <button
               key={word}
@@ -104,12 +113,16 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
         <section aria-live="polite" className="mx-auto mt-14 max-w-3xl">
           <h2 className="text-body-sm text-muted-foreground">
             {matches.length === 0
-              ? `Nothing matches “${query}”.`
-              : `${matches.length} ${matches.length === 1 ? 'answer' : 'answers'} for “${query}”`}
+              ? translate('nothingMatches', { query: query })
+              : translate('for', {
+                  length: matches.length,
+                  value2: matches.length === 1 ? 'answer' : 'answers',
+                  query: query,
+                })}
           </h2>
           {matches.length === 0 ? (
             <p className="mt-3 text-body text-muted-foreground">
-              Try another word, or press ⌘J inside Helvetly and ask Heidi.
+              {translate('tryAnotherWordOrPressJInsideHelvetlyAnd')}
             </p>
           ) : (
             <div className="mt-4 grid gap-3">
@@ -123,7 +136,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
         <>
           <section aria-labelledby="help-topics" className="mt-16">
             <h2 id="help-topics" className="sr-only">
-              Topics
+              {translate('topics')}
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {HELP_TOPICS.map((topic) => {
@@ -141,7 +154,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
                   >
                     <TopicIcon category={topic.name} />
                     <span className="mt-4 text-title-sm font-semibold underline-offset-4 group-hover:underline">
-                      {topic.name}
+                      {categoryLabel(topic.name)}
                     </span>
                     <span className="mt-1 flex-1 text-body-sm text-muted-foreground">
                       {topic.blurb}
@@ -166,7 +179,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
 
           <section aria-labelledby="help-popular" className="mt-20">
             <h2 id="help-popular" className="text-title font-semibold">
-              Popular articles
+              {translate('popularArticles')}
             </h2>
             <div className="mt-6 grid gap-3 md:grid-cols-2">
               {popular.map((entry) => (
@@ -182,10 +195,9 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
         <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center">
           <HeidiOrb className="size-16 shrink-0" />
           <div className="flex-1">
-            <h2 className="text-title font-semibold">Still stuck? Ask Heidi.</h2>
+            <h2 className="text-title font-semibold">{translate('stillStuckAskHeidi')}</h2>
             <p className="mt-1 max-w-xl text-body text-white/70">
-              Inside Helvetly, press ⌘J on any page and ask how something works. She knows every
-              screen, and Help & feedback in the sidebar reaches our team.
+              {translate('insideHelvetlyPressJOnAnyPageAndAsk2')}
             </p>
           </div>
         </div>

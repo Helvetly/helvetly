@@ -1,5 +1,4 @@
 'use client'
-
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
@@ -12,6 +11,7 @@ import { useState } from 'react'
 
 import { inputClass } from '@/components/clients/fields'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   displayValue,
   IMPORT_KINDS,
@@ -27,7 +27,8 @@ import {
 import { ImportClientField } from './import-client-field'
 
 const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
-  displayValue(record.data[config.labelKey ?? 'name']) || `row ${index + 1}`
+  displayValue(record.data[config.labelKey ?? 'name']) ||
+  translate('dynamicRow', { value1: index + 1 })
 const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
 
 /** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
@@ -48,8 +49,7 @@ export function GroupedReview({
   if (!groups.length)
     return (
       <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
-        Nothing to import was found in these files. Try clearer copies, or files that hold invoices,
-        bills, contracts, client lists or price lists.
+        {translate('nothingToImportWasFoundInTheseFilesTry')}
       </p>
     )
   return (
@@ -108,19 +108,23 @@ export function ReviewTable({
   if (!records.length)
     return (
       <p className="rounded-lg border border-dashed px-4 py-8 text-center text-[13px] text-muted-foreground">
-        No {config.label.toLowerCase()} were found in these files. Try other files, or check that
-        they contain names and details.
+        {translate('no2')}
+        {config.label.toLowerCase()}
+        {translate('wereFoundInTheseFilesTryOtherFilesOr')}
       </p>
     )
 
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table aria-label="Records found" className="w-full min-w-[640px] text-left text-[13px]">
+      <table
+        aria-label={translate('recordsFound')}
+        className="w-full min-w-[640px] text-left text-[13px]"
+      >
         <thead className="border-b bg-muted/40 text-[12px] text-muted-foreground">
           <tr>
             <th scope="col" className="w-10 px-3 py-2">
               <Checkbox
-                aria-label="Select all"
+                aria-label={translate('selectAll3')}
                 disabled={!open.length}
                 checked={ticked === 0 ? false : ticked === open.length ? true : 'indeterminate'}
                 onCheckedChange={(on) =>
@@ -134,10 +138,10 @@ export function ReviewTable({
               </th>
             ))}
             <th scope="col" className="px-2 py-2 font-medium">
-              Notes
+              {translate('notes')}
             </th>
             <th scope="col" className="w-10 px-2 py-2">
-              <span className="sr-only">Edit</span>
+              <span className="sr-only">{translate('edit')}</span>
             </th>
           </tr>
         </thead>
@@ -156,10 +160,13 @@ export function ReviewTable({
               >
                 <td className="px-3 py-2">
                   {created ? (
-                    <Check aria-label="Created" className="size-4 text-success-solid" />
+                    <Check
+                      aria-label={translate('created3')}
+                      className="size-4 text-success-solid"
+                    />
                   ) : skipped ? null : (
                     <Checkbox
-                      aria-label={`Select ${name}`}
+                      aria-label={translate('select', { name: name })}
                       aria-describedby={
                         issues.length
                           ? issues.map((field) => issueId(record, field)).join(' ')
@@ -192,19 +199,20 @@ export function ReviewTable({
                   <div className="grid justify-items-start gap-1">
                     {created && record.entity_id && (
                       <span className="flex items-center gap-1.5">
-                        <Badge variant="secondary">Created</Badge>
+                        <Badge variant="secondary">{translate('created3')}</Badge>
                         <Link
                           href={config.entityHref(record.entity_id)}
                           className="text-[12px] underline underline-offset-2"
                         >
-                          Open
+                          {translate('open')}
                         </Link>
                       </span>
                     )}
-                    {skipped && <Badge variant="outline">Skipped</Badge>}
+                    {skipped && <Badge variant="outline">{translate('skipped2')}</Badge>}
                     {record.duplicate && !created && !skipped && (
                       <Badge variant="outline" className="h-auto text-left whitespace-normal">
-                        Possible duplicate: {record.duplicate.label} ({record.duplicate.reason})
+                        {translate('possibleDuplicate')}
+                        {record.duplicate.label} ({record.duplicate.reason})
                       </Badge>
                     )}
                     {otherIssues.map((field) => (
@@ -226,7 +234,7 @@ export function ReviewTable({
                               href="/settings/billing/plans"
                               className="underline underline-offset-2"
                             >
-                              See plans
+                              {translate('seePlans')}
                             </Link>
                           </>
                         )}
@@ -241,13 +249,13 @@ export function ReviewTable({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Edit ${name}`}
+                          aria-label={translate('edit3', { name: name })}
                           onClick={() => onEdit(record.id)}
                         >
                           <Pencil />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
+                      <TooltipContent>{translate('edit')}</TooltipContent>
                     </Tooltip>
                   )}
                 </td>
@@ -294,7 +302,7 @@ export function EditRecord({
   return (
     <form
       noValidate
-      aria-label="Edit record"
+      aria-label={translate('editRecord')}
       className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault()
@@ -303,7 +311,8 @@ export function EditRecord({
     >
       <div className="flex items-center gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={() => onDone(null)}>
-          <ArrowLeft /> Back to the list
+          <ArrowLeft />
+          {translate('backToTheList')}
         </Button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -339,9 +348,12 @@ export function EditRecord({
                 <span className="flex h-9 items-center">
                   <Checkbox
                     {...describedBy(id, error)}
-                    checked={values[field] === 'Yes'}
+                    checked={values[field] === translate('yes')}
                     onCheckedChange={(on) =>
-                      setValues((current) => ({ ...current, [field]: on === true ? 'Yes' : 'No' }))
+                      setValues((current) => ({
+                        ...current,
+                        [field]: on === true ? translate('yes') : translate('no4'),
+                      }))
                     }
                   />
                 </span>
@@ -369,7 +381,8 @@ export function EditRecord({
       </div>
       {record.duplicate && (
         <p className="text-[12.5px] text-muted-foreground">
-          Possible duplicate: {record.duplicate.label} ({record.duplicate.reason}).
+          {translate('possibleDuplicate')}
+          {record.duplicate.label} ({record.duplicate.reason}).
         </p>
       )}
       {patch.error && (
@@ -379,10 +392,10 @@ export function EditRecord({
       )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => onDone(null)}>
-          Cancel
+          {translate('cancel')}
         </Button>
         <Button type="submit" disabled={patch.isPending}>
-          {patch.isPending ? 'Saving…' : 'Save'}
+          {patch.isPending ? translate('saving') : translate('save2')}
         </Button>
       </div>
     </form>

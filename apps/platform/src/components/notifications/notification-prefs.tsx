@@ -1,5 +1,4 @@
 'use client'
-
 import {
   Accordion,
   AccordionContent,
@@ -15,6 +14,7 @@ import { Fragment, type ReactNode } from 'react'
 
 import { LoadError } from '@/components/load-error'
 import { SectionFooter, useSectionForm, type SectionState } from '@/components/section-form'
+import { translate } from '@/lib/i18n'
 import {
   categoryOf,
   EVENT_LABELS,
@@ -35,7 +35,7 @@ export function NotificationPrefs() {
     <div className="flex-1 px-4 py-4 sm:px-5">
       {prefs.isError ? (
         <LoadError
-          what="notification settings"
+          what={translate('notificationSettings')}
           error={prefs.error}
           onRetry={() => void prefs.refetch()}
         />
@@ -52,7 +52,7 @@ function PrefsForm({ prefs }: { prefs: NotificationPrefs }) {
     initial: { events: prefs.events },
     sections: [{ id: 'notifications', fields: ['events'] }],
     save: ({ events }) => save.mutateAsync(events),
-    savedMessage: () => 'Notification settings saved.',
+    savedMessage: () => translate('notificationSettingsSaved'),
   })
   const state = form.section('notifications')
   const events = form.values.events
@@ -77,11 +77,12 @@ function PrefsForm({ prefs }: { prefs: NotificationPrefs }) {
     <Body attach={state.attach}>
       <div className="grid flex-1 content-start gap-3 overflow-y-auto px-4 py-4 sm:px-5">
         <p className="text-body-sm text-muted-foreground">
-          Emails go to <span className="text-foreground">{prefs.email}</span>
+          {translate('emailsGoTo')}
+          <span className="text-foreground">{prefs.email}</span>
         </p>
         {!prefs.mail_ready && (
           <p className="rounded-lg bg-muted/60 px-3.5 py-2.5 text-body-sm text-muted-foreground">
-            This server can’t send email yet, so only the bell works.
+            {translate('thisServerCanTSendEmailYetSoOnly')}
           </p>
         )}
         <div className="grid min-w-0">
@@ -141,10 +142,12 @@ function ColumnLabels() {
   return (
     <div aria-hidden className="flex justify-end pr-2 text-body-sm text-muted-foreground">
       <span className={`${COLUMN} items-center gap-1 sm:gap-1.5`}>
-        <Mail className="size-3.5" /> Email
+        <Mail className="size-3.5" />
+        {translate('email3')}
       </span>
       <span className={`${COLUMN} items-center gap-1 sm:gap-1.5`}>
-        <Bell className="size-3.5" /> Bell
+        <Bell className="size-3.5" />
+        {translate('bell2')}
       </span>
     </div>
   )
@@ -153,9 +156,16 @@ function ColumnLabels() {
 /** "3 of 7 by email · 7 of 7 in the bell": the group's switches at a glance, read while it is closed. */
 export function groupSummary(choices: NotificationChoice[]) {
   const emailable = choices.filter((c) => c.email_available)
-  const bell = `${choices.filter((c) => c.in_app).length} of ${choices.length} in the bell`
-  if (emailable.length === 0) return `No email · ${bell}`
-  return `${emailable.filter((c) => c.email).length} of ${emailable.length} by email · ${bell}`
+  const bell = translate('ofInTheBell', {
+    length: choices.filter((c) => c.in_app).length,
+    value2: choices.length,
+  })
+  if (emailable.length === 0) return translate('noEmail', { bell: bell })
+  return translate('ofByEmail', {
+    length: emailable.filter((c) => c.email).length,
+    value2: emailable.length,
+    bell: bell,
+  })
 }
 
 /** All on, all off, or some ("indeterminate", shown as a dash). */
@@ -186,7 +196,7 @@ function Group({
         checked={state}
         // A mixed group turns everything on, like most "select all" boxes.
         onCheckedChange={() => setAll(key, state !== true)}
-        aria-label={`${label}: every ${name}`}
+        aria-label={translate('every2', { label: label, name: name })}
       />
     )
   }
@@ -251,7 +261,7 @@ function Group({
                     <Switch
                       checked={c.email}
                       onCheckedChange={(v) => set(c.event, 'email', v)}
-                      aria-label={`${named.label}: email`}
+                      aria-label={translate('email2', { label: named.label })}
                     />
                   ) : (
                     // Signatures already email the sender themselves.
@@ -262,7 +272,7 @@ function Group({
                   <Switch
                     checked={c.in_app}
                     onCheckedChange={(v) => set(c.event, 'in_app', v)}
-                    aria-label={`${named.label}: bell`}
+                    aria-label={translate('bell', { label: named.label })}
                   />
                 </span>
               </li>
@@ -278,7 +288,10 @@ function NoEmail({ what }: { what: 'event' | 'group' }) {
   return (
     <span className="text-caption text-muted-foreground">
       <span aria-hidden>–</span>
-      <span className="sr-only">No email for this {what}</span>
+      <span className="sr-only">
+        {translate('noEmailForThis')}
+        {what}
+      </span>
     </span>
   )
 }

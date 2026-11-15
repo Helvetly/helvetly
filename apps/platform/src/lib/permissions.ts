@@ -1,33 +1,54 @@
 'use client'
-
 // What a member may see and change, mirroring "Permission scopes" in docs/members-contract.md.
 // Owners and admins always have `*:*`; the Go API enforces, this only hides what would be refused.
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 export type Action = 'read' | 'write'
 
 export const RESOURCES = [
-  { id: 'clients', label: 'Clients', description: 'Client records, contacts and files' },
-  { id: 'invoices', label: 'Invoices', description: 'Invoices, quotes, credit notes and payments' },
-  { id: 'expenses', label: 'Expenses', description: 'Expenses and receipts' },
-  { id: 'products', label: 'Products & services', description: 'The price list' },
-  { id: 'documents', label: 'Documents', description: 'Files, templates and signatures' },
-  { id: 'engagements', label: 'Engagements', description: 'Retainers, logged hours and reports' },
-  { id: 'members', label: 'Members', description: 'The team and invitations', viewOnly: true },
+  {
+    id: 'clients',
+    label: translate('clients'),
+    description: translate('clientRecordsContactsAndFiles'),
+  },
+  {
+    id: 'invoices',
+    label: translate('invoices'),
+    description: translate('invoicesQuotesCreditNotesAndPayments'),
+  },
+  { id: 'expenses', label: translate('expenses'), description: translate('expensesAndReceipts') },
+  { id: 'products', label: translate('productsServices'), description: translate('thePriceList') },
+  {
+    id: 'documents',
+    label: translate('documents'),
+    description: translate('filesTemplatesAndSignatures'),
+  },
+  {
+    id: 'engagements',
+    label: translate('engagements'),
+    description: translate('retainersLoggedHoursAndReports'),
+  },
+  {
+    id: 'members',
+    label: translate('members'),
+    description: translate('theTeamAndInvitations'),
+    viewOnly: true,
+  },
   {
     id: 'settings',
-    label: 'Settings',
-    description: 'Invoice, workspace and engagement settings',
+    label: translate('settings'),
+    description: translate('invoiceWorkspaceAndEngagementSettings'),
     viewOnly: true,
   },
   {
     id: 'billing',
-    label: 'Billing',
-    description: 'Plan, usage and invoices from Helvetly',
+    label: translate('billing'),
+    description: translate('planUsageAndInvoicesFromHelvetly'),
     viewOnly: true,
   },
 ] as const
@@ -79,10 +100,14 @@ export function levelsOf(scopes: readonly string[]): Levels {
 export type PresetId = 'full' | 'read' | 'accountant' | 'custom'
 
 export const PRESETS: { id: PresetId; label: string; scopes: string[] | null }[] = [
-  { id: 'full', label: 'Full access', scopes: ['*:*'] },
-  { id: 'read', label: 'Read only', scopes: ['read:*'] },
-  { id: 'accountant', label: 'Accountant', scopes: ['read:*', 'write:invoices', 'write:expenses'] },
-  { id: 'custom', label: 'Custom', scopes: null },
+  { id: 'full', label: translate('fullAccess'), scopes: ['*:*'] },
+  { id: 'read', label: translate('readOnly2'), scopes: ['read:*'] },
+  {
+    id: 'accountant',
+    label: translate('accountant'),
+    scopes: ['read:*', 'write:invoices', 'write:expenses'],
+  },
+  { id: 'custom', label: translate('custom'), scopes: null },
 ]
 
 const sameLevels = (a: Levels, b: Levels) => RESOURCES.every(({ id }) => a[id] === b[id])
@@ -111,21 +136,24 @@ export function scopesFor(levels: Levels): string[] {
 const name = (resource: { label: string }) => resource.label.toLowerCase()
 
 const list = (names: string[]) =>
-  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  names.length < 2
+    ? names.join('')
+    : translate('dynamicAnd', { value1: names.slice(0, -1).join(', '), value2: names.at(-1) })
 
 /** One line for the access summary: "Can view everything, edit invoices and expenses". */
 export function describeAccess(scopes: readonly string[] | null): string {
   const levels = levelsOf(scopes ?? EVERYTHING)
   const viewable = RESOURCES.filter(({ id }) => levels[id] !== 'none')
   const editable = RESOURCES.filter(({ id }) => levels[id] === 'edit')
-  if (viewable.length === 0) return 'No access'
+  if (viewable.length === 0) return translate('noAccess')
   const everythingEditable = RESOURCES.filter((resource) => !('viewOnly' in resource))
   const all = viewable.length === RESOURCES.length
-  if (all && editable.length === everythingEditable.length) return 'Can view and edit everything'
+  if (all && editable.length === everythingEditable.length)
+    return translate('canViewAndEditEverything')
   const view = all ? 'everything' : list(viewable.map(name))
   return editable.length === 0
-    ? `Can view ${view}`
-    : `Can view ${view}, edit ${list(editable.map(name))}`
+    ? translate('canView', { view: view })
+    : translate('canViewEdit', { view: view, value2: list(editable.map(name)) })
 }
 
 const ROUTES: [string, Resource][] = [
@@ -184,6 +212,6 @@ export function toastForbidden(error: unknown): boolean {
   const scope = refusedScope(error)
   if (!scope) return false
   // One toast per scope, however many requests were refused at once.
-  toast.error(`You don't have permission to ${attempt(scope)}.`, { id: scope })
+  toast.error(translate('youDonTHavePermissionTo', { value1: attempt(scope) }), { id: scope })
   return true
 }

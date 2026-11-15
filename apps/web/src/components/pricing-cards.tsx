@@ -1,5 +1,4 @@
 'use client'
-
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
 import { Check, Minus } from 'lucide-react'
 import { useState } from 'react'
@@ -7,6 +6,7 @@ import { useState } from 'react'
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
 import { taxNote, useCurrency } from '@/lib/currency'
+import { translate } from '@/lib/i18n'
 import {
   type Interval,
   MAX_SELF_SERVICE_SEATS,
@@ -29,7 +29,7 @@ export function PricingCards() {
   return (
     <div className="flex flex-col items-center">
       <fieldset className="border-site-line bg-site-tint inline-flex rounded-full border p-1 text-body-sm font-medium">
-        <legend className="sr-only">Billing interval</legend>
+        <legend className="sr-only">{translate('billingInterval')}</legend>
         {(['month', 'year'] as const).map((value) => (
           <label
             key={value}
@@ -48,7 +48,7 @@ export function PricingCards() {
               onChange={() => setInterval(value)}
               className="absolute inset-0 cursor-pointer appearance-none opacity-0"
             />
-            {value === 'month' ? 'Monthly' : 'Yearly'}
+            {value === 'month' ? translate('monthly') : translate('yearly')}
             {value === 'year' && (
               <span className="ml-1.5 rounded-full bg-brand-surface px-1.5 py-0.5 text-caption text-brand">
                 −{YEARLY_DISCOUNT_PERCENT}%
@@ -77,7 +77,7 @@ export function PricingCards() {
                 <h3 className="text-title font-semibold">{plan.name}</h3>
                 {featured && (
                   <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2.5 py-0.5 text-caption font-medium text-white">
-                    Recommended
+                    {translate('recommended')}
                   </span>
                 )}
               </div>
@@ -105,7 +105,8 @@ export function PricingCards() {
                 <span
                   className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
                 >
-                  / person / {interval}
+                  {translate('person')}
+                  {interval}
                 </span>
               </p>
               <p
@@ -115,15 +116,19 @@ export function PricingCards() {
                 )}
               >
                 {interval === 'year'
-                  ? `${formatPrice(monthOf(priceOf(plan, 'year', currency)))} a month, billed yearly, ${taxNote(currency)}`
-                  : `Billed monthly, ${taxNote(currency)}`}
+                  ? translate('aMonthBilledYearly', {
+                      value1: formatPrice(monthOf(priceOf(plan, 'year', currency))),
+                      value2: taxNote(currency),
+                    })
+                  : translate('billedMonthly', { value1: taxNote(currency) })}
               </p>
               <Cta
                 href={START_URL}
                 variant={featured ? 'light' : 'primary'}
                 className="mt-6 w-full"
               >
-                Choose {plan.name}
+                {translate('choose3')}
+                {plan.name}
               </Cta>
               <ul className="mt-7 grid gap-2.5 text-body">
                 {plan.highlights.map((item) => (
@@ -153,7 +158,7 @@ export function PricingCards() {
                       <Minus aria-hidden className="size-3.5" />
                     </span>
                     <span>
-                      <span className="sr-only">Not included: </span>
+                      <span className="sr-only">{translate('notIncluded2')}</span>
                       {item}
                     </span>
                   </li>
@@ -164,11 +169,13 @@ export function PricingCards() {
         })}
       </div>
       <p className="mt-10 max-w-3xl text-center text-body-sm text-muted-foreground">
-        Prices are per person: every team member is billed at the full price of the plan, with no
-        extra seats included, up to {MAX_SELF_SERVICE_SEATS} people in the app. What each person
-        adds goes into one shared pool for the workspace. Try Business for {TRIAL.days} days with up
-        to {TRIAL.members} people. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU
-        and USD everywhere else, with the same figures.
+        {translate('pricesArePerPersonEveryTeamMemberIsBilled')}
+        {MAX_SELF_SERVICE_SEATS}
+        {translate('peopleInTheAppWhatEachPersonAddsGoes')}
+        {TRIAL.days}
+        {translate('daysWithUpTo')}
+        {TRIAL.members}
+        {translate('peoplePricesAreInCHFInSwitzerlandAndLiechtenstein')}
       </p>
     </div>
   )

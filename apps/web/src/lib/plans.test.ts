@@ -115,6 +115,7 @@ describe('offer v2 public projection', () => {
     expect(cells.einvoice_xml).toEqual([null, null, 'Included'])
     expect(has('basic', 'heidi')).toBe(false)
     expect(plansWith('heidi')).toBe('Pro or Business')
+    expect(plansWith('heidi', 'conjunction')).toBe('Pro and Business')
     expect(plansWith('client_portal')).toBe('Business')
   })
 

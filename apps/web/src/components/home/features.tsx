@@ -14,6 +14,7 @@ import { type Feature, FeatureExplorer } from '@/components/home/feature-explore
 import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
+import { translate } from '@/lib/i18n'
 import { plansWith } from '@/lib/plans'
 
 /** A mini QR bill: the invoice's payment part, with the scissors line. */
@@ -24,18 +25,18 @@ function QrBillArt() {
       className="w-full rounded-2xl border border-border bg-card p-4 shadow-elevation-1"
     >
       <div className="flex items-center justify-between border-b border-dashed border-foreground/20 pb-2 text-caption text-muted-foreground">
-        <span>✂ Payment part</span>
-        <span>CHF 4’860.00</span>
+        <span>{translate('paymentPart')}</span>
+        <span>{translate('chf486000')}</span>
       </div>
       <div className="mt-3 flex gap-4">
         <QrGlyph className="pop size-24 shrink-0 text-foreground" />
         <dl className="grid content-start gap-1.5 text-caption">
           <div>
-            <dt className="text-muted-foreground">Account / Payable to</dt>
-            <dd className="font-mono">CH44 3199 9123 0008 8901 2</dd>
+            <dt className="text-muted-foreground">{translate('accountPayableTo')}</dt>
+            <dd className="font-mono">{translate('ch4431999123000889012')}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Reference</dt>
+            <dt className="text-muted-foreground">{translate('reference')}</dt>
             <dd className="font-mono">21 00000 00003 13947 14300 09017</dd>
           </div>
         </dl>
@@ -47,10 +48,10 @@ function QrBillArt() {
 /** The dunning ladder: notes before the due date, reminders after it. */
 function DunningArt() {
   const steps = [
-    { day: '−3', label: 'Friendly note', tone: 'bg-info-solid' },
-    { day: '+7', label: '1st reminder', tone: 'bg-warning-solid' },
-    { day: '+21', label: '2nd · CHF 20 fee', tone: 'bg-warning-solid' },
-    { day: '+35', label: 'Final · 5% interest', tone: 'bg-destructive' },
+    { day: '−3', label: translate('friendlyNote'), tone: 'bg-info-solid' },
+    { day: '+7', label: translate('message1stReminder'), tone: 'bg-warning-solid' },
+    { day: '+21', label: translate('message2ndCHF20Fee'), tone: 'bg-warning-solid' },
+    { day: '+35', label: translate('final5Interest'), tone: 'bg-destructive' },
   ]
   return (
     <ol aria-hidden className="relative grid w-full gap-2.5">
@@ -62,7 +63,10 @@ function DunningArt() {
         >
           <span className={cn('size-2 rounded-full', s.tone)} />
           <span className="flex-1">{s.label}</span>
-          <span className="font-mono text-caption text-muted-foreground">day {s.day}</span>
+          <span className="font-mono text-caption text-muted-foreground">
+            {translate('day')}
+            {s.day}
+          </span>
         </li>
       ))}
     </ol>
@@ -89,7 +93,7 @@ function ReceiptArt() {
           ['Merchant', 'SBB CFF FFS'],
           ['Date', '04.11.2026'],
           ['Total', 'CHF 88.00'],
-          ['VAT', '8.1% · 6.59'],
+          [translate('vat'), '8.1% · 6.59'],
         ].map(([k, v], i) => (
           <div
             key={k}
@@ -122,8 +126,8 @@ function SignatureArt() {
         />
       </svg>
       <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-caption text-muted-foreground">
-        <span>Anna Keller · Managing director</span>
-        <span className="text-success">Signed ✓</span>
+        <span>{translate('annaKellerManagingDirector')}</span>
+        <span className="text-success">{translate('signed')}</span>
       </div>
     </div>
   )
@@ -158,13 +162,15 @@ function EngagementArt() {
   return (
     <div aria-hidden className="w-full rounded-2xl border border-border bg-card p-4">
       <div className="flex justify-between text-body-sm">
-        <span className="font-medium">Monthly retainer · Studio Lumen</span>
-        <span className="text-muted-foreground">32 / 40 h</span>
+        <span className="font-medium">{translate('monthlyRetainerStudioLumen')}</span>
+        <span className="text-muted-foreground">{translate('message3240H')}</span>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-foreground/8">
         <div className="grow-x from-rose-solid to-peach-solid h-full w-4/5 origin-left rounded-full bg-linear-to-r" />
       </div>
-      <p className="mt-2 text-caption text-muted-foreground">Draft invoice ready on 30 November</p>
+      <p className="mt-2 text-caption text-muted-foreground">
+        {translate('draftInvoiceReadyOn30November')}
+      </p>
     </div>
   )
 }
@@ -172,9 +178,9 @@ function EngagementArt() {
 /** The Ziffern of the VAT return, adding up. */
 function VatArt() {
   const rows = [
-    ['200', 'Total agreed consideration', '248’260.00'],
-    ['302', 'Supplies at 8.1%', '231’400.00'],
-    ['405', 'Input tax on costs', '−4’312.15'],
+    ['200', translate('totalAgreedConsideration'), '248’260.00'],
+    ['302', translate('suppliesAt81'), '231’400.00'],
+    ['405', translate('inputTaxOnCosts'), '−4’312.15'],
   ]
   return (
     <div
@@ -193,7 +199,7 @@ function VatArt() {
         </div>
       ))}
       <div className="flex justify-between bg-brand-surface px-3 py-2 font-medium text-brand">
-        <span>Tax payable</span>
+        <span>{translate('taxPayable')}</span>
         <span className="tabular-nums">14’431.25</span>
       </div>
     </div>
@@ -203,15 +209,15 @@ function VatArt() {
 /** The client's own view: invoices to pay and documents shared with them. */
 function PortalArt() {
   const rows = [
-    ['Invoice 2026-0418', 'CHF 4’860.00', 'Open'],
-    ['Service agreement.pdf', 'Shared 02.11.', 'New'],
-    ['Invoice 2026-0377', 'CHF 2’100.00', 'Paid'],
+    [translate('invoice20260418'), translate('chf486000'), translate('open')],
+    ['Service agreement.pdf', translate('shared0211'), translate('new')],
+    [translate('invoice20260377'), translate('chf210000'), translate('paid')],
   ]
   return (
     <div aria-hidden className="w-full overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-caption text-muted-foreground">
         <span className="size-5 rounded-full bg-linear-to-br from-logo-from to-logo-to" />
-        Alpenglühn GmbH · Client portal
+        {translate('alpenglHnGmbHClientPortal')}
       </div>
       {rows.map(([name, meta, status], i) => (
         <div
@@ -241,7 +247,13 @@ function PortalArt() {
 
 /** One invoice, five machine-readable formats. */
 function EinvoiceArt() {
-  const formats = ['XRechnung UBL', 'XRechnung CII', 'Peppol BIS', 'KSeF FA(3)', 'RO e-Factura']
+  const formats = [
+    translate('xrechnungUBL'),
+    translate('xrechnungCII'),
+    translate('peppolBIS'),
+    translate('ksefFA3'),
+    translate('roEFactura'),
+  ]
   return (
     <div aria-hidden className="flex w-full items-center gap-4">
       <div className="relative flex h-28 w-22 shrink-0 flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
@@ -272,92 +284,113 @@ function EinvoiceArt() {
 const FEATURES: Feature[] = [
   {
     id: 'invoices',
-    facts: ['Swiss QR bill', 'DE · FR · IT · EN'],
+    facts: [translate('swissQRBill'), translate('deFRITEN')],
     tone: 'mint',
     icon: <FileText />,
-    label: 'QR invoices',
-    title: 'Invoices with the QR bill built in',
-    body: 'Eight document types, from prepayment to credit note, gapless numbers per series and year, PDFs in German, French, Italian or English with the Swiss QR bill attached.',
+    label: translate('qrInvoices'),
+    title: translate('invoicesWithTheQRBillBuiltIn'),
+    body: translate('eightDocumentTypesFromPrepaymentToCreditNoteGapless'),
     art: <QrBillArt />,
   },
   {
     id: 'reminders',
-    facts: ['Up to 10 steps', `In ${plansWith('automations', ' and ')}`],
+    facts: [
+      translate('upTo10Steps'),
+      translate('in', { value1: plansWith('automations', 'conjunction') }),
+    ],
     tone: 'peach',
     icon: <Bell />,
-    label: 'Reminders',
-    title: 'Reminders that send themselves',
-    body: 'Up to ten steps, before and after the due date, with fees and default interest worked out for you.',
+    label: translate('reminders'),
+    title: translate('remindersThatSendThemselves'),
+    body: translate('upToTenStepsBeforeAndAfterTheDue'),
     art: <DunningArt />,
   },
   {
     id: 'expenses',
-    facts: ['PDF, photo or Excel', `In ${plansWith('expenses', ' and ')}`],
+    facts: [
+      translate('pdfPhotoOrExcel'),
+      translate('in', { value1: plansWith('expenses', 'conjunction') }),
+    ],
     tone: 'lemon',
     icon: <Receipt />,
-    label: 'Expenses',
-    title: 'Expenses, read for you',
-    body: 'Drop in receipts, PDFs or a spreadsheet. Helvetly reads them and you approve what goes into the books.',
+    label: translate('expenses'),
+    title: translate('expensesReadForYou'),
+    body: translate('dropInReceiptsPDFsOrASpreadsheetHelvetlyReads'),
     art: <ReceiptArt />,
   },
   {
     id: 'signatures',
-    facts: ['Simple e-signature', `In ${plansWith('templates_signatures', ' and ')}`],
+    facts: [
+      translate('simpleESignature'),
+      translate('in', { value1: plansWith('templates_signatures', 'conjunction') }),
+    ],
     tone: 'lilac',
     icon: <FileSignature />,
-    label: 'Signatures',
-    title: 'Contracts signed online',
-    body: 'Send any PDF for signature, fill templates with client data, and keep a tamper-evident audit trail.',
+    label: translate('signatures'),
+    title: translate('contractsSignedOnline'),
+    body: translate('sendAnyPDFForSignatureFillTemplatesWithClient'),
     art: <SignatureArt />,
   },
   {
     id: 'instalments',
-    facts: ['One QR bill per part', `In ${plansWith('automations', ' and ')}`],
+    facts: [
+      translate('oneQRBillPerPart'),
+      translate('in', { value1: plansWith('automations', 'conjunction') }),
+    ],
     tone: 'sky',
     icon: <Split />,
-    label: 'Instalments',
-    title: 'Instalments, automatically',
-    body: 'Split an invoice into parts, each with its own QR bill and reminder, or issue them on a schedule.',
+    label: translate('instalments'),
+    title: translate('instalmentsAutomatically'),
+    body: translate('splitAnInvoiceIntoPartsEachWithItsOwn'),
     art: <InstalmentArt />,
   },
   {
     id: 'engagements',
-    facts: ['Hours used live', 'Drafts on time'],
+    facts: [translate('hoursUsedLive'), translate('draftsOnTime')],
     tone: 'rose',
     icon: <CalendarRange />,
-    label: 'Retainers',
-    title: 'Retainers and engagements',
-    body: 'Track committed hours per client, see what is used, and get the draft invoice in advance or in arrears.',
+    label: translate('retainers'),
+    title: translate('retainersAndEngagements'),
+    body: translate('trackCommittedHoursPerClientSeeWhatIsUsed'),
     art: <EngagementArt />,
   },
   {
     id: 'vat',
-    facts: ['eCH-0217 file', `In ${plansWith('corrections_vat', ' and ')}`],
+    facts: [
+      translate('ech0217File'),
+      translate('in', { value1: plansWith('corrections_vat', 'conjunction') }),
+    ],
     tone: 'mint',
     icon: <Landmark />,
-    label: 'VAT return',
-    title: 'The VAT return, prepared',
-    body: 'Effective or net tax rate method, agreed or received basis. Export the eCH-0217 file the ESTV ePortal imports.',
+    label: translate('vatReturn'),
+    title: translate('theVATReturnPrepared'),
+    body: translate('effectiveOrNetTaxRateMethodAgreedOrReceived'),
     art: <VatArt />,
   },
   {
     id: 'portal',
-    facts: ['Sign in by email code', `In ${plansWith('client_portal')}`],
+    facts: [
+      translate('signInByEmailCode'),
+      translate('in', { value1: plansWith('client_portal') }),
+    ],
     tone: 'lilac',
     icon: <UsersRound />,
-    label: 'Client portal',
-    title: 'A portal for your clients',
-    body: 'Clients sign in with an emailed code to see their invoices, shared documents and engagements, and ask for profile changes you approve.',
+    label: translate('clientPortal'),
+    title: translate('aPortalForYourClients'),
+    body: translate('clientsSignInWithAnEmailedCodeToSee'),
     art: <PortalArt />,
   },
   {
     id: 'einvoices',
-    facts: ['XML files to send yourself', `In ${plansWith('einvoice_xml')}`],
+    facts: [
+      translate('xmlFilesToSendYourself'),
+      translate('in', { value1: plansWith('einvoice_xml') }),
+    ],
     tone: 'sky',
     icon: <FileCode2 />,
-    label: 'E-invoices',
-    title: 'E-invoices for Europe',
-    body: 'XRechnung, Peppol BIS, Polish KSeF and Romanian e-Factura XML files from your issued invoices, each archived with a checksum. Delivery through the networks is not included.',
+    label: translate('eInvoices'),
+    title: translate('eInvoicesForEurope'),
+    body: translate('xrechnungPeppolBISPolishKSeFAndRomanianEFactura2'),
     art: <EinvoiceArt />,
   },
 ]
@@ -367,13 +400,15 @@ export function Features() {
     <section id="features" className="pt-12 pb-4 sm:pt-16">
       <Container>
         <SectionHeading
-          eyebrow="Everything in one place"
+          eyebrow={translate('everythingInOnePlace')}
           title={
             <>
-              From the first invoice to the <span className="accent">filed</span> return
+              {translate('fromTheFirstInvoiceToThe')}
+              <span className="accent">{translate('filed')}</span>
+              {translate('return')}
             </>
           }
-          lead="Every tool a Swiss company needs to get paid, stay compliant and keep its paperwork tidy, built to work together instead of bolted on."
+          lead={translate('everyToolASwissCompanyNeedsToGetPaid')}
         />
         <div data-reveal className="mt-12">
           <FeatureExplorer features={FEATURES} />

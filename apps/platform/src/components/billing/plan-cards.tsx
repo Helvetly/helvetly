@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Segmented } from '@helvetly/ui/components/segmented'
@@ -31,19 +30,22 @@ import {
   yearlySaving,
   type Billing,
   LIMIT_LABELS,
+  limitNoun,
+  limitFactLabel,
   type Interval,
   type LimitKey,
   type Plan,
   type PlanPrice,
   type Promotion,
 } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { PromoCodeDialog } from './promo-code-dialog'
 
 const TAGLINES: Record<Plan['id'], string> = {
-  basic: 'For a small business that invoices every week.',
-  pro: 'For teams with many clients and few ceilings.',
-  business: 'For larger teams with no ceilings.',
+  basic: translate('forASmallBusinessThatInvoicesEveryWeek'),
+  pro: translate('forTeamsWithManyClientsAndFewCeilings'),
+  business: translate('forLargerTeamsWithNoCeilings'),
 }
 
 /** A refused change says why; an unpaid one also offers Stripe's page to pay it, and stays until dismissed. */
@@ -53,7 +55,9 @@ const fail = (error: unknown) => {
   const { payUrl } = unpaid
   return toast.error(unpaid.message, {
     duration: Infinity,
-    action: payUrl ? { label: 'Pay', onClick: () => window.location.assign(payUrl) } : undefined,
+    action: payUrl
+      ? { label: translate('pay'), onClick: () => window.location.assign(payUrl) }
+      : undefined,
   })
 }
 
@@ -66,17 +70,20 @@ export const LIMIT_ORDER: LimitKey[] = Object.keys(LIMIT_LABELS).filter(isLimitK
 
 /** A limit as a plan line: "15 members", "100 invoices a month", "Unlimited clients". */
 export function limitLine(key: LimitKey, value: number | null): string {
-  if (key === 'storage_bytes') return `${formatLimit(key, value)} for documents and receipts`
+  if (key === 'storage_bytes')
+    return translate('forDocumentsAndReceipts', { value1: formatLimit(key, value) })
   if (key === 'ai_tokens_per_month')
-    return `${formatLimit(key, value)} AI tokens a month for Heidi and imports`
+    return translate('aiTokensAMonthForHeidiAndImports', { value1: formatLimit(key, value) })
   if (key === 'members' && value === null) return ANY_PEOPLE
   if (key === 'members')
-    return `${formatLimit(key, value)} ${value === 1 ? 'member' : 'members'} besides the owner`
+    return translate('besidesTheOwner', {
+      value1: formatLimit(key, value),
+      value2: limitNoun('members', value ?? 2),
+    })
   const monthly = key.endsWith('_per_month')
-  let noun = LIMIT_LABELS[key].replace(/ this month$/, '').toLowerCase()
-  if (value === null) return `Unlimited ${noun}`
-  if (value === 1) noun = noun.replace(/s$/, '')
-  return `${formatLimit(key, value)} ${noun}${monthly ? ' a month' : ''}`
+  const noun = limitNoun(key, value ?? 2)
+  if (value === null) return translate('unlimited', { noun: noun })
+  return `${formatLimit(key, value)} ${noun}${monthly ? translate('aMonth2') : ''}`
 }
 
 /** What a plan includes, from its limits; with `previous`, only what grows over that plan. */
@@ -90,10 +97,15 @@ export function planFeatures(plan: Plan, previous?: Plan): string[] {
 export function choiceLabel(billing: Billing, plan: Plan, interval: Interval): string {
   if (billing.plan === '')
     return billing.trial_available && plan.id === billing.trial_plan
-      ? `Start ${billing.trial_days}-day free trial`
-      : `Choose ${plan.name}`
-  if (billing.plan === plan.id) return `Switch ${interval === 'year' ? 'yearly' : 'monthly'}`
-  return isUpgrade(billing.plan, plan.id) ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`
+      ? translate('startDayFreeTrial', { trial_days: billing.trial_days })
+      : translate('choose', { name: plan.name })
+  if (billing.plan === plan.id)
+    return translate('switch2', {
+      value1: interval === 'year' ? translate('yearly') : translate('monthly'),
+    })
+  return isUpgrade(billing.plan, plan.id)
+    ? translate('upgradeTo', { name: plan.name })
+    : translate('switchTo', { name: plan.name })
 }
 
 /** Starts Checkout, or changes the live subscription in place and refreshes Plan & billing. */
@@ -104,7 +116,7 @@ export function usePlanCheckout() {
     // A plan change answers with this page: refresh in place instead of reloading.
     if (url.startsWith(window.location.origin)) {
       void queryClient.invalidateQueries({ queryKey: billingKeys.overview })
-      toast.success('Plan changed. The difference for this period is invoiced now.')
+      toast.success(translate('planChangedImmediately'))
       return
     }
     window.location.assign(url)
@@ -119,28 +131,36 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
   const price = plan.prices[interval]
   const total =
     price && billing.seats > 0
-      ? ` (${formatPrice(seatsCost(price, billing.seats))} for ${people(billing.seats)})`
+      ? translate('for2', {
+          value1: formatPrice(seatsCost(price, billing.seats)),
+          value2: people(billing.seats),
+        })
       : ''
   const charge = price
-    ? `${formatPrice(price)} per person a ${interval}, ${taxNote(billing.currency)}${total}`
+    ? translate('perPersonA', {
+        value1: formatPrice(price),
+        interval: interval,
+        value3: taxNote(billing.currency),
+        total: total,
+      })
     : ''
   if (billing.status === 'trialing')
-    return `Your trial ends now and ${plan.name} is charged today: ${charge}.`
+    return translate('yourTrialEndsNowAndIsChargedToday2', { name: plan.name, charge })
   const payNow =
     isUpgrade(billing.plan, plan.id) || (interval === 'year' && billing.interval === 'month')
-  if (payNow)
-    return `${plan.name} at ${charge}. The rest of this period is charged now, prorated, and the plan changes once that payment goes through.`
-  return `${plan.name} applies now at ${charge}. The unused rest of this period is credited to your balance and pays your next invoices.`
+  if (payNow) return translate('planUpgradeCharge', { name: plan.name, charge })
+  return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 
 /** A limit as a short fact with its key number first: "50" clients, "Unlimited" invoices / month. */
 export function planFact(key: LimitKey, value: number | null): { value: string; label: string } {
-  const monthly = key.endsWith('_per_month')
-  const noun = LIMIT_LABELS[key].replace(/ this month$/, '').toLowerCase()
-  const label = `${key === 'storage_bytes' ? 'storage' : key === 'ai_tokens_per_month' ? 'AI tokens' : noun}${monthly ? ' / month' : ''}`
+  const label = limitFactLabel(key)
   if (key === 'members')
-    return { value: value === null ? 'Any number' : formatLimit(key, value), label: 'of people' }
-  if (value === null) return { value: 'Unlimited', label }
+    return {
+      value: value === null ? translate('anyNumber') : formatLimit(key, value),
+      label: translate('ofPeople'),
+    }
+  if (value === null) return { value: translate('unlimited2'), label }
   if (key === 'ai_tokens_per_month' && value >= 1_000_000)
     return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
   return { value: formatLimit(key, value), label }
@@ -184,15 +204,21 @@ export function PlanCards({ billing }: { billing: Billing }) {
     <div className="grid gap-10">
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Segmented
-          label="Billing period"
+          label={translate('billingPeriod')}
           value={interval}
           options={[
-            { value: 'month', label: 'Monthly' },
-            { value: 'year', label: 'Yearly' },
+            { value: 'month', label: translate('monthly2') },
+            { value: 'year', label: translate('yearly3') },
           ]}
           onChange={setPeriod}
         />
-        {saving > 0 && <StatusBadge tone="green">Save {saving} % yearly</StatusBadge>}
+        {saving > 0 && (
+          <StatusBadge tone="green">
+            {translate('save')}
+            {saving}
+            {translate('yearly2')}
+          </StatusBadge>
+        )}
       </div>
 
       <div className="grid items-stretch gap-4 md:grid-cols-3 lg:gap-5">
@@ -206,15 +232,19 @@ export function PlanCards({ billing }: { billing: Billing }) {
           const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
           const label = choiceLabel(billing, plan, interval)
           const shown = offer ?? price
-          const per = interval === 'year' ? 'a year' : 'a month'
+          const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
           const yearly = yearSaving(plan)
           let note = ''
-          if (pastDue && !current) note = 'Update the payment method first.'
+          if (pastDue && !current) note = translate('updateThePaymentMethodFirst')
           else if (trialing && !current)
-            note = `Your trial ends now and ${plan.name} is charged today.`
+            note = translate('yourTrialEndsNowAndIsChargedToday', { name: plan.name })
           else if (trial && shown)
-            note = `Free for ${billing.trial_days} days, card required. Then ${formatPrice(shown)} per person ${per}.`
-          else if (!subscribed) note = 'Charged today.'
+            note = translate('freeForDaysCardRequiredThenPerPerson', {
+              trial_days: billing.trial_days,
+              value2: formatPrice(shown),
+              per: per,
+            })
+          else if (!subscribed) note = translate('chargedToday')
           const disabled =
             current || busy || pastDue || !billing.enabled || !billing.can_manage || !price
           return (
@@ -232,7 +262,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
               {highlight && (
                 <p className="flex items-center justify-center gap-1.5 bg-brand-surface py-1.5 text-caption font-medium text-brand">
                   <Sparkles className="size-3" aria-hidden />
-                  Recommended
+                  {translate('recommended')}
                 </p>
               )}
               <div className={cn('flex flex-1 flex-col p-6 lg:p-7', highlight && 'md:pb-10')}>
@@ -241,7 +271,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   {onPlan && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-brand-surface px-2 text-caption leading-5 font-medium text-brand">
                       <Check className="size-3" aria-hidden />
-                      Current
+                      {translate('current')}
                     </span>
                   )}
                 </div>
@@ -259,22 +289,31 @@ export function PlanCards({ billing }: { billing: Billing }) {
                     )}
                   </p>
                   <p className="text-body-sm text-muted-foreground">
-                    per person / {interval} · {taxNote(billing.currency)}
+                    {translate('perPerson')}
+                    {interval} · {taxNote(billing.currency)}
                   </p>
                 </div>
                 <p className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
                   {interval === 'year' && shown ? (
                     <>
                       <span className="text-caption text-muted-foreground tabular-nums">
-                        {formatPrice(monthOf(shown))} a month, billed yearly
+                        {formatPrice(monthOf(shown))}
+                        {translate('aMonthBilledYearly')}
                       </span>
                       {yearly && (
-                        <StatusBadge tone="green">Save {formatPrice(yearly)} a year</StatusBadge>
+                        <StatusBadge tone="green">
+                          {translate('save')}
+                          {formatPrice(yearly)}
+                          {translate('aYear')}
+                        </StatusBadge>
                       )}
                     </>
                   ) : interval === 'month' && plan.prices.year && yearlySaving(plan) > 0 ? (
                     <span className="text-caption text-muted-foreground tabular-nums">
-                      or {formatPrice(plan.prices.year)} a year, save {yearlySaving(plan)} %
+                      {translate('or')}
+                      {formatPrice(plan.prices.year)}
+                      {translate('aYearSave')}
+                      {yearlySaving(plan)} %
                     </span>
                   ) : null}
                 </p>
@@ -283,7 +322,10 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   data-slot="team-total"
                   className="mt-4 flex items-baseline justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-body-sm"
                 >
-                  <span className="text-muted-foreground">For {people(team)}</span>
+                  <span className="text-muted-foreground">
+                    {translate('for')}
+                    {people(team)}
+                  </span>
                   <span className="tabular-nums">
                     <span className="text-title-sm font-semibold">
                       {shown ? formatPrice(seatsCost(shown, team)) : '—'}
@@ -299,14 +341,14 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   disabled={disabled}
                   onClick={() => (subscribed ? setConfirm(plan) : choose(plan))}
                 >
-                  {current ? 'Current plan' : label}
+                  {current ? translate('currentPlan') : label}
                 </Button>
                 <p className="mt-2.5 min-h-[2lh] text-center text-caption text-pretty text-muted-foreground">
                   {note}
                 </p>
 
                 <ul
-                  aria-label={`${plan.name} includes`}
+                  aria-label={translate('includes', { name: plan.name })}
                   className="mt-4 grid gap-2.5 border-t pt-5 text-body-sm"
                 >
                   {keys.map((key) => {
@@ -340,33 +382,35 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   {promo.code} · {describeDiscount(promo)}
                 </span>
                 <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
-                  Change
+                  {translate('change')}
                 </button>
                 <button
                   type="button"
                   className={cn(textLink, 'inline-flex items-center gap-1 text-destructive')}
                   onClick={() => setPromo(null)}
                 >
-                  <X className="size-3.5" aria-hidden /> Remove
+                  <X className="size-3.5" aria-hidden />
+                  {translate('remove')}
                 </button>
               </>
             ) : (
               <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
-                Have a promotion code?
+                {translate('haveAPromotionCode')}
               </button>
             )}
           </div>
         )}
         <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-caption">
           <Lock className="size-3" aria-hidden />
-          Secure payment by Stripe
+          {translate('securePaymentByStripe')}
           <span aria-hidden>·</span>
-          Prices {taxNoteLong(billing.currency)}
+          {translate('prices')}
+          {taxNoteLong(billing.currency)}
           <span aria-hidden>·</span>
-          Change or cancel anytime
+          {translate('changeOrCancelAnytime')}
         </p>
         {!billing.can_manage && billing.enabled && (
-          <p>Only an owner or admin can change the workspace’s plan.</p>
+          <p>{translate('onlyAnOwnerOrAdminCanChangeTheWorkspace')}</p>
         )}
       </div>
 
@@ -381,9 +425,20 @@ export function PlanCards({ billing }: { billing: Billing }) {
         <ConfirmDialog
           key={confirm.id + interval}
           tone="default"
-          title={`${isUpgrade(billing.plan, confirm.id) ? 'Upgrade' : 'Switch'} to ${confirm.name}${confirm.id === billing.plan ? ` ${interval === 'year' ? 'yearly' : 'monthly'}` : ''}?`}
+          title={translate('to', {
+            value1: isUpgrade(billing.plan, confirm.id)
+              ? translate('upgrade')
+              : translate('switch'),
+            name: confirm.name,
+            value3:
+              confirm.id === billing.plan
+                ? ` ${interval === 'year' ? translate('yearly') : translate('monthly')}`
+                : '',
+          })}
           body={confirmBody(billing, confirm, interval)}
-          confirmLabel={isUpgrade(billing.plan, confirm.id) ? 'Upgrade' : 'Switch plan'}
+          confirmLabel={
+            isUpgrade(billing.plan, confirm.id) ? translate('upgrade') : translate('switchPlan')
+          }
           onDecide={(approved) => {
             const plan = confirm
             setConfirm(null)

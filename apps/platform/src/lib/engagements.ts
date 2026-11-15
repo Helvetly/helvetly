@@ -1,6 +1,7 @@
 // Engagements, typed by hand from docs/engagements-contract.md.
 import { request } from '@/lib/api'
 import type { Page } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 import type { Decimal, Unit, VatCategory } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
 
@@ -241,7 +242,20 @@ export function progressOf(p: Progress) {
   return { usedPct: pct(used, quantity), expectedPct: pct(expected, quantity), tone }
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTHS = [
+  translate('jan'),
+  translate('feb'),
+  translate('mar'),
+  translate('apr'),
+  translate('may'),
+  translate('jun'),
+  translate('jul'),
+  translate('aug'),
+  translate('sep'),
+  translate('oct'),
+  translate('nov'),
+  translate('dec'),
+]
 
 const mon = (m: string) => MONTHS[Number(m) - 1] ?? m
 

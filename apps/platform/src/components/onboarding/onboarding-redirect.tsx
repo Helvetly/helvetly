@@ -1,5 +1,6 @@
 'use client'
 
+import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 
@@ -9,7 +10,8 @@ import { safeNextPath } from '@/lib/safe'
 export const WELCOME_PATH = '/welcome'
 
 /** Whether `pathname` is the welcome (the static export serves it as /welcome/). */
-export const isWelcome = (pathname: string) => pathname.replace(/\/$/, '') === WELCOME_PATH
+export const isWelcome = (pathname: string) =>
+  localizedHref(pathname, defaultLocale).replace(/\/$/, '') === WELCOME_PATH
 
 /** The welcome, coming back to `next` once it is finished or skipped. */
 export function welcomeHref(next: string) {

@@ -1,16 +1,17 @@
-import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { BillingSettings } from '@/components/billing/billing-settings'
+import { PageTitle } from '@/components/page-title'
 import { PageLoading } from '@/components/shell/page-loading'
 
-export const metadata: Metadata = { title: 'Plan & billing' }
-
 export default function BillingPage() {
-  // The return from Checkout is read from the URL (useSearchParams): a boundary in a static export.
+  // Checkout returns through the URL, so the page needs a Suspense boundary.
   return (
-    <Suspense fallback={<PageLoading />}>
-      <BillingSettings />
-    </Suspense>
+    <>
+      <PageTitle message="planBilling" />
+      <Suspense fallback={<PageLoading />}>
+        <BillingSettings />
+      </Suspense>
+    </>
   )
 }

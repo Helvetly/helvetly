@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -28,6 +27,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { Initials } from '@/components/initials'
 import { ApiError, errorMessage } from '@/lib/api'
 import { clientKeys, useContactMutations, type Client, type Contact } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 import { contactActions, sortContacts, withPrimary } from './contacts-model'
 import { inputClass } from './fields'
@@ -49,9 +49,9 @@ const toDraft = (contact: Contact | undefined, clientCountry: string | null): Dr
 
 function check(draft: Draft): Errors {
   const errors: Errors = {}
-  if (!draft.name.trim()) errors.name = 'Enter a name.'
+  if (!draft.name.trim()) errors.name = translate('enterAName')
   if (draft.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim()))
-    errors.email = 'Enter a valid email address.'
+    errors.email = translate('enterAValidEmailAddress')
   if (draft.phone.trim() && !toE164(draft.phone, draft.country)) errors.phone = PHONE_ERROR
   return errors
 }
@@ -100,11 +100,11 @@ function ContactEditor({
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        {field('name', 'Name')}
-        {field('role', 'Role')}
-        {field('email', 'Email', 'email')}
+        {field('name', translate('name'))}
+        {field('role', translate('role'))}
+        {field('email', translate('email'), 'email')}
         <div className="grid gap-1 text-[12.5px] font-medium">
-          <label htmlFor="contact-phone">Phone</label>
+          <label htmlFor="contact-phone">{translate('phone')}</label>
           <PhoneInput
             id="contact-phone"
             value={draft.phone}
@@ -120,10 +120,10 @@ function ContactEditor({
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
+          {translate('cancel')}
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
-          {contact ? 'Save' : 'Add contact'}
+          {contact ? translate('save2') : translate('addContact2')}
         </Button>
       </div>
     </form>
@@ -178,7 +178,8 @@ export function ClientContacts({ client }: { client: Client }) {
     <div className="grid gap-2">
       {contacts.length === 0 && editing !== 'new' && (
         <p className="text-[13px] text-muted-foreground">
-          No contact persons yet{client.is_company ? ' — add the people you deal with.' : '.'}
+          {translate('noContactPersonsYet')}
+          {client.is_company ? translate('addThePeopleYouDealWith') : '.'}
         </p>
       )}
       <ul className="grid gap-1">
@@ -199,12 +200,14 @@ export function ClientContacts({ client }: { client: Client }) {
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="flex items-center gap-2 truncate text-[13.5px]">
                   {contact.name}
-                  {contact.is_primary && <StatusBadge tone="green">Primary</StatusBadge>}
+                  {contact.is_primary && (
+                    <StatusBadge tone="green">{translate('primary')}</StatusBadge>
+                  )}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
                   {[contact.role, contact.email, contact.phone ? displayPhone(contact.phone) : null]
                     .filter(Boolean)
-                    .join(' · ') || 'No details'}
+                    .join(' · ') || translate('noDetails')}
                 </span>
               </span>
               <DropdownMenu>
@@ -212,7 +215,7 @@ export function ClientContacts({ client }: { client: Client }) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Actions for ${contact.name}`}
+                    aria-label={translate('actionsFor', { name: contact.name })}
                     className="text-muted-foreground"
                   >
                     <Ellipsis />
@@ -222,11 +225,11 @@ export function ClientContacts({ client }: { client: Client }) {
                   {contactActions(contact, contacts.length).map((action) =>
                     action === 'edit' ? (
                       <DropdownMenuItem key={action} onSelect={() => setEditing(contact.id)}>
-                        Edit
+                        {translate('edit')}
                       </DropdownMenuItem>
                     ) : action === 'primary' ? (
                       <DropdownMenuItem key={action} onSelect={() => makePrimary(contact)}>
-                        Make primary
+                        {translate('makePrimary')}
                       </DropdownMenuItem>
                     ) : (
                       <span key={action} className="contents">
@@ -235,7 +238,8 @@ export function ClientContacts({ client }: { client: Client }) {
                           variant="destructive"
                           onSelect={() => setDeleting(contact)}
                         >
-                          <Trash2 /> Delete
+                          <Trash2 />
+                          {translate('delete')}
                         </DropdownMenuItem>
                       </span>
                     ),
@@ -260,19 +264,20 @@ export function ClientContacts({ client }: { client: Client }) {
           className="w-fit text-muted-foreground"
           onClick={() => setEditing('new')}
         >
-          <Plus /> Add contact
+          <Plus />
+          {translate('addContact')}
         </Button>
       )}
       {deleting && (
         <ConfirmDialog
           key={deleting.id}
-          title={`Remove ${deleting.name}?`}
+          title={translate('remove3', { name: deleting.name })}
           body={
             deleting.is_primary && contacts.length > 1
-              ? 'The longest-standing other contact becomes primary.'
-              : 'The contact is removed from this client.'
+              ? translate('theLongestStandingOtherContactBecomesPrimary')
+              : translate('theContactIsRemovedFromThisClient')
           }
-          confirmLabel="Remove contact"
+          confirmLabel={translate('removeContact')}
           tone="destructive"
           onDecide={(approved) => {
             const contact = deleting

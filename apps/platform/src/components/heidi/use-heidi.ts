@@ -1,5 +1,4 @@
 'use client'
-
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -16,6 +15,7 @@ import {
   type HeidiPage,
   type HeidiRecord,
 } from '@/lib/heidi'
+import { translate } from '@/lib/i18n'
 import { importsApi } from '@/lib/imports'
 import { invoiceKeys } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
@@ -46,7 +46,7 @@ export type ChatMessage = {
   at?: Date
 }
 
-export const EMPTY_ANSWER = 'I don’t have an answer for that yet. Could you put it another way?'
+export const EMPTY_ANSWER = translate('iDonTHaveAnAnswerForThatYet')
 
 const STORAGE = 'helvetly:heidi:conversation'
 /** A conversation left for longer starts over: Heidi's context is about what you're doing now. */
@@ -245,7 +245,7 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
           update(id, () => ({
             state: 'error',
             status: undefined,
-            error: 'The answer stopped before it was finished.',
+            error: translate('theAnswerStoppedBeforeItWasFinished'),
           }))
         }
       } catch (error) {
@@ -283,7 +283,10 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         form.set('page', page)
         if (goesToImport(text, files)) {
           // The files go to an import that works out what they are; the answer then follows it.
-          update(assistantId, () => ({ status: 'Uploading files', steps: ['Uploading files'] }))
+          update(assistantId, () => ({
+            status: 'Uploading files',
+            steps: [translate('uploadingFiles')],
+          }))
           const batch = await importsApi.upload('auto', files)
           form.set('import_id', batch.id)
         } else for (const file of files) form.append('files[]', file)
@@ -347,12 +350,10 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         ),
       )
       if (ended === 'done') {
-        if (approved) toast.success(`${open.confirm_label}: done.`)
-        else toast('Cancelled. Nothing was changed.')
+        if (approved) toast.success(translate('done2', { confirm_label: open.confirm_label }))
+        else toast(translate('cancelledNothingWasChanged'))
       } else if (ended === 'error') {
-        toast.error(
-          'Heidi couldn’t finish that. Nothing was confirmed twice — check and try again.',
-        )
+        toast.error(translate('heidiCouldnTFinishThatNothingWasConfirmedTwice'))
       }
     },
     [confirmation, conversationId, run, update],
@@ -387,7 +388,7 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
       remember(storageKey, id)
       setRestoring(true)
       load(id, () => {
-        toast.error('That conversation is no longer available.')
+        toast.error(translate('thatConversationIsNoLongerAvailable'))
         newChat()
       })
     },

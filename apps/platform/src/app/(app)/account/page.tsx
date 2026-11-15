@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
 import { AccountSettings } from '@/components/account/account-settings'
-
-export const metadata: Metadata = { title: 'Account settings' }
+import { PageTitle } from '@/components/page-title'
 
 export default function AccountPage() {
-  return <AccountSettings />
+  return (
+    <>
+      <PageTitle message="accountSettings" />
+      <AccountSettings />
+    </>
+  )
 }

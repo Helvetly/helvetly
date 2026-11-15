@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { ArrowLeft } from 'lucide-react'
@@ -8,6 +7,7 @@ import Link from 'next/link'
 import { PlanScreen } from '@/components/shell/plan-gate'
 import { errorMessage } from '@/lib/api'
 import { people, trialDaysLeft, useBilling, type Billing } from '@/lib/billing'
+import { translate } from '@/lib/i18n'
 
 import { PlanCards } from './plan-cards'
 import { PlanComparison } from './plan-extras'
@@ -24,29 +24,33 @@ export function ChangePlan() {
       action={
         <Button asChild variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
           <Link href="/settings/billing">
-            <ArrowLeft className="size-3.5" aria-hidden /> Back to billing
+            <ArrowLeft className="size-3.5" aria-hidden />
+            {translate('backToBilling')}
           </Link>
         </Button>
       }
     >
       <div className="grid max-w-2xl justify-items-center gap-4 text-center">
         <h1 className="text-display font-semibold tracking-[-0.035em] text-balance">
-          {data?.plan ? 'Change your plan' : 'Choose a plan'}
+          {data?.plan ? translate('changeYourPlan') : translate('chooseAPlan')}
         </h1>
         <p className="max-w-xl text-title-sm text-pretty text-muted-foreground">
-          One price per person, the whole team included
-          {data && data.seats > 0 ? ` (${people(data.seats)} in this workspace now)` : ''}. Add
-          people or move up when you grow; the difference is prorated to the day.
+          {translate('onePricePerPersonTheWholeTeamIncluded')}
+          {data && data.seats > 0
+            ? translate('inThisWorkspaceNow', { value1: people(data.seats) })
+            : ''}
+          {translate('addPeopleOrMoveUpWhenYouGrowThe')}
         </p>
         {data && <CurrentPlanPill billing={data} />}
       </div>
       <div className="mt-12 w-full max-w-[1080px]">
         {billing.error ? (
           <p role="alert" className="text-center text-sm text-muted-foreground">
-            Plans couldn’t be loaded: {errorMessage(billing.error)}
+            {translate('plansCouldnTBeLoaded')}
+            {errorMessage(billing.error)}
           </p>
         ) : !data ? (
-          <Loader label="Loading plans" className="min-h-96" />
+          <Loader label={translate('loadingPlans')} className="min-h-96" />
         ) : (
           <PlanCards billing={data} />
         )}
@@ -73,7 +77,8 @@ function CurrentPlanPill({ billing }: { billing: Billing }) {
     >
       <span className="size-2 rounded-full bg-brand-solid" aria-hidden />
       <span>
-        You’re on <span className="font-medium">{plan.name}</span>
+        {translate('youReOn')}
+        <span className="font-medium">{plan.name}</span>
       </span>
       {trial && (
         <>
@@ -82,8 +87,8 @@ function CurrentPlanPill({ billing }: { billing: Billing }) {
           </span>
           <span className="text-muted-foreground tabular-nums">
             {left === 0
-              ? 'Trial ends today'
-              : `${left} ${left === 1 ? 'day' : 'days'} left in the trial`}
+              ? translate('trialEndsToday')
+              : translate('leftInTheTrial', { left: left, value2: left === 1 ? 'day' : 'days' })}
           </span>
         </>
       )}

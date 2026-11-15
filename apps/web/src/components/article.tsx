@@ -1,3 +1,4 @@
+import { localizedHref } from '@helvetly/i18n'
 import { isValidElement, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -6,6 +7,7 @@ import { Cta } from '@/components/cta'
 import { Container } from '@/components/section'
 import type { Article } from '@/lib/content'
 import { formatDay } from '@/lib/content'
+import { translate } from '@/lib/i18n'
 import { slugify } from '@/lib/legal'
 import { START_URL } from '@/lib/site'
 
@@ -21,11 +23,11 @@ const MARKDOWN: Components = {
   h2: ({ children }) => <h2 id={slugify(text(children))}>{children}</h2>,
   a: ({ href = '', children }) =>
     href.startsWith('http') ? (
-      <a href={href} rel="noopener">
+      <a href={localizedHref(href)} rel="noopener">
         {children}
       </a>
     ) : (
-      <a href={href}>{children}</a>
+      <a href={localizedHref(href)}>{children}</a>
     ),
 }
 
@@ -43,17 +45,20 @@ export function ArticleView({
     <main className="pt-32 pb-24 sm:pt-40">
       <Container className="grid gap-12 lg:grid-cols-[240px_1fr]">
         <aside className="hidden lg:block">
-          <nav aria-label="On this page" className="sticky top-28 flex flex-col gap-1 text-body-sm">
+          <nav
+            aria-label={translate('onThisPage')}
+            className="sticky top-28 flex flex-col gap-1 text-body-sm"
+          >
             {aside}
             {article.headings.length > 0 && (
               <>
                 <p className="mt-6 px-3 text-caption font-medium text-muted-foreground uppercase first:mt-0">
-                  On this page
+                  {translate('onThisPage')}
                 </p>
                 {article.headings.map((h) => (
                   <a
                     key={h.id}
-                    href={`#${h.id}`}
+                    href={localizedHref(`#${h.id}`)}
                     className="px-3 py-1 leading-snug text-muted-foreground hover:text-foreground"
                   >
                     {h.text}
@@ -72,8 +77,11 @@ export function ArticleView({
             {article.description}
           </p>
           <p className="mt-4 text-body-sm text-muted-foreground">
-            Updated {formatDay(article.updated)}
-            {article.readingMinutes ? ` · ${article.readingMinutes} min read` : ''}
+            {translate('updated')}
+            {formatDay(article.updated)}
+            {article.readingMinutes
+              ? translate('minRead2', { readingMinutes: article.readingMinutes })
+              : ''}
           </p>
           <div className="prose-legal mt-8">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>
@@ -82,13 +90,13 @@ export function ArticleView({
           </div>
           <div className="night dark mt-14 flex max-w-3xl flex-col items-start gap-4 overflow-hidden rounded-3xl p-7 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-title-sm font-semibold">Let Helvetly do the busywork</p>
+              <p className="text-title-sm font-semibold">{translate('letHelvetlyDoTheBusywork')}</p>
               <p className="mt-1 text-body-sm text-white/70">
-                QR invoices, reminders and the VAT return, in one calm place.
+                {translate('qrInvoicesRemindersAndTheVATReturnInOne')}
               </p>
             </div>
             <Cta href={START_URL} className="shrink-0">
-              Start your free trial
+              {translate('startYourFreeTrial')}
             </Cta>
           </div>
         </article>

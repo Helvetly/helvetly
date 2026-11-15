@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -11,14 +10,16 @@ import { Input } from '@helvetly/ui/components/input'
 import { Eraser, PenLine, Type } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 
+import { translate } from '@/lib/i18n'
+
 import { INK, trimmedPng, typedPng } from './ink'
 import { SCRIPT_FONTS } from './script-fonts'
 
 export type Adopted = { method: 'typed' | 'drawn'; image: string }
 
 const METHODS = [
-  ['typed', 'Type', Type],
-  ['drawn', 'Draw', PenLine],
+  ['typed', translate('type'), Type],
+  ['drawn', translate('draw'), PenLine],
 ] as const
 
 /** "Adopt your signature": type it in a script style or draw it; the result is a PNG. */
@@ -54,10 +55,10 @@ export function AdoptDialog({
       <DialogContent className="w-[min(560px,calc(100vw-2rem))] max-w-none! gap-5 rounded-2xl p-6">
         <div className="grid gap-1">
           <DialogTitle className="text-[17px] font-medium tracking-[-0.01em]">
-            Adopt your signature
+            {translate('adoptYourSignature')}
           </DialogTitle>
           <DialogDescription className="text-[13.5px]">
-            It goes into every signature field of this document.
+            {translate('itGoesIntoEverySignatureFieldOfThisDocument')}
           </DialogDescription>
         </div>
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
@@ -77,7 +78,7 @@ export function AdoptDialog({
         {method === 'typed' ? (
           <div className="grid gap-3">
             <Input
-              aria-label="Your name"
+              aria-label={translate('yourName')}
               value={typed}
               maxLength={80}
               onChange={(event) => setTyped(event.target.value)}
@@ -88,12 +89,15 @@ export function AdoptDialog({
                   key={entry.id}
                   type="button"
                   aria-pressed={font === entry.id}
-                  aria-label={`${typed.trim() || 'Your name'}, ${entry.label} style`}
+                  aria-label={translate('style', {
+                    value1: typed.trim() || translate('yourName'),
+                    label: entry.label,
+                  })}
                   onClick={() => setFont(entry.id)}
                   className="flex h-[72px] cursor-pointer items-center overflow-hidden rounded-xl border bg-white px-5 text-left text-[34px] whitespace-nowrap transition-colors aria-pressed:border-brand-solid aria-pressed:ring-2 aria-pressed:ring-brand-solid/25"
                   style={{ fontFamily: entry.family, color: INK }}
                 >
-                  {typed.trim() || 'Your name'}
+                  {typed.trim() || translate('yourName')}
                 </button>
               ))}
             </div>
@@ -104,7 +108,7 @@ export function AdoptDialog({
 
         <div className="flex items-center justify-end gap-2">
           <Button size="xl" variant="outline" className="cursor-pointer" onClick={onClose}>
-            Cancel
+            {translate('cancel')}
           </Button>
           <Button
             size="xl"
@@ -112,7 +116,7 @@ export function AdoptDialog({
             disabled={!ready || busy}
             onClick={() => void adopt()}
           >
-            Adopt and sign
+            {translate('adoptAndSign')}
           </Button>
         </div>
       </DialogContent>
@@ -162,7 +166,7 @@ function DrawPad({ onInk }: { onInk: (image: string | null) => void }) {
       <div className="relative">
         <canvas
           ref={canvas}
-          aria-label="Draw your signature"
+          aria-label={translate('drawYourSignature')}
           className="h-[180px] w-full cursor-crosshair touch-none rounded-xl border bg-white"
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId)
@@ -177,7 +181,7 @@ function DrawPad({ onInk }: { onInk: (image: string | null) => void }) {
         <span className="pointer-events-none absolute inset-x-8 bottom-10 border-b border-dashed border-black/15" />
       </div>
       <div className="flex items-center justify-between text-[12px] text-muted-foreground">
-        <span>Sign above the line.</span>
+        <span>{translate('signAboveTheLine')}</span>
         <Button
           variant="ghost"
           size="sm"
@@ -188,7 +192,8 @@ function DrawPad({ onInk }: { onInk: (image: string | null) => void }) {
             onInk(null)
           }}
         >
-          <Eraser className="size-3.5" /> Clear
+          <Eraser className="size-3.5" />
+          {translate('clear2')}
         </Button>
       </div>
     </div>

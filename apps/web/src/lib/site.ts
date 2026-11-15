@@ -1,61 +1,64 @@
+import { defaultLocale, languageHref, locale } from '@helvetly/i18n'
+
 import { COMPETITORS } from '@/lib/compare'
+import { translate } from '@/lib/i18n'
 
 export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? 'http://localhost:8000'
 // Sign-in is passwordless and makes the account on first use, so starting and signing in share a page.
-export const SIGN_IN_URL = `${PLATFORM_URL}/login`
+export const SIGN_IN_URL = `${PLATFORM_URL}${locale === defaultLocale ? '/login' : languageHref('/login', locale)}`
 export const START_URL = SIGN_IN_URL
 
 export const NAV = [
-  { href: '/#features', label: 'Product' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/compare', label: 'Compare' },
-  { href: '/security', label: 'Security' },
-  { href: '/guides', label: 'Guides' },
-  { href: '/help', label: 'Help' },
+  { href: '/#features', label: translate('product') },
+  { href: '/pricing', label: translate('pricing') },
+  { href: '/compare', label: translate('compare') },
+  { href: '/security', label: translate('security') },
+  { href: '/guides', label: translate('guides') },
+  { href: '/help', label: translate('help2') },
 ]
 
 export const FOOTER = [
   {
-    title: 'Product',
+    title: translate('product'),
     links: [
-      { href: '/#features', label: 'Features' },
-      { href: '/#heidi', label: 'Heidi, the assistant' },
-      { href: '/pricing', label: 'Pricing' },
-      { href: '/pricing#compare-plans', label: 'Compare plans' },
+      { href: '/#features', label: translate('features') },
+      { href: '/#heidi', label: translate('heidiTheAssistant') },
+      { href: '/pricing', label: translate('pricing') },
+      { href: '/pricing#compare-plans', label: translate('comparePlans') },
     ],
   },
   {
-    title: 'Why Helvetly',
+    title: translate('whyHelvetly'),
     links: [
-      { href: '/security', label: 'Security and privacy' },
-      { href: '/#faq', label: 'Questions' },
+      { href: '/security', label: translate('securityAndPrivacy') },
+      { href: '/#faq', label: translate('questions') },
     ],
   },
   {
-    title: 'Resources',
+    title: translate('resources'),
     links: [
-      { href: '/guides', label: 'Guides' },
-      { href: '/guides/swiss-vat', label: 'Swiss VAT, explained' },
-      { href: '/guides/qr-bill', label: 'The Swiss QR bill' },
-      { href: '/guides/payment-reminders', label: 'Payment reminders' },
-      { href: '/help', label: 'Help center' },
+      { href: '/guides', label: translate('guides') },
+      { href: '/guides/swiss-vat', label: translate('swissVATExplained') },
+      { href: '/guides/qr-bill', label: translate('theSwissQRBill') },
+      { href: '/guides/payment-reminders', label: translate('paymentReminders') },
+      { href: '/help', label: translate('helpCenter') },
     ],
   },
   {
-    title: 'Comparisons',
+    title: translate('comparisons'),
     links: COMPETITORS.map(({ slug, name }) => ({
       href: `/compare/${slug}`,
-      label: `${name} alternative`,
+      label: translate('alternative2', { name: name }),
     })),
   },
   {
-    title: 'Legal',
+    title: translate('legal'),
     links: [
-      { href: '/terms', label: 'Terms of service' },
-      { href: '/privacy', label: 'Privacy policy' },
-      { href: '/dpa', label: 'Data processing agreement' },
-      { href: '/subprocessors', label: 'Subprocessors' },
-      { href: '/imprint', label: 'Imprint' },
+      { href: '/terms', label: translate('termsOfService') },
+      { href: '/privacy', label: translate('privacyPolicy2') },
+      { href: '/dpa', label: translate('dataProcessingAgreement2') },
+      { href: '/subprocessors', label: translate('subprocessors') },
+      { href: '/imprint', label: translate('imprint') },
     ],
   },
 ]

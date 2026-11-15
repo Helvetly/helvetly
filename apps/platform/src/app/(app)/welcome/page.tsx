@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
 import { Welcome } from '@/components/onboarding/onboarding'
-
-export const metadata: Metadata = { title: 'Welcome' }
+import { PageTitle } from '@/components/page-title'
 
 export default function Page() {
-  return <Welcome />
+  return (
+    <>
+      <PageTitle message="welcome" />
+      <Welcome />
+    </>
+  )
 }

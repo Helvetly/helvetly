@@ -1,10 +1,10 @@
 'use client'
-
 // Quotes (Offerten), typed by hand from docs/quotes-contract.md. A quote shares the invoice's lines,
 // maths and fields; totals come from the server, never from here.
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { ApiError, errorMessage, request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import {
   type Decimal,
   type DocLanguage,
@@ -72,11 +72,11 @@ export type QuoteSendInput = {
 }
 
 export const QUOTE_STATUSES: { value: QuoteStatus; label: string; plural: string }[] = [
-  { value: 'draft', label: 'Draft', plural: 'Drafts' },
-  { value: 'sent', label: 'Sent', plural: 'Sent' },
-  { value: 'accepted', label: 'Accepted', plural: 'Accepted' },
-  { value: 'declined', label: 'Declined', plural: 'Declined' },
-  { value: 'expired', label: 'Expired', plural: 'Expired' },
+  { value: 'draft', label: translate('draft'), plural: translate('drafts') },
+  { value: 'sent', label: translate('sent3'), plural: translate('sent3') },
+  { value: 'accepted', label: translate('accepted'), plural: translate('accepted') },
+  { value: 'declined', label: translate('declined'), plural: translate('declined') },
+  { value: 'expired', label: translate('expired'), plural: translate('expired') },
 ]
 
 export const isQuoteStatus = (value: string | null): value is QuoteStatus =>
@@ -87,13 +87,15 @@ export const statusLabel = (status: QuoteStatus) =>
 
 /** "Q-2026-001", "Q-2026-001 (Rev. 2)", or "Draft" before the first send. */
 export function quoteNumber(quote: Pick<Quote, 'number' | 'revision'>) {
-  if (!quote.number) return 'Draft'
-  return quote.revision > 1 ? `${quote.number} (Rev. ${quote.revision})` : quote.number
+  if (!quote.number) return translate('draft')
+  return quote.revision > 1
+    ? translate('rev', { number: quote.number, revision: quote.revision })
+    : quote.number
 }
 
 /** "Quote Q-2026-001" or "Draft quote". */
 export const quoteName = (quote: Pick<Quote, 'number' | 'revision'>) =>
-  quote.number ? `Quote ${quoteNumber(quote)}` : 'Draft quote'
+  quote.number ? translate('quote3', { value1: quoteNumber(quote) }) : translate('draftQuote')
 
 export type QuoteCommand = 'edit' | 'delete' | 'send' | 'accept' | 'decline' | 'revise' | 'invoice'
 
@@ -115,9 +117,8 @@ export function quoteCommands(quote: Pick<Quote, 'status' | 'number' | 'invoice'
 export function quoteErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.code === 'quote_invoiced')
-      return 'An invoice was already made from this quote. Open it from the quote, or delete that draft to make a new one.'
-    if (error.code === 'mail_unavailable')
-      return 'Email isn’t set up on this server. Mark the quote as sent and send the PDF yourself.'
+      return translate('anInvoiceWasAlreadyMadeFromThisQuoteOpen')
+    if (error.code === 'mail_unavailable') return translate('emailIsnTSetUpOnThisServerMark2')
   }
   return errorMessage(error)
 }

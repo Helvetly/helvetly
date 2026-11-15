@@ -1,5 +1,4 @@
 'use client'
-
 import {
   BookOpen,
   Building2,
@@ -17,22 +16,23 @@ import type { ReactNode } from 'react'
 
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
+import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 type Page = { label: string; href: string; icon: LucideIcon; managers?: true }
 
 /** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
-  { label: 'Workspace', href: '/settings/workspace', icon: Building2 },
-  { label: 'Account', href: '/account', icon: UserRound },
-  { label: 'API & MCP', href: '/settings/api', icon: PlugZap },
-  { label: 'Billing', href: '/settings/billing', icon: CreditCard },
-  { label: 'Invoices', href: '/settings/invoices', icon: ReceiptText },
-  { label: 'VAT return', href: '/settings/vat-return', icon: Landmark },
-  { label: 'Ledger', href: '/settings/ledger', icon: BookOpen, managers: true },
+  { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
+  { label: translate('account'), href: '/account', icon: UserRound },
+  { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
+  { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
+  { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
+  { label: translate('vatReturn'), href: '/settings/vat-return', icon: Landmark },
+  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen, managers: true },
   // The books in the order of a month-end: record, declare, post, close, audit.
-  { label: 'Closing', href: '/settings/periods', icon: CalendarCheck },
-  { label: 'Audit log', href: '/settings/audit-log', icon: ScrollText, managers: true },
+  { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
+  { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText, managers: true },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'

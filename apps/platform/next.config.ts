@@ -1,3 +1,4 @@
+import { browserLanguageNextConfig } from '@helvetly/i18n/next'
 import type { NextConfig } from 'next'
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
 
@@ -13,7 +14,7 @@ export default function config(phase: string): NextConfig {
     devIndicators: false,
     // pnpm dev:tunnel serves next dev on dev-*.helvetly.com (scripts/dev-tunnel.sh).
     allowedDevOrigins: ['*.helvetly.com'],
-    transpilePackages: ['@helvetly/ui'],
+    ...browserLanguageNextConfig,
   }
   if (phase === PHASE_DEVELOPMENT_SERVER) {
     return {

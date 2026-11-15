@@ -12,17 +12,19 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { translate } from '@/lib/i18n'
+
 // Positions in %, of a square around the center tile. Every area sits on the same neutral tile and
 // its icon tells it apart; AI imports keep Heidi's colour.
 const TILES: { icon: LucideIcon; label: string; x: number; y: number; heidi?: true }[] = [
-  { icon: ReceiptText, label: 'Invoices', x: 10, y: 10 },
-  { icon: Building2, label: 'Clients', x: 50, y: 10 },
-  { icon: Wallet, label: 'Expenses', x: 90, y: 10 },
-  { icon: FileText, label: 'Documents', x: 10, y: 50 },
-  { icon: CreditCard, label: 'Billing', x: 90, y: 50 },
-  { icon: CalendarClock, label: 'Scheduled actions', x: 10, y: 90 },
-  { icon: Sparkles, label: 'AI imports', x: 50, y: 90, heidi: true },
-  { icon: Users, label: 'Team', x: 90, y: 90 },
+  { icon: ReceiptText, label: translate('invoices'), x: 10, y: 10 },
+  { icon: Building2, label: translate('clients'), x: 50, y: 10 },
+  { icon: Wallet, label: translate('expenses'), x: 90, y: 10 },
+  { icon: FileText, label: translate('documents'), x: 10, y: 50 },
+  { icon: CreditCard, label: translate('billing'), x: 90, y: 50 },
+  { icon: CalendarClock, label: translate('scheduledActions'), x: 10, y: 90 },
+  { icon: Sparkles, label: translate('aiImports'), x: 50, y: 90, heidi: true },
+  { icon: Users, label: translate('team'), x: 90, y: 90 },
 ]
 
 const EDGES = [
@@ -45,11 +47,11 @@ export function LoginShowcase({ className }: { className?: string }) {
     >
       <div className="grid max-w-md gap-3 text-center">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Run your company <span className="text-primary">in one place.</span>
+          {translate('runYourCompany')}
+          <span className="text-primary">{translate('inOnePlace')}</span>
         </h2>
         <p className="text-sm text-balance text-muted-foreground">
-          Invoices, expenses, clients and documents side by side, with billing, scheduled actions
-          and AI imports doing the busywork.
+          {translate('invoicesExpensesClientsAndDocumentsSideBySideWith')}
         </p>
       </div>
       <div className="relative aspect-square w-full max-w-[22rem]">

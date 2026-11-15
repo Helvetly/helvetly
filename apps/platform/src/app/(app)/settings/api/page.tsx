@@ -1,9 +1,11 @@
-import type { Metadata } from 'next'
-
 import { ApiSettings } from '@/components/api/api-settings'
-
-export const metadata: Metadata = { title: 'API & MCP' }
+import { PageTitle } from '@/components/page-title'
 
 export default function ApiPage() {
-  return <ApiSettings />
+  return (
+    <>
+      <PageTitle message="apiMCP" />
+      <ApiSettings />
+    </>
+  )
 }

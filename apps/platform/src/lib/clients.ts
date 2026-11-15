@@ -1,5 +1,4 @@
 'use client'
-
 // Clients, typed by hand from docs/clients-contract.md.
 import {
   keepPreviousData,
@@ -10,6 +9,7 @@ import {
 } from '@tanstack/react-query'
 
 import { type ApiError, request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 
 export type AddressField = 'street' | 'street_number' | 'zip' | 'city' | 'country'
@@ -337,10 +337,10 @@ export function useContactMutations(id: string) {
 
 /** The status quick views over the list, as `status` values in the URL. */
 export const STATUS_VIEWS = [
-  { value: 'all', label: 'All', status: [] },
-  { value: 'active', label: 'Active', status: ['active'] },
-  { value: 'draft', label: 'Drafts', status: ['draft'] },
-  { value: 'inactive', label: 'Inactive', status: ['inactive'] },
+  { value: 'all', label: translate('all'), status: [] },
+  { value: 'active', label: translate('active'), status: ['active'] },
+  { value: 'draft', label: translate('drafts'), status: ['draft'] },
+  { value: 'inactive', label: translate('inactive'), status: ['inactive'] },
 ] as const satisfies readonly { value: string; label: string; status: readonly ClientStatus[] }[]
 export type StatusView = (typeof STATUS_VIEWS)[number]['value']
 
@@ -507,10 +507,10 @@ export function uploadClientFiles(
 export type EInvoiceFormat = 'none' | 'xrechnung_ubl' | 'xrechnung_cii' | 'peppol'
 
 export const EINVOICE_FORMATS: { value: EInvoiceFormat; label: string }[] = [
-  { value: 'none', label: 'PDF only' },
-  { value: 'xrechnung_ubl', label: 'XRechnung (UBL)' },
-  { value: 'xrechnung_cii', label: 'XRechnung (CII)' },
-  { value: 'peppol', label: 'Peppol BIS' },
+  { value: 'none', label: translate('pdfOnly') },
+  { value: 'xrechnung_ubl', label: translate('xrechnungUBL') },
+  { value: 'xrechnung_cii', label: translate('xrechnungCII') },
+  { value: 'peppol', label: translate('peppolBIS') },
 ]
 
 /**

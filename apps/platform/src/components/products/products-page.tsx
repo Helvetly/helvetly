@@ -1,5 +1,5 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -50,6 +50,7 @@ import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { formatAmount, useInvoiceSettings } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import {
@@ -80,10 +81,14 @@ import { ProductForm } from './product-form'
 
 const ALL: Pick<ListParams, 'type' | 'status'> = { type: null, status: 'active' }
 const VIEWS: { label: string; icon: LucideIcon; change: Pick<ListParams, 'type' | 'status'> }[] = [
-  { label: 'All', icon: Layers, change: ALL },
-  { label: 'Products', icon: Package, change: { type: 'product', status: 'active' } },
-  { label: 'Services', icon: BriefcaseBusiness, change: { type: 'service', status: 'active' } },
-  { label: 'Archived', icon: Archive, change: { type: null, status: 'archived' } },
+  { label: translate('all'), icon: Layers, change: ALL },
+  { label: translate('products'), icon: Package, change: { type: 'product', status: 'active' } },
+  {
+    label: translate('services'),
+    icon: BriefcaseBusiness,
+    change: { type: 'service', status: 'active' },
+  },
+  { label: translate('archived'), icon: Archive, change: { type: null, status: 'archived' } },
 ]
 
 type ColumnId = 'name' | 'type' | 'sku' | 'unit' | 'price' | 'vat' | 'updated'
@@ -102,10 +107,17 @@ type ColumnDef = {
 const dash = <span className="text-muted-foreground">—</span>
 
 const COLUMNS: ColumnDef[] = [
-  { id: 'name', label: 'Name', width: 'w-[34%]', sort: 'name', visible: true, cell: () => null },
+  {
+    id: 'name',
+    label: translate('name'),
+    width: 'w-[34%]',
+    sort: 'name',
+    visible: true,
+    cell: () => null,
+  },
   {
     id: 'type',
-    label: 'Type',
+    label: translate('type'),
     width: 'w-[104px]',
     visible: true,
     cell: (product) => <ProductTypeBadge type={product.type} />,
@@ -121,7 +133,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'unit',
-    label: 'Unit',
+    label: translate('unit'),
     width: 'w-[110px]',
     wide: true,
     visible: true,
@@ -129,7 +141,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'price',
-    label: 'Unit price',
+    label: translate('unitPrice'),
     width: 'w-[168px]',
     sort: 'unit_price',
     align: 'right',
@@ -138,7 +150,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'vat',
-    label: 'VAT',
+    label: translate('vat'),
     width: 'w-[120px]',
     align: 'right',
     visible: true,
@@ -146,7 +158,7 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'updated',
-    label: 'Updated',
+    label: translate('updated3'),
     width: 'w-[124px]',
     sort: 'updated_at',
     wide: true,
@@ -167,7 +179,7 @@ function PriceCell({ product }: { product: Product }) {
         {unit && <span className="text-muted-foreground"> / {unit}</span>}
       </span>
       <span className="text-[12px] text-muted-foreground">
-        {product.price_basis === 'gross' ? 'incl. VAT' : 'excl. VAT'}
+        {product.price_basis === 'gross' ? translate('inclVAT3') : translate('exclVAT2')}
       </span>
     </span>
   )
@@ -290,7 +302,7 @@ export function ProductsPage() {
     if (name === 'duplicate')
       duplicate.mutate(product.id, {
         onSuccess: (copy) => {
-          toast.success(`${copy.name} created.`)
+          toast.success(translate('created2', { name: copy.name }))
           setForm({ product: copy })
         },
         onError: toastError,
@@ -300,7 +312,9 @@ export function ProductsPage() {
         { id: product.id, archived: !product.is_archived },
         {
           onSuccess: (saved) =>
-            toast.success(`${saved.name} ${saved.is_archived ? 'archived' : 'restored'}.`),
+            toast.success(
+              `${saved.name} ${saved.is_archived ? translate('archived3') : translate('restored')}.`,
+            ),
           onError: toastError,
         },
       )
@@ -330,7 +344,7 @@ export function ProductsPage() {
       const name = targets[0].name
       remove.mutate(targets[0].id, {
         onSuccess: () => {
-          toast.success(`${name} deleted.`)
+          toast.success(translate('deleted3', { name: name }))
           done()
         },
         onError: toastError,
@@ -367,12 +381,15 @@ export function ProductsPage() {
     <>
       {canWrite && (
         <Item onSelect={importDrawer.open}>
-          <FileUp /> Import
+          <FileUp />
+          {translate('import')}
         </Item>
       )}
       <Item asChild>
-        <a href={exportUrl(params)} download>
-          <Download /> Export CSV{filtered ? ' (filtered)' : ''}
+        <a href={localizedHref(exportUrl(params))} download>
+          <Download />
+          {translate('exportCSV2')}
+          {filtered ? ' (filtered)' : ''}
         </a>
       </Item>
     </>
@@ -394,14 +411,14 @@ export function ProductsPage() {
         savedViews={false}
         active={viewIndex}
         onSelect={(index) => update(VIEWS[index]?.change ?? ALL)}
-        primary="New item"
+        primary={translate('newItem')}
         onPrimary={() => setForm({})}
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="products" onClose={importDrawer.close} />}
       <PageContextMenu
-        title="Products & services"
-        primary={{ label: 'New item', onSelect: () => setForm({}) }}
+        title={translate('productsServices')}
+        primary={{ label: translate('newItem'), onSelect: () => setForm({}) }}
         items={pageItems}
         views={{
           tabs: VIEWS.map((view) => view.label),
@@ -422,8 +439,8 @@ export function ProductsPage() {
               <Search className="size-4 shrink-0 stroke-[1.5]" />
               <input
                 type="search"
-                aria-label="Search products and services"
-                placeholder="Search name, SKU, GTIN or description"
+                aria-label={translate('searchProductsAndServices')}
+                placeholder={translate('searchNameSKUGTINOrDescription')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
@@ -433,11 +450,13 @@ export function ProductsPage() {
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-[15px] font-normal">
                   <SlidersHorizontal className="stroke-[1.5]" />
-                  <span className="max-sm:sr-only">Customize</span>
+                  <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 gap-1 p-2">
-                <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">Columns</p>
+                <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
+                  {translate('columns')}
+                </p>
                 {COLUMNS.filter((column) => column.id !== 'name').map((column) => (
                   <label
                     key={column.id}
@@ -457,7 +476,7 @@ export function ProductsPage() {
           {list.error ? (
             <LoadProblem
               error={list.error}
-              what="The catalogue"
+              what={translate('theCatalogue')}
               onRetry={() => void list.refetch()}
             />
           ) : !list.data ? (
@@ -467,9 +486,11 @@ export function ProductsPage() {
               <State
                 icon={<SearchX />}
                 title={
-                  params.search ? `Nothing matches “${params.search}”` : 'Nothing in this view'
+                  params.search
+                    ? translate('nothingMatches', { search: params.search })
+                    : translate('nothingInThisView')
                 }
-                text="Try another search or clear the filters."
+                text={translate('tryAnotherSearchOrClearTheFilters')}
                 action={
                   <Button
                     variant="outline"
@@ -479,18 +500,18 @@ export function ProductsPage() {
                       update({ search: '', currencies: [] })
                     }}
                   >
-                    Clear search and filters
+                    {translate('clearSearchAndFilters')}
                   </Button>
                 }
               />
             ) : archivedView ? (
               <State
                 icon={<Archive />}
-                title="Nothing archived"
-                text="Archived items stay out of the invoice picker but keep their history here."
+                title={translate('nothingArchived')}
+                text={translate('archivedItemsStayOutOfTheInvoicePickerBut')}
                 action={
                   <Button variant="outline" size="sm" onClick={() => update(ALL)}>
-                    Show active items
+                    {translate('showActiveItems')}
                   </Button>
                 }
               />
@@ -499,16 +520,16 @@ export function ProductsPage() {
                 icon={<Package />}
                 title={
                   params.type === 'product'
-                    ? 'No products yet'
+                    ? translate('noProductsYet')
                     : params.type === 'service'
-                      ? 'No services yet'
-                      : 'No products or services yet'
+                      ? translate('noServicesYet')
+                      : translate('noProductsOrServicesYet')
                 }
-                text="Save what you sell once and invoice lines fill in the price, unit and VAT for you."
+                text={translate('saveWhatYouSellOnceAndInvoiceLinesFill')}
                 action={
                   canWrite && (
                     <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
-                      Add product or service
+                      {translate('addProductOrService')}
                     </Button>
                   )
                 }
@@ -526,7 +547,7 @@ export function ProductsPage() {
                   <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
                     <th className="w-12 pl-5">
                       <Checkbox
-                        aria-label="Select all items on this page"
+                        aria-label={translate('selectAllItemsOnThisPage')}
                         className="bg-card"
                         checked={allSelected}
                         onCheckedChange={(checked) =>
@@ -573,7 +594,7 @@ export function ProductsPage() {
                       )
                     })}
                     <th className="w-12">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
                 </thead>
@@ -607,30 +628,35 @@ export function ProductsPage() {
 
               {meta && (
                 <nav
-                  aria-label="Pages"
+                  aria-label={translate('pages')}
                   className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
                 >
                   <span className="tabular-nums">
                     {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)} of {meta.total}
+                    {Math.min(meta.page * meta.page_size, meta.total)}
+                    {translate('of5')}
+                    {meta.total}
                   </span>
                   <span className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Previous page"
+                      aria-label={translate('previousPage')}
                       disabled={meta.page <= 1}
                       onClick={() => update({ page: meta.page - 1 })}
                     >
                       <ChevronLeft />
                     </Button>
                     <span className="tabular-nums">
-                      Page {meta.page} of {Math.max(meta.total_pages, 1)}
+                      {translate('page')}
+                      {meta.page}
+                      {translate('of5')}
+                      {Math.max(meta.total_pages, 1)}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Next page"
+                      aria-label={translate('nextPage')}
                       disabled={meta.page >= meta.total_pages}
                       onClick={() => update({ page: meta.page + 1 })}
                     >
@@ -662,7 +688,7 @@ export function ProductsPage() {
         />
       )}
       {formState && !formState.product && !settled(settingsQuery) ? (
-        <FormSheetLoading title="New product or service" onClose={closeForm} />
+        <FormSheetLoading title={translate('newProductOrService')} onClose={closeForm} />
       ) : (
         formState && (
           <ProductForm
@@ -685,11 +711,15 @@ export function ProductsPage() {
         <ConfirmDialog
           title={
             deleting.length === 1
-              ? `Delete ${deleting[0]?.name}?`
-              : `Delete ${deleting.length} items?`
+              ? translate('delete5', { value1: deleting[0]?.name })
+              : translate('deleteItems2', { length: deleting.length })
           }
-          body="Invoices keep their copy of the lines. To only hide an item from the picker, archive it instead."
-          confirmLabel={deleting.length === 1 ? 'Delete item' : `Delete ${deleting.length} items`}
+          body={translate('invoicesKeepTheirCopyOfTheLinesToOnly')}
+          confirmLabel={
+            deleting.length === 1
+              ? translate('deleteItem')
+              : translate('deleteItems', { length: deleting.length })
+          }
           tone="destructive"
           onDecide={confirmDelete}
         />
@@ -708,13 +738,26 @@ export function bulkActions(
     ...(canManage
       ? [
           archivedView
-            ? { label: 'Restore', icon: <ArchiveRestore />, onClick: run.unarchive, write: true }
-            : { label: 'Archive', icon: <Archive />, onClick: run.archive, write: true },
+            ? {
+                label: translate('restore'),
+                icon: <ArchiveRestore />,
+                onClick: run.unarchive,
+                write: true,
+              }
+            : { label: translate('archive'), icon: <Archive />, onClick: run.archive, write: true },
         ]
       : []),
-    { label: 'Export CSV', icon: <Download />, onClick: run.exportCsv },
+    { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
     ...(canManage
-      ? [{ label: 'Delete', icon: <Trash2 />, onClick: run.remove, destructive: true, write: true }]
+      ? [
+          {
+            label: translate('delete3'),
+            icon: <Trash2 />,
+            onClick: run.remove,
+            destructive: true,
+            write: true,
+          },
+        ]
       : []),
   ]
 }
@@ -760,15 +803,18 @@ function productMenu(
     items: ({ Item, Separator }) => (
       <>
         <Item onSelect={onOpen}>
-          <PanelRightOpen /> Open details
+          <PanelRightOpen />
+          {translate('openDetails')}
         </Item>
         {can.canWrite && (
           <>
             <Item onSelect={() => onCommand('edit', product)}>
-              <Pencil /> Edit
+              <Pencil />
+              {translate('edit4')}
             </Item>
             <Item onSelect={() => onCommand('duplicate', product)}>
-              <CopyPlus /> Duplicate
+              <CopyPlus />
+              {translate('duplicate')}
             </Item>
           </>
         )}
@@ -777,10 +823,11 @@ function productMenu(
             <Separator />
             <Item onSelect={() => onCommand('archive', product)}>
               {product.is_archived ? <ArchiveRestore /> : <Archive />}
-              {product.is_archived ? 'Restore' : 'Archive'}
+              {product.is_archived ? translate('restore') : translate('archive')}
             </Item>
             <Item variant="destructive" onSelect={() => onCommand('delete', product)}>
-              <Trash2 /> Delete
+              <Trash2 />
+              {translate('delete')}
             </Item>
           </>
         )}
@@ -801,7 +848,8 @@ function Filters({
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
-          <ListFilter className="stroke-[1.5]" /> Filters
+          <ListFilter className="stroke-[1.5]" />
+          {translate('filters')}
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}
@@ -811,7 +859,9 @@ function Filters({
       </PopoverTrigger>
       <PopoverContent align="start" className="grid w-72 gap-3 p-3">
         <fieldset className="grid gap-1.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">Currency</legend>
+          <legend className="px-2 pb-1 text-xs text-muted-foreground">
+            {translate('currency')}
+          </legend>
           {params.currencies.length > 0 && (
             <div className="flex flex-wrap gap-1 px-1">
               {params.currencies.map((code) => (
@@ -822,7 +872,7 @@ function Filters({
                   {code}
                   <button
                     type="button"
-                    aria-label={`Remove ${code}`}
+                    aria-label={translate('remove8', { code: code })}
                     onClick={() =>
                       onChange({ currencies: params.currencies.filter((entry) => entry !== code) })
                     }
@@ -836,14 +886,14 @@ function Filters({
           )}
           <Combobox
             value=""
-            label="Add a currency"
+            label={translate('addACurrency2')}
             options={CURRENCY_OPTIONS.filter((option) => !params.currencies.includes(option.value))}
-            placeholder="Add a currency…"
+            placeholder={translate('addACurrency')}
             onChange={(code) => onChange({ currencies: [...params.currencies, code] })}
           />
         </fieldset>
         <p className="px-2 text-[12.5px] text-muted-foreground">
-          The tabs above filter by type and archive.
+          {translate('theTabsAboveFilterByTypeAndArchive')}
         </p>
         {count > 0 && (
           <Button
@@ -852,7 +902,7 @@ function Filters({
             className="justify-self-start text-muted-foreground"
             onClick={() => onChange({ currencies: [] })}
           >
-            Clear filters
+            {translate('clearFilters')}
           </Button>
         )}
       </PopoverContent>
@@ -905,7 +955,7 @@ const ProductRow = memo(function ProductRow({
       >
         <td className="pl-5">
           <Checkbox
-            aria-label={`Select ${product.name}`}
+            aria-label={translate('select', { name: product.name })}
             className="bg-card"
             checked={selected}
             onCheckedChange={() => act.toggle(product.id)}
@@ -928,7 +978,7 @@ const ProductRow = memo(function ProductRow({
           </td>
         ))}
         <td className="pr-3 text-right">
-          <RowMenuButton label={`Actions for ${product.name}`} menu={menu} />
+          <RowMenuButton label={translate('actionsFor', { name: product.name })} menu={menu} />
         </td>
       </tr>
     </RowContextMenu>
@@ -945,7 +995,7 @@ const ProductItem = memo(function ProductItem({ product, selected, bulk, access,
         className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
       >
         <Checkbox
-          aria-label={`Select ${product.name}`}
+          aria-label={translate('select', { name: product.name })}
           className="bg-card"
           checked={selected}
           onCheckedChange={() => act.toggle(product.id)}

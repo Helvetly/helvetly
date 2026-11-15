@@ -1,14 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { localizedContentFile } from '@/lib/content-locale'
+import { translate } from '@/lib/i18n'
+
 // The legal texts the site publishes, in apps/web/content/legal (kept in step with the code); the site renders them
 // at build time. Each page is static, so nothing is read at request time.
 export const LEGAL = {
-  terms: { file: 'terms.md', title: 'Terms of service' },
-  privacy: { file: 'privacy-policy.md', title: 'Privacy policy' },
-  dpa: { file: 'dpa.md', title: 'Data processing agreement' },
-  subprocessors: { file: 'subprocessors.md', title: 'Subprocessors' },
-  imprint: { file: 'imprint.md', title: 'Imprint' },
+  terms: { file: 'terms.md', title: translate('termsOfService') },
+  privacy: { file: 'privacy-policy.md', title: translate('privacyPolicy2') },
+  dpa: { file: 'dpa.md', title: translate('dataProcessingAgreement2') },
+  subprocessors: { file: 'subprocessors.md', title: translate('subprocessors') },
+  imprint: { file: 'imprint.md', title: translate('imprint') },
 } as const
 
 export type LegalSlug = keyof typeof LEGAL
@@ -23,13 +26,17 @@ function legalDir(from = process.cwd()): string {
     if (existsSync(dir)) return dir
   }
   const parent = dirname(from)
-  if (parent === from) throw new Error('apps/web/content/legal not found above ' + process.cwd())
+  if (parent === from)
+    throw new Error(translate('appsWebContentLegalNotFoundAbove') + process.cwd())
   return legalDir(parent)
 }
 
 export function readLegal(slug: LegalSlug) {
   // The file's own `# Title` is dropped: the page sets the title as its one h1.
-  const markdown = readFileSync(join(legalDir(), LEGAL[slug].file), 'utf8').replace(/^# .*\n+/, '')
+  const markdown = readFileSync(localizedContentFile(legalDir(), LEGAL[slug].file), 'utf8').replace(
+    /^# .*\n+/,
+    '',
+  )
   const headings = [...markdown.matchAll(/^## (.+)$/gm)].map((m) => {
     const text = (m[1] ?? '').trim()
     return { text, id: slugify(text) }

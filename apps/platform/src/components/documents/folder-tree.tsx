@@ -1,5 +1,4 @@
 'use client'
-
 import {
   ContextMenu,
   ContextMenuContent,
@@ -30,6 +29,7 @@ import {
   type Kind,
   type Section,
 } from '@/lib/documents'
+import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
 import { endDrag, startDrag, useDropTarget } from './drop-target'
@@ -52,7 +52,7 @@ export type TreeActions = {
   star: (folder: Folder) => void
 }
 
-const SUGGESTED = ['Contracts', 'Bank statements', 'Tax 2026']
+const SUGGESTED = [translate('contracts'), translate('bankStatements'), translate('tax2026')]
 const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =
@@ -115,7 +115,7 @@ export function FolderTree({
   const rootOpen = section === 'files' && current === null && kind === null
   return (
     <div className="flex min-h-full flex-col gap-5 p-3">
-      <nav aria-label="Folders" className="grid content-start gap-0.5">
+      <nav aria-label={translate('folders')} className="grid content-start gap-0.5">
         <button
           type="button"
           aria-current={rootOpen ? 'page' : undefined}
@@ -126,12 +126,12 @@ export function FolderTree({
           <span className="flex size-6 items-center justify-center rounded-md bg-card text-foreground shadow-elevation-1 ring-1 ring-black/[0.03] dark:ring-foreground/10">
             <HardDrive className="size-3.5 stroke-[1.75]" />
           </span>
-          <span className="flex-1 truncate">All documents</span>
+          <span className="flex-1 truncate">{translate('allDocuments')}</span>
         </button>
         {starred.length > 0 && (
           <>
-            <Label>Starred</Label>
-            <ul aria-label="Starred folders" className="grid gap-0.5">
+            <Label>{translate('starred')}</Label>
+            <ul aria-label={translate('starredFolders')} className="grid gap-0.5">
               {starred.map((folder) => (
                 <li key={folder.id}>
                   <StarredRow
@@ -149,8 +149,8 @@ export function FolderTree({
             canWrite && (
               <button
                 type="button"
-                aria-label="New folder"
-                title="New folder"
+                aria-label={translate('newFolder')}
+                title={translate('newFolder')}
                 onClick={() => actions.newFolder(current)}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-70 transition hover:bg-foreground/[0.06] hover:text-foreground hover:opacity-100"
               >
@@ -159,10 +159,10 @@ export function FolderTree({
             )
           }
         >
-          Folders
+          {translate('folders')}
         </Label>
         {folders.length > 0 ? (
-          <ul aria-label="Folder tree" className="grid">
+          <ul aria-label={translate('folderTree')} className="grid">
             {branch('', 0)}
           </ul>
         ) : canWrite ? (
@@ -177,21 +177,22 @@ export function FolderTree({
                 <FolderMark className="size-4 opacity-70" />
                 <span className="flex-1 truncate">{name}</span>
                 <span className="flex items-center gap-0.5 text-[12px] opacity-0 transition-opacity group-hover/row:opacity-100">
-                  <Plus className="size-3.5" /> Create
+                  <Plus className="size-3.5" />
+                  {translate('create2')}
                 </span>
               </button>
             ))}
             <p className="px-2 pt-1 text-[12px] text-muted-foreground">
-              Suggested: click one to create it.
+              {translate('suggestedClickOneToCreateIt')}
             </p>
           </>
         ) : (
-          <p className="px-2 text-xs text-muted-foreground">No folders yet</p>
+          <p className="px-2 text-xs text-muted-foreground">{translate('noFoldersYet')}</p>
         )}
       </nav>
 
-      <nav aria-label="File types" className="grid content-start gap-0.5">
-        <Label>Types</Label>
+      <nav aria-label={translate('fileTypes')} className="grid content-start gap-0.5">
+        <Label>{translate('types')}</Label>
         {TYPES.map((type) => (
           <Pinnable key={type} pinned={pinned} tab={{ type: 'kind', kind: type }}>
             <button
@@ -201,7 +202,10 @@ export function FolderTree({
               className={cn(row, 'pl-1.5')}
             >
               <KindIcon kind={type} className="size-6 rounded-md" />
-              <span className="flex-1 truncate">{KIND_LABELS[type]}s</span>
+              <span className="flex-1 truncate">
+                {KIND_LABELS[type]}
+                {translate('s')}
+              </span>
             </button>
           </Pinnable>
         ))}
@@ -216,7 +220,7 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <LayoutTemplate className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">Templates</span>
+            <span className="flex-1 truncate">{translate('templates')}</span>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'signatures' }}>
@@ -227,7 +231,7 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <FileSignature className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">Signatures</span>
+            <span className="flex-1 truncate">{translate('signatures')}</span>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'recent' }}>
@@ -238,7 +242,7 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <Clock className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">Recent</span>
+            <span className="flex-1 truncate">{translate('recent')}</span>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'trash' }}>
@@ -250,15 +254,13 @@ export function FolderTree({
             {...trash.props}
           >
             <Trash2 className="size-4 shrink-0 stroke-[1.5] text-destructive" />
-            <span className="min-w-0 truncate">Trash</span>
+            <span className="min-w-0 truncate">{translate('trash')}</span>
             {trashCount > 0 && <Count>{trashCount}</Count>}
           </button>
         </Pinnable>
         <p className="mt-2 flex gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-[12px] leading-snug text-muted-foreground">
           <ShieldCheck className="mt-px size-3.5 shrink-0 stroke-[1.75] text-success-solid" />
-          <span>
-            Issued invoices and booked receipts are kept 10 years, as Swiss law (GeBüV) requires.
-          </span>
+          <span>{translate('issuedInvoicesAndBookedReceiptsAreKept10Years')}</span>
         </p>
       </div>
     </div>
@@ -312,8 +314,8 @@ function StarredRow({
       <button
         type="button"
         aria-pressed
-        aria-label={`Unstar ${folder.name}`}
-        title="Unstar"
+        aria-label={translate('unstar2', { name: folder.name })}
+        title={translate('unstar')}
         onClick={() => actions.star(folder)}
         className="-mr-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring/50"
       >
@@ -414,7 +416,11 @@ function TreeNode({
               <button
                 type="button"
                 tabIndex={-1}
-                aria-label={expanded ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
+                aria-label={
+                  expanded
+                    ? translate('collapse2', { name: folder.name })
+                    : translate('expand2', { name: folder.name })
+                }
                 onClick={onToggle}
                 className={cn(
                   // In the panel's padding, left of the row: it takes no width, so icons align at every depth.
@@ -471,19 +477,22 @@ function TreeNode({
         <ContextMenuContent>
           {canWrite && (
             <ContextMenuItem onSelect={() => actions.newFolder(folder.id)}>
-              <FolderPlus /> New folder inside
+              <FolderPlus />
+              {translate('newFolderInside')}
             </ContextMenuItem>
           )}
           {canWrite && (
             <ContextMenuItem onSelect={onRenameStart}>
-              <Pencil /> Rename
+              <Pencil />
+              {translate('rename2')}
             </ContextMenuItem>
           )}
           <StarItem folder={folder} onToggle={actions.star} />
           {canWrite && <ContextMenuSeparator />}
           {canWrite && (
             <ContextMenuItem variant="destructive" onSelect={() => actions.trash(folder)}>
-              <Trash2 /> Move to Trash
+              <Trash2 />
+              {translate('moveToTrash3')}
             </ContextMenuItem>
           )}
         </ContextMenuContent>

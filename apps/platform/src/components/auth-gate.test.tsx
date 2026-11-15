@@ -4,7 +4,11 @@ import { AuthGate } from './auth-gate'
 import { Providers } from './providers'
 
 const router = vi.hoisted(() => ({ replace: vi.fn<(href: string) => void>() }))
-vi.mock('next/navigation', () => ({ useRouter: () => router, usePathname: () => '/' }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 
 afterEach(() => {
   vi.unstubAllGlobals()

@@ -1,5 +1,4 @@
 'use client'
-
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatFileSize } from '@helvetly/ui/lib/format'
@@ -8,6 +7,7 @@ import { AlertCircle, CheckCircle2, Clock, FileText, Loader2, Upload, X } from '
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { translate } from '@/lib/i18n'
 import {
   DOCUMENT_TYPES,
   IMPORT_ACCEPT,
@@ -64,16 +64,19 @@ export function DropZone({
         className="relative flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-6 py-10 text-center transition-colors duration-150 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-primary/50 data-over:bg-muted"
       >
         <Upload className="size-5 stroke-[1.5] text-muted-foreground" />
-        <p className="text-[14px] font-medium">Drop files here or click to choose</p>
+        <p className="text-[14px] font-medium">{translate('dropFilesHereOrClickToChoose')}</p>
         <p className="max-w-[46ch] text-[12.5px] text-pretty text-muted-foreground">
-          {IMPORT_FILE_TYPES}. Up to {MAX_IMPORT_FILES} files of 25 MB each, 95 MB in all; a ZIP is
-          opened one level deep.
+          {IMPORT_FILE_TYPES}
+          {translate('upTo2')}
+          {MAX_IMPORT_FILES}
+          {translate('message4')}
+          {translate('filesOf25MBEach95MBInAll')}
         </p>
         <input
           type="file"
           multiple
           accept={IMPORT_ACCEPT}
-          aria-label="Choose files to import"
+          aria-label={translate('chooseFilesToImport')}
           disabled={disabled}
           onDragEnter={() => setOver(true)}
           onDragLeave={() => setOver(false)}
@@ -87,7 +90,7 @@ export function DropZone({
         />
       </div>
       {files.length > 0 && (
-        <ul aria-label="Chosen files" className="grid divide-y rounded-lg border">
+        <ul aria-label={translate('chosenFiles')} className="grid divide-y rounded-lg border">
           {files.map((file) => (
             <li
               key={`${file.name}-${file.size}-${file.lastModified}`}
@@ -103,14 +106,14 @@ export function DropZone({
                   <Button
                     variant="destructive-ghost"
                     size="icon-xs"
-                    aria-label={`Remove ${file.name}`}
+                    aria-label={translate('remove2', { name: file.name })}
                     disabled={disabled}
                     onClick={() => onChange(files.filter((entry) => entry !== file))}
                   >
                     <X />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Remove</TooltipContent>
+                <TooltipContent>{translate('remove7')}</TooltipContent>
               </Tooltip>
             </li>
           ))}
@@ -123,15 +126,21 @@ export function DropZone({
 function fileStatus(file: ImportFile, records: number) {
   switch (file.status) {
     case 'queued':
-      return 'Waiting'
+      return translate('waiting')
     case 'extracting':
       return file.chunks_total
-        ? `Reading part ${file.chunks_done} of ${file.chunks_total}`
-        : 'Reading'
+        ? translate('readingPartOf', {
+            chunks_done: file.chunks_done,
+            chunks_total: file.chunks_total,
+          })
+        : translate('reading')
     case 'done':
-      return `${records} ${records === 1 ? 'record' : 'records'} found`
+      return translate('dynamicFound', {
+        records: records,
+        value2: records === 1 ? 'record' : 'records',
+      })
     case 'failed':
-      return file.error ?? 'Could not be read'
+      return file.error ?? translate('couldNotBeRead')
   }
 }
 
@@ -151,7 +160,7 @@ export function FileProgress({
   recordsPerFile: Map<string, number>
 }) {
   return (
-    <ul aria-label="Files" className="grid divide-y rounded-lg border">
+    <ul aria-label={translate('files')} className="grid divide-y rounded-lg border">
       {files.map((file) => (
         <li
           key={file.id}
@@ -172,7 +181,7 @@ export function FileProgress({
                 </span>
               )}
               {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
-              {file.reused && ' · already in Documents, not stored again'}
+              {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
             </span>
           </div>
           <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">

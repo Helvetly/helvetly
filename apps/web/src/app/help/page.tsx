@@ -1,14 +1,17 @@
+import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { HelpCenter } from '@/components/help-center'
 import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
 import { readCollection } from '@/lib/content'
+import { translate } from '@/lib/i18n'
 
 export const metadata: Metadata = {
-  title: 'Help center',
-  description:
-    'Step-by-step help for Helvetly: clients, invoices and QR bills, reminders, expenses, documents and signatures, VAT, your team and your account.',
+  alternates: localizedAlternates('/help'),
+
+  title: translate('helpCenter'),
+  description: translate('stepByStepHelpForHelvetlyClientsInvoicesAnd'),
 }
 
 export default function HelpPage() {
@@ -21,13 +24,14 @@ export default function HelpPage() {
   return (
     <main>
       <PageHero
-        eyebrow="Help center"
+        eyebrow={translate('helpCenter')}
         title={
           <>
-            How can we <span className="accent">help?</span>
+            {translate('howCanWe')}
+            <span className="accent">{translate('help')}</span>
           </>
         }
-        lead={`${entries.length} step-by-step answers for every screen in Helvetly.`}
+        lead={translate('stepByStepAnswersForEveryScreenInHelvetly', { length: entries.length })}
       />
       <section className="pb-24">
         <Container>

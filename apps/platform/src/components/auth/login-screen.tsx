@@ -1,5 +1,8 @@
 'use client'
+import { localizedHref } from '@helvetly/i18n'
+import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
 
+import { translate } from '@/lib/i18n'
 import { siteUrl } from '@/lib/site'
 
 import { LoginShowcase } from './login-showcase'
@@ -15,19 +18,28 @@ export function LoginScreen() {
   return (
     <div className="grid min-h-svh animate-in bg-card duration-200 fade-in-0 lg:grid-cols-2">
       <main className="flex flex-col px-4 py-10">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-[22.5rem]">
             <SignIn />
           </div>
         </div>
         <p className="pt-10 text-center text-xs text-muted-foreground">
-          By continuing, you agree to our{' '}
-          <a href={siteUrl('/terms')} className="font-medium text-foreground underline">
-            Terms of Service
+          {translate('byContinuingYouAgreeToOur')}{' '}
+          <a
+            href={localizedHref(siteUrl('/terms'))}
+            className="font-medium text-foreground underline"
+          >
+            {translate('termsOfService')}
           </a>{' '}
-          and{' '}
-          <a href={siteUrl('/privacy')} className="font-medium text-foreground underline">
-            Privacy Policy
+          {translate('and')}{' '}
+          <a
+            href={localizedHref(siteUrl('/privacy'))}
+            className="font-medium text-foreground underline"
+          >
+            {translate('privacyPolicy')}
           </a>
           .
         </p>

@@ -1,6 +1,7 @@
 import type { Engagement, EngagementInput, Recurrence } from '@/lib/engagements'
 // The engagement form's state, checks, schedule presets and summary (docs/engagements-contract.md).
 import { withHabits, type Habits } from '@/lib/habits'
+import { translate } from '@/lib/i18n'
 import {
   addDays,
   fromCents,
@@ -192,41 +193,42 @@ const priceCents = (text: string) => {
 
 export function validate(values: FormValues): FieldErrors {
   const errors: FieldErrors = {}
-  if (!values.client_id) errors.client_id = 'Choose a client'
+  if (!values.client_id) errors.client_id = translate('chooseAClient')
   const title = values.title.trim()
-  if (!title) errors.title = 'Enter a title'
-  else if (title.length > 200) errors.title = 'Use at most 200 characters'
+  if (!title) errors.title = translate('enterATitle')
+  else if (title.length > 200) errors.title = translate('useAtMost200Characters')
   const quantity = quantityMilli(values.quantity)
-  if (!values.quantity.trim()) errors.quantity = 'Enter the quantity per period'
+  if (!values.quantity.trim()) errors.quantity = translate('enterTheQuantityPerPeriod')
   else if (quantity === null || quantity <= 0n || quantity > MAX_QUANTITY_MILLI)
-    errors.quantity = 'Enter a quantity above 0, up to 1’000’000, with at most three decimals'
-  if (!isDate(values.start_date)) errors.start_date = 'Choose a start date'
+    errors.quantity = translate('enterAQuantityAbove0UpTo1000')
+  if (!isDate(values.start_date)) errors.start_date = translate('chooseAStartDate')
   const recurring = values.recurrence !== 'none'
   const interval = Number(values.interval)
   if (recurring && !(Number.isInteger(interval) && interval >= 1 && interval <= 12))
-    errors.interval = 'Use a whole number from 1 to 12'
+    errors.interval = translate('useAWholeNumberFrom1To12')
   if (values.end_date) {
-    if (!isDate(values.end_date)) errors.end_date = 'Choose a valid end date'
+    if (!isDate(values.end_date)) errors.end_date = translate('chooseAValidEndDate')
     else if (isDate(values.start_date) && values.end_date < values.start_date)
-      errors.end_date = 'The end cannot be before the start'
-  } else if (!recurring) errors.end_date = 'Choose when the engagement ends'
+      errors.end_date = translate('theEndCannotBeBeforeTheStart')
+  } else if (!recurring) errors.end_date = translate('chooseWhenTheEngagementEnds')
   const price = priceCents(values.unit_price)
-  if (!values.unit_price.trim()) errors.unit_price = 'Enter a price'
+  if (!values.unit_price.trim()) errors.unit_price = translate('enterAPrice')
   else if (price === null || price > MAX_PRICE_CENTS)
-    errors.unit_price = 'Enter a price from 0 to 100’000’000.00 with at most two decimals'
+    errors.unit_price = translate('enterAPriceFrom0To100000000')
   if (values.overage_unit_price.trim()) {
     const overage = priceCents(values.overage_unit_price)
     if (overage === null || overage > MAX_PRICE_CENTS)
-      errors.overage_unit_price = 'Enter a price from 0 with at most two decimals, or leave empty'
+      errors.overage_unit_price = translate('enterAPriceFrom0WithAtMostTwo')
   }
-  if (!/^[A-Z]{3}$/.test(values.currency)) errors.currency = 'Choose a currency'
+  if (!/^[A-Z]{3}$/.test(values.currency)) errors.currency = translate('chooseACurrency2')
   if (values.vat_category === 'S') {
     const rate = parseDecimalInput(values.vat_rate, 2)
     if (rate === null || rate.startsWith('-') || Number(rate) > 100 || Number(rate) === 0)
-      errors.vat_rate = 'Enter a VAT rate above 0 up to 100 (or choose zero rated)'
+      errors.vat_rate = translate('enterAVATRateAbove0UpTo100')
   }
-  if (values.description.trim().length > 2000) errors.description = 'Use at most 2000 characters'
-  if (values.reference.trim().length > 100) errors.reference = 'Use at most 100 characters'
+  if (values.description.trim().length > 2000)
+    errors.description = translate('useAtMost2000Characters')
+  if (values.reference.trim().length > 100) errors.reference = translate('useAtMost100Characters')
   return errors
 }
 
@@ -291,17 +293,17 @@ export function periodTotal(values: Pick<FormValues, 'quantity' | 'unit_price'>)
 }
 
 const RECURRENCE_WORDS: Record<Exclude<Recurrence, 'none'>, [string, string]> = {
-  weekly: ['week', 'weeks'],
-  monthly: ['month', 'months'],
-  quarterly: ['quarter', 'quarters'],
-  yearly: ['year', 'years'],
+  weekly: [translate('dynamicWeek'), translate('dynamicWeeks')],
+  monthly: [translate('dynamicMonth'), translate('dynamicMonths')],
+  quarterly: [translate('dynamicQuarter'), translate('dynamicQuarters')],
+  yearly: [translate('dynamicYear'), translate('dynamicYears')],
 }
 
 export const RECURRENCE_OPTIONS = [
-  { value: 'weekly', label: 'Weeks' },
-  { value: 'monthly', label: 'Months' },
-  { value: 'quarterly', label: 'Quarters' },
-  { value: 'yearly', label: 'Years' },
+  { value: 'weekly', label: translate('weeks') },
+  { value: 'monthly', label: translate('months') },
+  { value: 'quarterly', label: translate('quarters') },
+  { value: 'yearly', label: translate('years') },
 ] as const
 
 const MONTHS_PER = { monthly: 1, quarterly: 3, yearly: 12 } as const
@@ -348,24 +350,33 @@ export function summarySentence(values: FormValues, clientName: string): string 
   const unit = UNITS.find((u) => u.value === values.unit)?.short
   const amount = parseDecimalInput(values.quantity, 3) ?? ''
   const what = [unit ? `${amount} ${unit}` : amount, values.title.trim()].filter(Boolean).join(' ')
-  const who = clientName ? `${what} for ${clientName}` : what
+  const who = clientName ? translate('dynamicFor', { what: what, clientName: clientName }) : what
   const start = swissDate(values.start_date)
   const end = isDate(values.end_date) ? swissDate(values.end_date) : null
   let when: string
-  if (values.recurrence === 'none') when = end ? `${start} – ${end}` : `from ${start}`
+  if (values.recurrence === 'none')
+    when = end ? `${start} – ${end}` : translate('dynamicFrom2', { start: start })
   else {
     const n = Number(values.interval)
     const [one, many] = RECURRENCE_WORDS[values.recurrence]
-    when = `${n === 1 ? `every ${one}` : `every ${n} ${many}`} from ${start}${end ? ` until ${end}` : ''}`
+    when = translate('dynamicFrom', {
+      value1:
+        n === 1
+          ? translate('dynamicEvery2', { one: one })
+          : translate('dynamicEvery', { n: n, many: many }),
+      start: start,
+      value3: end ? translate('dynamicUntil', { end: end }) : '',
+    })
   }
-  const billed = values.billing === 'advance' ? 'billed upfront' : 'billed after delivery'
+  const billed =
+    values.billing === 'advance' ? translate('billedUpfront') : translate('billedAfterDelivery')
   return [who, when, billed].join(' · ')
 }
 
 /** What the system does once this is saved, as short sentences. */
 export function nextSteps(values: FormValues): string[] {
   const recurring = values.recurrence !== 'none'
-  const period = recurring ? 'each period' : 'the period'
+  const period = recurring ? translate('eachPeriod') : translate('thePeriod')
   const steps: string[] = []
   if (!values.auto_invoice)
     steps.push(`No invoice is created automatically: you invoice ${period} yourself.`)
