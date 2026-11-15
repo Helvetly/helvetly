@@ -103,7 +103,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 
 func (s *Service) authConfig(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"google": s.cfg.GoogleSignIn(), "email": s.cfg.EmailSignIn(),
-		"passkey": true, "dev_codes": s.cfg.DevSignIn, "portal_url": s.cfg.PortalURL})
+		"passkey": true, "dev_codes": s.cfg.DevSignIn, "portal_url": s.cfg.PortalURL,
+		// The platform's page views; empty = off (the platform loads no analytics).
+		"google_analytics_id": s.cfg.GoogleAnalyticsID})
 }
 
 // ---- errors and JSON ----

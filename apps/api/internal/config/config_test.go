@@ -94,6 +94,9 @@ func TestLoad(t *testing.T) {
 			return c.FeedbackEmail == "team@helvetly.test"
 		}},
 		{"invalid feedback email", map[string]string{"AUTH_DEV_SIGNIN": "true", "FEEDBACK_EMAIL": "Team <team@helvetly.test>"}, "FEEDBACK_EMAIL", nil},
+		{"google analytics id", map[string]string{"AUTH_DEV_SIGNIN": "true", "GOOGLE_ANALYTICS_ID": "G-NMY4SN995C"}, "",
+			func(c Config) bool { return c.GoogleAnalyticsID == "G-NMY4SN995C" }},
+		{"invalid google analytics id", map[string]string{"AUTH_DEV_SIGNIN": "true", "GOOGLE_ANALYTICS_ID": "UA-12345-1"}, "GOOGLE_ANALYTICS_ID", nil},
 		{"renamed Heidi key", map[string]string{"AUTH_DEV_SIGNIN": "true", "HEIDI_OPENAI_API_KEY": "old"}, "HEIDI_OPENAI_API_KEY is no longer read: use OPENAI_API_KEY", nil},
 		{"token allowance is a plan limit", map[string]string{"AUTH_DEV_SIGNIN": "true", "HEIDI_MONTHLY_TOKENS": "25000"}, "ai_tokens_per_month", nil},
 		{"billing", map[string]string{"AUTH_DEV_SIGNIN": "true", "STRIPE_SECRET_KEY": "sk_test_x", "STRIPE_WEBHOOK_SECRET": "whsec_x",
@@ -121,7 +124,7 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"

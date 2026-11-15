@@ -22,6 +22,8 @@ export type AuthConfig = {
   dev_codes: boolean
   /** The client portal's origin, where clients sign in (missing from an older API). */
   portal_url?: string
+  /** GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID); empty or missing = no analytics. */
+  google_analytics_id?: string
 }
 export type User = { id: string; email: string; name: string; avatar_url: string | null }
 export type Session = {

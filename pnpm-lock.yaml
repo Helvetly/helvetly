@@ -292,6 +292,9 @@ importers:
       react-easy-crop:
         specifier: 'catalog:'
         version: 6.2.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      react-ga4:
+        specifier: 3.0.1
+        version: 3.0.1
       react-markdown:
         specifier: 'catalog:'
         version: 10.1.0(@types/react@19.3.0)(react@19.3.1)

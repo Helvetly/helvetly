@@ -39,8 +39,10 @@ about you by automated means alone (nDSG Art. 21, GDPR Art. 22).
 which pages and channels bring visitors; it sets Google's `_ga` cookies (up to 2 years) and sends page views and device
 data to Google, which uses the IP address only to derive an approximate location and does not store it (legitimate interest, Art. 6(1)(f)). Blocking
 cookies or scripts in your browser turns it off. The documentation sets no cookies and uses no analytics,
-advertising or tracking. The platform and the client portal load no analytics and set only cookies that are
-strictly necessary for signing in:
+advertising or tracking. The platform (app.helvetly.com) uses Google Analytics 4 the same way, but sends only the
+address of each page without its query or fragment, never what you enter or the data in your workspace. The client
+portal loads no analytics. Apart from Google's `_ga` cookies, the platform and the client portal set only cookies
+that are strictly necessary for signing in:
 
 | Name                      | Set by        | Purpose                                                | Lifetime                       |
 | ------------------------- | ------------- | ------------------------------------------------------ | ------------------------------ |

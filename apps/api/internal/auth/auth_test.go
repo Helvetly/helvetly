@@ -305,7 +305,7 @@ func TestRequests(t *testing.T) {
 	e := newEnv(t)
 	var cfg map[string]any
 	e.do(nil, "GET", "/api/v1/auth/config", nil, 200, &cfg)
-	if cfg["google"] != true || cfg["email"] != true || cfg["passkey"] != true || cfg["dev_codes"] != true || cfg["portal_url"] != "https://portal.example.com" {
+	if cfg["google"] != true || cfg["email"] != true || cfg["passkey"] != true || cfg["dev_codes"] != true || cfg["portal_url"] != "https://portal.example.com" || cfg["google_analytics_id"] != "" {
 		t.Fatalf("config: %v", cfg)
 	}
 
