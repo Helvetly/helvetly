@@ -22,7 +22,7 @@ func TestAITokensFollowThePlan(t *testing.T) {
 		t.Fatalf("no plan: %d", n)
 	}
 	e.subscribe(b.workspace, "price_bm")
-	if n := allowance(e, b.workspace); n != 1_000_000 {
+	if n := allowance(e, b.workspace); n != 250_000 {
 		t.Fatalf("basic: %d", n)
 	}
 	// The month's model usage is what the limit counts.

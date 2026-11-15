@@ -248,12 +248,14 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		return err
 	}
 	var monthly int64 // without a plan only the packs are left to take from
-	if plan := PlanOf(b, s.now()); plan != "" {
-		limits, err := limitsOf(ctx, q, ws, plan)
+	if PlanOf(b, s.now()) != "" {
+		r, err := s.entitlementsOf(ctx, q, ws, b)
 		if err != nil {
 			return err
 		}
-		monthly = limits.of(plan, AITokens)
+		if monthly, err = r.Cap(AITokens); err != nil {
+			return err
+		}
 	}
 	left := tokens
 	if monthly != Unlimited {

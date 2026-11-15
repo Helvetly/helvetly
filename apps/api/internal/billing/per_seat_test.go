@@ -92,6 +92,7 @@ func TestFlatSubscriptionMovesToPerSeatOnChange(t *testing.T) {
 	e.join(owner.workspace, "member")
 	e.join(owner.workspace, "member")
 	e.subscribe(owner.workspace, "price_bm") // flat, before per-seat prices were deployed
+	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
 	e.stripe.setPerSeat()
 
 	code, body := e.do(owner, http.MethodPost, "/api/v1/members/invitations", map[string]string{"email": "x@example.com"})

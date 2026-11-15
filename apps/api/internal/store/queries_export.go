@@ -162,5 +162,7 @@ var ExportExcluded = map[string]string{
 	"limits":                   "global plan configuration, not workspace data",
 	"limit_plans":              "global plan configuration, not workspace data",
 	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",
+	"offer_versions":           "global published offers, not workspace data",
+	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
 }

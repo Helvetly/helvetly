@@ -143,10 +143,14 @@ Switzerland) also needs backups, access control and a documented process, which 
 
 Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, prices are read from your Stripe
 account by lookup key `helvetly_<basic|pro|business>_<month|year>`: recurring, per seat, with the metadata
-`helvetly_pricing=per_seat`. Create those prices in your own Stripe account; the plan limits live in the
-`limits` table (a default per limit) and `limit_plans` (a plan's value where it differs), and `limit_workspaces` can
-give one workspace its own value, which replaces its plan's. -1 is unlimited; a plan feature is 1 (included) or 0
-(not), its keys declared in `apps/api/internal/billing/features.go`. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
+`helvetly_pricing=per_seat`. Create those prices in your own Stripe account. Plan features and limits come from a
+published offer: `limits` defines every key, `offer_versions` keeps each published offer (never changed afterwards),
+`limit_plans` its values per plan (a feature enabled or disabled, a limit limited or unlimited, growing with every
+paid seat where the offer says so), and `limit_workspaces` gives one workspace its own value until it expires. A
+workspace stays on the offer it subscribed under. `helvetly offer validate|diff|publish FILE` checks, compares and
+publishes an offer file, and `helvetly offer override set|clear` sets one workspace's value; each change is audited
+in `offer_audit`. `GET /api/v1/public/offers/current` serves the current prices and public comparison. Without
+billing, no plan limit applies. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
 Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.*`,
 `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `charge.refunded`. An opened dispute
 alerts the owners and admins; a lost one ends the subscription it paid at once, or takes back the AI token pack's

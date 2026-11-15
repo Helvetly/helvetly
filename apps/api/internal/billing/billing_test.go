@@ -715,10 +715,12 @@ func TestGuard(t *testing.T) {
 	owner := e.workspace()
 	ws := owner.workspace
 	now := time.Now()
-	// Fill the Basic plan: 2 members besides the owner, 250 clients, 100 invoices and 250 expenses this month, 10 GB of files.
+	// Fill the Basic plan: 2 members besides the owner (3 self-service seats on this flat price), 250 clients, 100
+	// invoices and 250 expenses this month, 1 GB of files.
 	e.join(ws, "member")
 	e.join(ws, "member")
 	e.subscribe(ws, "price_bm")
+	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
 	e.exec(`INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at)
 		SELECT 'cli_' || i, $1, i + 1, 'C', $2, $2 FROM generate_series(0, 249) i`, ws, now)
 	e.exec(`INSERT INTO expenses (id, workspace_id, number, status, currency, amount_mode, input_tax, deductible_percent,
@@ -731,7 +733,7 @@ func TestGuard(t *testing.T) {
 		SELECT 'inv_' || i, $1, 'invoice', 'draft', 'cli_0', $2::timestamptz::date, $2::timestamptz::date, 'CHF', 'de', 'exclusive',
 			0, 0, 0, 0, 0, 0, 0, '[]', $2::timestamptz, $2::timestamptz FROM generate_series(0, 99) i`, ws, now)
 	e.exec(`INSERT INTO documents (id, workspace_id, name, size, content_type, object_key, created_at, updated_at)
-		VALUES ('doc_1', $1, 'big.pdf', $2, 'application/pdf', 'k1', $3, $3)`, ws, int64(10*gb), now)
+		VALUES ('doc_1', $1, 'big.pdf', $2, 'application/pdf', 'k1', $3, $3)`, ws, int64(gb), now)
 
 	routes := []struct {
 		path  string
@@ -840,7 +842,7 @@ func TestOverview(t *testing.T) {
 	proLimits, _ := pro["limits"].(map[string]any)
 	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Basic ||
 		data["trial_days"] != 7.0 || data["discount"] != nil || data["can_manage"] != true ||
-		members["used"] != 0.0 || members["max"] != nil || proLimits["clients"] != 1000.0 || proPrices["month"] == nil {
+		members["used"] != 0.0 || members["max"] != nil || proLimits["clients"] != 300.0 || proPrices["month"] == nil {
 		t.Fatalf("overview: %d %v", code, body)
 	}
 }
@@ -892,7 +894,8 @@ func TestCheckout(t *testing.T) {
 		t.Fatalf("update form %v", f)
 	}
 
-	// A smaller plan must fit: 3 members besides the owner are more than Basic's 2.
+	// A smaller plan must fit: 3 members besides the owner are more than Basic's 2 on an offer with 3 seats.
+	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
 	e.join(owner.workspace, "member")
 	e.join(owner.workspace, "member")
 	code, body = e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year"})
@@ -1026,7 +1029,8 @@ func TestMonthStart(t *testing.T) {
 func TestCheckoutRefusesAPlanTheWorkspaceIsOver(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
-	for range 3 { // three members besides the owner are more than Basic's 2
+	e.setPlanValue(Basic, MaxSeats, StateLimited, n64(3))
+	for range 3 { // three members besides the owner are more than Basic's 2 on an offer with 3 seats
 		e.join(owner.workspace, "member")
 	}
 	code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "month"})

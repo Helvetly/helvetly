@@ -3,7 +3,8 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 2 ** 30
-// The limits seeded in apps/api/internal/store/migrations (limits and limit_plans).
+// The limits seeded in apps/api/internal/store/migrations before offer v2 (00005); the API's values now come from the
+// published offer (00006).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 50,
