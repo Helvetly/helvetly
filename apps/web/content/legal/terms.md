@@ -21,11 +21,25 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 ## 3. Plans, trial and prices
 
 - There is no free plan. Each workspace needs its own subscription: **Basic**, **Pro** or
-  **Business**. The current limits of each plan (members, clients, invoices, expenses, products,
-  engagements, signatures, storage, AI tokens) are shown in Settings → Billing. When a limit is
-  reached, you can upgrade or wait for the next month (monthly limits restart each calendar month).
-- Prices are **per seat**: every person in the workspace (owner, admins and members) is one seat;
-  an open invitation takes no seat until it is accepted. Per seat and month: Basic CHF 19, Pro
+  **Business**. The plans differ in features and allowances, as shown on the
+  [pricing page](/pricing) before you buy and in Settings → Billing. Heidi,
+  expenses, templates, signatures, invoice corrections, VAT returns, the ledger, data exports and
+  automations need Pro or Business; the client portal and e-invoice XML exports need Business.
+- **Allowances:** clients, products, engagements, stored drafts and stored quotes are fixed caps per
+  workspace. The other allowances (such as invoice issues, expenses, signature requests, storage,
+  downloads, emails, AI tokens and automation actions) are per paid seat and add up into one pool
+  for the workspace; adding or changing a member does not renew them. Monthly allowances restart at
+  00:00 UTC on the first day of each month; the first part-month and increases during a month are
+  prorated. Paying yearly does not grant twelve months of allowances at once. Storage counts what
+  the workspace keeps, including history and files in the trash, and does not restart. MB and GB
+  are decimal (1 GB = 1,000 MB).
+- When an allowance is used up, the new action that needs it is refused until the next month or an
+  upgrade; nothing is charged extra and nothing is deleted, and drafts and manual work remain
+  available.
+- Prices are **per seat**: every person in the workspace (owner, admins and members, whatever their
+  access) is one seat at the full price of the plan; no extra seats are included. An open invitation
+  takes no seat until it is accepted, and clients in the portal and people asked to sign a document
+  take none. Up to 25 seats can be bought in the app; more on request. Per seat and month: Basic CHF 19, Pro
   CHF 49 and Business CHF 99. Paying yearly costs twelve months less 20 %, rounded up to a whole
   franc (CHF 183, 471 and 951 per seat and year).
 - Prices are shown and charged in **CHF** in Switzerland and Liechtenstein, in **EUR** in the EU and
@@ -39,9 +53,12 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   each prorated from the day of the change. Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
-- **Trial:** the first subscription of a workspace to Basic starts with a 7-day trial. A card is
-  required. Without a valid card at the end of the trial, the subscription ends. Each workspace gets
-  one trial only. Pro and Business are charged at once.
+- **Trial:** a new customer can try the features of Business for 7 days, with up to 2 members and
+  small allowances for the whole trial (10 invoice issues, 20 expenses, 2 signature requests,
+  100 MB storage, 250,000 AI tokens and 50 automation actions) that neither restart nor grow with
+  the number of members. A card is required. Without a valid card at the end of the trial, the
+  subscription ends. Each customer gets one trial only. Once the trial converts, every member is
+  billed at the full price of the chosen plan.
 - Promotion codes apply only as stated with the code.
 
 ## 4. Payment, renewal, changes and cancellation
@@ -55,7 +72,8 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - **Upgrades** and moving from monthly to yearly are charged at once, prorated, and apply once that
   payment goes through; until then, the plan you already paid for keeps working. **Downgrades** and
   moving to monthly apply at once; the unused part is credited to your balance with Stripe. A smaller
-  plan must fit what the workspace already holds.
+  plan deletes nothing: existing records stay readable, but new work must fit its features and
+  allowances.
 - **Chargebacks:** if you dispute a payment with your bank or card issuer and the dispute is decided
   against us, the subscription ends at once.
 - **Cancelling:** an owner or admin can cancel any time in Settings → Billing. The plan stays until
@@ -70,9 +88,12 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - A workspace without a live subscription (trial ended, cancelled, ended after a lost chargeback, or a
   payment still unpaid three days after the paid period ended) becomes **read-only**: you can still see and download everything, but cannot change anything until you
   choose a plan again.
-- The owner can **download the whole workspace** (records and files, as a ZIP) at any time, with
-  or without a plan, in Settings → Workspace → Export all data. Everyone can download their own
-  account data as JSON.
+- In every plan, and in a read-only workspace, you can see and download each existing record and
+  document, such as a single invoice PDF. With Pro or Business, owners can also **download the whole
+  workspace** (records and files, as a ZIP) and business exports such as client and product CSV in
+  Settings → Workspace → Export all data. Everyone can download their own account data as JSON.
+- Whatever your plan, when you end the contract or switch provider we give you the complete export
+  of your workspace on request, free of charge.
 
 ## 6. Ending the contract and deletion
 
@@ -88,7 +109,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   anonymised; the workspaces' business records, including what you wrote in them (such as Heidi
   conversations and feedback you sent), stay with the workspace without your name or address.
 - Customers in the EU may switch to another provider under the EU Data Act: the export in section 5
-  gives all records and files in common formats, free of charge, at any time.
+  gives all records and files in common formats, free of charge.
 - We may suspend or end access with immediate effect for a serious breach of these terms, in
   particular of section 8. Otherwise we end the service only with 3 months' notice.
 
@@ -124,10 +145,14 @@ You must not:
 - AI answers and extracted records can be **wrong or incomplete**. Check them before you rely on
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.
-- Each plan includes a monthly budget of AI tokens. When it is used up, the AI features pause until
-  the next month or an upgrade. Extra tokens can be bought as one-off packs in Settings → Billing;
-  they add to the month they are bought in, and what is left lapses with that month. A pack that is
-  refunded, or whose payment is lost in a chargeback, loses its unused tokens.
+- Each plan includes a monthly allowance of AI tokens per paid seat, shared by the workspace.
+  Requests, responses and conversation context use tokens. In Basic the tokens serve only the AI
+  import into the modules Basic includes; Heidi and receipt import need Pro or Business. When the
+  allowance is used up, the AI features pause until the next month or an upgrade.
+- **Automations** (such as scheduled invoices, automatic sending and payment reminders) need Pro or
+  Business and use automation actions: each business action or outgoing message per recipient is
+  one action; empty checks and retries of the same action do not count again. When the allowance is
+  used up, automations pause and manual work remains available.
 
 ## 10. Electronic signatures
 

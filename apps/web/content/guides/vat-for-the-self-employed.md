@@ -98,7 +98,7 @@ Either way her fee income stays CHF 120,000, provided her clients accept the pri
 
 ## How Helvetly helps
 
-Helvetly shows your VAT number, the rate and the VAT amount on every invoice and adds a Swiss QR bill. It calculates your VAT return with either the effective or the net tax rate method and exports the eCH-0217 file for the ESTV ePortal. Heidi, the built-in assistant, answers questions about your own invoices and expenses.
+Helvetly shows your VAT number, the rate and the VAT amount on every invoice and adds a Swiss QR bill. It calculates your VAT return with either the effective or the net tax rate method and exports the eCH-0217 file for the ESTV ePortal. Heidi, the built-in assistant, answers questions about your own invoices and expenses. The VAT return and Heidi are part of the Pro and Business plans.
 
 ## Sources
 

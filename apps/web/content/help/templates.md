@@ -3,10 +3,12 @@ title: Make a template and fill it for a client
 description: Turn a PDF contract or letter into a template with client fields, then fill it, email it or send it for signature.
 category: Documents and signatures
 order: 4
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Turn a contract or letter you use often into a template that fills in the client's details for you.
+
+Document templates need **Pro** or **Business**.
 
 1. Upload the contract or letter as a PDF in **Documents**. Export it from Word or Google Docs as PDF first.
 2. Click **Create → Template…** (or right-click the PDF → **Make a template…**). Go through **Document**, **Signing** and **Place fields** to put the client's details, and optionally signature fields, on it.

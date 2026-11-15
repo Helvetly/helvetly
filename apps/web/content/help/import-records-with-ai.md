@@ -3,10 +3,12 @@ title: Import records with AI
 description: Bring clients, products, engagements, invoices and expenses over from spreadsheets, PDFs, photos or Word files with AI.
 category: Getting started
 order: 3
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Moving from another system? Let AI read your old files and turn them into Helvetly records.
+
+The AI import works in every plan, within its AI tokens; expenses and receipts need **Pro** or **Business**.
 
 1. Open **Clients**, **Products & services**, **Engagements** or **Invoices** and choose **Import** in the page's **…** menu. For expenses, use **Upload receipts** instead.
 2. Drop in spreadsheets, PDFs, photos or Word files, then click **Read files**.

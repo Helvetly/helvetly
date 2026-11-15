@@ -1,188 +1,106 @@
 import { formatPrice } from '@helvetly/ui/lib/price'
 import {
-  Building2,
+  Banknote,
+  BookOpenCheck,
   CalendarRange,
   Check,
+  FileCode2,
+  FilePen,
   FileSignature,
   FileText,
-  HardDrive,
-  Infinity as Unlimited,
   type LucideIcon,
-  Package,
+  Minus,
+  QrCode,
   Receipt,
-  ShieldCheck,
   Sparkles,
   UsersRound,
-  Wallet,
+  Workflow,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
-import { type Limits, type Plan, type PlanId, PLANS, priceOf } from '@/lib/plans'
+import {
+  BENEFITS,
+  formatLimit,
+  LIMITS,
+  type Plan,
+  type PlanId,
+  PLANS,
+  priceOf,
+  RECOMMENDED,
+  type Scope,
+  USAGE_DETAILS,
+} from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { type Tone, TONES } from '@/lib/tones'
 
-const count = (n: number) => n.toLocaleString('en-US').replace(/,/g, '’')
-const storage = (gb: number) => (gb >= 1024 ? `${gb / 1024} TB` : `${gb} GB`)
-const tokens = (n: number) => `${n / 1_000_000} M`
-
-// The same colours as the pricing cards: Basic sky, Pro lilac (the featured night card), Business mint.
+// The same colours as the pricing cards: Basic sky, Pro lilac (the recommended night card), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
-const FEATURED: PlanId = 'pro'
+
+const ICONS: Record<string, LucideIcon> = {
+  invoicing: FileText,
+  swiss_qr: QrCode,
+  revolut: Banknote,
+  engagements: CalendarRange,
+  automations: Workflow,
+  heidi: Sparkles,
+  client_portal: UsersRound,
+  expenses: Receipt,
+  documents_signatures: FileSignature,
+  corrections_vat: FilePen,
+  einvoice_xml: FileCode2,
+  ledger_exports: BookOpenCheck,
+}
+
+const SCOPE: Record<Scope, string> = { workspace: 'Per workspace', person: 'Per paid person' }
 
 type Row = {
+  key: string
   label: string
+  /** Shown under the label everywhere. */
   hint?: string
-  icon: LucideIcon
-  /** The limit as a number for the bar, null for unlimited; omitted for rows that are text only. */
-  amount?: (l: Limits) => number | null
-  format: (l: Limits) => string
+  /** Shown under the label in the wide table only, where there is room. */
+  note?: string
+  icon?: LucideIcon
+  cell: (plan: PlanId) => string | null
 }
 
-const ROWS: Row[] = [
-  // Every person is billed at the plan's price, so no plan caps how many there are.
-  { label: 'People', hint: 'Billed per person', icon: UsersRound, format: () => 'Any number' },
-  { label: 'Clients', icon: Building2, amount: (l) => l.clients, format: (l) => fmt(l.clients) },
-  {
-    label: 'Invoices a month',
-    hint: 'Credit notes and corrections do not count',
-    icon: FileText,
-    amount: (l) => l.invoicesPerMonth,
-    format: (l) => fmt(l.invoicesPerMonth),
-  },
-  {
-    label: 'Expenses a month',
-    icon: Receipt,
-    amount: (l) => l.expensesPerMonth,
-    format: (l) => fmt(l.expensesPerMonth),
-  },
-  {
-    label: 'Products and services',
-    icon: Package,
-    amount: (l) => l.products,
-    format: (l) => fmt(l.products),
-  },
-  {
-    label: 'Active engagements',
-    icon: CalendarRange,
-    amount: (l) => l.engagements,
-    format: (l) => fmt(l.engagements),
-  },
-  {
-    label: 'Signature requests a month',
-    icon: FileSignature,
-    amount: (l) => l.signaturesPerMonth,
-    format: (l) => fmt(l.signaturesPerMonth),
-  },
-  {
-    label: 'Storage',
-    hint: 'Documents and receipts',
-    icon: HardDrive,
-    amount: (l) => l.storageGb,
-    format: (l) => storage(l.storageGb),
-  },
-  {
-    label: 'AI tokens a month',
-    hint: 'For Heidi and the AI import',
-    icon: Sparkles,
-    amount: (l) => l.aiTokensPerMonth,
-    format: (l) => tokens(l.aiTokensPerMonth),
-  },
-]
+const BENEFIT_ROWS: Row[] = BENEFITS.map((b) => ({
+  key: b.key,
+  label: b.label,
+  note: b.note,
+  icon: ICONS[b.key],
+  cell: b.cell,
+}))
 
-function fmt(n: number | null) {
-  return n === null ? 'Unlimited' : count(n)
-}
+const LIMIT_ROWS: Row[] = USAGE_DETAILS.map((key) => ({
+  key,
+  label: LIMITS[key].label,
+  hint: SCOPE[LIMITS[key].scope],
+  cell: (plan) => formatLimit(key, plan),
+}))
 
-/** How full a plan's bar is: its share of the largest finite limit in the row; unlimited fills it. */
-function share(row: Row, plan: Plan): number | null {
-  if (!row.amount) return null
-  const value = row.amount(plan.limits)
-  if (value === null) return 1
-  const finite = PLANS.map((p) => row.amount?.(p.limits)).filter(
-    (v): v is number => typeof v === 'number',
-  )
-  const top = Math.max(...finite, 1)
-  // A little room is kept above the largest finite limit when another plan is unlimited.
-  const ceiling = finite.length < PLANS.length ? top * 1.25 : top
-  return Math.max(0.06, value / ceiling)
-}
-
-// Every plan has every feature; only the limits above differ.
-const FEATURES: { group: string; icon: LucideIcon; tone: Tone; items: string[] }[] = [
-  {
-    group: 'Invoicing',
-    icon: FileText,
-    tone: 'sky',
-    items: [
-      'Swiss QR bill with QR-IBAN, QRR or SCOR',
-      'Eight document types, gapless numbering',
-      'Invoices in German, French, Italian and English',
-      'Automatic reminders, fees and default interest',
-      'Instalment schedules and plans',
-      'E-invoices: XRechnung, Peppol BIS, KSeF, e-Factura',
-    ],
-  },
-  {
-    group: 'Back office',
-    icon: Wallet,
-    tone: 'mint',
-    items: [
-      'Expenses with receipts and reverse charge',
-      'Clients, contacts and a client portal',
-      'Documents with sharing and duplicate detection',
-      'Templates and simple electronic signatures',
-      'Engagements, retainers and service reports',
-      'VAT return with eCH-0217 export',
-    ],
-  },
-  {
-    group: 'AI and security',
-    icon: ShieldCheck,
-    tone: 'lilac',
-    items: [
-      'Heidi, the assistant (after consent)',
-      'AI import from PDF, images, Excel, Word and ZIP',
-      'Passkeys, Google sign-in and two-factor authentication',
-      'Closed periods and a hash-chained audit log',
-      'Roles for owners, admins and members',
-      'Full workspace export as a ZIP',
-    ],
-  },
-]
-
-function Bar({ value, plan }: { value: number | null; plan: Plan }) {
-  if (value === null) return null
+function Value({ text }: { text: string | null }) {
+  if (text === null)
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap opacity-60">
+        <Minus aria-hidden className="size-4 shrink-0" />
+        Not included
+      </span>
+    )
   return (
-    <span aria-hidden className="mt-2 block h-1.5 w-full max-w-36 rounded-full bg-foreground/8">
-      <span
-        style={{ width: `${Math.round(value * 100)}%` }}
-        className={cn(
-          'grow-x block h-full origin-left rounded-full',
-          value === 1
-            ? 'from-mint-solid via-sky-solid to-lilac-solid bg-linear-to-r'
-            : TONES[PLAN_TONE[plan.id]].solid,
-        )}
-      />
+    <span className="inline-flex items-start gap-1.5 font-medium tabular-nums">
+      {text.startsWith('Included') && (
+        <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
+      )}
+      {text}
     </span>
   )
 }
 
-function Value({ row, plan }: { row: Row; plan: Plan }) {
-  const text = row.format(plan.limits)
-  return (
-    <>
-      <span className="inline-flex items-center gap-1.5 text-title-sm font-semibold tabular-nums">
-        {text === 'Unlimited' && <Unlimited aria-hidden className="text-lilac-ink size-4" />}
-        {text}
-      </span>
-      <Bar value={share(row, plan)} plan={plan} />
-    </>
-  )
-}
-
 function PlanHead({ plan }: { plan: Plan }) {
-  const featured = plan.id === FEATURED
+  const recommended = plan.id === RECOMMENDED
   return (
     <>
       <span className="flex items-center gap-2">
@@ -191,16 +109,16 @@ function PlanHead({ plan }: { plan: Plan }) {
           className={cn('size-2.5 rounded-full', TONES[PLAN_TONE[plan.id]].solid)}
         />
         <span className="text-title-sm font-semibold">{plan.name}</span>
-        {featured && (
+        {recommended && (
           <span className="ml-auto rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2 py-0.5 text-caption font-medium text-white">
-            Most popular
+            Recommended
           </span>
         )}
       </span>
       <span
         className={cn(
           'mt-1 block text-body-sm font-normal',
-          featured ? 'text-white/70' : 'text-muted-foreground',
+          recommended ? 'text-white/70' : 'text-muted-foreground',
         )}
       >
         {formatPrice(priceOf(plan, 'month'))} / person / month
@@ -209,168 +127,176 @@ function PlanHead({ plan }: { plan: Plan }) {
   )
 }
 
-/** The plans side by side: their limits with a bar for scale, then what every plan includes. */
-export function PlanTable() {
+/** One wide table: Pro's column is a lit band down the middle. */
+function WideTable({
+  caption,
+  corner,
+  rows,
+  head,
+}: {
+  caption: string
+  corner: string
+  rows: Row[]
+  head: boolean
+}) {
   return (
-    <div className="flex flex-col gap-16">
-      {/* Wide screens: one table, Pro's column a lit band down the middle. */}
-      <div className="hidden md:block">
-        <table className="w-full border-separate border-spacing-0 text-left text-body">
-          <caption className="sr-only">Limits of each plan</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="w-[31%] p-5 align-bottom">
-                <span className="text-body-sm font-medium text-muted-foreground">
-                  Limits per workspace
+    <table className="w-full border-separate border-spacing-0 text-left text-body">
+      <caption className="sr-only">{caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col" className="w-[31%] p-5 align-bottom">
+            <span className="text-body-sm font-medium text-muted-foreground">{corner}</span>
+          </th>
+          {PLANS.map((plan) => (
+            <th
+              key={plan.id}
+              scope="col"
+              className={cn(
+                'w-[23%] p-5 align-top',
+                plan.id === RECOMMENDED
+                  ? 'night ring-gradient rounded-t-3xl text-white'
+                  : 'border-site-line border-b',
+              )}
+            >
+              <PlanHead plan={plan} />
+              {head && (
+                <Cta
+                  href={START_URL}
+                  variant={plan.id === RECOMMENDED ? 'light' : 'outline'}
+                  arrow={false}
+                  className="mt-4 h-9 w-full px-4 text-body-sm"
+                >
+                  Start with {plan.name}
+                </Cta>
+              )}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => {
+          const last = i === rows.length - 1
+          return (
+            <tr key={row.key}>
+              <th
+                scope="row"
+                aria-label={row.label}
+                className="border-site-line border-b p-5 py-4 align-top font-normal"
+              >
+                <span className="flex items-start gap-3">
+                  {row.icon && (
+                    <span className="bg-site-tint inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground">
+                      <row.icon aria-hidden className="size-4" />
+                    </span>
+                  )}
+                  <span>
+                    {row.label}
+                    {(row.hint ?? row.note) && (
+                      <span className="block text-body-sm text-muted-foreground">
+                        {row.hint ?? row.note}
+                      </span>
+                    )}
+                  </span>
                 </span>
               </th>
               {PLANS.map((plan) => (
-                <th
+                <td
                   key={plan.id}
-                  scope="col"
                   className={cn(
-                    'w-[23%] p-5 align-top',
-                    plan.id === FEATURED
-                      ? 'night ring-gradient rounded-t-3xl text-white'
+                    'p-5 py-4 align-top',
+                    plan.id === RECOMMENDED
+                      ? cn('bg-lilac/45', last && 'rounded-b-3xl')
                       : 'border-site-line border-b',
                   )}
                 >
-                  <PlanHead plan={plan} />
-                  <Cta
-                    href={START_URL}
-                    variant={plan.id === FEATURED ? 'light' : 'outline'}
-                    arrow={false}
-                    className="mt-4 h-9 w-full px-4 text-body-sm"
-                  >
-                    Start with {plan.name}
-                  </Cta>
-                </th>
+                  <Value text={row.cell(plan.id)} />
+                </td>
               ))}
             </tr>
-          </thead>
-          <tbody>
-            {ROWS.map((row, i) => {
-              const last = i === ROWS.length - 1
-              return (
-                <tr key={row.label} className="group">
-                  <th
-                    scope="row"
-                    aria-label={row.label}
-                    className="border-site-line border-b p-5 py-4 align-top font-normal"
-                  >
-                    <span className="flex items-start gap-3">
-                      <span className="bg-site-tint inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground">
-                        <row.icon aria-hidden className="size-4" />
-                      </span>
-                      <span>
-                        {row.label}
-                        {row.hint && (
-                          <span className="block text-body-sm text-muted-foreground">
-                            {row.hint}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </th>
-                  {PLANS.map((plan) => (
-                    <td
-                      key={plan.id}
-                      className={cn(
-                        'p-5 py-4 align-top',
-                        plan.id === FEATURED
-                          ? cn('bg-lilac/45', last && 'rounded-b-3xl')
-                          : 'border-site-line border-b',
-                      )}
-                    >
-                      <Value row={row} plan={plan} />
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+function PlanList({ title, rows, plan }: { title: string; rows: Row[]; plan: PlanId }) {
+  return (
+    <>
+      <h4 className="mt-6 text-body-sm font-medium opacity-70">{title}</h4>
+      <dl className="mt-3 grid gap-3">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-start justify-between gap-4">
+            <dt className="text-body-sm">
+              {row.label}
+              {row.hint && <span className="block text-caption opacity-60">{row.hint}</span>}
+            </dt>
+            <dd className="max-w-[55%] text-right text-body-sm">
+              <Value text={row.cell(plan)} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  )
+}
+
+function Heading({ children, lead }: { children: ReactNode; lead: string }) {
+  return (
+    <div className="mb-6 text-center">
+      <h3 className="text-title font-semibold">{children}</h3>
+      <p className="mx-auto mt-2 max-w-2xl text-body text-muted-foreground">{lead}</p>
+    </div>
+  )
+}
+
+const ALLOWANCE_LEAD =
+  'What each paid person adds goes into one shared pool for the workspace; clients and products are fixed caps per workspace. Monthly pools start again at 00:00 UTC on the first of the month. Storage is what you keep, not a monthly amount. 1 GB = 1’000 MB.'
+
+/** The plans side by side: the business benefits, then the allowances that apply before you buy. */
+export function PlanTable() {
+  return (
+    <div className="flex flex-col gap-16">
+      <div className="hidden md:flex md:flex-col md:gap-16">
+        <WideTable
+          caption="What each plan includes"
+          corner="Business value"
+          rows={BENEFIT_ROWS}
+          head
+        />
+        <div>
+          <Heading lead={ALLOWANCE_LEAD}>Usage allowances</Heading>
+          <WideTable
+            caption="Usage allowances of each plan"
+            corner="Allowance"
+            rows={LIMIT_ROWS}
+            head={false}
+          />
+        </div>
       </div>
 
       {/* Narrow screens: a card per plan, so nothing scrolls sideways. */}
       <div className="grid gap-4 md:hidden">
         {PLANS.map((plan) => {
-          const featured = plan.id === FEATURED
+          const recommended = plan.id === RECOMMENDED
           return (
             <section
               key={plan.id}
-              aria-label={`${plan.name} limits`}
+              aria-label={`${plan.name} plan`}
               className={cn(
                 'rounded-3xl border p-6',
-                featured
+                recommended
                   ? 'night ring-gradient text-white'
                   : cn(TONES[PLAN_TONE[plan.id]].tile, TONES[PLAN_TONE[plan.id]].border),
               )}
             >
               <PlanHead plan={plan} />
-              <dl className="mt-5 grid gap-4">
-                {ROWS.map((row) => (
-                  <div key={row.label} className="flex items-start justify-between gap-4">
-                    <dt className="flex items-center gap-2 text-body-sm">
-                      <row.icon aria-hidden className="size-4 shrink-0 opacity-60" />
-                      {row.label}
-                    </dt>
-                    <dd className="text-right font-semibold tabular-nums">
-                      {row.format(plan.limits)}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+              <PlanList title="Business value" rows={BENEFIT_ROWS} plan={plan.id} />
+              <PlanList title="Usage allowances" rows={LIMIT_ROWS} plan={plan.id} />
             </section>
           )
         })}
-      </div>
-
-      <div>
-        <h3 className="text-center text-title font-semibold">Included in every plan</h3>
-        <p className="mx-auto mt-2 max-w-xl text-center text-body text-muted-foreground">
-          Plans differ only in the limits above. Every feature is in every plan, from the first day
-          of the trial.
-        </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {FEATURES.map(({ group, icon: Icon, tone, items }, i) => (
-            <section
-              key={group}
-              data-reveal
-              style={{ ['--d' as string]: `${i * 90}ms` }}
-              aria-labelledby={`included-${tone}`}
-              className={cn('rounded-3xl border p-6', TONES[tone].tile, TONES[tone].border)}
-            >
-              <h4 id={`included-${tone}`} className="flex items-center gap-2.5 text-title-sm">
-                <span
-                  className={cn(
-                    'inline-flex size-9 items-center justify-center rounded-xl text-white',
-                    TONES[tone].solid,
-                  )}
-                >
-                  <Icon aria-hidden className="size-4.5" />
-                </span>
-                <span className="font-semibold">{group}</span>
-              </h4>
-              <ul className="mt-5 grid gap-2.5 text-body">
-                {items.map((item) => (
-                  <li key={item} className="flex gap-2.5">
-                    <span
-                      className={cn(
-                        'mt-0.5 inline-flex size-4.5 shrink-0 items-center justify-center rounded-full',
-                        TONES[tone].surface,
-                        TONES[tone].ink,
-                      )}
-                    >
-                      <Check aria-hidden className="size-3" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <p className="text-center text-body-sm text-muted-foreground">{ALLOWANCE_LEAD}</p>
       </div>
     </div>
   )

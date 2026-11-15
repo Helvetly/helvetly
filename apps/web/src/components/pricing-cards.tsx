@@ -1,20 +1,26 @@
 'use client'
 
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
-import { Check } from 'lucide-react'
+import { Check, Minus } from 'lucide-react'
 import { useState } from 'react'
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
 import { taxNote, useCurrency } from '@/lib/currency'
-import { type Interval, PLANS, priceOf, TRIAL_DAYS, YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
+import {
+  type Interval,
+  MAX_SELF_SERVICE_SEATS,
+  PLANS,
+  priceOf,
+  RECOMMENDED,
+  TRIAL,
+  YEARLY_DISCOUNT_PERCENT,
+} from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
 
-// Basic and Business sit on their own pastel; Pro is the night card, as Heidi's band.
+// Basic and Business sit on their own pastel; Pro, the recommended plan, is the night card, as Heidi's band.
 const PLAN_TONE = { basic: TONES.sky, pro: TONES.lilac, business: TONES.mint }
-
-const FEATURED = 'pro'
 
 export function PricingCards() {
   const [interval, setInterval] = useState<Interval>('year')
@@ -54,7 +60,7 @@ export function PricingCards() {
 
       <div className="mt-12 grid w-full gap-4 lg:grid-cols-3">
         {PLANS.map((plan, i) => {
-          const featured = plan.id === FEATURED
+          const featured = plan.id === RECOMMENDED
           return (
             <article
               key={plan.id}
@@ -71,13 +77,14 @@ export function PricingCards() {
                 <h3 className="text-title font-semibold">{plan.name}</h3>
                 {featured && (
                   <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2.5 py-0.5 text-caption font-medium text-white">
-                    Most popular
+                    Recommended
                   </span>
                 )}
               </div>
+              <p className="mt-2 text-body font-medium">{plan.tagline}</p>
               <p
                 className={cn(
-                  'mt-2 min-h-12 text-body',
+                  'mt-1 min-h-12 text-body',
                   featured ? 'opacity-70' : 'text-muted-foreground',
                 )}
               >
@@ -116,7 +123,7 @@ export function PricingCards() {
                 variant={featured ? 'light' : 'primary'}
                 className="mt-6 w-full"
               >
-                {plan.id === 'basic' ? `Start ${TRIAL_DAYS}-day trial` : `Choose ${plan.name}`}
+                Choose {plan.name}
               </Cta>
               <ul className="mt-7 grid gap-2.5 text-body">
                 {plan.highlights.map((item) => (
@@ -134,16 +141,34 @@ export function PricingCards() {
                     {item}
                   </li>
                 ))}
+                {plan.excludes.map((item) => (
+                  <li
+                    key={item}
+                    className={cn(
+                      'flex gap-2.5',
+                      featured ? 'opacity-60' : 'text-muted-foreground',
+                    )}
+                  >
+                    <span className="mt-0.5 inline-flex size-4.5 shrink-0 items-center justify-center">
+                      <Minus aria-hidden className="size-3.5" />
+                    </span>
+                    <span>
+                      <span className="sr-only">Not included: </span>
+                      {item}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </article>
           )
         })}
       </div>
       <p className="mt-10 max-w-3xl text-center text-body-sm text-muted-foreground">
-        Every plan includes every feature: QR bills, reminders, e-invoicing, signatures, the client
-        portal and Heidi. Prices are per person in the workspace; plans differ only in how much you
-        can do. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU and USD everywhere
-        else.
+        Prices are per person: every team member is billed at the full price of the plan, with no
+        extra seats included, up to {MAX_SELF_SERVICE_SEATS} people in the app. What each person
+        adds goes into one shared pool for the workspace. Try Business for {TRIAL.days} days with up
+        to {TRIAL.members} people. Prices are in CHF in Switzerland and Liechtenstein, EUR in the EU
+        and USD everywhere else, with the same figures.
       </p>
     </div>
   )

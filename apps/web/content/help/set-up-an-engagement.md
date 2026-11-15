@@ -3,10 +3,12 @@ title: Set up an engagement
 description: Set up a retainer, hours package or recurring work for a client, billed in advance or in arrears.
 category: Engagements
 order: 1
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 An engagement tracks committed work for a client, like a retainer of 30 hours a month.
+
+Basic includes up to 3 active engagements, managed by hand; scheduled drafts and notices need **Pro** or **Business**.
 
 1. Go to **Engagements** and click **New engagement**.
 2. Under **Client & service**, pick the **Client** and enter a **Title**.

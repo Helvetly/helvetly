@@ -14,6 +14,7 @@ import { type Feature, FeatureExplorer } from '@/components/home/feature-explore
 import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
+import { plansWith } from '@/lib/plans'
 
 /** A mini QR bill: the invoice's payment part, with the scissors line. */
 function QrBillArt() {
@@ -281,7 +282,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'reminders',
-    facts: ['Up to 10 steps', '5% interest, worked out'],
+    facts: ['Up to 10 steps', `In ${plansWith('automations', ' and ')}`],
     tone: 'peach',
     icon: <Bell />,
     label: 'Reminders',
@@ -291,7 +292,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'expenses',
-    facts: ['PDF, photo or Excel', 'VAT split for you'],
+    facts: ['PDF, photo or Excel', `In ${plansWith('expenses', ' and ')}`],
     tone: 'lemon',
     icon: <Receipt />,
     label: 'Expenses',
@@ -301,7 +302,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'signatures',
-    facts: ['Audit trail', 'Signed in minutes'],
+    facts: ['Simple e-signature', `In ${plansWith('templates_signatures', ' and ')}`],
     tone: 'lilac',
     icon: <FileSignature />,
     label: 'Signatures',
@@ -311,7 +312,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'instalments',
-    facts: ['One QR bill per part', 'Reminders per part'],
+    facts: ['One QR bill per part', `In ${plansWith('automations', ' and ')}`],
     tone: 'sky',
     icon: <Split />,
     label: 'Instalments',
@@ -331,7 +332,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'vat',
-    facts: ['eCH-0217 file', 'Effective or net rate'],
+    facts: ['eCH-0217 file', `In ${plansWith('corrections_vat', ' and ')}`],
     tone: 'mint',
     icon: <Landmark />,
     label: 'VAT return',
@@ -341,7 +342,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'portal',
-    facts: ['Sign in by email code', 'Invoices and files'],
+    facts: ['Sign in by email code', `In ${plansWith('client_portal')}`],
     tone: 'lilac',
     icon: <UsersRound />,
     label: 'Client portal',
@@ -351,12 +352,12 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'einvoices',
-    facts: ['XRechnung · Peppol', 'KSeF · e-Factura'],
+    facts: ['XML files to send yourself', `In ${plansWith('einvoice_xml')}`],
     tone: 'sky',
     icon: <FileCode2 />,
     label: 'E-invoices',
     title: 'E-invoices for Europe',
-    body: 'XRechnung, Peppol BIS, Polish KSeF and Romanian e-Factura from your issued invoices, each archived with a checksum.',
+    body: 'XRechnung, Peppol BIS, Polish KSeF and Romanian e-Factura XML files from your issued invoices, each archived with a checksum. Delivery through the networks is not included.',
     art: <EinvoiceArt />,
   },
 ]

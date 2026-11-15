@@ -6,13 +6,13 @@ import { PlanTable } from '@/components/plan-table'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { PRICING_FAQ } from '@/lib/faq'
-import { TRIAL_DAYS } from '@/lib/plans'
+import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Basic, Pro and Business: prices per person in CHF, EUR or USD, tax included, every feature in every plan, 20% off when you pay yearly.',
+    'Basic, Pro and Business compared: what each plan includes, the allowances each person adds and prices per person in CHF, EUR or USD, tax included.',
 }
 
 export default function PricingPage() {
@@ -22,10 +22,10 @@ export default function PricingPage() {
         eyebrow="Pricing"
         title={
           <>
-            Simple prices, <span className="accent">every feature</span>
+            Clear prices, <span className="accent">per person</span>
           </>
         }
-        lead="You pay for each team member, and every plan has every feature. Pick the one that fits how much you invoice, and change it whenever your business does."
+        lead="Every team member is billed at the plan’s price. Basic gets you invoicing, Pro adds Heidi and the whole back office, Business adds the client portal and e-invoice XML."
       />
       <section className="pb-24">
         <Container>
@@ -37,7 +37,7 @@ export default function PricingPage() {
           <SectionHeading
             eyebrow="Compare plans"
             title="What each plan includes"
-            lead="Monthly limits start again on the first of the month, in your workspace’s time zone."
+            lead="See what is included and what is not before you choose. Monthly allowances start again at 00:00 UTC on the first of the month."
           />
           <div data-reveal className="mt-12">
             <PlanTable />
@@ -53,8 +53,8 @@ export default function PricingPage() {
         }
         lead="Trials, VAT, limits and changing plans, in short answers."
         card={{
-          title: 'Every feature, from the first day',
-          body: `Start a ${TRIAL_DAYS}-day trial with the whole product, then pick the plan that fits. You can change it any time from the workspace settings.`,
+          title: `Try Business for ${TRIAL.days} days`,
+          body: `Up to ${TRIAL.members} people, with smaller trial allowances, then pick the plan that fits. You can change it any time from the workspace settings.`,
           href: START_URL,
           link: 'Start your free trial',
         }}
