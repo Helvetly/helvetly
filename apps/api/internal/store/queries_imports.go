@@ -53,11 +53,15 @@ type ImportFile struct {
 	ChunksTotal *int    `json:"chunks_total"`
 	Attempts    int     `json:"-"`
 	Kind        string  `json:"-"` // the batch's, for the job
+	// DocumentType is what the model recognised the file as, in an auto batch ("sales_invoice", "contract", …).
+	DocumentType *string `json:"document_type"`
 }
 
 type ImportRecord struct {
-	ID        string                     `json:"id"`
-	FileID    string                     `json:"file_id"`
+	ID     string `json:"id"`
+	FileID string `json:"file_id"`
+	// Kind is the record's kind: the batch's, or the one the model chose in an auto batch.
+	Kind      string                     `json:"kind"`
 	Status    string                     `json:"status"`
 	Data      map[string]json.RawMessage `json:"data"`
 	Issues    map[string]string          `json:"issues"`
@@ -95,7 +99,7 @@ func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (Imp
 		return b, err
 	}
 	b.WorkspaceID, b.UserID, b.Status = workspaceID, userID, "review"
-	rows, err := q.db.Query(ctx, `SELECT id, name, size, reused, status, error, chunks_done, chunks_total
+	rows, err := q.db.Query(ctx, `SELECT id, name, size, reused, status, error, chunks_done, chunks_total, document_type
 		FROM import_files WHERE batch_id=$1 ORDER BY position`, id)
 	if err != nil {
 		return b, err
@@ -103,7 +107,7 @@ func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (Imp
 	b.Files = []ImportFile{}
 	for rows.Next() {
 		var f ImportFile
-		if err := rows.Scan(&f.ID, &f.Name, &f.Size, &f.Reused, &f.Status, &f.Error, &f.ChunksDone, &f.ChunksTotal); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.Size, &f.Reused, &f.Status, &f.Error, &f.ChunksDone, &f.ChunksTotal, &f.DocumentType); err != nil {
 			rows.Close()
 			return b, err
 		}
@@ -121,7 +125,8 @@ func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (Imp
 }
 
 func (q Q) importRecords(ctx context.Context, where string, args ...any) ([]ImportRecord, error) {
-	rows, err := q.db.Query(ctx, `SELECT id, file_id, status, data, issues, duplicate, entity_id, error, generated_by FROM import_records `+where, args...)
+	rows, err := q.db.Query(ctx, `SELECT id, file_id, coalesce(kind, (SELECT b.kind FROM import_batches b WHERE b.id=import_records.batch_id)), status, data,
+		issues, duplicate, entity_id, error, generated_by FROM import_records `+where, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +134,7 @@ func (q Q) importRecords(ctx context.Context, where string, args ...any) ([]Impo
 	list := []ImportRecord{}
 	for rows.Next() {
 		var r ImportRecord
-		if err := rows.Scan(&r.ID, &r.FileID, &r.Status, &r.Data, &r.Issues, &r.Duplicate, &r.EntityID, &r.Error, &r.GeneratedBy); err != nil {
+		if err := rows.Scan(&r.ID, &r.FileID, &r.Kind, &r.Status, &r.Data, &r.Issues, &r.Duplicate, &r.EntityID, &r.Error, &r.GeneratedBy); err != nil {
 			return nil, err
 		}
 		list = append(list, r)
@@ -200,28 +205,40 @@ func (q Q) AddImportRecords(ctx context.Context, f ImportFile, records []ImportR
 	if tag.RowsAffected() != 1 {
 		return ErrNotFound
 	}
+	return q.InsertImportRecords(ctx, f, records, now)
+}
+
+// InsertImportRecords appends records read from file f after the batch's last one, without counting a chunk.
+func (q Q) InsertImportRecords(ctx context.Context, f ImportFile, records []ImportRecord, now time.Time) error {
 	var next int
 	if err := q.db.QueryRow(ctx, `SELECT coalesce(max(position), -1) + 1 FROM import_records WHERE batch_id=$1`, f.BatchID).Scan(&next); err != nil {
 		return err
 	}
 	for i, r := range records {
-		if _, err := q.db.Exec(ctx, `INSERT INTO import_records (id, batch_id, file_id, workspace_id, position, data, issues, duplicate,
-			created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)`,
-			r.ID, f.BatchID, f.ID, f.WorkspaceID, next+i, r.Data, r.Issues, r.Duplicate, now); err != nil {
+		if _, err := q.db.Exec(ctx, `INSERT INTO import_records (id, batch_id, file_id, workspace_id, position, kind, data, issues,
+			duplicate, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`,
+			r.ID, f.BatchID, f.ID, f.WorkspaceID, next+i, r.Kind, r.Data, r.Issues, r.Duplicate, now); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// ImportNameTaken: an earlier record of the batch whose field has the same value (case-insensitive), for the
-// duplicate hint.
-func (q Q) ImportNameTaken(ctx context.Context, batchID, recordID, field, name string) (bool, error) {
+// ImportNameTaken: an earlier record of the batch of this kind whose field has the same value (case-insensitive), for
+// the duplicate hint; with recordID "" any record of the kind not skipped.
+func (q Q) ImportNameTaken(ctx context.Context, batchID, recordID, kind, field, name string) (bool, error) {
 	var taken bool
 	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM import_records WHERE batch_id=$1 AND id<>$2
+		AND (kind IS NULL OR kind=$5) AND status<>'skipped'
 		AND lower(data->>$4)=lower($3) AND position < coalesce((SELECT position FROM import_records WHERE id=$2), 2147483647))`,
-		batchID, recordID, name, field).Scan(&taken)
+		batchID, recordID, name, field, kind).Scan(&taken)
 	return taken, err
+}
+
+// SetImportFileType records the document type the model recognised the file as, under the file's claim (attempt).
+func (q Q) SetImportFileType(ctx context.Context, id string, attempt int, documentType string) error {
+	_, err := q.db.Exec(ctx, `UPDATE import_files SET document_type=$2 WHERE id=$1 AND attempts=$3`, id, documentType, attempt)
+	return err
 }
 
 // ImportSource is the file a record was read from: its Document, unless it is a ZIP entry.

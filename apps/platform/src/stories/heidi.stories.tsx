@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
 import { Composer } from '@/components/heidi/composer'
-import { MAX_FILES, MAX_MESSAGE } from '@/lib/heidi'
+import { MAX_MESSAGE } from '@/lib/heidi'
+import { MAX_IMPORT_FILES } from '@/lib/imports'
 
 const meta = { title: 'Heidi/Composer' } satisfies Meta
 export default meta
@@ -90,7 +91,7 @@ export const AttachmentLimitAndRemoval: Story = {
   render: () => (
     <Editor
       attachments={Array.from(
-        { length: MAX_FILES },
+        { length: MAX_IMPORT_FILES },
         (_, index) => new File(['x'], `receipt-${index + 1}.pdf`, { type: 'application/pdf' }),
       )}
     />

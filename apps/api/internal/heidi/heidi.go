@@ -271,6 +271,8 @@ type Message struct {
 	Records      []Record      `json:"records,omitempty"`
 	Form         *Form         `json:"form,omitempty"`
 	Confirmation *Confirmation `json:"confirmation,omitempty"`
+	// ImportID is the import this answer reports on: the chat shows its progress and review.
+	ImportID string `json:"import_id,omitempty"`
 	// GeneratedBy marks an assistant message machine-readably (AI Act Art. 50(2)): "model" for the AI model's text,
 	// "helvetly" for Helvetly's own answers; empty on the user's messages.
 	GeneratedBy string `json:"generated_by,omitempty"`
@@ -316,6 +318,8 @@ type turn struct {
 	Model            bool // the text is the AI model's (generated_by "model")
 	ConsumePendingID string
 	Statuses         []string
+	ImportID         string
+	importFiles      []string // the import's file names, shown as the question's attachments
 }
 
 // stream writes Server-Sent Events; the headers go out with the first event, so an error before it is still a
@@ -426,6 +430,11 @@ func writeEvents(st *stream, t turn) error {
 	}
 	if t.Form != nil {
 		if err := send(map[string]any{"type": "form", "form": t.Form}); err != nil {
+			return err
+		}
+	}
+	if t.ImportID != "" {
+		if err := send(map[string]any{"type": "import", "import_id": t.ImportID}); err != nil {
 			return err
 		}
 	}

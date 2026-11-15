@@ -17,6 +17,7 @@ import { documentName, useSendInvoice } from '@/lib/invoices'
 
 import { ActivityLine } from './activity-line'
 import { HeidiFormView } from './heidi-form'
+import { ImportCard } from './import-card'
 import { MessageMenu } from './message-menu'
 import { splitQuote } from './quote'
 import { Records, recordsText } from './records'
@@ -242,6 +243,7 @@ export function Message({
             </div>
           )}
           {message.records && message.records.length > 0 && <Records records={message.records} />}
+          {message.importId && <ImportCard batchId={message.importId} />}
           {message.form && (
             <HeidiFormView
               form={message.form}

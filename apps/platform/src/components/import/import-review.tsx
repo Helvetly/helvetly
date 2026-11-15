@@ -14,8 +14,10 @@ import { inputClass } from '@/components/clients/fields'
 import { errorMessage } from '@/lib/api'
 import {
   displayValue,
+  IMPORT_KINDS,
   isSettled,
   recordChanges,
+  recordsByKind,
   usePatchImportRecord,
   type CommitResult,
   type ImportKindConfig,
@@ -27,6 +29,56 @@ import { ImportClientField } from './import-client-field'
 const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
   displayValue(record.data[config.labelKey ?? 'name']) || `row ${index + 1}`
 const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
+
+/** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
+export function GroupedReview({
+  records,
+  selected,
+  results,
+  onSelect,
+  onEdit,
+}: {
+  records: ImportRecord[]
+  selected: ReadonlySet<string>
+  results: ReadonlyMap<string, CommitResult>
+  onSelect: (selected: Set<string>) => void
+  onEdit: (id: string) => void
+}) {
+  const groups = recordsByKind(records)
+  if (!groups.length)
+    return (
+      <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
+        Nothing to import was found in these files. Try clearer copies, or files that hold invoices,
+        bills, contracts, client lists or price lists.
+      </p>
+    )
+  return (
+    <div className="grid gap-5">
+      {groups.map(({ kind, records: group }) => {
+        const ids = new Set(group.map((record) => record.id))
+        return (
+          <section key={kind} aria-label={IMPORT_KINDS[kind].label} className="grid gap-2">
+            <h3 className="text-body-sm font-medium">
+              {IMPORT_KINDS[kind].label}{' '}
+              <span className="font-normal text-muted-foreground tabular-nums">{group.length}</span>
+            </h3>
+            <ReviewTable
+              config={IMPORT_KINDS[kind]}
+              records={group}
+              selected={selected}
+              results={results}
+              // The table selects within its kind; keep the other kinds' ticks.
+              onSelect={(next) =>
+                onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
+              }
+              onEdit={onEdit}
+            />
+          </section>
+        )
+      })}
+    </div>
+  )
+}
 
 /** The records read from the files: tick the ones to create, fix the flagged ones first. */
 export function ReviewTable({

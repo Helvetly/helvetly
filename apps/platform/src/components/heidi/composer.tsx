@@ -13,7 +13,8 @@ import {
 } from 'lucide-react'
 import { useRef, type Ref } from 'react'
 
-import { FILE_TYPES, MAX_FILES, MAX_MESSAGE } from '@/lib/heidi'
+import { MAX_MESSAGE } from '@/lib/heidi'
+import { IMPORT_ACCEPT, MAX_IMPORT_FILES } from '@/lib/imports'
 
 import { withQuote } from './quote'
 
@@ -145,7 +146,7 @@ export function Composer({
           ref={picker}
           type="file"
           multiple
-          accept={FILE_TYPES.join(',')}
+          accept={IMPORT_ACCEPT}
           className="sr-only"
           tabIndex={-1}
           aria-hidden
@@ -159,7 +160,7 @@ export function Composer({
           variant="ghost"
           size="icon-sm"
           aria-label="Attach files"
-          disabled={files.length >= MAX_FILES}
+          disabled={files.length >= MAX_IMPORT_FILES}
           className="text-muted-foreground"
           onClick={() => picker.current?.click()}
         >

@@ -25,12 +25,14 @@ const file = (over: Partial<ImportFile> = {}): ImportFile => ({
   chunks_done: 1,
   chunks_total: 1,
   reused: false,
+  document_type: null,
   ...over,
 })
 
 const record = (id: string, over: Partial<ImportRecord> = {}): ImportRecord => ({
   id,
   file_id: 'imf_1',
+  kind: 'clients',
   status: 'pending',
   data: { name: 'Muster AG', email: 'info@muster.ch', city: 'Bern', country: 'CH' },
   issues: {},

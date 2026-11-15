@@ -9,6 +9,7 @@ import {
 const record = (data: unknown): unknown => ({
   id: 'imr_1',
   file_id: 'imf_1',
+  kind: 'invoices',
   status: 'pending',
   data,
   issues: { client_id: 'No client matches. Import the client first or pick one.' },

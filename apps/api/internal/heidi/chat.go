@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -26,21 +27,27 @@ type upload struct {
 	ID, Key          string // set by putUploads
 }
 
-func readInput(w http.ResponseWriter, r *http.Request) (string, string, []upload, error) {
+// input is one chat message: its text, the conversation, and either attachments or the import its files went to.
+type input struct {
+	conversation, message, importID string
+	files                           []upload
+}
+
+func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	r.Body = http.MaxBytesReader(w, r.Body, 4*maxFileBytes+1<<20)
 	if err := r.ParseMultipartForm(4 << 20); err != nil {
 		if r.MultipartForm != nil {
 			_ = r.MultipartForm.RemoveAll()
 		}
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			return "", "", nil, auth.Error(413, "payload_too_large", "Send at most four files of 8 MB each.", nil)
+			return input{}, auth.Error(413, "payload_too_large", "Send at most four files of 8 MB each.", nil)
 		}
-		return "", "", nil, auth.Error(400, "invalid_request", "Send a multipart message with at most four files of 8 MB each.", nil)
+		return input{}, auth.Error(400, "invalid_request", "Send a multipart message with at most four files of 8 MB each.", nil)
 	}
 	f := r.MultipartForm
-	bad := func(message string) (string, string, []upload, error) { return "", "", nil, invalid(message) }
+	bad := func(message string) (input, error) { return input{}, invalid(message) }
 	for k, v := range f.Value {
-		if !slices.Contains([]string{"message", "conversation_id", "page"}, k) || len(v) != 1 {
+		if !slices.Contains([]string{"message", "conversation_id", "page", "import_id"}, k) || len(v) != 1 {
 			return bad("The message contains repeated or unknown fields.")
 		}
 	}
@@ -65,11 +72,15 @@ func readInput(w http.ResponseWriter, r *http.Request) (string, string, []upload
 	if len(f.File["files[]"]) > 4 {
 		return bad("Send up to four attachments.")
 	}
+	importID := value("import_id")
+	if importID != "" && (!importIDPattern.MatchString(importID) || len(f.File["files[]"]) > 0) {
+		return bad("Send either attachments or the import their files went to.")
+	}
 	files := []upload{}
 	sums := map[string]string{}
 	for _, h := range f.File["files[]"] {
 		if h.Size <= 0 || h.Size > maxFileBytes {
-			return "", "", nil, auth.Error(413, "payload_too_large", "Each attachment must be nonempty and at most 8 MB.", nil)
+			return input{}, auth.Error(413, "payload_too_large", "Each attachment must be nonempty and at most 8 MB.", nil)
 		}
 		name := path.Base(strings.ReplaceAll(h.Filename, `\`, "/"))
 		if name == "." || name == "/" || !utf8.ValidString(name) || len(name) > 255 || strings.IndexFunc(name, unicode.IsControl) >= 0 {
@@ -77,32 +88,34 @@ func readInput(w http.ResponseWriter, r *http.Request) (string, string, []upload
 		}
 		file, err := h.Open()
 		if err != nil {
-			return "", "", nil, fmt.Errorf("open Heidi attachment: %w", err)
+			return input{}, fmt.Errorf("open Heidi attachment: %w", err)
 		}
 		head := make([]byte, 512)
 		n, readErr := file.Read(head)
 		closeErr := file.Close()
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			return "", "", nil, readErr
+			return input{}, readErr
 		}
 		if closeErr != nil {
-			return "", "", nil, closeErr
+			return input{}, closeErr
 		}
 		ct := http.DetectContentType(head[:n])
 		if !slices.Contains([]string{"application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"}, ct) {
-			return "", "", nil, auth.Error(400, "unsupported_file", "Use PDF, PNG, JPEG, WEBP or GIF attachments; the bytes must match a supported file type.", nil)
+			return input{}, auth.Error(400, "unsupported_file", "Use PDF, PNG, JPEG, WEBP or GIF attachments; the bytes must match a supported file type.", nil)
 		}
 		sum, err := uploads.Hash(h)
 		if err != nil {
-			return "", "", nil, err
+			return input{}, err
 		}
 		if err = uploads.CheckBatch(sums, sum, name); err != nil {
-			return "", "", nil, err
+			return input{}, err
 		}
 		files = append(files, upload{Header: h, Name: name, Type: ct, Hash: sum})
 	}
-	return id, message, files, nil
+	return input{conversation: id, message: message, importID: importID, files: files}, nil
 }
+
+var importIDPattern = regexp.MustCompile(`^imp_[A-Za-z0-9_-]{1,64}$`)
 
 func (s *Service) checkUploads(ctx context.Context, q store.Q, sess store.Session, files []upload) error {
 	if len(files) == 0 {
@@ -218,7 +231,8 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if !s.limit.Allow(r) {
 		return auth.Error(429, "rate_limited", "Wait before sending another message.", nil)
 	}
-	id, message, files, err := readInput(w, r)
+	in, err := readInput(w, r)
+	id, message, files := in.conversation, in.message, in.files
 	if r.MultipartForm != nil {
 		defer func() { _ = r.MultipartForm.RemoveAll() }()
 	}
@@ -231,6 +245,10 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	var result turn
 	err = s.db.Tx(r.Context(), func(q store.Q) error {
 		var e error
+		if in.importID != "" {
+			result, e = importTurn(r.Context(), q, sess, in.importID)
+			return e
+		}
 		result, e = s.answer(r.Context(), q, sess, id, message, len(files) > 0)
 		return e
 	})
@@ -298,7 +316,8 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			for _, f := range files {
 				user.Attachments = append(user.Attachments, f.Name)
 			}
-			assistant := Message{ID: auth.NewID("msg"), Role: "assistant", Text: result.Text, Actions: result.Actions, Records: result.Records, Form: result.Form, GeneratedBy: result.generatedBy()}
+			user.Attachments = append(user.Attachments, result.importFiles...)
+			assistant := Message{ID: auth.NewID("msg"), Role: "assistant", Text: result.Text, Actions: result.Actions, Records: result.Records, Form: result.Form, ImportID: result.ImportID, GeneratedBy: result.generatedBy()}
 			for _, m := range []Message{user, assistant} {
 				if err := q.AppendHeidiMessage(r.Context(), sess.Workspace.ID, sess.User.ID, id, m.ID, m, s.now()); err != nil {
 					return err

@@ -18,6 +18,7 @@ type Story = StoryObj<typeof meta>
 const record = (id: string, over: Partial<ImportRecord> = {}): ImportRecord => ({
   id,
   file_id: 'imf_1',
+  kind: 'expenses',
   status: 'pending',
   data: {
     supplier_name: 'Migros',
@@ -70,6 +71,7 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
       chunks_done: 1,
       chunks_total: 1,
       reused: false,
+      document_type: null,
     },
   ],
   records,

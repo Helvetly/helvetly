@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { errorMessage } from '@/lib/api'
 import { expenseKeys } from '@/lib/expenses'
 import {
+  goesToImport,
   heidiApi,
   readEvents,
   type HeidiAction,
@@ -15,6 +16,7 @@ import {
   type HeidiPage,
   type HeidiRecord,
 } from '@/lib/heidi'
+import { importsApi } from '@/lib/imports'
 import { invoiceKeys } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
 
@@ -29,6 +31,8 @@ export type ChatMessage = {
   /** Records the answer is about, shown as cards that open in place. */
   records?: HeidiRecord[]
   form?: HeidiForm
+  /** The import the answer follows: its progress and review show under it. */
+  importId?: string
   /** What Heidi is doing right now, while it streams. */
   status?: string
   /** The steps of this answer so far (status events), kept in this browser only. */
@@ -144,6 +148,7 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
             actions: message.actions ?? [],
             records: message.records,
             form: message.form,
+            importId: message.import_id,
             state: message.confirmation ? 'paused' : 'done',
             at: message.created_at ? new Date(message.created_at) : undefined,
           })),
@@ -206,6 +211,9 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
             case 'form':
               update(id, () => ({ form: event.form }))
               break
+            case 'import':
+              update(id, () => ({ importId: event.import_id }))
+              break
             case 'confirmation':
               outcome.ended = 'paused'
               update(id, () => ({ state: 'paused', status: undefined }))
@@ -224,7 +232,8 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
                   message.text.trim() ||
                   message.actions.length ||
                   message.records?.length ||
-                  message.form
+                  message.form ||
+                  message.importId
                     ? message.text
                     : EMPTY_ANSWER,
               }))
@@ -267,15 +276,20 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
 
   const post = useCallback(
     (assistantId: string, text: string, files: File[]) =>
-      run(assistantId, (signal) => {
+      run(assistantId, async (signal) => {
         const form = new FormData()
         form.set('message', text)
         form.set('conversation_id', conversationId)
         form.set('page', page)
-        for (const file of files) form.append('files[]', file)
+        if (goesToImport(text, files)) {
+          // The files go to an import that works out what they are; the answer then follows it.
+          update(assistantId, () => ({ status: 'Uploading files', steps: ['Uploading files'] }))
+          const batch = await importsApi.upload('auto', files)
+          form.set('import_id', batch.id)
+        } else for (const file of files) form.append('files[]', file)
         return heidiApi.chat(form, signal)
       }),
-    [run, conversationId, page],
+    [run, conversationId, page, update],
   )
 
   const send = useCallback(

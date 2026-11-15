@@ -21,6 +21,7 @@ import {
   commitSummary,
   conflictsOf,
   defaultSelection,
+  foundSummary,
   IMPORT_KINDS,
   importProblem,
   isClean,
@@ -32,7 +33,7 @@ import {
   useImportBatches,
   useUploadImport,
   type CommitResult,
-  type ImportKind,
+  type ImportTarget,
   type Resolution,
 } from '@/lib/imports'
 import { useSession } from '@/lib/queries'
@@ -40,15 +41,16 @@ import { useSession } from '@/lib/queries'
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
 import { DropZone, FileProgress } from './import-files'
-import { EditRecord, ReviewTable } from './import-review'
+import { EditRecord, GroupedReview, ReviewTable } from './import-review'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
  * content follows the batch. Closing keeps the batch; the next open offers to continue it.
  */
-export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () => void }) {
-  const config = IMPORT_KINDS[kind]
-  const noun = config.label.toLowerCase()
+export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: () => void }) {
+  // `auto`: the AI works out what each file is, and the review shows each kind's records under its own heading.
+  const config = kind === 'auto' ? null : IMPORT_KINDS[kind]
+  const noun = config ? config.label.toLowerCase() : 'records'
   const [files, setFiles] = useState(() => peekHandOff(kind))
   const [batchId, setBatchId] = useState<string | null>(null)
   // Set once the person chose: continue the unfinished batch, or start over.
@@ -153,8 +155,11 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () 
         {upload.error && <Problem error={upload.error} onRetry={read} />}
         <DropZone files={files} disabled={upload.isPending} onChange={setFiles} />
         <p className="text-[12.5px] text-pretty text-muted-foreground">
-          Heidi’s AI reads the files and suggests {noun}. You check and fix them first: nothing is
-          created until you choose rows and press Import. The files are kept in Documents.
+          {config
+            ? `Heidi’s AI reads the files and suggests ${noun}.`
+            : 'Heidi’s AI works out what each file is (an invoice you issued, a bill you received, a contract, a client or price list) and suggests the clients, invoices, engagements, expenses or products in it.'}{' '}
+          You check and fix them first: nothing is created until you choose rows and press Import.
+          The files are kept in Documents.
         </p>
       </div>
     )
@@ -194,7 +199,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () 
     body = (
       <EditRecord
         key={editingRecord.id}
-        config={config}
+        config={IMPORT_KINDS[editingRecord.kind]}
         batchId={batch.data.id}
         record={editingRecord}
         onDone={(saved) => {
@@ -210,17 +215,31 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () 
       <div className="grid gap-4">
         <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
         {open.some((record) => record.data.issued_elsewhere === true) && <DeclaredVatNote />}
-        <ReviewTable
-          config={config}
-          records={records}
-          selected={selected}
-          results={results}
-          onSelect={setPicked}
-          onEdit={setEditing}
-        />
+        {config ? (
+          <ReviewTable
+            config={config}
+            records={records}
+            selected={selected}
+            results={results}
+            onSelect={setPicked}
+            onEdit={setEditing}
+          />
+        ) : (
+          <GroupedReview
+            records={records}
+            selected={selected}
+            results={results}
+            onSelect={setPicked}
+            onEdit={setEditing}
+          />
+        )}
       </div>
     )
-    status = summary ?? `${chosen.length} of ${open.length} selected`
+    status =
+      summary ??
+      (config || !records.length
+        ? `${chosen.length} of ${open.length} selected`
+        : `Found ${foundSummary(records)} · ${chosen.length} selected`)
     error = commit.error ? errorMessage(commit.error) : null
     actions = (
       <>
@@ -257,9 +276,13 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () 
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
           <div className="grid min-w-0 gap-0.5">
-            <SheetTitle className="truncate text-lg font-semibold">Import {noun}</SheetTitle>
+            <SheetTitle className="truncate text-lg font-semibold">
+              {config ? `Import ${noun}` : 'Import documents'}
+            </SheetTitle>
             <SheetDescription className="text-[13px] text-pretty text-muted-foreground">
-              From spreadsheets, PDFs, photos or Word files, read by AI and checked by you.
+              {config
+                ? 'From spreadsheets, PDFs, photos or Word files, read by AI and checked by you.'
+                : 'Drop invoices, bills, contracts or lists, even as a ZIP: the AI sorts them, you check.'}
             </SheetDescription>
           </div>
           <Tooltip>
@@ -296,7 +319,12 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportKind; onClose: () 
         {conflicts.length > 0 && (
           <ImportConflicts
             key={conflicts.map((entry) => entry.id).join()}
-            config={config}
+            config={
+              config ??
+              IMPORT_KINDS[
+                records.find((record) => record.id === conflicts[0]?.id)?.kind ?? 'invoices'
+              ]
+            }
             records={records}
             conflicts={conflicts}
             pending={commit.isPending}

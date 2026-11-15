@@ -15,7 +15,21 @@ export type ImportFile = {
   chunks_done: number
   chunks_total: number | null
   reused: boolean
+  /** What the AI recognised the file as, in an import that works it out (`auto`). */
+  document_type: DocumentType | null
 }
+
+/** The document types an `auto` import tells apart. */
+export const DOCUMENT_TYPES = {
+  sales_invoice: 'Invoice you issued',
+  bill: 'Bill you received',
+  contract: 'Contract',
+  client_list: 'Client list',
+  product_list: 'Price list',
+  other: 'Not recognised',
+} as const
+
+export type DocumentType = keyof typeof DOCUMENT_TYPES
 
 /** One line of an imported invoice, as the model read it. */
 export type ImportLine = Record<string, string | number | boolean>
@@ -25,6 +39,8 @@ export type ImportValue = string | number | boolean | ImportLine[]
 export type ImportRecord = {
   id: string
   file_id: string
+  /** The record's own kind: the batch's, or the one the AI chose in an `auto` import. */
+  kind: ImportKind
   /** skipped: the person left it out (a number conflict they did not overwrite). */
   status: 'pending' | 'created' | 'failed' | 'skipped'
   data: Record<string, ImportValue>
@@ -34,9 +50,12 @@ export type ImportRecord = {
   error: string | null
 }
 
+/** What a batch imports: one kind, or `auto`, where the AI works out what each file is. */
+export type ImportTarget = ImportKind | 'auto'
+
 export type ImportBatch = {
   id: string
-  kind: ImportKind
+  kind: ImportTarget
   status: 'extracting' | 'review'
   created_at: string
   files: ImportFile[]
@@ -45,7 +64,7 @@ export type ImportBatch = {
 
 export type ImportSummary = {
   id: string
-  kind: ImportKind
+  kind: ImportTarget
   status: 'extracting' | 'review'
   created_at: string
   pending: number
@@ -305,6 +324,9 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isNullableString = (value: unknown) => value === null || isString(value)
 const isBatchStatus = (value: unknown) => value === 'extracting' || value === 'review'
 const isKind = (value: unknown): value is ImportKind => isString(value) && isImportKind(value)
+const isTarget = (value: unknown): value is ImportTarget => value === 'auto' || isKind(value)
+const isDocumentType = (value: unknown) =>
+  value === null || value === undefined || (isString(value) && value in DOCUMENT_TYPES)
 
 function isFile(value: unknown): value is ImportFile {
   return (
@@ -316,7 +338,8 @@ function isFile(value: unknown): value is ImportFile {
     isNullableString(value.error) &&
     typeof value.chunks_done === 'number' &&
     (value.chunks_total === null || typeof value.chunks_total === 'number') &&
-    typeof value.reused === 'boolean'
+    typeof value.reused === 'boolean' &&
+    isDocumentType(value.document_type)
   )
 }
 
@@ -338,6 +361,7 @@ export function isImportRecord(value: unknown): value is ImportRecord {
     isObject(value) &&
     isString(value.id) &&
     isString(value.file_id) &&
+    isKind(value.kind) &&
     ['pending', 'created', 'failed', 'skipped'].includes(String(value.status)) &&
     isObject(value.data) &&
     Object.values(value.data).every(isValue) &&
@@ -353,7 +377,7 @@ export function isImportBatch(value: unknown): value is ImportBatch {
   return (
     isObject(value) &&
     isString(value.id) &&
-    isKind(value.kind) &&
+    isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
     Array.isArray(value.files) &&
@@ -367,7 +391,7 @@ function isSummary(value: unknown): value is ImportSummary {
   return (
     isObject(value) &&
     isString(value.id) &&
-    isKind(value.kind) &&
+    isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
     typeof value.pending === 'number'
@@ -422,13 +446,13 @@ export type RecordChanges = Record<string, string | boolean | null>
 export type CommitInput = { recordIds: string[]; resolutions?: Record<string, Resolution> }
 
 export const importsApi = {
-  upload: async (kind: ImportKind, files: File[]) => {
+  upload: async (kind: ImportTarget, files: File[]) => {
     const form = new FormData()
     form.append('kind', kind)
     for (const file of files) form.append('files[]', file)
     return dataOf(await request<unknown>('/imports', { method: 'POST', form }), isImportBatch)
   },
-  list: async (kind: ImportKind) =>
+  list: async (kind: ImportTarget) =>
     dataOf(await request<unknown>(`/imports?${new URLSearchParams({ kind })}`), isSummaries),
   get: async (id: string) => dataOf(await request<unknown>(path(id)), isImportBatch),
   patchRecord: async (id: string, recordId: string, data: RecordChanges) =>
@@ -451,7 +475,7 @@ export const importsApi = {
 }
 
 export const importKeys = {
-  list: (kind: ImportKind) => ['imports', 'list', kind] as const,
+  list: (kind: ImportTarget) => ['imports', 'list', kind] as const,
   batch: (id: string) => ['imports', 'batch', id] as const,
 }
 
@@ -459,7 +483,7 @@ export const importKeys = {
 export const pollInterval = (batch: ImportBatch | undefined) =>
   batch?.status === 'extracting' ? 2000 : false
 
-export function useImportBatches(kind: ImportKind) {
+export function useImportBatches(kind: ImportTarget) {
   return useQuery({
     queryKey: importKeys.list(kind),
     queryFn: () => importsApi.list(kind),
@@ -477,7 +501,7 @@ export function useImportBatch(id: string | null) {
   })
 }
 
-export function useUploadImport(kind: ImportKind) {
+export function useUploadImport(kind: ImportTarget) {
   const queryClient = useQueryClient()
   return useMutation<ImportBatch, ApiError, File[]>({
     mutationFn: (files) => importsApi.upload(kind, files),
@@ -504,19 +528,20 @@ export function usePatchImportRecord(batchId: string) {
   })
 }
 
-export function useCommitImport(kind: ImportKind, batchId: string) {
+export function useCommitImport(kind: ImportTarget, batchId: string) {
   const queryClient = useQueryClient()
   return useMutation<{ results: CommitResult[]; batch: ImportBatch }, ApiError, CommitInput>({
     mutationFn: (input) => importsApi.commit(batchId, input),
     onSuccess: ({ batch }) => {
       queryClient.setQueryData(importKeys.batch(batch.id), batch)
       void queryClient.invalidateQueries({ queryKey: importKeys.list(kind) })
-      void queryClient.invalidateQueries({ queryKey: IMPORT_KINDS[kind].listKey })
+      for (const target of kind === 'auto' ? Object.values(IMPORT_KINDS) : [IMPORT_KINDS[kind]])
+        void queryClient.invalidateQueries({ queryKey: target.listKey })
     },
   })
 }
 
-export function useDiscardImport(kind: ImportKind) {
+export function useDiscardImport(kind: ImportTarget) {
   const queryClient = useQueryClient()
   return useMutation<void, ApiError, string>({
     mutationFn: importsApi.discard,
@@ -543,6 +568,32 @@ export const defaultSelection = (records: ImportRecord[]) =>
 /** The newest batch worth reopening: still being read, or with records not created yet. */
 export const resumable = (batches: ImportSummary[]) =>
   batches.find((batch) => batch.pending > 0 || batch.status === 'extracting') ?? null
+
+/** The records of an `auto` import by kind, in the order the review shows them (and a commit creates them). */
+export function recordsByKind(records: ImportRecord[]) {
+  const order: ImportKind[] = ['clients', 'products', 'invoices', 'engagements', 'expenses']
+  return order
+    .map((kind) => ({ kind, records: records.filter((record) => record.kind === kind) }))
+    .filter((group) => group.records.length > 0)
+}
+
+/** "5 invoices, 5 clients and 1 engagement": what an `auto` import found, for a summary line. */
+export function foundSummary(records: ImportRecord[]) {
+  const parts = recordsByKind(records).map(({ kind, records: list }) => {
+    const noun = IMPORT_KINDS[kind].label.toLowerCase()
+    return `${list.length} ${list.length === 1 ? (SINGULAR[kind] ?? noun) : noun}`
+  })
+  if (parts.length < 2) return parts.join('')
+  return `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+}
+
+const SINGULAR: Partial<Record<ImportKind, string>> = {
+  clients: 'client',
+  products: 'product or service',
+  invoices: 'invoice',
+  engagements: 'engagement',
+  expenses: 'expense',
+}
 
 /** "8 created, 1 skipped, 2 need attention" after a commit. */
 export function commitSummary(results: CommitResult[]) {

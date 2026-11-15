@@ -84,6 +84,9 @@ type Source struct {
 	// Keep stores a copy of the file's bytes as an object of the record's own at key and returns its size and SHA-256.
 	// The engine deletes the copy again when the record's transaction fails.
 	Keep func(ctx context.Context, key string) (size int64, sum string, err error)
+	// Document returns DocumentID, or for a ZIP entry stores the entry as a Document of its own (reusing equal bytes
+	// already in the workspace) and returns its id.
+	Document func(ctx context.Context) (string, error)
 }
 
 func (k Kind) labelField() string {

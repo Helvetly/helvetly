@@ -12,7 +12,8 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
-import { FILE_TYPES, MAX_FILE_BYTES, MAX_FILES, type HeidiPage } from '@/lib/heidi'
+import { addFiles as addImportFiles } from '@/components/import/import-files'
+import { chatReadable, importable, type HeidiPage } from '@/lib/heidi'
 import { useShortcut } from '@/lib/shortcuts'
 
 import { useHeidiChat, type HeidiChat } from './use-heidi'
@@ -121,14 +122,14 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
   )
 
   const addFiles = useCallback((incoming: File[]) => {
-    const accepted = incoming.filter(
-      (file) => FILE_TYPES.includes(file.type) && file.size <= MAX_FILE_BYTES,
-    )
-    if (accepted.length < incoming.length) toast.error('Heidi reads images and PDFs up to 8 MB.')
+    // Images and PDFs Heidi reads itself; anything an import reads (a ZIP, a spreadsheet) goes to one when sent.
+    const accepted = incoming.filter((file) => chatReadable(file) || importable(file))
+    if (accepted.length < incoming.length)
+      toast.error('Heidi takes PDFs, photos, Excel, Word, CSV or a ZIP of them.')
     setFiles((current) => {
-      const next = [...current, ...accepted]
-      if (next.length > MAX_FILES) toast.error(`Up to ${MAX_FILES} files per message.`)
-      return next.slice(0, MAX_FILES)
+      const { files: next, note } = addImportFiles(current, accepted)
+      if (note) toast.error(note)
+      return next
     })
   }, [])
 

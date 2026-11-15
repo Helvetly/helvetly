@@ -24,7 +24,9 @@ var invoicesKind = Kind{
 		"Amounts are decimals with a dot and no currency symbol or thousands separator (\"1250.50\"). price_basis is gross " +
 		"when the line prices include VAT, net otherwise. A line's vat_rate is the percentage (\"8.1\"), never an amount; " +
 		"vat_category is S for a taxed line, Z for zero-rated, E for exempt, AE for reverse charge, O when outside VAT. " +
-		"unit is one of hour, day, piece, month, km, flat. total is the grand total the document states. Guess nothing: " +
+		"unit is one of hour, day, piece, month, km, flat. A discount is never a line: a discount on the whole invoice is " +
+		"discount_percent (\"15\"), one on a single line is that line's discount_percent; a discount stated only as an amount " +
+		"is the percentage of the subtotal it represents, rounded to two decimals. total is the grand total the document states. Guess nothing: " +
 		"a field the document does not carry is null. client_id is always null. issued_elsewhere is true when the document " +
 		"is a finished invoice the seller issued, carrying its own invoice number; false for a quote, order, proforma or draft. " +
 		"paid_amount and paid_on only when the document states a payment already received, else null.",
@@ -42,17 +44,19 @@ var invoicesKind = Kind{
 		"currency":          nullable("string", "ISO 4217 currency code"),
 		"price_basis":       nullable("string", "net or gross"),
 		"total":             nullable("string", "Grand total stated on the document, e.g. 1081.00"),
+		"discount_percent":  nullable("string", "Discount on the whole invoice in percent, e.g. 15"),
 		"issued_elsewhere":  nullable("boolean", "true for a finished invoice the seller issued with its own number"),
 		"paid_amount":       nullable("string", "Amount the document says was already paid, e.g. 500.00"),
 		"paid_on":           nullable("string", "Date that amount was paid, YYYY-MM-DD"),
 		"lines": map[string]any{"type": []string{"array", "null"}, "description": "The invoice lines, in order",
 			"items": record(map[string]any{
-				"description":  nullable("string", "What was sold"),
-				"quantity":     nullable("string", "Quantity, e.g. 2 or 1.5"),
-				"unit":         nullable("string", "hour, day, piece, month, km or flat"),
-				"unit_price":   nullable("string", "Price of one unit, e.g. 120.50"),
-				"vat_category": nullable("string", "S, Z, E, AE, K, G or O"),
-				"vat_rate":     nullable("string", "VAT rate in percent, e.g. 8.1"),
+				"description":      nullable("string", "What was sold"),
+				"quantity":         nullable("string", "Quantity, e.g. 2 or 1.5"),
+				"unit":             nullable("string", "hour, day, piece, month, km or flat"),
+				"unit_price":       nullable("string", "Price of one unit, e.g. 120.50"),
+				"discount_percent": nullable("string", "Discount on this line in percent, e.g. 10"),
+				"vat_category":     nullable("string", "S, Z, E, AE, K, G or O"),
+				"vat_rate":         nullable("string", "VAT rate in percent, e.g. 8.1"),
 			})},
 	}),
 	Check: func(ctx context.Context, q store.Q, workspaceID string, data Data) (map[string]string, error) {
@@ -82,7 +86,11 @@ var invoicesKind = Kind{
 		if err != nil {
 			return "", err
 		}
-		return invoices.CreateImport(ctx, q, sess, clientID, data, src.DocumentID)
+		doc, err := original(ctx, data, src)
+		if err != nil {
+			return "", err
+		}
+		return invoices.CreateImport(ctx, q, sess, clientID, data, doc)
 	},
 	Conflict: func(ctx context.Context, q store.Q, workspaceID string, data Data) (*store.ImportConflict, error) {
 		return invoices.NumberConflict(ctx, q, workspaceID, data)
@@ -92,8 +100,25 @@ var invoicesKind = Kind{
 		if err != nil {
 			return "", err
 		}
-		return invoices.OverwriteImport(ctx, q, sess, id, clientID, data, src.DocumentID)
+		doc, err := original(ctx, data, src)
+		if err != nil {
+			return "", err
+		}
+		return invoices.OverwriteImport(ctx, q, sess, id, clientID, data, doc)
 	},
+}
+
+// original is the Document an invoice issued elsewhere keeps as its original: the upload's, or for a ZIP entry one
+// stored for it now. A draft import links the upload's Document only.
+func original(ctx context.Context, data Data, src Source) (*string, error) {
+	if src.DocumentID != nil || string(data["issued_elsewhere"]) != "true" || src.Document == nil {
+		return src.DocumentID, nil
+	}
+	id, err := src.Document(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 // importedClient: the client the person picked, else the live client with the document's buyer name, VAT number or
