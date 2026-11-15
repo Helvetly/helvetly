@@ -9,7 +9,8 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 
-import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
+import { type ApiError, request } from '@/lib/api'
+import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 
 export type AddressField = 'street' | 'street_number' | 'zip' | 'city' | 'country'
 export type ElectronicAddress = { scheme: string; id: string }
@@ -494,43 +495,13 @@ export const rejectChangeRequest = (clientId: string, reason: string) =>
 /** Who may delete clients (members can read, create, edit and attach files). */
 export const canDeleteClients = (role: string | undefined) => role === 'owner' || role === 'admin'
 
-/** Uploads files with progress (0–1); rejects with the server's error, e.g. an unsupported type. */
+/** Uploads files in packs under 95 MB with one progress (0–1); rejects with the server's error, e.g. an unsupported type. */
 export function uploadClientFiles(
   id: string,
   files: File[],
   onProgress: (share: number) => void,
 ): Promise<ClientFile[]> {
-  const form = new FormData()
-  for (const file of files) form.append('files[]', file)
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api/v1${path(id)}/files`)
-    xhr.setRequestHeader('Accept', 'application/json')
-    const token = getCsrfToken()
-    if (token) xhr.setRequestHeader('X-CSRF-Token', token)
-    xhr.responseType = 'json'
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total)
-    })
-    xhr.addEventListener('load', () => {
-      const body: unknown = xhr.response
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const data = (body as { data?: ClientFile[] } | null)?.data
-        resolve(Array.isArray(data) ? data : [])
-      } else {
-        // A refused batch says why in details.fields.files (type, size, count).
-        const error = errorFromBody(xhr.status, body)
-        const fields = error.details.fields
-        const reason =
-          typeof fields === 'object' && fields !== null && 'files' in fields ? fields.files : null
-        reject(typeof reason === 'string' ? new ApiError(error.status, error.code, reason) : error)
-      }
-    })
-    xhr.addEventListener('error', () =>
-      reject(new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')),
-    )
-    xhr.send(form)
-  })
+  return uploadInPacks<ClientFile>(`/api/v1${path(id)}/files`, files, MAX_FILE_BYTES, onProgress)
 }
 
 export type EInvoiceFormat = 'none' | 'xrechnung_ubl' | 'xrechnung_cii' | 'peppol'

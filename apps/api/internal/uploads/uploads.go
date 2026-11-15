@@ -17,6 +17,14 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
+// MaxFileBytes is the largest file any upload entry point stores (smaller purpose-specific caps, such as photos,
+// stay lower).
+const MaxFileBytes = 25 << 20
+
+// MaxRequestBytes bounds one upload request: Cloudflare's proxy refuses bodies over 100 MB, so the app sends at most
+// 95 MiB of files per request, plus headroom for the multipart framing (99.7 MB in all).
+const MaxRequestBytes = 95<<20 + 64<<10
+
 // Cleanup must outlive a canceled request, but a storage failure must not leave the handler hanging.
 func CleanupContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)

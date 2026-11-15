@@ -111,3 +111,23 @@ func TestReceiptBatchRejectsIdenticalFilesBeforeStorage(t *testing.T) {
 		t.Fatalf("duplicate batch: %d %s, objects %d", response.StatusCode, raw, e.files.count())
 	}
 }
+
+// Receipts of up to 25 MB each, but no request over the 95 MB the frontend packs, under Cloudflare's 100 MB.
+func TestReceiptRequestLimit(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	x := e.create(b, complete(e.categories(b)["6640"].ID))
+	filler := bytes.Repeat([]byte("x"), maxFileSize-512<<10)
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	for i := range 5 {
+		part, _ := mw.CreateFormFile("files[]", "part.pdf")
+		_, _ = part.Write(append([]byte("%PDF-1.7\n"+string(rune('a'+i))), filler...))
+	}
+	_ = mw.Close()
+	response, raw := e.send(b, "POST", "/api/v1/expenses/"+x.ID+"/receipts", &body, mw.FormDataContentType())
+	if response.StatusCode != http.StatusRequestEntityTooLarge || !strings.Contains(string(raw), "payload_too_large") ||
+		!strings.Contains(string(raw), "95 MB") || e.files.count() != 0 {
+		t.Fatalf("over the request limit: %d %s, objects %d", response.StatusCode, raw, e.files.count())
+	}
+}

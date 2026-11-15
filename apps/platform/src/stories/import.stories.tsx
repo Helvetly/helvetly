@@ -1,3 +1,4 @@
+import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
@@ -115,9 +116,34 @@ export const Empty: Story = {
   play: async () => {
     await opened()
     await expect(body().getByText(/nothing is created until you choose rows/)).toBeVisible()
-    await expect(body().getByText(/Up to 10 files of 10 MB each/)).toBeVisible()
+    await expect(body().getByText(/Up to 10 files of 25 MB each/)).toBeVisible()
     await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
     await expect(body().queryByRole('button', { name: /^Continue the import/ })).toBeNull()
+  },
+}
+
+/** A file over 25 MB is refused before upload in a toast, so the zone and the list below do not move. */
+export const TooLarge: Story = {
+  parameters: { msw: { handlers: [sessionHandler(), noBatches] } },
+  render: () => (
+    <>
+      <ImportDrawer kind="clients" onClose={() => {}} />
+      <Toaster />
+    </>
+  ),
+  play: async () => {
+    await opened()
+    const zone = body().getByLabelText('Choose files to import')
+    const top = zone.getBoundingClientRect().top
+    await userEvent.upload(zone, [
+      new File(['a,b'], 'clients.csv', { type: 'text/csv' }),
+      new File([new Uint8Array(25 * 1024 * 1024 + 1)], 'scan.pdf', { type: 'application/pdf' }),
+    ])
+    await expect(await body().findByText('scan.pdf is over 25 MB.')).toBeInTheDocument()
+    const chosen = body().getByRole('list', { name: 'Chosen files' })
+    await expect(within(chosen).getByText('clients.csv')).toBeVisible()
+    await expect(within(chosen).queryByText('scan.pdf')).toBeNull()
+    await expect(zone.getBoundingClientRect().top).toBe(top)
   },
 }
 

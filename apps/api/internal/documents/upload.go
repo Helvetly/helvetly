@@ -22,7 +22,7 @@ func contentDisposition(kind, name string) string {
 func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	limitMB := s.maxSize >> 20
 	tooLarge := refuse(http.StatusRequestEntityTooLarge, "payload_too_large", fmt.Sprintf("Upload files of up to %d MB.", limitMB), nil)
-	r.Body = http.MaxBytesReader(w, r.Body, s.maxSize+1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, min(s.maxSize+1<<20, uploads.MaxRequestBytes))
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			return tooLarge

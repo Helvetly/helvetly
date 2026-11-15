@@ -20,6 +20,8 @@ export default function config(phase: string): NextConfig {
       ...base,
       ...(process.env.HELVETLY_E2E_NEXT_DIST ? { distDir: '.next-e2e' } : {}),
       rewrites: async () => [{ source: '/api/:path*', destination: `${apiUrl}/api/:path*` }],
+      // The proxy buffers 10 MB by default; uploads send up to 95 MB per request, which the API checks itself.
+      experimental: { proxyClientMaxBodySize: '100mb' },
       // msw/browser has no `node` export, so the SSR pass of the dev server can't resolve it
       // even though it only runs in the browser; point both passes at the browser build.
       turbopack: { resolveAlias: { 'msw/browser': './node_modules/msw/lib/browser/index.js' } },

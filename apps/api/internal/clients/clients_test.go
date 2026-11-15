@@ -833,3 +833,29 @@ func TestFiles(t *testing.T) {
 	}
 	e.fails(b, "GET", base+"/"+created.Data[1].ID, nil, 404, "not_found")
 }
+
+// Files of up to 25 MB each, but no request over the 95 MB the frontend packs, under Cloudflare's 100 MB.
+func TestFilesRequestLimit(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	c := e.create(b, map[string]any{"name": "Big files AG"})
+	filler := strings.Repeat("x", maxFileSize-512<<10)
+	files := make([][2]string, 5)
+	for i := range files {
+		files[i] = [2]string{fmt.Sprintf("part-%d.pdf", i), fmt.Sprintf("%%PDF-1.7\n%d", i) + filler}
+	}
+	body, ct := multipartBody(t, files...)
+	resp, raw := e.send(b, "POST", "/api/v1/clients/"+c.ID+"/files", body, ct)
+	var out apiErr
+	if err := json.Unmarshal(raw, &out); err != nil || resp.StatusCode != http.StatusRequestEntityTooLarge ||
+		out.Error.Code != "payload_too_large" || !strings.Contains(string(raw), "95 MB") {
+		t.Fatalf("over the request limit: %d %s", resp.StatusCode, raw)
+	}
+	if n := len(e.files.keys()); n != 0 {
+		t.Fatalf("%d objects stored", n)
+	}
+	body, ct = multipartBody(t, files[:3]...) // 73.5 MB in one request still fits
+	if resp, raw := e.send(b, "POST", "/api/v1/clients/"+c.ID+"/files", body, ct); resp.StatusCode != http.StatusCreated {
+		t.Fatalf("under the request limit: %d %s", resp.StatusCode, raw)
+	}
+}

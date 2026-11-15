@@ -6,6 +6,7 @@ import { formatFileSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { AlertCircle, CheckCircle2, Clock, FileText, Loader2, Upload, X } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 import {
   IMPORT_ACCEPT,
@@ -14,17 +15,20 @@ import {
   MAX_IMPORT_FILES,
   type ImportFile,
 } from '@/lib/imports'
+import { MAX_REQUEST_BYTES } from '@/lib/upload-packs'
 
 const sameFile = (a: File, b: File) =>
   a.name === b.name && a.size === b.size && a.lastModified === b.lastModified
 
-/** Adds `picked` to `chosen`: no repeats, at most 10, none over 10 MB; says what it left out. */
+/** Adds `picked` to `chosen`: no repeats, at most 10, none over 25 MB, 95 MB in all; says what it left out. */
 export function addFiles(chosen: File[], picked: File[]): { files: File[]; note: string | null } {
   const files = [...chosen]
   const notes: string[] = []
   for (const file of picked) {
     if (files.some((entry) => sameFile(entry, file))) continue
-    if (file.size > MAX_IMPORT_FILE_BYTES) notes.push(`${file.name} is over 10 MB.`)
+    const total = files.reduce((sum, entry) => sum + entry.size, file.size)
+    if (file.size > MAX_IMPORT_FILE_BYTES) notes.push(`${file.name} is over 25 MB.`)
+    else if (total > MAX_REQUEST_BYTES) notes.push(`${file.name} would take the upload over 95 MB.`)
     else if (files.length >= MAX_IMPORT_FILES) {
       notes.push(`Up to ${MAX_IMPORT_FILES} files at a time.`)
       break
@@ -44,10 +48,10 @@ export function DropZone({
   onChange: (files: File[]) => void
 }) {
   const [over, setOver] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
   const add = (picked: File[]) => {
     const next = addFiles(files, picked)
-    setNote(next.note)
+    // A toast, not an inline line, so a refused file does not move the list below.
+    if (next.note) toast.error(next.note)
     onChange(next.files)
   }
 
@@ -61,8 +65,8 @@ export function DropZone({
         <Upload className="size-5 stroke-[1.5] text-muted-foreground" />
         <p className="text-[14px] font-medium">Drop files here or click to choose</p>
         <p className="max-w-[46ch] text-[12.5px] text-pretty text-muted-foreground">
-          {IMPORT_FILE_TYPES}. Up to {MAX_IMPORT_FILES} files of 10 MB each; a ZIP is opened one
-          level deep.
+          {IMPORT_FILE_TYPES}. Up to {MAX_IMPORT_FILES} files of 25 MB each, 95 MB in all; a ZIP is
+          opened one level deep.
         </p>
         <input
           type="file"
@@ -81,11 +85,6 @@ export function DropZone({
           className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-default"
         />
       </div>
-      {note && (
-        <p role="alert" className="text-[12.5px] text-destructive">
-          {note}
-        </p>
-      )}
       {files.length > 0 && (
         <ul aria-label="Chosen files" className="grid divide-y rounded-lg border">
           {files.map((file) => (

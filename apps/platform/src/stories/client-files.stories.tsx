@@ -35,6 +35,7 @@ const logo: ClientFile = {
 
 const uploaded = fn()
 const deleted = fn()
+const requests = fn()
 
 const handlers = (initial: ClientFile[]) => {
   let files = initial
@@ -43,6 +44,7 @@ const handlers = (initial: ClientFile[]) => {
     http.get('/api/v1/clients/cli_1/files', () => HttpResponse.json({ data: files })),
     http.post('/api/v1/clients/cli_1/files', async ({ request }) => {
       const form = await request.formData()
+      requests(form.getAll('files[]').length)
       const added = form.getAll('files[]').map((entry, index) => {
         const name = entry instanceof File ? entry.name : String(entry)
         uploaded(name)
@@ -120,7 +122,7 @@ export const RowActions: Story = {
     await userEvent.hover(files.getByRole('button', { name: 'Upload' }))
     await expect(
       await body.findByRole('tooltip', {
-        name: 'PDF, images, Office, CSV or text · up to 20 MB each',
+        name: 'PDF, images, Office, CSV or text · up to 25 MB each',
       }),
     ).toBeInTheDocument()
   },
@@ -158,6 +160,71 @@ export const Upload: Story = {
     await waitFor(() => expect(uploaded).toHaveBeenCalledWith('Offer.pdf'))
     await expect(await files.findByText('Offer.pdf')).toBeVisible()
     await expect(await body.findByText('Offer.pdf uploaded.')).toBeInTheDocument()
+  },
+}
+
+const MB = 1024 * 1024
+/** Distinct files of almost 20 MB each: five of them pass the 95 MB that one request may carry. */
+const bigFiles = (count: number) =>
+  Array.from(
+    { length: count },
+    (_, i) =>
+      new File([new Uint8Array(19.5 * MB - i)], `Scan ${i + 1}.pdf`, { type: 'application/pdf' }),
+  )
+
+/** Over 95 MB in all: the files go in two requests under Cloudflare's 100 MB, with one progress and one toast. */
+export const UploadInPacks: Story = {
+  parameters: { msw: { handlers: handlers([]) } },
+  play: async () => {
+    uploaded.mockClear()
+    requests.mockClear()
+    const files = await panel()
+    await files.findByText('No files yet')
+    await userEvent.upload(files.getByLabelText('Upload files'), bigFiles(5))
+    await expect(
+      await body.findByText('5 files uploaded.', {}, { timeout: 10_000 }),
+    ).toBeInTheDocument()
+    await expect(requests.mock.calls).toEqual([[4], [1]])
+    await expect(await files.findByText('Scan 5.pdf')).toBeVisible()
+  },
+}
+
+/** The same bytes twice, in different packs: refused before anything is sent, with the server's same-batch message. */
+export const DuplicateAcrossPacks: Story = {
+  parameters: { msw: { handlers: handlers([]) } },
+  play: async () => {
+    requests.mockClear()
+    const files = await panel()
+    await files.findByText('No files yet')
+    const picked = bigFiles(5)
+    const first = picked[0]
+    if (!first) throw new Error('No files')
+    const copy = new File([first], 'Scan 1 copy.pdf', { type: 'application/pdf' })
+    await userEvent.upload(files.getByLabelText('Upload files'), [...picked, copy])
+    await expect(
+      await body.findByText(
+        'Scan 1 copy.pdf contains the same file as Scan 1.pdf.',
+        {},
+        { timeout: 10_000 },
+      ),
+    ).toBeInTheDocument()
+    await expect(requests).not.toHaveBeenCalled()
+  },
+}
+
+/** A file over 25 MB is refused before anything is sent. */
+export const TooLarge: Story = {
+  parameters: { msw: { handlers: handlers([]) } },
+  play: async () => {
+    requests.mockClear()
+    const files = await panel()
+    await files.findByText('No files yet')
+    await userEvent.upload(files.getByLabelText('Upload files'), [
+      new File(['ok'], 'Small.pdf', { type: 'application/pdf' }),
+      new File([new Uint8Array(25 * MB + 1)], 'Huge.pdf', { type: 'application/pdf' }),
+    ])
+    await expect(await body.findByText('Huge.pdf is larger than 25 MB.')).toBeInTheDocument()
+    await expect(requests).not.toHaveBeenCalled()
   },
 }
 

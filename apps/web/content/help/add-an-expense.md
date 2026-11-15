@@ -9,7 +9,7 @@ updated: 2026-11-11
 Keep every business cost together with its receipt.
 
 1. Go to **Expenses** and click **New expense**.
-2. Under **Receipt**, drop the receipt file or click to choose it. A PDF or photo works, up to 20 MB.
+2. Under **Receipt**, drop the receipt file or click to choose it. A PDF or photo works, up to 25 MB each.
 3. Under **Details**, fill in the **Supplier**, **Receipt date**, **Category** and **What for**. Under **Amounts**, enter the lines **Incl. VAT** or **Excl. VAT**.
 4. Under **Input tax**, choose how much VAT is reclaimable: **Full**, **Partial** or **None**.
 5. Under **Payment**, choose **Paid** or **Not paid yet**. If you paid it yourself, turn on **I paid this myself**.

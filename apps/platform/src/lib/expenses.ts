@@ -9,10 +9,11 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 
-import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
+import { type ApiError, request } from '@/lib/api'
 import type { ClientFile, Page } from '@/lib/clients'
 import type { Decimal, PaymentMethod } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
+import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 
 export type ExpenseStatus = 'draft' | 'booked' | 'void'
 export type AmountMode = 'gross' | 'net'
@@ -456,35 +457,5 @@ export function uploadReceipts(
   files: File[],
   onProgress: (share: number) => void,
 ): Promise<Receipt[]> {
-  const form = new FormData()
-  for (const file of files) form.append('files[]', file)
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api/v1${path(id)}/receipts`)
-    xhr.setRequestHeader('Accept', 'application/json')
-    const token = getCsrfToken()
-    if (token) xhr.setRequestHeader('X-CSRF-Token', token)
-    xhr.responseType = 'json'
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total)
-    })
-    xhr.addEventListener('load', () => {
-      const body: unknown = xhr.response
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const data =
-          typeof body === 'object' && body !== null && 'data' in body ? body.data : undefined
-        resolve(Array.isArray(data) ? data : [])
-        return
-      }
-      const error = errorFromBody(xhr.status, body)
-      const fields = error.details.fields
-      const reason =
-        typeof fields === 'object' && fields !== null && 'files' in fields ? fields.files : null
-      reject(typeof reason === 'string' ? new ApiError(error.status, error.code, reason) : error)
-    })
-    xhr.addEventListener('error', () =>
-      reject(new ApiError(0, 'network_error', 'Cannot reach Helvetly. Check your connection.')),
-    )
-    xhr.send(form)
-  })
+  return uploadInPacks<Receipt>(`/api/v1${path(id)}/receipts`, files, MAX_FILE_BYTES, onProgress)
 }

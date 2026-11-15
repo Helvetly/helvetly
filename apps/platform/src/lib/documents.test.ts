@@ -13,6 +13,7 @@ import {
   parseView,
   pathTo,
   presetFrom,
+  uploadDocument,
   viewToQuery,
   withStar,
   type Folder,
@@ -151,5 +152,17 @@ describe('withStar', () => {
     expect(
       withStar(withStar(folders, 'b', true), 'b', false).every((entry) => !entry.starred),
     ).toBe(true)
+  })
+})
+
+describe('uploadDocument', () => {
+  it('refuses a file over 25 MB before sending it, with the API’s message', async () => {
+    const big = new File(['x'], 'scan.pdf')
+    Object.defineProperty(big, 'size', { value: 25 * 1024 * 1024 + 1 })
+    await expect(uploadDocument(big, { folderId: null }, () => {})).rejects.toMatchObject({
+      status: 413,
+      code: 'payload_too_large',
+      message: 'Upload files of up to 25 MB.',
+    })
   })
 })

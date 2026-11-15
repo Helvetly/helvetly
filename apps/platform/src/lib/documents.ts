@@ -12,6 +12,7 @@ import {
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { queryKeys } from '@/lib/queries'
+import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
 export type Person = { id: string; name: string }
 
@@ -425,6 +426,9 @@ export function useDocMutation<Input, Output>(fn: (input: Input) => Promise<Outp
 /** Who may delete forever and empty the Trash (members can do everything else). */
 export const canDeleteForever = (role: string | undefined) => role === 'owner' || role === 'admin'
 
+/** The largest document, as the API enforces it (DOCUMENTS_MAX_UPLOAD_MB may set it lower). */
+export const DOCUMENT_MAX_BYTES = MAX_FILE_BYTES
+
 /**
  * Uploads one file with progress (0–1); `signal` cancels it. Rejects with the server's error
  * (ApiError, e.g. 409 name_taken with `details.suggestion`) or an AbortError.
@@ -435,6 +439,9 @@ export function uploadDocument(
   onProgress: (share: number) => void,
   signal?: AbortSignal,
 ): Promise<DocFile> {
+  // A proxy would refuse a bigger request with its own page, so the API's message is given here.
+  if (file.size > DOCUMENT_MAX_BYTES)
+    return Promise.reject(new ApiError(413, 'payload_too_large', 'Upload files of up to 25 MB.'))
   const form = new FormData()
   form.append('file', file)
   if (options.folderId) form.append('folder_id', options.folderId)
