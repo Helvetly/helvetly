@@ -237,12 +237,8 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		return nil
 	}
 	want := tokens * share / of
-	w, err := q.AdmissionWorkspace(ctx, ws)
-	if err != nil {
-		return err
-	}
 	now := s.now()
-	period := now.In(w.Location()).Format("2006-01")
+	period := store.UsagePeriod(now)
 	b, err := q.WorkspaceBilling(ctx, ws)
 	if err != nil {
 		return err

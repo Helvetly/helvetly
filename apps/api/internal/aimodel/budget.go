@@ -89,7 +89,7 @@ type Budget struct {
 // without a cost breakdown settles the tokens and keeps the cost reserved for reconciliation.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
 	card := p.Card()
-	period := b.Now().In(ws.Location()).Format("2006-01")
+	period := store.UsagePeriod(b.Now())
 	if err := b.expireStale(ctx, ws.ID); err != nil {
 		return Reply{}, err
 	}

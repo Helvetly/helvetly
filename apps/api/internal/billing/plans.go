@@ -89,15 +89,18 @@ type Limit string
 const (
 	Members     Limit = "members"                // members besides the owner who accepted; no cap on a per-seat subscription
 	Clients     Limit = "clients"                // clients not deleted
-	Invoices    Limit = "invoices_per_month"     // invoices (not credit notes) created this month
-	Expenses    Limit = "expenses_per_month"     // expenses created this month
+	Invoices    Limit = "invoices_per_month"     // documents issued this quota month, linked corrections aside (usage_events)
+	Expenses    Limit = "expenses_per_month"     // expenses first saved this quota month, deleted ones too (usage_events)
 	Products    Limit = "products"               // catalogue entries not deleted (archived ones too)
 	Engagements Limit = "engagements"            // engagements not cancelled and not ended
-	Signatures  Limit = "signatures_per_month"   // signature requests sent this month
+	Signatures  Limit = "signatures_per_month"   // signature packages sent this quota month (usage_events)
 	Storage     Limit = "storage_bytes"          // documents and expense receipts
 	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
 	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
+
+	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
+	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
 )
 
 // Unlimited: the plan has no cap on that limit.
@@ -110,19 +113,13 @@ var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Busines
 // limitOrder is the order limits are listed in.
 var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
 
-// monthStart: monthly limits follow the calendar month in the workspace's time zone loc.
-func monthStart(now time.Time, loc *time.Location) time.Time {
-	t := now.In(loc)
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
-}
-
-// quotaStart is when the monthly counts of b's workspace start: the month's start, or the trial's, whose allowances
-// last the whole trial and do not restart with the month.
-func quotaStart(b store.Billing, now time.Time, loc *time.Location) time.Time {
+// quotaStart is when b's workspace's monthly counts start: now's quota month (UTC), or a trial's start, whose
+// allowances last the whole trial and do not restart with a month.
+func quotaStart(b store.Billing, now time.Time) time.Time {
 	if b.Status == "trialing" && b.TrialStart != nil && b.TrialStart.Before(now) {
-		return b.TrialStart.In(loc)
+		return b.TrialStart.UTC()
 	}
-	return monthStart(now, loc)
+	return store.UsagePeriodStart(now)
 }
 
 // live: a subscription in one of these states gives its plan. Not incomplete (its first payment unpaid): it never
@@ -203,6 +200,10 @@ func used(u store.Usage, l Limit) int64 {
 		return u.StorageBytes
 	case AITokens:
 		return u.AITokensThisMonth
+	case InvoiceDrafts:
+		return u.InvoiceDrafts
+	case QuotesRetained:
+		return u.QuotesRetained
 	}
 	return 0
 }

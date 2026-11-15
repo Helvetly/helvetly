@@ -44,12 +44,8 @@ func (s *Service) creditAITokens(ctx context.Context, ev event, sessionID, custo
 		if err != nil || b.CustomerID == "" || b.CustomerID != customer {
 			return err
 		}
-		w, err := q.AdmissionWorkspace(ctx, workspaceID)
-		if err != nil {
-			return err
-		}
 		now := s.now()
-		added, err := q.AddAITokenPack(ctx, sessionID, workspaceID, now.In(w.Location()).Format("2006-01"), n, now)
+		added, err := q.AddAITokenPack(ctx, sessionID, workspaceID, store.UsagePeriod(now), n, now)
 		if added {
 			s.log.InfoContext(ctx, "AI token pack credited", "workspace", workspaceID, "tokens", n)
 		}

@@ -174,8 +174,10 @@ published offer: `limits` defines every key, `offer_versions` keeps each publish
 paid seat where the offer says so), and `limit_workspaces` gives one workspace its own value until it expires. A
 workspace stays on the offer it subscribed under. `helvetly offer validate|diff|publish FILE` checks, compares and
 publishes an offer file, and `helvetly offer override set|clear` sets one workspace's value; each change is audited
-in `offer_audit`. `GET /api/v1/public/offers/current` serves the current prices and public comparison. Without
-billing, no plan limit applies. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
+in `offer_audit`. `GET /api/v1/public/offers/current` serves the current prices and public comparison. Monthly
+limits count per UTC calendar month (a trial's, for the whole trial) in `usage_events`, one row per counted operation
+(an issued invoice, an expense's first save, a sent signature package), kept when the record is deleted; drafts,
+quotes, clients, products and engagements count what exists. Without billing, no plan limit applies. The webhook endpoint is `<PUBLIC_URL>/api/webhooks/stripe`.
 Subscribe it to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.*`,
 `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `charge.refunded`. An opened dispute
 alerts the owners and admins; a lost one ends the subscription it paid at once, or takes back the AI token pack's

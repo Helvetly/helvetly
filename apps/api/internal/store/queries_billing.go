@@ -53,7 +53,8 @@ type Usage struct {
 	Members, Clients, InvoicesThisMonth, ExpensesThisMonth int64
 	Products, Engagements, SignaturesThisMonth             int64
 	StorageBytes                                           int64
-	AITokensThisMonth                                      int64 // heidi_usage of the calendar month
+	AITokensThisMonth                                      int64 // heidi_usage of the quota month
+	InvoiceDrafts, QuotesRetained                          int64
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
@@ -137,27 +138,32 @@ func (q Q) RecordStripeEvent(ctx context.Context, id, typ string, now time.Time)
 	return tag.RowsAffected() == 1, err
 }
 
-// WorkspaceUsage counts what the plan limits cover; monthly counts start at monthStart (midnight in the workspace's
-// time zone, so its date is the workspace's month; a trial's start, so its AI tokens add up over every month since). Members are the people besides the workspace's owner: every
-// workspace keeps one, and the plan sells the seats for the rest. Only accepted invitations count: a seat is taken
-// when the invitation is accepted (JoinInvitedMember), not when it is sent. Engagements count while not cancelled and not ended before today, the civil date of now there.
-func (q Q) WorkspaceUsage(ctx context.Context, workspaceID string, monthStart, now time.Time) (Usage, error) {
-	today := now.In(monthStart.Location()).Format(time.DateOnly)
+// WorkspaceUsage counts what the plan limits cover at now. Monthly counts are the usage recorded in the quota months
+// from through now's (UsagePeriod, UTC): now's month, or every month of a trial since it began; state counts are what
+// exists. Members are the people besides the workspace's owner: every workspace keeps one, and the plan sells the
+// seats for the rest. Only accepted invitations count: a seat is taken when the invitation is accepted
+// (JoinInvitedMember), not when it is sent. Engagements count while not cancelled and not ended before today, the
+// workspace's civil date of now. Invoice drafts and quotes count while they exist.
+func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now time.Time) (Usage, error) {
 	var u Usage
-	err := q.db.QueryRow(ctx, `SELECT
+	err := q.db.QueryRow(ctx, `WITH monthly AS (SELECT resource, sum(consumed + reserved) AS n FROM usage_events
+			WHERE workspace_id = $1 AND period BETWEEN $2 AND $4 GROUP BY resource)
+		SELECT
 			greatest((SELECT count(*) FROM workspace_members WHERE workspace_id = $1) - 1, 0),
 			(SELECT count(*) FROM clients WHERE workspace_id = $1 AND deleted_at IS NULL),
-			(SELECT count(*) FROM invoices WHERE workspace_id = $1 AND kind NOT IN ('credit_note','corrected') AND created_at >= $2),
-			(SELECT count(*) FROM expenses WHERE workspace_id = $1 AND deleted_at IS NULL AND created_at >= $2),
+			coalesce((SELECT n FROM monthly WHERE resource = 'invoices_per_month'), 0),
+			coalesce((SELECT n FROM monthly WHERE resource = 'expenses_per_month'), 0),
 			(SELECT count(*) FROM products WHERE workspace_id = $1 AND deleted_at IS NULL),
 			(SELECT count(*) FROM engagements WHERE workspace_id = $1 AND deleted_at IS NULL
 				AND (cancelled_on IS NULL OR cancelled_on >= $3::date) AND (end_date IS NULL OR end_date >= $3::date)),
-			(SELECT count(*) FROM signature_requests WHERE workspace_id = $1 AND created_at >= $2),
+			coalesce((SELECT n FROM monthly WHERE resource = 'signatures_per_month'), 0),
 			(SELECT coalesce(sum(size), 0) FROM documents WHERE workspace_id = $1)
 			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
-			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period >= $4)`,
-		workspaceID, monthStart, today, monthStart.Format("2006-01")).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth)
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4),
+			(SELECT count(*) FROM invoices WHERE workspace_id = $1 AND status = 'draft'),
+			(SELECT count(*) FROM quotes WHERE workspace_id = $1)`,
+		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained)
 	return u, err
 }
 

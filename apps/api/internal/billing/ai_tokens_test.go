@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"helvetly.com/api/internal/store"
 )
 
 func TestAITokensFollowThePlan(t *testing.T) {
@@ -29,7 +31,7 @@ func TestAITokensFollowThePlan(t *testing.T) {
 	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, updated_at) VALUES ($1, to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 1234, now()),
 		($1, '2001-01', 99, now())`, b.workspace)
 	now := time.Now()
-	u, err := e.st.WorkspaceUsage(ctx, b.workspace, monthStart(now, time.UTC), now) // the workspace's zone
+	u, err := e.st.WorkspaceUsage(ctx, store.Workspace{ID: b.workspace, Timezone: "UTC"}, store.UsagePeriod(now), now)
 	if err != nil || used(u, AITokens) != 1234 {
 		t.Fatalf("usage %d %v", used(u, AITokens), err)
 	}
