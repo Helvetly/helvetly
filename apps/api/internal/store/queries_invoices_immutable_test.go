@@ -10,7 +10,7 @@ import (
 // the lines must follow that guard instead of being deleted and reinserted regardless.
 func TestSaveDraftRefusesIssuedOrForeignInvoice(t *testing.T) {
 	ctx := context.Background()
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	if _, err := pool.Exec(ctx, `INSERT INTO workspaces (id, name, timezone, created_at) VALUES ('wsp_b', 'B', 'UTC', now())`); err != nil {
 		t.Fatal(err)
 	}

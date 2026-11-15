@@ -12,7 +12,7 @@ import (
 )
 
 func sharesDB(t *testing.T) (Q, *pgxpool.Pool) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	exec(t, pool, `INSERT INTO workspaces (id, name, timezone, created_at) VALUES ('wsp_b', 'B', 'UTC', now())`)
 	exec(t, pool, `INSERT INTO documents (id, workspace_id, name, size, content_type, object_key, created_at, updated_at)
 		VALUES ('doc_1', 'wsp_a', 'Contract.pdf', 1200, 'application/pdf', 'k1', now(), now())`)

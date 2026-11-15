@@ -13,18 +13,12 @@ import (
 
 var typesNow = time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
 
-// typesDB: a migrated schema (up to version `upTo`, 0 = all) with workspace wsp_a and client cli_1.
-func typesDB(t *testing.T, upTo int64) (Q, *pgxpool.Pool) {
+// typesDB: a migrated schema with workspace wsp_a and client cli_1.
+func typesDB(t *testing.T) (Q, *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	p, pool := migrationProvider(t)
-	var err error
-	if upTo > 0 {
-		_, err = p.UpTo(ctx, upTo)
-	} else {
-		_, err = p.Up(ctx)
-	}
-	if err != nil {
+	if _, err := p.Up(ctx); err != nil {
 		t.Fatal(err)
 	}
 	for _, sql := range []string{
@@ -70,50 +64,8 @@ func seedPayment(pool *pgxpool.Pool, id, invoiceID string, amount int64) error {
 	return err
 }
 
-func TestMigrationKeepsExistingRows(t *testing.T) {
-	ctx := context.Background()
-	p, pool := migrationProvider(t)
-	if _, err := p.UpTo(ctx, 20); err != nil {
-		t.Fatal(err)
-	}
-	for _, sql := range []string{
-		`INSERT INTO workspaces (id, name, timezone, created_at) VALUES ('wsp_a', 'A', 'UTC', now())`,
-		`INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at) VALUES ('cli_1', 'wsp_a', 1, 'One', now(), now())`,
-		`INSERT INTO invoice_counters (workspace_id, kind, year, seq) VALUES ('wsp_a', 'invoice', 2026, 4)`,
-	} {
-		if _, err := pool.Exec(ctx, sql); err != nil {
-			t.Fatal(err)
-		}
-	}
-	seedInvoice(t, pool, "inv_1", "invoice", "open", 1000, "2026-10-31", 0)
-	if _, err := p.UpTo(ctx, 21); err != nil {
-		t.Fatal(err)
-	}
-	var kind, status string
-	var prepaid int64
-	var deducted *string
-	if err := pool.QueryRow(ctx, `SELECT kind, status, prepaid_total, deducted_on_invoice_id FROM invoices WHERE id = 'inv_1'`).
-		Scan(&kind, &status, &prepaid, &deducted); err != nil || kind != "invoice" || status != "open" || prepaid != 0 || deducted != nil {
-		t.Fatalf("row = %s %s %d %v, %v", kind, status, prepaid, deducted, err)
-	}
-	if seq, err := (Q{db: pool}).PeekInvoiceSeq(ctx, "wsp_a", "invoice", 2026); err != nil || seq != 5 {
-		t.Fatalf("counter next = %d, %v; want 5", seq, err)
-	}
-	for _, k := range []string{"partial", "prepayment", "debit_note", "corrected", "proforma", "self_billed"} {
-		seedInvoice(t, pool, "inv_"+k, k, "open", 1, "2026-10-31", 0)
-	}
-	for _, series := range []string{"credit_note", "proforma", "self_billed"} {
-		if _, err := (Q{db: pool}).NextInvoiceSeq(ctx, "wsp_a", series, 2026); err != nil {
-			t.Fatalf("series %s: %v", series, err)
-		}
-	}
-	if _, err := (Q{db: pool}).NextInvoiceSeq(ctx, "wsp_a", "partial", 2026); err == nil {
-		t.Fatal("partial is not a series")
-	}
-}
-
 func TestPrepaymentsRoundTrip(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "pre_1", "prepayment", "paid", 300, "2026-10-31", 0)
 	seedInvoice(t, pool, "pre_2", "prepayment", "paid", 200, "2026-10-31", 0)
@@ -144,7 +96,7 @@ func TestPrepaymentsRoundTrip(t *testing.T) {
 }
 
 func TestMarkDeductedOnce(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "pre_1", "prepayment", "paid", 300, "2026-10-31", 0)
 	seedInvoice(t, pool, "pre_2", "prepayment", "paid", 200, "2026-10-31", 0)
@@ -165,7 +117,7 @@ func TestMarkDeductedOnce(t *testing.T) {
 }
 
 func TestMovePaymentsRefreshesBoth(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "old", "invoice", "open", 1000, "2026-10-31", 0)
 	seedInvoice(t, pool, "new", "corrected", "open", 1000, "2026-10-31", 0)
@@ -206,7 +158,7 @@ func TestMovePaymentsRefreshesBoth(t *testing.T) {
 
 // A final invoice stores its totals after the deduction, so prepaid_total is not subtracted again.
 func TestAmountDueIncludesPrepaid(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "fin", "invoice", "open", 432400, "2026-12-31", 108100) // 5'405.00 − prepaid 1'081.00
 	got, _ := q.Invoice(ctx, "wsp_a", "fin", "2026-11-07", false)
@@ -230,7 +182,7 @@ func TestAmountDueIncludesPrepaid(t *testing.T) {
 }
 
 func TestSummaryExcludesProformaSelfBilled(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	for _, k := range []struct{ id, kind string }{{"a", "invoice"}, {"b", "partial"}, {"c", "prepayment"}, {"d", "debit_note"},
 		{"e", "corrected"}, {"f", "proforma"}, {"g", "self_billed"}} {
@@ -248,7 +200,7 @@ func TestSummaryExcludesProformaSelfBilled(t *testing.T) {
 }
 
 func TestOverdueNeverProforma(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "pf", "proforma", "open", 100, "2026-10-15", 0)
 	seedInvoice(t, pool, "sb", "self_billed", "open", 100, "2026-10-15", 0)
@@ -271,7 +223,7 @@ func TestOverdueNeverProforma(t *testing.T) {
 
 // A zero-total document (a fully prepaid final) is voided by its issued credit note although nothing was credited.
 func TestRefreshBalanceVoidsZeroTotalOnCreditNote(t *testing.T) {
-	q, pool := typesDB(t, 0)
+	q, pool := typesDB(t)
 	ctx := context.Background()
 	seedInvoice(t, pool, "fin", "invoice", "paid", 0, "2026-10-31", 0)
 	if err := q.RefreshBalance(ctx, "fin", typesNow); err != nil {

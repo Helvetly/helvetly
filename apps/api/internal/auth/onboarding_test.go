@@ -6,8 +6,7 @@ import (
 )
 
 // The welcome sets up a new workspace: its owner sees it until it is finished or skipped (the same
-// call); people who join a workspace never do. Existing workspaces are set up by migration 00013
-// (store.TestWorkspaceOnboarding).
+// call); people who join a workspace never do.
 func TestOnboarding(t *testing.T) {
 	e := newEnv(t)
 	owner := e.emailSignIn("owner@example.com")
