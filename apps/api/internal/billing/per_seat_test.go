@@ -47,8 +47,8 @@ func TestCheckoutQuantity(t *testing.T) {
 	}
 }
 
-// A per-seat subscription has no member cap and a smaller per-seat plan takes any number of people; the overview
-// says how the subscription is billed and for how many.
+// A per-seat subscription takes people up to the self-service seats (25: 24 besides the owner) on every plan; the
+// overview says how the subscription is billed and for how many.
 func TestPerSeatSubscription(t *testing.T) {
 	e := newEnv(t, true)
 	e.stripe.setPerSeat()
@@ -78,8 +78,8 @@ func TestPerSeatSubscription(t *testing.T) {
 	plansList, _ := data["plans"].([]any)
 	basic, _ := plansList[0].(map[string]any)
 	limits, _ := basic["limits"].(map[string]any)
-	if code != http.StatusOK || data["pricing"] != "per_seat" || data["seats"] != 4.0 || members["used"] != 3.0 || members["max"] != nil ||
-		limits["members"] != nil || limits["clients"] == nil {
+	if code != http.StatusOK || data["pricing"] != "per_seat" || data["seats"] != 4.0 || members["used"] != 3.0 || members["max"] != 24.0 ||
+		limits["members"] != 24.0 || limits["clients"] == nil || data["paid_seats"] != 4.0 {
 		t.Fatalf("overview: %d %v", code, body)
 	}
 }

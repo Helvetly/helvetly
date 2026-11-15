@@ -96,7 +96,8 @@ export function BillingSettings() {
   )
 }
 
-/** Back from Checkout (?checkout=success|canceled|ai_tokens): read the subscription now, then tidy the URL. */
+/** Back from Checkout or a plan change (?checkout=success|switched|scheduled|canceled|ai_tokens): read the
+ * subscription now, then tidy the URL. */
 function useCheckoutReturn() {
   const params = useSearchParams()
   const router = useRouter()
@@ -120,9 +121,11 @@ function useCheckoutReturn() {
     sync.mutate(undefined, {
       onSuccess: (billing) =>
         toast.success(
-          billing.plan === ''
-            ? translate('paymentReceivedThePlanAppearsHereInAMoment')
-            : translate('welcomeTo', { value1: capitalize(billing.plan) }),
+          outcome === 'scheduled'
+            ? translate('yourPlanChangesAtTheEndOfThePaidPeriod')
+            : billing.plan === ''
+              ? translate('paymentReceivedThePlanAppearsHereInAMoment')
+              : translate('welcomeTo', { value1: capitalize(billing.plan) }),
         ),
       onError: toastError,
     })

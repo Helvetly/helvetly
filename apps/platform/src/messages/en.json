@@ -2264,6 +2264,7 @@
   "paymentOfRecorded": "Payment of {value1} recorded.",
   "paymentReceivedTheAITokensAreAddedInA": "Payment received. The AI tokens are added in a moment.",
   "paymentReceivedThePlanAppearsHereInAMoment": "Payment received. The plan appears here in a moment.",
+  "yourPlanChangesAtTheEndOfThePaidPeriod": "Your plan changes at the end of the paid period. Nothing changes until then.",
   "paymentReminder": "Payment reminder",
   "paymentReminders": "Payment reminders",
   "paymentReminderSent": "Payment reminder sent",

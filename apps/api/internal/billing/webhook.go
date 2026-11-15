@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -161,7 +162,7 @@ func (s *Service) record(ctx context.Context, q store.Q, ev event) error {
 // one that bills another number than the workspace's people is then synced.
 func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 	ws := sub.Metadata["workspace_id"]
-	var resync bool
+	var resync, secondTrial bool
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		if err := s.record(ctx, q, ev); err != nil {
 			return err
@@ -199,9 +200,19 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 		if b.SubscriptionID != "" && b.SubscriptionID != sub.ID && (!live(sub.Status) || live(b.Status)) {
 			return nil // an older one ending, or a second live one (settleDuplicate), leaves the one on record
 		}
-		after := s.toStore(sub, b)
-		if err := q.ApplySubscription(ctx, ws, sub.Customer, after, s.now()); err != nil {
+		if err := s.verifyCheckout(ctx, q, ws, sub); err != nil {
+			s.log.ErrorContext(ctx, "ignoring a subscription that does not match its checkout", "subscription", sub.ID,
+				"workspace", ws, "error", err)
+			return nil
+		}
+		after, err := s.save(ctx, q, ws, b, sub)
+		if err != nil {
 			return err
+		}
+		if after.Status == "trialing" {
+			if secondTrial, err = s.claimTrial(ctx, q, ws, sub); err != nil {
+				return err
+			}
 		}
 		if after.PerSeat && live(after.Status) {
 			seats, err := q.Seats(ctx, ws)
@@ -223,10 +234,61 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 		return err
 	}
 	s.voidUnpaidInvoices(ctx, sub)
+	if secondTrial {
+		return s.endTrial(ctx, sub)
+	}
 	if resync {
 		s.resyncSeats(ctx, ws)
 	}
 	return nil
+}
+
+// verifyCheckout checks a subscription opened by a plan Checkout against what the checkout recorded before Stripe was
+// asked (newCheckout): the workspace, the offer, the price and the currency. Once settled the checkout is the
+// subscription's and later plan changes are not compared; a subscription without a checkout (made before them) passes.
+func (s *Service) verifyCheckout(ctx context.Context, q store.Q, workspaceID string, sub subscription) error {
+	id := sub.Metadata["checkout_id"]
+	if id == "" {
+		return nil
+	}
+	co, err := q.BillingCheckout(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("no checkout %s", id)
+	}
+	if err != nil {
+		return err
+	}
+	switch {
+	case co.SettledSubscription == sub.ID:
+		return nil
+	case co.SettledSubscription != "":
+		return fmt.Errorf("checkout %s was settled by %s", id, co.SettledSubscription)
+	case co.WorkspaceID != workspaceID, co.OfferID != sub.Metadata["offer_id"], co.PriceID != sub.priceID(),
+		!strings.EqualFold(co.Currency, sub.Currency):
+		return fmt.Errorf("checkout %s was for %s %s %s %s, the subscription is %s %s %s %s", id, co.WorkspaceID, co.OfferID,
+			co.PriceID, co.Currency, workspaceID, sub.Metadata["offer_id"], sub.priceID(), sub.Currency)
+	}
+	return nil
+}
+
+// save records sub on the workspace (before is what was recorded), settles the checkout that opened it (its offer
+// becomes the workspace's) and grants the costly allowances an increase brings, pro rata (grant).
+func (s *Service) save(ctx context.Context, q store.Q, workspaceID string, before store.Billing, sub subscription) (store.Subscription, error) {
+	prev, err := s.baseRights(ctx, q, workspaceID, before)
+	if err != nil { // what it had cannot be read: grant the increase from nothing, never more
+		s.log.WarnContext(ctx, "reading the rights before a subscription change failed", "workspace", workspaceID, "error", err)
+		prev = Rights{}
+	}
+	after := s.toStore(sub, before)
+	if err := q.ApplySubscription(ctx, workspaceID, sub.Customer, after, s.now()); err != nil {
+		return after, err
+	}
+	if id := sub.Metadata["checkout_id"]; id != "" {
+		if err := q.SettleBillingCheckout(ctx, id, sub.ID, s.now()); err != nil {
+			return after, err
+		}
+	}
+	return after, s.grant(ctx, q, workspaceID, before, prev)
 }
 
 // otherLive: the workspace has a live subscription on record and sub is another live one of its customer.
@@ -289,9 +351,9 @@ func (s *Service) voidUnpaidInvoices(ctx context.Context, sub subscription) {
 }
 
 // subscriptionExpand reads a subscription's discounts with their coupon and promotion code, so the discount can name
-// the code,
-// and the latest invoice, which tells an unpaid renewal (planExpiry).
-var subscriptionExpand = []string{"discounts.source.coupon", "discounts.promotion_code", "latest_invoice"}
+// the code, the latest invoice, which tells an unpaid renewal (planExpiry), and the default payment method, whose card
+// recognises a second trial.
+var subscriptionExpand = []string{"discounts.source.coupon", "discounts.promotion_code", "latest_invoice", "default_payment_method"}
 
 func (s *Service) getSubscription(ctx context.Context, id string) (sub subscription, err error) {
 	err = s.stripe.Call(ctx, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(id), url.Values{"expand[]": subscriptionExpand}, "", &sub)
@@ -309,6 +371,18 @@ func (s *Service) toStore(sub subscription, before store.Billing) store.Subscrip
 	out.PlanExpiresAt = planExpiry(sub, prev, s.now())
 	out.Plan, out.Interval = sub.price().planAndInterval()
 	out.PerSeat, out.Seats = sub.price().perSeat(), sub.quantity()
+	out.PaidSeats = out.Seats
+	samePeriod := before.SubscriptionID == sub.ID && before.CurrentPeriodEnd != nil && before.CurrentPeriodEnd.Unix() == sub.periodEnd()
+	if samePeriod && sub.Status != "trialing" && before.PaidSeats != nil && *before.PaidSeats > out.Seats {
+		out.PaidSeats = *before.PaidSeats // a reduction takes effect at the renewal: the seats stay paid until then
+	}
+	if before.SubscriptionID == sub.ID && sub.schedule() != "" {
+		out.PendingPlan, out.PendingInterval, out.PendingAt = before.PendingPlan, before.PendingInterval, before.PendingAt
+	}
+	if sub.TrialStart != nil {
+		t := time.Unix(*sub.TrialStart, 0).UTC()
+		out.TrialStart = &t
+	}
 	if out.Plan == "" {
 		s.log.Warn("a subscription has a price that is not a Helvetly plan", "subscription", sub.ID, "price", sub.priceID())
 	}

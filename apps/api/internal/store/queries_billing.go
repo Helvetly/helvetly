@@ -23,6 +23,13 @@ type Billing struct {
 	Seats                      *int64          // the quantity Stripe bills; nil before a subscription is recorded
 	PlanExpiresAt              *time.Time      // the paid end plus the billing grace; nil when not known yet
 	SeatsChangedAt             *time.Time      // when the membership last changed (MarkSeatsChanged)
+	TrialStart                 *time.Time      // when the trial began; its pools count from here, across months
+	PaidSeats                  *int64          // the seats paid for the current period; nil before it is known
+	PendingPlan                string          // a plan change scheduled for PendingAt (the paid period's end); "" none
+	PendingInterval            string
+	PendingAt                  *time.Time
+	AllowancePeriod            string           // the UTC month (2006-01) Allowances apply in
+	Allowances                 map[string]int64 // costly monthly allowances granted pro rata after an increase
 }
 
 // Subscription is what a Stripe subscription says, written by ApplySubscription.
@@ -33,7 +40,12 @@ type Subscription struct {
 	Discount                   json.RawMessage
 	PerSeat                    bool
 	Seats                      int64 // the subscription item's quantity
+	PaidSeats                  int64 // the seats paid for the current period: Seats, or more until a reduction renews
 	PlanExpiresAt              *time.Time
+	TrialStart                 *time.Time
+	PendingPlan                string
+	PendingInterval            string
+	PendingAt                  *time.Time
 }
 
 // Usage is what the plan limits count.
@@ -49,10 +61,11 @@ func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, e
 	var customer, sub *string
 	err := q.db.QueryRow(ctx, `SELECT stripe_customer_id, stripe_subscription_id, status, plan, billing_interval,
 			current_period_end, trial_end, cancel_at_period_end, trial_used, discount, per_seat, seats, plan_expires_at,
-			seats_changed_at
+			seats_changed_at, trial_start, paid_seats, pending_plan, pending_interval, pending_at, allowance_period, allowances
 		FROM workspace_billing WHERE workspace_id = $1`, workspaceID).
 		Scan(&customer, &sub, &b.Status, &b.Plan, &b.Interval, &b.CurrentPeriodEnd, &b.TrialEnd, &b.CancelAtPeriodEnd, &b.TrialUsed,
-			&b.Discount, &b.PerSeat, &b.Seats, &b.PlanExpiresAt, &b.SeatsChangedAt)
+			&b.Discount, &b.PerSeat, &b.Seats, &b.PlanExpiresAt, &b.SeatsChangedAt, &b.TrialStart, &b.PaidSeats, &b.PendingPlan,
+			&b.PendingInterval, &b.PendingAt, &b.AllowancePeriod, &b.Allowances)
 	if errors.Is(err, ErrNotFound) {
 		return Billing{}, nil
 	}
@@ -87,18 +100,20 @@ func (q Q) ApplySubscription(ctx context.Context, workspaceID, customerID string
 	}
 	_, err := q.db.Exec(ctx, `INSERT INTO workspace_billing (workspace_id, stripe_customer_id, stripe_subscription_id, status,
 			plan, billing_interval, current_period_end, trial_end, cancel_at_period_end, trial_used, updated_at, discount,
-			per_seat, seats, plan_expires_at, offer_id)
+			per_seat, seats, plan_expires_at, offer_id, paid_seats, trial_start, pending_plan, pending_interval, pending_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9, $8::timestamptz IS NOT NULL, $10, $11::jsonb, $12, $13, $14,
-			(SELECT id FROM offer_versions ORDER BY published_at DESC, id DESC LIMIT 1))
+			(SELECT id FROM offer_versions ORDER BY published_at DESC, id DESC LIMIT 1), $15, $16, $17, $18, $19)
 		ON CONFLICT (workspace_id) DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id,
 			stripe_subscription_id = EXCLUDED.stripe_subscription_id, status = EXCLUDED.status, plan = EXCLUDED.plan,
 			billing_interval = EXCLUDED.billing_interval, current_period_end = EXCLUDED.current_period_end,
 			trial_end = EXCLUDED.trial_end, cancel_at_period_end = EXCLUDED.cancel_at_period_end,
 			trial_used = workspace_billing.trial_used OR EXCLUDED.trial_used, updated_at = EXCLUDED.updated_at,
 			discount = EXCLUDED.discount, per_seat = EXCLUDED.per_seat, seats = EXCLUDED.seats,
-			plan_expires_at = EXCLUDED.plan_expires_at, offer_id = coalesce(workspace_billing.offer_id, EXCLUDED.offer_id)`,
+			plan_expires_at = EXCLUDED.plan_expires_at, offer_id = coalesce(workspace_billing.offer_id, EXCLUDED.offer_id),
+			paid_seats = EXCLUDED.paid_seats, trial_start = EXCLUDED.trial_start, pending_plan = EXCLUDED.pending_plan,
+			pending_interval = EXCLUDED.pending_interval, pending_at = EXCLUDED.pending_at`,
 		workspaceID, customerID, s.ID, s.Status, s.Plan, s.Interval, s.CurrentPeriodEnd, s.TrialEnd, s.CancelAtPeriodEnd, now, discount,
-		s.PerSeat, s.Seats, s.PlanExpiresAt)
+		s.PerSeat, s.Seats, s.PlanExpiresAt, s.PaidSeats, s.TrialStart, s.PendingPlan, s.PendingInterval, s.PendingAt)
 	return err
 }
 
@@ -123,7 +138,7 @@ func (q Q) RecordStripeEvent(ctx context.Context, id, typ string, now time.Time)
 }
 
 // WorkspaceUsage counts what the plan limits cover; monthly counts start at monthStart (midnight in the workspace's
-// time zone, so its date is the workspace's month). Members are the people besides the workspace's owner: every
+// time zone, so its date is the workspace's month; a trial's start, so its AI tokens add up over every month since). Members are the people besides the workspace's owner: every
 // workspace keeps one, and the plan sells the seats for the rest. Only accepted invitations count: a seat is taken
 // when the invitation is accepted (JoinInvitedMember), not when it is sent. Engagements count while not cancelled and not ended before today, the civil date of now there.
 func (q Q) WorkspaceUsage(ctx context.Context, workspaceID string, monthStart, now time.Time) (Usage, error) {
@@ -140,7 +155,7 @@ func (q Q) WorkspaceUsage(ctx context.Context, workspaceID string, monthStart, n
 			(SELECT count(*) FROM signature_requests WHERE workspace_id = $1 AND created_at >= $2),
 			(SELECT coalesce(sum(size), 0) FROM documents WHERE workspace_id = $1)
 			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
-			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period = $4)`,
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period >= $4)`,
 		workspaceID, monthStart, today, monthStart.Format("2006-01")).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
 		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth)
 	return u, err
@@ -255,4 +270,100 @@ func (q Q) Disputed(ctx context.Context, workspaceID string) (bool, error) {
 	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM billing_disputes WHERE workspace_id = $1
 		AND status NOT IN ('won', 'lost', 'warning_closed'))`, workspaceID).Scan(&open)
 	return open, err
+}
+
+// SetAllowances records the costly monthly allowances granted pro rata in the UTC month period (2006-01).
+func (q Q) SetAllowances(ctx context.Context, workspaceID, period string, allowances map[string]int64) error {
+	_, err := q.db.Exec(ctx, `UPDATE workspace_billing SET allowance_period = $2, allowances = $3 WHERE workspace_id = $1`,
+		workspaceID, period, allowances)
+	return err
+}
+
+// BillingCheckout is what a plan Checkout was opened for, recorded before Stripe is asked (billing_checkouts).
+type BillingCheckout struct {
+	ID, WorkspaceID, OfferID, Plan, Interval, Currency, PriceID, CreatedBy string
+	Seats                                                                  int64
+	Trial                                                                  bool
+	SettledSubscription                                                    string // "" until the webhook settled it
+}
+
+func (q Q) InsertBillingCheckout(ctx context.Context, c BillingCheckout, now time.Time) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO billing_checkouts (id, workspace_id, offer_id, plan, billing_interval, currency,
+			price_id, seats, trial, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		c.ID, c.WorkspaceID, c.OfferID, c.Plan, c.Interval, c.Currency, c.PriceID, c.Seats, c.Trial, c.CreatedBy, now)
+	return err
+}
+
+// BillingCheckout is the checkout by id; ErrNotFound when there is none.
+func (q Q) BillingCheckout(ctx context.Context, id string) (BillingCheckout, error) {
+	var c BillingCheckout
+	err := q.db.QueryRow(ctx, `SELECT id, workspace_id, offer_id, plan, billing_interval, currency, price_id, created_by,
+			seats, trial, coalesce(settled_subscription, '') FROM billing_checkouts WHERE id = $1`, id).
+		Scan(&c.ID, &c.WorkspaceID, &c.OfferID, &c.Plan, &c.Interval, &c.Currency, &c.PriceID, &c.CreatedBy, &c.Seats, &c.Trial,
+			&c.SettledSubscription)
+	return c, err
+}
+
+// SettleBillingCheckout marks the checkout as the subscription's and puts its workspace on the checkout's offer, once:
+// a checkout settled before changes nothing (an operator may have moved the workspace since).
+func (q Q) SettleBillingCheckout(ctx context.Context, id, subscriptionID string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `WITH c AS (
+			UPDATE billing_checkouts SET settled_subscription = $2, settled_at = $3
+			WHERE id = $1 AND settled_subscription IS NULL RETURNING workspace_id, offer_id)
+		UPDATE workspace_billing b SET offer_id = c.offer_id FROM c WHERE b.workspace_id = c.workspace_id`, id, subscriptionID, now)
+	return err
+}
+
+// ClaimTrial records the digests of who started a trial in the workspace and reports whether any of them started one
+// in another workspace before. A digest claimed by this workspace already is no reuse.
+func (q Q) ClaimTrial(ctx context.Context, workspaceID string, claims map[string]string, now time.Time) (bool, error) {
+	reused := false
+	for kind, digest := range claims {
+		var owner string
+		err := q.db.QueryRow(ctx, `INSERT INTO trial_claims (kind, digest, workspace_id, claimed_at) VALUES ($1, $2, $3, $4)
+			ON CONFLICT (kind, digest) DO UPDATE SET kind = EXCLUDED.kind RETURNING workspace_id`,
+			kind, digest, workspaceID, now).Scan(&owner)
+		if err != nil {
+			return false, err
+		}
+		reused = reused || owner != workspaceID
+	}
+	return reused, nil
+}
+
+// TrialClaimed reports whether any of the digests started a trial already.
+func (q Q) TrialClaimed(ctx context.Context, claims map[string]string) (bool, error) {
+	var found bool
+	for kind, digest := range claims {
+		if err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM trial_claims WHERE kind = $1 AND digest = $2)`,
+			kind, digest).Scan(&found); err != nil || found {
+			return found, err
+		}
+	}
+	return false, nil
+}
+
+// AIUsage is the model tokens and cost in micro-USD the workspace used or holds reserved in the heidi_usage months from
+// through to (2006-01, both included).
+func (q Q) AIUsage(ctx context.Context, workspaceID, from, to string) (tokens, micros int64, err error) {
+	err = q.db.QueryRow(ctx, `SELECT coalesce(sum(tokens_used + tokens_reserved), 0)::bigint,
+			coalesce(sum(cost_micros + cost_reserved_micros), 0)::bigint
+		FROM heidi_usage WHERE workspace_id = $1 AND period >= $2 AND period <= $3`, workspaceID, from, to).Scan(&tokens, &micros)
+	return tokens, micros, err
+}
+
+// TrialAICostSince is the model cost in micro-USD, settled or still reserved, of every workspace in its trial since.
+func (q Q) TrialAICostSince(ctx context.Context, since time.Time) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, `SELECT coalesce(sum(coalesce(c.cost_micros, c.reserved_micros)), 0)::bigint
+		FROM ai_calls c JOIN workspace_billing b ON b.workspace_id = c.workspace_id
+		WHERE b.status = 'trialing' AND c.created_at >= $1`, since).Scan(&n)
+	return n, err
+}
+
+// SetPendingPlan records a plan change scheduled for at (the paid period's end).
+func (q Q) SetPendingPlan(ctx context.Context, workspaceID, plan, interval string, at *time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE workspace_billing SET pending_plan = $2, pending_interval = $3, pending_at = $4
+		WHERE workspace_id = $1`, workspaceID, plan, interval, at)
+	return err
 }

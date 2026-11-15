@@ -4,7 +4,6 @@
 package billing
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -79,9 +78,9 @@ func planOfKey(key string) (plan, interval string) {
 func PlanDescription(plan string) string { return planDescriptions[plan] }
 
 var planDescriptions = map[string]string{
-	Basic:    "For one person or a pair: invoices with QR bills, expenses, clients and documents.",
-	Pro:      "For a growing team: room for many clients, engagements and signatures every month.",
-	Business: "For larger teams: no ceilings, and the most storage.",
+	Basic:    "For one person or a small team: invoices and quotes with Swiss QR bills.",
+	Pro:      "For a growing team: Heidi, expenses, signatures, automations and VAT returns.",
+	Business: "For larger teams: everything in Pro, the client portal, e-invoice XML and the most room.",
 }
 
 // Limit names one thing a plan caps.
@@ -111,20 +110,19 @@ var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Busines
 // limitOrder is the order limits are listed in.
 var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
 
-// stockLimits are counted on what exists, so a smaller plan must fit them; monthly ones restart each month.
-var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage}
-
-// TrialDays: the first subscription of a workspace, when it is to TrialPlan, starts with a trial (once per
-// workspace, card required). The other plans are charged at once.
-const (
-	TrialDays = 7
-	TrialPlan = Basic
-)
-
 // monthStart: monthly limits follow the calendar month in the workspace's time zone loc.
 func monthStart(now time.Time, loc *time.Location) time.Time {
 	t := now.In(loc)
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
+}
+
+// quotaStart is when the monthly counts of b's workspace start: the month's start, or the trial's, whose allowances
+// last the whole trial and do not restart with the month.
+func quotaStart(b store.Billing, now time.Time, loc *time.Location) time.Time {
+	if b.Status == "trialing" && b.TrialStart != nil && b.TrialStart.Before(now) {
+		return b.TrialStart.In(loc)
+	}
+	return monthStart(now, loc)
 }
 
 // live: a subscription in one of these states gives its plan. Not incomplete (its first payment unpaid): it never
@@ -212,56 +210,4 @@ func used(u store.Usage, l Limit) int64 {
 // fits reports whether adding add to used stays within max.
 func fits(used, add, max int64) bool {
 	return max == Unlimited || (add >= 0 && used <= max && add <= max-used)
-}
-
-// overage is a stock limit the workspace is over on a plan.
-type overage struct {
-	Limit Limit `json:"limit"`
-	Used  int64 `json:"used"`
-	Max   int64 `json:"max"`
-}
-
-// overages: what keeps the workspace from moving to the plan of r; a per-seat price has room for every member.
-func (r Rights) overages(perSeat bool, u store.Usage) ([]overage, error) {
-	var out []overage
-	for _, l := range stockLimits {
-		max, err := r.capFor(perSeat, l)
-		if err != nil {
-			return nil, err
-		}
-		if !fits(used(u, l), 0, max) {
-			out = append(out, overage{l, used(u, l), max})
-		}
-	}
-	return out, nil
-}
-
-var overageWords = map[Limit][3]string{
-	Clients:     {"client", "clients", "Delete"},
-	Products:    {"product or service", "products and services", "Delete"},
-	Engagements: {"running engagement", "running engagements", "End or cancel"},
-}
-
-// overageMessage names what keeps the workspace from moving to plan and what to reduce, one sentence per limit:
-// "Basic allows 2 members besides the owner; this workspace has 5. Remove 3 members first."
-func overageMessage(plan string, over []overage) string {
-	name := planNames[plan]
-	parts := make([]string, 0, len(over))
-	for _, o := range over {
-		n := o.Used - o.Max
-		switch o.Limit {
-		case Storage:
-			parts = append(parts, fmt.Sprintf("%s allows %s of storage; this workspace uses %s. Remove %s of files first.",
-				name, bytesText(o.Max), bytesText(o.Used), bytesText(n)))
-			continue
-		case Members:
-			parts = append(parts, fmt.Sprintf("%s allows %d %s besides the owner; this workspace has %d. Remove %d %s first.",
-				name, o.Max, plural(o.Max, "member", "members"), o.Used, n, plural(n, "member", "members")))
-			continue
-		}
-		w := overageWords[o.Limit] // one, many, what to do
-		parts = append(parts, fmt.Sprintf("%s allows %d %s; this workspace has %d. %s %d %s first.",
-			name, o.Max, plural(o.Max, w[0], w[1]), o.Used, w[2], n, plural(n, w[0], w[1])))
-	}
-	return strings.Join(parts, " ")
 }

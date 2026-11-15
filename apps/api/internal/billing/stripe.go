@@ -126,6 +126,7 @@ type subscription struct {
 	Status            string            `json:"status"`
 	Customer          string            `json:"customer"`
 	CurrentPeriodEnd  int64             `json:"current_period_end"`
+	TrialStart        *int64            `json:"trial_start"`
 	TrialEnd          *int64            `json:"trial_end"`
 	CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
 	CancelAt          *int64            `json:"cancel_at"`
@@ -138,7 +139,11 @@ type subscription struct {
 		Reason string `json:"reason"` // cancellation_requested, payment_disputed, payment_failed
 	} `json:"cancellation_details"`
 	PendingUpdate *pendingUpdate `json:"pending_update"` // a change waiting for its payment; nil when none
-	Items         struct {
+	Schedule      *string        `json:"schedule"`       // the subscription schedule holding a change for the period's end
+	// DefaultPaymentMethod: an id, or the payment method when expanded (subscriptionExpand), whose card fingerprint
+	// recognises a customer starting a second trial.
+	DefaultPaymentMethod json.RawMessage `json:"default_payment_method"`
+	Items                struct {
 		Data []struct {
 			ID                 string `json:"id"`
 			CurrentPeriodStart int64  `json:"current_period_start"`
@@ -211,6 +216,25 @@ func (s subscription) price() price {
 		return price{}
 	}
 	return s.Items.Data[0].Price
+}
+
+// schedule is the id of the subscription's schedule, "" when it has none.
+func (s subscription) schedule() string {
+	if s.Schedule == nil {
+		return ""
+	}
+	return *s.Schedule
+}
+
+// cardFingerprint is the fingerprint Stripe gives the default payment method's card (expanded), "" when unknown.
+func (s subscription) cardFingerprint() string {
+	var pm struct {
+		Card struct {
+			Fingerprint string `json:"fingerprint"`
+		} `json:"card"`
+	}
+	_ = json.Unmarshal(s.DefaultPaymentMethod, &pm) // an id (not expanded) or null leaves it empty
+	return pm.Card.Fingerprint
 }
 
 func (s subscription) quantity() int64 {

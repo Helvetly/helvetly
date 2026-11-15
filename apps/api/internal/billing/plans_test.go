@@ -101,7 +101,7 @@ func TestLockedGuard(t *testing.T) {
 	})
 }
 
-func TestTrialOnlyBasic(t *testing.T) {
+func TestTrialOnlyOnTheTrialPlan(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	checkout := func(plan string) {
@@ -110,45 +110,17 @@ func TestTrialOnlyBasic(t *testing.T) {
 			t.Fatalf("checkout %s: %d %v", plan, code, body)
 		}
 	}
-	for _, plan := range []string{Pro, Business} {
+	for _, plan := range []string{Basic, Pro} {
 		checkout(plan)
-		if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("subscription_data[trial_period_days]") != "" || f.Get("subscription_data[trial_settings][end_behavior][missing_payment_method]") != "" {
+		if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("subscription_data[trial_period_days]") != "" || f.Has("subscription_data[metadata][trial_user]") {
 			t.Fatalf("%s got a trial: %v", plan, f)
 		}
 	}
-	checkout(Basic)
+	checkout(Business) // the offer's trial plan
 	f := e.stripe.form("POST /v1/checkout/sessions")
 	if f.Get("subscription_data[trial_period_days]") != "7" || f.Get("subscription_data[trial_settings][end_behavior][missing_payment_method]") != "cancel" ||
-		f.Get("payment_method_collection") != "always" {
-		t.Fatalf("Basic has no 7-day trial with a card: %v", f)
-	}
-
-	// On the trial, a move to Pro ends it now and charges at once; a move to Basic's other interval keeps it.
-	e.stripe.put("sub_1", owner.workspace, "cus_1", "trialing", "price_bm")
-	e.event("evt_1", "customer.subscription.created", map[string]any{"id": "sub_1"})
-	if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year"}); code != http.StatusOK {
-		t.Fatalf("basic year: %d %v", code, body)
-	}
-	if got := e.stripe.form("POST /v1/subscriptions/sub_1").Get("trial_end"); got != "" {
-		t.Fatalf("a Basic switch ended the trial: %q", got)
-	}
-	if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "year"}); code != http.StatusOK {
-		t.Fatalf("pro: %d %v", code, body)
-	}
-	if got := e.stripe.form("POST /v1/subscriptions/sub_1").Get("trial_end"); got != "now" {
-		t.Fatalf("trial_end = %q, want now", got)
-	}
-
-	// Once a workspace had a trial, Basic is charged at once too.
-	if b := e.billing(owner.workspace); !b.TrialUsed {
-		t.Fatalf("trial not marked used: %+v", b)
-	}
-	e.stripe.put("sub_1", owner.workspace, "cus_1", "canceled", "price_py")
-	e.event("evt_2", "customer.subscription.deleted", map[string]any{"id": "sub_1"})
-	e.exec(`UPDATE workspace_billing SET stripe_subscription_id = NULL WHERE workspace_id = $1`, owner.workspace)
-	checkout(Basic)
-	if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("subscription_data[trial_period_days]") != "" {
-		t.Fatalf("a second trial: %v", f)
+		f.Get("payment_method_collection") != "always" || f.Get("subscription_data[metadata][trial_user]") == "" {
+		t.Fatalf("Business has no 7-day trial with card: %v", f)
 	}
 }
 

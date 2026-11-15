@@ -163,6 +163,12 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if err != nil || monthly == Unlimited {
 		return monthly, err
 	}
+	if r.Trial {
+		return s.trialAI(ctx, q, workspaceID, monthly, false)
+	}
+	if r.Items[string(AITokens)].Source == SourcePaymentOverdue {
+		return 0, nil // packs bought before wait with the rest until the payment is made
+	}
 	w, err := q.AdmissionWorkspace(ctx, workspaceID)
 	if err != nil {
 		return 0, err
@@ -172,7 +178,8 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 }
 
 // AICost is the workspace's monthly model cost guard in micro-USD (an aimodel.Allowance): its offer's
-// ai_cost_usd_micros, pooled by paid seats; none without a plan, unlimited (-1) when billing is off. AI token packs
+// ai_cost_usd_micros, pooled by paid seats (the trial's, within the day's trial budget); none without a plan or while a
+// payment is overdue, unlimited (-1) when billing is off. AI token packs
 // add tokens, not cost: a pack's tokens are spent only while this budget lasts.
 func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
@@ -182,7 +189,11 @@ func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (in
 	if r.Plan == "" {
 		return 0, nil
 	}
-	return r.Cap(AICost)
+	cost, err := r.Cap(AICost)
+	if err != nil || !r.Trial {
+		return cost, err
+	}
+	return s.trialAI(ctx, q, workspaceID, cost, true)
 }
 
 // AllowResource is injected into Store's canonical writes before requests and jobs start.
@@ -216,7 +227,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
 	}
 	plan := r.Plan
-	max, err := r.capFor(b.PerSeat, limit)
+	max, err := r.capFor(limit)
 	if err != nil {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, err)
 	}
@@ -224,12 +235,13 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	now := s.now()
-	u, err := q.WorkspaceUsage(ctx, workspaceID, monthStart(now, ws.Location()), now)
+	start := quotaStart(b, now, ws.Location())
+	u, err := q.WorkspaceUsage(ctx, workspaceID, start, now)
 	if err != nil {
 		return err
 	}
 	if fits(used(u, limit), add, max) {
-		return notifyNear(ctx, q, workspaceID, plan, limit, now, monthStart(now, ws.Location()), used(u, limit)+add, max)
+		return notifyNear(ctx, q, workspaceID, plan, limit, now, start, used(u, limit)+add, max)
 	}
 	return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, auth.Error(http.StatusPaymentRequired, "limit_reached", limitMessage(plan, limit, max),
 		map[string]any{"limit": limit, "used": used(u, limit), "max": max, "plan": plan}))
@@ -268,11 +280,11 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 	if r.Plan == "" { // read-only: the plan guard refuses the change, not a limit
 		return "", 0, Unlimited, true, nil
 	}
-	if max, err = r.capFor(b.PerSeat, limit); err != nil || max == Unlimited {
+	if max, err = r.capFor(limit); err != nil || max == Unlimited {
 		return r.Plan, 0, max, err == nil, err
 	}
 	now := s.now()
-	u, err := s.db.WorkspaceUsage(ctx, ws.ID, monthStart(now, ws.Location()), now)
+	u, err := s.db.WorkspaceUsage(ctx, ws.ID, quotaStart(b, now, ws.Location()), now)
 	if err != nil {
 		return "", 0, 0, false, err
 	}
@@ -297,7 +309,7 @@ func limitMessage(plan string, limit Limit, max int64) string {
 	case Signatures:
 		return fmt.Sprintf("The %s plan includes %d signature requests a month. Upgrade the workspace to send more.", name, max)
 	case AITokens:
-		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Buy an AI token pack or upgrade the workspace to use more.", name, max)
+		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Upgrade the workspace or add people to use more.", name, max)
 	}
 	return fmt.Sprintf("The %s plan includes %s of storage. Upgrade the workspace or remove files to upload more.", name, bytesText(max))
 }
