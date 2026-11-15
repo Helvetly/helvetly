@@ -1,6 +1,6 @@
 import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
 // The plans as the API sells them: prices from apps/api/internal/billing/plans.go, limits from the
-// plan_limits migrations. plans.test.ts reads both files, so a price or limit change there fails here.
+// limit migrations. plans.test.ts reads both files, so a price or limit change there fails here.
 
 import { translate } from '@/lib/i18n'
 
@@ -9,7 +9,7 @@ export type Interval = 'month' | 'year'
 
 /** A cap; null is unlimited. Storage in GB, AI in model tokens per month. */
 export type Limits = {
-  /** The member cap of the earlier flat prices (plan_limits); per-person plans are not capped. */
+  /** The member cap of the earlier flat prices (limits); per-person plans are not capped. */
   members: number | null
   clients: number | null
   invoicesPerMonth: number | null

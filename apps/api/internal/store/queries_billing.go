@@ -44,15 +44,18 @@ type Usage struct {
 	AITokensThisMonth                                      int64 // heidi_usage of the calendar month
 }
 
-// PlanLimit is one cap of one plan (plan_limits); Max nil is unlimited.
+// PlanLimit is one plan's value of a limit or feature: its limit_plans value, else the limit's default; -1 is
+// unlimited.
 type PlanLimit struct {
 	Plan, Limit string
-	Max         *int64
+	Value       int64
 }
 
-// PlanLimits are every plan's caps, as seeded in plan_limits.
-func (q Q) PlanLimits(ctx context.Context) ([]PlanLimit, error) {
-	rows, err := q.db.Query(ctx, `SELECT plan, limit_key, max_value FROM plan_limits`)
+// PlanLimits is every limit of every plan in plans.
+func (q Q) PlanLimits(ctx context.Context, plans []string) ([]PlanLimit, error) {
+	rows, err := q.db.Query(ctx, `SELECT p.plan, l.key, COALESCE(lp.value, l.value)
+		FROM limits l CROSS JOIN unnest($1::text[]) AS p (plan)
+		LEFT JOIN limit_plans lp ON lp.limit_key = l.key AND lp.plan_id = p.plan`, plans)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +63,76 @@ func (q Q) PlanLimits(ctx context.Context) ([]PlanLimit, error) {
 	var out []PlanLimit
 	for rows.Next() {
 		var l PlanLimit
-		if err := rows.Scan(&l.Plan, &l.Limit, &l.Max); err != nil {
+		if err := rows.Scan(&l.Plan, &l.Limit, &l.Value); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
 	}
 	return out, rows.Err()
+}
+
+// Where a workspace's value of a limit comes from.
+const (
+	LimitFromDefault   = "default"
+	LimitFromPlan      = "plan"
+	LimitFromWorkspace = "workspace"
+)
+
+// ResolvedLimit is a workspace's value of one limit or feature (-1 unlimited) and where it comes from.
+type ResolvedLimit struct {
+	Limit  string
+	Value  int64
+	Source string
+}
+
+// ResolveLimits is every limit of a workspace on plan: its own value (limit_workspaces), else the plan's
+// (limit_plans), else the default (limits); one query for every limit check.
+func (q Q) ResolveLimits(ctx context.Context, workspaceID, plan string) ([]ResolvedLimit, error) {
+	rows, err := q.db.Query(ctx, `SELECT l.key, COALESCE(lw.value, lp.value, l.value),
+			CASE WHEN lw.value IS NOT NULL THEN 'workspace' WHEN lp.value IS NOT NULL THEN 'plan' ELSE 'default' END
+		FROM limits l
+		LEFT JOIN limit_plans lp ON lp.limit_key = l.key AND lp.plan_id = $2
+		LEFT JOIN limit_workspaces lw ON lw.limit_key = l.key AND lw.workspace_id = $1`, workspaceID, plan)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ResolvedLimit
+	for rows.Next() {
+		var l ResolvedLimit
+		if err := rows.Scan(&l.Limit, &l.Value, &l.Source); err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+
+// SetPlanLimit sets a plan's value of a limit (-1 unlimited; a feature 1 or 0).
+func (q Q) SetPlanLimit(ctx context.Context, limit, plan string, value int64) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO limit_plans (limit_key, plan_id, value) VALUES ($1, $2, $3)
+		ON CONFLICT (limit_key, plan_id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`, limit, plan, value)
+	return err
+}
+
+// ClearPlanLimit drops a plan's value of a limit, so the default applies to it.
+func (q Q) ClearPlanLimit(ctx context.Context, limit, plan string) error {
+	_, err := q.db.Exec(ctx, `DELETE FROM limit_plans WHERE limit_key = $1 AND plan_id = $2`, limit, plan)
+	return err
+}
+
+// SetWorkspaceLimit gives a workspace its own value of a limit, which replaces its plan's; note says why.
+func (q Q) SetWorkspaceLimit(ctx context.Context, workspaceID, limit string, value int64, note string) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO limit_workspaces (limit_key, workspace_id, value, note) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (workspace_id, limit_key) DO UPDATE SET value = EXCLUDED.value, note = EXCLUDED.note, updated_at = now()`,
+		limit, workspaceID, value, note)
+	return err
+}
+
+// ClearWorkspaceLimit drops a workspace's own value of a limit, so its plan's applies again.
+func (q Q) ClearWorkspaceLimit(ctx context.Context, workspaceID, limit string) error {
+	_, err := q.db.Exec(ctx, `DELETE FROM limit_workspaces WHERE workspace_id = $1 AND limit_key = $2`, workspaceID, limit)
+	return err
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
