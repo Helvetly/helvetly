@@ -145,14 +145,6 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const preview = useExpensePreview(previewKey)
   const totals = booked ? expense : preview.data
 
-  const focusStart = useEffectEvent(() =>
-    document.getElementById(fieldId(booked ? 'paid' : 'supplier_name'))?.focus(),
-  )
-  useEffect(() => {
-    const timer = setTimeout(focusStart, 60)
-    return () => clearTimeout(timer)
-  }, [])
-
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
     if (errors[field])
@@ -882,6 +874,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent
         side="right"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          document.getElementById(fieldId(booked ? 'paid' : 'supplier_name'))?.focus()
+        }}
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >

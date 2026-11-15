@@ -78,12 +78,6 @@ export function ProductForm({
   const preview = pricePreview(values)
   const standard = values.vat_category === 'S'
 
-  const focusName = useEffectEvent(() => document.getElementById(fieldId('name'))?.focus())
-  useEffect(() => {
-    const timer = setTimeout(focusName, 60)
-    return () => clearTimeout(timer)
-  }, [])
-
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
     if (errors[field])
@@ -162,6 +156,10 @@ export function ProductForm({
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent
         side="right"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          document.getElementById(fieldId('name'))?.focus()
+        }}
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >

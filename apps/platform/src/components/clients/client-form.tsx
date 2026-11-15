@@ -91,19 +91,6 @@ export function ClientForm({
   const missing = missingAddress(values)
   const hint = draftHint(missing)
 
-  // When the form opens, after the drawer's own focus handling: the name, or the address to complete.
-  const focusStart = useEffectEvent(() => {
-    const element = document.getElementById(
-      focus === 'address' ? fieldId(missing[0] ?? 'street') : fieldId('name'),
-    )
-    element?.scrollIntoView({ block: 'center' })
-    element?.focus()
-  })
-  useEffect(() => {
-    const timer = setTimeout(focusStart, 60)
-    return () => clearTimeout(timer)
-  }, [])
-
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
     if (errors[field])
@@ -713,6 +700,14 @@ export function ClientForm({
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent
         side="right"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          const element = document.getElementById(
+            focus === 'address' ? fieldId(missing[0] ?? 'street') : fieldId('name'),
+          )
+          element?.scrollIntoView({ block: 'center' })
+          element?.focus()
+        }}
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >
