@@ -106,7 +106,7 @@ Errors happen, and the law expects you to fix them.
 
 ## How Helvetly helps
 
-Helvetly prepares the figures of your VAT return for any period from issued invoices and booked expenses, with either the effective or the net tax rate method and on an agreed or received basis. It exports them as a PDF summary, as CSV and as the eCH-0217 file you upload in the ESTV ePortal; filing itself stays in the ePortal.
+Helvetly prepares the figures of your VAT return for any period from issued invoices and booked expenses, with either the effective or the net tax rate method and on an agreed or received basis. It exports them as a PDF summary, as CSV and as the eCH-0217 file you upload in the ESTV ePortal; filing itself stays in the ePortal. Preparing the VAT return is part of the Pro and Business plans.
 
 ## Sources
 

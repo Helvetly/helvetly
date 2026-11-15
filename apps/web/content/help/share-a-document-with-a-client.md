@@ -3,10 +3,12 @@ title: Share a document with a client
 description: Make a file from Documents visible in a client's portal, and stop sharing it at any time.
 category: Documents and signatures
 order: 3
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Share files with a client through their portal instead of sending attachments.
+
+Sharing through the client portal needs **Business**.
 
 1. Go to **Documents** and find the file.
 2. Click the **Share with client** icon on the file, or right-click it and choose **Share with client…**.

@@ -83,6 +83,7 @@ type scripted struct {
 }
 
 func (p *scripted) InputTokens(context.Context, aimodel.Request) (int64, error) { return 10, nil }
+func (p *scripted) Card() aimodel.RateCard                                      { return aimodel.Cards[aimodel.DefaultModel] }
 func (p *scripted) Answer(ctx context.Context, r aimodel.Request) (aimodel.Reply, error) {
 	n := int(p.calls.Add(1)) - 1
 	p.mu.Lock()
@@ -365,6 +366,27 @@ func TestUnknownModelUsageIsNeverRetried(t *testing.T) {
 	}
 	if e.model.calls.Load() != 1 || got.Files[0].Status != "failed" {
 		t.Fatalf("uncertain usage called the model again: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
+	}
+}
+
+func TestAChunkIsAskedAtMostTwice(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	refused := func(aimodel.Request) (aimodel.Reply, error) {
+		zero := int64(0)
+		return aimodel.Reply{Tokens: &zero}, errors.New("OpenAI returned HTTP 500")
+	}
+	e.model.replies = append(e.model.replies, refused, refused, refused)
+	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.pdf": []byte("%PDF-1.7 flaky")}))
+	clock := time.Now().UTC()
+	e.s.now = func() time.Time { return clock }
+	var got store.ImportBatch
+	for range maxAttempts {
+		clock = clock.Add(time.Hour)
+		got = e.extracted(b.ID)
+	}
+	if e.model.calls.Load() != 2 || got.Files[0].Status != "failed" || got.Files[0].Error == nil || !strings.Contains(*got.Files[0].Error, "failed twice") {
+		t.Fatalf("calls=%d file=%+v, want two calls and the file failed", e.model.calls.Load(), got.Files[0])
 	}
 }
 

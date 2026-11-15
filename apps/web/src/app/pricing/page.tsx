@@ -8,14 +8,13 @@ import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { PRICING_FAQ } from '@/lib/faq'
 import { translate } from '@/lib/i18n'
-import { TRIAL_DAYS } from '@/lib/plans'
+import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
   alternates: localizedAlternates('/pricing'),
-
   title: translate('pricing'),
-  description: translate('basicProAndBusinessPricesPerPersonInCHF'),
+  description: translate('basicProAndBusinessComparedWhatEachPlanIncludes'),
 }
 
 export default function PricingPage() {
@@ -25,11 +24,11 @@ export default function PricingPage() {
         eyebrow={translate('pricing')}
         title={
           <>
-            {translate('simplePrices')}
-            <span className="accent">{translate('everyFeature')}</span>
+            {translate('clearPrices')}
+            <span className="accent">{translate('perPerson2')}</span>
           </>
         }
-        lead={translate('youPayForEachTeamMemberAndEveryPlan')}
+        lead={translate('everyTeamMemberIsBilledAtThePlanS')}
       />
       <section className="pb-24">
         <Container>
@@ -41,7 +40,7 @@ export default function PricingPage() {
           <SectionHeading
             eyebrow={translate('comparePlans')}
             title={translate('whatEachPlanIncludes')}
-            lead={translate('monthlyLimitsStartAgainOnTheFirstOfThe')}
+            lead={translate('seeWhatIsIncludedAndWhatIsNotBefore')}
           />
           <div data-reveal className="mt-12">
             <PlanTable />
@@ -58,8 +57,10 @@ export default function PricingPage() {
         }
         lead={translate('trialsVATLimitsAndChangingPlansInShortAnswers')}
         card={{
-          title: translate('everyFeatureFromTheFirstDay'),
-          body: translate('startADayTrialWithTheWholeProductThen', { TRIAL_DAYS: TRIAL_DAYS }),
+          title: translate('tryBusinessForDays', { days: TRIAL.days }),
+          body: translate('upToPeopleWithSmallerTrialAllowancesThenPick', {
+            members: TRIAL.members,
+          }),
           href: START_URL,
           link: translate('startYourFreeTrial'),
         }}

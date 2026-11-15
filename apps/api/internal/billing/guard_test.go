@@ -103,11 +103,7 @@ func TestGuardNewLimits(t *testing.T) {
 			created_at, updated_at) VALUES ($1, $2, 'service', 'S', 'net', 100, 'CHF', 'S', 810, now(), now())`,
 			"prd_"+string(rune('a'+i)), b.workspace)
 	}
-	for _, l := range []Limit{Engagements, Signatures} {
-		if err := e.st.SetPlanLimit(context.Background(), string(l), Basic, 0); err != nil {
-			t.Fatal(err)
-		}
-	}
+	e.setPlanValue(Basic, Engagements, StateLimited, n64(0))
 	for path, limit := range map[string]Limit{
 		"/api/v1/products": Products, "/api/v1/products/prd_a/duplicate": Products,
 		"/api/v1/engagements": Engagements, "/api/v1/engagements/eng_1/renew": Engagements, "/api/v1/engagements/eng_1/resume": Engagements,
@@ -124,16 +120,5 @@ func TestGuardNewLimits(t *testing.T) {
 	e.exec(`UPDATE products SET deleted_at = now() WHERE id = 'prd_a'`)
 	if code, body := e.do(b, http.MethodPost, "/api/v1/products", map[string]any{}); code != http.StatusCreated {
 		t.Fatalf("after a delete: %d %v", code, body)
-	}
-}
-
-func TestLoadPlanLimitsRefusesAGap(t *testing.T) {
-	e := newEnv(t, true)
-	if p, err := loadPlanLimits(context.Background(), e.st); err != nil || p.of(Basic, Members) != 2 || p.of(Business, Clients) != Unlimited {
-		t.Fatalf("seeded limits: %v %v", p, err)
-	}
-	e.exec(`DELETE FROM limits WHERE key = 'products'`)
-	if _, err := loadPlanLimits(context.Background(), e.st); err == nil || !strings.Contains(err.Error(), "no products limit") {
-		t.Fatalf("missing row: %v", err)
 	}
 }

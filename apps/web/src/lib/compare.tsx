@@ -1,12 +1,11 @@
-import { formatPrice } from '@helvetly/ui/lib/price'
 import type { ReactNode } from 'react'
 
 import { translate } from '@/lib/i18n'
-import { PLANS, priceOf } from '@/lib/plans'
+import { count, LIMITS, type Plan, type PlanId, planById, plansWith, priceOf } from '@/lib/plans'
 import type { Tone } from '@/lib/tones'
 
 // Side-by-side comparisons with other Swiss business software. What each competitor offers comes from its
-// own public website on the date in `checked`. Comparative advertising must be accurate and verifiable
+// own public website on the date in `checked`, its prices on the date in `pricesChecked`. Comparative advertising must be accurate and verifiable
 // (UWG art. 3 para. 1 lit. e): re-check a competitor's rows against its site before changing them.
 // Re-check in a browser before each release: KLARA's prices (its pages disagree), KLARA's reminders and
 // roles (help pages refused automated reads) and bexio's help-centre claims.
@@ -17,6 +16,7 @@ export type Cell = string | boolean | null
 export type RowKey =
   | 'madeFor'
   | 'price'
+  | 'yearlyCost'
   | 'pricingModel'
   | 'teamRoles'
   | 'qrBill'
@@ -45,7 +45,8 @@ export const ROW_GROUPS: { group: string; rows: { key: RowKey; label: string }[]
     group: translate('whoItIsFor'),
     rows: [
       { key: 'madeFor', label: translate('madeFor') },
-      { key: 'price', label: translate('price2') },
+      { key: 'price', label: translate('packagesAndPrice') },
+      { key: 'yearlyCost', label: translate('aYearFor1AndFor3People') },
       { key: 'pricingModel', label: translate('pricingModel') },
       { key: 'teamRoles', label: translate('teamAndRoles') },
     ],
@@ -92,33 +93,61 @@ export const ROW_GROUPS: { group: string; rows: { key: RowKey; label: string }[]
   },
 ]
 
+const year = (p: Plan, people: number) => (priceOf(p, 'year').amount / 100) * people
+const yearly = (id: PlanId) => {
+  const p = planById(id)
+  return translate('chf', { name: p.name, value2: count(year(p, 1)), value3: count(year(p, 3)) })
+}
+const monthly = (id: PlanId) =>
+  translate('offerMonthlyPrice', { name: planById(id).name, amount: count(planById(id).monthly) })
+
 /** Helvetly's side of every comparison. */
 export const OURS: Record<RowKey, Cell> = {
   madeFor: translate('swissCompaniesOfAnySizeAloneOrAsA'),
-  price: translate('fromPerPersonMonthOrPerPersonYearIncl', {
-    value1: formatPrice(priceOf(PLANS[0]!, 'month')),
-    value2: formatPrice(priceOf(PLANS[0]!, 'year')),
+  price: translate('perPersonMonthInclVATHeidiExpensesAndThe', {
+    value1: monthly('basic'),
+    value2: monthly('pro'),
+    value3: monthly('business'),
   }),
-  pricingModel: translate('perPersonEveryFeatureInEveryPlan'),
-  teamRoles: translate('ownerAdminsAndMembersAnyNumberOfPeople'),
-  documentTypes: translate('invoicePartialPrepaymentCreditNoteDebitNoteCorrectedProforma'),
-  contractTemplates: true,
-  assistant: translate('heidiBuiltInAnswersFromYourRecordsAndActs'),
-  aiImport: translate('pdfsImagesCSVExcelWordAndZIPFilesReviewed'),
+  yearlyCost: translate('inclVAT2', {
+    value1: yearly('pro'),
+    value2: yearly('basic'),
+    value3: yearly('business'),
+  }),
+  pricingModel: translate('threePlansByFeaturesAndAllowancesEveryTeamMember'),
+  teamRoles: translate('ownerAdminsAndMembersInEveryPlanEachOne'),
+  documentTypes: translate('invoicePartialPrepaymentProformaAndSelfBilledCreditNote', {
+    value1: plansWith('corrections_vat'),
+  }),
+  contractTemplates: translate('with', { value1: plansWith('templates_signatures') }),
+  assistant: translate('heidiWithAnswersFromYourRecordsAndActsOnly', {
+    value1: plansWith('heidi'),
+  }),
+  aiImport: translate('pdfsImagesCSVExcelWordAndZIPFilesReviewed2'),
   signIn: translate('passkeysEmailedCodesOrGoogleWithTOTPTwoFactor'),
-  dataExport: translate('theWholeWorkspaceAsOneZIPAnyTime'),
+  dataExport: translate('singleDocumentsInEveryPlanBusinessDataTheWhole', {
+    value1: plansWith('ledger_exports'),
+  }),
   notifications: translate('eachPersonChoosesInTheAppAndByEmail'),
   qrBill: true,
   invoiceLanguages: translate('germanFrenchItalianEnglish'),
-  reminders: translate('upTo10StepsWithFeesAndOR104'),
+  reminders: translate('upTo10StepsWithFeesAndOR1042', { value1: plansWith('automations') }),
   depositPartial: true,
-  instalments: true,
-  einvoices: translate('xrechnungPeppolBISKSeFAndEFacturaFiles'),
-  expenses: true,
-  vatReturn: translate('yesWithAnESTVExportEffectiveAndNetTax'),
-  signatures: true,
-  clientPortal: true,
-  retainers: true,
+  instalments: translate('with', { value1: plansWith('automations') }),
+  einvoices: translate('xrechnungPeppolBISKSeFAndEFacturaXMLFiles', {
+    value1: plansWith('einvoice_xml'),
+  }),
+  expenses: translate('with', { value1: plansWith('expenses') }),
+  vatReturn: translate('withEffectiveAndNetTaxRateAsTheECH', {
+    value1: plansWith('corrections_vat'),
+  }),
+  signatures: translate('simpleElectronicSignaturesWithNoQualifiedSignatures', {
+    value1: plansWith('templates_signatures'),
+  }),
+  clientPortal: translate('in', { value1: plansWith('client_portal') }),
+  retainers: translate('yesUpToActiveInBasicManagedByHand', {
+    basic: LIMITS.engagements.values.basic,
+  }),
   auditLog: translate('closedMonthsAndATamperEvidentHashChainedLog'),
   apps: translate('webAppForEveryDevice'),
 }
@@ -135,6 +164,8 @@ export type Competitor = {
   summary: string
   /** The day their public site was last read for this page. */
   checked: string
+  /** The day their prices and packages were last read. */
+  pricesChecked: string
   title: ReactNode
   lead: string
   /** Completes "Helvetly is the better fit when you…". */
@@ -153,22 +184,24 @@ export const COMPETITORS: Competitor[] = [
     tone: 'rose',
     summary: translate('aSimpleInvoicingAndBookkeepingAppForTheSwiss'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('grownPastThe')}
         <span className="accent">{translate('milchbEchli')}</span>
       </>
     ),
-    lead: translate('magicHeidiIsAFineAppForTheSelf'),
+    lead: translate('magicHeidiIsAFineAppForTheSelf2'),
     oursIf: [
-      translate('workAsATeamWithATrusteeOrWith'),
-      translate('needEInvoicesForGermanyPolandRomaniaOrPeppol'),
-      translate('sendContractsForSignatureAndShareDocumentsWithClients'),
+      translate('needXRechnungPeppolBISKSeFOrEFacturaXML'),
+      translate('sendContractsForSimpleSignatureFromTemplatesProAnd'),
+      translate('shareInvoicesAndDocumentsWithClientsInAPortal'),
       translate('billRetainersAndNeedToSeeTheHoursLeft'),
-      translate('wantAnAssistantWhoAnswersFromYourBooksAnd'),
+      translate('wantAnAssistantBuiltInWithNoAIAccount'),
     ],
     theirsIf: [
       translate('sendOnlyAFewInvoicesAYearAndWant'),
+      translate('wantOnePriceHoweverManyPeopleWorkInIt'),
       translate('needNativePhoneAndDesktopApps'),
       translate('wantYourBankFeedMatchedToInvoicesAutomatically'),
       translate('sellThroughShopifyAmazonOrEtsy'),
@@ -176,11 +209,12 @@ export const COMPETITORS: Competitor[] = [
     rows: {
       madeFor: translate('swissSelfEmployedPeopleAndSoleProprietorships'),
       price: translate('freeFor3InvoicesAnd3ReceiptsProCHF'),
-      pricingModel: translate('aFreePlanThenOneProPlan'),
+      yearlyCost: translate('proCHF299299InclVAT'),
+      pricingModel: translate('aFreePlanThenOneProPlanWithNo'),
       teamRoles: translate('teamAndFiduciaryAccess'),
       documentTypes: translate('invoiceDepositAndPartialCreditNoteCancellationWithA'),
       contractTemplates: null,
-      assistant: translate('connectsYourOwnClaudeOrChatGPT'),
+      assistant: translate('connectsYourOwnClaudeOrChatGPTThroughMCPAn'),
       aiImport: translate('excelCSVOrPDFWithAIColumnMapping'),
       signIn: translate('googleAppleOrAnEmailedCodeWithOptionalTwo'),
       dataExport: translate('everythingAsAZIPAnyTime'),
@@ -208,6 +242,7 @@ export const COMPETITORS: Competitor[] = [
     tone: 'sky',
     summary: translate('aBroadSwissBusinessSuiteWithAccountingPayrollAnd'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('builtToGetYouPaid')}
@@ -221,7 +256,7 @@ export const COMPETITORS: Competitor[] = [
       translate('sendContractsForSignatureAndShareDocumentsInA'),
       translate('billRetainersAndNeedToSeeTheHoursLeft'),
       translate('wantInstalmentPlansWithAQRBillForEach'),
-      translate('wantEveryFeatureInEveryPlanWithNoAdd'),
+      translate('preferOnePricePerPersonToTiersWithA'),
     ],
     theirsIf: [
       translate('needFullBookkeepingAndAnnualFinancialStatementsInThe'),
@@ -231,7 +266,8 @@ export const COMPETITORS: Competitor[] = [
     ],
     rows: {
       madeFor: translate('swissSmallBusinessesStartupsTheSelfEmployedAndTheir'),
-      price: translate('basicCHF35MonthBilledYearlyCHF45Monthly'),
+      price: translate('basicCHF35AdvancedCHF42OptimaCHF69'),
+      yearlyCost: translate('advancedCHF504For12UsersOptimaCHF'),
       pricingModel: translate('fourTiersByFeaturesAndIncludedUsersPlusAdd'),
       teamRoles: translate('usersPerPlanWithPermissionsFreeFiduciaryAccess'),
       documentTypes: translate('invoiceCreditNoteAndPartialInvoicesFromAnOrder'),
@@ -264,6 +300,7 @@ export const COMPETITORS: Competitor[] = [
     tone: 'peach',
     summary: translate('aModularSMESuiteWithAccountingPayrollPOSAnd'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('everythingToGetPaid')}
@@ -271,7 +308,7 @@ export const COMPETITORS: Competitor[] = [
         {translate('theModules')}
       </>
     ),
-    lead: translate('klaraBundlesAccountingPayrollATillAndAnOnline'),
+    lead: translate('klaraBundlesAccountingPayrollATillAndAnOnline2'),
     oursIf: [
       translate('needEInvoicesForGermanyPolandRomaniaOrPeppol'),
       translate('sendContractsForSignatureAndShareDocumentsInA'),
@@ -287,8 +324,9 @@ export const COMPETITORS: Competitor[] = [
     ],
     rows: {
       madeFor: translate('swissSMEsAccountingCRMOrdersPayrollAndPOSIn'),
-      price: translate('businessBasicCHF69MonthOrCHF55Month'),
-      pricingModel: translate('packagesPlusPaidModulesSomeChargedPerUse'),
+      price: translate('businessBasicCHF69MonthCHF55YearlyCHF'),
+      yearlyCost: translate('businessBasicCHF660660OnAYearlyPlan'),
+      pricingModel: translate('packagesPlusPaidModulesSuchAsBudgetEArchiveInventory'),
       teamRoles: translate('rolesForAdminsTrusteesPayrollAccountingAndMore'),
       documentTypes: translate('invoiceCreditNoteCollectiveAndRecurringInvoices'),
       contractTemplates: null,
@@ -320,6 +358,7 @@ export const COMPETITORS: Competitor[] = [
     tone: 'lemon',
     summary: translate('lowCostDesktopAccountingSoftwareForPeopleWhoKeep'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('fromDesktopFilesToA')}
@@ -343,8 +382,9 @@ export const COMPETITORS: Competitor[] = [
     ],
     rows: {
       madeFor: translate('smallCompaniesAssociationsPrivatePeopleAndAccountants'),
-      price: translate('freeUpTo70TransactionsProfessionalCHF89Year'),
-      pricingModel: translate('yearlySubscriptionPerUserUnlimitedFiles'),
+      price: translate('freeUpTo70TransactionsProfessionalCHF89Year2'),
+      yearlyCost: translate('advancedWithTheVATXMLCHF179537VAT'),
+      pricingModel: translate('yearlyLicencePerUserForUpTo5Devices'),
       teamRoles: translate('multiUserSubscriptionsOnePersonEditsAFileAt'),
       documentTypes: translate('invoiceAndCreditNoteProformaInAdvanced'),
       contractTemplates: null,
@@ -376,6 +416,7 @@ export const COMPETITORS: Competitor[] = [
     tone: 'mint',
     summary: translate('onlineDoubleEntryAccountingForPeopleWhoKeepTheir'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('lessBookkeeping')}
@@ -399,8 +440,9 @@ export const COMPETITORS: Competitor[] = [
     ],
     rows: {
       madeFor: translate('smesFreelancersAndFiduciariesWhoKnowDoubleEntryBookkeeping'),
-      price: translate('freeFor1UserPROCHF350YearWith'),
-      pricingModel: translate('freePlanThenPrepaidLicencesWithPaidExtrasPer'),
+      price: translate('freeFor1UserPROCHF350YearWith2'),
+      yearlyCost: translate('proCHF350350InclVAT'),
+      pricingModel: translate('freePlanThenPrepaidLicences612Or24'),
       teamRoles: translate('rolesForAdminsGuestsAndTrusteesAndCustomOnes'),
       documentTypes: translate('invoiceAndCreditNoteOffersAndMoreInPRO'),
       contractTemplates: translate('lettersFromTextTemplates'),
@@ -432,6 +474,7 @@ export const COMPETITORS: Competitor[] = [
     tone: 'lilac',
     summary: translate('invoicingAccountingAndPayrollFromTheAbacusWorldWith'),
     checked: translate('message11November2026'),
+    pricesChecked: translate('message15November2026'),
     title: (
       <>
         {translate('yourBackOffice')}
@@ -445,7 +488,7 @@ export const COMPETITORS: Competitor[] = [
       translate('billRetainersAndNeedToSeeTheHoursLeft'),
       translate('wantTheECH0217FileToImportYourVAT'),
       translate('needATamperEvidentAuditLogOfEveryFinancial'),
-      translate('wantEveryFeatureInEveryPlanWithNoAdd'),
+      translate('preferOnePricePerPersonToTiersLimitedBy'),
     ],
     theirsIf: [
       translate('wantAFreePlanThatIncludesAccountingAndPayroll'),
@@ -455,7 +498,8 @@ export const COMPETITORS: Competitor[] = [
     ],
     rows: {
       madeFor: translate('swissSMEsStartupsFreelancersAssociationsAndAccountants'),
-      price: translate('starterFree1UserBasicCHF21Month3'),
+      price: translate('starterFree1User1000DocumentsAYear'),
+      yearlyCost: translate('basicCHF252252AtTheMonthlyPriceVAT'),
       pricingModel: translate('freePlanThenTiersLimitedByUsersPayrollRuns'),
       teamRoles: translate('userGroupsWithPermissionsPerArea'),
       documentTypes: translate('invoiceAdvancePartialInstalmentAndCreditNote'),
@@ -470,7 +514,7 @@ export const COMPETITORS: Competitor[] = [
       reminders: translate('upToThreeLevelsSentAutomaticallyOrByHand'),
       depositPartial: true,
       instalments: translate('instalmentInvoicesFromAnOrder'),
-      einvoices: translate('ebillAndZUGFeRDThroughThePaidAbaNetAddOn'),
+      einvoices: translate('ebillThroughAbaNet21AMonthInBasicThen'),
       expenses: true,
       vatReturn: translate('effectiveAndNetTaxRateAsAGuideFor'),
       signatures: translate('offerSigningWithDeepSignPaid'),

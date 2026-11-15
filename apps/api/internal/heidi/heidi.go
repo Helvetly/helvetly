@@ -40,24 +40,27 @@ type Engagements interface {
 type Options struct {
 	Provider Provider
 	// Allowance is the plan's monthly token allowance; nil is unlimited.
-	Allowance    aimodel.Allowance
-	AllowStorage func(context.Context, store.Q, store.Session, int64) error
+	Allowance aimodel.Allowance
+	// CostAllowance is the plan's monthly model cost guard in micro-USD, shared with the import; nil applies none.
+	CostAllowance aimodel.Allowance
+	AllowStorage  func(context.Context, store.Q, store.Session, int64) error
 }
 type Service struct {
-	db           *store.Store
-	auth         Auth
-	files        Storage
-	engagements  Engagements
-	provider     Provider
-	allowance    aimodel.Allowance
-	now          func() time.Time
-	limit        *auth.RateLimiter
-	keepAlive    time.Duration
-	allowStorage func(context.Context, store.Q, store.Session, int64) error
+	db            *store.Store
+	auth          Auth
+	files         Storage
+	engagements   Engagements
+	provider      Provider
+	allowance     aimodel.Allowance
+	costAllowance aimodel.Allowance
+	now           func() time.Time
+	limit         *auth.RateLimiter
+	keepAlive     time.Duration
+	allowStorage  func(context.Context, store.Q, store.Session, int64) error
 }
 
 func New(db *store.Store, a Auth, files Storage, e Engagements, options Options) *Service {
-	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, allowStorage: options.AllowStorage, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute), keepAlive: 25 * time.Second}
+	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, costAllowance: options.CostAllowance, allowStorage: options.AllowStorage, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute), keepAlive: 25 * time.Second}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -253,7 +256,7 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 				return err
 			}
 			if n >= 0 {
-				included, remaining = &n, new(max(0, n-u.TokensUsed))
+				included, remaining = &n, new(max(0, n-u.TokensUsed-u.TokensReserved))
 			}
 		}
 	}

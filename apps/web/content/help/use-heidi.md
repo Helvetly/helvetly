@@ -3,10 +3,12 @@ title: Use Heidi, the assistant
 description: Ask Heidi about invoices, expenses, clients and engagements, attach files, and allow AI answers for your workspace.
 category: Heidi
 order: 1
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Heidi is the assistant built into Helvetly. Ask her about your business, right where you work.
+
+Heidi is included in **Pro** and **Business**.
 
 1. Press ⌘J (Ctrl+J) or click **Ask Heidi** in the sidebar. Type a question, or pick one under **Try asking**.
 2. Heidi can show overdue and recent invoices, this month's expenses and input VAT, recent clients and documents, and engagement balances. She can open invoices and engagements, start a new invoice and log work on an engagement.

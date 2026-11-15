@@ -3,10 +3,12 @@ title: Export an e-invoice (XRechnung, Peppol, e-Factura, KSeF)
 description: Download issued invoices as XRechnung, Peppol BIS 3.0, e-Factura or KSeF XML, and attach the XML to invoice emails.
 category: Invoices and getting paid
 order: 13
-updated: 2026-11-11
+updated: 2026-11-15
 ---
 
 Some clients and authorities need invoices as structured XML. Here is how to export them.
+
+E-invoice XML export is part of **Business**. Helvetly creates the files; it does not deliver them through Peppol, KSeF or the Romanian network.
 
 1. First fill in **Settings → Invoices → E-invoices** (registration number, e-invoice address scheme and electronic address).
 2. Open an issued invoice and open the **…** menu.

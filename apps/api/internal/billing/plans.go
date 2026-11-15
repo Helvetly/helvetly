@@ -4,7 +4,6 @@
 package billing
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -76,7 +75,7 @@ func planOfKey(key string) (plan, interval string) {
 	return plan, interval
 }
 
-// PlanDescription is what the Stripe product says about a plan; the limits themselves live in limits and limit_plans.
+// PlanDescription is what the Stripe product says about a plan; the limits themselves live in the offer (offer.go).
 func PlanDescription(plan string) string { return planDescriptions[plan] }
 
 var planDescriptions = map[string]string{
@@ -89,21 +88,23 @@ var planDescriptions = map[string]string{
 type Limit string
 
 const (
-	Members     Limit = "members"              // members besides the owner who accepted; no cap on a per-seat subscription
-	Clients     Limit = "clients"              // clients not deleted
-	Invoices    Limit = "invoices_per_month"   // invoices (not credit notes) created this month
-	Expenses    Limit = "expenses_per_month"   // expenses created this month
-	Products    Limit = "products"             // catalogue entries not deleted (archived ones too)
-	Engagements Limit = "engagements"          // engagements not cancelled and not ended
-	Signatures  Limit = "signatures_per_month" // signature requests sent this month
-	Storage     Limit = "storage_bytes"        // documents and expense receipts
-	AITokens    Limit = "ai_tokens_per_month"  // model tokens Heidi and the AI import used this month (heidi_usage)
+	Members     Limit = "members"                // members besides the owner who accepted; no cap on a per-seat subscription
+	Clients     Limit = "clients"                // clients not deleted
+	Invoices    Limit = "invoices_per_month"     // invoices (not credit notes) created this month
+	Expenses    Limit = "expenses_per_month"     // expenses created this month
+	Products    Limit = "products"               // catalogue entries not deleted (archived ones too)
+	Engagements Limit = "engagements"            // engagements not cancelled and not ended
+	Signatures  Limit = "signatures_per_month"   // signature requests sent this month
+	Storage     Limit = "storage_bytes"          // documents and expense receipts
+	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
+	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
+	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
 )
 
 // Unlimited: the plan has no cap on that limit.
 const Unlimited int64 = -1
 
-const gb = 1 << 30
+const gb = 1_000_000_000 // storage is sold in decimal gigabytes (offer v2)
 
 var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
 
@@ -112,66 +113,6 @@ var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagem
 
 // stockLimits are counted on what exists, so a smaller plan must fit them; monthly ones restart each month.
 var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage}
-
-// planLimits is what each plan allows (or, from limitsOf, one workspace on its plan); -1 is unlimited and a feature
-// is 1 or 0.
-type planLimits map[string]map[Limit]int64
-
-// loadPlanLimits reads every plan's limits (limits and limit_plans) for the plan catalogue, and refuses a limits
-// table that misses a limit, so a cap is never guessed. Checks on one workspace read limitsOf instead.
-func loadPlanLimits(ctx context.Context, db *store.Store) (planLimits, error) {
-	rows, err := db.PlanLimits(ctx, planOrder)
-	if err != nil {
-		return nil, fmt.Errorf("reading plan limits: %w", err)
-	}
-	out := planLimits{}
-	for _, r := range rows {
-		if out[r.Plan] == nil {
-			out[r.Plan] = map[Limit]int64{}
-		}
-		out[r.Plan][Limit(r.Limit)] = r.Value
-	}
-	for _, l := range limitOrder {
-		if _, ok := out[Basic][l]; !ok {
-			return nil, fmt.Errorf("limits has no %s limit", l)
-		}
-	}
-	return out, nil
-}
-
-// limitsOf is a workspace's limits on plan, its own values replacing the plan's (limit_workspaces): every check on
-// one workspace reads them, in one query. None without a plan.
-func limitsOf(ctx context.Context, q store.Q, workspaceID, plan string) (planLimits, error) {
-	if plan == "" {
-		return planLimits{}, nil
-	}
-	rows, err := q.ResolveLimits(ctx, workspaceID, plan)
-	if err != nil {
-		return nil, fmt.Errorf("resolving limits: %w", err)
-	}
-	m := make(map[Limit]int64, len(rows))
-	for _, r := range rows {
-		m[Limit(r.Limit)] = r.Value
-	}
-	return planLimits{plan: m}, nil
-}
-
-// forBilling is the cap on a limit for the workspace's subscription: a per-seat one is billed for every member, so
-// it has no member cap; one on an earlier flat price keeps its plan's.
-func (p planLimits) forBilling(b store.Billing, l Limit, now time.Time) int64 {
-	if l == Members && b.PerSeat {
-		return Unlimited
-	}
-	return p.of(PlanOf(b, now), l)
-}
-
-// of is a plan's cap on a limit; Unlimited when there is no plan to cap it (billing off, or nothing to count).
-func (p planLimits) of(plan string, l Limit) int64 {
-	if max, ok := p[plan][l]; ok {
-		return max
-	}
-	return Unlimited
-}
 
 // TrialDays: the first subscription of a workspace, when it is to TrialPlan, starts with a trial (once per
 // workspace, card required). The other plans are charged at once.
@@ -280,18 +221,19 @@ type overage struct {
 	Max   int64 `json:"max"`
 }
 
-// overages: what keeps the workspace from moving to plan; a per-seat price has room for every member.
-func (p planLimits) overages(plan string, perSeat bool, u store.Usage) []overage {
+// overages: what keeps the workspace from moving to the plan of r; a per-seat price has room for every member.
+func (r Rights) overages(perSeat bool, u store.Usage) ([]overage, error) {
 	var out []overage
 	for _, l := range stockLimits {
-		if l == Members && perSeat {
-			continue
+		max, err := r.capFor(perSeat, l)
+		if err != nil {
+			return nil, err
 		}
-		if max := p.of(plan, l); !fits(used(u, l), 0, max) {
+		if !fits(used(u, l), 0, max) {
 			out = append(out, overage{l, used(u, l), max})
 		}
 	}
-	return out
+	return out, nil
 }
 
 var overageWords = map[Limit][3]string{

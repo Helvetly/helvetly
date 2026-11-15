@@ -103,7 +103,7 @@ Two practical tips:
 
 ## How Helvetly helps
 
-Helvetly exports an issued invoice as XRechnung (UBL or CII), Peppol BIS Billing, Polish KSeF FA(3) or Romanian e-Factura (RO_CIUS) XML, with exemption codes for VAT-exempt lines. The customer's Leitweg-ID is stored on the client and carried into the buyer reference, and each exported file is archived. Delivery over the Peppol network itself needs an Access Point provider.
+Helvetly exports an issued invoice as XRechnung (UBL or CII), Peppol BIS Billing, Polish KSeF FA(3) or Romanian e-Factura (RO_CIUS) XML, with exemption codes for VAT-exempt lines. The customer's Leitweg-ID is stored on the client and carried into the buyer reference, and each exported file is archived. Delivery over the Peppol network itself needs an Access Point provider. E-invoice XML export is part of the Business plan; Helvetly itself does not deliver invoices through Peppol, KSeF or the Romanian network.
 
 ## Sources
 

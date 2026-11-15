@@ -15,6 +15,7 @@ import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
 import { translate } from '@/lib/i18n'
+import { plansWith } from '@/lib/plans'
 
 /** A mini QR bill: the invoice's payment part, with the scissors line. */
 function QrBillArt() {
@@ -293,7 +294,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'reminders',
-    facts: [translate('upTo10Steps'), '5% interest, worked out'],
+    facts: [
+      translate('upTo10Steps'),
+      translate('in', { value1: plansWith('automations', 'conjunction') }),
+    ],
     tone: 'peach',
     icon: <Bell />,
     label: translate('reminders'),
@@ -303,7 +307,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'expenses',
-    facts: [translate('pdfPhotoOrExcel'), translate('vatSplitForYou')],
+    facts: [
+      translate('pdfPhotoOrExcel'),
+      translate('in', { value1: plansWith('expenses', 'conjunction') }),
+    ],
     tone: 'lemon',
     icon: <Receipt />,
     label: translate('expenses'),
@@ -313,7 +320,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'signatures',
-    facts: [translate('auditTrail'), translate('signedInMinutes')],
+    facts: [
+      translate('simpleESignature'),
+      translate('in', { value1: plansWith('templates_signatures', 'conjunction') }),
+    ],
     tone: 'lilac',
     icon: <FileSignature />,
     label: translate('signatures'),
@@ -323,7 +333,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'instalments',
-    facts: [translate('oneQRBillPerPart'), translate('remindersPerPart')],
+    facts: [
+      translate('oneQRBillPerPart'),
+      translate('in', { value1: plansWith('automations', 'conjunction') }),
+    ],
     tone: 'sky',
     icon: <Split />,
     label: translate('instalments'),
@@ -343,7 +356,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'vat',
-    facts: [translate('ech0217File'), translate('effectiveOrNetRate')],
+    facts: [
+      translate('ech0217File'),
+      translate('in', { value1: plansWith('corrections_vat', 'conjunction') }),
+    ],
     tone: 'mint',
     icon: <Landmark />,
     label: translate('vatReturn'),
@@ -353,7 +369,10 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'portal',
-    facts: [translate('signInByEmailCode'), translate('invoicesAndFiles')],
+    facts: [
+      translate('signInByEmailCode'),
+      translate('in', { value1: plansWith('client_portal') }),
+    ],
     tone: 'lilac',
     icon: <UsersRound />,
     label: translate('clientPortal'),
@@ -363,12 +382,15 @@ const FEATURES: Feature[] = [
   },
   {
     id: 'einvoices',
-    facts: [translate('xrechnungPeppol'), translate('ksefEFactura')],
+    facts: [
+      translate('xmlFilesToSendYourself'),
+      translate('in', { value1: plansWith('einvoice_xml') }),
+    ],
     tone: 'sky',
     icon: <FileCode2 />,
     label: translate('eInvoices'),
     title: translate('eInvoicesForEurope'),
-    body: translate('xrechnungPeppolBISPolishKSeFAndRomanianEFactura'),
+    body: translate('xrechnungPeppolBISPolishKSeFAndRomanianEFactura2'),
     art: <EinvoiceArt />,
   },
 ]

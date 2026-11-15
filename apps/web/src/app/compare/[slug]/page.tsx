@@ -10,6 +10,7 @@ import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
 import { type Cell, competitor, COMPETITORS, OURS, ROW_GROUPS } from '@/lib/compare'
 import { translate } from '@/lib/i18n'
+import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 
 type Props = { params: Promise<{ slug: string }> }
@@ -88,7 +89,11 @@ export default async function ComparePage({ params }: Props) {
           style={{ ['--d' as string]: '200ms' }}
           className="mt-9 flex flex-col gap-3 sm:flex-row"
         >
-          <Cta href={START_URL}>{translate('tryHelvetlyFreeFor7Days')}</Cta>
+          <Cta href={START_URL}>
+            {translate('tryBusinessFreeFor')}
+            {TRIAL.days}
+            {translate('days')}
+          </Cta>
           <Cta href="/pricing" variant="outline">
             {translate('seePricing')}
           </Cta>
@@ -216,7 +221,10 @@ export default async function ComparePage({ params }: Props) {
             </a>
             {translate('asOf')}
             {them.checked}
-            {translate('aDashMeansItIsNotOfferedOrWe')} {them.name}
+            {translate('andItsPricesAndPackagesAsOf')}
+            {them.pricesChecked}
+            {translate('aDashMeansItIsNotOfferedOrWe2')}
+            {them.name}
             {translate('andItsLogoAreTrademarksOfTheirOwnerWhich')}
           </p>
         </Container>

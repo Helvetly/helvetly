@@ -5,6 +5,7 @@ import { HeidiShowcase } from '@/components/home/heidi-showcase'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
 import { translate } from '@/lib/i18n'
+import { plansWith } from '@/lib/plans'
 
 // What circles the orb: the jobs Heidi does. Both orbits turn together and their chips sit between each
 // other's, so no two ever overlap.
@@ -125,7 +126,8 @@ export function HeidiSection() {
                 <span className="accent ink-gradient pr-2">{translate('anything')}</span>
               </h2>
               <p className="text-lead max-w-2xl text-balance text-white/70">
-                {translate('pressJOnAnyPageHeidiKnowsWhatIs')}
+                {translate('pressJOnAnyPageHeidiKnowsWhatIs2')}
+                {plansWith('heidi', 'conjunction')}.
               </p>
             </div>
           </div>

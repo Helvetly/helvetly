@@ -79,7 +79,7 @@ You can keep invoices on paper or electronically, as long as the files cannot be
 
 ## How Helvetly helps
 
-Helvetly issues invoices with every detail listed in MWSTG art. 26 and a QR bill with a QR reference or a Creditor Reference and structured addresses. Automatic reminders follow overdue invoices and can add OR 104 default interest. For clients abroad, it can also export XRechnung, Peppol BIS, KSeF and e-Factura e-invoices.
+Helvetly issues invoices with every detail listed in MWSTG art. 26 and a QR bill with a QR reference or a Creditor Reference and structured addresses. Automatic reminders follow overdue invoices and can add OR 104 default interest. For clients abroad, it can also export XRechnung, Peppol BIS, KSeF and e-Factura e-invoices. Automatic reminders are part of the Pro and Business plans, e-invoice XML of Business.
 
 ## Sources
 

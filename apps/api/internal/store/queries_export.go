@@ -49,7 +49,7 @@ var WorkspaceExportTables = []ExportTable{
 	own("templates"),
 	own("closed_periods"), own("financial_events"), own("ledger_settings"),
 	own("workspace_counters"), own("dunning_notices"), own("vat_return_settings"), own("einvoice_transmissions"),
-	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_token_packs"), own("billing_disputes"),
+	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
 }
 
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,
@@ -162,5 +162,7 @@ var ExportExcluded = map[string]string{
 	"limits":                   "global plan configuration, not workspace data",
 	"limit_plans":              "global plan configuration, not workspace data",
 	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",
+	"offer_versions":           "global published offers, not workspace data",
+	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
 }

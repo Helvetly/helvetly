@@ -20,6 +20,7 @@ func newChargeback(t *testing.T) chargeback {
 	e.join(owner.workspace, "admin")
 	ws, cus := owner.workspace, "cus_"+owner.workspace
 	e.subscribe(ws, "price_bm")
+	e.override(ws, AITokens, StateLimited, n64(1_000_000), nil) // the month's plan allowance the cases count from
 	e.stripe.mu.Lock()
 	e.stripe.charges["ch_sub"] = map[string]any{"id": "ch_sub", "customer": cus, "payment_intent": "pi_sub", "amount": 1900,
 		"amount_refunded": 0}

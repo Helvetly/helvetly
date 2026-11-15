@@ -9,6 +9,7 @@ import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { GENERAL_FAQ } from '@/lib/faq'
 import { translate } from '@/lib/i18n'
+import { YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 
 export default function HomePage() {
   return (
@@ -30,7 +31,9 @@ export default function HomePage() {
                 {translate('perPerson')}
               </>
             }
-            lead={translate('onePricePerPersonEveryFeatureInEveryPlan')}
+            lead={translate('eachTeamMemberPaysThePlanSPriceStart', {
+              YEARLY_DISCOUNT_PERCENT: YEARLY_DISCOUNT_PERCENT,
+            })}
           />
           <div className="mt-12">
             <PricingCards />

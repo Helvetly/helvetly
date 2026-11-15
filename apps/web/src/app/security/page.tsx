@@ -31,11 +31,11 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     icon: Fingerprint,
     tone: 'lilac',
     points: [
-      'No passwords: passkeys, Google or a six-digit code sent by email.',
-      'Optional two-factor authentication with an authenticator app; recovery codes are stored hashed and work once.',
-      'Every sign-in is its own session, which you can see and end from your account.',
-      'The session cookie holds a random token; we keep only its SHA-256 hash.',
-      'Changes need a per-session CSRF token, and sign-in attempts are rate-limited.',
+      translate('noPasswordsPasskeysGoogleOrASixDigitCode'),
+      translate('optionalTwoFactorAuthenticationWithAnAuthenticatorAppRecovery'),
+      translate('everySignInIsItsOwnSessionWhichYou'),
+      translate('theSessionCookieHoldsARandomTokenWeKeep'),
+      translate('changesNeedAPerSessionCSRFTokenAndSign'),
     ],
   },
   {
@@ -43,11 +43,11 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     icon: ScrollText,
     tone: 'mint',
     points: [
-      'Workspaces are isolated: every query is scoped to the workspace and the person’s role.',
-      'Financial changes are written to an append-only, hash-chained audit log in the same transaction; the database refuses edits to it.',
-      'Closed months cannot receive new invoices, payments, refunds or voids.',
-      'Invoice numbers are gapless per series and year, and never reused.',
-      'Deleting your account keeps your company’s financial history, as Swiss law requires.',
+      translate('workspacesAreIsolatedEveryQueryIsScopedToThe'),
+      translate('financialChangesAreWrittenToAnAppendOnlyHash'),
+      translate('closedMonthsCannotReceiveNewInvoicesPaymentsRefundsOr'),
+      translate('invoiceNumbersAreGaplessPerSeriesAndYearAnd'),
+      translate('deletingYourAccountKeepsYourCompanySFinancialHistory'),
     ],
   },
   {
@@ -55,9 +55,9 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     icon: FolderLock,
     tone: 'sky',
     points: [
-      'Every upload is checked by the SHA-256 of its actual bytes, so the same file is never stored twice by accident.',
-      'Downloads go through short-lived signed links, valid for five minutes.',
-      'Signed documents keep a frozen original and a tamper-evident trail of every signing step.',
+      translate('everyUploadIsCheckedByTheSHA256Of'),
+      translate('downloadsGoThroughShortLivedSignedLinksValidFor'),
+      translate('signedDocumentsKeepAFrozenOriginalAndATamper'),
     ],
   },
   {
@@ -65,10 +65,10 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     icon: Sparkles,
     tone: 'rose',
     points: [
-      'Nothing is sent to an AI model until an owner or admin consents for the workspace; every consent is recorded. Until then Heidi answers only from built-in commands.',
-      'Heidi reads only what the person asking may read, and changes nothing without their confirmation.',
-      'Workspace content is passed to the model as data, not as instructions.',
-      'Each plan has a monthly AI budget enforced on our servers.',
+      translate('nothingIsSentToAnAIModelUntilAn'),
+      translate('heidiReadsOnlyWhatThePersonAskingMayRead'),
+      translate('workspaceContentIsPassedToTheModelAsData'),
+      translate('eachPlanHasAMonthlyAllowanceOfAITokens'),
     ],
   },
   {
@@ -76,10 +76,10 @@ const SECTIONS: { title: string; icon: LucideIcon; tone: Tone; points: string[] 
     icon: ShieldCheck,
     tone: 'lemon',
     points: [
-      'Built for the Swiss nDSG and the EU GDPR, with a data processing agreement for every customer.',
-      'No analytics, advertising or tracking scripts in the platform.',
-      'An owner can export the whole workspace as a ZIP, and anyone can export their own account data.',
-      'Secrets such as two-factor keys and e-invoicing credentials are encrypted with AES-GCM.',
+      translate('builtForTheSwissNDSGAndTheEUGDPR'),
+      translate('noAnalyticsAdvertisingOrTrackingScriptsInThePlatform'),
+      translate('anOwnerCanExportTheWholeWorkspaceAsA'),
+      translate('secretsSuchAsTwoFactorKeysAndEInvoicing'),
     ],
   },
 ]

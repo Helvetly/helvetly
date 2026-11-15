@@ -102,7 +102,7 @@ If the customer disputes the invoice on the merits, talk to them or a lawyer fir
 
 ## How Helvetly helps
 
-Helvetly sends your reminders automatically, in up to 10 steps, starting with friendly notes before the due date. Each step can add an agreed fee and default interest under OR 104, calculated to the day, and the reminder letter can carry a Swiss QR bill for the full outstanding total. When a payment is recorded, the remaining steps stop.
+Helvetly sends your reminders automatically, in up to 10 steps, starting with friendly notes before the due date. Each step can add an agreed fee and default interest under OR 104, calculated to the day, and the reminder letter can carry a Swiss QR bill for the full outstanding total. When a payment is recorded, the remaining steps stop. Automatic reminders are part of the Pro and Business plans.
 
 This guide is general information, not legal advice. For a specific dispute, ask a lawyer or your fiduciary.
 
