@@ -419,6 +419,8 @@ func managedPayments(form url.Values) {
 
 func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan, interval, priceID string, seats int64, promoID string) (string, error) {
 	back := s.publicURL + "/settings/billing?checkout="
+	// Checkout runs only without a live plan, so leaving it goes back to the plan picker to choose again.
+	canceled := s.publicURL + "/choose-plan?checkout=canceled"
 	form := url.Values{
 		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {ws},
 		"line_items[0][price]": {priceID}, "line_items[0][quantity]": {strconv.FormatInt(seats, 10)},
@@ -427,7 +429,7 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, ws, plan
 		"payment_method_collection":             {"always"},
 		"billing_address_collection":            {"required"}, "tax_id_collection[enabled]": {"true"},
 		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
-		"success_url": {back + "success"}, "cancel_url": {back + "canceled"},
+		"success_url": {back + "success"}, "cancel_url": {canceled},
 	}
 	if s.cfg.AutomaticTax {
 		form.Set("automatic_tax[enabled]", "true")

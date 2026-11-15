@@ -16,6 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { ShellLoading } from '@/components/auth-gate'
 import { PlanCards } from '@/components/billing/plan-cards'
@@ -68,6 +69,13 @@ export function ChoosePlan() {
   useEffect(() => {
     if (open) router.replace('/')
   }, [open, router])
+
+  // Back from a Checkout left without paying: say so once, then tidy the URL.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('checkout') !== 'canceled') return
+    toast('Checkout cancelled. Nothing was charged.')
+    router.replace(CHOOSE_PLAN_PATH)
+  }, [router])
 
   if (!session) return null
   if (!data || open) {
