@@ -123,14 +123,26 @@ func (q Q) DeleteHeidiConfirmation(ctx context.Context, workspace, user, convers
 	return err
 }
 
+// HeidiUsage is a workspace's model usage in one month, shared by Heidi and AI import: tokens and their cost in
+// micro-USD, used and reserved by calls in flight or not yet reconciled (ai_calls).
 type HeidiUsage struct {
-	TokensUsed int64
-	Uncertain  bool
+	TokensUsed, TokensReserved int64
+	CostMicros, CostReserved   int64
+	Uncertain                  bool
+}
+
+const heidiUsageColumns = `tokens_used,tokens_reserved,cost_micros,cost_reserved_micros,uncertain`
+
+func (u *HeidiUsage) fields() []any {
+	return []any{&u.TokensUsed, &u.TokensReserved, &u.CostMicros, &u.CostReserved, &u.Uncertain}
 }
 
 func (q Q) HeidiUsage(ctx context.Context, workspace, period string) (HeidiUsage, error) {
 	var u HeidiUsage
-	err := q.db.QueryRow(ctx, `SELECT coalesce((SELECT tokens_used FROM heidi_usage WHERE workspace_id=$1 AND period=$2),0),coalesce((SELECT uncertain FROM heidi_usage WHERE workspace_id=$1 AND period=$2),false)`, workspace, period).Scan(&u.TokensUsed, &u.Uncertain)
+	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2`, workspace, period).Scan(u.fields()...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return HeidiUsage{}, nil
+	}
 	return u, err
 }
 
@@ -140,11 +152,12 @@ func (q Q) LockHeidiUsage(ctx context.Context, workspace, period string, now tim
 		return HeidiUsage{}, err
 	}
 	var u HeidiUsage
-	err := q.db.QueryRow(ctx, `SELECT tokens_used,uncertain FROM heidi_usage WHERE workspace_id=$1 AND period=$2 FOR UPDATE`, workspace, period).Scan(&u.TokensUsed, &u.Uncertain)
+	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2 FOR UPDATE`, workspace, period).Scan(u.fields()...)
 	return u, err
 }
 func (q Q) SaveHeidiUsage(ctx context.Context, workspace, period string, u HeidiUsage, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE heidi_usage SET tokens_used=$3,uncertain=$4,updated_at=$5 WHERE workspace_id=$1 AND period=$2`, workspace, period, u.TokensUsed, u.Uncertain, now)
+	_, err := q.db.Exec(ctx, `UPDATE heidi_usage SET tokens_used=$3,tokens_reserved=$4,cost_micros=$5,cost_reserved_micros=$6,uncertain=$7,updated_at=$8 WHERE workspace_id=$1 AND period=$2`,
+		workspace, period, u.TokensUsed, u.TokensReserved, u.CostMicros, u.CostReserved, u.Uncertain, now)
 	return err
 }
 

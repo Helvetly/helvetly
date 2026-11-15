@@ -253,7 +253,7 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 				return err
 			}
 			if n >= 0 {
-				included, remaining = &n, new(max(0, n-u.TokensUsed))
+				included, remaining = &n, new(max(0, n-u.TokensUsed-u.TokensReserved))
 			}
 		}
 	}

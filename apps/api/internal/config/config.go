@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/mail"
 	"net/netip"
 	"net/url"
@@ -15,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"helvetly.com/api/internal/aimodel"
 )
 
 type Config struct {
@@ -67,7 +70,8 @@ type AI struct {
 	OpenAIKey string
 	// OpenAIBaseURL is the OpenAI-compatible API root (OPENAI_BASE_URL), e.g. https://api.openai.com/v1.
 	OpenAIBaseURL string
-	Model         string
+	// Model is one of aimodel.Cards: every call is priced by its rate card before it is made.
+	Model string
 	// FakeImportModel reads import files with aimodel.Fake instead of OpenAI (HELVETLY_E2E_FAKE_AI, set by the
 	// end-to-end server): refused unless AUTH_DEV_SIGNIN is on a local origin.
 	FakeImportModel bool
@@ -182,7 +186,7 @@ func Load() (Config, error) {
 		},
 		DevSignIn: boolean("AUTH_DEV_SIGNIN", false),
 		AI: AI{OpenAIKey: env("OPENAI_API_KEY", ""), OpenAIBaseURL: strings.TrimSuffix(env("OPENAI_BASE_URL", "https://api.openai.com/v1"), "/"),
-			Model: env("OPENAI_MODEL", "gpt-6-astra"), FakeImportModel: boolean("HELVETLY_E2E_FAKE_AI", false)},
+			Model: env("OPENAI_MODEL", aimodel.DefaultModel), FakeImportModel: boolean("HELVETLY_E2E_FAKE_AI", false)},
 		FeedbackEmail:     env("FEEDBACK_EMAIL", ""),
 		GoogleAnalyticsID: env("GOOGLE_ANALYTICS_ID", ""),
 	}
@@ -207,8 +211,8 @@ func Load() (Config, error) {
 		(u.Scheme != "https" && (u.Scheme != "http" || !localHost(u.Hostname()))) {
 		fail("OPENAI_BASE_URL must be an https URL such as https://api.openai.com/v1 (http only on a local host), got %q", c.AI.OpenAIBaseURL)
 	}
-	if c.AI.Model == "" || len(c.AI.Model) > 128 || strings.ContainsAny(c.AI.Model, " \t\r\n") {
-		fail("OPENAI_MODEL must be a nonempty model identifier without whitespace")
+	if _, ok := aimodel.Cards[c.AI.Model]; !ok {
+		fail("OPENAI_MODEL must be a model Helvetly has a rate card for (%s), got %q", strings.Join(slices.Sorted(maps.Keys(aimodel.Cards)), ", "), c.AI.Model)
 	}
 
 	u, err := url.Parse(c.PublicURL)

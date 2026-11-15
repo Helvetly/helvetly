@@ -53,7 +53,8 @@ are the reference.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
-  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget).
+  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget;
+  each call reserves its tokens and rate-card cost first, one call in flight per workspace, see `ai_calls`).
 
 ## 4. Where code goes (DRY)
 
