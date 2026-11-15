@@ -28,11 +28,15 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   an open invitation takes no seat until it is accepted. Per seat and month: Basic CHF 19, Pro
   CHF 49 and Business CHF 99. Paying yearly costs twelve months less 20 %, rounded up to a whole
   franc (CHF 183, 471 and 951 per seat and year).
-- Prices are in **CHF and include Swiss VAT** where we charge it: the price shown is the price paid.
-  Where your business is abroad and the reverse charge applies, the same amount is charged without
+- Prices are shown and charged in **CHF** in Switzerland and Liechtenstein, in **EUR** in the EU and
+  in **USD** everywhere else, with the same figures (Basic EUR 19 or USD 19 per seat and month, and so
+  on); your location decides which. Once you have paid, Stripe keeps that currency for your later
+  payments.
+- Prices **include Swiss VAT** where we charge it: the price shown is the price paid. Where your business is abroad and the reverse charge applies, the same amount is charged without
   VAT and you account for the tax yourself.
-- When people join or leave the workspace, the number of seats follows: an added seat is charged and
-  a freed seat credited, prorated for the rest of the period, on the next invoice. Subscriptions
+- When people join or leave the workspace, the number of seats follows: an added seat is charged at
+  once and a freed seat credited at once to your balance with Stripe (which pays your next invoices),
+  each prorated from the day of the change. Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
 - **Trial:** the first subscription of a workspace to Basic starts with a 7-day trial. A card is
@@ -44,9 +48,16 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 
 - Payments are processed by Stripe. Helvetly never sees your full card details.
 - Subscriptions are paid in advance and **renew automatically** for the same period (a month or a
-  year) until cancelled. If a payment fails, Stripe retries it; the plan stays active meanwhile.
-- **Upgrades and downgrades** apply at once, prorated. A smaller plan must fit what the workspace
-  already holds.
+  year) until cancelled. If a payment fails, Stripe retries it; the plan stays active until three days
+  after the end of the paid period, then the workspace is read-only until the invoice is paid.
+- Apart from the trial, a plan starts only once its first payment goes through: an unpaid first
+  payment never activates it.
+- **Upgrades** and moving from monthly to yearly are charged at once, prorated, and apply once that
+  payment goes through; until then, the plan you already paid for keeps working. **Downgrades** and
+  moving to monthly apply at once; the unused part is credited to your balance with Stripe. A smaller
+  plan must fit what the workspace already holds.
+- **Chargebacks:** if you dispute a payment with your bank or card issuer and the dispute is decided
+  against us, the subscription ends at once.
 - **Cancelling:** an owner or admin can cancel any time in Settings → Billing. The plan stays until
   the end of the paid period and is not renewed.
 - **Refunds:** paid periods are not refunded, including when a workspace is deleted, unless Swiss
@@ -56,8 +67,8 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 
 ## 5. Read-only workspaces and data export
 
-- A workspace without a live subscription (trial ended, cancelled, or payment finally failed) becomes
-  **read-only**: you can still see and download everything, but cannot change anything until you
+- A workspace without a live subscription (trial ended, cancelled, ended after a lost chargeback, or a
+  payment still unpaid three days after the paid period ended) becomes **read-only**: you can still see and download everything, but cannot change anything until you
   choose a plan again.
 - The owner can **download the whole workspace** (records and files, as a ZIP) at any time, with
   or without a plan, in Settings → Workspace → Export all data. Everyone can download their own
@@ -114,7 +125,9 @@ You must not:
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.
 - Each plan includes a monthly budget of AI tokens. When it is used up, the AI features pause until
-  the next month or an upgrade.
+  the next month or an upgrade. Extra tokens can be bought as one-off packs in Settings → Billing;
+  they add to the month they are bought in, and what is left lapses with that month. A pack that is
+  refunded, or whose payment is lost in a chargeback, loses its unused tokens.
 
 ## 10. Electronic signatures
 
@@ -173,4 +186,5 @@ date means you accept the change.
 - If any provision is invalid, the rest remains in force and the invalid one is replaced by what
   comes closest to its purpose.
 
-Last change: 15 November 2026.
+Last change: 15 November 2026. For customers who subscribed before that date, the changes made then
+to sections 3, 4, 5 and 9 (billing rules and currencies) apply from 15 December 2026 (section 15).
