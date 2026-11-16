@@ -77,6 +77,9 @@ func (s *Service) autoDrafts(ctx context.Context, target store.AutoInvoiceTarget
 	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
 		return err
 	}
+	if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions); err != nil || wait {
+		return err // the month's automatic actions are used up: tried again once the month or the cap changes
+	}
 	var todo []draftJob
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		cur, err := q.Engagement(ctx, target.WorkspaceID, target.EngagementID, true)
@@ -159,6 +162,9 @@ func (s *Service) autoDraft(ctx context.Context, target store.AutoInvoiceTarget,
 func (s *Service) notices(ctx context.Context, ws store.Workspace) error {
 	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
 		return err
+	}
+	if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions); err != nil || wait {
+		return err // the month's automatic actions are used up: tried again once the month or the cap changes
 	}
 	ids, err := s.db.LiveEngagementIDs(ctx, ws.ID)
 	if err != nil {

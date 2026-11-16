@@ -276,6 +276,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	if fits(n, add, max) {
 		return notifyNear(ctx, q, workspaceID, plan, limit, now, store.UsagePeriod(quotaStart(b, now)), n+add, max)
 	}
+	s.noteRefused(workspaceID, limit, add)
 	return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, auth.Error(http.StatusPaymentRequired, "limit_reached", limitMessage(plan, limit, max),
 		map[string]any{"limit": limit, "used": n, "max": max, "plan": plan}))
 }
