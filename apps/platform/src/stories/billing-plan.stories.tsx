@@ -731,7 +731,7 @@ export const PlansNoPlan: Story = {
     await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()
     await userEvent.click(proCard.getByRole('button', { name: 'Start 7-day free trial' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'business', interval: 'month' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'pro', interval: 'month' }),
     )
   },
 }
