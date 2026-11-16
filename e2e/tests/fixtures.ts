@@ -126,8 +126,10 @@ export async function signIn(request: APIRequestContext, email: string) {
   const csrf = text(object(await verified.json()).csrf_token)
   const api = new FinancialAPI(request, csrf, emailResendAt)
   const session = object(await (await request.get('/api/v1/session')).json())
-  if (session.onboarded === false && (session.role === 'owner' || session.role === 'admin'))
+  if (session.onboarded === false && (session.role === 'owner' || session.role === 'admin')) {
+    await api.settings() // the server refuses to finish the welcome without the company details
     await expect(await api.write('/session/onboarded')).toBeOK()
+  }
   return api
 }
 

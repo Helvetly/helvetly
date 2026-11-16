@@ -126,13 +126,25 @@ func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.
 	})
 }
 
-// finishOnboarding: the workspace's welcome was finished or skipped; it is not shown again.
+// finishOnboarding: the workspace's welcome was finished (its company step cannot be skipped: the stored company
+// details must be complete); it is not shown again.
 func (s *Service) finishOnboarding(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	if sess.Role != "owner" && sess.Role != "admin" {
 		s.WriteError(w, r, &apiError{status: http.StatusForbidden, code: "forbidden", message: "Only an owner or admin can set up the workspace."})
 		return
 	}
-	if err := s.db.SetWorkspaceOnboarded(r.Context(), sess.Workspace.ID, s.now()); err != nil {
+	if sess.Workspace.Onboarded { // finished before: nothing to check again, nothing reset
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if s.CompleteOnboarding == nil {
+		s.WriteError(w, r, Error(http.StatusServiceUnavailable, "onboarding_unavailable", "The workspace cannot be set up right now. Try again later.", nil))
+		return
+	}
+	err := s.CompleteOnboarding(r.Context(), sess.Workspace.ID, func(q store.Q) error {
+		return q.SetWorkspaceOnboarded(r.Context(), sess.Workspace.ID, s.now())
+	})
+	if err != nil {
 		s.WriteError(w, r, err)
 		return
 	}

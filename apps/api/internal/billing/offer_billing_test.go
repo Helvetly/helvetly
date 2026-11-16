@@ -12,7 +12,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Offer v2 billing: per-person prices, seats, checkout settlement, trial, pro-rata allowances, downgrades and grace.
+// Offer billing: per-person prices, seats, checkout settlement, trial, pro-rata allowances, downgrades and grace.
 
 func (e *env) ownerID(ws string) string {
 	e.t.Helper()
@@ -359,7 +359,7 @@ func TestCheckoutIsSettledOnTheOfferItWasSoldOn(t *testing.T) {
 	}
 }
 
-// trialing puts the workspace on a trialing Business subscription started by its owner with card fp, as Checkout
+// trialing puts the workspace on a trialing Pro subscription started by its owner with card fp, as Checkout
 // makes it, since start.
 func (e *env) trialing(ws, fp string, start time.Time) string {
 	e.t.Helper()
@@ -367,7 +367,7 @@ func (e *env) trialing(ws, fp string, start time.Time) string {
 	if customer == "" {
 		customer = "cus_" + ws
 	}
-	e.stripe.put(id, ws, customer, "trialing", "price_xm")
+	e.stripe.put(id, ws, customer, "trialing", "price_pm")
 	e.stripe.set(id, map[string]any{"trial_start": start.Unix(), "default_payment_method": map[string]any{"card": map[string]any{"fingerprint": fp}},
 		"metadata": map[string]string{"workspace_id": ws, "trial_user": e.ownerID(ws)}})
 	if code := e.event("evt_"+id, "customer.subscription.created", map[string]any{"id": id}); code != http.StatusOK {
@@ -376,13 +376,13 @@ func (e *env) trialing(ws, fp string, start time.Time) string {
 	return id
 }
 
-func TestTrialGivesSmallBusinessAllowancesForTwoPeople(t *testing.T) {
+func TestTrialGivesSmallProAllowancesForTwoPeople(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	e.join(owner.workspace, "member")
 	e.trialing(owner.workspace, "fp_1", time.Now().Add(-time.Hour))
 	r := mustRights(t, e, owner.workspace)
-	if !r.Trial || r.Plan != Business || !r.Includes(Feature("expenses")) || !r.Includes(Feature("heidi")) {
+	if !r.Trial || r.Plan != Pro || !r.Includes(Feature("expenses")) || !r.Includes(Feature("heidi")) {
 		t.Fatalf("trial rights %+v", r)
 	}
 	for l, want := range map[Limit]int64{Invoices: 10, Quotes: 10, Expenses: 20, Signatures: 2, Storage: 100_000_000, AITokens: 250_000,
@@ -440,7 +440,7 @@ func TestTrialIsOncePerCustomer(t *testing.T) {
 		t.Helper()
 		_, body := e.do(b, http.MethodGet, "/api/v1/billing", nil)
 		offered := body["data"].(map[string]any)["trial_available"] == true
-		if code, _ := e.do(b, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Business, "interval": "month"}); code != http.StatusOK {
+		if code, _ := e.do(b, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
 			t.Fatalf("checkout: %d", code)
 		}
 		if got := e.stripe.form("POST /v1/checkout/sessions").Get("subscription_data[trial_period_days]") == "7"; got != offered {

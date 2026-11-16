@@ -11,7 +11,7 @@ import (
 )
 
 // The AI token packs (Helvetly/billing's earlier catalogue): one-time prices of the product AITokensProduct, each with
-// the token count in its metadata. They are no longer sold (offer v2 has no top-ups); a pack paid in a Checkout opened
+// the token count in its metadata. They are no longer sold (the offer has no top-ups); a pack paid in a Checkout opened
 // before still adds its tokens to the workspace's allowance for the month it was paid in (ai_token_packs), after the
 // plan's own; what is left lapses with the month.
 const (
@@ -19,7 +19,7 @@ const (
 	AITokensKey     = "helvetly_ai_tokens" // price metadata: the pack's tokens
 )
 
-// errPacksRetired: offer v2 sells no top-ups; the monthly AI tokens grow with the plan and its paid seats.
+// errPacksRetired: the offer sells no top-ups; the monthly AI tokens grow with the plan and its paid seats.
 var errPacksRetired = auth.Error(http.StatusGone, "ai_pack_unavailable",
 	"AI token packs are no longer sold. Your plan's AI tokens grow with every person in the workspace; upgrade or add people for more.",
 	nil)

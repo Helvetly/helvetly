@@ -68,7 +68,7 @@ export default async function PricingPage({ params }: Props) {
         }
         lead={translate('trialsVATLimitsAndChangingPlansInShortAnswers')}
         card={{
-          title: translate('tryBusinessForDays', { days: TRIAL.days }),
+          title: translate('tryProForDays', { days: TRIAL.days }),
           body: translate('upToPeopleWithSmallerTrialAllowancesThenPick', {
             members: TRIAL.members,
           }),

@@ -66,7 +66,7 @@ export const Company: Story = {
   play: async ({ canvasElement }) => {
     await next(canvasElement, 'welcome', /Get started/)
     const company = within(await step(canvasElement, 'company'))
-    const zip = company.getByLabelText('ZIP')
+    const zip = company.getByLabelText(/^ZIP/)
     await waitFor(() => expect(zip).toBeEnabled())
     // Focusing a field leaves every field below it where it was.
     const iban = company.getByLabelText('IBAN')
@@ -75,6 +75,49 @@ export const Company: Story = {
     await expect(zip).toHaveFocus()
     await expect(iban.getBoundingClientRect().top).toBe(before)
   },
+}
+
+/** A new workspace: the company step has no way past it until the required details are in. */
+export const CompanyRequired: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoice-settings', () =>
+          HttpResponse.json({
+            data: sampleSettings({
+              seller: {
+                ...settings.seller,
+                name: '',
+                street: '',
+                street_number: '',
+                apt: null,
+                zip: '',
+                city: '',
+              },
+            }),
+          }),
+        ),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await next(canvasElement, 'welcome', /Get started/)
+    const company = within(await step(canvasElement, 'company'))
+    await waitFor(() => expect(company.getByLabelText(/Company name/)).toBeEnabled())
+    await expect(company.queryByRole('button', { name: /do it later|Skip/ })).toBeNull()
+    await userEvent.click(company.getByRole('button', { name: /Continue/ }))
+    const name = await company.findByLabelText(/Company name/)
+    await expect(name).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(name).toHaveFocus())
+    await expect(company.getByLabelText(/Apt \/ suite/)).not.toHaveAttribute('aria-invalid')
+    await expect(canvasElement.querySelector('[data-testid="onboarding-step-logo"]')).toBeNull()
+  },
+}
+
+export const CompanyRequiredDark: Story = {
+  ...CompanyRequired,
+  parameters: { ...CompanyRequired.parameters, dark: true },
 }
 
 export const AllSteps: Story = {

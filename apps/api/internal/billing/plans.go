@@ -114,7 +114,7 @@ const (
 // Unlimited: the plan has no cap on that limit.
 const Unlimited int64 = -1
 
-const gb = 1_000_000_000 // storage is sold in decimal gigabytes (offer v2)
+const gb = 1_000_000_000 // storage is sold in decimal gigabytes (the offer)
 
 var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
 

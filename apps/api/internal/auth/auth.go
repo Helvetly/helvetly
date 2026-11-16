@@ -64,6 +64,10 @@ type Service struct {
 	// OnPhotoRemoved deletes a closed account's own stored objects (photo, feedback screenshots) after the commit
 	// (internal/avatars; auth holds no storage). Nil: the objects stay behind.
 	OnPhotoRemoved func(ctx context.Context, objectKey string)
+	// CompleteOnboarding checks the workspace's stored company details and, when they are complete, runs mark in the
+	// same transaction (internal/invoices holds the settings; auth cannot import it). Nil: onboarding cannot be
+	// finished, so a wiring mistake refuses instead of letting the step be skipped.
+	CompleteOnboarding func(ctx context.Context, workspaceID string, mark func(q store.Q) error) error
 }
 
 func New(cfg config.Config, db *store.Store, log *slog.Logger) (*Service, error) {

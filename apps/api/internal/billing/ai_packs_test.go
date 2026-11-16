@@ -19,7 +19,7 @@ func TestAITokenPacks(t *testing.T) {
 		return n
 	}
 
-	// Packs are no longer sold (offer v2 has no top-ups), with a plan or without.
+	// Packs are no longer sold (the offer has no top-ups), with a plan or without.
 	for _, subscribed := range []bool{false, true} {
 		if subscribed {
 			e.subscribe(owner.workspace, "price_pm")

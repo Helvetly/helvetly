@@ -91,7 +91,12 @@ func TestBasicRefusesTheAIImport(t *testing.T) {
 // back the schema asks for expenses again.
 func TestAutoBatchAsksOnlyForWhatThePlanHas(t *testing.T) {
 	e := planEnv(t, billing.Pro)
-	if err := e.db.SetWorkspaceLimit(context.Background(), store.WorkspaceLimit{WorkspaceID: "ws_a", OfferID: "helvetly-v2",
+	// the offer the workspace is pinned to: an override counts only on its own offer, and the newest one is not fixed
+	offer, err := e.db.WorkspaceOffer(context.Background(), "ws_a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.db.SetWorkspaceLimit(context.Background(), store.WorkspaceLimit{WorkspaceID: "ws_a", OfferID: offer,
 		Key: store.FeatureExpenses, State: "disabled", Reason: "test", SetBy: "support"}); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +134,7 @@ func TestAutoBatchAsksOnlyForWhatThePlanHas(t *testing.T) {
 		t.Fatalf("commit without expenses: %+v", res)
 	}
 
-	if err := e.db.ClearWorkspaceLimit(context.Background(), "ws_a", "helvetly-v2", store.FeatureExpenses); err != nil {
+	if err := e.db.ClearWorkspaceLimit(context.Background(), "ws_a", offer, store.FeatureExpenses); err != nil {
 		t.Fatal(err)
 	}
 	w = e.upload(Auto, map[string][]byte{"bill.txt": []byte("Migros receipt, again")})

@@ -97,9 +97,7 @@ export default async function ComparePage({ params }: Props) {
           className="mt-9 flex flex-col gap-3 sm:flex-row"
         >
           <Cta href={siteIn(lang).START_URL}>
-            {translate('tryBusinessFreeFor')}
-            {TRIAL.days}
-            {translate('days')}
+            {translate('tryProFreeForDays', { days: TRIAL.days })}
           </Cta>
           <Cta href={localizedHref('/pricing', lang)} variant="outline">
             {translate('seePricing')}

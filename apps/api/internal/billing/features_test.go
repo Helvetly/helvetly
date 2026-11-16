@@ -17,7 +17,7 @@ func TestIncludes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// api_access as offer v2 gives it: a change there has to change this too.
+	// api_access as the offer gives it: a change there has to change this too.
 	for plan, want := range map[string]bool{"": false, Basic: false, Pro: true, Business: true} {
 		if got := cat.includes(plan, APIAccess); got != want {
 			t.Errorf("includes(%q, api_access) = %v, want %v", plan, got, want)

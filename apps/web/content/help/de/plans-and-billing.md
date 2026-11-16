@@ -20,7 +20,7 @@ Jeder Arbeitsbereich hat seinen eigenen Plan. Hier erfahren Sie, wie Sie es ausw
 - **Basic** ist für die manuelle Rechnungsstellung vorgesehen. **Pro** fügt Heidi, Ausgaben, Vorlagen, Unterschriften, Korrekturen, Mehrwertsteuererklärungen, das Hauptbuch, Datenexporte und Automatisierungen hinzu. **Business** fügt das Kundenportal und E-Rechnungs-XML-Exporte hinzu.
 - Kunden, Produkte und Aufträge sind feste Obergrenzen für den Arbeitsbereich; **Business** begrenzt sie nicht, ebenso wenig Rechnungen, Offerten, Ausgaben und Signaturanfragen. Die anderen Kontingente gelten pro bezahltem Teammitglied und werden in einem gemeinsamen Pool zusammengefasst. Die monatlichen Zulagen beginnen wieder am Monatsersten um 00:00 UTC.
 - Wenn ein Kontingent aufgebraucht ist, wird nur die neue Aktion gestoppt, die es benötigt; Es wird nichts gelöscht und nichts extra berechnet.
-- Ein Neukunde kann Business 7 Tage lang mit bis zu 2 Mitgliedern und kleineren Testkontingenten testen. Eine Karte ist erforderlich.
+- Neue berechtigte Testphasen umfassen ausschliesslich Pro für 7 Tage mit bis zu 2 Mitgliedern und kleineren gemeinsamen Kontingenten für die gesamte Testphase. Eine Karte ist erforderlich. Die Testkontingente werden weder zurückgesetzt noch mit der Teamgrösse vervielfacht. Bereits gewährte Testphasen aus früheren Angeboten behalten ihre ursprünglichen Bedingungen.
 - Es gibt keinen kostenlosen Plan. Ohne aktiven Plan ist der Arbeitsbereich schreibgeschützt: Es wird nichts gelöscht und er wird wieder geöffnet, sobald ein Plan ausgewählt wird.
 - Nur Eigentümer und Administratoren können den Plan ändern.
 - Wenn Sie ein Limit erreichen, wird eine Eingabeaufforderung mit **See plans** angezeigt.

@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"testing"
+
+	"helvetly.com/api/internal/store"
 )
 
 // The welcome sets up a new workspace: its owner sees it until it is finished or skipped (the same
@@ -26,6 +28,7 @@ func TestOnboarding(t *testing.T) {
 		return b
 	}
 	member, admin := join("member@example.com", "member"), join("admin@example.com", "admin")
+	e.svc.CompleteOnboarding = func(ctx context.Context, _ string, mark func(q store.Q) error) error { return e.svc.db.Tx(ctx, mark) }
 
 	for _, tc := range []struct {
 		name      string
@@ -71,4 +74,30 @@ func TestOnboarding(t *testing.T) {
 	if e.session(owner).Onboarded {
 		t.Fatal("a second workspace gets its own welcome")
 	}
+}
+
+// The welcome cannot be finished around its company step: the server checks the stored details before it marks the
+// workspace done, refuses when it cannot check, and leaves a workspace that is already done alone.
+func TestOnboardingNeedsTheCompanyDetails(t *testing.T) {
+	e := newEnv(t)
+	owner := e.emailSignIn("owner@example.com")
+	finish := func(want int) {
+		t.Helper()
+		e.do(owner, "POST", "/api/v1/session/onboarded", nil, want, nil)
+		if want != 204 && e.session(owner).Onboarded {
+			t.Fatal("onboarded without its company details")
+		}
+	}
+	finish(503) // nothing wired: refused, not skipped
+	e.svc.CompleteOnboarding = func(context.Context, string, func(q store.Q) error) error {
+		return Error(422, "validation_failed", "Check the highlighted fields.", map[string]any{"fields": map[string]string{"seller.city": "This is required."}})
+	}
+	finish(422)
+	e.svc.CompleteOnboarding = func(ctx context.Context, _ string, mark func(q store.Q) error) error { return e.svc.db.Tx(ctx, mark) }
+	finish(204)
+	if !e.session(owner).Onboarded {
+		t.Fatal("complete details: not onboarded")
+	}
+	e.svc.CompleteOnboarding = func(context.Context, string, func(q store.Q) error) error { t.Error("checked again"); return nil }
+	finish(204)
 }

@@ -11,7 +11,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// seeded is offer v2 as 00007 published it, with the definitions.
+// seeded is the first offer, as 00007 published it, with the definitions.
 func seeded(t *testing.T) (*env, Offer, []store.LimitDef) {
 	t.Helper()
 	e := newEnv(t, true)
@@ -43,8 +43,11 @@ func TestSeededOffer(t *testing.T) {
 		t.Fatalf("the current offer does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly-v2" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != "helvetly" || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
+	}
+	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
+		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
 	if len(o.Records) != 68 || len(defs) != 68 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
@@ -114,7 +117,7 @@ func TestOfferValidation(t *testing.T) {
 		{"a pooled limit growing by less than its value", func(o *Offer) { recordOf(o, "storage_bytes").PerAdditionalPaidSeat[Pro] = 1 }, "storage_bytes on pro: a pooled limit"},
 		{"another price", func(o *Offer) { o.Billing.Plans[Pro] = PlanPrice{MonthMinor: 4500, YearMinor: 47100} }, "billing.plans.pro"},
 		{"a currency missing", func(o *Offer) { o.Billing.Currencies = []string{"CHF", "EUR"} }, "billing.currencies"},
-		{"a bad id", func(o *Offer) { o.ID = "Offer V2" }, "offer_id"},
+		{"a bad id", func(o *Offer) { o.ID = "Invalid Offer" }, "offer_id"},
 		{"a trial override of a feature", func(o *Offer) { o.Trial.Overrides["heidi"] = 1 }, "trial.overrides.heidi"},
 		{"an internal key on the pricing page", func(o *Offer) {
 			o.PublicPricing.ComparisonRows[0].FeatureKeys = append(o.PublicPricing.ComparisonRows[0].FeatureKeys, "api_access")
@@ -184,11 +187,11 @@ func TestPublishOffer(t *testing.T) {
 		next.ID).Scan(&before, &after, &reason); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(before, "helvetly-v2") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
+	if !strings.Contains(before, `"helvetly"`) || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v2" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly" || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

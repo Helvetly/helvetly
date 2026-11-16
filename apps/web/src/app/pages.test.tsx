@@ -33,7 +33,7 @@ function serve({ offer = true, trace = '' } = {}) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
     if (String(input) !== OFFER_URL) return new Response(trace)
     if (!offer) throw new TypeError('Failed to fetch')
-    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
+    return new Response(JSON.stringify({ data: { offer_id: 'helvetly', ...golden } }))
   })
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -56,9 +56,9 @@ describe('home page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Your Swiss back office, beautifully in order.',
     )
-    expect(screen.getByRole('link', { name: /Start your 7-day trial/ }).getAttribute('href')).toBe(
-      'http://localhost:8000/login',
-    )
+    expect(
+      screen.getByRole('link', { name: /Start your 7-day Pro trial/ }).getAttribute('href'),
+    ).toBe('http://localhost:8000/login')
   })
 
   it('shows Heidi’s first example answered, and another one on request', async () => {
@@ -236,7 +236,7 @@ describe('pricing page', () => {
     const again = vi.fn<typeof globalThis.fetch>(async (input) => {
       await answered.promise
       return String(input) === OFFER_URL
-        ? new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
+        ? new Response(JSON.stringify({ data: { offer_id: 'helvetly', ...golden } }))
         : new Response('')
     })
     vi.stubGlobal('fetch', again)

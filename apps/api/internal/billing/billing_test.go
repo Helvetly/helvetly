@@ -868,7 +868,7 @@ func TestOverview(t *testing.T) {
 	pro, _ := plansList[1].(map[string]any)
 	proPrices, _ := pro["prices"].(map[string]any)
 	proLimits, _ := pro["limits"].(map[string]any)
-	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Business ||
+	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Pro ||
 		data["trial_days"] != 7.0 || data["discount"] != nil || data["can_manage"] != true ||
 		members["used"] != 0.0 || members["max"] != nil || proLimits["clients"] != 300.0 || proPrices["month"] == nil {
 		t.Fatalf("overview: %d %v", code, body)
@@ -896,7 +896,7 @@ func TestCheckout(t *testing.T) {
 	for k, want := range map[string]string{
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
 		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "",
-		"subscription_data[metadata][offer_id]": "helvetly-v2",
+		"subscription_data[metadata][offer_id]": "helvetly",
 		"tax_id_collection[enabled]":            "true", "success_url": "https://helvetly.example.com/activating",
 		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
 	} {

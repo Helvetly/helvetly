@@ -14,6 +14,7 @@ export type Values = {
   name: string
   street: string
   street_number: string
+  apt: string
   zip: string
   city: string
   country: string
@@ -31,6 +32,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     name: seller.name,
     street: seller.street,
     street_number: seller.street_number,
+    apt: seller.apt ?? '',
     zip: seller.zip,
     city: seller.city,
     // Helvetly is for Swiss companies first.
@@ -74,6 +76,7 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
       name: values.name.trim(),
       street: values.street.trim(),
       street_number: values.street_number.trim(),
+      apt: values.apt.trim() || null,
       zip: values.zip.trim(),
       city: values.city.trim(),
       country: values.country,
@@ -89,17 +92,23 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
   }
 }
 
-/** Only what can be checked here; the rest is optional now and checked by the server. */
+/** The company's name and address (not the apartment) are required, and the server refuses to finish without them. */
+const REQUIRED = ['name', 'street', 'street_number', 'zip', 'city', 'country'] as const
+
+/** What can be checked here: the required company details and the formats; the server checks them again. */
 export function validate(values: Values): Partial<Record<keyof Values, string>> {
   const errors: Partial<Record<keyof Values, string>> = {}
+  for (const field of REQUIRED)
+    if (!values[field].trim()) errors[field] = translate('thisIsRequired')
   const vat = values.vat_number.trim()
+  if (values.vat_registered && !vat) errors.vat_number = translate('thisIsRequired')
   // The server checks every number starting with CH as a Swiss UID.
   if (values.vat_registered && /^CH/i.test(vat) && !isValidUid(vat))
     errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
   if (values.iban.trim() && !ibanInfo(values.iban).valid)
     errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
   const market = unsupportedSellerCountry(values.country)
-  if (market) errors.country = market
+  if (market && !errors.country) errors.country = market
   return errors
 }
 

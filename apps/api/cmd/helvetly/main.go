@@ -145,6 +145,7 @@ func run() error {
 	}
 	clientsSvc.SetMailer(portalInviteMailer, cfg.PortalURL)
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
+	authSvc.CompleteOnboarding = invoicesSvc.CompleteOnboarding
 	quotesSvc := quotes.New(db, authSvc, invoicesSvc, files, quoteMailer, slog.Default())
 	membersSvc := members.New(db, authSvc, slog.Default())
 	invitationsSvc := invitations.New(db, authSvc, inviteMailer, cfg.PublicURL, slog.Default())

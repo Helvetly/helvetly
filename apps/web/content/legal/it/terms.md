@@ -58,12 +58,13 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   saldo Stripe, usato per le fatture successive, in entrambi i casi proporzionalmente dal giorno
   della modifica. Gli abbonamenti sottoscritti in precedenza a prezzo fisso per spazio di lavoro
   mantengono prezzo e limite di membri fino al cambiamento del piano o della periodicità.
-- **Prova:** un nuovo cliente può provare le funzioni di Business per 7 giorni, con un massimo di
+- **Prova:** le nuove prove idonee includono solo le funzioni di Pro per 7 giorni, con un massimo di
   2 membri e disponibilità ridotte per l’intera prova (10 emissioni di fatture, 10 invii di preventivi, 20 spese, 2 richieste
   di firma, 100 MB di spazio, 250,000 token IA e 50 azioni di automazione), che non si rinnovano
   né aumentano con il numero di membri. È richiesta una carta. Senza una carta valida alla fine
   della prova, l’abbonamento termina. Ogni cliente ha diritto a una sola prova. Quando la prova
   si converte in abbonamento, ogni membro viene fatturato al prezzo intero del piano scelto.
+  Le prove già concesse nell’ambito di offerte precedenti mantengono le condizioni originarie.
 - I codici promozionali si applicano solo secondo quanto indicato per il codice.
 
 ## 4. Pagamento, rinnovo, modifiche e annullamento
