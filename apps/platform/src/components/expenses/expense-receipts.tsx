@@ -8,7 +8,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, FileText, ReceiptText, Trash2, Upload, X } from 'lucide-react'
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
@@ -87,22 +87,6 @@ export function StagedReceipts({
   files: File[]
   onRemove: (file: File) => void
 }) {
-  // Thumbnails for picked photos; the object URLs are released when the files change or the form closes.
-  const urls = useMemo(
-    () =>
-      new Map(
-        files
-          .filter((file) => /^image\/(png|jpeg|webp)$/.test(file.type))
-          .map((file) => [file, URL.createObjectURL(file)]),
-      ),
-    [files],
-  )
-  useEffect(
-    () => () => {
-      for (const url of urls.values()) URL.revokeObjectURL(url)
-    },
-    [urls],
-  )
   return (
     <ul className="grid gap-2">
       {files.map((file) => (
@@ -110,22 +94,7 @@ export function StagedReceipts({
           key={`${file.name}-${file.size}`}
           className="flex items-center gap-3 rounded-lg px-2.5 py-2 ring-1 ring-border"
         >
-          {urls.get(file) ? (
-            <span className="relative size-10 shrink-0 overflow-hidden rounded-md ring-1 ring-border">
-              <Image
-                src={urls.get(file) ?? ''}
-                alt=""
-                fill
-                unoptimized
-                sizes="40px"
-                className="object-cover"
-              />
-            </span>
-          ) : (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-              <FileText className="size-4 stroke-[1.5]" />
-            </span>
-          )}
+          <StagedThumbnail file={file} />
           <span className="grid min-w-0 flex-1 leading-tight">
             <span className="text-[13.5px] break-all">{file.name}</span>
             <span className="text-xs text-muted-foreground">
@@ -146,6 +115,46 @@ export function StagedReceipts({
         </li>
       ))}
     </ul>
+  )
+}
+
+/** Shown until the effect has the object URL; React never sets `src` again, so it is not overwritten. */
+const BLANK_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+
+/**
+ * A photo's thumbnail, the file icon for anything else or when the browser cannot decode it. The effect owns its
+ * object URL (created in setup, revoked in cleanup), so a development StrictMode replay never leaves a revoked one shown.
+ */
+function StagedThumbnail({ file }: { file: File }) {
+  const image = useRef<HTMLImageElement>(null)
+  // The file that failed to decode, not a flag: another file under the same list key gets its own try.
+  const [brokenFile, setBrokenFile] = useState<File>()
+  const isImage = /^image\/(png|jpeg|webp)$/.test(file.type)
+  useEffect(() => {
+    if (!isImage || !image.current) return
+    const url = URL.createObjectURL(file)
+    image.current.src = url
+    return () => URL.revokeObjectURL(url)
+  }, [file, isImage])
+  if (isImage && brokenFile !== file)
+    return (
+      <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border">
+        <Image
+          ref={image}
+          src={BLANK_PIXEL}
+          alt=""
+          fill
+          unoptimized
+          sizes="40px"
+          className="object-cover"
+          onError={() => setBrokenFile(file)}
+        />
+      </span>
+    )
+  return (
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+      <FileText className="size-4 stroke-[1.5]" />
+    </span>
   )
 }
 
