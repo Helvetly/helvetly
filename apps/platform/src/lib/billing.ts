@@ -232,11 +232,10 @@ export function useCheckout() {
   })
 }
 
-/** "1 M", "500 k", "900" tokens. */
+/** "5M", "1.5M", "250'000" tokens: the same form as the website's price tables. */
 export function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) return `${+(tokens / 1_000_000).toFixed(1)} M`
-  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)} k`
-  return `${tokens}`
+  if (tokens >= 1_000_000) return `${+(tokens / 1_000_000).toFixed(1)}M`
+  return tokens.toLocaleString(numberLocale)
 }
 
 /**

@@ -6,7 +6,7 @@ import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Lock, Minus, Sparkles, X } from 'lucide-react'
+import { CalendarClock, Check, Lock, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -15,6 +15,7 @@ import {
   ANY_PEOPLE,
   billingKeys,
   formatLimit,
+  formatTokens,
   describeDiscount,
   discounted,
   formatPrice,
@@ -195,14 +196,13 @@ export function planFact(key: LimitKey, value: number | null): { value: string; 
     scope: scopeOf(key),
     monthly: String(key.endsWith('_per_month')),
   })
+  // The members limit counts people besides the owner; the card counts everyone.
   if (key === 'members')
-    return {
-      value: value === null ? translate('anyNumber') : formatLimit(key, value),
-      label: translate('ofPeople'),
-    }
+    return value === null
+      ? { value: translate('anyNumber'), label: translate('ofPeople') }
+      : { value: formatLimit(key, value + 1), label: translate('peopleAtMost') }
   if (value === null) return { value: translate('unlimited2'), label }
-  if (key === 'ai_tokens_per_month' && value >= 1_000_000)
-    return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
+  if (key === 'ai_tokens_per_month') return { value: formatTokens(value), label }
   return { value: formatLimit(key, value), label }
 }
 
@@ -275,7 +275,9 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
       </div>
 
       <div className="grid items-stretch gap-4 md:grid-cols-3 lg:gap-5">
-        {billing.plans.map((plan) => {
+        {billing.plans.map((plan, index) => {
+          // a card lists what it offers: its limits and the features the plan below it lacks
+          const below = index > 0 ? billing.plans[index - 1] : undefined
           const onPlan = billing.plan === plan.id
           const current = onPlan && billing.interval === interval
           const scheduled =
@@ -442,7 +444,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                 >
                   {keys.map((key) => {
                     const value = plan.limits[key] ?? null
-                    // excluded features are listed below
+                    // a limit of 0 is something the plan does not offer: not listed
                     if (value === 0) return null
                     const fact = planFact(key, value)
                     return (
@@ -459,17 +461,14 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                     )
                   })}
                   {offer?.comparison
-                    .filter((row) => !row.plans[plan.id])
+                    .filter((row) => row.plans[plan.id] && !(below && row.plans[below.id]))
                     .map((row) => (
-                      <li
-                        key={row.key}
-                        className="flex items-baseline gap-2.5 text-muted-foreground"
-                      >
-                        <Minus className="size-3.5 shrink-0 translate-y-0.5" aria-hidden />
-                        <span className="min-w-0 text-pretty">
-                          <span className="sr-only">{translate('notIncluded2')}</span>
-                          {row.label}
-                        </span>
+                      <li key={row.key} className="flex items-baseline gap-2.5">
+                        <Check
+                          className="size-3.5 shrink-0 translate-y-0.5 text-brand"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 text-pretty">{row.label}</span>
                       </li>
                     ))}
                 </ul>

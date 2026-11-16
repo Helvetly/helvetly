@@ -505,7 +505,7 @@ export const ChangePlanFullComparison: Story = {
     await expect(portal.getAllByText('Not included')).toHaveLength(2)
     await expect(portal.getAllByLabelText('Included')).toHaveLength(1)
     const heidi = within(canvas.getByRole('row', { name: /^Heidi AI assistant/ }))
-    await expect(heidi.getByText('5 M')).toBeVisible()
+    await expect(heidi.getByText('5M')).toBeVisible()
     await expect(canvas.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent(
       'Per workspace',
     )

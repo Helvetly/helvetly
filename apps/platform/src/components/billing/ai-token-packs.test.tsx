@@ -17,10 +17,10 @@ const render = (ui: ReactElement) => renderPlain(<TooltipProvider>{ui}</TooltipP
 test('shows the month’s AI tokens and how the allowance is made up, with nothing to buy', () => {
   render(<AITokenPacks billing={withPacks} />)
   expect(screen.getByText(/used this month/).closest('p')).toHaveTextContent(
-    '1.2 Mof 6 M used this month',
+    '1.2Mof 6M used this month',
   )
-  expect(screen.getByLabelText('AI tokens: 1.2 M of 6 M used')).toBeInTheDocument()
-  expect(screen.getByText('1 M from the plan + 5 M from packs bought this month')).toBeVisible()
+  expect(screen.getByLabelText('AI tokens: 1.2M of 6M used')).toBeInTheDocument()
+  expect(screen.getByText('1M from the plan + 5M from packs bought this month')).toBeVisible()
   expect(screen.queryByRole('radio')).toBeNull()
   expect(screen.queryByRole('button', { name: /Buy/ })).toBeNull()
 })
