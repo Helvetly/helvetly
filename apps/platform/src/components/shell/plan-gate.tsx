@@ -13,13 +13,15 @@ import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { ShellLoading } from '@/components/auth-gate'
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { DeleteDialog } from '@/components/settings/workspace-settings'
 import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
 import { useBilling, usePublicOffer } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
@@ -31,16 +33,20 @@ export const CHOOSE_PLAN_PATH = '/choose-plan'
 /** Whether `pathname` is the plan picker (the static export serves it as /choose-plan/). */
 export const isChoosePlan = (pathname: string) => pathname.replace(/\/$/, '') === CHOOSE_PLAN_PATH
 
+/** Pages a workspace without a plan still opens: its billing, and its settings (rename, delete). */
+const UNGATED = ['/settings/billing', '/settings/workspace']
+
 /**
- * A workspace without an active plan is read-only: every page but billing sends to the plan picker,
- * a page of its own. Until billing answers nothing of the app shows, or a locked workspace would
- * flash it before the picker.
+ * A workspace without an active plan is read-only: every page but the UNGATED ones sends to the plan
+ * picker, a page of its own. Until billing answers nothing of the app shows, or a locked workspace
+ * would flash it before the picker.
  */
 export function PlanGate({ children }: { children: ReactNode }) {
   const billing = useBilling()
   const router = useRouter()
-  const onBilling = (usePathname() ?? '').startsWith('/settings/billing')
-  const locked = Boolean(billing.data?.enabled && billing.data.locked) && !onBilling
+  const pathname = usePathname() ?? ''
+  const ungated = UNGATED.some((path) => pathname.startsWith(path))
+  const locked = Boolean(billing.data?.enabled && billing.data.locked) && !ungated
 
   useEffect(() => {
     if (locked) router.replace(CHOOSE_PLAN_PATH)
@@ -135,7 +141,41 @@ export function ChoosePlan() {
           </p>
         </div>
       )}
+      <WayOut session={session} />
     </PlanScreen>
+  )
+}
+
+/**
+ * The way out of the picker without choosing a plan, quiet under it: the workspace's settings, and
+ * for its owner the deletion they offer, opened in place.
+ */
+function WayOut({ session }: { session: Session }) {
+  const [deleting, setDeleting] = useState(false)
+  const link =
+    'text-body-sm text-muted-foreground underline underline-offset-2 hover:text-foreground hover:no-underline'
+  return (
+    <nav
+      aria-label={translate('workspaceSettings')}
+      className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2"
+    >
+      <Link href="/settings/workspace" className={link}>
+        {translate('workspaceSettings')}
+      </Link>
+      {session.role === 'owner' && (
+        <>
+          <span aria-hidden className="text-body-sm text-muted-foreground">
+            ·
+          </span>
+          <button type="button" className={link} onClick={() => setDeleting(true)}>
+            {translate('deleteWorkspace')}
+          </button>
+          {deleting && (
+            <DeleteDialog name={session.workspace.name} onClose={() => setDeleting(false)} />
+          )}
+        </>
+      )}
+    </nav>
   )
 }
 

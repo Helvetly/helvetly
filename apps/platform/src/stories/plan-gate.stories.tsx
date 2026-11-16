@@ -1,15 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, within } from 'storybook/test'
+import { expect, screen, userEvent, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { ChoosePlan } from '@/components/shell/plan-gate'
 import type { Billing } from '@/lib/billing'
 
-import { screenHandlers, storySession } from './screen-fixtures'
+import { screenHandlers, sessionHandler, storySession } from './screen-fixtures'
 
-const handlers = (billing: Billing) => [
+const handlers = (billing: Billing, role = 'owner') => [
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
+  sessionHandler({ role }),
   http.get('/api/v1/session/workspaces', () => HttpResponse.json({ data: [] })),
   ...screenHandlers,
 ]
@@ -66,3 +67,43 @@ export const NewWorkspace: Story = {
 export const NewWorkspaceDark: Story = { ...NewWorkspace, parameters: { dark: true } }
 
 export const NewWorkspaceMobile: Story = { ...NewWorkspace, parameters: phone, ...mobile }
+
+/** A workspace whose plan lapsed: past the plans, its settings and, for its owner, deleting it in place. */
+export const Lapsed: Story = {
+  parameters: {
+    msw: { handlers: handlers(billingFixture({ has_customer: true, payment_overdue: true })) },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('region', { name: 'Pro' })).toBeVisible()
+    await expect(
+      canvas.getByRole('link', { name: 'Workspace settings' }).getAttribute('href'),
+    ).toMatch(/^\/settings\/workspace\/?$/)
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete workspace' }))
+    const dialog = within(
+      await screen.findByRole('dialog', { name: `Delete “${storySession.workspace.name}”?` }),
+    )
+    const confirm = dialog.getByRole('button', { name: 'Delete workspace' })
+    await expect(confirm).toBeDisabled()
+    await userEvent.type(dialog.getByRole('textbox'), storySession.workspace.name)
+    await expect(confirm).toBeEnabled()
+    await userEvent.click(dialog.getByRole('button', { name: 'Keep it' }))
+    await expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  },
+}
+
+export const LapsedMobile: Story = {
+  ...Lapsed,
+  parameters: { ...Lapsed.parameters, ...phone },
+  ...mobile,
+}
+
+/** An admin sees the workspace settings too, but deleting stays the owner's. */
+export const LapsedAdmin: Story = {
+  parameters: { msw: { handlers: handlers(billingFixture({ has_customer: true }), 'admin') } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('link', { name: 'Workspace settings' })).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: 'Delete workspace' })).not.toBeInTheDocument()
+  },
+}

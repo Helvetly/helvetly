@@ -3465,6 +3465,7 @@
   "workspaceOverviewCouldnTBeLoaded": "Workspace overview couldn’t be loaded: ",
   "workspaces": "Workspaces",
   "workspaceSaved": "Workspace saved.",
+  "workspaceSettings": "Workspace settings",
   "worksUntil": "Works until {value1}.",
   "worksWithTheDataYouGiveThemAccessTo": "Works with the data you give them access to.",
   "workTogether": "Work together",
