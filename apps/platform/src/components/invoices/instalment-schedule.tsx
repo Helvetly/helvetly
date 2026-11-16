@@ -50,29 +50,37 @@ export function InstalmentSchedule({
       <table className="mt-2 w-full text-[13.5px]">
         <thead className="sr-only">
           <tr>
-            <th>{translate('no')}</th>
+            <th className="max-sm:hidden">{translate('no')}</th>
             <th>{translate('due')}</th>
             <th>{translate('amount')}</th>
-            <th>{translate('open')}</th>
+            <th className="max-sm:hidden">{translate('open')}</th>
             <th>{translate('status')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">
           {schedule.items.map((item) => (
             <tr key={item.seq}>
-              <td className="w-10 py-2 text-muted-foreground tabular-nums">{item.seq}</td>
+              <td className="w-10 py-2 text-muted-foreground tabular-nums max-sm:hidden">
+                {item.seq}
+              </td>
               <td className="py-2">
-                <span className="tabular-nums">{formatDay(item.due_date)}</span>
+                <span className="whitespace-nowrap tabular-nums">{formatDay(item.due_date)}</span>
                 {item.reference && (
-                  <span className="block font-mono text-[11.5px] text-muted-foreground">
+                  <span className="block font-mono text-[11.5px] text-muted-foreground max-sm:hidden">
                     {groupReference(item.reference)}
                   </span>
                 )}
               </td>
-              <td className="py-2 text-right tabular-nums">
+              <td className="py-2 pl-3 text-right whitespace-nowrap tabular-nums">
                 {formatMoney(item.effective, invoice.currency)}
+                {/* Phones drop the Open column; a part-paid instalment still says what is left. */}
+                {item.status === 'part_paid' && (
+                  <span className="block text-xs text-muted-foreground sm:hidden">
+                    {translate('open')} {formatMoney(item.open, invoice.currency)}
+                  </span>
+                )}
               </td>
-              <td className="py-2 text-right text-muted-foreground tabular-nums">
+              <td className="py-2 pl-3 text-right whitespace-nowrap text-muted-foreground tabular-nums max-sm:hidden">
                 {item.status === 'paid' ? '—' : formatMoney(item.open, invoice.currency)}
               </td>
               <td className="py-2 pl-3 text-right">
