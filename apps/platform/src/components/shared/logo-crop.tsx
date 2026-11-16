@@ -22,15 +22,22 @@ import {
   clampView,
   cropWorkspaceLogo,
   DOCUMENT_MAX_ZOOM,
+  DOCUMENT_MIN_DPI,
   DOCUMENT_MIN_ZOOM,
+  documentDpi,
   imageSize,
   isWholePicture,
   LOGO_MAX_SIDE,
   LOGO_MIN_SIDE,
+  normalizeLogo,
   renderDocumentLogo,
   sizeProblem,
+  sniffFormat,
+  svgSize,
   WHOLE_PICTURE,
+  workspaceCropTooSmall,
   type DocumentView,
+  type LogoFormat,
 } from '@/lib/logo-crop'
 
 import { DocumentLogoFrame } from './document-logo-frame'
@@ -40,8 +47,6 @@ const MAX_ZOOM = 4
 // Shapes this far from the 2.5 : 1 field get a word on how they are placed.
 const ODD_RATIO = [1.4, 6] as const
 const ZOOM_STEP = 0.1
-// What the server keeps a workspace's mark to; the browser saves 512 × 512 (lib/logo-crop.ts).
-const WORKSPACE_MAX_SIDE = 1024
 
 /** Whether the bytes, not the claimed type, are a PNG: the server and the PDF library go by bytes too. */
 async function isPngBytes(file: Blob) {
@@ -51,19 +56,50 @@ async function isPngBytes(file: Blob) {
 
 export type LogoKind = 'workspace' | 'document'
 
-/** Why a picked file cannot be cropped into a logo (translated), or null; the dimensions come from its header. */
-export async function pickProblem(file: File, kind: LogoKind) {
-  const problem = logoProblem(file)
-  if (problem) return problem
+/**
+ * Why a picked file cannot be cropped into a logo (translated), or what it is: the bytes decide the format, and the
+ * pixel size comes from its header (an SVG's from what it declares), before anything is decoded.
+ */
+async function inspect(
+  file: File,
+): Promise<{ problem: string } | { format: LogoFormat; size: { width: number; height: number } }> {
+  const big = logoProblem(file)
+  if (big) return { problem: big }
+  const format = await sniffFormat(file)
+  if (!format) return { problem: translate('useAPNGOrJPEGImage') }
+  if (format === 'svg') {
+    const size = svgSize(await file.text())
+    return size ? { format, size } : { problem: translate('logoSvgDimensionsInvalid') }
+  }
   const size = await imageSize(file)
   if (!size || sizeProblem(size.width, size.height) === 'unreadable')
-    return translate('thisImageCanTBeReadChooseAPNG')
+    return { problem: translate('logoUnreadable') }
   if (sizeProblem(size.width, size.height) === 'too-large')
-    return translate('logoSizeLimits', {
-      min: LOGO_MIN_SIDE,
-      max: kind === 'workspace' ? WORKSPACE_MAX_SIDE : LOGO_MAX_SIDE,
-    })
-  return null
+    return { problem: translate('logoTooManyPixels') }
+  return { format, size }
+}
+
+/** Why a picked file cannot be a logo (translated), or null. */
+export async function pickProblem(file: File) {
+  const found = await inspect(file)
+  return 'problem' in found ? found.problem : null
+}
+
+type Picked = { file: File; url: string; origin: Origin }
+/** Where the picture comes from: as picked (PNG, JPEG), a static PNG made from a WebP or GIF, or one drawn from an SVG. */
+type Origin = 'file' | 'raster' | 'vector'
+
+/** The file to crop (a WebP, GIF or SVG already turned into a PNG) or why there is none. */
+export async function prepareLogo(file: File): Promise<{ problem: string } | Omit<Picked, 'url'>> {
+  const found = await inspect(file)
+  if ('problem' in found) return found
+  try {
+    const made = await normalizeLogo(file, found.format, found.size)
+    const origin = made.vector ? 'vector' : made.file === file ? 'file' : 'raster'
+    return { file: made.file, origin }
+  } catch {
+    return { problem: translate('logoUnreadable') }
+  }
 }
 
 /**
@@ -85,7 +121,9 @@ export function useLogoCrop({
   progress: number | null
   onSaved: () => void
 }): { pick: (file: File | undefined) => void; pickError: string; dialog: ReactNode } {
-  const [picked, setPicked] = useState<{ file: File; url: string } | null>(null)
+  const [picked, setPicked] = useState<Picked | null>(null)
+  // Only the latest pick counts: an earlier file may finish being read after a later one was chosen.
+  const latest = useRef(0)
   const [pickError, setPickError] = useState('')
   const [uploadError, setUploadError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -103,10 +141,15 @@ export function useLogoCrop({
 
   const pick = (file: File | undefined) => {
     if (!file) return
-    void pickProblem(file, kind).then((problem) => {
-      setPickError(problem ?? '')
+    const turn = (latest.current += 1)
+    void prepareLogo(file).then((prepared) => {
+      if (turn !== latest.current) return
       setUploadError('')
-      if (!problem) setPicked({ file, url: URL.createObjectURL(file) })
+      if ('problem' in prepared) setPickError(prepared.problem)
+      else {
+        setPickError('')
+        setPicked({ ...prepared, url: URL.createObjectURL(prepared.file) })
+      }
     })
   }
   const close = () => {
@@ -118,6 +161,7 @@ export function useLogoCrop({
     <LogoCropDialog
       kind={kind}
       file={picked.file}
+      origin={picked.origin}
       url={picked.url}
       saving={saving}
       progress={progress}
@@ -152,6 +196,7 @@ export function useLogoCrop({
 export function LogoCropDialog({
   kind,
   file,
+  origin = 'file',
   url,
   saving,
   progress,
@@ -161,6 +206,8 @@ export function LogoCropDialog({
 }: {
   kind: LogoKind
   file: File
+  /** Where the picture comes from; only a `file` as picked may be sent unchanged (default: as picked). */
+  origin?: Origin
   /** An object URL of `file`, owned by the caller. */
   url: string
   saving: boolean
@@ -176,9 +223,11 @@ export function LogoCropDialog({
   const [area, setArea] = useState<{ percent: CropArea; pixels: CropArea } | null>(null)
   const [view, setView] = useState<DocumentView>(WHOLE_PICTURE)
   const [problem, setProblem] = useState('')
+  // The resolution refusal is about the current placement, so moving or zooming clears it; the next save checks again.
+  const [lowResolution, setLowResolution] = useState('')
   const [encoding, setEncoding] = useState(false)
   const busy = saving || encoding
-  const shown = problem || error
+  const shown = problem || lowResolution || error
   const isDocument = kind === 'document'
   const ready = isDocument ? !!natural : !!area
   const ratio = natural ? natural.width / natural.height : 1
@@ -191,7 +240,12 @@ export function LogoCropDialog({
     if (isDocument) void imageSize(file).then((size) => size && setNatural(size))
   }, [isDocument, file])
 
+  const placeDocument = (next: DocumentView) => {
+    setView(next)
+    setLowResolution('')
+  }
   const zoomTo = (next: number) => {
+    setLowResolution('')
     if (isDocument && natural) setView(clampView(natural, { ...view, zoom: next }))
     else setZoom(next)
   }
@@ -201,10 +255,17 @@ export function LogoCropDialog({
     setEncoding(true)
     setProblem('')
     try {
+      // New uploads keep the printing floor whatever their format, so an untouched PNG does not bypass it either.
+      // An SVG is already a fixed raster by now (2048 px on its long side), so it is held to the same floor.
+      if (isDocument && documentDpi(natural, view) < DOCUMENT_MIN_DPI) {
+        setLowResolution(translate('logoRasterResolutionTooLow'))
+        return
+      }
       // A PNG that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
       // A JPEG never is, whatever its name or type says: its EXIF turn (the PDF library ignores it) is only applied by decoding and re-encoding it.
       if (
         isDocument &&
+        origin === 'file' &&
         file.size <= LOGO_MAX_BYTES &&
         file.type === 'image/png' &&
         Math.max(natural.width, natural.height) <= LOGO_MAX_SIDE &&
@@ -217,6 +278,10 @@ export function LogoCropDialog({
       }
       const bitmap = await createImageBitmap(file)
       try {
+        if (!isDocument && area && workspaceCropTooSmall(area.pixels)) {
+          setLowResolution(translate('logoRasterResolutionTooLow'))
+          return
+        }
         const logo =
           !isDocument && area
             ? await cropWorkspaceLogo(bitmap, area.pixels)
@@ -247,13 +312,13 @@ export function LogoCropDialog({
               natural={natural}
               view={view}
               disabled={busy}
-              onChange={setView}
+              onChange={placeDocument}
               onDecoded={(size) =>
                 setNatural((current) =>
                   current?.width === size.width && current.height === size.height ? current : size,
                 )
               }
-              onError={() => setProblem(translate('thisImageCanTBeReadChooseAPNG'))}
+              onError={() => setProblem(translate('logoUnreadable'))}
             />
           )
         ) : (
@@ -268,14 +333,17 @@ export function LogoCropDialog({
                 aspect={1}
                 showGrid={false}
                 objectFit="cover"
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
+                onCropChange={(next) => {
+                  setCrop(next)
+                  setLowResolution('')
+                }}
+                onZoomChange={zoomTo}
                 onMediaLoaded={(media) =>
                   setNatural({ width: media.naturalWidth, height: media.naturalHeight })
                 }
                 onCropComplete={(percent, pixels) => setArea({ percent, pixels })}
                 mediaProps={{
-                  onError: () => setProblem(translate('thisImageCanTBeReadChooseAPNG')),
+                  onError: () => setProblem(translate('logoUnreadable')),
                 }}
                 cropperProps={{
                   role: 'group',
@@ -311,7 +379,7 @@ export function LogoCropDialog({
               variant="outline"
               size="sm"
               disabled={busy || (view.zoom === 1 && !view.x && !view.y)}
-              onClick={() => setView(WHOLE_PICTURE)}
+              onClick={() => placeDocument(WHOLE_PICTURE)}
             >
               <Maximize2 />
               {translate('fitWholePicture')}
@@ -336,7 +404,11 @@ export function LogoCropDialog({
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
             {translate('cancel')}
           </Button>
-          <Button type="button" disabled={!ready || busy || !!problem} onClick={() => void save()}>
+          <Button
+            type="button"
+            disabled={!ready || busy || !!problem || !!lowResolution}
+            onClick={() => void save()}
+          >
             {busy && (
               <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
             )}

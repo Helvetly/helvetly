@@ -80,9 +80,9 @@ export function PlanSummary({
       data-slot="plan-summary"
       className="@container overflow-hidden rounded-2xl bg-card shadow-elevation-1"
     >
-      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
-        <div className="grid content-start gap-6 p-5 @lg:p-7">
-          <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
+      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(18rem,23rem)]">
+        <div className="grid content-start gap-4 p-4 @lg:p-5">
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
             <div className="grid min-w-0 gap-1">
               <div className="flex items-center gap-2">
                 <span className="text-caption font-medium text-muted-foreground">
@@ -90,7 +90,7 @@ export function PlanSummary({
                 </span>
                 {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
               </div>
-              <h2 className="text-display font-semibold tracking-[-0.035em]">
+              <h2 className="text-page font-semibold tracking-[-0.025em]">
                 {plan ? plan.name : translate('noPlan')}
               </h2>
               <p className="text-body-sm text-muted-foreground">
@@ -117,7 +117,7 @@ function Price({ billing }: { billing: Billing }) {
   if (!total) return null
   const interval = billing.interval || 'month'
   return (
-    <div data-slot="plan-price" className="grid gap-1 tabular-nums @lg:border-l @lg:pl-10">
+    <div data-slot="plan-price" className="grid gap-1 tabular-nums @lg:border-l @lg:pl-6">
       <p className="text-body-sm text-muted-foreground">
         {perSeat ? (
           translate('perPerson2', { value1: formatPrice(perSeat), value2: people(billing.seats) })
@@ -142,7 +142,7 @@ function Price({ billing }: { billing: Billing }) {
         )}
       </p>
       <p className="flex items-baseline gap-1.5">
-        <span className="text-display font-semibold tracking-[-0.035em]">{formatPrice(total)}</span>
+        <span className="text-page font-semibold tracking-[-0.025em]">{formatPrice(total)}</span>
         <span className="text-body text-muted-foreground">/ {interval}</span>
       </p>
     </div>
@@ -272,8 +272,8 @@ function NextStep({
 }
 
 const PANEL_TONES = {
-  brand: 'bg-brand-surface/45',
-  muted: 'bg-muted/60',
+  brand: 'bg-muted/40',
+  muted: 'bg-muted/40',
   danger: 'bg-destructive-surface/60 [&_[data-slot=panel-icon]]:text-destructive',
 }
 
@@ -292,7 +292,7 @@ function PanelShell({
       aria-label={label}
       data-slot="plan-next"
       className={cn(
-        'flex items-center gap-5 border-t p-5 @lg:px-7 @3xl:border-t-0 @3xl:border-l',
+        'flex items-center gap-4 border-t p-4 @lg:px-5 @3xl:border-t-0 @3xl:border-l [&_[data-slot=countdown]_svg]:size-20',
         PANEL_TONES[tone],
       )}
     >
@@ -394,7 +394,7 @@ function notesOf(billing: Billing): ReactNode[] | null {
 
 function Note({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <p className="flex items-start gap-2.5 border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground @lg:px-7 [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
+    <p className="flex items-start gap-2.5 border-t px-4 py-2.5 text-body-sm text-pretty text-muted-foreground @lg:px-5 [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
       {icon}
       <span>{children}</span>
     </p>

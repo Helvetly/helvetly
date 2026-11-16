@@ -22,7 +22,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@helvetly/ui/components/sidebar'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { TONES } from '@helvetly/ui/components/status-badge'
 import { capitalize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -38,7 +38,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
 import { featureLock, PLANS_HREF, PlanTag, toastLocked } from '@/components/billing/feature-lock'
@@ -52,7 +52,7 @@ import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
 import { api, setCsrfToken, type Session, type User } from '@/lib/api'
-import { useBilling } from '@/lib/billing'
+import { type Billing, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
 import { effectiveScopes } from '@/lib/permissions'
@@ -137,13 +137,12 @@ export function AppSidebar({ session }: { session: Session }) {
                 <span className="truncate text-[14px] font-semibold text-[#161618] dark:text-foreground">
                   {session.workspace.name}
                 </span>
-                {/* The plan, not the role (that is in the user menu); the role while billing is off. */}
-                <span
-                  className="truncate text-[12px] text-[#8e8d90] dark:text-muted-foreground"
-                  data-testid="workspace-plan"
-                >
-                  {planLabel(billing) ?? capitalize(session.role)}
-                </span>
+                {/* The plan, not the role (that is in the user menu); nothing while billing is off or loading. */}
+                {planLabel(billing) && (
+                  <MiniBadge className="mt-0.5" testId="workspace-plan">
+                    {planLabel(billing)}
+                  </MiniBadge>
+                )}
               </span>
               <ChevronsUpDown className="ml-auto size-4! stroke-[1.75] text-[#a8a7aa]" />
             </SidebarMenuButton>
@@ -171,9 +170,9 @@ export function AppSidebar({ session }: { session: Session }) {
                   <span className="truncate text-[14px] text-[#161618] dark:text-foreground">
                     {workspace.name}
                   </span>
-                  <span className="text-[12px] text-[#8e8d90] capitalize dark:text-muted-foreground">
-                    {workspace.role}
-                  </span>
+                  {rowPlan(workspace, billing) && (
+                    <MiniBadge className="mt-0.5">{rowPlan(workspace, billing)}</MiniBadge>
+                  )}
                 </span>
                 {workspace.current && <Check className="ml-auto text-foreground" />}
               </DropdownMenuItem>
@@ -310,7 +309,6 @@ export function AppSidebar({ session }: { session: Session }) {
         <UserMenu
           user={session.user}
           role={session.role}
-          workspace={session.workspace.name}
           onHelp={openHelp}
           onShortcuts={() => setShortcutsOpen(true)}
         />
@@ -323,6 +321,40 @@ function NewTag() {
   return (
     <span className="rounded-[4px] bg-heidi px-1.5 text-[11px] leading-[18px] font-semibold tracking-wide text-background uppercase group-data-[collapsible=icon]:hidden">
       {translate('new3')}
+    </span>
+  )
+}
+
+/** A workspace's own plan in its list row: nothing without a billing record, "no plan" when it has none. */
+function rowPlan(workspace: WorkspaceItem, billing: Billing | undefined): string | null {
+  // Billing off (or not yet known) hides plans: records from when it was on would be stale.
+  if (!billing?.enabled || workspace.plan == null) return null
+  if (workspace.plan === '') return translate('noPlanReadOnly')
+  return (
+    billing?.plans.find((plan) => plan.id === workspace.plan)?.name ?? capitalize(workspace.plan)
+  )
+}
+
+/** A small muted tag, a notch under the shared status badge, for a plan or a role. */
+function MiniBadge({
+  children,
+  className,
+  testId,
+}: {
+  children: ReactNode
+  className?: string
+  testId?: string
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className={cn(
+        'inline-flex h-[18px] w-fit max-w-full items-center truncate rounded-sm px-1.5 text-[11px] leading-none whitespace-nowrap',
+        TONES.gray,
+        className,
+      )}
+    >
+      {children}
     </span>
   )
 }
@@ -342,13 +374,11 @@ function UserAvatar({ user }: { user: User }) {
 function UserMenu({
   user,
   role,
-  workspace,
   onHelp,
   onShortcuts,
 }: {
   user: User
   role: Session['role']
-  workspace: string
   onHelp: () => void
   onShortcuts: () => void
 }) {
@@ -386,7 +416,7 @@ function UserMenu({
             sideOffset={8}
             className="w-72 rounded-xl p-1.5 shadow-elevation-2 [&_[role=menuitem]]:h-9 [&_[role=menuitem]]:text-[15px] [&_svg]:stroke-[1.5]"
           >
-            {/* Name and email each get the full width; the role sits on its own line with the workspace. */}
+            {/* Name and email take what the role badge at the right leaves; both truncate or wrap. */}
             <DropdownMenuLabel className="flex items-start gap-2.5 px-2 py-2 font-normal">
               <UserAvatar user={user} />
               <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
@@ -399,11 +429,8 @@ function UserMenu({
                 <span className="truncate text-body-sm" title={user.email}>
                   {user.email}
                 </span>
-                <span className="mt-1 flex min-w-0 items-center gap-1.5 text-caption">
-                  <StatusBadge>{capitalize(role)}</StatusBadge>
-                  <span className="truncate">{workspace}</span>
-                </span>
               </span>
+              <MiniBadge className="mt-0.5 shrink-0">{capitalize(role)}</MiniBadge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

@@ -13,7 +13,7 @@
 1 hex apps/platform/src/components/invoices/plan-card.tsx
 1 hex apps/platform/src/components/onboarding/logo-card.tsx
 3 hex apps/platform/src/components/products/product-detail.tsx
-15 hex apps/platform/src/components/shell/app-sidebar.tsx
+13 hex apps/platform/src/components/shell/app-sidebar.tsx
 1 hex apps/platform/src/components/signatures/ink.ts
 3 hex apps/platform/src/components/signatures/request-drawer.tsx
 3 hex apps/platform/src/components/signatures/signing-page.tsx
@@ -170,7 +170,7 @@
 1 text-px apps/platform/src/components/products/product-picker.tsx
 15 text-px apps/platform/src/components/products/products-page.tsx
 1 text-px apps/platform/src/components/section-form.tsx
-14 text-px apps/platform/src/components/shell/app-sidebar.tsx
+13 text-px apps/platform/src/components/shell/app-sidebar.tsx
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
 5 text-px apps/platform/src/components/signatures/adopt-dialog.tsx

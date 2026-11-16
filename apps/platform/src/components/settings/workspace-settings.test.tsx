@@ -194,7 +194,9 @@ describe('the workspace logo', () => {
     const svg = new File(['x'], 'logo.svg', { type: 'image/svg+xml' })
     fireEvent.dragOver(card)
     fireEvent.drop(card, { dataTransfer: { files: [svg] } })
-    expect(await screen.findByRole('alert')).toHaveTextContent('Use a PNG or JPEG image.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Choose a PNG, JPG, WebP, SVG or GIF image.',
+    )
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(uploads).toBe(0)
   })
@@ -214,7 +216,7 @@ describe('the workspace logo', () => {
     expect(await screen.findByRole('dialog', { name: 'Adjust logo' })).toBeInTheDocument()
   })
 
-  test('a file that is not a PNG or JPEG is refused before any crop or upload', async () => {
+  test('a file whose bytes are not a supported picture is refused before any crop or upload', async () => {
     let uploads = 0
     server.use(
       http.put('/api/v1/workspace/logo', () => {
@@ -236,7 +238,9 @@ describe('the workspace logo', () => {
         applyAccept: false,
       },
     )
-    expect(await screen.findByRole('alert')).toHaveTextContent('Use a PNG or JPEG image.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Choose a PNG, JPG, WebP, SVG or GIF image.',
+    )
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(uploads).toBe(0)
   })

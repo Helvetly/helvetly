@@ -69,7 +69,7 @@ export function BillingSettings() {
         ) : !data ? (
           <Loader label={translate('loadingBilling')} className="min-h-80" />
         ) : (
-          <div data-slot="billing-overview" className="@container grid gap-7">
+          <div data-slot="billing-overview" className="@container grid gap-5">
             {!data.enabled && (
               <p className="rounded-lg bg-warning-surface px-4 py-3 text-body-sm text-pretty text-warning">
                 {translate('subscriptionBillingIsCurrentlyUnavailablePlanLimitsAreNot')}
