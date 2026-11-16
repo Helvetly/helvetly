@@ -103,10 +103,13 @@ export function helpTopic(name: string, language: Locale) {
 /** Each topic with its articles; topics without any are left out. */
 export function topicsWithArticles(articles: Article[], language: Locale) {
   return helpTopicsIn(language)
-    .map((topic) => ({
-      ...topic,
-      slug: topicSlug(topic.name),
-      articles: articles.filter((a) => a.category === topic.name),
+    .map(({ name, blurb, icon, tone }) => ({
+      name,
+      blurb,
+      icon,
+      tone,
+      slug: topicSlug(name),
+      articles: articles.filter((a) => a.category === name),
     }))
     .filter((topic) => topic.articles.length > 0)
 }
