@@ -116,6 +116,38 @@ describe('LogoCropDialog, document logo', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
   })
 
+  test('a low-resolution refusal is cleared by correcting the crop, and the same dialog then saves', async () => {
+    const file = png(1000, 400)
+    const onSave = open(file)
+    await picture()
+    const group = screen.getByRole('button', { name: /arrow keys/ })
+    // Zoomed to the top, 1000 px over a quarter of the field is below 150 dpi.
+    for (let press = 0; press < 30; press += 1) fireEvent.keyDown(group, { key: '+' })
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/crop is too small/)
+    expect(screen.getByRole('button', { name: 'Use this logo' })).toBeDisabled()
+    expect(onSave).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fit the whole picture' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
+  })
+
+  test('zooming back out also clears the refusal, and a still-too-small crop is refused again on save', async () => {
+    const onSave = open(png(1000, 400))
+    await picture()
+    const group = screen.getByRole('button', { name: /arrow keys/ })
+    for (let press = 0; press < 30; press += 1) fireEvent.keyDown(group, { key: '+' })
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    await screen.findByRole('alert')
+    fireEvent.keyDown(group, { key: '+' })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/crop is too small/)
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
   test('a JPEG of the field shape is never saved as picked: its EXIF turn only survives decoding', async () => {
     const decode = vi.fn<() => Promise<ImageBitmap>>().mockRejectedValue(new Error('decoded'))
     vi.stubGlobal('createImageBitmap', decode)

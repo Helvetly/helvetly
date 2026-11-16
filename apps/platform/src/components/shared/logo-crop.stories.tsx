@@ -138,12 +138,23 @@ const cached = (width: number, height: number, clear: boolean) => {
   return hit
 }
 
-function Dialog({ file, onSave = fn() }: { file: File; onSave?: (logo: Blob) => void }) {
+function Dialog({
+  file,
+  onSave = fn(),
+  kind = 'document',
+  origin,
+}: {
+  file: File
+  onSave?: (logo: Blob) => void
+  kind?: 'document' | 'workspace'
+  origin?: 'file' | 'raster' | 'vector'
+}) {
   const [url] = useState(() => URL.createObjectURL(file))
   return (
     <LogoCropDialog
-      kind="document"
+      kind={kind}
       file={file}
+      origin={origin}
       url={url}
       saving={false}
       progress={null}
@@ -437,5 +448,51 @@ export const SvgForeignObjectIsRefused: Story = {
       '<foreignObject width="10" height="10"><iframe xmlns="http://www.w3.org/1999/xhtml" src="https://logo-fetch-probe.invalid"/></foreignObject>',
     )
     await expect(normalizeLogo(file, 'svg', { width: 200, height: 80 })).rejects.toThrow()
+  },
+}
+
+const savedVector = fn<(logo: Blob) => void>()
+function VectorDialog({ pending }: { pending: ReturnType<typeof prepareLogo> }) {
+  const result = use(pending)
+  if ('problem' in result) throw new Error(result.problem)
+  return <Dialog kind="workspace" file={result.file} origin={result.origin} onSave={savedVector} />
+}
+function WorkspaceSvg({ size, body }: { size: string; body: string }) {
+  const [pending] = useState(() => prepareLogo(svg(body, size)))
+  return (
+    <Suspense fallback={null}>
+      <VectorDialog pending={pending} />
+    </Suspense>
+  )
+}
+
+/** A 20 : 1 SVG becomes a 2048 × 102 raster: its square workspace crop is 102 px, held to the same 160 px floor as a PNG. */
+export const SvgWideWorkspaceFloor: Story = {
+  render: () => (
+    <WorkspaceSvg size='width="400" height="20"' body='<rect width="400" height="20"/>' />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    savedVector.mockClear()
+    const confirm = await body.findByRole('button', { name: 'Use this logo' })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await userEvent.click(confirm)
+    await expect((await body.findByRole('alert')).textContent).toMatch(/crop is too small/)
+    await expect(savedVector).not.toHaveBeenCalled()
+  },
+}
+
+/** A square SVG is still a usable workspace logo: its raster is large enough for the floor. */
+export const SvgSquareWorkspaceSaves: Story = {
+  render: () => (
+    <WorkspaceSvg size='width="100" height="100"' body='<rect width="100" height="100"/>' />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    savedVector.mockClear()
+    const confirm = await body.findByRole('button', { name: 'Use this logo' })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await userEvent.click(confirm)
+    await waitFor(() => expect(savedVector).toHaveBeenCalled())
   },
 }

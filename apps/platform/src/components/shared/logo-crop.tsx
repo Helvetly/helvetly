@@ -206,7 +206,7 @@ export function LogoCropDialog({
 }: {
   kind: LogoKind
   file: File
-  /** `vector` pictures have no pixels of their own, so no resolution can be lacking (default: as picked). */
+  /** Where the picture comes from; only a `file` as picked may be sent unchanged (default: as picked). */
   origin?: Origin
   /** An object URL of `file`, owned by the caller. */
   url: string
@@ -223,9 +223,11 @@ export function LogoCropDialog({
   const [area, setArea] = useState<{ percent: CropArea; pixels: CropArea } | null>(null)
   const [view, setView] = useState<DocumentView>(WHOLE_PICTURE)
   const [problem, setProblem] = useState('')
+  // The resolution refusal is about the current placement, so moving or zooming clears it; the next save checks again.
+  const [lowResolution, setLowResolution] = useState('')
   const [encoding, setEncoding] = useState(false)
   const busy = saving || encoding
-  const shown = problem || error
+  const shown = problem || lowResolution || error
   const isDocument = kind === 'document'
   const ready = isDocument ? !!natural : !!area
   const ratio = natural ? natural.width / natural.height : 1
@@ -238,7 +240,12 @@ export function LogoCropDialog({
     if (isDocument) void imageSize(file).then((size) => size && setNatural(size))
   }, [isDocument, file])
 
+  const placeDocument = (next: DocumentView) => {
+    setView(next)
+    setLowResolution('')
+  }
   const zoomTo = (next: number) => {
+    setLowResolution('')
     if (isDocument && natural) setView(clampView(natural, { ...view, zoom: next }))
     else setZoom(next)
   }
@@ -249,8 +256,9 @@ export function LogoCropDialog({
     setProblem('')
     try {
       // New uploads keep the printing floor whatever their format, so an untouched PNG does not bypass it either.
-      if (isDocument && origin !== 'vector' && documentDpi(natural, view) < DOCUMENT_MIN_DPI) {
-        setProblem(translate('logoRasterResolutionTooLow'))
+      // An SVG is already a fixed raster by now (2048 px on its long side), so it is held to the same floor.
+      if (isDocument && documentDpi(natural, view) < DOCUMENT_MIN_DPI) {
+        setLowResolution(translate('logoRasterResolutionTooLow'))
         return
       }
       // A PNG that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
@@ -270,8 +278,8 @@ export function LogoCropDialog({
       }
       const bitmap = await createImageBitmap(file)
       try {
-        if (origin !== 'vector' && !isDocument && area && workspaceCropTooSmall(area.pixels)) {
-          setProblem(translate('logoRasterResolutionTooLow'))
+        if (!isDocument && area && workspaceCropTooSmall(area.pixels)) {
+          setLowResolution(translate('logoRasterResolutionTooLow'))
           return
         }
         const logo =
@@ -304,7 +312,7 @@ export function LogoCropDialog({
               natural={natural}
               view={view}
               disabled={busy}
-              onChange={setView}
+              onChange={placeDocument}
               onDecoded={(size) =>
                 setNatural((current) =>
                   current?.width === size.width && current.height === size.height ? current : size,
@@ -325,8 +333,11 @@ export function LogoCropDialog({
                 aspect={1}
                 showGrid={false}
                 objectFit="cover"
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
+                onCropChange={(next) => {
+                  setCrop(next)
+                  setLowResolution('')
+                }}
+                onZoomChange={zoomTo}
                 onMediaLoaded={(media) =>
                   setNatural({ width: media.naturalWidth, height: media.naturalHeight })
                 }
@@ -368,7 +379,7 @@ export function LogoCropDialog({
               variant="outline"
               size="sm"
               disabled={busy || (view.zoom === 1 && !view.x && !view.y)}
-              onClick={() => setView(WHOLE_PICTURE)}
+              onClick={() => placeDocument(WHOLE_PICTURE)}
             >
               <Maximize2 />
               {translate('fitWholePicture')}
@@ -393,7 +404,11 @@ export function LogoCropDialog({
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
             {translate('cancel')}
           </Button>
-          <Button type="button" disabled={!ready || busy || !!problem} onClick={() => void save()}>
+          <Button
+            type="button"
+            disabled={!ready || busy || !!problem || !!lowResolution}
+            onClick={() => void save()}
+          >
             {busy && (
               <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
             )}
