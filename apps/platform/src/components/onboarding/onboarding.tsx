@@ -183,8 +183,21 @@ export function WelcomePage({ session }: { session: Session }) {
   useEffect(() => {
     if (invalidTick) document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [invalidTick])
+  // A ref, because a second submit in the same tick still sees the state of the first render.
+  const welcomeSaving = useRef(false)
+  const [welcomeBusy, setWelcomeBusy] = useState(false)
   const saveWelcome = async () => {
-    if (profile.isPending || rename.isPending) return
+    if (welcomeSaving.current) return
+    welcomeSaving.current = true
+    setWelcomeBusy(true)
+    try {
+      await saveWelcomeNames()
+    } finally {
+      welcomeSaving.current = false
+      setWelcomeBusy(false)
+    }
+  }
+  const saveWelcomeNames = async () => {
     const name = nameInput.trim()
     const workspace = workspaceInput.trim()
     const nameProblem = validPersonName(name)
@@ -286,7 +299,7 @@ export function WelcomePage({ session }: { session: Session }) {
                   name={confirmedName}
                   input={nameInput}
                   error={nameError}
-                  busy={profile.isPending || rename.isPending}
+                  busy={welcomeBusy}
                   workspace={workspaceInput}
                   workspaceError={workspaceError}
                   onInput={(value) => {
@@ -548,6 +561,7 @@ function WelcomeStep({
             maxLength={100}
             autoComplete="off"
             value={input}
+            readOnly={busy}
             onChange={(event) => onInput(event.target.value)}
           />
         </FormField>
@@ -565,6 +579,7 @@ function WelcomeStep({
             maxLength={100}
             autoComplete="off"
             value={workspace}
+            readOnly={busy}
             onChange={(event) => onWorkspace(event.target.value)}
           />
         </FormField>

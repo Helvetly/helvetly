@@ -137,6 +137,12 @@ const start = async (user: User, name = 'Anna Muster') => {
   await waitFor(() => expect(company).toHaveFocus())
 }
 
+/** A write that answers only when the test lets it. */
+const gated = () => {
+  const { promise: gate, resolve: open } = Promise.withResolvers<void>()
+  return { gate, open }
+}
+
 const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly' })
 const left = () => waitFor(() => expect(replace).toHaveBeenCalledWith('/invoices?status=open'))
 
@@ -481,6 +487,79 @@ describe('the welcome', () => {
       await user.click(get())
       expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
       expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('both inputs stay locked through both saves, so what advances is what is shown', async () => {
+      workspaceName = 'My workspace'
+      const account = gated()
+      const workspace = gated()
+      server.use(
+        http.patch('/api/v1/account', async ({ request }) => {
+          await account.gate
+          const input = (await request.json()) as { name: string }
+          named.push(input)
+          return HttpResponse.json({ data: { ...session().user, name: input.name } })
+        }),
+        http.patch('/api/v1/workspace', async ({ request }) => {
+          await workspace.gate
+          renamed.push(await request.json())
+          return HttpResponse.json({ data: { id: 'wsp_1', name: 'x', timezone: 'Europe/Zurich' } })
+        }),
+      )
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Submitted Workspace')
+      await user.click(get())
+      await waitFor(() => expect(workspaceField()).toHaveAttribute('readonly'))
+      await user.type(workspaceField(), ' Latest') // ignored while the account write is pending
+      expect(workspaceField()).toHaveValue('Submitted Workspace')
+      account.open()
+      await waitFor(() => expect(named).toHaveLength(1))
+      expect(workspaceField()).toHaveAttribute('readonly') // still locked for the workspace write
+      expect(await nameField()).toHaveAttribute('readonly')
+      workspace.open()
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(renamed).toEqual([{ name: 'Submitted Workspace' }])
+    })
+
+    test('a double submit in one tick sends each write once', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Muster')
+      const form = workspaceField().closest('form') as HTMLFormElement
+      // Raw events, not fireEvent: no render happens between the two, as with a fast double click.
+      const submit = () =>
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      submit()
+      submit()
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(named).toEqual([{ name: 'Anna' }])
+      expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('a failed save unlocks both inputs for a correction', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Taken')
+      server.use(
+        http.patch('/api/v1/workspace', () =>
+          HttpResponse.json(
+            { error: { code: 'invalid_request', message: 'That workspace name is taken.' } },
+            { status: 400 },
+          ),
+        ),
+      )
+      await user.click(get())
+      expect(await screen.findByText('That workspace name is taken.')).toBeInTheDocument()
+      await waitFor(() => expect(workspaceField()).not.toHaveAttribute('readonly'))
+      expect(await nameField()).not.toHaveAttribute('readonly')
+      await user.type(workspaceField(), '2')
+      expect(workspaceField()).toHaveValue('Taken2')
     })
 
     test('Company has no workspace field, editing it changes nothing, and nothing asks for a suggestion', async () => {
