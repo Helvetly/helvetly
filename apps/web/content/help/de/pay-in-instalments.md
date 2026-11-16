@@ -9,7 +9,7 @@ updated: 2026-11-15
 
 Verteilen Sie eine Rechnung auf mehrere Fälligkeitstermine und behalten Sie dabei eine einzige Rechnung.
 
-Automatische Zahlungserinnerungen erfordern **Pro** oder **Business** und verwenden Automatisierungsaktionen.
+Automatische Zahlungserinnerungen erfordern **Pro** oder **Business** und verwenden automatisierte Aktionen.
 
 1. Aktivieren Sie im Rechnungseditor **Pay in instalments** unterhalb des Dokuments.
 2. Legen Sie die Anzahl der Raten, das Intervall und den **First due date** fest. Sie können die Zeilen anpassen.

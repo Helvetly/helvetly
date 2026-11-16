@@ -9,7 +9,7 @@ updated: 2026-11-15
 
 Lassen Sie Helvetly überfällige Rechnungen höflich und pünktlich für Sie erledigen.
 
-Automatische Erinnerungen erfordern **Pro** oder **Business**; Jede gesendete Erinnerung verwendet eine Automatisierungsaktion.
+Automatische Erinnerungen erfordern **Pro** oder **Business**; jede gesendete Erinnerung verwendet eine automatisierte Aktion.
 
 1. Gehen Sie zu **Settings → Invoices → Dunning** und aktivieren Sie **Send reminders automatically**.
 2. Richten Sie bis zu drei Ebenen ein. Stellen Sie für jede Ebene Folgendes ein: **Sent**, optional **Fee** und **Own text**. Sie können auch **Default interest** festlegen.

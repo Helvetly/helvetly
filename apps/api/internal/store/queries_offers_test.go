@@ -189,3 +189,68 @@ func TestOfferFlattenedToV1(t *testing.T) {
 		}
 	}
 }
+
+// TestOfferV2Migration: 00014 publishes offer helvetly-v2 next to helvetly-v1 with its new key, moves every workspace
+// on v1 to it with its own values (v1 has no quotes_per_month, which would refuse every quote), and audits it; Down
+// moves them back, removes v2 and the key, and Up runs again.
+func TestOfferV2Migration(t *testing.T) {
+	ctx := context.Background()
+	p, pool := migrationProvider(t)
+	if _, err := p.UpTo(ctx, 13); err != nil {
+		t.Fatal(err)
+	}
+	exec := func(sql string, args ...any) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, sql, args...); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+	}
+	count := func(sql string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, sql, args...).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		return n
+	}
+	exec(`INSERT INTO workspaces (id, name, created_at) VALUES ('ws_1', 'One', now())`)
+	exec(`INSERT INTO workspace_billing (workspace_id, status, plan, offer_id, updated_at)
+		VALUES ('ws_1', 'trialing', 'business', 'helvetly-v1', now())`)
+	exec(`INSERT INTO limit_workspaces (workspace_id, offer_id, limit_key, state, value, reason, set_by)
+		VALUES ('ws_1', 'helvetly-v1', 'clients', 'limited', 40, 'pilot', 'ops')`)
+	if _, err := p.UpTo(ctx, 14); err != nil {
+		t.Fatal(err)
+	}
+	for sql, want := range map[string]int{
+		`SELECT count(*) FROM limits`:                                                                                              68,
+		`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-v2'`:                                                          68 * 3,
+		`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-v1'`:                                                          67 * 3,
+		`SELECT count(*) FROM workspace_billing WHERE offer_id = 'helvetly-v2'`:                                                    1,
+		`SELECT count(*) FROM offer_audit WHERE action = 'offer.publish' AND target = 'helvetly-v2'`:                               1,
+		`SELECT value FROM limit_workspaces WHERE offer_id = 'helvetly-v2' AND limit_key = 'clients'`:                              40,
+		`SELECT value FROM limit_plans WHERE offer_id = 'helvetly-v2' AND limit_key = 'quotes_per_month' AND plan_id = 'pro'`:      100,
+		`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-v2' AND plan_id = 'business' AND state = 'unlimited'`:         7,
+		`SELECT l.position - i.position FROM limits l, limits i WHERE l.key = 'quotes_per_month' AND i.key = 'invoices_per_month'`: 1,
+	} {
+		if n := count(sql); n != want {
+			t.Fatalf("%s: %d, want %d", sql, n, want)
+		}
+	}
+	if _, err := p.DownTo(ctx, 13); err != nil {
+		t.Fatal(err)
+	}
+	for sql, want := range map[string]int{
+		`SELECT count(*) FROM limits`:                                           67,
+		`SELECT count(*) FROM offer_versions WHERE id = 'helvetly-v2'`:          0,
+		`SELECT count(*) FROM workspace_billing WHERE offer_id = 'helvetly-v1'`: 1,
+		`SELECT count(*) FROM limit_workspaces WHERE offer_id = 'helvetly-v1'`:  1,
+		`SELECT count(*) FROM limit_workspaces WHERE offer_id <> 'helvetly-v1'`: 0,
+	} {
+		if n := count(sql); n != want {
+			t.Fatalf("after Down, %s: %d, want %d", sql, n, want)
+		}
+	}
+	if _, err := p.UpTo(ctx, 14); err != nil {
+		t.Fatal(err)
+	}
+}

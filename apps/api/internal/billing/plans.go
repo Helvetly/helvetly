@@ -90,6 +90,7 @@ const (
 	Members     Limit = "members"                // members besides the owner who accepted; no cap on a per-seat subscription
 	Clients     Limit = "clients"                // clients not deleted
 	Invoices    Limit = "invoices_per_month"     // documents issued this quota month, linked corrections aside (usage_events)
+	Quotes      Limit = "quotes_per_month"       // quotes first sent (numbered) this quota month, revisions aside (usage_events)
 	Expenses    Limit = "expenses_per_month"     // expenses first saved this quota month, deleted ones too (usage_events)
 	Products    Limit = "products"               // catalogue entries not deleted (archived ones too)
 	Engagements Limit = "engagements"            // engagements not cancelled and not ended
@@ -118,7 +119,7 @@ const gb = 1_000_000_000 // storage is sold in decimal gigabytes (offer v2)
 var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
 
 // limitOrder is the order limits are listed in.
-var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
+var limitOrder = []Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens}
 
 // quotaStart is when b's workspace's monthly counts start: now's quota month (UTC), or a trial's start, whose
 // allowances last the whole trial and do not restart with a month.
@@ -195,6 +196,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.Clients
 	case Invoices:
 		return u.InvoicesThisMonth
+	case Quotes:
+		return u.QuotesThisMonth
 	case Expenses:
 		return u.ExpensesThisMonth
 	case Products:

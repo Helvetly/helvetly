@@ -39,7 +39,7 @@ func TestOfferCommand(t *testing.T) {
 		}
 		return path
 	}
-	o.ID = "helvetly-v2"
+	o.ID = "helvetly-v3"
 	for i, r := range o.Records {
 		if r.Key == "clients" {
 			v := int64(40)
@@ -50,7 +50,7 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1" || len(c.Plans) != 3 ||
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v2" || len(c.Plans) != 3 ||
 		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
 		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
 		t.Fatalf("catalog: %q %v", out, err)
@@ -58,7 +58,7 @@ func TestOfferCommand(t *testing.T) {
 	if _, err := run("catalog", "-offer", "nope"); err == nil {
 		t.Fatal("catalog of an unknown offer")
 	}
-	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v2, 67 records") {
+	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 68 records") {
 		t.Fatalf("validate: %q %v", out, err)
 	}
 	broken := o
@@ -67,13 +67,13 @@ func TestOfferCommand(t *testing.T) {
 		t.Fatalf("validate an incomplete offer: %v", err)
 	}
 	out, err = run("diff", file)
-	if err != nil || !strings.Contains(out, "current helvetly-v1") || !strings.Contains(out, "clients.basic: limited 30 -> limited 40\n") {
+	if err != nil || !strings.Contains(out, "current helvetly-v2") || !strings.Contains(out, "clients.basic: limited 30 -> limited 40\n") {
 		t.Fatalf("diff: %q %v", out, err)
 	}
 	if _, err := run("publish", file); err == nil {
 		t.Fatal("published without an actor and a reason")
 	}
-	if out, err := run("publish", "-actor", "ops", "-reason", "more clients on Basic", file); err != nil || !strings.HasPrefix(out, "published helvetly-v2") {
+	if out, err := run("publish", "-actor", "ops", "-reason", "more clients on Basic", file); err != nil || !strings.HasPrefix(out, "published helvetly-v3") {
 		t.Fatalf("publish: %q %v", out, err)
 	}
 	if _, err := run("publish", "-actor", "ops", "-reason", "again", file); err == nil {
@@ -111,9 +111,9 @@ func TestOfferCommand(t *testing.T) {
 		}
 		got = append(got, action+" "+target+" "+reason+" before:"+before+" after:"+after)
 	}
-	if len(got) != 3 || !strings.HasPrefix(got[0], "offer.publish helvetly-v2 more clients on Basic before:{") ||
-		!strings.HasPrefix(got[1], "limit.override.set wsp_1/helvetly-v2/clients pilot before: after:{") || !strings.Contains(got[1], `"value": 55`) ||
-		!strings.HasPrefix(got[2], "limit.override.clear wsp_1/helvetly-v2/clients pilot over before:{") || !strings.HasSuffix(got[2], "after:") {
+	if len(got) != 3 || !strings.HasPrefix(got[0], "offer.publish helvetly-v3 more clients on Basic before:{") ||
+		!strings.HasPrefix(got[1], "limit.override.set wsp_1/helvetly-v3/clients pilot before: after:{") || !strings.Contains(got[1], `"value": 55`) ||
+		!strings.HasPrefix(got[2], "limit.override.clear wsp_1/helvetly-v3/clients pilot over before:{") || !strings.HasSuffix(got[2], "after:") {
 		t.Fatalf("audit:\n%s", strings.Join(got, "\n"))
 	}
 	if _, err := run("frobnicate"); err == nil || !strings.Contains(err.Error(), "usage:") {

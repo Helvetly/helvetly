@@ -4,7 +4,7 @@ description: Wählen Sie den Basic-, Pro- oder Business-Plan, starten Sie eine T
 category: Team and workspace
 categoryLabel: Team und Arbeitsbereich
 order: 6
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Jeder Arbeitsbereich hat seinen eigenen Plan. Hier erfahren Sie, wie Sie es auswählen und verwalten.
@@ -18,7 +18,7 @@ Jeder Arbeitsbereich hat seinen eigenen Plan. Hier erfahren Sie, wie Sie es ausw
 
 - Jedes Teammitglied erhält einen Sitzplatz zum vollen Preis des Plans; Es sind keine zusätzlichen Sitzplätze enthalten. Bis zu 25 Sitzplätze können in der App gekauft werden.
 - **Basic** ist für die manuelle Rechnungsstellung vorgesehen. **Pro** fügt Heidi, Ausgaben, Vorlagen, Unterschriften, Korrekturen, Mehrwertsteuererklärungen, das Hauptbuch, Datenexporte und Automatisierungen hinzu. **Business** fügt das Kundenportal und E-Rechnungs-XML-Exporte hinzu.
-- Kunden, Produkte und Aufträge sind feste Obergrenzen für den Arbeitsbereich. Die anderen Zulagen gelten pro bezahlter Person und werden in einem gemeinsamen Pool zusammengefasst. Die monatlichen Zulagen beginnen wieder am Monatsersten um 00:00 UTC.
+- Kunden, Produkte und Aufträge sind feste Obergrenzen für den Arbeitsbereich; **Business** begrenzt sie nicht, ebenso wenig Rechnungen, Offerten, Ausgaben und Signaturanfragen. Die anderen Kontingente gelten pro bezahltem Teammitglied und werden in einem gemeinsamen Pool zusammengefasst. Die monatlichen Zulagen beginnen wieder am Monatsersten um 00:00 UTC.
 - Wenn ein Kontingent aufgebraucht ist, wird nur die neue Aktion gestoppt, die es benötigt; Es wird nichts gelöscht und nichts extra berechnet.
 - Ein Neukunde kann Business 7 Tage lang mit bis zu 2 Mitgliedern und kleineren Testkontingenten testen. Eine Karte ist erforderlich.
 - Es gibt keinen kostenlosen Plan. Ohne aktiven Plan ist der Arbeitsbereich schreibgeschützt: Es wird nichts gelöscht und er wird wieder geöffnet, sobald ein Plan ausgewählt wird.

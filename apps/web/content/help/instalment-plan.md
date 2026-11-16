@@ -8,7 +8,7 @@ updated: 2026-11-15
 
 An instalment plan issues a separate partial invoice for each instalment, automatically.
 
-An instalment plan issues invoices on its own, so it needs **Pro** or **Business** and uses automation actions.
+An instalment plan issues invoices on its own, so it needs **Pro** or **Business** and uses automated actions.
 
 1. Create a draft invoice with its client and lines. Leave **Pay in instalments** off.
 2. Click **Split into instalment invoices**, either below the document or in the draft's **…** menu.

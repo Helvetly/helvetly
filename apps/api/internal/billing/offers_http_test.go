@@ -29,7 +29,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	}
 	res, d := get("")
 	etag := res.Header.Get("ETag")
-	if res.StatusCode != http.StatusOK || d["offer_id"] != "helvetly-v1" || !strings.Contains(etag, "helvetly-v1:") ||
+	if res.StatusCode != http.StatusOK || d["offer_id"] != "helvetly-v2" || !strings.Contains(etag, "helvetly-v2:") ||
 		res.Header.Get("Cache-Control") != "public, max-age=60" || res.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("%d %v %v", res.StatusCode, res.Header, d["offer_id"])
 	}
@@ -54,7 +54,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	rows, _ := d["comparison"].([]any)
 	details, _ := d["usage_details"].([]any)
 	limits, _ := d["limits"].(map[string]any)
-	if len(rows) != 13 || len(details) != 11 {
+	if len(rows) != 13 || len(details) != 12 {
 		t.Fatalf("%d rows, %d allowances", len(rows), len(details))
 	}
 	raw, _ := json.Marshal(d)
@@ -94,6 +94,18 @@ func TestPublicCurrentOffer(t *testing.T) {
 	}
 	if _, v := limit("expenses_per_month", Basic); v["included"] != false {
 		t.Errorf("basic expenses: %v", v)
+	}
+	// Unlimited is published as included with no value, never as -1 or 0.
+	for _, key := range []string{"clients", "products", "engagements", "invoices_per_month", "quotes_per_month", "expenses_per_month", "signatures_per_month"} {
+		if _, v := limit(key, Business); v["included"] != true || v["value"] != nil {
+			t.Errorf("%s on business: %v", key, v)
+		}
+	}
+	if pp, v := limit("quotes_per_month", Basic); !pp || v["value"] != 5.0 {
+		t.Errorf("quotes on basic: %v %v", pp, v)
+	}
+	if _, v := limit("invoices_per_month", Pro); v["value"] != 100.0 {
+		t.Errorf("invoices on pro: %v", v)
 	}
 	if _, ok := limits["engagements"]; !ok {
 		t.Error("a row's limit is missing from limits")
@@ -145,7 +157,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != "helvetly-v1" || len(items) != 66 {
+	if data["offer_id"] != "helvetly-v2" || len(items) != 67 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {
@@ -157,8 +169,11 @@ func TestOverviewEntitlements(t *testing.T) {
 	if s := items["storage_bytes"]; s["value"] != 1e10 || s["per_seat"] != true {
 		t.Fatalf("storage for 2 seats: %v", s)
 	}
-	if i := items["invoices_per_month"]; i["value"] != 300.0 || i["reset_at"] == nil || i["period"] != "calendar_month_utc" {
+	if i := items["invoices_per_month"]; i["value"] != 200.0 || i["reset_at"] == nil || i["period"] != "calendar_month_utc" {
 		t.Fatalf("invoices: %v", i)
+	}
+	if q := items["quotes_per_month"]; q["value"] != 200.0 || q["used"] != 0.0 || q["per_seat"] != true || q["reset_at"] == nil {
+		t.Fatalf("quotes: %v", q)
 	}
 	if a := items["automation_actions_per_month"]; a["value"] != 3000.0 || a["used"] != 0.0 || a["reset_at"] == nil {
 		t.Fatalf("automation actions %v", a)
@@ -174,7 +189,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	}
 	// The earlier fields stay for the deployed platform.
 	usage, _ := data["usage"].([]any)
-	if len(usage) != 9 || data["features"] == nil || data["plans"] == nil {
+	if len(usage) != 10 || data["features"] == nil || data["plans"] == nil {
 		t.Fatalf("earlier fields: %v", data)
 	}
 }

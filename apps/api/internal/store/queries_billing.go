@@ -51,6 +51,7 @@ type Subscription struct {
 // Usage is what the plan limits count.
 type Usage struct {
 	Members, Clients, InvoicesThisMonth, ExpensesThisMonth int64
+	QuotesThisMonth                                        int64 // quotes first sent in the quota months
 	Products, Engagements, SignaturesThisMonth             int64
 	StorageBytes                                           int64 // stored_objects: bytes kept in storage
 	AITokensThisMonth                                      int64 // heidi_usage of the quota month
@@ -167,10 +168,11 @@ func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now ti
 			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0),
 			coalesce((SELECT n FROM monthly WHERE resource = 'download_bytes_per_month'), 0),
 			coalesce((SELECT n FROM monthly WHERE resource = 'emails_per_month'), 0),
-			coalesce((SELECT n FROM monthly WHERE resource = 'email_attachment_bytes_per_month'), 0)`,
+			coalesce((SELECT n FROM monthly WHERE resource = 'email_attachment_bytes_per_month'), 0),
+			coalesce((SELECT n FROM monthly WHERE resource = 'quotes_per_month'), 0)`,
 		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
 		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained,
-		&u.AutomationsThisMonth, &u.DownloadBytesThisMonth, &u.EmailsThisMonth, &u.EmailAttachmentBytesThisMonth)
+		&u.AutomationsThisMonth, &u.DownloadBytesThisMonth, &u.EmailsThisMonth, &u.EmailAttachmentBytesThisMonth, &u.QuotesThisMonth)
 	return u, err
 }
 

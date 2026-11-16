@@ -29,7 +29,7 @@ type entitlementItem struct {
 }
 
 // metered are the limits counted today (WorkspaceUsage), monthly ones in the UTC quota month.
-var metered = []Limit{Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens, InvoiceDrafts, QuotesRetained,
+var metered = []Limit{Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens, InvoiceDrafts, QuotesRetained,
 	AutomationActions, Downloads, Emails, EmailAttachments}
 
 // entitlementItems lists the workspace's entitlements for its panel, without the internal AI cost budget: the panel

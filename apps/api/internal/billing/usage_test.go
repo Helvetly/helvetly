@@ -375,7 +375,7 @@ func TestNothingRestartsTheMonth(t *testing.T) {
 	e.exec(`UPDATE workspaces SET timezone = 'Pacific/Kiritimati' WHERE id = $1`, ws)
 	refused("after a time zone change")
 	e.subscribe(ws, "price_pm")
-	if room := e.cap(ws, Invoices) - e.usedIn(ws, Invoices, now); room != 135 {
+	if room := e.cap(ws, Invoices) - e.usedIn(ws, Invoices, now); room != 85 {
 		t.Fatalf("Pro's room after 15 issues on Basic: %d", room)
 	}
 	e.subscribe(ws, "price_bm")

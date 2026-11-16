@@ -232,7 +232,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained,
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained,
 		AutomationActions, Downloads, Emails, EmailAttachments}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
@@ -358,6 +358,8 @@ func limitMessage(plan string, limit Limit, max int64) string {
 		return fmt.Sprintf("The %s plan includes %d clients. Upgrade the workspace to add more.", name, max)
 	case Invoices:
 		return fmt.Sprintf("The %s plan includes %d issued invoices a month. The draft is kept: upgrade the workspace to issue it now, or issue it next month.", name, max)
+	case Quotes:
+		return fmt.Sprintf("The %s plan includes %d sent quotes a month. The draft is kept: upgrade the workspace to send it now, or send it next month.", name, max)
 	case InvoiceDrafts:
 		return fmt.Sprintf("The %s plan keeps %d invoice drafts at a time. Issue or delete drafts to start more.", name, max)
 	case QuotesRetained:

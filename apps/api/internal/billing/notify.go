@@ -34,10 +34,10 @@ func or(a, b string) string {
 }
 
 // monthly: limits counted per quota month (UTC), so nearing one is news again next month.
-var monthlyLimits = map[Limit]bool{Invoices: true, Expenses: true, Signatures: true, AITokens: true, AutomationActions: true,
+var monthlyLimits = map[Limit]bool{Invoices: true, Quotes: true, Expenses: true, Signatures: true, AITokens: true, AutomationActions: true,
 	Downloads: true, Emails: true, EmailAttachments: true}
 
-var limitNouns = map[Limit]string{Members: "member seats", Clients: "clients", Invoices: "invoices this month",
+var limitNouns = map[Limit]string{Members: "member seats", Clients: "clients", Invoices: "invoices this month", Quotes: "quotes this month",
 	Expenses: "expenses this month", Products: "products and services", Engagements: "running engagements",
 	Signatures: "signature requests this month", Storage: "storage", AITokens: "AI tokens this month",
 	InvoiceDrafts: "invoice drafts", QuotesRetained: "quotes", AutomationActions: "automatic actions this month",

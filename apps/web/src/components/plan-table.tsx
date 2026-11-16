@@ -24,17 +24,19 @@ import { type Tone, TONES } from '@/lib/tones'
 // The same colours as the pricing cards: Basic sky, Pro lilac (the recommended plan), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
 
-/** Under an allowance's number: a workspace cap, kept storage per person, or a monthly pool per person. */
+/** Under an allowance's number: a workspace cap, kept storage per team member, or a monthly pool per team member. */
 function unitOf(limit: LimitKey, language: Locale): string {
   const translate = translatorFor(language)
   if (plansIn(language).LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
-  return limit === 'storage_bytes' ? translate('perPersonShort') : translate('perPersonAMonthShort')
+  return limit === 'storage_bytes'
+    ? translate('perTeamMemberShort')
+    : translate('perTeamMemberAMonthShort')
 }
 
 function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
   const language = useLanguage()
   const translate = translatorFor(language)
-  const { formatLimit } = plansIn(language)
+  const { formatLimit, isUnlimited } = plansIn(language)
   if (!row.plans[plan])
     return (
       <span className="inline-flex text-muted-foreground/60">
@@ -46,9 +48,11 @@ function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
     return (
       <span className="font-medium tabular-nums">
         {formatLimit(row.limit, plan)}
-        <span className="block text-caption font-normal text-muted-foreground">
-          {unitOf(row.limit, language)}
-        </span>
+        {!isUnlimited(row.limit, plan) && (
+          <span className="block text-caption font-normal text-muted-foreground">
+            {unitOf(row.limit, language)}
+          </span>
+        )}
       </span>
     )
   return (

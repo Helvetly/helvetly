@@ -74,7 +74,10 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		default:
 			return invalidState("This quote is already answered.")
 		}
-		if t.Number == nil { // a refused email below rolls the counter back with the rest
+		if t.Number == nil { // a refused email below rolls the counter and the count back with the rest
+			if err := q.CountQuoteIssue(ctx, sess.Workspace.ID, t.ID, now); err != nil {
+				return err
+			}
 			year, _ := strconv.Atoi(t.IssueDate[:4])
 			seq, err := q.NextQuoteNumber(ctx, sess.Workspace.ID, year)
 			if err != nil {

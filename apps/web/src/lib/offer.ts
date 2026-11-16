@@ -11,6 +11,7 @@ import {
   type PlanId,
   plansIn,
   priceOf,
+  UNLIMITED,
   USAGE_DETAILS,
 } from '@/lib/plans'
 import { PLATFORM_URL } from '@/lib/site'
@@ -75,7 +76,11 @@ function limit(key: LimitKey) {
     // Every *_per_month allowance starts again on the first of the month, UTC; the others are standing caps.
     period: key.endsWith('_per_month') ? 'calendar_month_utc' : null,
     per_person: scope === 'person',
-    plans: perPlan((id) => ({ included: values[id] !== null, value: values[id] ?? 0 })),
+    // Not included: 0 granted; unlimited: no value.
+    plans: perPlan((id) => {
+      const v = values[id]
+      return { included: v !== null, value: v === UNLIMITED ? null : (v ?? 0) }
+    }),
   }
 }
 

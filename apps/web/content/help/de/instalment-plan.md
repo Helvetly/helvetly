@@ -9,7 +9,7 @@ updated: 2026-11-15
 
 Bei einem Ratenzahlungsplan wird für jede Rate automatisch eine separate Teilrechnung erstellt.
 
-Ein Ratenzahlungsplan stellt Rechnungen selbstständig aus, benötigt also **Pro** oder **Business** und nutzt Automatisierungsaktionen.
+Ein Ratenzahlungsplan stellt Rechnungen selbstständig aus, benötigt also **Pro** oder **Business** und nutzt automatisierte Aktionen.
 
 1. Erstellen Sie einen Rechnungsentwurf mit seinem Kunden und seinen Zeilen. Lassen Sie **Pay in instalments** ausgeschaltet.
 2. Klicken Sie entweder unter dem Dokument oder im Menü **Split into instalment invoices** des Entwurfs auf **…**.
