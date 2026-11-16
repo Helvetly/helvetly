@@ -23,10 +23,12 @@ var ErrEmployeeNumberTaken = errors.New("employee number taken")
 var ErrMemberLinked = errors.New("member already linked")
 
 type EmploymentSettings struct {
-	EmployingEntity *string    `json:"employing_entity"`
-	Country         *string    `json:"country"`
-	Region          *string    `json:"region"`
-	UpdatedAt       *time.Time `json:"updated_at"`
+	EmployingEntity *string `json:"employing_entity"`
+	Country         *string `json:"country"`
+	Region          *string `json:"region"`
+	// RequireSecondApprover: the person who created or last changed a payroll entry cannot approve it.
+	RequireSecondApprover bool       `json:"require_second_approver"`
+	UpdatedAt             *time.Time `json:"updated_at"`
 }
 
 type Employee struct {
@@ -71,6 +73,24 @@ type Employee struct {
 	UpdatedAt         time.Time            `json:"updated_at"`
 	BankAccountSealed []byte               `json:"-"`
 	TaxIDSealed       []byte               `json:"-"`
+	Details
+}
+
+// Details are the contract, Swiss payroll and insurance fields (salary certificate, form 11) and the sealed
+// social-security number, written apart from the main record.
+type Details struct {
+	WeeklyHours          *invoicecalc.Quantity `json:"weekly_hours"`
+	NoticePeriod         *string               `json:"notice_period"`
+	ThirteenthSalary     bool                  `json:"thirteenth_salary"`
+	WithholdingTax       bool                  `json:"withholding_tax"` // Swiss Quellensteuer
+	WithholdingTaxCanton *string               `json:"withholding_tax_canton"`
+	PensionInsurer       *string               `json:"pension_insurer"`  // BVG/LPP
+	AccidentInsurer      *string               `json:"accident_insurer"` // UVG/LAA
+	SicknessInsurer      *string               `json:"sickness_insurer"` // KTG daily sickness allowance
+	FreeTransport        bool                  `json:"free_transport"`   // form 11 box F
+	CanteenMeals         bool                  `json:"canteen_meals"`    // form 11 box G
+	SocialSecurityHint   *string               `json:"social_security_number_hint"`
+	SocialSecuritySealed []byte                `json:"-"`
 }
 
 // Derive sets the status from the dates on the workspace's day today (YYYY-MM-DD).
@@ -92,20 +112,28 @@ const employeeColumns = `e.id, e.member_user_id, nullif(u.name, ''), m.user_id I
 	e.employment_type, e.working_time_percent, e.employment_start::text, e.employment_end::text, e.employing_entity,
 	e.employer_country, e.social_security_country, e.work_country, e.work_region, e.work_locality, e.place_of_work, e.residence_country, e.cross_border,
 	e.cross_border_note, e.bank_account_hint, e.tax_id_hint, e.legal_hold, e.legal_hold_reason, e.restricted,
-	e.erased_at, e.archived_at, e.created_at, e.updated_at, e.bank_account_sealed, e.tax_id_sealed`
+	e.erased_at, e.archived_at, e.created_at, e.updated_at, e.bank_account_sealed, e.tax_id_sealed, e.weekly_hours_milli,
+	e.notice_period, e.thirteenth_salary, e.withholding_tax, e.withholding_tax_canton, e.pension_insurer, e.accident_insurer,
+	e.sickness_insurer, e.free_transport, e.canteen_meals, e.social_security_number_hint, e.social_security_number_sealed`
 
 const employeeFrom = ` FROM employees e LEFT JOIN users u ON u.id = e.member_user_id
 	LEFT JOIN workspace_members m ON m.workspace_id = e.workspace_id AND m.user_id = e.member_user_id`
 
 func scanEmployee(row interface{ Scan(...any) error }, today string) (Employee, error) {
 	var e Employee
-	var wt *int64
+	var wt, hours *int64
 	err := row.Scan(&e.ID, &e.MemberUserID, &e.MemberName, &e.MemberActive, &e.EmployeeNumber, &e.FirstName, &e.LastName,
 		&e.Email, &e.Phone, &e.Street, &e.PostalCode, &e.City, &e.AddressCountry, &e.Position, &e.Department,
 		&e.EmploymentType, &wt, &e.EmploymentStart, &e.EmploymentEnd, &e.EmployingEntity, &e.EmployerCountry, &e.SocialSecurity, &e.WorkCountry, &e.WorkRegion,
 		&e.WorkLocality, &e.PlaceOfWork, &e.ResidenceCountry, &e.CrossBorder, &e.CrossBorderNote, &e.BankAccountHint,
 		&e.TaxIDHint, &e.LegalHold, &e.LegalHoldReason, &e.Restricted, &e.ErasedAt, &e.ArchivedAt, &e.CreatedAt,
-		&e.UpdatedAt, &e.BankAccountSealed, &e.TaxIDSealed)
+		&e.UpdatedAt, &e.BankAccountSealed, &e.TaxIDSealed, &hours, &e.NoticePeriod, &e.ThirteenthSalary, &e.WithholdingTax,
+		&e.WithholdingTaxCanton, &e.PensionInsurer, &e.AccidentInsurer, &e.SicknessInsurer, &e.FreeTransport, &e.CanteenMeals,
+		&e.SocialSecurityHint, &e.SocialSecuritySealed)
+	if hours != nil {
+		h := invoicecalc.Quantity(*hours)
+		e.WeeklyHours = &h
+	}
 	if wt != nil {
 		p := invoicecalc.Percent(*wt)
 		e.WorkingTime = &p
@@ -231,7 +259,31 @@ func (q Q) CreateEmployee(ctx context.Context, workspaceID, userID string, e Emp
 		e.EmploymentStart, e.EmploymentEnd, e.EmployingEntity, e.WorkCountry, e.WorkRegion, e.WorkLocality, e.PlaceOfWork,
 		e.ResidenceCountry, e.CrossBorder, e.CrossBorderNote, e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed,
 		e.TaxIDHint, userID, e.CreatedAt, e.EmployerCountry, e.SocialSecurity)
-	return employeeErr(err)
+	if err != nil {
+		return employeeErr(err)
+	}
+	// an owner may set a legal hold or a restriction on the new record already
+	if _, err := q.db.Exec(ctx, `UPDATE employees SET legal_hold = $3, legal_hold_reason = $4, restricted = $5
+		WHERE workspace_id = $1 AND id = $2`, workspaceID, e.ID, e.LegalHold, e.LegalHoldReason, e.Restricted); err != nil {
+		return err
+	}
+	return q.saveDetails(ctx, workspaceID, e)
+}
+
+// saveDetails writes e's Details.
+func (q Q) saveDetails(ctx context.Context, workspaceID string, e Employee) error {
+	var hours *int64
+	if e.WeeklyHours != nil {
+		h := int64(*e.WeeklyHours)
+		hours = &h
+	}
+	_, err := q.db.Exec(ctx, `UPDATE employees SET weekly_hours_milli = $3, notice_period = $4, thirteenth_salary = $5,
+		withholding_tax = $6, withholding_tax_canton = $7, pension_insurer = $8, accident_insurer = $9, sickness_insurer = $10,
+		free_transport = $11, canteen_meals = $12, social_security_number_hint = $13, social_security_number_sealed = $14
+		WHERE workspace_id = $1 AND id = $2`, workspaceID, e.ID, hours, e.NoticePeriod, e.ThirteenthSalary, e.WithholdingTax,
+		e.WithholdingTaxCanton, e.PensionInsurer, e.AccidentInsurer, e.SicknessInsurer, e.FreeTransport, e.CanteenMeals,
+		e.SocialSecurityHint, e.SocialSecuritySealed)
+	return err
 }
 
 // SaveEmployee writes every editable field of e.
@@ -249,7 +301,10 @@ func (q Q) SaveEmployee(ctx context.Context, workspaceID string, e Employee, now
 		e.EmploymentStart, e.EmploymentEnd, e.EmployingEntity, e.WorkCountry, e.WorkRegion, e.WorkLocality, e.PlaceOfWork,
 		e.ResidenceCountry, e.CrossBorder, e.CrossBorderNote, e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed,
 		e.TaxIDHint, e.LegalHold, e.LegalHoldReason, e.Restricted, e.ErasedAt, now, e.EmployerCountry, e.SocialSecurity)
-	return employeeErr(err)
+	if err != nil {
+		return employeeErr(err)
+	}
+	return q.saveDetails(ctx, workspaceID, e)
 }
 
 // ArchiveEmployee archives; nothing is deleted.
@@ -282,8 +337,9 @@ func (q Q) DeleteEmployee(ctx context.Context, workspaceID, id string) error {
 
 func (q Q) EmploymentSettings(ctx context.Context, workspaceID string) (EmploymentSettings, error) {
 	var s EmploymentSettings
-	err := q.db.QueryRow(ctx, `SELECT employing_entity, country, region, updated_at FROM employment_settings
-		WHERE workspace_id = $1`, workspaceID).Scan(&s.EmployingEntity, &s.Country, &s.Region, &s.UpdatedAt)
+	err := q.db.QueryRow(ctx, `SELECT employing_entity, country, region, require_second_approver, updated_at
+		FROM employment_settings WHERE workspace_id = $1`, workspaceID).
+		Scan(&s.EmployingEntity, &s.Country, &s.Region, &s.RequireSecondApprover, &s.UpdatedAt)
 	if errors.Is(err, ErrNotFound) {
 		return EmploymentSettings{}, nil
 	}
@@ -291,11 +347,20 @@ func (q Q) EmploymentSettings(ctx context.Context, workspaceID string) (Employme
 }
 
 func (q Q) PutEmploymentSettings(ctx context.Context, workspaceID string, s EmploymentSettings, now time.Time) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO employment_settings (workspace_id, employing_entity, country, region, updated_at)
-		VALUES ($1, $2, $3, $4, $5) ON CONFLICT (workspace_id) DO UPDATE SET employing_entity = EXCLUDED.employing_entity,
-		country = EXCLUDED.country, region = EXCLUDED.region, updated_at = EXCLUDED.updated_at`,
-		workspaceID, s.EmployingEntity, s.Country, s.Region, now)
+	_, err := q.db.Exec(ctx, `INSERT INTO employment_settings (workspace_id, employing_entity, country, region,
+		require_second_approver, updated_at) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (workspace_id) DO UPDATE SET employing_entity = EXCLUDED.employing_entity, country = EXCLUDED.country,
+		region = EXCLUDED.region, require_second_approver = EXCLUDED.require_second_approver, updated_at = EXCLUDED.updated_at`,
+		workspaceID, s.EmployingEntity, s.Country, s.Region, s.RequireSecondApprover, now)
 	return err
+}
+
+// PayrollApprovers counts the members who may approve payroll: owners and those granted payroll edit.
+func (q Q) PayrollApprovers(ctx context.Context, workspaceID string) (int, error) {
+	var n int
+	err := q.db.QueryRow(ctx, `SELECT count(*) FROM workspace_members WHERE workspace_id = $1
+		AND (role = 'owner' OR scopes && ARRAY['write:payroll', '*:payroll'])`, workspaceID).Scan(&n)
+	return n, err
 }
 
 // ---- pay terms ----

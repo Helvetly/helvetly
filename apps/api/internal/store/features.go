@@ -21,6 +21,7 @@ const (
 	FeatureEngagementAutomation = "engagement_automation"
 	FeatureClientPortal         = "client_portal"
 	FeatureEInvoiceXML          = "einvoice_xml"
+	FeatureEmployees            = "employees"
 )
 
 // ErrFeatureDenied wraps a gate's refusal (the plan lacks the feature, the workspace has none, or its plan cannot be

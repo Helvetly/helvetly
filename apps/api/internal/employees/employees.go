@@ -30,7 +30,7 @@ type Auth interface {
 // Files is what employee documents use of internal/documents: one document system, its HR side.
 type Files interface {
 	UploadEmployeeFile(w http.ResponseWriter, r *http.Request, sess store.Session, employeeID string, record documents.HRRecord) (string, error)
-	ServeHRFile(w http.ResponseWriter, r *http.Request, d store.Document) error
+	ServeHRFile(w http.ResponseWriter, r *http.Request, workspaceID string, d store.Document) error
 	RemoveObject(ctx context.Context, key string)
 }
 
@@ -56,12 +56,28 @@ var (
 	errOwnerOnly    = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can set a legal hold or restrict processing.", nil)
 	errRestricted   = conflict("restricted", "Processing of this employee's data is restricted: it can be read, not changed.")
 	errErased       = conflict("erased", "This employee's personal data was erased; the record is kept read-only.")
+	// errSecondApprover: four-eyes approval is on and the approver entered the entry's current figures.
+	errSecondApprover = auth.Error(http.StatusForbidden, "second_approver_required",
+		"You entered the current figures of this entry. Another person with Payroll edit access must approve it.", nil)
 )
+
+// planAllows refuses the module where the plan lacks it (403 feature_not_in_plan), except an owner's reads: after a
+// downgrade the data stays, readable and exportable by the owner, not editable.
+func (s *Service) planAllows(r *http.Request, sess store.Session) error {
+	if sess.Role == "owner" && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
+		return nil
+	}
+	return s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureEmployees)
+}
 
 func (s *Service) Register(mux *http.ServeMux) {
 	handle := func(pattern string, h handler) {
 		mux.HandleFunc(pattern, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
-			if err := h(w, r, sess); err != nil {
+			err := s.planAllows(r, sess)
+			if err == nil {
+				err = h(w, r, sess)
+			}
+			if err != nil {
 				switch {
 				case errors.Is(err, store.ErrNotFound):
 					err = auth.ErrNotFound
@@ -102,6 +118,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/employment/settings", s.settings)
 	handle("PUT /api/v1/employment/settings", s.putSettings)
 	handle("GET /api/v1/employment/jurisdictions", s.jurisdictions)
+	handle("GET /api/v1/employment/retention", s.retentionReview)
 	handle("GET /api/v1/payroll/entries", s.entries)
 	handle("POST /api/v1/payroll/entries", s.createEntry)
 	handle("GET /api/v1/payroll/entries/{id}", s.entry)

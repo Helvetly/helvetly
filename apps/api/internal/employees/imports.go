@@ -152,7 +152,7 @@ func OverwriteImport(ctx context.Context, q store.Q, sess store.Session, data ma
 	if p.Components == nil {
 		p.Components = []store.PayrollComponent{}
 	}
-	ok, err := q.SavePayrollDraft(ctx, sess.Workspace.ID, p, existing.Version, now)
+	ok, err := q.SavePayrollDraft(ctx, sess.Workspace.ID, sess.User.ID, p, existing.Version, now)
 	if err != nil {
 		return "", err
 	}

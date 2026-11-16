@@ -217,7 +217,7 @@ func TestExportCoversEveryTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	var queries strings.Builder
-	for _, q := range append(slices.Clone(store.WorkspaceExportTables), store.UserExportTables...) {
+	for _, q := range slices.Concat(store.WorkspaceExportTables, store.UserExportTables, store.HRExportTables) {
 		queries.WriteString(q.Query + "\n")
 	}
 	exported := regexp.MustCompile(`(?:FROM|JOIN)\s+(\w+)`).FindAllStringSubmatch(queries.String(), -1)

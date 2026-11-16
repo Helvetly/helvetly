@@ -896,7 +896,7 @@ func TestCheckout(t *testing.T) {
 	for k, want := range map[string]string{
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
 		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "",
-		"subscription_data[metadata][offer_id]": "helvetly-2026-11-v2",
+		"subscription_data[metadata][offer_id]": "helvetly-2026-11-v3",
 		"tax_id_collection[enabled]":            "true", "success_url": "https://helvetly.example.com/settings/billing?checkout=success",
 		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
 	} {

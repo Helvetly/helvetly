@@ -29,7 +29,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	}
 	res, d := get("")
 	etag := res.Header.Get("ETag")
-	if res.StatusCode != http.StatusOK || d["offer_id"] != "helvetly-2026-11-v2" || !strings.Contains(etag, "helvetly-2026-11-v2:") ||
+	if res.StatusCode != http.StatusOK || d["offer_id"] != "helvetly-2026-11-v3" || !strings.Contains(etag, "helvetly-2026-11-v3:") ||
 		res.Header.Get("Cache-Control") != "public, max-age=60" || res.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("%d %v %v", res.StatusCode, res.Header, d["offer_id"])
 	}
@@ -54,7 +54,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	rows, _ := d["comparison"].([]any)
 	details, _ := d["usage_details"].([]any)
 	limits, _ := d["limits"].(map[string]any)
-	if len(rows) != 12 || len(details) != 11 {
+	if len(rows) != 13 || len(details) != 11 {
 		t.Fatalf("%d rows, %d allowances", len(rows), len(details))
 	}
 	raw, _ := json.Marshal(d)
@@ -145,7 +145,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != "helvetly-2026-11-v2" || len(items) != 65 {
+	if data["offer_id"] != "helvetly-2026-11-v3" || len(items) != 66 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {

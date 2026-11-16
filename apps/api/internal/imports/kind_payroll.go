@@ -24,6 +24,7 @@ var payrollKind = Kind{
 	Name:       "payroll",
 	Label:      "Payroll",
 	Resource:   "payroll",
+	Feature:    store.FeatureEmployees,
 	LabelField: "employee_number",
 	Private:    true,
 	Schema: record(func() map[string]any {
@@ -51,6 +52,17 @@ var payrollKind = Kind{
 
 var decimalComma = regexp.MustCompile(`^-?\d+,\d{1,2}$`)
 
+// payrollAliases are column names Swiss payroll programs export in German or French, read as the import's own. An
+// import convenience only: no swissdec certification, no ELM transmission.
+var payrollAliases = map[string]string{
+	"personalnummer": "employee_number", "mitarbeiternummer": "employee_number", "numéro_personnel": "employee_number",
+	"e-mail": "email", "lohnperiode_von": "period_start", "lohnperiode_bis": "period_end", "période_du": "period_start",
+	"période_au": "period_end", "währung": "currency", "monnaie": "currency", "bruttolohn": "gross", "salaire_brut": "gross",
+	"abzüge": "deductions", "déductions": "deductions", "nettolohn": "net", "salaire_net": "net",
+	"arbeitgeberbeiträge": "employer_costs", "cotisations_employeur": "employer_costs", "auszahlungsdatum": "pay_date",
+	"date_de_paiement": "pay_date", "bemerkung": "note", "remarque": "note",
+}
+
 // parsePayroll reads a CSV with a header row (comma or semicolon separated). Unknown columns are named in the error,
 // so a misspelt "gross" never turns into a silently missing value. Empty cells stay out of the record: missing.
 func parsePayroll(name, contentType string, data []byte) ([]Data, error) {
@@ -70,6 +82,9 @@ func parsePayroll(name, contentType string, data []byte) ([]Data, error) {
 	}
 	for i, h := range header {
 		header[i] = strings.ReplaceAll(strings.ToLower(strings.TrimSpace(h)), " ", "_")
+		if own, ok := payrollAliases[header[i]]; ok {
+			header[i] = own
+		}
 	}
 	var unknown []string
 	for _, h := range header {

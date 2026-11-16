@@ -201,6 +201,7 @@ func run() error {
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, slog.Default())
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
+	exportSvc.SetHR(employeesSvc)
 	exportSvc.SetSnapshots(billingSvc.ReserveSnapshot) // the owner's whole export: its own small allowance
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{

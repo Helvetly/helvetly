@@ -92,7 +92,7 @@ func TestConcurrentApprovalsAndPayment(t *testing.T) {
 		"paid_on": "2026-10-25"}); status != 409 || code(m) != "not_approved" {
 		t.Fatalf("paying an unapproved entry: %d %v", status, m)
 	}
-	approver := e.join(owner.workspace, "member", []string{"read:payroll", "write:payroll-approval"})
+	approver := e.join(owner.workspace, "member", []string{"write:payroll"})
 	var wg sync.WaitGroup
 	statuses := make([]int, 2)
 	for i, b := range []*browser{owner, approver} {

@@ -125,6 +125,36 @@ func (s *Service) change(r *http.Request, sess store.Session, fn func(q store.Q,
 // errHRScopes: only an owner grants or withdraws access to employee and payroll data.
 var errHRScopes = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can change access to employees and payroll.", nil)
 
+// nextScopes is what a membership stores after a change from role from with scopes old to role to: the given scopes
+// (validated for the role), else the same ones when the role stays. A role change keeps the person's HR access as it
+// was, except that the owner's own change gives a new admin the admin default (nil) and a demoted owner none; a new
+// member keeps their general access or gets full access.
+func nextScopes(actor, from, to string, old []string, given *[]string) ([]string, error) {
+	switch {
+	case given != nil:
+		return permissions.ForRole(to, given)
+	case to == from:
+		return old, nil
+	case to == "owner":
+		return nil, nil
+	}
+	hr := permissions.EffectiveHR(from, old)
+	if from == "owner" {
+		hr = []string{}
+	}
+	if to == "admin" {
+		if actor == "owner" {
+			return nil, nil
+		}
+		return append([]string{}, hr...), nil
+	}
+	general := []string{"*:*"}
+	if from == "member" {
+		general = slices.DeleteFunc(slices.Clone(old), permissions.IsHR)
+	}
+	return append(general, hr...), nil
+}
+
 func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	if !CanManage(sess.Role) {
 		return errForbidden
@@ -148,28 +178,16 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if !CanAssign(actor, from, to) {
 			return errForbidden
 		}
-		scopes, err := permissions.ForRole(to, body.Scopes)
+		old, err := q.MemberScopes(r.Context(), sess.Workspace.ID, r.PathValue("user_id"))
 		if err != nil {
 			return err
 		}
-		if body.Scopes == nil {
-			scopes = nil // the store keeps a member's scopes, or gives a demoted person full access
+		scopes, err := nextScopes(actor, from, to, old, body.Scopes)
+		if err != nil {
+			return err
 		}
-		if actor != "owner" {
-			old, err := q.MemberScopes(r.Context(), sess.Workspace.ID, r.PathValue("user_id"))
-			if err != nil {
-				return err
-			}
-			kept := old // what the member holds after the change: the same scopes, new ones, or none as an admin
-			if body.Scopes != nil {
-				kept = scopes
-			}
-			if to != "member" {
-				kept = nil
-			}
-			if !slices.Equal(permissions.HRScopes(old), permissions.HRScopes(kept)) {
-				return errHRScopes
-			}
+		if actor != "owner" && !slices.Equal(permissions.EffectiveHR(from, old), permissions.EffectiveHR(to, scopes)) {
+			return errHRScopes
 		}
 		if lastOwner && to != "owner" {
 			return errLastOwner

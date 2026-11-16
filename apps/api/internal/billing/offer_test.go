@@ -40,13 +40,13 @@ func recordOf(o *Offer, key string) *OfferRecord {
 func TestSeededOffer(t *testing.T) {
 	e, o, defs := seeded(t)
 	if err := o.Validate(defs); err != nil {
-		t.Fatalf("offer v2 does not validate: %v", err)
+		t.Fatalf("offer v3 does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly-2026-11-v2" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != "helvetly-2026-11-v3" || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
 	}
-	if len(o.Records) != 66 || len(defs) != 66 || len(o.PublicPricing.ComparisonRows) != 12 || len(o.PublicPricing.UsageDetailsKeys) != 11 {
+	if len(o.Records) != 67 || len(defs) != 67 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 11 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}
@@ -182,11 +182,11 @@ func TestPublishOffer(t *testing.T) {
 		next.ID).Scan(&before, &after, &reason); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(before, "helvetly-2026-11-v2") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
+	if !strings.Contains(before, "helvetly-2026-11-v3") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-2026-11-v2" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-2026-11-v3" || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

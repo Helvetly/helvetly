@@ -54,10 +54,14 @@ are the reference.
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
-- **Employees** (`internal/employees`, `internal/employment`): own staff, never users. HR scopes are never reached by a
-  `*` resource or by admins; HR files are documents with `hr_private` and never pass `store.Document`, lists, shares or
-  signed links; nothing HR is a public operation, an MCP tool, a Heidi answer or in the workspace export; the audit
-  log gets HR events with empty payloads. Jurisdiction rules are data (`employment/rules.json`), never a calculation.
+- **Employees** (`internal/employees`, `internal/employment`): own staff, never users, on the Business plan (feature
+  `employees`; after a downgrade the owner still reads and exports, nobody writes). Two HR areas, `employees` and
+  `payroll` (read = View, write = Edit), never reached by a `*` resource; owners hold both, admins `permissions.AdminHR`
+  (payroll view) until the owner sets their own list, and only an owner changes anyone's HR access. Sealed fields need
+  payroll edit and every reveal is audited. HR files are documents with `hr_private` and never pass `store.Document`,
+  lists, shares or signed links; nothing HR is a public operation, an MCP tool or a Heidi answer; the owner's workspace
+  export carries it in `employees/`; the audit log gets HR events with empty payloads. Jurisdiction rules are data
+  (`employment/rules.json`), never a calculation.
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
   `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
   UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.

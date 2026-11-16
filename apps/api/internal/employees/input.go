@@ -14,6 +14,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/employment"
 	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/store"
 )
@@ -130,8 +131,15 @@ func email(v string) (string, string) {
 	return v, ""
 }
 
-// currency: an ISO 4217 code with two minor units, as amounts are kept in hundredths (invoicecalc.Money).
+// otherMinorUnits are ISO 4217 currencies without two minor units: none (JPY, ISK, KRW…) or three (KWD, BHD…).
+var otherMinorUnits = strings.Fields("BIF CLP DJF GNF ISK JPY KMF KRW PYG RWF UGX UYI VND VUV XAF XOF XPF BHD IQD JOD KWD LYD OMR TND")
+
+// currency: an ISO 4217 code with two minor units, as amounts are kept in hundredths (invoicecalc.Money); one with
+// another number of minor units is refused by name, as it would need its own scale.
 func currency(v string) (string, string) {
+	if c := strings.ToUpper(strings.TrimSpace(v)); slices.Contains(otherMinorUnits, c) {
+		return "", c + " has no cents, or three decimals: amounts are kept with two decimals, so record pay in a currency such as CHF, EUR or USD."
+	}
 	c, msg := clients.NormaliseCurrency(v)
 	if msg == "" && !store.TwoDecimalCurrency(c) {
 		msg = "Choose a currency with two decimals, such as CHF, EUR or USD."
@@ -161,6 +169,30 @@ func (f fields) money(key string, raw json.RawMessage) *invoicecalc.Money {
 		return nil
 	}
 	return &m
+}
+
+// hours: weekly working hours, above 0 and up to 168, with at most three decimals.
+func (f fields) hours(key string, raw json.RawMessage) *invoicecalc.Quantity {
+	if string(raw) == "null" || string(raw) == `""` {
+		return nil
+	}
+	h, ok := invoicecalc.ParseQuantity(strings.TrimSpace(literal(raw)))
+	if !ok || h <= 0 || h > 168_000 {
+		f.fail(key, "Enter the weekly hours, above 0 and up to 168.")
+		return nil
+	}
+	return &h
+}
+
+// canton: a Swiss canton's two-letter code.
+func canton(v string) (string, string) {
+	v = strings.ToUpper(v)
+	if c, ok := employment.CountryOf("CH"); !ok {
+		return "", "Choose a canton."
+	} else if _, ok := c.RegionOf(v); !ok {
+		return "", "Choose a canton."
+	}
+	return v, ""
 }
 
 // percent: 0.01 to 100 with at most two decimals.

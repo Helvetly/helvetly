@@ -77,11 +77,13 @@ func (f *fakeStorage) Delete(_ context.Context, key string) error {
 }
 
 type env struct {
-	t     *testing.T
-	st    *store.Store
-	raw   *pgxpool.Pool
-	srv   *httptest.Server
-	files *fakeStorage
+	t      *testing.T
+	st     *store.Store
+	raw    *pgxpool.Pool
+	srv    *httptest.Server
+	files  *fakeStorage
+	svc    *Service
+	denied sync.Map // workspaces whose plan lacks the module
 }
 
 func newEnv(t *testing.T) *env {
@@ -99,10 +101,19 @@ func newEnv(t *testing.T) *env {
 	mux := http.NewServeMux()
 	a.Register(mux)
 	docs.Register(mux)
-	New(st, a, docs, secret, discard).Register(mux)
-	srv := httptest.NewServer(permissions.Guard(a, mux))
-	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, raw: raw, srv: srv, files: files}
+	e := &env{t: t, st: st, raw: raw, files: files, svc: New(st, a, docs, secret, discard)}
+	// the plan's answer as billing gives it (billing.Service.RequireFeature), for the workspaces a test downgrades
+	st.SetFeatureGate(func(_ context.Context, _ store.Q, ws, feature string) error {
+		if _, ok := e.denied.Load(ws); ok && feature == store.FeatureEmployees {
+			return fmt.Errorf("%w: %w", store.ErrFeatureDenied, auth.Error(http.StatusForbidden, "feature_not_in_plan",
+				"The Pro plan does not include the Employees module. Upgrade to Business to use it.", nil))
+		}
+		return nil
+	})
+	e.svc.Register(mux)
+	e.srv = httptest.NewServer(permissions.Guard(a, mux))
+	t.Cleanup(e.srv.Close)
+	return e
 }
 
 type browser struct{ token, csrf, workspace, user string }
@@ -366,9 +377,18 @@ func TestProtectedFieldsAreSealed(t *testing.T) {
 	if p["bank_account"] != "CH9300762011623852957" || p["tax_id"] != "756.1234.5678.97" {
 		t.Fatalf("protected = %v", p)
 	}
-	hr := e.join(owner.workspace, "member", []string{"read:employees"})
-	if status, _ := e.send(hr, "GET", "/api/v1/employees/"+id+"/protected", nil); status != 403 {
-		t.Fatalf("records access reveals protected fields: %d", status)
+	for _, scopes := range [][]string{{"write:employees"}, {"read:payroll"}} {
+		m := e.join(owner.workspace, "member", scopes)
+		if status, _ := e.send(m, "GET", "/api/v1/employees/"+id+"/protected", nil); status != 403 {
+			t.Fatalf("%v reveals protected fields: %d", scopes, status)
+		}
+	}
+	editor := e.join(owner.workspace, "member", []string{"write:payroll"})
+	e.must(editor, 200, "GET", "/api/v1/employees/"+id+"/protected", nil)
+	var reveals int
+	if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM financial_events
+		WHERE kind = 'employee.protected_viewed' AND subject_id = $1`, id).Scan(&reveals); err != nil || reveals != 2 {
+		t.Fatalf("every reveal is logged: %d reveals, %v", reveals, err)
 	}
 }
 
@@ -388,10 +408,11 @@ func TestHRScopesAndIsolation(t *testing.T) {
 	docID := doc["data"].(map[string]any)["id"].(string)
 
 	full := e.join(owner.workspace, "member", []string{"*:*"})
-	admin := e.join(owner.workspace, "admin", nil)
+	admin := e.join(owner.workspace, "admin", nil) // the admin default: payroll view
+	noHR := e.join(owner.workspace, "admin", []string{})
 	records := e.join(owner.workspace, "member", []string{"write:employees"})
-	pay := e.join(owner.workspace, "member", []string{"read:employees", "read:payroll"})
-	approver := e.join(owner.workspace, "member", []string{"read:payroll", "write:payroll-approval"})
+	pay := e.join(owner.workspace, "member", []string{"read:payroll"})
+	editor := e.join(owner.workspace, "member", []string{"write:payroll"})
 	for _, c := range []struct {
 		who          string
 		b            *browser
@@ -400,25 +421,32 @@ func TestHRScopesAndIsolation(t *testing.T) {
 	}{
 		{"full access member", full, "GET", "/api/v1/employees", 403},
 		{"full access member", full, "GET", "/api/v1/payroll/entries", 403},
-		{"admin", admin, "GET", "/api/v1/employees", 403},
-		{"admin", admin, "GET", "/api/v1/payroll/summary?month=2026-10", 403},
+		{"admin", admin, "GET", "/api/v1/employees", 200},
+		{"admin", admin, "GET", "/api/v1/payroll/summary?month=2026-10", 200},
+		{"admin", admin, "GET", "/api/v1/employees/" + id, 403},
+		{"admin", admin, "GET", "/api/v1/employees/" + id + "/protected", 403},
+		{"admin", admin, "POST", "/api/v1/payroll/entries/" + entryID + "/approve", 403},
+		{"admin without HR", noHR, "GET", "/api/v1/employees", 403},
+		{"admin without HR", noHR, "GET", "/api/v1/payroll/entries", 403},
 		{"records only", records, "GET", "/api/v1/employees/" + id, 200},
 		{"records only", records, "GET", "/api/v1/employees/" + id + "/pay-terms", 403},
-		{"records only", records, "GET", "/api/v1/employees/" + id + "/documents", 403},
-		{"records only", records, "GET", "/api/v1/employees/" + id + "/documents/" + docID + "/download", 403},
+		{"records only", records, "GET", "/api/v1/employees/" + id + "/documents", 200},
+		{"records only", records, "GET", "/api/v1/employees/" + id + "/documents/" + docID + "/download", 200},
 		{"records only", records, "GET", "/api/v1/payroll/entries", 403},
+		{"pay reader", pay, "GET", "/api/v1/employees", 200},
+		{"pay reader", pay, "GET", "/api/v1/employees/" + id, 403},
 		{"pay reader", pay, "GET", "/api/v1/employees/" + id + "/pay-terms", 200},
 		{"pay reader", pay, "GET", "/api/v1/payroll/entries/" + entryID, 200},
 		{"pay reader", pay, "POST", "/api/v1/payroll/entries/" + entryID + "/approve", 403},
-		{"pay reader", pay, "GET", "/api/v1/payroll/export?month=2026-10", 403},
-		{"pay reader", pay, "GET", "/api/v1/payroll/bookings/preview", 403},
-		{"approver", approver, "PATCH", "/api/v1/payroll/entries/" + entryID, 403},
+		{"pay reader", pay, "GET", "/api/v1/payroll/export?month=2026-10", 200},
+		{"pay reader", pay, "GET", "/api/v1/payroll/bookings/preview", 200},
+		{"pay reader", pay, "PUT", "/api/v1/employment/settings", 403},
 	} {
 		if status, m := e.send(c.b, c.method, c.path, map[string]any{"version": 1}); status != c.want {
 			t.Errorf("%s %s %s: %d, want %d (%v)", c.who, c.method, c.path, status, c.want, m)
 		}
 	}
-	e.must(approver, 200, "POST", "/api/v1/payroll/entries/"+entryID+"/approve", map[string]any{"version": 1})
+	e.must(editor, 200, "POST", "/api/v1/payroll/entries/"+entryID+"/approve", map[string]any{"version": 1})
 
 	other := e.workspace()
 	for _, path := range []string{"/api/v1/employees/" + id, "/api/v1/employees/" + id + "/pay-terms",

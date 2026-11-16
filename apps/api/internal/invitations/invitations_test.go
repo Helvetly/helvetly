@@ -489,7 +489,7 @@ func TestAcceptCopiesScopes(t *testing.T) {
 	invite := func(body map[string]any, status int, code string) []byte {
 		return e.want(owner, "POST", "/api/v1/members/invitations", body, status, code)
 	}
-	invite(map[string]any{"email": "a@example.com", "role": "admin", "scopes": []string{"read:*"}}, 400, "invalid_request")
+	invite(map[string]any{"email": "a@example.com", "role": "admin", "scopes": []string{"read:*"}}, 422, "validation_failed")
 	invite(map[string]any{"email": "a@example.com", "role": "member", "scopes": []string{"read:*", "read:*"}}, 422, "validation_failed")
 	if raw := invite(map[string]any{"email": "full@example.com", "role": "member"}, 201, ""); !strings.Contains(string(raw), `"scopes":["*:*"]`) {
 		t.Fatalf("default scopes: %s", raw)

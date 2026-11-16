@@ -65,6 +65,20 @@ type PayrollEntry struct {
 	CreatedBy       *string            `json:"created_by"`
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
+	// Who created, last changed and approved the entry (user ids), for four-eyes approval and its audit.
+	CreatedByID  *string `json:"created_by_id"`
+	UpdatedByID  *string `json:"updated_by_id"`
+	ApprovedByID *string `json:"approved_by_id"`
+}
+
+// Authored reports whether userID set the entry's current figures: its last editor, or its creator when nobody
+// changed it since. Under four-eyes approval that person cannot approve it.
+func (e PayrollEntry) Authored(userID string) bool {
+	author := e.UpdatedByID
+	if author == nil {
+		author = e.CreatedByID
+	}
+	return author != nil && *author == userID
 }
 
 // Derive sets the figures computed from the stored ones: never a missing value filled in.
@@ -83,7 +97,8 @@ const payrollColumns = `p.id, p.employee_id, e.first_name || ' ' || e.last_name,
 	p.superseded_by, p.version, p.note, nullif(c.name, ''), p.created_at, p.updated_at,
 	coalesce((SELECT jsonb_agg(jsonb_build_object('kind', k.kind, 'label', k.label, 'amount', k.amount) ORDER BY k.position)
 		FROM payroll_components k WHERE k.entry_id = p.id), '[]'),
-	coalesce((SELECT array_agg(b.kind ORDER BY b.kind) FROM payroll_booking_items b WHERE b.entry_id = p.id), '{}')`
+	coalesce((SELECT array_agg(b.kind ORDER BY b.kind) FROM payroll_booking_items b WHERE b.entry_id = p.id), '{}'),
+	p.created_by, p.updated_by, p.approved_by`
 
 const payrollFrom = ` FROM payroll_entries p JOIN employees e ON e.id = p.employee_id
 	LEFT JOIN users a ON a.id = p.approved_by LEFT JOIN users c ON c.id = p.created_by `
@@ -94,7 +109,7 @@ func scanPayroll(row interface{ Scan(...any) error }) (PayrollEntry, error) {
 	err := row.Scan(&p.ID, &p.EmployeeID, &p.EmployeeName, &p.EmployeeNumber, &p.EmployingEntity, &p.PeriodStart,
 		&p.PeriodEnd, &p.PayDate, &p.Currency, &p.Gross, &p.Deductions, &p.Net, &p.EmployerCosts, &p.Source, &p.SourceRef,
 		&p.DocumentID, &p.DocumentName, &p.Status, &p.PaymentStatus, &p.PaidOn, &p.ApprovedBy, &p.ApprovedAt, &p.SupersedesID, &p.SupersededBy, &p.Version,
-		&p.Note, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt, &components, &p.Booked)
+		&p.Note, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt, &components, &p.Booked, &p.CreatedByID, &p.UpdatedByID, &p.ApprovedByID)
 	if err != nil {
 		return p, err
 	}
@@ -221,16 +236,16 @@ func (q Q) CreatePayrollEntry(ctx context.Context, workspaceID, userID string, p
 
 // SavePayrollDraft writes a draft at the expected version; false when it is no longer that draft (changed meanwhile,
 // approved or gone).
-func (q Q) SavePayrollDraft(ctx context.Context, workspaceID string, p PayrollEntry, version int, now time.Time) (bool, error) {
+func (q Q) SavePayrollDraft(ctx context.Context, workspaceID, userID string, p PayrollEntry, version int, now time.Time) (bool, error) {
 	ok := false
 	err := q.inTx(ctx, func(t pgx.Tx) error {
 		tx := Q{db: t, admission: q.admission}
 		tag, err := tx.db.Exec(ctx, `UPDATE payroll_entries SET employee_id = $4, employing_entity = $5, period_start = $6,
 			period_end = $7, pay_date = $8, currency = $9, gross = $10, deductions = $11, net = $12, employer_costs = $13,
-			source_ref = $14, note = $15, version = version + 1, updated_at = $16, document_id = $17
+			source_ref = $14, note = $15, version = version + 1, updated_at = $16, document_id = $17, updated_by = $18
 			WHERE workspace_id = $1 AND id = $2 AND version = $3 AND status = 'draft'`,
 			workspaceID, p.ID, version, p.EmployeeID, p.EmployingEntity, p.PeriodStart, p.PeriodEnd, p.PayDate, p.Currency,
-			money(p.Gross), money(p.Deductions), money(p.Net), money(p.EmployerCosts), p.SourceRef, p.Note, now, p.DocumentID)
+			money(p.Gross), money(p.Deductions), money(p.Net), money(p.EmployerCosts), p.SourceRef, p.Note, now, p.DocumentID, userID)
 		if err != nil || tag.RowsAffected() == 0 {
 			return payrollErr(err)
 		}

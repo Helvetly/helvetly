@@ -325,7 +325,7 @@ func (s *Service) updateEntry(w http.ResponseWriter, r *http.Request, sess store
 		if err := checkEmployment(r.Context(), q, sess.Workspace.ID, e, p); err != nil {
 			return err
 		}
-		ok, err := q.SavePayrollDraft(r.Context(), sess.Workspace.ID, p, v, s.now())
+		ok, err := q.SavePayrollDraft(r.Context(), sess.Workspace.ID, sess.User.ID, p, v, s.now())
 		switch {
 		case errors.Is(err, store.ErrPayrollPeriodTaken):
 			return errPeriodTaken
@@ -393,6 +393,13 @@ func (s *Service) approve(w http.ResponseWriter, r *http.Request, sess store.Ses
 		}
 		if invalid := CheckEntry(p); len(invalid) > 0 {
 			return validationFailed(invalid)
+		}
+		set, err := q.EmploymentSettings(r.Context(), sess.Workspace.ID)
+		if err != nil {
+			return err
+		}
+		if set.RequireSecondApprover && p.Authored(sess.User.ID) {
+			return errSecondApprover
 		}
 		e, err := q.EmployeeForUpdate(r.Context(), sess.Workspace.ID, p.EmployeeID, s.today(sess))
 		if err != nil {

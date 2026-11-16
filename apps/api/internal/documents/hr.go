@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
 )
@@ -54,8 +55,27 @@ func (s *Service) UploadEmployeeFile(w http.ResponseWriter, r *http.Request, ses
 	if err != nil {
 		return "", err
 	}
+	duplicate := func(q store.Q) error {
+		dup, err := q.DuplicateEmployeeFile(r.Context(), sess.Workspace.ID, employeeID, sum)
+		if err == nil {
+			return refuse(http.StatusConflict, "duplicate_file", "This employee already has this file.",
+				map[string]any{"existing_id": dup.ID, "existing_name": dup.Name, "resource": "employee_document"})
+		}
+		if errors.Is(err, store.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	// checked before the write too, so a repeated upload sends no bytes; the transaction below decides under the lock
+	if err := duplicate(s.db.Q); err != nil {
+		return "", err
+	}
 	id := auth.NewID("doc")
 	key := "workspaces/" + sess.Workspace.ID + "/employees/" + employeeID + "/" + id + "/" + keyName(name)
+	// counted against the plan's storage before the write, like every workspace object
+	if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, key, h.Size, true, s.now()); err != nil {
+		return "", err
+	}
 	if err := s.put(r, h, key, ct, name); err != nil {
 		s.removeObjects(r.Context(), key)
 		return "", err
@@ -64,10 +84,7 @@ func (s *Service) UploadEmployeeFile(w http.ResponseWriter, r *http.Request, ses
 		if err := q.LockUploadHashes(r.Context(), sess.Workspace.ID, []string{sum}); err != nil {
 			return err
 		}
-		if dup, err := q.DuplicateEmployeeFile(r.Context(), sess.Workspace.ID, employeeID, sum); err == nil {
-			return refuse(http.StatusConflict, "duplicate_file", "This employee already has this file.",
-				map[string]any{"existing_id": dup.ID, "existing_name": dup.Name, "resource": "employee_document"})
-		} else if !errors.Is(err, store.ErrNotFound) {
+		if err := duplicate(q); err != nil {
 			return err
 		}
 		d := store.Document{ID: id, Name: name, Size: h.Size, ContentType: ct, SHA256: &sum, ObjectKey: key,
@@ -85,21 +102,23 @@ func (s *Service) UploadEmployeeFile(w http.ResponseWriter, r *http.Request, ses
 }
 
 // ServeHRFile streams an HR file through the API on every request, so the caller's permission check runs each time:
-// never a presigned or /api/media link that would outlive it. Downloads only, never cached by shared caches.
-func (s *Service) ServeHRFile(w http.ResponseWriter, r *http.Request, d store.Document) error {
+// never a presigned or /api/media link that would outlive it. Downloads only, never cached by shared caches, and
+// counted against the workspace's download allowance like every other download.
+func (s *Service) ServeHRFile(w http.ResponseWriter, r *http.Request, workspaceID string, d store.Document) error {
 	obj, err := s.files.Open(r.Context(), d.ObjectKey)
 	if err != nil {
 		return err
 	}
 	defer obj.Close()
-	h := w.Header()
-	h.Set("Content-Type", d.ContentType)
-	h.Set("Content-Disposition", contentDisposition("attachment", d.Name))
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	h.Set("Cache-Control", "private, no-store")
-	http.ServeContent(w, r, "", d.CreatedAt, obj)
-	return nil
+	return storage.Metered(w, r, storage.MeterOf(s.files), workspaceID, d.Size, func(w http.ResponseWriter) {
+		h := w.Header()
+		h.Set("Content-Type", d.ContentType)
+		h.Set("Content-Disposition", contentDisposition("attachment", d.Name))
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+		h.Set("Cache-Control", "private, no-store")
+		http.ServeContent(w, r, "", d.CreatedAt, obj)
+	})
 }
 
 // RemoveObject deletes a removed HR file's bytes after its row is gone; a failure leaves an orphan, logged.

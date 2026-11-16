@@ -56,6 +56,24 @@ var WorkspaceExportTables = []ExportTable{
 		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
 }
 
+// HRExportTables: the workspace's employees and payroll (docs/planning/2026-11-15-employees.md), for the owner's
+// export only, in its own folder; internal/employees opens the sealed fields before they are written.
+var HRExportTables = []ExportTable{
+	own("employment_settings"), own("employees"), own("employee_pay_terms"), own("employee_documents"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND t.hr_private`},
+	own("payroll_entries"), child("payroll_components", "payroll_entries", "entry_id"),
+	own("payroll_bookings"), child("payroll_booking_items", "payroll_bookings", "booking_id"),
+	{"import_batches", `SELECT to_jsonb(t) FROM import_batches t WHERE t.workspace_id = $1 AND t.kind = 'payroll'`},
+	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind = 'payroll'`},
+	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind = 'payroll'`},
+}
+
+// hrExportFiles: the employees' documents, in a folder per employee.
+const hrExportFiles = `SELECT employee_id || '/' || id || '-' || name, object_key FROM documents
+	WHERE workspace_id = $1 AND hr_private AND employee_id IS NOT NULL ORDER BY 1`
+
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,
 // TOTP secrets, recovery, session and API tokens).
 var UserExportTables = []ExportTable{
@@ -106,6 +124,26 @@ type ExportWriter interface {
 // read; with files it then returns the stored objects to add, read after the snapshot ends so no transaction
 // waits on storage.
 func (s *Store) Export(ctx context.Context, id string, tables []ExportTable, w ExportWriter, files bool) ([]ExportFile, error) {
+	query := ""
+	if files {
+		query = exportFiles
+	}
+	return s.export(ctx, id, tables, w, query)
+}
+
+// ExportHR writes HRExportTables and lists the employees' documents, in one snapshot.
+func (s *Store) ExportHR(ctx context.Context, workspaceID string, w ExportWriter) ([]ExportFile, error) {
+	return s.export(ctx, workspaceID, HRExportTables, w, hrExportFiles)
+}
+
+// HasHRData reports whether the workspace keeps any employee, for an export after the module left the plan.
+func (q Q) HasHRData(ctx context.Context, workspaceID string) (bool, error) {
+	var ok bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM employees WHERE workspace_id = $1)`, workspaceID).Scan(&ok)
+	return ok, err
+}
+
+func (s *Store) export(ctx context.Context, id string, tables []ExportTable, w ExportWriter, filesQuery string) ([]ExportFile, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return nil, err
@@ -119,10 +157,10 @@ func (s *Store) Export(ctx context.Context, id string, tables []ExportTable, w E
 			return nil, fmt.Errorf("export %s: %w", t.Name, err)
 		}
 	}
-	if !files {
+	if filesQuery == "" {
 		return nil, nil
 	}
-	rows, err := tx.Query(ctx, exportFiles, id)
+	rows, err := tx.Query(ctx, filesQuery, id)
 	if err != nil {
 		return nil, err
 	}
@@ -150,10 +188,6 @@ func eachJSON(ctx context.Context, tx pgx.Tx, t ExportTable, id string, row func
 	return rows.Err()
 }
 
-// hrExcluded: the workspace export is open to read:settings, which never includes the HR scopes; HR data leaves only
-// through the payroll export (read:payroll-export), audited.
-const hrExcluded = "HR data: only readable with the HR scopes, exported through the audited payroll export"
-
 // ExportExcluded: tables neither export reads, each with the reason. TestExportCoversEveryTable fails on a table
 // that is in no export and not here.
 var ExportExcluded = map[string]string{
@@ -174,14 +208,6 @@ var ExportExcluded = map[string]string{
 	"offer_versions":           "global published offers, not workspace data",
 	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
-	"employment_settings":      hrExcluded,
-	"employees":                hrExcluded,
-	"employee_pay_terms":       hrExcluded,
-	"employee_documents":       hrExcluded,
-	"payroll_entries":          hrExcluded,
-	"payroll_components":       hrExcluded,
-	"payroll_bookings":         hrExcluded,
-	"payroll_booking_items":    hrExcluded,
 	"billing_checkouts":        "what a plan Checkout was opened for, to settle its subscription; not business data",
 	"trial_claims":             "digests that recognise a customer's one trial, kept across workspaces; not business data",
 	"usage_events":             "what the workspace used of its plan's monthly limits, not business data",

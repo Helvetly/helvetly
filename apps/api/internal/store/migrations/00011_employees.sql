@@ -9,6 +9,8 @@ CREATE TABLE employment_settings (
     employing_entity text,
     country text CHECK (country ~ '^[A-Z]{2}$'),
     region text,
+    -- four-eyes: the person who entered a payroll entry's current figures cannot approve it
+    require_second_approver boolean NOT NULL DEFAULT false,
     updated_at timestamp with time zone NOT NULL
 );
 
@@ -27,8 +29,21 @@ CREATE TABLE employees (
     address_country text CHECK (address_country ~ '^[A-Z]{2}$'),
     position text,
     department text,
-    employment_type text NOT NULL CHECK (employment_type IN ('permanent', 'fixed_term', 'temporary', 'apprentice', 'other')),
+    employment_type text NOT NULL CHECK (employment_type IN ('permanent', 'fixed_term', 'hourly', 'temporary', 'apprentice', 'other')),
     working_time_percent integer CHECK (working_time_percent BETWEEN 1 AND 10000),
+    weekly_hours_milli integer CHECK (weekly_hours_milli BETWEEN 1 AND 168000),
+    notice_period text,
+    thirteenth_salary boolean NOT NULL DEFAULT false,
+    -- Swiss withholding tax (Quellensteuer): whether it applies and the canton it is settled with
+    withholding_tax boolean NOT NULL DEFAULT false,
+    withholding_tax_canton text,
+    -- insurers as the customer names them: BVG/LPP pension fund, UVG accident, KTG daily sickness allowance
+    pension_insurer text,
+    accident_insurer text,
+    sickness_insurer text,
+    -- salary certificate (form 11) boxes F and G
+    free_transport boolean NOT NULL DEFAULT false,
+    canteen_meals boolean NOT NULL DEFAULT false,
     employment_start date NOT NULL,
     employment_end date CHECK (employment_end >= employment_start),
     employing_entity text NOT NULL,
@@ -45,6 +60,8 @@ CREATE TABLE employees (
     bank_account_hint text,
     tax_id_sealed bytea,
     tax_id_hint text,
+    social_security_number_sealed bytea,
+    social_security_number_hint text,
     legal_hold boolean NOT NULL DEFAULT false,
     legal_hold_reason text,
     restricted boolean NOT NULL DEFAULT false,
@@ -130,6 +147,7 @@ CREATE TABLE payroll_entries (
     version integer NOT NULL DEFAULT 1,
     note text,
     created_by text REFERENCES users(id) ON DELETE SET NULL,
+    updated_by text REFERENCES users(id) ON DELETE SET NULL, -- the last person who changed the figures
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
     CHECK ((payment_status = 'paid') = (paid_on IS NOT NULL)),
@@ -218,7 +236,24 @@ CREATE INDEX payroll_booking_items_booking ON payroll_booking_items (booking_id)
 ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
     ADD CONSTRAINT import_batches_kind_check CHECK ((kind = ANY (ARRAY['clients'::text, 'products'::text, 'expenses'::text, 'invoices'::text, 'engagements'::text, 'auto'::text, 'payroll'::text])));
 
+-- HR access is two areas, employees and payroll (View = read, Edit = write). Grants of the earlier, finer scopes
+-- move to the area they belonged to, the highest level winning: employee documents to employees; payroll approval
+-- and export to payroll.
+UPDATE workspace_members m SET scopes = ARRAY(
+    SELECT DISTINCT s FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) NOT IN ('employees', 'payroll',
+        'employee-documents', 'payroll-approval', 'payroll-export')
+    UNION
+    SELECT max(CASE WHEN split_part(s, ':', 1) = 'read' THEN 'read' ELSE 'write' END) || ':' || area
+    FROM (SELECT s, CASE WHEN split_part(s, ':', 2) IN ('employees', 'employee-documents') THEN 'employees' ELSE 'payroll' END AS area
+        FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) IN ('employees', 'payroll', 'employee-documents',
+            'payroll-approval', 'payroll-export')) hr
+    GROUP BY area)
+WHERE EXISTS (SELECT 1 FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) IN ('employee-documents', 'payroll-approval', 'payroll-export'));
+
 -- +goose Down
+UPDATE workspace_members SET scopes = NULL WHERE role = 'admin';
+UPDATE workspace_members SET scopes = ARRAY(SELECT s FROM unnest(scopes) s WHERE split_part(s, ':', 2) NOT IN ('employees', 'payroll'))
+    WHERE role = 'member';
 DELETE FROM import_batches WHERE kind = 'payroll';
 ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
     ADD CONSTRAINT import_batches_kind_check CHECK ((kind = ANY (ARRAY['clients'::text, 'products'::text, 'expenses'::text, 'invoices'::text, 'engagements'::text, 'auto'::text])));

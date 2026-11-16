@@ -20,9 +20,11 @@ var employeeKeys = []string{"member_user_id", "employee_number", "first_name", "
 	"employment_start", "employment_end", "employing_entity", "employer_country", "social_security_country",
 	"work_country", "work_region", "work_locality",
 	"place_of_work", "residence_country", "cross_border", "cross_border_note", "bank_account", "tax_id", "legal_hold",
-	"legal_hold_reason", "restricted"}
+	"legal_hold_reason", "restricted", "weekly_hours", "notice_period", "thirteenth_salary", "withholding_tax",
+	"withholding_tax_canton", "pension_insurer", "accident_insurer", "sickness_insurer", "free_transport", "canteen_meals",
+	"social_security_number"}
 
-var employmentTypes = []string{"permanent", "fixed_term", "temporary", "apprentice", "other"}
+var employmentTypes = []string{"permanent", "fixed_term", "hourly", "temporary", "apprentice", "other"}
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	q := r.URL.Query()
@@ -79,12 +81,27 @@ func (s *Service) respond(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 
-// hideHints leaves the bank account and tax id hints to those who may see pay.
+// hideHints leaves the masked hints of the sealed fields (last characters only) to those who may see pay.
 func hideHints(sess store.Session, e store.Employee) store.Employee {
 	if !permissions.Allows(sess.Role, sess.Scopes, "read:payroll") {
-		e.BankAccountHint, e.TaxIDHint = nil, nil
+		e.BankAccountHint, e.TaxIDHint, e.SocialSecurityHint = nil, nil, nil
 	}
 	return e
+}
+
+// socialSecurityCheck validates the social-security number where its format is known: the Swiss AHV number when the
+// employee is insured in Switzerland (or, without a social-security country, works there). Others are kept as given.
+func socialSecurityCheck(e *store.Employee) func(string) (string, string) {
+	return func(v string) (string, string) {
+		insured := e.WorkCountry
+		if e.SocialSecurity != nil {
+			insured = *e.SocialSecurity
+		}
+		if insured == "CH" {
+			return ahvNumber(v)
+		}
+		return strings.TrimSpace(v), ""
+	}
 }
 
 func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -270,7 +287,38 @@ func (s *Service) apply(r *http.Request, q store.Q, sess store.Session, e *store
 			}
 		case "legal_hold_reason":
 			e.LegalHoldReason = f.text(k, raw, 500, nil)
+		case "weekly_hours":
+			e.WeeklyHours = f.hours(k, raw)
+		case "notice_period":
+			e.NoticePeriod = f.text(k, raw, 100, nil)
+		case "thirteenth_salary":
+			e.ThirteenthSalary = f.flag(k, raw)
+		case "withholding_tax":
+			e.WithholdingTax = f.flag(k, raw)
+		case "withholding_tax_canton":
+			e.WithholdingTaxCanton = f.text(k, raw, 2, canton)
+		case "pension_insurer":
+			e.PensionInsurer = f.text(k, raw, 200, nil)
+		case "accident_insurer":
+			e.AccidentInsurer = f.text(k, raw, 200, nil)
+		case "sickness_insurer":
+			e.SicknessInsurer = f.text(k, raw, 200, nil)
+		case "free_transport":
+			e.FreeTransport = f.flag(k, raw)
+		case "canteen_meals":
+			e.CanteenMeals = f.flag(k, raw)
 		}
+	}
+	if e.EmploymentType == "fixed_term" && e.EmploymentEnd == nil {
+		f.fail("employment_end", "A fixed-term contract needs its end date.")
+	}
+	switch {
+	case !e.WithholdingTax:
+		e.WithholdingTaxCanton = nil
+	case e.WorkCountry != "CH":
+		f.fail("withholding_tax", "Withholding tax (Quellensteuer) is recorded for work in Switzerland only.")
+	case e.WithholdingTaxCanton == nil:
+		f.fail("withholding_tax_canton", "Choose the canton the withholding tax is settled with.")
 	}
 	if create {
 		for _, k := range []string{"first_name", "last_name", "employment_start", "work_country", "employer_country"} {
@@ -309,17 +357,22 @@ func (s *Service) apply(r *http.Request, q store.Q, sess store.Session, e *store
 		sealed *[]byte
 		hint   **string
 		max    int
-	}{{"bank_account", &e.BankAccountSealed, &e.BankAccountHint, 64}, {"tax_id", &e.TaxIDSealed, &e.TaxIDHint, 32}} {
+		check  func(string) (string, string)
+	}{{"bank_account", &e.BankAccountSealed, &e.BankAccountHint, 64, bankAccount}, {"tax_id", &e.TaxIDSealed, &e.TaxIDHint, 32, nil},
+		{"social_security_number", &e.SocialSecuritySealed, &e.SocialSecurityHint, 32, socialSecurityCheck(e)}} {
 		raw, ok := body[p.key]
 		if !ok {
 			continue
 		}
-		v := f.text(p.key, raw, p.max, nil)
+		v := f.text(p.key, raw, p.max, p.check)
 		if v == nil {
 			*p.sealed, *p.hint = nil, nil
 			continue
 		}
-		plain := strings.ToUpper(strings.Join(strings.Fields(*v), ""))
+		plain := *v
+		if p.key == "tax_id" {
+			plain = strings.ToUpper(strings.Join(strings.Fields(plain), ""))
+		}
 		sealed, err := s.seal.seal(sess.Workspace.ID, e.ID, p.key, plain)
 		if err != nil {
 			return err
@@ -443,6 +496,7 @@ func (s *Service) erase(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		e.MemberUserID, e.Email, e.Phone, e.Street, e.PostalCode, e.City, e.AddressCountry = nil, nil, nil, nil, nil, nil, nil
 		e.PlaceOfWork, e.CrossBorderNote, e.WorkLocality = nil, nil, nil
 		e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed, e.TaxIDHint = nil, nil, nil, nil
+		e.SocialSecuritySealed, e.SocialSecurityHint = nil, nil
 		e.ErasedAt = &now
 		if err := q.SaveEmployee(r.Context(), sess.Workspace.ID, e, now); err != nil {
 			return err
@@ -463,14 +517,19 @@ func (s *Service) erase(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	return nil
 }
 
-// protected reveals the bank account and tax id to someone who may see pay (read:payroll, checked by the guard).
+// protected reveals the sealed fields to an owner or someone with payroll edit (checked by the guard), and logs each
+// reveal in the audit log, with who and when but never the values.
 func (s *Service) protected(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	e, err := s.db.Employee(r.Context(), sess.Workspace.ID, r.PathValue("id"), s.today(sess))
 	if err != nil {
 		return err
 	}
-	out := map[string]*string{"bank_account": nil, "tax_id": nil}
-	for k, sealed := range map[string][]byte{"bank_account": e.BankAccountSealed, "tax_id": e.TaxIDSealed} {
+	if err := s.audit(r, s.db.Q, sess, "employee.protected_viewed", "employee", e.ID); err != nil {
+		return err
+	}
+	out := map[string]*string{"bank_account": nil, "tax_id": nil, "social_security_number": nil}
+	for k, sealed := range map[string][]byte{"bank_account": e.BankAccountSealed, "tax_id": e.TaxIDSealed,
+		"social_security_number": e.SocialSecuritySealed} {
 		if sealed == nil {
 			continue
 		}
@@ -528,12 +587,21 @@ func (s *Service) history(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 
+// settings answers the company's employment profile and how many members may approve payroll, so the screens can
+// say when four-eyes approval has nobody to approve.
 func (s *Service) settings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	set, err := s.db.EmploymentSettings(r.Context(), sess.Workspace.ID)
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(set))
+	n, err := s.db.PayrollApprovers(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(struct {
+		store.EmploymentSettings
+		PayrollApprovers int `json:"payroll_approvers"`
+	}{set, n}))
 	return nil
 }
 
@@ -543,12 +611,20 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	if err := known(body, []string{"employing_entity", "country", "region"}); err != nil {
+	if err := known(body, []string{"employing_entity", "country", "region", "require_second_approver"}); err != nil {
+		return err
+	}
+	old, err := s.db.EmploymentSettings(r.Context(), sess.Workspace.ID)
+	if err != nil {
 		return err
 	}
 	f := fields{}
 	set := store.EmploymentSettings{EmployingEntity: f.text("employing_entity", body["employing_entity"], 200, nil),
-		Country: f.text("country", body["country"], 2, country), Region: f.text("region", body["region"], 100, nil)}
+		Country: f.text("country", body["country"], 2, country), Region: f.text("region", body["region"], 100, nil),
+		RequireSecondApprover: old.RequireSecondApprover}
+	if raw, ok := body["require_second_approver"]; ok {
+		set.RequireSecondApprover = f.flag("require_second_approver", raw)
+	}
 	if set.Region != nil && set.Country != nil {
 		if c, ok := employment.CountryOf(*set.Country); ok && c.RegionLabel != "" {
 			code := strings.ToUpper(*set.Region)
@@ -561,7 +637,17 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 	if len(f) > 0 {
 		return validationFailed(f)
 	}
-	if err := s.db.PutEmploymentSettings(r.Context(), sess.Workspace.ID, set, s.now()); err != nil {
+	err = s.db.Tx(r.Context(), func(q store.Q) error {
+		if err := q.PutEmploymentSettings(r.Context(), sess.Workspace.ID, set, s.now()); err != nil {
+			return err
+		}
+		if set.RequireSecondApprover == old.RequireSecondApprover {
+			return nil
+		}
+		return s.audit(r, q, sess, map[bool]string{true: "payroll.four_eyes_on", false: "payroll.four_eyes_off"}[set.RequireSecondApprover],
+			"employment_settings", sess.Workspace.ID)
+	})
+	if err != nil {
 		return err
 	}
 	return s.settings(w, r, sess)

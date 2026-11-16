@@ -290,5 +290,5 @@ func (s *Service) download(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	return s.files.ServeHRFile(w, r, d)
+	return s.files.ServeHRFile(w, r, sess.Workspace.ID, d)
 }
