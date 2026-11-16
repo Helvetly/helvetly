@@ -45,7 +45,7 @@ export function SiteFooter() {
     <footer className="relative mt-32 sm:mt-48">
       <Ridge edge="rise" />
       <div className="dark night relative overflow-hidden text-white">
-        <div aria-hidden className="grid-lines absolute inset-0 mask-t-from-70% opacity-30" />
+        <div aria-hidden className="dot-field absolute inset-0 mask-t-from-70% opacity-30" />
         <div aria-hidden className="beams beam absolute -top-1/2 -right-1/4 size-[60rem]" />
         {/* The sky starts flat where the dusk ends, so the two never show a seam. */}
         <div

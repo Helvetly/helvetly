@@ -12,7 +12,6 @@ export const SUPPORT_EMAIL = 'support@helvetly.com'
 export const NAV = [
   { href: '/#features', label: translate('product') },
   { href: '/pricing', label: translate('pricing') },
-  { href: '/compare', label: translate('compare') },
   { href: '/security', label: translate('security') },
   { href: '/guides', label: translate('guides') },
   { href: '/help', label: translate('help2') },

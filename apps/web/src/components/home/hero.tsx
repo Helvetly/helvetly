@@ -22,7 +22,7 @@ export function Hero() {
         <div className="aurora animate-drift-slow bg-peach top-[30%] right-[10%] h-[300px] w-[380px]" />
         <div className="absolute inset-x-0 top-[52%] h-[70%] bg-[radial-gradient(50%_55%_at_50%_45%,var(--mint-solid)_0%,var(--lilac-solid)_45%,transparent_75%)] opacity-25 blur-3xl dark:opacity-30" />
       </div>
-      <div aria-hidden className="grid-lines absolute inset-0 -z-10" />
+      <div aria-hidden className="dot-field absolute inset-0 -z-10" />
 
       <Container className="flex flex-col items-center text-center">
         <Link

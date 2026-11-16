@@ -1,107 +1,63 @@
 'use client'
 
 import { formatPrice } from '@helvetly/ui/lib/price'
-import {
-  Banknote,
-  BookOpenCheck,
-  CalendarRange,
-  Check,
-  FileCode2,
-  FilePen,
-  FileSignature,
-  FileText,
-  type LucideIcon,
-  Minus,
-  QrCode,
-  Receipt,
-  Sparkles,
-  UsersRound,
-  Workflow,
-} from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Check, Minus } from 'lucide-react'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { translate } from '@/lib/i18n'
 import {
-  BENEFITS,
+  FEATURE_GROUPS,
+  type FeatureRow,
   formatLimit,
+  type LimitKey,
   LIMITS,
   type Plan,
   type PlanId,
   PLANS,
   priceOf,
   RECOMMENDED,
-  type Scope,
-  USAGE_DETAILS,
 } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
 import { type Tone, TONES } from '@/lib/tones'
 
-// The same colours as the pricing cards: Basic sky, Pro lilac (the recommended night card), Business mint.
+// The same colours as the pricing cards: Basic sky, Pro lilac (the recommended plan), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
 
-const ICONS: Record<string, LucideIcon> = {
-  invoicing: FileText,
-  swiss_qr: QrCode,
-  revolut: Banknote,
-  engagements: CalendarRange,
-  automations: Workflow,
-  heidi: Sparkles,
-  client_portal: UsersRound,
-  expenses: Receipt,
-  documents_signatures: FileSignature,
-  corrections_vat: FilePen,
-  einvoice_xml: FileCode2,
-  ledger_exports: BookOpenCheck,
+/** Under an allowance's number: a workspace cap, kept storage per person, or a monthly pool per person. */
+function unitOf(limit: LimitKey): string {
+  if (LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
+  return limit === 'storage_bytes' ? translate('perPersonShort') : translate('perPersonAMonthShort')
 }
 
-const SCOPE: Record<Scope, string> = {
-  workspace: translate('perWorkspace'),
-  person: translate('perPaidPerson'),
-}
-
-type Row = {
-  key: string
-  label: string
-  /** Shown under the label everywhere. */
-  hint?: string
-  /** Shown under the label in the wide table only, where there is room. */
-  note?: string
-  icon?: LucideIcon
-  cell: (plan: PlanId) => string | null
-}
-
-const BENEFIT_ROWS: Row[] = BENEFITS.map((b) => ({
-  key: b.key,
-  label: b.label,
-  note: b.note,
-  icon: ICONS[b.key],
-  cell: b.cell,
-}))
-
-const LIMIT_ROWS: Row[] = USAGE_DETAILS.map((key) => ({
-  key,
-  label: LIMITS[key].label,
-  hint: SCOPE[LIMITS[key].scope],
-  cell: (plan) => formatLimit(key, plan),
-}))
-
-function Value({ text }: { text: string | null }) {
-  if (text === null)
+function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
+  if (!row.plans[plan])
     return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap opacity-60">
-        <Minus aria-hidden className="size-4 shrink-0" />
-        {translate('notIncluded')}
+      <span className="inline-flex text-muted-foreground/60">
+        <Minus aria-hidden className="size-4" />
+        <span className="sr-only">{translate('notIncluded')}</span>
+      </span>
+    )
+  if (row.limit)
+    return (
+      <span className="font-medium tabular-nums">
+        {formatLimit(row.limit, plan)}
+        <span className="block text-caption font-normal text-muted-foreground">
+          {unitOf(row.limit)}
+        </span>
       </span>
     )
   return (
-    <span className="inline-flex items-start gap-1.5 font-medium tabular-nums">
-      {text.startsWith('Included') && (
-        <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
+    <span
+      className={cn(
+        'inline-flex size-5 items-center justify-center rounded-full',
+        TONES[PLAN_TONE[plan]].surface,
+        TONES[PLAN_TONE[plan]].ink,
       )}
-      {text}
+    >
+      <Check aria-hidden className="size-3.5" />
+      <span className="sr-only">{translate('included')}</span>
     </span>
   )
 }
@@ -123,12 +79,7 @@ function PlanHead({ plan }: { plan: Plan }) {
           </span>
         )}
       </span>
-      <span
-        className={cn(
-          'mt-1 block text-body-sm font-normal',
-          recommended ? 'text-white/70' : 'text-muted-foreground',
-        )}
-      >
+      <span className="mt-1 block text-body-sm font-normal text-muted-foreground">
         {unavailable
           ? translate('priceUnavailable')
           : `${formatPrice(priceOf(plan, 'month'))}${translate('personMonth')}`}
@@ -137,15 +88,14 @@ function PlanHead({ plan }: { plan: Plan }) {
   )
 }
 
-/** One wide table: Pro's column is a lit band down the middle. */
 function StartCta({ plan }: { plan: Plan }) {
   return (
     <Cta
       href={START_URL}
       disabled={useOfferStatus().status === 'unavailable'}
-      variant={plan.id === RECOMMENDED ? 'light' : 'outline'}
+      variant={plan.id === RECOMMENDED ? 'primary' : 'outline'}
       arrow={false}
-      className="mt-4 h-9 w-full px-4 text-body-sm"
+      className="mt-3 h-9 w-full px-4 text-body-sm"
     >
       {translate('startWith')}
       {plan.name}
@@ -153,166 +103,127 @@ function StartCta({ plan }: { plan: Plan }) {
   )
 }
 
-function WideTable({
-  caption,
-  corner,
-  rows,
-  head,
-}: {
-  caption: string
-  corner: string
-  rows: Row[]
-  head: boolean
-}) {
+const band = (plan: PlanId) => plan === RECOMMENDED && 'bg-lilac/35'
+
+/** Every feature side by side in one table, grouped by area, with the plans' heads pinned while it scrolls. */
+function WideTable() {
   return (
     <table className="w-full border-separate border-spacing-0 text-left text-body">
-      <caption className="sr-only">{caption}</caption>
+      <caption className="sr-only">{translate('whatEachPlanIncludes')}</caption>
       <thead>
         <tr>
-          <th scope="col" className="w-[31%] p-5 align-bottom">
-            <span className="text-body-sm font-medium text-muted-foreground">{corner}</span>
+          <th
+            scope="col"
+            className="bg-site sticky top-20 z-10 w-[34%] px-3 pb-4 align-bottom text-body-sm font-medium text-muted-foreground"
+          >
+            {translate('features')}
           </th>
           {PLANS.map((plan) => (
             <th
               key={plan.id}
               scope="col"
               className={cn(
-                'w-[23%] p-5 align-top',
-                plan.id === RECOMMENDED
-                  ? 'night ring-gradient rounded-t-3xl text-white'
-                  : 'border-site-line border-b',
+                'border-site-line bg-site sticky top-20 z-10 w-[22%] border-b px-5 pt-5 pb-4 align-top backdrop-blur',
+                plan.id === RECOMMENDED && 'bg-lilac rounded-t-2xl',
               )}
             >
               <PlanHead plan={plan} />
-              {head && <StartCta plan={plan} />}
+              <StartCta plan={plan} />
             </th>
           ))}
         </tr>
       </thead>
-      <tbody>
-        {rows.map((row, i) => {
-          const last = i === rows.length - 1
-          return (
-            <tr key={row.key}>
+      {FEATURE_GROUPS.map((group) => (
+        <tbody key={group.title}>
+          <tr>
+            <th
+              scope="colgroup"
+              colSpan={PLANS.length + 1}
+              className="px-3 pt-8 pb-2 text-body-sm font-semibold text-foreground"
+            >
+              {group.title}
+            </th>
+          </tr>
+          {group.rows.map((row) => (
+            <tr key={row.key} className="group/row">
               <th
                 scope="row"
                 aria-label={row.label}
-                className="border-site-line border-b p-5 py-4 align-top font-normal"
+                className="border-site-line group-hover/row:bg-site-tint rounded-l-lg border-t px-3 py-3 align-top font-normal transition-colors"
               >
-                <span className="flex items-start gap-3">
-                  {row.icon && (
-                    <span className="bg-site-tint inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground">
-                      <row.icon aria-hidden className="size-4" />
-                    </span>
-                  )}
-                  <span>
-                    {row.label}
-                    {(row.hint ?? row.note) && (
-                      <span className="block text-body-sm text-muted-foreground">
-                        {row.hint ?? row.note}
-                      </span>
-                    )}
-                  </span>
-                </span>
+                {row.label}
+                {row.hint && (
+                  <span className="block text-caption text-muted-foreground">{row.hint}</span>
+                )}
               </th>
               {PLANS.map((plan) => (
                 <td
                   key={plan.id}
                   className={cn(
-                    'p-5 py-4 align-top',
-                    plan.id === RECOMMENDED
-                      ? cn('bg-lilac/45', last && 'rounded-b-3xl')
-                      : 'border-site-line border-b',
+                    'border-site-line group-hover/row:bg-site-tint border-t px-5 py-3 align-top transition-colors',
+                    band(plan.id),
                   )}
                 >
-                  <Value text={row.cell(plan.id)} />
+                  <Cell row={row} plan={plan.id} />
                 </td>
               ))}
             </tr>
-          )
-        })}
-      </tbody>
+          ))}
+        </tbody>
+      ))}
     </table>
   )
 }
 
-function PlanList({ title, rows, plan }: { title: string; rows: Row[]; plan: PlanId }) {
+/** Narrow screens: a card per plan with the same groups, so nothing scrolls sideways. */
+function PlanCard({ plan }: { plan: Plan }) {
   return (
-    <>
-      <h4 className="mt-6 text-body-sm font-medium opacity-70">{title}</h4>
-      <dl className="mt-3 grid gap-3">
-        {rows.map((row) => (
-          <div key={row.key} className="flex items-start justify-between gap-4">
-            <dt className="text-body-sm">
-              {row.label}
-              {row.hint && <span className="block text-caption opacity-60">{row.hint}</span>}
-            </dt>
-            <dd className="max-w-[55%] text-right text-body-sm">
-              <Value text={row.cell(plan)} />
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </>
+    <section
+      aria-label={translate('plan', { name: plan.name })}
+      className={cn(
+        'rounded-3xl border p-6',
+        TONES[PLAN_TONE[plan.id]].tile,
+        TONES[PLAN_TONE[plan.id]].border,
+      )}
+    >
+      <PlanHead plan={plan} />
+      <StartCta plan={plan} />
+      {FEATURE_GROUPS.map((group) => (
+        <div key={group.title}>
+          <h4 className="mt-6 text-body-sm font-semibold">{group.title}</h4>
+          <dl className="mt-2 grid gap-2">
+            {group.rows.map((row) => (
+              <div key={row.key} className="flex items-start justify-between gap-4">
+                <dt className={cn('text-body-sm', !row.plans[plan.id] && 'text-muted-foreground')}>
+                  {row.label}
+                </dt>
+                <dd className="shrink-0 text-right text-body-sm">
+                  <Cell row={row} plan={plan.id} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </section>
   )
 }
 
-function Heading({ children, lead }: { children: ReactNode; lead: string }) {
-  return (
-    <div className="mb-6 text-center">
-      <h3 className="text-title font-semibold">{children}</h3>
-      <p className="mx-auto mt-2 max-w-2xl text-body text-muted-foreground">{lead}</p>
-    </div>
-  )
-}
-
-const ALLOWANCE_LEAD = translate('whatEachPaidPersonAddsGoesIntoOneShared')
-
-/** The plans side by side: the business benefits, then the allowances that apply before you buy. */
+/** The plans compared feature by feature, with the allowances in the cells that have one. */
 export function PlanTable() {
   return (
-    <div className="flex flex-col gap-16">
-      <div className="hidden md:flex md:flex-col md:gap-16">
-        <WideTable
-          caption={translate('whatEachPlanIncludes')}
-          corner={translate('businessValue')}
-          rows={BENEFIT_ROWS}
-          head
-        />
-        <div>
-          <Heading lead={ALLOWANCE_LEAD}>{translate('usageAllowances')}</Heading>
-          <WideTable
-            caption={translate('usageAllowancesOfEachPlan')}
-            corner={translate('allowance')}
-            rows={LIMIT_ROWS}
-            head={false}
-          />
-        </div>
+    <div className="flex flex-col gap-6">
+      <div className="hidden md:block">
+        <WideTable />
       </div>
-
-      {/* Narrow screens: a card per plan, so nothing scrolls sideways. */}
       <div className="grid gap-4 md:hidden">
-        {PLANS.map((plan) => {
-          const recommended = plan.id === RECOMMENDED
-          return (
-            <section
-              key={plan.id}
-              aria-label={translate('plan', { name: plan.name })}
-              className={cn(
-                'rounded-3xl border p-6',
-                recommended
-                  ? 'night ring-gradient text-white'
-                  : cn(TONES[PLAN_TONE[plan.id]].tile, TONES[PLAN_TONE[plan.id]].border),
-              )}
-            >
-              <PlanHead plan={plan} />
-              <PlanList title={translate('businessValue')} rows={BENEFIT_ROWS} plan={plan.id} />
-              <PlanList title={translate('usageAllowances')} rows={LIMIT_ROWS} plan={plan.id} />
-            </section>
-          )
-        })}
-        <p className="text-center text-body-sm text-muted-foreground">{ALLOWANCE_LEAD}</p>
+        {PLANS.map((plan) => (
+          <PlanCard key={plan.id} plan={plan} />
+        ))}
       </div>
+      <p className="mx-auto max-w-3xl text-center text-body-sm text-muted-foreground">
+        {translate('whatEachPaidPersonAddsGoesIntoOneShared')}
+      </p>
     </div>
   )
 }

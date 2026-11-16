@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { COMPETITORS } from '@/lib/compare'
 import { OFFER_URL } from '@/lib/offer'
-import { BENEFITS, LIMITS, USAGE_DETAILS } from '@/lib/plans'
+import { FEATURE_GROUPS } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
 
 import LegalPage from './[legal]/page'
@@ -78,14 +78,14 @@ describe('pricing page', () => {
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('EUR')).toBeTruthy()
-    expect(within(pro).getByText('EUR 39.25 a month, billed yearly, incl. VAT')).toBeTruthy()
+    expect(within(pro).getByText('EUR 471 a year, billed yearly')).toBeTruthy()
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!
-    expect(await within(pro).findByText('USD 39.25 a month, billed yearly, incl. tax')).toBeTruthy()
+    expect(await within(pro).findByText('USD 471 a year, billed yearly')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -109,7 +109,8 @@ describe('pricing page', () => {
       expect(within(card).getByText('Price unavailable')).toBeTruthy()
     }
     for (const name of [/Choose Basic/, /Choose Pro/, /Choose Business/, /Start with Pro/])
-      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
+      for (const button of screen.getAllByRole('button', { name }))
+        expect(button.hasAttribute('disabled')).toBe(true)
     expect(screen.queryByRole('link', { name: /Choose|Start with/ })).toBeNull()
     expect(screen.getByRole('link', { name: 'support@helvetly.com' }).getAttribute('href')).toBe(
       'mailto:support@helvetly.com',
@@ -121,38 +122,40 @@ describe('pricing page', () => {
       expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull(),
     )
     expect(again).toHaveBeenCalledExactlyOnceWith(OFFER_URL, expect.anything())
-    expect(within(screen.getAllByRole('article')[1]!).getByText('471')).toBeTruthy()
+    expect(within(screen.getAllByRole('article')[1]!).getByText('39.25')).toBeTruthy()
   })
 
   it('shows yearly prices first and monthly ones on request', async () => {
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!
-    expect(within(pro).getByText('471')).toBeTruthy()
-    expect(within(pro).getByText('CHF 39.25 a month, billed yearly, incl. VAT')).toBeTruthy()
+    expect(within(pro).getByText('39.25')).toBeTruthy()
+    expect(within(pro).getByText('CHF 471 a year, billed yearly')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
-    expect(within(pro).getByText('Billed monthly, incl. VAT')).toBeTruthy()
+    expect(within(pro).getByText('Billed monthly')).toBeTruthy()
   })
 
-  it('compares the twelve benefits and the eleven allowances from lib/plans', () => {
+  it('compares every feature by area, with allowances in their cells', () => {
     render(<PricingPage />)
-    const benefits = screen.getByRole('table', { name: 'What each plan includes' })
-    const allowances = screen.getByRole('table', { name: 'Usage allowances of each plan' })
+    const table = screen.getByRole('table', { name: 'What each plan includes' })
     expect(
-      within(benefits)
+      within(table)
         .getAllByRole('rowheader')
         .map((r) => r.getAttribute('aria-label')),
-    ).toEqual(BENEFITS.map((b) => b.label))
-    expect(
-      within(allowances)
-        .getAllByRole('rowheader')
-        .map((r) => r.getAttribute('aria-label')),
-    ).toEqual(USAGE_DETAILS.map((k) => LIMITS[k].label))
-    expect(cells(allowances, 'Clients')).toEqual(['30', '300', '1’500'])
-    expect(cells(allowances, 'Document storage')).toEqual(['500 MB', '5 GB', '20 GB'])
-    expect(cells(benefits, 'Heidi AI assistant')[0]).toBe('Not included')
-    expect(cells(benefits, 'Client portal')).toEqual(['Not included', 'Not included', 'Included'])
+    ).toEqual(FEATURE_GROUPS.flatMap((g) => g.rows.map((r) => r.label)))
+    expect(cells(table, 'Clients and contacts')).toEqual([
+      '30per workspace',
+      '300per workspace',
+      '1’500per workspace',
+    ])
+    expect(cells(table, 'Heidi AI assistant')[0]).toBe('Not included')
+    expect(cells(table, 'Client portal')).toEqual(['Not included', 'Not included', 'Included'])
+  })
+
+  it('lists only what a plan includes on its card', () => {
+    render(<PricingPage />)
+    expect(within(screen.getAllByRole('article')[0]!).queryByText(/not included/i)).toBeNull()
   })
 
   it('recommends Pro without claiming popularity', () => {

@@ -108,13 +108,15 @@ body {
   color: var(--brand);
 }
 
-/* Hairline grid that fades out towards the edges. */
-.grid-lines {
-  background-image:
-    linear-gradient(to right, var(--site-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--site-line) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 30%, transparent 75%);
+/* A fine field of dots that fades out towards the edges: texture without the graph-paper look. */
+.dot-field {
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--foreground) 14%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 65% 55% at 50% 30%, black 20%, transparent 70%);
 }
 
 /* Soft pastel light behind the hero: teal and lilac blooms drifting slowly. */
