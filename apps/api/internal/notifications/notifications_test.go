@@ -518,3 +518,13 @@ func TestRemovedMemberNotEmailed(t *testing.T) {
 		t.Fatalf("emailed a former member: %+v", e.mail.sent[0].Subject)
 	}
 }
+
+// AI import results are shown in the bell only until someone turns email on.
+func TestAIImportEmailsStartOff(t *testing.T) {
+	for _, name := range []string{"import.ready", "import.failed"} {
+		e, ok := lookup(name)
+		if d := e.defaults(); !ok || !d.Bell || d.Email || !d.EmailOffered {
+			t.Errorf("%s defaults %+v, want bell on, email offered but off", name, d)
+		}
+	}
+}

@@ -61,8 +61,8 @@ var Events = []event{
 	{"period.closed", "books", true, false},
 	{"period.reopened", "books", true, false},
 	{"vat.return_due", "books", true, true},
-	{"import.ready", "ai", true, true},
-	{"import.failed", "ai", true, true},
+	{"import.ready", "ai", true, false},
+	{"import.failed", "ai", true, false},
 }
 
 type event struct {

@@ -1034,6 +1034,8 @@
   "eInvoices": "E-invoices",
   "eInvoiceSettings": "E-invoice settings",
   "eInvoiceTransmissions": "E-invoice transmissions",
+  "einvoiceOutsideScopeMixed": "Outside-scope VAT cannot be combined with other VAT categories. Use separate documents.",
+  "einvoiceOutsideScopeNoRegistration": "Outside-scope VAT needs a seller registration number recorded when the invoice was issued.",
   "eInvoiceXML": "E-invoice XML",
   "eInvoiceXML2": "e-invoice XML",
   "eInvoiceXMLArchived": "E-invoice XML archived",
