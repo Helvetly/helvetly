@@ -1,4 +1,4 @@
--- Offer helvetly-v2-pro-trial: the same terms as helvetly-v2 (00014), except that the 7-day trial gives Pro, not Business.
+-- Offer helvetly: the same terms as helvetly-v2 (00014), except that the 7-day trial gives Pro, not Business.
 -- A published offer never changes, so it is published next to v2 and becomes the one on sale: every new Checkout is sold
 -- on it (billing.newCheckout reads the current offer's trial), so only Pro starts a trial. Nothing else moves: workspaces,
 -- their limits and usage, trials already started (their rights come from the offer they were sold on), paid
@@ -6,10 +6,10 @@
 
 -- +goose Up
 INSERT INTO offer_versions (id, schema_version, checksum, published_at, document) VALUES
-('helvetly-v2-pro-trial', 1, '03d8515144ffa74ca7d3ea89fe55af499efe578f7f5c0d190b76834deb47cb7f', now(), '
+('helvetly', 1, '03d8515144ffa74ca7d3ea89fe55af499efe578f7f5c0d190b76834deb47cb7f', now(), '
 {
   "schema_version": 1,
-  "offer_id": "helvetly-v2-pro-trial",
+  "offer_id": "helvetly",
   "billing": {"currencies": ["CHF", "EUR", "USD"], "plans": {"basic": {"month_minor": 1900, "year_minor": 18300}, "business": {"month_minor": 9900, "year_minor": 95100}, "pro": {"month_minor": 4900, "year_minor": 47100}}},
   "records": [
     {"key": "identity_security", "type": "access", "unit": "boolean", "scope": "workspace", "period": null, "values": {"basic": {"state": "enabled"}, "business": {"state": "enabled"}, "pro": {"state": "enabled"}}},
@@ -109,14 +109,14 @@ INSERT INTO limit_plans (offer_id, plan_id, limit_key, state, value, per_additio
 SELECT id, p.plan, r->>'key', p.v->>'state', (p.v->>'value')::bigint,
     coalesce((r->'per_additional_paid_seat'->>p.plan)::bigint, 0)
 FROM offer_versions, jsonb_array_elements(document->'records') r, jsonb_each(r->'values') AS p (plan, v)
-WHERE id = 'helvetly-v2-pro-trial';
+WHERE id = 'helvetly';
 
 INSERT INTO offer_audit (actor, action, target, before, after, reason)
 SELECT 'migration 00015', 'offer.publish', id,
     jsonb_build_object('offer_id', 'helvetly-v2', 'checksum', (SELECT checksum FROM offer_versions WHERE id = 'helvetly-v2')),
     jsonb_build_object('offer_id', id, 'checksum', checksum),
     'Owner decision 2026-11-16: the 7-day free trial is for Pro only'
-FROM offer_versions WHERE id = 'helvetly-v2-pro-trial';
+FROM offer_versions WHERE id = 'helvetly';
 
 -- +goose Down
 -- Refuses once the offer was used: a workspace pinned to it, a Checkout saved on it or an override written for it
@@ -127,19 +127,19 @@ DO $$
 DECLARE used text;
 BEGIN
     SELECT concat_ws(', ',
-        CASE WHEN EXISTS (SELECT 1 FROM workspace_billing WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'workspace_billing' END,
-        CASE WHEN EXISTS (SELECT 1 FROM billing_checkouts WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'billing_checkouts' END,
-        CASE WHEN EXISTS (SELECT 1 FROM limit_workspaces WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'limit_workspaces' END)
+        CASE WHEN EXISTS (SELECT 1 FROM workspace_billing WHERE offer_id = 'helvetly') THEN 'workspace_billing' END,
+        CASE WHEN EXISTS (SELECT 1 FROM billing_checkouts WHERE offer_id = 'helvetly') THEN 'billing_checkouts' END,
+        CASE WHEN EXISTS (SELECT 1 FROM limit_workspaces WHERE offer_id = 'helvetly') THEN 'limit_workspaces' END)
     INTO used;
     IF used <> '' THEN
-        RAISE EXCEPTION 'cannot roll back 00015: offer helvetly-v2-pro-trial is still referenced by %', used;
+        RAISE EXCEPTION 'cannot roll back 00015: offer helvetly is still referenced by %', used;
     END IF;
 END $$;
 -- +goose StatementEnd
 -- A published offer is immutable (00007): only a rollback removes one.
 ALTER TABLE limit_plans DISABLE TRIGGER limit_plans_immutable;
-DELETE FROM limit_plans WHERE offer_id = 'helvetly-v2-pro-trial';
+DELETE FROM limit_plans WHERE offer_id = 'helvetly';
 ALTER TABLE limit_plans ENABLE TRIGGER limit_plans_immutable;
 ALTER TABLE offer_versions DISABLE TRIGGER offer_versions_immutable;
-DELETE FROM offer_versions WHERE id = 'helvetly-v2-pro-trial';
+DELETE FROM offer_versions WHERE id = 'helvetly';
 ALTER TABLE offer_versions ENABLE TRIGGER offer_versions_immutable;

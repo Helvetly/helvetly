@@ -1,6 +1,6 @@
 import { localeDetails } from '@helvetly/i18n'
 import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
-// The one place the website keeps what each plan costs and includes: offer helvetly-v2's public projection (prices,
+// The one place the website keeps what each plan costs and includes: offer helvetly's public projection (prices,
 // the business comparison and the commercial allowances). Every page, card, table, FAQ and comparison reads it
 // from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
 // These values are the build-time copy of the offer on sale: lib/offer.ts shows prices only once the API's public

@@ -361,7 +361,7 @@ export const useLockedFeature = (feature: FeatureKey) => lockedFeature(useBillin
 export type LimitReached = { limit: string; used: number; max: number; reset_at: string | null }
 
 /**
- * A `limit_reached`, in the earlier body (`limit` the key, `max` the cap) or offer v2's (`key`, `limit` the cap,
+ * A `limit_reached`, in the earlier body (`limit` the key, `max` the cap) or the current offer's (`key`, `limit` the cap,
  * `reset_at`).
  */
 export function limitReached(error: unknown): LimitReached | null {
@@ -406,7 +406,7 @@ export function limitNoun(key: LimitKey, count = 2): string {
   return translate(limitNounMessages[key], { count })
 }
 
-/** A limit's noun as offer v2 names it: invoice issues and active engagements, the rest as `limitNoun`. */
+/** A limit's noun as the offer names it: invoice issues and active engagements, the rest as `limitNoun`. */
 export function offerNoun(key: LimitKey, count = 2): string {
   if (key === 'invoices_per_month') return translate('limitNounInvoiceIssues', { count })
   if (key === 'engagements') return translate('limitNounActiveEngagements', { count })
@@ -432,7 +432,7 @@ export function comparisonLimitLabel(key: LimitKey): string {
 /** Whether an API key is one of the limits plans list. */
 export const isLimitKey = (key: string): key is LimitKey => Object.hasOwn(LIMIT_LABELS, key)
 
-/** The usage panel's names for every customer allowance of offer v2 (monthly ones say so). */
+/** The usage panel's names for every customer allowance of the offer (monthly ones say so). */
 const USAGE_LABELS: Record<string, string> = {
   ...LIMIT_LABELS,
   invoices_per_month: translate('invoiceIssuesThisMonth'),

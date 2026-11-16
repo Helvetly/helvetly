@@ -12,7 +12,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Offer v2 billing: per-person prices, seats, checkout settlement, trial, pro-rata allowances, downgrades and grace.
+// Offer billing: per-person prices, seats, checkout settlement, trial, pro-rata allowances, downgrades and grace.
 
 func (e *env) ownerID(ws string) string {
 	e.t.Helper()

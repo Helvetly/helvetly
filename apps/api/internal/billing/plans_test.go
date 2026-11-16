@@ -378,7 +378,7 @@ func TestOlderOfferWorkspacesGetOnlyTheProTrial(t *testing.T) {
 			t.Fatalf("checkout %s: %d %v", plan, code, body)
 		}
 		f := e.stripe.form("POST /v1/checkout/sessions")
-		if f.Get("subscription_data[trial_period_days]") != trial || f.Get("subscription_data[metadata][offer_id]") != "helvetly-v2-pro-trial" {
+		if f.Get("subscription_data[trial_period_days]") != trial || f.Get("subscription_data[metadata][offer_id]") != "helvetly" {
 			t.Fatalf("%s on an older offer: %v", plan, f)
 		}
 	}

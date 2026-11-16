@@ -26,7 +26,7 @@ import (
 	"helvetly.com/api/internal/store/storetest"
 )
 
-// requiredPlan is offer v2's access matrix for the gated features: the cheapest plan with each.
+// requiredPlan is the offer's access matrix for the gated features: the cheapest plan with each.
 var requiredPlan = map[string]string{
 	store.FeatureHeidi: billing.Pro, store.FeatureDocumentTemplates: billing.Pro, store.FeatureSimpleSignatures: billing.Pro,
 	store.FeatureVATReturns: billing.Pro, store.FeatureInvoiceCorrections: billing.Pro, store.FeatureExpenses: billing.Pro,
