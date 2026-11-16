@@ -107,7 +107,6 @@ func TestGuardNewLimits(t *testing.T) {
 	for path, limit := range map[string]Limit{
 		"/api/v1/products": Products, "/api/v1/products/prd_a/duplicate": Products,
 		"/api/v1/engagements": Engagements, "/api/v1/engagements/eng_1/renew": Engagements, "/api/v1/engagements/eng_1/resume": Engagements,
-		"/api/v1/signatures": Signatures,
 	} {
 		code, body := e.do(b, http.MethodPost, path, map[string]any{})
 		errBody, _ := body["error"].(map[string]any)
@@ -115,6 +114,11 @@ func TestGuardNewLimits(t *testing.T) {
 		if code != http.StatusPaymentRequired || details["limit"] != string(limit) {
 			t.Fatalf("POST %s: %d %v", path, code, body)
 		}
+	}
+	// Basic has no signatures: the feature refuses before the zero allowance would.
+	code, body := e.do(b, http.MethodPost, "/api/v1/signatures", map[string]any{})
+	if errBody, _ := body["error"].(map[string]any); code != http.StatusForbidden || errBody["code"] != "feature_not_in_plan" {
+		t.Fatalf("POST /api/v1/signatures: %d %v", code, body)
 	}
 	// Deleting an entry makes room again.
 	e.exec(`UPDATE products SET deleted_at = now() WHERE id = 'prd_a'`)

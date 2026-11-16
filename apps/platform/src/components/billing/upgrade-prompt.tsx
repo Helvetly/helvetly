@@ -12,7 +12,13 @@ import { useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
 
 import { errorMessage } from '@/lib/api'
-import { LIMIT_LABELS, limitReached, planRequired, type LimitReached } from '@/lib/billing'
+import {
+  featureNotInPlan,
+  LIMIT_LABELS,
+  limitReached,
+  planRequired,
+  type LimitReached,
+} from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { refusedScope } from '@/lib/permissions'
 
@@ -38,7 +44,12 @@ export function promptUpgrade(error: unknown): boolean {
 
 /** toast.error for a failed action, unless the upgrade prompt, the plan toast or the permission toast already explains it. */
 export function toastError(error: unknown) {
-  if (!limitReached(error) && !planRequired(error) && !refusedScope(error))
+  if (
+    !limitReached(error) &&
+    !planRequired(error) &&
+    !featureNotInPlan(error) &&
+    !refusedScope(error)
+  )
     toast.error(errorMessage(error))
 }
 

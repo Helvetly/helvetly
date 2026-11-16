@@ -114,6 +114,9 @@ var errNotSent = errors.New("digest not sent")
 // digest claims the pending notices (and, without notices, the day) in the transaction that sends them, so two
 // instances running the job at once send each digest once.
 func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time) error {
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
+		return err // a scheduled digest is an automation: it waits for a plan with them
+	}
 	var sections []digestSection
 	for _, src := range s.sources {
 		heading, lines, err := src.DigestSection(ctx, ws, now)

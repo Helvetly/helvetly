@@ -39,6 +39,11 @@ func (s *Service) registerSettings(mux *http.ServeMux) {
 			return validationFailed(map[string]string{"digest": "Choose on or off."})
 		}
 		put := store.EngagementSettings{Digest: *body.Digest}
+		if put.Digest { // switching the digest off stays possible on every plan
+			if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureEngagementAutomation); err != nil {
+				return err
+			}
+		}
 		if err := s.db.PutEngagementSettings(r.Context(), sess.Workspace.ID, put, s.now()); err != nil {
 			return err
 		}

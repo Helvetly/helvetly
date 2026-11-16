@@ -39,3 +39,28 @@ test('a failed action’s own error toast stays away when the plan toast already
   toastError(refused())
   expect(await screen.findAllByText('This workspace has no active plan.')).toHaveLength(1)
 })
+
+test('a feature_not_in_plan refusal is the same toast, and the action’s own toast stays away', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const seePlans = vi.fn<() => void>()
+  render(<Toaster />)
+  const lacking = new ApiError(
+    403,
+    'feature_not_in_plan',
+    'The Basic plan does not include expenses.',
+    {
+      feature: 'expenses',
+      plan: 'basic',
+      required_plan: 'pro',
+    },
+  )
+  expect(toastPlanRequired(lacking, seePlans)).toBe(true)
+  toastError(lacking)
+  expect(await screen.findAllByText('The Basic plan does not include expenses.')).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'See plans' }))
+  expect(seePlans).toHaveBeenCalledOnce()
+  // A 403 for a missing scope is not a plan refusal.
+  expect(
+    toastPlanRequired(new ApiError(403, 'forbidden', 'No.', { scope: 'write:invoices' }), seePlans),
+  ).toBe(false)
+})

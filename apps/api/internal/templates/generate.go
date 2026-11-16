@@ -131,6 +131,9 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 			d.Message = nil
 		}
 	case "signature":
+		if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureSimpleSignatures); err != nil {
+			return err // before the document is stored
+		}
 		switch {
 		case len(t.Signers) == 0:
 			bad["delivery.type"] = "This template has no signers: save or email the document."

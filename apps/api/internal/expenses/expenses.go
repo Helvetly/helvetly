@@ -508,6 +508,11 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 
 	updated, skips, booked := 0, []skipped{}, []string{}
 	err := s.db.Tx(r.Context(), func(q store.Q) error {
+		if body.Action != "delete" { // removing what a workspace has stays in every plan; changing the module does not
+			if err := q.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureExpenses); err != nil {
+				return err
+			}
+		}
 		if err := q.LockExpenseBatch(r.Context(), sess.Workspace.ID, body.IDs, body.Action == "book"); err != nil {
 			return err
 		}

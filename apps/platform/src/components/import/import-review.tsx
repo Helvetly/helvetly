@@ -227,7 +227,8 @@ export function ReviewTable({
                     {record.status === 'failed' && record.error && (
                       <span className="text-[11.5px] text-destructive">
                         {record.error}
-                        {result?.error?.code === 'limit_reached' && (
+                        {(result?.error?.code === 'limit_reached' ||
+                          result?.error?.code === 'feature_not_in_plan') && (
                           <>
                             {' '}
                             <Link

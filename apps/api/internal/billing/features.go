@@ -21,7 +21,23 @@ const (
 )
 
 // featureNames name features in messages; one without a name reads as its key.
-var featureNames = map[Feature]string{APIAccess: "API tokens"}
+var featureNames = map[Feature]string{
+	APIAccess:                         "API tokens",
+	store.FeatureHeidi:                "Heidi",
+	store.FeatureDocumentTemplates:    "document templates",
+	store.FeatureSimpleSignatures:     "electronic signatures",
+	store.FeatureVATReturns:           "VAT returns",
+	store.FeatureInvoiceCorrections:   "invoice corrections, credit notes and voids",
+	store.FeatureExpenses:             "expenses",
+	store.FeatureLedgerExports:        "the ledger and its exports",
+	store.FeatureDataExport:           "business data exports",
+	store.FeatureAutomations:          "automations",
+	store.FeatureInvoiceReminders:     "automatic payment reminders",
+	store.FeatureInvoiceInstalments:   "instalment plans",
+	store.FeatureEngagementAutomation: "engagement automations",
+	store.FeatureClientPortal:         "the client portal",
+	store.FeatureEInvoiceXML:          "e-invoice XML",
+}
 
 func featureName(f Feature) string {
 	if n, ok := featureNames[f]; ok {
@@ -115,14 +131,20 @@ func allFeatures(ctx context.Context, q store.Q) ([]Feature, error) {
 	return out, nil
 }
 
-// Require refuses, with plan_required, a feature the workspace's plan does not include. Self-hosted every feature
-// is allowed; without a plan the workspace is read-only (errPlanRequired); an offer without the feature refuses with
-// entitlements_unavailable.
+// Require refuses a feature the workspace's plan does not include: 403 feature_not_in_plan (402 plan_required for
+// api_access, whose answer predates the offer). Self-hosted every feature is allowed; without a plan the workspace is
+// read-only (errPlanRequired); an offer without the feature refuses with entitlements_unavailable.
 func (s *Service) Require(ctx context.Context, q store.Q, workspaceID string, f Feature) error {
 	r, err := s.Entitlements(ctx, q, workspaceID)
-	switch {
-	case err != nil:
+	if err != nil {
 		return err
+	}
+	return s.requireIn(ctx, q, r, f)
+}
+
+// requireIn is Require on rights resolved already.
+func (s *Service) requireIn(ctx context.Context, q store.Q, r Rights, f Feature) error {
+	switch {
 	case r.Includes(f):
 		return nil
 	case r.Plan == "":
@@ -137,11 +159,27 @@ func (s *Service) Require(ctx context.Context, q store.Q, workspaceID string, f 
 	return featureError(r.Plan, f, c.cheapestWith(f, r.Plan))
 }
 
-func featureError(plan string, f Feature, need string) error {
-	msg := fmt.Sprintf("The %s plan does not include %s. Upgrade the workspace to use them.", planNames[plan], featureName(f))
-	if need != "" {
-		msg = fmt.Sprintf("%s come with the %s plan. Upgrade the workspace to use them.", featureName(f), planNames[need])
+// RequireFeature is Require as the store's feature gate (store.SetFeatureGate).
+func (s *Service) RequireFeature(ctx context.Context, q store.Q, workspaceID, feature string) error {
+	err := s.Require(ctx, q, workspaceID, Feature(feature))
+	if _, _, _, refused := auth.Describe(err); refused {
+		return fmt.Errorf("%w: %w", store.ErrFeatureDenied, err)
 	}
-	return auth.Error(http.StatusPaymentRequired, "plan_required", msg,
-		map[string]any{"feature": f, "plan": plan, "required_plan": need})
+	return err
+}
+
+func featureError(plan string, f Feature, need string) error {
+	details := map[string]any{"feature": f, "plan": plan, "required_plan": need}
+	if f == APIAccess { // the answer token creation gave before the offer: clients read it as it is
+		msg := fmt.Sprintf("The %s plan does not include %s. Upgrade the workspace to use them.", planNames[plan], featureName(f))
+		if need != "" {
+			msg = fmt.Sprintf("%s come with the %s plan. Upgrade the workspace to use them.", featureName(f), planNames[need])
+		}
+		return auth.Error(http.StatusPaymentRequired, "plan_required", msg, details)
+	}
+	msg := fmt.Sprintf("The %s plan does not include %s. Upgrade the workspace to use it.", planNames[plan], featureName(f))
+	if need != "" {
+		msg = fmt.Sprintf("The %s plan does not include %s. Upgrade to %s to use it.", planNames[plan], featureName(f), planNames[need])
+	}
+	return auth.Error(http.StatusForbidden, "feature_not_in_plan", msg, details)
 }

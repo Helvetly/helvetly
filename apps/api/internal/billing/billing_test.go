@@ -772,6 +772,13 @@ func TestGuard(t *testing.T) {
 	}
 	for _, r := range routes {
 		code, body := e.do(owner, http.MethodPost, r.path, map[string]string{"x": "y"})
+		if strings.HasPrefix(r.path, "/api/v1/expenses") { // Basic has no expenses at all: a missing module, not a spent month
+			details, _ := body["error"].(map[string]any)["details"].(map[string]any)
+			if code != http.StatusForbidden || details["feature"] != "expenses" || details["required_plan"] != Pro {
+				t.Fatalf("%s on Basic: %d %v", r.path, code, body)
+			}
+			continue
+		}
 		if r.limit == Invoices || (r.limit == Storage && !strings.HasSuffix(r.path, "/copy")) {
 			if code != http.StatusCreated {
 				t.Fatalf("write must reach kind-aware or exact-byte transactional admission: %s %d %v", r.path, code, body)
@@ -783,11 +790,12 @@ func TestGuard(t *testing.T) {
 			t.Fatalf("%s on a full Basic plan: %d %v", r.path, code, body)
 		}
 	}
-	// Not guarded: resending an invitation, a credit note, other methods.
-	for _, path := range []string{"/api/v1/members/invitations/inv_1/resend", "/api/v1/invoices/inv_1/credit-note"} {
-		if code, _ := e.do(owner, http.MethodPost, path, nil); code != http.StatusCreated {
-			t.Fatalf("%s: %d", path, code)
-		}
+	// Not guarded: resending an invitation, other methods. A credit note needs invoice_corrections, which Basic lacks.
+	if code, _ := e.do(owner, http.MethodPost, "/api/v1/members/invitations/inv_1/resend", nil); code != http.StatusCreated {
+		t.Fatalf("resend: %d", code)
+	}
+	if code, _ := e.do(owner, http.MethodPost, "/api/v1/invoices/inv_1/credit-note", nil); code != http.StatusForbidden {
+		t.Fatalf("credit note on Basic: %d", code)
 	}
 
 	if code, _ := e.do(owner, http.MethodGet, "/api/v1/clients", nil); code == http.StatusPaymentRequired {

@@ -61,6 +61,10 @@ func (s *Service) Tick(ctx context.Context, now time.Time) error {
 // issue issues one plan item and, with auto_send, emails it; a failed send leaves it issued and unsent (logged). Over
 // the plan's invoice limit the item waits (the digest says why) until the limit allows it.
 func (s *Service) issue(ctx context.Context, d store.DuePlanItem, now time.Time) error {
+	// A plan waits while the workspace's plan lacks instalment plans; nothing is issued or sent.
+	if on, err := s.db.FeatureAllowed(ctx, d.Workspace.ID, store.FeatureInvoiceInstalments); err != nil || !on {
+		return err
+	}
 	if over, err := s.overLimit(ctx, d.Workspace); err != nil || over {
 		if over {
 			s.log.WarnContext(ctx, "plan item not issued: plan limit reached", "plan", d.Plan.ID, "seq", d.Item.Seq)
@@ -101,6 +105,9 @@ func (s *Service) retrySends(ctx context.Context, now time.Time) error {
 
 // sendOnce sends an issued plan partial unless it was sent, under a claim, so two instances never both send it.
 func (s *Service) sendOnce(ctx context.Context, ws store.Workspace, invoiceID string, now time.Time) error {
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureInvoiceInstalments); err != nil || !on {
+		return err
+	}
 	won, err := s.db.ClaimPlanSend(ctx, invoiceID, now)
 	if err != nil || !won {
 		return err
@@ -123,6 +130,9 @@ func (s *Service) remind(ctx context.Context, t store.ReminderTarget, now time.T
 	if t.ClientEmail == "" {
 		s.log.WarnContext(ctx, "instalment reminder skipped: the client has no email address", "invoice", t.InvoiceID, "seq", t.Seq)
 		return nil
+	}
+	if on, err := s.db.FeatureAllowed(ctx, t.WorkspaceID, store.FeatureInvoiceInstalments); err != nil || !on {
+		return err
 	}
 	inv, err := s.db.Invoice(ctx, t.WorkspaceID, t.InvoiceID, t.Today, false)
 	if err != nil {

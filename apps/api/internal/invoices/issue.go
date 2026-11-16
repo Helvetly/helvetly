@@ -68,6 +68,16 @@ func (s *Service) settlePDF(ctx context.Context, key string, txErr error) error 
 // prepayments marked deducted and a correction taking over its original's payments. The PDF's key goes to pdf; the
 // caller passes it to settlePDF after the transaction.
 func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, pdf *string) error {
+	if needsPreceding(inv.Kind) { // a correction drafted on a plan with them is issued only on one with them
+		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureInvoiceCorrections); err != nil {
+			return err
+		}
+	}
+	if inv.Instalments != nil && len(inv.Instalments.Items) > 0 { // so is a draft with an instalment schedule
+		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err
+		}
+	}
 	if err := checkOpen(ctx, q, sess.Workspace.ID, inv.IssueDate); err != nil {
 		return err
 	}

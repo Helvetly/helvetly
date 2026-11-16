@@ -73,6 +73,10 @@ func jobSession(ws store.Workspace) store.Session { return store.Session{Workspa
 // autoDrafts makes the drafts an engagement is due, each in its own transaction so one failure rolls back alone.
 func (s *Service) autoDrafts(ctx context.Context, target store.AutoInvoiceTarget) error {
 	ws := store.Workspace{ID: target.WorkspaceID, Timezone: target.Timezone}
+	// Automatic drafts wait while the workspace's plan lacks engagement automations.
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
+		return err
+	}
 	var todo []draftJob
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		cur, err := q.Engagement(ctx, target.WorkspaceID, target.EngagementID, true)
@@ -119,6 +123,9 @@ func (s *Service) autoDraft(ctx context.Context, target store.AutoInvoiceTarget,
 		if err != nil {
 			return err
 		}
+		if err := q.RequireFeature(ctx, target.WorkspaceID, store.FeatureEngagementAutomation); err != nil {
+			return err // a plan change since the check above wins
+		}
 		id, err := s.InvoicePeriod(ctx, q, jobSession(store.Workspace{ID: target.WorkspaceID, Timezone: target.Timezone}), cur, j.periodID, j.kind, "")
 		if err != nil {
 			return err
@@ -138,14 +145,17 @@ func (s *Service) autoDraft(ctx context.Context, target store.AutoInvoiceTarget,
 			"engagement_id": cur.ID, "engagement": cur.Title, "client": cur.Client.Name, "period": period},
 			store.NotifyTo{Roles: notifications.Managers}, s.now())
 	})
-	if errors.Is(err, errAlreadyInvoiced) || errors.Is(err, errNothingToInvoice) {
-		return nil // somebody got there first
+	if errors.Is(err, errAlreadyInvoiced) || errors.Is(err, errNothingToInvoice) || errors.Is(err, store.ErrFeatureDenied) {
+		return nil // somebody got there first, or the plan changed: the draft waits
 	}
 	return err
 }
 
 // notices raises each reminder once per period (the table's unique key makes repeats no-ops).
 func (s *Service) notices(ctx context.Context, ws store.Workspace) error {
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
+		return err
+	}
 	ids, err := s.db.LiveEngagementIDs(ctx, ws.ID)
 	if err != nil {
 		return err

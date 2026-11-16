@@ -195,6 +195,13 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 	if s.mailer == nil {
 		return false, errNoMail
 	}
+	// Reminders wait while the plan lacks them: the job sends nothing and resumes on a plan with them.
+	if err := s.db.RequireFeature(ctx, ws.ID, store.FeatureInvoiceReminders); err != nil {
+		if by == nil && errors.Is(err, store.ErrFeatureDenied) {
+			return false, nil
+		}
+		return false, err
+	}
 	st, err := s.load(ctx, s.db.Q, ws, id)
 	if err != nil {
 		return false, err

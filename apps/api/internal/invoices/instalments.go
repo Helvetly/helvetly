@@ -394,6 +394,9 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 	sess, today := store.Session{Workspace: ws}, s.today(ws)
 	var id, pdf string
 	err := s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.RequireFeature(ctx, ws.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err // the job checked first; a plan change since then wins
+		}
 		locked, err := q.Plan(ctx, ws.ID, plan.ID, true)
 		if err != nil {
 			return err

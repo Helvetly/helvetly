@@ -45,6 +45,11 @@ func (s *Service) Tick(ctx context.Context, now time.Time) error {
 		if !ok {
 			continue
 		}
+		// a scheduled reminder of a VAT return: both an automation and the VAT return module
+		if on, err := s.allowed(ctx, v.Workspace.ID); err != nil || !on {
+			errs = append(errs, err)
+			continue
+		}
 		errs = append(errs, s.db.Tx(ctx, func(q store.Q) error {
 			return notifications.Notify(ctx, q, v.Workspace.ID, "vat.return_due", map[string]any{"period": p.Name, "last": p.Last},
 				store.NotifyTo{Roles: notifications.Managers, Once: "vat.return_due:" + p.Name}, now)
@@ -63,4 +68,13 @@ func justEnded(today, periodicity string) (span, bool) {
 	p, ok := parsePeriod(lastEnded(periodicity, today))
 	last, _ := time.Parse(time.DateOnly, p.Last)
 	return p, ok && d.Sub(last) <= remindFor*24*time.Hour
+}
+
+func (s *Service) allowed(ctx context.Context, workspaceID string) (bool, error) {
+	for _, f := range []string{store.FeatureVATReturns, store.FeatureAutomations} {
+		if on, err := s.db.FeatureAllowed(ctx, workspaceID, f); err != nil || !on {
+			return false, err
+		}
+	}
+	return true, nil
 }

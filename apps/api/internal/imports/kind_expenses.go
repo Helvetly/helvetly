@@ -23,6 +23,7 @@ func init() { register(expensesKind) }
 // currency's exchange rate are added on the draft; nothing is booked. A PDF or photo becomes the draft's receipt, and
 // the file's Document is linked to the draft.
 var expensesKind = Kind{
+	Feature:    store.FeatureExpenses,
 	Name:       "expenses",
 	Label:      "Expenses",
 	LabelField: "supplier_name",
