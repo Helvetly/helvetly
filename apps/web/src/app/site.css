@@ -451,7 +451,8 @@ body {
 
 /* Long legal texts set from Markdown. */
 .prose-legal {
-  overflow-wrap: anywhere;
+  /* only for what has no syllables, such as a long address or link */
+  overflow-wrap: break-word;
   color: var(--foreground);
   font-size: 15px;
   line-height: 1.7;
@@ -546,12 +547,3 @@ body {
   }
 }
 
-/* German compounds need natural word breaks at narrow screen widths. */
-html:lang(de) :is(main, footer) {
-  overflow-wrap: anywhere;
-}
-
-html:lang(de) :is(h1, h2, h3, .text-title, .text-title-sm) {
-  hyphens: auto;
-  overflow-wrap: anywhere;
-}
