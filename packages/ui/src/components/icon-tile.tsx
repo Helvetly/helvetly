@@ -6,7 +6,7 @@ const VARIANTS = {
   section: 'bg-brand-surface text-brand',
   /** A row in a list: an outlined tile that never competes with the section's. */
   row: 'bg-card text-muted-foreground ring-1 ring-border ring-inset',
-  /** A category (a notification type, a document kind): neutral, the icon tells the type. */
+  /** A category (a notification type): neutral, the icon tells the type. */
   neutral: 'bg-muted text-muted-foreground',
   /** Heidi and AI, the only coloured category. */
   heidi: 'bg-heidi-soft text-heidi',

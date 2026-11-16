@@ -1,7 +1,6 @@
 'use client'
 import {
   BookOpen,
-  BriefcaseBusiness,
   Building2,
   CalendarCheck,
   CreditCard,
@@ -18,10 +17,9 @@ import type { ReactNode } from 'react'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
-import { can, useScopes, type Need } from '@/lib/permissions'
-import { useSession } from '@/lib/queries'
+import { can, resourceForPath, useScopes } from '@/lib/permissions'
 
-type Page = { label: string; href: string; icon: LucideIcon; managers?: true; need?: Need }
+type Page = { label: string; href: string; icon: LucideIcon }
 
 /** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
@@ -31,16 +29,10 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
   { label: translate('vatReturn'), href: '/settings/vat-return', icon: Landmark },
-  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen, managers: true },
+  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen },
   // The books in the order of a month-end: record, declare, post, close, audit.
   { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
-  { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText, managers: true },
-  {
-    label: translate('employment'),
-    href: '/settings/employment',
-    icon: BriefcaseBusiness,
-    need: 'read:employees',
-  },
+  { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -61,11 +53,12 @@ export function settingsPageAt(pathname: string): Page | undefined {
 export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const router = useRouter()
   const guard = useLeaveGuard()
-  const manager = isManager(useSession().data?.role)
   const scopes = useScopes()
-  const pages = SETTINGS_PAGES.filter(
-    (page) => (manager || !page.managers) && (!page.need || can(scopes, page.need)),
-  )
+  // A page of an area the person cannot read is left out, as in the sidebar.
+  const pages = SETTINGS_PAGES.filter((page) => {
+    const resource = resourceForPath(page.href)
+    return !resource || can(scopes, `read:${resource}`)
+  })
   const current = settingsPageAt(usePathname() ?? '')
   return (
     <>

@@ -21,6 +21,17 @@ import (
 // and their card's fingerprint are recorded as digests (trial_claims), so a new workspace does not open a second one.
 // After the trial Stripe bills the chosen plan for every member; what the trial used counts in that first month.
 
+// trialClaimRetention is how long a trial claim is kept from when it was made (the privacy policy says 24 months).
+const trialClaimRetention = 24 // months
+
+// TrialClaimsTick deletes the trial claims older than trialClaimRetention: the customer may then start a trial again.
+func (s *Service) TrialClaimsTick(ctx context.Context) error {
+	if _, err := s.db.ForgetTrialClaims(ctx, s.now().AddDate(0, -trialClaimRetention, 0)); err != nil {
+		return fmt.Errorf("forget old trial claims: %w", err)
+	}
+	return nil
+}
+
 // TrialAIDailyCap bounds the model cost of every trial together in a UTC day, in micro-USD (USD 20), so trials opened
 // in bulk cannot run up the model bill.
 const TrialAIDailyCap int64 = 20_000_000

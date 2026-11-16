@@ -224,26 +224,18 @@ function NextStep({
         }
         detail={translate('dayOf', { value1: Math.min(days, days - left + 1), days: days })}
       >
-        {billing.discount && freeForever(billing) ? (
-          <>
-            {translate('thenFreeForeverWithCode')}{' '}
-            <span className="font-medium text-foreground">{billing.discount.code}</span>.
-          </>
-        ) : (
-          amount && (
-            <>
-              {translate('then')}
-              {amount}
-              {translate('isCharged')}
-              {billing.discount &&
-                translate('withCode', {
-                  code: billing.discount.code,
-                  value2: describeDiscount(billing.discount),
-                })}
-              .
-            </>
-          )
-        )}
+        {billing.discount && freeForever(billing)
+          ? translate('thenFreeForever')
+          : amount && (
+              <>
+                {translate('then')}
+                {amount}
+                {translate('isCharged')}
+                {billing.discount &&
+                  translate('withDiscount', { value2: describeDiscount(billing.discount) })}
+                .
+              </>
+            )}
       </CountdownPanel>
     )
   }
@@ -387,7 +379,6 @@ function notesOf(billing: Billing): ReactNode[] | null {
   if (billing.discount)
     lines.push(
       <Note key="discount" icon={<Tag aria-hidden />}>
-        <span className="font-medium text-foreground">{billing.discount.code}</span>{' '}
         {describeDiscount(billing.discount)}
         {billing.discount.ends_at && ` until ${formatDate(billing.discount.ends_at)}`}
       </Note>,

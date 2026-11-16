@@ -108,11 +108,11 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
-function wrap(role: string) {
+function wrap(role: string, scopes = role === 'member' ? ['read:*'] : ['*:*']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
-  client.setQueryData(queryKeys.session, { role })
+  client.setQueryData(queryKeys.session, { role, scopes })
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
@@ -188,8 +188,14 @@ test('an owner switches to the net tax rate method with an approved rate in the 
 
 test('a member reads the return but cannot change the settings', async () => {
   wrap('member')
-  expect(await screen.findByText('Only an owner or admin can change these.')).toBeTruthy()
+  expect(await screen.findByText('View only: ask an owner or admin for edit access.')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+})
+
+test('a member with edit of the VAT return can change the settings', async () => {
+  wrap('member', ['read:*', 'write:vat-return'])
+  expect(await screen.findByRole('button', { name: 'Edit' })).toBeTruthy()
+  expect(screen.queryByText('View only: ask an owner or admin for edit access.')).toBeNull()
 })
 
 async function exportEstvFile() {

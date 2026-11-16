@@ -239,20 +239,31 @@ ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,
 -- HR access is two areas, employees and payroll (View = read, Edit = write). Grants of the earlier, finer scopes
 -- move to the area they belonged to, the highest level winning: employee documents to employees; payroll approval
 -- and export to payroll.
-UPDATE workspace_members m SET scopes = ARRAY(
-    SELECT DISTINCT s FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) NOT IN ('employees', 'payroll',
-        'employee-documents', 'payroll-approval', 'payroll-export')
-    UNION
-    SELECT max(CASE WHEN split_part(s, ':', 1) = 'read' THEN 'read' ELSE 'write' END) || ':' || area
-    FROM (SELECT s, CASE WHEN split_part(s, ':', 2) IN ('employees', 'employee-documents') THEN 'employees' ELSE 'payroll' END AS area
-        FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) IN ('employees', 'payroll', 'employee-documents',
-            'payroll-approval', 'payroll-export')) hr
-    GROUP BY area)
-WHERE EXISTS (SELECT 1 FROM unnest(m.scopes) s WHERE split_part(s, ':', 2) IN ('employee-documents', 'payroll-approval', 'payroll-export'));
+-- +goose StatementBegin
+CREATE FUNCTION hr_areas(scopes text[]) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
+    SELECT array_agg(DISTINCT s ORDER BY s) FROM (
+        SELECT x AS s FROM unnest(scopes) x WHERE split_part(x, ':', 2) NOT IN ('employees', 'payroll',
+            'employee-documents', 'payroll-approval', 'payroll-export')
+        UNION ALL
+        -- 'write' sorts after 'read', so the highest level of an area wins; '*' counts as write
+        SELECT max(CASE WHEN split_part(x, ':', 1) = 'read' THEN 'read' ELSE 'write' END) || ':' ||
+            CASE WHEN split_part(x, ':', 2) IN ('employees', 'employee-documents') THEN 'employees' ELSE 'payroll' END
+        FROM unnest(scopes) x WHERE split_part(x, ':', 2) IN ('employees', 'payroll', 'employee-documents',
+            'payroll-approval', 'payroll-export')
+        GROUP BY CASE WHEN split_part(x, ':', 2) IN ('employees', 'employee-documents') THEN 'employees' ELSE 'payroll' END
+    ) t
+$$;
+-- +goose StatementEnd
+UPDATE workspace_members SET scopes = hr_areas(scopes) WHERE role = 'member' AND scopes IS NOT NULL;
+UPDATE workspace_invitations SET scopes = hr_areas(scopes) WHERE role = 'member' AND scopes IS NOT NULL;
+DROP FUNCTION hr_areas(text[]);
 
 -- +goose Down
 UPDATE workspace_members SET scopes = NULL WHERE role = 'admin';
+UPDATE workspace_invitations SET scopes = NULL WHERE role = 'admin';
 UPDATE workspace_members SET scopes = ARRAY(SELECT s FROM unnest(scopes) s WHERE split_part(s, ':', 2) NOT IN ('employees', 'payroll'))
+    WHERE role = 'member';
+UPDATE workspace_invitations SET scopes = ARRAY(SELECT s FROM unnest(scopes) s WHERE split_part(s, ':', 2) NOT IN ('employees', 'payroll'))
     WHERE role = 'member';
 DELETE FROM import_batches WHERE kind = 'payroll';
 ALTER TABLE import_batches DROP CONSTRAINT import_batches_kind_check,

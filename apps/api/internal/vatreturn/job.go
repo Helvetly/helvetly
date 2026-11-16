@@ -83,5 +83,6 @@ func (s *Service) allowed(ctx context.Context, workspaceID string) (bool, error)
 			return false, err
 		}
 	}
-	return true, nil
+	wait, err := s.db.AutomationWaits(ctx, workspaceID, store.AutomationActions) // used up: waits for the month or cap
+	return !wait, err
 }

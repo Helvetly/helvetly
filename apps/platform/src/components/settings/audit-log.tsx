@@ -26,11 +26,10 @@ import {
 import { errorMessage } from '@/lib/api'
 import { booksApi, EVENT_LABELS, exportUrl, type FinancialEvent } from '@/lib/books'
 import { translate } from '@/lib/i18n'
-import { useSession } from '@/lib/queries'
 
 import { HelpTip } from './help-tip'
 import { SettingsEmpty, SettingsPage, SettingsSection } from './layout'
-import { isManager, SettingsHeader } from './settings-tabs'
+import { SettingsHeader } from './settings-tabs'
 
 const day = new Intl.DateTimeFormat(languageTag, {
   weekday: 'short',
@@ -100,26 +99,17 @@ export function AuditLogSettings() {
 }
 
 export function AuditLog() {
-  const manager = isManager(useSession().data?.role)
   const verify = useQuery({
     queryKey: ['books', 'audit-log', 'verify'],
     queryFn: async () => (await booksApi.verify()).data,
-    enabled: manager,
   })
   const events = useInfiniteQuery({
     queryKey: ['books', 'audit-log'],
     queryFn: ({ pageParam }) => booksApi.events(pageParam),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.meta.next_cursor,
-    enabled: manager,
   })
 
-  if (!manager)
-    return (
-      <p className="text-body-sm text-muted-foreground">
-        {translate('onlyAnOwnerOrAdminCanReadTheAudit')}
-      </p>
-    )
   if (events.error)
     return <p className="text-body text-muted-foreground">{errorMessage(events.error)}</p>
   if (!events.data) return <Loader className="min-h-64" />

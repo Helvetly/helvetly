@@ -83,7 +83,7 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
         TONES[f.tone].border,
       )}
     >
-      <div aria-hidden className="grid-lines absolute inset-0 opacity-60" />
+      <div aria-hidden className="dot-field absolute inset-0 opacity-60" />
       {/* Two soft lights in the tone, so the tile glows instead of sitting flat. */}
       <div
         aria-hidden
@@ -142,7 +142,7 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
       ref={ref}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-10"
+      className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-10"
     >
       <div
         ref={viewport}

@@ -7,6 +7,7 @@ import {
   BENEFITS,
   LIMITS,
   type LimitKey,
+  MAX_SELF_SERVICE_SEATS,
   type PerPlan,
   type PlanId,
   PLANS,
@@ -37,6 +38,8 @@ export type PublicOffer = {
     plans: PerPlan<boolean>
   }[]
   usage_details: LimitKey[]
+  /** The people a workspace can have without asking us; null when unlimited. */
+  max_self_service_seats: PerPlan<number | null>
   /** value: for one person; null when unlimited. */
   limits: Partial<
     Record<
@@ -99,6 +102,7 @@ export function projectPlans(): PublicOfferValues {
       plans: perPlan((id) => b.cell(id) !== null),
     })),
     usage_details: USAGE_DETAILS,
+    max_self_service_seats: perPlan(() => MAX_SELF_SERVICE_SEATS),
     limits: Object.fromEntries(limitKeys.map((key) => [key, limit(key)])),
   }
 }

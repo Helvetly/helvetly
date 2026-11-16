@@ -383,6 +383,11 @@
       }
     }
   },
+  "max_self_service_seats": {
+    "basic": 25,
+    "business": 25,
+    "pro": 25
+  },
   "plans": [
     {
       "id": "basic",

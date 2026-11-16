@@ -53,7 +53,7 @@ export default async function HelpTopicPage({ params }: Props) {
         lead={topic.blurb}
       />
       <section className="pb-24">
-        <Container className="grid gap-10 lg:grid-cols-[1fr_260px]">
+        <Container className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_260px]">
           <ol className="grid gap-3">
             {topic.articles.map((article, i) => (
               <li key={article.slug}>
@@ -121,7 +121,7 @@ export default async function HelpTopicPage({ params }: Props) {
                     href={`/help/topic/${t.slug}`}
                     className="hover:bg-site-tint rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {t.name}
+                    {categoryLabel(t.name)}
                   </Link>
                 ))}
             </nav>

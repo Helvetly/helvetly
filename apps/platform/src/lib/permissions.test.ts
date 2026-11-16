@@ -1,16 +1,7 @@
 import { toast } from 'sonner'
 
 import { ApiError } from './api'
-import {
-  can,
-  describeAccess,
-  effectiveScopes,
-  levelsOf,
-  presetOf,
-  resourceForPath,
-  scopesFor,
-  toastForbidden,
-} from './permissions'
+import { can, levelsOf, presetOf, resourceForPath, scopesFor, toastForbidden } from './permissions'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>() } }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
@@ -33,8 +24,8 @@ test.each([
 test.each([
   [['*:*'], 'full'],
   [['read:*'], 'read'],
-  [['read:*', 'write:invoices', 'write:expenses'], 'accountant'],
-  [['write:expenses', 'write:invoices', 'read:*'], 'accountant'],
+  // the former accountant preset reads as custom
+  [['read:*', 'write:invoices', 'write:expenses'], 'custom'],
   [['read:clients'], 'custom'],
   [['read:*', 'write:invoices'], 'custom'],
   [[], 'custom'],
@@ -46,9 +37,21 @@ test('null scopes (owner, admin) are full access', () => {
   expect(presetOf(null)).toBe('full')
 })
 
-test('members, settings and billing never go past view', () => {
-  expect(levelsOf(['*:*']).members).toBe('view')
+test('areas managed by role, the audit log and the API never go past view', () => {
+  const full = levelsOf(['*:*'])
+  for (const area of ['members', 'workspace', 'billing', 'audit-log', 'api'] as const)
+    expect(full[area]).toBe('view')
   expect(levelsOf(['write:billing']).billing).toBe('view')
+})
+
+test('each settings area has its own level', () => {
+  const levels = levelsOf(['write:ledger', 'read:vat-return', 'read:api'])
+  expect(levels.ledger).toBe('edit')
+  expect(levels['vat-return']).toBe('view')
+  expect(levels['invoice-settings']).toBe('none')
+  expect(levels.periods).toBe('none')
+  expect(levels.api).toBe('view')
+  expect(levelsOf(['*:*'])['invoice-settings']).toBe('edit')
 })
 
 test('a matrix that equals a preset turns back into its list', () => {
@@ -58,72 +61,24 @@ test('a matrix that equals a preset turns back into its list', () => {
 })
 
 test.each([
-  [['*:*'], 'Can view and edit everything'],
-  [['read:*'], 'Can view everything'],
-  [
-    ['read:*', 'write:invoices', 'write:expenses'],
-    'Can view everything, edit invoices and expenses',
-  ],
-  [['read:clients', 'write:invoices'], 'Can view clients and invoices, edit invoices'],
-  [[], 'No access'],
-] as const)('describeAccess(%j)', (scopes, text) => {
-  expect(describeAccess(scopes)).toBe(text)
-})
-
-test.each([
   ['/clients', 'clients'],
   ['/clients/', 'clients'],
   ['/invoices/new', 'invoices'],
   ['/settings/billing', 'billing'],
-  ['/employees', 'employees'],
-  ['/employees/payroll', 'payroll'],
-  ['/settings/employment', 'employees'],
+  ['/settings/billing/plans', 'billing'],
+  ['/settings/invoices', 'invoice-settings'],
+  ['/settings/vat-return', 'vat-return'],
+  ['/settings/ledger', 'ledger'],
+  ['/settings/periods', 'periods'],
+  ['/settings/audit-log', 'audit-log'],
+  ['/settings/workspace', 'workspace'],
+  ['/settings/api', 'api'],
+  ['/settings/security', null],
   ['/account', null],
   ['/', null],
   ['/clientsx', null],
 ] as const)('%s belongs to %s', (path, resource) => {
   expect(resourceForPath(path)).toBe(resource)
-})
-
-// Mirrors apps/api/internal/permissions.Allows: owner all, admin all but HR, a member's "*" never reaches HR.
-test.each([
-  ['owner', undefined, 'write:employees', true],
-  ['owner', undefined, 'write:payroll-approval', true],
-  ['owner', undefined, 'read:payroll-export', true],
-  ['owner', undefined, 'write:invoices', true],
-  ['admin', undefined, 'write:invoices', true],
-  ['admin', undefined, 'read:employees', false],
-  ['admin', undefined, 'read:payroll', false],
-  ['member', ['*:*'], 'read:employees', false],
-  ['member', ['*:*'], 'write:clients', true],
-  ['member', ['read:*'], 'read:payroll', false],
-  ['member', ['read:employees'], 'read:employees', true],
-  ['member', ['read:employees'], 'write:employees', false],
-  ['member', ['write:payroll'], 'read:payroll', true],
-  ['member', ['*:payroll'], 'write:payroll', true],
-  ['member', ['*:payroll'], 'read:employees', false],
-  ['member', undefined, 'read:employees', false],
-] as const)('%s with %j may %s: %s', (role, scopes, need, expected) => {
-  expect(can(effectiveScopes(role, scopes), need)).toBe(expected)
-})
-
-test('HR access is granted row by row, beside the presets', () => {
-  expect(presetOf(['*:*', 'read:employees'])).toBe('full')
-  expect(levelsOf(['*:*']).employees).toBe('none')
-  expect(levelsOf(['write:payroll-approval'])['payroll-approval']).toBe('edit')
-  // Approving is a change: a read scope gives no level.
-  expect(levelsOf(['read:payroll-approval'])['payroll-approval']).toBe('none')
-  expect(scopesFor({ ...levelsOf(['*:*']), 'payroll-approval': 'edit' })).toEqual([
-    '*:*',
-    'write:payroll-approval',
-  ])
-  expect(scopesFor({ ...levelsOf(['read:clients']), payroll: 'view' })).toEqual([
-    'read:clients',
-    'read:payroll',
-  ])
-  expect(describeAccess(['*:*', 'read:employees'])).toBe(
-    'Can view and edit everything; HR: view employees',
-  )
 })
 
 const refusal = (details: Record<string, unknown>) => new ApiError(403, 'forbidden', 'No.', details)

@@ -34,6 +34,7 @@ export function Composer({
   textareaRef,
   quote,
   onClearQuote,
+  attached,
 }: {
   value: string
   onChange: (value: string) => void
@@ -48,6 +49,8 @@ export function Composer({
   /** Part of an answer this message replies to; sent ahead of it. */
   quote?: string | null
   onClearQuote?: () => void
+  /** A bar sits on top: the composer's top corners go square to join it. */
+  attached?: boolean
 }) {
   const picker = useRef<HTMLInputElement>(null)
   const length = quote ? withQuote(quote, value).length : value.length
@@ -56,7 +59,10 @@ export function Composer({
 
   return (
     <form
-      className="rounded-2xl bg-card shadow-elevation-2 transition-shadow duration-150 focus-within:shadow-[var(--elevation-2),0_0_0_3px_color-mix(in_oklch,var(--heidi),transparent_82%)]"
+      className={cn(
+        'rounded-2xl bg-card shadow-elevation-2 transition-shadow duration-150 focus-within:shadow-[var(--elevation-2),0_0_0_3px_color-mix(in_oklch,var(--heidi),transparent_82%)]',
+        attached && 'rounded-t-none',
+      )}
       onSubmit={(event) => {
         event.preventDefault()
         if (canSend) onSend()
