@@ -64,6 +64,11 @@ export const Welcome: Story = {
     )
     // Nothing is guessed from the account: the name input starts empty.
     await expect(welcome.getByRole('textbox', { name: /What should we call you/ })).toHaveValue('')
+    // The brand word wears the marketing italic; the orb is gone.
+    const brand = canvasElement.querySelector('h1 .accent')
+    await expect(brand).toHaveTextContent('Helvetly')
+    await expect(getComputedStyle(brand as Element).fontStyle).toBe('italic')
+    await expect(canvasElement.querySelector('.heidi-orb-halo')).toBeNull()
     const cards = welcome.getAllByRole('listitem')
     await expect(cards.length).toBeLessThanOrEqual(4)
     for (const title of [
@@ -139,6 +144,37 @@ export const Company: Story = {
 }
 
 /** A new workspace: the company step has no way past it until the required details are in. */
+/** A long step scrolls on its own: the page and the preview stay put, the bottom stays reachable. */
+export const CompanyScroll: Story = {
+  // The whole page, as in the app: no story padding around it.
+  parameters: { bare: true },
+  play: async ({ canvasElement }) => {
+    await begin(canvasElement)
+    const company = within(await step(canvasElement, 'company'))
+    await waitFor(() => expect(company.getByLabelText(/^ZIP/)).toBeEnabled())
+    const scroller = (await step(canvasElement, 'company')).closest<HTMLElement>(
+      'main',
+    )!.parentElement!
+    const preview = canvasElement.querySelector('aside')!
+    const doc = document.documentElement
+    await expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight)
+    await expect(doc.scrollHeight).toBeLessThanOrEqual(window.innerHeight)
+    const before = preview.getBoundingClientRect().top
+    scroller.scrollTop = scroller.scrollHeight
+    await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(0))
+    await expect(preview.getBoundingClientRect().top).toBe(before)
+    await expect(doc.scrollTop).toBe(0)
+    const button = company.getByRole('button', { name: /Continue/ })
+    await expect(button).toBeVisible()
+    const box = button.getBoundingClientRect()
+    await expect(box.bottom).toBeLessThanOrEqual(scroller.getBoundingClientRect().bottom + 1)
+    await next(canvasElement, 'company', /Continue/)
+    const logo = within(await step(canvasElement, 'logo'))
+    await waitFor(() => expect(logo.getByRole('heading', { level: 1 })).toHaveFocus())
+    await expect(scroller.scrollTop).toBe(0)
+  },
+}
+
 export const CompanyRequired: Story = {
   parameters: {
     msw: {
@@ -181,7 +217,7 @@ export const CompanyRequiredDark: Story = {
   parameters: { ...CompanyRequired.parameters, dark: true },
 }
 
-/** A new workspace still called "My workspace": the one-time AI name suggestion is offered, off until consented to. */
+/** A new workspace still called "My workspace": the one-time AI name suggestion sits inside the name field; clicking it is the consent. */
 const newWorkspace: Session = {
   ...session,
   workspace: { ...session.workspace, name: 'My workspace' },
@@ -209,15 +245,14 @@ export const NameSuggestion: Story = {
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
     const button = company.getByRole('button', { name: 'Suggest a name' })
-    // Off until the person agrees: nothing is sent by default.
-    const consent = company.getByRole('checkbox', { name: /Share only your company name/ })
-    await expect(consent).not.toBeChecked()
-    await expect(button).toBeDisabled()
-    await userEvent.click(consent)
+    // The button inside the field is the only consent, said by its description; nothing is sent until the click.
+    await expect(company.queryByRole('checkbox')).toBeNull()
+    await expect(button).toBeEnabled()
+    await expect(button).toHaveAccessibleDescription(/Share only your company name/)
     await userEvent.click(button)
     await expect(
       await company.findByText('Workspace name suggested. You can edit it.'),
-    ).toBeVisible()
+    ).toBeInTheDocument()
     await expect(company.getByRole('textbox', { name: /Workspace name/ })).toHaveValue('Muster')
   },
 }
@@ -247,7 +282,6 @@ export const NameSuggestionUnavailable: Story = {
   },
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('checkbox', { name: /Share only your company name/ }))
     await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
     await expect(
       await company.findByText('Name suggestions are unavailable. Enter a name yourself.'),
@@ -268,7 +302,6 @@ export const NameSuggestionUsed: Story = {
   },
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('checkbox', { name: /Share only your company name/ }))
     await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
     await expect(await company.findByText(/one-time suggestion has been used/)).toBeVisible()
     await expect(company.queryByRole('button', { name: 'Suggest a name' })).toBeNull()

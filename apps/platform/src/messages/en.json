@@ -115,7 +115,7 @@
   "aDraftInvoiceWithThisQuoteSClientLines": "A draft invoice with this quote’s client, lines and texts opens. Its dates and payment methods are your invoice defaults.",
   "aDraftPrepaymentInvoiceWithTheClientAndLines": "A draft prepayment invoice with the client and lines of this proforma opens in the editor. The proforma stays as it is.",
   "advance": "Advance",
-  "aFewQuickStepsToGetYourCompanyReady": "A few quick steps to get your company ready for its first invoice. It takes about two minutes, and you can skip anything.",
+  "aFewQuickStepsToGetYourCompanyReady": "A few quick steps to get your company ready for its first invoice. It takes about two minutes.",
   "aFixedPeriodEG30HIn3": "A fixed period, e.g. 30 h in 3 months.",
   "aFixedPeriodOrOneThatRepeatsWithThe": "A fixed period, or one that repeats with the same quantity.",
   "aFriendlyHeadsUpBeforeTheInstalmentIsDue": "A friendly heads-up before the instalment is due. 0 sends none.",

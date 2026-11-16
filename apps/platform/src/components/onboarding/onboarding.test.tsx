@@ -245,14 +245,27 @@ const suggestButton = () => screen.getByRole('button', { name: /Suggest a name|S
 
 const workspaceField = () => screen.getByRole('textbox', { name: /Workspace name/ })
 
-const consent = () => screen.getByRole('checkbox', { name: /Share only your company name/ })
-
 describe('the welcome', () => {
   test('shows on the first visit, with focus on its heading and the progress', async () => {
     wrap(<Welcome />)
     const heading = await welcome()
     await waitFor(() => expect(heading).toHaveFocus())
     expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '5')
+  })
+
+  test('has no orb, and typing a name leaves the typed heading alone', async () => {
+    const user = userEvent.setup()
+    const { container } = wrap(<Welcome />)
+    const heading = await welcome()
+    expect(container.querySelector('.heidi-orb-halo')).toBeNull()
+    expect(heading.querySelector('.accent')).toHaveTextContent('Helvetly')
+    const shown = () => heading.querySelector('[aria-hidden]')?.textContent
+    await user.type(
+      await screen.findByRole('textbox', { name: /What should we call you\?/ }),
+      'Anna',
+    )
+    expect(shown()).toBe('Welcome to Helvetly')
+    expect(heading).toHaveAccessibleName('Welcome to Helvetly')
   })
 
   test('asks what to call the person, empty, and greets with the saved answer only', async () => {
@@ -452,36 +465,57 @@ describe('the welcome', () => {
   })
 
   describe('the one-time name suggestion', () => {
-    test('asks nothing without the person ticking consent and entering a company', async () => {
+    test('asks nothing until the person clicks: editing the company or the name sends no request', async () => {
       const user = userEvent.setup()
       workspaceName = 'My workspace'
       wrap(<Welcome />)
       await start(user)
       await screen.findByRole('heading', { name: 'Your company' })
-      await waitFor(() => expect(consent()).toBeInTheDocument())
-      expect(consent()).not.toBeChecked() // off by default
+      await waitFor(() => expect(suggestButton()).toBeInTheDocument())
+      // No separate consent box: the click is the consent, said by the button's description.
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
       expect(suggestButton()).toBeDisabled() // no company yet
       await fillCompany(user, 'Muster Treuhand GmbH')
-      expect(suggestButton()).toBeDisabled() // no consent yet
-      await user.click(consent())
       expect(suggestButton()).toBeEnabled()
-      expect(asked).toHaveLength(0) // typing and ticking never call the model
+      expect(suggestButton()).toHaveAccessibleDescription(
+        /Share only your company name with OpenAI/,
+      )
+      await user.type(screen.getByLabelText(/Company name/), ' AG')
+      await user.type(workspaceField(), 'x')
+      expect(asked).toHaveLength(0) // typing never calls the model
     })
 
     test('one click sends only the company name and fills the untouched field, still editable', async () => {
       const user = userEvent.setup()
       await toCompany(user)
-      await user.click(consent())
       await user.click(suggestButton())
-      expect(
-        await screen.findByText('Workspace name suggested. You can edit it.'),
-      ).toBeInTheDocument()
+      expect(await screen.findByText('Workspace name suggested. You can edit it.')).toHaveClass(
+        'sr-only',
+      ) // announced, not a visible panel
       expect(asked).toEqual([{ company_name: 'Muster Treuhand GmbH', consent: true }])
+      expect(screen.queryByRole('button', { name: 'Suggest a name' })).not.toBeInTheDocument() // the one use is spent
       expect(workspaceField()).toHaveValue('Muster')
       await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
       await user.click(screen.getByRole('button', { name: /Continue/ }))
       expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
       expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('a second click while it asks sends nothing more', async () => {
+      const user = userEvent.setup()
+      const hold = Promise.withResolvers<void>()
+      suggestReply = async () => {
+        await hold.promise
+        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
+      }
+      await toCompany(user)
+      await user.dblClick(suggestButton())
+      const busy = screen.getByRole('button', { name: /Suggesting/ })
+      expect(busy).toBeDisabled()
+      expect(busy).toHaveAttribute('aria-busy', 'true')
+      hold.resolve()
+      await screen.findByText('Workspace name suggested. You can edit it.')
+      expect(asked).toHaveLength(1)
     })
 
     test('a result that arrives after the company name changed is dropped', async () => {
@@ -492,7 +526,6 @@ describe('the welcome', () => {
         return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
       }
       await toCompany(user)
-      await user.click(consent())
       await user.click(suggestButton())
       expect(screen.getByRole('button', { name: /Suggesting/ })).toBeDisabled()
       await user.type(screen.getByLabelText(/Company name/), ' AG')
@@ -509,7 +542,6 @@ describe('the welcome', () => {
         return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
       }
       await toCompany(user)
-      await user.click(consent())
       await user.click(suggestButton())
       await user.clear(workspaceField())
       await user.type(workspaceField(), 'Mine')
@@ -534,7 +566,6 @@ describe('the welcome', () => {
         const user = userEvent.setup()
         suggestReply = refuse(code, status)
         await toCompany(user)
-        await user.click(consent())
         await user.click(suggestButton())
         expect(await screen.findByText(note)).toBeInTheDocument()
         expect(workspaceField()).toHaveValue('Muster Treuhand GmbH')
@@ -551,9 +582,7 @@ describe('the welcome', () => {
       wrap(<Welcome />)
       await start(user)
       await screen.findByRole('heading', { name: 'Your company' })
-      expect(
-        screen.queryByRole('checkbox', { name: /Share only your company name/ }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Suggest a name/ })).not.toBeInTheDocument()
     })
   })
 

@@ -2,7 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { HeidiOrb, HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
   InputGroup,
   InputGroupAddon,
@@ -21,7 +21,6 @@ import {
   ArrowRight,
   Check,
   FileUp,
-  FolderOpen,
   PartyPopper,
   ReceiptText,
   UserPlus,
@@ -69,7 +68,8 @@ import {
   vatSuffix,
   type Values,
 } from './onboarding-model'
-import { WorkspaceNameSuggest, type SuggestionState } from './workspace-name-suggest'
+import { TypedWelcomeTitle, WelcomeBenefits } from './welcome-intro'
+import { WorkspaceNameInput, type Suggestion, type SuggestionState } from './workspace-name-suggest'
 
 type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
@@ -116,6 +116,7 @@ export function WelcomePage({ session }: { session: Session }) {
   const [step, setStep] = useState<StepId>('welcome')
   const index = steps.indexOf(step)
   const heading = useRef<HTMLHeadingElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
   const [chosenTarget, setTarget] = useState<string | null>(null)
   const target = chosenTarget ?? safeNextPath(searchParams.get('next'))
 
@@ -131,12 +132,14 @@ export function WelcomePage({ session }: { session: Session }) {
   // null until the person edits the field: until then it follows the company name (or keeps a name
   // they already chose), and what they typed is never replaced.
   const [workspaceEdit, setWorkspaceEdit] = useState<string | null>(null)
-  // The one-time AI suggestion: consent is this person's tick, and a result only lands in a field nobody edited.
+  // The one-time AI suggestion: asked only by this person's own click on Suggest (their consent), and a result only
+  // lands in a field nobody edited.
   const suggestion = useSuggestWorkspaceName()
-  const [aiConsent, setAiConsent] = useState(false)
   const [suggestState, setSuggestState] = useState<SuggestionState>('idle')
   const [suggested, setSuggested] = useState<string | null>(null)
   const asked = useRef<{ id: number; controller: AbortController } | null>(null)
+  // Set synchronously, so a second click before the page has re-rendered cannot send a second request.
+  const inFlight = useRef(false)
   const latest = useRef({ company: '', edited: false })
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
@@ -171,7 +174,8 @@ export function WelcomePage({ session }: { session: Session }) {
 
   const askSuggestion = () => {
     const company = latest.current.company
-    if (!aiConsent || !company || suggestState === 'pending') return
+    if (!company || inFlight.current) return
+    inFlight.current = true
     asked.current?.controller.abort()
     const controller = new AbortController()
     const id = (asked.current?.id ?? 0) + 1
@@ -180,6 +184,9 @@ export function WelcomePage({ session }: { session: Session }) {
     suggestion.mutate(
       { company_name: company, signal: controller.signal },
       {
+        onSettled: () => {
+          if (asked.current?.id === id) inFlight.current = false
+        },
         onSuccess: ({ data }) => {
           if (asked.current?.id !== id) return
           // A result for a company name that has changed, or into a name the person has typed, is dropped
@@ -236,7 +243,11 @@ export function WelcomePage({ session }: { session: Session }) {
   const go = (to: StepId) => {
     setStep(to)
     if (to === 'done') finish.mutate()
-    requestAnimationFrame(() => heading.current?.focus())
+    requestAnimationFrame(() => {
+      // The new step starts at its top, progress bar included.
+      if (scroller.current) scroller.current.scrollTop = 0
+      heading.current?.focus()
+    })
   }
   const next = () => go(steps[Math.min(index + 1, steps.length - 1)] ?? 'done')
   const back = index > 0 ? () => go(steps[index - 1] ?? 'welcome') : undefined
@@ -301,102 +312,105 @@ export function WelcomePage({ session }: { session: Session }) {
   const logo = settings.data ? logoSrc(settings.data) || null : null
 
   return (
-    <div className="grid min-h-svh bg-card lg:grid-cols-2">
-      <div className="flex min-w-0 flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-6">
+    <div className="grid min-h-svh bg-card lg:h-svh lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)]">
+      <div className="flex min-h-0 min-w-0 flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-6">
         <header className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold tracking-tight">
           <Logo className="size-8" />
           {translate('helvetly')}
         </header>
-        <main className="mx-auto flex w-full max-w-[34rem] flex-1 flex-col pt-8 sm:pt-14 lg:pt-20">
-          <Progress index={index} total={steps.length} />
-          {error && (
-            <Callout tone="danger" role="alert" className="mt-4">
-              {errorMessage(error)}
-            </Callout>
-          )}
-          <div
-            key={step}
-            data-testid={`onboarding-step-${step}`}
-            className="mt-8 duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
-          >
-            {step === 'welcome' && (
-              <WelcomeStep
-                heading={heading}
-                name={confirmedName}
-                input={nameInput}
-                error={nameError}
-                busy={profile.isPending}
-                onInput={(value) => {
-                  setNameInput(value)
-                  setNameError(undefined)
-                }}
-                onDone={() => void saveName()}
-              />
+        <div
+          ref={scroller}
+          className="flex min-h-0 flex-1 flex-col lg:scroll-py-6 lg:overflow-y-auto lg:overscroll-contain"
+        >
+          <main className="mx-auto flex w-full max-w-[34rem] flex-1 flex-col pt-8 sm:pt-14 lg:px-1 lg:pt-12 lg:pb-6">
+            <Progress index={index} total={steps.length} />
+            {error && (
+              <Callout tone="danger" role="alert" className="mt-4">
+                {errorMessage(error)}
+              </Callout>
             )}
-            {step === 'company' && (
-              <CompanyStep
-                heading={heading}
-                values={values}
-                errors={errors}
-                busy={busy}
-                workspaceName={workspaceName}
-                suggest={
-                  // Only for the sign-up placeholder: a name the person chose is never offered a replacement.
-                  session.workspace.name === DEFAULT_WORKSPACE_NAME && (
-                    <WorkspaceNameSuggest
-                      state={suggestState}
-                      consent={aiConsent}
-                      canAsk={!!values?.name.trim()}
-                      onConsent={setAiConsent}
-                      onAsk={askSuggestion}
-                    />
-                  )
-                }
-                onWorkspaceName={(value) => {
-                  setWorkspaceEdit(value)
-                  setErrors((current) => ({ ...current, workspace_name: undefined }))
-                }}
-                onChange={change}
-                onBack={back}
-                onDone={() => void saveAndNext()}
-              />
-            )}
-            {step === 'logo' && (
-              <LogoStep
-                heading={heading}
-                url={logo}
-                workspace={session.workspace}
-                ready={!!settings.data}
-                onBack={back}
-                onDone={next}
-              />
-            )}
-            {step === 'preferences' && (
-              <PreferencesStep
-                heading={heading}
-                values={values}
-                edited={edited !== null}
-                busy={busy}
-                onChange={change}
-                onBack={back}
-                onSkip={next}
-                onDone={() => void saveAndNext()}
-              />
-            )}
-            {step === 'done' && (
-              <DoneStep
-                heading={heading}
-                name={confirmedName}
-                settings={settings.data}
-                busy={busy}
-                onOpen={(href) => void leave(href)}
-                onAskHeidi={() => void leave(undefined, () => heidi?.ask())}
-                onClose={() => void leave()}
-              />
-            )}
-          </div>
-        </main>
-        <footer className="mt-8 flex">
+            <div
+              key={step}
+              data-testid={`onboarding-step-${step}`}
+              className="mt-8 duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
+            >
+              {step === 'welcome' && (
+                <WelcomeStep
+                  heading={heading}
+                  name={confirmedName}
+                  input={nameInput}
+                  error={nameError}
+                  busy={profile.isPending}
+                  onInput={(value) => {
+                    setNameInput(value)
+                    setNameError(undefined)
+                  }}
+                  onDone={() => void saveName()}
+                />
+              )}
+              {step === 'company' && (
+                <CompanyStep
+                  heading={heading}
+                  values={values}
+                  errors={errors}
+                  busy={busy}
+                  workspaceName={workspaceName}
+                  suggestion={
+                    // Only for the sign-up placeholder: a name the person chose is never offered a replacement.
+                    session.workspace.name === DEFAULT_WORKSPACE_NAME
+                      ? {
+                          state: suggestState,
+                          canAsk: !!values?.name.trim(),
+                          onAsk: askSuggestion,
+                        }
+                      : null
+                  }
+                  onWorkspaceName={(value) => {
+                    setWorkspaceEdit(value)
+                    setErrors((current) => ({ ...current, workspace_name: undefined }))
+                  }}
+                  onChange={change}
+                  onBack={back}
+                  onDone={() => void saveAndNext()}
+                />
+              )}
+              {step === 'logo' && (
+                <LogoStep
+                  heading={heading}
+                  url={logo}
+                  workspace={session.workspace}
+                  ready={!!settings.data}
+                  onBack={back}
+                  onDone={next}
+                />
+              )}
+              {step === 'preferences' && (
+                <PreferencesStep
+                  heading={heading}
+                  values={values}
+                  edited={edited !== null}
+                  busy={busy}
+                  onChange={change}
+                  onBack={back}
+                  onSkip={next}
+                  onDone={() => void saveAndNext()}
+                />
+              )}
+              {step === 'done' && (
+                <DoneStep
+                  heading={heading}
+                  name={confirmedName}
+                  settings={settings.data}
+                  busy={busy}
+                  onOpen={(href) => void leave(href)}
+                  onAskHeidi={() => void leave(undefined, () => heidi?.ask())}
+                  onClose={() => void leave()}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+        <footer className="mt-4 flex shrink-0 lg:pt-2">
           <ThemeToggle />
         </footer>
       </div>
@@ -407,7 +421,7 @@ export function WelcomePage({ session }: { session: Session }) {
           aria-label={translate('invoicePreview')}
           className="relative isolate m-3 hidden flex-col items-center justify-center gap-8 overflow-hidden rounded-2xl border bg-muted/70 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:14px_14px] p-10 lg:flex"
         >
-          <div className="grid max-w-sm gap-2 text-center">
+          <div className="grid max-w-sm gap-2 text-center [@media(max-height:46rem)]:hidden">
             <h2 className="text-xl font-semibold tracking-tight">
               {translate('yourFirstInvoice')}
               <span className="text-primary">{translate('takingShape')}</span>
@@ -535,7 +549,6 @@ function SkipButton({
 }
 
 const bigButton = 'pointer-coarse:h-11'
-const card = 'rounded-xl border bg-card p-4'
 
 function WelcomeStep({
   heading,
@@ -555,47 +568,22 @@ function WelcomeStep({
   onInput: (value: string) => void
   onDone: () => void
 }) {
-  const features = [
-    {
-      icon: <ReceiptText className="size-[18px] stroke-[1.75]" />,
-      title: translate('getPaid'),
-      text: translate('invoicesWithTheSwissQRBillOrAsE'),
-    },
-    {
-      icon: <FolderOpen className="size-[18px] stroke-[1.75]" />,
-      title: translate('clientsDocuments'),
-      text: translate('contractsFromTemplatesESignaturesAndAPortalWhere'),
-    },
-    {
-      icon: <FileUp className="size-[18px] stroke-[1.75]" />,
-      title: translate('bringYourData'),
-      text: translate('dropInSpreadsheetsPDFsOrReceiptsAITurnsThem'),
-    },
-    {
-      icon: <HeidiSparkle className="size-[18px]" />,
-      title: translate('heidiYourAssistant'),
-      text: (
-        <>
-          {translate('askAboutYourNumbersOrLetHerDraftFor')}
-          <Kbd>{translate('j')}</Kbd>.
-        </>
-      ),
-      heidi: true,
-    },
-  ]
   return (
     <div>
-      <HeidiOrb />
-      <div className="mt-8">
-        <StepHeader
-          heading={heading}
-          title={
-            name ? translate('welcomeToHelvetly2', { name: name }) : translate('welcomeToHelvetly')
-          }
-        >
-          {translate('aFewQuickStepsToGetYourCompanyReady')}
-        </StepHeader>
-      </div>
+      <StepHeader
+        heading={heading}
+        title={
+          <TypedWelcomeTitle
+            title={
+              name
+                ? translate('welcomeToHelvetly2', { name: name })
+                : translate('welcomeToHelvetly')
+            }
+          />
+        }
+      >
+        {translate('aFewQuickStepsToGetYourCompanyReady')}
+      </StepHeader>
       <form
         noValidate
         className="mt-8"
@@ -627,24 +615,9 @@ function WelcomeStep({
           </Button>
         </Actions>
       </form>
-      <ul className="mt-8 grid gap-2.5">
-        {features.map((feature) => (
-          <li key={feature.title} className={cn(card, 'flex items-start gap-3.5')}>
-            <span
-              className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-lg',
-                feature.heidi ? 'bg-heidi-soft/60' : 'bg-muted text-muted-foreground',
-              )}
-            >
-              {feature.icon}
-            </span>
-            <span className="grid gap-0.5">
-              <span className="text-sm font-semibold tracking-tight">{feature.title}</span>
-              <span className="text-[13px] text-muted-foreground">{feature.text}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-8">
+        <WelcomeBenefits />
+      </div>
     </div>
   )
 }
@@ -655,7 +628,7 @@ function CompanyStep({
   errors,
   busy,
   workspaceName,
-  suggest,
+  suggestion,
   onWorkspaceName,
   onChange,
   onBack,
@@ -666,7 +639,7 @@ function CompanyStep({
   errors: Errors
   busy: boolean
   workspaceName: string
-  suggest: ReactNode
+  suggestion: Suggestion | null
   onWorkspaceName: (value: string) => void
   onChange: (patch: Partial<Values>) => void
   onBack?: () => void
@@ -714,16 +687,15 @@ function CompanyStep({
           error={errors.workspace_name}
           required
         >
-          <input
+          <WorkspaceNameInput
             {...describedBy('onboarding-workspace-name', errors.workspace_name)}
-            className={inputClass}
+            suggestion={suggestion}
             maxLength={100}
             value={workspaceName}
             disabled={!values}
             onChange={(event) => onWorkspaceName(event.target.value)}
           />
         </FormField>
-        {suggest}
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
           <FormField
             id="onboarding-street"
