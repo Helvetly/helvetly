@@ -175,11 +175,13 @@ func TestLedgerFromAfterTo(t *testing.T) {
 	}
 }
 
-func TestLedgerSettingsMemberForbidden(t *testing.T) {
+// TestLedgerSettingsMember: a member whose scopes cover write:ledger (here full access) may save; the guard
+// (permissions) refuses one without it.
+func TestLedgerSettingsMember(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
 	m := e.join(b.workspace, "member")
-	if resp, raw := e.send(m, "PUT", "/api/v1/ledger/settings", ledgercalc.DefaultAccounts()); resp.StatusCode != http.StatusForbidden {
+	if resp, raw := e.send(m, "PUT", "/api/v1/ledger/settings", ledgercalc.DefaultAccounts()); resp.StatusCode != http.StatusOK {
 		t.Errorf("%d %s", resp.StatusCode, raw)
 	}
 	if resp, raw := e.send(b, "PUT", "/api/v1/ledger/settings", ledgercalc.DefaultAccounts()); resp.StatusCode != http.StatusOK {

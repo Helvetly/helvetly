@@ -69,14 +69,16 @@ test('a member is invited with Full access unless another preset is picked', asy
 })
 
 test.each([
-  ['Read only', ['read:*'], 'Can view everything'],
+  ['Read only', ['read:*'], 'Can view everything and change nothing.'],
   [
-    'Accountant',
-    ['read:*', 'write:invoices', 'write:expenses'],
-    'Can view everything, edit invoices and expenses',
+    'Full access',
+    ['*:*'],
+    'Can view and edit everything. Members, the workspace and billing stay with owners and admins.',
   ],
 ])('the %s preset sends its scopes and says what they allow', async (name, scopes, summary) => {
   const sent = setup()
+  if (name === 'Full access')
+    await userEvent.click(screen.getByRole('radio', { name: 'Read only' }))
   await userEvent.click(screen.getByRole('radio', { name }))
   expect(screen.getByText(summary)).toBeVisible()
   await send()
@@ -94,10 +96,15 @@ test('Custom sends one scope per row of the matrix', async () => {
   const sent = setup()
   await userEvent.click(screen.getByRole('radio', { name: 'Read only' }))
   await userEvent.click(screen.getByRole('radio', { name: 'Custom' }))
+  expect(screen.getByText('Choose what they can view and edit in each area.')).toBeVisible()
+  expect(screen.queryByText('Can view everything and change nothing.')).toBeNull()
   await userEvent.click(screen.getByRole('radio', { name: 'Invoices: Edit' }))
   await userEvent.click(screen.getByRole('radio', { name: 'Clients: No access' }))
-  // Members, settings and billing cannot be edited by a scope.
-  expect(screen.queryByRole('radio', { name: 'Members: Edit' })).toBeNull()
+  await userEvent.click(screen.getByRole('radio', { name: 'Ledger: Edit' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Audit log: No access' }))
+  // Areas run by owners and admins, the audit log and the API have no Edit.
+  for (const area of ['Members', 'Workspace', 'Billing', 'Audit log', 'API & MCP'])
+    expect(screen.queryByRole('radio', { name: `${area}: Edit` })).toBeNull()
   await send()
   await waitFor(() =>
     expect(sent).toHaveBeenCalledWith({
@@ -111,8 +118,13 @@ test('Custom sends one scope per row of the matrix', async () => {
         'read:documents',
         'read:engagements',
         'read:members',
-        'read:settings',
+        'read:invoice-settings',
+        'read:vat-return',
+        'write:ledger',
+        'read:periods',
+        'read:workspace',
         'read:billing',
+        'read:api',
       ],
     }),
   )
@@ -129,8 +141,14 @@ test('no area left blocks sending', async () => {
     'Documents',
     'Engagements',
     'Members',
-    'Settings',
+    'Invoice settings',
+    'VAT return',
+    'Ledger',
+    'Period closing',
+    'Audit log',
+    'Workspace',
     'Billing',
+    'API & MCP',
   ])
     await userEvent.click(screen.getByRole('radio', { name: `${area}: No access` }))
   expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled()

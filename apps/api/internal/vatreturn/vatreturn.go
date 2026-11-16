@@ -54,8 +54,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 const maxNetRates = 10
 
 var (
-	errForbidden = auth.Error(http.StatusForbidden, "forbidden", "Only owners and admins can do this.", nil)
-	errPeriod    = auth.Error(http.StatusBadRequest, "invalid_request",
+	errPeriod = auth.Error(http.StatusBadRequest, "invalid_request",
 		"period must be a year (2026), a half-year (2026-H1), a quarter (2026-Q3) or a month (2026-07).", nil)
 )
 
@@ -81,9 +80,6 @@ type settingsInput struct {
 }
 
 func (s *Service) saveSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if sess.Role != "owner" && sess.Role != "admin" {
-		return errForbidden
-	}
 	var in settingsInput
 	if !s.auth.Decode(w, r, &in) {
 		return nil

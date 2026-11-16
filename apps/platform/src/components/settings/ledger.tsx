@@ -41,10 +41,11 @@ import {
   type LedgerAccounts,
   type LedgerBalance,
 } from '@/lib/ledger'
+import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import { SettingsPage } from './layout'
-import { isManager, SettingsHeader } from './settings-tabs'
+import { SettingsHeader } from './settings-tabs'
 
 const card = 'min-w-0 rounded-xl border border-border'
 const money = 'text-right whitespace-nowrap tabular-nums'
@@ -390,7 +391,7 @@ function CodeField({
 }
 
 function AccountsDrawer({ onClose }: { onClose: () => void }) {
-  const manager = isManager(useSession().data?.role)
+  const canEdit = useCan('write:ledger')
   const settings = useQuery({ queryKey: ['ledger', 'settings'], queryFn: fetchLedgerSettings })
   return (
     <Sheet open onOpenChange={(next) => !next && onClose()}>
@@ -404,7 +405,7 @@ function AccountsDrawer({ onClose }: { onClose: () => void }) {
         {settings.error ? (
           <p className="p-4 text-body text-muted-foreground">{errorMessage(settings.error)}</p>
         ) : settings.data ? (
-          <AccountsForm initial={settings.data} manager={manager} onClose={onClose} />
+          <AccountsForm initial={settings.data} canEdit={canEdit} onClose={onClose} />
         ) : (
           <Loader className="flex-1" />
         )}
@@ -415,11 +416,11 @@ function AccountsDrawer({ onClose }: { onClose: () => void }) {
 
 function AccountsForm({
   initial,
-  manager,
+  canEdit,
   onClose,
 }: {
   initial: LedgerAccounts
-  manager: boolean
+  canEdit: boolean
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -455,7 +456,7 @@ function AccountsForm({
           label={label}
           value={draft[key]}
           error={errors[key]}
-          disabled={!manager || save.isPending}
+          disabled={!canEdit || save.isPending}
           onChange={(value) => setDraft({ ...draft, [key]: value })}
         />
       ))}
@@ -469,11 +470,11 @@ function AccountsForm({
           label={sentenceCase(method.replaceAll('_', ' '))}
           value={code}
           error={errors[`bank.${method}`]}
-          disabled={!manager || save.isPending}
+          disabled={!canEdit || save.isPending}
           onChange={(value) => setDraft({ ...draft, bank: { ...draft.bank, [method]: value } })}
         />
       ))}
-      {manager ? (
+      {canEdit ? (
         <Button
           type="submit"
           className="justify-self-start sm:col-span-2"
@@ -483,7 +484,7 @@ function AccountsForm({
         </Button>
       ) : (
         <p className="text-body-sm text-muted-foreground">
-          {translate('onlyAnOwnerOrAdminCanChangeThese')}
+          {translate('viewOnlyAskAnOwnerOrAdminForEditAccess')}
         </p>
       )}
     </form>

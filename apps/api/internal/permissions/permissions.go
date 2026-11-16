@@ -18,7 +18,7 @@ const maxScopes = 30
 var (
 	actions   = []string{"read", "write", "*"}
 	resources = []string{"clients", "invoices", "expenses", "products", "documents", "engagements", "members",
-		"settings", "billing", "*"}
+		"invoice-settings", "vat-return", "ledger", "periods", "audit-log", "workspace", "billing", "api", "*"}
 )
 
 // Validate checks a member's scope list: non-empty, at most 30, no duplicates, each "<action>:<resource>".
@@ -54,21 +54,24 @@ func Allows(role string, scopes []string, need string) bool {
 	return false
 }
 
+// MayUseAPI reports whether the membership's "api" area lets its API tokens work (auth's BearerMember).
+func MayUseAPI(sess store.Session) bool { return Allows(sess.Role, sess.Scopes, "read:api") }
+
 // prefixes maps each guarded path (and everything below it) to its resource. Unlisted paths (auth, session,
 // account, invitations preview/accept, public signing, creating a new workspace, a person's own notifications)
-// are not scope-checked.
+// are not scope-checked; a person's own API tokens need the api area (tokensPath).
 // Dashboard, Heidi and imports instead check permissions for each included resource, requested action or kind.
 var prefixes = []struct{ path, resource string }{
 	{"/api/v1/clients", "clients"},
 	{"/api/v1/invoices", "invoices"},
-	{"/api/v1/invoice-settings", "settings"},
+	{"/api/v1/invoice-settings", "invoice-settings"},
 	{"/api/v1/instalment-plans", "invoices"},
 	{"/api/v1/quotes", "invoices"},
-	{"/api/v1/periods", "settings"},
-	{"/api/v1/audit-log", "settings"},
-	{"/api/v1/vat-return", "settings"},
-	{"/api/v1/ledger", "settings"},
-	{"/api/v1/transmission-channels", "settings"},
+	{"/api/v1/periods", "periods"},
+	{"/api/v1/audit-log", "audit-log"},
+	{"/api/v1/vat-return", "vat-return"},
+	{"/api/v1/ledger", "ledger"},
+	{"/api/v1/transmission-channels", "invoice-settings"},
 	{"/api/v1/expenses", "expenses"},
 	{"/api/v1/expense-categories", "expenses"},
 	{"/api/v1/products", "products"},
@@ -76,9 +79,9 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/signatures", "documents"},
 	{"/api/v1/templates", "documents"},
 	{"/api/v1/engagements", "engagements"},
-	{"/api/v1/engagement-settings", "settings"},
+	{"/api/v1/engagement-settings", "engagements"},
 	{"/api/v1/members", "members"},
-	{"/api/v1/workspace", "settings"},
+	{"/api/v1/workspace", "workspace"},
 	{"/api/v1/billing", "billing"},
 }
 
@@ -87,9 +90,16 @@ var also = []struct{ method, pattern, scope string }{
 	{http.MethodPost, "/api/v1/engagements/*/periods/*/invoice", "write:invoices"},
 }
 
+// tokensPath is a person's own API tokens: the "api" area lets them create, list and revoke them whatever the
+// method, since a token never reaches past its person's own scopes.
+const tokensPath = "/api/v1/account/tokens"
+
 // Required is the scopes a request needs: read:<resource> for GET and HEAD, else write:<resource>; nil when the
 // path is not scope-checked.
 func Required(method, p string) []string {
+	if p == tokensPath || strings.HasPrefix(p, tokensPath+"/") {
+		return []string{"read:api"}
+	}
 	for _, pre := range prefixes {
 		if p != pre.path && !strings.HasPrefix(p, pre.path+"/") {
 			continue

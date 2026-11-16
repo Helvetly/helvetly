@@ -1,15 +1,7 @@
 import { toast } from 'sonner'
 
 import { ApiError } from './api'
-import {
-  can,
-  describeAccess,
-  levelsOf,
-  presetOf,
-  resourceForPath,
-  scopesFor,
-  toastForbidden,
-} from './permissions'
+import { can, levelsOf, presetOf, resourceForPath, scopesFor, toastForbidden } from './permissions'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>() } }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
@@ -32,8 +24,8 @@ test.each([
 test.each([
   [['*:*'], 'full'],
   [['read:*'], 'read'],
-  [['read:*', 'write:invoices', 'write:expenses'], 'accountant'],
-  [['write:expenses', 'write:invoices', 'read:*'], 'accountant'],
+  // the former accountant preset reads as custom
+  [['read:*', 'write:invoices', 'write:expenses'], 'custom'],
   [['read:clients'], 'custom'],
   [['read:*', 'write:invoices'], 'custom'],
   [[], 'custom'],
@@ -45,9 +37,21 @@ test('null scopes (owner, admin) are full access', () => {
   expect(presetOf(null)).toBe('full')
 })
 
-test('members, settings and billing never go past view', () => {
-  expect(levelsOf(['*:*']).members).toBe('view')
+test('areas managed by role, the audit log and the API never go past view', () => {
+  const full = levelsOf(['*:*'])
+  for (const area of ['members', 'workspace', 'billing', 'audit-log', 'api'] as const)
+    expect(full[area]).toBe('view')
   expect(levelsOf(['write:billing']).billing).toBe('view')
+})
+
+test('each settings area has its own level', () => {
+  const levels = levelsOf(['write:ledger', 'read:vat-return', 'read:api'])
+  expect(levels.ledger).toBe('edit')
+  expect(levels['vat-return']).toBe('view')
+  expect(levels['invoice-settings']).toBe('none')
+  expect(levels.periods).toBe('none')
+  expect(levels.api).toBe('view')
+  expect(levelsOf(['*:*'])['invoice-settings']).toBe('edit')
 })
 
 test('a matrix that equals a preset turns back into its list', () => {
@@ -57,23 +61,19 @@ test('a matrix that equals a preset turns back into its list', () => {
 })
 
 test.each([
-  [['*:*'], 'Can view and edit everything'],
-  [['read:*'], 'Can view everything'],
-  [
-    ['read:*', 'write:invoices', 'write:expenses'],
-    'Can view everything, edit invoices and expenses',
-  ],
-  [['read:clients', 'write:invoices'], 'Can view clients and invoices, edit invoices'],
-  [[], 'No access'],
-] as const)('describeAccess(%j)', (scopes, text) => {
-  expect(describeAccess(scopes)).toBe(text)
-})
-
-test.each([
   ['/clients', 'clients'],
   ['/clients/', 'clients'],
   ['/invoices/new', 'invoices'],
   ['/settings/billing', 'billing'],
+  ['/settings/billing/plans', 'billing'],
+  ['/settings/invoices', 'invoice-settings'],
+  ['/settings/vat-return', 'vat-return'],
+  ['/settings/ledger', 'ledger'],
+  ['/settings/periods', 'periods'],
+  ['/settings/audit-log', 'audit-log'],
+  ['/settings/workspace', 'workspace'],
+  ['/settings/api', 'api'],
+  ['/settings/security', null],
   ['/account', null],
   ['/', null],
   ['/clientsx', null],

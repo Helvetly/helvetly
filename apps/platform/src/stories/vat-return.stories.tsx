@@ -10,7 +10,8 @@ const session = (role: string) => ({
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
   workspace: { id: 'wrk_story', name: 'Muster AG', timezone: 'Europe/Zurich' },
   role,
-  scopes: ['*:*'],
+  // a member here views the books but has no edit right on them
+  scopes: role === 'member' ? ['read:*'] : ['*:*'],
   onboarded: true,
   csrf_token: 'storybook-only',
 })
@@ -249,7 +250,9 @@ export const Member: Story = {
   parameters: { msw: { handlers: handlers('member') } },
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
-    await expect(await page.findByText('Only an owner or admin can change these.')).toBeVisible()
+    await expect(
+      await page.findByText('View only: ask an owner or admin for edit access.'),
+    ).toBeVisible()
     await expect(page.queryByRole('button', { name: 'Edit' })).toBeNull()
     const current = await page.findByRole('region', { name: CURRENT })
     await expect(

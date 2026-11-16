@@ -343,13 +343,13 @@ Keywords: close period, close month, month-end, lock books, periods, abschluss, 
 1. Go to **Settings → Closing**. Each month shows the invoices issued and expenses booked in it, and a warning when drafts are still dated in it.
 2. Click **Close through …** at the top to close every open month up to the latest one that ended (the arrow beside it picks an earlier month), then confirm.
 3. To make changes again, open the month's **…** menu, choose **Reopen**, and give a reason; it is kept in the audit log.
-   While a month is closed, nothing dated in it can be issued, paid, voided or booked. Only owners and admins can close or reopen months.
+   While a month is closed, nothing dated in it can be issued, paid, voided or booked. Owners and admins can close or reopen months, and so can members with Edit on period closing.
 
 ## View the audit log
 
 Keywords: audit log, audit trail, history, who changed, compliance, protokoll, financial events
 
-1. Go to **Settings → Audit log**. The tab is shown to owners and admins only.
+1. Go to **Settings → Audit log**. The tab is shown to owners, admins and members with View on the audit log.
 2. Scroll through every financial event in order, with who did it. Click **Load more** for older entries.
 3. A check at the top confirms the chain is intact, or shows where it broke.
    Entries can never be changed or removed.
@@ -409,7 +409,7 @@ Keywords: invite, member, team, add user, colleague, accountant, invitation, ein
 1. Go to **Members** and click **Invite member**.
 2. Enter their **Email**.
 3. Under **How to invite**, choose **By email** or **By link** (you share the link yourself).
-4. Pick a **Role**: Owner, Admin or Member. For a Member, set their **Access**: Full access, Read only, Accountant or Custom per area.
+4. Pick a **Role**: Owner, Admin or Member. For a Member, set their **Access**: Read only, Full access or Custom. Custom sets No access, View or Edit per area, with each settings page its own area: invoice settings, VAT return, ledger, period closing, audit log, workspace, billing and API & MCP. The audit log, workspace, billing, members and API & MCP stop at View; View of API & MCP lets them create and use personal tokens.
 5. Click **Send invitation** or **Create link**. Open invitations are on the **Invited** tab, where you can resend or revoke them.
    Only owners and admins can invite. A link works for 7 days, and only for someone signed in with that email address.
    Plans are priced per person: on a per-person plan the invite dialog shows what the new member adds (for example "Adds CHF 49 / month incl. VAT"). The cost starts when the invitation is accepted, prorated for the rest of the billing period.

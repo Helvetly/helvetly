@@ -51,7 +51,6 @@ func (e *env) upload(b *browser, name string, content []byte) (*http.Response, [
 func TestLogoValidation(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
-	member := e.join(b.workspace, "member")
 	webp := append([]byte("RIFF\x00\x00\x00\x00WEBPVP8 "), make([]byte, 64)...)
 	for _, tt := range []struct {
 		name, file string
@@ -73,9 +72,6 @@ func TestLogoValidation(t *testing.T) {
 				t.Fatalf("%d %s", resp.StatusCode, raw)
 			}
 		})
-	}
-	if resp, _ := e.upload(member, "logo.png", pngOf(100, 100)); resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("member upload: %d", resp.StatusCode)
 	}
 	if keys := e.files.has("invoice-settings"); len(keys) != 0 {
 		t.Fatalf("refused uploads were stored: %v", keys)

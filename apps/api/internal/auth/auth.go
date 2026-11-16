@@ -52,6 +52,9 @@ type Service struct {
 	// ("" for none) and whether the route writes (main sets it from the public catalogue). Nil: no route accepts a
 	// token.
 	BearerRoutes func(*http.Request) (allowed bool, resource string, write bool)
+	// BearerMember tells whether a token's person may still use the API in its workspace (main sets it from the
+	// members' "api" area), checked on every call. Nil: every member may.
+	BearerMember func(store.Session) bool
 	// TokenResources are the resources an API token's scopes may name (the catalogue's tags in lower case).
 	TokenResources []string
 

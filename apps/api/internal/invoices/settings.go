@@ -100,9 +100,6 @@ var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city
 
 // putSettings: fields left out keep their value. Seller limits are the QR bill's (SPS 2.3, structured address).
 func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	var raw json.RawMessage
 	if !s.auth.Decode(w, r, &raw) {
 		return nil

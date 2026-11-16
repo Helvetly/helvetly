@@ -37,19 +37,51 @@ export const RESOURCES = [
     id: 'members',
     label: translate('members'),
     description: translate('theTeamAndInvitations'),
-    viewOnly: true,
+    viewOnly: translate('ownersAndAdminsManageThis'),
   },
   {
-    id: 'settings',
-    label: translate('settings'),
-    description: translate('invoiceWorkspaceAndEngagementSettings'),
-    viewOnly: true,
+    id: 'invoice-settings',
+    label: translate('invoiceSettings'),
+    description: translate('sellerDetailsNumberingPaymentRemindersAndLogo'),
+  },
+  {
+    id: 'vat-return',
+    label: translate('vatReturn'),
+    description: translate('theVatReturnAndItsMethod'),
+  },
+  {
+    id: 'ledger',
+    label: translate('ledger'),
+    description: translate('theBooksTheirExportsAndTheChartOfAccounts'),
+  },
+  {
+    id: 'periods',
+    label: translate('periodClosing'),
+    description: translate('closingAndReopeningMonths'),
+  },
+  {
+    id: 'audit-log',
+    label: translate('auditLog'),
+    description: translate('theRecordOfFinancialEventsAndItsExport'),
+    viewOnly: translate('theAuditLogCannotBeChanged'),
+  },
+  {
+    id: 'workspace',
+    label: translate('workspace'),
+    description: translate('theWorkspaceSNameAndTimeZone'),
+    viewOnly: translate('ownersAndAdminsManageThis'),
   },
   {
     id: 'billing',
     label: translate('billing'),
     description: translate('planUsageAndInvoicesFromHelvetly'),
-    viewOnly: true,
+    viewOnly: translate('ownersAndAdminsManageThis'),
+  },
+  {
+    id: 'api',
+    label: translate('apiMCP'),
+    description: translate('personalApiTokensNeverBeyondTheirOwnAccess'),
+    viewOnly: translate('viewLetsThemCreateAndUseTokens'),
   },
 ] as const
 
@@ -76,7 +108,7 @@ export function can(scopes: readonly string[], need: Need): boolean {
 export type Level = 'none' | 'view' | 'edit'
 export type Levels = Record<Resource, Level>
 
-/** Members, settings and billing are managed by role, so a scope never reaches past "view". */
+/** Areas managed by role (or never changed) stop at "view", whatever the scope says. */
 export function levelsOf(scopes: readonly string[]): Levels {
   const levels: Levels = {
     clients: 'none',
@@ -86,8 +118,14 @@ export function levelsOf(scopes: readonly string[]): Levels {
     documents: 'none',
     engagements: 'none',
     members: 'none',
-    settings: 'none',
+    'invoice-settings': 'none',
+    'vat-return': 'none',
+    ledger: 'none',
+    periods: 'none',
+    'audit-log': 'none',
+    workspace: 'none',
     billing: 'none',
+    api: 'none',
   }
   for (const resource of RESOURCES) {
     if (can(scopes, `write:${resource.id}`))
@@ -97,17 +135,32 @@ export function levelsOf(scopes: readonly string[]): Levels {
   return levels
 }
 
-export type PresetId = 'full' | 'read' | 'accountant' | 'custom'
+export type PresetId = 'read' | 'full' | 'custom'
 
-export const PRESETS: { id: PresetId; label: string; scopes: string[] | null }[] = [
-  { id: 'full', label: translate('fullAccess'), scopes: ['*:*'] },
-  { id: 'read', label: translate('readOnly2'), scopes: ['read:*'] },
+export const PRESETS: {
+  id: PresetId
+  label: string
+  description: string
+  scopes: string[] | null
+}[] = [
   {
-    id: 'accountant',
-    label: translate('accountant'),
-    scopes: ['read:*', 'write:invoices', 'write:expenses'],
+    id: 'read',
+    label: translate('readOnly2'),
+    description: translate('canViewEverythingAndChangeNothing'),
+    scopes: ['read:*'],
   },
-  { id: 'custom', label: translate('custom'), scopes: null },
+  {
+    id: 'full',
+    label: translate('fullAccess'),
+    description: translate('canViewAndEditEverythingMembersWorkspaceAndBilling'),
+    scopes: ['*:*'],
+  },
+  {
+    id: 'custom',
+    label: translate('custom'),
+    description: translate('chooseWhatTheyCanViewAndEditInEachArea'),
+    scopes: null,
+  },
 ]
 
 const sameLevels = (a: Levels, b: Levels) => RESOURCES.every(({ id }) => a[id] === b[id])
@@ -133,29 +186,6 @@ export function scopesFor(levels: Levels): string[] {
   )
 }
 
-const name = (resource: { label: string }) => resource.label.toLowerCase()
-
-const list = (names: string[]) =>
-  names.length < 2
-    ? names.join('')
-    : translate('dynamicAnd', { value1: names.slice(0, -1).join(', '), value2: names.at(-1) })
-
-/** One line for the access summary: "Can view everything, edit invoices and expenses". */
-export function describeAccess(scopes: readonly string[] | null): string {
-  const levels = levelsOf(scopes ?? EVERYTHING)
-  const viewable = RESOURCES.filter(({ id }) => levels[id] !== 'none')
-  const editable = RESOURCES.filter(({ id }) => levels[id] === 'edit')
-  if (viewable.length === 0) return translate('noAccess')
-  const everythingEditable = RESOURCES.filter((resource) => !('viewOnly' in resource))
-  const all = viewable.length === RESOURCES.length
-  if (all && editable.length === everythingEditable.length)
-    return translate('canViewAndEditEverything')
-  const view = all ? 'everything' : list(viewable.map(name))
-  return editable.length === 0
-    ? translate('canView', { view: view })
-    : translate('canViewEdit', { view: view, value2: list(editable.map(name)) })
-}
-
 const ROUTES: [string, Resource][] = [
   ['/clients', 'clients'],
   ['/invoices', 'invoices'],
@@ -165,9 +195,14 @@ const ROUTES: [string, Resource][] = [
   ['/engagements', 'engagements'],
   ['/documents', 'documents'],
   ['/members', 'members'],
-  ['/settings/invoices', 'settings'],
-  ['/settings/workspace', 'settings'],
+  ['/settings/workspace', 'workspace'],
+  ['/settings/api', 'api'],
   ['/settings/billing', 'billing'],
+  ['/settings/invoices', 'invoice-settings'],
+  ['/settings/vat-return', 'vat-return'],
+  ['/settings/ledger', 'ledger'],
+  ['/settings/periods', 'periods'],
+  ['/settings/audit-log', 'audit-log'],
 ]
 
 /** The resource a page shows; none for the dashboard, security and the like. */
