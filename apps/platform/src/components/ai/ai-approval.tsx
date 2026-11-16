@@ -150,7 +150,7 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
         }}
       >
         <DialogContent
-          className="sm:max-w-md"
+          className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md"
           // The dialog has no trigger: focus goes back to whatever asked, if it is still on the page.
           onCloseAutoFocus={(event) => {
             event.preventDefault()

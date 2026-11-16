@@ -98,7 +98,10 @@ test.each([
   const puts = api({ consent: notYet })
   const { answers, act: run } = setup()
   await run()
-  expect(await screen.findByRole('dialog', { name: 'Use AI in this workspace?' })).toBeVisible()
+  const dialog = await screen.findByRole('dialog', { name: 'Use AI in this workspace?' })
+  expect(dialog).toBeVisible()
+  // short phones: the dialog stays within the screen and scrolls, so its buttons stay reachable
+  expect(dialog).toHaveClass('max-h-[calc(100svh-2rem)]', 'overflow-y-auto')
   await decline()
   await waitFor(() => expect(answers).toEqual([false]))
   // the dialog has no trigger: focus goes back to what asked
