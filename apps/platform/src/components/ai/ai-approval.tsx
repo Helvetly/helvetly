@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { isCancelledError, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, Globe, GraduationCap, MessageSquare, Paperclip, ShieldOff } from 'lucide-react'
 import {
   createContext,
@@ -37,7 +37,8 @@ type AIApproval = {
 }
 
 // Outside the provider (isolated tests and stories) nothing asks; the server still refuses without approval.
-type Ask = { resolve: (approved: boolean) => void; identity: string }
+// invoker: what had focus when the action asked; focus returns there when the dialog closes.
+type Ask = { resolve: (approved: boolean) => void; identity: string; invoker: HTMLElement | null }
 
 const Context = createContext<AIApproval>({ ensure: async () => true })
 
@@ -68,11 +69,13 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
   const checking = useRef(false) // one ensure() at a time, from its first await to its answer
   const pending = useRef<Ask | null>(null)
   const [open, setOpen] = useState(false)
+  const returnFocus = useRef<HTMLElement | null>(null)
 
   /** Answers ask, unless a newer question or another identity has replaced it. */
   const settle = useCallback((ask: Ask, approved: boolean) => {
     if (pending.current !== ask) return
     pending.current = null
+    returnFocus.current = ask.invoker
     setOpen(false)
     ask.resolve(approved)
   }, [])
@@ -81,7 +84,9 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     current.current = identity
     return () => {
-      if (pending.current) settle(pending.current, false)
+      if (!pending.current) return
+      pending.current.invoker = null // the page changed under it: focus is not taken back
+      settle(pending.current, false)
     }
   }, [identity, settle])
 
@@ -105,6 +110,7 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
     checking.current = true
     try {
       const asked = current.current
+      const invoker = document.activeElement instanceof HTMLElement ? document.activeElement : null
       const cached = queryClient.getQueryData<HeidiUsage>(usageKey)
       let usage: HeidiUsage
       try {
@@ -116,13 +122,15 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
               queryFn: heidiApi.usage,
               staleTime: 0,
             })
-      } catch {
-        return true // the server decides and says why
+      } catch (error) {
+        // A cancelled check (a workspace switch resets every query) or another identity by now drops the action;
+        // any other failure lets the server decide and say why.
+        return !isCancelledError(error) && current.current === asked
       }
       if (current.current !== asked) return false
       if (!usage.provider_available || usage.consent?.granted) return true
       return await new Promise<boolean>((resolve) => {
-        pending.current = { resolve, identity: asked }
+        pending.current = { resolve, identity: asked, invoker }
         setOpen(true)
       })
     } finally {
@@ -141,7 +149,16 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
           if (!next && !approve.isPending && pending.current) settle(pending.current, false)
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md"
+          // The dialog has no trigger: focus goes back to whatever asked, if it is still on the page.
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            const invoker = returnFocus.current
+            returnFocus.current = null
+            if (invoker?.isConnected) invoker.focus()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{translate('aiApprovalTitle')}</DialogTitle>
             <DialogDescription>{translate('aiApprovalBody')}</DialogDescription>
