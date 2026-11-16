@@ -83,9 +83,9 @@ func TestBasicRefusesAnExpensesUpload(t *testing.T) {
 	}
 }
 
-// TestAutoBatchCommitsOnlyWhatThePlanHas: an auto batch holding a client and an expense creates the client on Basic
-// and fails the expense with feature_not_in_plan; on Pro the expense is created.
-func TestAutoBatchCommitsOnlyWhatThePlanHas(t *testing.T) {
+// TestAutoBatchAsksOnlyForWhatThePlanHas: on Basic the model is not asked for expenses, so a bill fails with a plan
+// message while a client list is read and committed; on Pro the schema asks for expenses again.
+func TestAutoBatchAsksOnlyForWhatThePlanHas(t *testing.T) {
 	e := planEnv(t, billing.Basic)
 	byFile := func(r aimodel.Request) (aimodel.Reply, error) {
 		if strings.Contains(r.Message, "Migros") {
@@ -95,68 +95,43 @@ func TestAutoBatchCommitsOnlyWhatThePlanHas(t *testing.T) {
 		return answer(`{"document_type":"client_list","clients":[{"name":"Acme AG"}],"products":[],"invoices":[],
 			"engagements":[],"expenses":[]}`)(r)
 	}
-	e.model.replies = append(e.model.replies, byFile, byFile)
+	e.model.replies = append(e.model.replies, byFile, byFile, byFile)
 	w := e.upload(Auto, map[string][]byte{"bill.txt": []byte("Migros receipt"), "clients.txt": []byte("Customer list")})
 	if w.Code != 201 {
 		t.Fatalf("upload: %d %s", w.Code, w.Body)
 	}
 	b := e.extracted(decode[store.ImportBatch](t, w).ID)
-	if len(autoRecords(b, "clients")) != 1 || len(autoRecords(b, "expenses")) != 1 {
+	for _, req := range e.model.seen {
+		if _, ok := req.Schema.JSON["properties"].(map[string]any)["expenses"]; ok {
+			t.Fatal("Basic schema asks for expenses")
+		}
+		if !strings.Contains(req.Instructions, "bill: nothing (this workspace's plan does not include expenses)") {
+			t.Fatalf("instructions: %s", req.Instructions)
+		}
+	}
+	if len(autoRecords(b, "clients")) != 1 || len(autoRecords(b, "expenses")) != 0 {
 		t.Fatalf("records: %+v", b.Records)
 	}
-	expense := autoRecords(b, "expenses")[0].ID
-	status := map[string]commitResult{}
-	for _, r := range e.commitAll(b) {
-		status[r.ID] = r
+	for _, f := range b.Files {
+		if f.Name == "bill.txt" && (f.Status != "failed" || f.Error == nil || !strings.Contains(*f.Error, "plan does not include expenses")) {
+			t.Fatalf("bill file: %+v", f)
+		}
 	}
-	client := status[autoRecords(b, "clients")[0].ID]
-	if client.Status != "created" || status[expense].Status != "failed" || status[expense].Error == nil ||
-		status[expense].Error.Code != "feature_not_in_plan" {
-		t.Fatalf("Basic commit: %+v", status)
-	}
-	if n := e.expenseCount("ws_a"); n != 0 {
-		t.Fatalf("Basic: %d expenses", n)
+	if res := e.commitAll(b); len(res) != 1 || res[0].Status != "created" {
+		t.Fatalf("Basic commit: %+v", res)
 	}
 
 	billingtest.On(t, e.db, "ws_a", billing.Pro)
-	w = e.do("POST", "/api/v1/imports/"+b.ID+"/commit", map[string]any{"record_ids": []string{expense}})
-	if res := decode[commitOut](t, w).Results; len(res) != 1 || res[0].Status != "created" {
-		t.Fatalf("Pro commit: %d %s", w.Code, w.Body)
-	}
-	if n := e.expenseCount("ws_a"); n != 1 {
-		t.Fatalf("Pro: %d expenses", n)
-	}
-}
-
-// TestDowngradeStopsAQueuedExpensesFile: an expenses file queued on Pro whose workspace moved to Basic fails before
-// the model is asked, with the plan's message; another workspace on Pro reads and commits its own.
-func TestDowngradeStopsAQueuedExpensesFile(t *testing.T) {
-	e := planEnv(t, billing.Pro)
-	other := e.person("ws_b", "usr_b", "owner", nil)
-	billingtest.On(t, e.db, "ws_b", billing.Pro)
-	e.consent("ws_b", "usr_b")
-	e.model.replies = append(e.model.replies, answer(receiptReply))
-
-	w := e.upload("expenses", map[string][]byte{"a.jpg": append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, "receipt a"...)})
+	w = e.upload(Auto, map[string][]byte{"bill.txt": []byte("Migros receipt, again")})
 	if w.Code != 201 {
-		t.Fatalf("upload on Pro: %d %s", w.Code, w.Body)
+		t.Fatalf("Pro upload: %d %s", w.Code, w.Body)
 	}
-	queued := decode[store.ImportBatch](t, w)
-	billingtest.On(t, e.db, "ws_a", billing.Basic)
-	got := e.extracted(queued.ID)
-	if f := got.Files[0]; f.Status != "failed" || f.Error == nil || !strings.Contains(*f.Error, "Pro") || e.model.calls.Load() != 0 {
-		t.Fatalf("downgraded file: %+v calls=%d", f, e.model.calls.Load())
+	b = e.extracted(decode[store.ImportBatch](t, w).ID)
+	last := e.model.seen[len(e.model.seen)-1]
+	if _, ok := last.Schema.JSON["properties"].(map[string]any)["expenses"]; !ok {
+		t.Fatal("Pro schema does not ask for expenses")
 	}
-
-	w = e.as(other).upload("expenses", map[string][]byte{"b.jpg": append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, "receipt b"...)})
-	if w.Code != 201 {
-		t.Fatalf("upload on ws_b: %d %s", w.Code, w.Body)
-	}
-	b := e.extracted(decode[store.ImportBatch](t, w).ID)
-	if res := e.commitAll(b); len(res) != 1 || res[0].Status != "created" || e.expenseCount("ws_b") != 1 {
-		t.Fatalf("ws_b commit: %+v", res)
-	}
-	if n := e.expenseCount("ws_a"); n != 0 {
-		t.Fatalf("ws_a: %d expenses", n)
+	if res := e.commitAll(b); len(res) != 1 || res[0].Status != "created" || e.expenseCount("ws_a") != 1 {
+		t.Fatalf("Pro commit: %+v", res)
 	}
 }

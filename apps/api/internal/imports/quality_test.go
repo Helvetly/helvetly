@@ -51,7 +51,7 @@ func TestModelQualityOnMultilingualInvoices(t *testing.T) {
 	fields, wrong := 0, 0
 	for i, d := range docs {
 		f := store.ImportFile{ID: fmt.Sprintf("quality_%d", i), BatchID: "quality", Name: d.name + ".txt"}
-		_, records, err := e.s.ask(context.Background(), invoicesKind, ws, f, 0, chunk{text: d.text})
+		_, records, err := e.s.ask(context.Background(), invoicesKind, ws, f, 0, chunk{text: d.text}, nil)
 		if err != nil {
 			t.Errorf("%s: %v", d.name, err)
 			wrong += len(d.want)
