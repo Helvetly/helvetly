@@ -59,7 +59,7 @@ export const Callouts: Story = {
       'neutral',
     ])
     // Every tone has an icon, given or its own.
-    for (const callout of callouts) await expect(callout.querySelector('svg')).not.toBeNull()
+    await expect([...callouts].filter((callout) => !callout.querySelector('svg'))).toEqual([])
     await expect(within(canvasElement).getByRole('button', { name: 'Complete' })).toBeVisible()
   },
 }

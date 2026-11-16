@@ -134,20 +134,28 @@ describe('the redirect', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  test.each([
-    ['lets another page through, for the plan gate to send on', '/invoices', null],
-    ['sends the welcome on to the plan picker', '/welcome/', '/choose-plan'],
-  ])('without a plan, the first visit %s', async (_, at, to) => {
+  test('without a plan, the first visit is not sent to the welcome: the plan gate sends it on', async () => {
     billing = billingFixture()
-    pathname = at
+    pathname = '/invoices'
     wrap(
       <OnboardingRedirect session={session()}>
         <p>The app</p>
       </OnboardingRedirect>,
     )
-    if (to) await waitFor(() => expect(replace).toHaveBeenCalledWith(to))
-    else expect(await screen.findByText('The app')).toBeInTheDocument()
-    expect(replace).toHaveBeenCalledTimes(to ? 1 : 0)
+    expect(await screen.findByText('The app')).toBeInTheDocument()
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  test('without a plan, the welcome itself sends on to the plan picker', async () => {
+    billing = billingFixture()
+    pathname = '/welcome/'
+    wrap(
+      <OnboardingRedirect session={session()}>
+        <p>The app</p>
+      </OnboardingRedirect>,
+    )
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/choose-plan'))
+    expect(screen.queryByText('The app')).not.toBeInTheDocument()
   })
 
   test.each([
