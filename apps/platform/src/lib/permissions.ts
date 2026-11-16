@@ -52,26 +52,17 @@ export const RESOURCES = [
     description: translate('planUsageAndInvoicesFromHelvetly'),
     viewOnly: true,
   },
-  // HR: a "*" resource never reaches these, admins do not have them, only an owner grants them.
-  { id: 'employees', label: 'Employees', description: 'Staff records and history', hr: true },
-  { id: 'payroll', label: 'Payroll', description: 'Pay terms and the payroll register', hr: true },
+  // HR: a "*" resource never reaches these; owners hold both, admins ADMIN_HR until the owner sets their own list.
   {
-    id: 'employee-documents',
-    label: 'Employee documents',
-    description: 'Contracts, payslips and other personnel files',
+    id: 'employees',
+    label: translate('accessEmployees'),
+    description: translate('accessEmployeesDescription'),
     hr: true,
   },
   {
-    id: 'payroll-approval',
-    label: 'Payroll approval',
-    description: 'Approve entries and mark them paid',
-    hr: true,
-    editOnly: true,
-  },
-  {
-    id: 'payroll-export',
-    label: 'Payroll export',
-    description: 'CSV export and bookings to the ledger',
+    id: 'payroll',
+    label: translate('accessPayroll'),
+    description: translate('accessPayrollDescription'),
     hr: true,
   },
 ] as const
@@ -90,14 +81,30 @@ const isHR = (resource: string | undefined) => HR_RESOURCES.some((id) => id === 
 export const hrScopes = (scopes: readonly string[]) =>
   scopes.filter((scope) => isHR(scope.split(':')[1]))
 
+/** What an admin holds of HR until the owner sets their own list: the Accountant level (permissions.AdminHR). */
+export const ADMIN_HR = ['read:payroll']
+
+/** The HR scopes a membership holds, as permissions.EffectiveHR: both at Edit for an owner, an admin's own list or
+ * ADMIN_HR while it is unset (null), a member's HR scopes. */
+export function effectiveHR(
+  role: string | undefined,
+  scopes: readonly string[] | null | undefined,
+) {
+  if (role === 'owner') return HR_RESOURCES.map((id) => `write:${id}`)
+  if (role === 'admin') return hrScopes(scopes ?? ADMIN_HR)
+  return hrScopes(scopes ?? [])
+}
+
 /**
- * A membership's scopes as `can` reads them: an owner holds every HR scope besides `*:*`, an admin only
- * `*:*` (which never reaches HR), a member their own list. So `can(effectiveScopes(role, scopes), need)`
- * is permissions.Allows(role, scopes, need).
+ * A membership's scopes as `can` reads them: owners and admins `*:*` (which never reaches HR) plus their
+ * `effectiveHR`, a member their own list. So `can(effectiveScopes(role, scopes), need)` is
+ * permissions.Allows(role, scopes, need).
  */
-export function effectiveScopes(role: string | undefined, scopes: readonly string[] | undefined) {
-  if (role === 'owner') return [...EVERYTHING, ...HR_RESOURCES.map((id) => `write:${id}`)]
-  if (role === 'admin') return EVERYTHING
+export function effectiveScopes(
+  role: string | undefined,
+  scopes: readonly string[] | null | undefined,
+): readonly string[] {
+  if (role === 'owner' || role === 'admin') return [...EVERYTHING, ...effectiveHR(role, scopes)]
   return scopes ?? EVERYTHING
 }
 
@@ -121,8 +128,7 @@ export function can(scopes: readonly string[], need: Need): boolean {
 export type Level = 'none' | 'view' | 'edit'
 export type Levels = Record<Resource, Level>
 
-/** Members, settings and billing are managed by role, so a scope never reaches past "view"; payroll approval is
- * only ever "edit". */
+/** Members, settings and billing are managed by role, so a scope never reaches past "view". */
 export function levelsOf(scopes: readonly string[]): Levels {
   const levels: Levels = {
     clients: 'none',
@@ -136,36 +142,35 @@ export function levelsOf(scopes: readonly string[]): Levels {
     billing: 'none',
     employees: 'none',
     payroll: 'none',
-    'employee-documents': 'none',
-    'payroll-approval': 'none',
-    'payroll-export': 'none',
   }
   for (const resource of RESOURCES) {
     if (can(scopes, `write:${resource.id}`))
       levels[resource.id] = 'viewOnly' in resource ? 'view' : 'edit'
-    else if (can(scopes, `read:${resource.id}`) && !('editOnly' in resource))
-      levels[resource.id] = 'view'
+    else if (can(scopes, `read:${resource.id}`)) levels[resource.id] = 'view'
   }
   return levels
 }
 
 export type PresetId = 'full' | 'read' | 'accountant' | 'custom'
 
-export const PRESETS: { id: PresetId; label: string; scopes: string[] | null }[] = [
-  { id: 'full', label: translate('fullAccess'), scopes: ['*:*'] },
-  { id: 'read', label: translate('readOnly2'), scopes: ['read:*'] },
+/** `scopes` the general areas, `hr` what an owner's pick of the preset sets on the HR rows. */
+export const PRESETS: { id: PresetId; label: string; scopes: string[] | null; hr: string[] }[] = [
+  { id: 'full', label: translate('fullAccess'), scopes: ['*:*'], hr: ADMIN_HR },
+  { id: 'read', label: translate('readOnly2'), scopes: ['read:*'], hr: [] },
   {
     id: 'accountant',
     label: translate('accountant'),
     scopes: ['read:*', 'write:invoices', 'write:expenses'],
+    hr: ADMIN_HR,
   },
-  { id: 'custom', label: translate('custom'), scopes: null },
+  { id: 'custom', label: translate('custom'), scopes: null, hr: [] },
 ]
 
 const GENERAL = RESOURCES.filter((resource) => !('hr' in resource))
 const HR = RESOURCES.filter((resource) => 'hr' in resource)
 
-// Presets cover the general areas only: HR access is granted row by row, by an owner.
+// A preset is recognised by the general areas alone: picking one as a non-owner keeps the HR rows as they are (only an
+// owner changes them), so counting HR would turn that pick into Custom at once. The HR rows are summarised apart.
 const sameLevels = (a: Levels, b: Levels) => GENERAL.every(({ id }) => a[id] === b[id])
 
 const rowScopes = (rows: readonly { id: Resource }[], levels: Levels) =>
@@ -183,7 +188,8 @@ export function presetOf(scopes: readonly string[] | null): PresetId {
   return match?.id ?? 'custom'
 }
 
-/** The scope list for a matrix of levels: a preset's own list when it matches (else one per row), then the HR rows. */
+/** The scope list for a matrix of levels: a preset's general list when it matches (else one per row), then the HR
+ * rows as they are. */
 export function scopesFor(levels: Levels): string[] {
   const match = PRESETS.find(
     (preset) => preset.scopes && sameLevels(levelsOf(preset.scopes), levels),
@@ -206,20 +212,28 @@ function describeGeneral(levels: Levels): string {
   const all = viewable.length === GENERAL.length
   if (all && editable.length === everythingEditable.length)
     return translate('canViewAndEditEverything')
-  const view = all ? 'everything' : list(viewable.map(name))
+  const view = all ? translate('accessEverything') : list(viewable.map(name))
   return editable.length === 0
     ? translate('canView', { view: view })
     : translate('canViewEdit', { view: view, value2: list(editable.map(name)) })
 }
 
-/** One line for the access summary: "Can view everything, edit invoices and expenses; HR: view employees". */
-export function describeAccess(scopes: readonly string[] | null): string {
-  const levels = levelsOf(scopes ?? EVERYTHING)
-  const hr = HR.filter(({ id }) => levels[id] !== 'none').map(
-    (resource) => `${levels[resource.id] === 'edit' ? 'edit' : 'view'} ${name(resource)}`,
+/** The HR rows in a few words: "view payroll", "edit employees and view payroll"; null without HR access. */
+export function describeHR(scopes: readonly string[]): string | null {
+  const levels = levelsOf(scopes)
+  const hr = HR.filter(({ id }) => levels[id] !== 'none').map((resource) =>
+    translate(levels[resource.id] === 'edit' ? 'accessEditArea' : 'accessViewArea', {
+      area: name(resource),
+    }),
   )
-  const general = describeGeneral(levels)
-  return hr.length === 0 ? general : `${general}; HR: ${list(hr)}`
+  return hr.length === 0 ? null : list(hr)
+}
+
+/** One line for the access summary: "Can view everything, edit invoices and expenses; HR: view payroll". */
+export function describeAccess(scopes: readonly string[] | null): string {
+  const general = describeGeneral(levelsOf(scopes ?? EVERYTHING))
+  const hr = describeHR(scopes ?? [])
+  return hr ? translate('accessWithHR', { general, hr }) : general
 }
 
 const ROUTES: [string, Resource][] = [
@@ -232,6 +246,7 @@ const ROUTES: [string, Resource][] = [
   ['/documents', 'documents'],
   ['/members', 'members'],
   ['/employees/payroll', 'payroll'],
+  // The list also serves payroll, which picks employees by name: see `canReadPath`.
   ['/employees', 'employees'],
   ['/settings/invoices', 'settings'],
   ['/settings/workspace', 'settings'],
@@ -242,6 +257,17 @@ const ROUTES: [string, Resource][] = [
 /** The resource a page shows; none for the dashboard, security and the like. */
 export function resourceForPath(pathname: string): Resource | null {
   return ROUTES.find(([base]) => pathname === base || pathname.startsWith(`${base}/`))?.[1] ?? null
+}
+
+// Pages the API also serves with payroll view (GET /employees, GET /employment/settings).
+const ALSO_PAYROLL = new Set(['/employees', '/settings/employment'])
+
+/** Whether these scopes may open the page: read of its resource, or payroll view for the employee list and the
+ * employment settings. */
+export function canReadPath(scopes: readonly string[], pathname: string): boolean {
+  const resource = resourceForPath(pathname)
+  if (!resource || can(scopes, `read:${resource}`)) return true
+  return ALSO_PAYROLL.has(pathname.replace(/\/$/, '')) && can(scopes, 'read:payroll')
 }
 
 export const labelOf = (resource: Resource) =>

@@ -135,7 +135,7 @@ describe('pricing page', () => {
     expect(within(pro).getByText('Billed monthly, incl. VAT')).toBeTruthy()
   })
 
-  it('compares the twelve benefits and the eleven allowances from lib/plans', () => {
+  it('compares the thirteen benefits and the eleven allowances from lib/plans', () => {
     render(<PricingPage />)
     const benefits = screen.getByRole('table', { name: 'What each plan includes' })
     const allowances = screen.getByRole('table', { name: 'Usage allowances of each plan' })

@@ -338,7 +338,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   automations: translate('automations'),
   client_portal: translate('theClientPortal'),
   einvoice_xml: translate('eInvoiceXML2'),
-  employees: translate('employeesModule'),
+  employees: translate('planEmployees'),
 }
 
 /**

@@ -28,13 +28,14 @@ const row = (key: string) => {
     within(found).getAllByRole('cell')[['basic', 'pro', 'business'].indexOf(plan)]
 }
 
-test('twelve business rows and eleven allowances, per person or per workspace', () => {
+test('thirteen business rows and eleven allowances, per person or per workspace', () => {
   render(<PlanComparison offer={offer} current="basic" />)
-  expect(document.querySelectorAll('tbody:first-of-type tr')).toHaveLength(12)
+  expect(document.querySelectorAll('tbody:first-of-type tr')).toHaveLength(13)
   expect(document.querySelectorAll('tbody:last-of-type tr[data-row]')).toHaveLength(11)
   expect(row('heidi')('basic')).toHaveTextContent('Not included')
   expect(row('heidi')('pro')).toHaveTextContent('5 M / person / month')
   expect(row('client_portal')('pro')).toHaveTextContent('Not included')
+  expect(row('employees')('pro')).toHaveTextContent('Not included')
   expect(
     within(row('client_portal')('business') ?? document.body).getByLabelText('Included'),
   ).toBeVisible()

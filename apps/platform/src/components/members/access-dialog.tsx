@@ -14,14 +14,18 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { translate } from '@/lib/i18n'
 import { scopesProblem, useChangeScopes, type Member } from '@/lib/members'
-import { EVERYTHING } from '@/lib/permissions'
+import { effectiveHR, EVERYTHING } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import { AccessEditor } from './access-editor'
 
-/** Change what a member may see and edit; it applies on their next request. */
+/** Change what a member may see and edit, or an admin's HR access; it applies on their next request. */
 export function AccessDialog({ member, onClose }: { member: Member; onClose: () => void }) {
-  const [scopes, setScopes] = useState<string[]>(member.scopes ?? EVERYTHING)
+  const admin = member.role === 'admin'
+  // An admin's scopes are their HR list alone (null: the default, payroll view).
+  const [scopes, setScopes] = useState<string[]>(() =>
+    admin ? effectiveHR('admin', member.scopes) : (member.scopes ?? EVERYTHING),
+  )
   const [problem, setProblem] = useState<string | null>(null)
   const change = useChangeScopes()
   const owner = useSession().data?.role === 'owner'
@@ -56,12 +60,18 @@ export function AccessDialog({ member, onClose }: { member: Member; onClose: () 
           <DialogDescription>{translate('whatThisMemberCanSeeAndChangeInThe')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-4">
-          <AccessEditor value={scopes} onChange={setScopes} error={problem} canChangeHR={owner} />
+          <AccessEditor
+            value={scopes}
+            onChange={setScopes}
+            error={problem}
+            canChangeHR={owner}
+            admin={admin}
+          />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               {translate('cancel')}
             </Button>
-            <Button type="submit" disabled={change.isPending || scopes.length === 0}>
+            <Button type="submit" disabled={change.isPending || (!admin && scopes.length === 0)}>
               {translate('saveAccess')}
             </Button>
           </DialogFooter>

@@ -161,6 +161,7 @@ const FEATURE_FROM = {
   automations: 'pro',
   client_portal: 'business',
   einvoice_xml: 'business',
+  employees: 'business',
 } as const satisfies Record<string, PlanId>
 
 export type Feature = keyof typeof FEATURE_FROM
@@ -218,7 +219,7 @@ export type Benefit = {
 const INCLUDED = translate('included')
 const from = (feature: Feature) => (plan: PlanId) => (has(plan, feature) ? INCLUDED : null)
 
-/** The twelve business benefits compared on the pricing page, in this order. */
+/** The thirteen business benefits compared on the pricing page, in this order. */
 export const BENEFITS: Benefit[] = [
   {
     key: 'invoicing',
@@ -300,6 +301,13 @@ export const BENEFITS: Benefit[] = [
     limitKeys: [],
     cell: from('ledger_exports'),
   },
+  {
+    key: 'employees',
+    label: translate('employeesAndPayrollRegister'),
+    note: translate('staffRecordsEmployeeDocumentsAndAPayrollRegister'),
+    limitKeys: [],
+    cell: from('employees'),
+  },
 ]
 
 export type Plan = {
@@ -364,7 +372,7 @@ export const PLANS: Plan[] = [
       }),
       translate('storagePerPerson', { value1: storage('pro') }),
     ],
-    excludes: [translate('clientPortalAndEInvoiceXML')],
+    excludes: [translate('clientPortalAndEInvoiceXML'), translate('employeesAndPayrollRegister')],
   },
   {
     id: 'business',
@@ -375,6 +383,7 @@ export const PLANS: Plan[] = [
     highlights: [
       translate('clientPortalPortalRecipientsAreNotPaidSeats'),
       translate('eInvoiceXMLExportsInSupportedFormats'),
+      translate('employeesAndPayrollRegister'),
       translate('clientsPerWorkspace', { value1: n('clients', 'business') }),
       translate('invoiceIssuesAndExpensesPerPersonAMonth', {
         value1: n('invoices_per_month', 'business'),

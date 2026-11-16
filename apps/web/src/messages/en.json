@@ -856,5 +856,7 @@
   "pricingIsTemporarilyUnavailable": "Pricing is temporarily unavailable.",
   "tryAgainInAMomentOrWriteTo": "Try again in a moment, or write to",
   "checking": "Checking…",
-  "retry": "Retry"
+  "retry": "Retry",
+  "employeesAndPayrollRegister": "Employees and payroll register",
+  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Staff records, employee documents and a payroll register you fill in or import. No payroll calculation, payslips or filings."
 }

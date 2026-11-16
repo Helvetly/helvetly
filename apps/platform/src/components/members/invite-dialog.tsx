@@ -18,7 +18,7 @@ import {
   type InvitationCreated,
   type Role,
 } from '@/lib/members'
-import { EVERYTHING } from '@/lib/permissions'
+import { ADMIN_HR, EVERYTHING } from '@/lib/permissions'
 
 import { AccessEditor } from './access-editor'
 
@@ -54,6 +54,7 @@ export function InviteDialog({
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('member')
   const [scopes, setScopes] = useState<string[]>(EVERYTHING)
+  const [adminHR, setAdminHR] = useState<string[]>(ADMIN_HR)
   const [by, setBy] = useState<'email' | 'link'>('email')
   const [problem, setProblem] = useState<string | null>(null)
   const [created, setCreated] = useState<InvitationCreated | null>(null)
@@ -65,12 +66,13 @@ export function InviteDialog({
     event.preventDefault()
     setProblem(null)
     invite.mutate(
-      // Owners and admins always have everything: the API refuses scopes for them.
+      // Owners have everything; an admin has every general area and, unless the owner picks otherwise, payroll view.
       {
         email: email.trim(),
         role,
         send_email: by === 'email',
         ...(role === 'member' && { scopes }),
+        ...(role === 'admin' && adminHR.join() !== ADMIN_HR.join() && { scopes: adminHR }),
       },
       {
         onSuccess: (sent) => {
@@ -176,14 +178,16 @@ export function InviteDialog({
                   </label>
                 ))}
               </fieldset>
-              {role === 'member' && (
+              {role !== 'owner' && (
                 <div className="grid gap-1.5">
                   <span className="text-[13px] font-medium">{translate('access')}</span>
                   <AccessEditor
-                    value={scopes}
-                    onChange={setScopes}
+                    key={role}
+                    value={role === 'admin' ? adminHR : scopes}
+                    onChange={role === 'admin' ? setAdminHR : setScopes}
                     error={problem}
                     canChangeHR={actorRole === 'owner'}
+                    admin={role === 'admin'}
                   />
                 </div>
               )}

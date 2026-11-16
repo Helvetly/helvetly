@@ -37,7 +37,7 @@ describe('plans', () => {
 })
 
 describe('offer v2 public projection', () => {
-  it('compares the twelve business benefits', () => {
+  it('compares the thirteen business benefits', () => {
     expect(BENEFITS.map((b) => b.key)).toEqual([
       'invoicing',
       'swiss_qr',
@@ -51,6 +51,7 @@ describe('offer v2 public projection', () => {
       'corrections_vat',
       'einvoice_xml',
       'ledger_exports',
+      'employees',
     ])
   })
 
@@ -113,6 +114,7 @@ describe('offer v2 public projection', () => {
       expect(cells[key]?.[0]).toBeNull()
     expect(cells.client_portal).toEqual([null, null, 'Included'])
     expect(cells.einvoice_xml).toEqual([null, null, 'Included'])
+    expect(cells.employees).toEqual([null, null, 'Included'])
     expect(has('basic', 'heidi')).toBe(false)
     expect(plansWith('heidi')).toBe('Pro or Business')
     expect(plansWith('heidi', 'conjunction')).toBe('Pro and Business')
