@@ -889,7 +889,7 @@
   "ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth": "Hauptbuch, Datenexporte und {value1} automatisierte Aktionen / Monat",
   "storagePerTeamMember": "{value1} Speicher",
   "perTeamMemberShort": "pro Teammitglied",
-  "perTeamMemberAMonthShort": "pro Teammitglied und Monat",
+  "perMonthShort": "/ Monat",
   "whatCountsAsAnAutomatedAction": "Was zählt als automatisierte Aktion?",
   "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro umfasst {value1} und Business {value2} automatisierte Aktionen pro bezahltem Teammitglied und Monat. Jeder automatische Schritt zählt einmal: eine planmässig ausgestellte Rechnung (eine Rate oder eine Auftragsperiode), ein für Sie erstellter Entwurf, eine geplante Mitteilung oder eine automatische E-Mail an einen Empfänger, etwa eine Zahlungserinnerung. Eine Rechnung automatisch auszustellen und einem Kunden zu senden, sind also zwei Aktionen. Prüfungen ohne Ergebnis und Wiederholungen desselben Schritts zählen nicht erneut. Die Kontingente für E-Mails, Rechnungen und KI gelten ebenfalls. Sind die Aktionen aufgebraucht, warten die Automatisierungen auf den nächsten Monat; alles, was Sie von Hand erledigen, funktioniert weiter.",
   "helpQuickImport": "Import",

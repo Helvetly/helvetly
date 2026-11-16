@@ -893,7 +893,7 @@
   "ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth": "Libro mastro, esportazioni dei dati e {value1} azioni automatiche / mese",
   "storagePerTeamMember": "{value1} di spazio di archiviazione",
   "perTeamMemberShort": "per membro del team",
-  "perTeamMemberAMonthShort": "per membro del team al mese",
+  "perMonthShort": "/ mese",
   "whatCountsAsAnAutomatedAction": "Che cosa conta come azione automatica?",
   "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro include {value1} azioni automatiche e Business {value2} per membro pagante del team al mese. Ogni operazione automatica viene conteggiata una sola volta: una fattura emessa secondo una pianificazione (per una rata o un periodo di un incarico), una bozza creata per te, una notifica programmata oppure un’email automatica a un destinatario, ad esempio un sollecito di pagamento. Emettere automaticamente una fattura e inviarla via email a un cliente utilizza quindi due azioni. I controlli che non trovano nulla da fare e i nuovi tentativi della stessa operazione non vengono conteggiati di nuovo. Si applicano anche le disponibilità di email, fatture e token IA. Quando le azioni si esauriscono, le automazioni attendono il mese successivo; tutto ciò che fai manualmente continua a funzionare.",
   "allowanceLegend": "Le quote di ogni membro pagante del team si sommano in un’unica quota condivisa nello spazio di lavoro. I limiti dello spazio di lavoro si applicano all’intero spazio.",

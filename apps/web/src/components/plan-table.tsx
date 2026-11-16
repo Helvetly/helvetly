@@ -28,7 +28,7 @@ const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 
 function unitOf(limit: LimitKey, language: Locale): string {
   const translate = translatorFor(language)
   if (plansIn(language).LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
-  return limit === 'storage_bytes' ? '' : translate('perTeamMemberAMonthShort')
+  return limit === 'storage_bytes' ? '' : translate('perMonthShort')
 }
 
 function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {

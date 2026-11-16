@@ -893,7 +893,7 @@
   "ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth": "Grand livre, exports de données et {value1} actions automatisées / mois",
   "storagePerTeamMember": "{value1} de stockage",
   "perTeamMemberShort": "par membre de l’équipe",
-  "perTeamMemberAMonthShort": "par membre de l’équipe et par mois",
+  "perMonthShort": "/ mois",
   "whatCountsAsAnAutomatedAction": "Qu’est-ce qui compte comme une action automatisée ?",
   "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro comprend {value1} actions automatisées et Business {value2} par membre payant de l’équipe et par mois. Chaque étape automatique compte une fois : une facture émise à la date prévue (pour une échéance ou une période de mandat), un brouillon créé pour vous, une notification planifiée ou un e-mail automatique à un destinataire, par exemple un rappel de paiement. Émettre automatiquement une facture et l’envoyer par e-mail à un client consomme donc deux actions. Les vérifications qui ne trouvent rien à faire et les nouvelles tentatives d’une même étape ne sont pas comptées à nouveau. Les quotas d’e-mails, de factures et d’IA s’appliquent aussi. Lorsque le quota d’actions est épuisé, les automatisations sont mises en attente jusqu’au mois suivant ; toutes les opérations manuelles restent disponibles.",
   "allowanceLegend": "Les quotas de chaque membre payant de l’équipe s’additionnent dans un quota partagé par l’espace de travail. Les limites de l’espace de travail s’appliquent à l’ensemble de celui-ci.",

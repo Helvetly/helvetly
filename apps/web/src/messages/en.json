@@ -893,7 +893,7 @@
   "ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth": "Ledger, data exports and {value1} automated actions / month",
   "storagePerTeamMember": "{value1} storage",
   "perTeamMemberShort": "per team member",
-  "perTeamMemberAMonthShort": "per team member a month",
+  "perMonthShort": "/ month",
   "whatCountsAsAnAutomatedAction": "What counts as an automated action?",
   "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro includes {value1} and Business {value2} automated actions per paid team member a month. Each automatic step counts once: an invoice issued on schedule (an instalment or an engagement period), a draft created for you, a scheduled notice, or one automatic email to one recipient, such as a payment reminder. So automatically issuing an invoice and emailing it to one client uses two actions. Checks that find nothing to do, and retries of the same step, do not count again. The email, invoice and AI allowances apply too. When the actions run out, automations wait for the next month; everything you do by hand keeps working.",
   "allowanceLegend": "Allowances per paid team member combine in one shared workspace pool. Workspace limits apply to the whole workspace.",
