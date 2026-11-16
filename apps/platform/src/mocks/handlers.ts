@@ -17,6 +17,7 @@ import {
   sampleAgreement,
   scheduledInvoice,
 } from './data'
+import { employeesHandlers } from './employees'
 import { heidiHandlers } from './heidi'
 import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
@@ -408,4 +409,5 @@ export const handlers = [
   ...(process.env.VITEST ? accountHandlers : []),
   ...(process.env.VITEST ? notificationHandlers : []),
   ...(process.env.VITEST ? quoteHandlers : []),
+  ...(process.env.VITEST ? employeesHandlers : []),
 ]

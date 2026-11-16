@@ -26,6 +26,7 @@ import (
 	"helvetly.com/api/internal/documents"
 	"helvetly.com/api/internal/dunning"
 	"helvetly.com/api/internal/einvoice"
+	"helvetly.com/api/internal/employees"
 	"helvetly.com/api/internal/engagements"
 	"helvetly.com/api/internal/expenses"
 	"helvetly.com/api/internal/feedback"
@@ -194,6 +195,7 @@ func run() error {
 	bg.Go(ctx, "delivery", deliverySvc.Run) // every minute: queued e-invoice transmissions
 	expensesSvc := expenses.New(db, authSvc, files, slog.Default())
 	documentsSvc := documents.New(db, authSvc, files, cfg.DocumentsMaxUpload, slog.Default())
+	employeesSvc := employees.New(db, authSvc, documentsSvc, cfg.SecretKey, slog.Default())
 	signaturesSvc := signatures.New(db, authSvc, files, signMailer, cfg.PublicURL, slog.Default())
 	templatesSvc := templates.New(db, authSvc, files, templateMailer, signaturesSvc, slog.Default())
 	bg.Go(ctx, "documents trash", documentsSvc.Run) // purges the Trash
@@ -202,6 +204,7 @@ func run() error {
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, slog.Default())
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
+	exportSvc.SetHR(employeesSvc)
 	exportSvc.SetSnapshots(billingSvc.ReserveSnapshot) // the owner's whole export: its own small allowance
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{
@@ -246,6 +249,7 @@ func run() error {
 		deliverySvc.Register(mux)
 		expensesSvc.Register(mux)
 		documentsSvc.Register(mux)
+		employeesSvc.Register(mux)
 		signaturesSvc.Register(mux)
 		templatesSvc.Register(mux)
 		billingSvc.Register(mux)

@@ -33,6 +33,11 @@ describe('TOKEN_RESOURCES', () => {
       Object.fromEntries(TOKEN_RESOURCES.map(({ name, writable }) => [name, writable])),
     ).toEqual(Object.fromEntries(catalogue))
   })
+
+  it('offers no HR resource: employees and payroll stay out of the public API', () => {
+    const hr = ['employees', 'payroll']
+    expect(TOKEN_RESOURCES.filter(({ name }) => hr.includes(name))).toEqual([])
+  })
 })
 
 describe('scopes', () => {

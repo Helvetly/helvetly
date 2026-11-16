@@ -37,6 +37,7 @@ export function recordDetail(record: ImportRecord) {
     invoices: [value('client_name'), value('issue_date'), money(value('total'))],
     engagements: [value('client_name'), value('start_date')],
     expenses: [value('document_date'), money(value('amount'))],
+    payroll: [value('period_start'), money(value('gross'))],
   }[record.kind]
   return parts.filter(Boolean).join(' · ')
 }

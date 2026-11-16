@@ -301,6 +301,42 @@ export const IMPORT_KINDS = {
     listKey: ['expenses'],
     entityHref: (id) => `/expenses?id=${encodeURIComponent(id)}`,
   },
+  payroll: {
+    label: 'Payroll',
+    path: '/employees/payroll',
+    labelKey: 'employee_number',
+    fields: {
+      employee_number: 'Employee number',
+      email: 'Email',
+      period_start: 'Period start',
+      period_end: 'Period end',
+      currency: 'Currency',
+      gross: 'Gross',
+      deductions: 'Deductions',
+      net: 'Net',
+      employer_costs: 'Employer costs',
+      pay_date: 'Pay date',
+      source_ref: 'Source reference',
+      note: 'Note',
+    },
+    columns: ['employee_number', 'period_start', 'period_end', 'currency', 'gross', 'net'],
+    editable: [
+      'employee_number',
+      'email',
+      'period_start',
+      'period_end',
+      'currency',
+      'gross',
+      'deductions',
+      'net',
+      'employer_costs',
+      'pay_date',
+      'source_ref',
+      'note',
+    ],
+    listKey: ['payroll'],
+    entityHref: (id) => `/employees/payroll?entry=${encodeURIComponent(id)}`,
+  },
 } satisfies Record<string, ImportKindConfig>
 
 export type ImportKind = keyof typeof IMPORT_KINDS
@@ -585,6 +621,7 @@ const importCountMessages = {
   invoices: 'importInvoiceCount',
   engagements: 'importEngagementCount',
   expenses: 'importExpenseCount',
+  payroll: 'importPayrollCount',
 } as const
 
 /** A summary of committed rows, including those still needing attention. */

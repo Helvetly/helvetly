@@ -877,5 +877,7 @@
   "stripTrial": "Business {days} Tage kostenlos testen, mit bis zu {members} Personen",
   "stripPerPerson": "Abrechnung pro Person, bis zu {seats} Personen in der App",
   "stripCurrencies": "Gleiche Beträge in CHF, EUR und USD, inklusive Steuern",
-  "stripCancel": "Plan jederzeit wechseln oder kündigen"
+  "stripCancel": "Plan jederzeit wechseln oder kündigen",
+  "employeesAndPayrollRegister": "Mitarbeitende und Lohnregister",
+  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Personalakten, Mitarbeiterdokumente und ein Lohnregister, das Sie ausfüllen oder importieren. Keine Lohnberechnung, keine Lohnabrechnungen und keine Meldungen."
 }

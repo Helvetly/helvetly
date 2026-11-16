@@ -330,14 +330,15 @@ func (q Q) ImportOutcome(ctx context.Context, batchID string) (ImportOutcome, er
 }
 
 // ExistingUpload: the stored object of a Document or receipt of the workspace with these bytes, so an import reads it
-// instead of storing the bytes again.
-func (q Q) ExistingUpload(ctx context.Context, workspaceID, sum string) (id, objectKey string, err error) {
+// instead of storing the bytes again. An HR import (hr) reuses only HR files, and any other import never does.
+func (q Q) ExistingUpload(ctx context.Context, workspaceID, sum string, hr bool) (id, objectKey string, err error) {
 	err = q.db.QueryRow(ctx, `SELECT id, object_key FROM (
 		SELECT id, object_key, 'document' AS resource FROM documents WHERE workspace_id=$1 AND sha256=$2 AND deleted_at IS NULL
+			AND hr_private = $3 AND employee_id IS NULL
 		UNION ALL
 		SELECT r.id, r.object_key, 'receipt' FROM expense_receipts r JOIN expenses e ON e.id=r.expense_id
-		WHERE r.workspace_id=$1 AND r.sha256=$2 AND e.deleted_at IS NULL
-	) matched ORDER BY resource, id LIMIT 1`, workspaceID, sum).Scan(&id, &objectKey)
+		WHERE r.workspace_id=$1 AND r.sha256=$2 AND e.deleted_at IS NULL AND NOT $3
+	) matched ORDER BY resource, id LIMIT 1`, workspaceID, sum, hr).Scan(&id, &objectKey)
 	return id, objectKey, err
 }
 

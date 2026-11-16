@@ -29,14 +29,17 @@ describe('plans', () => {
 describe('full comparison', () => {
   // The offer's access features as seeded: key -> plans with the feature on.
   const seeded = new Map(
-    [
-      ...readFileSync(join(api, 'store/migrations/00007_offers.sql'), 'utf8').matchAll(
-        /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
-      ),
-    ].map(([, key, values]) => {
-      const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
-      return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
-    }),
+    // Offer v2's features, then the ones later offers add (00013: employees).
+    ['00007_offers.sql', '00013_offer_employees.sql']
+      .flatMap((file) => [
+        ...readFileSync(join(api, 'store/migrations', file), 'utf8').matchAll(
+          /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
+        ),
+      ])
+      .map(([, key, values]) => {
+        const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
+        return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
+      }),
   )
   const rows = FEATURE_GROUPS.flatMap((g) => g.rows).filter((r) => !(r.key in LIMITS))
 
@@ -54,7 +57,7 @@ describe('full comparison', () => {
 })
 
 describe('offer v2 public projection', () => {
-  it('compares the twelve business benefits', () => {
+  it('compares the thirteen business benefits', () => {
     expect(BENEFITS.map((b) => b.key)).toEqual([
       'invoicing',
       'swiss_qr',
@@ -68,6 +71,7 @@ describe('offer v2 public projection', () => {
       'corrections_vat',
       'einvoice_xml',
       'ledger_exports',
+      'employees',
     ])
   })
 
@@ -130,6 +134,7 @@ describe('offer v2 public projection', () => {
       expect(cells[key]?.[0]).toBeNull()
     expect(cells.client_portal).toEqual([null, null, 'Included'])
     expect(cells.einvoice_xml).toEqual([null, null, 'Included'])
+    expect(cells.employees).toEqual([null, null, 'Included'])
     expect(has('basic', 'heidi')).toBe(false)
     expect(plansWith('heidi')).toBe('Pro or Business')
     expect(plansWith('heidi', 'conjunction')).toBe('Pro and Business')

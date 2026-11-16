@@ -61,7 +61,7 @@ test('a batch from the contract passes the guard; a broken record does not', () 
   expect(
     isImportBatch({ ...batch(), records: [{ ...record(), data: { name: { nested: true } } }] }),
   ).toBe(false)
-  expect(isImportBatch({ ...batch(), kind: 'payroll' })).toBe(false)
+  expect(isImportBatch({ ...batch(), kind: 'timesheets' })).toBe(false)
   expect(isImportBatch({ ...batch(), files: [{ id: 'imf_1' }] })).toBe(false)
 })
 
@@ -209,7 +209,7 @@ test('a PATCH carries only changed fields, emptied ones as null', () => {
 test('maps Heidi’s options to kinds', () => {
   expect(importKindByLabel('Clients')).toBe('clients')
   expect(importKindByLabel('Products & services')).toBe('products')
-  expect(importKindByLabel('Payroll')).toBeNull()
+  expect(importKindByLabel('Timesheets')).toBeNull()
 })
 
 test('explains errors for novices', () => {

@@ -102,8 +102,11 @@ func (s *Service) notifyDone(ctx context.Context, q store.Q, batchID string) err
 		return err
 	}
 	data := map[string]any{"batch_id": batchID, "kind": o.Kind, "path": "/" + o.Kind}
-	if o.Kind == Auto { // "Your document import is ready to review", in Documents
+	switch o.Kind {
+	case Auto: // "Your document import is ready to review", in Documents
 		data["kind"], data["path"] = "document", "/documents"
+	case payrollKind.Name:
+		data["path"] = "/employees/payroll"
 	}
 	event := "import.ready"
 	if o.Records > 0 {
@@ -133,6 +136,9 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 	data, err := s.read(ctx, f)
 	if err != nil {
 		return err
+	}
+	if k.Parse != nil {
+		return s.parse(ctx, k, f, data)
 	}
 	parts, err := chunks(f.Name, f.ContentType, data)
 	if u, ok := errors.AsType[unsupported](err); ok {
@@ -192,6 +198,21 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 		}
 	}
 	return nil
+}
+
+// parse reads a kind's records without the model and stores them in one step, like a single chunk.
+func (s *Service) parse(ctx context.Context, k Kind, f store.ImportFile, data []byte) error {
+	list, err := k.Parse(f.Name, f.ContentType, data)
+	if err != nil {
+		return failure{err.Error()}
+	}
+	if len(list) > maxChunkRecords {
+		return failure{fmt.Sprintf("A file may hold at most %d records.", maxChunkRecords)}
+	}
+	if err := s.db.ImportFileProgress(ctx, f.ID, f.Attempts, 1, s.now().Add(jobLease), s.now()); err != nil {
+		return err
+	}
+	return s.db.Tx(ctx, func(q store.Q) error { return s.add(ctx, q, f, proposed{k.Name: list}) })
 }
 
 const notRecognised = "This file does not look like an invoice, bill, contract, client list or price list, so nothing was taken from it."

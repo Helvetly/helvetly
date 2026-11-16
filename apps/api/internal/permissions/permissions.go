@@ -18,8 +18,47 @@ const maxScopes = 30
 var (
 	actions   = []string{"read", "write", "*"}
 	resources = []string{"clients", "invoices", "expenses", "products", "documents", "engagements", "members",
-		"invoice-settings", "vat-return", "ledger", "periods", "audit-log", "workspace", "billing", "api", "*"}
+		"invoice-settings", "vat-return", "ledger", "periods", "audit-log", "workspace", "billing", "api", "*", "employees",
+		"payroll"}
+	// hr are the HR resources (docs/planning/2026-11-15-employees.md): employees (records and their documents) and
+	// payroll (pay terms, the register, its approval, export and bookings). A "*" resource never reaches them; only an
+	// owner holds them without a grant, and only an owner changes them.
+	hr = []string{"employees", "payroll"}
+	// AdminHR is what an admin holds of HR until the owner sets otherwise: an outside accountant's level, the payroll register
+	// to view, no personnel records and no sealed fields (Art. 328b OR: only what the job needs).
+	AdminHR = store.AdminHR
+	ownerHR = []string{"write:employees", "write:payroll"}
 )
+
+// EffectiveHR is the HR scopes a membership holds, sorted: every one for an owner, an admin's own list or AdminHR
+// when the owner never set one (nil), a member's HR scopes.
+func EffectiveHR(role string, scopes []string) []string {
+	switch {
+	case role == "owner":
+		return ownerHR
+	case role == "admin" && scopes == nil:
+		return AdminHR
+	}
+	return HRScopes(scopes)
+}
+
+// IsHR reports whether scope ("<action>:<resource>") names an HR resource.
+func IsHR(scope string) bool {
+	_, resource, _ := strings.Cut(scope, ":")
+	return slices.Contains(hr, resource)
+}
+
+// HRScopes is the HR part of a scope list, sorted, so two lists can be compared.
+func HRScopes(scopes []string) []string {
+	out := []string{}
+	for _, s := range scopes {
+		if IsHR(s) {
+			out = append(out, s)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
 
 // Validate checks a member's scope list: non-empty, at most 30, no duplicates, each "<action>:<resource>".
 func Validate(scopes []string) error {
@@ -38,20 +77,30 @@ func Validate(scopes []string) error {
 	return nil
 }
 
-// Allows reports whether the membership grants need ("<action>:<resource>"). Owners and admins have every
-// scope; write implies read.
+// Allows reports whether the membership grants need ("<action>:<resource>"). Owners have every scope, admins every
+// scope but the HR ones, which they hold as EffectiveHR; a member holds an HR scope only when named (a "*" resource
+// does not reach them); write implies read.
 func Allows(role string, scopes []string, need string) bool {
-	if role == "owner" || role == "admin" {
+	isHR := IsHR(need)
+	switch {
+	case role == "owner", role == "admin" && !isHR:
 		return true
+	case role == "admin":
+		scopes = EffectiveHR(role, scopes)
 	}
 	action, resource, _ := strings.Cut(need, ":")
 	for _, s := range scopes {
 		a, r, _ := strings.Cut(s, ":")
-		if (r == "*" || r == resource) && (a == "*" || a == action || a == "write" && action == "read") {
+		if (r == resource || r == "*" && !isHR) && (a == "*" || a == action || a == "write" && action == "read") {
 			return true
 		}
 	}
 	return false
+}
+
+// AllowsAny is Allows for one of the alternatives in need ("read:employees|read:payroll").
+func AllowsAny(role string, scopes []string, need string) bool {
+	return slices.ContainsFunc(strings.Split(need, "|"), func(s string) bool { return Allows(role, scopes, s) })
 }
 
 // MayUseAPI reports whether the membership's "api" area lets its API tokens work (auth's BearerMember).
@@ -83,6 +132,9 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/members", "members"},
 	{"/api/v1/workspace", "workspace"},
 	{"/api/v1/billing", "billing"},
+	{"/api/v1/employees", "employees"},
+	{"/api/v1/employment", "employees"},
+	{"/api/v1/payroll", "payroll"},
 }
 
 // also: routes that create in a second resource, as path.Match patterns per method.
@@ -90,15 +142,38 @@ var also = []struct{ method, pattern, scope string }{
 	{http.MethodPost, "/api/v1/engagements/*/periods/*/invoice", "write:invoices"},
 }
 
+// instead: routes whose scopes replace their prefix's read/write scope, as path.Match patterns, for reads (GET, HEAD)
+// or writes. Pay terms sit under an employee but are payroll; the bank account, tax id and social-security number
+// (protected) need payroll edit; the employee list and the settings also serve payroll, which picks employees by name.
+var instead = []struct {
+	write   bool
+	pattern string
+	scopes  []string
+}{
+	{false, "/api/v1/employees", []string{"read:employees|read:payroll"}},
+	{false, "/api/v1/employees/*/pay-terms", []string{"read:payroll"}},
+	{true, "/api/v1/employees/*/pay-terms", []string{"write:payroll"}},
+	{true, "/api/v1/employees/*/pay-terms/*", []string{"write:payroll"}},
+	{false, "/api/v1/employees/*/protected", []string{"write:payroll"}},
+	{false, "/api/v1/employment/settings", []string{"read:employees|read:payroll"}},
+	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
+}
+
 // tokensPath is a person's own API tokens: the "api" area lets them create, list and revoke them whatever the
 // method, since a token never reaches past its person's own scopes.
 const tokensPath = "/api/v1/account/tokens"
 
-// Required is the scopes a request needs: read:<resource> for GET and HEAD, else write:<resource>; nil when the
-// path is not scope-checked.
+// Required is the scopes a request needs, each one scope or alternatives separated by "|": read:<resource> for GET
+// and HEAD, else write:<resource>; nil when the path is not scope-checked.
 func Required(method, p string) []string {
 	if p == tokensPath || strings.HasPrefix(p, tokensPath+"/") {
 		return []string{"read:api"}
+	}
+	write := method != http.MethodGet && method != http.MethodHead
+	for _, in := range instead {
+		if ok, _ := path.Match(in.pattern, p); ok && in.write == write {
+			return in.scopes
+		}
 	}
 	for _, pre := range prefixes {
 		if p != pre.path && !strings.HasPrefix(p, pre.path+"/") {
@@ -140,7 +215,8 @@ func Guard(a Auth, next http.Handler) http.Handler {
 				return
 			}
 			for _, scope := range need {
-				if !Allows(sess.Role, sess.Scopes, scope) {
+				if !AllowsAny(sess.Role, sess.Scopes, scope) {
+					scope, _, _ = strings.Cut(scope, "|")
 					a.WriteError(w, r, auth.Error(http.StatusForbidden, "forbidden", "You are not allowed to do that.",
 						map[string]any{"scope": scope}))
 					return
@@ -151,22 +227,28 @@ func Guard(a Auth, next http.Handler) http.Handler {
 	})
 }
 
-// ErrInvalid is the 422 for a scope list Validate refuses; ErrNotMember the 400 for scopes on an owner or admin.
+// ErrInvalid is the 422 for a scope list Validate refuses; ErrNotMember the 400 for scopes on an owner.
 var (
 	ErrInvalid = auth.Error(http.StatusUnprocessableEntity, "validation_failed", "Check the permission scopes.",
 		map[string]any{"fields": map[string]string{"scopes": "invalid"}})
-	ErrNotMember = auth.Error(http.StatusBadRequest, "invalid_request", "Owners and admins always have every scope.",
+	ErrNotMember = auth.Error(http.StatusBadRequest, "invalid_request", "Owners always have every scope.",
 		map[string]any{"fields": map[string]string{"scopes": "invalid"}})
 )
 
-// ForRole is the scopes to store for a new membership or invitation: none for owners and admins (400 when some
-// were given), the given ones (422 when invalid) or full access for a member.
+// ForRole is the scopes to store for a new membership or invitation: none for an owner (400 when some were given);
+// for an admin the given HR scopes (an empty list is no HR access; 422 for any other scope) or nil for AdminHR; for a
+// member the given ones (422 when invalid) or full access.
 func ForRole(role string, scopes *[]string) ([]string, error) {
 	switch {
-	case role != "member" && scopes != nil:
+	case role == "owner" && scopes != nil:
 		return nil, ErrNotMember
-	case role != "member":
+	case role == "owner", role == "admin" && scopes == nil:
 		return nil, nil
+	case role == "admin":
+		if len(*scopes) > 0 && Validate(*scopes) != nil || slices.ContainsFunc(*scopes, func(s string) bool { return !IsHR(s) }) {
+			return nil, ErrInvalid
+		}
+		return append([]string{}, *scopes...), nil
 	case scopes == nil:
 		return []string{"*:*"}, nil
 	case Validate(*scopes) != nil:

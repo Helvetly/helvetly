@@ -164,12 +164,26 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session
 }
 
 func (s *Service) discard(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if _, _, err := s.batch(r.Context(), s.db.Q, sess, r.PathValue("id"), "write"); err != nil {
+	_, k, err := s.batch(r.Context(), s.db.Q, sess, r.PathValue("id"), "write")
+	if err != nil {
 		return err
+	}
+	var sources []string
+	if k.Private { // HR files exist only for their batch: discarding it deletes them, with what was read from them
+		if sources, err = s.db.PrivateImportSources(r.Context(), sess.Workspace.ID, r.PathValue("id")); err != nil {
+			return err
+		}
 	}
 	found, err := s.db.DeleteImportBatch(r.Context(), sess.Workspace.ID, sess.User.ID, r.PathValue("id"))
 	if err != nil {
 		return err
+	}
+	if found && len(sources) > 0 {
+		keys, err := s.db.DeleteUnusedImportSources(r.Context(), sess.Workspace.ID, sources)
+		if err != nil {
+			return err
+		}
+		s.deleteKept(r.Context(), keys)
 	}
 	if !found {
 		return store.ErrNotFound

@@ -37,7 +37,7 @@ type ChangeRequest struct {
 func (q Q) ShareDocument(ctx context.Context, workspaceID, documentID, clientID, userID string, now time.Time) error {
 	tag, err := q.db.Exec(ctx, `INSERT INTO document_shares (document_id, client_id, workspace_id, shared_by, created_at)
 		SELECT d.id, c.id, $1, nullif($4, ''), $5 FROM documents d, clients c
-		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL
+		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL AND NOT d.hr_private
 		AND c.workspace_id = $1 AND c.id = $3 AND c.deleted_at IS NULL
 		ON CONFLICT DO NOTHING`, workspaceID, documentID, clientID, userID, now)
 	if err != nil || tag.RowsAffected() > 0 {

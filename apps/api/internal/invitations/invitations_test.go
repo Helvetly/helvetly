@@ -489,7 +489,7 @@ func TestAcceptCopiesScopes(t *testing.T) {
 	invite := func(body map[string]any, status int, code string) []byte {
 		return e.want(owner, "POST", "/api/v1/members/invitations", body, status, code)
 	}
-	invite(map[string]any{"email": "a@example.com", "role": "admin", "scopes": []string{"read:*"}}, 400, "invalid_request")
+	invite(map[string]any{"email": "a@example.com", "role": "admin", "scopes": []string{"read:*"}}, 422, "validation_failed")
 	invite(map[string]any{"email": "a@example.com", "role": "member", "scopes": []string{"read:*", "read:*"}}, 422, "validation_failed")
 	if raw := invite(map[string]any{"email": "full@example.com", "role": "member"}, 201, ""); !strings.Contains(string(raw), `"scopes":["*:*"]`) {
 		t.Fatalf("default scopes: %s", raw)
@@ -585,4 +585,14 @@ func TestAcceptSyncsSeats(t *testing.T) {
 	if len(e.seats.got) != 1 || e.seats.got[0] != owner.workspace {
 		t.Fatalf("seat syncs %v, want one for %s", e.seats.got, owner.workspace)
 	}
+}
+
+// Only an owner invites someone with access to employees or payroll.
+func TestOnlyOwnersInviteWithHRScopes(t *testing.T) {
+	e := newEnv(t, false)
+	ws := e.newWorkspace()
+	owner, admin := e.join(ws, "owner", "o@example.com"), e.join(ws, "admin", "a@example.com")
+	body := map[string]any{"email": "hr@example.com", "role": "member", "scopes": []string{"read:*", "read:employees"}}
+	e.want(admin, "POST", "/api/v1/members/invitations", body, 403, "forbidden")
+	e.want(owner, "POST", "/api/v1/members/invitations", body, 201, "")
 }

@@ -40,7 +40,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("engagement_entries", "engagements", "engagement_id"), child("engagement_notices", "engagements", "engagement_id"),
 	{"engagement_invoices", `SELECT to_jsonb(c) FROM engagement_invoices c JOIN engagement_periods ep ON ep.id = c.period_id
 		JOIN engagements p ON p.id = ep.engagement_id WHERE p.workspace_id = $1`},
-	own("documents"), own("document_folders"), own("document_links"), own("document_shares"), own("client_change_requests"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"), own("client_change_requests"),
 	{"portal_sessions", `SELECT to_jsonb(t) - 'token_hash' - 'csrf_token' FROM portal_sessions t WHERE t.workspace_id = $1`},
 	own("portal_avatars"),
 	own("signature_requests"),
@@ -49,8 +49,30 @@ var WorkspaceExportTables = []ExportTable{
 	own("templates"),
 	own("closed_periods"), own("financial_events"), own("ledger_settings"),
 	own("workspace_counters"), own("dunning_notices"), own("vat_return_settings"), own("einvoice_transmissions"),
-	own("import_batches"), own("import_files"), own("import_records"), own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
+	{"import_batches", `SELECT to_jsonb(t) FROM import_batches t WHERE t.workspace_id = $1 AND t.kind <> 'payroll'`},
+	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`},
+	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
 }
+
+// HRExportTables: the workspace's employees and payroll (docs/planning/2026-11-15-employees.md), for the owner's
+// export only, in its own folder; internal/employees opens the sealed fields before they are written.
+var HRExportTables = []ExportTable{
+	own("employment_settings"), own("employees"), own("employee_pay_terms"), own("employee_documents"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND t.hr_private`},
+	own("payroll_entries"), child("payroll_components", "payroll_entries", "entry_id"),
+	own("payroll_bookings"), child("payroll_booking_items", "payroll_bookings", "booking_id"),
+	{"import_batches", `SELECT to_jsonb(t) FROM import_batches t WHERE t.workspace_id = $1 AND t.kind = 'payroll'`},
+	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind = 'payroll'`},
+	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
+		WHERE t.workspace_id = $1 AND b.kind = 'payroll'`},
+}
+
+// hrExportFiles: the employees' documents, in a folder per employee.
+const hrExportFiles = `SELECT employee_id || '/' || id || '-' || name, object_key FROM documents
+	WHERE workspace_id = $1 AND hr_private AND employee_id IS NOT NULL ORDER BY 1`
 
 // UserExportTables: what Helvetly holds about one person as account data, $1 the user; no secrets (passkey keys,
 // TOTP secrets, recovery, session and API tokens).
@@ -80,7 +102,7 @@ var UserExportTables = []ExportTable{
 type ExportFile struct{ Path, Key string }
 
 // exportFiles: the workspace's stored objects; trashed documents are included while their object exists.
-const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM documents WHERE workspace_id = $1
+const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM documents WHERE workspace_id = $1 AND NOT hr_private
 	UNION ALL SELECT 'receipts/' || id || '-' || name, object_key FROM expense_receipts WHERE workspace_id = $1
 	UNION ALL SELECT 'invoices/' || coalesce(number, id) || '.pdf', pdf_key FROM invoices WHERE workspace_id = $1 AND pdf_key IS NOT NULL
 	UNION ALL SELECT 'e-invoices/' || x.invoice_id || '-' || x.filename, x.object_key FROM invoice_xml_exports x
@@ -102,6 +124,26 @@ type ExportWriter interface {
 // read; with files it then returns the stored objects to add, read after the snapshot ends so no transaction
 // waits on storage.
 func (s *Store) Export(ctx context.Context, id string, tables []ExportTable, w ExportWriter, files bool) ([]ExportFile, error) {
+	query := ""
+	if files {
+		query = exportFiles
+	}
+	return s.export(ctx, id, tables, w, query)
+}
+
+// ExportHR writes HRExportTables and lists the employees' documents, in one snapshot.
+func (s *Store) ExportHR(ctx context.Context, workspaceID string, w ExportWriter) ([]ExportFile, error) {
+	return s.export(ctx, workspaceID, HRExportTables, w, hrExportFiles)
+}
+
+// HasHRData reports whether the workspace keeps any employee, for an export after the module left the plan.
+func (q Q) HasHRData(ctx context.Context, workspaceID string) (bool, error) {
+	var ok bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM employees WHERE workspace_id = $1)`, workspaceID).Scan(&ok)
+	return ok, err
+}
+
+func (s *Store) export(ctx context.Context, id string, tables []ExportTable, w ExportWriter, filesQuery string) ([]ExportFile, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return nil, err
@@ -115,10 +157,10 @@ func (s *Store) Export(ctx context.Context, id string, tables []ExportTable, w E
 			return nil, fmt.Errorf("export %s: %w", t.Name, err)
 		}
 	}
-	if !files {
+	if filesQuery == "" {
 		return nil, nil
 	}
-	rows, err := tx.Query(ctx, exportFiles, id)
+	rows, err := tx.Query(ctx, filesQuery, id)
 	if err != nil {
 		return nil, err
 	}

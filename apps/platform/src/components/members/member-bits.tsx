@@ -122,8 +122,9 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
   )
 }
 
-/** The preset a member's scopes amount to, or "Custom". */
-export function AccessBadge({ scopes }: { scopes: string[] | null }) {
-  const preset = PRESETS.find((entry) => entry.id === presetOf(scopes))
+/** The preset a member's scopes amount to, or "Custom"; owners and admins have full access (an admin's scopes are
+ * only their HR list). */
+export function AccessBadge({ role, scopes }: { role: string; scopes: string[] | null }) {
+  const preset = PRESETS.find((entry) => entry.id === presetOf(role === 'member' ? scopes : null))
   return <StatusBadge>{preset?.label ?? translate('custom')}</StatusBadge>
 }

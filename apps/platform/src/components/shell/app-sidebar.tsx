@@ -54,7 +54,7 @@ import { api, setCsrfToken, type Session, type User } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
-import { EVERYTHING } from '@/lib/permissions'
+import { effectiveScopes } from '@/lib/permissions'
 import { useShortcut } from '@/lib/shortcuts'
 
 import { CommandPalette } from './command-palette'
@@ -235,8 +235,8 @@ export function AppSidebar({ session }: { session: Session }) {
         <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
         {help && <HelpDialog open={help.open} onOpenChange={(open) => setHelp({ open })} />}
       </SidebarHeader>
-      <SidebarContent className="gap-2 px-0 pt-1">
-        {visibleNav(session.scopes ?? EVERYTHING).map((group, index) => (
+      <SidebarContent className="gap-1 px-0 py-1">
+        {visibleNav(effectiveScopes(session.role, session.scopes)).map((group, index) => (
           <SidebarGroup
             key={group.label ?? index}
             className={cn('py-1', group.bottom && 'mt-auto')}

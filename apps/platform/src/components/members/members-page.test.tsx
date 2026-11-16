@@ -78,6 +78,7 @@ function serve(
           enabled: true,
           usage: [{ limit: 'members', used: list.length, max: 3 }],
           plans: [],
+          features: ['employees'],
           ...billing,
         },
       }),
@@ -261,6 +262,29 @@ test('Change access sends the new scopes in a PATCH', async () => {
   await userEvent.click(screen.getByRole('radio', { name: 'Read only' }))
   await userEvent.click(screen.getByRole('button', { name: 'Save access' }))
   await waitFor(() => expect(sent).toHaveBeenCalledWith({ scopes: ['read:*'] }))
+})
+
+test("an owner changes an admin's HR access, the only part an admin's access has", async () => {
+  serve('owner', [
+    people[0]!,
+    member({ user_id: 'usr_4', name: 'Ann Admin', role: 'admin', scopes: null }),
+  ])
+  const sent = vi.fn<(body: unknown) => void>()
+  server.use(
+    http.patch('/api/v1/members/usr_4', async ({ request }) => {
+      sent(await request.json())
+      return HttpResponse.json({ data: people[1] })
+    }),
+  )
+  renderPage()
+  await userEvent.click(await screen.findByRole('button', { name: 'Actions for Ann Admin' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: /Change access/ }))
+  expect(screen.queryByRole('group', { name: 'Access' })).toBeNull()
+  expect(screen.getByRole('radio', { name: 'Payroll: View' })).toBeChecked()
+  await userEvent.click(screen.getByRole('radio', { name: 'Payroll: No access' }))
+  // No HR access at all is a valid choice for an admin.
+  await userEvent.click(screen.getByRole('button', { name: 'Save access' }))
+  await waitFor(() => expect(sent).toHaveBeenCalledWith({ scopes: [] }))
 })
 
 test('an admin cannot change the access of an admin', async () => {

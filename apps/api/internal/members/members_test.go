@@ -280,13 +280,13 @@ func TestPatchScopes(t *testing.T) {
 	}
 	e.want(owner, "PATCH", path, map[string]any{"scopes": []string{"read:people"}}, 422, "validation_failed")
 	e.want(owner, "PATCH", path, map[string]any{"scopes": []string{}}, 422, "validation_failed")
-	e.want(owner, "PATCH", "/api/v1/members/"+e.id(admin), map[string]any{"scopes": []string{"read:*"}}, 400, "invalid_request")
-	e.want(owner, "PATCH", path, map[string]any{"role": "admin", "scopes": []string{"read:*"}}, 400, "invalid_request")
-	// Promoted: no scopes; demoted again: full access.
+	e.want(owner, "PATCH", "/api/v1/members/"+e.id(admin), map[string]any{"scopes": []string{"read:*"}}, 422, "validation_failed") // an admin holds HR scopes only
+	e.want(owner, "PATCH", path, map[string]any{"role": "admin", "scopes": []string{"read:*"}}, 422, "validation_failed")
+	// Promoted: the admin default (nil); demoted again: full access, keeping the HR access held as an admin.
 	if raw := e.want(owner, "PATCH", path, map[string]any{"role": "admin"}, 200, ""); !strings.Contains(string(raw), `"scopes":null`) {
 		t.Fatalf("admin keeps scopes: %s", raw)
 	}
-	if raw := e.want(owner, "PATCH", path, map[string]any{"role": "member"}, 200, ""); !strings.Contains(string(raw), `"scopes":["*:*"]`) {
+	if raw := e.want(owner, "PATCH", path, map[string]any{"role": "member"}, 200, ""); !strings.Contains(string(raw), `"scopes":["*:*","read:payroll"]`) {
 		t.Fatalf("demoted member scopes: %s", raw)
 	}
 	e.want(m, "PATCH", path, map[string]any{"scopes": []string{"*:*"}}, 403, "forbidden")
@@ -307,4 +307,61 @@ func TestRemoveSyncsSeats(t *testing.T) {
 	if len(e.seats.got) != 2 || e.seats.got[0] != owner.workspace || e.seats.got[1] != owner.workspace {
 		t.Fatalf("seat syncs %v, want two for %s", e.seats.got, owner.workspace)
 	}
+}
+
+// Access to employees and payroll is an owner's to give: an admin can change a member's other scopes, never the HR
+// ones, and a member's full access never includes them.
+func TestOnlyOwnersChangeHRScopes(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	m, admin := e.join(owner.workspace, "member"), e.join(owner.workspace, "admin")
+	path := "/api/v1/members/" + e.id(m)
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:payroll"}}, 403, "forbidden")
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"read:*"}}, 200, "")
+	raw := e.want(owner, "PATCH", path, map[string]any{"scopes": []string{"read:*", "read:employees", "read:payroll"}}, 200, "")
+	if !strings.Contains(string(raw), `"read:payroll"`) {
+		t.Fatalf("owner grant: %s", raw)
+	}
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:employees", "read:payroll"}}, 200, "") // HR part unchanged
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"*:*"}}, 403, "forbidden")                          // nor withdrawn
+}
+
+// A role change keeps a person's HR access as it was, so an admin can promote or demote without granting or
+// withdrawing HR access; only the owner sets it, and the owner's promotion gives a new admin the admin default.
+func TestRoleChangesKeepHRAccess(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	m, n, admin := e.join(owner.workspace, "member"), e.join(owner.workspace, "member"), e.join(owner.workspace, "admin")
+	path := "/api/v1/members/" + e.id(m)
+	scopes := func(raw []byte) string {
+		var v struct {
+			Data struct {
+				Scopes []string `json:"scopes"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(raw, &v); err != nil {
+			t.Fatal(err)
+		}
+		if v.Data.Scopes == nil {
+			return "default"
+		}
+		return strings.Join(v.Data.Scopes, ",")
+	}
+	e.want(owner, "PATCH", path, map[string]any{"scopes": []string{"*:*", "read:payroll"}}, 200, "")
+	if got := scopes(e.want(admin, "PATCH", path, map[string]any{"role": "admin"}, 200, "")); got != "read:payroll" {
+		t.Fatalf("promoted by an admin: %s, want the member's HR access kept", got)
+	}
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{"write:payroll"}}, 403, "forbidden")
+	e.want(admin, "PATCH", path, map[string]any{"scopes": []string{}}, 403, "forbidden")
+	if got := scopes(e.want(admin, "PATCH", path, map[string]any{"role": "member"}, 200, "")); got != "*:*,read:payroll" {
+		t.Fatalf("demoted by an admin: %s", got)
+	}
+	if got := scopes(e.want(owner, "PATCH", "/api/v1/members/"+e.id(n), map[string]any{"role": "admin"}, 200, "")); got != "default" {
+		t.Fatalf("promoted by the owner: %s, want the admin default", got)
+	}
+	if got := scopes(e.want(owner, "PATCH", "/api/v1/members/"+e.id(n), map[string]any{"scopes": []string{}}, 200, "")); got != "" {
+		t.Fatalf("owner withdrew an admin's HR access: %q", got)
+	}
+	e.want(owner, "PATCH", "/api/v1/members/"+e.id(n), map[string]any{"scopes": []string{"read:invoices"}}, 422, "validation_failed")
+	e.want(owner, "PATCH", "/api/v1/members/"+e.id(owner), map[string]any{"scopes": []string{"read:payroll"}}, 400, "invalid_request")
 }

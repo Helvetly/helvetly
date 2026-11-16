@@ -23,6 +23,12 @@ type Auth interface {
 	WriteError(http.ResponseWriter, *http.Request, error)
 }
 
+// HR writes the workspace's employees and payroll into the owner's export (internal/employees): false when the
+// workspace neither has the module nor keeps HR data, so the export has no employees folder.
+type HR interface {
+	Export(ctx context.Context, workspaceID string, w store.ExportWriter) (files []store.ExportFile, included bool, err error)
+}
+
 type Storage interface {
 	Open(ctx context.Context, key string) (io.ReadSeekCloser, error)
 }
@@ -34,6 +40,7 @@ type Service struct {
 	log   *slog.Logger
 	limit *auth.RateLimiter
 	now   func() time.Time
+	hr    HR
 	// snapshots admits one whole-workspace export (billing's own_data_export allowance) and records what it sent
 	snapshots func(ctx context.Context, workspaceID string) (settle func(sent int64), err error)
 }
@@ -42,6 +49,9 @@ type Service struct {
 func (s *Service) SetSnapshots(reserve func(ctx context.Context, workspaceID string) (func(sent int64), error)) {
 	s.snapshots = reserve
 }
+
+// SetHR is startup wiring: the employees module's part of the workspace export.
+func (s *Service) SetHR(h HR) { s.hr = h }
 
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger) *Service {
 	// an export reads every record and file: a few an hour is plenty for a person and keeps the database free
@@ -86,10 +96,24 @@ func (s *Service) workspace(w http.ResponseWriter, r *http.Request, sess store.S
 	}
 	var missing []string
 	if err == nil {
-		missing, err = s.addFiles(r.Context(), z, files)
+		missing, err = s.addFiles(r.Context(), z, "files/", files)
+	}
+	hr := false
+	if err == nil && s.hr != nil {
+		var hrFiles []store.ExportFile
+		hrTables := &zipTables{z: z, prefix: "employees/data/"}
+		if hrFiles, hr, err = s.hr.Export(r.Context(), sess.Workspace.ID, hrTables); err == nil {
+			err = hrTables.close()
+		}
+		var gone []string
+		if err == nil && hr {
+			gone, err = s.addFiles(r.Context(), z, "employees/files/", hrFiles)
+			files = append(files, hrFiles...)
+			missing = append(missing, gone...)
+		}
 	}
 	if err == nil {
-		err = readme(z, sess.Workspace, s.now(), len(files), missing)
+		err = readme(z, sess.Workspace, s.now(), len(files), missing, hr)
 	}
 	if err == nil {
 		err = z.Close()
@@ -98,7 +122,7 @@ func (s *Service) workspace(w http.ResponseWriter, r *http.Request, sess store.S
 }
 
 // addFiles copies each stored object into the ZIP; an object that is gone is listed instead of failing the export.
-func (s *Service) addFiles(ctx context.Context, z *zip.Writer, files []store.ExportFile) (missing []string, err error) {
+func (s *Service) addFiles(ctx context.Context, z *zip.Writer, folder string, files []store.ExportFile) (missing []string, err error) {
 	for _, f := range files {
 		body, err := s.files.Open(ctx, f.Key)
 		if err != nil {
@@ -106,10 +130,10 @@ func (s *Service) addFiles(ctx context.Context, z *zip.Writer, files []store.Exp
 				return nil, ctx.Err()
 			}
 			s.log.WarnContext(ctx, "export: stored file not readable", "path", f.Path, "error", err)
-			missing = append(missing, f.Path)
+			missing = append(missing, folder+f.Path)
 			continue
 		}
-		entry, err := z.Create("files/" + safePath(f.Path))
+		entry, err := z.Create(folder + safePath(f.Path))
 		if err == nil {
 			_, err = io.Copy(entry, body)
 		}
@@ -134,7 +158,7 @@ func safePath(p string) string {
 	return folder + "/" + name
 }
 
-func readme(z *zip.Writer, ws store.Workspace, now time.Time, files int, missing []string) error {
+func readme(z *zip.Writer, ws store.Workspace, now time.Time, files int, missing []string, hr bool) error {
 	w, err := z.Create("README.txt")
 	if err != nil {
 		return err
@@ -144,6 +168,14 @@ func readme(z *zip.Writer, ws store.Workspace, now time.Time, files int, missing
 		"files/ the stored files: documents, receipts, issued invoice and sent quote PDFs, e-invoice XML, originals sent for signature, the logo.\n\n"+
 		"Not included: sign-in secrets, session tokens and each person's Heidi conversations (in their account export).\n"+
 		"%d stored files listed.\n", ws.Name, ws.ID, now.UTC().Format(time.DateTime), files)
+	if hr {
+		text += "\nemployees/ the Employees module, exported because you are the owner:\n" +
+			"  data/   employment settings, employees, pay terms, employee documents (their records), payroll entries and their\n" +
+			"          components, payroll bookings, payroll imports. The bank account, tax id and social-security number are\n" +
+			"          included in plain text: keep this file as safe as your personnel files.\n" +
+			"  files/  the employees' documents, in a folder per employee id.\n" +
+			"Helvetly calculates no pay: the payroll figures are the ones recorded or imported.\n"
+	}
 	if len(missing) > 0 {
 		text += "\nThese files could not be read from storage and are missing from this export:\n" + strings.Join(missing, "\n") + "\n"
 	}
@@ -205,16 +237,21 @@ func (s *sent) Write(p []byte) (int, error) {
 
 // zipTables writes each table as data/<name>.json, a JSON array.
 type zipTables struct {
-	z     *zip.Writer
-	cur   io.Writer
-	first bool
+	z      *zip.Writer
+	prefix string // "data/" when empty
+	cur    io.Writer
+	first  bool
 }
 
 func (t *zipTables) Table(name string) error {
 	if err := t.close(); err != nil {
 		return err
 	}
-	w, err := t.z.Create("data/" + name + ".json")
+	prefix := t.prefix
+	if prefix == "" {
+		prefix = "data/"
+	}
+	w, err := t.z.Create(prefix + name + ".json")
 	if err != nil {
 		return err
 	}

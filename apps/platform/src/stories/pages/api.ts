@@ -12,12 +12,15 @@ import type { Invitation, Member } from '@/lib/members'
 import type { Product } from '@/lib/products'
 import type { Template } from '@/lib/templates'
 import { dashboard } from '@/mocks/data'
+import { employeesHandlers } from '@/mocks/employees'
 import { heidiHandlers } from '@/mocks/heidi'
 import { notificationHandlers } from '@/mocks/notifications'
 import { listItem, sampleInvoice, sampleSettings, sampleSummary } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { screenHandlers } from '../screen-fixtures'
+
+export * as hr from '@/mocks/employees'
 
 export const page = <T>(data: T[]) => ({
   data,
@@ -611,6 +614,7 @@ export const shellHandlers = [
   http.get('/api/v1/products/:id', one(products)),
   http.get('/api/v1/products', () => HttpResponse.json(page(products))),
   http.get('/api/v1/reports/key-figures', () => HttpResponse.json(dashboard)),
+  ...employeesHandlers,
   ...notificationHandlers,
   ...heidiHandlers,
   ...screenHandlers,

@@ -63,7 +63,7 @@ func (q Q) DuplicateUpload(ctx context.Context, workspaceID, sum string) (Duplic
 	var d DuplicateUpload
 	err := q.db.QueryRow(ctx, `SELECT id, name, resource, expense_id FROM (
 		SELECT id, name, 'document' AS resource, NULL::text AS expense_id FROM documents
-		WHERE workspace_id = $1 AND sha256 = $2 AND deleted_at IS NULL
+		WHERE workspace_id = $1 AND sha256 = $2 AND deleted_at IS NULL AND NOT hr_private
 		UNION ALL
 		SELECT r.id, r.name, 'receipt', r.expense_id FROM expense_receipts r
 		JOIN expenses e ON e.id = r.expense_id WHERE r.workspace_id = $1 AND r.sha256 = $2 AND e.deleted_at IS NULL

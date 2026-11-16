@@ -54,6 +54,14 @@ func (q Q) MemberRole(ctx context.Context, workspaceID, userID string) (string, 
 	return role, err
 }
 
+// MemberScopes is a membership's stored scopes (nil for owners and admins).
+func (q Q) MemberScopes(ctx context.Context, workspaceID, userID string) ([]string, error) {
+	var scopes []string
+	err := q.db.QueryRow(ctx, `SELECT scopes FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID).Scan(&scopes)
+	return scopes, err
+}
+
 func (q Q) CountOwners(ctx context.Context, workspaceID string) (int, error) {
 	var n int
 	err := q.db.QueryRow(ctx, `SELECT count(*) FROM workspace_members WHERE workspace_id = $1 AND role = 'owner'`,
@@ -61,11 +69,15 @@ func (q Q) CountOwners(ctx context.Context, workspaceID string) (int, error) {
 	return n, err
 }
 
-// SetMemberRole: owners and admins get no scopes; a member gets the given ones, else keeps theirs, else
-// (demoted) gets full access.
+// AdminHR is the HR access an admin holds while their scopes are nil (the owner never set any): an outside
+// accountant's level, the payroll register to view. permissions.EffectiveHR and the session answer read it.
+var AdminHR = []string{"read:payroll"}
+
+// SetMemberRole stores the role and the scopes the caller worked out (members.nextScopes): none for an owner; an
+// admin's HR scopes (nil for the admin default); a member's scopes.
 func (q Q) SetMemberRole(ctx context.Context, workspaceID, userID, role string, scopes []string) error {
 	_, err := q.db.Exec(ctx, `UPDATE workspace_members
-		SET role = $3, scopes = CASE WHEN $3 = 'member' THEN coalesce($4, scopes, '{"*:*"}') END
+		SET role = $3, scopes = CASE WHEN $3 = 'owner' THEN NULL ELSE $4::text[] END
 		WHERE workspace_id = $1 AND user_id = $2`, workspaceID, userID, role, scopes)
 	return err
 }

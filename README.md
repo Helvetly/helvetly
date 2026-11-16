@@ -26,6 +26,9 @@ Each item below is implemented and covered by tests in this repository:
 - **Engagements**: committed work per client with a delivery log and draft invoices in advance or in arrears.
 - **Signatures and templates**: simple electronic signatures (SES, not qualified) on PDFs with an audit trail, and
   PDF templates filled from client data.
+- **Employees and payroll register**: records of the company's own staff (not users, no seats), pay terms with
+  history, private employee documents with retention from researched rules, and a register of pay computed by a person
+  or a payroll system (manual or CSV import), approved apart from paid, corrected by new entries, booked once.
 - **Client portal**: clients sign in on their own host to see invoices, engagements and shared documents.
 - **Notifications**: in-app and email notifications with per-person preferences.
 - **Subscription billing (optional)**: Stripe Checkout, webhooks, seats and plan limits. Off without a Stripe key.
@@ -221,6 +224,8 @@ Stripe Managed Payments (Stripe is the merchant of record); the products then ne
 - E-invoice network delivery (Peppol, KSeF API) is not wired; the XML export works.
 - File retention needs S3 Object Lock (above); there are no qualified timestamps or qualified e-signatures.
 - The interface is in English only.
+- The employees module calculates no pay, tax or contributions and produces no payslips, certificates or filings: it
+  records and exports what a person or a payroll system computed. Jurisdiction data is research, not legal advice.
 
 ## Contributing, security and license
 

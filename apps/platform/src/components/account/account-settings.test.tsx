@@ -145,6 +145,7 @@ test('the settings tabs mark this page and open another one', async () => {
     'Ledger',
     'Closing',
     'Audit log',
+    'Employment',
   ])
   expect(within(tabs).getByRole('button', { name: 'Account' })).toHaveAttribute(
     'aria-current',

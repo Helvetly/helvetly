@@ -32,6 +32,9 @@ func TestValidate(t *testing.T) {
 		{[]string{"read"}, false},
 		{[]string{"read:clients:x"}, false},
 		{[]string{""}, false},
+		{[]string{"read:employees", "write:payroll"}, true},
+		{[]string{"read:employee-documents"}, false}, // the finer HR scopes became the employees and payroll areas
+		{[]string{"write:payroll-approval"}, false},
 	} {
 		if err := Validate(c.scopes); (err == nil) != c.ok {
 			t.Errorf("Validate(%q) = %v, want ok %v", c.scopes, err, c.ok)
@@ -59,6 +62,26 @@ func TestAllows(t *testing.T) {
 		{"member", []string{"*:invoices"}, "write:invoices", true},
 		{"member", []string{"*:invoices"}, "read:expenses", false},
 		{"member", []string{"write:*"}, "read:documents", true},
+		// HR resources: an owner always; an admin the admin default (payroll view) or what the owner set; a member only
+		// when named. "*" resources never reach them.
+		{"owner", nil, "write:payroll", true},
+		{"owner", nil, "write:employees", true},
+		{"admin", nil, "read:payroll", true},
+		{"admin", nil, "write:payroll", false},
+		{"admin", nil, "read:employees", false},
+		{"admin", []string{}, "read:payroll", false},
+		{"admin", []string{"write:employees"}, "read:employees", true},
+		{"admin", []string{"write:employees"}, "read:payroll", false},
+		{"admin", []string{"write:employees"}, "write:invoices", true},
+		{"member", []string{"*:*"}, "read:employees", false},
+		{"member", []string{"*:*"}, "read:payroll", false},
+		{"member", []string{"read:*"}, "read:payroll", false},
+		{"member", []string{"write:*"}, "write:employees", false},
+		{"member", []string{"read:employees"}, "read:employees", true},
+		{"member", []string{"read:employees"}, "read:payroll", false},
+		{"member", []string{"write:payroll"}, "read:payroll", true},
+		{"member", []string{"read:payroll"}, "write:payroll", false},
+		{"member", []string{"*:payroll"}, "write:payroll", true},
 	} {
 		if got := Allows(c.role, c.scopes, c.need); got != c.want {
 			t.Errorf("Allows(%s, %q, %s) = %v, want %v", c.role, c.scopes, c.need, got, c.want)
@@ -170,5 +193,92 @@ func TestEveryRouteIsMapped(t *testing.T) {
 	}
 	if n < 150 {
 		t.Fatalf("found only %d routes: is the source scan broken?", n)
+	}
+}
+
+func TestHRScopes(t *testing.T) {
+	got := HRScopes([]string{"*:*", "write:payroll", "read:clients", "read:employees"})
+	if !slices.Equal(got, []string{"read:employees", "write:payroll"}) {
+		t.Fatalf("HRScopes = %q", got)
+	}
+	if len(HRScopes([]string{"*:*"})) != 0 {
+		t.Fatal("full access must hold no HR scope")
+	}
+}
+
+func TestRequiredHR(t *testing.T) {
+	for _, c := range []struct {
+		method, path string
+		want         []string
+	}{
+		{"GET", "/api/v1/employees", []string{"read:employees|read:payroll"}},
+		{"GET", "/api/v1/employees/emp_1", []string{"read:employees"}},
+		{"PATCH", "/api/v1/employees/emp_1", []string{"write:employees"}},
+		{"GET", "/api/v1/employment/settings", []string{"read:employees|read:payroll"}},
+		{"PUT", "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
+		{"GET", "/api/v1/employees/emp_1/pay-terms", []string{"read:payroll"}},
+		{"POST", "/api/v1/employees/emp_1/pay-terms", []string{"write:payroll"}},
+		{"DELETE", "/api/v1/employees/emp_1/pay-terms/pt_1", []string{"write:payroll"}},
+		{"GET", "/api/v1/employees/emp_1/protected", []string{"write:payroll"}},
+		{"GET", "/api/v1/employees/emp_1/documents", []string{"read:employees"}},
+		{"GET", "/api/v1/employees/emp_1/documents/doc_1/download", []string{"read:employees"}},
+		{"DELETE", "/api/v1/employees/emp_1/documents/doc_1", []string{"write:employees"}},
+		{"GET", "/api/v1/payroll/entries", []string{"read:payroll"}},
+		{"POST", "/api/v1/payroll/entries", []string{"write:payroll"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/approve", []string{"write:payroll"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/payment", []string{"write:payroll"}},
+		{"POST", "/api/v1/payroll/entries/pay_1/correct", []string{"write:payroll"}},
+		{"GET", "/api/v1/payroll/export", []string{"read:payroll"}},
+		{"GET", "/api/v1/payroll/bookings/preview", []string{"read:payroll"}},
+		{"POST", "/api/v1/payroll/bookings", []string{"write:payroll"}},
+	} {
+		if got := Required(c.method, c.path); !slices.Equal(got, c.want) {
+			t.Errorf("Required(%s %s) = %q, want %q", c.method, c.path, got, c.want)
+		}
+	}
+}
+
+func TestEffectiveHR(t *testing.T) {
+	for _, c := range []struct {
+		role   string
+		scopes []string
+		want   []string
+	}{
+		{"owner", nil, []string{"write:employees", "write:payroll"}},
+		{"admin", nil, []string{"read:payroll"}}, // the Accountant level until the owner sets otherwise
+		{"admin", []string{}, []string{}},
+		{"admin", []string{"write:payroll", "read:employees"}, []string{"read:employees", "write:payroll"}},
+		{"member", []string{"*:*"}, []string{}},
+		{"member", []string{"read:*", "read:payroll"}, []string{"read:payroll"}},
+	} {
+		if got := EffectiveHR(c.role, c.scopes); !slices.Equal(got, c.want) {
+			t.Errorf("EffectiveHR(%s, %q) = %q, want %q", c.role, c.scopes, got, c.want)
+		}
+	}
+}
+
+func TestForRole(t *testing.T) {
+	ptr := func(s ...string) *[]string { return &s }
+	for _, c := range []struct {
+		role   string
+		scopes *[]string
+		want   []string
+		err    error
+	}{
+		{"owner", nil, nil, nil},
+		{"owner", ptr("read:payroll"), nil, ErrNotMember},
+		{"admin", nil, nil, nil},
+		{"admin", ptr(), []string{}, nil},
+		{"admin", ptr("read:payroll", "write:employees"), []string{"read:payroll", "write:employees"}, nil},
+		{"admin", ptr("read:invoices"), nil, ErrInvalid}, // an admin's general access is not a list
+		{"admin", ptr("read:payroll", "read:payroll"), nil, ErrInvalid},
+		{"member", nil, []string{"*:*"}, nil},
+		{"member", ptr("read:*", "read:payroll"), []string{"read:*", "read:payroll"}, nil},
+		{"member", ptr(), nil, ErrInvalid},
+	} {
+		got, err := ForRole(c.role, c.scopes)
+		if err != c.err || !slices.Equal(got, c.want) || (got == nil) != (c.want == nil) {
+			t.Errorf("ForRole(%s, %v) = %q, %v; want %q, %v", c.role, c.scopes, got, err, c.want, c.err)
+		}
 	}
 }
