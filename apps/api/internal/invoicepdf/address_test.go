@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The apartment shares the street line in the seller block, the buyer window and the return line: Polish
+// The apartment shares the street line in both party columns: Polish
 // "3A/2", elsewhere ", Apt 21", and it never prints as a line of its own.
 func TestApartmentOnTheStreetLine(t *testing.T) {
 	d := sample("en", 1)
@@ -14,9 +14,8 @@ func TestApartmentOnTheStreetLine(t *testing.T) {
 	d.Buyer.Street, d.Buyer.StreetNumber, d.Buyer.Apt = "Lerchenstrasse", "21", ptr("Apt 21")
 	text := pageText(t, d)
 	for _, want := range []string{
-		"Marszałkowska 3A/2", // seller block
-		"Muster Beratung GmbH, Marszałkowska 3A/2, 00-001 Warszawa", // return line
-		"Lerchenstrasse 21, Apt 21",                                 // buyer window
+		"Marszałkowska 3A/2",        // billed by
+		"Lerchenstrasse 21, Apt 21", // billed to
 	} {
 		if !bytes.Contains(text, unicodePDFLiteral(want)) {
 			t.Errorf("%q missing", want)

@@ -135,8 +135,8 @@ func TestSelfBilledMention(t *testing.T) {
 		if !shows(text, want) {
 			t.Errorf("%s: mention %q missing", lang, want)
 		}
-		// the buyer heads the document; the seller sits in the address window
-		if !shows(text, "Société Romande SA, Rue du Lac 12, 1003 Lausanne") || !shows(text, "Muster Beratung GmbH") {
+		// the buyer bills: it fills the first party column, the seller the one it is billed to
+		if !shows(text, "Société Romande SA") || !shows(text, "Muster Beratung GmbH") || !partiesInOrder(streams(t, d)[0], "Société Romande SA", "Muster Beratung GmbH") {
 			t.Errorf("%s: parties not swapped", lang)
 		}
 		if shows(text, "rechnung@muster.ch") || shows(text, "Bankverbindung: IBAN CH44 3199 9123 0008 8901 2") {
@@ -173,11 +173,23 @@ func TestQuote(t *testing.T) {
 		d := sample(lang, 2)
 		d.Invoice.Kind, d.Bill = "quote", nil
 		text := pageText(t, d)
-		if !shows(text, want[0]+" 2026-001") || !shows(text, want[1]) {
+		if !shows(text, want[0]+" 2026-001") || !shows(text, want[1]+": 05.12.2026") {
 			t.Errorf("%s: no %q or %q", lang, want[0], want[1])
 		}
-		if due := languages[lang].DueDate; shows(text, due) {
+		if due := languages[lang].DueDate; shows(text, due+": 05.12.2026") {
 			t.Errorf("%s: a quote shows %q", lang, due)
 		}
 	}
+}
+
+// partiesInOrder: first is drawn before second in the page's content stream (the billing party's column comes first).
+func partiesInOrder(page []byte, first, second string) bool {
+	at := func(s string) int {
+		if i := bytes.Index(page, unicodePDFLiteral(s)); i >= 0 {
+			return i
+		}
+		return bytes.Index(page, []byte("("+pdfEscape.Replace(cp1252(s))+")"))
+	}
+	a, b := at(first), at(second)
+	return a >= 0 && b >= 0 && a < b
 }

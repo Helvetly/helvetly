@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"codeberg.org/go-pdf/fpdf"
+	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 
 	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/pdffont"
@@ -241,14 +243,9 @@ func (r *renderer) invoicePages() {
 	if inv.Kind == "self_billed" || r.d.SelfBilled {
 		issuer, recipient, phone = r.d.Buyer, r.d.Seller, nil
 	}
-	r.letterhead(issuer, recipient, phone)
 
-	// document details
-	meta := [][2]string{}
-	if n := number(inv); n != "" {
-		meta = append(meta, [2]string{l.Number, n})
-	}
-	meta = append(meta, [2]string{l.IssueDate, swissDate(inv.IssueDate)})
+	// document details, beside the title in the header
+	meta := [][2]string{{l.IssueDate, swissDate(inv.IssueDate)}}
 	switch {
 	case inv.ServiceDate != nil && inv.ServiceDateEnd != nil:
 		meta = append(meta, [2]string{l.ServicePeriod, swissDate(*inv.ServiceDate) + " – " + swissDate(*inv.ServiceDateEnd)})
@@ -265,13 +262,9 @@ func (r *renderer) invoicePages() {
 	if inv.Reference != nil {
 		meta = append(meta, [2]string{l.Reference, *inv.Reference})
 	}
-	r.details(meta)
+	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
+	y = r.parties(max(y+6, 45), issuer, recipient, phone) + 6
 
-	// title
-	y := 95.0
-	r.set("B", 16)
-	r.cell(left, y, contentW, 8, strings.TrimSpace(TitleFor(inv)+" "+number(inv)), "L")
-	y += 9
 	var subtitles []string
 	if f := l.Preceding[inv.Kind]; f != "" && inv.CreditedInvoice != nil {
 		subtitles = append(subtitles, fmt.Sprintf(f, inv.CreditedInvoice.Number))
@@ -285,19 +278,96 @@ func (r *renderer) invoicePages() {
 	if inv.Plan != nil && inv.Plan.Seq >= 1 {
 		subtitles = append(subtitles, fmt.Sprintf(l.PlanPart, inv.Plan.Seq, inv.Plan.Count))
 	}
-	r.set("", 10)
+	r.set("B", 10)
 	for _, s := range subtitles {
 		r.cell(left, y, contentW, 5, s, "L")
 		y += 6
 	}
 	if inv.Intro != nil {
-		r.set("", 9.5)
-		y = r.lines(left, y+1, contentW, 4.6, r.wrap(*inv.Intro, contentW), "L") + 2
+		r.set("", 10)
+		y = r.lines(left, y+1, contentW, 5, r.wrap(*inv.Intro, contentW), "L") + 2
 	}
 	y = r.table(y + 3)
 	y = r.totals(y + 3)
 	y = r.schedule(y)
 	r.closing(y + 6)
+}
+
+// header draws the logo (top left) and, top right, the title with the number and the document's label: value pairs;
+// it returns the y below the taller of the two.
+func (r *renderer) header(title string, meta [][2]string) float64 {
+	bottomY := 15.0
+	if r.d.Logo != nil {
+		if cfg, _, err := image.DecodeConfig(bytes.NewReader(r.d.Logo)); err == nil {
+			opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
+			r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
+			w, h := logoSize(float64(cfg.Width), float64(cfg.Height))
+			r.pdf.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
+			bottomY = 15 + h
+		}
+	}
+	r.set("B", 14)
+	r.cell(100, 15, right-100, 7, title, "R")
+	y := 23.0
+	r.set("", 9.5)
+	for _, m := range meta {
+		r.cell(100, y, right-100, 4.6, m[0]+": "+m[1], "R")
+		y += 4.6
+	}
+	return max(y, bottomY)
+}
+
+// parties draws who bills (left) and who is billed (right, where a right-window envelope shows it) from y, each
+// under its bold heading; it returns the y below the longer column.
+func (r *renderer) parties(y float64, issuer, recipient store.Party, phone *string) float64 {
+	const colW, rightX = 80.0, 110.0
+	column := func(x float64, heading string, p store.Party, extra []string) float64 {
+		r.set("B", 10.5)
+		r.cell(x, y, colW, 5, heading+":", "L")
+		cy := y + 6.5
+		r.set("", 10)
+		for _, s := range addressLines(p, p.Country) { // the country gets its own line, by name
+			if strings.TrimSpace(s) != "" {
+				r.cell(x, cy, colW, 4.8, s, "L")
+				cy += 4.8
+			}
+		}
+		if c := countryName(p.Country, r.d.Invoice.Language); c != "" {
+			r.cell(x, cy, colW, 4.8, c, "L")
+			cy += 4.8
+		}
+		r.set("", 8.5)
+		r.pdf.SetTextColor(90, 90, 90)
+		for _, s := range extra {
+			r.cell(x, cy+1, colW, 4, s, "L")
+			cy += 4
+		}
+		r.pdf.SetTextColor(0, 0, 0)
+		return cy
+	}
+	var info []string
+	for _, s := range []*string{issuer.Email, phone} {
+		if s != nil && *s != "" {
+			info = append(info, *s)
+		}
+	}
+	if v := r.vatNumber(issuer.VATNumber); v != "" {
+		info = append(info, v)
+	}
+	var buyerInfo []string
+	if v := r.vatNumber(recipient.VATNumber); v != "" {
+		buyerInfo = append(buyerInfo, v)
+	}
+	return max(column(left, r.l.BilledBy, issuer, info), column(rightX, r.l.BilledTo, recipient, buyerInfo))
+}
+
+// countryName: the country's name in the document's language ("Schweiz", "Switzerland"), "" for an unknown code.
+func countryName(code, lang string) string {
+	region, err := language.ParseRegion(code)
+	if err != nil {
+		return ""
+	}
+	return display.Regions(language.Make(lang)).Name(region)
 }
 
 // letterhead draws the issuer's block (beside the logo when there is one) and the recipient in the envelope window.
@@ -392,15 +462,15 @@ func (r *renderer) columns() []column {
 }
 
 func (r *renderer) tableHeader(cols []column, y float64) float64 {
-	r.set("B", 8.5)
+	r.set("B", 10)
 	x := left
 	for _, c := range cols {
-		r.cell(x, y, c.w, 5, c.title, c.align)
+		r.cell(x, y, c.w, 6, c.title, c.align)
 		x += c.w
 	}
-	r.pdf.SetLineWidth(0.3)
-	r.pdf.Line(left, y+5.5, right, y+5.5)
-	return y + 7
+	r.pdf.SetLineWidth(0.4)
+	r.pdf.Line(left, y+7.5, right, y+7.5)
+	return y + 10
 }
 
 func (r *renderer) newPage() float64 {
@@ -411,13 +481,13 @@ func (r *renderer) newPage() float64 {
 func (r *renderer) table(y float64) float64 {
 	cols := r.columns()
 	y = r.tableHeader(cols, y)
-	const h = 4.3
+	const h = 4.7
 	for _, ln := range r.d.Invoice.Lines {
-		r.set("", 9)
+		r.set("", 9.5)
 		desc := r.wrap(ln.Description, cols[1].w-2)
 		if y+float64(len(desc))*h > bottom {
 			y = r.tableHeader(cols, r.newPage())
-			r.set("", 9)
+			r.set("", 9.5)
 		}
 		qty := ln.Quantity.String()
 		if ln.Unit != nil {
@@ -442,9 +512,9 @@ func (r *renderer) table(y float64) float64 {
 			}
 			x += c.w
 		}
-		y += float64(len(desc))*h + 1.2
+		y += float64(len(desc))*h + 1.5
 	}
-	r.pdf.SetLineWidth(0.2)
+	r.pdf.SetLineWidth(0.4)
 	r.pdf.Line(left, y, right, y)
 	return y
 }
@@ -504,21 +574,22 @@ func (r *renderer) totals(y float64) float64 {
 	if inv.RoundingAmount != 0 {
 		rows = append(rows, row{l.Rounding, inv.RoundingAmount, false}, row{final, inv.Payable(), true})
 	}
-	if y+float64(len(rows))*5 > bottom {
+	if y+float64(len(rows))*5.4+4 > bottom {
 		y = r.newPage()
 	}
+	// labels bold and right-aligned beside their amounts; a full-width rule above the amount that counts
 	for _, rw := range rows {
-		style := ""
 		if rw.bold {
-			style = "B"
-			r.pdf.SetLineWidth(0.3)
-			r.pdf.Line(110, y, right, y)
-			y += 0.8
+			y += 1.5
+			r.pdf.SetLineWidth(0.4)
+			r.pdf.Line(left, y, right, y)
+			y += 2.5
 		}
-		r.set(style, 9)
-		r.cell(110, y, 56, 5, rw.label, "L")
-		r.cell(166, y, 24, 5, inv.Currency+" "+rw.value.Swiss("'"), "R")
-		y += 5
+		r.set("B", 10)
+		r.cell(90, y, 66, 6, rw.label, "R")
+		r.set("", 10)
+		r.cell(158, y, 32, 6, inv.Currency+" "+rw.value.Swiss("'"), "R")
+		y += 5.4
 	}
 	return y
 }
