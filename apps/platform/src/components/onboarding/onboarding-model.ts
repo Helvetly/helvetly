@@ -134,10 +134,3 @@ export const validPersonName = (name: string) => {
   const length = Array.from(name.trim()).length
   return length >= 1 && length <= 100
 }
-
-/**
- * What the workspace-name field shows before anyone edits it: a name already chosen is kept; the
- * sign-up placeholder follows the company's name, cut to the 100 characters the server takes.
- */
-export const workspaceNameFor = (current: string, company: string, placeholder: string) =>
-  current === placeholder ? Array.from(company.trim()).slice(0, 100).join('') : current
