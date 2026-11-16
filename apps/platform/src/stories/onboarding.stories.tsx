@@ -52,6 +52,9 @@ const begin = async (canvasElement: HTMLElement, name = 'Anna Muster') => {
     await welcome.findByRole('textbox', { name: /What should we call you/ }),
     name,
   )
+  // A workspace that already has its own name starts with it; the sign-up placeholder starts blank.
+  const workspace = await welcome.findByRole('textbox', { name: /Workspace name/ })
+  if (!(workspace as HTMLInputElement).value) await userEvent.type(workspace, 'Muster Treuhand')
   await next(canvasElement, 'welcome', /Get started/)
 }
 
@@ -217,94 +220,63 @@ export const CompanyRequiredDark: Story = {
   parameters: { ...CompanyRequired.parameters, dark: true },
 }
 
-/** A new workspace still called "My workspace": the one-time AI name suggestion sits inside the name field; clicking it is the consent. */
+/** A new workspace still called "My workspace": its name is asked for here, blank and required, and never taken from the company. */
 const newWorkspace: Session = {
   ...session,
   workspace: { ...session.workspace, name: 'My workspace' },
 }
-const suggestionHandlers = (reply: () => Response) => [
-  http.post('/api/v1/workspace/name-suggestion', reply),
-  ...meta.parameters.msw.handlers,
-]
-const toSuggestion = async (canvasElement: HTMLElement) => {
-  await begin(canvasElement)
-  const company = within(await step(canvasElement, 'company'))
-  await waitFor(() => expect(company.getByLabelText(/Company name/)).toBeEnabled())
-  return company
-}
 
-export const NameSuggestion: Story = {
+export const WorkspaceNameRequired: Story = {
   render: () => <WelcomePage session={newWorkspace} />,
-  parameters: {
-    msw: {
-      handlers: suggestionHandlers(() =>
-        HttpResponse.json({ data: { name: 'Muster', company_name: settings.seller.name } }),
-      ),
-    },
-  },
   play: async ({ canvasElement }) => {
-    const company = await toSuggestion(canvasElement)
-    const button = company.getByRole('button', { name: 'Suggest a name' })
-    // The button inside the field is the only consent, said by its description; nothing is sent until the click.
-    await expect(company.queryByRole('checkbox')).toBeNull()
-    await expect(button).toBeEnabled()
-    await expect(button).toHaveAccessibleDescription(/Share only your company name/)
-    await userEvent.click(button)
-    await expect(
-      await company.findByText('Workspace name suggested. You can edit it.'),
-    ).toBeInTheDocument()
-    await expect(company.getByRole('textbox', { name: /Workspace name/ })).toHaveValue('Muster')
+    const welcome = within(await step(canvasElement, 'welcome'))
+    const workspace = await welcome.findByRole('textbox', { name: /Workspace name/ })
+    await expect(workspace).toHaveValue('')
+    await userEvent.type(
+      welcome.getByRole('textbox', { name: /What should we call you/ }),
+      'Anna Muster',
+    )
+    await userEvent.click(welcome.getByRole('button', { name: /Get started/ }))
+    await waitFor(() => expect(workspace).toHaveAttribute('aria-invalid', 'true'))
+    await expect(welcome.getAllByText('Required').length).toBeGreaterThan(0)
   },
 }
 
-export const NameSuggestionDark: Story = {
-  ...NameSuggestion,
-  parameters: { ...NameSuggestion.parameters, dark: true },
+export const WorkspaceNameRequiredDark: Story = {
+  ...WorkspaceNameRequired,
+  parameters: { ...WorkspaceNameRequired.parameters, dark: true },
 }
 
-/** The provider is off or fails: a quiet note, and the name stays a plain field. */
-export const NameSuggestionUnavailable: Story = {
+/** The account name is saved but the workspace name is refused: both typed values stay and the reason shows. */
+export const WorkspaceNameRefused: Story = {
   render: () => <WelcomePage session={newWorkspace} />,
   parameters: {
     msw: {
-      handlers: suggestionHandlers(() =>
-        HttpResponse.json(
-          {
-            error: {
-              code: 'ai_not_configured',
-              message: 'Name suggestions are not available on this server.',
-            },
-          },
-          { status: 409 },
+      handlers: [
+        http.patch('/api/v1/workspace', () =>
+          HttpResponse.json(
+            { error: { code: 'invalid_request', message: 'That workspace name is taken.' } },
+            { status: 400 },
+          ),
         ),
-      ),
+        ...meta.parameters.msw.handlers,
+      ],
     },
   },
   play: async ({ canvasElement }) => {
-    const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
-    await expect(
-      await company.findByText('Name suggestions are unavailable. Enter a name yourself.'),
-    ).toBeVisible()
-    await expect(company.getByRole('textbox', { name: /Workspace name/ })).toBeEnabled()
-  },
-}
-
-/** After the one use: the note says so and no control is left. */
-export const NameSuggestionUsed: Story = {
-  render: () => <WelcomePage session={newWorkspace} />,
-  parameters: {
-    msw: {
-      handlers: suggestionHandlers(() =>
-        HttpResponse.json({ error: { code: 'suggestion_used', message: 'used' } }, { status: 409 }),
-      ),
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
-    await expect(await company.findByText(/one-time suggestion has been used/)).toBeVisible()
-    await expect(company.queryByRole('button', { name: 'Suggest a name' })).toBeNull()
+    const welcome = within(await step(canvasElement, 'welcome'))
+    const workspace = await welcome.findByRole('textbox', { name: /Workspace name/ })
+    await userEvent.type(
+      welcome.getByRole('textbox', { name: /What should we call you/ }),
+      'Anna Muster',
+    )
+    await userEvent.type(workspace, 'Muster Treuhand')
+    await userEvent.click(welcome.getByRole('button', { name: /Get started/ }))
+    await expect(await welcome.findByText('That workspace name is taken.')).toBeVisible()
+    await expect(workspace).toHaveValue('Muster Treuhand')
+    await expect(welcome.getByRole('textbox', { name: /What should we call you/ })).toHaveValue(
+      'Anna Muster',
+    )
   },
 }
 
