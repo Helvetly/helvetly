@@ -163,16 +163,23 @@ const formGridAligned = async (canvasElement: HTMLElement) => {
   )
 }
 
-/** The page title and subtitle end in one hairline across the panel's whole inner width. */
+/** The hairline under the page title runs the panel's full width, edge to edge; the title keeps the page padding. */
 const headerRuled = async (canvasElement: HTMLElement) => {
   const page = canvasElement.querySelector<HTMLElement>('[data-slot="settings-page"]')
   const header = canvasElement.querySelector<HTMLElement>('[data-slot="settings-page-header"]')
-  if (!page || !header) throw new Error('No settings page header')
+  const title = header?.querySelector<HTMLElement>('h1')
+  if (!page || !header || !title) throw new Error('No settings page header')
   await expect(getComputedStyle(header).borderBottomWidth).toBe('1px')
-  const style = getComputedStyle(page)
-  const inner =
-    page.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
-  near(header.getBoundingClientRect().width, inner)
+  const outer = page.getBoundingClientRect()
+  const rule = header.getBoundingClientRect()
+  near(rule.left, outer.left)
+  near(rule.right, outer.right)
+  near(rule.width, page.clientWidth)
+  // The text itself stays on the content column, as far in as the page's own padding.
+  near(
+    title.getBoundingClientRect().left - rule.left,
+    Number.parseFloat(getComputedStyle(page).paddingLeft),
+  )
 }
 
 /** A danger zone is a calm red-edged box with red outline buttons, never a solid red block. */
