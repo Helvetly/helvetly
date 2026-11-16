@@ -109,7 +109,7 @@ func (s *Service) settle(ctx context.Context, workspaceID string, limit Limit, i
 	}
 }
 
-// The owner's whole-workspace export has its own small allowance (offer v2 own_data_export), apart from downloads, so
+// The owner's whole-workspace export has its own small allowance (the offer's own_data_export), apart from downloads, so
 // a workspace that used its downloads can still take its data: one export at a time, one a week, four a month, of
 // at most four times the larger of what it keeps and what its plan lets it keep.
 const (

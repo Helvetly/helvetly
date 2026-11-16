@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const proTrialOffer = "helvetly-v2-pro-trial"
+const proTrialOffer = "helvetly"
 
 // TestProTrialRollback: 00015 goes down only while nothing refers to its offer. A used offer refuses, and the
 // refusal leaves the offer, its plans and every reference exactly as they were.
@@ -17,11 +17,11 @@ func TestProTrialRollback(t *testing.T) {
 	}{
 		{"unused", "", ""},
 		{"workspace pinned", `INSERT INTO workspace_billing (workspace_id, status, plan, trial_end, offer_id, updated_at)
-			VALUES ('ws_1', 'trialing', 'pro', now() + interval '7 days', 'helvetly-v2-pro-trial', now())`, "workspace_billing"},
+			VALUES ('ws_1', 'trialing', 'pro', now() + interval '7 days', 'helvetly', now())`, "workspace_billing"},
 		{"checkout saved", `INSERT INTO billing_checkouts (id, workspace_id, offer_id, plan, billing_interval, currency, price_id, seats, trial, created_by, created_at)
-			VALUES ('chk_1', 'ws_1', 'helvetly-v2-pro-trial', 'pro', 'month', 'CHF', 'price_x', 1, true, 'usr_1', now())`, "billing_checkouts"},
+			VALUES ('chk_1', 'ws_1', 'helvetly', 'pro', 'month', 'CHF', 'price_x', 1, true, 'usr_1', now())`, "billing_checkouts"},
 		{"override written", `INSERT INTO limit_workspaces (limit_key, workspace_id, offer_id, state, reason, set_by)
-			VALUES ('clients', 'ws_1', 'helvetly-v2-pro-trial', 'unlimited', 'agreed', 'support')`, "limit_workspaces"},
+			VALUES ('clients', 'ws_1', 'helvetly', 'unlimited', 'agreed', 'support')`, "limit_workspaces"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			p, pool := migrationProvider(t)

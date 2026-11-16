@@ -166,7 +166,7 @@ export const PlanErrorToasts: Story = {
             limit: 15,
             unit: 'count',
             reset_at: '2026-12-01T00:00:00Z',
-            offer_id: 'helvetly-v2',
+            offer_id: 'helvetly',
             upgrade_plan: 'pro',
           }),
         ),
@@ -192,7 +192,7 @@ export const PlanErrorToasts: Story = {
     await userEvent.click(screen.getByRole('button', { name: 'Add a client' }))
     await toastShows('This workspace has no active plan.')
     await expect(screen.getByRole('button', { name: 'See plans' })).toBeVisible()
-    // 402 limit_reached (offer v2's body): the prompt with the meter, the reset and the kept draft
+    // 402 limit_reached (the current body): the prompt with the meter, the reset and the kept draft
     await userEvent.click(screen.getByRole('button', { name: 'Issue an invoice' }))
     const dialog = within(await screen.findByRole('dialog'))
     await expect(dialog.getByText('Monthly invoice limit reached')).toBeVisible()

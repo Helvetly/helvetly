@@ -53,7 +53,7 @@ describe('full comparison', () => {
   })
 })
 
-describe('offer helvetly-v2 public projection', () => {
+describe('offer helvetly public projection', () => {
   it('compares the thirteen business benefits', () => {
     expect(BENEFITS.map((b) => b.key)).toEqual([
       'invoicing',

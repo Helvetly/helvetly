@@ -69,7 +69,7 @@ func TestResolveMatrix(t *testing.T) {
 		{Pro, 5, "automation_actions_per_month", 7500}, {Basic, 25, Invoices, 375}, {Basic, 1, Clients, 30},
 		{Basic, 25, Expenses, 0}, {Basic, 25, Signatures, 0}, {Basic, 25, "automation_actions_per_month", 0},
 		{Basic, 25, Storage, 12_500_000_000}, {Business, 25, MaxSeats, 25}, {Basic, 1, AICost, 0}, {Basic, 25, AITokens, 0},
-		// Offer helvetly-v2: Pro issues 100 invoices per paid seat; quotes are new; Business counts no records.
+		// The current offer: Pro issues 100 invoices per paid seat; quotes are new; Business counts no records.
 		{Pro, 2, Invoices, 200}, {Basic, 1, Quotes, 5}, {Basic, 3, Quotes, 15}, {Pro, 5, Quotes, 500},
 		{Business, 25, Quotes, Unlimited}, {Business, 25, Invoices, Unlimited}, {Business, 25, Expenses, Unlimited},
 		{Business, 25, Signatures, Unlimited}, {Business, 1, Products, Unlimited}, {Business, 25, Emails, 125_000},
@@ -150,7 +150,7 @@ func TestEntitlementsInTheDatabase(t *testing.T) {
 	e.subscribe(b.workspace, "price_bm")
 	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 5 WHERE workspace_id = $1`, b.workspace)
 	r := mustRights(t, e, b.workspace)
-	if r.Plan != Basic || r.OfferID != "helvetly-v2-pro-trial" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
+	if r.Plan != Basic || r.OfferID != "helvetly" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
 		r.Items["clients"].Value != 30 || r.Includes("expenses") || r.Items["expenses_per_month"].Value != 0 {
 		t.Fatalf("basic × 5: %+v", r)
 	}
