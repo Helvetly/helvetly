@@ -11,28 +11,43 @@ import {
 import { Slider } from '@helvetly/ui/components/slider'
 import type { CropArea } from '@helvetly/ui/lib/photo'
 import { cn } from '@helvetly/ui/lib/utils'
-import { LoaderCircle, ZoomIn, ZoomOut } from 'lucide-react'
+import { LoaderCircle, Maximize2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Cropper from 'react-easy-crop'
 
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { LOGO_MAX_BYTES, logoProblem, LOGO_TYPES } from '@/lib/invoices'
+import { LOGO_MAX_BYTES, logoProblem } from '@/lib/invoices'
 import {
-  cropDocumentLogo,
+  clampView,
   cropWorkspaceLogo,
+  DOCUMENT_MAX_ZOOM,
+  DOCUMENT_MIN_ZOOM,
   imageSize,
   isWholePicture,
   LOGO_MAX_SIDE,
   LOGO_MIN_SIDE,
+  renderDocumentLogo,
   sizeProblem,
+  WHOLE_PICTURE,
+  type DocumentView,
 } from '@/lib/logo-crop'
+
+import { DocumentLogoFrame } from './document-logo-frame'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
+// Shapes this far from the 2.5 : 1 field get a word on how they are placed.
+const ODD_RATIO = [1.4, 6] as const
 const ZOOM_STEP = 0.1
 // What the server keeps a workspace's mark to; the browser saves 512 × 512 (lib/logo-crop.ts).
 const WORKSPACE_MAX_SIDE = 1024
+
+/** Whether the bytes, not the claimed type, are a PNG: the server and the PDF library go by bytes too. */
+async function isPngBytes(file: Blob) {
+  const head = new DataView(await file.slice(0, 4).arrayBuffer())
+  return head.byteLength === 4 && head.getUint32(0) === 0x89504e47
+}
 
 export type LogoKind = 'workspace' | 'document'
 
@@ -130,8 +145,8 @@ export function useLogoCrop({
 
 /**
  * Frames a picked logo before it is saved. The workspace's mark is a square: drag (or arrow keys) and zoom to choose it,
- * saved as a 512 px PNG that keeps its transparency. The document logo starts as the whole picture at its own
- * proportions; zooming in only trims it, and it is never stretched. Cancelling sends nothing; a failed upload keeps
+ * saved as a 512 px PNG that keeps its transparency. The document logo is saved in the PDF's wide 2.5 : 1 field: it
+ * starts as the whole picture contained in it, zooming in only trims it, and it is never stretched. Cancelling sends nothing; a failed upload keeps
  * the dialog open so saving again retries it.
  */
 export function LogoCropDialog({
@@ -159,25 +174,43 @@ export function LogoCropDialog({
   const [zoom, setZoom] = useState(MIN_ZOOM)
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null)
   const [area, setArea] = useState<{ percent: CropArea; pixels: CropArea } | null>(null)
+  const [view, setView] = useState<DocumentView>(WHOLE_PICTURE)
   const [problem, setProblem] = useState('')
   const [encoding, setEncoding] = useState(false)
   const busy = saving || encoding
   const shown = problem || error
-  const aspect = kind === 'workspace' ? 1 : natural ? natural.width / natural.height : 1
+  const isDocument = kind === 'document'
+  const ready = isDocument ? !!natural : !!area
+  const ratio = natural ? natural.width / natural.height : 1
+  const odd = isDocument && natural && (ratio < ODD_RATIO[0] || ratio > ODD_RATIO[1])
+
+  // The document logo starts from the file's header size (so nothing waits), and the picture itself corrects it once it
+  // decodes: a JPEG turned by its EXIF orientation is decoded with the sides swapped, which the header does not say.
+  // The workspace cropper reports its own size once loaded.
+  useEffect(() => {
+    if (isDocument) void imageSize(file).then((size) => size && setNatural(size))
+  }, [isDocument, file])
+
+  const zoomTo = (next: number) => {
+    if (isDocument && natural) setView(clampView(natural, { ...view, zoom: next }))
+    else setZoom(next)
+  }
 
   const save = async () => {
-    if (!area || !natural || busy) return
+    if (!ready || !natural || busy) return
     setEncoding(true)
     setProblem('')
     try {
-      // The whole picture, as picked, is sent as it is: the same bytes, so a duplicate is found.
+      // A PNG that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
+      // A JPEG never is, whatever its name or type says: its EXIF turn (the PDF library ignores it) is only applied by decoding and re-encoding it.
       if (
-        kind === 'document' &&
+        isDocument &&
         file.size <= LOGO_MAX_BYTES &&
-        LOGO_TYPES.includes(file.type) &&
+        file.type === 'image/png' &&
         Math.max(natural.width, natural.height) <= LOGO_MAX_SIDE &&
         Math.min(natural.width, natural.height) >= LOGO_MIN_SIDE &&
-        isWholePicture(area.pixels, natural.width, natural.height)
+        isWholePicture(natural, view) &&
+        (await isPngBytes(file))
       ) {
         onSave(file)
         return
@@ -185,9 +218,9 @@ export function LogoCropDialog({
       const bitmap = await createImageBitmap(file)
       try {
         const logo =
-          kind === 'workspace'
+          !isDocument && area
             ? await cropWorkspaceLogo(bitmap, area.pixels)
-            : await cropDocumentLogo(bitmap, area.pixels, file.type)
+            : await renderDocumentLogo(bitmap, { width: bitmap.width, height: bitmap.height }, view)
         if (logo) onSave(logo)
         else setProblem(translate('theLogoCanBeAtMost2MB'))
       } finally {
@@ -207,65 +240,85 @@ export function LogoCropDialog({
           <DialogTitle>{translate('adjustLogo')}</DialogTitle>
           <DialogDescription>{translate('dragTheLogoToPlaceItAndZoom')}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
-          <div className="relative h-72 overflow-hidden rounded-lg bg-muted">
-            <Cropper
-              image={url}
-              crop={crop}
-              zoom={zoom}
-              minZoom={MIN_ZOOM}
-              maxZoom={MAX_ZOOM}
-              aspect={aspect}
-              showGrid={false}
-              objectFit={kind === 'workspace' ? 'cover' : 'contain'}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onMediaLoaded={(media) =>
-                setNatural({ width: media.naturalWidth, height: media.naturalHeight })
+        {isDocument ? (
+          natural && (
+            <DocumentLogoFrame
+              url={url}
+              natural={natural}
+              view={view}
+              disabled={busy}
+              onChange={setView}
+              onDecoded={(size) =>
+                setNatural((current) =>
+                  current?.width === size.width && current.height === size.height ? current : size,
+                )
               }
-              onCropComplete={(percent, pixels) => setArea({ percent, pixels })}
-              mediaProps={{
-                onError: () => setProblem(translate('thisImageCanTBeReadChooseAPNG')),
-              }}
-              cropperProps={{
-                role: 'group',
-                'aria-label': translate('cropAreaDragOrUseTheArrowKeysTo'),
-              }}
-              classes={{ cropAreaClassName: 'focus-visible:ring-3 focus-visible:ring-ring/50' }}
+              onError={() => setProblem(translate('thisImageCanTBeReadChooseAPNG'))}
             />
-          </div>
-          <figure className="flex items-center gap-3 sm:flex-col sm:items-start sm:pt-2">
-            {kind === 'workspace' ? (
-              <>
-                <CropPreview url={url} area={area?.percent} className="size-16 rounded-xl" />
-                <CropPreview url={url} area={area?.percent} className="size-8 rounded-lg" />
-              </>
-            ) : (
-              <CropPreview
-                url={url}
-                area={area?.percent}
-                ratio={area ? area.pixels.width / area.pixels.height : aspect}
-                className="w-28 rounded-md"
+          )
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
+            <div className="relative h-72 overflow-hidden rounded-lg bg-muted">
+              <Cropper
+                image={url}
+                crop={crop}
+                zoom={zoom}
+                minZoom={MIN_ZOOM}
+                maxZoom={MAX_ZOOM}
+                aspect={1}
+                showGrid={false}
+                objectFit="cover"
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onMediaLoaded={(media) =>
+                  setNatural({ width: media.naturalWidth, height: media.naturalHeight })
+                }
+                onCropComplete={(percent, pixels) => setArea({ percent, pixels })}
+                mediaProps={{
+                  onError: () => setProblem(translate('thisImageCanTBeReadChooseAPNG')),
+                }}
+                cropperProps={{
+                  role: 'group',
+                  'aria-label': translate('cropAreaDragOrUseTheArrowKeysTo'),
+                }}
+                classes={{ cropAreaClassName: 'focus-visible:ring-3 focus-visible:ring-ring/50' }}
               />
-            )}
-            <figcaption className="text-body-sm text-muted-foreground">
-              {translate('preview')}
-            </figcaption>
-          </figure>
-        </div>
+            </div>
+            <figure className="flex items-center gap-3 sm:flex-col sm:items-start sm:pt-2">
+              <CropPreview url={url} area={area?.percent} className="size-16 rounded-xl" />
+              <CropPreview url={url} area={area?.percent} className="size-8 rounded-lg" />
+              <figcaption className="text-body-sm text-muted-foreground">
+                {translate('preview')}
+              </figcaption>
+            </figure>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <ZoomOut aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <Slider
             aria-label={translate('zoom')}
-            min={MIN_ZOOM}
-            max={MAX_ZOOM}
+            min={isDocument ? DOCUMENT_MIN_ZOOM : MIN_ZOOM}
+            max={isDocument ? DOCUMENT_MAX_ZOOM : MAX_ZOOM}
             step={ZOOM_STEP}
-            value={[zoom]}
-            onValueChange={([next]) => next !== undefined && setZoom(next)}
+            value={[isDocument ? view.zoom : zoom]}
+            onValueChange={([next]) => next !== undefined && zoomTo(next)}
             disabled={busy}
           />
           <ZoomIn aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          {isDocument && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy || (view.zoom === 1 && !view.x && !view.y)}
+              onClick={() => setView(WHOLE_PICTURE)}
+            >
+              <Maximize2 />
+              {translate('fitWholePicture')}
+            </Button>
+          )}
         </div>
+        {odd && <p className="text-body-sm text-muted-foreground">{translate('logoFrameHint')}</p>}
         {progress !== null && (
           <span className="block h-1 overflow-hidden rounded-full bg-muted">
             <span
@@ -283,7 +336,7 @@ export function LogoCropDialog({
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
             {translate('cancel')}
           </Button>
-          <Button type="button" disabled={!area || busy || !!problem} onClick={() => void save()}>
+          <Button type="button" disabled={!ready || busy || !!problem} onClick={() => void save()}>
             {busy && (
               <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
             )}
@@ -295,23 +348,23 @@ export function LogoCropDialog({
   )
 }
 
-/** The crop as it will be saved: on white, so a transparent logo shows as it will on paper and in the switcher. */
+/** The workspace crop as it will be saved: on white, so a transparent logo shows as it will in the switcher. */
 function CropPreview({
   url,
   area,
-  ratio = 1,
   className,
 }: {
   url: string
   area: CropArea | undefined
-  ratio?: number
   className: string
 }) {
   return (
     <div
       aria-hidden
-      style={{ aspectRatio: ratio }}
-      className={cn('relative shrink-0 overflow-hidden bg-white ring-1 ring-border', className)}
+      className={cn(
+        'relative aspect-square shrink-0 overflow-hidden bg-white ring-1 ring-border',
+        className,
+      )}
     >
       {area && (
         <div

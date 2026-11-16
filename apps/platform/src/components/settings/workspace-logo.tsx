@@ -1,7 +1,8 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ImagePlus, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'sonner'
 
 import { useLogoCrop } from '@/components/shared/logo-crop'
@@ -15,8 +16,8 @@ import { HelpTip } from './help-tip'
 import { SettingsSection } from './layout'
 
 /**
- * The workspace's own mark: its preview as the switcher shows it, and the buttons to choose, replace or remove it.
- * Choosing opens the square crop; nothing is saved until it is confirmed. Only an owner or admin may change it.
+ * The workspace's own mark, in the same dashed card as the document logo: its preview, and the buttons to choose (or drop a
+ * file), replace or remove it. Picking or dropping opens the square crop; nothing is saved until it is confirmed. Only an owner or admin may change it.
  */
 export function WorkspaceLogoControl({
   name,
@@ -31,6 +32,7 @@ export function WorkspaceLogoControl({
   const input = useRef<HTMLInputElement>(null)
   const [removeError, setRemoveError] = useState('')
   const [done, setDone] = useState<string | null>(null)
+  const [over, setOver] = useState(false)
   useEffect(() => {
     if (!done) return
     const timer = setTimeout(() => setDone(null), 2500)
@@ -47,6 +49,23 @@ export function WorkspaceLogoControl({
   })
   const error = crop.pickError || removeError
   const busy = logo.progress !== null || logo.remove.isPending
+
+  // Someone who may not change it sees the mark as the switcher shows it, nothing to pick.
+  if (!canEdit)
+    return (
+      <div data-testid="workspace-logo">
+        <WorkspaceMark name={name} logoUrl={logoUrl} className="size-16 rounded-2xl text-page" />
+      </div>
+    )
+
+  const drop = (event: DragEvent) => {
+    event.preventDefault()
+    setOver(false)
+    if (busy) return
+    setRemoveError('')
+    setDone(null)
+    crop.pick(event.dataTransfer.files[0])
+  }
 
   return (
     <div className="grid gap-2" data-testid="workspace-logo">
@@ -65,49 +84,84 @@ export function WorkspaceLogoControl({
           event.target.value = ''
         }}
       />
-      <div className="flex items-center gap-4">
-        <WorkspaceMark name={name} logoUrl={logoUrl} className="size-16 rounded-2xl text-page" />
-        <div className="grid gap-1.5">
-          {canEdit && (
-            <span className="flex flex-wrap gap-2">
+      {/* The same card as the document logo's: dashed, a pale thumbnail, a title, what fits and the buttons; drop works too. */}
+      <div
+        onDragOver={(event) => {
+          event.preventDefault()
+          setOver(true)
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={drop}
+        className={cn(
+          'relative flex items-center gap-4 rounded-xl border-2 border-dashed border-border bg-card p-4 transition-colors sm:gap-5',
+          over && 'border-primary bg-primary/5',
+          error && 'border-destructive/60',
+        )}
+      >
+        {logoUrl ? (
+          <WorkspaceMark
+            name={name}
+            logoUrl={logoUrl}
+            className="size-20 shrink-0 rounded-lg ring-1 ring-border"
+          />
+        ) : (
+          <span className="flex size-20 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground ring-1 ring-border">
+            <ImagePlus className="size-7 stroke-[1.5]" />
+          </span>
+        )}
+        <span className="grid min-w-0 flex-1 gap-1">
+          <span className="text-sm font-medium">
+            {logoUrl ? translate('yourLogo') : translate('uploadYourLogo')}
+          </span>
+          <span className="text-body-sm text-muted-foreground">
+            {translate('pngOrJPEGUpTo2MBDropIt')}
+          </span>
+          <span className="mt-1.5 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => input.current?.click()}
+            >
+              {logo.progress !== null
+                ? translate('uploading3')
+                : logoUrl
+                  ? translate('replace2')
+                  : translate('chooseFile')}
+            </Button>
+            {logoUrl && (
               <Button
                 type="button"
-                variant="outline"
+                variant="destructive-ghost"
                 size="sm"
                 disabled={busy}
-                onClick={() => input.current?.click()}
+                onClick={() => {
+                  setRemoveError('')
+                  setDone(null)
+                  logo.remove.mutate(undefined, {
+                    onSuccess: () => {
+                      setDone(translate('workspaceLogoRemoved'))
+                      toast.success(translate('workspaceLogoRemoved'))
+                    },
+                    onError: (failure) => setRemoveError(errorMessage(failure)),
+                  })
+                }}
               >
-                {!logoUrl && <ImagePlus />}
-                {logoUrl ? translate('replace2') : translate('addLogo')}
+                <Trash2 />
+                {translate('remove')}
               </Button>
-              {logoUrl && (
-                <Button
-                  type="button"
-                  variant="destructive-ghost"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => {
-                    setRemoveError('')
-                    setDone(null)
-                    logo.remove.mutate(undefined, {
-                      onSuccess: () => {
-                        setDone(translate('workspaceLogoRemoved'))
-                        toast.success(translate('workspaceLogoRemoved'))
-                      },
-                      onError: (failure) => setRemoveError(errorMessage(failure)),
-                    })
-                  }}
-                >
-                  <Trash2 />
-                  {translate('remove')}
-                </Button>
-              )}
-            </span>
-          )}
-          <span className="text-caption text-muted-foreground">
-            {translate('logoSizeLimits', { min: 64, max: 1024 })}
+            )}
           </span>
-        </div>
+        </span>
+        {logo.progress !== null && (
+          <span className="absolute inset-x-4 bottom-2 h-1 overflow-hidden rounded-full bg-muted">
+            <span
+              className="block h-full rounded-full bg-primary transition-[width] duration-200"
+              style={{ width: `${Math.round(logo.progress * 100)}%` }}
+            />
+          </span>
+        )}
       </div>
       {error && (
         <p role="alert" className="text-xs text-destructive">
