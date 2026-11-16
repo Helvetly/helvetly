@@ -101,9 +101,10 @@ func screen(path string) string {
 			titles = append(titles, `"`+s.title+`"`)
 		}
 	}
-	text := "The user is on the Helvetly screen " + path
-	if len(titles) > 0 {
-		text += ", described in the guide sections " + strings.Join(titles, ", ")
+	// The guide's Pages lines are the allowlist: a path the guide does not know is the caller's text, never context.
+	if len(titles) == 0 {
+		return ""
 	}
-	return text + `. "This page", "here" or "this" in the message mean that screen.`
+	return "The user is on the Helvetly screen " + path + ", described in the guide sections " + strings.Join(titles, ", ") +
+		`. "This page", "here" or "this" in the message mean that screen.`
 }
