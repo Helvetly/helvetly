@@ -223,12 +223,7 @@ func (r *renderer) vatNumber(v *string) string {
 }
 
 func addressLines(p store.Party, sellerCountry string) []string {
-	street := strings.TrimSpace(p.Street + " " + p.StreetNumber)
-	out := []string{p.Name}
-	if p.Apt != nil {
-		out = append(out, *p.Apt)
-	}
-	out = append(out, street)
+	out := []string{p.Name, p.StreetLine()}
 	city := strings.TrimSpace(p.Zip + " " + p.City)
 	if p.Country != "" && p.Country != sellerCountry {
 		city = p.Country + "-" + city
@@ -341,7 +336,7 @@ func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 	// buyer in the left window of a C5/6 envelope
 	r.set("", 7)
 	p.SetTextColor(110, 110, 110)
-	r.cell(left, 47, 85, 3, senderLine(issuer.Name, issuer.Street+" "+issuer.StreetNumber, issuer.Zip+" "+issuer.City), "L")
+	r.cell(left, 47, 85, 3, senderLine(issuer.Name, issuer.StreetLine(), issuer.Zip+" "+issuer.City), "L")
 	p.SetTextColor(0, 0, 0)
 	y = 52
 	for i, s := range addressLines(recipient, issuer.Country) {

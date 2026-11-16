@@ -153,3 +153,26 @@ func text(s string) []byte {
 }
 
 func cell(s string) []byte { return append(append([]byte("("), text(s)...), ')') }
+
+func TestApartmentOnTheStreetLine(t *testing.T) {
+	d := sample("en", 1)
+	apt := func(s string) *string { return &s }
+	d.Seller.Street, d.Seller.StreetNumber, d.Seller.Apt, d.Seller.Zip, d.Seller.City, d.Seller.Country =
+		"Marszałkowska", "3", apt("3"), "00-001", "Warszawa", "PL"
+	d.Client.Apt = apt("Apt 21")
+	out := render(t, d)
+	for _, want := range []string{"Marszałkowska 3/3", "Muster Beratung GmbH, Marszałkowska 3/3, 00-001 Warszawa", "Rue du Lac 12, Apt 21"} {
+		if !bytes.Contains(out, text(want)) {
+			t.Errorf("%q missing", want)
+		}
+	}
+	for _, alone := range []string{"3", "Apt 21"} {
+		if bytes.Contains(out, cell(alone)) {
+			t.Errorf("apartment %q is a line of its own", alone)
+		}
+	}
+	d.Client.Apt = apt(" ")
+	if got := address(d.Client, "CH"); len(got) != 3 {
+		t.Errorf("blank apt: %d lines, want name, street, city", len(got))
+	}
+}

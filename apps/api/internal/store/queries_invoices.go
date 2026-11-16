@@ -40,6 +40,25 @@ type Party struct {
 	Region             *string           `json:"region,omitempty"` // ISO 3166-2 subdivision (BT-39, BT-54)
 }
 
+// StreetLine is the street line as printed: "street number", with the apartment on the same line: "number/apt" in Poland,
+// ", apt" elsewhere. Stored fields stay separate; structured exports (XML, QR) do not use it.
+func (p Party) StreetLine() string {
+	street := strings.TrimSpace(p.Street + " " + p.StreetNumber)
+	apt := ""
+	if p.Apt != nil {
+		apt = strings.TrimSpace(*p.Apt)
+	}
+	switch {
+	case apt == "":
+		return street
+	case street == "":
+		return apt
+	case p.Country == "PL" && strings.TrimSpace(p.StreetNumber) != "":
+		return street + "/" + apt
+	}
+	return street + ", " + apt
+}
+
 type InvoiceClient struct {
 	ID     string `json:"id"`
 	Number int64  `json:"number"`
