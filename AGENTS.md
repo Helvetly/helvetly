@@ -139,6 +139,9 @@ artifact. A step added to `check` goes into a CI job too. Rules:
 - Shared controls use `packages/ui` variants, sizes and semantic tokens. The same action role has
   the same appearance across screens; do not override button height, radius or colours per page
   when a shared variant already represents that role. Review keyboard focus, mobile and dark mode.
+- Focus never changes the layout: no ring, hint or font change may move a box, and fields one types into are
+  at least 16 px on phones (`globals.css`; Safari zooms in on smaller ones). `e2e/visual/focus-layout.spec.ts`
+  checks every story at desktop and phone width in the visual suite.
 - Frontend behaviour is verified with Storybook stories and `play` interactions in Chromium,
   including relevant loading, empty, error, permission, validation and pending-write states.
   Keep pure unit/API tests; Storybook does not replace real end-to-end integration tests.

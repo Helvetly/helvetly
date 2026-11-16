@@ -62,6 +62,21 @@ export const Welcome: Story = {
 
 export const WelcomeDark: Story = { ...Welcome, parameters: { dark: true } }
 
+export const Company: Story = {
+  play: async ({ canvasElement }) => {
+    await next(canvasElement, 'welcome', /Get started/)
+    const company = within(await step(canvasElement, 'company'))
+    const zip = company.getByLabelText('ZIP')
+    await waitFor(() => expect(zip).toBeEnabled())
+    // Focusing a field leaves every field below it where it was.
+    const iban = company.getByLabelText('IBAN')
+    const before = iban.getBoundingClientRect().top
+    await userEvent.click(zip)
+    await expect(zip).toHaveFocus()
+    await expect(iban.getBoundingClientRect().top).toBe(before)
+  },
+}
+
 export const AllSteps: Story = {
   play: async ({ canvasElement }) => {
     await next(canvasElement, 'welcome', /Get started/)
