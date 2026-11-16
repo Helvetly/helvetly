@@ -747,11 +747,18 @@ function EntryForm({
   )
 }
 
-/** "Created by Anna · Approved by Luca" for the audit trail; names come from the server. */
-function auditLine(entry: PayrollEntry): string {
+/**
+ * "Created by Anna · Approved by Luca" for the audit trail. A person without a name (email sign-in) has an id but
+ * no name from the server: "a member", so the trail never goes silent.
+ */
+export function auditLine(entry: PayrollEntry): string {
+  const who = (name: string | null, id: string | null) =>
+    name ?? (id ? translate('payrollAMember') : null)
+  const created = who(entry.created_by, entry.created_by_id)
+  const approved = who(entry.approved_by, entry.approved_by_id)
   return [
-    entry.created_by && translate('payrollCreatedBy', { name: entry.created_by }),
-    entry.approved_by && translate('payrollApprovedBy', { name: entry.approved_by }),
+    created && translate('payrollCreatedBy', { name: created }),
+    approved && translate('payrollApprovedBy', { name: approved }),
   ]
     .filter(Boolean)
     .join(' · ')

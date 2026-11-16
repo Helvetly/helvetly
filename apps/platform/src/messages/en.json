@@ -4111,5 +4111,6 @@
   "accessSealedHelp": "Bank account, tax ID and AHV/social-security number stay sealed: only Payroll Edit can reveal them, and every reveal is logged. Full access and Accountant include Payroll View; Read only includes no HR access.",
   "accessHROwnerOnly": "Only the workspace owner can change access to employees and payroll.",
   "accessAdminGeneral": "Full access as admin",
-  "planEmployees": "employees and payroll"
+  "planEmployees": "employees and payroll",
+  "payrollAMember": "a member"
 }
