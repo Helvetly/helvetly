@@ -14,7 +14,8 @@ const session = (role: string) => ({
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
   workspace: { id: 'wrk_story', name: 'Muster AG', timezone: 'Europe/Zurich' },
   role,
-  scopes: ['*:*'],
+  // a member here views the books but has no edit right on them
+  scopes: role === 'member' ? ['read:*'] : ['*:*'],
   onboarded: true,
   csrf_token: 'storybook-only',
 })
@@ -157,7 +158,9 @@ export const PeriodsMember: Story = {
   render: Periods.render,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/Only an owner or admin can close/)).toBeVisible()
+    await expect(
+      await canvas.findByText('View only: ask an owner or admin for edit access.'),
+    ).toBeVisible()
     await expect(canvas.queryByRole('button', { name: /^(Close|Actions for) / })).toBeNull()
   },
 }
