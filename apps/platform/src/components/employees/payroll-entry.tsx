@@ -747,13 +747,14 @@ function EntryForm({
   )
 }
 
+const who = (name: string | null, userId: string | null) =>
+  name ?? (userId ? translate('payrollAMember') : null)
+
 /**
  * "Created by Anna · Approved by Luca" for the audit trail. A person without a name (email sign-in) has an id but
  * no name from the server: "a member", so the trail never goes silent.
  */
 export function auditLine(entry: PayrollEntry): string {
-  const who = (name: string | null, id: string | null) =>
-    name ?? (id ? translate('payrollAMember') : null)
   const created = who(entry.created_by, entry.created_by_id)
   const approved = who(entry.approved_by, entry.approved_by_id)
   return [
