@@ -26,10 +26,10 @@ export function WorkspaceMark({
       aria-hidden
       // The letter keeps its colour on the tile: menu items recolour a child on hover.
       className={cn(
-        'relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[9px] text-[14px] font-semibold',
+        'relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-body font-semibold',
         logo
           ? 'bg-white ring-1 ring-black/10 dark:ring-white/15'
-          : 'bg-linear-to-b from-[#3a3a3e] to-[#1c1c1f] text-white! shadow-[0_1px_2px_rgb(0_0_0/0.12),inset_0_1px_0_rgb(255_255_255/0.12)] dark:from-[#f4f4f5] dark:to-[#dcdcdf] dark:text-[#161618]!',
+          : 'bg-primary text-primary-foreground! shadow-elevation-1',
         className,
       )}
     >

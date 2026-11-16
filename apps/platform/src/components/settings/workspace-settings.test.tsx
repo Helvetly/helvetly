@@ -65,6 +65,17 @@ async function chooseZone(zone: string) {
   await user.click(screen.getByRole('button', { name: 'Save' }))
 }
 
+const renderControl = (canEdit: boolean, logoUrl: string | null = '/api/v1/workspace/logo?v=1') => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const invalidate = vi.spyOn(client, 'invalidateQueries')
+  render(
+    <QueryClientProvider client={client}>
+      <WorkspaceLogoControl name="Acme" logoUrl={logoUrl} canEdit={canEdit} />
+    </QueryClientProvider>,
+  )
+  return invalidate
+}
+
 test('lists every zone by city with its clock and offset, the usual ones first', () => {
   const options = timeZoneOptions('Europe/Zurich', new Date('2026-11-16T08:52:00Z'))
   expect(options[0]).toEqual({
@@ -119,20 +130,6 @@ test('a refused time zone shows under the field', async () => {
 })
 
 describe('the workspace logo', () => {
-  const renderControl = (
-    canEdit: boolean,
-    logoUrl: string | null = '/api/v1/workspace/logo?v=1',
-  ) => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const invalidate = vi.spyOn(client, 'invalidateQueries')
-    render(
-      <QueryClientProvider client={client}>
-        <WorkspaceLogoControl name="Acme" logoUrl={logoUrl} canEdit={canEdit} />
-      </QueryClientProvider>,
-    )
-    return invalidate
-  }
-
   test('a member sees the mark but cannot change it', () => {
     renderControl(false)
     expect(screen.queryByRole('button', { name: 'Replace' })).toBeNull()

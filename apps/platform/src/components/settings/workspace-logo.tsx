@@ -66,7 +66,7 @@ export function WorkspaceLogoControl({
         }}
       />
       <div className="flex items-center gap-4">
-        <WorkspaceMark name={name} logoUrl={logoUrl} className="size-16 rounded-2xl text-[26px]" />
+        <WorkspaceMark name={name} logoUrl={logoUrl} className="size-16 rounded-2xl text-page" />
         <div className="grid gap-1.5">
           {canEdit && (
             <span className="flex flex-wrap gap-2">

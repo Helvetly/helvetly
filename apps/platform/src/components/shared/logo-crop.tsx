@@ -238,7 +238,7 @@ export function LogoCropDialog({
             {kind === 'workspace' ? (
               <>
                 <CropPreview url={url} area={area?.percent} className="size-16 rounded-xl" />
-                <CropPreview url={url} area={area?.percent} className="size-8 rounded-[9px]" />
+                <CropPreview url={url} area={area?.percent} className="size-8 rounded-lg" />
               </>
             ) : (
               <CropPreview
