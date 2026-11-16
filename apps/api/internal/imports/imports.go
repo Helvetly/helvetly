@@ -77,6 +77,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("DELETE /api/v1/imports/{id}", s.discard)
 	handle("PATCH /api/v1/imports/{id}/records/{record_id}", s.edit)
 	handle("POST /api/v1/imports/{id}/commit", s.commit)
+	s.RegisterExpensePreview(mux)
 }
 
 func invalid(message string) error {

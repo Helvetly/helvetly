@@ -15,13 +15,15 @@ import {
   Paperclip,
   Percent,
   Plus,
+  Sparkles,
   StickyNote,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
-import { toastError } from '@/components/billing/upgrade-prompt'
+import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
+import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import {
   Combobox,
   COUNTRY_OPTIONS,
@@ -33,16 +35,19 @@ import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   expensesApi,
+  canRecognize,
   FOREIGN_VAT_HINT,
   isForeignVat,
+  isHeic,
   RATE_SOURCES,
+  recognizeReceipt,
   uploadReceipts,
   useExpenseCategories,
   useExpensePreview,
   useSaveExpense,
   type Expense,
 } from '@/lib/expenses'
-import { useHabits } from '@/lib/habits'
+import { preferred, useHabits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
 import {
   formatMoney,
@@ -68,6 +73,7 @@ import {
   type FieldErrors,
   type FormValues,
 } from './expense-form-model'
+import { applyRecognition, type Applied } from './expense-form-recognition'
 import { ReceiptDrop, StagedReceipts } from './expense-receipts'
 
 const twoDecimals = (code: string) =>
@@ -85,6 +91,21 @@ function FormField({
 
 const RATE_CHOICES = [...VAT_RATES, '0']
 const NO_FILES: File[] = []
+
+const recognizedLabel = (field: string) =>
+  ({
+    supplier_name: translate('supplier'),
+    supplier_vat_number: translate('supplierVATUID'),
+    supplier_country: translate('supplierCountry'),
+    reference: translate('invoiceReceiptNo'),
+    description: translate('whatFor'),
+    document_date: translate('receiptDate'),
+    due_date: translate('dueDate'),
+    amounts: translate('amounts'),
+  })[field] ?? field
+
+/** What the last Recognize receipt did, for the review note under the receipt. */
+type Recognized = (Pick<Applied, 'applied' | 'kept'> & { issues: string[] }) | { error: string }
 
 type ExpenseFormProps = {
   expense?: Expense
@@ -125,11 +146,25 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           (categories.data ?? []).map((category) => category.id),
         ),
   )
+  // A saved country (even CH) is the person's choice; without one, CH is only the form's fallback.
+  const [countrySaved] = useState(
+    () => !expense && preferred(habits, 'expense.supplier_country') !== null,
+  )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [staged, setStaged] = useState<File[]>(initialFiles)
   const [discarding, setDiscarding] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Receipt recognition: one chosen file, one request at a time; `touched` is every field the person ever edited.
+  const touched = useRef(new Set<string>())
+  const [chosen, setChosen] = useState<File | null>(null)
+  const [reading, setReading] = useState<File | null>(null)
+  const [recognized, setRecognized] = useState<Recognized | null>(null)
+  const reader = useRef<AbortController | null>(null)
+  const { ensure } = useAIApproval()
+  // The workspace a result belongs to: a switch while reading makes it stale.
+  const workspaceId = session?.workspace.id
+  const currentWorkspace = useRef(workspaceId)
   const submitting = useRef(false)
   const form = useRef<HTMLFormElement>(null)
   const save = useSaveExpense()
@@ -155,7 +190,78 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const preview = useExpensePreview(previewKey)
   const totals = booked ? expense : preview.data
 
+  const latest = useRef(values)
+  useEffect(() => {
+    latest.current = values
+    if (currentWorkspace.current !== workspaceId) reader.current?.abort() // a switch abandons the reading
+    currentWorkspace.current = workspaceId
+  })
+  // Closing the form abandons a reading in flight too (its usage is still counted server-side).
+  useEffect(() => () => reader.current?.abort(), [])
+  const recognizable = staged.length === 1 ? staged[0] : staged.find((file) => file === chosen)
+  const stopReading = () => {
+    reader.current?.abort()
+    reader.current = null
+    setReading(null)
+    setRecognized(null)
+  }
+  const recognize = async (file: File) => {
+    if (reader.current || expense) return // recognition fills a new expense only
+    const controller = new AbortController()
+    const startedIn = workspaceId
+    reader.current = controller
+    setReading(file)
+    setRecognized(null)
+    // Removed, replaced, closed or another workspace meanwhile (also while the approval question was open).
+    const stale = () =>
+      controller.signal.aborted ||
+      reader.current !== controller ||
+      currentWorkspace.current !== startedIn
+    try {
+      // The shared first-use approval: "Not now" sends nothing and keeps the form and the files.
+      if (!(await ensure()) || stale()) return
+      let suggestions
+      try {
+        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+      } catch (error) {
+        // The server still wanted approval (given elsewhere, withdrawn): ask once and retry once.
+        if (!isAIConsentRequired(error) || stale() || !(await ensure()) || stale()) throw error
+        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+      }
+      if (stale()) return
+      const result = applyRecognition(latest.current, initial, touched.current, suggestions, {
+        registered,
+        countrySaved,
+        currencyOk: (code) => currencyOptions.some((option) => option.value === code),
+      })
+      setValues(result.values)
+      setErrors((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([key]) =>
+              !result.applied.some((field) =>
+                field === 'amounts' ? key.startsWith('lines') : key === field,
+              ),
+          ),
+        ),
+      )
+      setRecognized({
+        applied: result.applied,
+        kept: result.kept,
+        issues: Object.values(suggestions.issues),
+      })
+    } catch (error) {
+      if (controller.signal.aborted || reader.current !== controller) return
+      if (!promptUpgrade(error)) setRecognized({ error: errorMessage(error) })
+    } finally {
+      if (reader.current === controller) {
+        reader.current = null
+        setReading(null)
+      }
+    }
+  }
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
+    touched.current.add(field)
     setValues((current) => ({ ...current, [field]: value }))
     if (errors[field])
       setErrors((current) =>
@@ -163,6 +269,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       )
   }
   const setLine = (index: number, change: Partial<FormValues['lines'][number]>) => {
+    touched.current.add('lines')
     setValues((current) => ({
       ...current,
       lines: current.lines.map((line, i) => (i === index ? { ...line, ...change } : line)),
@@ -181,7 +288,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   }
 
   const submit = async (book: boolean) => {
-    if (submitting.current) return
+    if (submitting.current || reader.current) return
     const found = validate(values, today, book && !booked)
     if (Object.keys(found).length) return showErrors(found)
     submitting.current = true
@@ -442,10 +549,96 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 description={translate('attachItNowOrLaterBookingNeedsOne')}
               >
                 {staged.length ? (
-                  <StagedReceipts
-                    files={staged}
-                    onRemove={(file) => setStaged(staged.filter((entry) => entry !== file))}
-                  />
+                  <>
+                    <StagedReceipts
+                      files={staged}
+                      onRemove={(file) => {
+                        if (file === reading) stopReading()
+                        if (file === chosen) setChosen(null)
+                        setStaged(staged.filter((entry) => entry !== file))
+                      }}
+                    />
+                    <div className="grid gap-2">
+                      {staged.length > 1 && (
+                        <Combobox
+                          id={fieldId('recognize_receipt')}
+                          value={recognizable ? String(staged.indexOf(recognizable)) : ''}
+                          options={staged.map((file, index) => ({
+                            value: String(index),
+                            label: file.name,
+                          }))}
+                          placeholder={translate('chooseTheReceiptToRead')}
+                          onChange={(index) => {
+                            stopReading() // a reading of the previously chosen receipt must not fill the form
+                            setChosen(staged[Number(index)] ?? null)
+                          }}
+                        />
+                      )}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !recognizable || reading !== null || !canRecognize(recognizable)
+                          }
+                          className="cursor-pointer"
+                          onClick={() => recognizable && void recognize(recognizable)}
+                        >
+                          <Sparkles />
+                          {reading ? translate('readingTheReceipt') : translate('recognizeReceipt')}
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          {translate('recognizeReceiptNotice')}
+                        </span>
+                      </div>
+                      {recognizable && isHeic(recognizable) && (
+                        <p className="text-xs text-muted-foreground">
+                          {translate('heicCantBeRead')}
+                        </p>
+                      )}
+                      <output
+                        aria-live="polite"
+                        className="grid gap-1 text-xs text-muted-foreground empty:hidden"
+                      >
+                        {recognized && 'error' in recognized && (
+                          <span className="text-destructive">
+                            {translate('receiptReadFailed', { reason: recognized.error })}
+                          </span>
+                        )}
+                        {recognized && 'applied' in recognized && (
+                          <>
+                            {recognized.applied.length > 0 && (
+                              <span>
+                                {translate('filledInFromTheReceipt', {
+                                  fields: recognized.applied.map(recognizedLabel).join(', '),
+                                })}
+                              </span>
+                            )}
+                            {recognized.kept.length > 0 && (
+                              <span>
+                                {translate('keptYourEntries', {
+                                  fields: recognized.kept.map(recognizedLabel).join(', '),
+                                })}
+                              </span>
+                            )}
+                            {recognized.issues.length > 0 && (
+                              <span>
+                                {translate('checkTheseFromTheReceipt', {
+                                  issues: recognized.issues.join(' '),
+                                })}
+                              </span>
+                            )}
+                            {!recognized.applied.length &&
+                              !recognized.kept.length &&
+                              !recognized.issues.length && (
+                                <span>{translate('nothingNewReadFromTheReceipt')}</span>
+                              )}
+                          </>
+                        )}
+                      </output>
+                    </div>
+                  </>
                 ) : (
                   <ReceiptDrop onFiles={(files) => setStaged(files)} compact />
                 )}
@@ -557,6 +750,8 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     options={COUNTRY_OPTIONS}
                     placeholder={translate('chooseACountry2')}
                     onChange={(code) => {
+                      for (const field of ['supplier_country', 'input_tax', 'deductible_percent'])
+                        touched.current.add(field)
                       setValues((current) => withSupplierCountry(current, code, registered))
                     }}
                   />
@@ -864,13 +1059,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             <Button
               type="button"
               variant="outline"
-              disabled={busy}
+              disabled={busy || reading !== null}
               className="cursor-pointer"
               onClick={() => void submit(false)}
             >
               {translate('saveDraft')}
             </Button>
-            <Button type="submit" disabled={busy} className="cursor-pointer">
+            <Button type="submit" disabled={busy || reading !== null} className="cursor-pointer">
               {busy ? translate('saving') : translate('saveAndBook')}
             </Button>
           </>
