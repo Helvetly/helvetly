@@ -209,7 +209,7 @@ export function EmployeeForm({
             </HelpTip>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 scroll-py-4 overflow-y-auto">
             {errors.form && (
               <div className="px-5 pt-5 md:px-8">
                 <Callout tone="danger" icon={CircleAlert} role="alert">
