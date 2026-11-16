@@ -32,8 +32,10 @@ const server = setupServer(
   http.get('/api/v1/session/workspaces', () =>
     HttpResponse.json({
       data: [
-        { id: 'w1', name: 'Muster GmbH', role: 'owner', current: true },
-        { id: 'w2', name: 'Other AG', role: 'member', current: false },
+        { id: 'w1', name: 'Muster GmbH', role: 'owner', current: true, plan: 'business' },
+        { id: 'w2', name: 'Other AG', role: 'member', current: false, plan: 'pro' },
+        { id: 'w3', name: 'Frozen AG', role: 'admin', current: false, plan: '' },
+        { id: 'w4', name: 'Unbilled AG', role: 'owner', current: false, plan: null },
       ],
     }),
   ),
@@ -105,11 +107,12 @@ test('Help & feedback lives in the user menu only, and opens its dialog', async 
   expect(await screen.findByRole('dialog', { name: 'Help & feedback' })).toBeInTheDocument()
 })
 
-test('the user menu shows the role in the workspace above a separator', async () => {
+test('the user menu shows the role at the right, without the workspace name', async () => {
   renderSidebar()
   await userEvent.click(screen.getByRole('button', { name: /Anna/ }))
   const menu = await screen.findByRole('menu')
   expect(within(menu).getByText('Owner')).toBeInTheDocument()
+  expect(menu).not.toHaveTextContent('Muster GmbH')
   expect(within(menu).getAllByRole('separator')).toHaveLength(3)
 })
 
@@ -175,8 +178,43 @@ test('the workspace switcher shows the plan, not the role, and the trial card si
   expect(screen.getByRole('button', { name: /Anna/ })).toHaveTextContent(session.user.email)
 })
 
-test('without billing the switcher falls back to the role', () => {
+test('without billing the switcher shows no plan and never the role', () => {
   renderSidebar()
-  expect(screen.getByTestId('workspace-plan')).toHaveTextContent('Owner')
+  expect(screen.queryByTestId('workspace-plan')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Muster GmbH/ })).not.toHaveTextContent('Owner')
   expect(screen.queryByRole('region', { name: 'Plan' })).not.toBeInTheDocument()
+})
+
+const rowOf = async (name: RegExp) => within(await screen.findByRole('menuitem', { name }))
+
+test('each workspace row shows its own plan, never a role', async () => {
+  server.use(
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({ data: billingFixture({ enabled: true, locked: false }) }),
+    ),
+  )
+  renderSidebar()
+  await waitFor(() => expect(screen.getByTestId('workspace-plan')).toBeInTheDocument())
+  await userEvent.click(screen.getByRole('button', { name: /Muster GmbH/ }))
+  expect((await rowOf(/Muster GmbH/)).getByText('Business')).toBeInTheDocument()
+  expect((await rowOf(/Other AG/)).getByText('Pro')).toBeInTheDocument()
+  expect((await rowOf(/Frozen AG/)).getByText('No plan · Read-only')).toBeInTheDocument()
+  const unbilled = await screen.findByRole('menuitem', { name: /Unbilled AG/ })
+  expect(unbilled.textContent).toBe('UUnbilled AG') // the mark's initial and the name, no plan line
+  const menu = await screen.findByRole('menu')
+  for (const role of ['Owner', 'Admin', 'Member']) expect(menu).not.toHaveTextContent(role)
+})
+
+test('with billing off, rows show no plan even when the list carries one', async () => {
+  server.use(
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({ data: billingFixture({ enabled: false }) }),
+    ),
+  )
+  renderSidebar()
+  await userEvent.click(screen.getByRole('button', { name: /Muster GmbH/ }))
+  const menu = await screen.findByRole('menu')
+  await screen.findByRole('menuitem', { name: /Other AG/ })
+  for (const text of ['Business', 'Pro', 'No plan'])
+    expect(within(menu).queryByText(new RegExp(text))).not.toBeInTheDocument()
 })

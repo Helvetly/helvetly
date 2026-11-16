@@ -13,6 +13,7 @@ import (
 type wsItem struct {
 	ID, Name, Role string
 	Current        bool
+	Plan           *string
 }
 
 func (e *env) workspaces(b *browser) []wsItem {
@@ -94,6 +95,53 @@ func TestListWorkspacesCurrent(t *testing.T) {
 	if len(list) != 2 || list[0].Name != "Aardvark" || list[0].Role != "member" || list[0].Current ||
 		list[1].Name != "My workspace" || list[1].ID != s.Workspace.ID || !list[1].Current || list[1].Role != "owner" {
 		t.Fatalf("list: %+v", list)
+	}
+}
+
+// Each row carries its own workspace's plan: null without a billing record, "" without a live plan, and nothing of
+// a workspace the person does not belong to.
+func TestListWorkspacesOwnPlans(t *testing.T) {
+	e := newEnv(t)
+	b := e.emailSignIn("plans@example.com")
+	s := e.session(b)
+	pro := e.otherWorkspace("Pro AG", s.User.ID, "member")
+	lapsed := e.otherWorkspace("Lapsed AG", s.User.ID, "admin")
+	foreign := e.otherWorkspace("Foreign AG", "", "")
+	for _, row := range [][]string{
+		{s.Workspace.ID, "active", "business", "now() + interval '1 day'"},
+		{pro, "trialing", "pro", "NULL"},
+		{lapsed, "active", "basic", "now() - interval '1 day'"},
+		{foreign, "active", "business", "NULL"},
+	} {
+		if _, err := e.db.Exec(e.t.Context(), `INSERT INTO workspace_billing(workspace_id,status,plan,plan_expires_at,updated_at)
+			VALUES($1,$2,$3,`+row[3]+`,now())`, row[0], row[1], row[2]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	plans := map[string]string{}
+	for _, w := range e.workspaces(b) {
+		if w.Plan == nil {
+			plans[w.Name] = "<nil>"
+		} else {
+			plans[w.Name] = *w.Plan
+		}
+	}
+	want := map[string]string{"My workspace": "business", "Pro AG": "pro", "Lapsed AG": ""}
+	if len(plans) != len(want) || plans["My workspace"] != "business" || plans["Pro AG"] != "pro" || plans["Lapsed AG"] != "" {
+		t.Fatalf("plans: %v", plans)
+	}
+	if _, ok := plans["Foreign AG"]; ok {
+		t.Fatal("a workspace the person is not in is listed")
+	}
+}
+
+func TestListWorkspacesWithoutBilling(t *testing.T) {
+	e := newEnv(t)
+	b := e.emailSignIn("nobilling@example.com")
+	for _, w := range e.workspaces(b) {
+		if w.Plan != nil {
+			t.Fatalf("plan without a billing record: %q", *w.Plan)
+		}
 	}
 }
 

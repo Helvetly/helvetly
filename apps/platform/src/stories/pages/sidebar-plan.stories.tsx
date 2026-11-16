@@ -217,7 +217,12 @@ export const LongName: Story = {
     const menu = await screen.findByRole('menu')
     // The menu fades in.
     await waitFor(() => expect(within(menu).getByText('Owner')).toBeVisible())
-    await expect(within(menu).getByText('Muster AG')).toBeVisible()
+    // The workspace is not repeated here; the role badge sits to the right, inside the menu.
+    await expect(within(menu).queryByText('Muster AG')).toBeNull()
+    const badge = within(menu).getByText('Owner')
+    await expect(badge.getBoundingClientRect().right).toBeLessThanOrEqual(
+      menu.getBoundingClientRect().right,
+    )
     const name = within(menu).getByTitle(longName.name)
     // Wrapped, not cut: the whole name fits within two lines.
     await expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight + 1)

@@ -7,7 +7,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// listWorkspaces: the workspaces the person belongs to, by name.
+// listWorkspaces: the workspaces the person belongs to, by name, each with its own plan (null: no billing record).
 func (s *Service) listWorkspaces(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	list, err := s.db.UserWorkspaces(r.Context(), sess.User.ID)
 	if err != nil {
@@ -17,7 +17,7 @@ func (s *Service) listWorkspaces(w http.ResponseWriter, r *http.Request, sess st
 	out := make([]map[string]any, 0, len(list))
 	for _, ws := range list {
 		out = append(out, map[string]any{"id": ws.ID, "name": ws.Name, "role": ws.Role, "current": ws.ID == sess.Workspace.ID,
-			"logo_url": store.WorkspaceLogoURL(ws.ID, ws.LogoFileID)})
+			"logo_url": store.WorkspaceLogoURL(ws.ID, ws.LogoFileID), "plan": ws.Plan})
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"data": out})
 }

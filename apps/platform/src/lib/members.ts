@@ -43,6 +43,8 @@ export type WorkspaceItem = {
   current: boolean
   /** The workspace's own mark, opaque (it carries its version); null shows the initial. */
   logo_url?: string | null
+  /** The workspace's own plan id: null without a billing record, "" when it has none. */
+  plan?: string | null
 }
 
 const ROLES: Role[] = ['owner', 'admin', 'member']
