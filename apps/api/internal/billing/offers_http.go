@@ -148,10 +148,20 @@ func publicOffer(o Offer, v store.OfferVersion) map[string]any {
 	for _, key := range o.PublicPricing.UsageDetailsKeys {
 		limits[key] = o.publicLimit(key)
 	}
+	// The people a workspace can have without asking: a technical guard the site states, never a comparison row.
+	seats := map[string]*int64{}
+	r, _ := o.record(string(MaxSeats))
+	for _, plan := range planOrder {
+		seats[plan] = nil // unlimited
+		if v := r.Values[plan]; v.State == StateLimited {
+			seats[plan] = v.Value
+		}
+	}
 	return map[string]any{
 		"offer_id": v.ID, "schema_version": v.SchemaVersion, "checksum": v.Checksum, "published_at": v.PublishedAt,
 		"price_per": "person", "tax_inclusive": true, "currencies": o.Billing.Currencies, "plans": plans,
 		"comparison": rows, "usage_details": o.PublicPricing.UsageDetailsKeys, "limits": limits,
+		"max_self_service_seats": seats,
 	}
 }
 
