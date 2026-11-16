@@ -24,13 +24,11 @@ import { type Tone, TONES } from '@/lib/tones'
 // The same colours as the pricing cards: Basic sky, Pro lilac (the recommended plan), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
 
-/** Under an allowance's number: a workspace cap, kept storage per team member, or a monthly pool per team member. */
+/** Under an allowance's number: "per workspace" for a workspace cap, "/ month" for a monthly pool, none for storage (the legend says whose it is). */
 function unitOf(limit: LimitKey, language: Locale): string {
   const translate = translatorFor(language)
   if (plansIn(language).LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
-  return limit === 'storage_bytes'
-    ? translate('perTeamMemberShort')
-    : translate('perTeamMemberAMonthShort')
+  return limit === 'storage_bytes' ? '' : translate('perTeamMemberAMonthShort')
 }
 
 function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
@@ -48,7 +46,7 @@ function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
     return (
       <span className="font-medium tabular-nums">
         {formatLimit(row.limit, plan)}
-        {!isUnlimited(row.limit, plan) && (
+        {!isUnlimited(row.limit, plan) && unitOf(row.limit, language) && (
           <span className="block text-caption font-normal text-muted-foreground">
             {unitOf(row.limit, language)}
           </span>
@@ -240,8 +238,11 @@ export function PlanTable() {
           <PlanCard key={plan.id} plan={plan} />
         ))}
       </div>
-      <p className="mx-auto max-w-3xl text-center text-body-sm text-muted-foreground">
-        {translate('whatEachPaidPersonAddsGoesIntoOneShared')}
+      <p
+        data-slot="allowance-legend"
+        className="mx-auto max-w-3xl text-center text-body-sm text-muted-foreground"
+      >
+        {translate('allowanceLegend')} {translate('allowanceMonthlyNote')}
       </p>
     </div>
   )

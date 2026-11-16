@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
   type LimitKey,
-  MAX_SELF_SERVICE_SEATS,
+  SELF_SERVICE_SEATS,
   type PerPlan,
   type PlanId,
   plansIn,
@@ -109,7 +109,7 @@ export function projectPlans(): PublicOfferValues {
       plans: perPlan((id) => b.cell(id) !== null),
     })),
     usage_details: USAGE_DETAILS,
-    max_self_service_seats: perPlan(() => MAX_SELF_SERVICE_SEATS),
+    max_self_service_seats: perPlan((id) => SELF_SERVICE_SEATS[id]),
     limits: Object.fromEntries(limitKeys.map((key) => [key, limit(key)])),
   }
 }

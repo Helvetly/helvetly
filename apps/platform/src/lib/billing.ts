@@ -575,7 +575,7 @@ export function discounted(
   return price
 }
 
-/** "−20 % for 3 months", "−CHF 10 once", "−20 % forever". */
+/** "−20% for 3 months", "−CHF 10 once", "−20% forever". */
 export function describeDiscount(
   promo: Pick<
     Discount,
@@ -583,7 +583,7 @@ export function describeDiscount(
   >,
 ): string {
   const off = promo.percent_off
-    ? `−${promo.percent_off} %`
+    ? `−${promo.percent_off}%`
     : `−${formatPrice({ amount: promo.amount_off ?? 0, currency: promo.currency ?? 'chf' })}`
   if (promo.duration === 'forever') return translate('dynamicForever', { off: off })
   if (promo.duration === 'once') return translate('dynamicOnce', { off: off })

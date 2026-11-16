@@ -147,13 +147,18 @@ export function PlanComparison({
               >
                 {translate('allowances')}
                 <span className="mt-0.5 block text-caption font-normal text-pretty text-muted-foreground">
-                  {translate('eachPaidPersonAddsThePerPersonAmounts')}
+                  {translate('allowanceLegend')} {translate('allowanceMonthlyNote')}
                 </span>
               </th>
             </tr>
             {offer.usage_details.map((key) => {
               const label = usageLabel(key).replace(/ this month$/, '')
               const hint = usageHint(key)
+              // What the legend above does not say: "Per workspace", "A month"; empty for storage, which is capacity.
+              const scope = translate('allowanceScope', {
+                scope: offer.limits[key]?.per_person ? 'person' : 'workspace',
+                monthly: String(Boolean(offer.limits[key]?.period)),
+              })
               return (
                 <tr key={key} data-row={key}>
                   <th
@@ -164,12 +169,7 @@ export function PlanComparison({
                       {label}
                       {hint && <HelpTip label={label}>{hint}</HelpTip>}
                     </span>
-                    <span className="mt-0.5 block text-caption">
-                      {translate('allowanceScope', {
-                        scope: offer.limits[key]?.per_person ? 'person' : 'workspace',
-                        monthly: String(Boolean(offer.limits[key]?.period)),
-                      })}
-                    </span>
+                    {scope && <span className="mt-0.5 block text-caption">{scope}</span>}
                   </th>
                   {PLANS.map((plan) => {
                     const value = allowance(offer, key, plan)

@@ -73,6 +73,12 @@ func checkoutPrices(t *testing.T, tz, cur string, perPerson map[string]map[strin
 			for plan, want := range perPerson {
 				for interval, amount := range want {
 					code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": interval})
+					if errBody, _ := body["error"].(map[string]any); plan == Basic && people > 5 { // Basic's people limit
+						if code != http.StatusConflict || errBody["code"] != "too_many_seats" {
+							t.Fatalf("%s: %d × basic %s: %d %v", zone.cur, people, interval, code, body)
+						}
+						continue
+					}
 					f := e.stripe.form("POST /v1/checkout/sessions")
 					id := f.Get("line_items[0][price]")
 					unit, ok := e.stripe.catalog[LookupKey(plan, interval)]["currency_options"].(map[string]any)[zone.cur].(map[string]any)

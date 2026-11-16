@@ -12,7 +12,6 @@ import { useCurrency } from '@/lib/currency'
 import { translatorFor } from '@/lib/i18n'
 import {
   type Interval,
-  MAX_SELF_SERVICE_SEATS,
   plansIn,
   priceOf,
   RECOMMENDED,
@@ -217,6 +216,12 @@ export function PricingCards() {
           )
         })}
       </div>
+      <p
+        data-slot="allowance-legend"
+        className="mt-8 max-w-3xl text-center text-body-sm text-pretty text-muted-foreground"
+      >
+        {translate('allowanceLegend')} {translate('allowanceMonthlyNote')}
+      </p>
       <ul className="mt-14 grid w-full max-w-5xl gap-x-6 gap-y-4 text-body-sm sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
@@ -227,7 +232,7 @@ export function PricingCards() {
           {
             icon: UsersRound,
             tone: TONES.sky,
-            text: translate('stripPerPerson', { seats: MAX_SELF_SERVICE_SEATS }),
+            text: translate('stripPerPerson'),
           },
           { icon: Globe, tone: TONES.mint, text: translate('stripCurrencies') },
           { icon: RefreshCw, tone: TONES.peach, text: translate('stripCancel') },

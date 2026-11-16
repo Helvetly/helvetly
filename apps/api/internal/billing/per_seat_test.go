@@ -78,8 +78,8 @@ func TestPerSeatSubscription(t *testing.T) {
 	plansList, _ := data["plans"].([]any)
 	basic, _ := plansList[0].(map[string]any)
 	limits, _ := basic["limits"].(map[string]any)
-	if code != http.StatusOK || data["pricing"] != "per_seat" || data["seats"] != 4.0 || members["used"] != 3.0 || members["max"] != 24.0 ||
-		limits["members"] != 24.0 || limits["clients"] == nil || data["paid_seats"] != 4.0 {
+	if code != http.StatusOK || data["pricing"] != "per_seat" || data["seats"] != 4.0 || members["used"] != 3.0 || members["max"] != 4.0 ||
+		limits["members"] != 4.0 || limits["clients"] == nil || data["paid_seats"] != 4.0 {
 		t.Fatalf("overview: %d %v", code, body)
 	}
 }
