@@ -1,3 +1,4 @@
+import type { Locale } from '@helvetly/i18n'
 import {
   Bell,
   CalendarRange,
@@ -14,11 +15,12 @@ import { type Feature, FeatureExplorer } from '@/components/home/feature-explore
 import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
-import { plansWith } from '@/lib/plans'
+import { translatorFor } from '@/lib/i18n'
+import { plansIn } from '@/lib/plans'
 
 /** A mini QR bill: the invoice's payment part, with the scissors line. */
-function QrBillArt() {
+function QrBillArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <div
       aria-hidden
@@ -46,7 +48,8 @@ function QrBillArt() {
 }
 
 /** The dunning ladder: notes before the due date, reminders after it. */
-function DunningArt() {
+function DunningArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   const steps = [
     { day: '−3', label: translate('friendlyNote'), tone: 'bg-info-solid' },
     { day: '+7', label: translate('message1stReminder'), tone: 'bg-warning-solid' },
@@ -74,7 +77,8 @@ function DunningArt() {
 }
 
 /** A receipt being read: a scan line sweeping, fields filling in. */
-function ReceiptArt() {
+function ReceiptArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <div aria-hidden className="flex w-full items-end gap-3">
       <div className="relative h-32 w-24 shrink-0 overflow-hidden rounded-lg border border-border bg-card p-2.5">
@@ -110,7 +114,8 @@ function ReceiptArt() {
 }
 
 /** A signature drawing itself on the line. */
-function SignatureArt() {
+function SignatureArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <div aria-hidden className="w-full rounded-2xl border border-border bg-card p-4">
       <svg viewBox="0 0 260 70" className="h-16 w-full text-foreground">
@@ -158,7 +163,8 @@ function InstalmentArt() {
 }
 
 /** Committed hours used against the plan for the month. */
-function EngagementArt() {
+function EngagementArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <div aria-hidden className="w-full rounded-2xl border border-border bg-card p-4">
       <div className="flex justify-between text-body-sm">
@@ -176,7 +182,8 @@ function EngagementArt() {
 }
 
 /** The Ziffern of the VAT return, adding up. */
-function VatArt() {
+function VatArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   const rows = [
     ['200', translate('totalAgreedConsideration'), '248’260.00'],
     ['302', translate('suppliesAt81'), '231’400.00'],
@@ -207,7 +214,8 @@ function VatArt() {
 }
 
 /** The client's own view: invoices to pay and documents shared with them. */
-function PortalArt() {
+function PortalArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   const rows = [
     [translate('invoice20260418'), translate('chf486000'), translate('open')],
     ['Service agreement.pdf', translate('shared0211'), translate('new')],
@@ -246,7 +254,8 @@ function PortalArt() {
 }
 
 /** One invoice, five machine-readable formats. */
-function EinvoiceArt() {
+function EinvoiceArt({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   const formats = [
     translate('xrechnungUBL'),
     translate('xrechnungCII'),
@@ -280,122 +289,123 @@ function EinvoiceArt() {
   )
 }
 
-// One entry per product area; the explorer shows one at a time, in its tone.
-const FEATURES: Feature[] = [
-  {
-    id: 'invoices',
-    facts: [translate('swissQRBill'), translate('deFRITEN')],
-    tone: 'mint',
-    icon: <FileText />,
-    label: translate('qrInvoices'),
-    title: translate('invoicesWithTheQRBillBuiltIn'),
-    body: translate('eightDocumentTypesFromPrepaymentToCreditNoteGapless'),
-    art: <QrBillArt />,
-  },
-  {
-    id: 'reminders',
-    facts: [
-      translate('upTo10Steps'),
-      translate('in', { value1: plansWith('automations', 'conjunction') }),
-    ],
-    tone: 'peach',
-    icon: <Bell />,
-    label: translate('reminders'),
-    title: translate('remindersThatSendThemselves'),
-    body: translate('upToTenStepsBeforeAndAfterTheDue'),
-    art: <DunningArt />,
-  },
-  {
-    id: 'expenses',
-    facts: [
-      translate('pdfPhotoOrExcel'),
-      translate('in', { value1: plansWith('expenses', 'conjunction') }),
-    ],
-    tone: 'lemon',
-    icon: <Receipt />,
-    label: translate('expenses'),
-    title: translate('expensesReadForYou'),
-    body: translate('dropInReceiptsPDFsOrASpreadsheetHelvetlyReads'),
-    art: <ReceiptArt />,
-  },
-  {
-    id: 'signatures',
-    facts: [
-      translate('simpleESignature'),
-      translate('in', { value1: plansWith('templates_signatures', 'conjunction') }),
-    ],
-    tone: 'lilac',
-    icon: <FileSignature />,
-    label: translate('signatures'),
-    title: translate('contractsSignedOnline'),
-    body: translate('sendAnyPDFForSignatureFillTemplatesWithClient'),
-    art: <SignatureArt />,
-  },
-  {
-    id: 'instalments',
-    facts: [
-      translate('oneQRBillPerPart'),
-      translate('in', { value1: plansWith('automations', 'conjunction') }),
-    ],
-    tone: 'sky',
-    icon: <Split />,
-    label: translate('instalments'),
-    title: translate('instalmentsAutomatically'),
-    body: translate('splitAnInvoiceIntoPartsEachWithItsOwn'),
-    art: <InstalmentArt />,
-  },
-  {
-    id: 'engagements',
-    facts: [translate('hoursUsedLive'), translate('draftsOnTime')],
-    tone: 'rose',
-    icon: <CalendarRange />,
-    label: translate('retainers'),
-    title: translate('retainersAndEngagements'),
-    body: translate('trackCommittedHoursPerClientSeeWhatIsUsed'),
-    art: <EngagementArt />,
-  },
-  {
-    id: 'vat',
-    facts: [
-      translate('ech0217File'),
-      translate('in', { value1: plansWith('corrections_vat', 'conjunction') }),
-    ],
-    tone: 'mint',
-    icon: <Landmark />,
-    label: translate('vatReturn'),
-    title: translate('theVATReturnPrepared'),
-    body: translate('effectiveOrNetTaxRateMethodAgreedOrReceived'),
-    art: <VatArt />,
-  },
-  {
-    id: 'portal',
-    facts: [
-      translate('signInByEmailCode'),
-      translate('in', { value1: plansWith('client_portal') }),
-    ],
-    tone: 'lilac',
-    icon: <UsersRound />,
-    label: translate('clientPortal'),
-    title: translate('aPortalForYourClients'),
-    body: translate('clientsSignInWithAnEmailedCodeToSee'),
-    art: <PortalArt />,
-  },
-  {
-    id: 'einvoices',
-    facts: [
-      translate('xmlFilesToSendYourself'),
-      translate('in', { value1: plansWith('einvoice_xml') }),
-    ],
-    tone: 'sky',
-    icon: <FileCode2 />,
-    label: translate('eInvoices'),
-    title: translate('eInvoicesForEurope'),
-    body: translate('xrechnungPeppolBISPolishKSeFAndRomanianEFactura2'),
-    art: <EinvoiceArt />,
-  },
-]
-
-export function Features() {
+export function Features({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  const { plansWith } = plansIn(lang)
+  // One entry per product area; the explorer shows one at a time, in its tone.
+  const FEATURES: Feature[] = [
+    {
+      id: 'invoices',
+      facts: [translate('swissQRBill'), translate('deFRITEN')],
+      tone: 'mint',
+      icon: <FileText />,
+      label: translate('qrInvoices'),
+      title: translate('invoicesWithTheQRBillBuiltIn'),
+      body: translate('eightDocumentTypesFromPrepaymentToCreditNoteGapless'),
+      art: <QrBillArt lang={lang} />,
+    },
+    {
+      id: 'reminders',
+      facts: [
+        translate('upTo10Steps'),
+        translate('in', { value1: plansWith('automations', 'conjunction') }),
+      ],
+      tone: 'peach',
+      icon: <Bell />,
+      label: translate('reminders'),
+      title: translate('remindersThatSendThemselves'),
+      body: translate('upToTenStepsBeforeAndAfterTheDue'),
+      art: <DunningArt lang={lang} />,
+    },
+    {
+      id: 'expenses',
+      facts: [
+        translate('pdfPhotoOrExcel'),
+        translate('in', { value1: plansWith('expenses', 'conjunction') }),
+      ],
+      tone: 'lemon',
+      icon: <Receipt />,
+      label: translate('expenses'),
+      title: translate('expensesReadForYou'),
+      body: translate('dropInReceiptsPDFsOrASpreadsheetHelvetlyReads'),
+      art: <ReceiptArt lang={lang} />,
+    },
+    {
+      id: 'signatures',
+      facts: [
+        translate('simpleESignature'),
+        translate('in', { value1: plansWith('templates_signatures', 'conjunction') }),
+      ],
+      tone: 'lilac',
+      icon: <FileSignature />,
+      label: translate('signatures'),
+      title: translate('contractsSignedOnline'),
+      body: translate('sendAnyPDFForSignatureFillTemplatesWithClient'),
+      art: <SignatureArt lang={lang} />,
+    },
+    {
+      id: 'instalments',
+      facts: [
+        translate('oneQRBillPerPart'),
+        translate('in', { value1: plansWith('automations', 'conjunction') }),
+      ],
+      tone: 'sky',
+      icon: <Split />,
+      label: translate('instalments'),
+      title: translate('instalmentsAutomatically'),
+      body: translate('splitAnInvoiceIntoPartsEachWithItsOwn'),
+      art: <InstalmentArt />,
+    },
+    {
+      id: 'engagements',
+      facts: [translate('hoursUsedLive'), translate('draftsOnTime')],
+      tone: 'rose',
+      icon: <CalendarRange />,
+      label: translate('retainers'),
+      title: translate('retainersAndEngagements'),
+      body: translate('trackCommittedHoursPerClientSeeWhatIsUsed'),
+      art: <EngagementArt lang={lang} />,
+    },
+    {
+      id: 'vat',
+      facts: [
+        translate('ech0217File'),
+        translate('in', { value1: plansWith('corrections_vat', 'conjunction') }),
+      ],
+      tone: 'mint',
+      icon: <Landmark />,
+      label: translate('vatReturn'),
+      title: translate('theVATReturnPrepared'),
+      body: translate('effectiveOrNetTaxRateMethodAgreedOrReceived'),
+      art: <VatArt lang={lang} />,
+    },
+    {
+      id: 'portal',
+      facts: [
+        translate('signInByEmailCode'),
+        translate('in', { value1: plansWith('client_portal') }),
+      ],
+      tone: 'lilac',
+      icon: <UsersRound />,
+      label: translate('clientPortal'),
+      title: translate('aPortalForYourClients'),
+      body: translate('clientsSignInWithAnEmailedCodeToSee'),
+      art: <PortalArt lang={lang} />,
+    },
+    {
+      id: 'einvoices',
+      facts: [
+        translate('xmlFilesToSendYourself'),
+        translate('in', { value1: plansWith('einvoice_xml') }),
+      ],
+      tone: 'sky',
+      icon: <FileCode2 />,
+      label: translate('eInvoices'),
+      title: translate('eInvoicesForEurope'),
+      body: translate('xrechnungPeppolBISPolishKSeFAndRomanianEFactura2'),
+      art: <EinvoiceArt lang={lang} />,
+    },
+  ]
   return (
     <section id="features" className="pt-12 pb-4 sm:pt-16">
       <Container>

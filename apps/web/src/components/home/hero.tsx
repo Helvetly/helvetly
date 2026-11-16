@@ -1,3 +1,4 @@
+import { type Locale, localizedHref } from '@helvetly/i18n'
 import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
 import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import Link from 'next/link'
@@ -6,11 +7,12 @@ import { Cta } from '@/components/cta'
 import { ProductWindow } from '@/components/home/product-window'
 import { QrGlyph } from '@/components/home/qr-glyph'
 import { Container } from '@/components/section'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { TRIAL_DAYS } from '@/lib/plans'
-import { START_URL } from '@/lib/site'
+import { siteIn } from '@/lib/site'
 
-export function Hero() {
+export function Hero({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <section className="relative overflow-x-clip pt-32 sm:pt-40">
       {/* Backdrop: pastel blooms drifting behind a hairline grid, and a teal-to-violet horizon
@@ -58,12 +60,16 @@ export function Hero() {
           style={{ ['--d' as string]: '240ms' }}
           className="rise mt-9 flex w-full max-w-xs flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row"
         >
-          <Cta href={START_URL} className="w-full sm:w-auto">
+          <Cta href={siteIn(lang).START_URL} className="w-full sm:w-auto">
             {translate('startYour')}
             {TRIAL_DAYS}
             {translate('dayTrial')}
           </Cta>
-          <Cta href="/pricing" variant="outline" className="w-full sm:w-auto">
+          <Cta
+            href={localizedHref('/pricing', lang)}
+            variant="outline"
+            className="w-full sm:w-auto"
+          >
             {translate('seePricing')}
           </Cta>
         </div>
@@ -95,7 +101,7 @@ export function Hero() {
       <Container className="relative mt-16 max-w-6xl pb-16 sm:mt-20">
         <div style={{ ['--d' as string]: '400ms' }} className="rise">
           <div className="tilt-in origin-top">
-            <ProductWindow />
+            <ProductWindow lang={lang} />
           </div>
         </div>
 

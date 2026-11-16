@@ -1,11 +1,14 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { languageTag } from '@helvetly/i18n'
+import { defaultLocale, type Locale, localeDetails } from '@helvetly/i18n'
 
 import { localizedContentFile } from '@/lib/content-locale'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { slugify } from '@/lib/legal'
+
+// Messages for whoever runs the build, not for readers.
+const translate = translatorFor(defaultLocale)
 
 // Guides and help articles are Markdown files in apps/web/content/<collection>, each with a small front
 // matter block. Pages are static, so the files are read at build time only.
@@ -55,9 +58,9 @@ export function parseFrontMatter(source: string, file: string) {
   return { field, optional: (key: string) => fields.get(key), body: match[2] ?? '' }
 }
 
-function read(collection: Collection, file: string): Article {
+function read(collection: Collection, file: string, language: Locale): Article {
   const { field, optional, body } = parseFrontMatter(
-    readFileSync(localizedContentFile(contentDir(collection), file), 'utf8'),
+    readFileSync(localizedContentFile(contentDir(collection), file, language), 'utf8'),
     file,
   )
   const markdown = body.replace(/^# .*\n+/, '')
@@ -81,18 +84,22 @@ function read(collection: Collection, file: string): Article {
 }
 
 /** Every article of a collection, by category then order then title. */
-export function readCollection(collection: Collection): Article[] {
+export function readCollection(collection: Collection, language: Locale): Article[] {
   return readdirSync(contentDir(collection))
     .filter((file) => file.endsWith('.md'))
-    .map((file) => read(collection, file))
+    .map((file) => read(collection, file, language))
     .toSorted(
       (a, b) =>
         a.category.localeCompare(b.category) || a.order - b.order || a.title.localeCompare(b.title),
     )
 }
 
-export function readArticle(collection: Collection, slug: string): Article | undefined {
-  return readCollection(collection).find((article) => article.slug === slug)
+export function readArticle(
+  collection: Collection,
+  slug: string,
+  language: Locale,
+): Article | undefined {
+  return readCollection(collection, language).find((article) => article.slug === slug)
 }
 
 /** Articles grouped by category, in the order the categories are listed. */
@@ -106,8 +113,8 @@ export function byCategory(articles: Article[], order: string[]) {
 }
 
 /** "11 November 2026" from "2026-11-11". */
-export function formatDay(iso: string) {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(languageTag, {
+export function formatDay(iso: string, language: Locale) {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString(localeDetails(language).languageTag, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

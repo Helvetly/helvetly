@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createTranslator, localizedHref } from './index'
+import { createTranslator, createTranslators, localizedAlternates, localizedHref } from './index'
 
 describe('translations', () => {
   const english = {
@@ -30,6 +30,29 @@ describe('translations', () => {
       'Hello, <script>{name}</script>.',
     )
     expect(englishT('invoices', { count: 0 })).toBe('No invoices')
+  })
+})
+
+describe('translators per language', () => {
+  it('keeps one translator per language, with English for missing messages', () => {
+    const translatorFor = createTranslators({
+      en: { saved: 'Saved', title: 'Invoices' },
+      de: { saved: 'Gespeichert' },
+    })
+    expect(translatorFor('de')('saved')).toBe('Gespeichert')
+    expect(translatorFor('de')('title')).toBe('Invoices')
+    expect(translatorFor('en')('saved')).toBe('Saved')
+    expect(translatorFor('de')).toBe(translatorFor('de'))
+  })
+})
+
+describe('localizedAlternates', () => {
+  it('names the page in its own language and links every language', () => {
+    expect(localizedAlternates('/pricing', 'de')).toEqual({
+      canonical: '/de/pricing',
+      languages: { 'de-CH': '/de/pricing', 'en-GB': '/pricing', 'x-default': '/pricing' },
+    })
+    expect(localizedAlternates('/', 'en').canonical).toBe('/')
   })
 })
 

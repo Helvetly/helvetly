@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@helvetly/ui/components/sheet'
 import { Menu } from 'lucide-react'
@@ -9,10 +10,13 @@ import { useEffect, useState } from 'react'
 
 import { Cta } from '@/components/cta'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
-import { NAV, SIGN_IN_URL, START_URL } from '@/lib/site'
+import { translatorFor } from '@/lib/i18n'
+import { siteIn } from '@/lib/site'
 
 export function SiteHeader() {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { NAV, SIGN_IN_URL, START_URL } = siteIn(language)
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
@@ -39,7 +43,7 @@ export function SiteHeader() {
         )}
       >
         <Link
-          href="/"
+          href={localizedHref('/', language)}
           className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo className="size-7" />
@@ -66,7 +70,7 @@ export function SiteHeader() {
 
         <div className="ml-auto hidden shrink-0 items-center gap-2 xl:flex">
           <a
-            href={localizedHref(SIGN_IN_URL)}
+            href={SIGN_IN_URL}
             className="hover:bg-lilac/60 rounded-full px-3.5 py-1.5 text-body font-medium text-foreground/75 transition-colors hover:text-foreground"
           >
             {translate('signIn')}

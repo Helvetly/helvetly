@@ -1,16 +1,15 @@
+import { defaultLocale } from '@helvetly/i18n'
 // The offer on sale as the API publishes it (GET /api/v1/public/offers/current, publicOffer in
 // apps/api/internal/billing/offers_http.go). Pages render plans.ts at build time; once they run, they ask the API and
 // show prices only while it confirms the same values, so a visitor never sees a price the API would not charge.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
-  BENEFITS,
-  LIMITS,
   type LimitKey,
   MAX_SELF_SERVICE_SEATS,
   type PerPlan,
   type PlanId,
-  PLANS,
+  plansIn,
   priceOf,
   USAGE_DETAILS,
 } from '@/lib/plans'
@@ -65,6 +64,9 @@ const perPlan = <T>(of: (plan: PlanId) => T): PerPlan<T> => ({
   pro: of('pro'),
   business: of('business'),
 })
+
+// The wording is left out of the comparison (withoutWording), so any language's copy will do.
+const { BENEFITS, LIMITS, PLANS } = plansIn(defaultLocale)
 
 function limit(key: LimitKey) {
   const { unit, scope, values } = LIMITS[key]

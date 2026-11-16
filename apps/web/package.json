@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 8001",
-    "build": "node ../../scripts/build-locales.mjs && node ../../scripts/check-links.mjs out",
+    "build": "next build && node ../../scripts/language-homes.mjs out && node ../../scripts/check-links.mjs out",
     "preview": "pnpm dlx serve@latest out -l 8001",
     "typecheck": "next typegen && tsc",
     "test": "vitest run"

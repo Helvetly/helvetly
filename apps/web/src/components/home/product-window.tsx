@@ -1,3 +1,4 @@
+import type { Locale } from '@helvetly/i18n'
 import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
 import { LogoMark } from '@helvetly/ui/components/logo'
 import {
@@ -13,66 +14,13 @@ import {
 
 import { CountUp } from '@/components/count-up'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 
 // The hero's picture of the product: the platform's dashboard drawn in HTML, so it is sharp at any
 // size, follows the theme and can move. The figures are sample data.
 
-const NAV = [
-  { icon: LayoutDashboard, label: translate('dashboard'), active: true },
-  { icon: FileText, label: translate('invoices') },
-  { icon: Receipt, label: translate('expenses') },
-  { icon: Users, label: translate('clients') },
-  { icon: Folder, label: translate('documents') },
-  { icon: CalendarRange, label: translate('engagements') },
-  { icon: FileSignature, label: translate('signatures') },
-]
-
-const KPIS = [
-  {
-    label: translate('revenueThisYear'),
-    value: 248260,
-    delta: '+18.4%',
-    tone: 'text-success',
-    bar: 'bg-mint-solid',
-  },
-  {
-    label: translate('openReceivables'),
-    value: 32940,
-    delta: translate('message14Invoices'),
-    tone: 'text-muted-foreground',
-    bar: 'bg-sky-solid',
-  },
-  {
-    label: translate('overdue'),
-    value: 4180,
-    delta: translate('message3Invoices'),
-    tone: 'text-warning',
-    bar: 'bg-peach-solid',
-  },
-  {
-    label: translate('expenses'),
-    value: 61410,
-    delta: '−6.2%',
-    tone: 'text-success',
-    bar: 'bg-lilac-solid',
-  },
-]
-
 // Monthly revenue in thousands, Jan–Dec.
 const BARS = [14, 18, 16, 22, 19, 25, 21, 27, 24, 30, 28, 34]
-
-const INVOICES = [
-  { client: translate('alpenglHnGmbH'), no: '2026-0418', amount: '4’860.00', status: 'live' },
-  { client: translate('studioLumen'), no: '2026-0417', amount: '1’250.00', status: 'Paid' },
-  {
-    client: translate('rheinConsultingAG'),
-    no: '2026-0416',
-    amount: '9’720.00',
-    status: 'Overdue',
-  },
-  { client: translate('bergwerkDesign'), no: '2026-0415', amount: '2’340.50', status: 'Paid' },
-] as const
 
 const STATUS: Record<string, string> = {
   Paid: 'bg-success-surface text-success',
@@ -80,7 +28,8 @@ const STATUS: Record<string, string> = {
   Overdue: 'bg-warning-surface text-warning',
 }
 
-function Pill({ status, className }: { status: string; className?: string }) {
+function Pill({ lang, status, className }: { lang: Locale; status: string; className?: string }) {
+  const translate = translatorFor(lang)
   return (
     <span
       className={cn('rounded-full px-2 py-0.5 text-caption font-medium', STATUS[status], className)}
@@ -90,7 +39,58 @@ function Pill({ status, className }: { status: string; className?: string }) {
   )
 }
 
-export function ProductWindow() {
+export function ProductWindow({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  const INVOICES = [
+    { client: translate('alpenglHnGmbH'), no: '2026-0418', amount: '4’860.00', status: 'live' },
+    { client: translate('studioLumen'), no: '2026-0417', amount: '1’250.00', status: 'Paid' },
+    {
+      client: translate('rheinConsultingAG'),
+      no: '2026-0416',
+      amount: '9’720.00',
+      status: 'Overdue',
+    },
+    { client: translate('bergwerkDesign'), no: '2026-0415', amount: '2’340.50', status: 'Paid' },
+  ] as const
+  const KPIS = [
+    {
+      label: translate('revenueThisYear'),
+      value: 248260,
+      delta: '+18.4%',
+      tone: 'text-success',
+      bar: 'bg-mint-solid',
+    },
+    {
+      label: translate('openReceivables'),
+      value: 32940,
+      delta: translate('message14Invoices'),
+      tone: 'text-muted-foreground',
+      bar: 'bg-sky-solid',
+    },
+    {
+      label: translate('overdue'),
+      value: 4180,
+      delta: translate('message3Invoices'),
+      tone: 'text-warning',
+      bar: 'bg-peach-solid',
+    },
+    {
+      label: translate('expenses'),
+      value: 61410,
+      delta: '−6.2%',
+      tone: 'text-success',
+      bar: 'bg-lilac-solid',
+    },
+  ]
+  const NAV = [
+    { icon: LayoutDashboard, label: translate('dashboard'), active: true },
+    { icon: FileText, label: translate('invoices') },
+    { icon: Receipt, label: translate('expenses') },
+    { icon: Users, label: translate('clients') },
+    { icon: Folder, label: translate('documents') },
+    { icon: CalendarRange, label: translate('engagements') },
+    { icon: FileSignature, label: translate('signatures') },
+  ]
   return (
     <div
       aria-hidden
@@ -212,14 +212,19 @@ export function ProductWindow() {
                     {inv.status === 'live' ? (
                       // Sent, then the payment arrives: the pill flips to Paid on a loop.
                       <span className="relative grid">
-                        <Pill status="Sent" className="loop-sent col-start-1 row-start-1" />
                         <Pill
+                          lang={lang}
+                          status="Sent"
+                          className="loop-sent col-start-1 row-start-1"
+                        />
+                        <Pill
+                          lang={lang}
                           status="Paid"
                           className="loop-paid col-start-1 row-start-1 opacity-0"
                         />
                       </span>
                     ) : (
-                      <Pill status={inv.status} />
+                      <Pill lang={lang} status={inv.status} />
                     )}
                   </li>
                 ))}

@@ -1,29 +1,22 @@
 'use client'
-
+import { localizedHref } from '@helvetly/i18n'
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { ArrowRight, BookOpen, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
 import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
-import { helpTopic, HELP_TOPICS, POPULAR_HELP, topicSlug } from '@/lib/help-topics'
-import { translate } from '@/lib/i18n'
+import { helpTopic, helpTopicsIn, POPULAR_HELP, topicSlug } from '@/lib/help-topics'
+import { translatorFor } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 export type HelpEntry = { slug: string; title: string; description: string; category: string }
 
-const QUICK = [
-  translate('qrBill'),
-  'reminder',
-  translate('vatReturn'),
-  'passkey',
-  'import',
-  'invite',
-]
-
 function TopicIcon({ category, size = 'md' }: { category: string; size?: 'sm' | 'md' }) {
-  const topic = helpTopic(category)
+  const language = useLanguage()
+  const topic = helpTopic(category, language)
   const Icon = topic?.icon ?? BookOpen
   return (
     <span
@@ -39,9 +32,10 @@ function TopicIcon({ category, size = 'md' }: { category: string; size?: 'sm' | 
 }
 
 function ArticleRow({ entry }: { entry: HelpEntry }) {
+  const language = useLanguage()
   return (
     <Link
-      href={`/help/${entry.slug}`}
+      href={localizedHref(`/help/${entry.slug}`, language)}
       className="group border-site-line flex items-start gap-4 rounded-2xl border bg-card p-4 transition-colors hover:border-foreground/20"
     >
       <TopicIcon category={entry.category} size="sm" />
@@ -63,6 +57,16 @@ function ArticleRow({ entry }: { entry: HelpEntry }) {
 
 /** The help center below its title: one search box, then topics and popular articles, or the matches. */
 export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const QUICK = [
+    translate('qrBill'),
+    'reminder',
+    translate('vatReturn'),
+    'passkey',
+    'import',
+    'invite',
+  ]
   const [query, setQuery] = useState('')
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   const matches = entries.filter((e) =>
@@ -139,13 +143,13 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
               {translate('topics')}
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {HELP_TOPICS.map((topic) => {
+              {helpTopicsIn(language).map((topic) => {
                 const count = entries.filter((e) => e.category === topic.name).length
                 if (count === 0) return null
                 return (
                   <Link
                     key={topic.name}
-                    href={`/help/topic/${topicSlug(topic.name)}`}
+                    href={localizedHref(`/help/topic/${topicSlug(topic.name)}`, language)}
                     className={cn(
                       'group flex flex-col rounded-3xl border p-5 transition-colors hover:border-foreground/20',
                       TONES[topic.tone].tile,
@@ -154,7 +158,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
                   >
                     <TopicIcon category={topic.name} />
                     <span className="mt-4 text-title-sm font-semibold underline-offset-4 group-hover:underline">
-                      {categoryLabel(topic.name)}
+                      {categoryLabel(topic.name, language)}
                     </span>
                     <span className="mt-1 flex-1 text-body-sm text-muted-foreground">
                       {topic.blurb}

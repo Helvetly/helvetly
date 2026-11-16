@@ -1,9 +1,10 @@
 'use client'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { Check } from 'lucide-react'
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
 export type Feature = {
@@ -27,6 +28,7 @@ const HOLD_MS = 6000
  * its middle. On small screens the preview sits inside the open entry.
  */
 export function FeatureExplorer({ features }: { features: Feature[] }) {
+  const translate = translatorFor(useLanguage())
   const ref = useRef<HTMLDivElement>(null)
   const viewport = useRef<HTMLDivElement>(null)
   const list = useRef<HTMLDivElement>(null)

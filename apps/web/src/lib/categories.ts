@@ -1,6 +1,8 @@
-import { translate } from '@/lib/i18n'
+import type { Locale } from '@helvetly/i18n'
 
-const categories: Record<string, string> = {
+import { perLanguage } from '@/lib/i18n'
+
+const categoriesIn = perLanguage((translate): Record<string, string> => ({
   'Account and security': translate('category1'),
   Clients: translate('category2'),
   'Documents and signatures': translate('category3'),
@@ -14,6 +16,7 @@ const categories: Record<string, string> = {
   'Team and workspace': translate('category11'),
   VAT: translate('category12'),
   'VAT and books': translate('category13'),
-}
+}))
 
-export const categoryLabel = (category: string) => categories[category] ?? category
+export const categoryLabel = (category: string, language: Locale) =>
+  categoriesIn(language)[category] ?? category

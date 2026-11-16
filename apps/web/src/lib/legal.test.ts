@@ -4,14 +4,14 @@ import { isLegalSlug, LEGAL, legalHref, readLegal, slugify } from './legal'
 
 describe('legal', () => {
   it.each(Object.keys(LEGAL).filter(isLegalSlug))('reads %s without its title line', (slug) => {
-    const { markdown } = readLegal(slug)
+    const { markdown } = readLegal(slug, 'en')
     expect(markdown).not.toMatch(/^# /)
     // a bracket not followed by a link target is an unfilled placeholder
     expect(markdown).not.toMatch(/DRAFT|TBD|\[[^\]]*\](?!\()/)
   })
 
   it('lists the numbered sections as headings', () => {
-    expect(readLegal('terms').headings[0]).toEqual({
+    expect(readLegal('terms', 'en').headings[0]).toEqual({
       text: '1. Parties and scope',
       id: '1-parties-and-scope',
     })

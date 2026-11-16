@@ -1,10 +1,11 @@
+import type { Locale } from '@helvetly/i18n'
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { Container, SectionHeading } from '@/components/section'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 
 export type Question = { q: string; a: ReactNode }
 
@@ -12,7 +13,8 @@ export type Question = { q: string; a: ReactNode }
 const SHOWN = 6
 
 /** Questions that open in place: native <details>, so keyboard, find-in-page and readers just work. */
-export function Faq({ items }: { items: Question[] }) {
+export function Faq({ lang, items }: { lang: Locale; items: Question[] }) {
+  const translate = translatorFor(lang)
   const rest = items.slice(SHOWN)
   return (
     <div className="divide-site-line border-site-line divide-y overflow-hidden rounded-2xl border bg-card/60 backdrop-blur">
@@ -62,6 +64,7 @@ function FaqItem({ item: { q, a }, index }: { item: Question; index: number }) {
  * soft pastel wash.
  */
 export function FaqSection({
+  lang,
   id,
   eyebrow,
   title,
@@ -69,6 +72,7 @@ export function FaqSection({
   card,
   items,
 }: {
+  lang: Locale
   id?: string
   eyebrow: string
   title: ReactNode
@@ -106,7 +110,7 @@ export function FaqSection({
           </div>
         </div>
         <div data-reveal>
-          <Faq items={items} />
+          <Faq lang={lang} items={items} />
         </div>
       </Container>
     </section>

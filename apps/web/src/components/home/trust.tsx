@@ -1,3 +1,4 @@
+import { type Locale, localizedHref } from '@helvetly/i18n'
 import {
   ArchiveRestore,
   Fingerprint,
@@ -11,49 +12,11 @@ import Link from 'next/link'
 
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
-const TRUST: { icon: LucideIcon; tone: Tone; title: string; body: string }[] = [
-  {
-    icon: Fingerprint,
-    tone: 'lilac',
-    title: translate('noPasswordsToSteal'),
-    body: translate('signInWithAPasskeyGoogleOrAnEmailed'),
-  },
-  {
-    icon: Link2,
-    tone: 'mint',
-    title: translate('aTamperEvidentLedger'),
-    body: translate('everyFinancialChangeIsWrittenToAnAppendOnly'),
-  },
-  {
-    icon: Lock,
-    tone: 'sky',
-    title: translate('closedMonthsStayClosed'),
-    body: translate('closeAPeriodAndNobodyCanIssuePayOr'),
-  },
-  {
-    icon: ArchiveRestore,
-    tone: 'peach',
-    title: translate('yourDataYoursToTake'),
-    body: translate('anOwnerCanDownloadTheWholeWorkspaceAsA'),
-  },
-  {
-    icon: EyeOff,
-    tone: 'rose',
-    title: translate('noTrackersNoAds'),
-    body: translate('thePlatformRunsWithoutAnalyticsOrAdvertisingScriptsFonts'),
-  },
-  {
-    icon: ShieldCheck,
-    tone: 'lemon',
-    title: translate('builtForNDSGAndGDPR'),
-    body: translate('aDataProcessingAgreementAPublicListOfSubprocessors'),
-  },
-]
-
-export function Trust() {
+export function Trust({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
   return (
     <section className="relative py-14 sm:py-20">
       <div aria-hidden className="wash absolute inset-0 -z-10 mask-y-from-75% mask-y-to-100%" />
@@ -69,11 +32,11 @@ export function Trust() {
           }
           lead={translate('yourBooksAreTheRecordOfYourCompanyHelvetly')}
         />
-        <TrustGrid className="mt-16" />
+        <TrustGrid lang={lang} className="mt-16" />
         <p data-reveal className="mt-8 text-center text-body text-muted-foreground">
           {translate('readMoreAbout')}{' '}
           <Link
-            href="/security"
+            href={localizedHref('/security', lang)}
             className="text-link underline underline-offset-4 hover:no-underline"
           >
             {translate('howWeProtectYourData')}
@@ -86,7 +49,46 @@ export function Trust() {
 }
 
 /** The six promises as toned cards; the home page and /security share them. */
-export function TrustGrid({ className }: { className?: string }) {
+export function TrustGrid({ lang, className }: { lang: Locale; className?: string }) {
+  const translate = translatorFor(lang)
+  const TRUST: { icon: LucideIcon; tone: Tone; title: string; body: string }[] = [
+    {
+      icon: Fingerprint,
+      tone: 'lilac',
+      title: translate('noPasswordsToSteal'),
+      body: translate('signInWithAPasskeyGoogleOrAnEmailed'),
+    },
+    {
+      icon: Link2,
+      tone: 'mint',
+      title: translate('aTamperEvidentLedger'),
+      body: translate('everyFinancialChangeIsWrittenToAnAppendOnly'),
+    },
+    {
+      icon: Lock,
+      tone: 'sky',
+      title: translate('closedMonthsStayClosed'),
+      body: translate('closeAPeriodAndNobodyCanIssuePayOr'),
+    },
+    {
+      icon: ArchiveRestore,
+      tone: 'peach',
+      title: translate('yourDataYoursToTake'),
+      body: translate('anOwnerCanDownloadTheWholeWorkspaceAsA'),
+    },
+    {
+      icon: EyeOff,
+      tone: 'rose',
+      title: translate('noTrackersNoAds'),
+      body: translate('thePlatformRunsWithoutAnalyticsOrAdvertisingScriptsFonts'),
+    },
+    {
+      icon: ShieldCheck,
+      tone: 'lemon',
+      title: translate('builtForNDSGAndGDPR'),
+      body: translate('aDataProcessingAgreementAPublicListOfSubprocessors'),
+    },
+  ]
   return (
     <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}>
       {TRUST.map(({ icon: Icon, tone, title, body }, i) => (

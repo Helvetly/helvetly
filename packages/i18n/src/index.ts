@@ -10,9 +10,13 @@ export {
   languageStorageKey,
 } from './browser-locale'
 
-export const defaultLocale = configuration.defaultLocale
-export const browserLanguage = process.env.NEXT_PUBLIC_I18N_MODE === 'browser'
 export type Locale = keyof typeof configuration.locales
+const configured = (value: string): value is Locale => Object.hasOwn(configuration.locales, value)
+const configuredDefault = configuration.defaultLocale
+if (!configured(configuredDefault))
+  throw new Error(`Default locale is not enabled: ${configuredDefault}`)
+export const defaultLocale = configuredDefault
+export const browserLanguage = process.env.NEXT_PUBLIC_I18N_MODE === 'browser'
 export const locales = Object.fromEntries(
   Object.entries(configuration.locales).filter(
     ([language]) => !browserLanguage || configuration.browserLocales.includes(language),
@@ -30,13 +34,36 @@ const configuredLocale =
 export const locale = isLocale(configuredLocale) ? configuredLocale : 'en'
 export const languageTag = configuration.locales[locale].languageTag
 export const numberLocale = configuration.locales[locale].numberLocale
+/** The language's tag and number format, for a page built in that language. */
+export function localeDetails(language: Locale) {
+  return configuration.locales[language]
+}
 export const localePrefix = browserLanguage || locale === defaultLocale ? '' : `/${locale}`
+
+type Catalogs<Messages extends Record<string, string>> = { en: Messages } & Partial<
+  Record<Locale, Partial<Record<keyof Messages, string>>>
+>
 
 /** The language stays fixed for the lifetime of the page, including module-level labels. */
 export function createMessages<const Messages extends Record<string, string>>(
-  catalogs: { en: Messages } & Partial<Record<Locale, Partial<Record<keyof Messages, string>>>>,
+  catalogs: Catalogs<Messages>,
 ) {
-  return createTranslator(catalogs.en, locale, catalogs[locale])
+  return createTranslators(catalogs)(locale)
+}
+
+/** One translator per language, for pages that render several languages in one build. */
+export function createTranslators<const Messages extends Record<string, string>>(
+  catalogs: Catalogs<Messages>,
+) {
+  const translators = new Map<Locale, ReturnType<typeof createTranslator<Messages>>>()
+  return (language: Locale) => {
+    let translator = translators.get(language)
+    if (!translator) {
+      translator = createTranslator(catalogs.en, language, catalogs[language])
+      translators.set(language, translator)
+    }
+    return translator
+  }
 }
 
 export function createTranslator<const Messages extends Record<string, string>>(
@@ -99,14 +126,14 @@ export function localizedHref(
   return language === defaultLocale ? path : `/${language}${path === '/' ? '/' : path}`
 }
 
-export function localizedAlternates(path: string) {
+export function localizedAlternates(path: string, language: Locale) {
   return {
-    canonical: localizedHref(path),
+    canonical: localizedHref(path, language),
     languages: {
       ...Object.fromEntries(
-        Object.entries(locales).map(([language, details]) => [
+        Object.entries(locales).map(([code, details]) => [
           details.languageTag,
-          localizedHref(path, language),
+          localizedHref(path, code),
         ]),
       ),
       'x-default': localizedHref(path, defaultLocale),

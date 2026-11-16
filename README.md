@@ -66,11 +66,12 @@ The shared `packages/i18n` runtime provides typed keys, ICU messages, interpolat
 User data, API identifiers and the language of issued financial documents remain separate from interface language.
 
 To enable another language, add it to `packages/i18n/src/locales.json`, add its JSON catalogs next to
-`en.json`, and import them into each `src/lib/i18n.ts` with `createMessages({ en, de })`.
+`en.json`, and import them into each `src/lib/i18n.ts` (`createMessages({ en, de })` in platform and portal,
+`createTranslators({ en, de })` on the website).
 Translate complete messages; ICU plural rules are available for counts.
 Marketing and documentation keep English at the existing URLs; other languages use prefixes such as `/de/`.
-Their builds create a separate static export for each configured language; for marketing development, set
-`HELVETLY_BUILD_LOCALE=de` before starting Next.js.
+The website is one static export and one `next dev` server for every configured language: English pages live in
+`apps/web/src/app/(default)` at the root, the others in `app/[lang]`, and both render the same page components.
 
 Platform and portal keep all routes unprefixed. Open a link with `?lang=en` to select a supported language and save it
 under `helvetly.language` in that origin's `localStorage`. Without a supported query parameter, the saved

@@ -1,6 +1,6 @@
 'use client'
 
-import { browserLanguage, languageHref, locale, locales, localizedHref } from '@helvetly/i18n'
+import { browserLanguage, languageHref, locales, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -9,10 +9,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
-import { translate } from '@helvetly/ui/lib/i18n'
+import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Check, Languages } from 'lucide-react'
 
 export function LanguageMenuItems() {
+  const current = useLanguage()
+  const translate = useTranslate()
   if (Object.keys(locales).length < 2) return null
 
   return (
@@ -30,7 +32,7 @@ export function LanguageMenuItems() {
           }}
         >
           <span className="flex-1">{details.name}</span>
-          {language === locale && <Check aria-hidden />}
+          {language === current && <Check aria-hidden />}
         </DropdownMenuItem>
       ))}
     </>
@@ -38,6 +40,7 @@ export function LanguageMenuItems() {
 }
 
 export function LanguageSwitcher() {
+  const translate = useTranslate()
   if (Object.keys(locales).length < 2) return null
 
   return (
