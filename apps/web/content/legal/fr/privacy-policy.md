@@ -30,8 +30,8 @@ identifiants fiscaux, coordonnées bancaires, statut et canton de l’impôt à 
 importés pour un employé (contrats, fiches de salaire ou permis, par exemple). Helvetly ne calcule
 ni rémunération, ni impôts, ni cotisations, ne conserve pas de données de santé ou d’absence et ne
 prévoit aucun champ pour d’autres catégories particulières de données ; les documents importés par
-le client peuvent en contenir, sous sa responsabilité. Les données des employés et des salaires ne
-sont jamais transmises à OpenAI et ne sont pas accessibles via MCP ou les jetons d’API personnels.
+le client peuvent en contenir, sous sa responsabilité. Helvetly ne récupère pas les données des employés et des salaires pour les requêtes à OpenAI. Ces
+données ne sont pas accessibles via MCP ou les jetons d’API personnels.
 Il appartient au client, en tant que responsable du traitement, de déterminer la base juridique
 applicable (par exemple art. 6, par. 1, let. b et c, et art. 88 RGPD, nLPD, art. 328b du code suisse
 des obligations ou art. 50e à 50g LAVS pour le numéro AVS) ; les détails figurent dans
@@ -80,10 +80,14 @@ le jeton d’API que vous collez uniquement dans le stockage de session de cet o
 
 ## 4. Heidi, import par IA et OpenAI
 
+Vous approuvez une seule fois votre propre utilisation de l’IA dans chaque espace de travail. Votre
+approbation couvre toutes les fonctions d’IA de cet espace ; elle ne vaut ni pour un autre membre ni
+dans un autre espace. Refuser ou fermer la boîte de dialogue ne lance aucune action d’IA.
+
 Heidi répond à de nombreuses questions à partir des données de votre espace sans service externe.
 Pour d’autres questions et pour **l’import par IA** (lecture de fichiers et proposition
-d’enregistrements), Helvetly utilise l’API OpenAI (OpenAI, États-Unis) dans le cadre du service.
-L’import par IA est disponible dans les formules qui l’incluent.
+d’enregistrements), Helvetly utilise l’API OpenAI (OpenAI, États-Unis) uniquement après votre propre
+approbation pour cet espace. L’import par IA est disponible dans les formules qui l’incluent.
 
 Données transmises :
 
@@ -91,9 +95,12 @@ Données transmises :
   des chiffres affichés par Heidi) et les fichiers joints à ce message. Une vérification rapide
   visant à déterminer si le message concerne Helvetly ou votre activité, ainsi qu’un décompte des
   tokens de la requête, sont également envoyés à OpenAI.
-- L’import par IA transmet le contenu des fichiers importés, partie par partie.
+- L’import par IA et la lecture des justificatifs transmettent le contenu des fichiers sélectionnés, partie par partie.
+- La suggestion de nom d’espace transmet uniquement le nom d’entreprise saisi.
 
-Les données des employés et des salaires ne sont jamais transmises.
+Helvetly ne récupère pas les données d’Employees ou de Payroll pour les requêtes d’IA. N’incluez pas
+de données sur les employés ou les salaires dans les messages ou fichiers envoyés pour un traitement
+par IA.
 
 Nous demandons à OpenAI de ne pas conserver les requêtes et réponses (`store: false`). Selon ses
 conditions API, ces données ne servent pas à entraîner les modèles et peuvent être conservées

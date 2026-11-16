@@ -28,8 +28,8 @@ identifiers, bank details, withholding-tax status and canton, and the documents 
 for an employee (such as contracts, payslips or permits). Helvetly does not calculate pay, tax or
 contributions, stores no health or absence data, and has no fields for other special categories of
 data; documents the customer uploads may contain such data, which is the customer's responsibility.
-Employee and payroll data are never sent to OpenAI and are not available through MCP or personal API
-tokens. Which legal basis applies (for example under GDPR Art. 6(1)(b) and (c) and Art. 88, the nDSG,
+Helvetly does not fetch employee or payroll records for OpenAI requests. These records are not
+available through MCP or personal API tokens. Which legal basis applies (for example under GDPR Art. 6(1)(b) and (c) and Art. 88, the nDSG,
 Art. 328b of the Swiss Code of Obligations, or Art. 50e–50g AHVG for the AHV number) is for the
 customer to determine as controller; the [data processing agreement](dpa.md) describes the details.
 
@@ -72,10 +72,14 @@ tab's session storage.
 
 ## 4. Heidi, AI import and OpenAI
 
+You approve AI use once for yourself in each workspace. Your approval covers all AI tools in that
+workspace; it does not approve another member or carry over to another workspace. Declining or
+closing the approval dialog starts no AI action.
+
 Heidi answers many questions from your workspace's records without any outside service. For other
 questions, and for **AI import** (reading uploaded files and proposing records), Helvetly uses
-OpenAI's API (OpenAI, USA) as part of the service. AI import is available on the plans that include
-it.
+OpenAI's API (OpenAI, USA) only after your own approval for this workspace. AI import is available
+on the plans that include it.
 
 What is sent:
 
@@ -83,9 +87,11 @@ What is sent:
   contain figures Heidi showed you) and files you attach to that message. A short check of whether
   the message is about Helvetly or your business, and a count of the tokens the request will use,
   are sent to OpenAI as well.
-- AI import sends the content of the files you upload for the import, part by part.
+- AI import and receipt reading send the content of the files you choose, part by part.
+- The workspace-name suggestion sends only the company name you enter.
 
-Employee and payroll data are never sent.
+Helvetly does not fetch Employees or Payroll records for AI requests. Do not include employee or
+payroll data in messages or files you send for AI processing.
 
 We ask OpenAI not to store requests and responses (`store: false`). According to OpenAI's API terms,
 API data is not used to train models and may be kept for up to 30 days to detect abuse. Heidi is labelled as an AI assistant; its answers and imported

@@ -59,17 +59,13 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
-	scopes := []string{"write:" + kind.Resource, "write:documents"}
-	if kind.Private {
-		scopes = scopes[:1]
-	}
-	for _, scope := range scopes {
+	for _, scope := range scopesFor(kind) {
 		if err := need(sess, scope); err != nil {
 			return err
 		}
 	}
 	if kind.Parse == nil {
-		if err := s.gate(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
+		if err := s.gate(r.Context(), s.db.Q, sess.Workspace.ID, sess.User.ID); err != nil {
 			return err
 		}
 	}

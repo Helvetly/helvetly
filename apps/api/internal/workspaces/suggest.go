@@ -52,10 +52,11 @@ type suggestionOut struct {
 }
 
 // suggestName is the one-time, per-request-consented AI suggestion of a workspace name from the company name.
-// It is a complimentary call outside the plan's token pool and outside Heidi's consent: the workspace's row in
+// It also needs the person's own AI approval in this workspace (auth.RequireAIConsent), checked before the use is
+// taken. It is a complimentary call outside the plan's token pool: the workspace's row in
 // workspace_name_suggestions is taken before the model is asked, so the single use holds across retries, reloads
 // and concurrent requests. Once the provider is reached the use stays spent whatever the outcome; before that
-// (provider off, invalid input, no consent, not the owner, already set up) nothing is spent.
+// (provider off, invalid input, no consent or approval, not the owner, already set up) nothing is spent.
 func (s *Service) suggestName(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	if err := s.suggest(w, r, sess); err != nil {
 		s.auth.WriteError(w, r, err)
@@ -92,6 +93,11 @@ func (s *Service) suggest(w http.ResponseWriter, r *http.Request, sess store.Ses
 	var row store.NameSuggestion
 	var outcome store.NameSuggestionOutcome
 	err := s.db.Tx(ctx, func(q store.Q) (err error) {
+		// The request's narrow consent covers only the company name; the person's general AI approval is required too
+		// and is never granted here.
+		if err := auth.RequireAIConsent(ctx, q, sess.Workspace.ID, sess.User.ID); err != nil {
+			return err
+		}
 		row, outcome, err = q.ReserveNameSuggestion(ctx, store.NameSuggestion{WorkspaceID: sess.Workspace.ID, RequestedBy: sess.User.ID,
 			CompanyName: company, RateCard: card.Version, Model: card.Model}, suggestionsPerDay, now)
 		return err

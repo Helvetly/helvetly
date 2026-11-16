@@ -18,4 +18,8 @@ Le spese e l’importazione delle ricevute richiedono **Pro** o **Business**.
 
 ## Da sapere
 
+- Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti al
+  fornitore IA. L’approvazione copre tutte le funzioni IA di quello spazio, solo per te. Se rifiuti
+  o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
+  restano disponibili.
 - La lettura delle ricevute utilizza la disponibilità IA mensile.

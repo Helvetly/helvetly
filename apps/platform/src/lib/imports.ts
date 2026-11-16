@@ -54,6 +54,9 @@ export type ImportRecord = {
 /** What a batch imports: one kind, or `auto`, where the AI works out what each file is. */
 export type ImportTarget = ImportKind | 'auto'
 
+/** Whether reading this kind's files uses the AI model; payroll files are parsed by Helvetly itself. */
+export const readsWithAI = (kind: ImportTarget) => kind !== 'payroll'
+
 export type ImportBatch = {
   id: string
   kind: ImportTarget
@@ -682,7 +685,7 @@ export function displayValue(value: ImportValue | undefined) {
 }
 
 export type ImportProblem = {
-  kind: 'not_configured' | 'plan' | 'file' | 'retry'
+  kind: 'consent' | 'not_configured' | 'plan' | 'file' | 'retry'
   title: string
   message: string
 }
@@ -699,6 +702,12 @@ export function importProblem(error: unknown): ImportProblem {
   const code = error instanceof ApiError ? error.code : ''
   const message = error instanceof Error ? error.message : ''
   switch (code) {
+    case 'ai_consent_required':
+      return {
+        kind: 'consent',
+        title: translate('aiConsentRequiredTitle'),
+        message: translate('aiConsentRequiredMessage'),
+      }
     case 'ai_not_configured':
       return {
         kind: 'not_configured',

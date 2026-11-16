@@ -18,4 +18,8 @@ Für den Import von Spesen und Belegen ist **Pro** oder **Business** erforderlic
 
 ## Gut zu wissen
 
+- Vor der ersten KI-Nutzung in jedem Arbeitsbereich stimmen Sie der Übermittlung von Inhalten an den
+  KI-Anbieter zu. Diese Zustimmung gilt nur für Sie und für alle KI-Funktionen in diesem
+  Arbeitsbereich. Wenn Sie ablehnen oder den Dialog schliessen, startet weder ein Upload noch eine
+  KI-Verarbeitung; Entwurf und Dateien bleiben erhalten.
 - Beim Lesen von Quittungen wird der monatliche AI-Zuschuss verwendet.

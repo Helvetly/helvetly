@@ -27,6 +27,7 @@ func TestModelQualityOnMultilingualInvoices(t *testing.T) {
 	model := cmp.Or(os.Getenv("OPENAI_MODEL"), aimodel.DefaultModel)
 	base := cmp.Or(os.Getenv("OPENAI_BASE_URL"), "https://api.openai.com/v1")
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	e.s.provider = aimodel.NewOpenAI(key, base, model)
 
 	docs := []struct {
@@ -50,7 +51,7 @@ func TestModelQualityOnMultilingualInvoices(t *testing.T) {
 	fields, wrong := 0, 0
 	for i, d := range docs {
 		f := store.ImportFile{ID: fmt.Sprintf("quality_%d", i), BatchID: "quality", Name: d.name + ".txt"}
-		_, records, err := e.s.ask(context.Background(), invoicesKind, ws, f, 0, chunk{text: d.text}, nil)
+		_, records, err := e.s.ask(context.Background(), invoicesKind, ws, e.sess.User.ID, f, 0, chunk{text: d.text}, nil)
 		if err != nil {
 			t.Errorf("%s: %v", d.name, err)
 			wrong += len(d.want)

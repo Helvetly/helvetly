@@ -30,6 +30,7 @@ func autoRecords(b store.ImportBatch, kind string) []store.ImportRecord {
 
 func TestAutoImportRecognisesLinksAndCommitsInOrder(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	byFile := func(r aimodel.Request) (aimodel.Reply, error) {
 		if strings.Contains(r.Message, "Lunch") {
 			return answer(`{"document_type": "other", "clients": [], "invoices": []}`)(r)
@@ -94,7 +95,9 @@ func TestAutoImportRecognisesLinksAndCommitsInOrder(t *testing.T) {
 
 func TestAutoImportChecksEachRecordsScope(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	clerk := e.person("ws_a", "usr_clerk", "member", []string{"read:*", "write:documents", "write:clients"})
+	e.consent("ws_a", "usr_clerk")
 	e.model.replies = append(e.model.replies, answer(autoInvoice))
 	w := e.as(clerk).upload(Auto, map[string][]byte{"invoice.txt": []byte("Invoice")})
 	if w.Code != 201 {
@@ -130,6 +133,7 @@ func TestByCommitOrder(t *testing.T) {
 
 func TestAutoImportKeepsAZipEntryAsTheIssuedInvoicesOriginal(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	e.model.replies = append(e.model.replies, answer(autoInvoice))
 	pdf := []byte("%PDF-1.4\n% invoice 2025/IN/001\n")
 	w := e.upload(Auto, map[string][]byte{"invoices.zip": zipOf(t, map[string][]byte{"2025-IN-001.pdf": pdf}, zip.Deflate)})

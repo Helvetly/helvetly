@@ -256,13 +256,22 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		return err
 	}
 	if result.Provider {
+		consent := store.AIConsent{}
+		if s.provider != nil {
+			if consent, err = s.db.AIConsent(r.Context(), sess.Workspace.ID, sess.User.ID); err != nil {
+				return err
+			}
+		}
 		section, howTo := guideAnswer(message)
 		switch {
-		case s.provider == nil && howTo && len(files) == 0:
+		case (s.provider == nil || !consent.Granted) && howTo && len(files) == 0:
 			result.Text = section + "\n\n_From the Helvetly guide. If this does not answer it, tell us in Help & feedback._"
 			result.Provider = false
 		case s.provider == nil:
 			result.Text = "This message needs an AI model. OpenAI is not configured for this server. " + localHelp
+			result.Provider = false
+		case !consent.Granted:
+			result.Text = "This message needs an AI model, and you have not approved AI use in this workspace yet. Nothing was sent to OpenAI. " + localHelp
 			result.Provider = false
 		default:
 			progress := func(label string) { _ = st.status(label) }

@@ -7,12 +7,15 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, History, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
 import { errorMessage } from '@/lib/api'
+import { usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   commitSummary,
@@ -21,6 +24,7 @@ import {
   foundSummary,
   IMPORT_KINDS,
   importProblem,
+  readsWithAI,
   isClean,
   isSettled,
   resumable,
@@ -75,14 +79,28 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
   const resume = !fresh && batchId === null ? resumable(list.data ?? []) : null
   const editingRecord = records.find((record) => record.id === editing)
 
-  const read = () =>
+  const queryClient = useQueryClient()
+  const { ensure } = useAIApproval()
+  const asking = useRef(false)
+  // Reading with AI waits for the person's approval; Not now keeps the chosen files and sends nothing.
+  const read = async () => {
+    if (asking.current || upload.isPending) return
+    asking.current = true
+    const approved = !readsWithAI(kind) || (await ensure())
+    asking.current = false
+    if (!approved) return
     upload.mutate(files, {
       onSuccess: (created) => {
         setBatchId(created.id)
         setFresh(true)
         setFiles([])
       },
+      // Approval withdrawn elsewhere: the next try asks again instead of trusting a stale answer.
+      onError: (error) => {
+        if (isAIConsentRequired(error)) void queryClient.invalidateQueries({ queryKey: usageKey })
+      },
     })
+  }
   const reset = () => {
     setBatchId(null)
     setFresh(true)
@@ -154,7 +172,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           </div>
         )}
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
-        {upload.error && <Problem error={upload.error} onRetry={read} />}
+        {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
         <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
         <p className="text-[12.5px] text-pretty text-muted-foreground">
           {config ? translate('importSuggestions', { noun }) : translate('importAutoSuggestions')}{' '}
@@ -171,7 +189,10 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           })
         : translate('noFilesChosenYet')
     actions = (
-      <Button disabled={!files.length || upload.isPending || Boolean(lock)} onClick={read}>
+      <Button
+        disabled={!files.length || upload.isPending || Boolean(lock)}
+        onClick={() => void read()}
+      >
         {upload.isPending ? translate('uploading3') : translate('readFiles')}
       </Button>
     )
@@ -404,6 +425,11 @@ function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
         <AlertCircle className="size-4 shrink-0" /> {problem.title}
       </p>
       <p className="text-pretty text-foreground">{problem.message}</p>
+      {problem.kind === 'consent' && (
+        <Button size="sm" className="w-fit" onClick={onRetry}>
+          {translate('aiConsentRequiredAction')}
+        </Button>
+      )}
       {problem.kind === 'plan' && (
         <Button asChild size="sm" variant="outline" className="w-fit">
           <Link href="/settings/billing/plans">{translate('seePlans')}</Link>

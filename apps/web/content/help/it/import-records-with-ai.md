@@ -19,5 +19,9 @@ L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA de
 
 ## Da sapere
 
+- Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti al
+  fornitore IA. L’approvazione copre tutte le funzioni IA di quello spazio, solo per te. Se rifiuti
+  o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
+  restano disponibili.
 - Le importazioni utilizzano la disponibilità IA mensile.
 - Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Settings → Periods**.

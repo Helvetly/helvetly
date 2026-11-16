@@ -27,7 +27,7 @@ var WorkspaceExportTables = []ExportTable{
 	{"members", `SELECT jsonb_build_object('user_id', m.user_id, 'email', u.email, 'name', u.name, 'role', m.role,
 		'scopes', m.scopes, 'joined_at', m.created_at) FROM workspace_members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = $1`},
 	{"invitations", `SELECT to_jsonb(t) - 'token_hash' FROM workspace_invitations t WHERE t.workspace_id = $1`},
-	own("workspace_billing"), own("workspace_name_suggestions"),
+	own("workspace_billing"), own("workspace_ai_consents"), own("workspace_name_suggestions"),
 	own("clients"), own("client_contacts"), own("self_billing_agreements"), own("products"),
 	own("invoices"), child("invoice_lines", "invoices", "invoice_id"), child("invoice_payments", "invoices", "invoice_id"),
 	child("invoice_refunds", "invoices", "invoice_id"), child("invoice_prepayments", "invoices", "invoice_id"),

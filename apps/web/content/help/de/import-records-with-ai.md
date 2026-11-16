@@ -19,5 +19,9 @@ Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der
 
 ## Gut zu wissen
 
+- Vor der ersten KI-Nutzung in jedem Arbeitsbereich stimmen Sie der Übermittlung von Inhalten an den
+  KI-Anbieter zu. Diese Zustimmung gilt nur für Sie und für alle KI-Funktionen in diesem
+  Arbeitsbereich. Wenn Sie ablehnen oder den Dialog schliessen, startet weder ein Upload noch eine
+  KI-Verarbeitung; Entwurf und Dateien bleiben erhalten.
 - Für Importe wird die monatliche KI-Zulage verwendet.
 - Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Settings → Periods**.

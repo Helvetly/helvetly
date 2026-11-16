@@ -18,4 +18,8 @@ Les dépenses et l’import de justificatifs nécessitent **Pro** ou **Business*
 
 ## Bon à savoir
 
+- Avant votre première utilisation de l’IA dans chaque espace de travail, vous approuvez l’envoi de
+  contenu au fournisseur d’IA. Cette approbation couvre toutes les fonctions d’IA de cet espace,
+  uniquement pour vous. Refuser ou fermer la boîte de dialogue ne lance aucun téléversement ni
+  traitement par IA ; votre brouillon et vos fichiers sont conservés.
 - La lecture des justificatifs consomme le quota mensuel d’IA.

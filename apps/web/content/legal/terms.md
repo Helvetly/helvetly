@@ -141,7 +141,8 @@ You must not:
 - **Heidi**, the assistant, answers questions about Helvetly and your business. **AI import** reads
   uploaded files and proposes records for you to review.
 - For answers that need an AI model and for AI import, Helvetly sends the content concerned to the
-  AI provider (OpenAI, USA) as part of the service. Employee and payroll data are never sent.
+  AI provider (OpenAI, USA) only after your own approval for this workspace. Approval covers all
+  AI tools there, applies only to you and does not carry over to another workspace. Helvetly does not fetch Employees or Payroll records for AI requests. Do not include those details in messages or files.
 - AI answers and extracted records can be **wrong or incomplete**. Check them before you rely on
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.

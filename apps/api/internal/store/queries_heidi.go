@@ -160,3 +160,28 @@ func (q Q) SaveHeidiUsage(ctx context.Context, workspace, period string, u Heidi
 		workspace, period, u.TokensUsed, u.TokensReserved, u.CostMicros, u.CostReserved, u.Uncertain, now)
 	return err
 }
+
+// AIConsent: one member's current approval of the AI model in a workspace (their latest own row); ChangedAt is nil
+// until they choose. Rows written by other members never count.
+type AIConsent struct {
+	Granted   bool       `json:"granted"`
+	ChangedAt *time.Time `json:"changed_at"`
+	ChangedBy string     `json:"changed_by"` // the person's name, or email when the name is empty
+}
+
+func (q Q) AIConsent(ctx context.Context, workspaceID, userID string) (AIConsent, error) {
+	var c AIConsent
+	err := q.db.QueryRow(ctx, `SELECT c.granted, c.at, coalesce(nullif(u.name, ''), u.email)
+		FROM workspace_ai_consents c JOIN users u ON u.id = c.user_id
+		WHERE c.workspace_id = $1 AND c.user_id = $2 ORDER BY c.id DESC LIMIT 1`, workspaceID, userID).Scan(&c.Granted, &c.ChangedAt, &c.ChangedBy)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return AIConsent{}, nil
+	}
+	return c, err
+}
+
+func (q Q) SetAIConsent(ctx context.Context, workspaceID, userID string, granted bool, now time.Time) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO workspace_ai_consents (workspace_id, granted, user_id, at) VALUES ($1, $2, $3, $4)`,
+		workspaceID, granted, userID, now)
+	return err
+}

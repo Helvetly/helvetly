@@ -15,6 +15,7 @@ func TestAnswersAreMarkedByWhoGeneratedThem(t *testing.T) {
 	s.provider = &testProvider{input: 10, answer: func(context.Context, ProviderRequest) (ProviderReply, error) {
 		return ProviderReply{Text: "Model explanation.", Tokens: &tokens}, nil
 	}}
+	grant(t, mux)
 	for _, tc := range []struct{ conversation, message, want string }{
 		{"model", "Explain this accounting term", "model"},
 		{"local", "Which invoices are overdue?", "helvetly"},

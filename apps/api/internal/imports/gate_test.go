@@ -14,12 +14,13 @@ import (
 
 const receiptReply = `{"records":[{"supplier_name":"Migros","amount":"108.10","vat_rate":"8.1"}]}`
 
-// planEnv: the test env with billing's gate wired and ws_a (owner usr_a) on plan.
+// planEnv: the test env with billing's gate wired and ws_a (owner usr_a, consent given) on plan.
 func planEnv(t *testing.T, plan string) *env {
 	t.Helper()
 	e := newEnv(t)
 	billingtest.Wire(t, e.db)
 	billingtest.On(t, e.db, "ws_a", plan)
+	e.consent("ws_a", "usr_a")
 	return e
 }
 

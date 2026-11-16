@@ -28,8 +28,8 @@ identificativi fiscali, coordinate bancarie, assoggettamento e cantone per l’i
 documenti caricati per un dipendente (come contratti, conteggi paga o permessi). Helvetly non calcola
 retribuzioni, imposte o contributi, non conserva dati sulla salute o sulle assenze e non ha campi per
 altre categorie particolari di dati; i documenti caricati dal cliente possono contenerne, sotto la sua
-responsabilità. I dati dei dipendenti e dei salari non vengono mai inviati a OpenAI e non sono
-disponibili tramite MCP o token API personali. Spetta al cliente, in qualità di titolare del
+responsabilità. Helvetly non recupera i dati dei dipendenti e dei salari per le richieste a OpenAI. Questi dati non
+sono disponibili tramite MCP o token API personali. Spetta al cliente, in qualità di titolare del
 trattamento, determinare la base giuridica applicabile (ad esempio ai sensi degli art. 6(1)(b) e (c)
 e 88 GDPR, della nLPD, dell’art. 328b del Codice delle obbligazioni svizzero o degli art. 50e–50g LAVS
 per il numero AVS); l’[accordo sul trattamento dei dati](dpa.md) descrive i dettagli.
@@ -75,10 +75,14 @@ incolli solo nell’archiviazione di sessione della scheda del browser.
 
 ## 4. Heidi, importazione IA e OpenAI
 
+Approvi una sola volta il tuo utilizzo dell’IA in ogni spazio di lavoro. L’approvazione copre tutte
+le funzioni IA di quello spazio; non vale per altri membri né in altri spazi. Se rifiuti o chiudi la
+finestra di approvazione, non viene avviata alcuna azione IA.
+
 Heidi risponde a molte domande usando i dati dello spazio di lavoro senza servizi esterni. Per altre
 domande e per l’**importazione IA**, che legge file caricati e propone record, Helvetly usa l’API di
-OpenAI (OpenAI, USA) come parte del servizio. L’importazione IA è disponibile nei piani che la
-includono.
+OpenAI (OpenAI, USA) solo dopo la tua approvazione per questo spazio. L’importazione IA è
+disponibile nei piani che la includono.
 
 Cosa viene inviato:
 
@@ -86,9 +90,11 @@ Cosa viene inviato:
   contenere cifre mostrate da Heidi) e i file allegati a quel messaggio. Vengono inviati a OpenAI anche
   un breve controllo per stabilire se il messaggio riguarda Helvetly o l’attività e il conteggio dei
   token che la richiesta utilizzerà.
-- L’importazione IA invia il contenuto dei file caricati per l’importazione, una parte alla volta.
+- L’importazione IA e la lettura delle ricevute inviano il contenuto dei file selezionati, una parte alla volta.
+- Il suggerimento del nome dello spazio invia solo il nome dell’azienda inserito.
 
-I dati dei dipendenti e dei salari non vengono mai inviati.
+Helvetly non recupera i dati di Employees o Payroll per le richieste IA. Non includere dati dei
+dipendenti o dei salari nei messaggi o nei file inviati per l’elaborazione tramite IA.
 
 Chiediamo a OpenAI di non conservare richieste e risposte (`store: false`). Secondo le condizioni API
 di OpenAI, i dati API non vengono usati per addestrare i modelli e possono essere conservati fino a

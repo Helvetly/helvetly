@@ -140,6 +140,10 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 	if k.Parse != nil {
 		return s.parse(ctx, k, f, data)
 	}
+	user, err := s.db.ImportBatchUser(ctx, f.BatchID)
+	if err != nil {
+		return fmt.Errorf("load import owner: %w", err)
+	}
 	parts, err := chunks(f.Name, f.ContentType, data)
 	if u, ok := errors.AsType[unsupported](err); ok {
 		return failure{u.reason}
@@ -154,8 +158,9 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 		if err := s.db.ImportFileProgress(ctx, f.ID, f.Attempts, len(parts), s.now().Add(jobLease), s.now()); err != nil {
 			return err
 		}
-		// The plan is checked before every call: it may change while a file is being read.
-		err := s.gate(ctx, s.db.Q, ws.ID)
+		// Approval and the plan are checked before every call: the person may withdraw approval, or the plan change,
+		// while a file is being read.
+		err := s.uploaderGate(ctx, s.db.Q, ws.ID, user, k)
 		if err == nil {
 			err = k.allowed(ctx, s.db.Q, ws.ID)
 		}
@@ -171,7 +176,7 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 				return err
 			}
 		}
-		docType, records, err := s.ask(ctx, k, ws, f, i, parts[i], kinds)
+		docType, records, err := s.ask(ctx, k, ws, user, f, i, parts[i], kinds)
 		if err != nil {
 			return err
 		}
@@ -252,7 +257,7 @@ type proposed map[string][]map[string]json.RawMessage
 
 // ask makes one model call for chunk i of f under the workspace's budget and returns the records it proposes; for an
 // auto batch also the document type it recognised.
-func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.ImportFile, i int, c chunk, kinds []string) (string, proposed, error) {
+func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user string, f store.ImportFile, i int, c chunk, kinds []string) (string, proposed, error) {
 	name := f.Name
 	req := aimodel.Request{
 		Instructions: "You read files for Helvetly's import. " + k.Prompt + rules,
@@ -275,7 +280,11 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.I
 		req.Message += c.text
 	}
 	call := aimodel.Call{Kind: "import", Operation: f.ID, Step: strconv.Itoa(i), Group: f.BatchID, MaxOutput: maxOutputTokens, Caps: aimodel.ImportCaps}
-	reply, err := s.budget.Generate(ctx, s.provider, ws, req, call)
+	budget := s.budget
+	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
+		return s.uploaderGate(ctx, q, workspaceID, user, k)
+	}
+	reply, err := budget.Generate(ctx, s.provider, ws, req, call)
 	switch {
 	case errors.Is(err, aimodel.ErrUnaccounted):
 		return "", nil, failure{"The AI model's answer was lost and its usage is unknown, so it is not asked again. The rest of this file was not read."}

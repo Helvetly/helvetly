@@ -372,3 +372,10 @@ func similar(d ImportDuplicate, err error) (*ImportDuplicate, error) {
 	}
 	return &d, nil
 }
+
+// ImportBatchUser: who started a batch, whose AI approval its background reading needs.
+func (q Q) ImportBatchUser(ctx context.Context, batchID string) (string, error) {
+	var user string
+	err := q.db.QueryRow(ctx, `SELECT user_id FROM import_batches WHERE id = $1`, batchID).Scan(&user)
+	return user, err
+}

@@ -255,9 +255,10 @@ function PanelBody() {
     composer.current?.focus()
   }
 
-  const send = () => {
+  const send = async () => {
+    // Not now in the AI approval keeps the draft, the quote and the files.
+    if (!(await chat.send(quote ? withQuote(quote, heidi.draft) : heidi.draft, heidi.files))) return
     setHistory(false)
-    chat.send(quote ? withQuote(quote, heidi.draft) : heidi.draft, heidi.files)
     setQuote(null)
     heidi.setDraft('')
     heidi.clearFiles()

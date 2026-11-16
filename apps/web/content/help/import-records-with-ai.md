@@ -18,5 +18,8 @@ The AI import needs **Pro** or **Business** and works within the plan's AI token
 
 ## Good to know
 
+- Before your first AI use in each workspace, you approve sending content to the AI provider.
+  Approval covers all AI tools there, only for you. Declining or closing the dialog starts no upload
+  or AI processing and keeps your draft and files.
 - Imports use the monthly AI allowance.
 - If your old system already declared VAT for the imported invoices, close those months in **Settings → Periods** first.

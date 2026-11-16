@@ -17,4 +17,7 @@ Expenses and receipt import need **Pro** or **Business**.
 
 ## Good to know
 
+- Before your first AI use in each workspace, you approve sending content to the AI provider.
+  Approval covers all AI tools there, only for you. Declining or closing the dialog starts no upload
+  or AI processing and keeps your draft and files.
 - Reading receipts uses the monthly AI allowance.

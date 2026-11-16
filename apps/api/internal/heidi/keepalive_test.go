@@ -16,6 +16,7 @@ func TestChatStreamSendsKeepAliveWhileTheModelWorks(t *testing.T) {
 		time.Sleep(60 * time.Millisecond) // a slow model call: the stream would otherwise be silent
 		return ProviderReply{Text: "Explanation.", Tokens: &tokens}, nil
 	}}
+	grant(t, mux)
 	w := chat(t, mux, "slow", "Explain this accounting term")
 	body := w.Body.String()
 	status := strings.Index(body, `"type":"status"`)

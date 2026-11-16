@@ -23,6 +23,7 @@ func TestBatchDoneNotifiesTheUploaderOnce(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)
+			e.consent("ws_a", "usr_a")
 			admin := e.person("ws_a", "usr_b", "admin", nil)
 			other := e.person("ws_b", "usr_c", "owner", nil)
 			e.model.replies = append(e.model.replies, c.reply)
@@ -46,6 +47,7 @@ func TestBatchDoneNotifiesTheUploaderOnce(t *testing.T) {
 
 func TestBatchDoneRespectsPrefsAndWaitsForEveryFile(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	ctx := context.Background()
 	if err := e.db.SetUserNotificationPrefs(ctx, "usr_a", store.NotificationPrefs{"import.ready": {}}, time.Now()); err != nil {
 		t.Fatal(err)

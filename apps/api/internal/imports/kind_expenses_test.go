@@ -298,6 +298,7 @@ func TestExpensesKindLinksTheReceiptDocument(t *testing.T) {
 
 func TestExpenseImportKeepsTheFileAsTheReceipt(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	ctx := context.Background()
 	jpeg := func(text string) []byte { return append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, text...) }
 	migros, coop := jpeg("migros receipt"), jpeg("coop receipt")
@@ -385,6 +386,7 @@ func TestExpenseImportKeepsTheFileAsTheReceipt(t *testing.T) {
 // and links no Document.
 func TestExpenseImportOfAnotherExpensesReceipt(t *testing.T) {
 	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
 	ctx, now := context.Background(), time.Now()
 	photo := append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, "kept receipt"...)
 	sum := sha256.Sum256(photo)

@@ -107,9 +107,15 @@ export type HeidiUsage = {
   mode?: 'local' | 'openai'
   usage_uncertain?: boolean
   can_purchase?: boolean
-  /** The server has an AI model. */
+  /** The server has an AI model; it is used only once the person approves it in this workspace. */
   provider_available?: boolean
+  consent?: HeidiConsent
 }
+
+/** The signed-in person's own approval, in this workspace, to send content to OpenAI; changed_at is null until they choose. */
+export const usageKey = ['heidi', 'usage'] as const
+
+export type HeidiConsent = { granted: boolean; changed_at: string | null; changed_by: string }
 
 export type HeidiSuggestion = { title: string; prompt: string }
 
@@ -362,6 +368,8 @@ export const heidiApi = {
   conversation: (id: string) =>
     request<{ data: HeidiMessage[] }>(`/heidi/conversations/${encodeURIComponent(id)}`),
   usage: () => request<HeidiUsage>('/heidi/usage'),
+  setConsent: (granted: boolean) =>
+    request<{ data: HeidiConsent }>('/heidi/consent', { method: 'PUT', json: { granted } }),
   /** The page's suggestions; `client` is the client open in its drawer, whose topics come first. */
   suggestions: (page: HeidiPage, client?: string) =>
     request<{ data: HeidiSuggestion[] }>(
