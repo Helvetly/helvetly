@@ -1,7 +1,7 @@
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -89,7 +89,10 @@ beforeEach(() => {
   onCreated.mockClear()
   search = new URLSearchParams()
 })
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  vi.restoreAllMocks()
+})
 afterAll(() => server.close())
 
 const renderEditor = () =>
@@ -492,4 +495,149 @@ test('a draft that has a client closes without a question: autosave keeps it', a
   await userEvent.type(screen.getByLabelText('Line 1 price'), '100')
   await userEvent.click(screen.getByRole('button', { name: 'Close editor' }))
   expect(onClose).toHaveBeenCalledOnce()
+})
+
+// Browser Back with input that cannot be saved (no client yet): the Back becomes the discard question.
+const typeUnsaved = async () => {
+  renderEditor()
+  await userEvent.type(await screen.findByLabelText('Line 1 description'), 'Workshop')
+}
+const backButton = () => act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+test('Back with unsavable input asks to discard; Keep editing retains it and guards again', async () => {
+  const pushed = vi.spyOn(window.history, 'pushState')
+  const back = vi.spyOn(window.history, 'back').mockImplementation(() => {})
+  await typeUnsaved()
+  expect(pushed).toHaveBeenCalledOnce() // one guard entry, once
+
+  backButton()
+  const dialog = await screen.findByRole('dialog', { name: 'Discard your changes?' })
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
+  expect(back).not.toHaveBeenCalled()
+  expect(onClose).not.toHaveBeenCalled()
+  expect(screen.getByLabelText('Line 1 description')).toHaveValue('Workshop')
+  expect(pushed).toHaveBeenCalledTimes(2) // the guard is back for the next Back
+
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      { name: 'Discard' },
+    ),
+  )
+  expect(back).toHaveBeenCalledOnce() // the Back goes on, once
+  expect(onClose).not.toHaveBeenCalled()
+})
+
+/** Whether the tab-close warning would ask. */
+const warns = () => {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+// The tab-close warning guards before and after Keep editing, but not the departure the person approved with Discard.
+test('an explicit Discard on Back is not asked again by the tab-close warning', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {})
+  await typeUnsaved()
+  expect(warns()).toBe(true)
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Keep editing',
+      },
+    ),
+  )
+  expect(warns()).toBe(true) // kept: reload and tab close still warn
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false) // the approved departure goes without a second question
+  backButton() // the Back stayed on this page: the warning is armed again
+  expect(warns()).toBe(true)
+})
+
+test('after a Discard whose Back went nowhere, the next edit is protected again', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {}) // first history entry: no popstate follows
+  await typeUnsaved()
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false)
+  await userEvent.type(screen.getByLabelText('Line 1 description'), ' day')
+  expect(warns()).toBe(true)
+})
+
+test('after a Discard whose Back went nowhere, a different invalid entry is protected again', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {}) // no popstate follows
+  await typeUnsaved()
+  const price = screen.getByLabelText('Line 1 price')
+  await userEvent.type(price, 'bad-a') // saves as 0.00, like any invalid price
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false)
+  await userEvent.clear(price)
+  await userEvent.type(price, 'bad-b') // different input, same saved form
+  expect(warns()).toBe(true)
+})
+
+test('an untouched editor adds no history entry', async () => {
+  const pushed = vi.spyOn(window.history, 'pushState')
+  renderEditor()
+  await screen.findByLabelText('Line 1 description')
+  expect(pushed).not.toHaveBeenCalled()
+})
+
+test('closing with the button after the guard was set removes the guard, then closes once', async () => {
+  const pushed = vi.spyOn(window.history, 'pushState')
+  const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
+  await typeUnsaved()
+  expect(pushed).toHaveBeenCalledOnce()
+  await userEvent.click(screen.getByRole('button', { name: 'Close editor' }))
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      { name: 'Discard' },
+    ),
+  )
+  expect(back).toHaveBeenCalledOnce()
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+test('closing the tab warns about typed input that cannot be saved', async () => {
+  await typeUnsaved()
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(true)
+})
+
+test('closing the tab of an untouched editor does not warn', async () => {
+  renderEditor()
+  await screen.findByLabelText('Line 1 description')
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
 })

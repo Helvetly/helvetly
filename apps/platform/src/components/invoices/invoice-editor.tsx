@@ -356,7 +356,7 @@ function Editor({
   invoice,
   kind: newKind,
   client: preset,
-  onClose,
+  onClose: closeEditor,
   onCreated,
 }: {
   settings: InvoiceSettings
@@ -498,8 +498,44 @@ function Editor({
     )
   })
   useEffect(() => () => flush(), [])
+  // Autosave keeps a draft that has a client and valid fields; anything else typed would be lost on close.
+  const unsaved =
+    dirty && payload !== initialPayload && !(values.client_id && valid && payload !== failedPayload)
+  const [discarding, setDiscarding] = useState<false | 'close' | 'back'>(false)
+  // Browser Back with input that cannot be saved: one guard history entry (same state, so Next's own popstate handling
+  // stays a no-op) turns the Back into the discard question. Keep editing puts the guard back; Discard lets the Back go on.
+  const guarded = useRef(false)
+  // The input the person agreed to discard with Back: that departure may leave the page, and the tab-close warning
+  // must not ask again. It covers only that input (the raw values: every edit makes new ones, even when two invalid
+  // entries would save alike): a Back that went nowhere (first history entry, a blocked departure)
+  // leaves the editor open, and any new edit is warned about again. A later popstate means the page stayed.
+  const leaving = useRef<EditorValues | null>(null)
+  useEffect(() => {
+    if (!unsaved || guarded.current) return
+    window.history.pushState(window.history.state, '', window.location.href)
+    guarded.current = true
+  }, [unsaved])
+  const back = useEffectEvent(() => {
+    leaving.current = null
+    if (!guarded.current) return
+    guarded.current = false
+    if (unsaved) setDiscarding('back')
+    else window.history.back() // nothing left to lose: the Back goes on
+  })
+  useEffect(() => {
+    window.addEventListener('popstate', back)
+    return () => window.removeEventListener('popstate', back)
+  }, [])
+  // Every other way out first removes the guard entry, so it never leaves a duplicate step behind.
+  const onClose = () => {
+    if (!guarded.current) return closeEditor()
+    guarded.current = false
+    window.addEventListener('popstate', closeEditor, { once: true })
+    window.history.back()
+  }
   const warn = useEffectEvent((event: BeforeUnloadEvent) => {
-    if (dirty && values.client_id) event.preventDefault()
+    if (leaving.current !== values && (unsaved || (dirty && values.client_id)))
+      event.preventDefault()
   })
   useEffect(() => {
     window.addEventListener('beforeunload', warn)
@@ -527,11 +563,7 @@ function Editor({
     return () => window.removeEventListener('keydown', saveShortcut)
   }, [])
 
-  // Autosave keeps a draft that has a client and valid fields; anything else typed would be lost on close.
-  const unsaved =
-    dirty && payload !== initialPayload && !(values.client_id && valid && payload !== failedPayload)
-  const [discarding, setDiscarding] = useState(false)
-  const cancel = () => (unsaved ? setDiscarding(true) : onClose())
+  const cancel = () => (unsaved ? setDiscarding('close') : onClose())
   // Esc is the close button too: it asks before throwing typed work away.
   useSheetEscape(cancel)
 
@@ -1211,8 +1243,17 @@ function Editor({
           cancelLabel={translate('keepEditing')}
           tone="destructive"
           onDecide={(discard) => {
+            const wasBack = discarding === 'back'
             setDiscarding(false)
-            if (discard) onClose()
+            if (discard && wasBack) {
+              leaving.current = values
+              return window.history.back()
+            }
+            if (discard) return onClose()
+            if (wasBack) {
+              window.history.pushState(window.history.state, '', window.location.href)
+              guarded.current = true
+            }
           }}
         />
       )}
