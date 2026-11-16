@@ -115,7 +115,7 @@ export function InvoiceDetail({
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(680px,100vw)]! dark:bg-background"
+        className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(760px,100vw)]! dark:bg-background"
       >
         <SheetTitle className="sr-only">
           {invoice ? documentName(invoice) : translate('invoice2')}
@@ -167,11 +167,14 @@ function primaryFor(invoice: Invoice): {
   return { command: null, label: translate('downloadPDF'), icon: <Download /> }
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+/** `wrap` lets long text and controls (whose focus ring a truncate would clip) flow onto more lines. */
+function Row({ label, wrap, children }: { label: string; wrap?: boolean; children: ReactNode }) {
   return (
     <div className="flex min-h-10 items-center gap-3 border-t border-border/60 first:border-t-0">
       <span className="w-36 shrink-0 text-[13.5px] text-muted-foreground">{label}</span>
-      <span className="min-w-0 flex-1 truncate text-[14px]">{children}</span>
+      <span className={cn('min-w-0 flex-1 text-[14px]', wrap ? 'py-2 break-words' : 'truncate')}>
+        {children}
+      </span>
     </div>
   )
 }
@@ -274,7 +277,7 @@ function Detail({
     <Tabs defaultValue="overview" className="min-h-full gap-0">
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-          <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground tabular-nums">
+          <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">
             {invoice.number ?? translate('draft')}
           </span>
           <span className="ml-1.5 text-[13px] text-muted-foreground">
@@ -525,7 +528,7 @@ function Detail({
         <div className="border-b border-border/60" />
       </header>
 
-      <TabsContent value="overview" className="grid content-start gap-3 p-4 sm:p-5">
+      <TabsContent value="overview" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
         <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (
@@ -669,8 +672,16 @@ function Detail({
 
         {(invoice.intro || invoice.footer || invoice.note) && (
           <Panel title={translate('texts')}>
-            {invoice.intro && <Row label={translate('intro')}>{invoice.intro}</Row>}
-            {invoice.footer && <Row label={translate('footer')}>{invoice.footer}</Row>}
+            {invoice.intro && (
+              <Row label={translate('intro')} wrap>
+                {invoice.intro}
+              </Row>
+            )}
+            {invoice.footer && (
+              <Row label={translate('footer')} wrap>
+                {invoice.footer}
+              </Row>
+            )}
             {invoice.note && (
               <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap">
                 <span className="mb-0.5 block text-[12px] text-muted-foreground">
@@ -740,7 +751,7 @@ function Detail({
         </Panel>
       </TabsContent>
 
-      <TabsContent value="pdf" className="grid content-start gap-3 p-4 sm:p-5">
+      <TabsContent value="pdf" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-[13px] text-muted-foreground">
             {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : translate('loading')}
@@ -829,7 +840,7 @@ const useToggleReminders = () =>
 function RemindersRow({ invoice, canManage }: { invoice: Invoice; canManage: boolean }) {
   const toggle = useToggleReminders()
   return (
-    <Row label={translate('reminders')}>
+    <Row label={translate('reminders')} wrap>
       <span className="flex items-center gap-2">
         <Switch
           aria-label={translate('paymentReminders')}
