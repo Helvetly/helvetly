@@ -1483,14 +1483,13 @@ export function cannotIssueReasons(error: unknown): IssueReason[] | null {
 export const logoSrc = (settings: Pick<InvoiceSettings, 'logo_url' | 'logo_file_id'>) =>
   settings.logo_url && `${settings.logo_url}?v=${encodeURIComponent(settings.logo_file_id ?? '')}`
 
-export const LOGO_TYPES = ['image/png', 'image/jpeg']
+/** What a logo picker offers; the bytes picked decide what a file is (lib/logo-crop.ts sniffFormat), not this list. */
+export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml']
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024
 
-/** Why `file` can't be a logo, before it is sent; null when it can. */
+/** Why `file` is too big to be a logo, before it is read; null when it is not. */
 export function logoProblem(file: File) {
-  if (!LOGO_TYPES.includes(file.type)) return translate('useAPNGOrJPEGImage')
-  if (file.size > LOGO_MAX_BYTES) return translate('theLogoCanBeAtMost2MB')
-  return null
+  return file.size > LOGO_MAX_BYTES ? translate('theLogoCanBeAtMost2MB') : null
 }
 
 /** Uploads the logo with progress (0–1); resolves with the settings, rejects with the server's error. */
