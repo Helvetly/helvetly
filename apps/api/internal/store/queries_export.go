@@ -111,6 +111,8 @@ const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM d
 	UNION ALL SELECT 'signatures/' || id || '-original.pdf', original_key FROM signature_requests WHERE workspace_id = $1
 	UNION ALL SELECT 'invoice-settings/logo', 'workspaces/' || workspace_id || '/invoice-settings/' || (settings->>'logo_file_id')
 		FROM invoice_settings WHERE workspace_id = $1 AND settings->>'logo_file_id' IS NOT NULL
+	UNION ALL SELECT 'workspace/logo', 'workspaces/' || id || '/workspace-logo/' || logo_file_id
+		FROM workspaces WHERE id = $1 AND logo_file_id IS NOT NULL
 	UNION ALL SELECT 'portal-avatars/' || client_id || '-' || email || CASE content_type WHEN 'image/png' THEN '.png' ELSE '.jpg' END, object_key FROM portal_avatars WHERE workspace_id = $1
 	ORDER BY 1`
 

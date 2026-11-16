@@ -165,7 +165,7 @@ func app(t *testing.T) (http.Handler, *store.Store, *pgxpool.Pool) {
 		m, a, dataexport.New(st, a, files, log), cl, portal.New(st, a, files, portal.Config{SessionTTL: time.Hour}, log),
 		inv, qs, dun, mem, invs, prod, eng, inst, books.New(st, a), vatreturn.New(st, a), ledger.New(st, a), ein, del,
 		expenses.New(st, a, files, log), documents.New(st, a, files, cfg.DocumentsMaxUpload, log), sig,
-		templates.New(st, a, files, nil, sig, log), bill, workspaces.New(st, a, bill, log), dashboard.New(st, a),
+		templates.New(st, a, files, nil, sig, log), bill, workspaces.New(st, a, bill, files, log), dashboard.New(st, a),
 		heidi.New(st, a, files, eng, opts), feedback.New(st, a, files, nil, "", log), avatars.New(st, a, files, log),
 		imports.New(st, a, files, log, imports.Options{Provider: aimodel.Fake{}, Allowance: bill.AITokens, AllowStorage: bill.AllowStorage}),
 		notifications.New(st, a, nil, cfg.PublicURL, cfg.SecretKey, log),

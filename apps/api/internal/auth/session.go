@@ -116,10 +116,11 @@ func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.
 		scopes = append([]string{"*:*"}, hr...)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"user":      map[string]string{"id": u.ID, "email": u.Email, "name": u.Name, "avatar_url": u.AvatarURL},
-		"workspace": map[string]string{"id": sess.Workspace.ID, "name": sess.Workspace.Name, "timezone": sess.Workspace.Timezone},
-		"role":      sess.Role,
-		"scopes":    scopes,
+		"user": map[string]string{"id": u.ID, "email": u.Email, "name": u.Name, "avatar_url": u.AvatarURL},
+		"workspace": map[string]any{"id": sess.Workspace.ID, "name": sess.Workspace.Name, "timezone": sess.Workspace.Timezone,
+			"logo_url": store.WorkspaceLogoURL(sess.Workspace.ID, sess.Workspace.LogoFileID)},
+		"role":   sess.Role,
+		"scopes": scopes,
 		// false shows the welcome: only to the owner of a workspace that isn't set up yet.
 		"onboarded":  sess.Workspace.Onboarded || sess.Role != "owner",
 		"csrf_token": sess.CSRFToken,

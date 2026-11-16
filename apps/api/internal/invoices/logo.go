@@ -6,14 +6,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/jpeg" // DecodeConfig of uploaded logos
-	_ "image/png"
 	"io"
 	"net/http"
-	"strings"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/imagecheck"
 	"helvetly.com/api/internal/invoicepdf"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
@@ -35,31 +32,12 @@ func logoKey(workspaceID, id string) string {
 // checkLogo validates an upload by its bytes, never its name: a PNG or JPEG of sane size that the PDF
 // renderer can embed. It returns the content type to store.
 func checkLogo(b []byte) (string, error) {
-	invalid := func(msg string) (string, error) { return "", validationFailed(map[string]string{logoFormField: msg}) }
-	ct := http.DetectContentType(b)
-	switch {
-	case ct == "image/webp":
-		return invalid("WebP is not supported: upload the logo as PNG or JPEG.")
-	case strings.Contains(ct, "xml") || bytes.Contains(b[:min(len(b), 1024)], []byte("<svg")):
-		return invalid("SVG is not supported: upload the logo as PNG or JPEG.")
-	case ct != "image/png" && ct != "image/jpeg":
-		return invalid("Upload the logo as a PNG or JPEG image.")
-	}
-	cfg, _, err := image.DecodeConfig(bytes.NewReader(b))
-	if err != nil {
-		return invalid("This image cannot be read: upload another PNG or JPEG.")
-	}
-	if min(cfg.Width, cfg.Height) >= minLogoSide && max(cfg.Width, cfg.Height) <= maxLogoSide {
-		if _, _, err := image.Decode(bytes.NewReader(b)); err != nil { // the header alone can hide a truncated file
-			return invalid("This image cannot be read: upload another PNG or JPEG.")
-		}
-	}
-	if min(cfg.Width, cfg.Height) < minLogoSide || max(cfg.Width, cfg.Height) > maxLogoSide {
-		return invalid(fmt.Sprintf("Use an image of at least %d px on its short side and at most %d px on its long side (this one is %d × %d).",
-			minLogoSide, maxLogoSide, cfg.Width, cfg.Height))
+	ct, problem := imagecheck.Check(b, imagecheck.Rules{MinSide: minLogoSide, MaxSide: maxLogoSide})
+	if problem != "" {
+		return "", validationFailed(map[string]string{logoFormField: problem})
 	}
 	if err := invoicepdf.CheckLogo(b); err != nil {
-		return invalid("This image format cannot go into a PDF (for example an interlaced or 16-bit PNG): save it as a plain PNG or JPEG.")
+		return "", validationFailed(map[string]string{logoFormField: "This image format cannot go into a PDF (for example an interlaced or 16-bit PNG): save it as a plain PNG or JPEG."})
 	}
 	return ct, nil
 }

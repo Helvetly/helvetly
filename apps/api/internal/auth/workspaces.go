@@ -16,7 +16,8 @@ func (s *Service) listWorkspaces(w http.ResponseWriter, r *http.Request, sess st
 	}
 	out := make([]map[string]any, 0, len(list))
 	for _, ws := range list {
-		out = append(out, map[string]any{"id": ws.ID, "name": ws.Name, "role": ws.Role, "current": ws.ID == sess.Workspace.ID})
+		out = append(out, map[string]any{"id": ws.ID, "name": ws.Name, "role": ws.Role, "current": ws.ID == sess.Workspace.ID,
+			"logo_url": store.WorkspaceLogoURL(ws.ID, ws.LogoFileID)})
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"data": out})
 }

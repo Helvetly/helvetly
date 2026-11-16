@@ -150,6 +150,9 @@ var instead = []struct {
 	pattern string
 	scopes  []string
 }{
+	// the workspace logo is app chrome: every member sees it, whatever their scopes (/api/v1/workspaces/{id}/logo is
+	// not scope-checked at all and the handler checks membership)
+	{false, "/api/v1/workspace/logo", []string{}},
 	{false, "/api/v1/employees", []string{"read:employees|read:payroll"}},
 	{false, "/api/v1/employees/*/pay-terms", []string{"read:payroll"}},
 	{true, "/api/v1/employees/*/pay-terms", []string{"write:payroll"}},
