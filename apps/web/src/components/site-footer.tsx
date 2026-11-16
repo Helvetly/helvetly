@@ -126,22 +126,22 @@ export function SiteFooter({ lang }: { lang: Locale }) {
               </nav>
             ))}
           </div>
-          <div className="mt-10 flex flex-col gap-2 text-body-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <p className="inline-flex items-center gap-2">
-                <Logo className="size-5" />
-                <span>
-                  © {YEAR}
-                  {translate('helvetly2')}
-                </span>
-              </p>
-              <p className="inline-flex items-center gap-2">
-                <Flag region="CH" className="size-4 rounded-xs" />
-                {translate('madeInSwitzerland')}
-              </p>
-            </div>
-            <div className="flex items-center gap-4 sm:justify-end">
-              <LanguageSwitcher />
+          {/* Equal side columns keep the Swiss line centred on the whole footer, not between its neighbours. */}
+          <div className="mt-10 grid grid-cols-1 items-center gap-4 text-body-sm text-white/45 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-6">
+            <p className="inline-flex items-center gap-2">
+              <Logo className="size-5" />
+              <span>
+                © {YEAR}
+                {translate('helvetly2')}
+              </span>
+            </p>
+            <p className="inline-flex items-center gap-2 lg:justify-self-center">
+              <Flag region="CH" className="size-4 rounded-xs" />
+              {translate('madeInSwitzerland')}
+            </p>
+            <div className="flex flex-wrap items-center gap-4 lg:justify-self-end">
+              {/* The same glass as the theme toggle beside it; the footer is always dark. */}
+              <LanguageSwitcher className="bg-white/8 dark:hover:bg-white/14 dark:aria-expanded:bg-white/14" />
               <ThemeToggle className="bg-white/8" />
             </div>
           </div>

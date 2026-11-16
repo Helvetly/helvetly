@@ -48,6 +48,12 @@
   --color-flag-swiss-red: #d52b1e;
   --color-flag-uk-blue: #012169;
   --color-flag-uk-red: #c8102e;
+  --color-flag-german-red: #dd0000;
+  --color-flag-german-gold: #ffce00;
+  --color-flag-french-blue: #000091;
+  --color-flag-french-red: #e1000f;
+  --color-flag-italian-green: #009246;
+  --color-flag-italian-red: #ce2b37;
   --color-toggle: var(--toggle);
   --color-toggle-surface: var(--toggle-surface);
   --color-toggle-border: var(--toggle-border);

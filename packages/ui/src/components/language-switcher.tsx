@@ -13,6 +13,8 @@ import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Check, Languages } from 'lucide-react'
 
+const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it: 'IT' }
+
 export function LanguageMenuItems() {
   const current = useLanguage()
   const translate = useTranslate()
@@ -32,10 +34,7 @@ export function LanguageMenuItems() {
             )
           }}
         >
-          <Flag
-            region={details.languageTag.split('-')[1] ?? ''}
-            className="h-3 w-4 shrink-0 rounded-xs"
-          />
+          <Flag region={languageFlags[language] ?? ''} className="h-3 w-4 shrink-0 rounded-xs" />
           <span className="flex-1">{details.name}</span>
           {language === current && <Check aria-hidden />}
         </DropdownMenuItem>
@@ -44,14 +43,14 @@ export function LanguageMenuItems() {
   )
 }
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ className }: { className?: string }) {
   const translate = useTranslate()
   if (Object.keys(locales).length < 2) return null
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost">
+        <Button variant="ghost" className={className}>
           <Languages aria-hidden />
           {translate('changeLanguage')}
         </Button>
