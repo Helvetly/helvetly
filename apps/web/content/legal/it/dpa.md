@@ -30,7 +30,7 @@ imposte o contributi.
 | Base giuridica    | Determinata dal Cliente in qualità di titolare del trattamento. Il Cliente può fondarsi, ad esempio, sugli art. 6(1)(b) e (c) GDPR con l’art. 88 e il diritto nazionale sui dati dei lavoratori, sull’art. 9(2)(b) solo per i dati di categorie particolari che sceglie di caricare, sulla nLPD e sull’art. 328b CO (solo dati riguardanti l’idoneità del lavoratore al posto o necessari all’esecuzione del contratto), nonché sugli art. 50e–50g LAVS per l’uso sistematico del numero AVS, per il quale il Cliente deve essere autorizzato; Helvetly conserva il numero solo per conto del Cliente                                                           |
 | Accesso           | Sempre il titolare dello spazio di lavoro; gli altri membri solo secondo le autorizzazioni concesse individualmente dal titolare, separatamente per Employees e Payroll (nessun accesso, visualizzazione o modifica); per impostazione predefinita gli amministratori possono solo visualizzare il registro dei salari, senza i campi sigillati. Solo il titolare modifica queste autorizzazioni. Approvazione facoltativa dei salari da parte di una seconda persona                                                                                                                                                                                           |
 | Campi sigillati   | Coordinate bancarie, identificativi fiscali e numeri di assicurazione sociale sono cifrati a riposo con AES-256-GCM e mostrati solo al titolare e ai membri con accesso in modifica a Payroll; ogni accesso a tali campi viene registrato                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| IA e integrazioni | Mai inviati al fornitore IA (Heidi, importazione IA); non disponibili tramite MCP o token API personali                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| IA e integrazioni | Non recuperati per le richieste IA; il Cliente non deve includerli in messaggi o file destinati all’IA; non disponibili tramite MCP o token API personali                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Conservazione     | Impostata dal Cliente per ciascun documento, con periodi legali suggeriti per paese (ad esempio libri paga in Svizzera: 10 anni, art. 958f CO). Scaduto il periodo, il titolare cancella o anonimizza i dati dopo aver esaminato l’elenco di ciò che verrebbe cancellato; i dati soggetti a blocco legale vengono conservati                                                                                                                                                                                                                                                                                                                                    |
 | Cambio di piano   | Dopo il passaggio a un piano inferiore a Business, i dati vengono conservati; il titolare può leggerli ed esportarli, ma non modificarli                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
@@ -38,7 +38,7 @@ imposte o contributi.
 
 Helvetly tratta i dati solo sulla base delle istruzioni documentate del Cliente: le condizioni di
 servizio, il presente accordo e l’uso delle funzioni della piattaforma da parte del Cliente (ad esempio
-inviare una fattura o autorizzare Heidi a usare OpenAI). Helvetly informa il Cliente se ritiene che
+inviare una fattura o fare una domanda a Heidi). Helvetly informa il Cliente se ritiene che
 un’istruzione violi la normativa sulla protezione dei dati.
 
 ## 4. Riservatezza
@@ -55,8 +55,12 @@ Il Cliente autorizza i sub-responsabili elencati in [subprocessors.md](subproces
 informa il Cliente 30 giorni prima di aggiungerne o sostituirne uno; il Cliente può opporsi per
 importanti motivi di protezione dei dati e, se non si trova una soluzione, risolvere il contratto.
 Helvetly impone a ogni sub-responsabile obblighi equivalenti a quelli del presente accordo e ne
-rimane responsabile. L’uso di OpenAI per Heidi e l’importazione IA richiede inoltre il consenso
-dato nella piattaforma dal titolare o da un amministratore.
+rimane responsabile.
+
+Ogni membro deve approvare il proprio utilizzo dell’IA in ogni spazio di lavoro prima che vengano
+inviati contenuti al fornitore IA, anche per il conteggio dei token. L’approvazione copre tutte le
+funzioni IA di quello spazio e non può essere data per conto di un altro membro. La cronologia delle
+approvazioni viene conservata.
 
 ## 7. Trasferimenti all’estero
 
@@ -124,12 +128,11 @@ restano impregiudicate le sue disposizioni imperative.
   concatenate tramite hash che consentono solo aggiunte.
 - **Accesso del personale:** la piattaforma non offre accesso agli spazi di lavoro per assistenza
   o amministrazione; l’accesso ai sistemi di produzione è limitato a chi gestisce il servizio.
-- **Fornitore IA:** disattivato fino al consenso per spazio di lavoro, di cui è conservata la
-  cronologia; vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
-  esplicitamente allegati (Heidi), oppure i file caricati (importazione IA); le richieste chiedono
+- **Fornitore IA:** vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
+  esplicitamente allegati (Heidi), i file selezionati (importazione IA e lettura delle ricevute),
+  oppure il nome dell’azienda (suggerimento del nome dello spazio); le richieste chiedono
   al fornitore di non conservare i dati (`store: false`); budget mensile di token applicato sul server.
 - **Dati dei dipendenti e dei salari:** accesso separato per membro a Employees e Payroll, concesso
   solo dal titolare; coordinate bancarie, identificativi fiscali e numeri di assicurazione sociale
-  sigillati con AES-256-GCM e ogni accesso registrato; mai inviati al fornitore IA, a MCP o ai token
-  API; approvazione facoltativa dei salari da parte di una seconda persona; le registrazioni salariali
+  sigillati con AES-256-GCM e ogni accesso registrato; non recuperati per le richieste IA; non disponibili tramite MCP o token API; approvazione facoltativa dei salari da parte di una seconda persona; le registrazioni salariali
   approvate possono essere rettificate, ma non modificate.

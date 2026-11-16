@@ -243,7 +243,7 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	if err != nil {
 		return err
 	}
-	consent, err := s.db.AIConsent(r.Context(), sess.Workspace.ID)
+	consent, err := s.db.AIConsent(r.Context(), sess.Workspace.ID, sess.User.ID)
 	if err != nil {
 		return err
 	}

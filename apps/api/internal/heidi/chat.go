@@ -258,7 +258,7 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if result.Provider {
 		consent := store.AIConsent{}
 		if s.provider != nil {
-			if consent, err = s.db.AIConsent(r.Context(), sess.Workspace.ID); err != nil {
+			if consent, err = s.db.AIConsent(r.Context(), sess.Workspace.ID, sess.User.ID); err != nil {
 				return err
 			}
 		}
@@ -271,7 +271,7 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			result.Text = "This message needs an AI model. OpenAI is not configured for this server. " + localHelp
 			result.Provider = false
 		case !consent.Granted:
-			result.Text = "This message needs an AI model, and this workspace has not allowed Heidi to use OpenAI. An owner or admin can allow it in Heidi's panel. Nothing was sent to OpenAI. " + localHelp
+			result.Text = "This message needs an AI model, and you have not approved AI use in this workspace yet. Nothing was sent to OpenAI. " + localHelp
 			result.Provider = false
 		default:
 			progress := func(label string) { _ = st.status(label) }

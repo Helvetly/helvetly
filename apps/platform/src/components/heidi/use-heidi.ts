@@ -3,12 +3,14 @@ import { useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import { useAIApproval } from '@/components/ai/ai-approval'
 import { errorMessage } from '@/lib/api'
 import { expenseKeys } from '@/lib/expenses'
 import {
   goesToImport,
   heidiApi,
   readEvents,
+  usageKey,
   type HeidiAction,
   type HeidiConfirmation,
   type HeidiForm,
@@ -103,7 +105,7 @@ export function affectedQueries(statuses: string[]): QueryKey[] {
   )
 }
 
-export const usageKey = ['heidi', 'usage'] as const
+export { usageKey }
 
 /** One conversation with Heidi: sending, streaming, stopping, retrying and confirmations. */
 export function useHeidiChat(page: HeidiPage, scope: string) {
@@ -119,6 +121,8 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
     (HeidiConfirmation & { messageId: string }) | null
   >(null)
   const abort = useRef<AbortController | null>(null)
+  const asking = useRef(false)
+  const { ensure } = useAIApproval()
   const decided = useRef(new Set<string>())
 
   useEffect(
@@ -295,10 +299,16 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
     [run, conversationId, page, update],
   )
 
+  /** Sends a message once the person has approved AI use; false when nothing was sent (keep the draft). */
   const send = useCallback(
-    (text: string, files: File[] = []) => {
+    async (text: string, files: File[] = []) => {
       const message = text.trim()
-      if (!message || busy || abort.current || restoring) return
+      if (!message || busy || abort.current || restoring || asking.current) return false
+      asking.current = true
+      const approved = await ensure().finally(() => {
+        asking.current = false
+      })
+      if (!approved || abort.current) return false
       const reply = assistantMessage()
       setMessages((current) => [
         ...current,
@@ -315,8 +325,9 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         reply,
       ])
       void post(reply.id, message, files)
+      return true
     },
-    [busy, restoring, post],
+    [busy, restoring, post, ensure],
   )
 
   /** Sends the question of a failed answer again, without a second copy of the question. */

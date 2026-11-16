@@ -4,7 +4,7 @@ description: Importare clienti, prodotti, incarichi, fatture e spese da fogli di
 category: Getting started
 categoryLabel: Primi passi
 order: 3
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Passi da un altro sistema? Lascia che l’IA legga i vecchi file e li trasformi in dati di Helvetly.
@@ -19,5 +19,9 @@ L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA de
 
 ## Da sapere
 
-- Un titolare o amministratore deve autorizzare l’IA per lo spazio di lavoro e le importazioni utilizzano la disponibilità IA mensile.
+- Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti al
+  fornitore IA. L’approvazione copre tutte le funzioni IA di quello spazio, solo per te. Se rifiuti
+  o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
+  restano disponibili.
+- Le importazioni utilizzano la disponibilità IA mensile.
 - Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Settings → Periods**.

@@ -71,8 +71,9 @@ are the reference.
   through `storage.Serve`/`storage.Metered` (with billing on, never a presigned link); business email carries its
   `Workspace` and counts through `mail.Metered`; sign-in, security and invitation email never does.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
-  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget;
-  each call reserves its tokens and rate-card cost first, one call in flight per workspace, see `ai_calls`).
+  (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
+  and a monthly token budget; each call reserves its tokens and rate-card cost first, one call in flight
+  per workspace, see `ai_calls`).
 
 ## 4. Where code goes (DRY)
 

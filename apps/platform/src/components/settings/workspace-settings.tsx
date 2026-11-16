@@ -19,7 +19,6 @@ import { toast } from 'sonner'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Combobox, type Option } from '@/components/clients/fields'
-import { AIConsentCard } from '@/components/heidi/ai-consent'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
@@ -54,7 +53,6 @@ export function WorkspaceSettings() {
               logoUrl={session.workspace.logo_url}
               canEdit={canManage(session.role)}
             />
-            <AIConsentCard />
             {session.role === 'owner' && <ExportCard />}
             {session.role === 'owner' && <DeleteCard name={session.workspace.name} />}
           </>

@@ -25,7 +25,6 @@ import { Suspense, useEffect, useEffectEvent, useRef, useState, type ReactNode }
 import { heidiApi } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 
-import { AIConsentNotice } from './ai-consent'
 import { ChatHistory } from './chat-history'
 import { Composer } from './composer'
 import { EmptyState } from './empty-state'
@@ -256,9 +255,10 @@ function PanelBody() {
     composer.current?.focus()
   }
 
-  const send = () => {
+  const send = async () => {
+    // Not now in the AI approval keeps the draft, the quote and the files.
+    if (!(await chat.send(quote ? withQuote(quote, heidi.draft) : heidi.draft, heidi.files))) return
     setHistory(false)
-    chat.send(quote ? withQuote(quote, heidi.draft) : heidi.draft, heidi.files)
     setQuote(null)
     heidi.setDraft('')
     heidi.clearFiles()
@@ -477,7 +477,6 @@ function PanelBody() {
             {translate('jumpToLatest')}
           </button>
         )}
-        <AIConsentNotice />
         {warn && <TokenWarning share={share} />}
         <Composer
           attached={warn}

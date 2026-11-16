@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"helvetly.com/api/internal/aimodel"
@@ -53,7 +54,7 @@ type Service struct {
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger, o Options) *Service {
 	s := &Service{db: db, auth: a, files: files, provider: o.Provider, allowStorage: o.AllowStorage, log: log,
 		now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(20, time.Minute)}
-	s.budget = aimodel.Budget{DB: db, Allowance: o.Allowance, CostAllowance: o.CostAllowance, Now: func() time.Time { return s.now() }, Gate: s.gate}
+	s.budget = aimodel.Budget{DB: db, Allowance: o.Allowance, CostAllowance: o.CostAllowance, Now: func() time.Time { return s.now() }}
 	return s
 }
 
@@ -101,23 +102,46 @@ func kindOf(name string) (Kind, error) {
 	return k, nil
 }
 
-// gate refuses a model call the workspace's plan lacks (ai_import), has not allowed or the server cannot make (the
-// same rule as Heidi).
-func (s *Service) gate(ctx context.Context, q store.Q, workspaceID string) error {
+// scopesFor: what starting an import of k needs, and what its queued reading keeps needing.
+func scopesFor(k Kind) []string {
+	if k.Private { // private kinds keep no document
+		return []string{"write:" + k.Resource}
+	}
+	return []string{"write:" + k.Resource, "write:documents"}
+}
+
+// uploaderGate is gate for queued reading: the person who started the import must still be a member holding the
+// upload's scopes, with their own approval; nobody else's approval or access stands in for theirs.
+func (s *Service) uploaderGate(ctx context.Context, q store.Q, workspaceID, userID string, k Kind) error {
+	role, err := q.MemberRole(ctx, workspaceID, userID)
+	if errors.Is(err, store.ErrNotFound) {
+		return auth.Error(http.StatusForbidden, "forbidden", "Whoever started this import is no longer a member of this workspace. Nothing more was sent to the AI model.", nil)
+	}
+	if err != nil {
+		return err
+	}
+	scopes, err := q.MemberScopes(ctx, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	for _, scope := range scopesFor(k) {
+		if !permissions.Allows(role, scopes, scope) {
+			return auth.Error(http.StatusForbidden, "forbidden", "Whoever started this import may no longer "+strings.ReplaceAll(scope, ":", " ")+". Nothing more was sent to the AI model.", nil)
+		}
+	}
+	return s.gate(ctx, q, workspaceID, userID)
+}
+
+// gate refuses a model call the server cannot make, the workspace's plan lacks (ai_import) or the person has not
+// approved in this workspace (the same approval as Heidi's). userID is whoever started the import.
+func (s *Service) gate(ctx context.Context, q store.Q, workspaceID, userID string) error {
 	if s.provider == nil {
 		return auth.Error(http.StatusConflict, "ai_not_configured", "This server has no AI model configured, so files can't be read automatically.", nil)
 	}
 	if err := q.RequireFeature(ctx, workspaceID, store.FeatureAIImport); err != nil {
 		return err
 	}
-	c, err := q.AIConsent(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-	if !c.Granted {
-		return auth.Error(http.StatusForbidden, "ai_consent_required", "This workspace has not allowed Heidi to use OpenAI. An owner or admin can allow it in Heidi's panel; nothing was sent.", nil)
-	}
-	return nil
+	return auth.RequireAIConsent(ctx, q, workspaceID, userID)
 }
 
 // batch: the person's batch and its kind, after checking the session may act on that kind.

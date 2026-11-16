@@ -3,7 +3,7 @@ title: Turn receipts into expenses automatically
 description: Upload a batch of receipts and let AI read each one into a draft expense for you to check and book.
 category: Expenses
 order: 2
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Skip the typing: upload your receipts and AI turns them into draft expenses.
@@ -17,5 +17,7 @@ Expenses and receipt import need **Pro** or **Business**.
 
 ## Good to know
 
-- AI must be allowed for the workspace (see "Use Heidi, the assistant").
+- Before your first AI use in each workspace, you approve sending content to the AI provider.
+  Approval covers all AI tools there, only for you. Declining or closing the dialog starts no upload
+  or AI processing and keeps your draft and files.
 - Reading receipts uses the monthly AI allowance.

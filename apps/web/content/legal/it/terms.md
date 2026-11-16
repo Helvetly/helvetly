@@ -151,9 +151,10 @@ Non devi:
 
 - **Heidi**, l’assistente, risponde a domande su Helvetly e sulla tua attività. L’**importazione IA**
   legge i file caricati e propone record che verifichi.
-- L’invio di contenuti al fornitore IA (OpenAI, USA) avviene **solo se un titolare o amministratore
-  lo autorizza** per lo spazio di lavoro e può essere disattivato in qualsiasi momento. Senza
-  consenso, Heidi risponde solo in base ai tuoi dati e l’importazione IA non è disponibile.
+- Per le risposte che richiedono un modello IA e per l’importazione IA, Helvetly invia i contenuti
+  interessati al fornitore IA (OpenAI, USA) solo dopo la tua approvazione per questo spazio.
+  L’approvazione copre tutte le funzioni IA di quello spazio, vale solo per te e non si trasferisce
+  ad altri spazi. Helvetly non recupera i dati di Employees o Payroll per le richieste IA. Non includere questi dettagli nei messaggi o nei file.
 - Risposte IA e dati estratti possono essere **errati o incompleti**. Verificali prima di farvi
   affidamento; l’importazione IA non crea nulla finché una persona non ha esaminato e confermato
   i record. Nulla di ciò che dice Heidi costituisce consulenza legale, fiscale o finanziaria.

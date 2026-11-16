@@ -12,21 +12,6 @@ import { sampleSettings } from '@/test/invoice-api'
 
 import { screenHandlers, storySession } from './screen-fixtures'
 
-const usage = (granted: boolean) =>
-  http.get('/api/v1/heidi/usage', () =>
-    HttpResponse.json({
-      period: '2026-11',
-      tokens_used: 0,
-      tokens_included: 0,
-      tokens_purchased: 0,
-      tokens_remaining: 0,
-      provider_available: true,
-      consent: granted
-        ? { granted: true, changed_at: '2026-11-10T09:00:00Z', changed_by: 'Piotr K.' }
-        : { granted: false, changed_at: null, changed_by: '' },
-    }),
-  )
-
 const accountHandlers = [
   http.get('/api/v1/account', () =>
     HttpResponse.json({
@@ -204,42 +189,15 @@ const tabMarked = async (canvasElement: HTMLElement, name: string) => {
 export const Workspace: Story = {
   parameters: {
     nextjs: { navigation: { pathname: '/settings/workspace' } },
-    msw: { handlers: [usage(true), ...screenHandlers] },
+    msw: { handlers: screenHandlers },
   },
   render: () => <WorkspaceSettings />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const ai = await canvas.findByRole('region', { name: 'AI answers with OpenAI' })
-    await expect(
-      within(ai).getByRole('switch', { name: 'Allow Heidi to use OpenAI' }),
-    ).toBeChecked()
-    await expect(within(ai).getByText('On since 10 Nov 2026 · by Piotr K.')).toBeVisible()
-    await userEvent.click(within(ai).getByRole('button', { name: 'What Heidi shares with OpenAI' }))
-    const shares = await within(document.body).findByRole('dialog', {
-      name: 'What Heidi shares with OpenAI',
-    })
-    // The dialog fades in.
-    await waitFor(() =>
-      expect(within(shares).getByText('Processed by OpenAI in the USA')).toBeVisible(),
-    )
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(shares).not.toBeInTheDocument())
-    await expect(canvas.getByRole('region', { name: 'Danger zone' })).toBeVisible()
+    await expect(await canvas.findByRole('region', { name: 'Danger zone' })).toBeVisible()
     await sectionsAreBands(canvasElement)
     await headerRuled(canvasElement)
     await dangerZoneBoxed(canvasElement, 'Delete workspace')
-  },
-}
-
-export const WorkspaceAIOff: Story = {
-  ...Workspace,
-  parameters: { ...Workspace.parameters, msw: { handlers: [usage(false), ...screenHandlers] } },
-  play: async ({ canvasElement }) => {
-    const ai = within(
-      await within(canvasElement).findByRole('region', { name: 'AI answers with OpenAI' }),
-    )
-    await expect(ai.getByRole('switch', { name: 'Allow Heidi to use OpenAI' })).not.toBeChecked()
-    await expect(ai.getByText('Off: Heidi answers from your data only')).toBeVisible()
   },
 }
 

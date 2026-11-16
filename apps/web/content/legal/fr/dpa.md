@@ -30,7 +30,7 @@ ni cotisations.
 | Base juridique        | Déterminée par le Client en tant que responsable du traitement. Il peut notamment se fonder sur l’art. 6, par. 1, let. b et c RGPD avec l’art. 88 et le droit national des données d’emploi, l’art. 9, par. 2, let. b uniquement pour les catégories particulières qu’il choisit d’importer, la nLPD et l’art. 328b CO (uniquement les données portant sur l’aptitude du travailleur à remplir son emploi ou nécessaires à l’exécution du contrat), ainsi que les art. 50e à 50g LAVS pour l’utilisation systématique du numéro AVS, pour laquelle le Client doit être habilité ; Helvetly conserve le numéro uniquement pour le Client                    |
 | Accès                 | Toujours le propriétaire de l’espace ; les autres membres uniquement selon les droits que le propriétaire accorde individuellement, séparément pour Employees et Payroll (aucun accès, consultation ou modification) ; par défaut, les administrateurs consultent uniquement le registre des salaires, sans les champs scellés. Seul le propriétaire modifie ces droits. Approbation facultative de la paie par une seconde personne                                                                                                                                                                                                                       |
 | Champs scellés        | Les coordonnées bancaires, identifiants fiscaux et numéros de sécurité sociale sont chiffrés au repos avec AES-256-GCM et affichés uniquement au propriétaire et aux membres disposant du droit de modification de Payroll ; chaque accès est journalisé                                                                                                                                                                                                                                                                                                                                                                                                   |
-| IA et intégrations    | Jamais transmis au fournisseur d’IA (Heidi, import par IA) ; indisponibles via MCP et les jetons d’API personnels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| IA et intégrations    | Non récupérés pour les requêtes d’IA ; le Client ne doit pas les inclure dans les messages ou fichiers destinés à l’IA ; indisponibles via MCP et les jetons d’API personnels                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Conservation          | Définie par le Client pour chaque document, avec des durées légales suggérées par pays (par exemple livres de paie suisses : 10 ans, art. 958f CO). À l’échéance, le propriétaire efface ou anonymise les données après examen de la liste des éléments concernés ; les données soumises à un gel de conservation légal sont préservées                                                                                                                                                                                                                                                                                                                    |
 | Changement de formule | Après le passage de Business à une formule inférieure, les données sont conservées ; le propriétaire peut les lire et les exporter, mais pas les modifier                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
@@ -38,7 +38,7 @@ ni cotisations.
 
 Helvetly traite les données uniquement sur instruction documentée du Client : les conditions
 d’utilisation, le présent accord et l’utilisation des fonctions de la plateforme par le Client
-(par exemple l’envoi d’une facture ou l’autorisation donnée à Heidi d’utiliser OpenAI). Helvetly
+(par exemple l’envoi d’une facture ou une question posée à Heidi). Helvetly
 informe le Client s’il estime qu’une instruction enfreint le droit de la protection des données.
 
 ## 4. Confidentialité
@@ -55,8 +55,12 @@ Le Client autorise les sous-traitants figurant dans la [liste des sous-traitants
 Helvetly l’informe 30 jours avant tout ajout ou remplacement ; le Client peut s’y opposer pour des
 motifs importants de protection des données et, à défaut de solution, résilier le contrat. Helvetly
 impose à chaque sous-traitant des obligations équivalentes au présent accord et demeure responsable
-de son intervention. L’utilisation d’OpenAI pour Heidi et l’import par IA nécessite en outre le
-consentement d’un propriétaire ou administrateur dans la plateforme.
+de son intervention.
+
+Chaque membre doit approuver sa propre utilisation de l’IA dans chaque espace de travail avant toute
+transmission de contenu au fournisseur d’IA, y compris pour le décompte des tokens. L’approbation
+couvre toutes les fonctions d’IA de cet espace et ne peut pas être donnée au nom d’un autre membre.
+L’historique des approbations est conservé.
 
 ## 7. Transferts à l’étranger
 
@@ -124,12 +128,11 @@ ses dispositions impératives demeurent réservées.
   chaînées par hachage, en ajout uniquement.
 - **Accès du personnel :** aucun accès de support ou d’administration aux espaces dans la plateforme ;
   accès aux systèmes de production limité aux personnes exploitant le service.
-- **Fournisseur d’IA :** désactivé jusqu’au consentement par espace (historique conservé) ; seuls le
-  message actuel, jusqu’à 20 échanges précédents et les fichiers explicitement joints (Heidi), ou les
-  fichiers importés (import par IA), sont transmis ; les requêtes demandent au fournisseur de ne pas
+- **Fournisseur d’IA :** seuls le message actuel, jusqu’à 20 échanges précédents et les fichiers
+  explicitement joints (Heidi), les fichiers sélectionnés (import par IA et lecture des justificatifs),
+  ou le nom d’entreprise (suggestion de nom d’espace) sont transmis ; les requêtes demandent au fournisseur de ne pas
   conserver les données (`store: false`) ; budget mensuel de tokens imposé côté serveur.
 - **Données des employés et des salaires :** droits individuels distincts pour Employees et Payroll,
   accordés uniquement par le propriétaire ; coordonnées bancaires, identifiants fiscaux et numéros
-  de sécurité sociale scellés par AES-256-GCM, chaque accès étant journalisé ; jamais transmis au
-  fournisseur d’IA, à MCP ou via les jetons d’API ; approbation facultative de la paie par une seconde
+  de sécurité sociale scellés par AES-256-GCM, chaque accès étant journalisé ; non récupérés pour les requêtes d’IA ; indisponibles via MCP ou les jetons d’API ; approbation facultative de la paie par une seconde
   personne ; les écritures de paie approuvées peuvent faire l’objet de corrections, mais pas être modifiées.
