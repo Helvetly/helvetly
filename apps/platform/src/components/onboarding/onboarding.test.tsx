@@ -143,6 +143,30 @@ const gated = () => {
   return { gate, open }
 }
 
+describe('focus and scroll after a step change', () => {
+  // The worst order: the animation frame runs before React commits the next step, so focusing "the heading"
+  // then would hit the old one, which the commit removes. The new heading must get it after the commit.
+  test("the new step's heading takes focus and its scroller starts at the top, whatever the frame order", async () => {
+    workspaceName = 'Muster Treuhand'
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((frame) => {
+      frame(0)
+      return 0
+    })
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await user.type(
+      await screen.findByRole('textbox', { name: /What should we call you\?/ }),
+      'Anna',
+    )
+    const scroller = screen.getByRole('main').parentElement as HTMLElement
+    scroller.scrollTop = 120
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    const company = await screen.findByRole('heading', { name: 'Your company' })
+    expect(company).toHaveFocus()
+    expect(scroller.scrollTop).toBe(0)
+  })
+})
+
 const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly' })
 const left = () => waitFor(() => expect(replace).toHaveBeenCalledWith('/invoices?status=open'))
 
