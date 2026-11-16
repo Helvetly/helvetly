@@ -65,10 +65,13 @@ function install(page: Page) {
       frame: () => new Promise((done) => requestAnimationFrame(done)),
       quiet: () => new Promise((done) => setTimeout(done, 400)),
       boxes: () => {
-        // A spinner turns forever and moves nothing else; a running animation is not the layout's doing.
+        // A spinner turns forever and moves nothing else. Only an endless animation is skipped, and never
+        // around the focused control: a finite transition on focus is exactly what this must catch.
         const moving = document.getAnimations().flatMap((animation) => {
-          const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null
-          return target ? [target] : []
+          const effect = animation.effect
+          const target = effect instanceof KeyframeEffect ? effect.target : null
+          const endless = effect?.getComputedTiming().iterations === Infinity
+          return target && endless && !target.contains(document.activeElement) ? [target] : []
         })
         return new Map(
           [...document.body.querySelectorAll('*')].map((element): [Element, number[] | null] => {
@@ -221,3 +224,12 @@ for (const app of ['platform', 'portal'] as const) {
     }
   }
 }
+
+test('the guard sees a finite transition that moves a field on focus', async ({ page }) => {
+  await page.setContent(
+    `<style>input{display:block;transition:transform 150ms linear}input:focus{transform:translateY(12px)}</style><input aria-label="Email">`,
+  )
+  await install(page)
+  await page.keyboard.press('Shift')
+  expect(strings(await call(page, 'keyboard'))).not.toEqual([])
+})
