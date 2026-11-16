@@ -154,11 +154,11 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 		if len(notices) > 0 {
 			occurrence = ws.Today(now) + ":" + notices[0].ID
 		}
-		// Room for every recipient or the digest waits (the claims roll back); reserved apart from this transaction,
-		// which holds the claims while it sends.
+		// Room for every recipient or the digest waits (claims and reservations roll back together). Reserved in this
+		// transaction: a second connection while it holds the claims deadlocks concurrent instances on the pool.
 		for _, to := range emails {
 			actions = append(actions, "engagements.digest:"+occurrence+":"+to)
-			if err := s.db.ReserveAutomation(ctx, ws.ID, actions[len(actions)-1], now); err != nil {
+			if err := q.ReserveAutomation(ctx, ws.ID, actions[len(actions)-1], now); err != nil {
 				return err
 			}
 		}

@@ -20,9 +20,10 @@ func (q Q) CountAutomation(ctx context.Context, workspaceID, id string, now time
 	return err
 }
 
-// ReserveAutomation holds one action for an automatic message before it is prepared and sent, in a transaction of
-// its own (call it outside the message's). The same id again reserves nothing more. ErrAdmissionDenied as for
-// CountAutomation.
+// ReserveAutomation holds one action for an automatic message before it is prepared and sent: on the pool it commits
+// in a transaction of its own; inside a transaction that already holds locks, call it on that transaction's Q, since
+// a second connection would deadlock concurrent runs on the pool. The same id again reserves nothing more.
+// ErrAdmissionDenied as for CountAutomation.
 func (q Q) ReserveAutomation(ctx context.Context, workspaceID, id string, now time.Time) error {
 	_, err := q.ReserveUsage(ctx, workspaceID, automationOp(id), now)
 	return err
