@@ -4161,5 +4161,15 @@
   "employeeSectionContractDesc": "Role, dates and working time.",
   "employeeSectionWorkDesc": "Employer and work location.",
   "employeeSectionSwissDesc": "Withholding tax, insurers and salary certificate details.",
-  "employeeSectionProtectedDesc": "Stored encrypted; revealing them is recorded."
+  "employeeSectionProtectedDesc": "Stored encrypted; revealing them is recorded.",
+  "recognizeReceipt": "Recognize receipt",
+  "readingTheReceipt": "Reading the receipt…",
+  "chooseTheReceiptToRead": "Choose the receipt to read",
+  "recognizeReceiptNotice": "Sends the chosen receipt to Helvetly's AI model to fill in this form. Nothing is saved until you save.",
+  "filledInFromTheReceipt": "Filled in from the receipt: {fields}. Please check it before saving.",
+  "keptYourEntries": "Kept what you entered: {fields}.",
+  "nothingNewReadFromTheReceipt": "Nothing new could be read from this receipt. Your entries are unchanged.",
+  "checkTheseFromTheReceipt": "Check from the receipt: {issues}",
+  "heicCantBeRead": "HEIC photos can't be read automatically. Export the photo as JPEG, or enter the details yourself.",
+  "receiptReadFailed": "The receipt could not be read: {reason} Your entries are unchanged."
 }

@@ -458,3 +458,78 @@ export function uploadReceipts(
 ): Promise<Receipt[]> {
   return uploadInPacks<Receipt>(`/api/v1${path(id)}/receipts`, files, MAX_FILE_BYTES, onProgress)
 }
+
+/** The receipt fields the AI can suggest; a null is "not on the receipt" (or not trusted) and never clears a value. */
+export const RECOGNIZED_FIELDS = [
+  'supplier_name',
+  'supplier_vat_number',
+  'supplier_country',
+  'reference',
+  'description',
+  'document_date',
+  'due_date',
+  'currency',
+  'amount',
+  'vat_rate',
+  'amount_2',
+  'vat_rate_2',
+] as const
+export type RecognizedField = (typeof RECOGNIZED_FIELDS)[number]
+export type ReceiptSuggestions = {
+  fields: Record<RecognizedField, string | null>
+  /** A message per field to check (`amounts` for the currency, amounts and VAT rates together). */
+  issues: Record<string, string>
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+/** The answer of POST /expenses/receipt-preview, kept to the strings it should hold. */
+export function parseSuggestions(body: unknown): ReceiptSuggestions {
+  const data = isRecord(body) && isRecord(body.data) ? body.data : {}
+  const raw = isRecord(data.fields) ? data.fields : {}
+  const issues = isRecord(data.issues) ? data.issues : {}
+  const fields: ReceiptSuggestions['fields'] = {
+    supplier_name: null,
+    supplier_vat_number: null,
+    supplier_country: null,
+    reference: null,
+    description: null,
+    document_date: null,
+    due_date: null,
+    currency: null,
+    amount: null,
+    vat_rate: null,
+    amount_2: null,
+    vat_rate_2: null,
+  }
+  for (const field of RECOGNIZED_FIELDS) {
+    const value = raw[field]
+    if (typeof value === 'string' && value.trim()) fields[field] = value.trim()
+  }
+  return {
+    fields,
+    issues: Object.fromEntries(
+      Object.entries(issues).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    ),
+  }
+}
+
+/**
+ * Asks the AI to read one receipt for the unsaved form; nothing is stored. `requestId` names this one action, so
+ * the server refuses a repeat of it instead of reading (and charging) twice.
+ */
+export async function recognizeReceipt(file: File, requestId: string, signal: AbortSignal) {
+  const form = new FormData()
+  form.set('request_id', requestId)
+  form.set('file', file, file.name)
+  return parseSuggestions(
+    await request<unknown>('/expenses/receipt-preview', { method: 'POST', form, signal }),
+  )
+}
+
+/** Receipts the AI reads: the types the server sniffs and the model takes. */
+export const canRecognize = (file: File) =>
+  !isHeic(file) && /^(application\/pdf|image\/(png|jpeg|webp))$/.test(file.type)

@@ -13,7 +13,7 @@ const json = (body: unknown, status = 200) => Response.json(body, { status })
 function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Response>) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
     const url = String(input)
-    const body: unknown = init?.body ? JSON.parse(String(init.body)) : null
+    const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : null
     if (url.endsWith('/expense-categories'))
       return json({
         data: [
@@ -35,19 +35,18 @@ function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Res
   return fetch
 }
 
-const renderForm = async () => {
+const renderForm = async (initialFiles?: File[]) => {
   const onSaved = vi.fn<() => void>()
-  render(
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const view = render(
+    <QueryClientProvider client={client}>
       <TooltipProvider>
-        <ExpenseForm onClose={vi.fn<() => void>()} onSaved={onSaved} />
+        <ExpenseForm onClose={vi.fn<() => void>()} onSaved={onSaved} initialFiles={initialFiles} />
       </TooltipProvider>
     </QueryClientProvider>,
   )
   await screen.findByRole('textbox', { name: /Supplier$/ })
-  return { onSaved }
+  return { onSaved, client, unmount: view.unmount }
 }
 
 test('⌘Enter saves a draft with exact amounts', async () => {
@@ -170,4 +169,187 @@ test('a new expense waits for the workspace settings and categories before takin
   )
   await rendered
   expect(screen.getByRole('button', { name: 'Currency' })).toHaveTextContent('EUR')
+})
+
+const session = (id: string) => ({
+  user: { id: 'u', email: 'u@x.test', name: 'U', avatar_url: null },
+  workspace: { id },
+  role: 'owner',
+  onboarded: true,
+  csrf_token: 't',
+})
+const photo = (name = 'migros.jpg', type = 'image/jpeg') => new File(['x'], name, { type })
+const NONE = {
+  supplier_name: null,
+  supplier_vat_number: null,
+  supplier_country: null,
+  reference: null,
+  description: null,
+  document_date: null,
+  due_date: null,
+  currency: null,
+  amount: null,
+  vat_rate: null,
+  amount_2: null,
+  vat_rate_2: null,
+}
+const answer = (fields: Record<string, string | null>, issues: Record<string, string> = {}) =>
+  json({ data: { fields: { ...NONE, ...fields }, issues } })
+const isPreview = ([url]: Parameters<typeof globalThis.fetch>) =>
+  String(url).endsWith('/expenses/receipt-preview')
+const recognizeButton = () => screen.getByRole('button', { name: 'Recognize receipt' })
+const supplier = () => screen.getByRole('textbox', { name: /Supplier$/ })
+const amount = () => screen.getByRole('textbox', { name: 'Line 1 amount' })
+
+test('a staged receipt is never read until the person asks, and reading fills the form for review', async () => {
+  const fetch = stubApi(() =>
+    answer({
+      supplier_name: 'Migros',
+      reference: 'R-7',
+      currency: 'CHF',
+      amount: '108.10',
+      vat_rate: '8.1',
+    }),
+  )
+  await renderForm([photo()])
+  expect(fetch.mock.calls.filter(isPreview)).toHaveLength(0)
+
+  await userEvent.click(recognizeButton())
+
+  await waitFor(() => expect(supplier()).toHaveValue('Migros'))
+  expect(amount()).toHaveValue('108.10')
+  expect(screen.getByRole('combobox', { name: 'Line 1 VAT rate' })).toHaveValue('8.1')
+  expect(screen.getByText(/Filled in from the receipt: .*Supplier/)).toBeInTheDocument()
+  const [, init] = fetch.mock.calls.find(isPreview) ?? []
+  expect(init?.method).toBe('POST')
+  const form = init?.body
+  expect(form).toBeInstanceOf(FormData)
+  expect((form as FormData).get('request_id')).toEqual(expect.any(String))
+  expect(((form as FormData).get('file') as File).name).toBe('migros.jpg')
+  // Reading saves nothing.
+  expect(
+    fetch.mock.calls.filter(
+      ([url, i]) => String(url).endsWith('/expenses') && i?.method === 'POST',
+    ),
+  ).toHaveLength(0)
+})
+
+test('what the person typed or cleared while reading is kept, and the amounts are protected as a group', async () => {
+  const pending = Promise.withResolvers<Response>()
+  stubApi(() => pending.promise)
+  await renderForm([photo()])
+  await userEvent.click(recognizeButton())
+  expect(screen.getByRole('button', { name: 'Reading the receipt…' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled()
+
+  await userEvent.type(supplier(), 'Mine')
+  await userEvent.clear(supplier())
+  await userEvent.type(amount(), '5')
+  pending.resolve(
+    answer({
+      supplier_name: 'Migros',
+      reference: 'R-7',
+      currency: 'EUR',
+      amount: '108.10',
+      vat_rate: '8.1',
+    }),
+  )
+
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: /receipt no/i })).toHaveValue('R-7'),
+  )
+  expect(supplier()).toHaveValue('')
+  expect(amount()).toHaveValue('5')
+  expect(screen.getByRole('button', { name: 'Currency' })).toHaveTextContent('CHF')
+  expect(screen.getByText(/Kept what you entered: Supplier, Amounts/)).toBeInTheDocument()
+})
+
+test('a failed reading keeps every entry and the form stays usable', async () => {
+  stubApi(() => json({ error: { code: 'ai_unavailable', message: 'Allowance used.' } }, 503))
+  await renderForm([photo()])
+  await userEvent.type(supplier(), 'SBB')
+  await userEvent.click(recognizeButton())
+
+  expect(
+    await screen.findByText(/The receipt could not be read: Allowance used\./),
+  ).toBeInTheDocument()
+  expect(supplier()).toHaveValue('SBB')
+  expect(recognizeButton()).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled()
+})
+
+test('withheld amounts (reverse charge, several VAT bands) stay empty and say why', async () => {
+  stubApi(() =>
+    answer(
+      { supplier_name: 'Hetzner GmbH' },
+      { amounts: 'Reverse charge: the form cannot record it yet.' },
+    ),
+  )
+  await renderForm([photo()])
+  await userEvent.click(recognizeButton())
+
+  await waitFor(() => expect(supplier()).toHaveValue('Hetzner GmbH'))
+  expect(amount()).toHaveValue('')
+  expect(screen.getByText(/Reverse charge: the form cannot record it yet\./)).toBeInTheDocument()
+})
+
+test('with several receipts one must be chosen, and only that file is sent', async () => {
+  const fetch = stubApi(() => answer({ supplier_name: 'Coop' }))
+  await renderForm([photo('a.jpg'), photo('b.jpg')])
+  expect(recognizeButton()).toBeDisabled()
+
+  await userEvent.click(screen.getByRole('button', { name: /Choose the receipt to read/ }))
+  await userEvent.click(await screen.findByRole('option', { name: 'b.jpg' }))
+  await userEvent.click(recognizeButton())
+
+  await waitFor(() => expect(supplier()).toHaveValue('Coop'))
+  const form = fetch.mock.calls.find(isPreview)?.[1]?.body
+  expect(((form as FormData).get('file') as File).name).toBe('b.jpg')
+})
+
+test('removing the receipt while it is read drops the answer', async () => {
+  const pending = Promise.withResolvers<Response>()
+  stubApi(() => pending.promise)
+  await renderForm([photo()])
+  await userEvent.click(recognizeButton())
+  await userEvent.click(screen.getByRole('button', { name: /^Remove migros\.jpg/ }))
+  pending.resolve(answer({ supplier_name: 'Migros' }))
+
+  await userEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+  expect(supplier()).toHaveValue('')
+})
+
+test('a HEIC photo says it cannot be read and cannot be sent', async () => {
+  const fetch = stubApi(() => answer({}))
+  await renderForm([photo('iphone.heic', 'image/heic')])
+  expect(recognizeButton()).toBeDisabled()
+  expect(screen.getByText(/HEIC photos can't be read automatically/)).toBeInTheDocument()
+  expect(fetch.mock.calls.filter(isPreview)).toHaveLength(0)
+})
+
+test('closing the form abandons a reading in flight without applying or saving it', async () => {
+  const pending = Promise.withResolvers<Response>()
+  const fetch = stubApi(() => pending.promise)
+  const view = await renderForm([photo()])
+  await userEvent.click(recognizeButton())
+  const signal = fetch.mock.calls.find(isPreview)?.[1]?.signal
+  view.unmount()
+  expect(signal?.aborted).toBe(true)
+  pending.resolve(answer({ supplier_name: 'Migros' }))
+  await Promise.resolve()
+})
+
+test('switching workspace while reading drops the answer', async () => {
+  const pending = Promise.withResolvers<Response>()
+  const fetch = stubApi(() => pending.promise)
+  const { client } = await renderForm([photo()])
+  client.setQueryData(['session'], session('ws_a'))
+  await userEvent.click(recognizeButton())
+  client.setQueryData(['session'], session('ws_b'))
+  const signal = fetch.mock.calls.find(isPreview)?.[1]?.signal
+  await waitFor(() => expect(signal?.aborted).toBe(true))
+  pending.resolve(answer({ supplier_name: 'Migros' }))
+
+  await waitFor(() => expect(recognizeButton()).toBeEnabled())
+  expect(supplier()).toHaveValue('')
 })
