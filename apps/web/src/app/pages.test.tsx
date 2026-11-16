@@ -4,12 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { compareIn } from '@/lib/compare'
+import { faqIn, TOPICS } from '@/lib/faq'
 import { OFFER_URL } from '@/lib/offer'
 import { plansIn } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
+import { siteIn } from '@/lib/site'
 
 import ComparePage from './[lang]/compare/[slug]/page'
 import CompareIndexPage from './[lang]/compare/page'
+import FaqPage from './[lang]/faq/page'
 import HomePage from './[lang]/page'
 import PricingPage from './[lang]/pricing/page'
 import SubprocessorsPage from './[lang]/subprocessors/page'
@@ -246,5 +249,66 @@ describe('legal pages', () => {
     const scroller = table.parentElement!
     expect(scroller.tabIndex).toBe(0)
     expect(screen.getAllByRole('region', { name: 'Table' })[0]).toBe(scroller)
+  })
+})
+
+describe('questions', () => {
+  beforeEach(() => serve())
+  const questions = faqIn('en')
+
+  it('answers every question on one page, grouped by topic, each with its own anchor', async () => {
+    const { container } = render(await FaqPage(english))
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Getting started',
+      'Prices and plans',
+      'Limits and AI',
+      'Swiss invoicing and VAT',
+      'Data and privacy',
+    ])
+    expect(Object.keys(TOPICS)).toHaveLength(5)
+    for (const { id, q } of questions) {
+      expect(container.querySelector(`details#${id} summary`)?.textContent).toContain(q)
+    }
+    expect(new Set(questions.map(({ id }) => id)).size).toBe(questions.length)
+    const data = JSON.parse(
+      container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
+    )
+    expect(data['@type']).toBe('FAQPage')
+    expect(data.mainEntity).toHaveLength(questions.length)
+    expect(data.mainEntity[3].acceptedAnswer.text).toMatch(/privacy policy and the list of/)
+  })
+
+  it.each([
+    ['home', HomePage],
+    ['pricing', PricingPage],
+  ] as const)(
+    'leads the %s page with a few questions and links to all of them',
+    async (teaser, Page) => {
+      render(await Page(english))
+      for (const item of questions.filter((q) => q.teaser === teaser)) {
+        expect(screen.getByText(item.q)).toBeTruthy()
+      }
+      expect(screen.queryByText(questions.find((q) => !q.teaser)?.q ?? '')).toBeNull()
+      expect(
+        screen
+          .getByRole('link', { name: `See all ${questions.length} questions` })
+          .getAttribute('href'),
+      ).toBe('/faq')
+    },
+  )
+
+  it('links the German teaser to the German page', async () => {
+    render(
+      <LanguageProvider language="de">
+        {await HomePage({ params: Promise.resolve({ lang: 'de' }) })}
+      </LanguageProvider>,
+    )
+    expect(
+      screen
+        .getByRole('link', { name: `Alle ${questions.length} Fragen ansehen` })
+        .getAttribute('href'),
+    ).toBe('/de/faq')
+    const footerLinks = siteIn('de').FOOTER.flatMap(({ links }) => links)
+    expect(footerLinks.find(({ label }) => label === 'Fragen')?.href).toBe('/de/faq')
   })
 })

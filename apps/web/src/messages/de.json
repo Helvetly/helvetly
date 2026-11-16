@@ -837,7 +837,6 @@
   "exportEverythingAnyTime": "Alles jederzeit exportieren",
   "sent": "Versendet",
   "aYearBilledYearly": "{value1} pro Jahr, jährlich abgerechnet",
-  "showMoreQuestions": "{count, plural, one {# weitere Frage anzeigen} other {# weitere Fragen anzeigen}}",
   "featureGroupInvoicing": "Offerten, Rechnungen und Zahlungen",
   "featureGroupClients": "Kunden und Aufträge",
   "featureGroupDocuments": "Dokumente und Ausgaben",
@@ -878,5 +877,14 @@
   "stripCurrencies": "Gleiche Beträge in CHF, EUR und USD, inklusive Steuern",
   "stripCancel": "Plan jederzeit wechseln oder kündigen",
   "employeesAndPayrollRegister": "Mitarbeitende und Lohnregister",
-  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Personalakten, Mitarbeiterdokumente und ein Lohnregister, das Sie ausfüllen oder importieren. Keine Lohnberechnung, keine Lohnabrechnungen und keine Meldungen."
+  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Personalakten, Mitarbeiterdokumente und ein Lohnregister, das Sie ausfüllen oder importieren. Keine Lohnberechnung, keine Lohnabrechnungen und keine Meldungen.",
+  "faqPageDescription": "Antworten auf häufige Fragen zu Helvetly: Testphase, Preise und Pläne, Limits und KI, Schweizer QR-Rechnungen und MWST sowie Ihre Daten.",
+  "faqPageLead": "Kurze Antworten zur Testphase, zu Preisen, Limits, Schweizer Rechnungen und Ihren Daten. Jede Frage lässt sich direkt verlinken.",
+  "faqTopicBilling": "Preise und Pläne",
+  "faqTopicData": "Daten und Datenschutz",
+  "faqTopicLimits": "Limits und KI",
+  "faqTopicStart": "Erste Schritte",
+  "faqTopicSwiss": "Schweizer Rechnungen und MWST",
+  "questionsAndAnswers": "Fragen und Antworten",
+  "seeAllQuestions": "Alle {count} Fragen ansehen"
 }

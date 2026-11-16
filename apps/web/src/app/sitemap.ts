@@ -28,6 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...readCollection('help', english).map(({ slug }) => `/help/${slug}`),
     ...compareIn(english).COMPETITORS.map(({ slug }) => `/compare/${slug}`),
     '/security',
+    '/faq',
     ...Object.keys(LEGAL).map((s) => `/${s}`),
   ].flatMap((path) =>
     Object.keys(locales).map((language) => ({

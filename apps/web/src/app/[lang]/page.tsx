@@ -10,7 +10,6 @@ import { Trust } from '@/components/home/trust'
 import { OfferProvider } from '@/components/offer-provider'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
-import { faqIn } from '@/lib/faq'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 
@@ -66,7 +65,7 @@ export default async function HomePage({ params }: Props) {
           href: localizedHref('/security', lang),
           link: translate('howHeidiTreatsYourData'),
         }}
-        items={faqIn(lang).GENERAL_FAQ}
+        teaser="home"
       />
     </main>
   )

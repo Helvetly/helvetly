@@ -628,7 +628,6 @@
   "shared": "shared",
   "shared0211": "Shared 02.11.",
   "shareInvoicesAndDocumentsWithClientsInAPortal": "share invoices and documents with clients in a portal (Business)",
-  "showMoreQuestions": "Show {count, plural, one {# more question} other {# more questions}}",
   "sideBySide": "Side by side",
   "sideBySideWithTheToolsSwissCompaniesUse": "Side by side with the tools Swiss companies use, feature by feature, including where the others are the better fit.",
   "signatureRequests": "signature requests",
@@ -878,5 +877,14 @@
   "exportEverythingAnyTime": "Export everything, any time",
   "sent": "Sent",
   "employeesAndPayrollRegister": "Employees and payroll register",
-  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Staff records, employee documents and a payroll register you fill in or import. No payroll calculation, payslips or filings."
+  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Staff records, employee documents and a payroll register you fill in or import. No payroll calculation, payslips or filings.",
+  "faqPageDescription": "Answers to common questions about Helvetly: the trial, prices and plans, limits and AI, Swiss QR bills and VAT, and your data.",
+  "faqPageLead": "Short answers about the trial, prices, limits, Swiss invoicing and your data. Link to any question to share it.",
+  "faqTopicBilling": "Prices and plans",
+  "faqTopicData": "Data and privacy",
+  "faqTopicLimits": "Limits and AI",
+  "faqTopicStart": "Getting started",
+  "faqTopicSwiss": "Swiss invoicing and VAT",
+  "questionsAndAnswers": "Questions and answers",
+  "seeAllQuestions": "See all {count} questions"
 }

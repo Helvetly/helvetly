@@ -7,7 +7,6 @@ import { PageHero } from '@/components/page-hero'
 import { PlanTable } from '@/components/plan-table'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
-import { faqIn } from '@/lib/faq'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { TRIAL } from '@/lib/plans'
 import { siteIn } from '@/lib/site'
@@ -76,7 +75,7 @@ export default async function PricingPage({ params }: Props) {
           href: siteIn(lang).START_URL,
           link: translate('startYourFreeTrial'),
         }}
-        items={faqIn(lang).PRICING_FAQ}
+        teaser="pricing"
       />
     </main>
   )

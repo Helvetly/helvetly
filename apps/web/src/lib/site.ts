@@ -35,7 +35,7 @@ export const siteIn = perLanguage((translate, language) => {
       title: translate('whyHelvetly'),
       links: [
         { href: '/security', label: translate('securityAndPrivacy') },
-        { href: '/#faq', label: translate('questions') },
+        { href: '/faq', label: translate('questions') },
       ],
     },
     {
