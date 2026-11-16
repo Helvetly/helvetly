@@ -276,9 +276,9 @@ func TestBusinessEmailCountsRecipientsAndAttachmentBytes(t *testing.T) {
 // TestEmailInsideATransactionHoldingTheBillingLock: a quote is saved and emailed in one transaction that holds the
 // workspace's billing lock; the email's reservation must not wait on it.
 func TestEmailInsideATransactionHoldingTheBillingLock(t *testing.T) {
+	e, ws := planned(t, "price_bm") // pauses for t.Parallel: the deadline starts after it
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	e, ws := planned(t, "price_bm")
 	err := e.st.Tx(ctx, func(q store.Q) error {
 		if err := q.LockBilling(ctx, ws); err != nil {
 			return err
