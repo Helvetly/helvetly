@@ -50,7 +50,7 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v2-pro-trial" || len(c.Plans) != 3 ||
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly" || len(c.Plans) != 3 ||
 		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
 		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
 		t.Fatalf("catalog: %q %v", out, err)
@@ -67,7 +67,7 @@ func TestOfferCommand(t *testing.T) {
 		t.Fatalf("validate an incomplete offer: %v", err)
 	}
 	out, err = run("diff", file)
-	if err != nil || !strings.Contains(out, "current helvetly-v2-pro-trial") || !strings.Contains(out, "clients.basic: limited 30 -> limited 40\n") {
+	if err != nil || !strings.Contains(out, "current helvetly") || !strings.Contains(out, "clients.basic: limited 30 -> limited 40\n") {
 		t.Fatalf("diff: %q %v", out, err)
 	}
 	if _, err := run("publish", file); err == nil {

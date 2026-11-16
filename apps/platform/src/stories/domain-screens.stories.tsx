@@ -240,7 +240,7 @@ export const BillingPeriod: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(canvas.getByRole('radio', { name: 'Yearly' })).toBeChecked()
     await expect(canvas.getByRole('region', { name: 'Basic' })).toHaveTextContent('CHF 183')
-    await expect(canvas.getByRole('region', { name: 'Business' })).toHaveTextContent(
+    await expect(canvas.getByRole('region', { name: 'Pro' })).toHaveTextContent(
       '7 days, up to 2 people, card required',
     )
   },
@@ -253,7 +253,7 @@ export const BillingReadOnly: Story = {
       canvas.getByText('Only an owner or admin can change the workspace’s plan.'),
     ).toBeVisible()
     await Promise.all(
-      ['Choose Basic', 'Choose Pro', /Start.*free trial/].map((name) =>
+      ['Choose Basic', 'Choose Business', /Start.*free trial/].map((name) =>
         expect(canvas.getByRole('button', { name })).toBeDisabled(),
       ),
     )

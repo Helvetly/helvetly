@@ -31,9 +31,16 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await expect(page.getByText(/That code is not right/)).toBeVisible()
   await page.getByLabel('Code', { exact: true }).fill(code)
   await expect(page).toHaveURL(/\/welcome/)
-  // The welcome is finished, not skipped: each step's own skip moves on to the next.
+  // The welcome is finished, not skipped: the company step has no skip, only the optional steps after it do.
   await page.getByRole('button', { name: 'Get started' }).click()
-  await page.getByRole('button', { name: 'I’ll do it later' }).click()
+  await page.getByLabel(/^Company name/).fill('Journey AG')
+  await page.getByLabel(/^Street/).fill('Bahnhofstrasse')
+  await page.getByLabel(/^Number/).fill('1')
+  await page.getByLabel(/^ZIP/).fill('8001')
+  await page.getByLabel(/^City/).fill('Zurich')
+  // VAT registration starts on and then needs the UID; this person is not registered.
+  await page.getByRole('switch', { name: 'Registered for VAT' }).click()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByRole('button', { name: 'Skip', exact: true }).click()
   await page.getByRole('button', { name: 'Skip', exact: true }).click()
   await page.getByRole('button', { name: 'Go to the dashboard' }).click()

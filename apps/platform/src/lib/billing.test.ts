@@ -54,7 +54,7 @@ test('limitReached reads a 402 limit_reached and nothing else', () => {
     max: 10,
     reset_at: null,
   })
-  // offer v2's body: the key, the cap as `limit` and when it starts again
+  // the current offer's body: the key, the cap as `limit` and when it starts again
   expect(
     limitReached(
       limitError({
