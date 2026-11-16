@@ -1,6 +1,5 @@
 import { type Locale, localizedHref } from '@helvetly/i18n'
 import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
-import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -108,16 +107,7 @@ export function SiteFooter({ lang }: { lang: Locale }) {
         </Container>
 
         <Container className="relative border-t border-white/10 py-10">
-          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-[1.3fr_repeat(5,1fr)]">
-            <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
-              <Link href={localizedHref('/', lang)} className="flex w-fit items-center gap-2">
-                <Logo className="size-7" />
-                <span className="text-title-sm font-semibold">{translate('helvetly')}</span>
-              </Link>
-              <p className="max-w-xs text-body-sm text-white/55">
-                {translate('theCalmBackOfficeForSwissCompaniesWithHeidi')}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-5">
             {FOOTER.map((group) => (
               <nav key={group.title} aria-label={group.title} className="flex flex-col gap-2">
                 <h2 className="text-body-sm font-medium text-white">{group.title}</h2>
@@ -134,11 +124,11 @@ export function SiteFooter({ lang }: { lang: Locale }) {
             ))}
           </div>
           <div className="mt-10 flex flex-col gap-2 text-body-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {YEAR}
-              {translate('helvetly2')}
-            </p>
-            <div className="flex items-center justify-between gap-4 sm:justify-end">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p>
+                © {YEAR}
+                {translate('helvetly2')}
+              </p>
               <p className="inline-flex items-center gap-2">
                 <svg aria-hidden viewBox="0 0 32 32" className="size-4 rounded-[3px]">
                   <rect width="32" height="32" fill="#d52b1e" />
@@ -146,6 +136,8 @@ export function SiteFooter({ lang }: { lang: Locale }) {
                 </svg>
                 {translate('madeForSwitzerland')}
               </p>
+            </div>
+            <div className="flex items-center gap-4 sm:justify-end">
               <LanguageSwitcher />
               <ThemeToggle className="bg-white/8" />
             </div>
