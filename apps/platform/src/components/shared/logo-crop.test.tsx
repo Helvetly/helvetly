@@ -103,6 +103,22 @@ describe('LogoCropDialog, document logo', () => {
     expect(parseFloat(img?.style.height ?? '')).toBeCloseTo(110, 5)
   })
 
+  test('once decoded, the picture’s own size wins over the header (an EXIF-turned JPEG is wider in the header than on screen)', async () => {
+    // The header says 600 × 400; the browser decodes it turned, 400 × 600.
+    open(png(600, 400))
+    const img = await picture()
+    const box = img?.parentElement
+    expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(60, 5)
+    if (img) {
+      Object.defineProperty(img, 'naturalWidth', { value: 400 })
+      Object.defineProperty(img, 'naturalHeight', { value: 600 })
+      fireEvent.load(img)
+    }
+    await waitFor(() => expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(26.667, 2))
+    expect(box?.style.height).toBe('100%')
+    expect(parseFloat(box?.style.left ?? '')).toBeCloseTo(36.667, 2)
+  })
+
   test('an unreadable picture says so', async () => {
     open(png(300, 400))
     const img = await picture()

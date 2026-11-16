@@ -24,6 +24,92 @@ async function picture(width: number, height: number, clear = true) {
   return new File([blob], 'logo.png', { type: 'image/png' })
 }
 
+/**
+ * A 600 × 400 JPEG of a disc and a corner mark whose EXIF orientation is `turn` (6 or 8), so browsers show it
+ * 400 × 600. The EXIF segment is spliced in after the JPEG's start marker.
+ */
+async function turnedJpeg(turn: 6 | 8) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 600
+  canvas.height = 400
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, 600, 400)
+  context.fillStyle = '#0000ff'
+  context.fillRect(0, 0, 60, 60)
+  context.fillStyle = '#ff00ff'
+  context.beginPath()
+  context.arc(300, 200, 100, 0, Math.PI * 2)
+  context.fill()
+  const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 1))
+  if (!jpeg) throw new Error('no jpeg')
+  const exif = new Uint8Array([
+    0xff,
+    0xe1,
+    0x00,
+    0x22,
+    0x45,
+    0x78,
+    0x69,
+    0x66,
+    0x00,
+    0x00,
+    0x4d,
+    0x4d,
+    0x00,
+    0x2a,
+    0x00,
+    0x00,
+    0x00,
+    0x08,
+    0x00,
+    0x01,
+    0x01,
+    0x12,
+    0x00,
+    0x03,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    turn,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+  ])
+  const bytes = new Uint8Array(await jpeg.arrayBuffer())
+  return new File([bytes.slice(0, 2), exif, bytes.slice(2)], 'turned.jpg', { type: 'image/jpeg' })
+}
+
+/** The width and height of the magenta pixels of a PNG: a disc must stay round. */
+async function discSize(blob: Blob) {
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.drawImage(bitmap, 0, 0)
+  const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height)
+  let [left, top, right, bottom] = [width, height, -1, -1]
+  for (let y = 0; y < height; y += 1)
+    for (let x = 0; x < width; x += 1) {
+      const at = (y * width + x) * 4
+      if (data[at]! > 200 && data[at + 1]! < 60 && data[at + 2]! > 200 && data[at + 3]! > 200) {
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+        top = Math.min(top, y)
+        bottom = Math.max(bottom, y)
+      }
+    }
+  return { width: right - left + 1, height: bottom - top + 1 }
+}
+
 const made = new Map<string, Promise<File>>()
 const cached = (width: number, height: number, clear: boolean) => {
   const key = `${width}x${height}${clear}`
@@ -32,7 +118,7 @@ const cached = (width: number, height: number, clear: boolean) => {
   return hit
 }
 
-function Dialog({ file }: { file: File }) {
+function Dialog({ file, onSave = fn() }: { file: File; onSave?: (logo: Blob) => void }) {
   const [url] = useState(() => URL.createObjectURL(file))
   return (
     <LogoCropDialog
@@ -43,7 +129,7 @@ function Dialog({ file }: { file: File }) {
       progress={null}
       error=""
       onCancel={fn()}
-      onSave={fn()}
+      onSave={onSave}
     />
   )
 }
@@ -104,3 +190,42 @@ export const ExactRatio: Story = {
 
 /** The smallest allowed picture, on white instead of transparent. */
 export const Tiny: Story = { render: () => <Pick width={64} height={64} clear={false} /> }
+
+const saved = fn<(logo: Blob) => void>()
+function TurnedDialog({ file }: { file: Promise<File> }) {
+  return <Dialog file={use(file)} onSave={saved} />
+}
+function Turned({ turn }: { turn: 6 | 8 }) {
+  const [file] = useState(() => turnedJpeg(turn))
+  return (
+    <Suspense fallback={null}>
+      <TurnedDialog file={file} />
+    </Suspense>
+  )
+}
+
+const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
+  const body = within(canvasElement.ownerDocument.body)
+  await frame(canvasElement.ownerDocument.body)
+  saved.mockClear()
+  await userEvent.click(await body.findByRole('button', { name: 'Use this logo' }))
+  await waitFor(() => expect(saved).toHaveBeenCalled())
+  const logo = saved.mock.calls[0]?.[0]
+  if (!logo) throw new Error('nothing saved')
+  // Turned by the browser to 400 × 600 and fitted whole into the 2.5 : 1 field, the disc is still round.
+  const size = await discSize(logo)
+  await expect(size.width / size.height).toBeGreaterThan(0.95)
+  await expect(size.width / size.height).toBeLessThan(1.05)
+}
+
+/** A JPEG turned by EXIF (orientation 6) keeps its proportions in the saved PNG. */
+export const ExifTurnedClockwise: Story = {
+  render: () => <Turned turn={6} />,
+  play: keepsTheDiscRound,
+}
+
+/** The same turned the other way (orientation 8). */
+export const ExifTurnedAnticlockwise: Story = {
+  render: () => <Turned turn={8} />,
+  play: keepsTheDiscRound,
+}

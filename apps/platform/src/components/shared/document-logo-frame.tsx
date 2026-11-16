@@ -19,6 +19,7 @@ export function DocumentLogoFrame({
   view,
   disabled,
   onChange,
+  onDecoded,
   onError,
 }: {
   url: string
@@ -26,6 +27,8 @@ export function DocumentLogoFrame({
   view: DocumentView
   disabled?: boolean
   onChange: (view: DocumentView) => void
+  /** The picture's own size once decoded, with any EXIF turn applied (a JPEG's header size does not have it). */
+  onDecoded: (size: { width: number; height: number }) => void
   onError: () => void
 }) {
   const frame = useRef<HTMLButtonElement>(null)
@@ -96,6 +99,10 @@ export function DocumentLogoFrame({
           unoptimized
           sizes="40rem"
           draggable={false}
+          onLoad={(event) => {
+            const { naturalWidth: width, naturalHeight: height } = event.currentTarget
+            if (width && height) onDecoded({ width, height })
+          }}
           onError={onError}
           className="object-fill"
         />

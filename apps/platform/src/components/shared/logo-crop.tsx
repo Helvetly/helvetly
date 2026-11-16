@@ -178,7 +178,9 @@ export function LogoCropDialog({
   const ratio = natural ? natural.width / natural.height : 1
   const odd = isDocument && natural && (ratio < ODD_RATIO[0] || ratio > ODD_RATIO[1])
 
-  // The document logo's size comes from the file's header; the workspace cropper reports its own once loaded.
+  // The document logo starts from the file's header size (so nothing waits), and the picture itself corrects it once it
+  // decodes: a JPEG turned by its EXIF orientation is decoded with the sides swapped, which the header does not say.
+  // The workspace cropper reports its own size once loaded.
   useEffect(() => {
     if (isDocument) void imageSize(file).then((size) => size && setNatural(size))
   }, [isDocument, file])
@@ -210,7 +212,7 @@ export function LogoCropDialog({
         const logo =
           !isDocument && area
             ? await cropWorkspaceLogo(bitmap, area.pixels)
-            : await renderDocumentLogo(bitmap, natural, view)
+            : await renderDocumentLogo(bitmap, { width: bitmap.width, height: bitmap.height }, view)
         if (logo) onSave(logo)
         else setProblem(translate('theLogoCanBeAtMost2MB'))
       } finally {
@@ -238,6 +240,11 @@ export function LogoCropDialog({
               view={view}
               disabled={busy}
               onChange={setView}
+              onDecoded={(size) =>
+                setNatural((current) =>
+                  current?.width === size.width && current.height === size.height ? current : size,
+                )
+              }
               onError={() => setProblem(translate('thisImageCanTBeReadChooseAPNG'))}
             />
           )
