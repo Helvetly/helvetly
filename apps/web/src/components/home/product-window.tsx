@@ -85,7 +85,7 @@ function Pill({ status, className }: { status: string; className?: string }) {
     <span
       className={cn('rounded-full px-2 py-0.5 text-caption font-medium', STATUS[status], className)}
     >
-      {status}
+      {{ Paid: translate('paid'), Sent: translate('sent'), Overdue: translate('overdue') }[status]}
     </span>
   )
 }

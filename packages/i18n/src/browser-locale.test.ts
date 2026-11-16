@@ -1,13 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./locales.json', () => ({
-  default: { defaultLocale: 'en', locales: { en: {}, pl: {} } },
+  default: {
+    defaultLocale: 'en',
+    browserLocales: ['en', 'pl'],
+    locales: { en: {}, pl: {}, de: {} },
+  },
 }))
 
 import { browserLocale, languageHref, languageStorageKey } from './browser-locale'
 
 describe('browser language', () => {
   beforeEach(() => localStorage.clear())
+
+  it('does not activate a public-only language in the application', () => {
+    localStorage.setItem(languageStorageKey, 'de')
+    expect(browserLocale('?lang=de', localStorage)).toBe('en')
+    expect(browserLocale('', localStorage)).toBe('en')
+  })
 
   it('lets the language query override storage and remembers it for later navigation', () => {
     localStorage.setItem(languageStorageKey, 'en')

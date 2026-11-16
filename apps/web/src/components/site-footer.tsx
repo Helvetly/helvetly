@@ -53,7 +53,7 @@ export function SiteFooter() {
           className="from-night-2 absolute inset-x-0 top-0 h-40 bg-linear-to-b to-transparent"
         />
 
-        <Container className="relative grid items-center gap-14 pt-20 pb-16 lg:grid-cols-[1.2fr_1fr] lg:pt-24">
+        <Container className="relative grid grid-cols-1 items-center gap-14 pt-20 pb-16 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:pt-24">
           <div data-reveal className="flex flex-col items-start">
             <h2 className="text-subhero font-semibold text-balance">
               {translate('spendFridayOnYourBusiness')}{' '}
@@ -82,7 +82,7 @@ export function SiteFooter() {
 
           <ul
             aria-label={translate('doneOnItsOwn')}
-            className="relative mx-auto grid w-full max-w-sm gap-4 py-4"
+            className="relative mx-auto grid w-full max-w-sm grid-cols-1 gap-4 py-4"
           >
             {DONE.map(({ icon: Icon, title, meta, tone, tilt }, i) => (
               <li key={title} data-reveal style={{ ['--d' as string]: `${150 + i * 150}ms` }}>

@@ -278,10 +278,7 @@
   "freeUpTo70TransactionsProfessionalCHF89Year2": "Free up to 70 transactions; Professional CHF 89 / year; Advanced CHF 179 / year, per user; VAT not stated for CHF",
   "friendlyNote": "Friendly note",
   "fromDesktopFilesToA": "From desktop files to a ",
-  "fromMintSolidToSkySolid": "from-mint-solid to-sky-solid",
-  "fromPeachSolidToRoseSolid": "from-peach-solid to-rose-solid",
   "fromPerPersonMonthOrPerPersonYearIncl": "From {value1} per person / month, or {value2} per person / year, incl. VAT",
-  "fromSkySolidToLilacSolid": "from-sky-solid to-lilac-solid",
   "fromTheAdvancedPlan": "From the Advanced plan",
   "fromTheFirstInvoiceToThe": "From the first invoice to the ",
   "frontMatterNeeds": "{file}: front matter needs \"{key}\"",
@@ -876,5 +873,9 @@
   "stripTrial": "Try Business free for {days} days, with up to {members} people",
   "stripPerPerson": "Billed per person, up to {seats} people in the app",
   "stripCurrencies": "Same figures in CHF, EUR and USD, tax included",
-  "stripCancel": "Change plan or cancel any time"
+  "stripCancel": "Change plan or cancel any time",
+  "swissQrBillBuiltIn": "Swiss QR bill built in",
+  "passwordlessSignIn": "Passwordless sign-in",
+  "exportEverythingAnyTime": "Export everything, any time",
+  "sent": "Sent"
 }

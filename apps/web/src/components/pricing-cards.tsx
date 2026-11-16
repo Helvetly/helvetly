@@ -144,7 +144,7 @@ export function PricingCards() {
               )}
               <p
                 className={cn(
-                  'mt-2 h-5 text-body-sm',
+                  'mt-2 min-h-5 text-body-sm',
                   featured ? 'opacity-60' : 'text-muted-foreground',
                 )}
               >
