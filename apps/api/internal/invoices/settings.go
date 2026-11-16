@@ -126,7 +126,7 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 		if err != nil {
 			return err
 		}
-		currency := set.Currency
+		currency, before := set.Currency, set
 		p := newParser()
 		sl := &set.Seller
 		for _, f := range []struct {
@@ -256,6 +256,9 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 					"The base currency cannot change once an invoice is issued or an expense booked.", nil)
 			}
 		}
+		if err := requireAutomations(r.Context(), q, sess.Workspace.ID, before, set); err != nil {
+			return err
+		}
 		set.derive()
 		saved = set
 		return q.PutInvoiceSettings(r.Context(), sess.Workspace.ID, set, s.now())
@@ -346,4 +349,21 @@ func qrCurrencies(iban string) []string {
 func SellerOf(ctx context.Context, q store.Q, workspaceID string) (store.Party, error) {
 	s, err := loadSettings(ctx, q, workspaceID)
 	return s.Seller.Party, err
+}
+
+// requireAutomations refuses switching on an automation the plan does not include. One switched on before stays as
+// saved, so the rest of the settings can still change: the jobs check the plan before they act.
+func requireAutomations(ctx context.Context, q store.Q, workspaceID string, before, after Settings) error {
+	for feature, on := range map[string]bool{
+		store.FeatureInvoiceReminders: after.Dunning.Enabled && !before.Dunning.Enabled,
+		store.FeatureInvoiceInstalments: after.Instalments.PlanAutoSend && !before.Instalments.PlanAutoSend ||
+			after.Instalments.RemindersEnabled && !before.Instalments.RemindersEnabled,
+	} {
+		if on {
+			if err := q.RequireFeature(ctx, workspaceID, feature); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

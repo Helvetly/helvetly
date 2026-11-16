@@ -23,6 +23,11 @@ func (q Q) admissionTx(ctx context.Context, write func(Q) error) error {
 	if q.admission == nil {
 		return write(q)
 	}
+	return q.writeTx(ctx, write)
+}
+
+// writeTx runs write in q's transaction, or in a new one when q is not in one.
+func (q Q) writeTx(ctx context.Context, write func(Q) error) error {
 	if _, ok := q.db.(pgx.Tx); ok {
 		return write(q)
 	}
@@ -30,9 +35,9 @@ func (q Q) admissionTx(ctx context.Context, write func(Q) error) error {
 		Begin(context.Context) (pgx.Tx, error)
 	})
 	if !ok {
-		return fmt.Errorf("quota admission: database cannot begin a transaction")
+		return fmt.Errorf("database cannot begin a transaction")
 	}
-	return pgx.BeginFunc(ctx, beginner, func(tx pgx.Tx) error { return write(Q{db: tx, admission: q.admission}) })
+	return pgx.BeginFunc(ctx, beginner, func(tx pgx.Tx) error { return write(q.on(tx)) })
 }
 
 // Admit permits preflight checks inside an existing write transaction (for example before S3 PUT).

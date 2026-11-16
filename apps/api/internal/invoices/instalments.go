@@ -394,6 +394,9 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 	sess, today := store.Session{Workspace: ws}, s.today(ws)
 	var id, pdf string
 	err := s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.RequireFeature(ctx, ws.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err // the job checked first; a plan change since then wins
+		}
 		locked, err := q.Plan(ctx, ws.ID, plan.ID, true)
 		if err != nil {
 			return err
@@ -414,6 +417,10 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 		compute(&src)
 		set, err := loadSettings(ctx, q, ws.ID)
 		if err != nil {
+			return err
+		}
+		// Issuing a plan item is one automatic action; sending it is another (instalments.Service).
+		if err := q.CountAutomation(ctx, ws.ID, fmt.Sprintf("instalments.issue:%s:%d", locked.ID, item.Seq), s.now()); err != nil {
 			return err
 		}
 		inv := planPartial(src, locked, locked.Items[i], today, set)
@@ -506,7 +513,7 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
 	subject, message := defaultEmail(inv)
-	m := mail.Message{To: []string{*to}, Subject: subject, Text: message,
+	m := mail.Message{Workspace: ws.ID, To: []string{*to}, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {

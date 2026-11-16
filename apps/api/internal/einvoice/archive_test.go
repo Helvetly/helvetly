@@ -144,7 +144,7 @@ func newArchiveEnvWith(t *testing.T, inv store.Invoice) *archiveEnv {
 	if err := db.SaveDraft(ctx, w.ID, inv, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Issue(ctx, inv, 42, now); err != nil {
+	if err := db.Issue(ctx, w.ID, inv, 42, now); err != nil {
 		t.Fatal(err)
 	}
 	real, err := auth.New(config.Config{PublicURL: "http://localhost", SecretKey: bytes.Repeat([]byte{4}, 32), SessionTTL: time.Hour}, db, slog.New(slog.NewTextHandler(io.Discard, nil)))

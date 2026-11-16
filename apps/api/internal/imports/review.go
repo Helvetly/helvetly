@@ -258,6 +258,9 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 		if err != nil {
 			return err
 		}
+		if err := k.allowed(ctx, q, sess.Workspace.ID); err != nil {
+			return err
+		}
 		if done, err := s.skip(ctx, q, &rec, resolution); done || err != nil {
 			res.Status = rec.Status
 			return err
@@ -278,6 +281,9 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 		keep := func(ctx context.Context, key string) (int64, string, error) {
 			b, err := s.read(ctx, store.ImportFile{ObjectKey: src.ObjectKey, EntryIndex: src.EntryIndex})
 			if err != nil {
+				return 0, "", err
+			}
+			if err := q.ReserveObject(ctx, sess.Workspace.ID, key, int64(len(b)), true, s.now()); err != nil {
 				return 0, "", err
 			}
 			kept = append(kept, key)

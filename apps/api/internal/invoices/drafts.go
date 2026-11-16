@@ -150,7 +150,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if inv.Status != "draft" {
 			if _, ok := body["reminders_enabled"]; ok && len(body) == 1 {
-				return setReminders(ctx, q, inv.ID, body["reminders_enabled"])
+				return setReminders(ctx, q, sess.Workspace.ID, inv.ID, body["reminders_enabled"])
 			}
 			return errLocked
 		}
@@ -226,10 +226,15 @@ func isPrepayment(ctx context.Context, q store.Q, workspaceID, today string, p s
 }
 
 // setReminders: the one change an issued invoice takes, its reminders on or off.
-func setReminders(ctx context.Context, q store.Q, id string, raw json.RawMessage) error {
+func setReminders(ctx context.Context, q store.Q, workspaceID, id string, raw json.RawMessage) error {
 	var on bool
 	if isNull(raw) || json.Unmarshal(raw, &on) != nil {
 		return validationFailed(map[string]string{"reminders_enabled": "Choose true or false."})
+	}
+	if on {
+		if err := q.RequireFeature(ctx, workspaceID, store.FeatureInvoiceReminders); err != nil {
+			return err
+		}
 	}
 	return q.SetRemindersEnabled(ctx, id, on)
 }
@@ -246,6 +251,11 @@ func saveDraft(ctx context.Context, q store.Q, sess store.Session, inv store.Inv
 	interval, items := "", []store.InstalmentItem(nil)
 	if inv.Instalments != nil {
 		interval, items = inv.Instalments.Interval, inv.Instalments.Items
+	}
+	if len(items) > 0 { // a schedule issues its instalments by itself: an instalment plan
+		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err
+		}
 	}
 	if err := q.SetInstalments(ctx, inv.ID, interval, items); err != nil {
 		return err

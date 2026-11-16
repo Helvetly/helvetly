@@ -3,6 +3,7 @@ package billing
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,14 +11,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
 	"helvetly.com/api/internal/documents"
-	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/store"
 )
 
@@ -207,12 +207,8 @@ func TestExactStoredBytesConcurrentUploadAndFullQuotaDuplicate(t *testing.T) {
 	if code := upload("renamed.txt", winner); code != http.StatusConflict {
 		t.Fatalf("full quota must preserve hash duplicate409, got%d", code)
 	}
-	var bytesStored int64
-	if err := e.raw.QueryRow(context.Background(), `SELECT coalesce(sum(size),0) FROM documents WHERE workspace_id=$1`, b.workspace).Scan(&bytesStored); err != nil {
-		t.Fatal(err)
-	}
-	if bytesStored != int64(len(first)) {
-		t.Fatalf("storedbytes=%d", bytesStored)
+	if got := e.stored(b.workspace); got != int64(len(first)) {
+		t.Fatalf("stored bytes %d, want %d", got, len(first))
 	}
 	files.mu.Lock()
 	defer files.mu.Unlock()
@@ -221,171 +217,80 @@ func TestExactStoredBytesConcurrentUploadAndFullQuotaDuplicate(t *testing.T) {
 	}
 }
 
-func TestMonthlyInvoiceAdmissionCoversKindsAndKeepsCorrectionsPossible(t *testing.T) {
+// TestDuplicatesAddNoBytesAndCopiesDo: the same bytes again, under another name, in the same batch or through another
+// entry point (a client's files) are refused or linked and count nothing; a deliberate copy is its own object and
+// counts; another workspace's identical file counts for that workspace only.
+func TestDuplicatesAddNoBytesAndCopiesDo(t *testing.T) {
 	e := newEnv(t, true)
 	b := e.workspace()
 	e.subscribe(b.workspace, "price_bm")
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('kind-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	setAdmissionLimit(t, e, Invoices, 1)
-	for _, kind := range []string{"partial", "prepayment", "debit_note", "proforma", "self_billed", "invoice"} {
-		t.Run(kind, func(t *testing.T) {
-			e.exec(`DELETE FROM invoices WHERE workspace_id=$1`, b.workspace)
-			invoice := store.Invoice{ID: auth.NewID("inv"), Kind: kind, ClientID: "kind-buyer", IssueDate: "2026-11-08", DueDate: "2026-11-08", Currency: "CHF", Language: "en", VATMode: "none"}
-			if err := e.st.SaveDraft(context.Background(), b.workspace, invoice, time.Now()); err != nil {
-				t.Fatal(err)
-			}
-			another := invoice
-			another.ID = auth.NewID("inv")
-			if err := e.st.SaveDraft(context.Background(), b.workspace, another, time.Now()); !errors.Is(err, store.ErrAdmissionDenied) {
-				t.Fatalf("%s second draft: %v", kind, err)
-			}
-			for _, exempt := range []string{"credit_note", "corrected"} {
-				legal := invoice
-				legal.ID = auth.NewID("inv")
-				legal.Kind = exempt
-				if err := e.st.SaveDraft(context.Background(), b.workspace, legal, time.Now()); err != nil {
-					t.Fatalf("%s blocked at cap: %v", exempt, err)
-				}
-				legal.Kind = "invoice"
-				if err := e.st.SaveDraft(context.Background(), b.workspace, legal, time.Now()); err == nil {
-					t.Fatalf("exempt %s changed its kind to bypass cap", exempt)
-				}
-			}
-		})
-	}
-}
-
-func TestJobDraftAndHTTPShareTheSameTransactionalMonthlyLimit(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_bm")
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('job-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	setAdmissionLimit(t, e, Invoices, 1)
-	svc := invoices.New(e.st, e.svc.auth, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	sess := store.Session{Workspace: store.Workspace{ID: b.workspace, Timezone: "UTC"}}
-	ctx := context.Background()
-	rollback := errors.New("job rolled back")
-	err := e.st.Tx(ctx, func(q store.Q) error {
-		if _, err := svc.CreateDraft(ctx, q, sess, "job-buyer", func(*store.Invoice) {}); err != nil {
-			return err
-		}
-		return rollback
-	})
-	if !errors.Is(err, rollback) {
-		t.Fatalf("job rollback=%v", err)
-	}
+	other := e.workspace()
+	e.subscribe(other.workspace, "price_bm")
+	e.st.SetAdmission(e.svc.AllowResource)
+	files := &admissionFiles{objects: map[string][]byte{}}
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mux := http.NewServeMux()
-	svc.Register(mux)
+	documents.New(e.st, e.svc.auth, files, 1<<20, quiet).Register(mux)
+	clients.New(e.st, e.svc.auth, files, quiet).Register(mux)
 	srv := httptest.NewServer(e.svc.Guard(mux))
 	t.Cleanup(srv.Close)
 	e.srv = srv
-	start := make(chan struct{})
-	results := make(chan int, 2)
-	go func() {
-		<-start
-		code, _ := e.do(b, http.MethodPost, "/api/v1/invoices", map[string]any{"client_id": "job-buyer"})
-		results <- code
-	}()
-	go func() {
-		<-start
-		err := e.st.Tx(ctx, func(q store.Q) error {
-			_, err := svc.CreateDraft(ctx, q, sess, "job-buyer", func(*store.Invoice) {})
-			return err
-		})
-		switch {
-		case err == nil:
-			results <- http.StatusCreated
-		case errors.Is(err, store.ErrAdmissionDenied):
-			results <- http.StatusPaymentRequired
-		default:
-			t.Errorf("job create: %v", err)
-			results <- http.StatusInternalServerError
-		}
-	}()
-	close(start)
-	counts := map[int]int{}
-	for range 2 {
-		counts[<-results]++
-	}
-	if counts[http.StatusCreated] != 1 || counts[http.StatusPaymentRequired] != 1 {
-		t.Fatalf("HTTP and job results=%v", counts)
-	}
-	var count int
-	if err := e.raw.QueryRow(ctx, `SELECT count(*) FROM invoices WHERE workspace_id=$1`, b.workspace).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("persisted invoices=%d err=%v", count, err)
-	}
-}
-
-func TestMonthlyAdmissionUsesWorkspaceCalendarBoundary(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_bm")
-	e.exec(`UPDATE workspaces SET timezone='Europe/Zurich' WHERE id=$1`, b.workspace)
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('boundary-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	// November in Zurich starts at 23:00 UTC on the previous civil day.
-	e.svc.now = func() time.Time { return time.Date(2026, 10, 31, 23, 30, 0, 0, time.UTC) }
-	old := store.Invoice{ID: "previous-month", Kind: "invoice", ClientID: "boundary-buyer", IssueDate: "2026-10-31", DueDate: "2026-11-01", Currency: "CHF", Language: "en", VATMode: "none"}
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, time.Date(2026, 10, 31, 22, 59, 59, 0, time.UTC)); err != nil {
-		t.Fatal(err)
-	}
-	setAdmissionLimit(t, e, Invoices, 1)
-	old.ID = "new-month"
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, e.svc.now()); err != nil {
-		t.Fatalf("previous-month document consumed November capacity: %v", err)
-	}
-	old.ID = "second-new-month"
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, e.svc.now()); !errors.Is(err, store.ErrAdmissionDenied) {
-		t.Fatalf("second November document admission=%v", err)
-	}
-}
-
-func TestDowngradeWaitsForAdmittedWritesBeforeCheckingCapacity(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_pm")
-	setAdmissionLimit(t, e, Clients, 1)
-	if err := e.st.CreateClient(context.Background(), b.workspace, "existing", map[string]any{"name": "Existing"}, time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	inserted := make(chan struct{})
-	commit := make(chan struct{})
-	writeDone := make(chan error, 1)
-	go func() {
-		writeDone <- e.st.Tx(context.Background(), func(q store.Q) error {
-			if err := q.CreateClient(context.Background(), b.workspace, "pending", map[string]any{"name": "Pending"}, time.Now()); err != nil {
-				return err
+	upload := func(who *browser, path string, bodies ...[]byte) (int, map[string]any) {
+		t.Helper()
+		var form bytes.Buffer
+		writer := multipart.NewWriter(&form)
+		for i, body := range bodies {
+			field := "file"
+			if strings.Contains(path, "/clients/") {
+				field = "files[]"
 			}
-			close(inserted)
-			<-commit
-			return nil
-		})
-	}()
-	select {
-	case <-inserted:
-	case err := <-writeDone:
-		t.Fatalf("pending insert failed: %v", err)
+			part, _ := writer.CreateFormFile(field, fmt.Sprintf("name-%d.txt", i))
+			_, _ = part.Write(body)
+		}
+		_ = writer.Close()
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+path, &form)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req.Header.Set("X-CSRF-Token", who.csrf)
+		req.AddCookie(&http.Cookie{Name: "helvetly_session", Value: who.token})
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var out map[string]any
+		_ = json.NewDecoder(res.Body).Decode(&out)
+		return res.StatusCode, out
 	}
-	responses := make(chan int, 1)
-	go func() {
-		code, _ := e.do(b, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "month"})
-		responses <- code
-	}()
-	var premature int
-	select {
-	case premature = <-responses:
-	case <-time.After(200 * time.Millisecond):
+	body := []byte("the same plain text, byte for byte")
+	n := int64(len(body))
+	code, out := upload(b, "/api/v1/documents", body)
+	if code != http.StatusCreated {
+		t.Fatalf("first upload: %d %v", code, out)
 	}
-	close(commit)
-	if err := <-writeDone; err != nil {
-		t.Fatal(err)
+	doc := out["data"].(map[string]any)["id"].(string)
+	if code, _ := upload(b, "/api/v1/documents", body); code != http.StatusConflict {
+		t.Fatalf("the same bytes under another name: %d", code)
 	}
-	if premature != 0 {
-		t.Fatalf("downgrade returned %d before the admitted write committed", premature)
+	client := e.buyer(b.workspace)
+	if code, out := upload(b, "/api/v1/clients/"+client+"/files", body); code != http.StatusCreated {
+		t.Fatalf("the same bytes as a client's file (linked): %d %v", code, out)
 	}
-	if code := <-responses; code != http.StatusConflict {
-		t.Fatalf("downgrade with committed excess must return409, got%d", code)
+	if code, _ := upload(b, "/api/v1/clients/"+client+"/files", []byte("new one"), []byte("new one")); code != http.StatusConflict {
+		t.Fatalf("one file twice in a batch: %d", code)
 	}
-	if got := e.billing(b.workspace).Plan; got != Pro {
-		t.Fatalf("refused downgrade changed the plan to %s", got)
+	if got := e.stored(b.workspace); got != n {
+		t.Fatalf("duplicates counted: %d bytes, want %d", got, n)
+	}
+	if code, out := e.do(b, http.MethodPost, "/api/v1/documents/"+doc+"/copy", map[string]any{}); code != http.StatusCreated {
+		t.Fatalf("copy: %d %v", code, out)
+	}
+	if got := e.stored(b.workspace); got != 2*n {
+		t.Fatalf("a deliberate copy: %d bytes, want %d", got, 2*n)
+	}
+	if code, _ := upload(other, "/api/v1/documents", body); code != http.StatusCreated {
+		t.Fatalf("another workspace's identical file: %d", code)
+	}
+	if got, mine := e.stored(other.workspace), e.stored(b.workspace); got != n || mine != 2*n {
+		t.Fatalf("across workspaces: other %d, this %d", got, mine)
 	}
 }

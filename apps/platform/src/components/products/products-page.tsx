@@ -34,6 +34,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { type ComponentProps, memo, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -368,12 +369,15 @@ export function ProductsPage() {
       desc: params.sort === field ? !params.desc : field === 'updated_at' || field === 'unit_price',
     })
   const archivedView = params.status === 'archived'
+  const exportLock = useFeatureLock('data_export')
   const selection = {
     count: selected.size,
     actions: bulkActions(canManage, archivedView, {
       archive: () => runBulk('archive'),
       unarchive: () => runBulk('unarchive'),
-      exportCsv: () => window.location.assign(exportIdsUrl([...selected])),
+      exportCsv: unlessLocked(exportLock, () =>
+        window.location.assign(exportIdsUrl([...selected])),
+      ),
       remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
     }),
   }
@@ -385,13 +389,10 @@ export function ProductsPage() {
           {translate('import')}
         </Item>
       )}
-      <Item asChild>
-        <a href={localizedHref(exportUrl(params))} download>
-          <Download />
-          {translate('exportCSV2')}
-          {filtered ? ' (filtered)' : ''}
-        </a>
-      </Item>
+      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
+        {translate('exportCSV')}
+        {filtered ? ' (filtered)' : ''}
+      </ExportItem>
     </>
   )
   const access = useMemo(() => ({ canManage, canWrite }), [canManage, canWrite])

@@ -84,6 +84,9 @@ func (a *xmlArchive) export(ctx context.Context, sess store.Session, invoice sto
 		}
 		record = store.InvoiceXML{InvoiceID: inv.ID, Format: format, Version: serializerVersion(format), ObjectKey: "workspaces/" + sess.Workspace.ID + "/invoices/" + inv.ID + "/xml/" + auth.NewID("xml") + ".xml",
 			SHA256: hex.EncodeToString(digest[:]), Size: int64(len(data)), Filename: deref(inv.Number) + ".xml", CreatedAt: created, CreatedBy: actor}
+		if err := q.ReserveObject(ctx, sess.Workspace.ID, record.ObjectKey, record.Size, false, created); err != nil {
+			return err
+		}
 		written = record.ObjectKey
 		if err := a.files.Put(ctx, record.ObjectKey, bytes.NewReader(data), record.Size, "application/xml", record.Filename); err != nil {
 			return fmt.Errorf("%w: %w", errXMLArchiveStorage, err)

@@ -167,6 +167,7 @@ var ExportExcluded = map[string]string{
 	"invoice_xml_retention":    "history: the old, unverified mark of an archived XML's object lock",
 	"object_retention":         "storage protection state of the workspace's objects, not business data",
 	"object_versions":          "storage version ids of objects, not business data",
+	"stored_objects":           "storage accounting: the bytes each object counts, not business data",
 	"limits":                   "global plan configuration, not workspace data",
 	"limit_plans":              "global plan configuration, not workspace data",
 	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",
@@ -181,4 +182,7 @@ var ExportExcluded = map[string]string{
 	"payroll_components":       hrExcluded,
 	"payroll_bookings":         hrExcluded,
 	"payroll_booking_items":    hrExcluded,
+	"billing_checkouts":        "what a plan Checkout was opened for, to settle its subscription; not business data",
+	"trial_claims":             "digests that recognise a customer's one trial, kept across workspaces; not business data",
+	"usage_events":             "what the workspace used of its plan's monthly limits, not business data",
 }

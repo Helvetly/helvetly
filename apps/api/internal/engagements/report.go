@@ -243,7 +243,7 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 	if len(fields) > 0 {
 		return validationFailed(fields)
 	}
-	m := mail.Message{To: to, Cc: cc, Subject: subject, Text: message,
+	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}
 	if err := s.mailer.Send(r.Context(), m); err != nil {

@@ -38,6 +38,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
 import { NativeSelect } from '@/components/clients/fields'
 import { fixCount, FixDialog, FixLink, FixList } from '@/components/fix-list'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
@@ -106,9 +107,11 @@ export function dueBy(to: string): string {
 }
 
 export function VATReturnPage() {
+  const lock = useFeatureLock('vat_returns')
   const settings = useQuery({
     queryKey: SETTINGS_KEY,
     queryFn: async () => (await vatReturnApi.settings()).data,
+    enabled: !lock,
   })
   const periods = settings.data ? endedPeriods(settings.data.period, today(), 8) : []
   const reports = useQueries({
@@ -141,7 +144,9 @@ export function VATReturnPage() {
         title={translate('vatReturn')}
         description={translate('theFiguresOfTheESTVVATReturnMWSTAbrechnung')}
       >
-        {settings.error ? (
+        {lock ? (
+          <FeatureLockNotice lock={lock} kept={translate('vatOnYourInvoicesIsStillCalculatedIn')} />
+        ) : settings.error ? (
           <p className="text-body text-muted-foreground">{errorMessage(settings.error)}</p>
         ) : settings.data && latest ? (
           <>

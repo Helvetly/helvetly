@@ -7,6 +7,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarClock,
   CreditCard,
   ExternalLink,
   Info,
@@ -30,6 +31,7 @@ import {
   seatPrice,
   trialDaysLeft,
   type Billing,
+  type PlanId,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
@@ -167,8 +169,10 @@ function NextStep({
         title={translate('readOnly')}
       >
         {billing.trial_available
-          ? translate('startBasicFreeForDaysUntilThenNothingCan', {
+          ? translate('tryPlanFreeUntilThenNothingCanBeChanged', {
+              plan: planName(billing, billing.trial_plan),
               trial_days: billing.trial_days,
+              trial_seats: billing.trial_seats,
             })
           : translate('chooseAPlanUntilThenNothingCanBeChanged')}
       </Panel>
@@ -362,9 +366,24 @@ function Panel({
   )
 }
 
-/** Quiet lines under the hero: a running discount, who may change the plan. */
+const planName = (billing: Billing, id: PlanId) =>
+  billing.plans.find((entry) => entry.id === id)?.name ?? id
+
+/** Quiet lines under the hero: a scheduled change, a running discount, who may change the plan. */
 function notesOf(billing: Billing): ReactNode[] | null {
   const lines: ReactNode[] = []
+  if (billing.pending_plan && billing.pending_interval && billing.pending_at)
+    lines.push(
+      <Note key="pending" icon={<CalendarClock aria-hidden />}>
+        <span data-slot="plan-pending">
+          {translate('changesToPlanOn', {
+            plan: planName(billing, billing.pending_plan),
+            interval: billing.pending_interval,
+            date: formatDate(billing.pending_at),
+          })}
+        </span>
+      </Note>,
+    )
   if (billing.discount)
     lines.push(
       <Note key="discount" icon={<Tag aria-hidden />}>

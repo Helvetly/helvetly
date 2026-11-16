@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
+import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Dashboard, Session } from '@/lib/api'
 import type { Usage } from '@/lib/documents'
 import type { Summary } from '@/lib/invoices'
@@ -61,6 +62,7 @@ export const screenHandlers = [
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/billing', () => HttpResponse.json(billingFixture())),
+  http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),
   http.get('/api/v1/documents/folders', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/trash', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/usage', () => HttpResponse.json({ data: emptyUsage })),

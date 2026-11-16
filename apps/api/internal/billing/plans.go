@@ -4,7 +4,6 @@
 package billing
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -79,9 +78,9 @@ func planOfKey(key string) (plan, interval string) {
 func PlanDescription(plan string) string { return planDescriptions[plan] }
 
 var planDescriptions = map[string]string{
-	Basic:    "For one person or a pair: invoices with QR bills, expenses, clients and documents.",
-	Pro:      "For a growing team: room for many clients, engagements and signatures every month.",
-	Business: "For larger teams: no ceilings, and the most storage.",
+	Basic:    "For one person or a small team: invoices and quotes with Swiss QR bills.",
+	Pro:      "For a growing team: Heidi, expenses, signatures, automations and VAT returns.",
+	Business: "For larger teams: everything in Pro, the client portal, e-invoice XML and the most room.",
 }
 
 // Limit names one thing a plan caps.
@@ -90,15 +89,25 @@ type Limit string
 const (
 	Members     Limit = "members"                // members besides the owner who accepted; no cap on a per-seat subscription
 	Clients     Limit = "clients"                // clients not deleted
-	Invoices    Limit = "invoices_per_month"     // invoices (not credit notes) created this month
-	Expenses    Limit = "expenses_per_month"     // expenses created this month
+	Invoices    Limit = "invoices_per_month"     // documents issued this quota month, linked corrections aside (usage_events)
+	Expenses    Limit = "expenses_per_month"     // expenses first saved this quota month, deleted ones too (usage_events)
 	Products    Limit = "products"               // catalogue entries not deleted (archived ones too)
 	Engagements Limit = "engagements"            // engagements not cancelled and not ended
-	Signatures  Limit = "signatures_per_month"   // signature requests sent this month
-	Storage     Limit = "storage_bytes"          // documents and expense receipts
+	Signatures  Limit = "signatures_per_month"   // signature packages sent this quota month (usage_events)
+	Storage     Limit = "storage_bytes"          // bytes kept in storage (stored_objects)
 	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
 	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
+
+	AutomationActions Limit = store.AutomationActions // automatic actions this quota month (usage_events)
+
+	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
+	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
+
+	Downloads        Limit = "download_bytes_per_month"         // bytes of workspace files sent this quota month (usage_events)
+	Emails           Limit = "emails_per_month"                 // business email recipients accepted this quota month (usage_events)
+	EmailAttachments Limit = "email_attachment_bytes_per_month" // attachment bytes times recipients this quota month (usage_events)
+	MaxEmailAttach   Limit = "max_email_attachment_bytes"       // one message's attachments, per recipient
 )
 
 // Unlimited: the plan has no cap on that limit.
@@ -111,20 +120,13 @@ var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Busines
 // limitOrder is the order limits are listed in.
 var limitOrder = []Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
 
-// stockLimits are counted on what exists, so a smaller plan must fit them; monthly ones restart each month.
-var stockLimits = []Limit{Members, Clients, Products, Engagements, Storage}
-
-// TrialDays: the first subscription of a workspace, when it is to TrialPlan, starts with a trial (once per
-// workspace, card required). The other plans are charged at once.
-const (
-	TrialDays = 7
-	TrialPlan = Basic
-)
-
-// monthStart: monthly limits follow the calendar month in the workspace's time zone loc.
-func monthStart(now time.Time, loc *time.Location) time.Time {
-	t := now.In(loc)
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
+// quotaStart is when b's workspace's monthly counts start: now's quota month (UTC), or a trial's start, whose
+// allowances last the whole trial and do not restart with a month.
+func quotaStart(b store.Billing, now time.Time) time.Time {
+	if b.Status == "trialing" && b.TrialStart != nil && b.TrialStart.Before(now) {
+		return b.TrialStart.UTC()
+	}
+	return store.UsagePeriodStart(now)
 }
 
 // live: a subscription in one of these states gives its plan. Not incomplete (its first payment unpaid): it never
@@ -205,6 +207,18 @@ func used(u store.Usage, l Limit) int64 {
 		return u.StorageBytes
 	case AITokens:
 		return u.AITokensThisMonth
+	case InvoiceDrafts:
+		return u.InvoiceDrafts
+	case QuotesRetained:
+		return u.QuotesRetained
+	case AutomationActions:
+		return u.AutomationsThisMonth
+	case Downloads:
+		return u.DownloadBytesThisMonth
+	case Emails:
+		return u.EmailsThisMonth
+	case EmailAttachments:
+		return u.EmailAttachmentBytesThisMonth
 	}
 	return 0
 }
@@ -212,56 +226,4 @@ func used(u store.Usage, l Limit) int64 {
 // fits reports whether adding add to used stays within max.
 func fits(used, add, max int64) bool {
 	return max == Unlimited || (add >= 0 && used <= max && add <= max-used)
-}
-
-// overage is a stock limit the workspace is over on a plan.
-type overage struct {
-	Limit Limit `json:"limit"`
-	Used  int64 `json:"used"`
-	Max   int64 `json:"max"`
-}
-
-// overages: what keeps the workspace from moving to the plan of r; a per-seat price has room for every member.
-func (r Rights) overages(perSeat bool, u store.Usage) ([]overage, error) {
-	var out []overage
-	for _, l := range stockLimits {
-		max, err := r.capFor(perSeat, l)
-		if err != nil {
-			return nil, err
-		}
-		if !fits(used(u, l), 0, max) {
-			out = append(out, overage{l, used(u, l), max})
-		}
-	}
-	return out, nil
-}
-
-var overageWords = map[Limit][3]string{
-	Clients:     {"client", "clients", "Delete"},
-	Products:    {"product or service", "products and services", "Delete"},
-	Engagements: {"running engagement", "running engagements", "End or cancel"},
-}
-
-// overageMessage names what keeps the workspace from moving to plan and what to reduce, one sentence per limit:
-// "Basic allows 2 members besides the owner; this workspace has 5. Remove 3 members first."
-func overageMessage(plan string, over []overage) string {
-	name := planNames[plan]
-	parts := make([]string, 0, len(over))
-	for _, o := range over {
-		n := o.Used - o.Max
-		switch o.Limit {
-		case Storage:
-			parts = append(parts, fmt.Sprintf("%s allows %s of storage; this workspace uses %s. Remove %s of files first.",
-				name, bytesText(o.Max), bytesText(o.Used), bytesText(n)))
-			continue
-		case Members:
-			parts = append(parts, fmt.Sprintf("%s allows %d %s besides the owner; this workspace has %d. Remove %d %s first.",
-				name, o.Max, plural(o.Max, "member", "members"), o.Used, n, plural(n, "member", "members")))
-			continue
-		}
-		w := overageWords[o.Limit] // one, many, what to do
-		parts = append(parts, fmt.Sprintf("%s allows %d %s; this workspace has %d. %s %d %s first.",
-			name, o.Max, plural(o.Max, w[0], w[1]), o.Used, w[2], n, plural(n, w[0], w[1])))
-	}
-	return strings.Join(parts, " ")
 }

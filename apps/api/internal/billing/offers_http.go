@@ -28,12 +28,13 @@ type entitlementItem struct {
 	ResetAt   *time.Time `json:"reset_at"` // when a monthly count starts again; null otherwise
 }
 
-// metered are the limits counted today (WorkspaceUsage), on the workspace's calendar month.
-var metered = []Limit{Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
+// metered are the limits counted today (WorkspaceUsage), monthly ones in the UTC quota month.
+var metered = []Limit{Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens, InvoiceDrafts, QuotesRetained,
+	AutomationActions, Downloads, Emails, EmailAttachments}
 
 // entitlementItems lists the workspace's entitlements for its panel, without the internal AI cost budget: the panel
-// shows tokens. nextMonth is when the monthly counts start again.
-func entitlementItems(r Rights, u store.Usage, nextMonth time.Time) []entitlementItem {
+// shows tokens. reset is when the monthly counts start again (nil in the trial, whose allowances last it whole).
+func entitlementItems(r Rights, u store.Usage, reset *time.Time) []entitlementItem {
 	out := make([]entitlementItem, 0, len(r.Order))
 	for _, key := range r.Order {
 		e := r.Items[key]
@@ -52,7 +53,7 @@ func entitlementItems(r Rights, u store.Usage, nextMonth time.Time) []entitlemen
 			n := used(u, Limit(key))
 			item.Used = &n
 			if e.Period != "" {
-				item.ResetAt = &nextMonth
+				item.ResetAt = reset
 			}
 		}
 		out = append(out, item)

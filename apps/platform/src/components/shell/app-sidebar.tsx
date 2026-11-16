@@ -41,6 +41,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { featureLock, PLANS_HREF, PlanTag, toastLocked } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpDialog } from '@/components/help/help-dialog'
@@ -246,55 +247,66 @@ export function AppSidebar({ session }: { session: Session }) {
               </SidebarGroupLabel>
             )}
             <SidebarMenu className="gap-px">
-              {group.items.map(({ label, icon: Icon, href, isNew, heidi: opensHeidi, bell }) =>
-                bell ? (
-                  <SidebarMenuItem key={label}>
-                    <NotificationsBell className={itemClass} onGo={() => setOpenMobile(false)} />
-                  </SidebarMenuItem>
-                ) : (
-                  <SidebarMenuItem key={label}>
-                    <SidebarMenuButton
-                      asChild={Boolean(href)}
-                      tooltip={
-                        opensHeidi ? { children: <WithShortcut label={label} id="heidi" /> } : label
-                      }
-                      isActive={href ? isCurrent(current, href) : false}
-                      aria-expanded={opensHeidi ? Boolean(heidi?.open) : undefined}
-                      className={itemClass}
-                      onClick={
-                        href
-                          ? undefined
-                          : opensHeidi
-                            ? () => {
-                                setOpenMobile(false)
-                                heidi?.setOpen(!heidi.open)
-                              }
-                            : () => toast(translate('isComingSoon', { label: label }))
-                      }
-                    >
-                      {href ? (
-                        <Link
-                          href={href}
-                          {...linkProps(href)}
-                          onClick={() => {
-                            setOpenMobile(false)
-                            linkProps(href).onClick()
-                          }}
-                        >
-                          <Icon />
-                          <span>{label}</span>
-                          {isNew && <NewTag />}
-                        </Link>
-                      ) : (
-                        <>
-                          <Icon />
-                          <span>{label}</span>
-                          {isNew && <NewTag />}
-                        </>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ),
+              {group.items.map(
+                ({ label, icon: Icon, href, isNew, heidi: opensHeidi, bell, feature }) => {
+                  const lock = feature ? featureLock(billing, feature) : null
+                  const tag = lock ? (
+                    <PlanTag lock={lock} className="group-data-[collapsible=icon]:hidden" />
+                  ) : (
+                    isNew && <NewTag />
+                  )
+                  return bell ? (
+                    <SidebarMenuItem key={label}>
+                      <NotificationsBell className={itemClass} onGo={() => setOpenMobile(false)} />
+                    </SidebarMenuItem>
+                  ) : (
+                    <SidebarMenuItem key={label}>
+                      <SidebarMenuButton
+                        asChild={Boolean(href)}
+                        tooltip={
+                          opensHeidi
+                            ? { children: <WithShortcut label={label} id="heidi" /> }
+                            : label
+                        }
+                        isActive={href ? isCurrent(current, href) : false}
+                        aria-expanded={opensHeidi ? Boolean(heidi?.open) : undefined}
+                        className={itemClass}
+                        onClick={
+                          href
+                            ? undefined
+                            : opensHeidi
+                              ? () => {
+                                  setOpenMobile(false)
+                                  if (lock) toastLocked(lock, () => router.push(PLANS_HREF))
+                                  else heidi?.setOpen(!heidi.open)
+                                }
+                              : () => toast(translate('isComingSoon', { label: label }))
+                        }
+                      >
+                        {href ? (
+                          <Link
+                            href={href}
+                            {...linkProps(href)}
+                            onClick={() => {
+                              setOpenMobile(false)
+                              linkProps(href).onClick()
+                            }}
+                          >
+                            <Icon />
+                            <span>{label}</span>
+                            {tag}
+                          </Link>
+                        ) : (
+                          <>
+                            <Icon />
+                            <span>{label}</span>
+                            {tag}
+                          </>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                },
               )}
             </SidebarMenu>
           </SidebarGroup>

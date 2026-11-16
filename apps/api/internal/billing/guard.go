@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
@@ -33,59 +35,91 @@ var guarded = map[string]Limit{
 	"POST /api/v1/expenses/{id}/receipts":  Storage,
 }
 
-// gated lists writes that need a plan feature (features.go).
+// gated lists the routes that need a plan feature (features.go): what adds to, configures or generates from a
+// module. Reading what a workspace has, and removing it, stays in every plan, so a downgrade never locks data away.
+// The canonical writes, imports, Heidi and the jobs check the same features themselves (store.RequireFeature).
 var gated = map[string]Feature{
 	"POST /api/v1/account/tokens": APIAccess,
+
+	"POST /api/v1/heidi/chat":         store.FeatureHeidi,
+	"POST /api/v1/heidi/chat/confirm": store.FeatureHeidi,
+	"GET /api/v1/heidi/suggestions":   store.FeatureHeidi,
+
+	"POST /api/v1/templates":                store.FeatureDocumentTemplates,
+	"PUT /api/v1/templates/{id}":            store.FeatureDocumentTemplates,
+	"POST /api/v1/templates/{id}/documents": store.FeatureDocumentTemplates,
+
+	"POST /api/v1/signatures": store.FeatureSimpleSignatures,
+
+	"GET /api/v1/vat-return":          store.FeatureVATReturns,
+	"PUT /api/v1/vat-return/settings": store.FeatureVATReturns,
+
+	"POST /api/v1/invoices/{id}/correct":     store.FeatureInvoiceCorrections,
+	"POST /api/v1/invoices/{id}/credit-note": store.FeatureInvoiceCorrections,
+	"POST /api/v1/invoices/{id}/debit-note":  store.FeatureInvoiceCorrections,
+	"POST /api/v1/invoices/{id}/void":        store.FeatureInvoiceCorrections,
+
+	"POST /api/v1/expenses":                 store.FeatureExpenses,
+	"PATCH /api/v1/expenses/{id}":           store.FeatureExpenses,
+	"POST /api/v1/expenses/{id}/duplicate":  store.FeatureExpenses,
+	"POST /api/v1/expenses/{id}/receipts":   store.FeatureExpenses,
+	"POST /api/v1/expenses/{id}/book":       store.FeatureExpenses,
+	"POST /api/v1/expenses/preview":         store.FeatureExpenses,
+	"POST /api/v1/expense-categories":       store.FeatureExpenses,
+	"PATCH /api/v1/expense-categories/{id}": store.FeatureExpenses,
+
+	"GET /api/v1/ledger":                 store.FeatureLedgerExports,
+	"GET /api/v1/ledger/journal":         store.FeatureLedgerExports,
+	"GET /api/v1/ledger/accounts/{code}": store.FeatureLedgerExports,
+	"GET /api/v1/ledger/export":          store.FeatureLedgerExports,
+	"PUT /api/v1/ledger/settings":        store.FeatureLedgerExports,
+
+	"GET /api/v1/workspace/export":                store.FeatureDataExport,
+	"GET /api/v1/clients/export":                  store.FeatureDataExport,
+	"GET /api/v1/products/export":                 store.FeatureDataExport,
+	"GET /api/v1/invoices/export":                 store.FeatureDataExport,
+	"GET /api/v1/expenses/export":                 store.FeatureDataExport,
+	"GET /api/v1/engagements/export":              store.FeatureDataExport,
+	"GET /api/v1/engagements/{id}/entries/export": store.FeatureDataExport,
+	"GET /api/v1/audit-log/export":                store.FeatureDataExport,
+
+	"POST /api/v1/invoices/{id}/dunning/send":   store.FeatureInvoiceReminders,
+	"POST /api/v1/invoices/{id}/dunning/resume": store.FeatureInvoiceReminders,
+	"POST /api/v1/invoices/{id}/plan":           store.FeatureInvoiceInstalments,
+	"POST /api/v1/instalment-plans/{id}/resume": store.FeatureInvoiceInstalments,
+
+	"GET /api/v1/invoices/{id}/einvoice":                   store.FeatureEInvoiceXML,
+	"POST /api/v1/invoices/{id}/transmissions":             store.FeatureEInvoiceXML,
+	"POST /api/v1/invoices/{id}/transmissions/{tid}/retry": store.FeatureEInvoiceXML,
+	"PUT /api/v1/transmission-channels/{name}/credentials": store.FeatureEInvoiceXML,
+
+	"POST /api/v1/clients/{id}/portal-invitation": store.FeatureClientPortal,
+	"POST /api/v1/documents/{id}/shares":          store.FeatureClientPortal, // a share shows the document in the portal
 }
 
-// Guard gives an early 402 for writes that exceed a plan or need a feature it lacks, and makes an unsubscribed
+// Guard gives an early answer for writes that exceed a plan or need a feature it lacks, and makes an unsubscribed
 // workspace read-only. Transactional canonical-write admission also covers jobs and races.
 func (s *Service) Guard(next http.Handler) http.Handler {
 	routes := http.NewServeMux()
-	for pattern, limit := range guarded {
-		routes.Handle(pattern, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
-			if limit == Invoices {
-				// The canonical write knows the document kind: legal corrections stay available at the cap.
-				next.ServeHTTP(w, r)
-				return
-			}
-			add := int64(1)
-			if limit == Storage {
-				if strings.HasSuffix(r.URL.Path, "/copy") {
-					doc, err := s.db.Document(r.Context(), sess.Workspace.ID, r.PathValue("id"))
-					if err != nil {
-						if errors.Is(err, store.ErrNotFound) {
-							err = auth.ErrNotFound
-						}
-						s.writeError(w, r, err)
-						return
-					}
-					add = doc.Size
-				} else {
-					if r.ContentLength < 0 {
-						s.writeError(w, r, auth.Error(http.StatusLengthRequired, "length_required", "Uploads require a Content-Length header.", nil))
-						return
-					}
-					// The handler hashes first and admits exact new stored bytes in its transaction.
-					// Multipart framing and an idempotent reuse must not consume storage quota.
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-			if err := s.check(r, sess, limit, add); err != nil {
-				s.writeError(w, r, err)
-				return
-			}
-			next.ServeHTTP(w, r)
-		}))
+	patterns := slices.Collect(maps.Keys(guarded))
+	for p := range gated {
+		if _, ok := guarded[p]; !ok {
+			patterns = append(patterns, p)
+		}
 	}
-	for pattern, feature := range gated {
+	for _, pattern := range patterns {
+		limited := s.limit(next, pattern)
+		feature, ok := gated[pattern]
+		if !ok {
+			routes.Handle(pattern, limited)
+			continue
+		}
 		routes.Handle(pattern, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
 			if err := s.Require(r.Context(), s.db.Q, sess.Workspace.ID, feature); err != nil {
 				s.writeError(w, r, err)
 				return
 			}
-			next.ServeHTTP(w, r)
+			limited.ServeHTTP(w, r)
 		}))
 	}
 	limited := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +184,7 @@ func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Sessio
 }
 
 // AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's plus the AI token
-// packs bought this month (in its time zone), none without a plan, and unlimited (-1) when billing is off.
+// packs bought this quota month (UTC), none without a plan, and unlimited (-1) when billing is off.
 func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
 	if err != nil || r.SelfHosted {
@@ -163,16 +197,19 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if err != nil || monthly == Unlimited {
 		return monthly, err
 	}
-	w, err := q.AdmissionWorkspace(ctx, workspaceID)
-	if err != nil {
-		return 0, err
+	if r.Trial {
+		return s.trialAI(ctx, q, workspaceID, monthly, false)
 	}
-	bought, err := q.AITokenPacks(ctx, workspaceID, s.now().In(w.Location()).Format("2006-01"))
+	if r.Items[string(AITokens)].Source == SourcePaymentOverdue {
+		return 0, nil // packs bought before wait with the rest until the payment is made
+	}
+	bought, err := q.AITokenPacks(ctx, workspaceID, store.UsagePeriod(s.now()))
 	return monthly + bought, err
 }
 
 // AICost is the workspace's monthly model cost guard in micro-USD (an aimodel.Allowance): its offer's
-// ai_cost_usd_micros, pooled by paid seats; none without a plan, unlimited (-1) when billing is off. AI token packs
+// ai_cost_usd_micros, pooled by paid seats (the trial's, within the day's trial budget); none without a plan or while a
+// payment is overdue, unlimited (-1) when billing is off. AI token packs
 // add tokens, not cost: a pack's tokens are spent only while this budget lasts.
 func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
@@ -182,7 +219,11 @@ func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (in
 	if r.Plan == "" {
 		return 0, nil
 	}
-	return r.Cap(AICost)
+	cost, err := r.Cap(AICost)
+	if err != nil || !r.Trial {
+		return cost, err
+	}
+	return s.trialAI(ctx, q, workspaceID, cost, true)
 }
 
 // AllowResource is injected into Store's canonical writes before requests and jobs start.
@@ -191,7 +232,8 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage}, limit) {
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained,
+		AutomationActions, Downloads, Emails, EmailAttachments}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -215,8 +257,11 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	if r.Plan == "" {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, errPlanRequired)
 	}
+	if err := s.requiredFeatures(ctx, q, r, limit); err != nil {
+		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, err)
+	}
 	plan := r.Plan
-	max, err := r.capFor(b.PerSeat, limit)
+	max, err := r.capFor(limit)
 	if err != nil {
 		return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, err)
 	}
@@ -224,15 +269,37 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	now := s.now()
-	u, err := q.WorkspaceUsage(ctx, workspaceID, monthStart(now, ws.Location()), now)
+	n, err := usedAt(ctx, q, ws, b, limit, now)
 	if err != nil {
 		return err
 	}
-	if fits(used(u, limit), add, max) {
-		return notifyNear(ctx, q, workspaceID, plan, limit, now, monthStart(now, ws.Location()), used(u, limit)+add, max)
+	if fits(n, add, max) {
+		return notifyNear(ctx, q, workspaceID, plan, limit, now, store.UsagePeriod(quotaStart(b, now)), n+add, max)
 	}
 	return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, auth.Error(http.StatusPaymentRequired, "limit_reached", limitMessage(plan, limit, max),
-		map[string]any{"limit": limit, "used": used(u, limit), "max": max, "plan": plan}))
+		map[string]any{"limit": limit, "used": n, "max": max, "plan": plan}))
+}
+
+// usedAt is the workspace's usage of limit: a monthly limit's recorded in usage_events from its first quota month
+// (quotaStart) through the month being admitted (AdmissionPeriod); a state limit's, what exists at now.
+func usedAt(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, limit Limit, now time.Time) (int64, error) {
+	if monthlyLimits[limit] && limit != AITokens { // AI tokens are reserved by aimodel.Budget in heidi_usage
+		u, err := q.UsageInPeriods(ctx, ws.ID, string(limit), store.UsagePeriod(quotaStart(b, now)), q.AdmissionPeriod(now))
+		return u.Total(), err
+	}
+	u, err := q.WorkspaceUsage(ctx, ws, store.UsagePeriod(quotaStart(b, now)), now)
+	return used(u, limit), err
+}
+
+// requiredFeatures refuses a limit whose feature the plan does not include with feature_not_in_plan, never as a
+// spent allowance: Basic's zero expenses are a missing module, not a used-up month.
+func (s *Service) requiredFeatures(ctx context.Context, q store.Q, r Rights, limit Limit) error {
+	for _, f := range r.Items[string(limit)].RequiresFeatures {
+		if err := s.requireIn(ctx, q, r, Feature(f)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) check(r *http.Request, sess store.Session, limit Limit, add int64) error {
@@ -268,15 +335,17 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 	if r.Plan == "" { // read-only: the plan guard refuses the change, not a limit
 		return "", 0, Unlimited, true, nil
 	}
-	if max, err = r.capFor(b.PerSeat, limit); err != nil || max == Unlimited {
+	if err := s.requiredFeatures(ctx, s.db.Q, r, limit); err != nil {
+		return "", 0, 0, false, err
+	}
+	if max, err = r.capFor(limit); err != nil || max == Unlimited {
 		return r.Plan, 0, max, err == nil, err
 	}
-	now := s.now()
-	u, err := s.db.WorkspaceUsage(ctx, ws.ID, monthStart(now, ws.Location()), now)
+	n, err = usedAt(ctx, s.db.Q, ws, b, limit, s.now())
 	if err != nil {
 		return "", 0, 0, false, err
 	}
-	return r.Plan, used(u, limit), max, fits(used(u, limit), add, max), nil
+	return r.Plan, n, max, fits(n, add, max), nil
 }
 
 func limitMessage(plan string, limit Limit, max int64) string {
@@ -287,7 +356,11 @@ func limitMessage(plan string, limit Limit, max int64) string {
 	case Clients:
 		return fmt.Sprintf("The %s plan includes %d clients. Upgrade the workspace to add more.", name, max)
 	case Invoices:
-		return fmt.Sprintf("The %s plan includes %d invoices a month. Upgrade the workspace to create more.", name, max)
+		return fmt.Sprintf("The %s plan includes %d issued invoices a month. The draft is kept: upgrade the workspace to issue it now, or issue it next month.", name, max)
+	case InvoiceDrafts:
+		return fmt.Sprintf("The %s plan keeps %d invoice drafts at a time. Issue or delete drafts to start more.", name, max)
+	case QuotesRetained:
+		return fmt.Sprintf("The %s plan keeps %d quotes. Upgrade the workspace or delete draft quotes to add more.", name, max)
 	case Expenses:
 		return fmt.Sprintf("The %s plan includes %d expenses a month. Upgrade the workspace to add more.", name, max)
 	case Products:
@@ -297,7 +370,13 @@ func limitMessage(plan string, limit Limit, max int64) string {
 	case Signatures:
 		return fmt.Sprintf("The %s plan includes %d signature requests a month. Upgrade the workspace to send more.", name, max)
 	case AITokens:
-		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Buy an AI token pack or upgrade the workspace to use more.", name, max)
+		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Upgrade the workspace or add people to use more.", name, max)
+	case Downloads:
+		return fmt.Sprintf("The %s plan includes %s of downloads a month, all used this month. Downloads start again on the 1st (UTC); upgrade the workspace or add people for more now.", name, bytesText(max))
+	case Emails:
+		return fmt.Sprintf("The %s plan includes %d business email recipients a month. Download the PDF to send it yourself, or upgrade the workspace or add people to send more.", name, max)
+	case EmailAttachments:
+		return fmt.Sprintf("The %s plan includes %s of email attachments a month (each recipient counts). Download the PDF to send it yourself, or upgrade the workspace or add people to send more.", name, bytesText(max))
 	}
 	return fmt.Sprintf("The %s plan includes %s of storage. Upgrade the workspace or remove files to upload more.", name, bytesText(max))
 }
@@ -314,4 +393,47 @@ func bytesText(n int64) string {
 		return fmt.Sprintf("%g GB", float64(n)/gb)
 	}
 	return fmt.Sprintf("%d MB", n/1_000_000)
+}
+
+// limit is the early quota check of a guarded route, next itself for a route without a quota.
+func (s *Service) limit(next http.Handler, pattern string) http.Handler {
+	limit, ok := guarded[pattern]
+	if !ok {
+		return next
+	}
+	return s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
+		if limit == Invoices {
+			// The canonical write knows the document kind: legal corrections stay available at the cap.
+			next.ServeHTTP(w, r)
+			return
+		}
+		add := int64(1)
+		if limit == Storage {
+			if strings.HasSuffix(r.URL.Path, "/copy") {
+				doc, err := s.db.Document(r.Context(), sess.Workspace.ID, r.PathValue("id"))
+				if err != nil {
+					if errors.Is(err, store.ErrNotFound) {
+						err = auth.ErrNotFound
+					}
+					s.writeError(w, r, err)
+					return
+				}
+				add = doc.Size
+			} else {
+				if r.ContentLength < 0 {
+					s.writeError(w, r, auth.Error(http.StatusLengthRequired, "length_required", "Uploads require a Content-Length header.", nil))
+					return
+				}
+				// The handler hashes first and admits exact new stored bytes in its transaction.
+				// Multipart framing and an idempotent reuse must not consume storage quota.
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		if err := s.check(r, sess, limit, add); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

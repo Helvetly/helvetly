@@ -42,7 +42,7 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 	}
 	expiry := fmt.Sprintf("The link is personal, so please don't forward it. It works until %s.",
 		req.ExpiresAt.In(zone(req)).Format("2 January 2006"))
-	m := mail.Message{To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
+	m := mail.Message{Workspace: req.WorkspaceID, To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
 		Text: fmt.Sprintf("Hello %s,\n\n%s\n\n%s\n\nReview and sign:\n%s\n\n%s\n%s\n", to.Name, lead, quoted(req.Message), link,
 			expiry, sesNote),
 		HTML: paragraphs("Hello "+to.Name+",", lead, quoted(req.Message)) + mail.Button("Review and sign", link) + fine(expiry, sesNote)}
@@ -52,7 +52,7 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message {
 	lead := fmt.Sprintf("%s (%s) declined to sign “%s”, so the request has stopped.", who.Name, who.Email, req.Title)
 	reason := "Reason: " + deref(who.DeclineReason)
-	return mail.Message{To: []string{req.SenderEmail}, ReplyTo: who.Email, Subject: fmt.Sprintf("%s declined to sign “%s”", who.Name, req.Title),
+	return mail.Message{Workspace: req.WorkspaceID, To: []string{req.SenderEmail}, ReplyTo: who.Email, Subject: fmt.Sprintf("%s declined to sign “%s”", who.Name, req.Title),
 		Text: fmt.Sprintf("Hello,\n\n%s\n\n%s\n", lead, reason), HTML: paragraphs("Hello,", lead, reason)}
 }
 
@@ -60,7 +60,7 @@ func completedMessage(done completed, to string) mail.Message {
 	req := done.req
 	lead := fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)
 	hashes := fmt.Sprintf("SHA-256 of the signed PDF: %s\nSHA-256 of the original: %s", done.sum, req.OriginalSHA256)
-	return mail.Message{To: []string{to}, ReplyTo: req.SenderEmail, Subject: fmt.Sprintf("Signed: “%s”", req.Title),
+	return mail.Message{Workspace: req.WorkspaceID, To: []string{to}, ReplyTo: req.SenderEmail, Subject: fmt.Sprintf("Signed: “%s”", req.Title),
 		Text: fmt.Sprintf("Hello,\n\n%s\n\n%s\n\n%s\n", lead, hashes, sesNote),
 		HTML: paragraphs("Hello,", lead) +
 			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all">` +

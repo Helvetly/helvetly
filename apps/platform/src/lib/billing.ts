@@ -1,5 +1,5 @@
 'use client'
-import { numberLocale } from '@helvetly/i18n'
+import { languageTag, numberLocale } from '@helvetly/i18n'
 // Plans, usage and Stripe billing, typed by hand from docs/billing-contract.md.
 import { meterTone } from '@helvetly/ui/components/meter'
 import { formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
@@ -21,18 +21,63 @@ export type LimitKey =
   | 'storage_bytes'
   | 'ai_tokens_per_month'
 
-/** A capability a plan switches on or off (apps/api/internal/billing/features.go). */
-export type FeatureKey = 'api_access'
+/** A capability a plan switches on or off that the app gates (a record of kind access in the offer). */
+export type FeatureKey =
+  | 'api_access'
+  | 'heidi'
+  | 'expenses'
+  | 'ai_import'
+  | 'document_templates'
+  | 'simple_signatures'
+  | 'invoice_corrections'
+  | 'vat_returns'
+  | 'ledger_exports'
+  | 'data_export'
+  | 'automations'
+  | 'client_portal'
+  | 'einvoice_xml'
 
-/** `null` is unlimited. */
-export type UsageItem = { limit: LimitKey; used: number; max: number | null }
+/**
+ * One meter of the usage panel. `limit` is the API's key (any limit, not only `LimitKey`); `max` null is unlimited
+ * and 0 is not included; `used` null while the API does not count it yet.
+ */
+export type UsageItem = {
+  limit: string
+  used: number | null
+  max: number | null
+  /** Grows with every paid person, one pool for the workspace; else a fixed cap for the workspace. */
+  per_seat?: boolean
+  /** An operator's value for this workspace instead of the plan's, and when it ends (null: no end). */
+  custom?: { expires_at: string | null }
+  /** When a monthly count starts again. */
+  reset_at?: string | null
+}
+
+/** A workspace's effective value of one feature or limit (`entitlements` in GET /api/v1/billing). */
+export type Entitlement = {
+  key: string
+  kind: 'access' | 'resource_state' | 'period_counter' | 'technical_guard'
+  unit: string
+  scope: string
+  period: string | null
+  state: 'enabled' | 'disabled' | 'limited' | 'unlimited' | 'missing'
+  /** The cap when limited, else null. */
+  value: number | null
+  per_seat: boolean
+  /** plan, workspace (an operator's value) or none (the offer has no value). */
+  source: 'plan' | 'workspace' | 'none'
+  expires_at: string | null
+  used: number | null
+  reset_at: string | null
+}
 export type PlanPrice = Price
 export { formatPrice, monthOf }
 export type Plan = {
   id: PlanId
   name: string
   limits: Record<LimitKey, number | null>
-  features: FeatureKey[]
+  /** Every feature the plan includes, gated or not. */
+  features: string[]
   /** Per person (seat) for the interval. */
   prices: Record<Interval, PlanPrice | null>
 }
@@ -62,34 +107,46 @@ export type Billing = {
   cancel_at_period_end: boolean
   trial_end: string | null
   trial_days: number
+  /** The plan whose features a trial gives (Business); only its checkout starts a trial. */
   trial_plan: PlanId
+  /** The most people a workspace may have to start the trial. */
+  trial_seats: number
   trial_available: boolean
+  /** The workspace is in its trial: its allowances last the whole trial, never reset and do not grow with people. */
+  trial: boolean
   has_customer: boolean
   can_manage: boolean
   /** How the live subscription is billed; `''` without one (a new subscription is per seat). */
   pricing: 'per_seat' | 'flat' | ''
   /** People in the workspace now (owner, admins, members; open invitations not counted). */
   seats: number
+  /** The seats the per-seat subscription bills; null without one. */
+  paid_seats: number | null
+  /** A downgrade or yearly→monthly switch scheduled for the paid period's end, and when; null without one. */
+  pending_plan: PlanId | null
+  pending_interval: Interval | null
+  pending_at: string | null
   period_start: string
   discount: Discount | null
-  usage: UsageItem[]
+  /** The earlier usage list; `entitlements` replaces it where the workspace has a plan. */
+  usage: { limit: LimitKey; used: number; max: number | null }[]
   /** What the workspace may use now: every feature without billing, none without a plan. */
-  features: FeatureKey[]
+  features: string[]
+  /** The offer the workspace's plan comes from; null without a plan. */
+  offer_id?: string | null
+  /** The workspace's effective features and limits with their use; null without a plan (and self-hosted). */
+  entitlements?: Entitlement[] | null
   plans: Plan[]
   /** What the workspace pays in: `chf` in Switzerland and Liechtenstein, `eur` in the EU, `usd` elsewhere; an
-   * existing Stripe customer keeps its own. Plan and pack prices are in it. */
+   * existing Stripe customer keeps its own. Plan prices are in it. */
   currency: string
-  /** AI tokens bought this month; they add to the plan's monthly allowance and lapse with the month. */
+  /** AI tokens from packs bought this month (packs are no longer sold); they add to the plan's allowance. */
   ai_tokens_bought: number
-  /** The AI token packs on sale (empty without a plan, or for someone who cannot manage billing). */
-  ai_packs: AIPack[]
   /** A payment of the workspace is in a chargeback that is not closed yet. */
   disputed: boolean
   /** The renewal stayed unpaid past the grace (three days after the paid period): read-only until it is paid. */
   payment_overdue: boolean
 }
-/** A one-time AI token pack: tokens for a price incl. VAT. */
-export type AIPack = { tokens: number; amount: number; currency: string }
 export type BillingInvoice = {
   id: string
   number: string
@@ -124,6 +181,38 @@ export function useBilling() {
   })
 }
 
+/** The offer on sale, as the public pricing page reads it: the business comparison and allowances for one person. */
+export type PublicOffer = {
+  offer_id: string
+  comparison: {
+    key: string
+    label: string
+    note?: string
+    limit_keys: string[]
+    plans: Record<PlanId, boolean>
+  }[]
+  usage_details: string[]
+  limits: Record<
+    string,
+    {
+      unit: string
+      period: string | null
+      /** Each paid person adds the value to one pool; else a fixed cap for the workspace. */
+      per_person: boolean
+      plans: Record<PlanId, { included: boolean; value: number | null }>
+    }
+  >
+}
+
+/** GET /api/v1/public/offers/current: the same catalogue as the website, for the plan comparison. */
+export function usePublicOffer() {
+  return useQuery({
+    queryKey: ['offers', 'current'],
+    queryFn: async () => (await request<{ data: PublicOffer }>('/public/offers/current')).data,
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function useBillingDetails(enabled: boolean) {
   return useQuery({
     queryKey: billingKeys.details,
@@ -140,13 +229,6 @@ export function useCheckout() {
     { plan: PlanId; interval: Interval; promotion_code?: string }
   >({
     mutationFn: (input) => request(withZone('/billing/checkout'), { method: 'POST', json: input }),
-  })
-}
-
-/** Opens Checkout for one AI token pack; the answer is Checkout's URL. */
-export function useBuyAITokens() {
-  return useMutation<{ url: string }, ApiError, { tokens: number }>({
-    mutationFn: (input) => request(withZone('/billing/ai-tokens'), { method: 'POST', json: input }),
   })
 }
 
@@ -201,6 +283,26 @@ const isStripeURL = (raw: string) => {
 export const planRequired = (error: unknown) =>
   error instanceof ApiError && error.status === 402 && error.code === 'plan_required'
 
+/** A 403 from a module the workspace's plan does not include; `details` names the feature and the plan that has it. */
+export const featureNotInPlan = (error: unknown) =>
+  error instanceof ApiError && error.status === 403 && error.code === 'feature_not_in_plan'
+/**
+ * A change the plan does not allow: a 402 `plan_required` (no plan, or an earlier feature gate) or a 403
+ * `feature_not_in_plan`, with the feature and the cheapest plan that has it when the API names them.
+ */
+export function planRefusal(
+  error: unknown,
+): { message: string; feature: string | null; requiredPlan: PlanId | null } | null {
+  if (!(error instanceof ApiError)) return null
+  if (!planRequired(error) && !featureNotInPlan(error)) return null
+  const { feature, required_plan } = error.details
+  return {
+    message: error.message,
+    feature: typeof feature === 'string' ? feature : null,
+    requiredPlan: isPlanId(required_plan) ? required_plan : null,
+  }
+}
+
 export function usePortal() {
   return useMutation<{ url: string }, ApiError, void>({
     mutationFn: () => request('/billing/portal', { method: 'POST' }),
@@ -220,8 +322,21 @@ export function useSyncBilling() {
   })
 }
 
+/** Each gated feature as a sentence names it: "Your plan doesn’t include expenses". */
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
   api_access: translate('apiTokens'),
+  heidi: translate('heidi'),
+  expenses: translate('expenses3'),
+  ai_import: translate('aiReceiptImport'),
+  document_templates: translate('documentTemplates'),
+  simple_signatures: translate('signatures2'),
+  invoice_corrections: translate('invoiceCorrections'),
+  vat_returns: translate('vatReturns'),
+  ledger_exports: translate('theLedger'),
+  data_export: translate('dataExports'),
+  automations: translate('automations'),
+  client_portal: translate('theClientPortal'),
+  einvoice_xml: translate('eInvoiceXML2'),
 }
 
 /**
@@ -240,29 +355,22 @@ export function lockedFeature(
 export const useLockedFeature = (feature: FeatureKey) => lockedFeature(useBilling().data, feature)
 
 /** A 402 from a create endpoint: the workspace's plan is full for that limit. */
-export type LimitReached = { limit: LimitKey; used: number; max: number; plan: PlanId }
+export type LimitReached = { limit: string; used: number; max: number; reset_at: string | null }
 
+/**
+ * A `limit_reached`, in the earlier body (`limit` the key, `max` the cap) or offer v2's (`key`, `limit` the cap,
+ * `reset_at`).
+ */
 export function limitReached(error: unknown): LimitReached | null {
   if (!(error instanceof ApiError) || error.code !== 'limit_reached') return null
-  const { limit, used, max, plan } = error.details
-  if (!isLimitKey(limit) || !isPlanId(plan) || typeof used !== 'number' || typeof max !== 'number')
-    return null
-  return { limit, used, max, plan }
+  const { key, limit, used, max, reset_at } = error.details
+  const name = typeof key === 'string' ? key : limit
+  const cap = typeof max === 'number' ? max : limit
+  if (typeof name !== 'string' || typeof used !== 'number' || typeof cap !== 'number') return null
+  return { limit: name, used, max: cap, reset_at: typeof reset_at === 'string' ? reset_at : null }
 }
 
-const LIMIT_KEYS: ReadonlySet<unknown> = new Set<LimitKey>([
-  'members',
-  'clients',
-  'invoices_per_month',
-  'expenses_per_month',
-  'products',
-  'engagements',
-  'signatures_per_month',
-  'storage_bytes',
-  'ai_tokens_per_month',
-])
 const PLAN_IDS: ReadonlySet<unknown> = new Set<PlanId>(['basic', 'pro', 'business'])
-const isLimitKey = (value: unknown): value is LimitKey => LIMIT_KEYS.has(value)
 const isPlanId = (value: unknown): value is PlanId => PLAN_IDS.has(value)
 
 export const LIMIT_LABELS: Record<LimitKey, string> = {
@@ -293,6 +401,13 @@ export function limitNoun(key: LimitKey, count = 2): string {
   return translate(limitNounMessages[key], { count })
 }
 
+/** A limit's noun as offer v2 names it: invoice issues and active engagements, the rest as `limitNoun`. */
+export function offerNoun(key: LimitKey, count = 2): string {
+  if (key === 'invoices_per_month') return translate('limitNounInvoiceIssues', { count })
+  if (key === 'engagements') return translate('limitNounActiveEngagements', { count })
+  return limitNoun(key, count)
+}
+
 export function limitFactLabel(key: LimitKey, count = 2): string {
   const noun = limitNoun(key, count)
   return key.endsWith('_per_month') ? translate('monthlyLimitFact', { noun }) : noun
@@ -308,25 +423,85 @@ export function comparisonLimitLabel(key: LimitKey): string {
   return monthly[key] ?? LIMIT_LABELS[key]
 }
 
+/** Whether an API key is one of the limits plans list. */
+export const isLimitKey = (key: string): key is LimitKey => Object.hasOwn(LIMIT_LABELS, key)
+
+/** The usage panel's names for every customer allowance of offer v2 (monthly ones say so). */
+const USAGE_LABELS: Record<string, string> = {
+  ...LIMIT_LABELS,
+  invoices_per_month: translate('invoiceIssuesThisMonth'),
+  engagements: translate('activeEngagements'),
+  download_bytes_per_month: translate('fileDownloadsThisMonth'),
+  emails_per_month: translate('emailRecipientsThisMonth'),
+  email_attachment_bytes_per_month: translate('emailAttachmentsThisMonth'),
+  automation_actions_per_month: translate('automationActionsThisMonth'),
+  drafts: translate('drafts'),
+  retained_quotes: translate('keptQuotes'),
+}
+
+/** A limit's name: "Clients", "Invoice issues this month"; an unknown key reads as its words. */
+export const usageLabel = (key: string) =>
+  USAGE_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')
+
+/** Decimal, as the plans are sold: 1 GB = 1'000 MB. */
 export function formatBytes(bytes: number): string {
-  if (bytes >= 2 ** 40) return `${+(bytes / 2 ** 40).toFixed(1)} TB`
-  if (bytes >= 1 << 30) return `${+(bytes / (1 << 30)).toFixed(1)} GB`
-  if (bytes >= 1 << 20) return `${Math.round(bytes / (1 << 20))} MB`
-  if (bytes >= 1 << 10) return `${Math.round(bytes / (1 << 10))} KB`
+  if (bytes >= 1e12) return `${+(bytes / 1e12).toFixed(1)} TB`
+  if (bytes >= 1e9) return `${+(bytes / 1e9).toFixed(1)} GB`
+  if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`
+  if (bytes >= 1e3) return `${Math.round(bytes / 1e3)} KB`
   return `${bytes} B`
 }
 
+const isBytes = (key: string) => /(^|_)bytes(_|$)/.test(key)
+
 /** A limit's value as people read it: "10", "500 MB", "Unlimited". */
-export function formatLimit(limit: LimitKey, value: number | null): string {
+export function formatLimit(limit: string, value: number | null): string {
   if (value === null) return translate('unlimited2')
-  return limit === 'storage_bytes' ? formatBytes(value) : value.toLocaleString(numberLocale)
+  return isBytes(limit) ? formatBytes(value) : value.toLocaleString(numberLocale)
 }
 
-/** How full a meter is, on the meter's own thresholds: fine, almost at the limit (75 %), at it. */
-export function meterState(item: UsageItem): 'ok' | 'near' | 'full' {
-  if (item.max === null) return 'ok'
+/**
+ * How full a meter is, on the meter's own thresholds: fine, almost at the limit (75 %), at it; `off` when the plan
+ * does not include it.
+ */
+export function meterState(item: UsageItem): 'ok' | 'near' | 'full' | 'off' {
+  if (item.max === 0) return 'off'
+  if (item.max === null || item.used === null) return 'ok'
   if (item.used >= item.max) return 'full'
   return meterTone(item.used, item.max) === 'brand' ? 'ok' : 'near'
+}
+
+/** Allowances a customer reads in the panel: counts and pools, not features, cost guards or the seat count. */
+const shownInPanel = (e: Entitlement) =>
+  (e.kind === 'resource_state' || e.kind === 'period_counter') && e.key !== 'seats'
+
+/**
+ * The usage panel's meters: the workspace's entitlements, in the offer's order; the earlier `usage` list where there
+ * are none (no plan, self-hosted). A missing value is shown as none (nothing new may be spent).
+ */
+export function usageItems(billing: Billing): UsageItem[] {
+  if (!billing.entitlements) return billing.usage
+  return billing.entitlements.filter(shownInPanel).map((e) => ({
+    limit: e.key,
+    used: e.used,
+    max: e.state === 'unlimited' ? null : (e.value ?? 0),
+    per_seat: e.per_seat,
+    custom: e.source === 'workspace' ? { expires_at: e.expires_at } : undefined,
+    reset_at: e.reset_at,
+  }))
+}
+
+/** When a monthly allowance starts again, in UTC: "1 Dec, 00:00 UTC". */
+export function formatReset(iso: string): string {
+  const at = new Intl.DateTimeFormat(languageTag, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC',
+  }).format(new Date(iso))
+  return `${at} UTC`
 }
 
 /** "1 person", "3 people". */

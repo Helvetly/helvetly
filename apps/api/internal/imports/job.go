@@ -154,8 +154,13 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 		if err := s.db.ImportFileProgress(ctx, f.ID, f.Attempts, len(parts), s.now().Add(jobLease), s.now()); err != nil {
 			return err
 		}
-		// Consent is checked before every call: an owner may withdraw it while a file is being read.
-		if err := s.gate(ctx, s.db.Q, ws.ID); err != nil {
+		// Consent and the plan are checked before every call: an owner may withdraw consent, or the plan change, while a
+		// file is being read.
+		err := s.gate(ctx, s.db.Q, ws.ID)
+		if err == nil {
+			err = k.allowed(ctx, s.db.Q, ws.ID)
+		}
+		if err != nil {
 			if _, _, message, ok := auth.Describe(err); ok {
 				return failure{message}
 			}

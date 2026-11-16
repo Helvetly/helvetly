@@ -73,6 +73,10 @@ func jobSession(ws store.Workspace) store.Session { return store.Session{Workspa
 // autoDrafts makes the drafts an engagement is due, each in its own transaction so one failure rolls back alone.
 func (s *Service) autoDrafts(ctx context.Context, target store.AutoInvoiceTarget) error {
 	ws := store.Workspace{ID: target.WorkspaceID, Timezone: target.Timezone}
+	// Automatic drafts wait while the workspace's plan lacks engagement automations.
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
+		return err
+	}
 	var todo []draftJob
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		cur, err := q.Engagement(ctx, target.WorkspaceID, target.EngagementID, true)
@@ -119,6 +123,12 @@ func (s *Service) autoDraft(ctx context.Context, target store.AutoInvoiceTarget,
 		if err != nil {
 			return err
 		}
+		if err := q.RequireFeature(ctx, target.WorkspaceID, store.FeatureEngagementAutomation); err != nil {
+			return err // a plan change since the check above wins
+		}
+		if err := q.CountAutomation(ctx, target.WorkspaceID, "engagements.draft:"+cur.ID+":"+j.periodID+":"+j.kind, s.now()); err != nil {
+			return err
+		}
 		id, err := s.InvoicePeriod(ctx, q, jobSession(store.Workspace{ID: target.WorkspaceID, Timezone: target.Timezone}), cur, j.periodID, j.kind, "")
 		if err != nil {
 			return err
@@ -138,14 +148,18 @@ func (s *Service) autoDraft(ctx context.Context, target store.AutoInvoiceTarget,
 			"engagement_id": cur.ID, "engagement": cur.Title, "client": cur.Client.Name, "period": period},
 			store.NotifyTo{Roles: notifications.Managers}, s.now())
 	})
-	if errors.Is(err, errAlreadyInvoiced) || errors.Is(err, errNothingToInvoice) {
-		return nil // somebody got there first
+	if errors.Is(err, errAlreadyInvoiced) || errors.Is(err, errNothingToInvoice) || errors.Is(err, store.ErrFeatureDenied) ||
+		errors.Is(err, store.ErrAdmissionDenied) {
+		return nil // somebody got there first, or the plan changed or has no room: the draft waits
 	}
 	return err
 }
 
 // notices raises each reminder once per period (the table's unique key makes repeats no-ops).
 func (s *Service) notices(ctx context.Context, ws store.Workspace) error {
+	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
+		return err
+	}
 	ids, err := s.db.LiveEngagementIDs(ctx, ws.ID)
 	if err != nil {
 		return err
@@ -161,12 +175,22 @@ func (s *Service) notices(ctx context.Context, ws store.Workspace) error {
 			if err != nil {
 				return err
 			}
+			// each scheduled notice is one automatic action, once per period and kind; the digest mailing it is another
+			count := func(p PeriodSummary, kind string) error {
+				return q.CountAutomation(ctx, ws.ID, "engagements.notice:"+id+":"+p.ID+":"+kind, s.now())
+			}
 			add := func(p PeriodSummary, kind string) error {
-				_, err := q.AddNotice(ctx, store.EngagementNotice{ID: auth.NewID("ntc"), EngagementID: id, PeriodID: p.ID,
+				added, err := q.AddNotice(ctx, store.EngagementNotice{ID: auth.NewID("ntc"), EngagementID: id, PeriodID: p.ID,
 					Kind: kind, CreatedAt: s.now()})
-				return err
+				if err != nil || !added {
+					return err
+				}
+				return count(p, kind)
 			}
 			if p := v.CurrentPeriod; p != nil && p.State == "open" && p.Overage > 0 {
+				if err := count(*p, "over_committed"); err != nil {
+					return err
+				}
 				unit := ""
 				if e.Unit != nil {
 					unit = *e.Unit
@@ -201,6 +225,9 @@ func (s *Service) notices(ctx context.Context, ws store.Workspace) error {
 			}
 			return nil
 		}))
+		if errors.Is(errs[len(errs)-1], store.ErrAdmissionDenied) {
+			errs[len(errs)-1] = nil // the engagement's notices wait for room
+		}
 	}
 	return errors.Join(errs...)
 }

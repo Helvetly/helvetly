@@ -3,6 +3,7 @@
 import { http, HttpResponse } from 'msw'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
+import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { DocFile, Folder } from '@/lib/documents'
 import type { Engagement, Entry, Period } from '@/lib/engagements'
 import type { Expense, Summary as ExpenseSummary } from '@/lib/expenses'
@@ -531,6 +532,7 @@ const one =
 
 /** What every signed-in screen asks for, then each area's records; the first match wins. */
 export const shellHandlers = [
+  http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),
   http.get('/api/v1/billing', () =>
     HttpResponse.json({
       data: billingFixture({

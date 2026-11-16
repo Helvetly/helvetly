@@ -34,7 +34,7 @@ func (s *Service) getAvatar(w http.ResponseWriter, r *http.Request, sess store.P
 	if err != nil {
 		return err
 	}
-	return storage.Serve(w, r, s.files, a.ObjectKey, "avatar", a.ContentType)
+	return storage.Serve(w, r, s.files, "", a.ObjectKey, "avatar", a.ContentType)
 }
 
 // putAvatar stores the new photo and points the login at it, then removes the previous object. The same bytes as the
@@ -66,6 +66,9 @@ func (s *Service) putAvatar(w http.ResponseWriter, r *http.Request, sess store.P
 		case err == nil:
 			old = cur.ObjectKey
 		case !errors.Is(err, store.ErrNotFound):
+			return err
+		}
+		if err := q.ReserveObject(ctx, ws, key, int64(len(b)), false, s.now()); err != nil {
 			return err
 		}
 		stored = true

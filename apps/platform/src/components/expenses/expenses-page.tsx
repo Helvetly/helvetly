@@ -36,6 +36,12 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { type ComponentProps, memo, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import {
+  ExportItem,
+  FeatureLockNotice,
+  unlessLocked,
+  useFeatureLock,
+} from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -130,6 +136,9 @@ export function ExpensesPage() {
   const openId = query.get('id')
   const canManage = canManageExpenses(useSession().data?.role)
   const canWrite = useCan('write:expenses')
+  const lock = useFeatureLock('expenses')
+  // a plan without expenses keeps the ones there are readable, but adds none
+  const canAdd = canWrite && !lock
 
   const [search, setSearch] = useState(params.search)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
@@ -279,8 +288,9 @@ export function ExpensesPage() {
     importDrawer.open()
   }
   // Dropping a file anywhere on the page reads it (not while a drawer is open).
-  const dropping = useFileDrop(canWrite && !formState && !openId && !importDrawer.isOpen, startWith)
+  const dropping = useFileDrop(canAdd && !formState && !openId && !importDrawer.isOpen, startWith)
 
+  const exportLock = useFeatureLock('data_export')
   const selection = {
     count: selected.size,
     actions: [
@@ -305,7 +315,9 @@ export function ExpensesPage() {
       {
         label: translate('exportCSV'),
         icon: <Download />,
-        onClick: () => window.location.assign(exportIdsUrl([...selected])),
+        onClick: unlessLocked(exportLock, () =>
+          window.location.assign(exportIdsUrl([...selected])),
+        ),
       },
       {
         label: translate('deleteDrafts'),
@@ -318,19 +330,16 @@ export function ExpensesPage() {
   }
   const pageItems = ({ Item }: MenuKit) => (
     <>
-      {canWrite && (
+      {canAdd && (
         <Item onSelect={uploadReceipts}>
           <FileUp />
           {translate('uploadReceipts2')}
         </Item>
       )}
-      <Item asChild>
-        <a href={localizedHref(exportUrl(params))} download>
-          <Download />
-          {translate('exportCSV2')}
-          {filtered || params.view !== 'all' ? translate('thisView') : ''}
-        </a>
-      </Item>
+      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
+        {translate('exportCSV')}
+        {filtered || params.view !== 'all' ? translate('thisView') : ''}
+      </ExportItem>
     </>
   )
   const access = useMemo(() => ({ canManage, canWrite }), [canManage, canWrite])
@@ -355,9 +364,14 @@ export function ExpensesPage() {
         savedViews={false}
         active={viewIndex}
         onSelect={(index) => update({ view: VIEWS[index]?.view ?? 'all' })}
-        primary={translate('newExpense')}
+        primary={canAdd ? translate('newExpense') : undefined}
         onPrimary={() => setForm({})}
         menu={pageItems(dropdownKit)}
+      />
+      <FeatureLockNotice
+        lock={lock}
+        kept={translate('expensesYouAlreadyHaveStayAvailableToRead')}
+        className="mx-4 mt-4 sm:mx-6"
       />
       {!empty && <ExpenseKpis />}
       {dropping && (
@@ -468,7 +482,7 @@ export function ExpensesPage() {
                   <p className="mt-1.5 text-sm text-pretty text-muted-foreground">
                     {translate('recordWhatTheBusinessSpendsWithTheReceiptThe')}
                   </p>
-                  {canWrite && (
+                  {canAdd && (
                     <div className="mt-5 flex flex-wrap justify-center gap-2">
                       <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
                         {translate('addExpense')}
@@ -484,7 +498,7 @@ export function ExpensesPage() {
                       </Button>
                     </div>
                   )}
-                  {canWrite && (
+                  {canAdd && (
                     <p className="mt-3 text-xs text-muted-foreground">
                       {translate('orDropAReceiptAnywhereOnThisPage')}
                     </p>

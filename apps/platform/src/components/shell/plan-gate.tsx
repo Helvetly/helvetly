@@ -21,7 +21,7 @@ import { ShellLoading } from '@/components/auth-gate'
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
-import { useBilling } from '@/lib/billing'
+import { useBilling, usePublicOffer } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces } from '@/lib/members'
 import { useSession } from '@/lib/queries'
@@ -62,6 +62,7 @@ export function ChoosePlan() {
   // The layout's AuthGate renders pages only once the session is in.
   const session = useSession().data
   const billing = useBilling()
+  const offer = usePublicOffer()
   const router = useRouter()
   const data = billing.data
   const open = Boolean(data && !(data.enabled && data.locked))
@@ -101,8 +102,10 @@ export function ChoosePlan() {
             {trial && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success-surface/70 px-3 py-1 text-[12.5px] font-medium text-success ring-1 ring-success-solid/25 backdrop-blur">
                 <Gift className="size-3.5" aria-hidden />
-                {data.trial_days}
-                {translate('daysFreeOnBasic')}
+                {translate('daysFreeOnPlan', {
+                  days: data.trial_days,
+                  plan: data.plans.find((plan) => plan.id === data.trial_plan)?.name ?? '',
+                })}
               </span>
             )}
             <h1 className="text-[32px] leading-[1.1] font-semibold tracking-[-0.035em] text-balance sm:text-[46px]">
@@ -116,7 +119,7 @@ export function ChoosePlan() {
             </p>
           </div>
           <div className="mt-12 w-full max-w-[1080px]">
-            <PlanCards billing={data} />
+            <PlanCards billing={data} offer={offer.data} />
           </div>
         </>
       ) : (

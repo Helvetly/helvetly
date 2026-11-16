@@ -39,6 +39,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import {
   dropdownKit,
@@ -348,12 +349,15 @@ export function ClientsPage() {
   const sortBy = (field: SortField) =>
     update({ sort: field, desc: params.sort === field ? !params.desc : field === 'created_at' })
 
+  const exportLock = useFeatureLock('data_export')
   const selection = {
     count: selected.size,
     actions: bulkActions(canDelete, {
       activate: () => runBulk('activate'),
       deactivate: () => runBulk('deactivate'),
-      exportCsv: () => window.location.assign(exportIdsUrl([...selected])),
+      exportCsv: unlessLocked(exportLock, () =>
+        window.location.assign(exportIdsUrl([...selected])),
+      ),
       remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
     }),
   }
@@ -365,13 +369,10 @@ export function ClientsPage() {
           {translate('import')}
         </Item>
       )}
-      <Item asChild>
-        <a href={localizedHref(exportUrl(params))} download>
-          <Download />
-          {translate('exportCSV2')}
-          {filtered ? ' (filtered)' : ''}
-        </a>
-      </Item>
+      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
+        {translate('exportCSV')}
+        {filtered ? ' (filtered)' : ''}
+      </ExportItem>
     </>
   )
   const access = useMemo(() => ({ canWrite, canDelete }), [canWrite, canDelete])

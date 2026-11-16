@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 )
 
 const offerUsage = `usage:
+  helvetly offer catalog [-offer ID]
   helvetly offer validate FILE
   helvetly offer diff FILE
   helvetly offer publish -actor NAME -reason TEXT FILE
@@ -44,6 +46,8 @@ func runOffer(ctx context.Context, db *store.Store, args []string, out io.Writer
 		return errors.New(offerUsage)
 	}
 	switch args[0] {
+	case "catalog":
+		return catalog(ctx, db, args[1:], out)
 	case "validate", "diff", "publish":
 		return offerFile(ctx, db, args[0], args[1:], out)
 	case "override":
@@ -107,6 +111,33 @@ func offerFile(ctx context.Context, db *store.Store, cmd string, args []string, 
 		fmt.Fprintf(out, "published %s (checksum %s): new subscriptions get it; workspaces keep their offer\n", o.ID, o.Checksum())
 	}
 	return nil
+}
+
+// catalog prints the Stripe catalogue of the offer on sale (or -offer's) as JSON, for the billing repository's
+// catalogue tool: the prices are kept in the offer, not copied by hand.
+func catalog(ctx context.Context, db *store.Store, args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("offer catalog", flag.ContinueOnError)
+	id := fs.String("offer", "", "a published offer's id; none: the one on sale")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New(offerUsage)
+	}
+	v, err := db.CurrentOffer(ctx)
+	if *id != "" {
+		v, err = db.Offer(ctx, *id)
+	}
+	if err != nil {
+		return fmt.Errorf("reading the offer: %w", err)
+	}
+	c, err := billing.ExportCatalog(v)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(out)
+	enc.SetIndent("", "  ")
+	return enc.Encode(c)
 }
 
 func override(ctx context.Context, db *store.Store, cmd string, args []string, out io.Writer, now time.Time) error {

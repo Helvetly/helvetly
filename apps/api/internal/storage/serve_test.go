@@ -67,7 +67,7 @@ func TestServe(t *testing.T) {
 				r.Header.Set("Range", tc.rangeHeader)
 			}
 			w := httptest.NewRecorder()
-			err := Serve(w, r, src, tc.key, "Grüezi.pdf", tc.contentType)
+			err := Serve(w, r, src, "", tc.key, "Grüezi.pdf", tc.contentType)
 			if tc.wantErr != nil {
 				if !errors.Is(err, tc.wantErr) {
 					t.Fatalf("err %v, want %v", err, tc.wantErr)

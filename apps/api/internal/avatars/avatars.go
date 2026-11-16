@@ -74,7 +74,7 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session
 	if err != nil {
 		return err
 	}
-	return storage.Serve(w, r, s.files, p.ObjectKey, "avatar", p.ContentType)
+	return storage.Serve(w, r, s.files, "", p.ObjectKey, "avatar", p.ContentType)
 }
 
 // put stores the new photo and points the person at it, then removes the previous object. The same bytes as the

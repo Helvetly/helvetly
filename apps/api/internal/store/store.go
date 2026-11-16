@@ -36,6 +36,8 @@ type Store struct {
 type Q struct {
 	db        dbtx
 	admission Admission
+	features  FeatureGate
+	period    string // the quota month of the usage being admitted (AdmissionPeriod)
 }
 
 type dbtx interface {
@@ -118,12 +120,18 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 
 func (s *Store) Close() { s.pool.Close() }
 
+// on is q on another connection or transaction, with the same admission and feature gate.
+func (q Q) on(db dbtx) Q {
+	q.db = db
+	return q
+}
+
 // Ping checks that the database answers (readiness).
 func (s *Store) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
 // Tx runs fn in a transaction, committed when fn returns nil.
 func (s *Store) Tx(ctx context.Context, fn func(Q) error) error {
-	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return fn(Q{db: tx, admission: s.Q.admission}) })
+	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error { return fn(s.Q.on(tx)) })
 }
 
 // MigrationsHash identifies the embedded migrations, so a database migrated once can be reused until they change.

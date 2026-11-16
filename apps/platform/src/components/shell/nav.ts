@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
+import { featureLock } from '@/components/billing/feature-lock'
+import type { Billing, FeatureKey } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { can, resourceForPath, type Need } from '@/lib/permissions'
 
@@ -28,6 +30,8 @@ export type NavItem = {
   heidi?: boolean
   /** In the sidebar, opens the notifications bubble; `href` is its full page (the command palette's). */
   bell?: boolean
+  /** The plan feature it needs; without it the item carries the plan's tag. */
+  feature?: FeatureKey
 }
 
 // Items without a page yet have no href: they look the same and say "coming soon".
@@ -40,7 +44,7 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
       { label: translate('invoices'), icon: ReceiptText, href: '/invoices' },
       { label: translate('quotes'), icon: ScrollText, href: '/quotes' },
       { label: translate('productsServices'), icon: Package, href: '/products' },
-      { label: translate('expenses'), icon: Wallet, href: '/expenses' },
+      { label: translate('expenses'), icon: Wallet, href: '/expenses', feature: 'expenses' },
       { label: translate('engagements'), icon: ClipboardCheck, href: '/engagements' },
       { label: translate('documents'), icon: FileText, href: '/documents' },
     ],
@@ -55,7 +59,13 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
   {
     bottom: true,
     items: [
-      { label: translate('askHeidi'), icon: HeidiSparkle, heidi: true, isNew: true },
+      {
+        label: translate('askHeidi'),
+        icon: HeidiSparkle,
+        heidi: true,
+        isNew: true,
+        feature: 'heidi',
+      },
       { label: translate('notifications'), icon: Bell, href: '/notifications', bell: true },
     ],
   },
@@ -79,6 +89,7 @@ export const CREATE_ACTIONS: {
   icon: ComponentType<{ className?: string }>
   need: Need
   href?: string
+  feature?: FeatureKey
 }[] = [
   {
     label: translate('newInvoice'),
@@ -86,7 +97,13 @@ export const CREATE_ACTIONS: {
     need: 'write:invoices',
     href: '/invoices/new',
   },
-  { label: translate('newExpense'), icon: Wallet, need: 'write:expenses', href: '/expenses?new=1' },
+  {
+    label: translate('newExpense'),
+    icon: Wallet,
+    need: 'write:expenses',
+    href: '/expenses?new=1',
+    feature: 'expenses',
+  },
   { label: translate('newClient'), icon: Building2, need: 'write:clients', href: '/clients?new=1' },
   {
     label: translate('newEngagement2'),
@@ -103,3 +120,9 @@ export const CREATE_ACTIONS: {
   { label: translate('uploadDocument'), icon: FileUp, need: 'write:documents' },
   { label: translate('inviteMember'), icon: UserPlus, need: 'write:members' },
 ]
+
+/** What these scopes may start on the workspace's plan. */
+export const startable = (scopes: readonly string[], billing: Billing | undefined) =>
+  CREATE_ACTIONS.filter(
+    ({ need, feature }) => can(scopes, need) && !(feature && featureLock(billing, feature)),
+  )

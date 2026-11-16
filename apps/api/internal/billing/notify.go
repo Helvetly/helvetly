@@ -33,25 +33,28 @@ func or(a, b string) string {
 	return b
 }
 
-// monthly: limits counted per calendar month, so nearing one is news again next month.
-var monthlyLimits = map[Limit]bool{Invoices: true, Expenses: true, Signatures: true, AITokens: true}
+// monthly: limits counted per quota month (UTC), so nearing one is news again next month.
+var monthlyLimits = map[Limit]bool{Invoices: true, Expenses: true, Signatures: true, AITokens: true, AutomationActions: true,
+	Downloads: true, Emails: true, EmailAttachments: true}
 
 var limitNouns = map[Limit]string{Members: "member seats", Clients: "clients", Invoices: "invoices this month",
 	Expenses: "expenses this month", Products: "products and services", Engagements: "running engagements",
-	Signatures: "signature requests this month", Storage: "storage", AITokens: "AI tokens this month"}
+	Signatures: "signature requests this month", Storage: "storage", AITokens: "AI tokens this month",
+	InvoiceDrafts: "invoice drafts", QuotesRetained: "quotes", AutomationActions: "automatic actions this month",
+	Downloads: "downloads this month", Emails: "business emails this month", EmailAttachments: "email attachments this month"}
 
 // notifyNear tells the owners and admins once when an admitted write brings a limit to 90 % or more: once a month
 // for a monthly limit, once per cap for the others (a new plan's cap is news again).
-func notifyNear(ctx context.Context, q store.Q, workspaceID, plan string, limit Limit, now, month time.Time, n, max int64) error {
+func notifyNear(ctx context.Context, q store.Q, workspaceID, plan string, limit Limit, now time.Time, period string, n, max int64) error {
 	if max <= 0 || n*10 < max*9 {
 		return nil
 	}
 	key := fmt.Sprintf("billing.limit_near:%s:%d", limit, max)
 	if monthlyLimits[limit] {
-		key += ":" + month.Format("2006-01")
+		key += ":" + period
 	}
 	used, cap := fmt.Sprint(n), fmt.Sprint(max)
-	if limit == Storage {
+	if limit == Storage || limit == Downloads || limit == EmailAttachments {
 		used, cap = bytesText(n), bytesText(max)
 	}
 	return notifications.Notify(ctx, q, workspaceID, "billing.limit_near", map[string]any{"limit": limitNouns[limit],

@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -79,7 +80,7 @@ func (s *Service) start(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, auth.Error(http.StatusBadRequest, "invalid_email", "Enter a valid email address.", nil))
 		return
 	}
-	access, err := s.db.Q.PortalAccessByEmail(r.Context(), email)
+	access, err := s.access(r.Context(), email)
 	if err == nil {
 		// Every address goes through the same cooldown and limits; only one with access gets the code.
 		err = s.auth.SendEmailCode(r, email, len(access) > 0)
@@ -104,7 +105,7 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	access, err := s.db.Q.PortalAccessByEmail(r.Context(), email)
+	access, err := s.access(r.Context(), email)
 	if err == nil && len(access) == 0 {
 		err = errNoAccess
 	}
@@ -138,6 +139,18 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 			s.fail(w, r, errCSRF)
 			return
 		}
+		// A workspace whose plan no longer has the portal ends its sessions on their next request, without saying why:
+		// the client is not told the workspace's plan.
+		if open, err := s.db.Q.FeatureAllowed(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil || !open {
+			if err == nil {
+				err = s.db.Q.DeletePortalSession(r.Context(), sess.ID)
+			}
+			if err == nil {
+				err = errUnauthenticated
+			}
+			s.fail(w, r, err)
+			return
+		}
 		if err := s.db.Q.TouchPortalSession(r.Context(), sess.ID, s.now()); err != nil {
 			s.fail(w, r, err)
 			return
@@ -149,7 +162,7 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 }
 
 func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
-	access, err := s.db.Q.PortalAccessByEmail(r.Context(), sess.Email)
+	access, err := s.access(r.Context(), sess.Email)
 	if err != nil {
 		return err
 	}
@@ -184,7 +197,7 @@ func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess stor
 	if !s.auth.Decode(w, r, &in) {
 		return nil
 	}
-	access, err := s.db.Q.PortalAccessByEmail(r.Context(), sess.Email)
+	access, err := s.access(r.Context(), sess.Email)
 	if err != nil {
 		return err
 	}
@@ -203,4 +216,23 @@ func (s *Service) deleteSession(w http.ResponseWriter, r *http.Request, sess sto
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// access is the clients email may open in the portal: those of workspaces whose plan includes it.
+func (s *Service) access(ctx context.Context, email string) ([]store.PortalAccess, error) {
+	all, err := s.db.Q.PortalAccessByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.PortalAccess, 0, len(all))
+	for _, a := range all {
+		open, err := s.db.Q.FeatureAllowed(ctx, a.WorkspaceID, store.FeatureClientPortal)
+		if err != nil {
+			return nil, err
+		}
+		if open {
+			out = append(out, a)
+		}
+	}
+	return out, nil
 }

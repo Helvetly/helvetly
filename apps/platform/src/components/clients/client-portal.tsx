@@ -18,6 +18,7 @@ import {
 import type { ReactElement, ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useResendPortalInvite, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
@@ -107,6 +108,7 @@ export function PortalAccess({
   onAddEmail: () => void
 }) {
   const resend = useResendPortalInvite()
+  const portalLock = useFeatureLock('client_portal')
   const on = Boolean(client.portal_enabled)
   const login = portalLogin(client)
   const invitation = invitationStatus(client)
@@ -146,15 +148,17 @@ export function PortalAccess({
               canWrite && (
                 <Tip
                   label={
-                    invitation.action === 'Resend'
-                      ? translate('emailThePortalLinkAgain', { login: login })
-                      : translate('emailThePortalLink', { login: login })
+                    portalLock
+                      ? `${portalLock.hint}.`
+                      : invitation.action === 'Resend'
+                        ? translate('emailThePortalLinkAgain', { login: login })
+                        : translate('emailThePortalLink', { login: login })
                   }
                 >
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={resend.isPending}
+                    disabled={resend.isPending || Boolean(portalLock)}
                     onClick={() =>
                       resend.mutate(client.id, {
                         onSuccess: () =>

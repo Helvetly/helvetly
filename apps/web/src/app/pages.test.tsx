@@ -1,9 +1,11 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { COMPETITORS } from '@/lib/compare'
+import { OFFER_URL } from '@/lib/offer'
 import { BENEFITS, LIMITS, USAGE_DETAILS } from '@/lib/plans'
+import golden from '@/lib/public-offer.golden.json'
 
 import LegalPage from './[legal]/page'
 import ComparePage from './compare/[slug]/page'
@@ -11,7 +13,22 @@ import CompareIndexPage from './compare/page'
 import HomePage from './page'
 import PricingPage from './pricing/page'
 
+/** Answers the API's public offer (or fails to, with offer: false) and Cloudflare's trace. */
+function serve({ offer = true, trace = '' } = {}) {
+  const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
+    if (String(input) !== OFFER_URL) return new Response(trace)
+    if (!offer) throw new TypeError('Failed to fetch')
+    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-2026-11-v2', ...golden } }))
+  })
+  vi.stubGlobal('fetch', fetch)
+  return fetch
+}
+
+afterEach(() => vi.unstubAllGlobals())
+
 describe('home page', () => {
+  beforeEach(() => serve())
+
   it('leads with the promise and sends the trial to the platform sign-in', () => {
     render(<HomePage />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
@@ -50,7 +67,10 @@ const cells = (table: HTMLElement, name: string) =>
     .map((c) => c.textContent)
 
 describe('pricing page', () => {
-  beforeEach(() => inZone('Europe/Zurich'))
+  beforeEach(() => {
+    inZone('Europe/Zurich')
+    serve()
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it('shows the same figures in the visitor’s currency', () => {
@@ -62,15 +82,46 @@ describe('pricing page', () => {
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<typeof fetch>(async () => new Response('h=helvetly.com\nloc=GB\n')),
-    )
+    serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     render(<PricingPage />)
     const pro = screen.getAllByRole('article')[1]!
     expect(await within(pro).findByText('USD 39.25 a month, billed yearly, incl. tax')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
-    vi.unstubAllGlobals()
+  })
+
+  it('asks the API for the offer once for the cards and the table', async () => {
+    const fetch = serve()
+    render(<PricingPage />)
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
+    expect(fetch.mock.calls.filter(([url]) => url === OFFER_URL)).toHaveLength(1)
+    expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull()
+    expect(screen.getByRole('link', { name: /Choose Pro/ }).getAttribute('href')).toBe(
+      'http://localhost:8000/login',
+    )
+  })
+
+  it('shows no price and no checkout while the API cannot confirm the offer', async () => {
+    serve({ offer: false })
+    render(<PricingPage />)
+    expect(await screen.findByText('Pricing is temporarily unavailable.')).toBeTruthy()
+    for (const card of screen.getAllByRole('article')) {
+      expect(card.textContent).not.toMatch(/CHF|\/ person \/|billed|\b(19|49|99|183|471|951)\b/)
+      expect(within(card).getByText('Price unavailable')).toBeTruthy()
+    }
+    for (const name of [/Choose Basic/, /Choose Pro/, /Choose Business/, /Start with Pro/])
+      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
+    expect(screen.queryByRole('link', { name: /Choose|Start with/ })).toBeNull()
+    expect(screen.getByRole('link', { name: 'support@helvetly.com' }).getAttribute('href')).toBe(
+      'mailto:support@helvetly.com',
+    )
+
+    const again = serve()
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() =>
+      expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull(),
+    )
+    expect(again).toHaveBeenCalledExactlyOnceWith(OFFER_URL, expect.anything())
+    expect(within(screen.getAllByRole('article')[1]!).getByText('471')).toBeTruthy()
   })
 
   it('shows yearly prices first and monthly ones on request', async () => {

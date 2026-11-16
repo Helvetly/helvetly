@@ -48,6 +48,16 @@ func TestOfferCommand(t *testing.T) {
 	}
 	file := write(o)
 
+	out, err := run("catalog")
+	var c billing.StripeCatalog
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-2026-11-v2" || len(c.Plans) != 3 ||
+		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
+		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
+		t.Fatalf("catalog: %q %v", out, err)
+	}
+	if _, err := run("catalog", "-offer", "nope"); err == nil {
+		t.Fatal("catalog of an unknown offer")
+	}
 	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-2026-12-v2, 66 records") {
 		t.Fatalf("validate: %q %v", out, err)
 	}
@@ -56,7 +66,7 @@ func TestOfferCommand(t *testing.T) {
 	if _, err := run("validate", write(broken)); err == nil || !strings.Contains(err.Error(), "identity_security: missing") {
 		t.Fatalf("validate an incomplete offer: %v", err)
 	}
-	out, err := run("diff", file)
+	out, err = run("diff", file)
 	if err != nil || !strings.Contains(out, "current helvetly-2026-11-v2") || !strings.Contains(out, "clients.basic: limited 30 -> limited 40\n") {
 		t.Fatalf("diff: %q %v", out, err)
 	}

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 
-import { billingFixture } from './billing-fixture'
+import { billingFixture, entitlementsFixture } from './billing-fixture'
 import { PaymentCard } from './card-brand'
 import { Countdown } from './countdown'
 import { byPressure, UsageOverview } from './usage-overview'
@@ -27,7 +27,7 @@ test('the nudge names the item at its limit and what the next plan includes', ()
         plan: 'pro',
         status: 'active',
         usage: [
-          { limit: 'clients', used: 10, max: 1000 },
+          { limit: 'clients', used: 10, max: 300 },
           { limit: 'signatures_per_month', used: 50, max: 50 },
         ],
       })}
@@ -36,7 +36,7 @@ test('the nudge names the item at its limit and what the next plan includes', ()
   expect(
     screen.getByText(/the plan’s limit is reached/).closest('[data-slot=usage-nudge]'),
   ).toHaveTextContent(
-    'Signature requests: the plan’s limit is reached. Business includes unlimited signature requests.',
+    'Signature requests: the plan’s limit is reached. Business includes 200 signature requests a month per paid person.',
   )
   expect(screen.getByRole('link', { name: 'See Business' })).toHaveAttribute(
     'href',
@@ -75,4 +75,83 @@ test('the payment card shows the last four digits and expiry, or an empty outlin
   expect(card).toHaveTextContent('Expires 03/31')
   rerender(<PaymentCard card={null} />)
   expect(screen.getByText('No card on file')).toBeInTheDocument()
+})
+
+const withEntitlements = (used: Record<string, number | null>, over = {}) =>
+  billingFixture({
+    plan: 'basic',
+    status: 'active',
+    locked: false,
+    entitlements: entitlementsFixture('basic', { used, over }),
+  })
+
+test('12 of 15 invoice issues is near the limit, with what Pro gives per paid person', () => {
+  render(<UsageOverview billing={withEntitlements({ invoices_per_month: 12 })} />)
+  const tile = screen.getByText('Invoice issues').closest('li')
+  expect(tile).toHaveAttribute('data-state', 'near')
+  expect(tile).toHaveTextContent('12of 15')
+  expect(tile).toHaveTextContent('Per paid person, shared · Resets 1 Dec, 00:00 UTC')
+  expect(
+    screen.getByText(/almost at the plan’s limit/).closest('[data-slot=usage-nudge]'),
+  ).toHaveTextContent(
+    'Invoice issues: almost at the plan’s limit. Pro includes 150 invoice issues a month per paid person.',
+  )
+})
+
+test('at 15 of 15 issuing stops and the nudge says drafts are kept', () => {
+  render(<UsageOverview billing={withEntitlements({ invoices_per_month: 15 })} />)
+  expect(screen.getByText('Invoice issues').closest('li')).toHaveAttribute('data-state', 'full')
+  expect(
+    screen.getByText(/the plan’s limit is reached/).closest('[data-slot=usage-nudge]'),
+  ).toHaveTextContent(
+    'Drafts stay saved and can be issued once the allowance resets or the plan grows.',
+  )
+})
+
+test('excluded, unlimited, workspace-wide and custom limits read as such', () => {
+  render(
+    <UsageOverview
+      billing={withEntitlements(
+        { clients: 12 },
+        {
+          clients: { source: 'workspace', value: 60, expires_at: '2027-01-31T00:00:00Z' },
+          emails_per_month: { state: 'unlimited', value: null },
+        },
+      )}
+    />,
+  )
+  const expenses = screen.getByText('Expenses').closest('li')
+  expect(expenses).toHaveAttribute('data-state', 'off')
+  expect(expenses).toHaveTextContent('Not included')
+  expect(screen.getByText('Email recipients').closest('li')).toHaveTextContent('of unlimited')
+  const clients = screen.getByText('Clients').closest('li')
+  expect(clients).toHaveTextContent('12of 60')
+  expect(clients).toHaveTextContent('Per workspace')
+  expect(clients).toHaveTextContent('Custom limit until')
+  expect(clients).not.toHaveTextContent('Resets')
+})
+
+test('in a trial every allowance lasts the whole trial: no reset, no per-person growth', () => {
+  render(
+    <UsageOverview
+      billing={billingFixture({
+        plan: 'business',
+        status: 'trialing',
+        trial: true,
+        entitlements: entitlementsFixture('business', {
+          used: { invoices_per_month: 3 },
+          over: { invoices_per_month: { reset_at: null }, ai_tokens_per_month: { reset_at: null } },
+        }),
+      })}
+    />,
+  )
+  expect(screen.getByRole('region', { name: 'Usage' })).toHaveTextContent('For the whole trial')
+  expect(screen.queryByText(/This month since/)).toBeNull()
+  const invoices = screen.getByText('Invoice issues').closest('[data-slot=usage-meter]')
+  expect(invoices).toHaveTextContent('For the whole trial')
+  // A count of records is a cap, not a pool that runs down.
+  expect(screen.getByText('Clients').closest('[data-slot=usage-meter]')).not.toHaveTextContent(
+    'For the whole trial',
+  )
+  expect(screen.queryByText(/Resets|Per paid person/)).toBeNull()
 })

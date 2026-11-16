@@ -58,6 +58,14 @@ are the reference.
   `*` resource or by admins; HR files are documents with `hr_private` and never pass `store.Document`, lists, shares or
   signed links; nothing HR is a public operation, an MCP tool, a Heidi answer or in the workspace export; the audit
   log gets HR events with empty payloads. Jurisdiction rules are data (`employment/rules.json`), never a calculation.
+- **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
+  `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
+  UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
+  Storage counts each workspace object once in `stored_objects`: `ReserveObject` before every `files.Put` of a
+  workspace's object (admitted for new growth, counted only for records the business keeps), the real size once
+  storage answers, released only after a confirmed delete, reconciled by a job. Downloads of a workspace's files go
+  through `storage.Serve`/`storage.Metered` (with billing on, never a presigned link); business email carries its
+  `Workspace` and counts through `mail.Metered`; sign-in, security and invitation email never does.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by per-workspace consent and a monthly token budget;
   each call reserves its tokens and rate-card cost first, one call in flight per workspace, see `ai_calls`).

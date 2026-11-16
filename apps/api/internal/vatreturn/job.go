@@ -45,10 +45,22 @@ func (s *Service) Tick(ctx context.Context, now time.Time) error {
 		if !ok {
 			continue
 		}
-		errs = append(errs, s.db.Tx(ctx, func(q store.Q) error {
+		// a scheduled reminder of a VAT return: both an automation and the VAT return module
+		if on, err := s.allowed(ctx, v.Workspace.ID); err != nil || !on {
+			errs = append(errs, err)
+			continue
+		}
+		err := s.db.Tx(ctx, func(q store.Q) error {
+			// one automatic action per period: a retry or the next tick counts nothing more
+			if err := q.CountAutomation(ctx, v.Workspace.ID, "vat.return_due:"+p.Name, now); err != nil {
+				return err
+			}
 			return notifications.Notify(ctx, q, v.Workspace.ID, "vat.return_due", map[string]any{"period": p.Name, "last": p.Last},
 				store.NotifyTo{Roles: notifications.Managers, Once: "vat.return_due:" + p.Name}, now)
-		}))
+		})
+		if !errors.Is(err, store.ErrAdmissionDenied) { // no room: the reminder waits while the period is news
+			errs = append(errs, err)
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -63,4 +75,13 @@ func justEnded(today, periodicity string) (span, bool) {
 	p, ok := parsePeriod(lastEnded(periodicity, today))
 	last, _ := time.Parse(time.DateOnly, p.Last)
 	return p, ok && d.Sub(last) <= remindFor*24*time.Hour
+}
+
+func (s *Service) allowed(ctx context.Context, workspaceID string) (bool, error) {
+	for _, f := range []string{store.FeatureVATReturns, store.FeatureAutomations} {
+		if on, err := s.db.FeatureAllowed(ctx, workspaceID, f); err != nil || !on {
+			return false, err
+		}
+	}
+	return true, nil
 }

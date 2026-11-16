@@ -2,6 +2,7 @@ import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { FaqSection } from '@/components/faq'
+import { OfferProvider } from '@/components/offer-provider'
 import { PageHero } from '@/components/page-hero'
 import { PlanTable } from '@/components/plan-table'
 import { PricingCards } from '@/components/pricing-cards'
@@ -30,23 +31,25 @@ export default function PricingPage() {
         }
         lead={translate('everyTeamMemberIsBilledAtThePlanS')}
       />
-      <section className="pb-24">
-        <Container>
-          <PricingCards />
-        </Container>
-      </section>
-      <section id="compare-plans" className="py-24">
-        <Container>
-          <SectionHeading
-            eyebrow={translate('comparePlans')}
-            title={translate('whatEachPlanIncludes')}
-            lead={translate('seeWhatIsIncludedAndWhatIsNotBefore')}
-          />
-          <div data-reveal className="mt-12">
-            <PlanTable />
-          </div>
-        </Container>
-      </section>
+      <OfferProvider>
+        <section className="pb-24">
+          <Container>
+            <PricingCards />
+          </Container>
+        </section>
+        <section id="compare-plans" className="py-24">
+          <Container>
+            <SectionHeading
+              eyebrow={translate('comparePlans')}
+              title={translate('whatEachPlanIncludes')}
+              lead={translate('seeWhatIsIncludedAndWhatIsNotBefore')}
+            />
+            <div data-reveal className="mt-12">
+              <PlanTable />
+            </div>
+          </Container>
+        </section>
+      </OfferProvider>
       <FaqSection
         eyebrow={translate('billingQuestions')}
         title={

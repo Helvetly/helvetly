@@ -26,9 +26,9 @@ export const SharedActions: Story = {
     const reference = canvas.getByRole('button', { name: 'Shared action' })
     const secondary = canvas.getByRole('button', { name: 'Secondary action' })
     const actions = [
-      ['Basic', 'Start 7-day free trial'],
+      ['Basic', 'Choose Basic'],
       ['Pro', 'Choose Pro'],
-      ['Business', 'Choose Business'],
+      ['Business', 'Start 7-day free trial'],
     ] satisfies [string, string][]
     // The trial and the recommended plan are the primary way on; the rest are secondary.
     await Promise.all(
@@ -36,7 +36,7 @@ export const SharedActions: Story = {
         const button = within(canvas.getByRole('region', { name: plan })).getByRole('button', {
           name: label,
         })
-        const expected = getComputedStyle(plan === 'Business' ? secondary : reference)
+        const expected = getComputedStyle(plan === 'Basic' ? secondary : reference)
         const actual = getComputedStyle(button)
         return Promise.all([
           expect(button.getBoundingClientRect().height).toBe(

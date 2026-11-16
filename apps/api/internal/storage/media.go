@@ -39,6 +39,7 @@ func NewMedia(origin string, secret []byte) (*Media, error) {
 
 // mediaClaims: what a link may download (the version recorded when it was signed) and how, until Expires (Unix s).
 type mediaClaims struct {
+	Workspace   string `json:"w,omitempty"` // whose download allowance each GET counts against
 	Key         string `json:"k"`
 	Version     string `json:"v,omitempty"`
 	Filename    string `json:"n"`
@@ -53,8 +54,8 @@ func (m *Media) mac(payload string) []byte {
 }
 
 // link: MEDIA_URL/api/media/<base64url(JSON)>.<base64url(HMAC-SHA256)>, valid for DownloadTTL.
-func (m *Media) link(key, version, filename, contentType string) string {
-	b, _ := json.Marshal(mediaClaims{Key: key, Version: version, Filename: filename, ContentType: contentType,
+func (m *Media) link(workspaceID, key, version, filename, contentType string) string {
+	b, _ := json.Marshal(mediaClaims{Workspace: workspaceID, Key: key, Version: version, Filename: filename, ContentType: contentType,
 		Expires: m.now().Add(DownloadTTL).Unix()}) // strings and an int: cannot fail
 	payload := base64.RawURLEncoding.EncodeToString(b)
 	return m.origin + "/api/media/" + payload + "." + base64.RawURLEncoding.EncodeToString(m.mac(payload))
@@ -83,7 +84,8 @@ type VersionOpener interface {
 }
 
 // Handler serves GET (and HEAD) /api/media/{token}: no session, the signature is the permission. Any bad, tampered
-// or expired token, and a missing object, is a bare 404.
+// or expired token, and a missing object, is a bare 404. Every GET counts against the link's workspace's downloads
+// (src's meter); a refusal answers 402 before any byte, neutrally: a client of the workspace may hold the link.
 func (m *Media) Handler(src VersionOpener) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
@@ -103,6 +105,16 @@ func (m *Media) Handler(src VersionOpener) http.Handler {
 			return
 		}
 		defer obj.Close()
-		stream(w, r, obj, c.Filename, c.ContentType)
+		size, err := sizeOf(obj)
+		if err == nil {
+			err = Metered(w, r, MeterOf(src), c.Workspace, size, func(w http.ResponseWriter) { stream(w, r, obj, c.Filename, c.ContentType) })
+		}
+		switch {
+		case errors.Is(err, store.ErrAdmissionDenied):
+			http.Error(w, ErrDownloadsUsedUp, http.StatusPaymentRequired)
+		case err != nil:
+			slog.ErrorContext(r.Context(), "media download", "err", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	})
 }
