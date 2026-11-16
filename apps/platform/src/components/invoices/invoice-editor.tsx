@@ -661,10 +661,132 @@ function Editor({
               aria-label={title}
               className="rounded-[18px] bg-card px-5 py-8 shadow-[0_0_0_1px_oklch(0.21_0.006_286/0.06),0_2px_4px_oklch(0.21_0.006_286/0.03),0_18px_44px_-18px_oklch(0.21_0.006_286/0.16)] sm:px-10 sm:py-10 dark:shadow-elevation-2"
             >
-              {/* Letterhead: seller left, document title right. */}
-              <header className="flex flex-wrap items-start justify-between gap-6">
+              {/* Letterhead: logo left; title and dates right. */}
+              <header className="flex flex-wrap items-start justify-between gap-6 max-md:flex-col">
+                <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
+                <div className="grid justify-items-end gap-1 text-right max-md:justify-items-start max-md:text-left">
+                  <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
+                    {kindInfo(kind).label}
+                  </h1>
+                  <span className="text-[13px] text-muted-foreground">
+                    {translate('noAssignedWhenIssued')}
+                  </span>
+                  <dl className="mt-4 grid w-[300px] max-w-full grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 text-left text-[13.5px]">
+                    <MetaLabel htmlFor="invoice-issue_date" error={errors.issue_date}>
+                      {translate('issueDate')}
+                    </MetaLabel>
+                    <dd>
+                      <DateField
+                        id="invoice-issue_date"
+                        label={translate('issueDate')}
+                        value={values.issue_date}
+                        max={today()}
+                        invalid={Boolean(errors.issue_date)}
+                        // The term stays: moving the issue date moves the due date with it.
+                        onChange={(issueDate) =>
+                          setValues((current) => ({
+                            ...current,
+                            issue_date: issueDate,
+                            due_date: addDays(issueDate, Math.max(due, 0)),
+                          }))
+                        }
+                      />
+                    </dd>
+                    <MetaLabel htmlFor="invoice-due_date" error={errors.due_date}>
+                      {translate('dueDate')}
+                    </MetaLabel>
+                    <dd>
+                      <DueDateField
+                        id="invoice-due_date"
+                        issueDate={values.issue_date}
+                        value={values.due_date}
+                        invalid={Boolean(errors.due_date) || due < 0}
+                        onChange={(dueDate) => set('due_date', dueDate)}
+                      />
+                    </dd>
+                    <MetaLabel
+                      htmlFor="invoice-service_date"
+                      error={errors.service_date ?? errors.service_date_end}
+                    >
+                      {translate('service')}
+                    </MetaLabel>
+                    <dd>
+                      <ServiceField
+                        id="invoice-service_date"
+                        start={values.service_date}
+                        end={values.service_date_end}
+                        invalid={Boolean(errors.service_date ?? errors.service_date_end)}
+                        onChange={(start, end) =>
+                          setValues((current) => ({
+                            ...current,
+                            service_date: start,
+                            service_date_end: end,
+                          }))
+                        }
+                      />
+                    </dd>
+                    <MetaLabel
+                      htmlFor="invoice-reference"
+                      error={errors.reference}
+                      tip={translate('theClientSOrderOrPONumberPrintedOn')}
+                    >
+                      {translate('reference')}
+                    </MetaLabel>
+                    <dd>
+                      <input
+                        id="invoice-reference"
+                        value={values.reference}
+                        maxLength={100}
+                        onChange={(event) => set('reference', event.target.value)}
+                        placeholder={translate('addPONumber')}
+                        className={quietValue}
+                      />
+                    </dd>
+                    {needsRonRate(client?.country, values.currency) && (
+                      <>
+                        <MetaLabel
+                          htmlFor="invoice-tax_currency_rate"
+                          error={errors.tax_currency_rate}
+                          tip={translate('ronPer1OnTheIssueDateBNRRate', {
+                            currency: values.currency,
+                          })}
+                        >
+                          {translate('ronRate')}
+                        </MetaLabel>
+                        <dd>
+                          <input
+                            id="invoice-tax_currency_rate"
+                            value={values.tax_currency_rate}
+                            inputMode="decimal"
+                            maxLength={19}
+                            onChange={(event) => set('tax_currency_rate', event.target.value)}
+                            placeholder={translate('eG49771')}
+                            className={quietValue}
+                          />
+                        </dd>
+                      </>
+                    )}
+                    {(errors.issue_date ||
+                      errors.due_date ||
+                      errors.reference ||
+                      errors.tax_currency_rate) && (
+                      <p className="col-span-2 px-2 pt-1 text-[12px] text-destructive">
+                        {errors.issue_date ??
+                          errors.due_date ??
+                          errors.reference ??
+                          errors.tax_currency_rate}
+                      </p>
+                    )}
+                  </dl>
+                </div>
+              </header>
+
+              {/* Seller and client side by side, as on the printed invoice. */}
+              <div className="mt-10 grid gap-8 md:grid-cols-2">
                 <div className="grid content-start gap-0.5 text-[13px] leading-relaxed text-muted-foreground">
-                  <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
+                  <span className="mb-1.5 text-[12px] font-medium tracking-[0.04em] uppercase">
+                    {translate('from')}
+                  </span>
                   <span className="text-[15px] font-medium text-foreground">
                     {settings.seller.name || translate('yourCompany')}
                   </span>
@@ -685,17 +807,6 @@ function Editor({
                     </Link>
                   )}
                 </div>
-                <div className="grid justify-items-end gap-1 text-right">
-                  <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
-                    {kindInfo(kind).label}
-                  </h1>
-                  <span className="text-[13px] text-muted-foreground">
-                    {translate('noAssignedWhenIssued')}
-                  </span>
-                </div>
-              </header>
-
-              <div className="mt-10 grid gap-8 md:grid-cols-[minmax(0,1fr)_300px]">
                 <ClientBlock
                   client={client ?? null}
                   open={picking}
@@ -709,113 +820,6 @@ function Editor({
                     focusCell(values.lines[0]?.key ?? '', 'description')
                   }}
                 />
-                <dl className="grid grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 text-[13.5px]">
-                  <MetaLabel htmlFor="invoice-issue_date" error={errors.issue_date}>
-                    {translate('issueDate')}
-                  </MetaLabel>
-                  <dd>
-                    <DateField
-                      id="invoice-issue_date"
-                      label={translate('issueDate')}
-                      value={values.issue_date}
-                      max={today()}
-                      invalid={Boolean(errors.issue_date)}
-                      // The term stays: moving the issue date moves the due date with it.
-                      onChange={(issueDate) =>
-                        setValues((current) => ({
-                          ...current,
-                          issue_date: issueDate,
-                          due_date: addDays(issueDate, Math.max(due, 0)),
-                        }))
-                      }
-                    />
-                  </dd>
-                  <MetaLabel htmlFor="invoice-due_date" error={errors.due_date}>
-                    {translate('dueDate')}
-                  </MetaLabel>
-                  <dd>
-                    <DueDateField
-                      id="invoice-due_date"
-                      issueDate={values.issue_date}
-                      value={values.due_date}
-                      invalid={Boolean(errors.due_date) || due < 0}
-                      onChange={(dueDate) => set('due_date', dueDate)}
-                    />
-                  </dd>
-                  <MetaLabel
-                    htmlFor="invoice-service_date"
-                    error={errors.service_date ?? errors.service_date_end}
-                  >
-                    {translate('service')}
-                  </MetaLabel>
-                  <dd>
-                    <ServiceField
-                      id="invoice-service_date"
-                      start={values.service_date}
-                      end={values.service_date_end}
-                      invalid={Boolean(errors.service_date ?? errors.service_date_end)}
-                      onChange={(start, end) =>
-                        setValues((current) => ({
-                          ...current,
-                          service_date: start,
-                          service_date_end: end,
-                        }))
-                      }
-                    />
-                  </dd>
-                  <MetaLabel
-                    htmlFor="invoice-reference"
-                    error={errors.reference}
-                    tip={translate('theClientSOrderOrPONumberPrintedOn')}
-                  >
-                    {translate('reference')}
-                  </MetaLabel>
-                  <dd>
-                    <input
-                      id="invoice-reference"
-                      value={values.reference}
-                      maxLength={100}
-                      onChange={(event) => set('reference', event.target.value)}
-                      placeholder={translate('addPONumber')}
-                      className={quietValue}
-                    />
-                  </dd>
-                  {needsRonRate(client?.country, values.currency) && (
-                    <>
-                      <MetaLabel
-                        htmlFor="invoice-tax_currency_rate"
-                        error={errors.tax_currency_rate}
-                        tip={translate('ronPer1OnTheIssueDateBNRRate', {
-                          currency: values.currency,
-                        })}
-                      >
-                        {translate('ronRate')}
-                      </MetaLabel>
-                      <dd>
-                        <input
-                          id="invoice-tax_currency_rate"
-                          value={values.tax_currency_rate}
-                          inputMode="decimal"
-                          maxLength={19}
-                          onChange={(event) => set('tax_currency_rate', event.target.value)}
-                          placeholder={translate('eG49771')}
-                          className={quietValue}
-                        />
-                      </dd>
-                    </>
-                  )}
-                  {(errors.issue_date ||
-                    errors.due_date ||
-                    errors.reference ||
-                    errors.tax_currency_rate) && (
-                    <p className="col-span-2 px-2 pt-1 text-[12px] text-destructive">
-                      {errors.issue_date ??
-                        errors.due_date ??
-                        errors.reference ??
-                        errors.tax_currency_rate}
-                    </p>
-                  )}
-                </dl>
               </div>
 
               <textarea
