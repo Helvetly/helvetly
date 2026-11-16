@@ -32,7 +32,7 @@ export function useSuggestWorkspaceName() {
     ApiError,
     { company_name: string; signal: AbortSignal }
   >({
-    // The page only calls this once its consent box is ticked; the server refuses a request without it.
+    // The page only calls this from the person's own click on Suggest, which is their consent; the server refuses a request without it.
     mutationFn: ({ company_name, signal }) =>
       request('/workspace/name-suggestion', {
         method: 'POST',

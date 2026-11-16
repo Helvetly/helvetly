@@ -217,7 +217,7 @@ export const CompanyRequiredDark: Story = {
   parameters: { ...CompanyRequired.parameters, dark: true },
 }
 
-/** A new workspace still called "My workspace": the one-time AI name suggestion is offered, off until consented to. */
+/** A new workspace still called "My workspace": the one-time AI name suggestion sits inside the name field; clicking it is the consent. */
 const newWorkspace: Session = {
   ...session,
   workspace: { ...session.workspace, name: 'My workspace' },
@@ -245,15 +245,14 @@ export const NameSuggestion: Story = {
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
     const button = company.getByRole('button', { name: 'Suggest a name' })
-    // Off until the person agrees: nothing is sent by default.
-    const consent = company.getByRole('checkbox', { name: /Share only your company name/ })
-    await expect(consent).not.toBeChecked()
-    await expect(button).toBeDisabled()
-    await userEvent.click(consent)
+    // The button inside the field is the only consent, said by its description; nothing is sent until the click.
+    await expect(company.queryByRole('checkbox')).toBeNull()
+    await expect(button).toBeEnabled()
+    await expect(button).toHaveAccessibleDescription(/Share only your company name/)
     await userEvent.click(button)
     await expect(
       await company.findByText('Workspace name suggested. You can edit it.'),
-    ).toBeVisible()
+    ).toBeInTheDocument()
     await expect(company.getByRole('textbox', { name: /Workspace name/ })).toHaveValue('Muster')
   },
 }
@@ -283,7 +282,6 @@ export const NameSuggestionUnavailable: Story = {
   },
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('checkbox', { name: /Share only your company name/ }))
     await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
     await expect(
       await company.findByText('Name suggestions are unavailable. Enter a name yourself.'),
@@ -304,7 +302,6 @@ export const NameSuggestionUsed: Story = {
   },
   play: async ({ canvasElement }) => {
     const company = await toSuggestion(canvasElement)
-    await userEvent.click(company.getByRole('checkbox', { name: /Share only your company name/ }))
     await userEvent.click(company.getByRole('button', { name: 'Suggest a name' }))
     await expect(await company.findByText(/one-time suggestion has been used/)).toBeVisible()
     await expect(company.queryByRole('button', { name: 'Suggest a name' })).toBeNull()

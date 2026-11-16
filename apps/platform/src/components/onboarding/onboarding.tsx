@@ -69,7 +69,7 @@ import {
   type Values,
 } from './onboarding-model'
 import { TypedWelcomeTitle, WelcomeBenefits } from './welcome-intro'
-import { WorkspaceNameSuggest, type SuggestionState } from './workspace-name-suggest'
+import { WorkspaceNameInput, type Suggestion, type SuggestionState } from './workspace-name-suggest'
 
 type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
@@ -132,12 +132,14 @@ export function WelcomePage({ session }: { session: Session }) {
   // null until the person edits the field: until then it follows the company name (or keeps a name
   // they already chose), and what they typed is never replaced.
   const [workspaceEdit, setWorkspaceEdit] = useState<string | null>(null)
-  // The one-time AI suggestion: consent is this person's tick, and a result only lands in a field nobody edited.
+  // The one-time AI suggestion: asked only by this person's own click on Suggest (their consent), and a result only
+  // lands in a field nobody edited.
   const suggestion = useSuggestWorkspaceName()
-  const [aiConsent, setAiConsent] = useState(false)
   const [suggestState, setSuggestState] = useState<SuggestionState>('idle')
   const [suggested, setSuggested] = useState<string | null>(null)
   const asked = useRef<{ id: number; controller: AbortController } | null>(null)
+  // Set synchronously, so a second click before the page has re-rendered cannot send a second request.
+  const inFlight = useRef(false)
   const latest = useRef({ company: '', edited: false })
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
@@ -172,7 +174,8 @@ export function WelcomePage({ session }: { session: Session }) {
 
   const askSuggestion = () => {
     const company = latest.current.company
-    if (!aiConsent || !company || suggestState === 'pending') return
+    if (!company || inFlight.current) return
+    inFlight.current = true
     asked.current?.controller.abort()
     const controller = new AbortController()
     const id = (asked.current?.id ?? 0) + 1
@@ -181,6 +184,9 @@ export function WelcomePage({ session }: { session: Session }) {
     suggestion.mutate(
       { company_name: company, signal: controller.signal },
       {
+        onSettled: () => {
+          if (asked.current?.id === id) inFlight.current = false
+        },
         onSuccess: ({ data }) => {
           if (asked.current?.id !== id) return
           // A result for a company name that has changed, or into a name the person has typed, is dropped
@@ -349,17 +355,15 @@ export function WelcomePage({ session }: { session: Session }) {
                   errors={errors}
                   busy={busy}
                   workspaceName={workspaceName}
-                  suggest={
+                  suggestion={
                     // Only for the sign-up placeholder: a name the person chose is never offered a replacement.
-                    session.workspace.name === DEFAULT_WORKSPACE_NAME && (
-                      <WorkspaceNameSuggest
-                        state={suggestState}
-                        consent={aiConsent}
-                        canAsk={!!values?.name.trim()}
-                        onConsent={setAiConsent}
-                        onAsk={askSuggestion}
-                      />
-                    )
+                    session.workspace.name === DEFAULT_WORKSPACE_NAME
+                      ? {
+                          state: suggestState,
+                          canAsk: !!values?.name.trim(),
+                          onAsk: askSuggestion,
+                        }
+                      : null
                   }
                   onWorkspaceName={(value) => {
                     setWorkspaceEdit(value)
@@ -624,7 +628,7 @@ function CompanyStep({
   errors,
   busy,
   workspaceName,
-  suggest,
+  suggestion,
   onWorkspaceName,
   onChange,
   onBack,
@@ -635,7 +639,7 @@ function CompanyStep({
   errors: Errors
   busy: boolean
   workspaceName: string
-  suggest: ReactNode
+  suggestion: Suggestion | null
   onWorkspaceName: (value: string) => void
   onChange: (patch: Partial<Values>) => void
   onBack?: () => void
@@ -683,16 +687,15 @@ function CompanyStep({
           error={errors.workspace_name}
           required
         >
-          <input
+          <WorkspaceNameInput
             {...describedBy('onboarding-workspace-name', errors.workspace_name)}
-            className={inputClass}
+            suggestion={suggestion}
             maxLength={100}
             value={workspaceName}
             disabled={!values}
             onChange={(event) => onWorkspaceName(event.target.value)}
           />
         </FormField>
-        {suggest}
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
           <FormField
             id="onboarding-street"

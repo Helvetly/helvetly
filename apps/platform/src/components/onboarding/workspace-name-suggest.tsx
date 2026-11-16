@@ -1,6 +1,13 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
-import { Checkbox } from '@helvetly/ui/components/checkbox'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@helvetly/ui/components/input-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { LoaderCircle } from 'lucide-react'
+import { useId, type ComponentProps } from 'react'
 
 import { translate } from '@/lib/i18n'
 
@@ -14,62 +21,82 @@ export type SuggestionState =
   | 'used'
   | 'unavailable'
 
-/**
- * The optional, one-time AI name suggestion under the workspace name: an unticked consent (only the company name
- * goes to OpenAI), one explicit click, and a polite note on how it went. The name field stays editable throughout.
- */
-export function WorkspaceNameSuggest({
-  state,
-  consent,
-  canAsk,
-  onConsent,
-  onAsk,
-}: {
+export type Suggestion = {
   state: SuggestionState
-  consent: boolean
   /** A company name is entered. */
   canAsk: boolean
-  onConsent: (value: boolean) => void
+  /** The person's own click: it is their consent to send the company name, and the only thing that asks. */
   onAsk: () => void
-}) {
+}
+
+/**
+ * The workspace name field with the optional, one-time AI suggestion inside it, on the right. Clicking Suggest is the
+ * consent (only the company name goes to OpenAI, said by the button's tooltip and description); the answer lands in
+ * the field itself, still editable. How it went is told apart from the field: out loud when it worked, in a line
+ * under the field when it did not. Without `suggestion` it is a plain field.
+ */
+export function WorkspaceNameInput({
+  suggestion,
+  ...input
+}: { suggestion: Suggestion | null } & Omit<ComponentProps<'input'>, 'className'>) {
+  const consentId = useId()
+  if (!suggestion)
+    return (
+      <InputGroup className="h-9 bg-card">
+        <InputGroupInput {...input} />
+      </InputGroup>
+    )
+  const { state, canAsk, onAsk } = suggestion
+  const pending = state === 'pending'
+  // Spent, or not offered here at all: no button, only the note.
+  const asking = state === 'idle' || pending || state === 'failed'
   const note = {
-    applied: translate('workspaceNameSuggested'),
     failed: translate('workspaceNameSuggestionFailed'),
     failedSpent: translate('workspaceNameSuggestionFailed'),
     used: translate('workspaceNameSuggestionUsed'),
     unavailable: translate('workspaceNameSuggestionUnavailable'),
+    applied: '',
     pending: '',
     idle: '',
   }[state]
-  // Spent, or not offered here at all: only the note remains.
-  const asking = state === 'idle' || state === 'pending' || state === 'failed'
   return (
-    <div className="grid gap-2.5 rounded-xl border bg-card p-3.5">
-      {asking && (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
-          <label className="flex min-w-0 flex-1 basis-56 items-start gap-2.5 text-sm text-pretty">
-            <Checkbox
-              className="mt-0.5"
-              checked={consent}
-              disabled={state === 'pending'}
-              onCheckedChange={(value) => onConsent(value === true)}
-            />
-            {translate('suggestWorkspaceNameConsent')}
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!consent || !canAsk || state === 'pending'}
-            onClick={onAsk}
-          >
-            {state === 'pending' ? translate('suggestingAName') : translate('suggestAName')}
-          </Button>
-        </div>
-      )}
-      <output aria-live="polite" className="text-xs text-muted-foreground empty:hidden">
+    <>
+      <InputGroup className="h-9 bg-card">
+        <InputGroupInput {...input} />
+        {asking && (
+          <InputGroupAddon align="inline-end">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InputGroupButton
+                  variant="outline"
+                  aria-describedby={consentId}
+                  aria-busy={pending}
+                  disabled={!canAsk || pending}
+                  onClick={onAsk}
+                >
+                  {pending && (
+                    <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+                  )}
+                  {pending ? translate('suggestingAName') : translate('suggestAName')}
+                </InputGroupButton>
+              </TooltipTrigger>
+              <TooltipContent>{translate('suggestWorkspaceNameConsent')}</TooltipContent>
+            </Tooltip>
+            <span id={consentId} className="sr-only">
+              {translate('suggestWorkspaceNameConsent')}
+            </span>
+          </InputGroupAddon>
+        )}
+      </InputGroup>
+      <output
+        aria-live="polite"
+        className="mt-1.5 block text-xs text-muted-foreground empty:hidden"
+      >
         {note}
       </output>
-    </div>
+      <output aria-live="polite" className="sr-only">
+        {state === 'applied' && translate('workspaceNameSuggested')}
+      </output>
+    </>
   )
 }
