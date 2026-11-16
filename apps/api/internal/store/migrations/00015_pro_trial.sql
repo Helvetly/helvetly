@@ -119,9 +119,23 @@ SELECT 'migration 00015', 'offer.publish', id,
 FROM offer_versions WHERE id = 'helvetly-v2-pro-trial';
 
 -- +goose Down
-UPDATE workspace_billing SET offer_id = 'helvetly-v2' WHERE offer_id = 'helvetly-v2-pro-trial';
-UPDATE billing_checkouts SET offer_id = 'helvetly-v2' WHERE offer_id = 'helvetly-v2-pro-trial';
-DELETE FROM limit_workspaces WHERE offer_id = 'helvetly-v2-pro-trial';
+-- Refuses once the offer was used: a workspace pinned to it, a Checkout saved on it or an override written for it
+-- would otherwise be moved to another offer's terms (a started Pro trial would read the Business access plan).
+-- Nothing is reassigned or deleted then; the unused offer and its plans are removed only when nothing refers to it.
+-- +goose StatementBegin
+DO $$
+DECLARE used text;
+BEGIN
+    SELECT concat_ws(', ',
+        CASE WHEN EXISTS (SELECT 1 FROM workspace_billing WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'workspace_billing' END,
+        CASE WHEN EXISTS (SELECT 1 FROM billing_checkouts WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'billing_checkouts' END,
+        CASE WHEN EXISTS (SELECT 1 FROM limit_workspaces WHERE offer_id = 'helvetly-v2-pro-trial') THEN 'limit_workspaces' END)
+    INTO used;
+    IF used <> '' THEN
+        RAISE EXCEPTION 'cannot roll back 00015: offer helvetly-v2-pro-trial is still referenced by %', used;
+    END IF;
+END $$;
+-- +goose StatementEnd
 -- A published offer is immutable (00007): only a rollback removes one.
 ALTER TABLE limit_plans DISABLE TRIGGER limit_plans_immutable;
 DELETE FROM limit_plans WHERE offer_id = 'helvetly-v2-pro-trial';
