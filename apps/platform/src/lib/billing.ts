@@ -107,14 +107,25 @@ export type Billing = {
   cancel_at_period_end: boolean
   trial_end: string | null
   trial_days: number
+  /** The plan whose features a trial gives (Business); only its checkout starts a trial. */
   trial_plan: PlanId
+  /** The most people a workspace may have to start the trial. */
+  trial_seats: number
   trial_available: boolean
+  /** The workspace is in its trial: its allowances last the whole trial, never reset and do not grow with people. */
+  trial: boolean
   has_customer: boolean
   can_manage: boolean
   /** How the live subscription is billed; `''` without one (a new subscription is per seat). */
   pricing: 'per_seat' | 'flat' | ''
   /** People in the workspace now (owner, admins, members; open invitations not counted). */
   seats: number
+  /** The seats the per-seat subscription bills; null without one. */
+  paid_seats: number | null
+  /** A downgrade or yearly→monthly switch scheduled for the paid period's end, and when; null without one. */
+  pending_plan: PlanId | null
+  pending_interval: Interval | null
+  pending_at: string | null
   period_start: string
   discount: Discount | null
   /** The earlier usage list; `entitlements` replaces it where the workspace has a plan. */
@@ -127,19 +138,15 @@ export type Billing = {
   entitlements?: Entitlement[] | null
   plans: Plan[]
   /** What the workspace pays in: `chf` in Switzerland and Liechtenstein, `eur` in the EU, `usd` elsewhere; an
-   * existing Stripe customer keeps its own. Plan and pack prices are in it. */
+   * existing Stripe customer keeps its own. Plan prices are in it. */
   currency: string
-  /** AI tokens bought this month; they add to the plan's monthly allowance and lapse with the month. */
+  /** AI tokens from packs bought this month (packs are no longer sold); they add to the plan's allowance. */
   ai_tokens_bought: number
-  /** The AI token packs on sale (empty without a plan, or for someone who cannot manage billing). */
-  ai_packs: AIPack[]
   /** A payment of the workspace is in a chargeback that is not closed yet. */
   disputed: boolean
   /** The renewal stayed unpaid past the grace (three days after the paid period): read-only until it is paid. */
   payment_overdue: boolean
 }
-/** A one-time AI token pack: tokens for a price incl. VAT. */
-export type AIPack = { tokens: number; amount: number; currency: string }
 export type BillingInvoice = {
   id: string
   number: string
@@ -222,13 +229,6 @@ export function useCheckout() {
     { plan: PlanId; interval: Interval; promotion_code?: string }
   >({
     mutationFn: (input) => request(withZone('/billing/checkout'), { method: 'POST', json: input }),
-  })
-}
-
-/** Opens Checkout for one AI token pack; the answer is Checkout's URL. */
-export function useBuyAITokens() {
-  return useMutation<{ url: string }, ApiError, { tokens: number }>({
-    mutationFn: (input) => request(withZone('/billing/ai-tokens'), { method: 'POST', json: input }),
   })
 }
 

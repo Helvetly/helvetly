@@ -1,67 +1,20 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Meter } from '@helvetly/ui/components/meter'
 import { cn } from '@helvetly/ui/lib/utils'
-import { LoaderCircle, Sparkles } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
 
-import { toastError } from '@/components/billing/upgrade-prompt'
-import {
-  type AIPack,
-  type Billing,
-  formatPrice,
-  formatTokens,
-  meterState,
-  useBuyAITokens,
-} from '@/lib/billing'
+import { type Billing, formatTokens, meterState } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 import { BillingCard } from './billing-card'
 
-/** What a pack costs per million tokens, in the currency's minor unit. */
-const perMillion = (pack: AIPack) => Math.round((pack.amount * 1_000_000) / pack.tokens)
-
-/** The pack with the lowest price per token, when the packs differ at all. */
-export function bestValue(packs: AIPack[]): AIPack | undefined {
-  const rates = packs.map(perMillion)
-  const low = Math.min(...rates)
-  return low < Math.max(...rates) ? packs[rates.indexOf(low)] : undefined
-}
-
 /**
- * Extra AI tokens for Heidi and the AI import: how much of the month's allowance (the plan's plus the
- * packs bought) is used, and a pack to buy. Shown to a manager of a workspace on a plan when packs are
- * on sale.
+ * The month's AI tokens for Heidi and the AI import, and how the allowance is made up, while tokens from packs bought
+ * earlier still count this month. Packs are no longer sold, so nothing is offered here.
  */
 export function AITokenPacks({ billing }: { billing: Billing }) {
-  const buy = useBuyAITokens()
-  const opening = useRef(false)
-  const group = useId()
-  const [chosen, setChosen] = useState<number | null>(null)
   const item = billing.usage.find((u) => u.limit === 'ai_tokens_per_month')
-  const [first] = billing.ai_packs
-  if (!first || !item) return null
-
-  const best = bestValue(billing.ai_packs)
-  const pack = billing.ai_packs.find((p) => p.tokens === chosen) ?? first
-  const price = (amount: number) => formatPrice({ amount, currency: pack.currency })
-
-  const purchase = () => {
-    if (opening.current) return
-    opening.current = true
-    buy.mutate(
-      { tokens: pack.tokens },
-      {
-        onSuccess: ({ url }) => window.location.assign(url),
-        onError: toastError,
-        onSettled: () => {
-          opening.current = false
-        },
-      },
-    )
-  }
-
+  if (!item || billing.ai_tokens_bought <= 0) return null
   return (
     <BillingCard
       id="ai-tokens"
@@ -69,82 +22,12 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
       description={
         <span className="inline-flex items-center gap-1.5">
           {translate('usedByHeidiAndTheAIImport')}
-          <HelpTip label={translate('aiTokens')}>
-            {translate('eachMonthStartsWithTheTokensYourPlanIncludes')}
-          </HelpTip>
+          <HelpTip label={translate('aiTokens')}>{translate('packTokensAddToThePlan')}</HelpTip>
         </span>
       }
     >
-      <div className="grid gap-5 px-5 pt-4 pb-5">
+      <div className="px-5 pt-4 pb-5">
         <TokenUsage item={item} bought={billing.ai_tokens_bought} />
-        <fieldset className="grid gap-2.5">
-          <legend className="mb-2.5 text-body-sm font-medium">{translate('addAPack')}</legend>
-          <div className="grid gap-2 @md:grid-cols-3">
-            {billing.ai_packs.map((option) => (
-              <label
-                key={option.tokens}
-                data-slot="ai-pack"
-                className="group relative grid cursor-pointer grid-cols-[1fr_auto] items-start gap-x-3 gap-y-0.5 rounded-xl border bg-card px-4 py-3 transition-colors duration-150 hover:border-foreground/20 has-checked:border-brand-solid/45 has-checked:bg-brand-surface/40 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 has-disabled:cursor-not-allowed has-disabled:opacity-60"
-              >
-                <input
-                  type="radio"
-                  name={group}
-                  value={option.tokens}
-                  checked={option === pack}
-                  disabled={buy.isPending}
-                  onChange={() => setChosen(option.tokens)}
-                  aria-label={translate('tokensFor', {
-                    value1: formatTokens(option.tokens),
-                    value2: price(option.amount),
-                  })}
-                  // Covers the whole card, so a click anywhere on it chooses the pack.
-                  className="absolute inset-0 cursor-pointer appearance-none rounded-xl opacity-0"
-                />
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body font-medium">
-                  {formatTokens(option.tokens)}
-                  {translate('tokens2')}
-                  {option === best && (
-                    <span className="rounded-full bg-success-surface px-2 py-px text-caption font-medium text-success">
-                      {translate('bestValue')}
-                    </span>
-                  )}
-                </span>
-                <span
-                  aria-hidden
-                  className="mt-0.5 size-4 rounded-full border border-foreground/25 bg-card transition-[border] duration-150 group-has-checked:border-[5px] group-has-checked:border-brand-solid"
-                />
-                <span className="col-span-2 flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                  <span className="text-body-sm text-foreground">{price(option.amount)}</span>
-                  <span className="text-caption text-muted-foreground">
-                    {price(perMillion(option))}
-                    {translate('per1M')}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <div className="flex flex-col-reverse gap-3 @md:flex-row @md:items-center @md:justify-between">
-          <p className="text-caption text-pretty text-muted-foreground">
-            {translate('aOneOffPaymentThroughStripeNotASubscription')}
-          </p>
-          <Button
-            disabled={buy.isPending}
-            aria-busy={buy.isPending}
-            onClick={purchase}
-            className="w-full @md:w-auto"
-          >
-            {buy.isPending ? (
-              <LoaderCircle data-icon="inline-start" aria-hidden className="animate-spin" />
-            ) : (
-              <Sparkles data-icon="inline-start" aria-hidden />
-            )}
-            {translate('buy')}
-            {formatTokens(pack.tokens)}
-            {translate('tokens')}
-            {price(pack.amount)}
-          </Button>
-        </div>
       </div>
     </BillingCard>
   )

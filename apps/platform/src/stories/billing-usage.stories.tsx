@@ -157,3 +157,34 @@ export const NotCountedYet: Story = {
     await expect(within(downloads).getByText('Not counted yet')).toBeVisible()
   },
 }
+
+/** The trial: Business's allowances for the whole trial, without a monthly reset or growth per person. */
+export const Trial: Story = {
+  args: {
+    billing: {
+      ...onPlan(
+        'business',
+        { clients: 4, invoices_per_month: 6, ai_tokens_per_month: 900_000 },
+        {
+          invoices_per_month: { reset_at: null, per_seat: false },
+          ai_tokens_per_month: { reset_at: null, per_seat: false },
+          emails_per_month: { reset_at: null, per_seat: false },
+        },
+      ),
+      status: 'trialing',
+      trial: true,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('region', { name: 'Usage' })).toHaveTextContent(
+      'For the whole trial',
+    )
+    await expect(canvas.queryByText(/This month since/)).toBeNull()
+    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('For the whole trial')
+    await expect(tile(canvasElement, 'Clients')).not.toHaveTextContent('For the whole trial')
+    await expect(canvas.queryByText(/Resets|Per paid person/)).toBeNull()
+  },
+}
+
+export const TrialPhone: Story = { ...Trial, ...phone }

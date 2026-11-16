@@ -130,3 +130,28 @@ test('excluded, unlimited, workspace-wide and custom limits read as such', () =>
   expect(clients).toHaveTextContent('Custom limit until')
   expect(clients).not.toHaveTextContent('Resets')
 })
+
+test('in a trial every allowance lasts the whole trial: no reset, no per-person growth', () => {
+  render(
+    <UsageOverview
+      billing={billingFixture({
+        plan: 'business',
+        status: 'trialing',
+        trial: true,
+        entitlements: entitlementsFixture('business', {
+          used: { invoices_per_month: 3 },
+          over: { invoices_per_month: { reset_at: null }, ai_tokens_per_month: { reset_at: null } },
+        }),
+      })}
+    />,
+  )
+  expect(screen.getByRole('region', { name: 'Usage' })).toHaveTextContent('For the whole trial')
+  expect(screen.queryByText(/This month since/)).toBeNull()
+  const invoices = screen.getByText('Invoice issues').closest('[data-slot=usage-meter]')
+  expect(invoices).toHaveTextContent('For the whole trial')
+  // A count of records is a cap, not a pool that runs down.
+  expect(screen.getByText('Clients').closest('[data-slot=usage-meter]')).not.toHaveTextContent(
+    'For the whole trial',
+  )
+  expect(screen.queryByText(/Resets|Per paid person/)).toBeNull()
+})

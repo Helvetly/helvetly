@@ -78,6 +78,7 @@ export function BillingSettings() {
             <PlanSummary billing={data} onPortal={openPortal} portalPending={portal.isPending} />
             {/* Without a plan there are no limits to measure against ("0 of unlimited" misleads). */}
             {data.plan !== '' && data.usage.length > 0 && <UsageOverview billing={data} />}
+            {/* Only while packs bought earlier still count this month. */}
             <AITokenPacks billing={data} />
             {payments && (
               <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -96,7 +97,7 @@ export function BillingSettings() {
   )
 }
 
-/** Back from Checkout or a plan change (?checkout=success|switched|scheduled|canceled|ai_tokens): read the
+/** Back from Checkout or a plan change (?checkout=success|switched|scheduled|canceled): read the
  * subscription now, then tidy the URL. */
 function useCheckoutReturn() {
   const params = useSearchParams()
@@ -112,10 +113,6 @@ function useCheckoutReturn() {
     router.replace(pathname)
     if (outcome === 'canceled') {
       toast(translate('checkoutCancelledNothingWasCharged'))
-      return
-    }
-    if (outcome === 'ai_tokens') {
-      toast.success(translate('paymentReceivedTheAITokensAreAddedInA'))
       return
     }
     sync.mutate(undefined, {

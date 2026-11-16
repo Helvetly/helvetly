@@ -16,6 +16,7 @@ import {
   PlanCards,
   planFact,
   planFeatures,
+  selfServiceSeats,
 } from './plan-cards'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
@@ -101,11 +102,16 @@ const renderCards = (value: Billing) =>
 
 const card = (name: string) => screen.getByRole('region', { name })
 
-test('Basic offers the trial with its line; the others are charged today', async () => {
+test('Business offers the trial with its line; the others are charged today', async () => {
   renderCards(billing())
+  const business = card('Business')
+  expect(within(business).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
+  expect(business).toHaveTextContent(
+    "Business free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 99 per person a month.",
+  )
   const basic = card('Basic')
-  expect(within(basic).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
-  expect(basic).toHaveTextContent('Free for 7 days, card required. Then CHF 19 per person a month.')
+  expect(within(basic).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
+  expect(basic).toHaveTextContent('Charged today.')
   expect(basic).toHaveTextContent('per person / month · incl. VAT')
   expect(basic.querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 57 / month',
@@ -119,9 +125,9 @@ test('Basic offers the trial with its line; the others are charged today', async
   expect(card('Basic').querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 549 / year',
   )
-  await userEvent.click(within(card('Basic')).getByRole('button', { name: /Start 7-day/ }))
+  await userEvent.click(within(card('Business')).getByRole('button', { name: /Start 7-day/ }))
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/c'))
-  expect(checkout).toEqual({ plan: 'basic', interval: 'year' })
+  expect(checkout).toEqual({ plan: 'business', interval: 'year' })
 })
 
 test('the picker shows the workspace currency and what its prices include', () => {
@@ -133,15 +139,15 @@ test('the picker shows the workspace currency and what its prices include', () =
   unmount()
 
   renderCards(billing({ currency: 'usd' }))
-  expect(card('Basic')).toHaveTextContent('Then USD 19 per person a month.')
+  expect(card('Business')).toHaveTextContent('Then USD 99 per person a month.')
   expect(card('Basic')).toHaveTextContent('per person / month · incl. tax')
   expect(screen.getByText(/Prices incl. tax/)).toBeVisible()
 })
 
-test('without a trial Basic is chosen like the others', () => {
+test('without a trial Business is chosen like the others', () => {
   renderCards(billing({ trial_available: false }))
-  expect(within(card('Basic')).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
-  expect(card('Basic')).toHaveTextContent('Charged today.')
+  expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
+  expect(card('Business')).toHaveTextContent('Charged today.')
 })
 
 test('while trialing, another plan says the trial ends and the plan is charged now', async () => {
@@ -172,13 +178,19 @@ test.each<[string, Partial<Billing>, 'basic' | 'pro' | 'business', 'month' | 'ye
   ],
   ['monthly to yearly waits too', { plan: 'pro' }, 'pro', 'year', /changes once that payment/],
   [
-    'a downgrade credits the rest',
+    'a downgrade waits for the period end',
     { plan: 'business' },
     'pro',
     'month',
-    /credited to your balance/,
+    /starts when the paid period ends.*Nothing is charged or credited now/,
   ],
-  ['yearly to monthly credits too', { plan: 'pro', interval: 'year' }, 'pro', 'month', /credited/],
+  [
+    'yearly to monthly waits too',
+    { plan: 'pro', interval: 'year' },
+    'pro',
+    'month',
+    /starts when the paid period ends/,
+  ],
 ])('confirmBody: %s', (_, over, plan, interval, expected) => {
   const b = billing({ status: 'active', interval: 'month', ...over })
   const target = b.plans.find((p) => p.id === plan)
@@ -336,9 +348,7 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
     ),
   )
   renderCards(billing())
-  await userEvent.click(
-    within(card('Basic')).getByRole('button', { name: 'Start 7-day free trial' }),
-  )
+  await userEvent.click(within(card('Basic')).getByRole('button', { name: 'Choose Basic' }))
   await waitFor(() =>
     expect(toast.error).toHaveBeenCalledWith(
       'Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first.',
@@ -348,11 +358,14 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
 })
 
 test('choiceLabel names the way to each plan from the workspace’s', () => {
-  const [basic, pro] = billing().plans
-  if (!basic || !pro) throw new Error('fixture plans missing')
-  expect(choiceLabel(billing(), basic, 'month')).toBe('Start 7-day free trial')
+  const [basic, pro, business] = billing().plans
+  if (!basic || !pro || !business) throw new Error('fixture plans missing')
+  expect(choiceLabel(billing(), business, 'month')).toBe('Start 7-day free trial')
+  expect(choiceLabel(billing(), basic, 'month')).toBe('Choose Basic')
   expect(choiceLabel(billing(), pro, 'month')).toBe('Choose Pro')
-  expect(choiceLabel(billing({ trial_available: false }), basic, 'month')).toBe('Choose Basic')
+  expect(choiceLabel(billing({ trial_available: false }), business, 'month')).toBe(
+    'Choose Business',
+  )
   const onPro = billing({ plan: 'pro', interval: 'month' })
   expect(choiceLabel(onPro, basic, 'month')).toBe('Switch to Basic')
   expect(choiceLabel(onPro, pro, 'year')).toBe('Switch yearly')
@@ -413,4 +426,97 @@ test('limits read as short facts with the key number first', () => {
     value: '5M',
     label: 'AI tokens / person / month',
   })
+})
+
+const scheduledDowngrade = (over: Partial<Billing> = {}) =>
+  billing({
+    plan: 'business',
+    status: 'active',
+    interval: 'month',
+    pricing: 'per_seat',
+    pending_plan: 'pro',
+    pending_interval: 'month',
+    pending_at: '2026-12-01T00:00:00Z',
+    ...over,
+  })
+
+test('a scheduled downgrade marks its plan; the current plan can be kept, which cancels it', async () => {
+  server.use(
+    http.post('/api/v1/billing/checkout', async ({ request }) => {
+      checkout = await request.json()
+      return HttpResponse.json({
+        url: `${window.location.origin}/settings/billing?checkout=switched`,
+      })
+    }),
+  )
+  renderCards(scheduledDowngrade())
+  const pro = card('Pro')
+  expect(within(pro).getByText('Scheduled', { selector: 'span' })).toBeInTheDocument()
+  expect(within(pro).getByRole('button', { name: 'Scheduled' })).toBeDisabled()
+  expect(pro).toHaveTextContent('Starts on 1 Dec 2026.')
+  const business = card('Business')
+  expect(business).toHaveTextContent('Cancels the scheduled change.')
+  await userEvent.click(within(business).getByRole('button', { name: 'Keep Business' }))
+  // No confirmation and no promotion code: it only cancels the change.
+  await waitFor(() => expect(checkout).toEqual({ plan: 'business', interval: 'month' }))
+  await waitFor(() =>
+    expect(toast.success).toHaveBeenCalledWith(
+      'You stay on Business. The scheduled change is cancelled.',
+    ),
+  )
+})
+
+test('yearly to monthly on the same plan is scheduled on the monthly side', async () => {
+  renderCards(scheduledDowngrade({ interval: 'year', pending_plan: 'business' }))
+  expect(within(card('Business')).getByRole('button', { name: 'Keep Business' })).toBeEnabled()
+  await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
+  expect(within(card('Business')).getByRole('button', { name: 'Scheduled' })).toBeDisabled()
+})
+
+test('a downgrade made in place says it waits for the period end', async () => {
+  server.use(
+    http.post('/api/v1/billing/checkout', () =>
+      HttpResponse.json({ url: `${window.location.origin}/settings/billing?checkout=scheduled` }),
+    ),
+  )
+  renderCards(billing({ plan: 'business', status: 'active', interval: 'month' }))
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Switch to Pro' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Switch plan' }))
+  await waitFor(() =>
+    expect(toast.success).toHaveBeenCalledWith(
+      'Your plan changes at the end of the paid period. Nothing changes until then.',
+    ),
+  )
+})
+
+test('cards total the paid seats of a per-seat subscription, and every member is a paid seat', () => {
+  renderCards(billing({ plan: 'pro', status: 'active', interval: 'month', paid_seats: 4 }))
+  expect(proTotal()).toHaveTextContent('For 4 peopleCHF 196 / month')
+  expect(screen.getByText('Every member is a paid seat')).toBeVisible()
+})
+
+test('the seat line names the most people a plan here sells', () => {
+  const capped = billing()
+  capped.plans = capped.plans.map((plan) => ({ ...plan, limits: { ...plan.limits, members: 24 } }))
+  expect(selfServiceSeats(capped.plans)).toBe(25)
+  expect(selfServiceSeats(billing().plans)).toBeNull()
+  renderCards(capped)
+  expect(screen.getByText('Every member is a paid seat · up to 25 people in the app')).toBeVisible()
+})
+
+test('more seats than self-service sells is refused with the API’s reason', async () => {
+  const message =
+    'Plans bought here are for up to 25 people; this workspace has 26. Contact us for a larger team.'
+  server.use(
+    http.post('/api/v1/billing/checkout', () =>
+      HttpResponse.json(
+        { error: { code: 'too_many_seats', message, details: { seats: 26, max: 25 } } },
+        { status: 409 },
+      ),
+    ),
+  )
+  renderCards(billing())
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Choose Pro' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
+  expect(assign).not.toHaveBeenCalled()
 })

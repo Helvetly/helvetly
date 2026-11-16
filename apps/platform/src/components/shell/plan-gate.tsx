@@ -102,8 +102,10 @@ export function ChoosePlan() {
             {trial && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success-surface/70 px-3 py-1 text-[12.5px] font-medium text-success ring-1 ring-success-solid/25 backdrop-blur">
                 <Gift className="size-3.5" aria-hidden />
-                {data.trial_days}
-                {translate('daysFreeOnBasic')}
+                {translate('daysFreeOnPlan', {
+                  days: data.trial_days,
+                  plan: data.plans.find((plan) => plan.id === data.trial_plan)?.name ?? '',
+                })}
               </span>
             )}
             <h1 className="text-[32px] leading-[1.1] font-semibold tracking-[-0.035em] text-balance sm:text-[46px]">

@@ -66,14 +66,15 @@ export function UsageOverview({ billing }: { billing: Billing }) {
           {translate('usage')}
         </h2>
         <p className="text-body-sm text-muted-foreground tabular-nums">
-          {translate('thisMonthSince')}
-          {formatDate(billing.period_start)}
+          {billing.trial
+            ? translate('forTheWholeTrial')
+            : `${translate('thisMonthSince')}${formatDate(billing.period_start)}`}
         </p>
       </div>
       {pressing && <UpgradeNudge billing={billing} item={pressing} />}
       <ul className="grid grid-cols-2 gap-3 @3xl:grid-cols-3 @5xl:grid-cols-4">
         {items.map((item) => (
-          <UsageTile key={item.limit} item={item} />
+          <UsageTile key={item.limit} item={item} trial={billing.trial} />
         ))}
       </ul>
     </section>
@@ -123,18 +124,25 @@ function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) 
   )
 }
 
-/** Where the cap comes from and when it starts again, as a short line under the meter. */
-function TileFacts({ item }: { item: UsageItem }) {
-  const facts = [
-    item.per_seat === undefined
-      ? null
-      : item.per_seat
-        ? translate('perPaidPersonShared')
-        : translate('perWorkspace'),
-    item.reset_at && item.max !== 0
-      ? translate('resets', { at: formatReset(item.reset_at) })
-      : null,
-  ].filter(Boolean)
+/**
+ * Where the cap comes from and when it starts again, as a short line under the meter. A trial's allowances neither
+ * reset nor grow with people: its monthly counts are one pool for the whole trial.
+ */
+function TileFacts({ item, trial = false }: { item: UsageItem; trial?: boolean }) {
+  const facts = (
+    trial
+      ? [item.limit.endsWith('_per_month') ? translate('forTheWholeTrial') : null]
+      : [
+          item.per_seat === undefined
+            ? null
+            : item.per_seat
+              ? translate('perPaidPersonShared')
+              : translate('perWorkspace'),
+          item.reset_at && item.max !== 0
+            ? translate('resets', { at: formatReset(item.reset_at) })
+            : null,
+        ]
+  ).filter(Boolean)
   return (
     <>
       {facts.length > 0 && (
@@ -152,7 +160,7 @@ function TileFacts({ item }: { item: UsageItem }) {
 }
 
 /** One limit: the count in large type over its limit, a meter, and a note near or at the limit. */
-export function UsageTile({ item }: { item: UsageItem }) {
+export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean }) {
   const label = tileLabel(item)
   const state = meterState(item)
   if (state === 'off')
@@ -211,7 +219,7 @@ export function UsageTile({ item }: { item: UsageItem }) {
           {translate('notCountedYet')}
         </span>
       )}
-      <TileFacts item={item} />
+      <TileFacts item={item} trial={trial} />
     </li>
   )
 }
