@@ -19,7 +19,7 @@ import type { ComponentType } from 'react'
 import { featureLock } from '@/components/billing/feature-lock'
 import type { Billing, FeatureKey } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-import { can, resourceForPath, type Need } from '@/lib/permissions'
+import { can, canReadPath, type Need } from '@/lib/permissions'
 
 export type NavItem = {
   label: string
@@ -32,8 +32,6 @@ export type NavItem = {
   bell?: boolean
   /** The plan feature it needs; without it the item carries the plan's tag. */
   feature?: FeatureKey
-  /** Another page of the same area for those who may read only that one (payroll without employees). */
-  also?: { need: Need; href: string }
 }
 
 // Items without a page yet have no href: they look the same and say "coming soon".
@@ -60,7 +58,6 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
         icon: IdCard,
         href: '/employees',
         feature: 'employees',
-        also: { need: 'read:payroll', href: '/employees/payroll' },
       },
     ],
   },
@@ -81,13 +78,9 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
 export function visibleNav(scopes: readonly string[]) {
-  const readable = (item: NavItem): NavItem[] => {
-    const resource = item.href ? resourceForPath(item.href) : null
-    if (!resource || can(scopes, `read:${resource}`)) return [item]
-    return item.also && can(scopes, item.also.need) ? [{ ...item, href: item.also.href }] : []
-  }
+  const allowed = ({ href }: NavItem) => !href || canReadPath(scopes, href)
   return NAV.flatMap((group) => {
-    const items = group.items.flatMap(readable)
+    const items = group.items.filter(allowed)
     return items.length > 0 ? [{ ...group, items }] : []
   })
 }

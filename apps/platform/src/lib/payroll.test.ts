@@ -1,6 +1,47 @@
-import { totals } from '@/mocks/employees'
+import { entry, totals } from '@/mocks/employees'
 
-import { missingNotes, monthLabel, monthOr, monthPeriod, shiftMonth } from './payroll'
+import {
+  approvalBlock,
+  authorOf,
+  missingNotes,
+  monthLabel,
+  monthOr,
+  monthPeriod,
+  shiftMonth,
+} from './payroll'
+
+const fourEyes = { require_second_approver: true, payroll_approvers: 2 }
+
+test('the author is the last editor, else the creator', () => {
+  expect(authorOf(entry({ created_by_id: 'usr_a', updated_by_id: null }))).toBe('usr_a')
+  expect(authorOf(entry({ created_by_id: 'usr_a', updated_by_id: 'usr_b' }))).toBe('usr_b')
+})
+
+test.each([
+  ['four-eyes off', { ...fourEyes, require_second_approver: false }, 'usr_a', null],
+  ['settings not loaded', undefined, 'usr_a', null],
+  ['another person', fourEyes, 'usr_b', null],
+  [
+    'the author',
+    fourEyes,
+    'usr_a',
+    'You entered these figures. Another person with Payroll edit access must approve them.',
+  ],
+  [
+    'the sole approver',
+    { ...fourEyes, payroll_approvers: 1 },
+    'usr_a',
+    'You entered these figures. Another person with Payroll edit access must approve them. Nobody else can approve yet: give a member Payroll edit access in Members.',
+  ],
+] as const)('approve under %s', (_, settings, user, reason) => {
+  expect(approvalBlock(entry({ created_by_id: 'usr_a' }), user, settings)).toBe(reason)
+})
+
+test('the last editor is the author: the creator may approve what someone else changed', () => {
+  const changed = entry({ created_by_id: 'usr_a', updated_by_id: 'usr_b' })
+  expect(approvalBlock(changed, 'usr_a', fourEyes)).toBeNull()
+  expect(approvalBlock(changed, 'usr_b', fourEyes)).not.toBeNull()
+})
 
 test.each([
   ['2026-11', '2026-11'],

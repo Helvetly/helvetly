@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 
 import { State } from '@/components/data/table-page'
 import { translate } from '@/lib/i18n'
-import { can, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
+import { canReadPath, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
 
 import { NAV } from './nav'
 import { PageHeader } from './page-header'
@@ -21,8 +21,9 @@ const iconOf = (resource: string) =>
 /** A page opened by its URL without `read:<resource>` shows this instead of a failing list. */
 export function AccessGate({ children }: { children: ReactNode }) {
   const scopes = useScopes()
-  const resource = resourceForPath(usePathname() ?? '')
-  if (!resource || can(scopes, `read:${resource}`)) return children
+  const pathname = usePathname() ?? ''
+  const resource = resourceForPath(pathname)
+  if (!resource || canReadPath(scopes, pathname)) return children
   const what = labelOf(resource).toLowerCase()
   return (
     <>

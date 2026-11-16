@@ -18,10 +18,11 @@ import type { ReactNode } from 'react'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
-import { can, useScopes, type Need } from '@/lib/permissions'
+import { canReadPath, useScopes } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
-type Page = { label: string; href: string; icon: LucideIcon; managers?: true; need?: Need }
+/** `hr`: shown to those who may open it (employees or payroll view), never through a `*` resource. */
+type Page = { label: string; href: string; icon: LucideIcon; managers?: true; hr?: true }
 
 /** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
@@ -39,7 +40,7 @@ export const SETTINGS_PAGES: Page[] = [
     label: translate('employment'),
     href: '/settings/employment',
     icon: BriefcaseBusiness,
-    need: 'read:employees',
+    hr: true,
   },
 ]
 
@@ -64,7 +65,7 @@ export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const manager = isManager(useSession().data?.role)
   const scopes = useScopes()
   const pages = SETTINGS_PAGES.filter(
-    (page) => (manager || !page.managers) && (!page.need || can(scopes, page.need)),
+    (page) => (manager || !page.managers) && (!page.hr || canReadPath(scopes, page.href)),
   )
   const current = settingsPageAt(usePathname() ?? '')
   return (

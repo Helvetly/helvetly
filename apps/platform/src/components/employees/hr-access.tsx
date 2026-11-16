@@ -84,7 +84,7 @@ export function useHrTabs(current: 'employees' | 'payroll') {
       label: translate('employees'),
       icon: IdCard,
       href: '/employees',
-      show: hr.readEmployees,
+      show: hr.readEmployees || hr.readPayroll,
     },
     {
       id: 'payroll',
