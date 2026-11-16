@@ -7,7 +7,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { toast } from 'sonner'
 
-import type { Invoice } from '@/lib/invoices'
+import { einvoiceBlock, type Invoice } from '@/lib/invoices'
 import { instalmentPlans } from '@/mocks/data'
 import { sampleInvoice as baseInvoice, sampleSchedule } from '@/test/invoice-api'
 
@@ -299,9 +299,14 @@ test('schedule shows part_paid', async () => {
   await waitFor(() => expect(reminders).toEqual({ reminders_enabled: false }))
 })
 
+const openXml = async () => {
+  await userEvent.click(await screen.findByRole('button', { name: 'More actions' }))
+  await userEvent.click(screen.getByRole('menuitem', { name: 'E-invoice XML' }))
+}
+
 test('xml menu offers three formats', async () => {
   renderDetail('inv_open')
-  await userEvent.click(await screen.findByRole('button', { name: 'More actions' }))
+  await openXml()
   for (const name of ['XRechnung (UBL)', 'XRechnung (CII)', 'Peppol BIS 3.0'])
     expect(screen.getByRole('menuitem', { name })).toBeEnabled()
   expect(screen.queryByRole('menuitem', { name: /e-Factura/ })).not.toBeInTheDocument()
@@ -309,7 +314,7 @@ test('xml menu offers three formats', async () => {
 
 test('a Romanian buyer also gets the e-Factura with where to upload it', async () => {
   renderDetail('inv_ro')
-  await userEvent.click(await screen.findByRole('button', { name: 'More actions' }))
+  await openXml()
   expect(
     screen.getByRole('menuitem', { name: /e-Factura \(CIUS-RO\).*Spațiul Privat Virtual/ }),
   ).toBeEnabled()
@@ -330,7 +335,7 @@ test('XML export failure explains the missing data without downloading JSON', as
   )
   try {
     renderDetail('inv_open')
-    await userEvent.click(await screen.findByRole('button', { name: 'More actions' }))
+    await openXml()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Peppol BIS 3.0' }))
     await waitFor(() => expect(errorToast).toHaveBeenCalledWith(message))
   } finally {
@@ -348,4 +353,15 @@ test('a plan source draft shows its plan and cannot be edited or issued', async 
   expect(items).not.toContain('Edit draft')
   expect(items).not.toContain('Delete draft')
   expect(items).not.toContain('Split into instalment invoices')
+})
+
+test('outside-scope VAT without a seller registration number blocks the XML menu', () => {
+  const outside = { category: 'O' } as const
+  const none = { registration_number: null }
+  const some = { registration_number: 'CHE-1' }
+  expect(einvoiceBlock({ vat_breakdown: [outside], seller: none })).toMatch(/registration/)
+  expect(einvoiceBlock({ vat_breakdown: [outside], seller: some })).toBeNull()
+  expect(einvoiceBlock({ vat_breakdown: [outside, { category: 'S' }], seller: some })).toMatch(
+    /separate documents/,
+  )
 })
