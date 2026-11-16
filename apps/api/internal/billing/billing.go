@@ -149,13 +149,13 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		return err
 	}
 	now := s.now()
-	start := quotaStart(b, now, sess.Workspace.Location())
-	u, err := s.db.WorkspaceUsage(r.Context(), sess.Workspace.ID, start, now)
+	start := quotaStart(b, now)
+	u, err := s.db.WorkspaceUsage(r.Context(), sess.Workspace, store.UsagePeriod(start), now)
 	if err != nil {
 		return err
 	}
 	plan := PlanOf(b, s.now())
-	bought, err := s.db.AITokenPacks(r.Context(), sess.Workspace.ID, now.In(sess.Workspace.Location()).Format("2006-01"))
+	bought, err := s.db.AITokenPacks(r.Context(), sess.Workspace.ID, store.UsagePeriod(now))
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		out["offer_id"] = rights.OfferID
 		var reset *time.Time // a trial's allowances last the whole trial
 		if !rights.Trial {
-			next := monthStart(now, sess.Workspace.Location()).AddDate(0, 1, 0)
+			next := store.UsagePeriodStart(now).AddDate(0, 1, 0)
 			reset = &next
 		}
 		out["entitlements"] = entitlementItems(rights, u, reset)

@@ -1049,20 +1049,6 @@ func TestCustomerIdempotencyKeyCoversItsParameters(t *testing.T) {
 	}
 }
 
-func TestMonthStart(t *testing.T) {
-	for _, tc := range []struct{ zone, now, want string }{
-		{"Europe/Zurich", "2026-11-15T12:00:00Z", "2026-10-31T23:00:00Z"},
-		{"Europe/Zurich", "2026-10-31T23:30:00Z", "2026-10-31T23:00:00Z"}, // already 1 November in Zurich
-		{"Europe/Zurich", "2026-07-01T00:30:00Z", "2026-06-30T22:00:00Z"},
-		{"America/New_York", "2026-11-01T03:00:00Z", "2026-10-01T04:00:00Z"}, // still 31 October in New York
-	} {
-		now, _ := time.Parse(time.RFC3339, tc.now)
-		if got := monthStart(now, store.Workspace{Timezone: tc.zone}.Location()).UTC().Format(time.RFC3339); got != tc.want {
-			t.Errorf("monthStart(%s) = %s, want %s", tc.now, got, tc.want)
-		}
-	}
-}
-
 func TestCheckoutRefusesMoreThanTheSelfServiceSeats(t *testing.T) {
 	e := newEnv(t, true)
 	e.stripe.setPerSeat()

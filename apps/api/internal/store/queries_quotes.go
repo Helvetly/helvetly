@@ -107,8 +107,7 @@ func (q Q) Quotes(ctx context.Context, workspaceID, clientID, today string) ([]Q
 	return out, rows.Err()
 }
 
-// SaveQuote inserts the quote or writes all its fields; the caller has checked that it may change.
-func (q Q) SaveQuote(ctx context.Context, workspaceID string, t Quote, now time.Time) error {
+func (q Q) saveQuote(ctx context.Context, workspaceID string, t Quote, now time.Time) error {
 	status := t.Status
 	if status == "expired" {
 		status = "sent"

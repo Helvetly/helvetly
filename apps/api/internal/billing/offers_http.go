@@ -28,8 +28,8 @@ type entitlementItem struct {
 	ResetAt   *time.Time `json:"reset_at"` // when a monthly count starts again; null otherwise
 }
 
-// metered are the limits counted today (WorkspaceUsage), on the workspace's calendar month.
-var metered = []Limit{Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens}
+// metered are the limits counted today (WorkspaceUsage), monthly ones in the UTC quota month.
+var metered = []Limit{Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, AITokens, InvoiceDrafts, QuotesRetained}
 
 // entitlementItems lists the workspace's entitlements for its panel, without the internal AI cost budget: the panel
 // shows tokens. reset is when the monthly counts start again (nil in the trial, whose allowances last it whole).

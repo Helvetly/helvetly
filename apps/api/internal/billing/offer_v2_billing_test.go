@@ -408,7 +408,7 @@ func TestTrialAllowancesLastAcrossTheMonth(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	now := time.Now().UTC()
-	month := monthStart(now, time.UTC)
+	month := store.UsagePeriodStart(now)
 	e.trialing(owner.workspace, "fp_1", month.Add(-48*time.Hour)) // began in the previous month
 	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, cost_micros, updated_at) VALUES ($1, $2, 200000, 150000, now())`,
 		owner.workspace, month.AddDate(0, 0, -1).Format("2006-01"))

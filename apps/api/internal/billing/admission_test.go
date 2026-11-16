@@ -14,10 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
 	"helvetly.com/api/internal/documents"
-	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/store"
 )
 
@@ -218,123 +216,5 @@ func TestExactStoredBytesConcurrentUploadAndFullQuotaDuplicate(t *testing.T) {
 	defer files.mu.Unlock()
 	if len(files.objects) != 1 {
 		t.Fatalf("failed upload left %d objects", len(files.objects))
-	}
-}
-
-func TestMonthlyInvoiceAdmissionCoversKindsAndKeepsCorrectionsPossible(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_bm")
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('kind-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	setAdmissionLimit(t, e, Invoices, 1)
-	for _, kind := range []string{"partial", "prepayment", "debit_note", "proforma", "self_billed", "invoice"} {
-		t.Run(kind, func(t *testing.T) {
-			e.exec(`DELETE FROM invoices WHERE workspace_id=$1`, b.workspace)
-			invoice := store.Invoice{ID: auth.NewID("inv"), Kind: kind, ClientID: "kind-buyer", IssueDate: "2026-11-08", DueDate: "2026-11-08", Currency: "CHF", Language: "en", VATMode: "none"}
-			if err := e.st.SaveDraft(context.Background(), b.workspace, invoice, time.Now()); err != nil {
-				t.Fatal(err)
-			}
-			another := invoice
-			another.ID = auth.NewID("inv")
-			if err := e.st.SaveDraft(context.Background(), b.workspace, another, time.Now()); !errors.Is(err, store.ErrAdmissionDenied) {
-				t.Fatalf("%s second draft: %v", kind, err)
-			}
-			for _, exempt := range []string{"credit_note", "corrected"} {
-				legal := invoice
-				legal.ID = auth.NewID("inv")
-				legal.Kind = exempt
-				if err := e.st.SaveDraft(context.Background(), b.workspace, legal, time.Now()); err != nil {
-					t.Fatalf("%s blocked at cap: %v", exempt, err)
-				}
-				legal.Kind = "invoice"
-				if err := e.st.SaveDraft(context.Background(), b.workspace, legal, time.Now()); err == nil {
-					t.Fatalf("exempt %s changed its kind to bypass cap", exempt)
-				}
-			}
-		})
-	}
-}
-
-func TestJobDraftAndHTTPShareTheSameTransactionalMonthlyLimit(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_bm")
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('job-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	setAdmissionLimit(t, e, Invoices, 1)
-	svc := invoices.New(e.st, e.svc.auth, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	sess := store.Session{Workspace: store.Workspace{ID: b.workspace, Timezone: "UTC"}}
-	ctx := context.Background()
-	rollback := errors.New("job rolled back")
-	err := e.st.Tx(ctx, func(q store.Q) error {
-		if _, err := svc.CreateDraft(ctx, q, sess, "job-buyer", func(*store.Invoice) {}); err != nil {
-			return err
-		}
-		return rollback
-	})
-	if !errors.Is(err, rollback) {
-		t.Fatalf("job rollback=%v", err)
-	}
-	mux := http.NewServeMux()
-	svc.Register(mux)
-	srv := httptest.NewServer(e.svc.Guard(mux))
-	t.Cleanup(srv.Close)
-	e.srv = srv
-	start := make(chan struct{})
-	results := make(chan int, 2)
-	go func() {
-		<-start
-		code, _ := e.do(b, http.MethodPost, "/api/v1/invoices", map[string]any{"client_id": "job-buyer"})
-		results <- code
-	}()
-	go func() {
-		<-start
-		err := e.st.Tx(ctx, func(q store.Q) error {
-			_, err := svc.CreateDraft(ctx, q, sess, "job-buyer", func(*store.Invoice) {})
-			return err
-		})
-		switch {
-		case err == nil:
-			results <- http.StatusCreated
-		case errors.Is(err, store.ErrAdmissionDenied):
-			results <- http.StatusPaymentRequired
-		default:
-			t.Errorf("job create: %v", err)
-			results <- http.StatusInternalServerError
-		}
-	}()
-	close(start)
-	counts := map[int]int{}
-	for range 2 {
-		counts[<-results]++
-	}
-	if counts[http.StatusCreated] != 1 || counts[http.StatusPaymentRequired] != 1 {
-		t.Fatalf("HTTP and job results=%v", counts)
-	}
-	var count int
-	if err := e.raw.QueryRow(ctx, `SELECT count(*) FROM invoices WHERE workspace_id=$1`, b.workspace).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("persisted invoices=%d err=%v", count, err)
-	}
-}
-
-func TestMonthlyAdmissionUsesWorkspaceCalendarBoundary(t *testing.T) {
-	e := newEnv(t, true)
-	b := e.workspace()
-	e.subscribe(b.workspace, "price_bm")
-	e.exec(`UPDATE workspaces SET timezone='Europe/Zurich' WHERE id=$1`, b.workspace)
-	e.exec(`INSERT INTO clients(id,workspace_id,number,name,created_at,updated_at) VALUES('boundary-buyer',$1,1,'Buyer',now(),now())`, b.workspace)
-	// November in Zurich starts at 23:00 UTC on the previous civil day.
-	e.svc.now = func() time.Time { return time.Date(2026, 10, 31, 23, 30, 0, 0, time.UTC) }
-	old := store.Invoice{ID: "previous-month", Kind: "invoice", ClientID: "boundary-buyer", IssueDate: "2026-10-31", DueDate: "2026-11-01", Currency: "CHF", Language: "en", VATMode: "none"}
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, time.Date(2026, 10, 31, 22, 59, 59, 0, time.UTC)); err != nil {
-		t.Fatal(err)
-	}
-	setAdmissionLimit(t, e, Invoices, 1)
-	old.ID = "new-month"
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, e.svc.now()); err != nil {
-		t.Fatalf("previous-month document consumed November capacity: %v", err)
-	}
-	old.ID = "second-new-month"
-	if err := e.st.SaveDraft(context.Background(), b.workspace, old, e.svc.now()); !errors.Is(err, store.ErrAdmissionDenied) {
-		t.Fatalf("second November document admission=%v", err)
 	}
 }

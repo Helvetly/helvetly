@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/store"
 )
@@ -84,13 +85,19 @@ func TestInvoiceAllowed(t *testing.T) {
 	if !allowed(t, e, ws) {
 		t.Fatal("Basic under the cap may not invoice")
 	}
-	e.exec(`INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at) VALUES ('cli_0', $1, 1, 'C', now(), now())`, ws.ID)
-	e.exec(`INSERT INTO invoices (id, workspace_id, kind, status, client_id, issue_date, due_date, currency, language, vat_mode,
-			discount_percent, subtotal, discount_amount, net_total, vat_total, total, rounding_amount, vat_breakdown, created_at, updated_at)
-		SELECT 'inv_' || i, $1, 'invoice', 'draft', 'cli_0', current_date, current_date, 'CHF', 'de', 'exclusive', 0, 0, 0, 0, 0, 0, 0, '[]', now(), now()
-		FROM generate_series(1, 100) AS i`, ws.ID)
+	// Basic issues 15 a month: 14 issued leave room for the job's next, 15 none.
+	issued := func(n int) {
+		e.exec(`INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at, settled_at)
+			SELECT $1, 'invoices_per_month', 'invoice.issue:seed' || i, '', $2, 0, 1, now(), now() FROM generate_series(1, $3::int) AS i
+			ON CONFLICT DO NOTHING`, ws.ID, store.UsagePeriod(time.Now()), n)
+	}
+	issued(14)
+	if !allowed(t, e, ws) {
+		t.Fatal("Basic at 14 issues this month may not invoice")
+	}
+	issued(15)
 	if allowed(t, e, ws) {
-		t.Fatal("Basic at 100 invoices this month may invoice")
+		t.Fatal("Basic at 15 issues this month may invoice")
 	}
 }
 

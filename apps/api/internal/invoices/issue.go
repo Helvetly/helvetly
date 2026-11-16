@@ -153,6 +153,10 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	if len(reasons) > 0 {
 		return cannotIssue(reasons)
 	}
+	// counted before the number, the PDF and their locks; a refusal rolls back and keeps the draft
+	if err := q.CountIssue(ctx, sess.Workspace.ID, inv, s.now()); err != nil {
+		return err
+	}
 	if defaultExemptions(&inv) && len(prepaid) == 0 { // deduct saves the draft below
 		if err := q.SaveDraft(ctx, sess.Workspace.ID, inv, s.now()); err != nil {
 			return err
@@ -219,7 +223,7 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	if err := retention.Request(ctx, q, s.files, sess.Workspace.ID, key, inv.IssueDate, s.now()); err != nil {
 		return err
 	}
-	if err := q.Issue(ctx, inv, seq, s.now()); err != nil {
+	if err := q.Issue(ctx, sess.Workspace.ID, inv, seq, s.now()); err != nil {
 		return err
 	}
 	if inv.Instalments != nil {

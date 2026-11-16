@@ -37,6 +37,7 @@ type Q struct {
 	db        dbtx
 	admission Admission
 	features  FeatureGate
+	period    string // the quota month of the usage being admitted (AdmissionPeriod)
 }
 
 type dbtx interface {

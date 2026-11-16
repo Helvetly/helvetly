@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
@@ -183,7 +184,7 @@ func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Sessio
 }
 
 // AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's plus the AI token
-// packs bought this month (in its time zone), none without a plan, and unlimited (-1) when billing is off.
+// packs bought this quota month (UTC), none without a plan, and unlimited (-1) when billing is off.
 func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
 	if err != nil || r.SelfHosted {
@@ -202,11 +203,7 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	if r.Items[string(AITokens)].Source == SourcePaymentOverdue {
 		return 0, nil // packs bought before wait with the rest until the payment is made
 	}
-	w, err := q.AdmissionWorkspace(ctx, workspaceID)
-	if err != nil {
-		return 0, err
-	}
-	bought, err := q.AITokenPacks(ctx, workspaceID, s.now().In(w.Location()).Format("2006-01"))
+	bought, err := q.AITokenPacks(ctx, workspaceID, store.UsagePeriod(s.now()))
 	return monthly + bought, err
 }
 
@@ -235,7 +232,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage}, limit) {
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -271,16 +268,26 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	now := s.now()
-	start := quotaStart(b, now, ws.Location())
-	u, err := q.WorkspaceUsage(ctx, workspaceID, start, now)
+	n, err := usedAt(ctx, q, ws, b, limit, now)
 	if err != nil {
 		return err
 	}
-	if fits(used(u, limit), add, max) {
-		return notifyNear(ctx, q, workspaceID, plan, limit, now, start, used(u, limit)+add, max)
+	if fits(n, add, max) {
+		return notifyNear(ctx, q, workspaceID, plan, limit, now, store.UsagePeriod(quotaStart(b, now)), n+add, max)
 	}
 	return fmt.Errorf("%w: %w", store.ErrAdmissionDenied, auth.Error(http.StatusPaymentRequired, "limit_reached", limitMessage(plan, limit, max),
-		map[string]any{"limit": limit, "used": used(u, limit), "max": max, "plan": plan}))
+		map[string]any{"limit": limit, "used": n, "max": max, "plan": plan}))
+}
+
+// usedAt is the workspace's usage of limit: a monthly limit's recorded in usage_events from its first quota month
+// (quotaStart) through the month being admitted (AdmissionPeriod); a state limit's, what exists at now.
+func usedAt(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, limit Limit, now time.Time) (int64, error) {
+	if monthlyLimits[limit] && limit != AITokens { // AI tokens are reserved by aimodel.Budget in heidi_usage
+		u, err := q.UsageInPeriods(ctx, ws.ID, string(limit), store.UsagePeriod(quotaStart(b, now)), q.AdmissionPeriod(now))
+		return u.Total(), err
+	}
+	u, err := q.WorkspaceUsage(ctx, ws, store.UsagePeriod(quotaStart(b, now)), now)
+	return used(u, limit), err
 }
 
 // requiredFeatures refuses a limit whose feature the plan does not include with feature_not_in_plan, never as a
@@ -333,12 +340,11 @@ func (s *Service) room(ctx context.Context, ws store.Workspace, limit Limit, add
 	if max, err = r.capFor(limit); err != nil || max == Unlimited {
 		return r.Plan, 0, max, err == nil, err
 	}
-	now := s.now()
-	u, err := s.db.WorkspaceUsage(ctx, ws.ID, quotaStart(b, now, ws.Location()), now)
+	n, err = usedAt(ctx, s.db.Q, ws, b, limit, s.now())
 	if err != nil {
 		return "", 0, 0, false, err
 	}
-	return r.Plan, used(u, limit), max, fits(used(u, limit), add, max), nil
+	return r.Plan, n, max, fits(n, add, max), nil
 }
 
 func limitMessage(plan string, limit Limit, max int64) string {
@@ -349,7 +355,11 @@ func limitMessage(plan string, limit Limit, max int64) string {
 	case Clients:
 		return fmt.Sprintf("The %s plan includes %d clients. Upgrade the workspace to add more.", name, max)
 	case Invoices:
-		return fmt.Sprintf("The %s plan includes %d invoices a month. Upgrade the workspace to create more.", name, max)
+		return fmt.Sprintf("The %s plan includes %d issued invoices a month. The draft is kept: upgrade the workspace to issue it now, or issue it next month.", name, max)
+	case InvoiceDrafts:
+		return fmt.Sprintf("The %s plan keeps %d invoice drafts at a time. Issue or delete drafts to start more.", name, max)
+	case QuotesRetained:
+		return fmt.Sprintf("The %s plan keeps %d quotes. Upgrade the workspace or delete draft quotes to add more.", name, max)
 	case Expenses:
 		return fmt.Sprintf("The %s plan includes %d expenses a month. Upgrade the workspace to add more.", name, max)
 	case Products:

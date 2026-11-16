@@ -541,8 +541,12 @@ func (q Q) PeekInvoiceSeq(ctx context.Context, workspaceID, kind string, year in
 	return seq, err
 }
 
-// Issue records the issue snapshot of a locked draft.
-func (q Q) Issue(ctx context.Context, inv Invoice, seq int64, now time.Time) error {
+// Issue records the issue snapshot of a locked draft and counts it (CountIssue; a replay when the caller counted it
+// already, before its PDF).
+func (q Q) Issue(ctx context.Context, workspaceID string, inv Invoice, seq int64, now time.Time) error {
+	if err := q.CountIssue(ctx, workspaceID, inv, now); err != nil {
+		return err
+	}
 	_, err := q.db.Exec(ctx, `UPDATE invoices SET status = 'open', number = $2, seq = $3, iban = $4, reference_type = $5,
 		payment_reference = $6, qr_bill = $7, seller = $8, buyer = $9, pdf_key = $10, issued_at = $11, updated_at = $11,
 		revolut_url = $12, pay_qr_bill = $13, pay_revolut = $14

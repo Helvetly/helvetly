@@ -27,7 +27,7 @@ func TestSeatsCountAcceptedMembersOnly(t *testing.T) {
 		return id
 	}
 	usage := func() int64 {
-		u, err := e.st.WorkspaceUsage(ctx, owner.workspace, now.AddDate(0, -1, 0), now)
+		u, err := e.st.WorkspaceUsage(ctx, store.Workspace{ID: owner.workspace, Timezone: "UTC"}, store.UsagePeriod(now), now)
 		if err != nil {
 			t.Fatal(err)
 		}

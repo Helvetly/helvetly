@@ -144,15 +144,10 @@ func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID string, al
 	if err != nil {
 		return 0, err
 	}
-	w, err := q.AdmissionWorkspace(ctx, workspaceID)
-	if err != nil {
-		return 0, err
-	}
 	now := s.now()
-	month := monthStart(now, w.Location())
+	month := store.UsagePeriodStart(now)
 	if b.TrialStart != nil {
-		tokens, micros, err := q.AIUsage(ctx, workspaceID, b.TrialStart.In(w.Location()).Format("2006-01"),
-			month.AddDate(0, 0, -1).Format("2006-01"))
+		tokens, micros, err := q.AIUsage(ctx, workspaceID, store.UsagePeriod(*b.TrialStart), store.UsagePeriod(month.AddDate(0, 0, -1)))
 		if err != nil {
 			return 0, err
 		}
@@ -171,7 +166,7 @@ func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID string, al
 	if err != nil {
 		return 0, err
 	}
-	_, mine, err := q.AIUsage(ctx, workspaceID, month.Format("2006-01"), month.Format("2006-01"))
+	_, mine, err := q.AIUsage(ctx, workspaceID, store.UsagePeriod(month), store.UsagePeriod(month))
 	if err != nil {
 		return 0, err
 	}

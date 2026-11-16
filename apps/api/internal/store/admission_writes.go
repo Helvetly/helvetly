@@ -15,12 +15,37 @@ func (q Q) CreateProduct(ctx context.Context, workspaceID string, p Product) err
 	return q.admitted(ctx, workspaceID, "products", 1, func(q Q) error { return q.createProduct(ctx, workspaceID, p) })
 }
 
+// CreateExpense counts the expense's first persist in expenses_per_month, for good: editing, booking, voiding or
+// deleting it gives nothing back.
 func (q Q) CreateExpense(ctx context.Context, workspaceID string, e *Expense, now time.Time) error {
-	return q.admitted(ctx, workspaceID, "expenses_per_month", 1, func(q Q) error { return q.createExpense(ctx, workspaceID, e, now) })
+	return q.writeTx(ctx, func(q Q) error {
+		if _, err := q.ConsumeUsage(ctx, workspaceID, UsageOp{Resource: "expenses_per_month", ID: "expense.create:" + e.ID, Amount: 1}, now); err != nil {
+			return err
+		}
+		return q.createExpense(ctx, workspaceID, e, now)
+	})
 }
 
+// CreateSignatureRequest counts the package in signatures_per_month: it is sent as it is created, whatever its
+// signers, reminders or revocation.
 func (q Q) CreateSignatureRequest(ctx context.Context, r SignatureRequest, userID string) error {
-	return q.admitted(ctx, r.WorkspaceID, "signatures_per_month", 1, func(q Q) error { return q.createSignatureRequest(ctx, r, userID) })
+	return q.writeTx(ctx, func(q Q) error {
+		if _, err := q.ConsumeUsage(ctx, r.WorkspaceID, UsageOp{Resource: "signatures_per_month", ID: "signature.send:" + r.ID, Amount: 1}, r.CreatedAt); err != nil {
+			return err
+		}
+		return q.createSignatureRequest(ctx, r, userID)
+	})
+}
+
+// CountIssue counts issuing the draft in invoices_per_month, in the issue's transaction, once per document: a
+// refused issue rolls back and keeps the draft. A correction, credit note or debit note of an issued document counts
+// nothing: whether it may be issued is its own feature's decision.
+func (q Q) CountIssue(ctx context.Context, workspaceID string, inv Invoice, now time.Time) error {
+	if inv.CreditedInvoice != nil && (inv.Kind == "credit_note" || inv.Kind == "debit_note" || inv.Kind == "corrected") {
+		return nil
+	}
+	_, err := q.ConsumeUsage(ctx, workspaceID, UsageOp{Resource: "invoices_per_month", ID: "invoice.issue:" + inv.ID, Amount: 1}, now)
+	return err
 }
 
 func (q Q) CreateDocument(ctx context.Context, workspaceID, userID string, d Document) error {
@@ -40,17 +65,15 @@ func (q Q) SaveDraft(ctx context.Context, workspaceID string, inv Invoice, now t
 		return q.saveDraft(ctx, workspaceID, inv, now)
 	}
 	return q.admissionTx(ctx, func(q Q) error {
-		if err := q.LockAdmission(ctx, workspaceID, "invoices_per_month"); err != nil {
+		if err := q.LockAdmission(ctx, workspaceID, "invoice_drafts"); err != nil {
 			return err
 		}
 		var previous string
 		err := q.db.QueryRow(ctx, `SELECT kind FROM invoices WHERE workspace_id=$1 AND id=$2 FOR UPDATE`, workspaceID, inv.ID).Scan(&previous)
 		switch {
-		case errors.Is(err, ErrNotFound):
-			if inv.Kind != "credit_note" && inv.Kind != "corrected" {
-				if err := q.Admit(ctx, workspaceID, "invoices_per_month", 1); err != nil {
-					return err
-				}
+		case errors.Is(err, ErrNotFound): // a new draft of any kind; issuing counts in invoices_per_month (CountIssue)
+			if err := q.Admit(ctx, workspaceID, "invoice_drafts", 1); err != nil {
+				return err
 			}
 		case err != nil:
 			return err
@@ -58,6 +81,29 @@ func (q Q) SaveDraft(ctx context.Context, workspaceID string, inv Invoice, now t
 			return fmt.Errorf("a saved draft keeps its document kind")
 		}
 		return q.saveDraft(ctx, workspaceID, inv, now)
+	})
+}
+
+// SaveQuote inserts the quote or writes all its fields; the caller has checked that it may change. A new quote takes
+// one of quotes_retained; a revision is the same quote.
+func (q Q) SaveQuote(ctx context.Context, workspaceID string, t Quote, now time.Time) error {
+	if q.admission == nil {
+		return q.saveQuote(ctx, workspaceID, t, now)
+	}
+	return q.admissionTx(ctx, func(q Q) error {
+		if err := q.LockAdmission(ctx, workspaceID, "quotes_retained"); err != nil {
+			return err
+		}
+		var exists bool
+		if err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM quotes WHERE workspace_id = $1 AND id = $2)`, workspaceID, t.ID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			if err := q.Admit(ctx, workspaceID, "quotes_retained", 1); err != nil {
+				return err
+			}
+		}
+		return q.saveQuote(ctx, workspaceID, t, now)
 	})
 }
 
