@@ -130,6 +130,7 @@ func app(t *testing.T) (http.Handler, *store.Store, *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	a.BearerRoutes = openapi.BearerRoutes("POST /api/mcp")
+	a.BearerMember = permissions.MayUseAPI
 	for _, r := range openapi.Resources() {
 		a.TokenResources = append(a.TokenResources, r.Name)
 	}
@@ -747,8 +748,11 @@ func TestAccessChangesApplyImmediately(t *testing.T) {
 	}
 	reads(200, "full access")
 
-	jsonCall(t, h, a, "PATCH", "/api/v1/members/"+m.userID, map[string]any{"scopes": []string{"read:products"}}, 200)
+	jsonCall(t, h, a, "PATCH", "/api/v1/members/"+m.userID, map[string]any{"scopes": []string{"read:products", "read:api"}}, 200)
 	reads(403, "scopes narrowed")
+	if code := bearer(h, kept, "GET", "/api/v1/products"); code != 200 {
+		t.Errorf("token within narrowed scopes: %d", code)
+	}
 
 	jsonCall(t, h, m, "DELETE", "/api/v1/account/tokens/"+revoked, nil, 204)
 	if code := bearer(h, revokedSecret, "GET", "/api/v1/products"); code != 401 {
@@ -766,6 +770,15 @@ func TestAccessChangesApplyImmediately(t *testing.T) {
 	jsonCall(t, h, m, "DELETE", "/api/v1/account/sessions/"+sid, nil, 204)
 	if code, _ := call(h, other, "GET", "/api/v1/session", nil, ""); code != 401 {
 		t.Errorf("revoked session: %d", code)
+	}
+
+	// without the api area the person's tokens stop working, though the scopes behind them are unchanged
+	jsonCall(t, h, a, "PATCH", "/api/v1/members/"+m.userID, map[string]any{"scopes": []string{"read:products"}}, 200)
+	if code := bearer(h, kept, "GET", "/api/v1/products"); code != 403 {
+		t.Errorf("token without the api area: %d", code)
+	}
+	if code, _ := call(h, m, "GET", "/api/v1/products", nil, ""); code != 200 {
+		t.Errorf("session without the api area: %d", code)
 	}
 
 	jsonCall(t, h, a, "DELETE", "/api/v1/members/"+m.userID, nil, 204)

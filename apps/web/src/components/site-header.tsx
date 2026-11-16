@@ -50,7 +50,7 @@ export function SiteHeader() {
 
         <nav
           aria-label={translate('main')}
-          className="hidden flex-1 items-center justify-center gap-0.5 md:flex"
+          className="hidden flex-1 items-center justify-center gap-0.5 xl:flex"
         >
           {NAV.map((item) => (
             <Link
@@ -64,14 +64,14 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto hidden items-center gap-2 md:flex">
+        <div className="ml-auto hidden shrink-0 items-center gap-2 xl:flex">
           <a
             href={localizedHref(SIGN_IN_URL)}
             className="hover:bg-lilac/60 rounded-full px-3.5 py-1.5 text-body font-medium text-foreground/75 transition-colors hover:text-foreground"
           >
             {translate('signIn')}
           </a>
-          <Cta href={START_URL} className="h-9 px-4 text-body-sm">
+          <Cta href={START_URL} className="min-h-9 px-4 py-1.5 text-body-sm">
             {translate('startFreeTrial')}
           </Cta>
         </div>
@@ -79,7 +79,7 @@ export function SiteHeader() {
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             aria-label={translate('openMenu')}
-            className="hover:bg-site-tint ml-auto inline-flex size-10 items-center justify-center rounded-full text-foreground md:hidden"
+            className="hover:bg-site-tint ml-auto inline-flex size-10 items-center justify-center rounded-full text-foreground xl:hidden"
           >
             <Menu className="size-5" />
           </SheetTrigger>

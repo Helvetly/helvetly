@@ -84,7 +84,8 @@ export const LocalFactsAndHonestUsage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
-    await waitFor(() => expect(canvas.getByText(/Local assistance/)).toBeVisible())
+    await canvas.findByRole('textbox', { name: 'Message Heidi' })
+    await expect(canvas.queryByText(/Local assistance|can make mistakes/)).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Buy more' })).not.toBeInTheDocument()
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Which invoices are overdue?' }),
@@ -157,7 +158,7 @@ const consentApi = [
   }),
 ]
 
-/** No content reaches OpenAI until an owner or admin allows it; the notice names the recipient and what is sent. */
+/** No content reaches OpenAI until an owner or admin allows it; the details are in the privacy policy, one link away. */
 export const ConsentBeforeOpenAI: Story = {
   beforeEach: () => {
     consent = { granted: false, changed_at: null, changed_by: '' }
@@ -170,7 +171,11 @@ export const ConsentBeforeOpenAI: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
     const note = await canvas.findByRole('note')
     await expect(note).toHaveTextContent('AI answers are off.')
-    await expect(note).toHaveTextContent('OpenAI (USA)')
+    await expect(note).not.toHaveTextContent('OpenAI (USA)')
+    await expect(within(note).getByRole('link', { name: 'How Heidi uses OpenAI' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/privacy#4-heidi-ai-import-and-openai'),
+    )
     await userEvent.click(within(note).getByRole('button', { name: 'Allow OpenAI' }))
     await waitFor(() => expect(consentPut).toHaveBeenCalledWith({ granted: true }))
     await waitFor(() => expect(canvas.queryByRole('note')).not.toBeInTheDocument())
@@ -195,12 +200,19 @@ export const ConsentForMembers: Story = {
   },
 }
 
+/** Unreconciled usage is no basis for a percentage: no warning is shown. */
 export const UnknownModelUsage: Story = {
   parameters: {
     msw: {
       handlers: [
         http.get('/api/v1/heidi/usage', () =>
-          HttpResponse.json({ ...usage, mode: 'openai', usage_uncertain: true }),
+          HttpResponse.json({
+            ...usage,
+            mode: 'openai',
+            usage_uncertain: true,
+            tokens_used: 990,
+            tokens_included: 1000,
+          }),
         ),
         ...fakeApi,
       ],
@@ -210,8 +222,40 @@ export const UnknownModelUsage: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
-    await waitFor(() => expect(canvas.getByText(/Model usage needs reconciliation/)).toBeVisible())
-    await expect(canvas.queryByText(/% of model token budget/)).not.toBeInTheDocument()
+    await canvas.findByRole('textbox', { name: 'Message Heidi' })
+    await expect(canvas.queryByText(/of this month’s AI tokens/)).not.toBeInTheDocument()
+  },
+}
+
+/** From 75% of the month's allowance, an amber bar on top of the composer says how much is used. */
+export const TokenAllowanceWarning: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/heidi/usage', () =>
+          HttpResponse.json({
+            ...usage,
+            mode: 'openai',
+            tokens_used: 390_000,
+            tokens_included: 500_000,
+            tokens_remaining: 110_000,
+          }),
+        ),
+        ...fakeApi,
+      ],
+    },
+  },
+  render: () => <Panel />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const bar = await canvas.findByText(/You have used 78% of this month’s AI tokens\./)
+    // The panel slides in from opacity 0.
+    await waitFor(() => expect(bar).toBeVisible())
+    await expect(within(bar).getByRole('link', { name: 'See plans' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
+    )
   },
 }
 

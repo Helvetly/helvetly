@@ -356,6 +356,12 @@ func (q Q) TrialClaimed(ctx context.Context, claims map[string]string) (bool, er
 	return false, nil
 }
 
+// ForgetTrialClaims deletes the trial claims made before; it reports how many.
+func (q Q) ForgetTrialClaims(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := q.db.Exec(ctx, `DELETE FROM trial_claims WHERE claimed_at < $1`, before)
+	return tag.RowsAffected(), err
+}
+
 // AIUsage is the model tokens and cost in micro-USD the workspace used or holds reserved in the heidi_usage months from
 // through to (2006-01, both included).
 func (q Q) AIUsage(ctx context.Context, workspaceID, from, to string) (tokens, micros int64, err error) {

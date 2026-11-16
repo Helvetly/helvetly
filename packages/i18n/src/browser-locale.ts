@@ -4,7 +4,7 @@ export const languageStorageKey = 'helvetly.language'
 
 type Locale = keyof typeof configuration.locales
 const supported = (value: string | null): value is Locale =>
-  value !== null && Object.hasOwn(configuration.locales, value)
+  value !== null && configuration.browserLocales.includes(value)
 
 /** An explicit link wins over the saved preference; blocked storage still permits language links. */
 export function browserLocale(

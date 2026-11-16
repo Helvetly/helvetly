@@ -103,7 +103,7 @@
 10 text-px apps/platform/src/components/data/table-page.tsx
 2 text-px apps/platform/src/components/documents/dialogs.tsx
 12 text-px apps/platform/src/components/documents/documents-page.tsx
-6 text-px apps/platform/src/components/documents/folder-tree.tsx
+5 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
 11 text-px apps/platform/src/components/documents/items-view.tsx
 1 text-px apps/platform/src/components/documents/kind.tsx
@@ -127,15 +127,14 @@
 16 text-px apps/platform/src/components/expenses/expenses-page.tsx
 5 text-px apps/platform/src/components/fix-list.tsx
 4 text-px apps/platform/src/components/form-section.tsx
-1 text-px apps/platform/src/components/heidi/ai-consent.tsx
 4 text-px apps/platform/src/components/heidi/composer.tsx
 5 text-px apps/platform/src/components/heidi/heidi-form.tsx
-8 text-px apps/platform/src/components/heidi/heidi-panel.tsx
+7 text-px apps/platform/src/components/heidi/heidi-panel.tsx
 2 text-px apps/platform/src/components/heidi/markdown.tsx
 11 text-px apps/platform/src/components/help/feedback-form.tsx
 5 text-px apps/platform/src/components/help/help-dialog.tsx
 3 text-px apps/platform/src/components/import/import-conflicts.tsx
-7 text-px apps/platform/src/components/import/import-drawer.tsx
+6 text-px apps/platform/src/components/import/import-drawer.tsx
 7 text-px apps/platform/src/components/import/import-files.tsx
 9 text-px apps/platform/src/components/import/import-review.tsx
 1 text-px apps/platform/src/components/initials.tsx

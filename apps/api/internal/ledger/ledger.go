@@ -48,12 +48,11 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 var (
-	errForbidden = auth.Error(http.StatusForbidden, "forbidden", "Only owners and admins can do this.", nil)
-	errDate      = auth.Error(http.StatusBadRequest, "invalid_request", "from and to must be dates (YYYY-MM-DD).", nil)
-	errOrder     = auth.Error(http.StatusBadRequest, "invalid_request", "from must not be after to.", nil)
-	errAccount   = auth.Error(http.StatusBadRequest, "invalid_request", "The account code must be 3 to 10 digits.", nil)
-	errFormat    = auth.Error(http.StatusBadRequest, "invalid_request", "format must be banana, bexio, abacus or csv.", nil)
-	codePattern  = regexp.MustCompile(`^[0-9]{3,10}$`)
+	errDate     = auth.Error(http.StatusBadRequest, "invalid_request", "from and to must be dates (YYYY-MM-DD).", nil)
+	errOrder    = auth.Error(http.StatusBadRequest, "invalid_request", "from must not be after to.", nil)
+	errAccount  = auth.Error(http.StatusBadRequest, "invalid_request", "The account code must be 3 to 10 digits.", nil)
+	errFormat   = auth.Error(http.StatusBadRequest, "invalid_request", "format must be banana, bexio, abacus or csv.", nil)
+	codePattern = regexp.MustCompile(`^[0-9]{3,10}$`)
 )
 
 func data(v any) map[string]any { return map[string]any{"data": v} }
@@ -210,9 +209,6 @@ func (s *Service) settings(w http.ResponseWriter, r *http.Request, sess store.Se
 }
 
 func (s *Service) saveSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if sess.Role != "owner" && sess.Role != "admin" {
-		return errForbidden
-	}
 	in := ledgercalc.DefaultAccounts() // a field or bank method left out keeps its default
 	if !s.auth.Decode(w, r, &in) {
 		return nil

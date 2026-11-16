@@ -2,12 +2,10 @@ import Link from 'next/link'
 
 import type { Question } from '@/components/faq'
 import { translate } from '@/lib/i18n'
-import { bytes, count, LIMITS, MAX_SELF_SERVICE_SEATS, plansWith, TRIAL } from '@/lib/plans'
+import { bytes, count, LIMITS, MAX_SELF_SERVICE_SEATS, plansWith, tokens, TRIAL } from '@/lib/plans'
 
 const ai = LIMITS.ai_tokens_per_month.values
 const actions = LIMITS.automation_actions_per_month.values
-const millions = (n: number | null) =>
-  translate('offerMillions', { count: count((n ?? 0) / 1_000_000) })
 
 export const GENERAL_FAQ: Question[] = [
   {
@@ -82,8 +80,8 @@ export const PRICING_FAQ: Question[] = [
     a: translate('yourWorkspaceSharesTheAITokensContributedByEach', {
       value1: count(ai.basic ?? 0),
       value2: plansWith('heidi'),
-      value3: millions(ai.pro),
-      value4: millions(ai.business),
+      value3: tokens(ai.pro ?? 0),
+      value4: tokens(ai.business ?? 0),
     }),
   },
   {

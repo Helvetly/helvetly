@@ -24,6 +24,7 @@ func Wire(t testing.TB, st *store.Store) *billing.Service {
 	}
 	st.SetAdmission(svc.AllowResource)
 	st.SetFeatureGate(svc.RequireFeature)
+	st.SetAutomationWait(svc.AutomationWaits)
 	return svc
 }
 

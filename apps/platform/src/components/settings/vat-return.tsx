@@ -46,7 +46,7 @@ import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { saveResponse } from '@/lib/invoice-download'
 import { formatAmount, settingsFix, today } from '@/lib/invoices'
-import { useSession } from '@/lib/queries'
+import { useCan } from '@/lib/permissions'
 import {
   endedPeriods,
   exportReasons,
@@ -60,7 +60,7 @@ import {
 
 import { HelpTip } from './help-tip'
 import { SettingsPage } from './layout'
-import { isManager, SettingsHeader } from './settings-tabs'
+import { SettingsHeader } from './settings-tabs'
 import { UnitInput } from './unit-input'
 
 const SETTINGS_KEY = ['vat-return', 'settings'] as const
@@ -185,7 +185,7 @@ export function VATReturnPage() {
 
 /** How VAT is settled, in one line: it rarely changes, so it is edited in a drawer. */
 function SettleRow({ settings, onEdit }: { settings: VATReturnSettings; onEdit: () => void }) {
-  const manager = isManager(useSession().data?.role)
+  const canEdit = useCan('write:vat-return')
   const rates = settings.method === 'net_tax_rate' ? settings.net_rates : []
   return (
     <section
@@ -210,13 +210,13 @@ function SettleRow({ settings, onEdit }: { settings: VATReturnSettings; onEdit: 
             ...(rates.length ? [rates.map((rate) => `${rate.rate}%`).join(', ')] : []),
           ].join(' · ')}
         </p>
-        {!manager && (
+        {!canEdit && (
           <p className="text-body-sm text-muted-foreground">
-            {translate('onlyAnOwnerOrAdminCanChangeThese')}
+            {translate('viewOnlyAskAnOwnerOrAdminForEditAccess')}
           </p>
         )}
       </div>
-      {manager && (
+      {canEdit && (
         <Button variant="outline" size="sm" className="shrink-0" onClick={onEdit}>
           <PencilLine aria-hidden />
           {translate('edit4')}

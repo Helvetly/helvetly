@@ -93,19 +93,22 @@ func prorationDate(changed *time.Time, periodStart int64, now time.Time) int64 {
 
 // Run keeps per-seat subscriptions in step with their members every hour: a sync that failed, or a membership
 // that ended without one (a closed account), is billed right on the next run. It also reads again the
-// subscriptions whose plan expired (LapsedTick).
+// subscriptions whose plan expired (LapsedTick), and forgets trial claims past their retention (TrialClaimsTick), also
+// with billing off, so claims kept from when it was on still expire.
 func (s *Service) Run(ctx context.Context) {
-	if !s.enabled {
-		return
-	}
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {
-		if err := s.SeatsTick(ctx); err != nil {
-			s.log.ErrorContext(ctx, "seats job", "error", err)
+		if s.enabled {
+			if err := s.SeatsTick(ctx); err != nil {
+				s.log.ErrorContext(ctx, "seats job", "error", err)
+			}
+			if err := s.LapsedTick(ctx); err != nil {
+				s.log.ErrorContext(ctx, "lapsed plans job", "error", err)
+			}
 		}
-		if err := s.LapsedTick(ctx); err != nil {
-			s.log.ErrorContext(ctx, "lapsed plans job", "error", err)
+		if err := s.TrialClaimsTick(ctx); err != nil {
+			s.log.ErrorContext(ctx, "trial claims job", "error", err)
 		}
 		select {
 		case <-ctx.Done():

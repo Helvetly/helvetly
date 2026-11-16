@@ -85,6 +85,7 @@ func (s *Service) ReserveEmail(ctx context.Context, workspaceID string, recipien
 	var over *store.CapExceeded
 	if errors.As(err, &over) {
 		l := Limit(over.Resource)
+		s.noteRefused(workspaceID, l, over.Requested)
 		return nil, fmt.Errorf("%w: %w", store.ErrAdmissionDenied, auth.Error(http.StatusPaymentRequired, "limit_reached",
 			limitMessage(r.Plan, l, over.Max), map[string]any{"limit": l, "used": over.Used, "max": over.Max, "plan": r.Plan}))
 	}

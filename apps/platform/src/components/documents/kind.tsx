@@ -13,35 +13,36 @@ import {
 
 import type { Kind } from '@/lib/documents'
 
-// Kinds are neutral: the icon and extension tell the type; chart shares are steps of one grey.
+// The four common kinds get a pastel tile in their usual colour (images amber: violet is Heidi's);
+// the rest stay neutral. Chart shares are steps of one grey.
 const NEUTRAL = 'bg-muted text-muted-foreground'
 
-/** Each kind's icon, its (neutral) tile and the grey step of its share in charts. */
+/** Each kind's icon, its tile and the grey step of its share in charts. */
 export const KIND_STYLE: Record<
   Kind,
   { icon: LucideIcon; tint: string; bar: string; ext: string }
 > = {
   pdf: {
     icon: FileText,
-    tint: NEUTRAL,
+    tint: 'bg-destructive-surface text-destructive',
     bar: 'bg-foreground/70',
     ext: 'PDF',
   },
   image: {
     icon: FileImage,
-    tint: NEUTRAL,
+    tint: 'bg-warning-surface text-warning',
     bar: 'bg-foreground/58',
     ext: 'IMG',
   },
   spreadsheet: {
     icon: FileSpreadsheet,
-    tint: NEUTRAL,
+    tint: 'bg-success-surface text-success',
     bar: 'bg-foreground/46',
     ext: 'XLS',
   },
   document: {
     icon: FileText,
-    tint: NEUTRAL,
+    tint: 'bg-info-surface text-info',
     bar: 'bg-foreground/36',
     ext: 'DOC',
   },
@@ -119,10 +120,11 @@ export function extensionOf(name: string, kind: Kind) {
 }
 
 export function KindIcon({ kind, className }: { kind: Kind; className?: string }) {
-  return <IconTile icon={KIND_STYLE[kind].icon} size="sm" className={className} />
+  const { icon, tint } = KIND_STYLE[kind]
+  return <IconTile icon={icon} size="sm" className={cn(tint, className)} />
 }
 
-/** A small dog-eared sheet on the neutral tile, its icon over the extension (the list's file mark). */
+/** A small dog-eared sheet on the kind's tile, its icon over the extension (the list's file mark). */
 export function FileTile({ file }: { file: { name: string; kind: Kind } }) {
   const { icon: Icon, tint } = KIND_STYLE[file.kind]
   return (

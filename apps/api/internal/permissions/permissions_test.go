@@ -20,7 +20,9 @@ func TestValidate(t *testing.T) {
 	}{
 		{[]string{"*:*"}, true},
 		{[]string{"read:*", "write:invoices", "write:expenses"}, true},
-		{[]string{"*:invoices", "write:settings", "read:billing", "read:members"}, true},
+		{[]string{"*:invoices", "write:ledger", "read:billing", "read:members"}, true},
+		{[]string{"write:invoice-settings", "write:vat-return", "write:periods", "read:audit-log", "read:workspace", "read:api"}, true},
+		{[]string{"write:settings"}, false},
 		{nil, false},
 		{[]string{}, false},
 		{many, false},
@@ -97,11 +99,23 @@ func TestRequired(t *testing.T) {
 		{"POST", "/api/v1/invoices", []string{"write:invoices"}},
 		{"GET", "/api/v1/quotes", []string{"read:invoices"}},
 		{"POST", "/api/v1/quotes/quo_1/invoice", []string{"write:invoices"}},
-		{"PUT", "/api/v1/invoice-settings", []string{"write:settings"}},
-		{"GET", "/api/v1/engagement-settings", []string{"read:settings"}},
-		{"PATCH", "/api/v1/workspace", []string{"write:settings"}},
-		{"GET", "/api/v1/ledger/export", []string{"read:settings"}},
-		{"PUT", "/api/v1/ledger/settings", []string{"write:settings"}},
+		{"PUT", "/api/v1/invoice-settings", []string{"write:invoice-settings"}},
+		{"DELETE", "/api/v1/invoice-settings/logo", []string{"write:invoice-settings"}},
+		{"GET", "/api/v1/transmission-channels", []string{"read:invoice-settings"}},
+		{"GET", "/api/v1/engagement-settings", []string{"read:engagements"}},
+		{"PATCH", "/api/v1/workspace", []string{"write:workspace"}},
+		{"GET", "/api/v1/ledger/export", []string{"read:ledger"}},
+		{"PUT", "/api/v1/ledger/settings", []string{"write:ledger"}},
+		{"GET", "/api/v1/vat-return", []string{"read:vat-return"}},
+		{"PUT", "/api/v1/vat-return/settings", []string{"write:vat-return"}},
+		{"POST", "/api/v1/periods", []string{"write:periods"}},
+		{"POST", "/api/v1/periods/2026-10/reopen", []string{"write:periods"}},
+		{"GET", "/api/v1/audit-log/export", []string{"read:audit-log"}},
+		// a person's own tokens: the api area at any level, whatever the method
+		{"GET", "/api/v1/account/tokens", []string{"read:api"}},
+		{"POST", "/api/v1/account/tokens", []string{"read:api"}},
+		{"DELETE", "/api/v1/account/tokens/tok_1", []string{"read:api"}},
+		{"GET", "/api/v1/account/tokensx", nil},
 		{"POST", "/api/v1/signatures", []string{"write:documents"}},
 		{"POST", "/api/v1/templates/tpl_1/documents", []string{"write:documents"}},
 		{"GET", "/api/v1/templates", []string{"read:documents"}},
@@ -171,7 +185,7 @@ func TestEveryRouteIsMapped(t *testing.T) {
 			n++
 			p := param.ReplaceAllString(m[2], "x")
 			open := p == "/api/v1/account" || slices.Contains(scopedInHandler, m[1]+" "+p) ||
-				slices.ContainsFunc(unguarded, func(u string) bool { return strings.HasPrefix(p, u) })
+				!strings.HasPrefix(p, tokensPath) && slices.ContainsFunc(unguarded, func(u string) bool { return strings.HasPrefix(p, u) })
 			if got := Required(m[1], p); (got == nil) != open {
 				t.Errorf("%s: %s %s maps to %q (unguarded: %v)", f, m[1], m[2], got, open)
 			}

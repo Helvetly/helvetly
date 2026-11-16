@@ -259,13 +259,9 @@ test('Change access sends the new scopes in a PATCH', async () => {
   renderPage()
   await userEvent.click(await screen.findByRole('button', { name: 'Actions for Mia Member' }))
   await userEvent.click(await screen.findByRole('menuitem', { name: /Change access/ }))
-  await userEvent.click(screen.getByRole('radio', { name: 'Accountant' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Read only' }))
   await userEvent.click(screen.getByRole('button', { name: 'Save access' }))
-  await waitFor(() =>
-    expect(sent).toHaveBeenCalledWith({
-      scopes: ['read:*', 'write:invoices', 'write:expenses', 'read:payroll'],
-    }),
-  )
+  await waitFor(() => expect(sent).toHaveBeenCalledWith({ scopes: ['read:*'] }))
 })
 
 test("an owner changes an admin's HR access, the only part an admin's access has", async () => {

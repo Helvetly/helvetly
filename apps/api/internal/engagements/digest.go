@@ -117,6 +117,9 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
 		return err // a scheduled digest is an automation: it waits for a plan with them
 	}
+	if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions, store.EmailRecipients); err != nil || wait {
+		return err // no room for it this month at this cap: the notices wait for a new month or a bigger cap
+	}
 	var sections []digestSection
 	for _, src := range s.sources {
 		heading, lines, err := src.DigestSection(ctx, ws, now)

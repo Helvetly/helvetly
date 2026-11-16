@@ -33,6 +33,7 @@ import { MIN_WIDTH, useHeidi } from './heidi-provider'
 import { Message } from './message'
 import { withQuote } from './quote'
 import { SelectionMenu } from './selection-menu'
+import { shouldWarn, tokenShare, TokenWarning } from './token-warning'
 import { usageKey } from './use-heidi'
 
 function IconButton({
@@ -62,33 +63,6 @@ function IconButton({
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
-  )
-}
-
-function UsageStrip() {
-  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
-  const data = usage.data
-  const share =
-    data && data.mode !== 'local' && !data.usage_uncertain && data.tokens_included !== null
-      ? Math.round(
-          (data.tokens_used / Math.max(data.tokens_included + data.tokens_purchased, 1)) * 100,
-        )
-      : null
-  return (
-    <p className="truncate px-1 pt-2 text-center text-[11.5px] text-muted-foreground">
-      {translate('heidiCanMakeMistakes')}
-      {data?.mode === 'local' && <>{translate('localAssistance')}</>}
-      {data?.usage_uncertain && <>{translate('modelUsageNeedsReconciliation')}</>}
-      {share !== null && (
-        <>
-          {' · '}
-          <span title={translate('shareOfThisMonthSModelTokenBudgetUsed')}>
-            {share}
-            {translate('ofModelTokenBudgetUsed')}
-          </span>
-        </>
-      )}
-    </p>
   )
 }
 
@@ -195,6 +169,9 @@ function PanelBody() {
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const searchInput = useRef<HTMLInputElement>(null)
+
+  const share = tokenShare(useQuery({ queryKey: usageKey, queryFn: heidiApi.usage }).data)
+  const warn = shouldWarn(share)
 
   const open = heidi?.open ?? false
   const messages = heidi?.chat.messages ?? []
@@ -501,7 +478,9 @@ function PanelBody() {
           </button>
         )}
         <AIConsentNotice />
+        {warn && <TokenWarning share={share} />}
         <Composer
+          attached={warn}
           textareaRef={composer}
           value={heidi.draft}
           onChange={heidi.setDraft}
@@ -518,7 +497,6 @@ function PanelBody() {
             composer.current?.focus()
           }}
         />
-        <UsageStrip />
       </div>
 
       <SelectionMenu root={root} scroller={scroller} onQuote={quoteInReply} />

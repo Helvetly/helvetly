@@ -37,6 +37,7 @@ type Q struct {
 	db        dbtx
 	admission Admission
 	features  FeatureGate
+	waits     AutomationWait
 	period    string // the quota month of the usage being admitted (AdmissionPeriod)
 }
 

@@ -153,9 +153,6 @@ func notifyPeriod(ctx context.Context, q store.Q, sess store.Session, event, mon
 }
 
 func (s *Service) closePeriod(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	var body struct {
 		Month string `json:"month"`
 	}
@@ -192,9 +189,6 @@ func (s *Service) closePeriod(w http.ResponseWriter, r *http.Request, sess store
 }
 
 func (s *Service) reopenPeriod(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	month := r.PathValue("month")
 	if _, err := time.Parse(monthLayout, month); err != nil {
 		return badQuery("month must look like 2026-10.")
@@ -318,9 +312,6 @@ type event struct {
 }
 
 func (s *Service) auditLog(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	q := r.URL.Query()
 	var cursor int64
 	if v := q.Get("cursor"); v != "" {
@@ -361,9 +352,6 @@ func (s *Service) auditLog(w http.ResponseWriter, r *http.Request, sess store.Se
 }
 
 func (s *Service) exportLog(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	const pageSize = 1000
 	// read the first page before writing headers, so a failing query still answers with an error
 	page, err := s.db.Events(r.Context(), sess.Workspace.ID, 0, pageSize)
@@ -418,9 +406,6 @@ func cell(v string) string {
 }
 
 func (s *Service) verifyLog(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	ok, brokenAt, err := s.db.VerifyChain(r.Context(), sess.Workspace.ID)
 	if err != nil {
 		return err

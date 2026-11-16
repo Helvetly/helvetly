@@ -15,6 +15,7 @@ import {
   priceOf,
   tokens,
   USAGE_DETAILS,
+  FEATURE_GROUPS,
   YEARLY_DISCOUNT_PERCENT,
 } from './plans'
 
@@ -33,6 +34,36 @@ describe('plans', () => {
   it('price a month and a year as the API charges them, in rappen', () => {
     expect(PLANS.map((plan) => priceOf(plan, 'month').amount)).toEqual([1900, 4900, 9900])
     expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([18300, 47100, 95100])
+  })
+})
+
+describe('full comparison', () => {
+  // The offer's access features as seeded: key -> plans with the feature on.
+  const seeded = new Map(
+    // Offer v2's features, then the ones later offers add (00013: employees).
+    ['00007_offers.sql', '00013_offer_employees.sql']
+      .flatMap((file) => [
+        ...readFileSync(join(api, 'store/migrations', file), 'utf8').matchAll(
+          /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
+        ),
+      ])
+      .map(([, key, values]) => {
+        const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
+        return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
+      }),
+  )
+  const rows = FEATURE_GROUPS.flatMap((g) => g.rows).filter((r) => !(r.key in LIMITS))
+
+  it('gives each feature to the plans the offer does', () => {
+    for (const row of rows)
+      expect({ [row.key]: PLAN_IDS.filter((id) => row.plans[id]) }).toEqual({
+        [row.key]: seeded.get(row.key),
+      })
+  })
+
+  it('lists every feature some plan includes', () => {
+    const offered = [...seeded].filter(([, plans]) => plans.length > 0).map(([key]) => key)
+    expect(rows.map((r) => r.key).toSorted()).toEqual(offered.toSorted())
   })
 })
 
@@ -80,7 +111,7 @@ describe('offer v2 public projection', () => {
     ['download_bytes_per_month', ['2 GB', '20 GB', '100 GB']],
     ['emails_per_month', ['100', '1’000', '5’000']],
     ['email_attachment_bytes_per_month', ['100 MB', '1 GB', '5 GB']],
-    ['ai_tokens_per_month', ['250’000', '5’000’000', '20’000’000']],
+    ['ai_tokens_per_month', ['250’000', '5M', '20M']],
     ['automation_actions_per_month', [null, '1’500', '6’000']],
   ] as const)('%s per plan', (key, expected) => {
     expect(PLAN_IDS.map((id) => formatLimit(key, id))).toEqual(expected)

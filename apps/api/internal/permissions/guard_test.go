@@ -160,3 +160,49 @@ func TestGuardLeavesSignedOutToHandlers(t *testing.T) {
 		t.Fatalf("signed out: %d, want 401", code)
 	}
 }
+
+// TestGuardSettingsAreas: each settings area is its own scope. View reads it, edit changes it, and neither reaches
+// a neighbouring area.
+func TestGuardSettingsAreas(t *testing.T) {
+	e := newGuardEnv(t)
+	for _, c := range []struct{ area, read, write, other string }{
+		{"invoice-settings", "/api/v1/invoice-settings", "/api/v1/invoice-settings/logo", "/api/v1/ledger"},
+		{"vat-return", "/api/v1/vat-return", "/api/v1/vat-return/settings", "/api/v1/periods"},
+		{"ledger", "/api/v1/ledger/journal", "/api/v1/ledger/settings", "/api/v1/vat-return"},
+		{"periods", "/api/v1/periods", "/api/v1/periods/2026-10/reopen", "/api/v1/audit-log"},
+		{"audit-log", "/api/v1/audit-log/verify", "", "/api/v1/workspace"},
+		{"workspace", "/api/v1/workspace", "/api/v1/workspace", "/api/v1/invoice-settings"},
+	} {
+		t.Run(c.area, func(t *testing.T) {
+			viewer, editor := e.join("member", []string{"read:" + c.area}), e.join("member", []string{"write:" + c.area})
+			e.allowed(viewer, "GET", c.read)
+			e.allowed(editor, "GET", c.read)
+			if c.write != "" {
+				e.refused(viewer, "PUT", c.write, "write:"+c.area)
+				e.allowed(editor, "PUT", c.write)
+			}
+			_, otherArea, _ := strings.Cut(Required("GET", c.other)[0], ":")
+			e.refused(editor, "GET", c.other, "read:"+otherArea)
+		})
+	}
+}
+
+// TestGuardAPIArea: a person's own tokens need the api area, at view, for every method (the real token handlers
+// answer past the guard, so only a 403 counts as refused).
+func TestGuardAPIArea(t *testing.T) {
+	e := newGuardEnv(t)
+	with, without := e.join("member", []string{"read:api", "read:clients"}), e.join("member", []string{"write:clients"})
+	readOnly := e.join("member", []string{"read:*"})
+	for _, c := range []struct{ method, path string }{
+		{"GET", "/api/v1/account/tokens"},
+		{"POST", "/api/v1/account/tokens"},
+		{"DELETE", "/api/v1/account/tokens/tok_1"},
+	} {
+		for _, p := range []person{with, readOnly} {
+			if code, body := e.do(p, c.method, c.path); code == http.StatusForbidden {
+				t.Fatalf("%s %s: %s", c.method, c.path, body)
+			}
+		}
+		e.refused(without, c.method, c.path, "read:api")
+	}
+}

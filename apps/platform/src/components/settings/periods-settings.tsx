@@ -41,10 +41,10 @@ import { errorMessage } from '@/lib/api'
 import { booksApi, type ActivitySource, type MonthActivity, type Period } from '@/lib/books'
 import { translate } from '@/lib/i18n'
 import { formatAmount, today } from '@/lib/invoices'
-import { useSession } from '@/lib/queries'
+import { useCan } from '@/lib/permissions'
 
 import { SettingsPage } from './layout'
-import { isManager, SettingsHeader } from './settings-tabs'
+import { SettingsHeader } from './settings-tabs'
 
 const PERIODS_KEY = ['books', 'periods'] as const
 const ACTIVITY_KEY = ['books', 'activity'] as const
@@ -131,7 +131,7 @@ export function PeriodsSettings() {
 
 export function PeriodsCard() {
   const queryClient = useQueryClient()
-  const manager = isManager(useSession().data?.role)
+  const canEdit = useCan('write:periods')
   const periods = useQuery({
     queryKey: PERIODS_KEY,
     queryFn: async () => (await booksApi.periods()).data,
@@ -208,7 +208,7 @@ export function PeriodsCard() {
         through={through}
         open={open}
         withDrafts={open.filter((month) => draftsOf(byMonth.get(month)) !== null)}
-        manager={manager}
+        canEdit={canEdit}
         busy={busy}
         onClose={setConfirming}
       />
@@ -221,7 +221,7 @@ export function PeriodsCard() {
           closed={closed}
           activity={activity.data ? byMonth : null}
           actions={
-            manager
+            canEdit
               ? {
                   disabled: busy,
                   close: (month) => setConfirming([month]),
@@ -279,14 +279,14 @@ function CloseStatus({
   through,
   open,
   withDrafts,
-  manager,
+  canEdit,
   busy,
   onClose,
 }: {
   through: string | null
   open: string[]
   withDrafts: string[]
-  manager: boolean
+  canEdit: boolean
   busy: boolean
   onClose: (batch: string[]) => void
 }) {
@@ -333,7 +333,7 @@ function CloseStatus({
           </p>
         </div>
       </div>
-      {manager && latest && (
+      {canEdit && latest && (
         <div className="flex shrink-0 items-center">
           <Button
             disabled={busy}
@@ -348,10 +348,10 @@ function CloseStatus({
           {open.length > 1 && <CloseThroughPicker open={open} disabled={busy} onClose={onClose} />}
         </div>
       )}
-      {!manager && (
+      {!canEdit && (
         <p className="flex basis-full items-center gap-2 text-body-sm text-muted-foreground">
           <Lock className="size-3.5 shrink-0" aria-hidden />
-          {translate('onlyAnOwnerOrAdminCanCloseOrReopen')}
+          {translate('viewOnlyAskAnOwnerOrAdminForEditAccess')}
         </p>
       )}
     </section>

@@ -166,7 +166,13 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 			}
 			return err
 		}
-		docType, records, err := s.ask(ctx, k, ws, f, i, parts[i])
+		var kinds []string
+		if k.Name == Auto {
+			if kinds, err = offeredKinds(ctx, s.db.Q, ws.ID); err != nil {
+				return err
+			}
+		}
+		docType, records, err := s.ask(ctx, k, ws, f, i, parts[i], kinds)
 		if err != nil {
 			return err
 		}
@@ -181,8 +187,14 @@ func (s *Service) extract(ctx context.Context, f store.ImportFile) error {
 		if err != nil {
 			return err
 		}
-		if k.Name == Auto && len(parts) == 1 && docType == "other" && records.count() == 0 {
-			return failure{notRecognised}
+		if k.Name == Auto && len(parts) == 1 && records.count() == 0 {
+			if docType == "other" {
+				return failure{notRecognised}
+			}
+			if gone := missing(docType, kinds); len(gone) > 0 {
+				return failure{"This file looks like a " + strings.ReplaceAll(docType, "_", " ") + ", but this workspace's plan does not include " +
+					strings.Join(gone, ", ") + ", so nothing was taken from it. Upgrade the plan and upload it again."}
+			}
 		}
 	}
 	return nil
@@ -241,7 +253,7 @@ type proposed map[string][]map[string]json.RawMessage
 
 // ask makes one model call for chunk i of f under the workspace's budget and returns the records it proposes; for an
 // auto batch also the document type it recognised.
-func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.ImportFile, i int, c chunk) (string, proposed, error) {
+func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.ImportFile, i int, c chunk, kinds []string) (string, proposed, error) {
 	name := f.Name
 	req := aimodel.Request{
 		Instructions: "You read files for Helvetly's import. " + k.Prompt + rules,
@@ -250,12 +262,12 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.I
 			"required": []string{"records"}, "properties": map[string]any{"records": map[string]any{"type": "array", "items": k.Schema}}}},
 	}
 	if k.Name == Auto {
-		instructions, err := s.autoInstructions(ctx, ws)
+		instructions, err := s.autoInstructions(ctx, ws, kinds)
 		if err != nil {
 			return "", nil, err
 		}
 		req.Instructions = instructions + autoRules
-		req.Schema = &aimodel.Schema{Name: "import_auto", JSON: autoSchema()}
+		req.Schema = &aimodel.Schema{Name: "import_auto", JSON: autoSchema(kinds)}
 	}
 	if c.file != nil {
 		req.Message += "The file is attached."
@@ -285,9 +297,8 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, f store.I
 	if json.Unmarshal([]byte(strings.TrimSpace(reply.Text)), &out) != nil {
 		return "", nil, failure{"The AI model's answer could not be read. Upload the file again or try a clearer copy."}
 	}
-	kinds := []string{k.Name}
-	if k.Name == Auto {
-		kinds = autoKinds
+	if k.Name != Auto {
+		kinds = []string{k.Name}
 	}
 	records, left := proposed{}, maxChunkRecords
 	for _, kind := range kinds {

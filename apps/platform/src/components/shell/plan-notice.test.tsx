@@ -112,21 +112,18 @@ const launch = {
 } as const
 
 test.each<[string, Partial<Billing>, string]>([
-  [
-    'free forever',
-    { discount: lifetime },
-    'Basic until 16 Nov 2026, then free forever with code LIFETIME-1.',
-  ],
+  ['free forever', { discount: lifetime }, 'Basic until 16 Nov 2026, then free forever.'],
   ['a partial discount', { discount: launch, pricing: 'flat', interval: 'month' }, 'then CHF'],
-  ['an unknown price', { discount: launch }, 'then code LAUNCH20 (−20 % for 3 months) applies.'],
+  ['an unknown price', { discount: launch }, 'then −20 % for 3 months applies.'],
   [
     'a partial discount',
     { discount: launch, pricing: 'flat', interval: 'month' },
-    'with code LAUNCH20 (−20 % for 3 months).',
+    'with −20 % for 3 months.',
   ],
-])('a trial under a promotion code says what follows: %s', (_, over, text) => {
+])('a trial under a promotion code says what follows, never the code: %s', (_, over, text) => {
   const notice = planNotice({ ...trial, ...over }, NOW)
   expect(notice?.text).toContain(text)
+  expect(notice?.text).not.toMatch(/LIFETIME-1|LAUNCH20|code/)
   expect(notice?.action).toEqual({ label: 'View plan', href: '/settings/billing' })
   expect(planNotice({ ...trial, ...over, can_manage: false }, NOW)?.action).toBeNull()
 })
