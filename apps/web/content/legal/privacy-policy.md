@@ -14,10 +14,24 @@ Helvetly is a service for businesses. It is not directed at children.
   Helvetly plans, security data, feedback and support requests, and the website.
 - **Processor** for the business data our customers keep in their workspaces: their clients and
   contacts (including the people who sign in to a customer's client portal), invoices, expenses,
-  documents, signature requests and signers, engagements, AI imports and Heidi conversations. The
-  customer is the controller of that data; we process it only on their instructions, under the
-  [data processing agreement](dpa.md). If you are a customer's client, contact or signer, please
-  contact that customer about your data.
+  documents, signature requests and signers, engagements, AI imports, Heidi conversations, and the
+  personnel and payroll records of their employees. The customer is the controller of that data; we
+  process it only on their instructions, under the [data processing agreement](dpa.md). If you are a
+  customer's client, contact, signer or employee, please contact that customer about your data.
+
+**Employee and payroll data.** A customer on the Business plan can keep its personnel and payroll
+records in Helvetly: identity (name, employee number), contact details, employment details
+(position, department, contract type, dates, notice period, working time, place and country of
+work, residence and social-security country, cross-border status), pay terms and the payroll figures
+the customer enters or imports, social-security numbers (such as the Swiss AHV/AVS number), tax
+identifiers, bank details, withholding-tax status and canton, and the documents the customer uploads
+for an employee (such as contracts, payslips or permits). Helvetly does not calculate pay, tax or
+contributions, stores no health or absence data, and has no fields for other special categories of
+data; documents the customer uploads may contain such data, which is the customer's responsibility.
+Employee and payroll data are never sent to OpenAI and are not available through MCP or personal API
+tokens. Which legal basis applies (for example under GDPR Art. 6(1)(b) and (c) and Art. 88, the nDSG,
+Art. 328b of the Swiss Code of Obligations, or Art. 50e–50g AHVG for the AHV number) is for the
+customer to determine as controller; the [data processing agreement](dpa.md) describes the details.
 
 ## 3. What we process as controller, why, and on what basis
 
@@ -71,6 +85,8 @@ Once allowed:
   are sent to OpenAI as well.
 - AI import sends the content of the files you upload for the import, part by part.
 
+Employee and payroll data are never sent, whatever the setting.
+
 We ask OpenAI not to store requests and responses (`store: false`). According to OpenAI's API terms,
 API data is not used to train models and may be kept for up to 30 days to detect abuse. Heidi is labelled as an AI assistant; its answers and imported
 records can be wrong and are suggestions for you to check. Owners and admins can turn this off at
@@ -98,7 +114,8 @@ you can do yourself:
   sign-in methods, passkeys, sessions, API tokens (without the tokens), workspaces, your Heidi
   messages and the feedback you sent.
 - **Workspace data:** an owner downloads everything a workspace holds (records and files) as a ZIP
-  in Settings → Workspace → Export all data.
+  in Settings → Workspace → Export all data, including employee and payroll data in a separate
+  folder.
 - **Delete your account:** Account settings → Delete account. Your sign-in methods, sessions and
   memberships are deleted and your profile anonymised. What you wrote in a workspace (for example
   Heidi conversations or records you created) belongs to that workspace and stays there without your
@@ -122,4 +139,4 @@ data at rest is encrypted and backed up regularly.
 
 ## 8. Changes
 
-We publish changes here with their date. Last change: 15 November 2026.
+We publish changes here with their date. Last change: 16 November 2026.
