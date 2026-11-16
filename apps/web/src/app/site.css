@@ -109,6 +109,15 @@ body {
 }
 
 /* A fine field of dots that fades out towards the edges: texture without the graph-paper look. */
+/* A headline's serif phrase keeps together while it fits and wraps inside itself when wider than the line;
+   the padding gives the gradient room for descenders without moving the line. */
+.accent {
+  display: inline-block;
+  max-width: 100%;
+  padding-block: 0.15em;
+  margin-block: -0.15em;
+}
+
 .dot-field {
   background-image: radial-gradient(
     circle at center,

@@ -1,7 +1,8 @@
 'use client'
+import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
-import { Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
+import { Ban, Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import { useState } from 'react'
 
 import { Cta } from '@/components/cta'
@@ -66,26 +67,36 @@ export function PricingCards() {
       </fieldset>
 
       {unavailable && (
-        <output className="border-site-line bg-site-tint mt-8 flex w-full max-w-3xl flex-col items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-center text-body-sm sm:flex-row sm:text-left">
-          <span>
-            <span className="font-medium">{translate('pricingIsTemporarilyUnavailable')}</span>{' '}
-            <span className="text-muted-foreground">
-              {translate('tryAgainInAMomentOrWriteTo')}{' '}
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2">
-                {SUPPORT_EMAIL}
-              </a>
-              .
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={offer.retry}
-            disabled={offer.checking}
-            className="hover:bg-lilac inline-flex h-9 shrink-0 items-center rounded-full border border-foreground/15 bg-card px-4 font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60"
-          >
-            {offer.checking ? translate('checking') : translate('retry')}
-          </button>
-        </output>
+        <Callout
+          role="alert"
+          tone="warning"
+          title={translate('pricingIsTemporarilyUnavailable')}
+          className="mt-8 w-full max-w-3xl text-left max-sm:flex-wrap"
+          actions={
+            <button
+              type="button"
+              onClick={offer.retry}
+              disabled={offer.checking}
+              aria-busy={offer.checking}
+              className="hover:bg-lilac inline-flex h-9 items-center gap-2 rounded-full border border-foreground/15 bg-card px-4 font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait"
+            >
+              <RefreshCw
+                aria-hidden
+                className={cn(
+                  'size-4',
+                  offer.checking && 'animate-spin motion-reduce:animate-none',
+                )}
+              />
+              {offer.checking ? translate('checking') : translate('retry')}
+            </button>
+          }
+        >
+          {translate('tryAgainInAMomentOrWriteTo')}{' '}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2">
+            {SUPPORT_EMAIL}
+          </a>
+          .
+        </Callout>
       )}
 
       <div className="mt-12 grid w-full gap-4 lg:grid-cols-3">
@@ -121,7 +132,20 @@ export function PricingCards() {
                 {plan.pitch}
               </p>
               {unavailable ? (
-                <p className="mt-6 text-title font-semibold">{translate('priceUnavailable')}</p>
+                // Holds the price row's height, so the cards keep their rhythm without a figure.
+                <p className="mt-6 flex h-11 items-center">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full border border-dashed px-3.5 py-1.5 text-body font-medium',
+                      featured
+                        ? 'border-white/40 text-white'
+                        : 'border-foreground/25 text-foreground',
+                    )}
+                  >
+                    <Ban aria-hidden className="size-4" />
+                    {translate('priceUnavailable')}
+                  </span>
+                </p>
               ) : (
                 <p className="mt-6 flex items-baseline gap-1.5">
                   <span
@@ -152,13 +176,16 @@ export function PricingCards() {
                   featured ? 'opacity-60' : 'text-muted-foreground',
                 )}
               >
-                {unavailable
-                  ? ''
-                  : interval === 'year'
-                    ? translate('aYearBilledYearly', {
-                        value1: formatPrice(priceOf(plan, 'year', currency)),
-                      })
-                    : translate('billedMonthly')}
+                {unavailable ? (
+                  ''
+                ) : interval === 'year' ? (
+                  <>
+                    <strong>{formatPrice(priceOf(plan, 'year', currency))}</strong>
+                    {translate('annualPriceSuffix')}
+                  </>
+                ) : (
+                  translate('billedMonthly')
+                )}
               </p>
               <Cta
                 href={siteIn(language).START_URL}
