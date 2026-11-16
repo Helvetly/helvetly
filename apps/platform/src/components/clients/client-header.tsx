@@ -24,7 +24,7 @@ import {
 import type { ReactElement, ReactNode } from 'react'
 
 import { initialsOf } from '@/components/initials'
-import { newInvoiceHref } from '@/components/invoices/client-invoices'
+import { newInvoiceHref } from '@/components/invoices/compose'
 import { RecordPageButton } from '@/components/record-link'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'

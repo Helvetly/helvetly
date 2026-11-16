@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 
 import { translate } from '@/lib/i18n'
@@ -60,12 +61,12 @@ export function PrepaymentPicker({
             </li>
           ))}
         </ul>
+      ) : list.isLoading ? (
+        <p className="px-2 text-xs text-muted-foreground">{translate('loading')}</p>
       ) : (
-        <p className="px-2 text-[13px] text-muted-foreground">
-          {list.isLoading
-            ? translate('loading')
-            : translate('noPaidPrepaymentInvoicesForThisClientIn', { currency: currency })}
-        </p>
+        <Callout tone="info">
+          {translate('noPaidPrepaymentInvoicesForThisClientIn', { currency: currency })}
+        </Callout>
       )}
       {list.hasNextPage && (
         <Button

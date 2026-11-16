@@ -52,7 +52,6 @@
 1 radius apps/platform/src/components/heidi/heidi-panel.tsx
 1 radius apps/platform/src/components/heidi/markdown.tsx
 2 radius apps/platform/src/components/heidi/records.tsx
-1 radius apps/platform/src/components/invoices/invoice-editor.tsx
 1 radius apps/platform/src/components/invoices/payment-methods.tsx
 3 radius apps/platform/src/components/invoices/pdf-view.tsx
 1 radius apps/platform/src/components/kpi-band.tsx
@@ -80,7 +79,6 @@
 1 shadow apps/platform/src/components/expenses/expenses-page.tsx
 1 shadow apps/platform/src/components/initials.tsx
 1 shadow apps/platform/src/components/invoices/invoice-dialogs.tsx
-1 shadow apps/platform/src/components/invoices/invoice-editor.tsx
 1 shadow apps/platform/src/components/onboarding/invoice-preview.tsx
 2 shadow apps/platform/src/components/shell/app-sidebar.tsx
 1 shadow apps/platform/src/components/shell/mobile-tab-bar.tsx
@@ -153,7 +151,7 @@
 2 text-px apps/platform/src/components/invoices/pdf-view.tsx
 5 text-px apps/platform/src/components/invoices/plan-card.tsx
 2 text-px apps/platform/src/components/invoices/plan-dialog.tsx
-3 text-px apps/platform/src/components/invoices/prepayment-picker.tsx
+2 text-px apps/platform/src/components/invoices/prepayment-picker.tsx
 2 text-px apps/platform/src/components/invoices/transmissions-card.tsx
 4 text-px apps/platform/src/components/kpi-band.tsx
 1 text-px apps/platform/src/components/load-error.tsx

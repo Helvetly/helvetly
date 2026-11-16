@@ -76,10 +76,11 @@ import {
   type InvoiceListItem,
 } from '@/lib/invoices'
 
+import { editHref } from './compose'
 import { DunningCard, dunnable } from './dunning-card'
 import { InstalmentSchedule } from './instalment-schedule'
 import { InvoiceStatusBadge, Money } from './invoice-bits'
-import { CommandItems, editHref, type InvoiceCommand } from './invoice-commands'
+import { CommandItems, type InvoiceCommand } from './invoice-commands'
 import { PaymentSummary } from './payment-methods'
 import { PdfView } from './pdf-view'
 import { PlanCard } from './plan-card'

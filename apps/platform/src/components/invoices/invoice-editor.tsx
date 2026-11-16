@@ -3,12 +3,23 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@helvetly/ui/components/dropdown-menu'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  useSheetEscape,
+} from '@helvetly/ui/components/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -17,6 +28,7 @@ import {
   CircleAlert,
   CircleHelp,
   CloudOff,
+  Ellipsis,
   Download,
   ExternalLink,
   Eye,
@@ -29,7 +41,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
@@ -42,7 +54,6 @@ import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
 import { RecordLink } from '@/components/record-link'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
-import { PageHeader } from '@/components/shell/page-header'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
@@ -83,6 +94,7 @@ import {
 import { useSession } from '@/lib/queries'
 
 import { ClientSearch } from './client-search'
+import type { Compose } from './compose'
 import { DateField, DueDateField, quietValue, ServiceField } from './date-fields'
 import {
   applyClient,
@@ -110,23 +122,58 @@ import { PlanCard } from './plan-card'
 import { PlanDialog } from './plan-dialog'
 import { PrepaymentPicker } from './prepayment-picker'
 
-/** What POST /invoices makes; the other kinds come from an issued invoice. */
-const CREATABLE: InvoiceKind[] = ['invoice', 'partial', 'prepayment', 'proforma', 'self_billed']
 const PRECEDING: Partial<Record<InvoiceKind, string>> = {
   credit_note: translate('creditsInvoice'),
   debit_note: translate('debitNoteOnInvoice'),
   corrected: translate('correctsInvoice'),
 }
 
-/** After the first save the URL carries the draft's id, so a reload continues where you were. */
-const draftUrl = (id: string) => `${window.location.pathname}?id=${encodeURIComponent(id)}`
+/** Width of the drawer: room for the page and its totals. */
+const DRAWER_WIDTH = 'sm:w-[min(1200px,96vw)]!'
 
-/** /invoices/new (optionally ?client=…&kind=…) and /invoices/edit?id=…: loads what the editor needs. */
-export function InvoiceEditorPage() {
-  const query = useSearchParams()
-  const id = query.get('id')
-  const clientId = query.get('client')
-  const kind = CREATABLE.find((entry) => entry === query.get('kind')) ?? 'invoice'
+/**
+ * Creating a document, or editing a draft, in a drawer from the right; the page decides when it is open
+ * (?compose= on /invoices, or the older /invoices/new and /invoices/edit URLs).
+ */
+export function InvoiceEditorDrawer({
+  compose,
+  onClose,
+  onCreated,
+}: {
+  compose: Compose
+  onClose: () => void
+  /** After the first save, so the URL carries the draft's id and a reload continues where you were. */
+  onCreated: (id: string) => void
+}) {
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className={cn('w-full! max-w-none! gap-0 bg-panel p-0 dark:bg-background', DRAWER_WIDTH)}
+      >
+        <SheetTitle className="sr-only">
+          {compose.id ? translate('editInvoice') : translate('newInvoice')}
+        </SheetTitle>
+        <SheetDescription className="sr-only">
+          {translate('theDraftAsItWillPrint')}
+        </SheetDescription>
+        <InvoiceEditorLoader compose={compose} onClose={onClose} onCreated={onCreated} />
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/** Loads what the editor needs: the settings, the draft and a preset client. */
+function InvoiceEditorLoader({
+  compose: { id, kind, client: clientId },
+  onClose,
+  onCreated,
+}: {
+  compose: Compose
+  onClose: () => void
+  onCreated: (id: string) => void
+}) {
   const [created, setCreated] = useState<string | null>(null)
   const settings = useInvoiceSettings()
   const invoice = useInvoice(id)
@@ -134,7 +181,7 @@ export function InvoiceEditorPage() {
 
   if (settings.error || invoice.error)
     return (
-      <EditorFrame title={translate('invoice2')}>
+      <EditorFrame title={translate('invoice2')} onClose={onClose}>
         <State
           icon={<CloudOff />}
           title={
@@ -144,11 +191,9 @@ export function InvoiceEditorPage() {
           }
           text={errorMessage(invoice.error ?? settings.error)}
           action={
-            <Button asChild variant="outline" size="sm">
-              <Link href="/invoices">
-                <ArrowLeft />
-                {translate('backToInvoices2')}
-              </Link>
+            <Button variant="outline" size="sm" onClick={onClose}>
+              <ArrowLeft />
+              {translate('backToInvoices2')}
             </Button>
           }
         />
@@ -159,12 +204,14 @@ export function InvoiceEditorPage() {
       <EditorFrame
         title={id ? translate('draft') : translate('newInvoice')}
         kind={id ? undefined : kind}
+        onClose={onClose}
       >
         <Loader size="page" className="min-h-96" />
       </EditorFrame>
     )
-  if (invoice.data && invoice.data.status !== 'draft') return <Locked invoice={invoice.data} />
-  if (invoice.data?.plan?.seq === 0) return <Planned invoice={invoice.data} />
+  if (invoice.data && invoice.data.status !== 'draft')
+    return <Locked invoice={invoice.data} onClose={onClose} />
+  if (invoice.data?.plan?.seq === 0) return <Planned invoice={invoice.data} onClose={onClose} />
 
   return (
     <Editor
@@ -174,61 +221,95 @@ export function InvoiceEditorPage() {
       invoice={id ? invoice.data : undefined}
       kind={kind}
       client={preset.data ?? null}
+      onClose={onClose}
       onCreated={(newId) => {
         // Committed before the URL changes: the router's render must already see this draft as
         // the one being edited, or it would remount the editor mid-typing.
         flushSync(() => setCreated(newId))
-        window.history.replaceState(null, '', draftUrl(newId))
+        onCreated(newId)
       }}
     />
   )
 }
 
-function EditorFrame({
+/** The drawer's top bar: the document, then its own controls and the close button. */
+function EditorBar({
   title,
   kind = 'invoice',
+  menu,
   actions,
+  onClose,
+}: {
+  title: string
+  kind?: InvoiceKind
+  menu?: ReactNode
+  actions?: ReactNode
+  onClose: () => void
+}) {
+  const Icon = KIND_ICONS[kind]
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-card px-3">
+      <Icon className="ml-1 size-4 shrink-0 text-muted-foreground" />
+      <h2 className="truncate text-body font-medium">{title}</h2>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {menu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={translate('more')}>
+                <Ellipsis />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-52">
+              {menu}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {actions}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('closeEditor')}
+              onClick={onClose}
+            >
+              <X />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{translate('backToInvoices')}</TooltipContent>
+        </Tooltip>
+      </div>
+    </header>
+  )
+}
+
+function EditorFrame({
+  title,
+  kind,
+  onClose,
   children,
 }: {
   title: string
   kind?: InvoiceKind
-  actions?: ReactNode
+  onClose: () => void
   children: ReactNode
 }) {
   return (
     <>
-      <PageHeader
-        tabs={[title]}
-        tabIcons={[KIND_ICONS[kind]]}
-        actions={actions ?? <CloseButton />}
-      />
-      <div className="flex flex-1 flex-col">{children}</div>
+      <EditorBar title={title} kind={kind} onClose={onClose} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
     </>
   )
 }
 
-function CloseButton() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button asChild variant="ghost" size="icon-sm" aria-label={translate('closeEditor')}>
-          <Link href="/invoices">
-            <X />
-          </Link>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{translate('backToInvoices')}</TooltipContent>
-    </Tooltip>
-  )
-}
-
 /** A plan's source draft is its template: locked while the plan issues partials from it. */
-function Planned({ invoice }: { invoice: Invoice }) {
+function Planned({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const canManage = canManageInvoices(useSession().data?.role)
   return (
     <EditorFrame
       title={translate('draft3', { value1: kindInfo(invoice.kind).label.toLowerCase() })}
       kind={invoice.kind}
+      onClose={onClose}
     >
       <div className="mx-auto grid w-full max-w-[640px] gap-4 px-4 py-10">
         <State
@@ -249,9 +330,9 @@ function Planned({ invoice }: { invoice: Invoice }) {
   )
 }
 
-function Locked({ invoice }: { invoice: Invoice }) {
+function Locked({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   return (
-    <EditorFrame title={documentName(invoice)} kind={invoice.kind}>
+    <EditorFrame title={documentName(invoice)} kind={invoice.kind} onClose={onClose}>
       <State
         icon={<FileLock2 />}
         title={translate('isIssued', { value1: documentName(invoice) })}
@@ -275,12 +356,14 @@ function Editor({
   invoice,
   kind: newKind,
   client: preset,
+  onClose,
   onCreated,
 }: {
   settings: InvoiceSettings
   invoice?: Invoice
   kind: InvoiceKind
   client: Client | null
+  onClose: () => void
   onCreated: (id: string) => void
 }) {
   const router = useRouter()
@@ -338,6 +421,7 @@ function Editor({
   const payload = JSON.stringify(body)
   const valid = Object.keys(converted.errors).length === 0
   const dirty = payload !== savedPayload
+  const [initialPayload] = useState(payload)
   const errors = { ...fromServer, ...converted.errors }
 
   // Totals: the server's preview of what is on screen, a moment after typing stops.
@@ -443,6 +527,14 @@ function Editor({
     return () => window.removeEventListener('keydown', saveShortcut)
   }, [])
 
+  // Autosave keeps a draft that has a client and valid fields; anything else typed would be lost on close.
+  const unsaved =
+    dirty && payload !== initialPayload && !(values.client_id && valid && payload !== failedPayload)
+  const [discarding, setDiscarding] = useState(false)
+  const cancel = () => (unsaved ? setDiscarding(true) : onClose())
+  // Esc is the close button too: it asks before throwing typed work away.
+  useSheetEscape(cancel)
+
   const saveState: SaveState = save.isPending
     ? 'saving'
     : failedPayload === payload && dirty
@@ -537,9 +629,10 @@ function Editor({
 
   return (
     <>
-      <PageHeader
-        tabs={[title]}
-        tabIcons={[KIND_ICONS[kind]]}
+      <EditorBar
+        title={title}
+        kind={kind}
+        onClose={cancel}
         menu={
           <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
             <Trash2 /> {draftId ? translate('deleteDraft2') : translate('discard')}
@@ -581,13 +674,15 @@ function Editor({
             >
               {issue.isPending ? translate('issuing') : translate('issue4', { noun: noun })}
             </Button>
-            <CloseButton />
           </>
         }
       />
 
-      <div className="flex flex-1 items-start">
-        <div ref={top} className="min-w-0 flex-1 scroll-mt-16 px-3 pt-5 pb-16 sm:px-6 md:pt-8">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={top}
+          className="@container min-w-0 flex-1 scroll-mt-16 px-3 pt-5 pb-16 sm:px-6 md:pt-8"
+        >
           <div className="mx-auto grid w-full max-w-[1040px] gap-4">
             {preceding && invoice?.credited_invoice && (
               <Callout tone="warning" icon={CircleAlert}>
@@ -659,7 +754,8 @@ function Editor({
 
             <article
               aria-label={title}
-              className="rounded-[18px] bg-card px-5 py-8 shadow-[0_0_0_1px_oklch(0.21_0.006_286/0.06),0_2px_4px_oklch(0.21_0.006_286/0.03),0_18px_44px_-18px_oklch(0.21_0.006_286/0.16)] sm:px-10 sm:py-10 dark:shadow-elevation-2"
+              // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
+              className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
             >
               {/* Letterhead: logo left; title and dates right. */}
               <header className="flex flex-wrap items-start justify-between gap-6 max-md:flex-col">
@@ -1106,6 +1202,19 @@ function Editor({
           }
         />
       )}
+      {discarding && (
+        <ConfirmDialog
+          title={translate('discardYourChanges')}
+          body={translate('whatYouEnteredInThisFormWillBeLost')}
+          confirmLabel={translate('discard')}
+          cancelLabel={translate('keepEditing')}
+          tone="destructive"
+          onDecide={(discard) => {
+            setDiscarding(false)
+            if (discard) onClose()
+          }}
+        />
+      )}
       {deleting && (
         <ConfirmDialog
           title={draftId ? translate('deleteThisDraft') : translate('discardThisInvoice')}
@@ -1116,11 +1225,11 @@ function Editor({
             setDeleting(false)
             if (!approved) return
             setSavedPayload(payload)
-            if (!draftId) return router.push('/invoices')
+            if (!draftId) return onClose()
             remove.mutate(draftId, {
               onSuccess: () => {
                 toast.success(translate('draftDeleted2'))
-                router.push('/invoices')
+                onClose()
               },
               onError: toastError,
             })

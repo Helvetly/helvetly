@@ -48,6 +48,7 @@ import {
 } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 
+import { editHref } from './compose'
 import { IssueBlockersDialog, PaymentDialog, RefundDialog, SendDialog } from './invoice-dialogs'
 import { PlanDialog } from './plan-dialog'
 
@@ -105,8 +106,6 @@ const deriveApi = ({ command, id }: { command: DeriveCommand; id: string }) =>
     : command === 'debit_note'
       ? invoicesApi.debitNote(id)
       : invoicesApi.convert(id, command === 'convert_invoice' ? 'invoice' : 'prepayment')
-
-export const editHref = (id: string) => `/invoices/edit?id=${encodeURIComponent(id)}`
 
 /** A list row, or the full invoice (the drawer), which also knows its plan and schedule. */
 type CommandTarget = InvoiceListItem & Partial<Pick<Invoice, 'plan' | 'instalments'>>

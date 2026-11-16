@@ -12,7 +12,7 @@ import { sampleClient } from '@/test/invoice-fixtures'
 
 import { scheduleBlocker, type EditorInstalments } from './editor-model'
 import { InstalmentsSection } from './instalments-section'
-import { InvoiceEditorPage } from './invoice-editor'
+import { InvoiceEditorDrawer } from './invoice-editor'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn<() => void>(), replace: vi.fn<() => void>() }),
@@ -121,7 +121,11 @@ test('sum mismatch blocks issue button', async () => {
     >
       <TooltipProvider>
         <SidebarProvider>
-          <InvoiceEditorPage />
+          <InvoiceEditorDrawer
+            compose={{ id: null, kind: 'invoice', client: null }}
+            onClose={() => {}}
+            onCreated={() => {}}
+          />
         </SidebarProvider>
       </TooltipProvider>
     </QueryClientProvider>,

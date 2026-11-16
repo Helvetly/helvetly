@@ -18,11 +18,9 @@ import {
   useInvoiceList,
 } from '@/lib/invoices'
 
+import { newInvoiceHref } from './compose'
 import { InvoiceNumber, Money, RowStatus } from './invoice-bits'
 import { usePlans } from './plan-card'
-
-export const newInvoiceHref = (clientId: string) =>
-  `/invoices/new?client=${encodeURIComponent(clientId)}`
 
 /** The client's invoices (GET /invoices?client_id=…), newest first, with a "New invoice" start. */
 export function ClientInvoices({ clientId }: { clientId: string }) {
