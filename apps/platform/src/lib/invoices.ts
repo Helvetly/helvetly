@@ -781,6 +781,19 @@ export const einvoiceFormatsFor = (
     : []),
 ]
 
+/** Why no e-invoice XML can be made from this invoice, as the API would refuse it; null when it can. */
+export function einvoiceBlock(invoice: {
+  vat_breakdown: Pick<VatGroup, 'category'>[]
+  seller: Pick<Party, 'registration_number'> | null
+}) {
+  const outside = invoice.vat_breakdown.some((group) => group.category === 'O')
+  if (!outside) return null
+  if (invoice.vat_breakdown.length > 1) return translate('einvoiceOutsideScopeMixed')
+  return invoice.seller?.registration_number?.trim()
+    ? null
+    : translate('einvoiceOutsideScopeNoRegistration')
+}
+
 /** Swiss rates: standard, accommodation, reduced. */
 export const VAT_RATES = ['8.1', '3.8', '2.6'] as const
 
