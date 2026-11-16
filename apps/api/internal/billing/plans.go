@@ -206,6 +206,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.InvoiceDrafts
 	case QuotesRetained:
 		return u.QuotesRetained
+	case AutomationActions:
+		return u.AutomationsThisMonth
 	}
 	return 0
 }

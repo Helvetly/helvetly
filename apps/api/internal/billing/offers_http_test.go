@@ -160,6 +160,9 @@ func TestOverviewEntitlements(t *testing.T) {
 	if i := items["invoices_per_month"]; i["value"] != 300.0 || i["reset_at"] == nil || i["period"] != "calendar_month_utc" {
 		t.Fatalf("invoices: %v", i)
 	}
+	if a := items["automation_actions_per_month"]; a["value"] != 3000.0 || a["used"] != 0.0 || a["reset_at"] == nil {
+		t.Fatalf("automation actions %v", a)
+	}
 	if p := items["products"]; p["value"] != 260.0 || p["source"] != "workspace" || p["expires_at"] != expires.Format(time.RFC3339) {
 		t.Fatalf("override: %v", p)
 	}
