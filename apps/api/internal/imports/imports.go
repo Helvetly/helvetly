@@ -101,10 +101,14 @@ func kindOf(name string) (Kind, error) {
 	return k, nil
 }
 
-// gate refuses a model call the workspace has not allowed or the server cannot make (the same rule as Heidi).
+// gate refuses a model call the workspace's plan lacks (ai_import), has not allowed or the server cannot make (the
+// same rule as Heidi).
 func (s *Service) gate(ctx context.Context, q store.Q, workspaceID string) error {
 	if s.provider == nil {
 		return auth.Error(http.StatusConflict, "ai_not_configured", "This server has no AI model configured, so files can't be read automatically.", nil)
+	}
+	if err := q.RequireFeature(ctx, workspaceID, store.FeatureAIImport); err != nil {
+		return err
 	}
 	c, err := q.AIConsent(ctx, workspaceID)
 	if err != nil {

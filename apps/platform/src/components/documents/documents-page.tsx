@@ -52,7 +52,6 @@ import {
   Search,
   SearchX,
   Trash2,
-  FileUp,
   Upload as UploadIcon,
   X,
   Share2,
@@ -74,7 +73,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { useImportDrawer } from '@/components/import/import-button'
+import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { PageHeader } from '@/components/shell/page-header'
 import { CreateSignatureDrawer } from '@/components/signatures/create-drawer'
@@ -769,10 +768,9 @@ export function DocumentsPage() {
             </Item>
           </>
         )}
-        <Item onSelect={importDrawer.open}>
-          <FileUp />
+        <ImportItem Item={Item} onSelect={importDrawer.open}>
           {translate('importInvoicesContracts')}
-        </Item>
+        </ImportItem>
         {clipboard && view.section === 'files' && (
           <Item onSelect={paste}>
             <ClipboardPaste />

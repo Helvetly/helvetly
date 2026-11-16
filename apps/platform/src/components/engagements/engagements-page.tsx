@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  FileUp,
   Layers,
   ReceiptText,
   Search,
@@ -29,7 +28,7 @@ import { ExportItem } from '@/components/billing/feature-lock'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
-import { useImportDrawer } from '@/components/import/import-button'
+import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
 import { PageHeader } from '@/components/shell/page-header'
@@ -185,10 +184,9 @@ function useMenu(filters: EngagementQuery) {
   return (
     <>
       {canWrite && (
-        <Item onSelect={importDrawer.open}>
-          <FileUp />
+        <ImportItem Item={Item} onSelect={importDrawer.open}>
           {translate('import')}
-        </Item>
+        </ImportItem>
       )}
       <ExportItem Item={Item} href={localizedHref(exportUrl(filters))}>
         {translate('exportCSV')}

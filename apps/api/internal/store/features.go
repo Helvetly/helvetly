@@ -13,6 +13,7 @@ const (
 	FeatureVATReturns           = "vat_returns"
 	FeatureInvoiceCorrections   = "invoice_corrections"
 	FeatureExpenses             = "expenses"
+	FeatureAIImport             = "ai_import"
 	FeatureLedgerExports        = "ledger_exports"
 	FeatureDataExport           = "data_export"
 	FeatureAutomations          = "automations"

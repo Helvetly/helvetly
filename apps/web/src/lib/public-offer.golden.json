@@ -144,8 +144,8 @@
       "per_person": true,
       "plans": {
         "basic": {
-          "included": true,
-          "value": 250000
+          "included": false,
+          "value": 0
         },
         "business": {
           "included": true,

@@ -16,7 +16,6 @@ import {
   Download,
   FileDown,
   FilePlus2,
-  FileUp,
   ListFilter,
   ReceiptText,
   Search,
@@ -47,7 +46,7 @@ import {
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { useImportDrawer } from '@/components/import/import-button'
+import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { Initials } from '@/components/initials'
 import { PageHeader } from '@/components/shell/page-header'
@@ -391,10 +390,9 @@ export function InvoicesPage() {
   const pageItems = ({ Item }: MenuKit) => (
     <>
       {canWrite && (
-        <Item onSelect={importDrawer.open}>
-          <FileUp />
+        <ImportItem Item={Item} onSelect={importDrawer.open}>
           {translate('import')}
-        </Item>
+        </ImportItem>
       )}
       <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
         {translate('exportCSV')}

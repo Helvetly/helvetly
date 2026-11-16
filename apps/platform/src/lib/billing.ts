@@ -327,7 +327,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   api_access: translate('apiTokens'),
   heidi: translate('heidi'),
   expenses: translate('expenses3'),
-  ai_import: translate('aiReceiptImport'),
+  ai_import: translate('theAIImport'),
   document_templates: translate('documentTemplates'),
   simple_signatures: translate('signatures2'),
   invoice_corrections: translate('invoiceCorrections'),

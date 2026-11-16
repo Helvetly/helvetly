@@ -492,10 +492,9 @@ func TestTrialConvertsToBasicWithoutABonus(t *testing.T) {
 	if r.Trial || r.Plan != Basic || r.Includes(Feature("expenses")) || r.Includes(Feature("heidi")) || seatsOf(e, owner.workspace) != 2 {
 		t.Fatalf("after the trial: %+v", r)
 	}
-	start, end := utcMonth(now)
-	want := share(2*250_000, int64(end.Sub(now)/time.Second), int64(end.Sub(start)/time.Second))
-	if got := e.cap(owner.workspace, AITokens); got != want {
-		t.Fatalf("AI tokens of the first month: %d, want %d", got, want)
+	// Basic has neither Heidi nor the AI import, so no AI tokens: none carry over from the trial either.
+	if got := e.cap(owner.workspace, AITokens); got != 0 {
+		t.Fatalf("AI tokens of the first month: %d, want 0", got)
 	}
 	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 	for _, u := range body["data"].(map[string]any)["usage"].([]any) {

@@ -9,7 +9,7 @@ updated: 2026-11-15
 
 Wechsel von einem anderen System? Lassen Sie AI Ihre alten Dateien lesen und in Helvetly-Datensätze umwandeln.
 
-Der KI-Import funktioniert in jedem Plan innerhalb seiner KI-Tokens; Ausgaben und Belege benötigen **Pro** oder **Business**.
+Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der KI-Tokens des Plans.
 
 1. Öffnen Sie **Clients**, **Products & services**, **Aufträge** oder **Invoices** und wählen Sie **Import** im **…**-Menü der Seite. Verwenden Sie für Ausgaben stattdessen **Upload receipts**.
 2. Fügen Sie Tabellenkalkulationen, PDFs, Fotos oder Word-Dateien ein und klicken Sie dann auf **Read files**.

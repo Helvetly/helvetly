@@ -100,7 +100,7 @@ describe('offer v2 public projection', () => {
     ['download_bytes_per_month', ['2 GB', '20 GB', '100 GB']],
     ['emails_per_month', ['100', '1’000', '5’000']],
     ['email_attachment_bytes_per_month', ['100 MB', '1 GB', '5 GB']],
-    ['ai_tokens_per_month', ['250’000', '5M', '20M']],
+    ['ai_tokens_per_month', [null, '5M', '20M']],
     ['automation_actions_per_month', [null, '1’500', '6’000']],
   ] as const)('%s per plan', (key, expected) => {
     expect(PLAN_IDS.map((id) => formatLimit(key, id))).toEqual(expected)
@@ -118,7 +118,6 @@ describe('offer v2 public projection', () => {
       '20 active per workspace',
       '100 active per workspace',
     ])
-    // Basic's import tokens do not make Heidi available.
     expect(cells.heidi).toEqual([
       null,
       'Included; shared 5M AI tokens/person/month',

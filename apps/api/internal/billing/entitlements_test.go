@@ -68,7 +68,7 @@ func TestResolveMatrix(t *testing.T) {
 		{Business, 5, "automation_actions_per_month", 30_000}, {Business, 5, Engagements, 100}, {Business, 5, Clients, 1500},
 		{Pro, 5, "automation_actions_per_month", 7500}, {Basic, 25, Invoices, 375}, {Basic, 1, Clients, 30},
 		{Basic, 25, Expenses, 0}, {Basic, 25, Signatures, 0}, {Basic, 25, "automation_actions_per_month", 0},
-		{Basic, 25, Storage, 12_500_000_000}, {Business, 25, MaxSeats, 25}, {Basic, 1, AICost, 200_000},
+		{Basic, 25, Storage, 12_500_000_000}, {Business, 25, MaxSeats, 25}, {Basic, 1, AICost, 0}, {Basic, 25, AITokens, 0},
 	} {
 		r, err := resolve(rowsOf(o, defs, c.plan), c.seats)
 		if err != nil {

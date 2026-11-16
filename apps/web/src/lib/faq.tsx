@@ -143,7 +143,6 @@ export const faqIn = perLanguage((translate, language) => {
       teaser: 'pricing',
       q: translate('whatAreAITokens'),
       a: translate('yourWorkspaceSharesTheAITokensContributedByEach', {
-        value1: count(ai.basic ?? 0),
         value2: plansWith('heidi'),
         value3: tokens(ai.pro ?? 0),
         value4: tokens(ai.business ?? 0),
