@@ -20,7 +20,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  CircleDashed,
   FileUp,
   FolderOpen,
   PartyPopper,
@@ -40,6 +39,7 @@ import {
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpTip } from '@/components/settings/help-tip'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
+import { useUpdateProfile } from '@/lib/account'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -54,7 +54,7 @@ import {
 } from '@/lib/invoices'
 import { queryKeys, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
-import { useUpdateWorkspace } from '@/lib/workspaces'
+import { useSuggestWorkspaceName, useUpdateWorkspace } from '@/lib/workspaces'
 
 import { InvoicePreview } from './invoice-preview'
 import { LogoCard } from './logo-card'
@@ -63,10 +63,13 @@ import {
   toSettingsInput,
   uidDigits,
   validate,
+  validPersonName,
+  workspaceNameFor,
   valuesFrom,
   vatSuffix,
   type Values,
 } from './onboarding-model'
+import { WorkspaceNameSuggest, type SuggestionState } from './workspace-name-suggest'
 
 type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
@@ -81,8 +84,14 @@ const LANGUAGES: { value: DocLanguage; label: string }[] = [
 /** What sign-up calls a new workspace (apps/api/internal/auth/signin.go). */
 const DEFAULT_WORKSPACE_NAME = 'My workspace'
 
-/** A name worth greeting someone with: never an email address. */
-const firstName = (name: string) => (name.includes('@') ? '' : (name.trim().split(/\s+/)[0] ?? ''))
+/** What the page shows for a failed suggestion: only a refusal that left the use untaken may be tried again. */
+function suggestionFailure(error: unknown): SuggestionState {
+  const code = error instanceof ApiError ? error.code : ''
+  if (code === 'ai_not_configured') return 'unavailable'
+  if (code === 'suggestion_used' || code === 'suggestion_pending') return 'used'
+  if (code === 'ai_unavailable') return 'failedSpent'
+  return 'failed'
+}
 
 /** The /welcome page; the signed-in layout has the session by now. */
 export function Welcome() {
@@ -113,9 +122,29 @@ export function WelcomePage({ session }: { session: Session }) {
   const settings = useInvoiceSettings()
   const save = useSaveInvoiceSettings()
   const rename = useUpdateWorkspace()
+  const profile = useUpdateProfile()
+  // The name is asked for, never guessed from the account (Google or the email address): the input
+  // starts empty and the greeting only uses what the server answered to this person's own entry.
+  const [nameInput, setNameInput] = useState('')
+  const [nameError, setNameError] = useState<string>()
+  const [confirmedName, setConfirmedName] = useState<string | null>(null)
+  // null until the person edits the field: until then it follows the company name (or keeps a name
+  // they already chose), and what they typed is never replaced.
+  const [workspaceEdit, setWorkspaceEdit] = useState<string | null>(null)
+  // The one-time AI suggestion: consent is this person's tick, and a result only lands in a field nobody edited.
+  const suggestion = useSuggestWorkspaceName()
+  const [aiConsent, setAiConsent] = useState(false)
+  const [suggestState, setSuggestState] = useState<SuggestionState>('idle')
+  const [suggested, setSuggested] = useState<string | null>(null)
+  const asked = useRef<{ id: number; controller: AbortController } | null>(null)
+  const latest = useRef({ company: '', edited: false })
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
   const values = edited ?? (settings.data ? valuesFrom(settings.data) : null)
+  const workspaceName =
+    workspaceEdit ??
+    suggested ??
+    workspaceNameFor(session.workspace.name, values?.name ?? '', DEFAULT_WORKSPACE_NAME)
   const change = (patch: Partial<Values>) => {
     if (!values) return
     setEdited({ ...values, ...patch })
@@ -135,29 +164,69 @@ export function WelcomePage({ session }: { session: Session }) {
     if (done) router.replace(target)
   }, [done, target, router])
 
+  useEffect(() => {
+    latest.current = { company: values?.name.trim() ?? '', edited: workspaceEdit !== null }
+  }, [values?.name, workspaceEdit])
+  useEffect(() => () => asked.current?.controller.abort(), [])
+
+  const askSuggestion = () => {
+    const company = latest.current.company
+    if (!aiConsent || !company || suggestState === 'pending') return
+    asked.current?.controller.abort()
+    const controller = new AbortController()
+    const id = (asked.current?.id ?? 0) + 1
+    asked.current = { id, controller }
+    setSuggestState('pending')
+    suggestion.mutate(
+      { company_name: company, signal: controller.signal },
+      {
+        onSuccess: ({ data }) => {
+          if (asked.current?.id !== id) return
+          // A result for a company name that has changed, or into a name the person has typed, is dropped
+          // (the one use is spent either way).
+          if (latest.current.company !== company || latest.current.edited) setSuggestState('used')
+          else {
+            setSuggested(data.name)
+            setSuggestState('applied')
+          }
+        },
+        onError: (error) => {
+          if (asked.current?.id !== id || controller.signal.aborted) return
+          setSuggestState(suggestionFailure(error))
+        },
+      },
+    )
+  }
+
   /** Saves the values shown (or only what was edited, unless `always`); false when it couldn't. */
   const persist = async (always: boolean) => {
     if (!values || !settings.data || (!edited && !always)) return true
-    const problems = validate(values)
+    const problems: Errors = validate(values)
+    if (!workspaceName.trim()) problems.workspace_name = translate('thisIsRequired')
     if (Object.keys(problems).length) {
       setErrors(problems)
       return false
     }
     try {
       await save.mutateAsync(toSettingsInput(settings.data, values))
+      // The settings now come from the server, not from what was typed: the workspace name is
+      // confirmed as shown, so it must not fall back to a default derived from the company field.
+      setWorkspaceEdit(workspaceName)
       setEdited(null)
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) setErrors(fieldErrors(error.details))
       return false
     }
-    // Sign-up names the workspace "My workspace"; the company's name is the one people expect in
-    // the switcher. Only that placeholder is replaced, never a name someone chose.
-    const company = values.name.trim()
-    if (company && session.workspace.name === DEFAULT_WORKSPACE_NAME) {
+    // The confirmed name is saved as it stands: a company-derived default for the "My workspace"
+    // placeholder, what the person typed, or the name they already chose (unchanged, no request).
+    const wanted = workspaceName.trim()
+    if (wanted !== session.workspace.name) {
       try {
-        await rename.mutateAsync({ name: company })
-      } catch {
-        // The settings are saved; the name can still be changed in Settings → Workspace.
+        await rename.mutateAsync({ name: wanted })
+      } catch (error) {
+        // The settings are saved; the name stays on screen with the server's reason.
+        setErrors({ workspace_name: errorMessage(error) })
+        return false
       }
     }
     return true
@@ -176,6 +245,26 @@ export function WelcomePage({ session }: { session: Session }) {
   useEffect(() => {
     if (invalidTick) document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [invalidTick])
+  const saveName = async () => {
+    if (profile.isPending) return
+    const name = nameInput.trim()
+    if (!validPersonName(name)) {
+      setNameError(translate('enterANameOfUpTo100Characters'))
+      setInvalidTick((tick) => tick + 1)
+      return
+    }
+    try {
+      const { data } = await profile.mutateAsync({ name })
+      setConfirmedName(data.name)
+      setNameError(undefined)
+      next()
+    } catch (error) {
+      // Stays on this step with the input as typed.
+      if (error instanceof ApiError && error.status === 422)
+        setNameError(fieldErrors(error.details).name ?? errorMessage(error))
+      setInvalidTick((tick) => tick + 1)
+    }
+  }
   const saveAndNext = async () => {
     if (save.isPending) return
     if (await persist(true)) next()
@@ -204,8 +293,11 @@ export function WelcomePage({ session }: { session: Session }) {
 
   if (done) return null
 
-  const busy = save.isPending || finish.isPending
-  const error = finish.error ?? (save.error && save.error.status !== 422 ? save.error : null)
+  const busy = save.isPending || finish.isPending || rename.isPending
+  const error =
+    finish.error ??
+    (profile.error && profile.error.status !== 422 ? profile.error : null) ??
+    (save.error && save.error.status !== 422 ? save.error : null)
   const logo = settings.data ? logoSrc(settings.data) || null : null
 
   return (
@@ -228,7 +320,18 @@ export function WelcomePage({ session }: { session: Session }) {
             className="mt-8 duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
           >
             {step === 'welcome' && (
-              <WelcomeStep heading={heading} name={firstName(session.user.name)} onDone={next} />
+              <WelcomeStep
+                heading={heading}
+                name={confirmedName}
+                input={nameInput}
+                error={nameError}
+                busy={profile.isPending}
+                onInput={(value) => {
+                  setNameInput(value)
+                  setNameError(undefined)
+                }}
+                onDone={() => void saveName()}
+              />
             )}
             {step === 'company' && (
               <CompanyStep
@@ -236,6 +339,23 @@ export function WelcomePage({ session }: { session: Session }) {
                 values={values}
                 errors={errors}
                 busy={busy}
+                workspaceName={workspaceName}
+                suggest={
+                  // Only for the sign-up placeholder: a name the person chose is never offered a replacement.
+                  session.workspace.name === DEFAULT_WORKSPACE_NAME && (
+                    <WorkspaceNameSuggest
+                      state={suggestState}
+                      consent={aiConsent}
+                      canAsk={!!values?.name.trim()}
+                      onConsent={setAiConsent}
+                      onAsk={askSuggestion}
+                    />
+                  )
+                }
+                onWorkspaceName={(value) => {
+                  setWorkspaceEdit(value)
+                  setErrors((current) => ({ ...current, workspace_name: undefined }))
+                }}
                 onChange={change}
                 onBack={back}
                 onDone={() => void saveAndNext()}
@@ -266,6 +386,7 @@ export function WelcomePage({ session }: { session: Session }) {
             {step === 'done' && (
               <DoneStep
                 heading={heading}
+                name={confirmedName}
                 settings={settings.data}
                 busy={busy}
                 onOpen={(href) => void leave(href)}
@@ -419,10 +540,19 @@ const card = 'rounded-xl border bg-card p-4'
 function WelcomeStep({
   heading,
   name,
+  input,
+  error,
+  busy,
+  onInput,
   onDone,
 }: {
   heading: HeadingRef
-  name: string
+  /** What the server saved for this person's own answer; null until they have given one. */
+  name: string | null
+  input: string
+  error?: string
+  busy: boolean
+  onInput: (value: string) => void
   onDone: () => void
 }) {
   const features = [
@@ -466,6 +596,37 @@ function WelcomeStep({
           {translate('aFewQuickStepsToGetYourCompanyReady')}
         </StepHeader>
       </div>
+      <form
+        noValidate
+        className="mt-8"
+        onSubmit={(event) => {
+          event.preventDefault()
+          onDone()
+        }}
+      >
+        <FormField
+          id="onboarding-display-name"
+          label={translate('whatShouldWeCallYou')}
+          tip={translate('preferredNameHelp')}
+          error={error}
+          required
+        >
+          <input
+            {...describedBy('onboarding-display-name', error)}
+            className={inputClass}
+            maxLength={100}
+            autoComplete="off"
+            value={input}
+            onChange={(event) => onInput(event.target.value)}
+          />
+        </FormField>
+        <Actions>
+          <Button size="xl" type="submit" className={bigButton} disabled={busy}>
+            {busy ? translate('saving') : translate('getStarted')}
+            <ArrowRight />
+          </Button>
+        </Actions>
+      </form>
       <ul className="mt-8 grid gap-2.5">
         {features.map((feature) => (
           <li key={feature.title} className={cn(card, 'flex items-start gap-3.5')}>
@@ -484,12 +645,6 @@ function WelcomeStep({
           </li>
         ))}
       </ul>
-      <Actions>
-        <Button size="xl" type="button" className={bigButton} onClick={onDone}>
-          {translate('getStarted')}
-          <ArrowRight />
-        </Button>
-      </Actions>
     </div>
   )
 }
@@ -499,6 +654,9 @@ function CompanyStep({
   values,
   errors,
   busy,
+  workspaceName,
+  suggest,
+  onWorkspaceName,
   onChange,
   onBack,
   onDone,
@@ -507,6 +665,9 @@ function CompanyStep({
   values: Values | null
   errors: Errors
   busy: boolean
+  workspaceName: string
+  suggest: ReactNode
+  onWorkspaceName: (value: string) => void
   onChange: (patch: Partial<Values>) => void
   onBack?: () => void
   onDone: () => void
@@ -546,6 +707,23 @@ function CompanyStep({
         >
           {text('name', 70)}
         </FormField>
+        <FormField
+          id="onboarding-workspace-name"
+          label={translate('workspaceName')}
+          tip={translate('workspaceNameHelp')}
+          error={errors.workspace_name}
+          required
+        >
+          <input
+            {...describedBy('onboarding-workspace-name', errors.workspace_name)}
+            className={inputClass}
+            maxLength={100}
+            value={workspaceName}
+            disabled={!values}
+            onChange={(event) => onWorkspaceName(event.target.value)}
+          />
+        </FormField>
+        {suggest}
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
           <FormField
             id="onboarding-street"
@@ -735,12 +913,12 @@ function LogoStep({
       </StepHeader>
       <div className="mt-7 grid gap-6">
         <section className="grid gap-2">
-          <LogoLabel help={translate('documentLogoHelp')}>{translate('documentLogo')}</LogoLabel>
-          {ready && <LogoCard url={url} />}
-        </section>
-        <section className="grid gap-2">
           <LogoLabel help={translate('workspaceLogoHelp')}>{translate('workspaceLogo')}</LogoLabel>
           <WorkspaceLogoControl name={workspace.name} logoUrl={workspace.logo_url} canEdit />
+        </section>
+        <section className="grid gap-2">
+          <LogoLabel help={translate('documentLogoHelp')}>{translate('documentLogo')}</LogoLabel>
+          {ready && <LogoCard url={url} />}
         </section>
       </div>
       <Actions onBack={onBack} skip={!url && <SkipButton onClick={onDone} />}>
@@ -901,6 +1079,7 @@ function PreferencesStep({
 
 function DoneStep({
   heading,
+  name,
   settings,
   busy,
   onOpen,
@@ -908,6 +1087,7 @@ function DoneStep({
   onClose,
 }: {
   heading: HeadingRef
+  name: string | null
   settings: InvoiceSettings | undefined
   busy: boolean
   onOpen: (href: string) => void
@@ -915,31 +1095,13 @@ function DoneStep({
   onClose: () => void
 }) {
   const missing = settings?.missing_fields ?? []
-  const items: { done: boolean; key: string; text: ReactNode }[] = settings
+  // What is set up is a quiet confirmation; what is still needed to issue invoices is a warning with its way out.
+  const ready: { key: string; text: string }[] = settings
     ? [
-        {
-          key: 'company',
-          done: missing.length === 0,
-          text:
-            missing.length === 0 ? (
-              translate('yourCompanyIsReadyToIssueInvoices')
-            ) : (
-              <>
-                {translate('stillNeededToIssueInvoices')}{' '}
-                {missing.map((field) => MISSING_LABELS[field] ?? field).join(', ')}.{' '}
-                <button
-                  type="button"
-                  className="font-medium text-foreground underline underline-offset-3"
-                  onClick={() => onOpen('/settings/invoices')}
-                >
-                  {translate('finishInSettings')}
-                </button>
-              </>
-            ),
-        },
-        ...(settings.logo_url
-          ? [{ key: 'logo', done: true, text: translate('yourLogoIsOnEveryPDF') }]
+        ...(missing.length === 0
+          ? [{ key: 'company', text: translate('yourCompanyIsReadyToIssueInvoices') }]
           : []),
+        ...(settings.logo_url ? [{ key: 'logo', text: translate('yourLogoIsOnEveryPDF') }] : []),
       ]
     : []
   return (
@@ -948,37 +1110,52 @@ function DoneStep({
         <PartyPopper className="size-7 stroke-[1.75] motion-safe:animate-[bounce_1s_ease-in-out_2]" />
       </div>
       <div className="mt-6">
-        <StepHeader heading={heading} title={translate('youReAllSet')}>
+        <StepHeader
+          heading={heading}
+          title={name ? translate('youReAllSetNamed', { name }) : translate('youReAllSet')}
+        >
           {translate('hereIsWhereMostPeopleStartHeidiIsOne')}
         </StepHeader>
       </div>
-      <ul
-        aria-label={translate('whatIsSetUp')}
-        className="mt-7 grid divide-y rounded-xl border bg-card"
-      >
-        {items.map((item) => (
-          <li
-            key={item.key}
-            className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground"
+      {missing.length > 0 && (
+        <output className="mt-7 block">
+          <Callout
+            tone="warning"
+            title={translate('stillNeededToIssueInvoices').replace(/:\s*$/, '')}
           >
-            <span
-              className={cn(
-                'flex size-6 shrink-0 items-center justify-center rounded-full',
-                item.done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-              )}
+            <p className="wrap-anywhere">
+              {missing.map((field) => MISSING_LABELS[field] ?? field).join(', ')}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 w-fit"
+              onClick={() => onOpen('/settings/invoices')}
             >
-              {item.done ? <Check className="size-3.5" /> : <CircleDashed className="size-3.5" />}
-            </span>
-            <span className="min-w-0 wrap-anywhere">{item.text}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-7 grid gap-2.5 sm:grid-cols-2">
+              {translate('finishInSettings')}
+            </Button>
+          </Callout>
+        </output>
+      )}
+      {ready.length > 0 && (
+        <ul
+          aria-label={translate('whatIsSetUp')}
+          className={cn('grid gap-1.5', missing.length ? 'mt-4' : 'mt-7')}
+        >
+          {ready.map((item) => (
+            <li key={item.key} className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Check aria-hidden className="size-4 shrink-0 text-success" />
+              <span className="min-w-0 wrap-anywhere">{item.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
         <NextStep
           icon={<UserPlus />}
           title={translate('addYourFirstClient')}
           description={translate('whoYouWorkForWithTheirAddressAndContacts')}
-          primary
           disabled={busy}
           onClick={() => onOpen('/clients?new=1')}
         />
@@ -1020,12 +1197,11 @@ function DoneStep({
   )
 }
 
-/** One way out of the welcome: a card with what it opens. */
+/** One way out of the welcome: a card with what it opens. Quiet at rest; only hover and keyboard focus raise it. */
 function NextStep({
   icon,
   title,
   description,
-  primary,
   heidi,
   disabled,
   onClick,
@@ -1033,7 +1209,6 @@ function NextStep({
   icon: ReactNode
   title: ReactNode
   description: string
-  primary?: boolean
   heidi?: boolean
   disabled?: boolean
   onClick: () => void
@@ -1044,24 +1219,26 @@ function NextStep({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'group flex items-start gap-3 rounded-xl border bg-card p-4 text-left transition-colors outline-none hover:border-foreground/25 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60',
-        primary && 'border-foreground/20',
-        heidi && 'hover:border-heidi/50',
+        'group flex items-start gap-3 rounded-xl border bg-card p-4 text-left transition-colors outline-none hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-60',
+        heidi ? 'hover:border-heidi/40' : 'hover:border-foreground/20',
       )}
     >
       <span
         className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-lg [&_svg]:size-[18px]',
-          heidi ? 'bg-heidi-soft/60' : 'bg-muted text-muted-foreground',
+          'flex size-8 shrink-0 items-center justify-center rounded-lg [&_svg]:size-[17px]',
+          heidi ? 'bg-heidi-soft/50' : 'bg-muted text-muted-foreground',
         )}
       >
         {icon}
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="text-[13px] text-muted-foreground">{description}</span>
+        <span className="text-sm font-medium">{title}</span>
+        <span className="text-xs text-pretty text-muted-foreground">{description}</span>
       </span>
-      <ArrowRight className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+      <ArrowRight
+        aria-hidden
+        className="mt-1 size-4 shrink-0 text-muted-foreground/50 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-foreground group-focus-visible:text-foreground motion-reduce:transition-none"
+      />
     </button>
   )
 }

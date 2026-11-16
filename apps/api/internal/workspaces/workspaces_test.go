@@ -51,6 +51,7 @@ type env struct {
 	srv     *httptest.Server
 	billing *fakeBilling
 	files   *fakeStorage
+	svc     *Service
 }
 
 func newEnv(t *testing.T) *env {
@@ -67,10 +68,11 @@ func newEnv(t *testing.T) *env {
 	mux := http.NewServeMux()
 	a.Register(mux)
 	files := &fakeStorage{objects: map[string][]byte{}}
-	New(st, a, fb, files, discard).Register(mux)
+	svc := New(st, a, fb, files, discard)
+	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, raw: raw, srv: srv, billing: fb, files: files}
+	return &env{t: t, st: st, raw: raw, srv: srv, billing: fb, files: files, svc: svc}
 }
 
 // browser keeps cookies, so a session switch carries on in it.

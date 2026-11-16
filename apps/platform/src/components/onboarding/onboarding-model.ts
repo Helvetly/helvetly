@@ -128,3 +128,16 @@ export function fieldErrors(details: Record<string, unknown>): Partial<Record<st
     if (typeof message === 'string') errors[name.replace('seller.', '')] = message
   return errors
 }
+
+/** A person's name as the account takes it: 1 to 100 characters once trimmed (PATCH /account). */
+export const validPersonName = (name: string) => {
+  const length = Array.from(name.trim()).length
+  return length >= 1 && length <= 100
+}
+
+/**
+ * What the workspace-name field shows before anyone edits it: a name already chosen is kept; the
+ * sign-up placeholder follows the company's name, cut to the 100 characters the server takes.
+ */
+export const workspaceNameFor = (current: string, company: string, placeholder: string) =>
+  current === placeholder ? Array.from(company.trim()).slice(0, 100).join('') : current
