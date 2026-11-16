@@ -498,7 +498,7 @@ export const ChangePlanFullComparison: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
-    await expect(canvas.getByRole('heading', { name: 'Compare plans' })).toBeVisible()
+    await expect(await canvas.findByRole('heading', { name: 'Compare plans' })).toBeVisible()
     // The offer's twelve business rows, then its allowances: "Not included" where the plan lacks a feature.
     const portal = within(canvas.getByRole('row', { name: /^Client portal/ }))
     await expect(portal.getAllByText('Not included')).toHaveLength(2)

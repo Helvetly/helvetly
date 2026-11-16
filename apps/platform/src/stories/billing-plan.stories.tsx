@@ -459,9 +459,11 @@ export const PlansTrialSwitch: Story = {
     await expect(proCard.getByText(/clients \/ workspace$/).parentElement).toHaveTextContent(
       /^300 clients \/ workspace$/,
     )
-    // Business's own features read as left out of Pro.
-    await expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-      /Not included: Client portal/,
+    // Business's own features read as left out of Pro, once the public offer has loaded.
+    await waitFor(() =>
+      expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
+        /Not included: Client portal/,
+      ),
     )
     await expect(proCard.getByText('Your trial ends now and Pro is charged today.')).toBeVisible()
     const businessCard = card(canvas, 'Business')
