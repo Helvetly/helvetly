@@ -336,6 +336,17 @@ h1 .accent {
     @apply bg-background text-foreground;
     /* Inter: straight-legged l, open digits, round quotes; amounts line up everywhere. */
     font-feature-settings: 'cv11', 'ss01', 'ss03';
+    /* No word left alone on a last line ("… per person a / month"), in every app; headings balance their lines. */
+    text-wrap: pretty;
+  }
+  :where(h1, h2, h3, h4, h5, h6) {
+    text-wrap: balance;
+  }
+  /* German compounds break at a syllable with a hyphen and at least four letters each side, never as a bare
+     split ("Unterauftragsverarbeit|er"). */
+  :lang(de) {
+    hyphens: auto;
+    hyphenate-limit-chars: 10 4 4;
   }
   /* An app, not a page: no rubber-band bounce at the ends of the window or of any vertical scroller
      (main content, Heidi, drawers, lists), and a scroller at its end does not drag the page along.
