@@ -42,9 +42,11 @@ func (q Q) StoredBytes(ctx context.Context, workspaceID string) (int64, error) {
 
 // ---- storage.Registry: what storage confirmed ----
 
-// ObjectStored records the size storage reported for a written object; a key no workspace counts is left alone.
+// ObjectStored records the size storage reported for a written object; a key no workspace counts is left alone, and
+// so is a row the writer's own transaction still holds (it would wait on itself): the reconciler confirms that one.
 func (s *Store) ObjectStored(ctx context.Context, key string, size int64, at time.Time) error {
-	_, err := s.pool.Exec(ctx, `UPDATE stored_objects SET size = $2, verified_at = $3 WHERE object_key = $1`, key, size, at)
+	_, err := s.pool.Exec(ctx, `UPDATE stored_objects SET size = $2, verified_at = $3
+		WHERE object_key = (SELECT object_key FROM stored_objects WHERE object_key = $1 FOR UPDATE SKIP LOCKED)`, key, size, at)
 	return err
 }
 

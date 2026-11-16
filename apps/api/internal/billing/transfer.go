@@ -13,7 +13,8 @@ import (
 
 // ReserveDownload holds n bytes of the workspace's monthly download allowance before a file is sent
 // (storage.Meter); settle records the bytes actually sent and releases the rest, in the month it was reserved in.
-// Without billing, or without a plan (a locked workspace still reads its own files), nothing is counted.
+// Without billing, without a plan (a locked workspace still reads its own files) or while the offer cannot be read
+// (a single existing file never needs it), nothing is counted.
 func (s *Service) ReserveDownload(ctx context.Context, workspaceID string, n int64) (func(sent int64), error) {
 	noop := func(int64) {}
 	if !s.enabled {
@@ -21,7 +22,8 @@ func (s *Service) ReserveDownload(ctx context.Context, workspaceID string, n int
 	}
 	r, err := s.Entitlements(ctx, s.db.Q, workspaceID)
 	if err != nil {
-		return nil, err
+		s.log.WarnContext(ctx, "download not counted: entitlements unavailable", "workspace", workspaceID, "error", err)
+		return noop, nil
 	}
 	if r.SelfHosted || r.Plan == "" {
 		return noop, nil
