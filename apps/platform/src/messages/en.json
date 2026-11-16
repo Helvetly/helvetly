@@ -4121,5 +4121,16 @@
   "planEmployees": "employees and payroll",
   "payrollAMember": "a member",
   "accessHRSummary": "HR: {hr}.",
-  "thisIsRequired": "Required"
+  "thisIsRequired": "Required",
+  "workspaceLogo": "Workspace logo",
+  "workspaceLogoHelp": "Shown next to your workspace name in the sidebar and workspace switcher. Saved as a square.",
+  "documentLogo": "Document logo",
+  "documentLogoHelp": "Printed on invoices, quotes and reminders. Keeps its original proportions.",
+  "adjustLogo": "Adjust logo",
+  "dragTheLogoToPlaceItAndZoom": "Drag the logo to place it, and zoom with the slider.",
+  "useThisLogo": "Use this logo",
+  "logoCouldNotBeUploaded": "The logo could not be uploaded.",
+  "logoSizeLimits": "PNG or JPEG. Saved logos must be {min}–{max} pixels on each side and no larger than 2 MB.",
+  "workspaceLogoSaved": "Workspace logo saved.",
+  "workspaceLogoRemoved": "Workspace logo removed."
 }

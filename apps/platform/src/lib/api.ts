@@ -32,7 +32,7 @@ export type User = { id: string; email: string; name: string; avatar_url: string
 export type Session = {
   user: User
   /** `timezone`: the IANA name dates follow (optional only for older test fixtures). */
-  workspace: { id: string; name: string; timezone?: string }
+  workspace: { id: string; name: string; timezone?: string; logo_url?: string | null }
   role: string
   /** What the person may use (`read:clients`, `*:*`); missing until the API sends it: everything. */
   scopes?: string[]

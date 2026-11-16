@@ -47,6 +47,7 @@ import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpDialog } from '@/components/help/help-dialog'
 import { initialsOf } from '@/components/initials'
 import { NotificationsBell } from '@/components/notifications/notifications-bell'
+import { WorkspaceMark } from '@/components/shared/workspace-mark'
 import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys'
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
@@ -88,22 +89,6 @@ export function useNavTarget() {
 
 const itemClass =
   'h-9 gap-2.5 rounded-lg px-2.5 text-[15px] font-normal text-sidebar-foreground transition-[color,background-color,box-shadow] duration-150 data-active:bg-white data-active:font-medium data-active:hover:bg-white data-active:shadow-[0_1px_3px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.04)] dark:data-active:bg-white/[0.08] dark:data-active:shadow-none [&_svg]:size-[18px]! [&_svg]:stroke-[1.5] [&_svg]:text-[#7f7f81] dark:[&_svg]:text-muted-foreground data-active:text-sidebar-accent-foreground data-active:[&_svg]:text-sidebar-accent-foreground'
-
-/** The workspace's initial on a dark tile: a stand-in until workspaces can upload a logo. */
-// The letter keeps its colour on the tile: menu items recolour every child on hover.
-function WorkspaceMark({ name, className }: { name: string; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-linear-to-b from-[#3a3a3e] to-[#1c1c1f] text-[14px] font-semibold text-white! shadow-[0_1px_2px_rgb(0_0_0/0.12),inset_0_1px_0_rgb(255_255_255/0.12)] dark:from-[#f4f4f5] dark:to-[#dcdcdf] dark:text-[#161618]!',
-        className,
-      )}
-    >
-      {initialsOf(name).slice(0, 1) || '?'}
-    </span>
-  )
-}
 
 /** The person's name, or the part of the email before the @. */
 const displayName = (user: User) => user.name || user.email.split('@')[0] || user.email
@@ -147,7 +132,7 @@ export function AppSidebar({ session }: { session: Session }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton className="h-12 gap-2.5 rounded-xl px-2 transition-colors duration-150 group-data-[collapsible=icon]:p-0! hover:bg-black/[0.04] dark:hover:bg-white/[0.06] data-open:bg-black/[0.04] dark:data-open:bg-white/[0.06]">
-              <WorkspaceMark name={session.workspace.name} />
+              <WorkspaceMark name={session.workspace.name} logoUrl={session.workspace.logo_url} />
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate text-[14px] font-semibold text-[#161618] dark:text-foreground">
                   {session.workspace.name}
@@ -177,7 +162,11 @@ export function AppSidebar({ session }: { session: Session }) {
                 className="gap-2.5 rounded-lg px-2 py-1.5"
                 onSelect={() => switchTo(workspace)}
               >
-                <WorkspaceMark name={workspace.name} className="size-7 rounded-[7px] text-[12px]" />
+                <WorkspaceMark
+                  name={workspace.name}
+                  logoUrl={workspace.logo_url}
+                  className="size-7 rounded-[7px] text-[12px]"
+                />
                 <span className="grid min-w-0 flex-1 leading-tight">
                   <span className="truncate text-[14px] text-[#161618] dark:text-foreground">
                     {workspace.name}

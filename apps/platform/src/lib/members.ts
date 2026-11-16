@@ -36,7 +36,14 @@ export type InvitationPreview = {
   role: string
   status: 'open' | 'expired' | 'used'
 }
-export type WorkspaceItem = { id: string; name: string; role: string; current: boolean }
+export type WorkspaceItem = {
+  id: string
+  name: string
+  role: string
+  current: boolean
+  /** The workspace's own mark, opaque (it carries its version); null shows the initial. */
+  logo_url?: string | null
+}
 
 const ROLES: Role[] = ['owner', 'admin', 'member']
 

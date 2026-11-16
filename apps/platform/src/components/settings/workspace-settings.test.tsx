@@ -8,6 +8,7 @@ import { setupServer } from 'msw/node'
 import { queryKeys } from '@/lib/queries'
 import type { WorkspaceUpdate } from '@/lib/workspaces'
 
+import { WorkspaceLogoControl } from './workspace-logo'
 import { GeneralCard, timeZoneOptions, zoneCity } from './workspace-settings'
 
 vi.mock('next/navigation', () => ({
@@ -115,4 +116,84 @@ test('a refused time zone shows under the field', async () => {
   wrap('owner')
   await chooseZone('Asia/Tokyo')
   expect(await screen.findByText('Choose a time zone from the list.')).toBeInTheDocument()
+})
+
+describe('the workspace logo', () => {
+  const renderControl = (
+    canEdit: boolean,
+    logoUrl: string | null = '/api/v1/workspace/logo?v=1',
+  ) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    render(
+      <QueryClientProvider client={client}>
+        <WorkspaceLogoControl name="Acme" logoUrl={logoUrl} canEdit={canEdit} />
+      </QueryClientProvider>,
+    )
+    return invalidate
+  }
+
+  test('a member sees the mark but cannot change it', () => {
+    renderControl(false)
+    expect(screen.queryByRole('button', { name: 'Replace' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Remove/ })).toBeNull()
+  })
+
+  test('an owner or admin removes it, and the session and the switcher are fetched again', async () => {
+    let deleted = 0
+    server.use(
+      http.delete('/api/v1/workspace/logo', () => {
+        deleted++
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const invalidate = renderControl(true)
+    await userEvent.click(screen.getByRole('button', { name: /Remove/ }))
+    await waitFor(() => expect(deleted).toBe(1))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.session }))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['workspaces'] })
+    expect(await screen.findByText('Workspace logo removed.')).toBeInTheDocument()
+  })
+
+  test('a refused removal says why and keeps the logo', async () => {
+    server.use(
+      http.delete('/api/v1/workspace/logo', () =>
+        HttpResponse.json(
+          { error: { code: 'forbidden', message: 'Only an owner or admin.' } },
+          { status: 403 },
+        ),
+      ),
+    )
+    renderControl(true)
+    await userEvent.click(screen.getByRole('button', { name: /Remove/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Only an owner or admin.')
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeEnabled()
+  })
+
+  test('a file that is not a PNG or JPEG is refused before any crop or upload', async () => {
+    let uploads = 0
+    server.use(
+      http.put('/api/v1/workspace/logo', () => {
+        uploads++
+        return HttpResponse.json({ data: { logo_url: '/x' } })
+      }),
+    )
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <WorkspaceLogoControl name="Acme" logoUrl={null} canEdit />
+      </QueryClientProvider>,
+    )
+    const input = container.querySelector('input[type=file]')
+    if (!input) throw new Error('no file input')
+    await userEvent.upload(
+      input as HTMLInputElement,
+      new File(['x'], 'logo.svg', { type: 'image/svg+xml' }),
+      {
+        applyAccept: false,
+      },
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Use a PNG or JPEG image.')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(uploads).toBe(0)
+  })
 })
