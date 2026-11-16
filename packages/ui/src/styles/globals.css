@@ -404,6 +404,31 @@ h1 .accent {
   column-gap: 0.625rem;
 }
 
+/* Focus never changes the layout. A phone's browser (Safari on iOS) zooms the whole page in on a field set
+   below 16 px as it gets focus, and the form slides out from under the finger. Every field one types into
+   is at least 16 px on phone widths and on touch screens; desktops keep the compact sizes. Unlayered on
+   purpose: it must beat each field's own `text-*` utility. */
+@media (width < 48rem), (pointer: coarse) {
+  :is(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='color'],
+      [type='file'],
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='image']
+    ),
+    textarea,
+    select,
+    [contenteditable]:not([contenteditable='false'])
+  ) {
+    font-size: 16px;
+  }
+}
+
 /* Icon micro-motions, defined once for the whole app: an icon inside anything clickable moves by its
    meaning on hover, keyboard focus or press. Icons are matched by lucide's own class names, so a new
    button gets its motion for free. Transforms only (no layout shift), nothing with reduced motion;

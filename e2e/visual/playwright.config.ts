@@ -1,7 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
-// Screenshot regression of built Storybooks. Run it through `bash e2e/visual/run.sh`: it runs inside the
-// pinned Playwright Linux image, so baselines render the same on a Mac and in CI.
+// Screenshot regression of built Storybooks, and the focus audit of every story (focus-layout.spec.ts). Run it
+// through `bash e2e/visual/run.sh`: it runs inside the pinned Playwright Linux image, so baselines render the
+// same on a Mac and in CI.
 export default defineConfig({
   testDir: '.',
   snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
