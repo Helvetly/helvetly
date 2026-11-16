@@ -418,6 +418,11 @@ test('limits read as short facts with the key number first', () => {
     label: 'invoice issues / person / month',
   })
   expect(planFact('members', null)).toEqual({ value: 'Any number', label: 'of people' })
+  expect(planFact('members', 24)).toEqual({ value: '25', label: 'people at most' })
+  expect(planFact('ai_tokens_per_month', 250_000)).toEqual({
+    value: "250'000",
+    label: 'AI tokens / person / month',
+  })
   expect(planFact('storage_bytes', 5_000_000_000)).toEqual({
     value: '5 GB',
     label: 'storage / person',

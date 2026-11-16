@@ -35,12 +35,10 @@ export const BoughtPacks: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const card = within(canvas.getByRole('region', { name: 'AI tokens' }))
-    await expect(card.getByText('4.7 M')).toBeVisible()
-    await expect(card.getByText('of 6 M used this month')).toBeVisible()
+    await expect(card.getByText('4.7M')).toBeVisible()
+    await expect(card.getByText('of 6M used this month')).toBeVisible()
     await expect(card.getByText('Almost used up')).toBeVisible()
-    await expect(
-      card.getByText('1 M from the plan + 5 M from packs bought this month'),
-    ).toBeVisible()
+    await expect(card.getByText('1M from the plan + 5M from packs bought this month')).toBeVisible()
     // Nothing to buy: no pack offers, no best value, no Buy button.
     await expect(card.queryByRole('radio')).toBeNull()
     await expect(card.queryByText('Best value')).toBeNull()

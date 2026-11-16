@@ -39,7 +39,7 @@ const NOTE = {
   off: { text: translate('notIncluded'), className: 'text-muted-foreground' },
 }
 
-/** "1.2 M of 6 M used this month" over the shared meter, and how the allowance is made up. */
+/** "1.2M of 6M used this month" over the shared meter, and how the allowance is made up. */
 function TokenUsage({ item, bought }: { item: Billing['usage'][number]; bought: number }) {
   const used = formatTokens(item.used)
   const max = item.max === null ? null : formatTokens(item.max)

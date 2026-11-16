@@ -15,6 +15,7 @@ import {
   ANY_PEOPLE,
   billingKeys,
   formatLimit,
+  formatTokens,
   describeDiscount,
   discounted,
   formatPrice,
@@ -195,14 +196,13 @@ export function planFact(key: LimitKey, value: number | null): { value: string; 
     scope: scopeOf(key),
     monthly: String(key.endsWith('_per_month')),
   })
+  // The members limit counts people besides the owner; the card counts everyone.
   if (key === 'members')
-    return {
-      value: value === null ? translate('anyNumber') : formatLimit(key, value),
-      label: translate('ofPeople'),
-    }
+    return value === null
+      ? { value: translate('anyNumber'), label: translate('ofPeople') }
+      : { value: formatLimit(key, value + 1), label: translate('peopleAtMost') }
   if (value === null) return { value: translate('unlimited2'), label }
-  if (key === 'ai_tokens_per_month' && value >= 1_000_000)
-    return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
+  if (key === 'ai_tokens_per_month') return { value: formatTokens(value), label }
   return { value: formatLimit(key, value), label }
 }
 
