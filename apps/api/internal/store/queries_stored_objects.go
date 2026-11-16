@@ -27,7 +27,8 @@ func (q Q) ReserveObject(ctx context.Context, workspaceID, key string, size int6
 			}
 		}
 		_, err = q.db.Exec(ctx, `INSERT INTO stored_objects (object_key, workspace_id, size, created_at) VALUES ($1, $2, $3, $4)
-			ON CONFLICT (object_key) DO UPDATE SET size = excluded.size, verified_at = NULL`, key, workspaceID, size, now)
+			ON CONFLICT (object_key) DO UPDATE SET size = excluded.size,
+				verified_at = CASE WHEN stored_objects.size = excluded.size THEN stored_objects.verified_at END`, key, workspaceID, size, now)
 		return err
 	})
 }

@@ -341,3 +341,47 @@ func TestCoversNeverWeakensALock(t *testing.T) {
 		}
 	}
 }
+
+// TestStorageCountFollowsWhatStorageConfirms: a write sets its counted object's real size, a confirmed delete releases
+// it, and the reconciler gives a reservation whose write never happened back and corrects one counted with the wrong
+// size (a backfilled record).
+func TestStorageCountFollowsWhatStorageConfirms(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.Bucket = newBucket(t, cfg, false)
+	db, raw := storetest.New(t)
+	s, err := New(cfg, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	ws := "wsp_" + strings.ToLower(rand.Text())
+	written, never, backfilled := randomKey("a.pdf"), randomKey("never.pdf"), randomKey("old.pdf")
+	for _, key := range []string{written, never, backfilled} {
+		if err := db.ReserveObject(ctx, ws, key, 999, false, time.Now().Add(-2*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, key := range []string{written, backfilled} {
+		if err := s.Put(ctx, key, strings.NewReader("12345"), 5, "application/pdf", "a.pdf"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := raw.Exec(ctx, `UPDATE stored_objects SET size = 0, verified_at = NULL WHERE object_key = $1`, backfilled); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := db.StoredBytes(ctx, ws); err != nil || n != 5+999 {
+		t.Fatalf("after the writes: %d %v (the write's real size, the other still reserved)", n, err)
+	}
+	if n, err := s.Reconcile(ctx, 100); err != nil || n != 2 {
+		t.Fatalf("reconcile: %d %v", n, err)
+	}
+	if n, err := db.StoredBytes(ctx, ws); err != nil || n != 10 {
+		t.Fatalf("after reconciling: %d %v", n, err)
+	}
+	if err := s.Delete(ctx, written); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := db.StoredBytes(ctx, ws); err != nil || n != 5 {
+		t.Fatalf("after a delete: %d %v", n, err)
+	}
+}

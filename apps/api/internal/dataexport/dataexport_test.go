@@ -52,6 +52,7 @@ type env struct {
 	st   *store.Store
 	sess *store.Session
 	mux  *http.ServeMux
+	svc  *Service
 }
 
 func newEnv(t *testing.T, files fakeFiles) *env {
@@ -99,8 +100,9 @@ func newEnv(t *testing.T, files fakeFiles) *env {
 		t.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	New(st, fakeAuth{api, sess}, files, slog.New(slog.NewTextHandler(io.Discard, nil))).Register(mux)
-	return &env{t: t, st: st, sess: sess, mux: mux}
+	svc := New(st, fakeAuth{api, sess}, files, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc.Register(mux)
+	return &env{t: t, st: st, sess: sess, mux: mux, svc: svc}
 }
 
 func (e *env) get(path string) *httptest.ResponseRecorder {
@@ -240,5 +242,29 @@ func TestExportCoversEveryTable(t *testing.T) {
 		if !slices.Contains(tables, table) {
 			t.Errorf("store.ExportExcluded names %s, which is not a table", table)
 		}
+	}
+}
+
+// TestWorkspaceExportCountsAgainstItsSnapshotAllowance: an export is admitted before any byte and settles what it
+// sent; a refusal answers with the allowance's error and no ZIP.
+func TestWorkspaceExportCountsAgainstItsSnapshotAllowance(t *testing.T) {
+	e := newEnv(t, fakeFiles{"k/doc_a": "%PDF", "k/quo_a": "%PDF quote"})
+	var sent int64 = -1
+	e.svc.SetSnapshots(func(_ context.Context, ws string) (func(int64), error) {
+		if ws != "ws_a" {
+			t.Errorf("reserved for %s", ws)
+		}
+		return func(n int64) { sent = n }, nil
+	})
+	w := e.get("/api/v1/workspace/export")
+	if w.Code != http.StatusOK || sent != int64(w.Body.Len()) {
+		t.Fatalf("export: %d, settled %d of %d bytes", w.Code, sent, w.Body.Len())
+	}
+	e.svc.SetSnapshots(func(context.Context, string) (func(int64), error) {
+		return nil, auth.Error(http.StatusTooManyRequests, "export_weekly", "Once a week.", nil)
+	})
+	w = e.get("/api/v1/workspace/export")
+	if w.Code != http.StatusTooManyRequests || !strings.Contains(w.Body.String(), "export_weekly") || w.Header().Get("Content-Type") == "application/zip" {
+		t.Fatalf("refused export: %d %s", w.Code, w.Body.String())
 	}
 }
