@@ -107,6 +107,13 @@ export function validate(values: Values): Partial<Record<keyof Values, string>> 
     errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
   if (values.iban.trim() && !ibanInfo(values.iban).valid)
     errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
+  // The server takes whole days from 0 (the invoice date itself) to 365; a saved 10, 60 or other value in range stays valid.
+  if (
+    !Number.isInteger(values.default_terms_days) ||
+    values.default_terms_days < 0 ||
+    values.default_terms_days > 365
+  )
+    errors.default_terms_days = translate('enter0To365Days')
   const market = unsupportedSellerCountry(values.country)
   if (market && !errors.country) errors.country = market
   return errors

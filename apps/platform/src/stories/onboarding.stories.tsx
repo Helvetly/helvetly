@@ -133,13 +133,11 @@ export const AllSteps: Story = {
     const done = within(await step(canvasElement, 'done'))
     await waitFor(() => expect(done.getByRole('heading', { name: 'You’re all set' })).toBeVisible())
     await expect(done.getByText('Your company is ready to issue invoices')).toBeVisible()
-    for (const name of [
-      /Add your first client/,
-      /Create an invoice/,
-      /Import your clients/,
-      /Ask Heidi/,
-    ])
-      expect(done.getByRole('button', { name })).toBeEnabled()
+    await Promise.all(
+      [/Add your first client/, /Create an invoice/, /Import your clients/, /Ask Heidi/].map(
+        (name) => waitFor(() => expect(done.getByRole('button', { name })).toBeEnabled()),
+      ),
+    )
   },
 }
 
@@ -270,6 +268,55 @@ export const LogoUploadRetry: Story = {
       { path: 'workspace', type: 'image/png' },
     ])
   },
+}
+
+const termsSaved: number[] = []
+
+/** The payment terms: a custom number of days, refused above 365 with the error, then saved as typed. */
+export const PaymentTermsCustom: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.put('/api/v1/invoice-settings', async ({ request }) => {
+          const body = (await request.json()) as { default_terms_days: number }
+          termsSaved.push(body.default_terms_days)
+          return HttpResponse.json({
+            data: { ...settings, default_terms_days: body.default_terms_days },
+          })
+        }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+  beforeEach: () => {
+    termsSaved.length = 0
+  },
+  play: async ({ canvasElement }) => {
+    await next(canvasElement, 'welcome', /Get started/)
+    await next(canvasElement, 'company', /Continue/)
+    await next(canvasElement, 'logo', /^Continue/)
+    const prefs = within(await step(canvasElement, 'preferences'))
+    await expect(prefs.getByRole('radio', { name: '30 days' })).toBeChecked()
+    await expect(prefs.getByRole('button', { name: 'Payment terms' })).toBeVisible()
+    await userEvent.click(prefs.getByRole('radio', { name: 'Custom' }))
+    const days = prefs.getByLabelText('Number of days')
+    await userEvent.clear(days)
+    await userEvent.type(days, '366')
+    termsSaved.length = 0
+    await userEvent.click(prefs.getByRole('button', { name: /Continue/ }))
+    await expect(await prefs.findByText('Enter 0 to 365 days.')).toBeVisible()
+    await waitFor(() => expect(days).toHaveFocus())
+    await expect(termsSaved).toHaveLength(0)
+    await userEvent.clear(days)
+    await userEvent.type(days, '45')
+    await userEvent.click(prefs.getByRole('button', { name: /Continue/ }))
+    await waitFor(() => expect(termsSaved).toEqual([45]))
+  },
+}
+
+export const PaymentTermsCustomDark: Story = {
+  ...PaymentTermsCustom,
+  parameters: { ...PaymentTermsCustom.parameters, dark: true },
 }
 
 /** A save the server refuses: the step stays, with the reason in a danger callout above it. */
