@@ -57,7 +57,7 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await expect(page).toHaveURL(/\/clients/)
   const saved = object(await (await page.request.get('/api/v1/session')).json())
   expect(object(saved.user).name).toBe('Journey Owner')
-  expect(object(saved.workspace).name).toBe('Journey AG')
+  expect(object(saved.workspace).name).toBe('Journey Workspace')
   await expect(page.getByRole('button', { name: 'New client', exact: true })).toBeVisible()
   const replay = await page.request.post('/api/v1/auth/email/verify', {
     data: { email, code, next: '/' },
