@@ -28,7 +28,7 @@ for the Customer, to keep those records; it does not calculate pay, tax or contr
 | Legal basis         | The Customer's determination as controller. The Customer may rely on, for example, GDPR Art. 6(1)(b) and (c) with Art. 88 and national employment-data law, Art. 9(2)(b) only for special-category data it chooses to upload, the nDSG and Art. 328b OR (only data concerning the employee's suitability for the job or needed to perform the contract), and Art. 50e–50g AHVG for the systematic use of the AHV number, for which the Customer must be authorised; Helvetly stores the number only for the Customer                                                                               |
 | Access              | The workspace owner always; other members only as the owner grants per member, separately for Employees and Payroll (no access, view or edit); admins by default only view the payroll register, without sealed fields. Only the owner changes these grants. Optional approval of payroll by a second person                                                                                                                                                                                                                                                                                       |
 | Sealed fields       | Bank details, tax identifiers and social-security numbers are encrypted at rest with AES-256-GCM and shown only to the owner and to members with edit access to Payroll; every access to them is logged                                                                                                                                                                                                                                                                                                                                                                                            |
-| AI and integrations | Never sent to the AI provider (Heidi, AI import); not available through MCP or personal API tokens                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| AI and integrations | Not fetched for AI requests; the Customer must not include these data in AI messages or files; not available through MCP or personal API tokens                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Retention           | Set by the Customer per document, with statutory periods suggested per country (for example payroll books in Switzerland: 10 years, OR Art. 958f). After retention the owner erases or anonymises the data, after reviewing a list of what would be erased; records under legal hold are kept                                                                                                                                                                                                                                                                                                      |
 | Plan change         | After a downgrade from the Business plan the data is kept; the owner can read and export it but not change it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
@@ -36,7 +36,7 @@ for the Customer, to keep those records; it does not calculate pay, tax or contr
 
 Helvetly processes the data only on the Customer's documented instructions: the terms of service,
 this agreement and the Customer's use of the platform's functions (for example, sending an invoice
-or allowing Heidi to use OpenAI). Helvetly informs the Customer if it believes an instruction breaks
+or asking Heidi a question). Helvetly informs the Customer if it believes an instruction breaks
 data protection law.
 
 ## 4. Confidentiality
@@ -53,8 +53,10 @@ The Customer authorises the subprocessors listed in [subprocessors.md](subproces
 informs the Customer 30 days before adding or replacing one; the Customer may object for
 important data protection reasons and, if no solution is found, end the contract. Helvetly binds
 each subprocessor to obligations equivalent to this agreement and remains responsible for it.
-Using OpenAI for Heidi and AI import requires, in addition, the consent an owner or admin gives in
-the platform.
+
+Each member must approve their own AI use in each workspace before content is sent to the AI
+provider, including for token counting. Approval covers all AI tools in that workspace and cannot be
+given on another member's behalf. The approval history is kept.
 
 ## 7. Transfers abroad
 
@@ -119,11 +121,11 @@ provisions remain unaffected.
   log. Financial changes and signatures have their own append-only, hash-chained audit trails.
 - **Staff access:** the platform has no support or administrator access to workspaces; access to
   production systems is limited to the people who operate the service.
-- **AI provider:** off until consented per workspace (consent history kept); only the current
-  message, up to 20 earlier turns and explicitly attached files (Heidi) or the uploaded files (AI
-  import) are sent; requests ask the provider not to store data (`store: false`); a monthly token
+- **AI provider:** only the current message, up to 20 earlier turns and explicitly attached files
+  (Heidi), the selected files (AI import and receipt reading), or the company name (workspace-name
+  suggestion) are sent; requests ask the provider not to store data (`store: false`); a monthly token
   budget is enforced on the server.
 - **Employee and payroll data:** separate per-member access to Employees and Payroll, granted only
   by the owner; bank details, tax identifiers and social-security numbers sealed with AES-256-GCM
-  and every access to them logged; never sent to the AI provider, MCP or API tokens; optional
+  and every access to them logged; not fetched for AI requests; unavailable through MCP or API tokens; optional
   second-person approval of payroll; approved payroll entries can be corrected, not changed.

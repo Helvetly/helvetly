@@ -120,7 +120,7 @@ func (s *Service) expensePreview(w http.ResponseWriter, r *http.Request, sess st
 // person's live permission. With an operation it also refuses one whose call was already made.
 func (s *Service) previewGate(ctx context.Context, q store.Q, sess store.Session, operation string) error {
 	ws := sess.Workspace.ID
-	if err := s.gate(ctx, q, ws); err != nil {
+	if err := s.gate(ctx, q, ws, sess.User.ID); err != nil {
 		return err
 	}
 	if err := expensesKind.allowed(ctx, q, ws); err != nil {

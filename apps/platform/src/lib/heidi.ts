@@ -107,12 +107,14 @@ export type HeidiUsage = {
   mode?: 'local' | 'openai'
   usage_uncertain?: boolean
   can_purchase?: boolean
-  /** The server has an AI model; it is used only once the workspace consents. */
+  /** The server has an AI model; it is used only once the person approves it in this workspace. */
   provider_available?: boolean
   consent?: HeidiConsent
 }
 
-/** A workspace's consent to send Heidi content to OpenAI; changed_at is null until someone chooses. */
+/** The signed-in person's own approval, in this workspace, to send content to OpenAI; changed_at is null until they choose. */
+export const usageKey = ['heidi', 'usage'] as const
+
 export type HeidiConsent = { granted: boolean; changed_at: string | null; changed_by: string }
 
 export type HeidiSuggestion = { title: string; prompt: string }

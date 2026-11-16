@@ -10,6 +10,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { useState } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { dropdownKit } from '@/components/data/menus'
 import { ImportItem } from '@/components/import/import-button'
@@ -331,58 +332,95 @@ export const CommitPartialSuccess: Story = {
   },
 }
 
-let consented = false
-/** No AI consent yet: an owner can allow it right here, and the upload goes through. */
-export const ConsentMissing: Story = {
+let uploads = 0
+let approved = false
+const approvalHandlers = [
+  sessionHandler({ role: 'member' }),
+  noBatches,
+  http.get('/api/v1/heidi/usage', () =>
+    HttpResponse.json({
+      period: '2026-11',
+      tokens_used: 0,
+      tokens_included: null,
+      tokens_purchased: 0,
+      tokens_remaining: null,
+      provider_available: true,
+      consent: approved
+        ? { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' }
+        : { granted: false, changed_at: null, changed_by: '' },
+    }),
+  ),
+  http.put('/api/v1/heidi/consent', () => {
+    approved = true
+    return HttpResponse.json({
+      data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' },
+    })
+  }),
+  http.post('/api/v1/imports', () => {
+    uploads++
+    return HttpResponse.json({ data: extracting }, { status: 201 })
+  }),
+  getBatch(() => extracting),
+]
+const withApproval: Partial<Story> = {
   beforeEach: () => {
-    consented = false
+    uploads = 0
+    approved = false
   },
-  parameters: {
-    msw: {
-      handlers: [
-        sessionHandler({ role: 'owner' }),
-        noBatches,
-        http.post('/api/v1/imports', () =>
-          consented
-            ? HttpResponse.json({ data: extracting }, { status: 201 })
-            : fail(403, 'ai_consent_required', 'AI consent is required.'),
-        ),
-        http.put('/api/v1/heidi/consent', () => {
-          consented = true
-          return HttpResponse.json({
-            data: { granted: true, changed_at: '2026-11-09T10:00:00Z', changed_by: 'Anna' },
-          })
-        }),
-        getBatch(() => extracting),
-      ],
-    },
-  },
+  parameters: { msw: { handlers: approvalHandlers } },
+  render: () => (
+    <AIApprovalProvider>
+      <ImportDrawer kind="clients" onClose={() => {}} />
+    </AIApprovalProvider>
+  ),
+}
+
+/** First AI use: Not now uploads nothing and keeps the chosen file. Any member decides for themselves. */
+export const ApprovalNotNow: Story = {
+  ...withApproval,
   play: async () => {
     await chooseAndRead()
-    await expect(await body().findByText('AI reading is not allowed yet')).toBeVisible()
-    // The button waits for the session (owners and admins only), which can settle after the error.
-    await userEvent.click(await body().findByRole('button', { name: 'Allow OpenAI' }))
-    await expect(await body().findByText('Reading part 2 of 5')).toBeVisible()
+    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Not now' }))
+    await waitFor(() =>
+      expect(body().queryByRole('dialog', { name: 'Use AI in this workspace?' })).toBeNull(),
+    )
+    await expect(body().getByText('clients.csv')).toBeVisible()
+    await expect(uploads).toBe(0)
   },
 }
 
-/** A member without the right to allow it is told whom to ask. */
-export const ConsentMissingMember: Story = {
+/** Approving reads the files once. */
+export const ApprovalApprove: Story = {
+  ...withApproval,
+  play: async () => {
+    await chooseAndRead()
+    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Approve and continue' }))
+    await expect(await body().findByText('Reading part 2 of 5')).toBeVisible()
+    await expect(uploads).toBe(1)
+  },
+}
+
+/** Approval withdrawn elsewhere: the server's refusal offers the same approval, then reads once. */
+export const ApprovalRequiredByServer: Story = {
   parameters: {
     msw: {
       handlers: [
         sessionHandler({ role: 'member' }),
         noBatches,
         http.post('/api/v1/imports', () =>
-          fail(403, 'ai_consent_required', 'AI consent is required.'),
+          fail(403, 'ai_consent_required', 'You have not approved AI use in this workspace yet.'),
         ),
       ],
     },
   },
   play: async () => {
     await chooseAndRead()
-    await expect(await body().findByText('Ask an owner or admin of this workspace.')).toBeVisible()
-    await expect(body().queryByRole('button', { name: 'Allow OpenAI' })).toBeNull()
+    await expect(
+      await body().findByText('You haven’t approved AI use in this workspace yet'),
+    ).toBeVisible()
+    await expect(body().getByRole('button', { name: 'Review and approve' })).toBeVisible()
   },
 }
 

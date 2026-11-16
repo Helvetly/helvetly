@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
@@ -77,13 +79,17 @@ func (s *fakeStorage) Delete(_ context.Context, key string) error {
 // scripted is the model: each call answers with the next reply (the fake model's CSV reading when none is left).
 type scripted struct {
 	calls   atomic.Int32
+	counted atomic.Int32 // InputTokens calls: counting sends the content too
 	replies []func(aimodel.Request) (aimodel.Reply, error)
 	seen    []aimodel.Request
 	mu      sync.Mutex
 }
 
-func (p *scripted) InputTokens(context.Context, aimodel.Request) (int64, error) { return 10, nil }
-func (p *scripted) Card() aimodel.RateCard                                      { return aimodel.Cards[aimodel.DefaultModel] }
+func (p *scripted) InputTokens(context.Context, aimodel.Request) (int64, error) {
+	p.counted.Add(1)
+	return 10, nil
+}
+func (p *scripted) Card() aimodel.RateCard { return aimodel.Cards[aimodel.DefaultModel] }
 func (p *scripted) Answer(ctx context.Context, r aimodel.Request) (aimodel.Reply, error) {
 	n := int(p.calls.Add(1)) - 1
 	p.mu.Lock()
@@ -109,6 +115,7 @@ type env struct {
 	mux      *http.ServeMux
 	files    *fakeStorage
 	model    *scripted
+	raw      *pgxpool.Pool
 	sess     *store.Session
 	current  *store.Session
 	sessions map[string]*store.Session
@@ -117,12 +124,12 @@ type env struct {
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	t.Parallel()
-	db, _ := storetest.New(t)
+	db, raw := storetest.New(t)
 	api, err := auth.New(config.Config{PublicURL: "http://localhost:8000", DevSignIn: true}, db, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &env{t: t, db: db, files: &fakeStorage{objects: map[string][]byte{}}, model: &scripted{}, sessions: map[string]*store.Session{}}
+	e := &env{t: t, db: db, files: &fakeStorage{objects: map[string][]byte{}}, model: &scripted{}, raw: raw, sessions: map[string]*store.Session{}}
 	e.sess = e.person("ws_a", "usr_a", "owner", nil)
 	e.current = e.sess
 	e.s = New(db, testAuth{&e.current, api}, e.files, slog.New(slog.NewTextHandler(io.Discard, nil)), Options{Provider: e.model})
@@ -488,6 +495,7 @@ func TestCommitNeedsWritePermission(t *testing.T) {
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")
 	member := e.person("ws_a", "usr_m", "member", []string{"write:clients", "write:documents"})
+	e.consent("ws_a", "usr_m")
 	b := decode[store.ImportBatch](t, e.as(member).upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	if err := e.db.SetMemberRole(context.Background(), "ws_a", "usr_m", "member", []string{"read:clients"}); err != nil {
 		t.Fatal(err)

@@ -22,6 +22,7 @@ import {
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
+import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import {
   Combobox,
@@ -160,6 +161,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const [reading, setReading] = useState<File | null>(null)
   const [recognized, setRecognized] = useState<Recognized | null>(null)
   const reader = useRef<AbortController | null>(null)
+  const { ensure } = useAIApproval()
   // The workspace a result belongs to: a switch while reading makes it stale.
   const workspaceId = session?.workspace.id
   const currentWorkspace = useRef(workspaceId)
@@ -210,15 +212,23 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     reader.current = controller
     setReading(file)
     setRecognized(null)
+    // Removed, replaced, closed or another workspace meanwhile (also while the approval question was open).
+    const stale = () =>
+      controller.signal.aborted ||
+      reader.current !== controller ||
+      currentWorkspace.current !== startedIn
     try {
-      const suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
-      // Removed, replaced, closed or another workspace meanwhile: the answer is not applied.
-      if (
-        controller.signal.aborted ||
-        reader.current !== controller ||
-        currentWorkspace.current !== startedIn
-      )
-        return
+      // The shared first-use approval: "Not now" sends nothing and keeps the form and the files.
+      if (!(await ensure()) || stale()) return
+      let suggestions
+      try {
+        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+      } catch (error) {
+        // The server still wanted approval (given elsewhere, withdrawn): ask once and retry once.
+        if (!isAIConsentRequired(error) || stale() || !(await ensure()) || stale()) throw error
+        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+      }
+      if (stale()) return
       const result = applyRecognition(latest.current, initial, touched.current, suggestions, {
         registered,
         countrySaved,

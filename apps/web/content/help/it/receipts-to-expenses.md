@@ -4,7 +4,7 @@ description: Carica un gruppo di ricevute e lascia che l’IA trasformi ciascuna
 category: Expenses
 categoryLabel: Spese
 order: 2
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Evita l’inserimento manuale: carica le ricevute e l’IA le trasforma in bozze di spesa.
@@ -18,5 +18,8 @@ Le spese e l’importazione delle ricevute richiedono **Pro** o **Business**.
 
 ## Da sapere
 
-- L’IA deve essere autorizzata per lo spazio di lavoro (vedi "Usare Heidi, l’assistente").
+- Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti al
+  fornitore IA. L’approvazione copre tutte le funzioni IA di quello spazio, solo per te. Se rifiuti
+  o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
+  restano disponibili.
 - La lettura delle ricevute utilizza la disponibilità IA mensile.

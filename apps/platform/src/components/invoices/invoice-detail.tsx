@@ -8,8 +8,10 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -51,6 +53,7 @@ import { downloadEinvoice } from '@/lib/invoice-download'
 import {
   documentName,
   dueLabel,
+  einvoiceBlock,
   einvoiceFormatsFor,
   formatAmount,
   formatDay,
@@ -303,6 +306,7 @@ function Detail({
                     id={invoice.id}
                     sellerCountry={invoice.seller?.country}
                     buyerCountry={invoice.buyer?.country}
+                    blocked={einvoiceBlock(invoice)}
                   />
                 )}
               </DropdownMenuContent>
@@ -787,10 +791,12 @@ function EinvoiceItems({
   id,
   sellerCountry,
   buyerCountry,
+  blocked,
 }: {
   id: string
   sellerCountry?: string
   buyerCountry?: string
+  blocked: string | null
 }) {
   const [busy, setBusy] = useState(false)
   const lock = useFeatureLock('einvoice_xml')
@@ -808,25 +814,33 @@ function EinvoiceItems({
   return (
     <DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">
-        {translate('eInvoiceXML')}
-        {lock && <PlanTag lock={lock} className="ml-1.5" />}
-      </DropdownMenuLabel>
-      {einvoiceFormatsFor(sellerCountry, buyerCountry).map((format) => (
-        <DropdownMenuItem
-          key={format.value}
-          disabled={busy || Boolean(lock)}
-          onSelect={() => void download(format.value)}
-        >
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger disabled={Boolean(blocked)}>
           <FileCode2 />
           <span className="grid">
-            {format.label}
-            {format.hint && (
-              <span className="text-[12px] text-muted-foreground">{format.hint}</span>
-            )}
+            {translate('eInvoiceXML')}
+            {blocked && <span className="text-[12px] text-muted-foreground">{blocked}</span>}
           </span>
-        </DropdownMenuItem>
-      ))}
+          {lock && <PlanTag lock={lock} className="ml-1.5" />}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          {einvoiceFormatsFor(sellerCountry, buyerCountry).map((format) => (
+            <DropdownMenuItem
+              key={format.value}
+              disabled={busy || Boolean(lock)}
+              onSelect={() => void download(format.value)}
+            >
+              <FileCode2 />
+              <span className="grid">
+                {format.label}
+                {format.hint && (
+                  <span className="text-[12px] text-muted-foreground">{format.hint}</span>
+                )}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
     </DropdownMenuGroup>
   )
 }

@@ -97,6 +97,7 @@ func TestAutoImportChecksEachRecordsScope(t *testing.T) {
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")
 	clerk := e.person("ws_a", "usr_clerk", "member", []string{"read:*", "write:documents", "write:clients"})
+	e.consent("ws_a", "usr_clerk")
 	e.model.replies = append(e.model.replies, answer(autoInvoice))
 	w := e.as(clerk).upload(Auto, map[string][]byte{"invoice.txt": []byte("Invoice")})
 	if w.Code != 201 {

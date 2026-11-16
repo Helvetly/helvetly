@@ -42,15 +42,6 @@ func answerLabel(files []upload) string {
 	}
 }
 
-// consentGate refuses a model call once an owner or admin withdrew the workspace's consent.
-func consentGate(ctx context.Context, q store.Q, workspaceID string) error {
-	c, err := q.AIConsent(ctx, workspaceID)
-	if err == nil && !c.Granted {
-		err = auth.Error(403, "ai_consent_required", "This workspace has not allowed Heidi to use OpenAI. An owner or admin can allow it in Heidi's panel. Nothing more was sent to OpenAI.", nil)
-	}
-	return err
-}
-
 // modelAnswer asks the model; known skips the scope classifier for a message the first pass already let through.
 // progress reports each step as its provider call starts.
 func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, message string, files []upload, known bool, progress func(label string)) (turn, error) {
@@ -87,7 +78,10 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 		request.Files = append(request.Files, ProviderFile{Name: f.Name, ContentType: f.Type, Bytes: b})
 	}
-	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now, Gate: consentGate}
+	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now,
+		Gate: func(ctx context.Context, q store.Q, ws string) error {
+			return auth.RequireAIConsent(ctx, q, ws, sess.User.ID)
+		}}
 	// One operation per turn: the classifier and the answer share its cost cap.
 	call := aimodel.Call{Kind: "heidi", Operation: auth.NewID("turn"), Caps: aimodel.HeidiCaps}
 	var spent int64

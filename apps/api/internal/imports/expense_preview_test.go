@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/aimodel"
 )
@@ -254,5 +255,36 @@ func TestPreviewProviderFailureIsKnownAndStoresNothing(t *testing.T) {
 	}
 	if n := e.expenseCount("ws_a"); n != 0 {
 		t.Errorf("%d expenses", n)
+	}
+}
+
+// Approval is each person's own in each workspace: another member's does not count, and nothing is sent without it.
+func TestPreviewNeedsThePersonsOwnApproval(t *testing.T) {
+	e := previewEnv(t) // usr_a approved in ws_a
+	clerk := e.person("ws_a", "usr_clerk", "member", []string{"read:*", "write:expenses"})
+	w := e.as(clerk).preview("request-0001", pngBytes(t), nil)
+	if w.Code != http.StatusForbidden || code(w) != "ai_consent_required" {
+		t.Fatalf("clerk without own approval: %d %s", w.Code, w.Body)
+	}
+	if n := e.model.calls.Load(); n != 0 {
+		t.Errorf("the model was called %d times", n)
+	}
+	e.consent("ws_a", "usr_clerk")
+	e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(`{"records":[{"supplier_name":"Migros"}]}`)}
+	if w := e.as(clerk).preview("request-0002", pngBytes(t), nil); w.Code != 200 {
+		t.Errorf("after their own approval: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestPreviewWithdrawnApprovalStopsTheNextRead(t *testing.T) {
+	e := previewEnv(t)
+	if err := e.db.SetAIConsent(t.Context(), "ws_a", "usr_a", false, time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if w := e.preview("request-0001", pngBytes(t), nil); w.Code != http.StatusForbidden || code(w) != "ai_consent_required" {
+		t.Errorf("%d %s", w.Code, w.Body)
+	}
+	if n := e.model.calls.Load(); n != 0 {
+		t.Errorf("the model was called %d times", n)
 	}
 }

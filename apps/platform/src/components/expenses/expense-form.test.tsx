@@ -1,7 +1,9 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 
 import { ExpenseForm } from './expense-form'
 
@@ -35,14 +37,28 @@ function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Res
   return fetch
 }
 
-const renderForm = async (initialFiles?: File[], seededSession?: object) => {
+const renderForm = async (initialFiles?: File[], seededSession?: object, withApproval = false) => {
   const onSaved = vi.fn<() => void>()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   if (seededSession) client.setQueryData(['session'], seededSession)
   const view = render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
-        <ExpenseForm onClose={vi.fn<() => void>()} onSaved={onSaved} initialFiles={initialFiles} />
+        {withApproval ? (
+          <AIApprovalProvider>
+            <ExpenseForm
+              onClose={vi.fn<() => void>()}
+              onSaved={onSaved}
+              initialFiles={initialFiles}
+            />
+          </AIApprovalProvider>
+        ) : (
+          <ExpenseForm
+            onClose={vi.fn<() => void>()}
+            onSaved={onSaved}
+            initialFiles={initialFiles}
+          />
+        )}
       </TooltipProvider>
     </QueryClientProvider>,
   )
@@ -390,4 +406,93 @@ test('a saved supplier country survives recognition', async () => {
   await waitFor(() => expect(supplier()).toHaveValue('Migros'))
   expect(screen.getByRole('button', { name: 'Supplier country' })).toHaveTextContent('Germany')
   localStorage.clear()
+})
+
+// The real AIApprovalProvider with a fake server: the person's own approval in this workspace.
+const usage = (granted: boolean) =>
+  json({
+    period: '2026-11',
+    tokens_used: 0,
+    tokens_included: 0,
+    tokens_purchased: 0,
+    tokens_remaining: 0,
+    provider_available: true,
+    consent: { granted, changed_at: granted ? '2026-11-16T10:00:00Z' : null, changed_by: '' },
+  })
+
+function approvalApi(options: { granted: boolean; previews: (call: number) => Response }) {
+  const state = { granted: options.granted, previews: 0, puts: 0 }
+  const fetch = stubApi((url, _body) => {
+    if (url.endsWith('/heidi/usage')) return usage(state.granted)
+    if (url.endsWith('/heidi/consent')) {
+      state.puts += 1
+      state.granted = true
+      return json({ data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'U' } })
+    }
+    state.previews += 1
+    return options.previews(state.previews)
+  })
+  return { state, fetch }
+}
+
+test('without approval the receipt is not sent until the person approves, once', async () => {
+  const { state } = approvalApi({
+    granted: false,
+    previews: () => answer({ supplier_name: 'Migros' }),
+  })
+  await renderForm([photo()], session('ws_a'), true)
+  await userEvent.click(recognizeButton())
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Approve and continue' }))
+
+  await waitFor(() => expect(supplier()).toHaveValue('Migros'))
+  expect(state).toMatchObject({ puts: 1, previews: 1 })
+})
+
+test('"Not now" sends nothing and keeps the form and the receipt', async () => {
+  const { state } = approvalApi({
+    granted: false,
+    previews: () => answer({ supplier_name: 'Migros' }),
+  })
+  await renderForm([photo()], session('ws_a'), true)
+  await userEvent.type(supplier(), 'SBB')
+  await userEvent.click(recognizeButton())
+
+  await userEvent.click(await screen.findByRole('button', { name: 'Not now' }))
+
+  await waitFor(() => expect(recognizeButton()).toBeEnabled())
+  expect(state).toMatchObject({ puts: 0, previews: 0 })
+  expect(supplier()).toHaveValue('SBB')
+  expect(screen.getByText('migros.jpg')).toBeInTheDocument()
+})
+
+test('a refusal for missing approval is retried once, not in a loop', async () => {
+  const { state } = approvalApi({
+    granted: true,
+    previews: () =>
+      json({ error: { code: 'ai_consent_required', message: 'Approve first.' } }, 403),
+  })
+  await renderForm([photo()], session('ws_a'), true)
+  await userEvent.click(recognizeButton())
+
+  expect(
+    await screen.findByText(/The receipt could not be read: Approve first\./),
+  ).toBeInTheDocument()
+  expect(state.previews).toBe(2)
+  expect(recognizeButton()).toBeEnabled()
+})
+
+test('switching workspace while the approval question is open sends nothing', async () => {
+  const { state } = approvalApi({
+    granted: false,
+    previews: () => answer({ supplier_name: 'Migros' }),
+  })
+  const { client } = await renderForm([photo()], session('ws_a'), true)
+  await userEvent.click(recognizeButton())
+  await screen.findByRole('button', { name: 'Approve and continue' })
+  act(() => client.setQueryData(['session'], session('ws_b')))
+
+  await waitFor(() => expect(recognizeButton()).toBeEnabled())
+  expect(state).toMatchObject({ puts: 0, previews: 0 })
+  expect(supplier()).toHaveValue('')
 })

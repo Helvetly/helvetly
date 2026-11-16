@@ -231,10 +231,12 @@ type testProvider struct {
 	// scope answers the scope classifier (nil: in scope, zero tokens); classified counts its calls apart from calls.
 	scope      func(ProviderRequest) (ProviderReply, error)
 	classified atomic.Int32
+	counted    atomic.Int32 // InputTokens calls: counting sends the content too
 }
 
 func (p *testProvider) Card() aimodel.RateCard { return aimodel.Cards[aimodel.DefaultModel] }
 func (p *testProvider) InputTokens(context.Context, ProviderRequest) (int64, error) {
+	p.counted.Add(1)
 	return p.input, p.countErr
 }
 func (p *testProvider) Answer(ctx context.Context, r ProviderRequest) (ProviderReply, error) {

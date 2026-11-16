@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from '@helvetly/ui/components/sidebar'
 import { usePathname } from 'next/navigation'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { AuthGate } from '@/components/auth-gate'
 import { isActivating } from '@/components/billing/activating'
 import { HeidiPanel } from '@/components/heidi/heidi-panel'
@@ -64,41 +65,43 @@ export default function SignedInLayout({ children }: { children: ReactNode }) {
       {(session) => (
         <OnboardingRedirect session={session}>
           {/* Above the shell, so Heidi opened from the welcome is still open after it. */}
-          <HeidiProvider
-            key={`${session.user.id}:${session.workspace.id}`}
-            scope={`${session.user.id}:${session.workspace.id}`}
-          >
-            {bare ? (
-              children
-            ) : (
-              // Without an active plan every page sends to the plan picker (components/shell/plan-gate).
-              <PlanGate>
-                {/* Below the smallest phone the page scrolls sideways instead of squeezing. */}
-                <div className="h-svh min-w-[320px] bg-background">
-                  <SidebarProvider
-                    open={open && !rail}
-                    onOpenChange={toggle}
-                    // ⌘B is registered with the platform's other shortcuts (AppSidebar).
-                    keyboardShortcut={false}
-                    className="relative h-full min-h-0 overflow-hidden bg-background"
-                  >
-                    <PrimaryActionProvider>
-                      <RecordDrawers>
-                        <NotificationPrefsDrawers>
-                          <AppSidebar session={session} />
-                          <SidebarInset className="@container min-w-0 overflow-y-auto bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:peer-data-[variant=inset]:my-2 md:peer-data-[variant=inset]:mr-2 md:peer-data-[variant=inset]:rounded-b-[14px] md:peer-data-[variant=inset]:shadow-none [&>header+*]:rounded-t-[14px] [&>header~*]:bg-card">
-                            <AccessGate>{children}</AccessGate>
-                          </SidebarInset>
-                          <HeidiPanel />
-                          <MobileTabBar />
-                        </NotificationPrefsDrawers>
-                      </RecordDrawers>
-                    </PrimaryActionProvider>
-                  </SidebarProvider>
-                </div>
-              </PlanGate>
-            )}
-          </HeidiProvider>
+          <AIApprovalProvider>
+            <HeidiProvider
+              key={`${session.user.id}:${session.workspace.id}`}
+              scope={`${session.user.id}:${session.workspace.id}`}
+            >
+              {bare ? (
+                children
+              ) : (
+                // Without an active plan every page sends to the plan picker (components/shell/plan-gate).
+                <PlanGate>
+                  {/* Below the smallest phone the page scrolls sideways instead of squeezing. */}
+                  <div className="h-svh min-w-[320px] bg-background">
+                    <SidebarProvider
+                      open={open && !rail}
+                      onOpenChange={toggle}
+                      // ⌘B is registered with the platform's other shortcuts (AppSidebar).
+                      keyboardShortcut={false}
+                      className="relative h-full min-h-0 overflow-hidden bg-background"
+                    >
+                      <PrimaryActionProvider>
+                        <RecordDrawers>
+                          <NotificationPrefsDrawers>
+                            <AppSidebar session={session} />
+                            <SidebarInset className="@container min-w-0 overflow-y-auto bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:peer-data-[variant=inset]:my-2 md:peer-data-[variant=inset]:mr-2 md:peer-data-[variant=inset]:rounded-b-[14px] md:peer-data-[variant=inset]:shadow-none [&>header+*]:rounded-t-[14px] [&>header~*]:bg-card">
+                              <AccessGate>{children}</AccessGate>
+                            </SidebarInset>
+                            <HeidiPanel />
+                            <MobileTabBar />
+                          </NotificationPrefsDrawers>
+                        </RecordDrawers>
+                      </PrimaryActionProvider>
+                    </SidebarProvider>
+                  </div>
+                </PlanGate>
+              )}
+            </HeidiProvider>
+          </AIApprovalProvider>
         </OnboardingRedirect>
       )}
     </AuthGate>

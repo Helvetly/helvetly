@@ -1223,10 +1223,10 @@ function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => vo
           {translate('editing')}
         </>
       ) : (
-        <>
+        <span className="flex items-center gap-1.5 font-medium text-success">
           <Check className="size-3.5" />
           {translate('saved3')}
-        </>
+        </span>
       )}
     </output>
   )

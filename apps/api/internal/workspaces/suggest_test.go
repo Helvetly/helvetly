@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -70,7 +71,7 @@ func TestSuggestIsOneTimeAndIdempotent(t *testing.T) {
 	e := newEnv(t)
 	n := &fakeNamer{reply: good("  “Muster Treuhand”  ")}
 	e.svc.SetNamer(n)
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	code, body := e.do(owner, http.MethodPost, path, ask("Muster Treuhand GmbH"))
 	data, _ := body["data"].(map[string]any)
 	if code != http.StatusOK || data["name"] != "Muster Treuhand" || data["company_name"] != "Muster Treuhand GmbH" {
@@ -98,14 +99,14 @@ func TestSuggestIsOneTimeAndIdempotent(t *testing.T) {
 	}
 }
 
-func TestSuggestNeverTouchesThePlanPoolOrHeidiConsent(t *testing.T) {
+func TestSuggestNeverTouchesThePlanPool(t *testing.T) {
 	e := newEnv(t)
 	e.svc.SetNamer(&fakeNamer{reply: good("Muster")})
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	if code, body := e.do(owner, http.MethodPost, path, ask("Muster GmbH")); code != http.StatusOK {
 		t.Fatalf("suggest: %d %v", code, body)
 	}
-	for _, table := range []string{"heidi_usage", "ai_calls", "workspace_ai_consents"} {
+	for _, table := range []string{"heidi_usage", "ai_calls"} {
 		var n int
 		if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM `+table+` WHERE workspace_id = $1`, ws).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("%s rows %d %v", table, n, err)
@@ -117,7 +118,7 @@ func TestSuggestRefusesBeforeTheProviderAndSpendsNothing(t *testing.T) {
 	e := newEnv(t)
 	n := &fakeNamer{reply: good("Muster")}
 	e.svc.SetNamer(n)
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	admin := e.join(ws, "admin")
 	for name, tc := range map[string]struct {
 		b    *browser
@@ -149,7 +150,7 @@ func TestSuggestRefusesBeforeTheProviderAndSpendsNothing(t *testing.T) {
 
 func TestSuggestProviderOffConsumesNothing(t *testing.T) {
 	e := newEnv(t) // no namer
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	if code, body := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusConflict || errCode(body) != "ai_not_configured" {
 		t.Fatalf("provider off: %d %v", code, body)
 	}
@@ -162,7 +163,7 @@ func TestSuggestRefusesASetUpWorkspace(t *testing.T) {
 	e := newEnv(t)
 	n := &fakeNamer{reply: good("Muster")}
 	e.svc.SetNamer(n)
-	owner, ws := e.person("Acme", "owner")
+	owner, ws := e.approvedOwner("Acme", "owner")
 	if _, err := e.raw.Exec(context.Background(), `UPDATE workspaces SET onboarded_at = now() WHERE id = $1`, ws); err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +194,7 @@ func TestSuggestFailuresStaySpent(t *testing.T) {
 			e := newEnv(t)
 			n := &fakeNamer{reply: tc.reply}
 			e.svc.SetNamer(n)
-			owner, ws := e.person("My workspace", "owner")
+			owner, ws := e.approvedOwner("My workspace", "owner")
 			if code, body := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusBadGateway || errCode(body) != "ai_unavailable" {
 				t.Fatalf("first: %d %v", code, body)
 			}
@@ -215,7 +216,7 @@ func TestSuggestConcurrentRequestsAskTheModelOnce(t *testing.T) {
 	e := newEnv(t)
 	n := &fakeNamer{reply: good("Muster"), gate: make(chan struct{})}
 	e.svc.SetNamer(n)
-	owner, _ := e.person("My workspace", "owner")
+	owner, _ := e.approvedOwner("My workspace", "owner")
 	var wg sync.WaitGroup
 	codes := make(chan int, 5)
 	for range 5 { // within the 6 per minute of the rate limit
@@ -249,7 +250,7 @@ func TestSuggestSurvivesAClientThatLeaves(t *testing.T) {
 	e := newEnv(t)
 	n := &fakeNamer{reply: good("Muster"), gate: make(chan struct{})}
 	e.svc.SetNamer(n)
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	owner.c.Timeout = 300 * time.Millisecond // the client gives up while the model still works
 	if _, err := func() (int, error) {
 		defer func() { owner.c.Timeout = 0 }()
@@ -283,7 +284,7 @@ func TestSuggestSurvivesAClientThatLeaves(t *testing.T) {
 func TestSuggestRateLimit(t *testing.T) {
 	e := newEnv(t)
 	e.svc.SetNamer(&fakeNamer{reply: good("Muster")})
-	owner, _ := e.person("My workspace", "owner")
+	owner, _ := e.approvedOwner("My workspace", "owner")
 	for i := range 6 {
 		if code, _ := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusOK {
 			t.Fatalf("request %d: %d", i, code)
@@ -297,7 +298,7 @@ func TestSuggestRateLimit(t *testing.T) {
 // One person making many workspaces cannot harvest more than five uses a day, even all at once.
 func TestSuggestPerPersonDailyCapHoldsUnderConcurrency(t *testing.T) {
 	e := newEnv(t)
-	_, first := e.person("One", "owner")
+	_, first := e.approvedOwner("One", "owner")
 	owner := e.join(first, "owner")
 	var wsIDs []string
 	for range 8 {
@@ -341,9 +342,12 @@ func TestSuggestPerPersonDailyCapHoldsUnderConcurrency(t *testing.T) {
 func TestSuggestDeletingTheWorkspaceRemovesTheRecord(t *testing.T) {
 	e := newEnv(t)
 	e.svc.SetNamer(&fakeNamer{reply: good("Muster")})
-	owner, ws := e.person("My workspace", "owner")
+	owner, ws := e.approvedOwner("My workspace", "owner")
 	if code, _ := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusOK {
 		t.Fatal("suggest")
+	}
+	if _, err := e.raw.Exec(context.Background(), `DELETE FROM workspace_ai_consents WHERE workspace_id = $1`, ws); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := e.raw.Exec(context.Background(), `DELETE FROM workspaces WHERE id = $1`, ws); err != nil {
 		t.Fatal(err)
@@ -357,7 +361,7 @@ func TestSuggestDeletingTheWorkspaceRemovesTheRecord(t *testing.T) {
 func TestSuggestCapSurvivesWorkspaceDeletion(t *testing.T) {
 	e := newEnv(t)
 	e.svc.SetNamer(&fakeNamer{reply: good("Muster")})
-	_, first := e.person("One", "owner")
+	_, first := e.approvedOwner("One", "owner")
 	owner := e.join(first, "owner")
 	take := func(id string) store.NameSuggestionOutcome {
 		var out store.NameSuggestionOutcome
@@ -377,6 +381,9 @@ func TestSuggestCapSurvivesWorkspaceDeletion(t *testing.T) {
 		}
 		if out := take(id); out != store.NameReserved {
 			t.Fatalf("use %d: %v", i, out)
+		}
+		if _, err := e.raw.Exec(context.Background(), `DELETE FROM workspace_ai_consents WHERE workspace_id = $1`, id); err != nil {
+			t.Fatal(err)
 		}
 		if _, err := e.raw.Exec(context.Background(), `DELETE FROM workspaces WHERE id = $1`, id); err != nil {
 			t.Fatal(err)
@@ -419,5 +426,36 @@ func TestCleanSuggestion(t *testing.T) {
 		if got != want || ok != (want != "") {
 			t.Errorf("%q: %q %v", in, got, ok)
 		}
+	}
+}
+
+// approvedOwner is person (a new workspace with role there) who has also approved AI use for themselves.
+func (e *env) approvedOwner(name, role string) (*browser, string) {
+	e.t.Helper()
+	b, ws := e.person(name, role)
+	if err := e.st.SetAIConsent(context.Background(), ws, b.userID, true, time.Now()); err != nil {
+		e.t.Fatal(err)
+	}
+	return b, ws
+}
+
+// The narrow company-name consent never stands in for the person's own AI approval, and nothing is spent without it.
+func TestSuggestNeedsThePersonsOwnAIApproval(t *testing.T) {
+	e := newEnv(t)
+	namer := &fakeNamer{reply: good("Muster")}
+	e.svc.SetNamer(namer)
+	owner, ws := e.person("My workspace", "owner")
+	other := e.join(ws, "owner")
+	if err := e.st.SetAIConsent(context.Background(), ws, other.userID, true, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if code, body := e.do(owner, http.MethodPost, path, ask("Muster GmbH")); code != http.StatusForbidden || !strings.Contains(fmt.Sprint(body), "ai_consent_required") {
+		t.Fatalf("without own approval: %d %v", code, body)
+	}
+	if _, _, found := e.suggestionRow(ws); found || namer.calls() != 0 {
+		t.Fatalf("the use was taken or the model asked: found=%v calls=%d", found, namer.calls())
+	}
+	if c, err := e.st.AIConsent(context.Background(), ws, owner.userID); err != nil || c.ChangedAt != nil {
+		t.Fatalf("the narrow consent was recorded as approval: %+v %v", c, err)
 	}
 }

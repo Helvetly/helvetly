@@ -137,9 +137,9 @@ test('rapid send submits one message while the first request is starting', async
     }),
   )
   const { result } = renderHook(() => useHeidiChat('invoices', 'user:workspace'), { wrapper })
-  act(() => {
-    result.current.send('Question')
-    result.current.send('Question')
+  await act(async () => {
+    // The second send waits on nothing: the first is already in flight.
+    await Promise.all([result.current.send('Question'), result.current.send('Question')])
   })
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(calls).toBe(1)
@@ -159,7 +159,7 @@ test('an off-topic refusal is an ordinary answer with its actions', async () => 
     ),
   )
   const { result } = renderHook(() => useHeidiChat('invoices', 'user:workspace'), { wrapper })
-  act(() => result.current.send('Write C++ code for Fibonacci'))
+  await act(() => result.current.send('Write C++ code for Fibonacci'))
   await waitFor(() => expect(result.current.busy).toBe(false))
   const answer = result.current.messages[1]
   expect(answer?.role).toBe('assistant')
@@ -196,7 +196,7 @@ test('the chat is the same object until something it uses changes', async () => 
   expect(result.current).not.toBe(first)
   expect(result.current.send).not.toBe(first.send)
   expect(result.current.stop).toBe(first.stop)
-  act(() => result.current.send('Question'))
+  await act(() => result.current.send('Question'))
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(page).toBe('clients')
 })
@@ -225,7 +225,7 @@ test('keeps the steps of a turn and how long it took', async () => {
     }),
   )
   const { result } = renderHook(() => useHeidiChat('invoices', 'user:workspace'), { wrapper })
-  act(() => result.current.send('Summarize my receivables'))
+  await act(() => result.current.send('Summarize my receivables'))
   await waitFor(() => expect(result.current.messages[1]?.startedAt).toBeTypeOf('number'))
   await waitFor(() => expect(result.current.busy).toBe(false))
   const answer = result.current.messages[1]
