@@ -36,10 +36,13 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   const nameInput = page.getByRole('textbox', { name: /^What should we call you/ })
   await expect(nameInput).toHaveValue('')
   await nameInput.fill('Journey Owner')
+  // The workspace name is its own required field here, blank for the sign-up placeholder and never taken from the company.
+  const workspaceInput = page.getByRole('textbox', { name: /^Workspace name/ })
+  await expect(workspaceInput).toHaveValue('')
+  await workspaceInput.fill('Journey Workspace')
   await page.getByRole('button', { name: 'Get started' }).click()
   await page.getByLabel(/^Company name/).fill('Journey AG')
-  // The workspace name starts as the company's and is its own field.
-  await expect(page.getByRole('textbox', { name: /^Workspace name/ })).toHaveValue('Journey AG')
+  await expect(page.getByRole('textbox', { name: /^Workspace name/ })).toHaveCount(0)
   await page.getByLabel(/^Street/).fill('Bahnhofstrasse')
   await page.getByLabel(/^Number/).fill('1')
   await page.getByLabel(/^ZIP/).fill('8001')
@@ -54,7 +57,7 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await expect(page).toHaveURL(/\/clients/)
   const saved = object(await (await page.request.get('/api/v1/session')).json())
   expect(object(saved.user).name).toBe('Journey Owner')
-  expect(object(saved.workspace).name).toBe('Journey AG')
+  expect(object(saved.workspace).name).toBe('Journey Workspace')
   await expect(page.getByRole('button', { name: 'New client', exact: true })).toBeVisible()
   const replay = await page.request.post('/api/v1/auth/email/verify', {
     data: { email, code, next: '/' },
