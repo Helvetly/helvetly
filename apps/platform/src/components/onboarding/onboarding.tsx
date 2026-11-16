@@ -26,7 +26,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { LoginShowcase } from '@/components/auth/login-showcase'
 import {
@@ -239,16 +239,18 @@ export function WelcomePage({ session }: { session: Session }) {
     return true
   }
 
-  // Each step announces itself: focus moves to its heading once it has rendered.
   const go = (to: StepId) => {
     setStep(to)
     if (to === 'done') finish.mutate()
-    requestAnimationFrame(() => {
-      // The new step starts at its top, progress bar included.
-      if (scroller.current) scroller.current.scrollTop = 0
-      heading.current?.focus()
-    })
   }
+  // Each step announces itself, the first included: when its keyed container is committed (not a frame later,
+  // which can come before it) the scroller starts at the step's top, progress bar included, and focus moves to
+  // the new heading, already attached by then.
+  const announce = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    if (scroller.current) scroller.current.scrollTop = 0
+    heading.current?.focus()
+  }, [])
   const next = () => go(steps[Math.min(index + 1, steps.length - 1)] ?? 'done')
   const back = index > 0 ? () => go(steps[index - 1] ?? 'welcome') : undefined
   // Focus goes to the first field with an error once the errors are on screen.
@@ -300,8 +302,6 @@ export function WelcomePage({ session }: { session: Session }) {
     then?.()
   }
 
-  useEffect(() => heading.current?.focus(), [])
-
   if (done) return null
 
   const busy = save.isPending || finish.isPending || rename.isPending
@@ -331,6 +331,7 @@ export function WelcomePage({ session }: { session: Session }) {
             )}
             <div
               key={step}
+              ref={announce}
               data-testid={`onboarding-step-${step}`}
               className="mt-8 duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
             >
