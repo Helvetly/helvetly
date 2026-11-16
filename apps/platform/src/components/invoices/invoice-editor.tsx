@@ -506,9 +506,10 @@ function Editor({
   // stays a no-op) turns the Back into the discard question. Keep editing puts the guard back; Discard lets the Back go on.
   const guarded = useRef(false)
   // The input the person agreed to discard with Back: that departure may leave the page, and the tab-close warning
-  // must not ask again. It covers only that input: a Back that went nowhere (first history entry, a blocked departure)
+  // must not ask again. It covers only that input (the raw values: every edit makes new ones, even when two invalid
+  // entries would save alike): a Back that went nowhere (first history entry, a blocked departure)
   // leaves the editor open, and any new edit is warned about again. A later popstate means the page stayed.
-  const leaving = useRef<string | null>(null)
+  const leaving = useRef<EditorValues | null>(null)
   useEffect(() => {
     if (!unsaved || guarded.current) return
     window.history.pushState(window.history.state, '', window.location.href)
@@ -533,7 +534,7 @@ function Editor({
     window.history.back()
   }
   const warn = useEffectEvent((event: BeforeUnloadEvent) => {
-    if (leaving.current !== payload && (unsaved || (dirty && values.client_id)))
+    if (leaving.current !== values && (unsaved || (dirty && values.client_id)))
       event.preventDefault()
   })
   useEffect(() => {
@@ -1245,7 +1246,7 @@ function Editor({
             const wasBack = discarding === 'back'
             setDiscarding(false)
             if (discard && wasBack) {
-              leaving.current = payload
+              leaving.current = values
               return window.history.back()
             }
             if (discard) return onClose()

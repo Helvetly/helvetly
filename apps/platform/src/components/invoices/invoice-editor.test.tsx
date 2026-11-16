@@ -582,6 +582,26 @@ test('after a Discard whose Back went nowhere, the next edit is protected again'
   expect(warns()).toBe(true)
 })
 
+test('after a Discard whose Back went nowhere, a different invalid entry is protected again', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {}) // no popstate follows
+  await typeUnsaved()
+  const price = screen.getByLabelText('Line 1 price')
+  await userEvent.type(price, 'bad-a') // saves as 0.00, like any invalid price
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false)
+  await userEvent.clear(price)
+  await userEvent.type(price, 'bad-b') // different input, same saved form
+  expect(warns()).toBe(true)
+})
+
 test('an untouched editor adds no history entry', async () => {
   const pushed = vi.spyOn(window.history, 'pushState')
   renderEditor()
