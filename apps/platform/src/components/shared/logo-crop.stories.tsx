@@ -223,16 +223,14 @@ export const ExactRatio: Story = {
 export const Tiny: Story = { render: () => <Pick width={64} height={64} clear={false} /> }
 
 const saved = fn<(logo: Blob) => void>()
-function TurnedDialog({ file }: { file: Promise<File> }) {
-  return <Dialog file={use(file)} onSave={saved} />
-}
-function Turned({ turn, width, height }: { turn: 6 | 8; width?: number; height?: number }) {
-  const [file] = useState(() => turnedJpeg(turn, width, height))
-  return (
-    <Suspense fallback={null}>
-      <TurnedDialog file={file} />
-    </Suspense>
-  )
+/** The EXIF-turned JPEG is made by a loader, so it exists before the story renders and its play starts. */
+const turnedLoader = (turn: 6 | 8, width?: number, height?: number) => async () => ({
+  file: await turnedJpeg(turn, width, height),
+})
+const Turned = ({ file }: { file: File }) => <Dialog file={file} onSave={saved} />
+const renderTurned: Story['render'] = (_args, { loaded }) => {
+  if (!(loaded.file instanceof File)) throw new Error('the turnedLoader did not provide the JPEG')
+  return <Turned file={loaded.file} />
 }
 
 const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
@@ -251,13 +249,15 @@ const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
 
 /** A JPEG turned by EXIF (orientation 6) keeps its proportions in the saved PNG. */
 export const ExifTurnedClockwise: Story = {
-  render: () => <Turned turn={6} />,
+  loaders: [turnedLoader(6)],
+  render: renderTurned,
   play: keepsTheDiscRound,
 }
 
 /** The same turned the other way (orientation 8). */
 export const ExifTurnedAnticlockwise: Story = {
-  render: () => <Turned turn={8} />,
+  loaders: [turnedLoader(8)],
+  render: renderTurned,
   play: keepsTheDiscRound,
 }
 
@@ -282,13 +282,15 @@ const exactTurned =
 
 /** A 400 × 1000 JPEG turned by EXIF 6 is shown 1000 × 400: already the field's shape, yet still re-encoded. */
 export const ExactRatioExifClockwise: Story = {
-  render: () => <Turned turn={6} width={400} height={1000} />,
+  loaders: [turnedLoader(6, 400, 1000)],
+  render: renderTurned,
   play: exactTurned([0.97, 0.075]),
 }
 
 /** The same turned the other way (orientation 8): the mark lands bottom left. */
 export const ExactRatioExifAnticlockwise: Story = {
-  render: () => <Turned turn={8} width={400} height={1000} />,
+  loaders: [turnedLoader(8, 400, 1000)],
+  render: renderTurned,
   play: exactTurned([0.03, 0.925]),
 }
 
