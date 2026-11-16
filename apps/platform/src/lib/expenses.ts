@@ -530,6 +530,6 @@ export async function recognizeReceipt(file: File, requestId: string, signal: Ab
   )
 }
 
-/** Receipts the AI reads: the types the server sniffs and the model takes. */
+/** Receipts worth sending: HEIC can't be read; the server explains anything else it refuses (WebP). */
 export const canRecognize = (file: File) =>
   !isHeic(file) && /^(application\/pdf|image\/(png|jpeg|webp))$/.test(file.type)

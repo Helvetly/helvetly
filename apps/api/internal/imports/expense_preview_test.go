@@ -180,6 +180,7 @@ func TestPreviewRefusesBadInputBeforeTheModel(t *testing.T) {
 		"heic":          e.preview("request-0001", append([]byte{0, 0, 0, 24}, []byte("ftypheic\x00\x00\x00\x00")...), nil),
 		"corrupt png":   e.preview("request-0001", append(good[:20:20], 0xff, 0xff), nil),
 		"huge png":      e.preview("request-0001", hugePNG(), nil),
+		"webp":          e.preview("request-0001", []byte("RIFF\x10\x00\x00\x00WEBPVP8X\x00\x00\x00\x00"), nil),
 		"bare pdf":      e.preview("request-0001", []byte("%PDF-1.4\nnothing"), nil),
 	} {
 		if w.Code < 400 || w.Code >= 500 {

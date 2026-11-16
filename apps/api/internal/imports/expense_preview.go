@@ -200,7 +200,7 @@ func previewBodyError(err error) error {
 	return invalid("Send a multipart form with request_id and file.")
 }
 
-// checkPreviewFile accepts what the model reads (PDF, PNG, JPEG, WebP) and refuses a file that is no valid one of those
+// checkPreviewFile accepts what the model reads (PDF, PNG, JPEG) and refuses a file that is no valid one of those
 // before anything is sent: a ZIP or spreadsheet is no receipt, and an image must decode to a bounded size.
 func checkPreviewFile(contentType string, data []byte) error {
 	var cfg image.Config
@@ -217,12 +217,11 @@ func checkPreviewFile(contentType string, data []byte) error {
 		}
 		return nil
 	case typeWEBP:
-		// shortcut: the standard library and go.mod have no WebP decoder, and imports/files.go has none, so only the
-		// sniffed RIFF/WEBP header is checked and size is bounded by the 25 MB body limit; add the pixel bound when a
-		// WebP decoder (x/image) enters go.mod for another feature, rather than hand-writing one here.
-		return nil
+		// No WebP decoder in the standard library or go.mod, so its dimensions cannot be bounded before the model is
+		// asked: refused here. Attaching a WebP receipt by hand stays possible. Allow it once a decoder (x/image) is a dependency.
+		return invalid("WebP photos can't be read automatically yet. Export the photo as PNG or JPEG, or enter the details yourself.")
 	default:
-		return invalid("Only a PDF, PNG, JPEG or WebP receipt can be read automatically.")
+		return invalid("Only a PDF, PNG or JPEG receipt can be read automatically.")
 	}
 	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > previewMaxPixels {
 		return invalid("The image is damaged or too large to read. Use a smaller photo.")

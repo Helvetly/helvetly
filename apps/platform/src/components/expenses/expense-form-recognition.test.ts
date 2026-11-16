@@ -21,14 +21,19 @@ const suggest = (fields: Partial<ReceiptSuggestions['fields']>): ReceiptSuggesti
   fields: { ...none, ...fields },
   issues: {},
 })
-const options = { registered: true, currencyOk: (code: string) => ['CHF', 'EUR'].includes(code) }
+const options = {
+  registered: true,
+  countrySaved: false,
+  currencyOk: (code: string) => ['CHF', 'EUR'].includes(code),
+}
 const blank = () => emptyValues('CHF', '8.1', true)
 const run = (
   current: ReturnType<typeof blank>,
   touched: Set<string>,
   suggestions: ReceiptSuggestions,
   initial = blank(),
-) => applyRecognition(current, initial, touched, suggestions, options)
+  extra: Partial<typeof options> = {},
+) => applyRecognition(current, initial, touched, suggestions, { ...options, ...extra })
 
 test('fills untouched fields and the amounts as one group, as gross lines', () => {
   const { values, applied, kept } = run(
@@ -125,4 +130,25 @@ test('the country sets input tax like the form does, unless the person chose it'
   const kept = run(blank(), new Set(['input_tax']), suggest({ supplier_country: 'DE' }))
   expect(kept.values.supplier_country).toBe('CH')
   expect(kept.kept).toEqual(['supplier_country'])
+})
+
+test('a saved country preference survives, even CH; the built-in fallback does not', () => {
+  const germany = {
+    ...blank(),
+    supplier_country: 'DE',
+    input_tax: 'none' as const,
+    deductible_percent: '0',
+  }
+  const saved = run(germany, new Set(), suggest({ supplier_country: 'CH' }), germany, {
+    countrySaved: true,
+  })
+  expect(saved.values).toBe(germany)
+  expect(saved.kept).toEqual(['supplier_country'])
+  const savedCh = run(blank(), new Set(), suggest({ supplier_country: 'DE' }), blank(), {
+    countrySaved: true,
+  })
+  expect(savedCh.values.supplier_country).toBe('CH')
+  expect(savedCh.kept).toEqual(['supplier_country'])
+  const fallback = run(blank(), new Set(), suggest({ supplier_country: 'DE' }))
+  expect(fallback.values.supplier_country).toBe('DE')
 })

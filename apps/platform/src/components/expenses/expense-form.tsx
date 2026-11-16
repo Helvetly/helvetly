@@ -46,7 +46,7 @@ import {
   useSaveExpense,
   type Expense,
 } from '@/lib/expenses'
-import { useHabits } from '@/lib/habits'
+import { preferred, useHabits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
 import {
   formatMoney,
@@ -145,6 +145,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           (categories.data ?? []).map((category) => category.id),
         ),
   )
+  // A saved country (even CH) is the person's choice; without one, CH is only the form's fallback.
+  const [countrySaved] = useState(
+    () => !expense && preferred(habits, 'expense.supplier_country') !== null,
+  )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [staged, setStaged] = useState<File[]>(initialFiles)
@@ -217,6 +221,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         return
       const result = applyRecognition(latest.current, initial, touched.current, suggestions, {
         registered,
+        countrySaved,
         currencyOk: (code) => currencyOptions.some((option) => option.value === code),
       })
       setValues(result.values)
@@ -554,8 +559,8 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                           }))}
                           placeholder={translate('chooseTheReceiptToRead')}
                           onChange={(index) => {
+                            stopReading() // a reading of the previously chosen receipt must not fill the form
                             setChosen(staged[Number(index)] ?? null)
-                            setRecognized(null)
                           }}
                         />
                       )}
@@ -584,7 +589,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                       )}
                       <output
                         aria-live="polite"
-                        className="grid gap-1 text-[13px] text-muted-foreground empty:hidden"
+                        className="grid gap-1 text-xs text-muted-foreground empty:hidden"
                       >
                         {recognized && 'error' in recognized && (
                           <span className="text-destructive">

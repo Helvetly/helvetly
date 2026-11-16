@@ -44,7 +44,12 @@ export function applyRecognition(
   initial: FormValues,
   touched: ReadonlySet<string>,
   suggestions: ReceiptSuggestions,
-  options: { registered: boolean; currencyOk: (code: string) => boolean },
+  options: {
+    registered: boolean
+    currencyOk: (code: string) => boolean
+    /** The starting country is the person's saved habit (even CH), not the form's built-in fallback. */
+    countrySaved: boolean
+  },
 ): Applied {
   const { fields } = suggestions
   let values = current
@@ -56,7 +61,9 @@ export function applyRecognition(
     if (suggestion === null) continue
     const protectedField =
       touched.has(field) ||
-      (field === 'supplier_country' ? touched.has('input_tax') : initial[field] !== '')
+      (field === 'supplier_country'
+        ? touched.has('input_tax') || options.countrySaved
+        : initial[field] !== '')
     if (protectedField) {
       kept.push(field)
       continue

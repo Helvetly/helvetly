@@ -35,9 +35,10 @@ function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Res
   return fetch
 }
 
-const renderForm = async (initialFiles?: File[]) => {
+const renderForm = async (initialFiles?: File[], seededSession?: object) => {
   const onSaved = vi.fn<() => void>()
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  if (seededSession) client.setQueryData(['session'], seededSession)
   const view = render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
@@ -352,4 +353,41 @@ test('switching workspace while reading drops the answer', async () => {
 
   await waitFor(() => expect(recognizeButton()).toBeEnabled())
   expect(supplier()).toHaveValue('')
+})
+
+const choose = async (name: string) => {
+  await userEvent.click(
+    screen.getByRole('button', { name: /^(Choose the receipt to read|[ab]\.jpg)$/ }),
+  )
+  await userEvent.click(await screen.findByRole('option', { name }))
+}
+
+test('choosing another receipt while one is read drops the old result', async () => {
+  const pending = Promise.withResolvers<Response>()
+  const fetch = stubApi(() => pending.promise)
+  await renderForm([photo('a.jpg'), photo('b.jpg')])
+  await choose('a.jpg')
+  await userEvent.click(recognizeButton())
+  const signal = fetch.mock.calls.find(isPreview)?.[1]?.signal
+  await choose('b.jpg')
+  expect(signal?.aborted).toBe(true)
+  pending.resolve(answer({ supplier_name: 'FIRST FILE RESULT' }))
+
+  await waitFor(() => expect(recognizeButton()).toBeEnabled())
+  expect(supplier()).toHaveValue('')
+})
+
+test('a saved supplier country survives recognition', async () => {
+  localStorage.setItem(
+    'helvetly.habits.u.ws_a',
+    JSON.stringify({ 'expense.supplier_country': { DE: { s: 3, at: Date.now() } } }),
+  )
+  stubApi(() => answer({ supplier_name: 'Migros', supplier_country: 'CH' }))
+  await renderForm([photo()], session('ws_a'))
+  expect(screen.getByRole('button', { name: 'Supplier country' })).toHaveTextContent('Germany')
+  await userEvent.click(recognizeButton())
+
+  await waitFor(() => expect(supplier()).toHaveValue('Migros'))
+  expect(screen.getByRole('button', { name: 'Supplier country' })).toHaveTextContent('Germany')
+  localStorage.clear()
 })
