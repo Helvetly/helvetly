@@ -9,6 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Check, Languages } from 'lucide-react'
 
@@ -31,6 +32,10 @@ export function LanguageMenuItems() {
             )
           }}
         >
+          <Flag
+            region={details.languageTag.split('-')[1] ?? ''}
+            className="h-3 w-4 shrink-0 rounded-[2px]"
+          />
           <span className="flex-1">{details.name}</span>
           {language === current && <Check aria-hidden />}
         </DropdownMenuItem>
@@ -46,8 +51,9 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={translate('language')}>
+        <Button variant="ghost">
           <Languages aria-hidden />
+          {translate('changeLanguage')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
