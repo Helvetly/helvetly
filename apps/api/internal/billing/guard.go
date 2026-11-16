@@ -232,7 +232,8 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return nil
 	}
 	limit := Limit(resource)
-	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained, AutomationActions}, limit) {
+	if !slices.Contains([]Limit{Members, Clients, Invoices, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained,
+		AutomationActions, Downloads, Emails, EmailAttachments}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -370,6 +371,12 @@ func limitMessage(plan string, limit Limit, max int64) string {
 		return fmt.Sprintf("The %s plan includes %d signature requests a month. Upgrade the workspace to send more.", name, max)
 	case AITokens:
 		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Upgrade the workspace or add people to use more.", name, max)
+	case Downloads:
+		return fmt.Sprintf("The %s plan includes %s of downloads a month, all used this month. Downloads start again on the 1st (UTC); upgrade the workspace or add people for more now.", name, bytesText(max))
+	case Emails:
+		return fmt.Sprintf("The %s plan includes %d business email recipients a month. Download the PDF to send it yourself, or upgrade the workspace or add people to send more.", name, max)
+	case EmailAttachments:
+		return fmt.Sprintf("The %s plan includes %s of email attachments a month (each recipient counts). Download the PDF to send it yourself, or upgrade the workspace or add people to send more.", name, bytesText(max))
 	}
 	return fmt.Sprintf("The %s plan includes %s of storage. Upgrade the workspace or remove files to upload more.", name, bytesText(max))
 }

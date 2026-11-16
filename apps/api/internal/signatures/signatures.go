@@ -464,6 +464,15 @@ func (s *Service) Create(r *http.Request, sess store.Session, body CreateBody) (
 	req.OriginalKey = "workspaces/" + sess.Workspace.ID + "/signatures/" + req.ID + "/original.pdf"
 	req.Document = &store.FolderRef{ID: doc.ID, Name: doc.Name}
 	req.FolderID = doc.FolderID
+	err = s.db.Tx(ctx, func(q store.Q) error { // room for the original and the signed result it becomes
+		if err := q.Admit(ctx, sess.Workspace.ID, "storage_bytes", 2*int64(len(original))); err != nil {
+			return err
+		}
+		return q.ReserveObject(ctx, sess.Workspace.ID, req.OriginalKey, int64(len(original)), false, s.now())
+	})
+	if err != nil {
+		return "", err
+	}
 	if err := s.files.Put(ctx, req.OriginalKey, bytes.NewReader(original), int64(len(original)), "application/pdf", doc.Name); err != nil {
 		return "", err
 	}

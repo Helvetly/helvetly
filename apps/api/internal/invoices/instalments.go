@@ -513,7 +513,7 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
 	subject, message := defaultEmail(inv)
-	m := mail.Message{To: []string{*to}, Subject: subject, Text: message,
+	m := mail.Message{Workspace: ws.ID, To: []string{*to}, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {

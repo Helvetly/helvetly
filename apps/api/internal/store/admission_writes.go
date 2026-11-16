@@ -48,12 +48,24 @@ func (q Q) CountIssue(ctx context.Context, workspaceID string, inv Invoice, now 
 	return err
 }
 
+// CreateDocument files a document and counts its object in storage_bytes (ReserveObject), refused over the cap; an
+// object already reserved for it (a signed result, an import's kept original) adds nothing more.
 func (q Q) CreateDocument(ctx context.Context, workspaceID, userID string, d Document) error {
-	return q.admitted(ctx, workspaceID, "storage_bytes", d.Size, func(q Q) error { return q.createDocument(ctx, workspaceID, userID, d) })
+	return q.writeTx(ctx, func(q Q) error {
+		if err := q.ReserveObject(ctx, workspaceID, d.ObjectKey, d.Size, true, d.CreatedAt); err != nil {
+			return err
+		}
+		return q.createDocument(ctx, workspaceID, userID, d)
+	})
 }
 
 func (q Q) CreateReceipt(ctx context.Context, workspaceID, expenseID, uploaderID string, f Receipt) error {
-	return q.admitted(ctx, workspaceID, "storage_bytes", f.Size, func(q Q) error { return q.createReceipt(ctx, workspaceID, expenseID, uploaderID, f) })
+	return q.writeTx(ctx, func(q Q) error {
+		if err := q.ReserveObject(ctx, workspaceID, f.ObjectKey, f.Size, true, f.CreatedAt); err != nil {
+			return err
+		}
+		return q.createReceipt(ctx, workspaceID, expenseID, uploaderID, f)
+	})
 }
 
 func (q Q) CreateClientFile(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) error {

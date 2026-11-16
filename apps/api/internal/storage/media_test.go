@@ -29,7 +29,7 @@ func newTestMedia(t *testing.T, secret byte, now time.Time) *Media {
 func TestMediaToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	m := newTestMedia(t, 1, now)
-	link := m.link("ws/a.pdf", "v1", "Grüezi \"x\".pdf", "application/pdf")
+	link := m.link("", "ws/a.pdf", "v1", "Grüezi \"x\".pdf", "application/pdf")
 	token, ok := strings.CutPrefix(link, "https://media.test/api/media/")
 	if !ok || strings.ContainsAny(token, "/?#=+") {
 		t.Fatalf("link %q is not origin + /api/media/ + a URL-safe token", link)
@@ -73,7 +73,7 @@ func TestMediaHandlerRefusesBadTokens(t *testing.T) {
 	m := newTestMedia(t, 1, time.Now())
 	mux := http.NewServeMux()
 	mux.Handle("GET /api/media/{token}", m.Handler(nil)) // never reached: nothing is opened without a valid token
-	for _, token := range []string{"x", "a.b", strings.TrimPrefix(newTestMedia(t, 2, time.Now()).link("k", "", "f", ""), "https://media.test/api/media/")} {
+	for _, token := range []string{"x", "a.b", strings.TrimPrefix(newTestMedia(t, 2, time.Now()).link("", "k", "", "f", ""), "https://media.test/api/media/")} {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, httptest.NewRequest("GET", "/api/media/"+token, nil))
 		if w.Code != http.StatusNotFound || w.Header().Get("Cache-Control") != "private, no-store" {
@@ -109,7 +109,7 @@ func TestMediaDownload(t *testing.T) {
 	mux.Handle("GET /api/media/{token}", media.Handler(s))
 
 	w := httptest.NewRecorder()
-	if err := Serve(w, httptest.NewRequest("GET", "/download", nil), s, key, "Grüezi.pdf", "application/pdf"); err != nil {
+	if err := Serve(w, httptest.NewRequest("GET", "/download", nil), s, "", key, "Grüezi.pdf", "application/pdf"); err != nil {
 		t.Fatal(err)
 	}
 	link := w.Header().Get("Location")

@@ -529,6 +529,9 @@ func (s *Service) copy(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	id := auth.NewID("doc")
 	key := objectKey(sess, id, src.Name)
+	if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, key, src.Size, true, s.now()); err != nil {
+		return err
+	}
 	if err := s.files.Copy(r.Context(), src.ObjectKey, key); err != nil {
 		return err
 	}
@@ -562,7 +565,7 @@ func (s *Service) download(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	return storage.Serve(w, r, s.files, d.ObjectKey, d.Name, d.ContentType)
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
 }
 
 // content serves the bytes through the API (same origin, so pdf.js and thumbnails need no bucket CORS); PDF and
@@ -581,17 +584,18 @@ func (s *Service) content(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if previewable(d.ContentType) {
 		disposition = "inline"
 	}
-	h := w.Header()
-	h.Set("Content-Type", d.ContentType)
-	h.Set("Content-Disposition", contentDisposition(disposition, d.Name))
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	h.Set("Cache-Control", "private, max-age=300")
-	if d.SHA256 != nil {
-		h.Set("ETag", `"`+*d.SHA256+`"`)
-	}
-	http.ServeContent(w, r, "", d.CreatedAt, obj)
-	return nil
+	return storage.Metered(w, r, storage.MeterOf(s.files), sess.Workspace.ID, d.Size, func(w http.ResponseWriter) {
+		h := w.Header()
+		h.Set("Content-Type", d.ContentType)
+		h.Set("Content-Disposition", contentDisposition(disposition, d.Name))
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+		h.Set("Cache-Control", "private, max-age=300")
+		if d.SHA256 != nil {
+			h.Set("ETag", `"`+*d.SHA256+`"`)
+		}
+		http.ServeContent(w, r, "", d.CreatedAt, obj)
+	})
 }
 
 func (s *Service) link(w http.ResponseWriter, r *http.Request, sess store.Session) error {

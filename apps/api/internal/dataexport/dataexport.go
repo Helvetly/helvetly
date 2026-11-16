@@ -34,6 +34,13 @@ type Service struct {
 	log   *slog.Logger
 	limit *auth.RateLimiter
 	now   func() time.Time
+	// snapshots admits one whole-workspace export (billing's own_data_export allowance) and records what it sent
+	snapshots func(ctx context.Context, workspaceID string) (settle func(sent int64), err error)
+}
+
+// SetSnapshots is startup wiring: the allowance whole-workspace exports count against (billing.ReserveSnapshot).
+func (s *Service) SetSnapshots(reserve func(ctx context.Context, workspaceID string) (func(sent int64), error)) {
+	s.snapshots = reserve
 }
 
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger) *Service {
@@ -57,11 +64,20 @@ func (s *Service) workspace(w http.ResponseWriter, r *http.Request, sess store.S
 		s.auth.WriteError(w, r, errRate)
 		return
 	}
+	settle := func(int64) {}
+	if s.snapshots != nil {
+		var err error
+		if settle, err = s.snapshots(r.Context(), sess.Workspace.ID); err != nil {
+			s.auth.WriteError(w, r, err)
+			return
+		}
+	}
 	out := &sent{ResponseWriter: w, header: func(h http.Header) {
 		h.Set("Content-Type", "application/zip")
 		h.Set("Content-Disposition", `attachment; filename="helvetly-workspace-`+s.now().Format(time.DateOnly)+`.zip"`)
 		h.Set("Cache-Control", "private, no-store")
 	}}
+	defer func() { settle(out.n) }()
 	z := zip.NewWriter(out)
 	tables := &zipTables{z: z}
 	files, err := s.db.Export(r.Context(), sess.Workspace.ID, store.WorkspaceExportTables, tables, true)
@@ -174,6 +190,7 @@ type sent struct {
 	http.ResponseWriter
 	header  func(http.Header)
 	started bool
+	n       int64 // body bytes written
 }
 
 func (s *sent) Write(p []byte) (int, error) {
@@ -181,7 +198,9 @@ func (s *sent) Write(p []byte) (int, error) {
 		s.started = true
 		s.header(s.Header())
 	}
-	return s.ResponseWriter.Write(p)
+	n, err := s.ResponseWriter.Write(p)
+	s.n += int64(n)
+	return n, err
 }
 
 // zipTables writes each table as data/<name>.json, a JSON array.

@@ -283,6 +283,9 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 			if err != nil {
 				return 0, "", err
 			}
+			if err := q.ReserveObject(ctx, sess.Workspace.ID, key, int64(len(b)), true, s.now()); err != nil {
+				return 0, "", err
+			}
 			kept = append(kept, key)
 			if err := s.files.Put(ctx, key, bytes.NewReader(b), int64(len(b)), src.ContentType, src.Name); err != nil {
 				return 0, "", err

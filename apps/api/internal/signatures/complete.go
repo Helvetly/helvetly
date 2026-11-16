@@ -101,7 +101,8 @@ func (s *Service) complete(ctx context.Context, q store.Q, req store.SignatureRe
 	}
 	docID := auth.NewID("doc")
 	key := "workspaces/" + req.WorkspaceID + "/documents/" + docID + "/signed.pdf"
-	if err := q.Admit(ctx, req.WorkspaceID, "storage_bytes", int64(len(pdf))); err != nil {
+	// counted, not refused: the room was held when the package was sent, and a started package may finish
+	if err := q.ReserveObject(ctx, req.WorkspaceID, key, int64(len(pdf)), false, now); err != nil {
 		return completed{}, err
 	}
 	if err := s.files.Put(ctx, key, bytes.NewReader(pdf), int64(len(pdf)), "application/pdf", done.name); err != nil {

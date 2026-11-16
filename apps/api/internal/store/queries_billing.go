@@ -52,10 +52,12 @@ type Subscription struct {
 type Usage struct {
 	Members, Clients, InvoicesThisMonth, ExpensesThisMonth int64
 	Products, Engagements, SignaturesThisMonth             int64
-	StorageBytes                                           int64
+	StorageBytes                                           int64 // stored_objects: bytes kept in storage
 	AITokensThisMonth                                      int64 // heidi_usage of the quota month
 	InvoiceDrafts, QuotesRetained                          int64
 	AutomationsThisMonth                                   int64 // automatic actions used and reserved
+	DownloadBytesThisMonth, EmailsThisMonth                int64
+	EmailAttachmentBytesThisMonth                          int64
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
@@ -158,14 +160,17 @@ func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now ti
 			(SELECT count(*) FROM engagements WHERE workspace_id = $1 AND deleted_at IS NULL
 				AND (cancelled_on IS NULL OR cancelled_on >= $3::date) AND (end_date IS NULL OR end_date >= $3::date)),
 			coalesce((SELECT n FROM monthly WHERE resource = 'signatures_per_month'), 0),
-			(SELECT coalesce(sum(size), 0) FROM documents WHERE workspace_id = $1)
-			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
+			(SELECT coalesce(sum(size), 0) FROM stored_objects WHERE workspace_id = $1),
 			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4),
 			(SELECT count(*) FROM invoices WHERE workspace_id = $1 AND status = 'draft'),
 			(SELECT count(*) FROM quotes WHERE workspace_id = $1),
-			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0)`,
+			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0),
+			coalesce((SELECT n FROM monthly WHERE resource = 'download_bytes_per_month'), 0),
+			coalesce((SELECT n FROM monthly WHERE resource = 'emails_per_month'), 0),
+			coalesce((SELECT n FROM monthly WHERE resource = 'email_attachment_bytes_per_month'), 0)`,
 		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained, &u.AutomationsThisMonth)
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained,
+		&u.AutomationsThisMonth, &u.DownloadBytesThisMonth, &u.EmailsThisMonth, &u.EmailAttachmentBytesThisMonth)
 	return u, err
 }
 

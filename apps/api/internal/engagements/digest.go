@@ -164,7 +164,9 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 		}
 		sent := 0
 		for i, to := range emails {
-			if err := s.mailer.Send(ctx, digestMessage(to, notices, s.publicURL, sections...)); err != nil {
+			m := digestMessage(to, notices, s.publicURL, sections...)
+			m.Workspace = ws.ID
+			if err := s.mailer.Send(ctx, m); err != nil {
 				s.log.ErrorContext(ctx, "engagement digest mail", "workspace", ws.ID, "error", err)
 				continue
 			}

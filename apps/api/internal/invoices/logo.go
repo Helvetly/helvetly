@@ -131,6 +131,9 @@ func (s *Service) putLogo(w http.ResponseWriter, r *http.Request, sess store.Ses
 				return nil
 			}
 		}
+		if err := q.ReserveObject(ctx, sess.Workspace.ID, key, int64(len(b)), true, s.now()); err != nil {
+			return err
+		}
 		stored = true
 		if err := s.files.Put(ctx, key, bytes.NewReader(b), int64(len(b)), ct, name); err != nil {
 			return err
@@ -205,7 +208,7 @@ func (s *Service) getLogo(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if set.LogoFileID == nil {
 		return store.ErrNotFound
 	}
-	return storage.Serve(w, r, s.files, logoKey(sess.Workspace.ID, *set.LogoFileID), "logo", "")
+	return storage.Serve(w, r, s.files, "", logoKey(sess.Workspace.ID, *set.LogoFileID), "logo", "")
 }
 
 // logoBytes: the current logo for a PDF, nil when none is set.

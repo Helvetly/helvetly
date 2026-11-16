@@ -95,6 +95,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 				return err
 			}
 			key := fmt.Sprintf("quotes/%s/%s-r%d.pdf", sess.Workspace.ID, t.ID, t.Revision)
+			if err := q.ReserveObject(ctx, sess.Workspace.ID, key, int64(len(pdf)), false, now); err != nil {
+				return err
+			}
 			if err := s.files.Put(ctx, key, bytes.NewReader(pdf), int64(len(pdf)), "application/pdf", FileName(t)); err != nil {
 				return fmt.Errorf("store quote pdf: %w", err)
 			}
@@ -157,7 +160,7 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 	if t.Number != nil {
 		number = *t.Number
 	}
-	m := mail.Message{To: to, Cc: cc,
+	m := mail.Message{Workspace: workspaceID, To: to, Cc: cc,
 		Subject: strings.TrimSpace(titles[t.Language] + " " + number + " " + text.from + " " + seller.Name),
 		Text: text.greeting + "\n\n" + fmt.Sprintf(text.sentence, number, t.Currency, t.PayableTotal.Swiss("'"), swissDate(t.ValidUntil)) +
 			"\n\n" + text.signOff + "\n" + seller.Name}

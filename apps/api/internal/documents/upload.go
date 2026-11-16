@@ -82,6 +82,10 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	} else if !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
+	// counted before the write, so a full workspace sends no bytes to storage
+	if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, key, h.Size, true, s.now()); err != nil {
+		return err
+	}
 	// stored before the transaction, so no row lock waits on the upload; no row points at it until the commit
 	if err := s.put(r, h, key, ct, name); err != nil {
 		s.removeObjects(r.Context(), key)

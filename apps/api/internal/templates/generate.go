@@ -182,6 +182,9 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		ContentType: "application/pdf", SHA256: hex.EncodeToString(sum[:]), CreatedAt: now}
 	file.ObjectKey = "workspaces/" + ws + "/documents/" + file.ID + "/filled.pdf"
 	// stored before the transaction, so no row lock waits on the upload; no row points at it until the commit
+	if err := s.db.ReserveObject(ctx, ws, file.ObjectKey, file.Size, true, now); err != nil {
+		return err
+	}
 	if err := s.files.Put(ctx, file.ObjectKey, bytes.NewReader(filled), file.Size, file.ContentType, file.Name); err != nil {
 		return err
 	}
@@ -245,6 +248,6 @@ func emailMessage(sess store.Session, to, title string, message *string, name st
 		text += "\n" + *message + "\n"
 		body += "<p>" + strings.ReplaceAll(html.EscapeString(*message), "\n", "<br>") + "</p>\n"
 	}
-	return mail.Message{To: []string{to}, ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
+	return mail.Message{Workspace: sess.Workspace.ID, To: []string{to}, ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
 		Text: text, HTML: body, Attachments: []mail.Attachment{{Name: name, ContentType: "application/pdf", Data: pdf}}}
 }

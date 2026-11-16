@@ -1845,7 +1845,7 @@
         "operationId": "download_client_file",
         "tags": ["Clients"],
         "summary": "Download a client file",
-        "description": "Downloads the file. By default answers 302 with a Location header pointing to a presigned URL valid for 5 minutes; when the server streams downloads (S3_PROXY_DOWNLOADS) it answers 200 with the file bytes and the file's content type. Follow the redirect without the Authorization header. Read-only.",
+        "description": "Downloads the file. By default answers 302 with a Location header pointing to a presigned URL valid for 5 minutes; when the server streams downloads (S3_PROXY_DOWNLOADS) it answers 200 with the file bytes and the file's content type. Follow the redirect without the Authorization header. Read-only. On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
         "parameters": [
           {
             "name": "id",
@@ -4848,7 +4848,7 @@
         "operationId": "download_document",
         "tags": ["Documents"],
         "summary": "Download a document",
-        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its current name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes. Also works for a document in the Trash.",
+        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its current name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes. Also works for a document in the Trash. On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
         "parameters": [
           {
             "name": "id",
@@ -5456,7 +5456,7 @@
         "operationId": "download_expense_receipt",
         "tags": ["Expenses"],
         "summary": "Download a receipt",
-        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes instead. With inline=1 the bytes are always returned with Content-Disposition inline and the stored content type (PDF or image).",
+        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes instead. With inline=1 the bytes are always returned with Content-Disposition inline and the stored content type (PDF or image). On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
         "parameters": [
           {
             "name": "id",

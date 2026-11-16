@@ -192,6 +192,11 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 		} else if !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
+		// counted before the write, so a full workspace sends no bytes to storage
+		if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, uploads[i].file.ObjectKey, uploads[i].file.Size, true, now); err != nil {
+			cleanup(stored)
+			return err
+		}
 		stored = append(stored, uploads[i].file.ObjectKey)
 		if err := s.put(r, &uploads[i]); err != nil {
 			cleanup(stored)
@@ -240,6 +245,9 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 			u := &uploads[i]
 			if isStored(u.file.ObjectKey) {
 				continue
+			}
+			if err := q.ReserveObject(r.Context(), sess.Workspace.ID, u.file.ObjectKey, u.file.Size, true, now); err != nil {
+				return err
 			}
 			stored = append(stored, u.file.ObjectKey)
 			if err := s.put(r, u); err != nil {
@@ -312,7 +320,7 @@ func (s *Service) downloadFile(w http.ResponseWriter, r *http.Request, sess stor
 	if err != nil {
 		return err
 	}
-	return storage.Serve(w, r, s.files, f.ObjectKey, f.Name, f.ContentType)
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, f.ObjectKey, f.Name, f.ContentType)
 }
 
 // deleteFile moves the file to the Documents Trash (restorable for 30 days); a business record stays (409).
