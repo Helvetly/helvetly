@@ -784,9 +784,7 @@ function Editor({
               {/* Seller and client side by side, as on the printed invoice. */}
               <div className="mt-10 grid gap-8 md:grid-cols-2">
                 <div className="grid content-start gap-0.5 text-[13px] leading-relaxed text-muted-foreground">
-                  <span className="mb-1.5 text-[12px] font-medium tracking-[0.04em] uppercase">
-                    {translate('from')}
-                  </span>
+                  <span className={cn(PARTY_LABEL, 'mb-1.5')}>{translate('from')}</span>
                   <span className="text-[15px] font-medium text-foreground">
                     {settings.seller.name || translate('yourCompany')}
                   </span>
@@ -1234,6 +1232,8 @@ function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => vo
   )
 }
 
+const PARTY_LABEL = 'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase'
+
 /** "Bill to": the client (with its address as it will print) or the picker. */
 function ClientBlock({
   client,
@@ -1254,12 +1254,7 @@ function ClientBlock({
   const [creating, setCreating] = useState(false)
   return (
     <div className="grid content-start gap-2">
-      <span
-        className={cn(
-          'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase',
-          invalid && 'text-destructive',
-        )}
-      >
+      <span className={cn(PARTY_LABEL, invalid && 'text-destructive')}>
         {translate('billTo')}
         <span aria-hidden className="ml-0.5 text-destructive">
           *
