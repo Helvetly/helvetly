@@ -1,5 +1,7 @@
 import { type Locale, localizedHref } from '@helvetly/i18n'
+import { Flag } from '@helvetly/ui/components/flag'
 import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
+import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -125,16 +127,16 @@ export function SiteFooter({ lang }: { lang: Locale }) {
           </div>
           <div className="mt-10 flex flex-col gap-2 text-body-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <p>
-                © {YEAR}
-                {translate('helvetly2')}
+              <p className="inline-flex items-center gap-2">
+                <Logo className="size-5" />
+                <span>
+                  © {YEAR}
+                  {translate('helvetly2')}
+                </span>
               </p>
               <p className="inline-flex items-center gap-2">
-                <svg aria-hidden viewBox="0 0 32 32" className="size-4 rounded-[3px]">
-                  <rect width="32" height="32" fill="#d52b1e" />
-                  <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
-                </svg>
-                {translate('madeForSwitzerland')}
+                <Flag region="CH" className="size-4 rounded-xs" />
+                {translate('madeInSwitzerland')}
               </p>
             </div>
             <div className="flex items-center gap-4 sm:justify-end">
