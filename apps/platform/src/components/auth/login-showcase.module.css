@@ -1,0 +1,65 @@
+/* One 9 s loop: the eight areas light up in turn, each with a spark running out from the hub. The spark is dashed in path
+   fractions (pathLength=1), so it reaches its tile at 10% of its slot at any size.
+   Without motion everything stays drawn and labelled, just still. */
+.spark {
+  opacity: 0;
+}
+
+.tile {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spark {
+    stroke-dasharray: 0.14 2;
+    animation: spark 9s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 1.125s);
+  }
+
+  .tile {
+    animation: tile 9s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 1.125s);
+  }
+
+  .hub {
+    animation: hub 4.5s ease-in-out infinite;
+  }
+}
+
+@keyframes spark {
+  0% {
+    opacity: 1;
+    stroke-dashoffset: 0.14;
+  }
+  10% {
+    opacity: 1;
+    stroke-dashoffset: -1;
+  }
+  11%,
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes tile {
+  0%,
+  6%,
+  24%,
+  100% {
+    border-color: var(--color-border);
+  }
+  10% {
+    border-color: var(--color-brand);
+  }
+}
+
+@keyframes hub {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}

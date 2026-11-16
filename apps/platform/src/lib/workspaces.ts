@@ -23,6 +23,25 @@ export function useUpdateWorkspace() {
   })
 }
 
+/** The one-time AI suggestion of a workspace name: made from the company name only, after the person agreed. */
+export type NameSuggestion = { name: string; company_name: string }
+
+export function useSuggestWorkspaceName() {
+  return useMutation<
+    { data: NameSuggestion },
+    ApiError,
+    { company_name: string; signal: AbortSignal }
+  >({
+    // The page only calls this once its consent box is ticked; the server refuses a request without it.
+    mutationFn: ({ company_name, signal }) =>
+      request('/workspace/name-suggestion', {
+        method: 'POST',
+        json: { company_name, consent: true },
+        signal,
+      }),
+  })
+}
+
 /** Uploads the workspace's mark with progress (0–1); resolves with its URL, rejects with the server's error. */
 function uploadWorkspaceLogo(file: Blob, onProgress: (share: number) => void): Promise<string> {
   const form = new FormData()

@@ -71,3 +71,18 @@ test('the apartment is trimmed, and sent as null when blank', () => {
   expect(toSettingsInput(settings, { ...values, apt: '  Suite 2 ' }).seller.apt).toBe('Suite 2')
   expect(toSettingsInput(settings, { ...values, apt: '   ' }).seller.apt).toBeNull()
 })
+
+test.each([
+  [0, true],
+  [7, true],
+  [10, true], // a saved legacy value stays valid
+  [60, true],
+  [365, true],
+  [-1, false],
+  [366, false],
+  [1.5, false],
+  [Number.NaN, false],
+])('payment terms of %s days are %s', (days, ok) => {
+  const errors = validate({ ...valuesFrom(sampleSettings()), default_terms_days: days })
+  expect('default_terms_days' in errors).toBe(!ok)
+})

@@ -107,6 +107,13 @@ export function validate(values: Values): Partial<Record<keyof Values, string>> 
     errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
   if (values.iban.trim() && !ibanInfo(values.iban).valid)
     errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
+  // The server takes whole days from 0 (the invoice date itself) to 365; a saved 10, 60 or other value in range stays valid.
+  if (
+    !Number.isInteger(values.default_terms_days) ||
+    values.default_terms_days < 0 ||
+    values.default_terms_days > 365
+  )
+    errors.default_terms_days = translate('enter0To365Days')
   const market = unsupportedSellerCountry(values.country)
   if (market && !errors.country) errors.country = market
   return errors
@@ -121,3 +128,16 @@ export function fieldErrors(details: Record<string, unknown>): Partial<Record<st
     if (typeof message === 'string') errors[name.replace('seller.', '')] = message
   return errors
 }
+
+/** A person's name as the account takes it: 1 to 100 characters once trimmed (PATCH /account). */
+export const validPersonName = (name: string) => {
+  const length = Array.from(name.trim()).length
+  return length >= 1 && length <= 100
+}
+
+/**
+ * What the workspace-name field shows before anyone edits it: a name already chosen is kept; the
+ * sign-up placeholder follows the company's name, cut to the 100 characters the server takes.
+ */
+export const workspaceNameFor = (current: string, company: string, placeholder: string) =>
+  current === placeholder ? Array.from(company.trim()).slice(0, 100).join('') : current

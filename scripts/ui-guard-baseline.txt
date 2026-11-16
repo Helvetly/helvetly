@@ -164,7 +164,7 @@
 5 text-px apps/platform/src/components/notifications/unsubscribe-page.tsx
 4 text-px apps/platform/src/components/onboarding/invoice-preview.tsx
 1 text-px apps/platform/src/components/onboarding/logo-card.tsx
-8 text-px apps/platform/src/components/onboarding/onboarding.tsx
+7 text-px apps/platform/src/components/onboarding/onboarding.tsx
 11 text-px apps/platform/src/components/products/product-detail.tsx
 6 text-px apps/platform/src/components/products/product-form.tsx
 1 text-px apps/platform/src/components/products/product-picker.tsx
