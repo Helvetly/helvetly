@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CircleHelp } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Children, type ReactNode } from 'react'
 
 /**
  * A label (red with an error, a red asterisk when required, help behind a (?)) over its control,
@@ -57,7 +57,13 @@ export function FormField({
         </Label>
         {tip && <HelpTip label={label}>{tip}</HelpTip>}
       </span>
-      {children}
+      {/* Each control in a gap-free box: a zero-size node a browser extension adds beside an input
+          (a password manager's icon host) would otherwise become a grid row and push the rest down by the gap. */}
+      {Children.map(children, (child) =>
+        child == null || typeof child === 'boolean' ? null : (
+          <div className="grid min-w-0">{child}</div>
+        ),
+      )}
       {error ? (
         <p id={`${id}-error`} className="text-xs text-destructive">
           {error}
