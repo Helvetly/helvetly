@@ -430,7 +430,7 @@ export const CURRENCIES = Intl.supportedValuesOf('currency')
   .map((code) => ({ code, name: currencyNames.of(code) ?? code }))
   .toSorted((a, b) => currencyRank(a.code) - currencyRank(b.code) || a.code.localeCompare(b.code))
 
-export const TERM_PRESETS = ['10', '30', '60']
+export const TERM_PRESETS = ['7', '14', '30']
 
 /** What a new client starts with from this person's habits (lib/habits). */
 export const CLIENT_HABITS = [

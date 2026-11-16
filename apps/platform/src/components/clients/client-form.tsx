@@ -492,6 +492,7 @@ export function ClientForm({
           <FormField
             field="payment_terms_days"
             label={translate('paymentTerms')}
+            tip={translate('paymentTermsHelp')}
             error={errors.payment_terms_days}
           >
             <div className="flex min-h-9 flex-wrap items-center gap-2">

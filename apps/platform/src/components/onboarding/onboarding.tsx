@@ -906,6 +906,7 @@ function PreferencesStep({
   const custom = customChosen || !PAYMENT_TERM_PRESETS.includes(days)
   const shownDays = typed ?? String(days)
   const typedDays = parseTermsDays(shownDays)
+  const termsError = termsInvalid && typedDays === null ? translate('enter0To365Days') : undefined
   return (
     <form
       noValidate
@@ -946,51 +947,52 @@ function PreferencesStep({
             {translate('paymentTerms')}
             <HelpTip label={translate('paymentTerms')}>{translate('paymentTermsHelp')}</HelpTip>
           </legend>
-          <Segmented
-            label={translate('paymentTerms')}
-            value={custom ? 'custom' : String(days)}
-            options={[
-              ...PAYMENT_TERM_PRESETS.map((value) => ({
-                value: String(value),
-                label: translate('days5', { value: value }),
-              })),
-              { value: 'custom', label: translate('custom') },
-            ]}
-            onChange={(value) => {
-              setTyped(null)
-              setTermsInvalid(false)
-              setCustomChosen(value === 'custom')
-              if (value !== 'custom') onChange({ default_terms_days: Number(value) })
-            }}
-          />
-          {custom && (
-            <FormField
-              id="onboarding-terms"
-              label={translate('numberOfDays')}
-              error={termsInvalid && typedDays === null ? translate('enter0To365Days') : undefined}
-              className="mt-2 w-32"
-            >
-              <input
-                {...describedBy(
-                  'onboarding-terms',
-                  termsInvalid && typedDays === null ? translate('enter0To365Days') : undefined,
-                )}
-                ref={termsField}
-                className={inputClass}
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={3}
-                disabled={!values}
-                value={shownDays}
-                onChange={(event) => {
-                  const text = event.target.value
-                  setTyped(text)
-                  setTermsInvalid(false)
-                  const number = parseTermsDays(text)
-                  if (number !== null) onChange({ default_terms_days: number })
-                }}
-              />
-            </FormField>
+          <div className="flex min-h-9 flex-wrap items-center gap-2">
+            <Segmented
+              label={translate('paymentTerms')}
+              value={custom ? 'custom' : String(days)}
+              options={[
+                ...PAYMENT_TERM_PRESETS.map((value) => ({
+                  value: String(value),
+                  label: translate('days5', { value: value }),
+                })),
+                { value: 'custom', label: translate('custom') },
+              ]}
+              onChange={(value) => {
+                setTyped(null)
+                setTermsInvalid(false)
+                setCustomChosen(value === 'custom')
+                if (value !== 'custom') onChange({ default_terms_days: Number(value) })
+              }}
+            />
+            {custom && (
+              <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <input
+                  {...describedBy('onboarding-terms', termsError)}
+                  ref={termsField}
+                  aria-label={translate('numberOfDays')}
+                  className={cn(inputClass, 'w-20 tabular-nums')}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={3}
+                  disabled={!values}
+                  value={shownDays}
+                  onChange={(event) => {
+                    const text = event.target.value
+                    setTyped(text)
+                    setTermsInvalid(false)
+                    const number = parseTermsDays(text)
+                    if (number !== null) onChange({ default_terms_days: number })
+                  }}
+                />
+                {translate('days')}
+              </span>
+            )}
+          </div>
+          {termsError && (
+            <p id="onboarding-terms-error" className="text-xs text-destructive">
+              {termsError}
+            </p>
           )}
         </fieldset>
       </div>
