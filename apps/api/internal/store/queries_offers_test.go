@@ -99,3 +99,73 @@ func TestOffersMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestOfferFlattenedToV1: 00013 folds offer v2 into helvetly-v1, the one published offer, with the Employees module on
+// Business only: the workspace, its own values and its Checkout move to v1, v2's rows go and the change is audited;
+// Down brings v2 back without the module, and Up runs again.
+func TestOfferFlattenedToV1(t *testing.T) {
+	ctx := context.Background()
+	p, pool := migrationProvider(t)
+	if _, err := p.UpTo(ctx, 12); err != nil {
+		t.Fatal(err)
+	}
+	exec := func(sql string) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, sql); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+	}
+	count := func(sql string) int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, sql).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+		return n
+	}
+	exec(`INSERT INTO workspaces (id, name, created_at) VALUES ('ws_1', 'One', now())`)
+	exec(`INSERT INTO workspace_billing (workspace_id, status, plan, updated_at, offer_id)
+		VALUES ('ws_1', 'active', 'business', now(), 'helvetly-2026-11-v2')`)
+	exec(`INSERT INTO limit_workspaces (limit_key, workspace_id, offer_id, state, value, set_by, reason, updated_at)
+		VALUES ('clients', 'ws_1', 'helvetly-2026-11-v2', 'limited', 400, 'support', 'pilot', now())`)
+	exec(`INSERT INTO billing_checkouts (id, workspace_id, offer_id, plan, billing_interval, currency, price_id, seats, trial,
+		created_by, created_at) VALUES ('co_1', 'ws_1', 'helvetly-2026-11-v2', 'business', 'month', 'chf', 'price_1', 1, false, 'usr_1', now())`)
+
+	for round := range 2 { // Up, then Down and Up again; the append-only audit keeps every publication
+		if _, err := p.UpTo(ctx, 13); err != nil {
+			t.Fatal(err)
+		}
+		for sql, want := range map[string]int{
+			`SELECT count(*) FROM offer_versions`: 1,
+			`SELECT count(*) FROM offer_versions WHERE id = 'helvetly-v1' AND document->>'offer_id' = 'helvetly-v1'
+				AND checksum = '472c540d6ecf641f86447f7bd1bf0397066bf8567ca5d607057e751abfb08a43'`: 1,
+			`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-v1'`:                                               67 * 3,
+			`SELECT count(*) FROM limit_plans WHERE limit_key = 'employees' AND state = 'enabled'`:                          1,
+			`SELECT count(*) FROM limit_plans WHERE limit_key = 'employees' AND plan_id = 'business' AND state = 'enabled'`: 1,
+			`SELECT count(*) FROM workspace_billing WHERE offer_id = 'helvetly-v1'`:                                         1,
+			`SELECT count(*) FROM limit_workspaces WHERE offer_id = 'helvetly-v1' AND value = 400`:                          1,
+			`SELECT count(*) FROM billing_checkouts WHERE offer_id = 'helvetly-v1'`:                                         1,
+			`SELECT count(*) FROM offer_audit WHERE target = 'helvetly-v1' AND before->>'offer_id' = 'helvetly-2026-11-v2'`: round + 1,
+		} {
+			if n := count(sql); n != want {
+				t.Fatalf("%s: %d, want %d", sql, n, want)
+			}
+		}
+		if _, err := p.DownTo(ctx, 12); err != nil {
+			t.Fatal(err)
+		}
+		for sql, want := range map[string]int{
+			`SELECT count(*) FROM offer_versions WHERE id = 'helvetly-2026-11-v2'
+				AND jsonb_path_exists(document, '$.records[*] ? (@.key == "employees")') = false`: 1,
+			`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-2026-11-v2'`:                      66 * 3,
+			`SELECT count(*) FROM limits WHERE key = 'employees'`:                                          0,
+			`SELECT count(*) FROM workspace_billing WHERE offer_id = 'helvetly-2026-11-v2'`:                1,
+			`SELECT count(*) FROM limit_workspaces WHERE offer_id = 'helvetly-2026-11-v2' AND value = 400`: 1,
+			`SELECT count(*) FROM billing_checkouts WHERE offer_id = 'helvetly-2026-11-v2'`:                1,
+		} {
+			if n := count(sql); n != want {
+				t.Fatalf("after Down, %s: %d, want %d", sql, n, want)
+			}
+		}
+	}
+}
