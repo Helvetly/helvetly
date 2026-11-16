@@ -29,7 +29,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	}
 	res, d := get("")
 	etag := res.Header.Get("ETag")
-	if res.StatusCode != http.StatusOK || d["offer_id"] != "helvetly" || !strings.Contains(etag, "helvetly:") ||
+	if res.StatusCode != http.StatusOK || d["offer_id"] != currentOffer || !strings.Contains(etag, currentOffer+":") ||
 		res.Header.Get("Cache-Control") != "public, max-age=60" || res.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("%d %v %v", res.StatusCode, res.Header, d["offer_id"])
 	}
@@ -157,7 +157,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != "helvetly" || len(items) != 67 {
+	if data["offer_id"] != currentOffer || len(items) != 67 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {

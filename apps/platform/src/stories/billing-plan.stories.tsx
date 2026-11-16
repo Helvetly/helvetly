@@ -289,7 +289,7 @@ export const WithDiscount: Story = {
     const summary = within(
       await within(canvasElement).findByRole('region', { name: 'Current plan' }),
     )
-    await expect(await summary.findByText(/−20 % for 3 months until 1 Feb 2027/)).toBeVisible()
+    await expect(await summary.findByText(/−20% for 3 months until 1 Feb 2027/)).toBeVisible()
     // The promotion code itself is never shown.
     await expect(summary.queryByText(/WELCOME20/)).not.toBeInTheDocument()
     // The total stays the list price; the next charge has the discount taken off.
@@ -451,7 +451,9 @@ export const PlansTrialSwitch: Story = {
     )
     const proCard = card(canvas, 'Pro')
     await expect(proCard.getByText('CHF 49')).toBeVisible()
-    await expect(proCard.getByText('or CHF 471 a year, save 20 %')).toBeVisible()
+    await expect(
+      proCard.getByText('CHF 471', { selector: 'strong' }).parentElement,
+    ).toHaveTextContent('or CHF 471 a year, save 20%')
     await expect(
       canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
     ).toHaveTextContent('For 2 peopleCHF 98 / month')
@@ -472,7 +474,7 @@ export const PlansTrialSwitch: Story = {
     const businessCard = card(canvas, 'Business')
     await expect(businessCard.getByText('Current')).toBeVisible()
     await expect(businessCard.getByRole('button', { name: 'Current plan' })).toBeDisabled()
-    await expect(canvas.getByText('Save 20 % yearly')).toBeVisible()
+    await expect(canvas.getByText('Save 20% yearly')).toBeVisible()
     await expect(canvas.getByText('Every member is a paid seat')).toBeVisible()
 
     await userEvent.click(proCard.getByRole('button', { name: 'Switch to Pro' }))
@@ -564,7 +566,9 @@ export const PlansYearly: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     const proCard = card(canvas, 'Pro')
-    await expect(await proCard.findByText('CHF 471 a year, billed yearly')).toBeVisible()
+    await expect(
+      (await proCard.findByText('CHF 471', { selector: 'strong' })).parentElement,
+    ).toHaveTextContent('CHF 471 a year, billed yearly')
     await expect(proCard.getByText('CHF 39', { exact: true })).toBeVisible()
     await userEvent.click(proCard.getByRole('button', { name: 'Upgrade to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
@@ -584,7 +588,9 @@ export const PlansSwitchToYearly: Story = {
     await canvas.findByRole('region', { name: 'Basic' })
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     const basic = card(canvas, 'Basic')
-    await expect(basic.getByText('CHF 183 a year, billed yearly')).toBeVisible()
+    await expect(
+      basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
+    ).toHaveTextContent('CHF 183 a year, billed yearly')
     await userEvent.click(basic.getByRole('button', { name: 'Switch yearly' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText('Switch to Basic yearly?')).toBeVisible())
@@ -608,18 +614,18 @@ export const PlansProToBusiness: Story = {
     // Business has no cap on records, invoices or quotes: "Unlimited", never a number, ∞ or -1
     const includes = businessCard.getByRole('list', { name: 'Business includes' })
     await expect(includes).toHaveTextContent(/Unlimited clients \/ workspace/)
-    await expect(includes).toHaveTextContent(/Unlimited invoice issues \/ team member \/ month/)
-    await expect(includes).toHaveTextContent(/Unlimited quotes sent \/ team member \/ month/)
+    await expect(includes).toHaveTextContent(/Unlimited invoice issues \/ month/)
+    await expect(includes).toHaveTextContent(/Unlimited quotes sent \/ month/)
     await expect(includes).not.toHaveTextContent(/∞|NaN|-1/)
     await expect(card(canvas, 'Pro').getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-      /100 quotes sent \/ team member \/ month/,
+      /100 quotes sent \/ month/,
     )
     const quotes = await waitFor(() => {
       const row = canvasElement.querySelector<HTMLElement>('[data-row=quotes_per_month]')
       if (!row) throw new Error('no quotes row in the comparison')
       return within(row)
     })
-    await expect(quotes.getByRole('rowheader')).toHaveTextContent('Per team member, a month')
+    await expect(quotes.getByRole('rowheader')).toHaveTextContent('Monthly')
     const [basicQuotes, proQuotes, businessQuotes] = quotes.getAllByRole('cell')
     await expect(basicQuotes).toHaveTextContent('5')
     await expect(proQuotes).toHaveTextContent('100')

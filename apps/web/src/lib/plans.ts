@@ -19,8 +19,12 @@ export const RECOMMENDED: PlanId = 'pro'
 
 export { YEARLY_DISCOUNT_PERCENT }
 
-/** Seats an owner can buy in the app; more on request. */
-export const MAX_SELF_SERVICE_SEATS = 25
+/** The most people a workspace can have on each plan, the owner included; null: no limit. The offer's max_self_service_seats. */
+export const SELF_SERVICE_SEATS: Record<PlanId, number | null> = {
+  basic: 5,
+  pro: 25,
+  business: null,
+}
 
 /**
  * A fixed cap for the whole workspace, or an amount each paid team member adds to the workspace's one shared pool.
@@ -551,6 +555,14 @@ export const plansIn = perLanguage((translate, language) => {
 
   const storage = (plan: PlanId) => bytes(value('storage_bytes', plan))
 
+  /** The people limit as a plan fact: "Up to 5 people", "Unlimited people". */
+  const people = (plan: PlanId) => {
+    const most = SELF_SERVICE_SEATS[plan]
+    return most === null
+      ? translate('planPeopleUnlimited')
+      : translate('planPeopleUpTo', { count: count(most) })
+  }
+
   const PLANS: Plan[] = [
     {
       id: 'basic',
@@ -559,6 +571,7 @@ export const plansIn = perLanguage((translate, language) => {
       tagline: translate('startInvoicing'),
       pitch: translate('forFreelancersWithASmallClientBase'),
       highlights: [
+        people('basic'),
         translate('clientsPerWorkspace', { value1: n('clients', 'basic') }),
         translate('invoicesAndQuotesPerTeamMemberAMonth', {
           invoices: n('invoices_per_month', 'basic'),
@@ -576,6 +589,7 @@ export const plansIn = perLanguage((translate, language) => {
       tagline: translate('runYourBusinessWithHeidi'),
       pitch: translate('forABusinessThatWantsItsWholeBackOffice'),
       highlights: [
+        people('pro'),
         translate('invoicesQuotesAndExpensesPerTeamMemberAMonth', {
           invoices: n('invoices_per_month', 'pro'),
           quotes: n('quotes_per_month', 'pro'),
@@ -599,6 +613,7 @@ export const plansIn = perLanguage((translate, language) => {
       tagline: translate('workWithClientsAtScale'),
       pitch: translate('everythingInProPlusTheClientPortalAndE'),
       highlights: [
+        people('business'),
         translate('clientPortalPortalRecipientsAreNotPaidSeats'),
         translate('eInvoiceXMLExportsInSupportedFormats'),
         translate('employeesAndPayrollRegister'),

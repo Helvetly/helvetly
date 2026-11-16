@@ -278,11 +278,7 @@ describe('pricing page', () => {
       '300per workspace',
       'Unlimited',
     ])
-    expect(cells(table, 'Quotes')).toEqual([
-      '5per team member a month',
-      '100per team member a month',
-      'Unlimited',
-    ])
+    expect(cells(table, 'Quotes')).toEqual(['5/ month', '100/ month', 'Unlimited'])
     expect(within(table).getByRole('rowheader', { name: 'Automated actions' }).textContent).toMatch(
       /Each automatic step counts once/,
     )

@@ -288,7 +288,46 @@ func (s *Service) save(ctx context.Context, q store.Q, workspaceID string, befor
 			return after, err
 		}
 	}
+	// Business bought on the subscription (confirmed: recorded, paid when the change waited for it) is sold as the
+	// plan cards show it; a redelivered event finds Business recorded already.
+	if before.SubscriptionID == sub.ID && before.Plan != Business && after.Plan == Business && live(after.Status) {
+		if err := adoptBusinessOffer(ctx, q, workspaceID); err != nil {
+			return after, err
+		}
+	}
 	return after, s.grant(ctx, q, workspaceID, before, prev)
+}
+
+// businessOffer is the offer a workspace on offer gets Business on by changing its subscription: the offer on sale
+// (current), unless an override holds it to its own (overrides are per offer and would be lost). Its other plans
+// stay on its offer: their terms were sold to it (a Basic before 2026-11 keeps 25 people).
+func businessOffer(ctx context.Context, q store.Q, workspaceID, offer, current string) (string, error) {
+	if offer == current {
+		return offer, nil
+	}
+	held, err := q.OfferOverridden(ctx, workspaceID, offer)
+	if err != nil || held {
+		return offer, err
+	}
+	return current, nil
+}
+
+// adoptBusinessOffer moves the workspace that just changed to Business onto businessOffer, audited.
+func adoptBusinessOffer(ctx context.Context, q store.Q, workspaceID string) error {
+	offer, err := q.WorkspaceOffer(ctx, workspaceID)
+	if err != nil || offer == "" {
+		return err
+	}
+	current, err := q.CurrentOffer(ctx)
+	if err != nil {
+		return err
+	}
+	to, err := businessOffer(ctx, q, workspaceID, offer, current.ID)
+	if err != nil || to == offer {
+		return err
+	}
+	_, err = q.MoveOffer(ctx, workspaceID, offer, to, "Business bought on the subscription is sold on the offer on sale")
+	return err
 }
 
 // otherLive: the workspace has a live subscription on record and sub is another live one of its customer.

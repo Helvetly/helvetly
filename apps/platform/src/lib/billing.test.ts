@@ -164,8 +164,8 @@ test('discounted prices, descriptions and which plans a code covers', () => {
   expect(
     discounted(price, { ...percent, percent_off: null, amount_off: 500, currency: 'eur' }),
   ).toEqual(price)
-  expect(describeDiscount(percent)).toBe('−20 % for 3 months')
-  expect(describeDiscount({ ...percent, duration: 'forever' })).toBe('−20 % forever')
+  expect(describeDiscount(percent)).toBe('−20% for 3 months')
+  expect(describeDiscount({ ...percent, duration: 'forever' })).toBe('−20% forever')
   expect(promoApplies({ ...percent, code: 'X', plans: ['basic'], expires_at: null }, 'pro')).toBe(
     false,
   )

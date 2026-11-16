@@ -37,14 +37,14 @@ test('thirteen business rows and twelve allowances, per team member or per works
   expect(document.querySelectorAll('tbody:first-of-type tr')).toHaveLength(13)
   expect(document.querySelectorAll('tbody:last-of-type tr[data-row]')).toHaveLength(12)
   expect(row('heidi')('basic')).toHaveTextContent('Not included')
-  expect(row('heidi')('pro')).toHaveTextContent('5M / team member / month')
+  expect(row('heidi')('pro')).toHaveTextContent('5M / month')
   expect(row('client_portal')('pro')).toHaveTextContent('Not included')
   expect(row('employees')('pro')).toHaveTextContent('Not included')
   expect(
     within(row('client_portal')('business') ?? document.body).getByLabelText('Included'),
   ).toBeVisible()
-  expect(row('invoicing')('basic')).toHaveTextContent('15 / team member / month')
-  expect(row('invoicing')('pro')).toHaveTextContent('100 / team member / month')
+  expect(row('invoicing')('basic')).toHaveTextContent('15 / month')
+  expect(row('invoicing')('pro')).toHaveTextContent('100 / month')
   // unlimited reads as such, without a per-unit suffix
   expect(row('invoicing')('business')?.textContent).toBe('Unlimited')
   expect(row('quotes_per_month')('basic')).toHaveTextContent('5')
@@ -56,12 +56,14 @@ test('thirteen business rows and twelve allowances, per team member or per works
   expect(row('expenses_per_month')('basic')).toHaveTextContent('Not included')
   expect(row('storage_bytes')('pro')).toHaveTextContent('5 GB')
   expect(screen.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent('Per workspace')
-  expect(screen.getByRole('rowheader', { name: /^AI tokens/ })).toHaveTextContent(
-    'Per team member, a month',
+  expect(screen.getByRole('rowheader', { name: /^AI tokens/ })).toHaveTextContent('Monthly')
+  expect(screen.getByRole('rowheader', { name: /^Quotes sent/ })).toHaveTextContent('Monthly')
+  // Whose allowance it is, and that storage is not monthly, is said once in the legend, not on every row.
+  expect(screen.getByRole('rowheader', { name: /^Storage/ }).textContent).not.toMatch(
+    /month|team member/i,
   )
-  expect(screen.getByRole('rowheader', { name: /^Quotes sent/ })).toHaveTextContent(
-    'Per team member, a month',
-  )
+  expect(document.body.textContent).not.toMatch(/per team member/i)
+  expect(screen.getAllByText(/combine in one shared workspace pool/)).toHaveLength(1)
   expect(screen.getByRole('button', { name: 'About Automated actions' })).toBeInTheDocument()
   expect(screen.queryByText(/identity|credits/i)).toBeNull()
 })

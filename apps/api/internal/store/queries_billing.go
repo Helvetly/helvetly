@@ -329,6 +329,25 @@ func (q Q) SettleBillingCheckout(ctx context.Context, id, subscriptionID string,
 	return err
 }
 
+// OfferOverridden reports whether the workspace has an override written for the offer (limit_workspaces, per offer).
+func (q Q) OfferOverridden(ctx context.Context, workspaceID, offerID string) (bool, error) {
+	var found bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM limit_workspaces WHERE workspace_id = $1 AND offer_id = $2)`,
+		workspaceID, offerID).Scan(&found)
+	return found, err
+}
+
+// MoveOffer puts the workspace from offer from onto offer to and audits it; false when it is not on from (any more).
+func (q Q) MoveOffer(ctx context.Context, workspaceID, from, to, reason string) (bool, error) {
+	tag, err := q.db.Exec(ctx, `WITH moved AS (
+			UPDATE workspace_billing SET offer_id = $3 WHERE workspace_id = $1 AND offer_id = $2 RETURNING workspace_id)
+		INSERT INTO offer_audit (actor, action, target, before, after, reason)
+		SELECT 'billing', 'offer.assign', $3, jsonb_build_object('offer_id', $2::text, 'workspace_id', workspace_id),
+			jsonb_build_object('offer_id', $3::text, 'workspace_id', workspace_id), $4 FROM moved`,
+		workspaceID, from, to, reason)
+	return tag.RowsAffected() == 1, err
+}
+
 // ClaimTrial records the digests of who started a trial in the workspace and reports whether any of them started one
 // in another workspace before. A digest claimed by this workspace already is no reuse.
 func (q Q) ClaimTrial(ctx context.Context, workspaceID string, claims map[string]string, now time.Time) (bool, error) {

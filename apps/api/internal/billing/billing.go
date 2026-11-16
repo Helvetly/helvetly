@@ -209,16 +209,46 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		s.log.WarnContext(r.Context(), "reading the Stripe customer's currency failed", "error", err)
 		cur = CurrencyOf(auth.Country(r), sess.Workspace.Timezone, pageZone(r))
 	}
+	// With a live subscription a plan is changed to in place, on the workspace's own offer (Business: businessOffer)
+	// and its overrides, so its cards show those terms; a Checkout sells the offer on sale.
+	var own, business string
+	if live(b.Status) && b.SubscriptionID != "" {
+		if own, err = s.db.WorkspaceOffer(r.Context(), sess.Workspace.ID); err != nil {
+			return err
+		}
+		if business, err = businessOffer(r.Context(), s.db.Q, sess.Workspace.ID, own, cat.offer.ID); err != nil {
+			return err
+		}
+	}
 	list := make([]planItem, 0, len(planOrder))
 	for _, id := range planOrder {
 		p := planItem{ID: id, Name: planNames[id], Limits: map[Limit]*int64{}, Features: cat.featuresOf(id),
 			Prices: map[string]*planPrice{}}
-		for _, l := range limitOrder {
-			p.Limits[l] = maxOf(cat.limitOf(id, l))
-		}
-		p.Limits[Members] = nil // the people besides the owner: the self-service seats less the owner
-		if seats := cat.limitOf(id, MaxSeats); seats != Unlimited {
-			p.Limits[Members] = maxOf(max(seats-1, 0))
+		if own != "" {
+			offer := own
+			if id == Business && b.Plan != Business { // only a change into Business moves the offer (save)
+				offer = business
+			}
+			held, err := s.rightsOn(r.Context(), s.db.Q, sess.Workspace.ID, offer, id, 1) // one seat, as the catalogue
+			if err != nil {
+				return err
+			}
+			p.Features = held.features()
+			for _, l := range limitOrder {
+				v, err := held.capFor(l)
+				if err != nil {
+					return err
+				}
+				p.Limits[l] = maxOf(v)
+			}
+		} else {
+			for _, l := range limitOrder {
+				p.Limits[l] = maxOf(cat.limitOf(id, l))
+			}
+			p.Limits[Members] = nil // the people besides the owner: the self-service seats less the owner
+			if seats := cat.limitOf(id, MaxSeats); seats != Unlimited {
+				p.Limits[Members] = maxOf(max(seats-1, 0))
+			}
 		}
 		for _, interval := range []string{"month", "year"} {
 			if amount, ok := prices[id+"_"+interval].amountIn(cur); ok {
@@ -641,7 +671,8 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store
 	return cs.URL, nil
 }
 
-// changePlan moves a live subscription to another price; the workspace keeps its offer and its usage. During the
+// changePlan moves a live subscription to another price; the workspace keeps its offer (Business, once recorded, is
+// sold on businessOffer: save) and its usage. During the
 // trial any plan or interval may be chosen for after it, at no charge, and the trial still ends when it would. After
 // it, a change the customer pays more for (a bigger plan, monthly to yearly) is invoiced at once and waits for that
 // payment (a pending update; 402 with why and where to pay while it is unpaid), so nothing is granted unpaid. A change

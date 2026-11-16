@@ -387,8 +387,8 @@
     }
   },
   "max_self_service_seats": {
-    "basic": 25,
-    "business": 25,
+    "basic": 5,
+    "business": null,
     "pro": 25
   },
   "plans": [

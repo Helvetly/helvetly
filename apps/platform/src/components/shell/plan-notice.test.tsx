@@ -114,11 +114,11 @@ const launch = {
 test.each<[string, Partial<Billing>, string]>([
   ['free forever', { discount: lifetime }, 'Basic until 16 Nov 2026, then free forever.'],
   ['a partial discount', { discount: launch, pricing: 'flat', interval: 'month' }, 'then CHF'],
-  ['an unknown price', { discount: launch }, 'then −20 % for 3 months applies.'],
+  ['an unknown price', { discount: launch }, 'then −20% for 3 months applies.'],
   [
     'a partial discount',
     { discount: launch, pricing: 'flat', interval: 'month' },
-    'with −20 % for 3 months.',
+    'with −20% for 3 months.',
   ],
 ])('a trial under a promotion code says what follows, never the code: %s', (_, over, text) => {
   const notice = planNotice({ ...trial, ...over }, NOW)
