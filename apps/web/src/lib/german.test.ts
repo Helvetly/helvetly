@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import de from '../messages/de.json'
 import en from '../messages/en.json'
 
-const parameters = (value: string) => value.match(/\{\w+\}/g)?.toSorted() ?? []
+const parameters = (value: string) =>
+  [...value.matchAll(/\{(\w+)(?:\}|,)/g)].map((match) => match[1]).toSorted()
 
 describe('German marketing catalog', () => {
   it('covers every English message and preserves its interpolation values', () => {
@@ -16,7 +17,7 @@ describe('German marketing catalog', () => {
       expect({ key, values: parameters(message) }).toEqual({ key, values: parameters(source) })
       expect(message).not.toMatch(/ZX[QV]\d|[ßẞ]/)
       const values = Object.fromEntries(
-        [...source.matchAll(/\{(\w+)\}/g)].map((match) => [match[1], 3]),
+        [...source.matchAll(/\{(\w+)(?:\}|,)/g)].map((match) => [match[1], 3]),
       )
       expect(() => german(key, values)).not.toThrow()
     }

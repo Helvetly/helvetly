@@ -89,7 +89,7 @@
   "bexio": "bexio",
   "bexioIsABroadSwissBusinessSuiteWithAccounting": "bexio ist eine umfassende Schweizer Business-Suite mit Buchhaltung, Lohnbuchhaltung und einem grossen Marktplatz. Helvetly konzentriert sich auf das Backoffice rund um die Bezahlung: QR-Rechnungen, Erinnerungen, Ratenzahlungen, Unterschriften, ein Kundenportal und einen Assistenten, der Ihre Nummern kennt, zu einem einfachen Preis pro Person.",
   "beyond": "auch ausserhalb der ",
-  "billedMonthly": "Monatliche Abrechnung, {value1}",
+  "billedMonthly": "Monatliche Abrechnung",
   "billedPerPerson": "Wird pro Person abgerechnet",
   "billingInterval": "Abrechnungsintervall",
   "billingQuestions": "Fragen zur Abrechnung",
