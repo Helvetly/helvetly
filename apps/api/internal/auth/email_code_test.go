@@ -242,3 +242,30 @@ func TestGoogleAndEmailAreOnePerson(t *testing.T) {
 		t.Fatalf("%d identities, want 4", n)
 	}
 }
+
+// The cooldown answer carries the live code's real remaining life, the same for every address and state of
+// the code (used, exhausted): it is what lets the form open code entry without a second observation.
+func TestEmailCodeCooldownReportsRemainingExpiry(t *testing.T) {
+	e := newEnv(t)
+	e.sendCode("zoe@example.com", 202)
+	e.clock.add(10 * time.Second)
+
+	var cool apiErr
+	e.do(nil, "POST", "/api/v1/auth/email/start", map[string]any{"email": "zoe@example.com"}, 429, &cool)
+	if cool.Error.Code != "code_cooldown" || cool.Error.Details["resend_in"] != float64(20) || cool.Error.Details["expires_in"] != float64(590) {
+		t.Fatalf("cooldown: %+v", cool)
+	}
+	if len(cool.Error.Details) != 2 {
+		t.Fatalf("cooldown details beyond the two times: %+v", cool.Error.Details)
+	}
+
+	// A used code answers exactly the same shape, so a recent sign-in is not observable here.
+	e.verifyCode("zoe@example.com", e.devCode("zoe@example.com"), nil, 201, nil)
+	var used apiErr
+	e.do(nil, "POST", "/api/v1/auth/email/start", map[string]any{"email": "zoe@example.com"}, 429, &used)
+	if used.Error.Details["expires_in"] != float64(590) || used.Error.Details["resend_in"] != float64(20) {
+		t.Fatalf("used code: %+v", used)
+	}
+	// The used code still does not work.
+	e.verifyCode("zoe@example.com", e.devCode("zoe@example.com"), nil, 410, nil)
+}

@@ -1,6 +1,7 @@
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
 import { ApiError } from '@/lib/api'
@@ -123,5 +124,44 @@ export const MailFailure: Story = {
       await canvas.findByText('The email could not be sent. Try again in a minute.'),
     ).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  },
+}
+
+export const RecentCodeOpensCodeEntry: Story = {
+  render: function Render() {
+    const [step, setStep] = useState<string | null>(null)
+    return (
+      <div className="max-w-sm">
+        {step ? (
+          <EmailCodeForm
+            email={step}
+            sent={{ expires_in: 570, resend_in: 20 }}
+            verify={rejectCode}
+            resend={send}
+            onDone={done}
+            onBack={() => setStep(null)}
+          />
+        ) : (
+          <EmailAddressForm
+            autoComplete="email"
+            onSent={(email) => setStep(email)}
+            send={async () => {
+              throw new ApiError(429, 'code_cooldown', 'A code was just sent.', {
+                resend_in: 20,
+                expires_in: 570,
+              })
+            }}
+          />
+        )}
+      </div>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Email' }), 'anna@example.com')
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await expect(await canvas.findByRole('heading', { name: 'Check your email' })).toBeVisible()
+    await expect(canvas.getByRole('textbox', { name: 'Code' })).toHaveFocus()
+    await expect(canvas.getByRole('button', { name: /Resend code in/ })).toBeDisabled()
   },
 }

@@ -12,6 +12,18 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 const CODE_LENGTH = 6
+// A cooldown answer is trusted only inside the range the API can send; anything else stays an error.
+const MAX_SENT_SECONDS = 3600
+
+/** The times of a code that was sent a moment ago, when a `code_cooldown` answer carries valid ones. */
+function recentCode(error: unknown): EmailCodeSent | null {
+  if (!(error instanceof ApiError) || error.code !== 'code_cooldown') return null
+  const { resend_in, expires_in } = error.details
+  return validSeconds(resend_in) && validSeconds(expires_in) ? { resend_in, expires_in } : null
+}
+
+const validSeconds = (n: unknown): n is number =>
+  typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= MAX_SENT_SECONDS
 
 export function codeErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return errorMessage(error)
@@ -66,7 +78,12 @@ export function EmailAddressForm({
   const start = useMutation({
     mutationFn: send,
     onSuccess: (sent, address) => onSent(address, sent),
-    onError: (e) => setError(codeErrorMessage(e)),
+    onError: (e, address) => {
+      // The code is already on its way: let the person type it instead of blocking on the address step.
+      const recent = recentCode(e)
+      if (recent) onSent(address, recent)
+      else setError(codeErrorMessage(e))
+    },
   })
 
   return (
