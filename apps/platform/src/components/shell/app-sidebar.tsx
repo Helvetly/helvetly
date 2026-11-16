@@ -349,7 +349,7 @@ function MiniBadge({
     <span
       data-testid={testId}
       className={cn(
-        'inline-flex h-[18px] w-fit max-w-full items-center truncate rounded-[4px] px-1.5 text-[11px] leading-none whitespace-nowrap',
+        'inline-flex h-[18px] w-fit max-w-full items-center truncate rounded-sm px-1.5 text-[11px] leading-none whitespace-nowrap',
         TONES.gray,
         className,
       )}
