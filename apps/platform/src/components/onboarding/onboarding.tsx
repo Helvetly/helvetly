@@ -763,6 +763,16 @@ function LogoLabel({ children, help }: { children: string; help: string }) {
   )
 }
 
+/** The presets of the payment terms; any other saved number is shown as Custom. */
+const PAYMENT_TERM_PRESETS = [7, 14, 30]
+
+/** A whole number of days from 0 (the invoice date itself) to 365, as the server accepts; null for anything else. */
+const parseTermsDays = (text: string) => {
+  const trimmed = text.trim()
+  const number = /^\d{1,3}$/.test(trimmed) ? Number(trimmed) : null
+  return number !== null && number <= 365 ? number : null
+}
+
 function PreferencesStep({
   heading,
   values,
@@ -783,12 +793,25 @@ function PreferencesStep({
   onDone: () => void
 }) {
   const days = values?.default_terms_days ?? 30
-  const terms = [...new Set([10, 30, 60, days])].toSorted((a, b) => a - b)
+  // A saved 10, 60 or any other number is shown as Custom with its value, never rewritten by showing it.
+  const [customChosen, setCustomChosen] = useState(false)
+  // What is typed in the days field while it is not (yet) a number that can be saved.
+  const [typed, setTyped] = useState<string | null>(null)
+  const [termsInvalid, setTermsInvalid] = useState(false)
+  const termsField = useRef<HTMLInputElement>(null)
+  const custom = customChosen || !PAYMENT_TERM_PRESETS.includes(days)
+  const shownDays = typed ?? String(days)
+  const typedDays = parseTermsDays(shownDays)
   return (
     <form
       noValidate
       onSubmit={(event) => {
         event.preventDefault()
+        if (custom && typedDays === null) {
+          setTermsInvalid(true)
+          termsField.current?.focus()
+          return
+        }
         onDone()
       }}
     >
@@ -815,16 +838,56 @@ function PreferencesStep({
           />
         </FormField>
         <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-[13px] font-medium">{translate('paymentTerms')}</legend>
+          <legend className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium">
+            {translate('paymentTerms')}
+            <HelpTip label={translate('paymentTerms')}>{translate('paymentTermsHelp')}</HelpTip>
+          </legend>
           <Segmented
             label={translate('paymentTerms')}
-            value={String(days)}
-            options={terms.map((value) => ({
-              value: String(value),
-              label: translate('days5', { value: value }),
-            }))}
-            onChange={(value) => onChange({ default_terms_days: Number(value) })}
+            value={custom ? 'custom' : String(days)}
+            options={[
+              ...PAYMENT_TERM_PRESETS.map((value) => ({
+                value: String(value),
+                label: translate('days5', { value: value }),
+              })),
+              { value: 'custom', label: translate('custom') },
+            ]}
+            onChange={(value) => {
+              setTyped(null)
+              setTermsInvalid(false)
+              setCustomChosen(value === 'custom')
+              if (value !== 'custom') onChange({ default_terms_days: Number(value) })
+            }}
           />
+          {custom && (
+            <FormField
+              id="onboarding-terms"
+              label={translate('numberOfDays')}
+              error={termsInvalid && typedDays === null ? translate('enter0To365Days') : undefined}
+              className="mt-2 w-32"
+            >
+              <input
+                {...describedBy(
+                  'onboarding-terms',
+                  termsInvalid && typedDays === null ? translate('enter0To365Days') : undefined,
+                )}
+                ref={termsField}
+                className={inputClass}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={3}
+                disabled={!values}
+                value={shownDays}
+                onChange={(event) => {
+                  const text = event.target.value
+                  setTyped(text)
+                  setTermsInvalid(false)
+                  const number = parseTermsDays(text)
+                  if (number !== null) onChange({ default_terms_days: number })
+                }}
+              />
+            </FormField>
+          )}
         </fieldset>
       </div>
       <Actions onBack={onBack} skip={!edited && <SkipButton onClick={onSkip} />}>

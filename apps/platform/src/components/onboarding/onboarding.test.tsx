@@ -190,6 +190,20 @@ describe('the redirect', () => {
   ])('welcomeHref(%s) is %s', (next, want) => expect(welcomeHref(next)).toBe(want))
 })
 
+/** Walks a new workspace to the invoice defaults step, with `settings` as the server has them. */
+const toDefaults = async (user: User, settings = empty) => {
+  server.use(http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: settings })))
+  wrap(<Welcome />)
+  await user.click(await screen.findByRole('button', { name: /Get started/ }))
+  await screen.findByRole('heading', { name: 'Your company' })
+  await fillCompany(user)
+  await user.click(screen.getByRole('button', { name: /Continue/ }))
+  await screen.findByRole('heading', { name: 'Add your logo' }, { timeout: 5000 })
+  await user.click(screen.getByRole('button', { name: 'Skip' }))
+  await screen.findByRole('heading', { name: 'Invoice defaults' }, { timeout: 5000 })
+}
+const termsSaved = () => saved.at(-1)?.default_terms_days
+
 describe('the welcome', () => {
   test('shows on the first visit, with focus on its heading and the progress', async () => {
     wrap(<Welcome />)
@@ -336,14 +350,16 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: 'Skip' }))
     expect(await screen.findByRole('heading', { name: 'Invoice defaults' })).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: 'Français' }))
-    await user.click(screen.getByRole('radio', { name: '60 days' }))
+    await user.click(screen.getByRole('radio', { name: 'Custom' }))
+    await user.clear(screen.getByLabelText('Number of days'))
+    await user.type(screen.getByLabelText('Number of days'), '45')
     await user.click(screen.getByRole('button', { name: /Continue/ }))
 
     expect(await screen.findByRole('heading', { name: 'You’re all set' })).toBeInTheDocument()
     // The UID follows the invoice language.
     expect(saved[1]).toMatchObject({
       language: 'fr',
-      default_terms_days: 60,
+      default_terms_days: 45,
       currency: 'CHF',
       seller: { vat_number: 'CHE-109.322.551 TVA' },
     })
@@ -354,5 +370,74 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: /Add your first client/ }))
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/clients?new=1'))
     expect(finished).toBe(1)
+  })
+  describe('payment terms', () => {
+    test('offers 7, 14 and 30 days and Custom, with 30 chosen, and a help icon', async () => {
+      const user = userEvent.setup({ delay: null })
+      await toDefaults(user)
+      for (const name of ['7 days', '14 days', '30 days', 'Custom'])
+        expect(screen.getByRole('radio', { name })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: '30 days' })).toBeChecked()
+      expect(screen.queryByLabelText('Number of days')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Payment terms' })).toBeInTheDocument()
+      await user.click(screen.getByRole('radio', { name: '14 days' }))
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(termsSaved()).toBe(14))
+    })
+
+    test('a saved 10 days is shown as Custom with its value and is sent unchanged', async () => {
+      const user = userEvent.setup({ delay: null })
+      await toDefaults(user, { ...empty, default_terms_days: 10 })
+      expect(screen.getByRole('radio', { name: 'Custom' })).toBeChecked()
+      expect(screen.getByLabelText('Number of days')).toHaveValue('10')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(termsSaved()).toBe(10))
+    })
+
+    test.each([['0'], ['365'], ['45']])('custom %s days is saved as that number', async (text) => {
+      const user = userEvent.setup({ delay: null })
+      await toDefaults(user)
+      await user.click(screen.getByRole('radio', { name: 'Custom' }))
+      await user.clear(screen.getByLabelText('Number of days'))
+      await user.type(screen.getByLabelText('Number of days'), text)
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(termsSaved()).toBe(Number(text)))
+    })
+
+    test.each([[''], ['-1'], ['366'], ['1.5'], ['abc']])(
+      'custom "%s" is refused inline, focused, and not saved',
+      async (text) => {
+        const user = userEvent.setup({ delay: null })
+        await toDefaults(user)
+        await user.click(screen.getByRole('radio', { name: 'Custom' }))
+        const field = screen.getByLabelText('Number of days')
+        await user.clear(field)
+        if (text) await user.type(field, text)
+        const before = saved.length
+        await user.click(screen.getByRole('button', { name: /Continue/ }))
+        expect(await screen.findByText('Enter 0 to 365 days.')).toBeInTheDocument()
+        expect(field).toHaveAttribute('aria-invalid', 'true')
+        await waitFor(() => expect(field).toHaveFocus())
+        expect(saved).toHaveLength(before)
+        expect(screen.getByRole('heading', { name: 'Invoice defaults' })).toBeInTheDocument()
+      },
+    )
+
+    test('the typed days stay when the server refuses the save', async () => {
+      const user = userEvent.setup({ delay: null })
+      await toDefaults(user)
+      server.use(
+        http.put('/api/v1/invoice-settings', () =>
+          HttpResponse.json({ error: { code: 'internal', message: 'Nope.' } }, { status: 500 }),
+        ),
+      )
+      await user.click(screen.getByRole('radio', { name: 'Custom' }))
+      await user.clear(screen.getByLabelText('Number of days'))
+      await user.type(screen.getByLabelText('Number of days'), '45')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      expect(screen.getByLabelText('Number of days')).toHaveValue('45')
+      expect(screen.getByRole('heading', { name: 'Invoice defaults' })).toBeInTheDocument()
+    })
   })
 })
