@@ -260,7 +260,8 @@ function DeleteCard({ name }: { name: string }) {
   )
 }
 
-function DeleteDialog({ name, onClose }: { name: string; onClose: () => void }) {
+/** Deletes the session's workspace once its name is typed; the plan picker opens it too. */
+export function DeleteDialog({ name, onClose }: { name: string; onClose: () => void }) {
   const router = useRouter()
   const remove = useDeleteWorkspace()
   const plan = useBilling().data

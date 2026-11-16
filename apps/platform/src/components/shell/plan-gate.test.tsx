@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
@@ -34,12 +34,12 @@ const session: Session = {
   csrf_token: 't',
 }
 
-function renderWith(node: ReactNode, billing?: Billing) {
+function renderWith(node: ReactNode, billing?: Billing, role = 'owner') {
   // Billing never answers in these tests unless it is seeded.
   const client = new QueryClient({
     defaultOptions: { queries: { queryFn: () => new Promise(() => {}), retry: false } },
   })
-  client.setQueryData(queryKeys.session, session)
+  client.setQueryData(queryKeys.session, { ...session, role })
   if (billing) client.setQueryData(billingKeys.overview, billing)
   render(
     <QueryClientProvider client={client}>
@@ -81,6 +81,13 @@ test('the billing settings are never gated', () => {
   expect(replace).not.toHaveBeenCalled()
 })
 
+test('the workspace settings are never gated, so its owner can rename or delete it', () => {
+  pathname = '/settings/workspace'
+  gate(billingFixture())
+  expect(screen.getByText('The list')).toBeVisible()
+  expect(replace).not.toHaveBeenCalled()
+})
+
 test('a workspace with a plan is not gated', () => {
   gate(billingFixture({ locked: false, plan: 'basic', status: 'active' }))
   expect(screen.getByText('The list')).toBeVisible()
@@ -103,6 +110,22 @@ test('the picker tells a member to ask an owner', () => {
   expect(screen.getByText('This workspace has no active plan')).toBeVisible()
   expect(screen.getByText(/until an owner or admin chooses one/)).toBeVisible()
   expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
+  expect(screen.getByRole('link', { name: 'Workspace settings' })).toHaveAttribute(
+    'href',
+    '/settings/workspace',
+  )
+})
+
+test('the owner can delete the workspace from the picker, in place', () => {
+  renderWith(<ChoosePlan />, billingFixture({ has_customer: true }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete workspace' }))
+  expect(screen.getByRole('dialog', { name: 'Delete “Acme”?' })).toBeVisible()
+})
+
+test('only the owner is offered the deletion', () => {
+  renderWith(<ChoosePlan />, billingFixture(), 'admin')
+  expect(screen.getByRole('link', { name: 'Workspace settings' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Delete workspace' })).toBeNull()
 })
 
 test('the picker sends a workspace with a plan home', () => {

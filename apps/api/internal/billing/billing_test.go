@@ -988,17 +988,31 @@ func TestEndSubscription(t *testing.T) {
 	e.stripe.put("sub_2", ws, "cus_1", "trialing", "price_pm")
 	e.stripe.put("sub_3", ws, "cus_1", "incomplete", "price_pm")
 	e.stripe.put("sub_4", ws, "cus_1", "canceled", "price_pm")
+	// Lapsed ones Stripe may still collect, one with a downgrade scheduled for its period's end.
+	e.stripe.put("sub_5", ws, "cus_1", "past_due", "price_pm")
+	e.stripe.put("sub_6", ws, "cus_1", "unpaid", "price_pm")
+	e.stripe.set("sub_5", map[string]any{"schedule": "sub_sched_sub_5"})
 	e.stripe.mu.Lock()
 	e.stripe.sessions = append(e.stripe.sessions,
 		map[string]any{"id": "cs_plan", "mode": "subscription", "customer": "cus_1", "status": "open"},
 		map[string]any{"id": "cs_pack", "mode": "payment", "customer": "cus_1", "status": "open"})
+	e.stripe.fail = true
+	e.stripe.mu.Unlock()
+	// Stripe down: the deletion stops here and is retried; nothing was cancelled yet, so nothing is skipped then.
+	if err := e.svc.EndSubscription(ctx, ws); err == nil || PlanOf(e.billing(ws), time.Now()) == "" {
+		t.Fatalf("Stripe down: %v %+v", err, e.billing(ws))
+	}
+	e.stripe.mu.Lock()
+	e.stripe.fail = false
 	e.stripe.mu.Unlock()
 	if err := e.svc.EndSubscription(ctx, ws); err != nil || PlanOf(e.billing(ws), time.Now()) != "" {
 		t.Fatalf("end: %v %+v", err, e.billing(ws))
 	}
 	for path, want := range map[string]int{
 		"DELETE /v1/subscriptions/sub_1": 1, "DELETE /v1/subscriptions/sub_2": 1, "DELETE /v1/subscriptions/sub_3": 1,
-		"DELETE /v1/subscriptions/sub_4": 0, "POST /v1/checkout/sessions/cs_plan/expire": 1, "POST /v1/checkout/sessions/cs_pack/expire": 0,
+		"DELETE /v1/subscriptions/sub_4": 0, "DELETE /v1/subscriptions/sub_5": 1, "DELETE /v1/subscriptions/sub_6": 1,
+		"POST /v1/checkout/sessions/cs_plan/expire": 1, "POST /v1/checkout/sessions/cs_pack/expire": 0,
+		"POST /v1/subscription_schedules/sub_sched_sub_5/release": 1,
 	} {
 		if n := e.stripe.called(path); n != want {
 			t.Errorf("%s: %d calls, want %d", path, n, want)
