@@ -419,6 +419,10 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 		if err != nil {
 			return err
 		}
+		// Issuing a plan item is one automatic action; sending it is another (instalments.Service).
+		if err := q.CountAutomation(ctx, ws.ID, fmt.Sprintf("instalments.issue:%s:%d", locked.ID, item.Seq), s.now()); err != nil {
+			return err
+		}
 		inv := planPartial(src, locked, locked.Items[i], today, set)
 		id = inv.ID
 		if err := saveDraft(ctx, q, sess, inv, s.now()); err != nil {

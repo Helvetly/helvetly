@@ -132,6 +132,7 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 	if err != nil || len(emails) == 0 {
 		return err // no one to tell: the notices wait
 	}
+	var actions []string // one automatic action per recipient
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		notices, err := q.ClaimNotices(ctx, ws.ID, now)
 		if err != nil {
@@ -149,11 +150,26 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 		if len(notices) == 0 && len(sections) == 0 {
 			return nil
 		}
-		sent := 0
+		occurrence := ws.Today(now) + ":day"
+		if len(notices) > 0 {
+			occurrence = ws.Today(now) + ":" + notices[0].ID
+		}
+		// Room for every recipient or the digest waits (the claims roll back); reserved apart from this transaction,
+		// which holds the claims while it sends.
 		for _, to := range emails {
+			actions = append(actions, "engagements.digest:"+occurrence+":"+to)
+			if err := s.db.ReserveAutomation(ctx, ws.ID, actions[len(actions)-1], now); err != nil {
+				return err
+			}
+		}
+		sent := 0
+		for i, to := range emails {
 			if err := s.mailer.Send(ctx, digestMessage(to, notices, s.publicURL, sections...)); err != nil {
 				s.log.ErrorContext(ctx, "engagement digest mail", "workspace", ws.ID, "error", err)
 				continue
+			}
+			if err := q.SettleAutomation(ctx, ws.ID, actions[i], now); err != nil {
+				return err
 			}
 			sent++
 		}
@@ -162,7 +178,13 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 		}
 		return nil
 	})
-	if errors.Is(err, errNotSent) {
+	if err == nil || errors.Is(err, errNotSent) || errors.Is(err, store.ErrAdmissionDenied) {
+		// what did not go is given back: a failed recipient is not retried, a digest that waits reserves again
+		for _, a := range actions {
+			if rerr := s.db.ReleaseAutomation(context.WithoutCancel(ctx), ws.ID, a); rerr != nil {
+				return rerr
+			}
+		}
 		return nil
 	}
 	return err

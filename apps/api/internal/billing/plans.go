@@ -99,6 +99,8 @@ const (
 	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
 
+	AutomationActions Limit = store.AutomationActions // automatic actions this quota month (usage_events)
+
 	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
 	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
 )

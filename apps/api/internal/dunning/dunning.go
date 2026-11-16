@@ -229,6 +229,14 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 	if err != nil {
 		return false, err
 	}
+	// One automatic action per notice, whoever pressed "Send now" (running an automation now is still one).
+	action := "dunning:" + id + ":" + strconv.Itoa(n.Level)
+	if err := s.db.ReserveAutomation(ctx, ws.ID, action, now); err != nil {
+		if by == nil && errors.Is(err, store.ErrAdmissionDenied) {
+			return false, nil // paused: the notice waits for a plan with room, a new month or more seats
+		}
+		return false, err
+	}
 	sent := false
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		var sentBy *string
@@ -251,6 +259,9 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 		if err != nil || !won {
 			return err
 		}
+		if err := q.SettleAutomation(ctx, ws.ID, action, now); err != nil {
+			return err
+		}
 		if err := notifications.Notify(ctx, q, ws.ID, "dunning.sent", data, to, now); err != nil {
 			return err
 		}
@@ -260,6 +271,11 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 		sent = true
 		return nil
 	})
+	if err == nil && !sent || errors.Is(err, errChanged) { // nothing went: what is due is computed again next time
+		if rerr := s.db.ReleaseAutomation(context.WithoutCancel(ctx), ws.ID, action); rerr != nil {
+			return false, errors.Join(err, rerr)
+		}
+	}
 	if errors.Is(err, errChanged) && by == nil {
 		return false, nil // the next run computes it again
 	}

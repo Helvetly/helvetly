@@ -34,12 +34,12 @@ func or(a, b string) string {
 }
 
 // monthly: limits counted per quota month (UTC), so nearing one is news again next month.
-var monthlyLimits = map[Limit]bool{Invoices: true, Expenses: true, Signatures: true, AITokens: true}
+var monthlyLimits = map[Limit]bool{Invoices: true, Expenses: true, Signatures: true, AITokens: true, AutomationActions: true}
 
 var limitNouns = map[Limit]string{Members: "member seats", Clients: "clients", Invoices: "invoices this month",
 	Expenses: "expenses this month", Products: "products and services", Engagements: "running engagements",
 	Signatures: "signature requests this month", Storage: "storage", AITokens: "AI tokens this month",
-	InvoiceDrafts: "invoice drafts", QuotesRetained: "quotes"}
+	InvoiceDrafts: "invoice drafts", QuotesRetained: "quotes", AutomationActions: "automatic actions this month"}
 
 // notifyNear tells the owners and admins once when an admitted write brings a limit to 90 % or more: once a month
 // for a monthly limit, once per cap for the others (a new plan's cap is news again).
