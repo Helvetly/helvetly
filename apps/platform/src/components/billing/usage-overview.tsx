@@ -61,7 +61,7 @@ export function UsageOverview({ billing }: { billing: Billing }) {
     <section
       aria-labelledby="usage-title"
       data-slot="usage-overview"
-      className="@container grid gap-3"
+      className="@container grid gap-2.5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-1">
         <h2 id="usage-title" className="text-body font-semibold">
@@ -74,7 +74,7 @@ export function UsageOverview({ billing }: { billing: Billing }) {
         </p>
       </div>
       {pressing && <UpgradeNudge billing={billing} item={pressing} />}
-      <ul className="grid grid-cols-2 gap-3 @3xl:grid-cols-3 @5xl:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-2.5 @2xl:grid-cols-3 @4xl:grid-cols-4">
         {items.map((item) => (
           <UsageTile key={item.limit} item={item} trial={billing.trial} />
         ))}
@@ -182,7 +182,7 @@ export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean })
       <li
         data-slot="usage-meter"
         data-state={state}
-        className="grid min-w-0 content-start gap-3 rounded-xl bg-card p-4 shadow-elevation-1"
+        className="grid min-w-0 content-start gap-2.5 rounded-xl bg-card p-3.5 shadow-elevation-1"
       >
         <TileLabel item={item} />
         <p className="text-title-sm font-medium text-muted-foreground">
@@ -200,7 +200,7 @@ export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean })
       data-slot="usage-meter"
       data-state={state}
       className={cn(
-        'grid min-w-0 content-start gap-3 rounded-xl bg-card p-4 shadow-elevation-1',
+        'grid min-w-0 content-start gap-2.5 rounded-xl bg-card p-3.5 shadow-elevation-1',
         note && `ring-1 ${note.ring}`,
       )}
     >
