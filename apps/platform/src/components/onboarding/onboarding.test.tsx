@@ -255,6 +255,21 @@ describe('the welcome', () => {
     expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '5')
   })
 
+  test('has no orb, and typing a name leaves the typed heading alone', async () => {
+    const user = userEvent.setup()
+    const { container } = wrap(<Welcome />)
+    const heading = await welcome()
+    expect(container.querySelector('.heidi-orb-halo')).toBeNull()
+    expect(heading.querySelector('.accent')).toHaveTextContent('Helvetly')
+    const shown = () => heading.querySelector('[aria-hidden]')?.textContent
+    await user.type(
+      await screen.findByRole('textbox', { name: /What should we call you\?/ }),
+      'Anna',
+    )
+    expect(shown()).toBe('Welcome to Helvetly')
+    expect(heading).toHaveAccessibleName('Welcome to Helvetly')
+  })
+
   test('asks what to call the person, empty, and greets with the saved answer only', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
