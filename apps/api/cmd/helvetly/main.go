@@ -164,6 +164,8 @@ func run() error {
 	}
 	bg.Go(ctx, "storage count", files.RunReconcile) // every 10 min: counted objects whose write storage never confirmed
 	db.SetFeatureGate(billingSvc.RequireFeature)
+	// a job leaves an automatic action refused for a used-up limit alone until the month or the cap changes
+	db.SetAutomationWait(billingSvc.AutomationWaits)
 	membersSvc.SetSeats(billingSvc)      // a member who leaves frees a seat
 	invitationsSvc.SetSeats(billingSvc)  // an accepted invitation takes one
 	instalmentsSvc.SetLimits(billingSvc) // the job issues invoices outside the guarded routes

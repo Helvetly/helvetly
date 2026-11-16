@@ -43,6 +43,7 @@ type Service struct {
 	pricedAt time.Time
 
 	customerCurrency sync.Map // Stripe customer id -> the currency Stripe fixed for it
+	refused          sync.Map // workspace and limit -> the amount refused, which automatic actions wait on (AutomationWaits)
 }
 
 // New makes the billing service; plan limits are read from the offer on every check, so a published offer or an
