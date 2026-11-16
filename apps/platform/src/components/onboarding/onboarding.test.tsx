@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -28,10 +28,7 @@ let finished = 0
 let saved: SettingsInput[] = []
 let renamed: unknown[] = []
 let named: unknown[] = []
-let asked: unknown[] = []
-// What the one-time name suggestion answers; each test sets its own.
-let suggestReply: () => Promise<Response> | Response = () =>
-  HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
+let asked: unknown[] = [] // any call to the (retired) name-suggestion endpoint
 let workspaceName = 'Muster GmbH'
 let billing: Billing = billingFixture({ enabled: false, locked: false })
 // A brand-new workspace: nothing about the company yet.
@@ -78,7 +75,7 @@ const server = setupServer(
   }),
   http.post('/api/v1/workspace/name-suggestion', async ({ request }) => {
     asked.push(await request.json())
-    return suggestReply()
+    return HttpResponse.json({ error: { code: 'gone', message: 'gone' } }, { status: 410 })
   }),
   http.patch('/api/v1/workspace', async ({ request }) => {
     renamed.push(await request.json())
@@ -100,8 +97,6 @@ beforeEach(() => {
   renamed = []
   named = []
   asked = []
-  suggestReply = () =>
-    HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
   workspaceName = 'Muster GmbH'
   billing = billingFixture({ enabled: false, locked: false })
   pathname = '/welcome'
@@ -133,11 +128,44 @@ const fillCompany = async (user: User, name = 'Muster GmbH') => {
 /** The first step asks what to call the person; nothing is taken from the account. */
 const start = async (user: User, name = 'Anna Muster') => {
   await user.type(await screen.findByRole('textbox', { name: /What should we call you\?/ }), name)
+  // A workspace that already has its own name starts with it; the sign-up placeholder starts blank.
+  const workspace = screen.getByRole('textbox', { name: /Workspace name/ })
+  if (!(workspace as HTMLInputElement).value) await user.type(workspace, 'Muster Treuhand')
   await user.click(screen.getByRole('button', { name: /Get started/ }))
   // A step moves focus to its heading when it has rendered; typing before that loses the first keys.
   const company = await screen.findByRole('heading', { name: 'Your company' })
   await waitFor(() => expect(company).toHaveFocus())
 }
+
+/** A write that answers only when the test lets it. */
+const gated = () => {
+  const { promise: gate, resolve: open } = Promise.withResolvers<void>()
+  return { gate, open }
+}
+
+describe('focus and scroll after a step change', () => {
+  // The worst order: the animation frame runs before React commits the next step, so focusing "the heading"
+  // then would hit the old one, which the commit removes. The new heading must get it after the commit.
+  test("the new step's heading takes focus and its scroller starts at the top, whatever the frame order", async () => {
+    workspaceName = 'Muster Treuhand'
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((frame) => {
+      frame(0)
+      return 0
+    })
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await user.type(
+      await screen.findByRole('textbox', { name: /What should we call you\?/ }),
+      'Anna',
+    )
+    const scroller = screen.getByRole('main').parentElement as HTMLElement
+    scroller.scrollTop = 120
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    const company = await screen.findByRole('heading', { name: 'Your company' })
+    expect(company).toHaveFocus()
+    expect(scroller.scrollTop).toBe(0)
+  })
+})
 
 const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly' })
 const left = () => waitFor(() => expect(replace).toHaveBeenCalledWith('/invoices?status=open'))
@@ -231,19 +259,9 @@ const toDefaults = async (user: User, settings = empty) => {
 }
 const termsSaved = () => saved.at(-1)?.default_terms_days
 
-const toCompany = async (user: User) => {
-  workspaceName = 'My workspace'
-  wrap(<Welcome />)
-  await start(user)
-  await screen.findByRole('heading', { name: 'Your company' })
-  await fillCompany(user, 'Muster Treuhand GmbH')
-}
-const refuse = (code: string, status: number) => () =>
-  HttpResponse.json({ error: { code, message: code } }, { status })
-
-const suggestButton = () => screen.getByRole('button', { name: /Suggest a name|Suggesting/ })
-
 const workspaceField = () => screen.getByRole('textbox', { name: /Workspace name/ })
+const nameField = () => screen.findByRole('textbox', { name: /What should we call you\?/ })
+const get = () => screen.getByRole('button', { name: /Get started/ })
 
 describe('the welcome', () => {
   test('shows on the first visit, with focus on its heading and the progress', async () => {
@@ -394,195 +412,203 @@ describe('the welcome', () => {
     expect(saved).toHaveLength(0)
   })
 
-  test.each([
-    ['My workspace', [{ name: 'Muster Treuhand GmbH' }]],
-    ['Muster GmbH', []],
-  ])('saving the company names a workspace still called "%s"', async (name, expected) => {
-    workspaceName = name
-    const user = userEvent.setup()
-    wrap(<Welcome />)
-    await start(user)
-    const company = await screen.findByRole('heading', { name: 'Your company' })
-    await waitFor(() => expect(company).toHaveFocus())
-    await fillCompany(user, 'Muster Treuhand GmbH')
-    await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
-    await user.click(screen.getByRole('button', { name: /Continue/ }))
-    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
-    expect(renamed).toEqual(expected)
-  })
-
-  test('the workspace name is its own field: it follows the company until edited, then never changes', async () => {
-    workspaceName = 'My workspace'
-    const user = userEvent.setup()
-    wrap(<Welcome />)
-    await start(user)
-    await screen.findByRole('heading', { name: 'Your company' })
-    await fillCompany(user, 'Muster Treuhand GmbH')
-    const field = screen.getByRole('textbox', { name: /Workspace name/ })
-    await waitFor(() => expect(field).toHaveValue('Muster Treuhand GmbH'))
-    await user.clear(field)
-    await user.type(field, 'Muster')
-    await user.clear(screen.getByLabelText(/Company name/))
-    await user.type(screen.getByLabelText(/Company name/), 'Muster Treuhand AG')
-    expect(field).toHaveValue('Muster')
-    await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
-    await user.click(screen.getByRole('button', { name: /Continue/ }))
-    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
-    expect(renamed).toEqual([{ name: 'Muster' }])
-  })
-
-  test('a name the person already chose is kept, and a blank or refused one blocks the step', async () => {
-    workspaceName = 'Muster GmbH'
-    const user = userEvent.setup()
-    wrap(<Welcome />)
-    await start(user)
-    await screen.findByRole('heading', { name: 'Your company' })
-    await fillCompany(user, 'Another Company AG')
-    const field = screen.getByRole('textbox', { name: /Workspace name/ })
-    expect(field).toHaveValue('Muster GmbH')
-    await user.clear(field)
-    await user.click(screen.getByRole('button', { name: /Continue/ }))
-    expect(field).toHaveAttribute('aria-invalid', 'true')
-    expect(saved).toHaveLength(0)
-    server.use(
-      http.patch('/api/v1/workspace', () =>
-        HttpResponse.json(
-          {
-            error: {
-              code: 'invalid_request',
-              message: 'Give the workspace a name of up to 100 characters.',
-            },
-          },
-          { status: 400 },
-        ),
-      ),
-    )
-    await user.type(field, 'Bad name')
-    await user.click(screen.getByRole('button', { name: /Continue/ }))
-    expect(await screen.findByText(/name of up to 100 characters/)).toBeInTheDocument()
-    expect(field).toHaveValue('Bad name')
-    expect(screen.getByRole('heading', { name: 'Your company' })).toBeInTheDocument()
-  })
-
-  describe('the one-time name suggestion', () => {
-    test('asks nothing until the person clicks: editing the company or the name sends no request', async () => {
-      const user = userEvent.setup()
+  describe('the workspace name on the first step', () => {
+    test('starts blank for the sign-up placeholder', async () => {
       workspaceName = 'My workspace'
       wrap(<Welcome />)
-      await start(user)
-      await screen.findByRole('heading', { name: 'Your company' })
-      await waitFor(() => expect(suggestButton()).toBeInTheDocument())
-      // No separate consent box: the click is the consent, said by the button's description.
-      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-      expect(suggestButton()).toBeDisabled() // no company yet
-      await fillCompany(user, 'Muster Treuhand GmbH')
-      expect(suggestButton()).toBeEnabled()
-      expect(suggestButton()).toHaveAccessibleDescription(
-        /Share only your company name with OpenAI/,
-      )
-      await user.type(screen.getByLabelText(/Company name/), ' AG')
-      await user.type(workspaceField(), 'x')
-      expect(asked).toHaveLength(0) // typing never calls the model
+      await nameField()
+      expect(workspaceField()).toHaveValue('')
     })
 
-    test('one click sends only the company name and fills the untouched field, still editable', async () => {
+    test('keeps a chosen name, editable, trimmed, saved with the account name before Company', async () => {
+      workspaceName = 'Muster GmbH'
       const user = userEvent.setup()
-      await toCompany(user)
-      await user.click(suggestButton())
-      expect(await screen.findByText('Workspace name suggested. You can edit it.')).toHaveClass(
-        'sr-only',
-      ) // announced, not a visible panel
-      expect(asked).toEqual([{ company_name: 'Muster Treuhand GmbH', consent: true }])
-      expect(screen.queryByRole('button', { name: 'Suggest a name' })).not.toBeInTheDocument() // the one use is spent
-      expect(workspaceField()).toHaveValue('Muster')
-      await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
-      await user.click(screen.getByRole('button', { name: /Continue/ }))
-      expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
-      expect(renamed).toEqual([{ name: 'Muster' }])
-    })
-
-    test('a second click while it asks sends nothing more', async () => {
-      const user = userEvent.setup()
-      const hold = Promise.withResolvers<void>()
-      suggestReply = async () => {
-        await hold.promise
-        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
-      }
-      await toCompany(user)
-      await user.dblClick(suggestButton())
-      const busy = screen.getByRole('button', { name: /Suggesting/ })
-      expect(busy).toBeDisabled()
-      expect(busy).toHaveAttribute('aria-busy', 'true')
-      hold.resolve()
-      await screen.findByText('Workspace name suggested. You can edit it.')
-      expect(asked).toHaveLength(1)
-    })
-
-    test('a result that arrives after the company name changed is dropped', async () => {
-      const user = userEvent.setup()
-      const hold = Promise.withResolvers<void>()
-      suggestReply = async () => {
-        await hold.promise
-        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
-      }
-      await toCompany(user)
-      await user.click(suggestButton())
-      expect(screen.getByRole('button', { name: /Suggesting/ })).toBeDisabled()
-      await user.type(screen.getByLabelText(/Company name/), ' AG')
-      hold.resolve()
-      expect(await screen.findByText(/one-time suggestion has been used/)).toBeInTheDocument()
-      expect(workspaceField()).toHaveValue('Muster Treuhand GmbH AG')
-    })
-
-    test('a result never overwrites a name the person typed meanwhile', async () => {
-      const user = userEvent.setup()
-      const hold = Promise.withResolvers<void>()
-      suggestReply = async () => {
-        await hold.promise
-        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
-      }
-      await toCompany(user)
-      await user.click(suggestButton())
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      expect(workspaceField()).toHaveValue('Muster GmbH')
       await user.clear(workspaceField())
-      await user.type(workspaceField(), 'Mine')
-      hold.resolve()
-      expect(await screen.findByText(/one-time suggestion has been used/)).toBeInTheDocument()
-      expect(workspaceField()).toHaveValue('Mine')
+      await user.type(workspaceField(), '  Muster AG  ')
+      await user.click(get())
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(named).toEqual([{ name: 'Anna' }])
+      expect(renamed).toEqual([{ name: 'Muster AG' }])
+      expect(finished).toBe(0)
+    })
+
+    test('an unchanged chosen name sends no workspace request', async () => {
+      workspaceName = 'Muster GmbH'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await start(user)
+      expect(renamed).toEqual([])
     })
 
     test.each([
-      ['ai_unavailable', 502, 'We couldn’t suggest a name. Enter one yourself.', false],
-      ['rate_limited', 429, 'We couldn’t suggest a name. Enter one yourself.', true],
-      [
-        'suggestion_used',
-        409,
-        'Your one-time suggestion has been used. Enter or edit the name yourself.',
-        false,
-      ],
-      ['ai_not_configured', 409, 'Name suggestions are unavailable. Enter a name yourself.', false],
-    ])(
-      '%s leaves the manual name and %s only retries when nothing was spent',
-      async (code, status, note, retry) => {
-        const user = userEvent.setup()
-        suggestReply = refuse(code, status)
-        await toCompany(user)
-        await user.click(suggestButton())
-        expect(await screen.findByText(note)).toBeInTheDocument()
-        expect(workspaceField()).toHaveValue('Muster Treuhand GmbH')
-        expect(screen.queryByRole('button', { name: 'Suggest a name' }) !== null).toBe(retry)
-        await user.clear(workspaceField())
-        await user.type(workspaceField(), 'Muster')
-        expect(workspaceField()).toHaveValue('Muster')
-      },
-    )
-
-    test('is not offered where the person already chose the workspace name', async () => {
+      ['', 'Required'],
+      ['   ', 'Required'],
+      ['x'.repeat(101), 'Enter a name of up to 100 characters.'],
+    ])('the blank or over-long workspace name %j sends nothing', async (value, message) => {
+      workspaceName = 'My workspace'
       const user = userEvent.setup()
-      workspaceName = 'Muster GmbH'
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      // maxLength stops typing at 100, so a longer value goes in without typing.
+      fireEvent.change(workspaceField(), { target: { value } })
+      await user.click(get())
+      expect(workspaceField()).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getAllByText(message).length).toBeGreaterThan(0)
+      expect(named).toHaveLength(0)
+      expect(renamed).toHaveLength(0)
+    })
+
+    test('a refused workspace name keeps both values, and the retry repeats only the workspace write', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Taken')
+      server.use(
+        http.patch('/api/v1/workspace', () =>
+          HttpResponse.json(
+            { error: { code: 'invalid_request', message: 'That workspace name is taken.' } },
+            { status: 400 },
+          ),
+        ),
+      )
+      await user.click(get())
+      expect(await screen.findByText('That workspace name is taken.')).toBeInTheDocument()
+      expect(workspaceField()).toHaveValue('Taken')
+      expect(await nameField()).toHaveValue('Anna')
+      expect(screen.queryByRole('heading', { name: 'Your company' })).not.toBeInTheDocument()
+      server.resetHandlers()
+      await user.clear(workspaceField())
+      await user.type(workspaceField(), 'Free')
+      await user.click(get())
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(named).toEqual([{ name: 'Anna' }]) // saved once, not again
+      expect(renamed).toEqual([{ name: 'Free' }])
+    })
+
+    test('a refused account name keeps both values and sends no workspace request', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Muster')
+      server.use(
+        http.patch('/api/v1/account', () =>
+          HttpResponse.json(
+            { error: { code: 'server_error', message: 'Try again.' } },
+            { status: 500 },
+          ),
+        ),
+      )
+      await user.click(get())
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+      expect(workspaceField()).toHaveValue('Muster')
+      expect(renamed).toHaveLength(0)
+      server.resetHandlers()
+      await user.click(get())
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('both inputs stay locked through both saves, so what advances is what is shown', async () => {
+      workspaceName = 'My workspace'
+      const account = gated()
+      const workspace = gated()
+      server.use(
+        http.patch('/api/v1/account', async ({ request }) => {
+          await account.gate
+          const input = (await request.json()) as { name: string }
+          named.push(input)
+          return HttpResponse.json({ data: { ...session().user, name: input.name } })
+        }),
+        http.patch('/api/v1/workspace', async ({ request }) => {
+          await workspace.gate
+          renamed.push(await request.json())
+          return HttpResponse.json({ data: { id: 'wsp_1', name: 'x', timezone: 'Europe/Zurich' } })
+        }),
+      )
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Submitted Workspace')
+      await user.click(get())
+      await waitFor(() => expect(workspaceField()).toHaveAttribute('readonly'))
+      await user.type(workspaceField(), ' Latest') // ignored while the account write is pending
+      expect(workspaceField()).toHaveValue('Submitted Workspace')
+      account.open()
+      await waitFor(() => expect(named).toHaveLength(1))
+      expect(workspaceField()).toHaveAttribute('readonly') // still locked for the workspace write
+      expect(await nameField()).toHaveAttribute('readonly')
+      workspace.open()
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(renamed).toEqual([{ name: 'Submitted Workspace' }])
+    })
+
+    test('a double submit in one tick sends each write once', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Muster')
+      const form = workspaceField().closest('form') as HTMLFormElement
+      // Raw events, not fireEvent: no render happens between the two, as with a fast double click.
+      const submit = () =>
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      submit()
+      submit()
+      expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+      expect(named).toEqual([{ name: 'Anna' }])
+      expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('a failed save unlocks both inputs for a correction', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await user.type(await nameField(), 'Anna')
+      await user.type(workspaceField(), 'Taken')
+      server.use(
+        http.patch('/api/v1/workspace', () =>
+          HttpResponse.json(
+            { error: { code: 'invalid_request', message: 'That workspace name is taken.' } },
+            { status: 400 },
+          ),
+        ),
+      )
+      await user.click(get())
+      expect(await screen.findByText('That workspace name is taken.')).toBeInTheDocument()
+      await waitFor(() => expect(workspaceField()).not.toHaveAttribute('readonly'))
+      expect(await nameField()).not.toHaveAttribute('readonly')
+      await user.type(workspaceField(), '2')
+      expect(workspaceField()).toHaveValue('Taken2')
+    })
+
+    test('Company has no workspace field, editing it changes nothing, and nothing asks for a suggestion', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
       wrap(<Welcome />)
       await start(user)
-      await screen.findByRole('heading', { name: 'Your company' })
+      await fillCompany(user, 'Muster Treuhand GmbH')
+      expect(screen.queryByRole('textbox', { name: /Workspace name/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Suggest a name/ })).not.toBeInTheDocument()
+      await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+      expect(renamed).toEqual([{ name: 'Muster Treuhand' }]) // only the first step's write
+      expect(asked).toHaveLength(0)
+    })
+
+    test('going back keeps the typed values', async () => {
+      workspaceName = 'My workspace'
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await start(user, 'Anna')
+      await user.click(screen.getByRole('button', { name: /Back/ }))
+      expect(await nameField()).toHaveValue('Anna')
+      expect(workspaceField()).toHaveValue('Muster Treuhand')
     })
   })
 

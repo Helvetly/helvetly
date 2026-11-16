@@ -26,7 +26,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { LoginShowcase } from '@/components/auth/login-showcase'
 import {
@@ -53,7 +53,7 @@ import {
 } from '@/lib/invoices'
 import { queryKeys, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
-import { useSuggestWorkspaceName, useUpdateWorkspace } from '@/lib/workspaces'
+import { useUpdateWorkspace } from '@/lib/workspaces'
 
 import { InvoicePreview } from './invoice-preview'
 import { LogoCard } from './logo-card'
@@ -63,13 +63,11 @@ import {
   uidDigits,
   validate,
   validPersonName,
-  workspaceNameFor,
   valuesFrom,
   vatSuffix,
   type Values,
 } from './onboarding-model'
 import { TypedWelcomeTitle, WelcomeBenefits } from './welcome-intro'
-import { WorkspaceNameInput, type Suggestion, type SuggestionState } from './workspace-name-suggest'
 
 type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
@@ -83,15 +81,6 @@ const LANGUAGES: { value: DocLanguage; label: string }[] = [
 
 /** What sign-up calls a new workspace (apps/api/internal/auth/signin.go). */
 const DEFAULT_WORKSPACE_NAME = 'My workspace'
-
-/** What the page shows for a failed suggestion: only a refusal that left the use untaken may be tried again. */
-function suggestionFailure(error: unknown): SuggestionState {
-  const code = error instanceof ApiError ? error.code : ''
-  if (code === 'ai_not_configured') return 'unavailable'
-  if (code === 'suggestion_used' || code === 'suggestion_pending') return 'used'
-  if (code === 'ai_unavailable') return 'failedSpent'
-  return 'failed'
-}
 
 /** The /welcome page; the signed-in layout has the session by now. */
 export function Welcome() {
@@ -129,25 +118,17 @@ export function WelcomePage({ session }: { session: Session }) {
   const [nameInput, setNameInput] = useState('')
   const [nameError, setNameError] = useState<string>()
   const [confirmedName, setConfirmedName] = useState<string | null>(null)
-  // null until the person edits the field: until then it follows the company name (or keeps a name
-  // they already chose), and what they typed is never replaced.
-  const [workspaceEdit, setWorkspaceEdit] = useState<string | null>(null)
-  // The one-time AI suggestion: asked only by this person's own click on Suggest (their consent), and a result only
-  // lands in a field nobody edited.
-  const suggestion = useSuggestWorkspaceName()
-  const [suggestState, setSuggestState] = useState<SuggestionState>('idle')
-  const [suggested, setSuggested] = useState<string | null>(null)
-  const asked = useRef<{ id: number; controller: AbortController } | null>(null)
-  // Set synchronously, so a second click before the page has re-rendered cannot send a second request.
-  const inFlight = useRef(false)
-  const latest = useRef({ company: '', edited: false })
+  // Manual and independent of the company: a name already chosen is the starting point, the sign-up
+  // placeholder is not. Read once, so a refreshed session never resets what was typed.
+  const [workspaceInput, setWorkspaceInput] = useState(() =>
+    session.workspace.name === DEFAULT_WORKSPACE_NAME ? '' : session.workspace.name,
+  )
+  const [workspaceError, setWorkspaceError] = useState<string>()
+  // What the server already has from this step, so a retry after a half-saved attempt repeats only the missing write.
+  const savedProfile = useRef<string | null>(null)
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
   const values = edited ?? (settings.data ? valuesFrom(settings.data) : null)
-  const workspaceName =
-    workspaceEdit ??
-    suggested ??
-    workspaceNameFor(session.workspace.name, values?.name ?? '', DEFAULT_WORKSPACE_NAME)
   const change = (patch: Partial<Values>) => {
     if (!values) return
     setEdited({ ...values, ...patch })
@@ -167,88 +148,36 @@ export function WelcomePage({ session }: { session: Session }) {
     if (done) router.replace(target)
   }, [done, target, router])
 
-  useEffect(() => {
-    latest.current = { company: values?.name.trim() ?? '', edited: workspaceEdit !== null }
-  }, [values?.name, workspaceEdit])
-  useEffect(() => () => asked.current?.controller.abort(), [])
-
-  const askSuggestion = () => {
-    const company = latest.current.company
-    if (!company || inFlight.current) return
-    inFlight.current = true
-    asked.current?.controller.abort()
-    const controller = new AbortController()
-    const id = (asked.current?.id ?? 0) + 1
-    asked.current = { id, controller }
-    setSuggestState('pending')
-    suggestion.mutate(
-      { company_name: company, signal: controller.signal },
-      {
-        onSettled: () => {
-          if (asked.current?.id === id) inFlight.current = false
-        },
-        onSuccess: ({ data }) => {
-          if (asked.current?.id !== id) return
-          // A result for a company name that has changed, or into a name the person has typed, is dropped
-          // (the one use is spent either way).
-          if (latest.current.company !== company || latest.current.edited) setSuggestState('used')
-          else {
-            setSuggested(data.name)
-            setSuggestState('applied')
-          }
-        },
-        onError: (error) => {
-          if (asked.current?.id !== id || controller.signal.aborted) return
-          setSuggestState(suggestionFailure(error))
-        },
-      },
-    )
-  }
-
   /** Saves the values shown (or only what was edited, unless `always`); false when it couldn't. */
   const persist = async (always: boolean) => {
     if (!values || !settings.data || (!edited && !always)) return true
     const problems: Errors = validate(values)
-    if (!workspaceName.trim()) problems.workspace_name = translate('thisIsRequired')
     if (Object.keys(problems).length) {
       setErrors(problems)
       return false
     }
     try {
       await save.mutateAsync(toSettingsInput(settings.data, values))
-      // The settings now come from the server, not from what was typed: the workspace name is
-      // confirmed as shown, so it must not fall back to a default derived from the company field.
-      setWorkspaceEdit(workspaceName)
       setEdited(null)
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) setErrors(fieldErrors(error.details))
       return false
     }
-    // The confirmed name is saved as it stands: a company-derived default for the "My workspace"
-    // placeholder, what the person typed, or the name they already chose (unchanged, no request).
-    const wanted = workspaceName.trim()
-    if (wanted !== session.workspace.name) {
-      try {
-        await rename.mutateAsync({ name: wanted })
-      } catch (error) {
-        // The settings are saved; the name stays on screen with the server's reason.
-        setErrors({ workspace_name: errorMessage(error) })
-        return false
-      }
-    }
     return true
   }
 
-  // Each step announces itself: focus moves to its heading once it has rendered.
   const go = (to: StepId) => {
     setStep(to)
     if (to === 'done') finish.mutate()
-    requestAnimationFrame(() => {
-      // The new step starts at its top, progress bar included.
-      if (scroller.current) scroller.current.scrollTop = 0
-      heading.current?.focus()
-    })
   }
+  // Each step announces itself, the first included: when its keyed container is committed (not a frame later,
+  // which can come before it) the scroller starts at the step's top, progress bar included, and focus moves to
+  // the new heading, already attached by then.
+  const announce = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    if (scroller.current) scroller.current.scrollTop = 0
+    heading.current?.focus()
+  }, [])
   const next = () => go(steps[Math.min(index + 1, steps.length - 1)] ?? 'done')
   const back = index > 0 ? () => go(steps[index - 1] ?? 'welcome') : undefined
   // Focus goes to the first field with an error once the errors are on screen.
@@ -256,25 +185,57 @@ export function WelcomePage({ session }: { session: Session }) {
   useEffect(() => {
     if (invalidTick) document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [invalidTick])
-  const saveName = async () => {
-    if (profile.isPending) return
+  // A ref, because a second submit in the same tick still sees the state of the first render.
+  const welcomeSaving = useRef(false)
+  const [welcomeBusy, setWelcomeBusy] = useState(false)
+  const saveWelcome = async () => {
+    if (welcomeSaving.current) return
+    welcomeSaving.current = true
+    setWelcomeBusy(true)
+    try {
+      await saveWelcomeNames()
+    } finally {
+      welcomeSaving.current = false
+      setWelcomeBusy(false)
+    }
+  }
+  const saveWelcomeNames = async () => {
     const name = nameInput.trim()
-    if (!validPersonName(name)) {
-      setNameError(translate('enterANameOfUpTo100Characters'))
+    const workspace = workspaceInput.trim()
+    const nameProblem = validPersonName(name)
+      ? undefined
+      : translate('enterANameOfUpTo100Characters')
+    const workspaceProblem = validPersonName(workspace)
+      ? undefined
+      : translate(workspace ? 'enterANameOfUpTo100Characters' : 'thisIsRequired')
+    setNameError(nameProblem)
+    setWorkspaceError(workspaceProblem)
+    if (nameProblem || workspaceProblem) {
       setInvalidTick((tick) => tick + 1)
       return
     }
     try {
-      const { data } = await profile.mutateAsync({ name })
-      setConfirmedName(data.name)
-      setNameError(undefined)
-      next()
+      if (savedProfile.current !== name) {
+        const { data } = await profile.mutateAsync({ name })
+        savedProfile.current = name
+        setConfirmedName(data.name)
+      }
     } catch (error) {
-      // Stays on this step with the input as typed.
+      // Stays on this step with both inputs as typed.
       if (error instanceof ApiError && error.status === 422)
         setNameError(fieldErrors(error.details).name ?? errorMessage(error))
       setInvalidTick((tick) => tick + 1)
+      return
     }
+    try {
+      if (workspace !== session.workspace.name) await rename.mutateAsync({ name: workspace })
+    } catch (error) {
+      // The account name is saved; a retry sends only the workspace name.
+      setWorkspaceError(errorMessage(error))
+      setInvalidTick((tick) => tick + 1)
+      return
+    }
+    next()
   }
   const saveAndNext = async () => {
     if (save.isPending) return
@@ -300,11 +261,9 @@ export function WelcomePage({ session }: { session: Session }) {
     then?.()
   }
 
-  useEffect(() => heading.current?.focus(), [])
-
   if (done) return null
 
-  const busy = save.isPending || finish.isPending || rename.isPending
+  const busy = save.isPending || finish.isPending
   const error =
     finish.error ??
     (profile.error && profile.error.status !== 422 ? profile.error : null) ??
@@ -331,6 +290,7 @@ export function WelcomePage({ session }: { session: Session }) {
             )}
             <div
               key={step}
+              ref={announce}
               data-testid={`onboarding-step-${step}`}
               className="mt-8 duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2"
             >
@@ -340,12 +300,18 @@ export function WelcomePage({ session }: { session: Session }) {
                   name={confirmedName}
                   input={nameInput}
                   error={nameError}
-                  busy={profile.isPending}
+                  busy={welcomeBusy}
+                  workspace={workspaceInput}
+                  workspaceError={workspaceError}
                   onInput={(value) => {
                     setNameInput(value)
                     setNameError(undefined)
                   }}
-                  onDone={() => void saveName()}
+                  onWorkspace={(value) => {
+                    setWorkspaceInput(value)
+                    setWorkspaceError(undefined)
+                  }}
+                  onDone={() => void saveWelcome()}
                 />
               )}
               {step === 'company' && (
@@ -354,21 +320,6 @@ export function WelcomePage({ session }: { session: Session }) {
                   values={values}
                   errors={errors}
                   busy={busy}
-                  workspaceName={workspaceName}
-                  suggestion={
-                    // Only for the sign-up placeholder: a name the person chose is never offered a replacement.
-                    session.workspace.name === DEFAULT_WORKSPACE_NAME
-                      ? {
-                          state: suggestState,
-                          canAsk: !!values?.name.trim(),
-                          onAsk: askSuggestion,
-                        }
-                      : null
-                  }
-                  onWorkspaceName={(value) => {
-                    setWorkspaceEdit(value)
-                    setErrors((current) => ({ ...current, workspace_name: undefined }))
-                  }}
                   onChange={change}
                   onBack={back}
                   onDone={() => void saveAndNext()}
@@ -556,7 +507,10 @@ function WelcomeStep({
   input,
   error,
   busy,
+  workspace,
+  workspaceError,
   onInput,
+  onWorkspace,
   onDone,
 }: {
   heading: HeadingRef
@@ -565,7 +519,10 @@ function WelcomeStep({
   input: string
   error?: string
   busy: boolean
+  workspace: string
+  workspaceError?: string
   onInput: (value: string) => void
+  onWorkspace: (value: string) => void
   onDone: () => void
 }) {
   return (
@@ -605,7 +562,26 @@ function WelcomeStep({
             maxLength={100}
             autoComplete="off"
             value={input}
+            readOnly={busy}
             onChange={(event) => onInput(event.target.value)}
+          />
+        </FormField>
+        <FormField
+          id="onboarding-workspace-name"
+          label={translate('workspaceName')}
+          tip={translate('workspaceNameHelp')}
+          error={workspaceError}
+          required
+          className="mt-4"
+        >
+          <input
+            {...describedBy('onboarding-workspace-name', workspaceError)}
+            className={inputClass}
+            maxLength={100}
+            autoComplete="off"
+            value={workspace}
+            readOnly={busy}
+            onChange={(event) => onWorkspace(event.target.value)}
           />
         </FormField>
         <Actions>
@@ -627,9 +603,6 @@ function CompanyStep({
   values,
   errors,
   busy,
-  workspaceName,
-  suggestion,
-  onWorkspaceName,
   onChange,
   onBack,
   onDone,
@@ -638,9 +611,6 @@ function CompanyStep({
   values: Values | null
   errors: Errors
   busy: boolean
-  workspaceName: string
-  suggestion: Suggestion | null
-  onWorkspaceName: (value: string) => void
   onChange: (patch: Partial<Values>) => void
   onBack?: () => void
   onDone: () => void
@@ -679,22 +649,6 @@ function CompanyStep({
           required
         >
           {text('name', 70)}
-        </FormField>
-        <FormField
-          id="onboarding-workspace-name"
-          label={translate('workspaceName')}
-          tip={translate('workspaceNameHelp')}
-          error={errors.workspace_name}
-          required
-        >
-          <WorkspaceNameInput
-            {...describedBy('onboarding-workspace-name', errors.workspace_name)}
-            suggestion={suggestion}
-            maxLength={100}
-            value={workspaceName}
-            disabled={!values}
-            onChange={(event) => onWorkspaceName(event.target.value)}
-          />
         </FormField>
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
           <FormField
