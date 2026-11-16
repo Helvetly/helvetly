@@ -50,3 +50,11 @@ func TestFakeReadsCSVAsAClientListForAnAutoImport(t *testing.T) {
 		t.Fatalf("%s %v", reply.Text, err)
 	}
 }
+
+func TestFakeSuggestsAWorkspaceName(t *testing.T) {
+	schema := &Schema{Name: "workspace_name", JSON: map[string]any{"properties": map[string]any{"name": map[string]any{"type": "string"}}}}
+	reply, err := Fake{}.Answer(context.Background(), Request{Message: "Muster Treuhand GmbH", Schema: schema})
+	if err != nil || reply.Text != `{"name":"Muster Treuhand GmbH"}` || reply.Tokens == nil {
+		t.Fatalf("reply %+v %v", reply, err)
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
@@ -47,16 +48,20 @@ type Service struct {
 	billing Billing
 	log     *slog.Logger
 	now     func() time.Time
+	// namer is the model of the one-time name suggestion (nil: off); limit is its per-address rate limit.
+	namer aimodel.Provider
+	limit *auth.RateLimiter
 }
 
 func New(db *store.Store, a Auth, b Billing, files Storage, log *slog.Logger) *Service {
-	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(6, time.Minute)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/workspaces", s.auth.SignedIn(s.create))
 	mux.HandleFunc("PATCH /api/v1/workspace", s.auth.SignedIn(s.update))
 	mux.HandleFunc("DELETE /api/v1/workspace", s.auth.SignedIn(s.delete))
+	mux.HandleFunc("POST /api/v1/workspace/name-suggestion", s.auth.SignedIn(s.suggestName))
 	mux.HandleFunc("GET /api/v1/workspace/logo", s.auth.SignedIn(s.getLogo))
 	mux.HandleFunc("PUT /api/v1/workspace/logo", s.auth.SignedIn(s.putLogo))
 	mux.HandleFunc("DELETE /api/v1/workspace/logo", s.auth.SignedIn(s.deleteLogo))

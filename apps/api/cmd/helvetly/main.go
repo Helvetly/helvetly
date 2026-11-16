@@ -203,6 +203,12 @@ func run() error {
 	notificationsSvc := notifications.New(db, authSvc, notifyMailer, cfg.PublicURL, cfg.SecretKey, slog.Default())
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
+	// The one-time workspace-name suggestion is pinned to the cheapest model, whatever model Heidi is set to.
+	var nameModel aimodel.Provider = aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, aimodel.DefaultModel)
+	if cfg.AI.FakeImportModel {
+		nameModel = aimodel.Fake{}
+	}
+	workspacesSvc.SetNamer(nameModel)
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
 	exportSvc.SetHR(employeesSvc)

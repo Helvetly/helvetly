@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -27,6 +27,11 @@ let onboarded = false
 let finished = 0
 let saved: SettingsInput[] = []
 let renamed: unknown[] = []
+let named: unknown[] = []
+let asked: unknown[] = []
+// What the one-time name suggestion answers; each test sets its own.
+let suggestReply: () => Promise<Response> | Response = () =>
+  HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
 let workspaceName = 'Muster GmbH'
 let billing: Billing = billingFixture({ enabled: false, locked: false })
 // A brand-new workspace: nothing about the company yet.
@@ -66,6 +71,15 @@ const server = setupServer(
     onboarded = true
     return new HttpResponse(null, { status: 204 })
   }),
+  http.patch('/api/v1/account', async ({ request }) => {
+    const input = (await request.json()) as { name: string }
+    named.push(input)
+    return HttpResponse.json({ data: { ...session().user, name: input.name } })
+  }),
+  http.post('/api/v1/workspace/name-suggestion', async ({ request }) => {
+    asked.push(await request.json())
+    return suggestReply()
+  }),
   http.patch('/api/v1/workspace', async ({ request }) => {
     renamed.push(await request.json())
     return HttpResponse.json({ data: { id: 'wsp_1', name: 'x', timezone: 'Europe/Zurich' } })
@@ -84,6 +98,10 @@ beforeEach(() => {
   finished = 0
   saved = []
   renamed = []
+  named = []
+  asked = []
+  suggestReply = () =>
+    HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
   workspaceName = 'Muster GmbH'
   billing = billingFixture({ enabled: false, locked: false })
   pathname = '/welcome'
@@ -112,7 +130,16 @@ const fillCompany = async (user: User, name = 'Muster GmbH') => {
   await user.type(screen.getByLabelText(/^City/), 'Zürich')
 }
 
-const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly, Anna' })
+/** The first step asks what to call the person; nothing is taken from the account. */
+const start = async (user: User, name = 'Anna Muster') => {
+  await user.type(await screen.findByRole('textbox', { name: /What should we call you\?/ }), name)
+  await user.click(screen.getByRole('button', { name: /Get started/ }))
+  // A step moves focus to its heading when it has rendered; typing before that loses the first keys.
+  const company = await screen.findByRole('heading', { name: 'Your company' })
+  await waitFor(() => expect(company).toHaveFocus())
+}
+
+const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly' })
 const left = () => waitFor(() => expect(replace).toHaveBeenCalledWith('/invoices?status=open'))
 
 describe('the redirect', () => {
@@ -194,7 +221,7 @@ describe('the redirect', () => {
 const toDefaults = async (user: User, settings = empty) => {
   server.use(http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: settings })))
   wrap(<Welcome />)
-  await user.click(await screen.findByRole('button', { name: /Get started/ }))
+  await start(user)
   await screen.findByRole('heading', { name: 'Your company' })
   await fillCompany(user)
   await user.click(screen.getByRole('button', { name: /Continue/ }))
@@ -204,12 +231,77 @@ const toDefaults = async (user: User, settings = empty) => {
 }
 const termsSaved = () => saved.at(-1)?.default_terms_days
 
+const toCompany = async (user: User) => {
+  workspaceName = 'My workspace'
+  wrap(<Welcome />)
+  await start(user)
+  await screen.findByRole('heading', { name: 'Your company' })
+  await fillCompany(user, 'Muster Treuhand GmbH')
+}
+const refuse = (code: string, status: number) => () =>
+  HttpResponse.json({ error: { code, message: code } }, { status })
+
+const suggestButton = () => screen.getByRole('button', { name: /Suggest a name|Suggesting/ })
+
+const workspaceField = () => screen.getByRole('textbox', { name: /Workspace name/ })
+
+const consent = () => screen.getByRole('checkbox', { name: /Share only your company name/ })
+
 describe('the welcome', () => {
   test('shows on the first visit, with focus on its heading and the progress', async () => {
     wrap(<Welcome />)
     const heading = await welcome()
     await waitFor(() => expect(heading).toHaveFocus())
     expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '5')
+  })
+
+  test('asks what to call the person, empty, and greets with the saved answer only', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await welcome()
+    // The account is "Anna Muster", but the input starts empty and nothing is saved unasked.
+    const input = await screen.findByRole('textbox', { name: /What should we call you\?/ })
+    expect(input).toHaveValue('')
+    expect(screen.queryByText(/Anna/)).not.toBeInTheDocument()
+    expect(named).toHaveLength(0)
+    await user.type(input, '  Dr. Anna-Maria Muster  ')
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+    expect(named).toEqual([{ name: 'Dr. Anna-Maria Muster' }])
+    // Back on the first step the greeting is the full saved name, not its first word.
+    await user.click(screen.getByRole('button', { name: /Back/ }))
+    expect(
+      await screen.findByRole('heading', { name: 'Welcome to Helvetly, Dr. Anna-Maria Muster' }),
+    ).toBeInTheDocument()
+  })
+
+  test('an empty, over-long or refused name stays on the first step with its input', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    const input = await screen.findByRole('textbox', { name: /What should we call you\?/ })
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(input).toHaveFocus())
+    expect(screen.getByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    server.use(
+      http.patch('/api/v1/account', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'validation_failed',
+              message: 'Check the highlighted fields.',
+              details: { fields: { name: 'Enter a name of up to 100 characters.' } },
+            },
+          },
+          { status: 422 },
+        ),
+      ),
+    )
+    await user.type(input, 'Anna')
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    expect(await screen.findByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    expect(input).toHaveValue('Anna')
+    expect(screen.queryByRole('heading', { name: 'Your company' })).not.toBeInTheDocument()
   })
 
   test('a person who is done goes on without seeing it', async () => {
@@ -225,7 +317,7 @@ describe('the welcome', () => {
     await welcome()
     expect(screen.queryByRole('button', { name: /Skip for now/ })).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    await start(user)
     await screen.findByRole('heading', { name: 'Your company' })
     await user.keyboard('{Escape}')
     // The company step cannot be skipped, and cannot be left empty or with only some of it.
@@ -250,7 +342,7 @@ describe('the welcome', () => {
   test('a VAT-registered company needs its VAT number; the apartment is always optional', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
-    await user.click(await screen.findByRole('button', { name: /Get started/ }))
+    await start(user)
     await screen.findByRole('heading', { name: 'Your company' })
     await fillCompany(user)
     await user.click(screen.getByLabelText(/Registered for VAT/))
@@ -273,7 +365,7 @@ describe('the welcome', () => {
       }),
     )
     wrap(<Welcome />)
-    await user.click(await screen.findByRole('button', { name: /Get started/ }))
+    await start(user)
     const iban = await screen.findByLabelText('IBAN')
     try {
       expect(iban).toBeDisabled()
@@ -296,7 +388,7 @@ describe('the welcome', () => {
     workspaceName = name
     const user = userEvent.setup()
     wrap(<Welcome />)
-    await user.click(await screen.findByRole('button', { name: /Get started/ }))
+    await start(user)
     const company = await screen.findByRole('heading', { name: 'Your company' })
     await waitFor(() => expect(company).toHaveFocus())
     await fillCompany(user, 'Muster Treuhand GmbH')
@@ -306,10 +398,182 @@ describe('the welcome', () => {
     expect(renamed).toEqual(expected)
   })
 
+  test('the workspace name is its own field: it follows the company until edited, then never changes', async () => {
+    workspaceName = 'My workspace'
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await start(user)
+    await screen.findByRole('heading', { name: 'Your company' })
+    await fillCompany(user, 'Muster Treuhand GmbH')
+    const field = screen.getByRole('textbox', { name: /Workspace name/ })
+    await waitFor(() => expect(field).toHaveValue('Muster Treuhand GmbH'))
+    await user.clear(field)
+    await user.type(field, 'Muster')
+    await user.clear(screen.getByLabelText(/Company name/))
+    await user.type(screen.getByLabelText(/Company name/), 'Muster Treuhand AG')
+    expect(field).toHaveValue('Muster')
+    await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+    expect(renamed).toEqual([{ name: 'Muster' }])
+  })
+
+  test('a name the person already chose is kept, and a blank or refused one blocks the step', async () => {
+    workspaceName = 'Muster GmbH'
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await start(user)
+    await screen.findByRole('heading', { name: 'Your company' })
+    await fillCompany(user, 'Another Company AG')
+    const field = screen.getByRole('textbox', { name: /Workspace name/ })
+    expect(field).toHaveValue('Muster GmbH')
+    await user.clear(field)
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(saved).toHaveLength(0)
+    server.use(
+      http.patch('/api/v1/workspace', () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: 'invalid_request',
+              message: 'Give the workspace a name of up to 100 characters.',
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    )
+    await user.type(field, 'Bad name')
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(await screen.findByText(/name of up to 100 characters/)).toBeInTheDocument()
+    expect(field).toHaveValue('Bad name')
+    expect(screen.getByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+  })
+
+  describe('the one-time name suggestion', () => {
+    test('asks nothing without the person ticking consent and entering a company', async () => {
+      const user = userEvent.setup()
+      workspaceName = 'My workspace'
+      wrap(<Welcome />)
+      await start(user)
+      await screen.findByRole('heading', { name: 'Your company' })
+      await waitFor(() => expect(consent()).toBeInTheDocument())
+      expect(consent()).not.toBeChecked() // off by default
+      expect(suggestButton()).toBeDisabled() // no company yet
+      await fillCompany(user, 'Muster Treuhand GmbH')
+      expect(suggestButton()).toBeDisabled() // no consent yet
+      await user.click(consent())
+      expect(suggestButton()).toBeEnabled()
+      expect(asked).toHaveLength(0) // typing and ticking never call the model
+    })
+
+    test('one click sends only the company name and fills the untouched field, still editable', async () => {
+      const user = userEvent.setup()
+      await toCompany(user)
+      await user.click(consent())
+      await user.click(suggestButton())
+      expect(
+        await screen.findByText('Workspace name suggested. You can edit it.'),
+      ).toBeInTheDocument()
+      expect(asked).toEqual([{ company_name: 'Muster Treuhand GmbH', consent: true }])
+      expect(workspaceField()).toHaveValue('Muster')
+      await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+      expect(renamed).toEqual([{ name: 'Muster' }])
+    })
+
+    test('a result that arrives after the company name changed is dropped', async () => {
+      const user = userEvent.setup()
+      const hold = Promise.withResolvers<void>()
+      suggestReply = async () => {
+        await hold.promise
+        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
+      }
+      await toCompany(user)
+      await user.click(consent())
+      await user.click(suggestButton())
+      expect(screen.getByRole('button', { name: /Suggesting/ })).toBeDisabled()
+      await user.type(screen.getByLabelText(/Company name/), ' AG')
+      hold.resolve()
+      expect(await screen.findByText(/one-time suggestion has been used/)).toBeInTheDocument()
+      expect(workspaceField()).toHaveValue('Muster Treuhand GmbH AG')
+    })
+
+    test('a result never overwrites a name the person typed meanwhile', async () => {
+      const user = userEvent.setup()
+      const hold = Promise.withResolvers<void>()
+      suggestReply = async () => {
+        await hold.promise
+        return HttpResponse.json({ data: { name: 'Muster', company_name: 'Muster Treuhand GmbH' } })
+      }
+      await toCompany(user)
+      await user.click(consent())
+      await user.click(suggestButton())
+      await user.clear(workspaceField())
+      await user.type(workspaceField(), 'Mine')
+      hold.resolve()
+      expect(await screen.findByText(/one-time suggestion has been used/)).toBeInTheDocument()
+      expect(workspaceField()).toHaveValue('Mine')
+    })
+
+    test.each([
+      ['ai_unavailable', 502, 'We couldn’t suggest a name. Enter one yourself.', false],
+      ['rate_limited', 429, 'We couldn’t suggest a name. Enter one yourself.', true],
+      [
+        'suggestion_used',
+        409,
+        'Your one-time suggestion has been used. Enter or edit the name yourself.',
+        false,
+      ],
+      ['ai_not_configured', 409, 'Name suggestions are unavailable. Enter a name yourself.', false],
+    ])(
+      '%s leaves the manual name and %s only retries when nothing was spent',
+      async (code, status, note, retry) => {
+        const user = userEvent.setup()
+        suggestReply = refuse(code, status)
+        await toCompany(user)
+        await user.click(consent())
+        await user.click(suggestButton())
+        expect(await screen.findByText(note)).toBeInTheDocument()
+        expect(workspaceField()).toHaveValue('Muster Treuhand GmbH')
+        expect(screen.queryByRole('button', { name: 'Suggest a name' }) !== null).toBe(retry)
+        await user.clear(workspaceField())
+        await user.type(workspaceField(), 'Muster')
+        expect(workspaceField()).toHaveValue('Muster')
+      },
+    )
+
+    test('is not offered where the person already chose the workspace name', async () => {
+      const user = userEvent.setup()
+      workspaceName = 'Muster GmbH'
+      wrap(<Welcome />)
+      await start(user)
+      await screen.findByRole('heading', { name: 'Your company' })
+      expect(
+        screen.queryByRole('checkbox', { name: /Share only your company name/ }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  test('the logo step asks for the workspace mark first, then the document logo', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await start(user)
+    await screen.findByRole('heading', { name: 'Your company' })
+    await fillCompany(user)
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: 'Add your logo' })
+    const mark = screen.getByText('Workspace logo')
+    const document = screen.getByText('Document logo')
+    expect(mark.compareDocumentPosition(document) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   test('walks through the company, logo and defaults, saving each, then opens a next step', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
-    await user.click(await screen.findByRole('button', { name: /Get started/ }))
+    await start(user)
 
     const company = await screen.findByRole('heading', { name: 'Your company' })
     await waitFor(() => expect(company).toHaveFocus())
@@ -355,7 +619,9 @@ describe('the welcome', () => {
     await user.type(screen.getByLabelText('Number of days'), '45')
     await user.click(screen.getByRole('button', { name: /Continue/ }))
 
-    expect(await screen.findByRole('heading', { name: 'You’re all set' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'You’re all set, Anna Muster' }),
+    ).toBeInTheDocument()
     // The UID follows the invoice language.
     expect(saved[1]).toMatchObject({
       language: 'fr',
@@ -365,7 +631,11 @@ describe('the welcome', () => {
     })
     // Reaching the end is finishing: a reload here does not start over.
     await waitFor(() => expect(finished).toBe(1))
-    expect(screen.getByText(/Still needed to issue invoices: IBAN/)).toBeInTheDocument()
+    // What is still missing is a warning with its way out, not one more list row.
+    const warning = screen.getByRole('status')
+    expect(warning).toHaveTextContent('Still needed to issue invoices')
+    expect(warning).toHaveTextContent('IBAN')
+    expect(within(warning).getByRole('button', { name: 'Finish in Settings' })).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: /Add your first client/ }))
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/clients?new=1'))
