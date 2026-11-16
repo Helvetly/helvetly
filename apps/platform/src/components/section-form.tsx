@@ -258,7 +258,12 @@ export function SectionIcon({ icon: Icon, className }: { icon: LucideIcon; class
 
 /** The dot that says a section has unsaved edits, in the footer and in the section nav. */
 export function UnsavedDot({ className }: { className?: string }) {
-  return <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full bg-link', className)} />
+  return (
+    <span
+      aria-hidden
+      className={cn('size-1.5 shrink-0 rounded-full bg-warning-solid', className)}
+    />
+  )
 }
 
 /**
@@ -279,14 +284,17 @@ export function SectionFooter({ state, className }: { state: SectionState; class
       )}
     >
       <output aria-live="polite" className="flex min-w-0 items-center gap-2 text-[13px]">
-        {/* Fades out over the last half second before it goes. */}
+        {/* Fades out over the last half second before it goes. Separate keys: a reused node would carry the unsaved colour across that delay. */}
         {state.saved && !state.dirty ? (
-          <span className="flex animate-out items-center gap-1.5 font-medium text-success delay-1500 duration-500 fill-mode-forwards fade-out">
+          <span
+            key="saved"
+            className="flex animate-out items-center gap-1.5 font-medium text-success delay-1500 duration-500 fill-mode-forwards fade-out"
+          >
             <Check className="size-4" aria-hidden />
             {translate('saved3')}
           </span>
         ) : state.dirty ? (
-          <span className="flex items-center gap-2 font-medium text-foreground">
+          <span key="unsaved" className="flex items-center gap-2 font-medium text-warning">
             <UnsavedDot />
             {translate('unsavedChanges')}
           </span>
