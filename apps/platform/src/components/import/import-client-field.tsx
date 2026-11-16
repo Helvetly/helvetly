@@ -6,10 +6,10 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { ChevronsUpDown, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 
+import { ClientForm } from '@/components/clients/client-form'
 import { inputClass } from '@/components/clients/fields'
 import { ClientSearch } from '@/components/invoices/client-search'
-import { errorMessage } from '@/lib/api'
-import { useSaveClient, type Client } from '@/lib/clients'
+import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
 /** An imported record's client, chosen among the existing ones (the name the document gave can become a new client in one click). */
@@ -28,7 +28,7 @@ export function ImportClientField({
   onPick: (client: Client) => void
 }) {
   const [open, setOpen] = useState(false)
-  const create = useSaveClient()
+  const [creating, setCreating] = useState(false)
   const documentName = clientName.trim()
   return (
     <FormField id={id} label={translate('client')} error={error} required className="sm:col-span-2">
@@ -61,24 +61,21 @@ export function ImportClientField({
       </Popover>
       {!clientId && documentName && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={create.isPending}
-            onClick={() => create.mutate({ input: { name: documentName } }, { onSuccess: onPick })}
-          >
+          <Button type="button" size="sm" variant="outline" onClick={() => setCreating(true)}>
             <UserPlus />
-            {create.isPending
-              ? translate('saving')
-              : translate('importCreateClient', { name: documentName })}
+            {translate('importCreateClient', { name: documentName })}
           </Button>
-          {create.error && (
-            <span role="alert" className="text-body-sm text-destructive">
-              {errorMessage(create.error)}
-            </span>
-          )}
         </div>
+      )}
+      {creating && (
+        <ClientForm
+          prefillName={documentName}
+          onClose={() => setCreating(false)}
+          onSaved={(created) => {
+            setCreating(false)
+            onPick(created)
+          }}
+        />
       )}
     </FormField>
   )
