@@ -107,7 +107,7 @@ func (e *Employee) Derive(today string) {
 	}
 }
 
-const employeeColumns = `e.id, e.member_user_id, nullif(u.name, ''), m.user_id IS NOT NULL, e.employee_number, e.first_name,
+const employeeColumns = `e.id, e.member_user_id, coalesce(nullif(u.name, ''), u.email), m.user_id IS NOT NULL, e.employee_number, e.first_name,
 	e.last_name, e.email, e.phone, e.street, e.postal_code, e.city, e.address_country, e.position, e.department,
 	e.employment_type, e.working_time_percent, e.employment_start::text, e.employment_end::text, e.employing_entity,
 	e.employer_country, e.social_security_country, e.work_country, e.work_region, e.work_locality, e.place_of_work, e.residence_country, e.cross_border,
@@ -385,7 +385,7 @@ var ErrPayTermsDate = errors.New("pay terms date taken")
 // PayTermsHistory lists an employee's terms, newest effective date first, marking the one in effect today.
 func (q Q) PayTermsHistory(ctx context.Context, workspaceID, employeeID, today string) ([]PayTerms, error) {
 	rows, err := q.db.Query(ctx, `SELECT t.id, t.employee_id, t.effective_from::text, t.basis, t.amount, t.currency, t.frequency,
-		t.note, nullif(u.name, ''), t.created_at FROM employee_pay_terms t LEFT JOIN users u ON u.id = t.created_by
+		t.note, coalesce(nullif(u.name, ''), u.email), t.created_at FROM employee_pay_terms t LEFT JOIN users u ON u.id = t.created_by
 		WHERE t.workspace_id = $1 AND t.employee_id = $2 ORDER BY t.effective_from DESC`, workspaceID, employeeID)
 	if err != nil {
 		return nil, err
@@ -440,7 +440,7 @@ type EmployeeDocument struct {
 }
 
 const employeeDocumentSelect = `SELECT d.id, d.name, d.size, d.content_type, x.type, x.document_date::text, x.retain_until::text,
-	x.retention_rule, x.legal_hold, nullif(u.name, ''), d.created_at
+	x.retention_rule, x.legal_hold, coalesce(nullif(u.name, ''), u.email), d.created_at
 	FROM employee_documents x JOIN documents d ON d.id = x.document_id AND d.hr_private
 	LEFT JOIN users u ON u.id = d.uploaded_by `
 
@@ -498,7 +498,7 @@ type HistoryEvent struct {
 // EmployeeHistory: the audit entries about the employee and, with payroll, their payroll entries, newest first (at
 // most 200).
 func (q Q) EmployeeHistory(ctx context.Context, workspaceID, employeeID string, payroll bool) ([]HistoryEvent, error) {
-	rows, err := q.db.Query(ctx, `SELECT f.kind, f.subject_type, f.subject_id, nullif(u.name, ''), f.at FROM financial_events f
+	rows, err := q.db.Query(ctx, `SELECT f.kind, f.subject_type, f.subject_id, coalesce(nullif(u.name, ''), u.email), f.at FROM financial_events f
 		LEFT JOIN users u ON u.id = f.actor_id WHERE f.workspace_id = $1 AND (f.subject_type = 'employee' AND f.subject_id = $2
 		OR $3 AND f.subject_type = 'payroll_entry' AND f.subject_id IN (SELECT id FROM payroll_entries WHERE workspace_id = $1 AND employee_id = $2))
 		ORDER BY f.seq DESC LIMIT 200`, workspaceID, employeeID, payroll)

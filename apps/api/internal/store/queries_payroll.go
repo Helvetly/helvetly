@@ -93,8 +93,8 @@ func (e *PayrollEntry) Derive() {
 
 const payrollColumns = `p.id, p.employee_id, e.first_name || ' ' || e.last_name, e.employee_number, p.employing_entity,
 	p.period_start::text, p.period_end::text, p.pay_date::text, p.currency, p.gross, p.deductions, p.net, p.employer_costs,
-	p.source, p.source_ref, p.document_id, (SELECT name FROM documents d WHERE d.id = p.document_id AND d.workspace_id = p.workspace_id), p.status, p.payment_status, p.paid_on::text, nullif(a.name, ''), p.approved_at, p.supersedes_id,
-	p.superseded_by, p.version, p.note, nullif(c.name, ''), p.created_at, p.updated_at,
+	p.source, p.source_ref, p.document_id, (SELECT name FROM documents d WHERE d.id = p.document_id AND d.workspace_id = p.workspace_id), p.status, p.payment_status, p.paid_on::text, coalesce(nullif(a.name, ''), a.email), p.approved_at, p.supersedes_id,
+	p.superseded_by, p.version, p.note, coalesce(nullif(c.name, ''), c.email), p.created_at, p.updated_at,
 	coalesce((SELECT jsonb_agg(jsonb_build_object('kind', k.kind, 'label', k.label, 'amount', k.amount) ORDER BY k.position)
 		FROM payroll_components k WHERE k.entry_id = p.id), '[]'),
 	coalesce((SELECT array_agg(b.kind ORDER BY b.kind) FROM payroll_booking_items b WHERE b.entry_id = p.id), '{}'),
@@ -444,7 +444,7 @@ var ErrAlreadyBooked = errors.New("payroll already booked")
 
 func (q Q) PayrollBookings(ctx context.Context, workspaceID string) ([]PayrollBooking, error) {
 	rows, err := q.db.Query(ctx, `SELECT b.id, b.up_to::text, b.base_currency, b.accounts, (SELECT count(*) FROM payroll_booking_items i
-		WHERE i.booking_id = b.id), nullif(u.name, ''), b.created_at FROM payroll_bookings b LEFT JOIN users u ON u.id = b.created_by
+		WHERE i.booking_id = b.id), coalesce(nullif(u.name, ''), u.email), b.created_at FROM payroll_bookings b LEFT JOIN users u ON u.id = b.created_by
 		WHERE b.workspace_id = $1 ORDER BY b.created_at DESC LIMIT 200`, workspaceID)
 	if err != nil {
 		return nil, err
