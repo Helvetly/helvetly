@@ -94,7 +94,12 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
             {urgent.length === 1
               ? translate('message1OpenInvoice')
               : translate('openInvoices', { length: urgent.length })}
-            {next && ` · ${dueText(next, today).replace(/^Due/, 'next due')} (${formatDate(next)})`}
+            {next && (
+              <>
+                {` · ${dueText(next, today).replace(/^Due/, 'next due')} `}
+                <span className="whitespace-nowrap">({formatDate(next)})</span>
+              </>
+            )}
           </p>
         </div>
         <Button asChild variant="outline">
