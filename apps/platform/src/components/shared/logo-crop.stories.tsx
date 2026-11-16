@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { Suspense, use, useState } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
-import { LogoCropDialog } from './logo-crop'
+import { normalizeLogo } from '@/lib/logo-crop'
+
+import { LogoCropDialog, prepareLogo } from './logo-crop'
 
 /** A real PNG of the given size: a wordmark-like bar, on a transparent background when `clear`. */
 async function picture(width: number, height: number, clear = true) {
@@ -277,4 +279,163 @@ export const ExactRatioExifClockwise: Story = {
 export const ExactRatioExifAnticlockwise: Story = {
   render: () => <Turned turn={8} width={400} height={1000} />,
   play: exactTurned([0.03, 0.925]),
+}
+
+/** The pixel (r, g, b, a) at the middle of a picture. */
+async function middlePixel(blob: Blob) {
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.drawImage(bitmap, 0, 0)
+  const at = context.getImageData(bitmap.width >> 1, bitmap.height >> 1, 1, 1).data
+  return { width: bitmap.width, height: bitmap.height, rgba: [...at] }
+}
+
+/** A 1 × 1 GIF of two frames, the first red and the second blue, 10 ms apart, looping for ever. */
+const gifFrame = (pixel: number) => [
+  0x21,
+  0xf9,
+  4,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0x2c,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  1,
+  0,
+  0,
+  2,
+  2,
+  pixel,
+  1,
+  0,
+]
+
+const twoFrameGif = () => {
+  const header = [
+    0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0, 0x80, 0, 0, 0xff, 0, 0, 0, 0, 0xff,
+  ]
+  const loop = [0x21, 0xff, 0x0b, 0x4e, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2e, 0x30]
+  const bytes = header.concat(loop, [3, 1, 0, 0, 0], gifFrame(0x44), gifFrame(0x4c), [0x3b])
+  return new File([new Uint8Array(bytes)], 'logo.gif', { type: 'image/gif' })
+}
+
+const svg = (body: string, size = 'width="200" height="80"') =>
+  new File([`<svg xmlns="http://www.w3.org/2000/svg" ${size}>${body}</svg>`], 'logo.svg', {
+    type: 'image/svg+xml',
+  })
+
+const prepared = async (file: File) => {
+  const result = await prepareLogo(file)
+  if ('problem' in result) throw new Error(result.problem)
+  return result
+}
+
+/** A GIF is frozen on its first frame (red), not the second (blue), whatever the time. */
+export const GifFirstFrame: Story = {
+  render: () => <div />,
+  play: async () => {
+    const { file, origin } = await prepared(twoFrameGif())
+    await expect(origin).toBe('raster')
+    await expect(file.type).toBe('image/png')
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const { rgba } = await middlePixel(file)
+    await expect(rgba).toEqual([255, 0, 0, 255])
+  },
+}
+
+/** A WebP keeps its transparency and its own size as a static PNG. */
+export const WebpTransparent: Story = {
+  render: () => <div />,
+  play: async () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 300
+    canvas.height = 100
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('no canvas')
+    context.fillStyle = '#00ff00'
+    context.fillRect(100, 0, 100, 100)
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/webp', 1),
+    )
+    if (!blob) throw new Error('no webp')
+    const { file, origin } = await prepared(new File([blob], 'logo.webp', { type: 'image/webp' }))
+    await expect(origin).toBe('raster')
+    const bitmap = await createImageBitmap(file)
+    await expect([bitmap.width, bitmap.height]).toEqual([300, 100])
+    const clear = await middlePixel(await canvasPart(file, 10))
+    await expect(clear.rgba[3]).toBe(0)
+    await expect((await middlePixel(file)).rgba).toEqual([0, 255, 0, 255])
+  },
+}
+
+/** The picture's pixel column at `x`, as a 1 × 1 PNG (to read one pixel with middlePixel). */
+async function canvasPart(blob: Blob, x: number) {
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.drawImage(bitmap, x, 50, 1, 1, 0, 0, 1, 1)
+  return new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((part) => (part ? resolve(part) : reject(new Error('no png'))), 'image/png'),
+  )
+}
+
+/** An SVG with a script, a handler and external images is drawn as a plain picture: nothing runs, nothing is fetched. */
+export const SvgIsInert: Story = {
+  render: () => <div />,
+  play: async () => {
+    const outside = 'https://logo-fetch-probe.invalid/x.png'
+    const file = svg(
+      `<script>window.top.svgRan = true; window.svgRan = true</script>
+       <rect x="50" y="20" width="100" height="40" fill="#ff0000" onload="window.top.svgRan = true"/>
+       <image href="${outside}" width="10" height="10"/>
+       <style>@import url("${outside}"); rect { background: url(${outside}) }</style>`,
+    )
+    const { file: png, origin } = await prepared(file)
+    await expect(origin).toBe('vector')
+    const { width, height, rgba } = await middlePixel(png)
+    await expect([width, height]).toEqual([2048, 819])
+    await expect(rgba).toEqual([255, 0, 0, 255])
+    await expect(Reflect.get(window, 'svgRan')).toBeUndefined()
+    await expect(Reflect.get(window.top ?? window, 'svgRan')).toBeUndefined()
+    await expect(
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => entry.name.includes('logo-fetch-probe')),
+    ).toHaveLength(0)
+  },
+}
+
+/** An SVG drawn from only a viewBox keeps its shape. */
+export const SvgViewBoxOnly: Story = {
+  render: () => <div />,
+  play: async () => {
+    const wide = await prepared(svg('<rect width="300" height="100"/>', 'viewBox="0 0 300 100"'))
+    const bitmap = await createImageBitmap(wide.file)
+    await expect([bitmap.width, bitmap.height]).toEqual([2048, 683])
+  },
+}
+
+/** An SVG with a foreignObject taints Chromium's canvas: saving it fails in a controlled way instead of leaking pixels. */
+export const SvgForeignObjectIsRefused: Story = {
+  render: () => <div />,
+  play: async () => {
+    const file = svg(
+      '<foreignObject width="10" height="10"><iframe xmlns="http://www.w3.org/1999/xhtml" src="https://logo-fetch-probe.invalid"/></foreignObject>',
+    )
+    await expect(normalizeLogo(file, 'svg', { width: 200, height: 80 })).rejects.toThrow()
+  },
 }

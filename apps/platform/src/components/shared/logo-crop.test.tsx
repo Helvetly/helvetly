@@ -13,22 +13,34 @@ const png = (width: number, height: number, bytes = 24, type = 'image/png') => {
   return new File([data], 'logo.png', { type })
 }
 
-describe('pickProblem', () => {
-  test.each(['workspace', 'document'] as const)(
-    'lets a PNG of a sensible size through (%s)',
-    async (kind) => expect(await pickProblem(png(800, 300), kind)).toBeNull(),
-  )
+const svg = (text: string) => new File([text], 'logo.svg', { type: 'image/svg+xml' })
 
-  test('refuses what is not a PNG or JPEG, or is over 2 MB, before reading it', async () => {
-    expect(await pickProblem(png(100, 100, 24, 'image/webp'), 'document')).toMatch(/PNG or JPEG/)
-    expect(await pickProblem(png(100, 100, 3 * 1024 * 1024), 'document')).toMatch(/2 MB/)
+describe('pickProblem', () => {
+  test('lets a PNG of a sensible size through', async () =>
+    expect(await pickProblem(png(800, 300))).toBeNull())
+
+  test('goes by the bytes: a PNG called a WebP is a PNG, a WebP called a PNG is a WebP', async () => {
+    expect(await pickProblem(png(100, 100, 24, 'image/webp'))).toBeNull()
+    const webp = new Uint8Array(40)
+    webp.set([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4c])
+    webp.set([0x2f, 0x63, 0xc0, 0x18, 0], 20)
+    expect(await pickProblem(new File([webp], 'logo.png', { type: 'image/png' }))).toBeNull()
   })
 
-  test('refuses a file whose header is not a picture, or is enormous, with a reason', async () => {
-    const text = new File(['hello'], 'logo.png', { type: 'image/png' })
-    expect(await pickProblem(text, 'workspace')).toMatch(/can’t be read/)
-    expect(await pickProblem(png(9000, 9000), 'workspace')).toMatch(/64–1024 pixels/)
-    expect(await pickProblem(png(9000, 9000), 'document')).toMatch(/64–4000 pixels/)
+  test('refuses what is over 2 MB before reading it, and what is no picture at all', async () => {
+    expect(await pickProblem(png(100, 100, 3 * 1024 * 1024))).toMatch(/2 MB/)
+    expect(await pickProblem(new File(['%PDF-1.7'], 'logo.png', { type: 'image/png' }))).toMatch(
+      /PNG, JPG, WebP, SVG or GIF/,
+    )
+  })
+
+  test('refuses a picture without a readable size, an enormous one, and an SVG without dimensions', async () => {
+    expect(await pickProblem(png(0, 0))).toMatch(/could not be read/)
+    expect(await pickProblem(png(9000, 9000))).toMatch(/40 million pixels/)
+    expect(await pickProblem(svg('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toMatch(/viewBox/)
+    expect(
+      await pickProblem(svg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 30"/>')),
+    ).toBeNull()
   })
 })
 
@@ -78,6 +90,28 @@ describe('LogoCropDialog, document logo', () => {
     const onSave = open(file)
     await picture()
     expect(screen.getByRole('button', { name: 'Fit the whole picture' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
+  })
+
+  test.each([
+    [160, 64],
+    [264, 106],
+  ])(
+    'a %i × %i PNG of the field shape does not bypass the 150 dpi floor',
+    async (width, height) => {
+      const onSave = open(png(width, height))
+      await picture()
+      await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+      expect((await screen.findByRole('alert')).textContent).toMatch(/crop is too small/)
+      expect(onSave).not.toHaveBeenCalled()
+    },
+  )
+
+  test('a 270 × 108 PNG, the least that keeps 150 dpi, is still saved as the very file picked', async () => {
+    const file = png(270, 108)
+    const onSave = open(file)
+    await picture()
     await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
   })
@@ -157,6 +191,6 @@ describe('LogoCropDialog, document logo', () => {
     open(png(300, 400))
     const img = await picture()
     if (img) fireEvent.error(img)
-    expect((await screen.findByRole('alert')).textContent).toMatch(/can’t be read/)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/could not be read/)
   })
 })
