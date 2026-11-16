@@ -96,7 +96,7 @@ func newEnv(t *testing.T) *env {
 		invitations.New(st, a, nil, "", log).Register(mux)
 		notifications.New(st, a, nil, "", bytes.Repeat([]byte{7}, 32), log).Register(mux)
 		dataexport.New(st, a, nil, log).Register(mux)
-		workspaces.New(st, a, nil, log).Register(mux)
+		workspaces.New(st, a, nil, nil, log).Register(mux)
 		feedback.New(st, a, nil, nil, "", log).Register(mux)
 		signatures.New(st, a, nil, nil, "", log).Register(mux)
 		templates.New(st, a, nil, nil, nil, log).Register(mux)

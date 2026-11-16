@@ -5,28 +5,33 @@ import { ImagePlus, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRef, useState, type DragEvent } from 'react'
 
+import { useLogoCrop } from '@/components/shared/logo-crop'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { LOGO_TYPES, logoProblem, useLogo } from '@/lib/invoices'
+import { LOGO_TYPES, useLogo } from '@/lib/invoices'
 
 // A transparent logo shows on a checkerboard, so its edges are visible.
 const CHECKER =
   'bg-white bg-[conic-gradient(#e5e5e5_25%,transparent_0_50%,#e5e5e5_0_75%,transparent_0)] bg-[length:12px_12px]'
 
-/** The welcome's logo picker: a preview square, what fits, and one button; drop works too. */
+/** The welcome's document-logo picker: a preview square, what fits, and one button; drop works too. Picking opens the crop. */
 export function LogoCard({ url }: { url: string | null }) {
   const logo = useLogo()
   const input = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState('')
+  const [removeError, setError] = useState('')
   const [over, setOver] = useState(false)
   const busy = logo.progress !== null || logo.remove.isPending
 
+  const crop = useLogoCrop({
+    kind: 'document',
+    send: (file, handlers) => logo.upload.mutate(file, handlers),
+    progress: logo.progress,
+    onSaved: () => undefined,
+  })
+  const error = crop.pickError || removeError
   const send = (file: File | undefined) => {
-    if (!file) return
-    const problem = logoProblem(file)
-    setError(problem ?? '')
-    if (!problem)
-      logo.upload.mutate(file, { onError: (failure) => setError(errorMessage(failure)) })
+    setError('')
+    crop.pick(file)
   }
   const drop = (event: DragEvent) => {
     event.preventDefault()
@@ -36,6 +41,7 @@ export function LogoCard({ url }: { url: string | null }) {
 
   return (
     <div className="grid gap-2">
+      {crop.dialog}
       <input
         ref={input}
         type="file"

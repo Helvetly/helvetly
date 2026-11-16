@@ -24,13 +24,14 @@ import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-import { useDeleteWorkspace } from '@/lib/members'
+import { canManage, useDeleteWorkspace } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import { useUpdateWorkspace, type WorkspaceUpdate } from '@/lib/workspaces'
 
 import { DangerRow, DangerZone } from './danger-zone'
 import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from './layout'
 import { SettingsHeader } from './settings-tabs'
+import { WorkspaceLogoSection } from './workspace-logo'
 
 export function WorkspaceSettings() {
   const session = useSession().data
@@ -47,6 +48,11 @@ export function WorkspaceSettings() {
               name={session.workspace.name}
               timezone={session.workspace.timezone ?? 'UTC'}
               membershipRole={session.role}
+            />
+            <WorkspaceLogoSection
+              name={session.workspace.name}
+              logoUrl={session.workspace.logo_url}
+              canEdit={canManage(session.role)}
             />
             <AIConsentCard />
             {session.role === 'owner' && <ExportCard />}

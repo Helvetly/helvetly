@@ -14,7 +14,10 @@ type Member struct {
 	LastActiveAt                         *time.Time // newest session in this workspace
 }
 
-type WorkspaceRole struct{ ID, Name, Role string }
+type WorkspaceRole struct {
+	ID, Name, Role string
+	LogoFileID     *string
+}
 
 // Invitation: InvitedBy is the inviter's id when written and the inviter's name (else email) when read.
 type Invitation struct {
@@ -95,7 +98,7 @@ func (q Q) RemoveMember(ctx context.Context, workspaceID, userID string) error {
 }
 
 func (q Q) UserWorkspaces(ctx context.Context, userID string) ([]WorkspaceRole, error) {
-	rows, err := q.db.Query(ctx, `SELECT w.id, w.name, m.role FROM workspace_members m
+	rows, err := q.db.Query(ctx, `SELECT w.id, w.name, m.role, w.logo_file_id FROM workspace_members m
 		JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = $1 ORDER BY lower(w.name), w.id`, userID)
 	if err != nil {
 		return nil, err
@@ -104,7 +107,7 @@ func (q Q) UserWorkspaces(ctx context.Context, userID string) ([]WorkspaceRole, 
 	out := []WorkspaceRole{}
 	for rows.Next() {
 		var w WorkspaceRole
-		if err := rows.Scan(&w.ID, &w.Name, &w.Role); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.Role, &w.LogoFileID); err != nil {
 			return nil, err
 		}
 		out = append(out, w)

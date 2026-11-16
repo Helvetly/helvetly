@@ -6,35 +6,37 @@ import Image from 'next/image'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'sonner'
 
+import { useLogoCrop } from '@/components/shared/logo-crop'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { LOGO_TYPES, logoProblem, useLogo } from '@/lib/invoices'
+import { LOGO_TYPES, useLogo } from '@/lib/invoices'
 
-/** Picks one image (click or drop), checks it, uploads it; `error` is what went wrong, if anything. */
+/** Picks one image (click or drop), checks and frames it in the crop dialog, then uploads it; `error` is what went wrong. */
 function useLogoPicker() {
   const logo = useLogo()
   const input = useRef<HTMLInputElement>(null)
-  const [error, setError] = useState('')
-  // The upload saves at once; this says so next to the logo for a moment.
+  const [removeError, setError] = useState('')
+  // The upload saves when the crop is confirmed; this says so next to the logo for a moment.
   const [done, setDone] = useState<string | null>(null)
   useEffect(() => {
     if (!done) return
     const timer = setTimeout(() => setDone(null), 2500)
     return () => clearTimeout(timer)
   }, [done])
+  const crop = useLogoCrop({
+    kind: 'document',
+    send: (file, handlers) => logo.upload.mutate(file, handlers),
+    progress: logo.progress,
+    onSaved: () => {
+      setDone(translate('logoSaved'))
+      toast.success(translate('logoSavedItShowsOnEveryNewPDF'))
+    },
+  })
+  const error = crop.pickError || removeError
   const send = (file: File | undefined) => {
-    if (!file) return
-    const problem = logoProblem(file)
-    setError(problem ?? '')
-    if (problem) return
+    setError('')
     setDone(null)
-    logo.upload.mutate(file, {
-      onSuccess: () => {
-        setDone(translate('logoSaved'))
-        toast.success(translate('logoSavedItShowsOnEveryNewPDF'))
-      },
-      onError: (failure) => setError(errorMessage(failure)),
-    })
+    crop.pick(file)
   }
   const field = (
     <input
@@ -50,12 +52,22 @@ function useLogoPicker() {
       }}
     />
   )
-  return { logo, error, setError, done, setDone, send, field, open: () => input.current?.click() }
+  return {
+    logo,
+    error,
+    setError,
+    done,
+    setDone,
+    send,
+    field,
+    dialog: crop.dialog,
+    open: () => input.current?.click(),
+  }
 }
 
-/** The logo in the settings: drop or click to upload, shown on white at its real proportions. */
+/** The logo in the settings: drop or click to choose, frame it, shown on white at its real proportions. */
 export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: boolean }) {
-  const { logo, error, setError, done, setDone, send, field, open } = useLogoPicker()
+  const { logo, error, setError, done, setDone, send, field, dialog, open } = useLogoPicker()
   const [over, setOver] = useState(false)
   const busy = logo.progress !== null
   const drop = (event: DragEvent) => {
@@ -67,6 +79,7 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
   return (
     <div className="grid gap-2">
       {field}
+      {dialog}
       <div
         onDragOver={(event) => {
           event.preventDefault()
@@ -178,9 +191,9 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
   )
 }
 
-/** The logo on the editor's letterhead, or a quiet "Add logo" that uploads straight away. */
+/** The logo on the editor's letterhead, or a quiet "Add logo" that opens the crop. */
 export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: boolean }) {
-  const { logo, error, field, open } = useLogoPicker()
+  const { logo, error, field, dialog, open } = useLogoPicker()
   if (url)
     return (
       <span className="relative mb-4 block h-14 w-56 dark:rounded-md dark:bg-white dark:p-1.5">
@@ -199,6 +212,7 @@ export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: 
   return (
     <div className="mb-4 grid gap-1">
       {field}
+      {dialog}
       <button
         type="button"
         disabled={busy}

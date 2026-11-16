@@ -202,7 +202,7 @@ func run() error {
 	bg.Go(ctx, "documents trash", documentsSvc.Run) // purges the Trash
 	notificationsSvc := notifications.New(db, authSvc, notifyMailer, cfg.PublicURL, cfg.SecretKey, slog.Default())
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
-	workspacesSvc := workspaces.New(db, authSvc, billingSvc, slog.Default())
+	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
 	exportSvc.SetHR(employeesSvc)

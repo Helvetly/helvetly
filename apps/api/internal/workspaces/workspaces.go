@@ -5,6 +5,7 @@ package workspaces
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 )
 
@@ -30,22 +32,35 @@ type Billing interface {
 	WriteError(http.ResponseWriter, *http.Request, error)
 }
 
+// Storage keeps the workspace logo objects.
+type Storage interface {
+	Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error
+	Get(ctx context.Context, key string) ([]byte, error)
+	Delete(ctx context.Context, key string) error
+	storage.Source
+}
+
 type Service struct {
 	db      *store.Store
+	files   Storage
 	auth    Auth
 	billing Billing
 	log     *slog.Logger
 	now     func() time.Time
 }
 
-func New(db *store.Store, a Auth, b Billing, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }}
+func New(db *store.Store, a Auth, b Billing, files Storage, log *slog.Logger) *Service {
+	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/workspaces", s.auth.SignedIn(s.create))
 	mux.HandleFunc("PATCH /api/v1/workspace", s.auth.SignedIn(s.update))
 	mux.HandleFunc("DELETE /api/v1/workspace", s.auth.SignedIn(s.delete))
+	mux.HandleFunc("GET /api/v1/workspace/logo", s.auth.SignedIn(s.getLogo))
+	mux.HandleFunc("PUT /api/v1/workspace/logo", s.auth.SignedIn(s.putLogo))
+	mux.HandleFunc("DELETE /api/v1/workspace/logo", s.auth.SignedIn(s.deleteLogo))
+	mux.HandleFunc("GET /api/v1/workspaces/{id}/logo", s.auth.SignedIn(s.getWorkspaceLogo))
 }
 
 var errOwnerOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can change or delete the workspace.", nil)

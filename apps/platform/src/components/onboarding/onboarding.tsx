@@ -38,6 +38,8 @@ import {
   inputClass,
 } from '@/components/clients/fields'
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { HelpTip } from '@/components/settings/help-tip'
+import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -243,6 +245,7 @@ export function WelcomePage({ session }: { session: Session }) {
               <LogoStep
                 heading={heading}
                 url={logo}
+                workspace={session.workspace}
                 ready={!!settings.data}
                 onBack={back}
                 onDone={next}
@@ -713,12 +716,14 @@ function VatCard({
 function LogoStep({
   heading,
   url,
+  workspace,
   ready,
   onBack,
   onDone,
 }: {
   heading: HeadingRef
   url: string | null
+  workspace: Session['workspace']
   ready: boolean
   onBack?: () => void
   onDone: () => void
@@ -728,7 +733,16 @@ function LogoStep({
       <StepHeader heading={heading} title={translate('addYourLogo')}>
         {translate('itGoesTopLeftOnEveryInvoiceAndCredit')}
       </StepHeader>
-      <div className="mt-7">{ready && <LogoCard url={url} />}</div>
+      <div className="mt-7 grid gap-6">
+        <section className="grid gap-2">
+          <LogoLabel help={translate('documentLogoHelp')}>{translate('documentLogo')}</LogoLabel>
+          {ready && <LogoCard url={url} />}
+        </section>
+        <section className="grid gap-2">
+          <LogoLabel help={translate('workspaceLogoHelp')}>{translate('workspaceLogo')}</LogoLabel>
+          <WorkspaceLogoControl name={workspace.name} logoUrl={workspace.logo_url} canEdit />
+        </section>
+      </div>
       <Actions onBack={onBack} skip={!url && <SkipButton onClick={onDone} />}>
         <Button size="xl" type="button" className={bigButton} onClick={onDone}>
           {translate('continue2')}
@@ -736,6 +750,16 @@ function LogoStep({
         </Button>
       </Actions>
     </div>
+  )
+}
+
+/** A logo's name with its explanation behind a help icon. */
+function LogoLabel({ children, help }: { children: string; help: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-sm font-medium">
+      {children}
+      <HelpTip label={children}>{help}</HelpTip>
+    </span>
   )
 }
 

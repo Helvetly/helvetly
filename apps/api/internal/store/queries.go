@@ -10,9 +10,10 @@ type User struct {
 }
 
 type Workspace struct {
-	ID, Name  string
-	Timezone  string // IANA name: civil dates, periods and the digest hour follow it (Location, Today)
-	Onboarded bool   // its welcome was finished or skipped
+	ID, Name   string
+	Timezone   string  // IANA name: civil dates, periods and the digest hour follow it (Location, Today)
+	Onboarded  bool    // its welcome was finished or skipped
+	LogoFileID *string // the workspace logo object (nil: none)
 }
 
 // Session is a live session with its person, workspace and the person's role there.
@@ -132,12 +133,12 @@ func (q Q) CreateSession(ctx context.Context, id, tokenHash, csrfToken, userID, 
 // SessionByToken: an unexpired session whose person is still a member of its workspace.
 func (q Q) SessionByToken(ctx context.Context, tokenHash string, now time.Time) (Session, error) {
 	var s Session
-	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, `+userColumns+`, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, m.role, m.scopes, s.last_active_at FROM sessions s
+	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, `+userColumns+`, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, w.logo_file_id, m.role, m.scopes, s.last_active_at FROM sessions s
 		JOIN users u ON u.id = s.user_id
 		JOIN workspaces w ON w.id = s.workspace_id
 		JOIN workspace_members m ON m.workspace_id = s.workspace_id AND m.user_id = s.user_id
 		WHERE s.token_hash = $1 AND s.expires_at > $2 AND u.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, now).
-		Scan(&s.ID, &s.CSRFToken, &s.User.ID, &s.User.Email, &s.User.Name, &s.User.AvatarURL, &s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.Role, &s.Scopes, &s.LastActiveAt)
+		Scan(&s.ID, &s.CSRFToken, &s.User.ID, &s.User.Email, &s.User.Name, &s.User.AvatarURL, &s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.Workspace.LogoFileID, &s.Role, &s.Scopes, &s.LastActiveAt)
 	return s, err
 }
 
