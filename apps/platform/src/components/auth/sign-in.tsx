@@ -1,6 +1,7 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
@@ -198,12 +199,9 @@ function Intro({
 
 function Alert({ children }: { children: ReactNode }) {
   return (
-    <p
-      role="alert"
-      className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-    >
+    <Callout tone="danger" role="alert">
       {children}
-    </p>
+    </Callout>
   )
 }
 

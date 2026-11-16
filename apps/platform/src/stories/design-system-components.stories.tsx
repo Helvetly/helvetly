@@ -46,7 +46,7 @@ export const Callouts: Story = {
       <Callout tone="success" icon={CircleCheck}>
         All invoices of March are paid.
       </Callout>
-      <Callout tone="neutral">A plain note without an icon.</Callout>
+      <Callout tone="neutral">A plain note gets its tone's icon too.</Callout>
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -58,6 +58,8 @@ export const Callouts: Story = {
       'success',
       'neutral',
     ])
+    // Every tone has an icon, given or its own.
+    for (const callout of callouts) await expect(callout.querySelector('svg')).not.toBeNull()
     await expect(within(canvasElement).getByRole('button', { name: 'Complete' })).toBeVisible()
   },
 }

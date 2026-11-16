@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -274,12 +275,9 @@ export function FeedbackForm({
         </p>
 
         {shown && (
-          <p
-            role="alert"
-            className="rounded-lg bg-destructive/8 px-3 py-2 text-[13px] text-destructive"
-          >
+          <Callout tone="danger" role="alert">
             {shown}
-          </p>
+          </Callout>
         )}
       </div>
 
