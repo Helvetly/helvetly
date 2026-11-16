@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import { AuthGate } from '@/components/auth-gate'
+import { isActivating } from '@/components/billing/activating'
 import { HeidiPanel } from '@/components/heidi/heidi-panel'
 import { HeidiProvider } from '@/components/heidi/heidi-provider'
 import { NotificationPrefsDrawers } from '@/components/notifications/prefs-drawer'
@@ -44,11 +45,12 @@ export default function SignedInLayout({ children }: { children: ReactNode }) {
       return true
     }
   })
-  // The welcome and the plan pickers are pages of their own, without the sidebar.
+  // The welcome, the plan pickers and the wait after Checkout are pages of their own, without the sidebar.
   const pathname = usePathname()
   const bare =
     isWelcome(pathname) ||
     isChoosePlan(pathname) ||
+    isActivating(pathname) ||
     pathname.replace(/\/$/, '') === '/settings/billing/plans'
   const toggle = (next: boolean) => {
     setOpen(next)

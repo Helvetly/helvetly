@@ -175,10 +175,11 @@ export const billingKeys = {
   details: ['billing', 'details'],
 } as const
 
-export function useBilling() {
+export function useBilling(refetchInterval: number | false = false) {
   return useQuery({
     queryKey: billingKeys.overview,
     queryFn: async () => (await request<{ data: Billing }>(withZone('/billing'))).data,
+    refetchInterval,
   })
 }
 

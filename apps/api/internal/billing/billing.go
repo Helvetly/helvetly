@@ -601,8 +601,9 @@ func managedPayments(form url.Values) {
 // before the customer agrees), and the checkout and its offer in the subscription's metadata, which the webhook
 // settles against co (settleCheckout).
 func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store.BillingCheckout, trialDays int, promoID string) (string, error) {
-	back := s.publicURL + "/settings/billing?checkout="
+	// Paid, the person waits on a page of its own until the subscription unlocks the workspace (platform /activating);
 	// Checkout runs only without a live plan, so leaving it goes back to the plan picker to choose again.
+	activating := s.publicURL + "/activating"
 	canceled := s.publicURL + "/choose-plan?checkout=canceled"
 	form := url.Values{
 		"mode": {"subscription"}, "customer": {b.CustomerID}, "client_reference_id": {co.WorkspaceID}, "currency": {co.Currency},
@@ -613,7 +614,7 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store
 		"payment_method_collection":  {"always"},
 		"billing_address_collection": {"required"}, "tax_id_collection[enabled]": {"true"},
 		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
-		"success_url": {back + "success"}, "cancel_url": {canceled},
+		"success_url": {activating}, "cancel_url": {canceled},
 	}
 	if s.cfg.AutomaticTax {
 		form.Set("automatic_tax[enabled]", "true")
