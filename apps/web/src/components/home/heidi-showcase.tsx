@@ -28,7 +28,7 @@ function Overdue() {
       '2026-0416',
       '9’720.00',
       12,
-      translate('fromPeachSolidToRoseSolid'),
+      'from-peach-solid to-rose-solid',
     ],
     [
       'KB',
@@ -36,16 +36,9 @@ function Overdue() {
       '2026-0402',
       '3’180.00',
       26,
-      translate('fromSkySolidToLilacSolid'),
+      'from-sky-solid to-lilac-solid',
     ],
-    [
-      'AN',
-      translate('atelierNord'),
-      '2026-0391',
-      '1’000.00',
-      41,
-      translate('fromMintSolidToSkySolid'),
-    ],
+    ['AN', translate('atelierNord'), '2026-0391', '1’000.00', 41, 'from-mint-solid to-sky-solid'],
   ] as const
   return (
     <div className="flex flex-col gap-2">
