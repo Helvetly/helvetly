@@ -150,17 +150,17 @@ export const PlanTilesPerPerson: Story = {
     const basic = tile(canvas, 'Basic')
     const total = (plan: string) =>
       canvas.getByRole('region', { name: plan }).querySelector('[data-slot=team-total]')
-    await expect(basic.getByText('per person / month · incl. VAT')).toBeVisible()
+    await expect(basic.getByText('per person / month')).toBeVisible()
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 57 / month')
     await expect(basic.getByText('Any number')).toBeVisible()
     await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 297 / month')
     // Seats follow the workspace's people: nobody picks a number here.
     await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
-    await expect(basic.getByText('per person / year · incl. VAT')).toBeVisible()
+    await expect(basic.getByText('per person / month')).toBeVisible()
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 549 / year')
-    await expect(basic.getByText('CHF 15.25 a month, billed yearly')).toBeVisible()
-    await expect(basic.getByText('Save CHF 45 a year')).toBeVisible()
+    await expect(basic.getByText('CHF 183 a year, billed yearly')).toBeVisible()
+    await expect(basic.getByText('CHF 15', { exact: true })).toBeVisible()
   },
 }
 

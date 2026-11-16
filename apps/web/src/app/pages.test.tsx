@@ -155,13 +155,13 @@ describe('pricing page', () => {
       expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull(),
     )
     expect(again).toHaveBeenCalledExactlyOnceWith(OFFER_URL, expect.anything())
-    expect(within(screen.getAllByRole('article')[1]!).getByText('39.25')).toBeTruthy()
+    expect(within(screen.getAllByRole('article')[1]!).getByText('39')).toBeTruthy()
   })
 
   it('shows yearly prices first and monthly ones on request', async () => {
     render(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
-    expect(within(pro).getByText('39.25')).toBeTruthy()
+    expect(within(pro).getByText('39')).toBeTruthy()
     expect(within(pro).getByText('CHF 471 a year, billed yearly')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))

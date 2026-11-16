@@ -136,7 +136,8 @@ test('Business offers the trial with its line; the others are charged today', as
   const basic = card('Basic')
   expect(within(basic).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
   expect(basic).toHaveTextContent('Charged today.')
-  expect(basic).toHaveTextContent('per person / month · incl. VAT')
+  expect(basic).toHaveTextContent('per person / month')
+  expect(basic).not.toHaveTextContent('incl. VAT')
   expect(basic.querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 57 / month',
   )
@@ -144,8 +145,9 @@ test('Business offers the trial with its line; the others are charged today', as
   expect(card('Pro')).toHaveTextContent('Charged today.')
   await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
   expect(card('Basic')).toHaveTextContent('CHF 183')
-  expect(card('Basic')).toHaveTextContent('CHF 15.25 a month, billed yearly')
-  expect(card('Basic')).toHaveTextContent('Save CHF 45 a year')
+  expect(card('Basic')).toHaveTextContent('CHF 15per person / month')
+  expect(card('Basic')).toHaveTextContent('CHF 183 a year, billed yearly')
+  expect(card('Basic')).not.toHaveTextContent('Save CHF')
   expect(card('Basic').querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 549 / year',
   )
@@ -157,14 +159,14 @@ test('Business offers the trial with its line; the others are charged today', as
 test('the picker shows the workspace currency and what its prices include', () => {
   const { unmount } = renderCards(billing({ currency: 'eur' }))
   expect(card('Pro')).toHaveTextContent('EUR 49')
-  expect(card('Pro')).toHaveTextContent('per person / month · incl. VAT')
+  expect(card('Pro')).toHaveTextContent('per person / month')
   expect(screen.getByText(/Prices incl. VAT/)).toBeVisible()
   expect(screen.queryByText(/CHF|Swiss VAT/)).toBeNull()
   unmount()
 
   renderCards(billing({ currency: 'usd' }))
   expect(card('Business')).toHaveTextContent('Then USD 99 per person a month.')
-  expect(card('Basic')).toHaveTextContent('per person / month · incl. tax')
+  expect(card('Basic')).toHaveTextContent('per person / month')
   expect(screen.getByText(/Prices incl. tax/)).toBeVisible()
 })
 

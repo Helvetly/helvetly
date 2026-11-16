@@ -217,14 +217,6 @@ const CARD_LIMITS: LimitKey[] = [
   'storage_bytes',
 ]
 
-/** What a year saves against twelve months, per person. */
-const yearSaving = (plan: Plan): PlanPrice | null => {
-  const { month, year } = plan.prices
-  if (!month || !year) return null
-  const amount = month.amount * 12 - year.amount
-  return amount > 0 ? { ...year, amount } : null
-}
-
 /**
  * Basic, Pro and Business side by side, with a monthly / yearly switch: the recommended plan
  * lifted, the current one marked, a big price per person, what the workspace's people pay in
@@ -292,7 +284,8 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           const label = choiceLabel(billing, plan, interval)
           const shown = promoted ?? price
           const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
-          const yearly = yearSaving(plan)
+          // a yearly price reads as its month, like the website; the year's price is shown under it
+          const perMonth = (p: PlanPrice) => (interval === 'year' ? monthOf(p) : p)
           let note = ''
           if (keep) note = translate('cancelsTheScheduledChange')
           else if (scheduled && billing.pending_at)
@@ -358,32 +351,25 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                 <div data-slot="plan-price" className="mt-5 grid gap-1">
                   <p className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
                     <span className="text-display font-semibold tracking-[-0.035em]">
-                      {shown ? formatPrice(shown) : '—'}
+                      {shown ? formatPrice(perMonth(shown)) : '—'}
                     </span>
                     {promoted && price && (
-                      <s className="text-body text-muted-foreground">{formatPrice(price)}</s>
+                      <s className="text-body text-muted-foreground">
+                        {formatPrice(perMonth(price))}
+                      </s>
                     )}
                   </p>
                   <p className="text-body-sm text-muted-foreground">
                     {translate('perPerson')}
-                    {interval} · {taxNote(billing.currency)}
+                    {translate('dynamicMonth')}
                   </p>
                 </div>
                 <p className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
                   {interval === 'year' && shown ? (
-                    <>
-                      <span className="text-caption text-muted-foreground tabular-nums">
-                        {formatPrice(monthOf(shown))}
-                        {translate('aMonthBilledYearly')}
-                      </span>
-                      {yearly && (
-                        <StatusBadge tone="green">
-                          {translate('save')}
-                          {formatPrice(yearly)}
-                          {translate('aYear')}
-                        </StatusBadge>
-                      )}
-                    </>
+                    <span className="text-caption text-muted-foreground tabular-nums">
+                      {formatPrice(shown)}
+                      {translate('aYearBilledYearly')}
+                    </span>
                   ) : interval === 'month' && plan.prices.year && yearlySaving(plan) > 0 ? (
                     <span className="text-caption text-muted-foreground tabular-nums">
                       {translate('or')}

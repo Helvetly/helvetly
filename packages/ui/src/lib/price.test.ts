@@ -7,9 +7,11 @@ test('a year is twelve months less 20 %, up to a whole franc', () => {
   expect(yearOf(chf(2500)).amount).toBe(24000)
 })
 
-test('a yearly price a month is rounded to the rappen', () => {
-  expect(monthOf(chf(18300))).toEqual(chf(1525))
-  expect(monthOf(chf(10000))).toEqual(chf(833))
+test('a yearly price a month is rounded to whole francs', () => {
+  expect(monthOf(chf(18300))).toEqual(chf(1500))
+  expect(monthOf(chf(47100))).toEqual(chf(3900))
+  expect(monthOf(chf(95100))).toEqual(chf(7900))
+  expect(monthOf(chf(10200))).toEqual(chf(900))
 })
 
 test('prices show whole francs bare and the rest with rappen', () => {

@@ -564,9 +564,8 @@ export const PlansYearly: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     const proCard = card(canvas, 'Pro')
-    await expect(await proCard.findByText('CHF 471')).toBeVisible()
-    await expect(proCard.getByText('CHF 39.25 a month, billed yearly')).toBeVisible()
-    await expect(proCard.getByText('Save CHF 117 a year')).toBeVisible()
+    await expect(await proCard.findByText('CHF 471 a year, billed yearly')).toBeVisible()
+    await expect(proCard.getByText('CHF 39', { exact: true })).toBeVisible()
     await userEvent.click(proCard.getByRole('button', { name: 'Upgrade to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText(/CHF 471 per person a year/)).toBeVisible())
@@ -585,7 +584,7 @@ export const PlansSwitchToYearly: Story = {
     await canvas.findByRole('region', { name: 'Basic' })
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     const basic = card(canvas, 'Basic')
-    await expect(basic.getByText('CHF 183')).toBeVisible()
+    await expect(basic.getByText('CHF 183 a year, billed yearly')).toBeVisible()
     await userEvent.click(basic.getByRole('button', { name: 'Switch yearly' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText('Switch to Basic yearly?')).toBeVisible())
@@ -729,7 +728,7 @@ export const PlansNoPlanEuro: Story = {
     await plansLoaded(canvas)
     const proCard = card(canvas, 'Pro')
     await expect(await proCard.findByText('EUR 49')).toBeVisible()
-    await expect(proCard.getByText('per person / month · incl. VAT')).toBeVisible()
+    await expect(proCard.getByText('per person / month')).toBeVisible()
     await expect(canvas.getByText(/Prices incl\. VAT/)).toBeVisible()
     await expect(canvas.queryByText(/Swiss VAT/)).toBeNull()
   },
@@ -742,7 +741,7 @@ export const PlansNoPlanDollar: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     await expect(await card(canvas, 'Basic').findByText('USD 19')).toBeVisible()
-    await expect(card(canvas, 'Basic').getByText('per person / month · incl. tax')).toBeVisible()
+    await expect(card(canvas, 'Basic').getByText('per person / month')).toBeVisible()
     await expect(canvas.getByText(/Prices incl\. tax/)).toBeVisible()
   },
 }
