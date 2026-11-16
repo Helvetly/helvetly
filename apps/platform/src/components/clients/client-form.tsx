@@ -56,6 +56,7 @@ function FormField({
 export function ClientForm({
   client,
   focus,
+  prefillName,
   onClose,
   onSaved,
 }: {
@@ -63,6 +64,8 @@ export function ClientForm({
   client?: Client
   /** Scroll to and focus this section when the form opens. */
   focus?: 'address'
+  /** The name a new client starts with, e.g. the one an imported document gave. */
+  prefillName?: string
   onClose: () => void
   onSaved: (client: Client, created: boolean) => void
 }) {
@@ -70,7 +73,7 @@ export function ClientForm({
   const [initial] = useState(() =>
     client
       ? valuesFromClient(client)
-      : withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
+      : withHabits({ ...emptyValues(), name: prefillName ?? '' }, habits, 'client', CLIENT_HABITS, {
           allowed: CLIENT_HABIT_OPTIONS,
         }),
   )

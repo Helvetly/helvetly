@@ -1,16 +1,18 @@
 'use client'
+import { Button } from '@helvetly/ui/components/button'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 
+import { ClientForm } from '@/components/clients/client-form'
 import { inputClass } from '@/components/clients/fields'
 import { ClientSearch } from '@/components/invoices/client-search'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
-/** An imported record's client, chosen among the existing ones (an import never creates clients). */
+/** An imported record's client, chosen among the existing ones (the name the document gave can become a new client in one click). */
 export function ImportClientField({
   id,
   clientId,
@@ -26,6 +28,8 @@ export function ImportClientField({
   onPick: (client: Client) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const documentName = clientName.trim()
   return (
     <FormField id={id} label={translate('client')} error={error} required className="sm:col-span-2">
       <Popover open={open} onOpenChange={setOpen}>
@@ -55,6 +59,24 @@ export function ImportClientField({
           />
         </PopoverContent>
       </Popover>
+      {!clientId && documentName && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setCreating(true)}>
+            <UserPlus />
+            {translate('importCreateClient', { name: documentName })}
+          </Button>
+        </div>
+      )}
+      {creating && (
+        <ClientForm
+          prefillName={documentName}
+          onClose={() => setCreating(false)}
+          onSaved={(created) => {
+            setCreating(false)
+            onPick(created)
+          }}
+        />
+      )}
     </FormField>
   )
 }
