@@ -229,10 +229,9 @@ const toDefaults = async (user: User, settings = empty) => {
 }
 const termsSaved = () => saved.at(-1)?.default_terms_days
 
-const refuse = (code: string, status: number) => () =>
-  HttpResponse.json({ error: { code, message: code } }, { status })
-
 const workspaceField = () => screen.getByRole('textbox', { name: /Workspace name/ })
+const nameField = () => screen.findByRole('textbox', { name: /What should we call you\?/ })
+const get = () => screen.getByRole('button', { name: /Get started/ })
 
 describe('the welcome', () => {
   test('shows on the first visit, with focus on its heading and the progress', async () => {
@@ -384,9 +383,6 @@ describe('the welcome', () => {
   })
 
   describe('the workspace name on the first step', () => {
-    const nameField = () => screen.findByRole('textbox', { name: /What should we call you\?/ })
-    const get = () => screen.getByRole('button', { name: /Get started/ })
-
     test('starts blank for the sign-up placeholder', async () => {
       workspaceName = 'My workspace'
       wrap(<Welcome />)
