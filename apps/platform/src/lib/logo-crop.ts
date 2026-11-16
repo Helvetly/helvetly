@@ -1,7 +1,8 @@
 import type { CropArea } from '@helvetly/ui/lib/photo'
 
 // The two logos a workspace has. The workspace's own mark is a fixed square PNG that keeps its transparency; the
-// document logo keeps its picture's proportions. The API checks the bytes again (PNG or JPEG, at most 2 MiB, the short
+// document logo is a PNG in the PDF's own 2.5 : 1 field (45 × 18 mm), the whole picture contained in it unless the
+// person zooms in, so the preview is the file is the printed logo. The API checks the bytes again (PNG or JPEG, at most 2 MiB, the short
 // side at least 64 px and the long side at most 4000 px), so this only makes a pick fit and says why when it cannot.
 
 export const WORKSPACE_LOGO_SIDE = 512
@@ -40,29 +41,63 @@ export function sizeProblem(width: number, height: number): LogoProblem | null {
   return null
 }
 
-/**
- * The size a crop of `area` is saved at: scaled down (never up) so the long side is at most 4000 px, then padded
- * on the short axis when it would fall under 64 px, so a thin banner is kept whole instead of refused or clipped.
- */
-export function documentOutput(area: Pick<CropArea, 'width' | 'height'>) {
-  const scale = Math.min(1, LOGO_MAX_SIDE / Math.max(area.width, area.height))
-  const width = Math.max(1, Math.round(area.width * scale))
-  const height = Math.max(1, Math.round(area.height * scale))
-  const canvasWidth = Math.max(width, LOGO_MIN_SIDE)
-  const canvasHeight = Math.max(height, LOGO_MIN_SIDE)
+/** The PDF's logo field is 45 × 18 mm (apps/api/internal/invoicepdf), and the saved file has exactly that shape. */
+export const DOCUMENT_LOGO_RATIO = 45 / 18
+export const DOCUMENT_MIN_ZOOM = 1
+export const DOCUMENT_MAX_ZOOM = 4
+const DOCUMENT_MAX_HEIGHT = LOGO_MAX_SIDE / DOCUMENT_LOGO_RATIO
+
+type Size = { width: number; height: number }
+/** How the picture sits in the field: `zoom` times the contained size, `x` and `y` the shift in field widths and heights. */
+export type DocumentView = { zoom: number; x: number; y: number }
+export const WHOLE_PICTURE: DocumentView = { zoom: 1, x: 0, y: 0 }
+
+const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value))
+// An even height keeps the width an exact 2.5 × it.
+const evenHeight = (height: number) => 2 * Math.round(height / 2)
+
+/** The field the picture is saved in: just big enough for it at its own resolution, within 64–4000 px. */
+export function documentCanvas({ width, height }: Size): Size {
+  const h = evenHeight(
+    clamp(Math.max(height, width / DOCUMENT_LOGO_RATIO), LOGO_MIN_SIDE, DOCUMENT_MAX_HEIGHT),
+  )
+  return { width: h * DOCUMENT_LOGO_RATIO, height: h }
+}
+
+/** Where the picture sits in a field of `canvas`, in its pixels: uniform scale, and never panned out of reach. */
+export function placeOnCanvas(natural: Size, view: DocumentView, canvas: Size) {
+  const zoom = clamp(view.zoom, DOCUMENT_MIN_ZOOM, DOCUMENT_MAX_ZOOM)
+  const scale = Math.min(canvas.width / natural.width, canvas.height / natural.height) * zoom
+  const width = natural.width * scale
+  const height = natural.height * scale
+  // A picture smaller than the field stays inside it, a bigger one keeps covering it: no empty strip appears by panning.
+  const reachX = Math.abs(canvas.width - width) / 2
+  const reachY = Math.abs(canvas.height - height) / 2
   return {
-    canvasWidth,
-    canvasHeight,
-    drawX: Math.round((canvasWidth - width) / 2),
-    drawY: Math.round((canvasHeight - height) / 2),
+    x: (canvas.width - width) / 2 + clamp(view.x * canvas.width, -reachX, reachX),
+    y: (canvas.height - height) / 2 + clamp(view.y * canvas.height, -reachY, reachY),
     width,
     height,
   }
 }
 
-/** Whether the crop is the whole picture, which is then sent as it was picked (same bytes, so duplicates are found). */
-export const isWholePicture = (area: CropArea, width: number, height: number) =>
-  area.x <= 1 && area.y <= 1 && area.width >= width - 1 && area.height >= height - 1
+/** The view with its zoom and shift brought into range (the shift is the placement's, in field widths and heights). */
+export function clampView(natural: Size, view: DocumentView): DocumentView {
+  const field = { width: DOCUMENT_LOGO_RATIO, height: 1 }
+  const placed = placeOnCanvas(natural, view, field)
+  return {
+    zoom: clamp(view.zoom, DOCUMENT_MIN_ZOOM, DOCUMENT_MAX_ZOOM),
+    x: (placed.x + placed.width / 2 - field.width / 2) / field.width,
+    y: (placed.y + placed.height / 2 - field.height / 2) / field.height,
+  }
+}
+
+/** Whether the picture is already the field's shape (within 1%) and shown whole, so it is sent as picked. */
+export const isWholePicture = (natural: Size, view: DocumentView) =>
+  Math.abs(natural.width / natural.height / DOCUMENT_LOGO_RATIO - 1) <= 0.01 &&
+  view.zoom <= DOCUMENT_MIN_ZOOM &&
+  view.x === 0 &&
+  view.y === 0
 
 const encode = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
   new Promise<Blob>((resolve, reject) =>
@@ -101,39 +136,25 @@ export async function cropWorkspaceLogo(source: CanvasImageSource, area: CropAre
 }
 
 /**
- * The document logo's crop at its own proportions, as PNG when the pick was one (transparency stays) and JPEG on
- * white otherwise. A result over 2 MiB is retried smaller; null when even that does not fit.
+ * The document logo: the picture placed in its 2.5 : 1 field exactly as the dialog shows it, as a PNG whose
+ * transparency stays. The same view gives the same bytes in one browser. A result over 2 MiB is retried at a smaller
+ * field; null when even that does not fit.
  */
-export async function cropDocumentLogo(source: CanvasImageSource, area: CropArea, type: string) {
-  const out = documentOutput(area)
-  const png = type === 'image/png'
+export async function renderDocumentLogo(
+  source: CanvasImageSource,
+  natural: Size,
+  view: DocumentView,
+  shares: readonly number[] = [1, 0.75, 0.5],
+): Promise<Blob | null> {
+  const [share, ...smaller] = shares
+  if (share === undefined) return null
+  const height = evenHeight(documentCanvas(natural).height * share)
+  if (height < LOGO_MIN_SIDE) return null
+  const field = { width: height * DOCUMENT_LOGO_RATIO, height }
+  const { canvas, context } = canvasOf(field.width, field.height)
+  const at = placeOnCanvas(natural, view, field)
+  context.drawImage(source, at.x, at.y, at.width, at.height)
+  const blob = await encode(canvas, 'image/png')
   // One size after another, never several at once: each canvas can be large.
-  const attempt = async (shares: readonly number[]): Promise<Blob | null> => {
-    const [share, ...smaller] = shares
-    if (share === undefined) return null
-    const { canvas, context } = canvasOf(
-      Math.max(1, Math.round(out.canvasWidth * share)),
-      Math.max(1, Math.round(out.canvasHeight * share)),
-    )
-    if (!png) {
-      context.fillStyle = 'white'
-      context.fillRect(0, 0, canvas.width, canvas.height)
-    }
-    context.drawImage(
-      source,
-      area.x,
-      area.y,
-      area.width,
-      area.height,
-      Math.round(out.drawX * share),
-      Math.round(out.drawY * share),
-      Math.max(1, Math.round(out.width * share)),
-      Math.max(1, Math.round(out.height * share)),
-    )
-    const blob = await encode(canvas, png ? 'image/png' : 'image/jpeg', 0.92)
-    return blob.size <= LOGO_MAX_BYTES && Math.min(canvas.width, canvas.height) >= LOGO_MIN_SIDE
-      ? blob
-      : attempt(smaller)
-  }
-  return attempt([1, 0.75, 0.5])
+  return blob.size <= LOGO_MAX_BYTES ? blob : renderDocumentLogo(source, natural, view, smaller)
 }
