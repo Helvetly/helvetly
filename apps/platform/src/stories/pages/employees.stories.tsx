@@ -147,6 +147,12 @@ export const CreateValidation: Story = {
     // Pre-filled from the company settings, and said so behind the section's (?).
     await expect(form.getByLabelText(/Work country/)).toHaveValue('CH')
     await expect(form.getByRole('button', { name: 'About Where they work' })).toBeVisible()
+    // Laid out like the client form: an icon tile and a description per section.
+    await expect(form.getByText('Who they are and how to reach them.')).toBeVisible()
+    await expect(form.getByText('Role, dates and working time.')).toBeVisible()
+    await expect(
+      form.getByRole('heading', { name: 'Person' }).closest('section')?.querySelector('svg'),
+    ).not.toBeNull()
 
     await userEvent.click(form.getByRole('button', { name: 'Save' }))
     await expect(await form.findByText('Enter the first name.')).toBeVisible()

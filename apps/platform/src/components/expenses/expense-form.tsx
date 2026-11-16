@@ -7,7 +7,17 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Lock, Plus, Trash2 } from 'lucide-react'
+import {
+  Calculator,
+  CreditCard,
+  FileText,
+  Lock,
+  Paperclip,
+  Percent,
+  Plus,
+  StickyNote,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
@@ -267,7 +277,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     : translate('newExpense')
 
   const payment = (
-    <FormSection title={translate('payment')} description={translate('whetherItIsPaidAndHow')}>
+    <FormSection
+      icon={CreditCard}
+      title={translate('payment')}
+      description={translate('whetherItIsPaidAndHow')}
+    >
       <div className="flex items-center justify-between gap-4">
         <Segmented
           label={translate('payment')}
@@ -411,7 +425,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               </output>
             </div>
             {payment}
-            <FormSection title={translate('note')} description={translate('onlyVisibleToYourTeam')}>
+            <FormSection
+              icon={StickyNote}
+              title={translate('note')}
+              description={translate('onlyVisibleToYourTeam')}
+            >
               {note}
             </FormSection>
           </>
@@ -419,6 +437,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           <>
             {!expense && (
               <FormSection
+                icon={Paperclip}
                 title={translate('receipt')}
                 description={translate('attachItNowOrLaterBookingNeedsOne')}
               >
@@ -434,6 +453,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             )}
 
             <FormSection
+              icon={FileText}
               title={translate('details')}
               description={translate('whoYouPaidWhenAndForWhat')}
             >
@@ -573,6 +593,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             </FormSection>
 
             <FormSection
+              icon={Calculator}
               title={translate('amounts')}
               description={translate('whatTheReceiptAddsUpToLineByLine')}
               action={
@@ -749,6 +770,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             </FormSection>
 
             <FormSection
+              icon={Percent}
               title={translate('inputTax')}
               description={translate('howMuchOfTheVATYouCanReclaim')}
             >
@@ -797,6 +819,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             {payment}
 
             <FormSection
+              icon={StickyNote}
               title={translate('notes')}
               description={translate('forYourTeamAndYourAccountant')}
             >

@@ -4153,5 +4153,10 @@
   "workspaceNameSuggested": "Workspace name suggested. You can edit it.",
   "workspaceNameSuggestionFailed": "We couldn’t suggest a name. Enter one yourself.",
   "workspaceNameSuggestionUsed": "Your one-time suggestion has been used. Enter or edit the name yourself.",
-  "workspaceNameSuggestionUnavailable": "Name suggestions are unavailable. Enter a name yourself."
+  "workspaceNameSuggestionUnavailable": "Name suggestions are unavailable. Enter a name yourself.",
+  "employeeSectionPersonDesc": "Who they are and how to reach them.",
+  "employeeSectionContractDesc": "Role, dates and working time.",
+  "employeeSectionWorkDesc": "Employer and work location.",
+  "employeeSectionSwissDesc": "Withholding tax, insurers and salary certificate details.",
+  "employeeSectionProtectedDesc": "Stored encrypted; revealing them is recorded."
 }

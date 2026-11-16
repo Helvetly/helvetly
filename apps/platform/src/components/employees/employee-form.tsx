@@ -8,7 +8,7 @@ import { FormField, HelpTip } from '@helvetly/ui/components/form-field'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { COUNTRIES } from '@helvetly/ui/lib/countries'
 import { cn } from '@helvetly/ui/lib/utils'
-import { CircleAlert } from 'lucide-react'
+import { Briefcase, CircleAlert, Lock, MapPin, ShieldCheck, UserRound } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -209,7 +209,7 @@ export function EmployeeForm({
             </HelpTip>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 scroll-py-4 overflow-y-auto">
             {errors.form && (
               <div className="px-5 pt-5 md:px-8">
                 <Callout tone="danger" icon={CircleAlert} role="alert">
@@ -217,7 +217,11 @@ export function EmployeeForm({
                 </Callout>
               </div>
             )}
-            <FormSection title={translate('employeeSectionPerson')}>
+            <FormSection
+              icon={UserRound}
+              title={translate('employeeSectionPerson')}
+              description={translate('employeeSectionPersonDesc')}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 {field(
                   'first_name',
@@ -246,7 +250,11 @@ export function EmployeeForm({
               </div>
             </FormSection>
 
-            <FormSection title={translate('employeeSectionContract')}>
+            <FormSection
+              icon={Briefcase}
+              title={translate('employeeSectionContract')}
+              description={translate('employeeSectionContractDesc')}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 {field(
                   'employment_type',
@@ -309,7 +317,9 @@ export function EmployeeForm({
             </FormSection>
 
             <FormSection
+              icon={MapPin}
               title={translate('employeeSectionWork')}
+              description={translate('employeeSectionWorkDesc')}
               tip={
                 suggested
                   ? `${translate('employeeWorkTip')} ${translate('employeeSuggestedTip')}`
@@ -412,7 +422,9 @@ export function EmployeeForm({
 
             {swissFields(values) && (
               <FormSection
+                icon={ShieldCheck}
                 title={translate('employeeSectionSwiss')}
+                description={translate('employeeSectionSwissDesc')}
                 tip={translate('employeeSectionSwissTip')}
               >
                 {flag(
@@ -479,7 +491,9 @@ export function EmployeeForm({
             )}
 
             <FormSection
+              icon={Lock}
               title={translate('employeeSectionProtected')}
+              description={translate('employeeSectionProtectedDesc')}
               tip={translate('employeeSectionProtectedTip')}
             >
               <div className="grid gap-4 sm:grid-cols-2">
