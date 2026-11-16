@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { byCategory, formatDay, parseFrontMatter, readCollection } from './content'
 
 describe('content', () => {
-  const guides = readCollection('guides')
-  const help = readCollection('help')
+  const guides = readCollection('guides', 'en')
+  const help = readCollection('help', 'en')
 
   it('reads every guide and help article with its front matter', () => {
     expect(guides.length).toBeGreaterThanOrEqual(6)
@@ -47,6 +47,6 @@ describe('content', () => {
   })
 
   it('writes a day as people read it', () => {
-    expect(formatDay('2026-11-11')).toBe('11 November 2026')
+    expect(formatDay('2026-11-11', 'en')).toBe('11 November 2026')
   })
 })

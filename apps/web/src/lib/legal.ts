@@ -1,20 +1,30 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { defaultLocale, type Locale } from '@helvetly/i18n'
+
 import { localizedContentFile } from '@/lib/content-locale'
-import { translate } from '@/lib/i18n'
+import { perLanguage, translatorFor } from '@/lib/i18n'
 
 // The legal texts the site publishes, in apps/web/content/legal (kept in step with the code); the site renders them
 // at build time. Each page is static, so nothing is read at request time.
 export const LEGAL = {
-  terms: { file: 'terms.md', title: translate('termsOfService') },
-  privacy: { file: 'privacy-policy.md', title: translate('privacyPolicy2') },
-  dpa: { file: 'dpa.md', title: translate('dataProcessingAgreement2') },
-  subprocessors: { file: 'subprocessors.md', title: translate('subprocessors') },
-  imprint: { file: 'imprint.md', title: translate('imprint') },
+  terms: { file: 'terms.md' },
+  privacy: { file: 'privacy-policy.md' },
+  dpa: { file: 'dpa.md' },
+  subprocessors: { file: 'subprocessors.md' },
+  imprint: { file: 'imprint.md' },
 } as const
 
 export type LegalSlug = keyof typeof LEGAL
+
+export const legalTitlesIn = perLanguage((translate): Record<LegalSlug, string> => ({
+  terms: translate('termsOfService'),
+  privacy: translate('privacyPolicy2'),
+  dpa: translate('dataProcessingAgreement2'),
+  subprocessors: translate('subprocessors'),
+  imprint: translate('imprint'),
+}))
 
 export function isLegalSlug(value: string): value is LegalSlug {
   return Object.hasOwn(LEGAL, value)
@@ -27,16 +37,18 @@ function legalDir(from = process.cwd()): string {
   }
   const parent = dirname(from)
   if (parent === from)
-    throw new Error(translate('appsWebContentLegalNotFoundAbove') + process.cwd())
+    throw new Error(
+      translatorFor(defaultLocale)('appsWebContentLegalNotFoundAbove') + process.cwd(),
+    )
   return legalDir(parent)
 }
 
-export function readLegal(slug: LegalSlug) {
+export function readLegal(slug: LegalSlug, language: Locale) {
   // The file's own `# Title` is dropped: the page sets the title as its one h1.
-  const markdown = readFileSync(localizedContentFile(legalDir(), LEGAL[slug].file), 'utf8').replace(
-    /^# .*\n+/,
-    '',
-  )
+  const markdown = readFileSync(
+    localizedContentFile(legalDir(), LEGAL[slug].file, language),
+    'utf8',
+  ).replace(/^# .*\n+/, '')
   const headings = [...markdown.matchAll(/^## (.+)$/gm)].map((m) => {
     const text = (m[1] ?? '').trim()
     return { text, id: slugify(text) }

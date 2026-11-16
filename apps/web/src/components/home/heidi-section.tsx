@@ -1,34 +1,12 @@
+import type { Locale } from '@helvetly/i18n'
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
 import { Languages, type LucideIcon, ShieldCheck, ThumbsUp } from 'lucide-react'
 
 import { HeidiShowcase } from '@/components/home/heidi-showcase'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
-import { translate } from '@/lib/i18n'
-import { plansWith } from '@/lib/plans'
-
-// What circles the orb: the jobs Heidi does. Both orbits turn together and their chips sit between each
-// other's, so no two ever overlap.
-const INNER = [translate('overdueInvoices'), translate('hoursLeft'), translate('inputVAT')]
-const OUTER = [translate('draftAReminder'), translate('logWork'), translate('importReceipts')]
-
-const PROMISES: { icon: LucideIcon; title: string; body: string }[] = [
-  {
-    icon: ThumbsUp,
-    title: translate('nothingHappensWithoutAYes'),
-    body: translate('heidiShowsExactlyWhatSheWillChangeInWords'),
-  },
-  {
-    icon: ShieldCheck,
-    title: translate('offUntilYouSwitchItOn'),
-    body: translate('noAIModelSeesYourDataUntilAnOwner'),
-  },
-  {
-    icon: Languages,
-    title: translate('speaksYourLanguage'),
-    body: translate('askInEnglishGermanFrenchItalianOrPolishShe'),
-  },
-]
+import { translatorFor } from '@/lib/i18n'
+import { plansIn } from '@/lib/plans'
 
 function Orbit({ items, size, offset = 0 }: { items: string[]; size: string; offset?: number }) {
   return (
@@ -59,7 +37,30 @@ function Orbit({ items, size, offset = 0 }: { items: string[]; size: string; off
 }
 
 // Heidi's band: the page's night sky, in her violet, always dark whatever the theme.
-export function HeidiSection() {
+export function HeidiSection({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  const { plansWith } = plansIn(lang)
+  // What circles the orb: the jobs Heidi does. Both orbits turn together and their chips sit between each
+  // other's, so no two ever overlap.
+  const INNER = [translate('overdueInvoices'), translate('hoursLeft'), translate('inputVAT')]
+  const OUTER = [translate('draftAReminder'), translate('logWork'), translate('importReceipts')]
+  const PROMISES: { icon: LucideIcon; title: string; body: string }[] = [
+    {
+      icon: ThumbsUp,
+      title: translate('nothingHappensWithoutAYes'),
+      body: translate('heidiShowsExactlyWhatSheWillChangeInWords'),
+    },
+    {
+      icon: ShieldCheck,
+      title: translate('offUntilYouSwitchItOn'),
+      body: translate('noAIModelSeesYourDataUntilAnOwner'),
+    },
+    {
+      icon: Languages,
+      title: translate('speaksYourLanguage'),
+      body: translate('askInEnglishGermanFrenchItalianOrPolishShe'),
+    },
+  ]
   return (
     <section id="heidi" className="relative mt-32 sm:mt-48">
       <Ridge edge="rise" />

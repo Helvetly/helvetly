@@ -1,37 +1,40 @@
 'use client'
 
+import type { Locale } from '@helvetly/i18n'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { formatPrice } from '@helvetly/ui/lib/price'
 import { Check, Minus } from 'lucide-react'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import {
-  FEATURE_GROUPS,
   type FeatureRow,
-  formatLimit,
   type LimitKey,
-  LIMITS,
   type Plan,
   type PlanId,
-  PLANS,
+  plansIn,
   priceOf,
   RECOMMENDED,
 } from '@/lib/plans'
-import { START_URL } from '@/lib/site'
+import { siteIn } from '@/lib/site'
 import { type Tone, TONES } from '@/lib/tones'
 
 // The same colours as the pricing cards: Basic sky, Pro lilac (the recommended plan), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
 
 /** Under an allowance's number: a workspace cap, kept storage per person, or a monthly pool per person. */
-function unitOf(limit: LimitKey): string {
-  if (LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
+function unitOf(limit: LimitKey, language: Locale): string {
+  const translate = translatorFor(language)
+  if (plansIn(language).LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
   return limit === 'storage_bytes' ? translate('perPersonShort') : translate('perPersonAMonthShort')
 }
 
 function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { formatLimit } = plansIn(language)
   if (!row.plans[plan])
     return (
       <span className="inline-flex text-muted-foreground/60">
@@ -44,7 +47,7 @@ function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
       <span className="font-medium tabular-nums">
         {formatLimit(row.limit, plan)}
         <span className="block text-caption font-normal text-muted-foreground">
-          {unitOf(row.limit)}
+          {unitOf(row.limit, language)}
         </span>
       </span>
     )
@@ -63,6 +66,7 @@ function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
 }
 
 function PlanHead({ plan }: { plan: Plan }) {
+  const translate = translatorFor(useLanguage())
   const recommended = plan.id === RECOMMENDED
   const unavailable = useOfferStatus().status === 'unavailable'
   return (
@@ -89,9 +93,11 @@ function PlanHead({ plan }: { plan: Plan }) {
 }
 
 function StartCta({ plan }: { plan: Plan }) {
+  const language = useLanguage()
+  const translate = translatorFor(language)
   return (
     <Cta
-      href={START_URL}
+      href={siteIn(language).START_URL}
       disabled={useOfferStatus().status === 'unavailable'}
       variant={plan.id === RECOMMENDED ? 'primary' : 'outline'}
       arrow={false}
@@ -107,6 +113,9 @@ const band = (plan: PlanId) => plan === RECOMMENDED && 'bg-lilac/35'
 
 /** Every feature side by side in one table, grouped by area, with the plans' heads pinned while it scrolls. */
 function WideTable() {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { FEATURE_GROUPS, PLANS } = plansIn(language)
   return (
     <table className="w-full table-fixed border-separate border-spacing-0 text-left text-body">
       <caption className="sr-only">{translate('whatEachPlanIncludes')}</caption>
@@ -177,6 +186,9 @@ function WideTable() {
 
 /** Narrow screens: a card per plan with the same groups, so nothing scrolls sideways. */
 function PlanCard({ plan }: { plan: Plan }) {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { FEATURE_GROUPS } = plansIn(language)
   return (
     <section
       aria-label={translate('plan', { name: plan.name })}
@@ -211,6 +223,9 @@ function PlanCard({ plan }: { plan: Plan }) {
 
 /** The plans compared feature by feature, with the allowances in the cells that have one. */
 export function PlanTable() {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { PLANS } = plansIn(language)
   return (
     <div className="flex flex-col gap-6">
       <div className="hidden lg:block">

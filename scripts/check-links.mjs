@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 // Verifies every internal link in a static export (the directory given, default ./out): the target page or file
 // must exist, and a #fragment must match an id on the target page. Runs after `next build` of apps/web; exits
-// non-zero on any broken link.
+// non-zero on any broken link. A page of another language than English (out/<lang>/…) may link only to pages of its
+// own language: the site is built in one pass, so a link without the prefix would quietly switch to English.
+import { readFileSync } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
-import { relative, resolve } from 'node:path'
+import { relative, resolve, sep } from 'node:path'
 
 const root = resolve(process.argv[2] ?? 'out')
+const { defaultLocale, locales } = JSON.parse(
+  readFileSync(new URL('../packages/i18n/src/locales.json', import.meta.url), 'utf8'),
+)
+const prefixed = Object.keys(locales).filter((language) => language !== defaultLocale)
 
 async function walk(dir) {
   const out = []
@@ -59,14 +65,27 @@ let checked = 0
 
 for (const page of files.filter((f) => f.endsWith('.html'))) {
   const markup = markupOf(await readFile(page, 'utf8'))
-  for (const m of markup.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
-    const raw = m[1].replaceAll('&amp;', '&')
+  const at = relative(root, page)
+  const language = prefixed.find((l) => at === `${l}.html` || at.startsWith(l + sep))
+  for (const m of markup.matchAll(/\s(href|src)="([^"]*)"/g)) {
+    const raw = m[2].replaceAll('&amp;', '&')
     if (!raw || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(raw)) continue // external, mailto:, data:
     const url = new URL(raw, `http://x/${relative(root, page).replace(/(index)?\.html$/, '')}`)
     const target = raw.startsWith('#') ? page : await resolvePage(url.pathname)
     checked++
     if (!target) {
       broken.push(`${relative(root, page)} → ${raw} (missing page)`)
+      continue
+    }
+    const path = relative(root, target)
+    if (
+      language &&
+      m[1] === 'href' &&
+      target.endsWith('.html') &&
+      path !== `${language}.html` &&
+      !path.startsWith(language + sep)
+    ) {
+      broken.push(`${relative(root, page)} → ${raw} (leaves /${language})`)
       continue
     }
     const fragment = decodeURIComponent(url.hash.slice(1))

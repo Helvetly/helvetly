@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { LanguageProvider } from './language-provider'
 import { ThemeProvider } from './theme-provider'
 import { ThemeToggle } from './theme-toggle'
 
@@ -51,4 +52,16 @@ test('inside a menu the buttons are its radio items', () => {
   expect(
     screen.getAllByRole('menuitemradio').map((item) => item.getAttribute('aria-label')),
   ).toEqual(['Light', 'Dark', 'System'])
+})
+
+test('speaks the language of the page around it', () => {
+  render(
+    <ThemeProvider hotkey={false}>
+      <LanguageProvider language="de">
+        <ThemeToggle />
+      </LanguageProvider>
+    </ThemeProvider>,
+  )
+  expect(screen.getByRole('radiogroup', { name: 'Darstellung' })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Dunkel' })).toBeInTheDocument()
 })

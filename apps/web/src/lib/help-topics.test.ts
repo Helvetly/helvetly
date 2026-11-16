@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import { readCollection } from './content'
-import { HELP_TOPICS, POPULAR_HELP, topicSlug, topicsWithArticles } from './help-topics'
+import { helpTopicsIn, POPULAR_HELP, topicSlug, topicsWithArticles } from './help-topics'
 
 describe('help topics', () => {
-  const help = readCollection('help')
+  const help = readCollection('help', 'en')
 
   it('give every help article a known topic', () => {
-    const names = new Set(HELP_TOPICS.map((t) => t.name))
+    const names = new Set(helpTopicsIn('en').map((t) => t.name))
     expect(help.filter((a) => !names.has(a.category)).map((a) => a.slug)).toEqual([])
-    expect(topicsWithArticles(help).flatMap((t) => t.articles)).toHaveLength(help.length)
+    expect(topicsWithArticles(help, 'en').flatMap((t) => t.articles)).toHaveLength(help.length)
   })
 
   it('list only popular articles that exist', () => {

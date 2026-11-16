@@ -1,6 +1,8 @@
+import type { Locale } from '@helvetly/i18n'
+
 import { Container } from '@/components/section'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 const DOTS = [
@@ -12,23 +14,23 @@ const DOTS = [
   TONES.lemon.dot,
 ]
 
-// The formats and rules Helvetly speaks, each one implemented in the API.
-const STANDARDS = [
-  translate('swissQRBillSIX'),
-  translate('qrIBANQRRSCOR'),
-  translate('ech0217VATReturn'),
-  translate('effectiveNetTaxRate'),
-  translate('xrechnungUBLCII'),
-  translate('peppolBISBilling'),
-  translate('ksefFA3'),
-  translate('roEFactura'),
-  translate('or104DefaultInterest'),
-  translate('ndsgGDPR'),
-  translate('passkeysTOTP'),
-  translate('simpleESignatures'),
-]
-
-export function Standards() {
+export function Standards({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  // The formats and rules Helvetly speaks, each one implemented in the API.
+  const STANDARDS = [
+    translate('swissQRBillSIX'),
+    translate('qrIBANQRRSCOR'),
+    translate('ech0217VATReturn'),
+    translate('effectiveNetTaxRate'),
+    translate('xrechnungUBLCII'),
+    translate('peppolBISBilling'),
+    translate('ksefFA3'),
+    translate('roEFactura'),
+    translate('or104DefaultInterest'),
+    translate('ndsgGDPR'),
+    translate('passkeysTOTP'),
+    translate('simpleESignatures'),
+  ]
   return (
     <section aria-label={translate('standardsHelvetlySupports')} className="py-10">
       <Container>

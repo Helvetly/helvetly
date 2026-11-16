@@ -1,4 +1,3 @@
-import { localizedNextConfig } from '@helvetly/i18n/next'
 import type { NextConfig } from 'next'
 
 const config: NextConfig = {
@@ -8,7 +7,10 @@ const config: NextConfig = {
   // Static files only (out/): every page is known at build time. Served by Cloudflare Pages at helvetly.com.
   output: 'export',
   images: { unoptimized: true }, // no image server in a static export
-  ...localizedNextConfig,
+  // One build serves every language: English at the root, the others under /<language> (app/[lang]).
+  transpilePackages: ['@helvetly/ui', '@helvetly/i18n'],
+  // Two root layouts ((default) and [lang]) leave no single layout for unmatched URLs.
+  experimental: { globalNotFound: true },
 }
 
 export default config

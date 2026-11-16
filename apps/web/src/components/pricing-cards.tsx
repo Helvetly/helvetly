@@ -1,4 +1,5 @@
 'use client'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
 import { Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import { useState } from 'react'
@@ -7,23 +8,26 @@ import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import {
   type Interval,
   MAX_SELF_SERVICE_SEATS,
-  PLANS,
+  plansIn,
   priceOf,
   RECOMMENDED,
   TRIAL,
   YEARLY_DISCOUNT_PERCENT,
 } from '@/lib/plans'
-import { START_URL, SUPPORT_EMAIL } from '@/lib/site'
+import { siteIn, SUPPORT_EMAIL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
 
 // Basic and Business sit on their own pastel; Pro, the recommended plan, is the night card, as Heidi's band.
 const PLAN_TONE = { basic: TONES.sky, pro: TONES.lilac, business: TONES.mint }
 
 export function PricingCards() {
+  const language = useLanguage()
+  const translate = translatorFor(language)
+  const { PLANS } = plansIn(language)
   const [interval, setInterval] = useState<Interval>('year')
   const currency = useCurrency()
   const offer = useOfferStatus()
@@ -157,7 +161,7 @@ export function PricingCards() {
                     : translate('billedMonthly')}
               </p>
               <Cta
-                href={START_URL}
+                href={siteIn(language).START_URL}
                 disabled={unavailable}
                 variant={featured ? 'light' : 'primary'}
                 className="mt-6 w-full"
