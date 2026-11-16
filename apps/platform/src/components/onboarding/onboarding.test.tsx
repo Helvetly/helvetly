@@ -6,7 +6,9 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
+import type { Billing } from '@/lib/billing'
 import type { SettingsInput } from '@/lib/invoices'
 import { sampleSettings } from '@/test/invoice-api'
 
@@ -26,6 +28,7 @@ let finished = 0
 let saved: SettingsInput[] = []
 let renamed: unknown[] = []
 let workspaceName = 'Muster GmbH'
+let billing: Billing = billingFixture({ enabled: false, locked: false })
 // A brand-new workspace: nothing about the company yet.
 const empty = sampleSettings({
   seller: {
@@ -57,6 +60,7 @@ const session = (): Session => ({
 
 const server = setupServer(
   http.get('/api/v1/session', () => HttpResponse.json(session())),
+  http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
   http.post('/api/v1/session/onboarded', () => {
     finished++
     onboarded = true
@@ -81,6 +85,7 @@ beforeEach(() => {
   saved = []
   renamed = []
   workspaceName = 'Muster GmbH'
+  billing = billingFixture({ enabled: false, locked: false })
   pathname = '/welcome'
   replace.mockClear()
   window.history.replaceState(null, '', '/welcome?next=%2Finvoices%3Fstatus%3Dopen')
@@ -117,7 +122,7 @@ describe('the redirect', () => {
   test.each([
     ['once done', true, '/invoices'],
     ['on the welcome itself', false, '/welcome/'],
-  ])('lets the page through %s', (_, done, at) => {
+  ])('lets the page through %s', async (_, done, at) => {
     onboarded = done
     pathname = at
     wrap(
@@ -125,8 +130,32 @@ describe('the redirect', () => {
         <p>The app</p>
       </OnboardingRedirect>,
     )
-    expect(screen.getByText('The app')).toBeInTheDocument()
+    expect(await screen.findByText('The app')).toBeInTheDocument()
     expect(replace).not.toHaveBeenCalled()
+  })
+
+  test('without a plan, the first visit is not sent to the welcome: the plan gate sends it on', async () => {
+    billing = billingFixture()
+    pathname = '/invoices'
+    wrap(
+      <OnboardingRedirect session={session()}>
+        <p>The app</p>
+      </OnboardingRedirect>,
+    )
+    expect(await screen.findByText('The app')).toBeInTheDocument()
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  test('without a plan, the welcome itself sends on to the plan picker', async () => {
+    billing = billingFixture()
+    pathname = '/welcome/'
+    wrap(
+      <OnboardingRedirect session={session()}>
+        <p>The app</p>
+      </OnboardingRedirect>,
+    )
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/choose-plan'))
+    expect(screen.queryByText('The app')).not.toBeInTheDocument()
   })
 
   test.each([
@@ -152,30 +181,23 @@ describe('the welcome', () => {
     expect(screen.queryByRole('heading', { name: /Welcome/ })).not.toBeInTheDocument()
   })
 
-  test.each([
-    ['Skip for now', () => userEvent.click(screen.getByRole('button', { name: 'Skip for now' }))],
-    ['Esc', () => userEvent.keyboard('{Escape}')],
-  ])('%s ends it for good', async (_, dismiss) => {
-    wrap(<Welcome />)
-    await welcome()
-    await dismiss()
-    await left()
-    expect(finished).toBe(1)
-    expect(saved).toHaveLength(0)
-  })
-
-  test('skipping in the middle keeps what was typed', async () => {
+  test('can only be finished: no way to skip it, and Esc does nothing', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
-    await user.click(await screen.findByRole('button', { name: /Get started/ }))
-    await user.type(await screen.findByLabelText('Company name'), 'Muster GmbH')
-    await user.click(screen.getByRole('button', { name: 'Skip for now' }))
-    await left()
-    expect(saved[0]?.seller).toMatchObject({ name: 'Muster GmbH', country: 'CH' })
-    expect(finished).toBe(1)
+    await welcome()
+    expect(screen.queryByRole('button', { name: /Skip for now/ })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: /Get started/ }))
+    await screen.findByRole('heading', { name: 'Your company' })
+    await user.keyboard('{Escape}')
+    // A step's own skip only moves on.
+    await user.click(screen.getByRole('button', { name: 'I’ll do it later' }))
+    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+    expect(finished).toBe(0)
+    expect(replace).not.toHaveBeenCalled()
   })
 
-  test('skipping with an invalid entry stays, so the entry is not silently thrown away', async () => {
+  test('an invalid entry stays, so it is not silently thrown away', async () => {
     const user = userEvent.setup()
     const settingsReady = Promise.withResolvers<void>()
     server.use(
@@ -194,7 +216,7 @@ describe('the welcome', () => {
     }
     await waitFor(() => expect(iban).toBeEnabled())
     await user.type(iban, 'CH00 not an IBAN')
-    await user.click(screen.getByRole('button', { name: 'Skip for now' }))
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
     expect(await screen.findByLabelText('IBAN')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('heading', { name: 'Your company' })).toBeInTheDocument()
     expect(finished).toBe(0)

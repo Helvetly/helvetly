@@ -86,3 +86,33 @@ export const AllSteps: Story = {
 }
 
 export const AllStepsDark: Story = { ...AllSteps, parameters: { dark: true } }
+
+/** A save the server refuses: the step stays, with the reason in a danger callout above it. */
+export const SaveError: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.put('/api/v1/invoice-settings', () =>
+          HttpResponse.json(
+            { error: { code: 'internal', message: 'The settings could not be saved.' } },
+            { status: 500 },
+          ),
+        ),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await next(canvasElement, 'welcome', /Get started/)
+    await next(canvasElement, 'company', /Continue/)
+    const alert = await within(canvasElement).findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert.querySelector('svg')).not.toBeNull()
+    await expect(within(canvasElement).getByTestId('onboarding-step-company')).toBeVisible()
+  },
+}
+
+export const SaveErrorDark: Story = {
+  ...SaveError,
+  parameters: { ...SaveError.parameters, dark: true },
+}

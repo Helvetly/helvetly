@@ -31,7 +31,12 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await expect(page.getByText(/That code is not right/)).toBeVisible()
   await page.getByLabel('Code', { exact: true }).fill(code)
   await expect(page).toHaveURL(/\/welcome/)
-  await page.getByRole('button', { name: 'Skip for now' }).click()
+  // The welcome is finished, not skipped: each step's own skip moves on to the next.
+  await page.getByRole('button', { name: 'Get started' }).click()
+  await page.getByRole('button', { name: 'I’ll do it later' }).click()
+  await page.getByRole('button', { name: 'Skip', exact: true }).click()
+  await page.getByRole('button', { name: 'Skip', exact: true }).click()
+  await page.getByRole('button', { name: 'Go to the dashboard' }).click()
   await expect(page).toHaveURL(/\/clients/)
   await expect(page.getByRole('button', { name: 'New client', exact: true })).toBeVisible()
   const replay = await page.request.post('/api/v1/auth/email/verify', {

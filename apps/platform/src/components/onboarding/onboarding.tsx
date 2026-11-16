@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { HeidiOrb, HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
@@ -27,7 +28,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 import { LoginShowcase } from '@/components/auth/login-showcase'
 import {
@@ -89,8 +90,9 @@ export function Welcome() {
 
 /**
  * The welcome at /welcome: a full-screen page shown once per new workspace, the
- * steps on the left, a live invoice on the right. Finishing it, skipping it or pressing Esc ends
- * it for good (POST /session/onboarded) and goes on to where the person was going. Each step saves
+ * steps on the left, a live invoice on the right. There is no way out but through: a step's own
+ * "Skip" only moves on to the next step. Reaching the last step ends it for good
+ * (POST /session/onboarded), and its actions go on to where the person was going. Each step saves
  * what it has before moving on, so nothing typed is lost. Only a new workspace's owner gets here
  * (GET /session's `onboarded`); invited people never do.
  */
@@ -171,7 +173,7 @@ export function WelcomePage({ session }: { session: Session }) {
     if (await persist(true)) next()
   }
 
-  /** Leaves the welcome (skip, Esc or a next action), keeping what was typed. */
+  /** Leaves the welcome through one of the last step's actions, keeping what was typed. */
   const leave = async (to?: string, then?: () => void) => {
     if (finish.isPending) return
     // What was typed and can't be saved stays on screen with its errors, rather than being lost.
@@ -189,19 +191,6 @@ export function WelcomePage({ session }: { session: Session }) {
     then?.()
   }
 
-  // Esc is "Skip for now", unless it is closing a list or popover first.
-  const onEscape = useEffectEvent((event: KeyboardEvent) => {
-    const inLayer =
-      event.target instanceof Element &&
-      event.target.closest('[data-radix-popper-content-wrapper], [role="dialog"]')
-    if (event.key === 'Escape' && !event.defaultPrevented && !inLayer) void leave()
-  })
-  useEffect(() => {
-    const listener = (event: KeyboardEvent) => onEscape(event)
-    window.addEventListener('keydown', listener)
-    return () => window.removeEventListener('keydown', listener)
-  }, [])
-
   useEffect(() => heading.current?.focus(), [])
 
   if (done) return null
@@ -213,29 +202,16 @@ export function WelcomePage({ session }: { session: Session }) {
   return (
     <div className="grid min-h-svh bg-card lg:grid-cols-2">
       <div className="flex min-w-0 flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:pt-6">
-        <header className="flex items-center justify-between gap-3">
-          <span className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold tracking-tight">
-            <Logo className="size-8" />
-            {translate('helvetly')}
-          </span>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            {step !== 'done' && (
-              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void leave()}>
-                {translate('skipForNow')}
-              </Button>
-            )}
-          </div>
+        <header className="flex min-h-11 items-center gap-2.5 text-[15px] font-semibold tracking-tight">
+          <Logo className="size-8" />
+          {translate('helvetly')}
         </header>
         <main className="mx-auto flex w-full max-w-[34rem] flex-1 flex-col pt-8 sm:pt-14 lg:pt-20">
           <Progress index={index} total={steps.length} />
           {error && (
-            <p
-              role="alert"
-              className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
-            >
+            <Callout tone="danger" role="alert" className="mt-4">
               {errorMessage(error)}
-            </p>
+            </Callout>
           )}
           <div
             key={step}
@@ -291,6 +267,9 @@ export function WelcomePage({ session }: { session: Session }) {
             )}
           </div>
         </main>
+        <footer className="mt-8 flex">
+          <ThemeToggle />
+        </footer>
       </div>
       {step === 'welcome' ? (
         <LoginShowcase className="m-3 hidden lg:flex" />
