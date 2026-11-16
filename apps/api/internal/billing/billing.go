@@ -691,13 +691,14 @@ func (s *Service) changePlan(ctx context.Context, q store.Q, ws store.Workspace,
 		form.Set("items[0][id]", sub.Items.Data[0].ID)
 		form.Set("items[0][price]", target.ID)
 		form.Set("items[0][quantity]", strconv.FormatInt(seats, 10))
-		if trialing { // the trial runs on to its end, then bills the plan chosen now
+		if trialing { // choosing a plan ends the trial and charges it now, as the confirmation says
+			form.Set("trial_end", "now")
 			form.Set("proration_behavior", "none")
 		} else {
 			form.Set("proration_behavior", "always_invoice")
-			form.Set("payment_behavior", "pending_if_incomplete")
-			waits = true
 		}
+		form.Set("payment_behavior", "pending_if_incomplete")
+		waits = true
 		if !waits { // metadata would change before the payment; the plan is read from the price either way
 			form.Set("metadata[plan]", plan)
 			form.Set("metadata[interval]", interval)

@@ -26,7 +26,7 @@ func (f *fakeStripe) startedAt(id string, t time.Time) {
 func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 	for _, tc := range []struct {
 		name, status, from, plan, interval string
-		how                                string // pays: charged now, granted once paid; scheduled: at the period's end; trial: for after it
+		how                                string // pays: charged now, granted once paid; scheduled: at the period's end; trial: ends the trial, charged now
 	}{
 		{"upgrade", "active", "price_bm", Pro, "month", "pays"},
 		{"monthly to yearly, same plan", "active", "price_pm", Pro, "year", "pays"},
@@ -34,8 +34,8 @@ func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 		{"downgrade", "active", "price_pm", Basic, "month", "scheduled"},
 		{"yearly to monthly", "active", "price_py", Pro, "month", "scheduled"},
 		{"past due: an upgrade waits for its payment", "past_due", "price_bm", Pro, "month", "pays"},
-		{"trial: another plan for after it", "trialing", "price_xm", Basic, "month", "trial"},
-		{"trial: another interval", "trialing", "price_xm", Business, "year", "trial"},
+		{"trial: another plan ends it", "trialing", "price_xm", Basic, "month", "trial"},
+		{"trial: another interval ends it", "trialing", "price_xm", Business, "year", "trial"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := newEnv(t, true)
@@ -62,8 +62,8 @@ func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 					t.Fatalf("schedule form %v, billing %+v", sf, b)
 				}
 			case "trial":
-				if f.Get("proration_behavior") != "none" || f.Has("payment_behavior") || f.Has("trial_end") ||
-					b.Plan != tc.plan || b.Interval != tc.interval || b.Status != "trialing" {
+				if f.Get("trial_end") != "now" || f.Get("proration_behavior") != "none" ||
+					f.Get("payment_behavior") != "pending_if_incomplete" || f.Has("metadata[plan]") {
 					t.Fatalf("update form %v, billing %+v", f, b)
 				}
 			}
