@@ -158,10 +158,9 @@ Vous ne devez pas :
 
 - **Heidi**, l’assistante, répond aux questions sur Helvetly et votre activité. **L’import par IA**
   lit les fichiers importés et propose des enregistrements à vérifier.
-- Le contenu n’est transmis au fournisseur d’IA (OpenAI, États-Unis) **qu’après autorisation d’un
-  propriétaire ou administrateur** pour l’espace ; cette fonction peut être désactivée à tout
-  moment. Sans consentement, Heidi répond uniquement à partir de vos propres données et l’import
-  par IA est indisponible.
+- Pour les réponses qui nécessitent un modèle d’IA et pour l’import par IA, Helvetly transmet le
+  contenu concerné au fournisseur d’IA (OpenAI, États-Unis) dans le cadre du service. Les données
+  des employés et des salaires ne sont jamais transmises.
 - Les réponses et les données extraites peuvent être **erronées ou incomplètes**. Vérifiez-les
   avant de vous y fier ; l’import par IA ne crée rien avant examen et confirmation par une
   personne. Les réponses de Heidi ne constituent aucun conseil juridique, fiscal ou financier.

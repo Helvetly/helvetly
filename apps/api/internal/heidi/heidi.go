@@ -82,7 +82,6 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/heidi/conversations/{id}", s.conversation)
 	handle("POST /api/v1/heidi/chat", s.chat)
 	handle("POST /api/v1/heidi/chat/confirm", s.confirm)
-	handle("PUT /api/v1/heidi/consent", s.setConsent)
 }
 
 var conversationID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
@@ -243,12 +242,8 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	if err != nil {
 		return err
 	}
-	consent, err := s.db.AIConsent(r.Context(), sess.Workspace.ID)
-	if err != nil {
-		return err
-	}
 	mode, included, remaining := "local", new(int64(0)), new(int64(0))
-	if s.provider != nil && consent.Granted {
+	if s.provider != nil {
 		mode, included, remaining = "openai", nil, nil // nil: unlimited
 		if s.allowance != nil {
 			n, err := s.allowance(r.Context(), s.db.Q, sess.Workspace.ID)
@@ -261,7 +256,7 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		}
 	}
 	auth.WriteJSON(w, 200, map[string]any{"period": period, "tokens_used": u.TokensUsed, "tokens_included": included, "tokens_purchased": 0, "tokens_remaining": remaining, "mode": mode, "usage_uncertain": u.Uncertain, "can_purchase": false,
-		"provider_available": s.provider != nil, "consent": consent})
+		"provider_available": s.provider != nil})
 	return nil
 }
 

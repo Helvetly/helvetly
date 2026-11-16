@@ -52,8 +52,8 @@ export function HeidiSection({ lang }: { lang: Locale }) {
     },
     {
       icon: ShieldCheck,
-      title: translate('offUntilYouSwitchItOn'),
-      body: translate('noAIModelSeesYourDataUntilAnOwner'),
+      title: translate('notUsedForTraining'),
+      body: translate('questionsThatNeedAModelGoToOpenAI'),
     },
     {
       icon: Languages,

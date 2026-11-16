@@ -96,7 +96,6 @@ func TestExcludedRoutesRefuseTokens(t *testing.T) {
 		{"PATCH", "/api/v1/workspace"},
 		{"GET", "/api/v1/workspace/export"},
 		{"POST", "/api/v1/heidi/chat"},
-		{"PUT", "/api/v1/heidi/consent"},
 		{"POST", "/api/v1/feedback"},
 		{"GET", "/api/v1/account/notifications"},
 		{"PUT", "/api/v1/account/notifications"},

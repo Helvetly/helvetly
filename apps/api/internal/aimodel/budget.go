@@ -73,8 +73,8 @@ type Budget struct {
 	DB            *store.Store
 	Allowance     Allowance
 	CostAllowance Allowance
-	// Gate, when set, refuses a call in its admission transaction (the workspace's consent): checked before every
-	// call, so a withdrawal stops the next one even within a turn or a file. Its error is returned as is.
+	// Gate, when set, refuses a call in its admission transaction (AI import's plan): checked before every call, so a
+	// downgrade stops the next one even within a file. Its error is returned as is.
 	Gate func(ctx context.Context, q store.Q, workspaceID string) error
 	Now  func() time.Time
 	// Calling, when set, runs right before the provider is asked, after admission and the input check passed: a
@@ -82,7 +82,7 @@ type Budget struct {
 	Calling func()
 }
 
-// Generate makes one provider call under the budget. Admission checks consent and what is left; the input is counted;
+// Generate makes one provider call under the budget. Admission checks the gate and what is left; the input is counted;
 // tokens (input + capped output) and their worst-case cost are reserved atomically as the workspace's one call in
 // flight; after the call the actual usage is settled and only the unused rest released, even when the caller's
 // context ends. An unknown outcome keeps both reservations and blocks the month (ErrUnaccounted); a usage report

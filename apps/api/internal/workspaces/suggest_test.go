@@ -98,14 +98,14 @@ func TestSuggestIsOneTimeAndIdempotent(t *testing.T) {
 	}
 }
 
-func TestSuggestNeverTouchesThePlanPoolOrHeidiConsent(t *testing.T) {
+func TestSuggestNeverTouchesThePlanPool(t *testing.T) {
 	e := newEnv(t)
 	e.svc.SetNamer(&fakeNamer{reply: good("Muster")})
 	owner, ws := e.person("My workspace", "owner")
 	if code, body := e.do(owner, http.MethodPost, path, ask("Muster GmbH")); code != http.StatusOK {
 		t.Fatalf("suggest: %d %v", code, body)
 	}
-	for _, table := range []string{"heidi_usage", "ai_calls", "workspace_ai_consents"} {
+	for _, table := range []string{"heidi_usage", "ai_calls"} {
 		var n int
 		if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM `+table+` WHERE workspace_id = $1`, ws).Scan(&n); err != nil || n != 0 {
 			t.Fatalf("%s rows %d %v", table, n, err)

@@ -1,10 +1,10 @@
 ---
 title: Mit der Assistentin Heidi arbeiten
-description: Fragen Sie Heidi nach Rechnungen, Ausgaben, Kunden und Aufträgen, hängen Sie Dateien an und ermöglichen Sie KI-Antworten für Ihren Arbeitsbereich.
+description: Fragen Sie Heidi nach Rechnungen, Ausgaben, Kunden und Aufträgen, und hängen Sie Dateien an.
 category: Heidi
 categoryLabel: Heidi
 order: 1
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Heidi ist der in Helvetly integrierte Assistent. Fragen Sie sie nach Ihrem Unternehmen, direkt dort, wo Sie arbeiten.
@@ -15,7 +15,7 @@ Heidi ist in **Pro** und **Business** enthalten.
 2. Heidi kann überfällige und aktuelle Rechnungen, die Ausgaben und die Vorsteuer dieses Monats, aktuelle Kunden und Dokumente sowie Auftragssalden anzeigen. Sie kann Rechnungen und Aufträge öffnen, eine neue Rechnung erstellen und die Arbeit an einem Auftrag protokollieren.
 3. Um Bilder oder PDFs anzuhängen, verwenden Sie **Attach files** oder legen Sie sie auf dem Panel ab. Sie können bis zu 4 Dateien pro Nachricht mit jeweils 8 MB hinzufügen.
 4. Bevor Heidi funktioniert oder eine Rechnung sendet, bittet sie Sie um eine Bestätigung. Verwenden Sie **New chat**, **Search in conversation** oder **Max view** im Panel-Header.
-5. Für vollständige KI-Antworten klickt ein Eigentümer oder Administrator im Panel auf **Allow OpenAI** oder aktiviert **AI answers with OpenAI** in **Settings → Workspace**. Bis dahin beantwortet Heidi nur Ihre Unterlagen und den Helvetly-Leitfaden.
+5. Viele Fragen beantwortet Heidi direkt aus Ihren Unterlagen und dem Helvetly-Leitfaden. Für alle anderen nutzt sie ein KI-Modell (OpenAI); Personal- und Lohndaten werden nie gesendet.
 
 ## Gut zu wissen
 

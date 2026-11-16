@@ -77,11 +77,10 @@ incolli solo nell’archiviazione di sessione della scheda del browser.
 
 Heidi risponde a molte domande usando i dati dello spazio di lavoro senza servizi esterni. Per altre
 domande e per l’**importazione IA**, che legge file caricati e propone record, Helvetly usa l’API di
-OpenAI (OpenAI, USA), ma **solo dopo l’autorizzazione del titolare o di un amministratore dello spazio
-di lavoro** in Settings → Workspace o nel pannello di Heidi. Fino ad allora non viene inviato nulla
-e l’importazione IA non è disponibile.
+OpenAI (OpenAI, USA) come parte del servizio. L’importazione IA è disponibile nei piani che la
+includono.
 
-Se autorizzato:
+Cosa viene inviato:
 
 - Heidi invia il messaggio che scrivi, fino a 20 messaggi precedenti della conversazione (che possono
   contenere cifre mostrate da Heidi) e i file allegati a quel messaggio. Vengono inviati a OpenAI anche
@@ -89,13 +88,12 @@ Se autorizzato:
   token che la richiesta utilizzerà.
 - L’importazione IA invia il contenuto dei file caricati per l’importazione, una parte alla volta.
 
-I dati dei dipendenti e dei salari non vengono mai inviati, indipendentemente da questa impostazione.
+I dati dei dipendenti e dei salari non vengono mai inviati.
 
 Chiediamo a OpenAI di non conservare richieste e risposte (`store: false`). Secondo le condizioni API
 di OpenAI, i dati API non vengono usati per addestrare i modelli e possono essere conservati fino a
 30 giorni per rilevare abusi. Heidi è indicata come assistente IA; le sue risposte e i record importati
-possono essere errati e sono suggerimenti da verificare. Titolari e amministratori possono disattivare
-questa funzione in qualsiasi momento; ogni modifica viene registrata.
+possono essere errati e sono suggerimenti da verificare.
 
 ## 5. Destinatari e trasferimenti all’estero
 

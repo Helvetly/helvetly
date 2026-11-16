@@ -74,7 +74,7 @@ export default async function SecurityPage({ params }: Props) {
       icon: Sparkles,
       tone: 'rose',
       points: [
-        translate('nothingIsSentToAnAIModelUntilAn'),
+        translate('aiModelQuestionsAndImportGoToOpenAI'),
         translate('heidiReadsOnlyWhatThePersonAskingMayRead'),
         translate('workspaceContentIsPassedToTheModelAsData'),
         translate('eachPlanHasAMonthlyAllowanceOfAITokens'),

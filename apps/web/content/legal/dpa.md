@@ -36,7 +36,7 @@ for the Customer, to keep those records; it does not calculate pay, tax or contr
 
 Helvetly processes the data only on the Customer's documented instructions: the terms of service,
 this agreement and the Customer's use of the platform's functions (for example, sending an invoice
-or allowing Heidi to use OpenAI). Helvetly informs the Customer if it believes an instruction breaks
+or asking Heidi a question). Helvetly informs the Customer if it believes an instruction breaks
 data protection law.
 
 ## 4. Confidentiality
@@ -53,8 +53,6 @@ The Customer authorises the subprocessors listed in [subprocessors.md](subproces
 informs the Customer 30 days before adding or replacing one; the Customer may object for
 important data protection reasons and, if no solution is found, end the contract. Helvetly binds
 each subprocessor to obligations equivalent to this agreement and remains responsible for it.
-Using OpenAI for Heidi and AI import requires, in addition, the consent an owner or admin gives in
-the platform.
 
 ## 7. Transfers abroad
 
@@ -119,8 +117,7 @@ provisions remain unaffected.
   log. Financial changes and signatures have their own append-only, hash-chained audit trails.
 - **Staff access:** the platform has no support or administrator access to workspaces; access to
   production systems is limited to the people who operate the service.
-- **AI provider:** off until consented per workspace (consent history kept); only the current
-  message, up to 20 earlier turns and explicitly attached files (Heidi) or the uploaded files (AI
+- **AI provider:** only the current message, up to 20 earlier turns and explicitly attached files (Heidi) or the uploaded files (AI
   import) are sent; requests ask the provider not to store data (`store: false`); a monthly token
   budget is enforced on the server.
 - **Employee and payroll data:** separate per-member access to Employees and Payroll, granted only

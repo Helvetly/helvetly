@@ -150,13 +150,6 @@ func (e *env) person(ws, user, role string, scopes []string) *store.Session {
 	return sess
 }
 
-func (e *env) consent(ws, user string) {
-	e.t.Helper()
-	if err := e.db.SetAIConsent(context.Background(), ws, user, true, time.Now()); err != nil {
-		e.t.Fatal(err)
-	}
-}
-
 func (e *env) as(s *store.Session) *env { e.current = s; return e }
 
 func (e *env) do(method, target string, body any) *httptest.ResponseRecorder {
@@ -222,10 +215,6 @@ const clientsCSV = "name,email,city,country\nAcme AG,office@acme.example,Zürich
 func TestUploadGateAndPermissions(t *testing.T) {
 	e := newEnv(t)
 	csv := map[string][]byte{"clients.csv": []byte(clientsCSV)}
-	if w := e.upload("clients", csv); w.Code != 403 || code(w) != "ai_consent_required" {
-		t.Fatalf("no consent: %d %s", w.Code, w.Body)
-	}
-	e.consent("ws_a", "usr_a")
 	if w := e.upload("timesheets", csv); w.Code != 400 {
 		t.Fatalf("unregistered kind: %d %s", w.Code, w.Body)
 	}
@@ -251,7 +240,6 @@ func TestUploadGateAndPermissions(t *testing.T) {
 
 func TestUploadStoresDocumentsOnceAndReusesEqualBytes(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	w := e.upload("clients", map[string][]byte{"clients.csv": []byte(clientsCSV)})
 	if w.Code != 201 {
 		t.Fatalf("upload: %d %s", w.Code, w.Body)
@@ -267,7 +255,6 @@ func TestUploadStoresDocumentsOnceAndReusesEqualBytes(t *testing.T) {
 	}
 	// Another workspace never reuses the first one's file.
 	other := e.person("ws_b", "usr_b", "owner", nil)
-	e.consent("ws_b", "usr_b")
 	third := decode[store.ImportBatch](t, e.as(other).upload("clients", map[string][]byte{"clients.csv": []byte(clientsCSV)}))
 	if third.Files[0].Reused || e.files.puts != 2 {
 		t.Fatalf("cross-tenant: %+v puts=%d", third.Files, e.files.puts)
@@ -283,7 +270,6 @@ func TestUploadStoresDocumentsOnceAndReusesEqualBytes(t *testing.T) {
 
 func TestSimultaneousUploadsStoreOneDocument(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	var wg sync.WaitGroup
 	results := make([]*httptest.ResponseRecorder, 4)
 	for i := range results {
@@ -311,7 +297,6 @@ func TestSimultaneousUploadsStoreOneDocument(t *testing.T) {
 
 func TestExtractionReviewsUntrustedRecords(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	ctx := context.Background()
 	if err := e.db.CreateClient(ctx, "ws_a", "cli_existing", map[string]any{"name": "Acme AG"}, time.Now()); err != nil {
 		t.Fatal(err)
@@ -348,7 +333,6 @@ func TestExtractionReviewsUntrustedRecords(t *testing.T) {
 
 func TestUnknownModelUsageIsNeverRetried(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	e.model.replies = append(e.model.replies, func(aimodel.Request) (aimodel.Reply, error) {
 		return aimodel.Reply{}, context.DeadlineExceeded
 	})
@@ -371,7 +355,6 @@ func TestUnknownModelUsageIsNeverRetried(t *testing.T) {
 
 func TestAChunkIsAskedAtMostTwice(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	refused := func(aimodel.Request) (aimodel.Reply, error) {
 		zero := int64(0)
 		return aimodel.Reply{Tokens: &zero}, errors.New("OpenAI returned HTTP 500")
@@ -390,19 +373,6 @@ func TestAChunkIsAskedAtMostTwice(t *testing.T) {
 	}
 }
 
-func TestConsentWithdrawnStopsExtraction(t *testing.T) {
-	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
-	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
-	if err := e.db.SetAIConsent(context.Background(), "ws_a", "usr_a", false, time.Now().Add(time.Second)); err != nil {
-		t.Fatal(err)
-	}
-	got := e.extracted(b.ID)
-	if got.Files[0].Status != "failed" || e.model.calls.Load() != 0 {
-		t.Fatalf("withdrawn consent: %+v calls=%d", got.Files[0], e.model.calls.Load())
-	}
-}
-
 type commitOut struct {
 	Results []commitResult
 	Batch   store.ImportBatch
@@ -410,7 +380,6 @@ type commitOut struct {
 
 func TestEditAndCommitAreIdempotent(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	got := e.extracted(b.ID)
 	if len(got.Records) != 2 || len(got.Records[0].Issues) != 0 || got.Records[1].Issues["email"] == "" {
@@ -464,7 +433,6 @@ func TestEditAndCommitAreIdempotent(t *testing.T) {
 
 func TestCommitReportsPlanLimitPerRecord(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	var admitted atomic.Int32
 	e.db.SetAdmission(func(_ context.Context, _ store.Q, _, resource string, _ int64) error {
 		if resource == "products" && admitted.Add(1) > 1 {
@@ -486,7 +454,6 @@ func TestCommitReportsPlanLimitPerRecord(t *testing.T) {
 
 func TestCommitNeedsWritePermission(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	member := e.person("ws_a", "usr_m", "member", []string{"write:clients", "write:documents"})
 	b := decode[store.ImportBatch](t, e.as(member).upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	if err := e.db.SetMemberRole(context.Background(), "ws_a", "usr_m", "member", []string{"read:clients"}); err != nil {
@@ -505,7 +472,6 @@ func TestCommitNeedsWritePermission(t *testing.T) {
 // had its tries it fails for good instead of taking the job down forever.
 func TestCrashingFileIsNotReclaimedForever(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	clock := time.Now().UTC()
 	e.s.now = func() time.Time { return clock }
@@ -525,7 +491,6 @@ func TestCrashingFileIsNotReclaimedForever(t *testing.T) {
 // since: the records would be stored twice and the file's state overwritten.
 func TestLapsedClaimCannotWriteAfterReclaim(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	ctx := context.Background()
 	clock := time.Now().UTC()
@@ -554,7 +519,6 @@ func TestLapsedClaimCannotWriteAfterReclaim(t *testing.T) {
 // AI Act Art. 50(2): every extracted record is marked as the model's output, in the API and in the stored row.
 func TestExtractedRecordsAreMarkedAsModelOutput(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(clientsCSV)}))
 	e.extracted(b.ID)
 	w := e.do("GET", "/api/v1/imports/"+b.ID, nil)
@@ -566,7 +530,6 @@ func TestExtractedRecordsAreMarkedAsModelOutput(t *testing.T) {
 // Ten files of up to 25 MB each, but at most 95 MB in one request, under Cloudflare's 100 MB.
 func TestUploadRequestLimit(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	files := map[string][]byte{}
 	for i := range 4 {
 		files[fmt.Sprintf("part-%d.csv", i)] = bytes.Repeat([]byte{byte('a' + i)}, maxFileBytes-200<<10)

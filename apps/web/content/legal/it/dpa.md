@@ -38,7 +38,7 @@ imposte o contributi.
 
 Helvetly tratta i dati solo sulla base delle istruzioni documentate del Cliente: le condizioni di
 servizio, il presente accordo e l’uso delle funzioni della piattaforma da parte del Cliente (ad esempio
-inviare una fattura o autorizzare Heidi a usare OpenAI). Helvetly informa il Cliente se ritiene che
+inviare una fattura o fare una domanda a Heidi). Helvetly informa il Cliente se ritiene che
 un’istruzione violi la normativa sulla protezione dei dati.
 
 ## 4. Riservatezza
@@ -55,8 +55,7 @@ Il Cliente autorizza i sub-responsabili elencati in [subprocessors.md](subproces
 informa il Cliente 30 giorni prima di aggiungerne o sostituirne uno; il Cliente può opporsi per
 importanti motivi di protezione dei dati e, se non si trova una soluzione, risolvere il contratto.
 Helvetly impone a ogni sub-responsabile obblighi equivalenti a quelli del presente accordo e ne
-rimane responsabile. L’uso di OpenAI per Heidi e l’importazione IA richiede inoltre il consenso
-dato nella piattaforma dal titolare o da un amministratore.
+rimane responsabile.
 
 ## 7. Trasferimenti all’estero
 
@@ -124,8 +123,7 @@ restano impregiudicate le sue disposizioni imperative.
   concatenate tramite hash che consentono solo aggiunte.
 - **Accesso del personale:** la piattaforma non offre accesso agli spazi di lavoro per assistenza
   o amministrazione; l’accesso ai sistemi di produzione è limitato a chi gestisce il servizio.
-- **Fornitore IA:** disattivato fino al consenso per spazio di lavoro, di cui è conservata la
-  cronologia; vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
+- **Fornitore IA:** vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
   esplicitamente allegati (Heidi), oppure i file caricati (importazione IA); le richieste chiedono
   al fornitore di non conservare i dati (`store: false`); budget mensile di token applicato sul server.
 - **Dati dei dipendenti e dei salari:** accesso separato per membro a Employees e Payroll, concesso

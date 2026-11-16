@@ -682,7 +682,7 @@ export function displayValue(value: ImportValue | undefined) {
 }
 
 export type ImportProblem = {
-  kind: 'consent' | 'not_configured' | 'plan' | 'file' | 'retry'
+  kind: 'not_configured' | 'plan' | 'file' | 'retry'
   title: string
   message: string
 }
@@ -699,12 +699,6 @@ export function importProblem(error: unknown): ImportProblem {
   const code = error instanceof ApiError ? error.code : ''
   const message = error instanceof Error ? error.message : ''
   switch (code) {
-    case 'ai_consent_required':
-      return {
-        kind: 'consent',
-        title: translate('aiReadingIsNotAllowedYet'),
-        message: translate('readingFilesUsesHeidiSAIModelOpenAIAn'),
-      }
     case 'ai_not_configured':
       return {
         kind: 'not_configured',

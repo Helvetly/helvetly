@@ -213,7 +213,6 @@ test('maps Heidi’s options to kinds', () => {
 })
 
 test('explains errors for novices', () => {
-  expect(importProblem(new ApiError(403, 'ai_consent_required', 'x')).kind).toBe('consent')
   expect(importProblem(new ApiError(409, 'ai_not_configured', 'x')).kind).toBe('not_configured')
   expect(importProblem(new ApiError(402, 'limit_reached', 'Storage is full.'))).toMatchObject({
     kind: 'plan',

@@ -38,7 +38,7 @@ ni cotisations.
 
 Helvetly traite les données uniquement sur instruction documentée du Client : les conditions
 d’utilisation, le présent accord et l’utilisation des fonctions de la plateforme par le Client
-(par exemple l’envoi d’une facture ou l’autorisation donnée à Heidi d’utiliser OpenAI). Helvetly
+(par exemple l’envoi d’une facture ou une question posée à Heidi). Helvetly
 informe le Client s’il estime qu’une instruction enfreint le droit de la protection des données.
 
 ## 4. Confidentialité
@@ -55,8 +55,7 @@ Le Client autorise les sous-traitants figurant dans la [liste des sous-traitants
 Helvetly l’informe 30 jours avant tout ajout ou remplacement ; le Client peut s’y opposer pour des
 motifs importants de protection des données et, à défaut de solution, résilier le contrat. Helvetly
 impose à chaque sous-traitant des obligations équivalentes au présent accord et demeure responsable
-de son intervention. L’utilisation d’OpenAI pour Heidi et l’import par IA nécessite en outre le
-consentement d’un propriétaire ou administrateur dans la plateforme.
+de son intervention.
 
 ## 7. Transferts à l’étranger
 
@@ -124,8 +123,7 @@ ses dispositions impératives demeurent réservées.
   chaînées par hachage, en ajout uniquement.
 - **Accès du personnel :** aucun accès de support ou d’administration aux espaces dans la plateforme ;
   accès aux systèmes de production limité aux personnes exploitant le service.
-- **Fournisseur d’IA :** désactivé jusqu’au consentement par espace (historique conservé) ; seuls le
-  message actuel, jusqu’à 20 échanges précédents et les fichiers explicitement joints (Heidi), ou les
+- **Fournisseur d’IA :** seuls le message actuel, jusqu’à 20 échanges précédents et les fichiers explicitement joints (Heidi), ou les
   fichiers importés (import par IA), sont transmis ; les requêtes demandent au fournisseur de ne pas
   conserver les données (`store: false`) ; budget mensuel de tokens imposé côté serveur.
 - **Données des employés et des salaires :** droits individuels distincts pour Employees et Payroll,

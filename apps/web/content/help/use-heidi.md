@@ -1,9 +1,9 @@
 ---
 title: Use Heidi, the assistant
-description: Ask Heidi about invoices, expenses, clients and engagements, attach files, and allow AI answers for your workspace.
+description: Ask Heidi about invoices, expenses, clients and engagements, and attach files.
 category: Heidi
 order: 1
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Heidi is the assistant built into Helvetly. Ask her about your business, right where you work.
@@ -14,7 +14,7 @@ Heidi is included in **Pro** and **Business**.
 2. Heidi can show overdue and recent invoices, this month's expenses and input VAT, recent clients and documents, and engagement balances. She can open invoices and engagements, start a new invoice and log work on an engagement.
 3. To attach images or PDFs, use **Attach files** or drop them on the panel. You can add up to 4 files per message, 8 MB each.
 4. Before Heidi logs work or sends an invoice, she asks you to confirm. Use **New chat**, **Search in conversation** or **Max view** in the panel header.
-5. For full AI answers, an owner or admin clicks **Allow OpenAI** in the panel, or turns on **AI answers with OpenAI** in **Settings → Workspace**. Until then, Heidi answers from your records and the Helvetly guide only.
+5. Heidi answers many questions from your records and the Helvetly guide. For the rest she uses an AI model (OpenAI); employee and payroll data are never sent.
 
 ## Good to know
 

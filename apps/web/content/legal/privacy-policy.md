@@ -74,11 +74,10 @@ tab's session storage.
 
 Heidi answers many questions from your workspace's records without any outside service. For other
 questions, and for **AI import** (reading uploaded files and proposing records), Helvetly uses
-OpenAI's API (OpenAI, USA), but **only after an owner or admin of the
-workspace has allowed it** in Settings → Workspace or in Heidi's panel. Until then nothing is sent
-and AI import is not available.
+OpenAI's API (OpenAI, USA) as part of the service. AI import is available on the plans that include
+it.
 
-Once allowed:
+What is sent:
 
 - Heidi sends the message you write, up to 20 earlier messages of that conversation (which can
   contain figures Heidi showed you) and files you attach to that message. A short check of whether
@@ -86,12 +85,11 @@ Once allowed:
   are sent to OpenAI as well.
 - AI import sends the content of the files you upload for the import, part by part.
 
-Employee and payroll data are never sent, whatever the setting.
+Employee and payroll data are never sent.
 
 We ask OpenAI not to store requests and responses (`store: false`). According to OpenAI's API terms,
 API data is not used to train models and may be kept for up to 30 days to detect abuse. Heidi is labelled as an AI assistant; its answers and imported
-records can be wrong and are suggestions for you to check. Owners and admins can turn this off at
-any time; every change is recorded.
+records can be wrong and are suggestions for you to check.
 
 ## 5. Recipients and transfers abroad
 

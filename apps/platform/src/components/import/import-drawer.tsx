@@ -7,16 +7,12 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, History, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
-import { AIPrivacyLink } from '@/components/heidi/ai-consent'
-import { usageKey } from '@/components/heidi/use-heidi'
 import { errorMessage } from '@/lib/api'
-import { heidiApi } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   commitSummary,
@@ -37,7 +33,6 @@ import {
   type ImportTarget,
   type Resolution,
 } from '@/lib/imports'
-import { useSession } from '@/lib/queries'
 
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
@@ -399,7 +394,6 @@ function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
         <AlertCircle className="size-4 shrink-0" /> {problem.title}
       </p>
       <p className="text-pretty text-foreground">{problem.message}</p>
-      {problem.kind === 'consent' && <AllowAI onAllowed={onRetry} />}
       {problem.kind === 'plan' && (
         <Button asChild size="sm" variant="outline" className="w-fit">
           <Link href="/settings/billing/plans">{translate('seePlans')}</Link>
@@ -410,32 +404,6 @@ function Problem({ error, onRetry }: { error: unknown; onRetry: () => void }) {
           {translate('tryAgain')}
         </Button>
       )}
-    </div>
-  )
-}
-
-/** Owners and admins can allow it right here, with the same consent as Heidi's panel. */
-function AllowAI({ onAllowed }: { onAllowed: () => void }) {
-  const queryClient = useQueryClient()
-  const role = useSession().data?.role
-  const allow = useMutation({
-    mutationFn: () => heidiApi.setConsent(true),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: usageKey })
-      onAllowed()
-    },
-  })
-  if (role !== 'owner' && role !== 'admin')
-    return <p className="text-muted-foreground">{translate('askAnOwnerOrAdminOfThisWorkspace')}</p>
-  return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-        <Button size="sm" disabled={allow.isPending} onClick={() => allow.mutate()}>
-          {allow.isPending ? translate('allowing') : translate('allowOpenAI')}
-        </Button>
-        <AIPrivacyLink />
-      </div>
-      {allow.error && <p className="text-destructive">{errorMessage(allow.error)}</p>}
     </div>
   )
 }

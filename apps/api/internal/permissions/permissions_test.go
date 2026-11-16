@@ -154,7 +154,6 @@ var scopedInHandler = []string{
 	"GET /api/v1/heidi/conversations/x",
 	"POST /api/v1/heidi/chat",
 	"POST /api/v1/heidi/chat/confirm",
-	"PUT /api/v1/heidi/consent", // owner or admin, checked by role in the handler
 	// imports: the scope follows the batch's kind (write:<kind>, plus write:documents to upload)
 	"POST /api/v1/imports",
 	"GET /api/v1/imports",

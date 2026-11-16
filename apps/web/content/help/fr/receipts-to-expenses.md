@@ -4,7 +4,7 @@ description: Importez un lot de justificatifs et laissez l’IA créer un brouil
 category: Expenses
 categoryLabel: Dépenses
 order: 2
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Évitez la saisie : importez vos justificatifs et l’IA les transforme en brouillons de dépenses.
@@ -18,5 +18,4 @@ Les dépenses et l’import de justificatifs nécessitent **Pro** ou **Business*
 
 ## Bon à savoir
 
-- L’IA doit être autorisée pour l’espace de travail (voir « Utiliser Heidi, l’assistante »).
 - La lecture des justificatifs consomme le quota mensuel d’IA.

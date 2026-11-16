@@ -16,7 +16,6 @@ func issuedRecord(number, price string) string {
 
 func TestCommitResolvesNumberConflicts(t *testing.T) {
 	e := newEnv(t)
-	e.consent("ws_a", "usr_a")
 	ctx := context.Background()
 	if err := e.db.CreateClient(ctx, "ws_a", "cli_k", map[string]any{"name": "Kunde AG"}, time.Now()); err != nil {
 		t.Fatal(err)

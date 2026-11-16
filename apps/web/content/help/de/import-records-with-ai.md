@@ -4,7 +4,7 @@ description: Übertragen Sie Kunden, Produkte, Aufträge, Rechnungen und Ausgabe
 category: Getting started
 categoryLabel: Erste Schritte
 order: 3
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Wechsel von einem anderen System? Lassen Sie AI Ihre alten Dateien lesen und in Helvetly-Datensätze umwandeln.
@@ -19,5 +19,5 @@ Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der
 
 ## Gut zu wissen
 
-- Für den Arbeitsbereich muss KI von einem Eigentümer oder Administrator zugelassen werden, und für Importe wird die monatliche KI-Zulage verwendet.
+- Für Importe wird die monatliche KI-Zulage verwendet.
 - Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Settings → Periods**.

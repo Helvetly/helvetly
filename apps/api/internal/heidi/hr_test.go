@@ -12,8 +12,8 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// TestEmployeeDataNeverReachesHeidi: Heidi has no branch, card or tool over employees or payroll, and the AI consent
-// does not cover them, so neither the model nor the answer ever carries a name, figure or file of an employee, even
+// TestEmployeeDataNeverReachesHeidi: Heidi has no branch, card or tool over employees or payroll, and the AI model
+// never receives them, so neither the model nor the answer ever carries a name, figure or file of an employee, even
 // for an owner (who holds every HR scope) asking for them directly.
 func TestEmployeeDataNeverReachesHeidi(t *testing.T) {
 	s, mux, p, _ := modelFixture(t)

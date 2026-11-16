@@ -261,7 +261,6 @@ func TestProviderUsageIsActualAndInputBudgetIsCheckedBeforeGeneration(t *testing
 	}}
 	s.provider = p
 	s.allowance = func(context.Context, store.Q, string) (int64, error) { return 100, nil }
-	grant(t, mux)
 	w := chat(t, mux, "model", "Explain this accounting term")
 	if w.Code != 200 {
 		t.Fatalf("provider: %d %s", w.Code, w.Body)
@@ -287,7 +286,6 @@ func TestUnknownProviderUsageBlocksOnlyFurtherModelCalls(t *testing.T) {
 		return ProviderReply{}, context.DeadlineExceeded
 	}}
 	s.provider = p
-	grant(t, mux)
 	// The provider call had started (its step was streamed), so the failure is an error frame.
 	w := chat(t, mux, "unknown", "Explain a term")
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"type":"error"`) || strings.Contains(w.Body.String(), `"type":"done"`) {
@@ -314,7 +312,6 @@ func TestImportRequestWithFilesOffersTheImportFormWithoutTheModel(t *testing.T) 
 		return ProviderReply{}, nil
 	}}
 	s.provider = p
-	grant(t, mux)
 	w := chat(t, mux, "import", "Please import these clients", "%PDF-1.7 list")
 	body := w.Body.String()
 	if w.Code != 200 || !strings.Contains(body, `"intent":"import"`) || !strings.Contains(body, `"options":["Clients","Engagements","Expenses","Invoices","Products \u0026 services"]`) || p.calls.Load() != 0 {

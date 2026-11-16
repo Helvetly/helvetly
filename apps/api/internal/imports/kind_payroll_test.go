@@ -29,7 +29,7 @@ const payrollCSV = "employee_number;period_start;period_end;currency;gross;deduc
 	"E-3;2026-10-01;2026-10-31;CHF;4000.00;;;\n" // valid, missing values stay missing
 
 func TestPayrollImportWithoutTheModel(t *testing.T) {
-	e := newEnv(t) // no AI consent: the payroll import never needs it
+	e := newEnv(t)
 	for _, n := range []string{"E-1", "E-2", "E-3"} {
 		e.staff(n)
 	}

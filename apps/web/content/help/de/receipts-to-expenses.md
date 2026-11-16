@@ -4,7 +4,7 @@ description: Laden Sie einen Stapel Quittungen hoch und lassen Sie die KI jede e
 category: Expenses
 categoryLabel: Ausgaben
 order: 2
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Überspringen Sie das Tippen: Laden Sie Ihre Belege hoch und die KI wandelt sie in Ausgabenentwürfe um.
@@ -18,5 +18,4 @@ Für den Import von Spesen und Belegen ist **Pro** oder **Business** erforderlic
 
 ## Gut zu wissen
 
-- Für den Arbeitsbereich muss AI zugelassen sein (siehe „Heidi, den Assistenten verwenden“).
 - Beim Lesen von Quittungen wird der monatliche AI-Zuschuss verwendet.

@@ -82,11 +82,10 @@ le jeton d’API que vous collez uniquement dans le stockage de session de cet o
 
 Heidi répond à de nombreuses questions à partir des données de votre espace sans service externe.
 Pour d’autres questions et pour **l’import par IA** (lecture de fichiers et proposition
-d’enregistrements), Helvetly utilise l’API OpenAI (OpenAI, États-Unis), mais **uniquement après
-l’autorisation d’un propriétaire ou administrateur de l’espace** dans Settings → Workspace ou le
-panneau de Heidi. Jusque-là, rien n’est transmis et l’import par IA est indisponible.
+d’enregistrements), Helvetly utilise l’API OpenAI (OpenAI, États-Unis) dans le cadre du service.
+L’import par IA est disponible dans les formules qui l’incluent.
 
-Après autorisation :
+Données transmises :
 
 - Heidi envoie votre message, jusqu’à 20 messages précédents de la conversation (pouvant contenir
   des chiffres affichés par Heidi) et les fichiers joints à ce message. Une vérification rapide
@@ -94,13 +93,12 @@ Après autorisation :
   tokens de la requête, sont également envoyés à OpenAI.
 - L’import par IA transmet le contenu des fichiers importés, partie par partie.
 
-Les données des employés et des salaires ne sont jamais transmises, quel que soit le réglage.
+Les données des employés et des salaires ne sont jamais transmises.
 
 Nous demandons à OpenAI de ne pas conserver les requêtes et réponses (`store: false`). Selon ses
 conditions API, ces données ne servent pas à entraîner les modèles et peuvent être conservées
 jusqu’à 30 jours pour détecter les abus. Heidi est présentée comme une assistante IA ; ses réponses
-et les données importées peuvent être erronées et sont des propositions à vérifier. Les propriétaires
-et administrateurs peuvent désactiver cette fonction à tout moment ; chaque changement est enregistré.
+et les données importées peuvent être erronées et sont des propositions à vérifier.
 
 ## 5. Destinataires et transferts à l’étranger
 

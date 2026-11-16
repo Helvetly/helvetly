@@ -7,7 +7,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { HeidiPanel } from '@/components/heidi/heidi-panel'
 import { HeidiProvider, useHeidi } from '@/components/heidi/heidi-provider'
 
-import { screenHandlers, sessionHandler } from './screen-fixtures'
+import { screenHandlers } from './screen-fixtures'
 
 const scope = 'storybook:workspace'
 const usage = {
@@ -132,71 +132,6 @@ export const OffTopicRefusal: Story = {
     )
     await waitFor(() => expect(within(log).getByText('Which invoices are overdue?')).toBeVisible())
     await expect(within(log).getByRole('button', { name: 'Show overdue invoices' })).toBeVisible()
-  },
-}
-
-let consent = { granted: false, changed_at: null as string | null, changed_by: '' }
-const consentPut = fn()
-const consentApi = [
-  http.get('/api/v1/heidi/usage', () =>
-    HttpResponse.json({
-      ...usage,
-      mode: consent.granted ? 'openai' : 'local',
-      provider_available: true,
-      consent,
-    }),
-  ),
-  http.put('/api/v1/heidi/consent', async ({ request }) => {
-    const body = (await request.json()) as { granted: boolean }
-    consentPut(body)
-    consent = {
-      granted: body.granted,
-      changed_at: '2026-11-09T10:00:00Z',
-      changed_by: 'Anna Muster',
-    }
-    return HttpResponse.json({ data: consent })
-  }),
-]
-
-/** No content reaches OpenAI until an owner or admin allows it; the details are in the privacy policy, one link away. */
-export const ConsentBeforeOpenAI: Story = {
-  beforeEach: () => {
-    consent = { granted: false, changed_at: null, changed_by: '' }
-    consentPut.mockClear()
-  },
-  parameters: { msw: { handlers: [...consentApi, ...fakeApi] } },
-  render: () => <Panel />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
-    const note = await canvas.findByRole('note')
-    await expect(note).toHaveTextContent('AI answers are off.')
-    await expect(note).not.toHaveTextContent('OpenAI (USA)')
-    await expect(within(note).getByRole('link', { name: 'How Heidi uses OpenAI' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/privacy#4-heidi-ai-import-and-openai'),
-    )
-    await userEvent.click(within(note).getByRole('button', { name: 'Allow OpenAI' }))
-    await waitFor(() => expect(consentPut).toHaveBeenCalledWith({ granted: true }))
-    await waitFor(() => expect(canvas.queryByRole('note')).not.toBeInTheDocument())
-  },
-}
-
-/** A member sees why answers are local but cannot allow OpenAI. */
-export const ConsentForMembers: Story = {
-  beforeEach: () => {
-    consent = { granted: false, changed_at: null, changed_by: '' }
-  },
-  parameters: {
-    msw: { handlers: [sessionHandler({ role: 'member' }), ...consentApi, ...fakeApi] },
-  },
-  render: () => <Panel />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
-    const note = await canvas.findByRole('note')
-    await expect(note).toHaveTextContent('An owner or admin can allow it.')
-    await expect(within(note).queryByRole('button')).not.toBeInTheDocument()
   },
 }
 

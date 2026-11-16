@@ -4,7 +4,7 @@ description: Importez clients, produits, mandats, factures et dépenses depuis d
 category: Getting started
 categoryLabel: Premiers pas
 order: 3
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Vous quittez un autre système ? Laissez l’IA lire vos anciens fichiers et les transformer en données Helvetly.
@@ -19,5 +19,5 @@ L’import par IA nécessite **Pro** ou **Business** et utilise le quota de toke
 
 ## Bon à savoir
 
-- Un propriétaire ou administrateur doit autoriser l’IA pour l’espace de travail ; les imports consomment le quota mensuel d’IA.
+- Les imports consomment le quota mensuel d’IA.
 - Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Settings → Periods**.

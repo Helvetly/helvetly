@@ -25,7 +25,6 @@ import { Suspense, useEffect, useEffectEvent, useRef, useState, type ReactNode }
 import { heidiApi } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 
-import { AIConsentNotice } from './ai-consent'
 import { ChatHistory } from './chat-history'
 import { Composer } from './composer'
 import { EmptyState } from './empty-state'
@@ -477,7 +476,6 @@ function PanelBody() {
             {translate('jumpToLatest')}
           </button>
         )}
-        <AIConsentNotice />
         {warn && <TokenWarning share={share} />}
         <Composer
           attached={warn}

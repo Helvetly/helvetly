@@ -331,61 +331,6 @@ export const CommitPartialSuccess: Story = {
   },
 }
 
-let consented = false
-/** No AI consent yet: an owner can allow it right here, and the upload goes through. */
-export const ConsentMissing: Story = {
-  beforeEach: () => {
-    consented = false
-  },
-  parameters: {
-    msw: {
-      handlers: [
-        sessionHandler({ role: 'owner' }),
-        noBatches,
-        http.post('/api/v1/imports', () =>
-          consented
-            ? HttpResponse.json({ data: extracting }, { status: 201 })
-            : fail(403, 'ai_consent_required', 'AI consent is required.'),
-        ),
-        http.put('/api/v1/heidi/consent', () => {
-          consented = true
-          return HttpResponse.json({
-            data: { granted: true, changed_at: '2026-11-09T10:00:00Z', changed_by: 'Anna' },
-          })
-        }),
-        getBatch(() => extracting),
-      ],
-    },
-  },
-  play: async () => {
-    await chooseAndRead()
-    await expect(await body().findByText('AI reading is not allowed yet')).toBeVisible()
-    // The button waits for the session (owners and admins only), which can settle after the error.
-    await userEvent.click(await body().findByRole('button', { name: 'Allow OpenAI' }))
-    await expect(await body().findByText('Reading part 2 of 5')).toBeVisible()
-  },
-}
-
-/** A member without the right to allow it is told whom to ask. */
-export const ConsentMissingMember: Story = {
-  parameters: {
-    msw: {
-      handlers: [
-        sessionHandler({ role: 'member' }),
-        noBatches,
-        http.post('/api/v1/imports', () =>
-          fail(403, 'ai_consent_required', 'AI consent is required.'),
-        ),
-      ],
-    },
-  },
-  play: async () => {
-    await chooseAndRead()
-    await expect(await body().findByText('Ask an owner or admin of this workspace.')).toBeVisible()
-    await expect(body().queryByRole('button', { name: 'Allow OpenAI' })).toBeNull()
-  },
-}
-
 /** Storage is full: the plan's message and the way to the plans. */
 export const PlanLimit: Story = {
   parameters: {

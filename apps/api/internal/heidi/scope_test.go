@@ -62,7 +62,6 @@ func modelFixture(t *testing.T) (*Service, http.Handler, *testProvider, func() i
 		return ProviderReply{Text: "Explanation.", Tokens: &tokens}, nil
 	}}
 	s.provider = p
-	grant(t, mux)
 	used := func() int64 {
 		u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, s.now().In(sess.Workspace.Location()).Format("2006-01"))
 		if err != nil || u.Uncertain {

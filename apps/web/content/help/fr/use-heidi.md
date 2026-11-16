@@ -1,10 +1,10 @@
 ---
 title: Utiliser Heidi, l’assistante
-description: Interrogez Heidi sur les factures, dépenses, clients et mandats, joignez des fichiers et autorisez les réponses par IA pour votre espace de travail.
+description: Interrogez Heidi sur les factures, dépenses, clients et mandats, et joignez des fichiers.
 category: Heidi
 categoryLabel: Heidi
 order: 1
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Heidi est l’assistante intégrée à Helvetly. Interrogez-la sur votre activité, là où vous travaillez.
@@ -15,7 +15,7 @@ Heidi est incluse dans **Pro** et **Business**.
 2. Heidi peut afficher les factures récentes ou en retard, les dépenses et l’impôt préalable du mois, les clients et documents récents, ainsi que les soldes des mandats. Elle peut ouvrir des factures et mandats, commencer une nouvelle facture et enregistrer une prestation sur un mandat.
 3. Pour joindre des images ou PDF, utilisez **Attach files** ou déposez-les dans le panneau. Vous pouvez ajouter jusqu’à 4 fichiers par message, de 8 Mo chacun.
 4. Avant d’enregistrer une prestation ou d’envoyer une facture, Heidi vous demande de confirmer. Utilisez **New chat**, **Search in conversation** ou **Max view** dans l’en-tête du panneau.
-5. Pour obtenir des réponses complètes par IA, un propriétaire ou administrateur clique sur **Allow OpenAI** dans le panneau, ou active **AI answers with OpenAI** dans **Settings → Workspace**. Jusque-là, Heidi répond uniquement à partir de vos données et du guide Helvetly.
+5. Heidi répond à de nombreuses questions à partir de vos données et du guide Helvetly. Pour les autres, elle utilise un modèle d’IA (OpenAI) ; les données des employés et des salaires ne sont jamais transmises.
 
 ## Bon à savoir
 

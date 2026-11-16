@@ -3,7 +3,7 @@ title: Import records with AI
 description: Bring clients, products, engagements, invoices and expenses over from spreadsheets, PDFs, photos or Word files with AI.
 category: Getting started
 order: 3
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 Moving from another system? Let AI read your old files and turn them into Helvetly records.
@@ -18,5 +18,5 @@ The AI import needs **Pro** or **Business** and works within the plan's AI token
 
 ## Good to know
 
-- AI must be allowed for the workspace by an owner or admin, and imports use the monthly AI allowance.
+- Imports use the monthly AI allowance.
 - If your old system already declared VAT for the imported invoices, close those months in **Settings → Periods** first.
