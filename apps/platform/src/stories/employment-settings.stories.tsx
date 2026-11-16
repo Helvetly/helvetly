@@ -10,11 +10,16 @@ import { billingOn, hrPage } from './pages/hr'
 import { sessionHandler } from './screen-fixtures'
 
 const saved = fn()
-const save = http.put('/api/v1/employment/settings', async ({ request }) => {
-  const body = await request.json()
-  saved(body)
-  return HttpResponse.json({ data: { ...Object(body), updated_at: '2026-11-15T10:00:00Z' } })
-})
+// The API answers a save like a read: the stored settings with how many members may approve payroll.
+const saveWith = (approvers: number) =>
+  http.put('/api/v1/employment/settings', async ({ request }) => {
+    const body = await request.json()
+    saved(body)
+    return HttpResponse.json({
+      data: { ...Object(body), payroll_approvers: approvers, updated_at: '2026-11-15T10:00:00Z' },
+    })
+  })
+const save = saveWith(hr.employmentSettings.payroll_approvers)
 
 const meta = {
   title: 'Settings/Employment',
@@ -107,7 +112,7 @@ export const ReadOnly: Story = {
 /** Four-eyes on with nobody else to approve: the setting says so and points to Members. */
 export const SecondApproverAlone: Story = {
   parameters: hrPage('/settings/employment', {}, [
-    save,
+    saveWith(1),
     http.get('/api/v1/employment/settings', () =>
       HttpResponse.json({ data: { ...hr.employmentSettings, payroll_approvers: 1 } }),
     ),
@@ -135,6 +140,8 @@ export const SecondApproverAlone: Story = {
         expect.objectContaining({ require_second_approver: true }),
       ),
     )
+    // Still said once saved: four-eyes is on and nobody else can approve.
+    await expect(await body.findByText(/Nobody else can approve payroll yet/)).toBeVisible()
   },
 }
 export const SecondApproverAloneDark = dark(SecondApproverAlone)
