@@ -329,13 +329,30 @@ test('features read from the limits', () => {
   expect(pro && planFeatures(pro)).toEqual([
     '10 members besides the owner',
     '300 clients per workspace',
-    '150 invoice issues a month per paid person',
-    '300 expenses a month per paid person',
+    '100 invoice issues a month per team member',
+    '100 quotes sent a month per team member',
+    '300 expenses a month per team member',
     '250 products & services per workspace',
     '20 active engagements per workspace',
-    '50 signature requests a month per paid person',
-    '5 GB storage per paid person',
-    "5'000'000 AI tokens a month per paid person",
+    '50 signature requests a month per team member',
+    '5 GB storage per team member',
+    "5'000'000 AI tokens a month per team member",
+  ])
+})
+
+test('Business lists its uncapped records and quotes as unlimited, never as a number', () => {
+  const business = billing().plans[2]
+  expect(business && planFeatures(business)).toEqual([
+    'Any number of people',
+    'Unlimited clients',
+    'Unlimited invoice issues',
+    'Unlimited quotes sent',
+    'Unlimited expenses',
+    'Unlimited products & services',
+    'Unlimited active engagements',
+    'Unlimited signature requests',
+    '20 GB storage per team member',
+    "20'000'000 AI tokens a month per team member",
   ])
 })
 
@@ -345,15 +362,17 @@ test('a larger plan lists only what grows over the one before it', () => {
   const flat = { ...pro, limits: { ...pro.limits, members: basic.limits.members, products: 25 } }
   expect(planFeatures(flat, basic)).toEqual([
     '300 clients per workspace',
-    '150 invoice issues a month per paid person',
-    '300 expenses a month per paid person',
+    '100 invoice issues a month per team member',
+    '100 quotes sent a month per team member',
+    '300 expenses a month per team member',
     '20 active engagements per workspace',
-    '50 signature requests a month per paid person',
-    '5 GB storage per paid person',
-    "5'000'000 AI tokens a month per paid person",
+    '50 signature requests a month per team member',
+    '5 GB storage per team member',
+    "5'000'000 AI tokens a month per team member",
   ])
   expect(limitLine('members', 1)).toBe('1 member besides the owner')
-  expect(limitLine('invoices_per_month', 1)).toBe('1 invoice issue a month per paid person')
+  expect(limitLine('invoices_per_month', 1)).toBe('1 invoice issue a month per team member')
+  expect(limitLine('quotes_per_month', 1)).toBe('1 quote sent a month per team member')
   expect(limitLine('expenses_per_month', 0)).toBe('No expenses')
 })
 
@@ -441,21 +460,25 @@ test('limits read as short facts with the key number first', () => {
   expect(planFact('clients', 30)).toEqual({ value: '30', label: 'clients / workspace' })
   expect(planFact('invoices_per_month', null)).toEqual({
     value: 'Unlimited',
-    label: 'invoice issues / person / month',
+    label: 'invoice issues / team member / month',
+  })
+  expect(planFact('quotes_per_month', 5)).toEqual({
+    value: '5',
+    label: 'quotes sent / team member / month',
   })
   expect(planFact('members', null)).toEqual({ value: 'Any number', label: 'of people' })
   expect(planFact('members', 24)).toEqual({ value: '25', label: 'people at most' })
   expect(planFact('ai_tokens_per_month', 250_000)).toEqual({
     value: "250'000",
-    label: 'AI tokens / person / month',
+    label: 'AI tokens / team member / month',
   })
   expect(planFact('storage_bytes', 5_000_000_000)).toEqual({
     value: '5 GB',
-    label: 'storage / person',
+    label: 'storage / team member',
   })
   expect(planFact('ai_tokens_per_month', 5_000_000)).toEqual({
     value: '5M',
-    label: 'AI tokens / person / month',
+    label: 'AI tokens / team member / month',
   })
 })
 

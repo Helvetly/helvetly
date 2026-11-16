@@ -1,9 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
+import { render as renderPlain, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 
 import { billingFixture, entitlementsFixture } from './billing-fixture'
 import { PaymentCard } from './card-brand'
 import { Countdown } from './countdown'
 import { byPressure, UsageOverview } from './usage-overview'
+
+const render = (ui: ReactElement) => renderPlain(<TooltipProvider>{ui}</TooltipProvider>)
 
 test('usage sorts closest to the limit first and unlimited items last', () => {
   const sorted = byPressure([
@@ -36,7 +40,7 @@ test('the nudge names the item at its limit and what the next plan includes', ()
   expect(
     screen.getByText(/the plan’s limit is reached/).closest('[data-slot=usage-nudge]'),
   ).toHaveTextContent(
-    'Signature requests: the plan’s limit is reached. Business includes 200 signature requests a month per paid person.',
+    'Signature requests: the plan’s limit is reached. Business includes unlimited signature requests.',
   )
   expect(screen.getByRole('link', { name: 'See Business' })).toHaveAttribute(
     'href',
@@ -85,16 +89,16 @@ const withEntitlements = (used: Record<string, number | null>, over = {}) =>
     entitlements: entitlementsFixture('basic', { used, over }),
   })
 
-test('12 of 15 invoice issues is near the limit, with what Pro gives per paid person', () => {
+test('12 of 15 invoice issues is near the limit, with what Pro gives per team member', () => {
   render(<UsageOverview billing={withEntitlements({ invoices_per_month: 12 })} />)
   const tile = screen.getByText('Invoice issues').closest('li')
   expect(tile).toHaveAttribute('data-state', 'near')
   expect(tile).toHaveTextContent('12of 15')
-  expect(tile).toHaveTextContent('Per paid person, shared · Resets 1 Dec, 00:00 UTC')
+  expect(tile).toHaveTextContent('Per team member, shared · Resets 1 Dec, 00:00 UTC')
   expect(
     screen.getByText(/almost at the plan’s limit/).closest('[data-slot=usage-nudge]'),
   ).toHaveTextContent(
-    'Invoice issues: almost at the plan’s limit. Pro includes 150 invoice issues a month per paid person.',
+    'Invoice issues: almost at the plan’s limit. Pro includes 100 invoice issues a month per team member.',
   )
 })
 
@@ -129,6 +133,41 @@ test('excluded, unlimited, workspace-wide and custom limits read as such', () =>
   expect(clients).toHaveTextContent('Per workspace')
   expect(clients).toHaveTextContent('Custom limit until')
   expect(clients).not.toHaveTextContent('Resets')
+  const quotes = screen.getByText('Quotes sent').closest('li')
+  expect(quotes).toHaveTextContent('0of 5')
+  expect(screen.getByRole('button', { name: 'About Automated actions' })).toBeInTheDocument()
+})
+
+test('Business counts its records and quotes without a cap: the count, "of unlimited", no bar', () => {
+  render(
+    <UsageOverview
+      billing={billingFixture({
+        plan: 'business',
+        status: 'active',
+        locked: false,
+        entitlements: entitlementsFixture('business', {
+          seats: 3,
+          used: { clients: 1234, quotes_per_month: 42, invoices_per_month: 7 },
+        }),
+      })}
+    />,
+  )
+  for (const [label, used] of [
+    ['Clients', "1'234"],
+    ['Quotes sent', '42'],
+    ['Invoice issues', '7'],
+    ['Expenses', '0'],
+    ['Signature requests', '0'],
+    ['Products & services', '0'],
+    ['Active engagements', '0'],
+  ] as const) {
+    const tile = screen.getByText(label).closest('li')
+    expect(tile).toHaveAttribute('data-state', 'ok')
+    expect(tile).toHaveTextContent(`${used}of unlimited`)
+    expect(tile?.textContent).not.toMatch(/∞|NaN|-1|Not included/)
+    expect(tile?.querySelector('[role=meter], [role=progressbar]')).toBeNull()
+  }
+  expect(screen.queryByText(/limit is reached|almost at/)).toBeNull()
 })
 
 test('in a trial every allowance lasts the whole trial: no reset, no per-person growth', () => {
@@ -140,7 +179,13 @@ test('in a trial every allowance lasts the whole trial: no reset, no per-person 
         trial: true,
         entitlements: entitlementsFixture('business', {
           used: { invoices_per_month: 3 },
-          over: { invoices_per_month: { reset_at: null }, ai_tokens_per_month: { reset_at: null } },
+          // the trial's own allowances replace Business's unlimited ones
+          over: {
+            clients: { value: 100, state: 'limited' },
+            invoices_per_month: { value: 10, state: 'limited', reset_at: null },
+            quotes_per_month: { value: 10, state: 'limited', reset_at: null },
+            ai_tokens_per_month: { reset_at: null },
+          },
         }),
       })}
     />,
@@ -153,5 +198,6 @@ test('in a trial every allowance lasts the whole trial: no reset, no per-person 
   expect(screen.getByText('Clients').closest('[data-slot=usage-meter]')).not.toHaveTextContent(
     'For the whole trial',
   )
-  expect(screen.queryByText(/Resets|Per paid person/)).toBeNull()
+  expect(screen.getByText('Quotes sent').closest('li')).toHaveTextContent('0of 10')
+  expect(screen.queryByText(/Resets|Per team member/)).toBeNull()
 })

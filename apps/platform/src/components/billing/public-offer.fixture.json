@@ -1,10 +1,10 @@
 {
-  "offer_id": "helvetly-v1",
+  "offer_id": "helvetly-v2",
   "comparison": [
     {
       "key": "invoicing",
       "label": "Invoices and quotes",
-      "limit_keys": ["invoices_per_month"],
+      "limit_keys": ["invoices_per_month", "quotes_per_month"],
       "plans": {
         "basic": true,
         "business": true,
@@ -141,6 +141,7 @@
     "clients",
     "products",
     "invoices_per_month",
+    "quotes_per_month",
     "expenses_per_month",
     "signatures_per_month",
     "storage_bytes",
@@ -200,7 +201,7 @@
         },
         "business": {
           "included": true,
-          "value": 1500
+          "value": null
         },
         "pro": {
           "included": true,
@@ -276,7 +277,7 @@
         },
         "business": {
           "included": true,
-          "value": 100
+          "value": null
         },
         "pro": {
           "included": true,
@@ -295,7 +296,7 @@
         },
         "business": {
           "included": true,
-          "value": 1200
+          "value": null
         },
         "pro": {
           "included": true,
@@ -314,11 +315,11 @@
         },
         "business": {
           "included": true,
-          "value": 600
+          "value": null
         },
         "pro": {
           "included": true,
-          "value": 150
+          "value": 100
         }
       }
     },
@@ -333,11 +334,30 @@
         },
         "business": {
           "included": true,
-          "value": 1000
+          "value": null
         },
         "pro": {
           "included": true,
           "value": 250
+        }
+      }
+    },
+    "quotes_per_month": {
+      "unit": "issued_quote",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 5
+        },
+        "business": {
+          "included": true,
+          "value": null
+        },
+        "pro": {
+          "included": true,
+          "value": 100
         }
       }
     },
@@ -352,7 +372,7 @@
         },
         "business": {
           "included": true,
-          "value": 200
+          "value": null
         },
         "pro": {
           "included": true,

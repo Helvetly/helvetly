@@ -159,14 +159,14 @@ export const PlanErrorToasts: Story = {
           refuse(402, 'plan_required', 'This workspace has no active plan.', {}),
         ),
         http.post('/api/v1/test/limit', () =>
-          refuse(402, 'limit_reached', 'Basic issues 15 invoices a month per paid person.', {
+          refuse(402, 'limit_reached', 'Basic issues 15 invoices a month per team member.', {
             key: 'invoices_per_month',
             used: 15,
             reserved: 0,
             limit: 15,
             unit: 'count',
             reset_at: '2026-12-01T00:00:00Z',
-            offer_id: 'helvetly-v1',
+            offer_id: 'helvetly-v2',
             upgrade_plan: 'pro',
           }),
         ),

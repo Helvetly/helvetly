@@ -3,11 +3,13 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, Entitlement, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 1_000_000_000
-// One seat's values of offer helvetly-v1 (apps/api/internal/store/migrations/00013_offer_employees.sql); 0 is not included.
+// One seat's values of offer helvetly-v2 (apps/api/internal/store/migrations/00014_offer_v2.sql); 0 is not included,
+// null unlimited (members: no cap on a per-seat price).
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 30,
   invoices_per_month: 15,
+  quotes_per_month: 5,
   expenses_per_month: 0,
   products: 25,
   engagements: 3,
@@ -18,7 +20,8 @@ const basic: Record<LimitKey, number | null> = {
 const pro: Record<LimitKey, number | null> = {
   members: null,
   clients: 300,
-  invoices_per_month: 150,
+  invoices_per_month: 100,
+  quotes_per_month: 100,
   expenses_per_month: 300,
   products: 250,
   engagements: 20,
@@ -28,12 +31,13 @@ const pro: Record<LimitKey, number | null> = {
 }
 const business: Record<LimitKey, number | null> = {
   members: null,
-  clients: 1500,
-  invoices_per_month: 600,
-  expenses_per_month: 1200,
-  products: 1000,
-  engagements: 100,
-  signatures_per_month: 200,
+  clients: null,
+  invoices_per_month: null,
+  quotes_per_month: null,
+  expenses_per_month: null,
+  products: null,
+  engagements: null,
+  signatures_per_month: null,
   storage_bytes: 20 * GB,
   ai_tokens_per_month: 20_000_000,
 }
@@ -50,7 +54,7 @@ const PRO_FEATURES: FeatureKey[] = [
   'data_export',
   'automations',
 ]
-// The gated features of offer helvetly-v1 per plan; the ones every plan has are left out.
+// The gated features of offer helvetly-v2 per plan; the ones every plan has are left out.
 const features: Record<PlanId, FeatureKey[]> = {
   basic: [],
   pro: PRO_FEATURES,
@@ -140,17 +144,19 @@ type Allowance = [
   key: string,
   kind: Entitlement['kind'],
   perSeat: boolean,
-  values: Record<PlanId, number>,
+  /** null: unlimited. */
+  values: Record<PlanId, number | null>,
 ]
 
-// The allowances of offer v2 for one seat, in the offer's order, as GET /api/v1/billing lists them.
+// The allowances of offer v3 for one seat, in the offer's order, as GET /api/v1/billing lists them.
 const ALLOWANCES: Allowance[] = [
-  ['clients', 'resource_state', false, { basic: 30, pro: 300, business: 1500 }],
-  ['products', 'resource_state', false, { basic: 25, pro: 250, business: 1000 }],
-  ['engagements', 'resource_state', false, { basic: 3, pro: 20, business: 100 }],
-  ['invoices_per_month', 'period_counter', true, { basic: 15, pro: 150, business: 600 }],
-  ['expenses_per_month', 'period_counter', true, { basic: 0, pro: 300, business: 1200 }],
-  ['signatures_per_month', 'period_counter', true, { basic: 0, pro: 50, business: 200 }],
+  ['clients', 'resource_state', false, { basic: 30, pro: 300, business: null }],
+  ['products', 'resource_state', false, { basic: 25, pro: 250, business: null }],
+  ['engagements', 'resource_state', false, { basic: 3, pro: 20, business: null }],
+  ['invoices_per_month', 'period_counter', true, { basic: 15, pro: 100, business: null }],
+  ['quotes_per_month', 'period_counter', true, { basic: 5, pro: 100, business: null }],
+  ['expenses_per_month', 'period_counter', true, { basic: 0, pro: 300, business: null }],
+  ['signatures_per_month', 'period_counter', true, { basic: 0, pro: 50, business: null }],
   ['storage_bytes', 'resource_state', true, { basic: GB / 2, pro: 5 * GB, business: 20 * GB }],
   [
     'download_bytes_per_month',
@@ -184,19 +190,22 @@ export function entitlementsFixture(
     over?: Record<string, Partial<Entitlement>>
   } = {},
 ): Entitlement[] {
-  return ALLOWANCES.map(([key, kind, perSeat, values]) => ({
-    key,
-    kind,
-    unit: key.includes('bytes') ? 'byte' : key.includes('tokens') ? 'token' : 'count',
-    scope: 'workspace',
-    period: kind === 'period_counter' ? 'calendar_month_utc' : null,
-    state: 'limited' as const,
-    value: perSeat ? values[plan] * seats : values[plan],
-    per_seat: perSeat && values[plan] > 0,
-    source: 'plan' as const,
-    expires_at: null,
-    used: used[key] === undefined ? 0 : used[key],
-    reset_at: kind === 'period_counter' ? '2026-12-01T00:00:00Z' : null,
-    ...over[key],
-  }))
+  return ALLOWANCES.map(([key, kind, perSeat, values]) => {
+    const value = values[plan]
+    return {
+      key,
+      kind,
+      unit: key.includes('bytes') ? 'byte' : key.includes('tokens') ? 'token' : 'count',
+      scope: 'workspace',
+      period: kind === 'period_counter' ? 'calendar_month_utc' : null,
+      state: value === null ? ('unlimited' as const) : ('limited' as const),
+      value: value !== null && perSeat ? value * seats : value,
+      per_seat: perSeat && value !== null && value > 0,
+      source: 'plan' as const,
+      expires_at: null,
+      used: used[key] === undefined ? 0 : used[key],
+      reset_at: kind === 'period_counter' ? '2026-12-01T00:00:00Z' : null,
+      ...over[key],
+    }
+  })
 }

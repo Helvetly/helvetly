@@ -83,7 +83,7 @@ export const LIMIT_ORDER: LimitKey[] = Object.keys(LIMIT_LABELS).filter(isLimitK
 const scopeOf = (key: string) => (WORKSPACE_LIMITS.has(key) ? 'workspace' : 'person')
 
 /**
- * A limit as a plan line: "300 clients per workspace", "150 invoice issues a month per paid person", "Unlimited
+ * A limit as a plan line: "300 clients per workspace", "100 invoice issues a month per team member", "Unlimited
  * clients", "No expenses".
  */
 export function limitLine(key: LimitKey, value: number | null): string {
@@ -189,7 +189,7 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
   return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 
-/** A limit as a short fact with its key number first: "300" clients / workspace, "150" invoice issues / person / month. */
+/** A limit as a short fact with its key number first: "300" clients / workspace, "100" invoice issues / team member / month. */
 export function planFact(key: LimitKey, value: number | null): { value: string; label: string } {
   const label = translate('planFactLabel', {
     noun: offerNoun(key),
@@ -211,6 +211,7 @@ const CARD_LIMITS: LimitKey[] = [
   'members',
   'clients',
   'invoices_per_month',
+  'quotes_per_month',
   'expenses_per_month',
   'signatures_per_month',
   'ai_tokens_per_month',

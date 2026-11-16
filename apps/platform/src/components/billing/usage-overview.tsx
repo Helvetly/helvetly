@@ -1,5 +1,6 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Meter } from '@helvetly/ui/components/meter'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -12,6 +13,7 @@ import {
   isLimitKey,
   meterState,
   nextPlan,
+  usageHint,
   usageItems,
   usageLabel,
   type Billing,
@@ -159,6 +161,18 @@ function TileFacts({ item, trial = false }: { item: UsageItem; trial?: boolean }
   )
 }
 
+/** A tile's name, with a help tip where the name alone does not say what counts. */
+function TileLabel({ item }: { item: UsageItem }) {
+  const label = tileLabel(item)
+  const hint = usageHint(item.limit)
+  return (
+    <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-pretty text-muted-foreground">
+      {label}
+      {hint && <HelpTip label={label}>{hint}</HelpTip>}
+    </span>
+  )
+}
+
 /** One limit: the count in large type over its limit, a meter, and a note near or at the limit. */
 export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean }) {
   const label = tileLabel(item)
@@ -170,7 +184,7 @@ export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean })
         data-state={state}
         className="grid min-w-0 content-start gap-3 rounded-xl bg-card p-4 shadow-elevation-1"
       >
-        <span className="min-w-0 text-body-sm text-pretty text-muted-foreground">{label}</span>
+        <TileLabel item={item} />
         <p className="text-title-sm font-medium text-muted-foreground">
           {translate('notIncluded')}
         </p>
@@ -190,7 +204,7 @@ export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean })
         note && `ring-1 ${note.ring}`,
       )}
     >
-      <span className="min-w-0 text-body-sm text-pretty text-muted-foreground">{label}</span>
+      <TileLabel item={item} />
       <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 tabular-nums">
         <span className="text-page font-semibold tracking-[-0.02em]">{used}</span>
         <span className="text-body-sm text-muted-foreground">
