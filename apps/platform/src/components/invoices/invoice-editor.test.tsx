@@ -565,6 +565,23 @@ test('an explicit Discard on Back is not asked again by the tab-close warning', 
   expect(warns()).toBe(true)
 })
 
+test('after a Discard whose Back went nowhere, the next edit is protected again', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {}) // first history entry: no popstate follows
+  await typeUnsaved()
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false)
+  await userEvent.type(screen.getByLabelText('Line 1 description'), ' day')
+  expect(warns()).toBe(true)
+})
+
 test('an untouched editor adds no history entry', async () => {
   const pushed = vi.spyOn(window.history, 'pushState')
   renderEditor()

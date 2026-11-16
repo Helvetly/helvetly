@@ -505,16 +505,17 @@ function Editor({
   // Browser Back with input that cannot be saved: one guard history entry (same state, so Next's own popstate handling
   // stays a no-op) turns the Back into the discard question. Keep editing puts the guard back; Discard lets the Back go on.
   const guarded = useRef(false)
-  // Set only by an explicit Discard on Back: that departure may leave the page, and the tab-close warning must not ask
-  // a second time. Any later popstate means the page stayed, so the warning is armed again.
-  const leaving = useRef(false)
+  // The input the person agreed to discard with Back: that departure may leave the page, and the tab-close warning
+  // must not ask again. It covers only that input: a Back that went nowhere (first history entry, a blocked departure)
+  // leaves the editor open, and any new edit is warned about again. A later popstate means the page stayed.
+  const leaving = useRef<string | null>(null)
   useEffect(() => {
     if (!unsaved || guarded.current) return
     window.history.pushState(window.history.state, '', window.location.href)
     guarded.current = true
   }, [unsaved])
   const back = useEffectEvent(() => {
-    leaving.current = false
+    leaving.current = null
     if (!guarded.current) return
     guarded.current = false
     if (unsaved) setDiscarding('back')
@@ -532,7 +533,8 @@ function Editor({
     window.history.back()
   }
   const warn = useEffectEvent((event: BeforeUnloadEvent) => {
-    if (!leaving.current && (unsaved || (dirty && values.client_id))) event.preventDefault()
+    if (leaving.current !== payload && (unsaved || (dirty && values.client_id)))
+      event.preventDefault()
   })
   useEffect(() => {
     window.addEventListener('beforeunload', warn)
@@ -1243,7 +1245,7 @@ function Editor({
             const wasBack = discarding === 'back'
             setDiscarding(false)
             if (discard && wasBack) {
-              leaving.current = true
+              leaving.current = payload
               return window.history.back()
             }
             if (discard) return onClose()
