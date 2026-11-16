@@ -61,7 +61,7 @@ export function AccessEditor({
   return (
     <div className="grid gap-2">
       {admin ? (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body-sm text-muted-foreground">
           {translate('accessWithHR', {
             general: translate('accessAdminGeneral'),
             hr: hr ?? translate('accessNoHR'),
@@ -83,7 +83,7 @@ export function AccessEditor({
               }}
             />
           </div>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             {PRESETS.find((preset) => preset.id === selected)?.description}
             {hr && ` ${translate('accessHRSummary', { hr })}`}
           </p>
@@ -119,7 +119,7 @@ export function AccessEditor({
         reason={lock ? `${lock.hint}.` : translate('accessHROwnerOnly')}
       />
       {problem && (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-body-sm text-destructive">
           {problem}
         </p>
       )}
@@ -175,7 +175,7 @@ function Matrix({
         <tr key={resource.id} className="border-t">
           <th scope="row" className="py-1.5 pr-2 text-left font-normal">
             {resource.label}
-            <span className="block text-[12px] text-muted-foreground">{resource.description}</span>
+            <span className="block text-caption text-muted-foreground">{resource.description}</span>
           </th>
           {LEVELS.map(({ level, label: levelLabel }) => (
             <td key={level} className="text-center">
@@ -202,7 +202,7 @@ function Matrix({
     </tbody>
   )
   return (
-    <table aria-label={label} className="w-full text-[13px]">
+    <table aria-label={label} className="w-full text-body-sm">
       <thead>
         <tr className="text-left text-muted-foreground">
           <th className="py-1 font-medium">{heading}</th>
@@ -224,7 +224,7 @@ function Matrix({
       {note && (
         <tfoot>
           <tr>
-            <td colSpan={4} className="border-t pt-2 text-[12px] text-muted-foreground">
+            <td colSpan={4} className="border-t pt-2 text-caption text-muted-foreground">
               {note}
             </td>
           </tr>
