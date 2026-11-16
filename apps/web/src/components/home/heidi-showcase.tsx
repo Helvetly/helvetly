@@ -1,10 +1,11 @@
 'use client'
 import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { ArrowUp, Check, Mail } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { type MessageKey, translatorFor } from '@/lib/i18n'
 
 // Heidi's console: an example question types itself, she thinks, and her answer appears as the UI she
 // really returns. Each example is something the real Heidi does (docs/heidi-contract.md). The figures
@@ -21,6 +22,7 @@ function Row({ children, d }: { children: ReactNode; d: number }) {
 }
 
 function Overdue() {
+  const translate = translatorFor(useLanguage())
   const rows = [
     [
       'RC',
@@ -119,6 +121,7 @@ function Ring({ used, total }: { used: number; total: number }) {
 }
 
 function Hours() {
+  const translate = translatorFor(useLanguage())
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
       <Row d={0}>
@@ -155,6 +158,7 @@ function Hours() {
 }
 
 function Vat() {
+  const translate = translatorFor(useLanguage())
   const tiles = [
     [translate('expensesRecorded'), translate('chf1248040'), 'from-sky-solid/30'],
     [translate('inputVATBooked'), translate('chf84615'), 'from-mint-solid/30'],
@@ -185,6 +189,7 @@ function Vat() {
 }
 
 function Log({ done }: { done: boolean }) {
+  const translate = translatorFor(useLanguage())
   return (
     <Row d={0}>
       <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
@@ -220,6 +225,7 @@ function Log({ done }: { done: boolean }) {
 }
 
 function Draft() {
+  const translate = translatorFor(useLanguage())
   return (
     <Row d={0}>
       <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
@@ -237,37 +243,42 @@ function Draft() {
   )
 }
 
-type Example = { id: string; label: string; ask: string; answer: (done: boolean) => ReactNode }
+type Example = {
+  id: string
+  label: MessageKey
+  ask: MessageKey
+  answer: (done: boolean) => ReactNode
+}
 
 const EXAMPLES: Example[] = [
   {
     id: 'overdue',
-    label: translate('overdue'),
-    ask: translate('whichInvoicesAreOverdue'),
+    label: 'overdue',
+    ask: 'whichInvoicesAreOverdue',
     answer: () => <Overdue />,
   },
   {
     id: 'hours',
-    label: translate('hoursLeft'),
-    ask: translate('howManyHoursAreLeftForStudioLumen'),
+    label: 'hoursLeft',
+    ask: 'howManyHoursAreLeftForStudioLumen',
     answer: () => <Hours />,
   },
   {
     id: 'vat',
-    label: translate('inputVAT'),
-    ask: translate('howMuchInputVATDidWeBookThisMonth'),
+    label: 'inputVAT',
+    ask: 'howMuchInputVATDidWeBookThisMonth',
     answer: () => <Vat />,
   },
   {
     id: 'log',
-    label: translate('logWork'),
-    ask: translate('log25HForStudioLumenHomepageReview'),
+    label: 'logWork',
+    ask: 'log25HForStudioLumenHomepageReview',
     answer: (done) => <Log done={done} />,
   },
   {
     id: 'draft',
-    label: translate('draftAReminder'),
-    ask: translate('draftAFriendlyReminderForRheinConsulting'),
+    label: 'draftAReminder',
+    ask: 'draftAFriendlyReminderForRheinConsulting',
     answer: () => <Draft />,
   },
 ]
@@ -275,9 +286,10 @@ const EXAMPLES: Example[] = [
 type Phase = 'typing' | 'thinking' | 'answer'
 
 export function HeidiShowcase() {
+  const translate = translatorFor(useLanguage())
   const ref = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
-  const [typed, setTyped] = useState(EXAMPLES[0]!.ask.length)
+  const [typed, setTyped] = useState(translate(EXAMPLES[0]!.ask).length)
   const [phase, setPhase] = useState<Phase>('answer')
   const [done, setDone] = useState(true)
   const [visible, setVisible] = useState(false)
@@ -300,7 +312,7 @@ export function HeidiShowcase() {
   useEffect(() => {
     const timers: number[] = []
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms))
-    const ask = EXAMPLES[active]!.ask
+    const ask = translate(EXAMPLES[active]!.ask)
     if (!playing) {
       at(0, () => {
         setTyped(ask.length)
@@ -321,7 +333,7 @@ export function HeidiShowcase() {
     at(asked + 2400, () => setDone(true))
     at(HOLD_MS, () => setActive((i) => (i + 1) % EXAMPLES.length))
     return () => timers.forEach(clearTimeout)
-  }, [active, playing])
+  }, [active, playing, translate])
 
   return (
     <div
@@ -337,7 +349,7 @@ export function HeidiShowcase() {
       >
         <HeidiMark className="size-6" animated={phase !== 'answer'} />
         <span className="sm:text-lead min-w-0 flex-1 truncate text-left text-body text-white">
-          {example.ask.slice(0, typed)}
+          {translate(example.ask).slice(0, typed)}
           {phase === 'typing' && (
             <span className="caret ml-px inline-block h-5 w-0.5 translate-y-1 bg-heidi-to" />
           )}
@@ -394,7 +406,7 @@ export function HeidiShowcase() {
                 : 'text-white/55 hover:bg-white/6 hover:text-white',
             )}
           >
-            {ex.label}
+            {translate(ex.label)}
             {i === active && playing && (
               <span
                 key={`${active}`}

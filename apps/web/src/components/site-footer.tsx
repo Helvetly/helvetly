@@ -1,3 +1,4 @@
+import { type Locale, localizedHref } from '@helvetly/i18n'
 import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
@@ -7,40 +8,41 @@ import Link from 'next/link'
 import { Cta } from '@/components/cta'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { TRIAL_DAYS } from '@/lib/plans'
-import { FOOTER, START_URL } from '@/lib/site'
+import { siteIn } from '@/lib/site'
 
 // The page is built ahead of time, so the year is the build's.
 const YEAR = new Date().getFullYear()
 
-// What a Friday looks like with Helvetly: three things that got done on their own.
-const DONE: { icon: LucideIcon; title: string; meta: string; tone: string; tilt: string }[] = [
-  {
-    icon: CircleCheck,
-    title: translate('invoice20260418Paid'),
-    meta: translate('alpenglHnGmbHCHF486000'),
-    tone: 'from-mint-solid to-sky-solid',
-    tilt: '-rotate-3 sm:translate-x-6',
-  },
-  {
-    icon: Bell,
-    title: translate('firstReminderSent'),
-    meta: translate('rheinConsultingAGWithQRBill'),
-    tone: 'from-peach-solid to-rose-solid',
-    tilt: 'rotate-2 sm:-translate-x-4',
-  },
-  {
-    icon: Landmark,
-    title: translate('vatReturnReady'),
-    meta: translate('q42026ECH0217FileForTheEPortal'),
-    tone: 'from-lilac-solid to-heidi-to',
-    tilt: '-rotate-1 sm:translate-x-10',
-  },
-]
-
 /** The finale on every page: the invitation, then the site's links, in one night-sky card. */
-export function SiteFooter() {
+export function SiteFooter({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  const { FOOTER, START_URL } = siteIn(lang)
+  // What a Friday looks like with Helvetly: three things that got done on their own.
+  const DONE: { icon: LucideIcon; title: string; meta: string; tone: string; tilt: string }[] = [
+    {
+      icon: CircleCheck,
+      title: translate('invoice20260418Paid'),
+      meta: translate('alpenglHnGmbHCHF486000'),
+      tone: 'from-mint-solid to-sky-solid',
+      tilt: '-rotate-3 sm:translate-x-6',
+    },
+    {
+      icon: Bell,
+      title: translate('firstReminderSent'),
+      meta: translate('rheinConsultingAGWithQRBill'),
+      tone: 'from-peach-solid to-rose-solid',
+      tilt: 'rotate-2 sm:-translate-x-4',
+    },
+    {
+      icon: Landmark,
+      title: translate('vatReturnReady'),
+      meta: translate('q42026ECH0217FileForTheEPortal'),
+      tone: 'from-lilac-solid to-heidi-to',
+      tilt: '-rotate-1 sm:translate-x-10',
+    },
+  ]
   return (
     <footer className="relative mt-32 sm:mt-48">
       <Ridge edge="rise" />
@@ -67,7 +69,7 @@ export function SiteFooter() {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Cta href={START_URL}>{translate('startYourFreeTrial')}</Cta>
               <Cta
-                href="/pricing"
+                href={localizedHref('/pricing', lang)}
                 variant="outline"
                 className="border-white/15 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
               >
@@ -108,7 +110,7 @@ export function SiteFooter() {
         <Container className="relative border-t border-white/10 py-10">
           <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-[1.3fr_repeat(5,1fr)]">
             <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
-              <Link href="/" className="flex w-fit items-center gap-2">
+              <Link href={localizedHref('/', lang)} className="flex w-fit items-center gap-2">
                 <Logo className="size-7" />
                 <span className="text-title-sm font-semibold">{translate('helvetly')}</span>
               </Link>

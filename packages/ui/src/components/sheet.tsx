@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { useTranslate } from '@helvetly/ui/components/language-provider'
 import { leaveExitGhost } from '@helvetly/ui/lib/exit-ghost'
-import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from 'cn'
 import { XIcon } from 'lucide-react'
 import { Dialog as SheetPrimitive } from 'radix-ui'
@@ -119,6 +119,7 @@ function SheetContent({
   side?: 'top' | 'right' | 'bottom' | 'left'
   showCloseButton?: boolean
 }) {
+  const translate = useTranslate()
   const overlay = React.useRef<HTMLDivElement>(null)
   const content = React.useRef<HTMLDivElement>(null)
   const [escape] = React.useState(escapeSlot)

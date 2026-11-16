@@ -1,4 +1,4 @@
-import { localizedHref } from '@helvetly/i18n'
+import { type Locale, localizedHref } from '@helvetly/i18n'
 import { isValidElement, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -7,9 +7,9 @@ import { Cta } from '@/components/cta'
 import { Container } from '@/components/section'
 import type { Article } from '@/lib/content'
 import { formatDay } from '@/lib/content'
-import { translate } from '@/lib/i18n'
+import { perLanguage, translatorFor } from '@/lib/i18n'
 import { slugify } from '@/lib/legal'
-import { START_URL } from '@/lib/site'
+import { siteIn } from '@/lib/site'
 
 function text(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -19,7 +19,7 @@ function text(node: ReactNode): string {
 }
 
 // Section headings get ids for "On this page"; links to other sites open in place, marked as external.
-const MARKDOWN: Components = {
+const markdownIn = perLanguage((translate, language): Components => ({
   table: ({ children }) => (
     <section aria-label={translate('table')} tabIndex={0} className="legal-table">
       <table>{children}</table>
@@ -28,24 +28,27 @@ const MARKDOWN: Components = {
   h2: ({ children }) => <h2 id={slugify(text(children))}>{children}</h2>,
   a: ({ href = '', children }) =>
     href.startsWith('http') ? (
-      <a href={localizedHref(href)} rel="noopener">
+      <a href={href} rel="noopener">
         {children}
       </a>
     ) : (
-      <a href={localizedHref(href)}>{children}</a>
+      <a href={localizedHref(href, language)}>{children}</a>
     ),
-}
+}))
 
 /** A guide or help article: its section list beside the text, then a call to try Helvetly. */
 export function ArticleView({
+  lang,
   article,
   kicker,
   aside,
 }: {
+  lang: Locale
   article: Article
   kicker: ReactNode
   aside?: ReactNode
 }) {
+  const translate = translatorFor(lang)
   return (
     <main className="pt-32 pb-24 sm:pt-40">
       <Container className="grid gap-12 lg:grid-cols-[240px_1fr]">
@@ -83,13 +86,13 @@ export function ArticleView({
           </p>
           <p className="mt-4 text-body-sm text-muted-foreground">
             {translate('updated')}
-            {formatDay(article.updated)}
+            {formatDay(article.updated, lang)}
             {article.readingMinutes
               ? translate('minRead2', { readingMinutes: article.readingMinutes })
               : ''}
           </p>
           <div className="prose-legal mt-8">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownIn(lang)}>
               {article.markdown}
             </ReactMarkdown>
           </div>
@@ -100,7 +103,7 @@ export function ArticleView({
                 {translate('qrInvoicesRemindersAndTheVATReturnInOne')}
               </p>
             </div>
-            <Cta href={START_URL} className="shrink-0">
+            <Cta href={siteIn(lang).START_URL} className="shrink-0">
               {translate('startYourFreeTrial')}
             </Cta>
           </div>

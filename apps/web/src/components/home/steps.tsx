@@ -1,32 +1,33 @@
+import type { Locale } from '@helvetly/i18n'
 import { FileUp, Landmark, Send } from 'lucide-react'
 
 import { Container, SectionHeading } from '@/components/section'
 import { cn } from '@/lib/cn'
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { type Tone, TONES } from '@/lib/tones'
 
-const STEPS: { icon: typeof FileUp; tone: Tone; title: string; body: string }[] = [
-  {
-    icon: FileUp,
-    tone: 'sky',
-    title: translate('bringWhatYouHave'),
-    body: translate('uploadOldInvoicesClientListsReceiptsOrASpreadsheet'),
-  },
-  {
-    icon: Send,
-    tone: 'mint',
-    title: translate('invoiceAndGetPaid'),
-    body: translate('issueAnInvoiceWithTheQRBillEmailIt'),
-  },
-  {
-    icon: Landmark,
-    tone: 'lilac',
-    title: translate('closeTheQuarter'),
-    body: translate('closeTheMonthSoNothingChangesBehindYourBack'),
-  },
-]
-
-export function Steps() {
+export function Steps({ lang }: { lang: Locale }) {
+  const translate = translatorFor(lang)
+  const STEPS: { icon: typeof FileUp; tone: Tone; title: string; body: string }[] = [
+    {
+      icon: FileUp,
+      tone: 'sky',
+      title: translate('bringWhatYouHave'),
+      body: translate('uploadOldInvoicesClientListsReceiptsOrASpreadsheet'),
+    },
+    {
+      icon: Send,
+      tone: 'mint',
+      title: translate('invoiceAndGetPaid'),
+      body: translate('issueAnInvoiceWithTheQRBillEmailIt'),
+    },
+    {
+      icon: Landmark,
+      tone: 'lilac',
+      title: translate('closeTheQuarter'),
+      body: translate('closeTheMonthSoNothingChangesBehindYourBack'),
+    },
+  ]
   return (
     <section className="py-4">
       <Container>

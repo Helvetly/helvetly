@@ -43,6 +43,21 @@ test('fails on a missing page or a missing fragment', () => {
   assert.match(run.stderr, /index.html → \/pricing#nope \(missing #nope\)/)
 })
 
+test('keeps the pages of a prefixed language on that language', () => {
+  const run = check({
+    'index.html': '<a href="/de">de</a>',
+    'de.html':
+      '<a href="/de/pricing">p</a><a href="/de/">home</a><a href="/icon.svg">i</a><a href="/">en</a>',
+    'de/pricing.html': '<a href="/pricing">en</a>',
+    'pricing.html': '',
+    'icon.svg': '',
+  })
+  assert.equal(run.status, 1)
+  assert.match(run.stderr, /de\/pricing.html → \/pricing \(leaves \/de\)/)
+  assert.match(run.stderr, /de.html → \/ \(leaves \/de\)/)
+  assert.equal(run.stderr.match(/leaves/g)?.length, 2)
+})
+
 test('fails when the export directory does not exist', () => {
   const run = spawnSync(process.execPath, [script, join(tmpdir(), 'helvetly-no-such-out')])
   assert.equal(run.status, 1)

@@ -10,7 +10,7 @@
         "!**/*.test.*",
         "!**/*_test.go",
         "$TURBO_ROOT$/scripts/check-links.mjs",
-        "$TURBO_ROOT$/scripts/build-locales.mjs"
+        "$TURBO_ROOT$/scripts/language-homes.mjs"
       ],
       "outputs": [".next/**", "!.next/cache/**", "out/**", "dist/**"]
     },
@@ -34,8 +34,7 @@
         "S3_PROXY_DOWNLOADS",
         "NEXT_PUBLIC_PLATFORM_URL",
         "NEXT_PUBLIC_DOCS_URL",
-        "NEXT_PUBLIC_GA_ID",
-        "HELVETLY_BUILD_LOCALE"
+        "NEXT_PUBLIC_GA_ID"
       ]
     },
     "@helvetly/i18n#test": {

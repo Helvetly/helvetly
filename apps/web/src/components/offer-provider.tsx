@@ -1,8 +1,8 @@
 'use client'
-
+import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { createContext, type ReactNode, use } from 'react'
 
-import { translate } from '@/lib/i18n'
+import { translatorFor } from '@/lib/i18n'
 import { type Offer, useOffer } from '@/lib/offer'
 
 const OfferContext = createContext<Offer | null>(null)
@@ -21,5 +21,6 @@ export function useOfferStatus(): Offer {
 
 /** A price from plans.ts, shown while the API has not refused it, as on the pricing page. */
 export function OfferPrice({ children }: { children: ReactNode }) {
+  const translate = translatorFor(useLanguage())
   return useOfferStatus().status === 'unavailable' ? translate('priceUnavailable') : children
 }

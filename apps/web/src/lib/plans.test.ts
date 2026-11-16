@@ -3,21 +3,10 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import {
-  BENEFITS,
-  bytes,
-  formatLimit,
-  has,
-  LIMITS,
-  PLAN_IDS,
-  PLANS,
-  plansWith,
-  priceOf,
-  tokens,
-  USAGE_DETAILS,
-  FEATURE_GROUPS,
-  YEARLY_DISCOUNT_PERCENT,
-} from './plans'
+import { has, PLAN_IDS, plansIn, priceOf, USAGE_DETAILS, YEARLY_DISCOUNT_PERCENT } from './plans'
+
+const { BENEFITS, bytes, formatLimit, LIMITS, PLANS, plansWith, tokens, FEATURE_GROUPS } =
+  plansIn('en')
 
 const api = join(__dirname, '../../../api/internal')
 
