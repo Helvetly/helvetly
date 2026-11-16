@@ -1,4 +1,4 @@
-/** A small country flag for a language's region (the part after the hyphen of its tag), or nothing for another. */
+/** A small country flag, or nothing for an unsupported region. */
 export function Flag({ region, className }: { region: string; className?: string }) {
   if (region === 'CH') {
     return (
@@ -17,6 +17,33 @@ export function Flag({ region, className }: { region: string; className?: string
         <path d="M0 0l60 30M60 0L0 30" className="stroke-flag-uk-red" strokeWidth="2" />
         <path d="M30 0v30M0 15h60" className="stroke-white" strokeWidth="10" />
         <path d="M30 0v30M0 15h60" className="stroke-flag-uk-red" strokeWidth="6" />
+      </svg>
+    )
+  }
+  if (region === 'DE') {
+    return (
+      <svg aria-hidden viewBox="0 0 30 20" className={className}>
+        <rect width="30" height="20" className="fill-flag-german-gold" />
+        <rect width="30" height="13.333" className="fill-flag-german-red" />
+        <rect width="30" height="6.667" className="fill-black" />
+      </svg>
+    )
+  }
+  if (region === 'FR' || region === 'IT') {
+    return (
+      <svg aria-hidden viewBox="0 0 30 20" className={className}>
+        <rect width="30" height="20" className="fill-white" />
+        <rect
+          width="10"
+          height="20"
+          className={region === 'FR' ? 'fill-flag-french-blue' : 'fill-flag-italian-green'}
+        />
+        <rect
+          x="20"
+          width="10"
+          height="20"
+          className={region === 'FR' ? 'fill-flag-french-red' : 'fill-flag-italian-red'}
+        />
       </svg>
     )
   }
