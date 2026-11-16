@@ -123,9 +123,9 @@ function WideTable() {
         <tr>
           <th
             scope="col"
-            className="bg-site sticky top-20 z-10 w-[34%] px-3 pb-4 align-bottom text-body-sm font-medium text-muted-foreground"
+            className="border-site-line bg-site sticky top-20 z-10 w-[34%] border-b px-3 pb-4 text-left align-bottom font-normal"
           >
-            {translate('features')}
+            <span className="accent ink-gradient text-display">{translate('features')}</span>
           </th>
           {PLANS.map((plan) => (
             <th
