@@ -48,6 +48,13 @@ func (q Q) CountIssue(ctx context.Context, workspaceID string, inv Invoice, now 
 	return err
 }
 
+// CountQuoteIssue counts a quote's first send (when it is numbered) in quotes_per_month, in the send's transaction,
+// once per quote: sending it again or a revision, which keeps its number, counts nothing.
+func (q Q) CountQuoteIssue(ctx context.Context, workspaceID, quoteID string, now time.Time) error {
+	_, err := q.ConsumeUsage(ctx, workspaceID, UsageOp{Resource: "quotes_per_month", ID: "quote.issue:" + quoteID, Amount: 1}, now)
+	return err
+}
+
 // CreateDocument files a document and counts its object in storage_bytes (ReserveObject), refused over the cap; an
 // object already reserved for it (a signed result, an import's kept original) adds nothing more.
 func (q Q) CreateDocument(ctx context.Context, workspaceID, userID string, d Document) error {

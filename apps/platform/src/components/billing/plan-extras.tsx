@@ -1,3 +1,4 @@
+import { HelpTip } from '@helvetly/ui/components/form-field'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, InfinityIcon, Minus } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -5,6 +6,7 @@ import type { ReactNode } from 'react'
 import {
   formatLimit,
   formatTokens,
+  usageHint,
   usageLabel,
   type Billing,
   type PlanId,
@@ -24,7 +26,7 @@ function allowance(offer: PublicOffer, key: string, plan: PlanId): string | null
   return limit.unit === 'token' ? formatTokens(value.value) : formatLimit(key, value.value)
 }
 
-/** How an allowance is counted: "/ person / month", "/ workspace". */
+/** How an allowance is counted: "/ team member / month", "/ workspace". */
 function per(offer: PublicOffer, key: string): string {
   const limit = offer.limits[key]
   if (!limit) return ''
@@ -119,7 +121,11 @@ export function PlanComparison({
                     value ? (
                       <span className="font-medium">
                         {value}
-                        <span className="font-normal text-muted-foreground">{per(offer, key)}</span>
+                        {value !== translate('unlimited2') && (
+                          <span className="font-normal text-muted-foreground">
+                            {per(offer, key)}
+                          </span>
+                        )}
                       </span>
                     ) : (
                       <Check
@@ -145,36 +151,43 @@ export function PlanComparison({
                 </span>
               </th>
             </tr>
-            {offer.usage_details.map((key) => (
-              <tr key={key} data-row={key}>
-                <th
-                  scope="row"
-                  className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5"
-                >
-                  {usageLabel(key).replace(/ this month$/, '')}
-                  <span className="mt-0.5 block text-caption">
-                    {translate('allowanceScope', {
-                      scope: offer.limits[key]?.per_person ? 'person' : 'workspace',
-                      monthly: String(Boolean(offer.limits[key]?.period)),
-                    })}
-                  </span>
-                </th>
-                {PLANS.map((plan) => {
-                  const value = allowance(offer, key, plan)
-                  return cell(
-                    plan,
-                    value === translate('unlimited2') ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-brand">
-                        <InfinityIcon className="size-4" aria-hidden />
-                        <span className="max-sm:sr-only">{translate('unlimited2')}</span>
-                      </span>
-                    ) : (
-                      value
-                    ),
-                  )
-                })}
-              </tr>
-            ))}
+            {offer.usage_details.map((key) => {
+              const label = usageLabel(key).replace(/ this month$/, '')
+              const hint = usageHint(key)
+              return (
+                <tr key={key} data-row={key}>
+                  <th
+                    scope="row"
+                    className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {label}
+                      {hint && <HelpTip label={label}>{hint}</HelpTip>}
+                    </span>
+                    <span className="mt-0.5 block text-caption">
+                      {translate('allowanceScope', {
+                        scope: offer.limits[key]?.per_person ? 'person' : 'workspace',
+                        monthly: String(Boolean(offer.limits[key]?.period)),
+                      })}
+                    </span>
+                  </th>
+                  {PLANS.map((plan) => {
+                    const value = allowance(offer, key, plan)
+                    return cell(
+                      plan,
+                      value === translate('unlimited2') ? (
+                        <span className="inline-flex items-center gap-1 font-medium text-brand">
+                          <InfinityIcon className="size-4" aria-hidden />
+                          <span className="max-sm:sr-only">{translate('unlimited2')}</span>
+                        </span>
+                      ) : (
+                        value
+                      ),
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

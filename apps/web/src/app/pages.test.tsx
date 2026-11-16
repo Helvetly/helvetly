@@ -28,7 +28,7 @@ function serve({ offer = true, trace = '' } = {}) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
     if (String(input) !== OFFER_URL) return new Response(trace)
     if (!offer) throw new TypeError('Failed to fetch')
-    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v1', ...golden } }))
+    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
   })
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -183,8 +183,16 @@ describe('pricing page', () => {
     expect(cells(table, 'Clients and contacts')).toEqual([
       '30per workspace',
       '300per workspace',
-      '1’500per workspace',
+      'Unlimited',
     ])
+    expect(cells(table, 'Quotes')).toEqual([
+      '5per team member a month',
+      '100per team member a month',
+      'Unlimited',
+    ])
+    expect(within(table).getByRole('rowheader', { name: 'Automated actions' }).textContent).toMatch(
+      /Each automatic step counts once/,
+    )
     expect(cells(table, 'Heidi AI assistant')[0]).toBe('Not included')
     expect(cells(table, 'Client portal')).toEqual(['Not included', 'Not included', 'Included'])
   })

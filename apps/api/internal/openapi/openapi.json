@@ -6214,7 +6214,7 @@
         "operationId": "send_quote",
         "tags": ["Quotes"],
         "summary": "Send a quote",
-        "description": "Sends a draft or sent quote. On the first send it gets its number (Q-<year>-<seq>), the PDF is filed and emailed to the client (default recipient: the client's email, else billing email); a sent quote is emailed again as it was. Sends a real email and cannot be undone; a retry emails again. email false only marks the quote sent without an email. 409 invalid_state when expired (revise it) or already answered; 422 validation_failed for addresses, subject or message; 503 mail_unavailable when the server has no mail setup.",
+        "description": "Sends a draft or sent quote. On the first send it gets its number (Q-<year>-<seq>), the PDF is filed and emailed to the client (default recipient: the client's email, else billing email); a sent quote is emailed again as it was. Sends a real email and cannot be undone; a retry emails again. email false only marks the quote sent without an email. The first send counts in the plan's quotes a month: 402 limit_reached when they are used up, and the quote stays an unnumbered draft; sending it again or a revision counts nothing. 409 invalid_state when expired (revise it) or already answered; 422 validation_failed for addresses, subject or message; 503 mail_unavailable when the server has no mail setup.",
         "parameters": [
           {
             "name": "id",

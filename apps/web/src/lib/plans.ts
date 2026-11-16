@@ -1,6 +1,6 @@
 import { localeDetails } from '@helvetly/i18n'
 import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
-// The one place the website keeps what each plan costs and includes: offer v2's public projection (prices,
+// The one place the website keeps what each plan costs and includes: offer helvetly-v2's public projection (prices,
 // the business comparison and the commercial allowances). Every page, card, table, FAQ and comparison reads it
 // from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
 // These values are the build-time copy of the offer on sale: lib/offer.ts shows prices only once the API's public
@@ -23,7 +23,7 @@ export { YEARLY_DISCOUNT_PERCENT }
 export const MAX_SELF_SERVICE_SEATS = 25
 
 /**
- * A fixed cap for the whole workspace, or an amount each paid person adds to the workspace's one shared pool.
+ * A fixed cap for the whole workspace, or an amount each paid team member adds to the workspace's one shared pool.
  * Monthly pools start again at 00:00 UTC on the first of the month.
  */
 export type Scope = 'workspace' | 'person'
@@ -33,6 +33,7 @@ export type Unit =
   | 'catalog_item'
   | 'engagement'
   | 'issued_document'
+  | 'issued_quote'
   | 'expense'
   | 'signature_envelope'
   | 'byte'
@@ -46,6 +47,7 @@ export type LimitKey =
   | 'products'
   | 'engagements'
   | 'invoices_per_month'
+  | 'quotes_per_month'
   | 'expenses_per_month'
   | 'signatures_per_month'
   | 'storage_bytes'
@@ -55,8 +57,13 @@ export type LimitKey =
   | 'ai_tokens_per_month'
   | 'automation_actions_per_month'
 
-/** null: the plan does not include it. Bytes are decimal: 1 GB = 1'000 MB. */
-export type Limit = { label: string; scope: Scope; unit: Unit; values: PerPlan<number | null> }
+/** The plan sets no cap; the API publishes it as included with no value. */
+export const UNLIMITED = 'unlimited'
+/** A cap, UNLIMITED, or null when the plan does not include it. */
+export type Amount = number | typeof UNLIMITED | null
+
+/** Bytes are decimal: 1 GB = 1'000 MB. */
+export type Limit = { label: string; scope: Scope; unit: Unit; values: PerPlan<Amount> }
 
 const MB = 1_000_000
 const GB = 1_000_000_000
@@ -66,6 +73,7 @@ export const USAGE_DETAILS: LimitKey[] = [
   'clients',
   'products',
   'invoices_per_month',
+  'quotes_per_month',
   'expenses_per_month',
   'signatures_per_month',
   'storage_bytes',
@@ -136,6 +144,7 @@ export const TRIAL = {
   plan: 'business' satisfies PlanId,
   members: 2,
   invoices: 10,
+  quotes: 10,
   expenses: 20,
   signatures: 2,
   storageBytes: 100 * MB,
@@ -157,37 +166,43 @@ export const plansIn = perLanguage((translate, language) => {
       label: translate('clients'),
       scope: 'workspace',
       unit: 'client',
-      values: { basic: 30, pro: 300, business: 1500 },
+      values: { basic: 30, pro: 300, business: UNLIMITED },
     },
     products: {
       label: translate('productsAndServices'),
       scope: 'workspace',
       unit: 'catalog_item',
-      values: { basic: 25, pro: 250, business: 1000 },
+      values: { basic: 25, pro: 250, business: UNLIMITED },
     },
     engagements: {
       label: translate('activeEngagements'),
       scope: 'workspace',
       unit: 'engagement',
-      values: { basic: 3, pro: 20, business: 100 },
+      values: { basic: 3, pro: 20, business: UNLIMITED },
     },
     invoices_per_month: {
       label: translate('newInvoiceIssuesAMonth'),
       scope: 'person',
       unit: 'issued_document',
-      values: { basic: 15, pro: 150, business: 600 },
+      values: { basic: 15, pro: 100, business: UNLIMITED },
+    },
+    quotes_per_month: {
+      label: translate('quotesSentAMonth'),
+      scope: 'person',
+      unit: 'issued_quote',
+      values: { basic: 5, pro: 100, business: UNLIMITED },
     },
     expenses_per_month: {
       label: translate('expensesAMonth'),
       scope: 'person',
       unit: 'expense',
-      values: { basic: null, pro: 300, business: 1200 },
+      values: { basic: null, pro: 300, business: UNLIMITED },
     },
     signatures_per_month: {
       label: translate('signatureRequestsAMonth'),
       scope: 'person',
       unit: 'signature_envelope',
-      values: { basic: null, pro: 50, business: 200 },
+      values: { basic: null, pro: 50, business: UNLIMITED },
     },
     storage_bytes: {
       label: translate('documentStorage'),
@@ -220,7 +235,7 @@ export const plansIn = perLanguage((translate, language) => {
       values: { basic: null, pro: 5_000_000, business: 20_000_000 },
     },
     automation_actions_per_month: {
-      label: translate('automationActionsAMonth'),
+      label: translate('automatedActionsAMonth'),
       scope: 'person',
       unit: 'automation_action',
       values: { basic: null, pro: 1500, business: 6000 },
@@ -245,25 +260,35 @@ export const plansIn = perLanguage((translate, language) => {
   /** Tokens in short: 250’000, 5M. */
   const tokens = (n: number) => (n >= 1_000_000 ? `${count(n / 1_000_000)}M` : count(n))
 
-  /** One allowance as the usage table shows it; null when the plan does not include it. */
+  const isUnlimited = (key: LimitKey, plan: PlanId) => LIMITS[key].values[plan] === UNLIMITED
+
+  /** One allowance as the usage table shows it: "Unlimited" without a cap; null when the plan does not include it. */
   function formatLimit(key: LimitKey, plan: PlanId): string | null {
     const { unit, values } = LIMITS[key]
     const amount = values[plan]
     if (amount === null) return null
+    if (amount === UNLIMITED) return translate('unlimited')
     if (unit === 'byte') return bytes(amount)
     return unit === 'token' ? tokens(amount) : count(amount)
   }
 
+  /** A capped allowance's number; one that is not included or not capped has none to quote. */
   function value(key: LimitKey, plan: PlanId): number {
     const v = LIMITS[key].values[plan]
-    if (v === null) throw new Error(translate('hasNo', { plan: plan, key: key }))
+    if (v === null || v === UNLIMITED) throw new Error(translate('hasNo', { plan: plan, key: key }))
     return v
   }
 
-  const perPerson = (key: LimitKey, what: string) => (plan: PlanId) =>
-    LIMITS[key].values[plan] === null
-      ? null
-      : translate('offerPerPersonAllowance', { count: count(value(key, plan)), allowance: what })
+  const perTeamMember = (key: LimitKey, what: string) => (plan: PlanId) => {
+    if (LIMITS[key].values[plan] === null) return null
+    if (isUnlimited(key, plan)) return translate('unlimited')
+    return translate('offerPerTeamMemberAllowance', {
+      count: count(value(key, plan)),
+      allowance: what,
+    })
+  }
+
+  const n = (key: LimitKey, plan: PlanId) => count(value(key, plan))
 
   const INCLUDED = translate('included')
   const from = (feature: Feature) => (plan: PlanId) => (has(plan, feature) ? INCLUDED : null)
@@ -273,8 +298,14 @@ export const plansIn = perLanguage((translate, language) => {
     {
       key: 'invoicing',
       label: translate('invoicesAndQuotes'),
-      limitKeys: ['invoices_per_month'],
-      cell: perPerson('invoices_per_month', translate('newInvoiceIssues')),
+      limitKeys: ['invoices_per_month', 'quotes_per_month'],
+      cell: (plan) =>
+        isUnlimited('invoices_per_month', plan) && isUnlimited('quotes_per_month', plan)
+          ? translate('unlimited')
+          : translate('invoicesAndQuotesPerTeamMemberAMonth', {
+              invoices: n('invoices_per_month', plan),
+              quotes: n('quotes_per_month', plan),
+            }),
     },
     { key: 'swiss_qr', label: translate('swissQRBills'), limitKeys: [], cell: () => INCLUDED },
     {
@@ -290,16 +321,18 @@ export const plansIn = perLanguage((translate, language) => {
       note: translate('manualEngagementManagementInEveryPlanScheduledWorkflows'),
       limitKeys: ['engagements'],
       cell: (plan) =>
-        translate('activePerWorkspace', {
-          value1: count(value('engagements', plan)),
-          value2: has(plan, 'automations') ? '' : translate('manualWorkflows'),
-        }),
+        isUnlimited('engagements', plan)
+          ? translate('unlimited')
+          : translate('activePerWorkspace', {
+              value1: count(value('engagements', plan)),
+              value2: has(plan, 'automations') ? '' : translate('manualWorkflows'),
+            }),
     },
     {
       key: 'automations',
       label: translate('automationsAndPaymentReminders'),
       limitKeys: ['automation_actions_per_month'],
-      cell: perPerson('automation_actions_per_month', 'actions'),
+      cell: perTeamMember('automation_actions_per_month', translate('automatedActions')),
     },
     {
       key: 'heidi',
@@ -307,7 +340,7 @@ export const plansIn = perLanguage((translate, language) => {
       limitKeys: ['ai_tokens_per_month'],
       cell: (plan) =>
         has(plan, 'heidi')
-          ? translate('includedSharedAITokensPersonMonth', {
+          ? translate('includedSharedAITokensPerTeamMemberMonth', {
               value1: tokens(value('ai_tokens_per_month', plan)),
             })
           : null,
@@ -322,13 +355,13 @@ export const plansIn = perLanguage((translate, language) => {
       key: 'expenses',
       label: translate('expensesAndAIReceiptImport'),
       limitKeys: ['expenses_per_month'],
-      cell: perPerson('expenses_per_month', 'expenses'),
+      cell: perTeamMember('expenses_per_month', translate('expensesAllowance')),
     },
     {
       key: 'documents_signatures',
       label: translate('documentTemplatesAndSimpleSignatures'),
       limitKeys: ['signatures_per_month'],
-      cell: perPerson('signatures_per_month', translate('signatureRequests')),
+      cell: perTeamMember('signatures_per_month', translate('signatureRequests')),
     },
     {
       key: 'corrections_vat',
@@ -366,12 +399,17 @@ export const plansIn = perLanguage((translate, language) => {
     limit,
   })
 
-  /** Every feature of the offer by area, as plan access in 00007_offers.sql (checked in plans.test.ts). */
+  /** Every feature of the offer by area, as plan access in 00014_offer_v2.sql (checked in plans.test.ts). */
   const FEATURE_GROUPS: FeatureGroup[] = [
     {
       title: translate('featureGroupInvoicing'),
       rows: [
-        { key: 'quotes', label: translate('featureQuotes'), plans: ALL },
+        {
+          key: 'quotes',
+          label: translate('featureQuotes'),
+          plans: ALL,
+          limit: 'quotes_per_month',
+        },
         {
           key: 'invoice_documents',
           label: translate('featureInvoices'),
@@ -474,6 +512,7 @@ export const plansIn = perLanguage((translate, language) => {
         {
           key: 'automations',
           label: translate('featureAutomations'),
+          hint: translate('featureAutomationsHint'),
           plans: PRO_UP,
           limit: 'automation_actions_per_month',
         },
@@ -511,7 +550,6 @@ export const plansIn = perLanguage((translate, language) => {
   }
 
   const storage = (plan: PlanId) => bytes(value('storage_bytes', plan))
-  const n = (key: LimitKey, plan: PlanId) => count(value(key, plan))
 
   const PLANS: Plan[] = [
     {
@@ -522,10 +560,13 @@ export const plansIn = perLanguage((translate, language) => {
       pitch: translate('forFreelancersWithASmallClientBase'),
       highlights: [
         translate('clientsPerWorkspace', { value1: n('clients', 'basic') }),
-        translate('newInvoiceIssuesPerPersonAMonth', { value1: n('invoices_per_month', 'basic') }),
+        translate('invoicesAndQuotesPerTeamMemberAMonth', {
+          invoices: n('invoices_per_month', 'basic'),
+          quotes: n('quotes_per_month', 'basic'),
+        }),
         translate('swissQRBillsAndRevolutPaymentLinks'),
         translate('upToEngagementsManagedByHand', { value1: n('engagements', 'basic') }),
-        translate('storagePerPerson', { value1: storage('basic') }),
+        translate('storagePerTeamMember', { value1: storage('basic') }),
       ],
     },
     {
@@ -535,19 +576,20 @@ export const plansIn = perLanguage((translate, language) => {
       tagline: translate('runYourBusinessWithHeidi'),
       pitch: translate('forABusinessThatWantsItsWholeBackOffice'),
       highlights: [
-        translate('invoiceIssuesAndExpensesPerPersonAMonth', {
-          value1: n('invoices_per_month', 'pro'),
-          value2: n('expenses_per_month', 'pro'),
+        translate('invoicesQuotesAndExpensesPerTeamMemberAMonth', {
+          invoices: n('invoices_per_month', 'pro'),
+          quotes: n('quotes_per_month', 'pro'),
+          expenses: n('expenses_per_month', 'pro'),
         }),
         translate('clientsPerWorkspace', { value1: n('clients', 'pro') }),
-        translate('heidiWithSharedAITokensPerPersonAMonth', {
+        translate('heidiWithSharedAITokensPerTeamMemberAMonth', {
           value1: tokens(value('ai_tokens_per_month', 'pro')),
         }),
         translate('templatesSimpleSignaturesCorrectionsAndVATReturns'),
-        translate('ledgerDataExportsAndAutomationActionsPerPersonA', {
+        translate('ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth', {
           value1: n('automation_actions_per_month', 'pro'),
         }),
-        translate('storagePerPerson', { value1: storage('pro') }),
+        translate('storagePerTeamMember', { value1: storage('pro') }),
       ],
     },
     {
@@ -560,16 +602,13 @@ export const plansIn = perLanguage((translate, language) => {
         translate('clientPortalPortalRecipientsAreNotPaidSeats'),
         translate('eInvoiceXMLExportsInSupportedFormats'),
         translate('employeesAndPayrollRegister'),
-        translate('clientsPerWorkspace', { value1: n('clients', 'business') }),
-        translate('invoiceIssuesAndExpensesPerPersonAMonth', {
-          value1: n('invoices_per_month', 'business'),
-          value2: n('expenses_per_month', 'business'),
-        }),
-        translate('aiTokensAndAutomationActionsPerPersonAMonth', {
+        translate('unlimitedClientsProductsAndEngagements'),
+        translate('unlimitedInvoicesQuotesExpensesAndSignatureRequests'),
+        translate('aiTokensAndAutomatedActionsPerTeamMemberAMonth', {
           value1: tokens(value('ai_tokens_per_month', 'business')),
           value2: n('automation_actions_per_month', 'business'),
         }),
-        translate('storagePerPerson', { value1: storage('business') }),
+        translate('storagePerTeamMember', { value1: storage('business') }),
       ],
     },
   ]
@@ -581,6 +620,8 @@ export const plansIn = perLanguage((translate, language) => {
   }
   return {
     LIMITS,
+    isUnlimited,
+    value,
     plansWith,
     count,
     bytes,

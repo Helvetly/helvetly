@@ -98,7 +98,7 @@ func TestPooledAllowancesForEveryPaidSeat(t *testing.T) {
 		clients                   int64
 	}{
 		{Pro, "price_pm", 2, 9800, 10 * gb, 10_000_000, 6_000_000, 0, 300},
-		{Business, "price_xm", 5, 49500, 100 * gb, 100_000_000, 60_000_000, 0, 1500},
+		{Business, "price_xm", 5, 49500, 100 * gb, 100_000_000, 60_000_000, 0, Unlimited},
 	} {
 		t.Run(tc.plan, func(t *testing.T) {
 			e := newEnv(t, true)
@@ -168,7 +168,7 @@ func TestNewSubscriptionMidMonthGetsCostlyAllowancesProRata(t *testing.T) {
 	if got := e.cap(owner.workspace, "emails_per_month"); got != share(1000, left, total) {
 		t.Fatalf("emails mid-month: %d", got)
 	}
-	if got := e.cap(owner.workspace, Invoices); got != 150 { // not a costly allowance: whole at once
+	if got := e.cap(owner.workspace, Invoices); got != 100 { // not a costly allowance: whole at once
 		t.Fatalf("invoices: %d", got)
 	}
 	// A duplicate delivery grants nothing more; the next month is whole.
@@ -385,7 +385,7 @@ func TestTrialGivesSmallBusinessAllowancesForTwoPeople(t *testing.T) {
 	if !r.Trial || r.Plan != Business || !r.Includes(Feature("expenses")) || !r.Includes(Feature("heidi")) {
 		t.Fatalf("trial rights %+v", r)
 	}
-	for l, want := range map[Limit]int64{Invoices: 10, Expenses: 20, Signatures: 2, Storage: 100_000_000, AITokens: 250_000,
+	for l, want := range map[Limit]int64{Invoices: 10, Quotes: 10, Expenses: 20, Signatures: 2, Storage: 100_000_000, AITokens: 250_000,
 		AICost: 200_000, "automation_actions_per_month": 50, MaxSeats: 2} {
 		if got := e.cap(owner.workspace, l); got != want { // two people, not pooled
 			t.Errorf("%s: %d, want %d", l, got, want)

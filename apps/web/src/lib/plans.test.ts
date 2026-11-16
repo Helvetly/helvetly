@@ -29,17 +29,14 @@ describe('plans', () => {
 describe('full comparison', () => {
   // The offer's access features as seeded: key -> plans with the feature on.
   const seeded = new Map(
-    // Offer v2's features, then the ones later offers add (00013: employees).
-    ['00007_offers.sql', '00013_offer_employees.sql']
-      .flatMap((file) => [
-        ...readFileSync(join(api, 'store/migrations', file), 'utf8').matchAll(
-          /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
-        ),
-      ])
-      .map(([, key, values]) => {
-        const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
-        return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
-      }),
+    [
+      ...readFileSync(join(api, 'store/migrations/00014_offer_v2.sql'), 'utf8').matchAll(
+        /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
+      ),
+    ].map(([, key, values]) => {
+      const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
+      return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
+    }),
   )
   const rows = FEATURE_GROUPS.flatMap((g) => g.rows).filter((r) => !(r.key in LIMITS))
 
@@ -56,7 +53,7 @@ describe('full comparison', () => {
   })
 })
 
-describe('offer v2 public projection', () => {
+describe('offer helvetly-v2 public projection', () => {
   it('compares the thirteen business benefits', () => {
     expect(BENEFITS.map((b) => b.key)).toEqual([
       'invoicing',
@@ -75,8 +72,8 @@ describe('offer v2 public projection', () => {
     ])
   })
 
-  it('shows eleven allowances, workspace caps apart from per-person pools', () => {
-    expect(USAGE_DETAILS).toHaveLength(11)
+  it('shows twelve allowances, workspace caps apart from per-team-member pools', () => {
+    expect(USAGE_DETAILS).toHaveLength(12)
     expect(USAGE_DETAILS.filter((k) => LIMITS[k].scope === 'workspace')).toEqual([
       'clients',
       'products',
@@ -91,11 +88,13 @@ describe('offer v2 public projection', () => {
   })
 
   it.each([
-    ['clients', ['30', '300', '1’500']],
-    ['products', ['25', '250', '1’000']],
-    ['invoices_per_month', ['15', '150', '600']],
-    ['expenses_per_month', [null, '300', '1’200']],
-    ['signatures_per_month', [null, '50', '200']],
+    ['clients', ['30', '300', 'Unlimited']],
+    ['products', ['25', '250', 'Unlimited']],
+    ['engagements', ['3', '20', 'Unlimited']],
+    ['invoices_per_month', ['15', '100', 'Unlimited']],
+    ['quotes_per_month', ['5', '100', 'Unlimited']],
+    ['expenses_per_month', [null, '300', 'Unlimited']],
+    ['signatures_per_month', [null, '50', 'Unlimited']],
     ['storage_bytes', ['500 MB', '5 GB', '20 GB']],
     ['download_bytes_per_month', ['2 GB', '20 GB', '100 GB']],
     ['emails_per_month', ['100', '1’000', '5’000']],
@@ -109,19 +108,25 @@ describe('offer v2 public projection', () => {
   it('leaves Basic a manual invoicing plan, and keeps the portal and XML for Business', () => {
     const cells = Object.fromEntries(BENEFITS.map((b) => [b.key, PLAN_IDS.map(b.cell)]))
     expect(cells.invoicing).toEqual([
-      '15 new invoice issues/person/month',
-      '150 new invoice issues/person/month',
-      '600 new invoice issues/person/month',
+      '15 invoices and 5 quotes per team member a month',
+      '100 invoices and 100 quotes per team member a month',
+      'Unlimited',
     ])
     expect(cells.engagements).toEqual([
       '3 active per workspace, manual workflows',
       '20 active per workspace',
-      '100 active per workspace',
+      'Unlimited',
     ])
+    expect(cells.automations).toEqual([
+      null,
+      '1’500 automated actions per team member a month',
+      '6’000 automated actions per team member a month',
+    ])
+    expect(cells.expenses).toEqual([null, '300 expenses per team member a month', 'Unlimited'])
     expect(cells.heidi).toEqual([
       null,
-      'Included; shared 5M AI tokens/person/month',
-      'Included; shared 20M AI tokens/person/month',
+      'Included; 5M shared AI tokens per team member a month',
+      'Included; 20M shared AI tokens per team member a month',
     ])
     for (const key of [
       'automations',
@@ -138,6 +143,37 @@ describe('offer v2 public projection', () => {
     expect(plansWith('heidi')).toBe('Pro or Business')
     expect(plansWith('heidi', 'conjunction')).toBe('Pro and Business')
     expect(plansWith('client_portal')).toBe('Business')
+  })
+
+  it('says what Business does not cap only where the offer sets no cap', () => {
+    const uncapped = (Object.keys(LIMITS) as (keyof typeof LIMITS)[]).filter(
+      (key) => LIMITS[key].values.business === 'unlimited',
+    )
+    expect(uncapped.toSorted()).toEqual(
+      [
+        'clients',
+        'engagements',
+        'expenses_per_month',
+        'invoices_per_month',
+        'products',
+        'quotes_per_month',
+        'signatures_per_month',
+      ].toSorted(),
+    )
+    const [basic, pro, business] = PLANS.map((p) => p.highlights)
+    expect(basic).toContain('15 invoices and 5 quotes per team member a month')
+    expect(pro).toContain('100 invoices, 100 quotes and 300 expenses per team member a month')
+    expect(business).toContain('Unlimited clients, products and engagements')
+    expect(business).toContain('Unlimited invoices, quotes, expenses and signature requests')
+    expect(PLANS.flatMap((p) => p.highlights).join(' ')).not.toMatch(/per (paid )?person/)
+  })
+
+  it('quotes the quotes allowance and explains automated actions in the full comparison', () => {
+    const rows = FEATURE_GROUPS.flatMap((g) => g.rows)
+    expect(rows.find((r) => r.key === 'quotes')?.limit).toBe('quotes_per_month')
+    const automations = rows.find((r) => r.key === 'automations')
+    expect(automations?.label).toBe('Automated actions')
+    expect(automations?.hint).toMatch(/counts once/)
   })
 
   it('formats decimal bytes and short tokens', () => {

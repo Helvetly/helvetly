@@ -40,17 +40,17 @@ func recordOf(o *Offer, key string) *OfferRecord {
 func TestSeededOffer(t *testing.T) {
 	e, o, defs := seeded(t)
 	if err := o.Validate(defs); err != nil {
-		t.Fatalf("offer helvetly-v1 does not validate: %v", err)
+		t.Fatalf("the current offer does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly-v1" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != "helvetly-v2" || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
 	}
-	if len(o.Records) != 67 || len(defs) != 67 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 11 {
+	if len(o.Records) != 68 || len(defs) != 68 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}
-	if len(o.UsagePolicy.Pooled) != 10 {
+	if len(o.UsagePolicy.Pooled) != 11 {
 		t.Fatalf("pooled: %v", o.UsagePolicy.Pooled)
 	}
 	// limit_plans holds exactly the document's values (the migration materialised them in SQL, Publish does in Go).
@@ -97,6 +97,8 @@ func TestOfferValidation(t *testing.T) {
 			r.PerAdditionalPaidSeat[Business] = 0
 			o.UsagePolicy.Pooled = removed(o.UsagePolicy.Pooled, "storage_bytes")
 		}, "storage_bytes on business: may not be unlimited"},
+		{"an unlimited pooled limit growing with seats", func(o *Offer) { recordOf(o, "invoices_per_month").PerAdditionalPaidSeat[Business] = 5 },
+			"invoices_per_month on business: unlimited has no value and no per-seat growth"},
 		{"a negative limit", func(o *Offer) { recordOf(o, "clients").Values[Basic] = OfferValue{State: StateLimited, Value: n64(-1)} }, "clients on basic: a limited value"},
 		{"limited without a value", func(o *Offer) { recordOf(o, "clients").Values[Basic] = OfferValue{State: StateLimited} }, "clients on basic: a limited value"},
 		{"-1 is not unlimited", func(o *Offer) { recordOf(o, "clients").Values[Basic] = OfferValue{State: "-1"} }, `state "-1"`},
@@ -160,7 +162,7 @@ func TestPublishOffer(t *testing.T) {
 		t.Fatalf("same terms: %v", err)
 	}
 	next := clone(t, base)
-	next.ID = "helvetly-v2"
+	next.ID = "helvetly-v3"
 	recordOf(&next, "clients").Values[Pro] = OfferValue{State: StateLimited, Value: n64(400)}
 	if err := PublishOffer(ctx, e.st, next, "", "no actor"); err == nil {
 		t.Fatal("published without an actor")
@@ -182,11 +184,11 @@ func TestPublishOffer(t *testing.T) {
 		next.ID).Scan(&before, &after, &reason); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(before, "helvetly-v1") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
+	if !strings.Contains(before, "helvetly-v2") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v1" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v2" || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

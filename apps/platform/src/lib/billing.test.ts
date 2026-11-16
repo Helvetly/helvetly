@@ -23,6 +23,7 @@ import {
   formatReset,
   meterState,
   planRefusal,
+  usageHint,
   usageItems,
   freeForever,
   nextCharge,
@@ -107,6 +108,7 @@ const plan = (month: number, year: number): Plan => ({
     members: 3,
     clients: 250,
     invoices_per_month: 100,
+    quotes_per_month: 100,
     expenses_per_month: 250,
     products: 25,
     engagements: 3,
@@ -193,9 +195,10 @@ test('planHighlights lists the main limits as short lines', () => {
     '2 members',
     '30 clients',
     '15 invoices a month',
-    '0 signature requests a month',
+    '5 quotes sent a month',
   ])
-  expect(planHighlights(business, 2)).toEqual(['Any number of people', "1'500 clients"])
+  // Business has no cap on clients: "Unlimited", never a number, ∞ or -1.
+  expect(planHighlights(business, 2)).toEqual(['Any number of people', 'Unlimited clients'])
   const [perSeat] = billingFixture().plans
   expect(perSeat && planHighlights(perSeat, 1)).toEqual(['Any number of people'])
 })
@@ -426,6 +429,34 @@ test('usageItems shows the allowances of the entitlements, pooled ones grown by 
   expect(items.find((item) => item.limit === 'expenses_per_month')).toMatchObject({ max: 0 })
   expect(items.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: null })
   expect(items.find((item) => item.limit === 'download_bytes_per_month')?.used).toBeNull()
+  expect(items.find((item) => item.limit === 'quotes_per_month')).toMatchObject({
+    max: 10,
+    per_seat: true,
+  })
+  // Business has no cap on its records and quotes: unlimited, with the count kept.
+  const business = usageItems(
+    billingFixture({
+      plan: 'business',
+      entitlements: entitlementsFixture('business', { seats: 3, used: { quotes_per_month: 42 } }),
+    }),
+  )
+  for (const key of [
+    'clients',
+    'products',
+    'engagements',
+    'invoices_per_month',
+    'quotes_per_month',
+    'expenses_per_month',
+    'signatures_per_month',
+  ])
+    expect(business.find((item) => item.limit === key)).toMatchObject({
+      max: null,
+      per_seat: false,
+    })
+  expect(business.find((item) => item.limit === 'quotes_per_month')?.used).toBe(42)
+  expect(business.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: 15_000 })
+  expect(usageHint('automation_actions_per_month')).toMatch(/^Each automatic step counts once/)
+  expect(usageHint('clients')).toBeUndefined()
   // no plan, or self-hosted: the earlier usage list
   const usage = [{ limit: 'clients' as const, used: 3, max: null }]
   expect(usageItems(billingFixture({ usage, entitlements: null }))).toEqual(usage)

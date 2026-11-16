@@ -8,7 +8,7 @@ updated: 2026-11-15
 
 Spread one invoice over several due dates while keeping a single invoice.
 
-Automatic payment reminders need **Pro** or **Business** and use automation actions.
+Automatic payment reminders need **Pro** or **Business** and use automated actions.
 
 1. In the invoice editor, turn on **Pay in instalments** below the document.
 2. Set the number of instalments, the interval and the **First due date**. You can adjust the rows.

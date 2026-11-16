@@ -26,7 +26,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   expenses, templates, signatures, invoice corrections, VAT returns, the ledger, data exports and
   automations need Pro or Business; the client portal and e-invoice XML exports need Business.
 - **Allowances:** clients, products, engagements, stored drafts and stored quotes are fixed caps per
-  workspace. The other allowances (such as invoice issues, expenses, signature requests, storage,
+  workspace, where the plan sets one. The other allowances (such as invoice issues, quote sends, expenses, signature requests, storage,
   downloads, emails, AI tokens and automation actions) are per paid seat and add up into one pool
   for the workspace; adding or changing a member does not renew them. Monthly allowances restart at
   00:00 UTC on the first day of each month; the first part-month and increases during a month are
@@ -54,7 +54,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
 - **Trial:** a new customer can try the features of Business for 7 days, with up to 2 members and
-  small allowances for the whole trial (10 invoice issues, 20 expenses, 2 signature requests,
+  small allowances for the whole trial (10 invoice issues, 10 quote sends, 20 expenses, 2 signature requests,
   100 MB storage, 250,000 AI tokens and 50 automation actions) that neither restart nor grow with
   the number of members. A card is required. Without a valid card at the end of the trial, the
   subscription ends. Each customer gets one trial only. Once the trial converts, every member is
@@ -211,4 +211,4 @@ date means you accept the change.
 - If any provision is invalid, the rest remains in force and the invalid one is replaced by what
   comes closest to its purpose.
 
-Last change: 15 November 2026.
+Last change: 16 November 2026.

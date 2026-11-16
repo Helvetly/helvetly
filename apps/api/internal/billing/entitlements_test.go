@@ -26,8 +26,8 @@ func rowsOf(o Offer, defs []store.LimitDef, plan string) []store.ResolvedLimit {
 	return out
 }
 
-// TestResolveMatrix: every key of offer v2 on every plan for 1, 2, 5 and 25 paid seats. The ten pooled limits grow by
-// their full value with each seat, everything else stays the workspace's, and a limit whose feature is off stays 0.
+// TestResolveMatrix: every key of the current offer on every plan for 1, 2, 5 and 25 paid seats. The pooled limits grow
+// by their full value with each seat (an unlimited one stays unlimited), everything else stays the workspace's, and a limit whose feature is off stays 0.
 func TestResolveMatrix(t *testing.T) {
 	_, o, defs := seeded(t)
 	pooled := map[string]bool{}
@@ -65,10 +65,14 @@ func TestResolveMatrix(t *testing.T) {
 	}{
 		{Pro, 2, Storage, 10_000_000_000}, {Pro, 2, AITokens, 10_000_000}, {Pro, 2, "ai_cost_usd_micros", 6_000_000},
 		{Business, 5, Storage, 100_000_000_000}, {Business, 5, AITokens, 100_000_000}, {Business, 5, "ai_cost_usd_micros", 60_000_000},
-		{Business, 5, "automation_actions_per_month", 30_000}, {Business, 5, Engagements, 100}, {Business, 5, Clients, 1500},
+		{Business, 5, "automation_actions_per_month", 30_000}, {Business, 5, Engagements, Unlimited}, {Business, 5, Clients, Unlimited},
 		{Pro, 5, "automation_actions_per_month", 7500}, {Basic, 25, Invoices, 375}, {Basic, 1, Clients, 30},
 		{Basic, 25, Expenses, 0}, {Basic, 25, Signatures, 0}, {Basic, 25, "automation_actions_per_month", 0},
 		{Basic, 25, Storage, 12_500_000_000}, {Business, 25, MaxSeats, 25}, {Basic, 1, AICost, 0}, {Basic, 25, AITokens, 0},
+		// Offer helvetly-v2: Pro issues 100 invoices per paid seat; quotes are new; Business counts no records.
+		{Pro, 2, Invoices, 200}, {Basic, 1, Quotes, 5}, {Basic, 3, Quotes, 15}, {Pro, 5, Quotes, 500},
+		{Business, 25, Quotes, Unlimited}, {Business, 25, Invoices, Unlimited}, {Business, 25, Expenses, Unlimited},
+		{Business, 25, Signatures, Unlimited}, {Business, 1, Products, Unlimited}, {Business, 25, Emails, 125_000},
 	} {
 		r, err := resolve(rowsOf(o, defs, c.plan), c.seats)
 		if err != nil {
@@ -146,7 +150,7 @@ func TestEntitlementsInTheDatabase(t *testing.T) {
 	e.subscribe(b.workspace, "price_bm")
 	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 5 WHERE workspace_id = $1`, b.workspace)
 	r := mustRights(t, e, b.workspace)
-	if r.Plan != Basic || r.OfferID != "helvetly-v1" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
+	if r.Plan != Basic || r.OfferID != "helvetly-v2" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
 		r.Items["clients"].Value != 30 || r.Includes("expenses") || r.Items["expenses_per_month"].Value != 0 {
 		t.Fatalf("basic × 5: %+v", r)
 	}

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
+import { expect, userEvent, within } from 'storybook/test'
 
 import { billingFixture, entitlementsFixture } from '@/components/billing/billing-fixture'
 import { UsageOverview } from '@/components/billing/usage-overview'
 import type { Billing, Entitlement, PlanId } from '@/lib/billing'
 
-/** A paid workspace on `plan` whose usage panel reads offer v2's entitlements. */
+/** A paid workspace on `plan` whose usage panel reads the offer's entitlements. */
 const onPlan = (
   plan: PlanId,
   used: Record<string, number | null>,
@@ -49,12 +49,13 @@ const tile = (canvas: HTMLElement, label: string) => {
   return found
 }
 
-/** Room everywhere: no nudge; workspace caps and per-person pools say which they are; Basic's exclusions read so. */
+/** Room everywhere: no nudge; workspace caps and per-team-member pools say which they are; Basic's exclusions read so. */
 export const Normal: Story = {
   args: {
     billing: onPlan('basic', {
       clients: 12,
       invoices_per_month: 5,
+      quotes_per_month: 2,
       storage_bytes: 120_000_000,
       ai_tokens_per_month: 40_000,
     }),
@@ -64,18 +65,27 @@ export const Normal: Story = {
     await expect(tile(canvasElement, 'Clients')).toHaveTextContent('12of 30')
     await expect(tile(canvasElement, 'Clients')).toHaveTextContent('Per workspace')
     await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent(
-      'Per paid person, shared · Resets 1 Dec, 00:00 UTC',
+      'Per team member, shared · Resets 1 Dec, 00:00 UTC',
     )
+    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('2of 5')
     await expect(tile(canvasElement, 'Storage')).toHaveTextContent('120 MBof 500 MB')
     await expect(tile(canvasElement, 'Expenses')).toHaveAttribute('data-state', 'off')
     await expect(tile(canvasElement, 'Expenses')).toHaveTextContent('Not included')
-    await expect(tile(canvasElement, 'Automation actions')).toHaveTextContent('Not included')
+    const automated = tile(canvasElement, 'Automated actions')
+    await expect(automated).toHaveTextContent('Not included')
+    // what counts is explained in a help tip, not on the tile
+    await userEvent.hover(
+      within(automated).getByRole('button', { name: 'About Automated actions' }),
+    )
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
+      /^Each automatic step counts once/,
+    )
   },
 }
 export const NormalDark: Story = { ...Normal, parameters: { dark: true } }
 export const NormalPhone: Story = { ...Normal, ...phone }
 
-/** 12 of 15 invoice issues: orange, first, with what Pro gives per paid person. */
+/** 12 of 15 invoice issues: orange, first, with what Pro gives per team member. */
 export const NearLimit: Story = {
   args: { billing: onPlan('basic', { invoices_per_month: 12, clients: 4 }) },
   play: async ({ canvasElement }) => {
@@ -85,7 +95,7 @@ export const NearLimit: Story = {
     await expect(within(issues).getByText('Almost at limit')).toBeVisible()
     const nudge = canvasElement.querySelector<HTMLElement>('[data-slot=usage-nudge]')
     await expect(nudge).toHaveTextContent(
-      'Invoice issues: almost at the plan’s limit. Pro includes 150 invoice issues a month per paid person.',
+      'Invoice issues: almost at the plan’s limit. Pro includes 100 invoice issues a month per team member.',
     )
     await expect(
       within(nudge ?? canvasElement).getByRole('link', { name: 'See Pro' }),
@@ -108,24 +118,41 @@ export const AtLimit: Story = {
 }
 export const AtLimitDark: Story = { ...AtLimit, parameters: { dark: true } }
 
-/** Unlimited values (an operator's): no meter to fill, never under pressure. */
+/**
+ * Business: no cap on clients, products, engagements, invoices, quotes, expenses and signatures; the count with
+ * "of unlimited" and no meter to fill, never under pressure. An operator's unlimited value reads the same.
+ */
 export const Unlimited: Story = {
   args: {
     billing: onPlan(
       'business',
-      { clients: 2400, emails_per_month: 820 },
-      {
-        clients: { state: 'unlimited', value: null },
-        emails_per_month: { state: 'unlimited', value: null },
-      },
+      { clients: 2400, quotes_per_month: 310, invoices_per_month: 640, emails_per_month: 820 },
+      { emails_per_month: { state: 'unlimited', value: null } },
+      2,
     ),
   },
   play: async ({ canvasElement }) => {
-    await expect(tile(canvasElement, 'Clients')).toHaveTextContent("2'400of unlimited")
-    await expect(tile(canvasElement, 'Clients').querySelector('[data-slot=meter]')).toBeNull()
-    await expect(tile(canvasElement, 'Email recipients')).toHaveAttribute('data-state', 'ok')
+    for (const [label, used] of [
+      ['Clients', "2'400"],
+      ['Products & services', '0'],
+      ['Active engagements', '0'],
+      ['Invoice issues', '640'],
+      ['Quotes sent', '310'],
+      ['Expenses', '0'],
+      ['Signature requests', '0'],
+      ['Email recipients', '820'],
+    ] as const) {
+      const found = tile(canvasElement, label)
+      expect(found).toHaveTextContent(`${used}of unlimited`)
+      expect(found).toHaveAttribute('data-state', 'ok')
+      expect(found).not.toHaveTextContent(/∞|NaN|-1|Not included/)
+      expect(found.querySelector('[data-slot=meter]')).toBeNull()
+    }
+    await expect(tile(canvasElement, 'Storage')).toHaveTextContent('of 40 GB')
+    await expect(canvasElement.querySelector('[data-slot=usage-nudge]')).toBeNull()
   },
 }
+export const UnlimitedDark: Story = { ...Unlimited, parameters: { dark: true } }
 
 /** A custom limit for this workspace, with its end; pooled Pro allowances for three paid people. */
 export const Override: Story = {
@@ -141,8 +168,9 @@ export const Override: Story = {
     const clients = tile(canvasElement, 'Clients')
     await expect(clients).toHaveTextContent('280of 400')
     await expect(within(clients).getByText(/^Custom limit until/)).toBeVisible()
-    // 150 per paid person × 3, one pool
-    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('90of 450')
+    // 100 per team member × 3, one pool
+    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('90of 300')
+    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('0of 300')
   },
 }
 export const OverrideDark: Story = { ...Override, parameters: { dark: true } }
@@ -164,9 +192,12 @@ export const Trial: Story = {
     billing: {
       ...onPlan(
         'business',
-        { clients: 4, invoices_per_month: 6, ai_tokens_per_month: 900_000 },
+        { clients: 4, invoices_per_month: 6, quotes_per_month: 3, ai_tokens_per_month: 900_000 },
         {
-          invoices_per_month: { reset_at: null, per_seat: false },
+          // the trial's own allowances replace Business's unlimited ones
+          clients: { state: 'limited', value: 100 },
+          invoices_per_month: { state: 'limited', value: 10, reset_at: null, per_seat: false },
+          quotes_per_month: { state: 'limited', value: 10, reset_at: null, per_seat: false },
           ai_tokens_per_month: { reset_at: null, per_seat: false },
           emails_per_month: { reset_at: null, per_seat: false },
         },
@@ -183,7 +214,8 @@ export const Trial: Story = {
     await expect(canvas.queryByText(/This month since/)).toBeNull()
     await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('For the whole trial')
     await expect(tile(canvasElement, 'Clients')).not.toHaveTextContent('For the whole trial')
-    await expect(canvas.queryByText(/Resets|Per paid person/)).toBeNull()
+    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('3of 10')
+    await expect(canvas.queryByText(/Resets|Per team member/)).toBeNull()
   },
 }
 

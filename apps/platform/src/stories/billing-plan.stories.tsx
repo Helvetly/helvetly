@@ -605,9 +605,25 @@ export const PlansProToBusiness: Story = {
     // Pro is the recommendation; a workspace already on it sees no badge
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(businessCard.getByText('CHF 99')).toBeVisible()
-    await expect(businessCard.getByRole('list', { name: 'Business includes' })).toHaveTextContent(
-      /1'500 clients \/ workspace/,
+    // Business has no cap on records, invoices or quotes: "Unlimited", never a number, ∞ or -1
+    const includes = businessCard.getByRole('list', { name: 'Business includes' })
+    await expect(includes).toHaveTextContent(/Unlimited clients \/ workspace/)
+    await expect(includes).toHaveTextContent(/Unlimited invoice issues \/ team member \/ month/)
+    await expect(includes).toHaveTextContent(/Unlimited quotes sent \/ team member \/ month/)
+    await expect(includes).not.toHaveTextContent(/∞|NaN|-1/)
+    await expect(card(canvas, 'Pro').getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
+      /100 quotes sent \/ team member \/ month/,
     )
+    const quotes = await waitFor(() => {
+      const row = canvasElement.querySelector<HTMLElement>('[data-row=quotes_per_month]')
+      if (!row) throw new Error('no quotes row in the comparison')
+      return within(row)
+    })
+    await expect(quotes.getByRole('rowheader')).toHaveTextContent('Per team member, a month')
+    const [basicQuotes, proQuotes, businessQuotes] = quotes.getAllByRole('cell')
+    await expect(basicQuotes).toHaveTextContent('5')
+    await expect(proQuotes).toHaveTextContent('100')
+    await expect(businessQuotes).toHaveTextContent('Unlimited')
     await expect(
       card(canvas, 'Basic').getByRole('button', { name: 'Switch to Basic' }),
     ).toBeEnabled()

@@ -14,6 +14,7 @@ export type LimitKey =
   | 'members'
   | 'clients'
   | 'invoices_per_month'
+  | 'quotes_per_month'
   | 'expenses_per_month'
   | 'products'
   | 'engagements'
@@ -379,6 +380,7 @@ export const LIMIT_LABELS: Record<LimitKey, string> = {
   members: translate('members'),
   clients: translate('clients'),
   invoices_per_month: translate('invoicesThisMonth'),
+  quotes_per_month: translate('quotesThisMonth'),
   expenses_per_month: translate('expensesThisMonth'),
   products: translate('productsServices'),
   engagements: translate('runningEngagements2'),
@@ -391,6 +393,7 @@ const limitNounMessages = {
   members: 'limitNounMembers',
   clients: 'limitNounClients',
   invoices_per_month: 'limitNounInvoicesPerMonth',
+  quotes_per_month: 'limitNounQuotesPerMonth',
   expenses_per_month: 'limitNounExpensesPerMonth',
   products: 'limitNounProducts',
   engagements: 'limitNounEngagements',
@@ -418,6 +421,7 @@ export function limitFactLabel(key: LimitKey, count = 2): string {
 export function comparisonLimitLabel(key: LimitKey): string {
   const monthly: Partial<Record<LimitKey, string>> = {
     invoices_per_month: translate('invoicesPerMonthLabel'),
+    quotes_per_month: translate('quotesPerMonthLabel'),
     expenses_per_month: translate('expensesPerMonthLabel'),
     signatures_per_month: translate('signaturesPerMonthLabel'),
     ai_tokens_per_month: translate('aiTokensPerMonthLabel'),
@@ -436,10 +440,17 @@ const USAGE_LABELS: Record<string, string> = {
   download_bytes_per_month: translate('fileDownloadsThisMonth'),
   emails_per_month: translate('emailRecipientsThisMonth'),
   email_attachment_bytes_per_month: translate('emailAttachmentsThisMonth'),
+  quotes_per_month: translate('quotesSentThisMonth'),
   automation_actions_per_month: translate('automationActionsThisMonth'),
   drafts: translate('drafts'),
   retained_quotes: translate('keptQuotes'),
 }
+
+/** What an allowance counts, where its name alone does not say: shown in a help tip next to the name. */
+const USAGE_HINTS: Record<string, string> = {
+  automation_actions_per_month: translate('automationActionsHint'),
+}
+export const usageHint = (key: string): string | undefined => USAGE_HINTS[key]
 
 /** A limit's name: "Clients", "Invoice issues this month"; an unknown key reads as its words. */
 export const usageLabel = (key: string) =>
@@ -605,6 +616,7 @@ const HIGHLIGHT_ORDER: LimitKey[] = [
   'members',
   'clients',
   'invoices_per_month',
+  'quotes_per_month',
   'signatures_per_month',
   'engagements',
   'storage_bytes',
@@ -616,6 +628,7 @@ const HIGHLIGHT_NOUNS: Record<LimitKey, string> = {
   members: 'members',
   clients: 'clients',
   invoices_per_month: translate('invoicesAMonth'),
+  quotes_per_month: translate('quotesAMonth'),
   expenses_per_month: translate('expensesAMonth'),
   products: translate('productsServices2'),
   engagements: translate('runningEngagements'),

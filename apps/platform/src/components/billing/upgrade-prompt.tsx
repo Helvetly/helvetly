@@ -57,6 +57,7 @@ const TITLES: Record<string, string> = {
   members: translate('memberLimitReached'),
   clients: translate('clientLimitReached'),
   invoices_per_month: translate('monthlyInvoiceLimitReached'),
+  quotes_per_month: translate('monthlyQuoteLimitReached'),
   expenses_per_month: translate('monthlyExpenseLimitReached'),
   products: translate('catalogueLimitReached'),
   engagements: translate('engagementLimitReached'),

@@ -175,7 +175,11 @@ func (o Offer) Validate(defs []store.LimitDef) error {
 			continue
 		}
 		for _, plan := range planOrder {
-			if v := r.Values[plan]; v.State != StateLimited || v.Value == nil || r.PerAdditionalPaidSeat[plan] != *v.Value {
+			v := r.Values[plan]
+			if v.State == StateUnlimited { // nothing to grow; validateRecord checks it has no per-seat growth
+				continue
+			}
+			if v.State != StateLimited || v.Value == nil || r.PerAdditionalPaidSeat[plan] != *v.Value {
 				fail("%s on %s: a pooled limit grows by its full value with every paid seat", key, plan)
 			}
 		}

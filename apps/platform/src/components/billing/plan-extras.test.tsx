@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
+import { render as renderPlain, screen, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
 
 import type { PublicOffer } from '@/lib/billing'
 
@@ -8,6 +10,8 @@ import { PlanComparison } from './plan-extras'
 import fixture from './public-offer.fixture.json'
 
 const offer: PublicOffer = { ...fixture, comparison: fixture.comparison.map((row) => ({ ...row })) }
+
+const render = (ui: ReactElement) => renderPlain(<TooltipProvider>{ui}</TooltipProvider>)
 
 test('the fixture is the public offer the API publishes (the Go golden file the website checks too)', () => {
   expect({
@@ -28,24 +32,36 @@ const row = (key: string) => {
     within(found).getAllByRole('cell')[['basic', 'pro', 'business'].indexOf(plan)]
 }
 
-test('thirteen business rows and eleven allowances, per person or per workspace', () => {
+test('thirteen business rows and twelve allowances, per team member or per workspace', () => {
   render(<PlanComparison offer={offer} current="basic" />)
   expect(document.querySelectorAll('tbody:first-of-type tr')).toHaveLength(13)
-  expect(document.querySelectorAll('tbody:last-of-type tr[data-row]')).toHaveLength(11)
+  expect(document.querySelectorAll('tbody:last-of-type tr[data-row]')).toHaveLength(12)
   expect(row('heidi')('basic')).toHaveTextContent('Not included')
-  expect(row('heidi')('pro')).toHaveTextContent('5M / person / month')
+  expect(row('heidi')('pro')).toHaveTextContent('5M / team member / month')
   expect(row('client_portal')('pro')).toHaveTextContent('Not included')
   expect(row('employees')('pro')).toHaveTextContent('Not included')
   expect(
     within(row('client_portal')('business') ?? document.body).getByLabelText('Included'),
   ).toBeVisible()
-  expect(row('invoicing')('basic')).toHaveTextContent('15 / person / month')
+  expect(row('invoicing')('basic')).toHaveTextContent('15 / team member / month')
+  expect(row('invoicing')('pro')).toHaveTextContent('100 / team member / month')
+  // unlimited reads as such, without a per-unit suffix
+  expect(row('invoicing')('business')?.textContent).toBe('Unlimited')
+  expect(row('quotes_per_month')('basic')).toHaveTextContent('5')
+  expect(row('quotes_per_month')('pro')).toHaveTextContent('100')
+  expect(row('quotes_per_month')('business')).toHaveTextContent('Unlimited')
+  expect(row('clients')('business')).toHaveTextContent('Unlimited')
+  expect(row('signatures_per_month')('business')?.textContent).not.toMatch(/\d/)
   expect(row('engagements')('basic')).toHaveTextContent('3 / workspace')
   expect(row('expenses_per_month')('basic')).toHaveTextContent('Not included')
   expect(row('storage_bytes')('pro')).toHaveTextContent('5 GB')
   expect(screen.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent('Per workspace')
   expect(screen.getByRole('rowheader', { name: /^AI tokens/ })).toHaveTextContent(
-    'Per paid person, a month',
+    'Per team member, a month',
   )
+  expect(screen.getByRole('rowheader', { name: /^Quotes sent/ })).toHaveTextContent(
+    'Per team member, a month',
+  )
+  expect(screen.getByRole('button', { name: 'About Automated actions' })).toBeInTheDocument()
   expect(screen.queryByText(/identity|credits/i)).toBeNull()
 })
