@@ -588,7 +588,7 @@ export const ExpensesReadOnly: Story = {
     await canvas.findByText('No expenses yet')
     // The member's session can arrive after the list; until then the page shows every action.
     await waitFor(() => {
-      for (const name of ['Add expense', 'Upload receipts', 'New expense']) {
+      for (const name of ['Add expense', 'Import receipts', 'New expense']) {
         expect(canvas.queryByRole('button', { name })).not.toBeInTheDocument()
       }
     })
@@ -614,7 +614,7 @@ export const ExpensesImportMenu: Story = {
     await canvas.findByText('No expenses yet')
     await userEvent.click(canvas.getByRole('button', { name: 'More' }))
     const items = await within(document.body).findAllByRole('menuitem')
-    await expect(items[0]).toHaveTextContent('Upload receipts')
+    await expect(items[0]).toHaveTextContent('Import receipts')
     await expect(items[0]?.querySelector('svg.lucide-file-up')).not.toBeNull()
     // The open menu hides the page from the a11y check that runs after play.
     await userEvent.keyboard('{Escape}')

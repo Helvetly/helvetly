@@ -12,7 +12,7 @@ import { AlertCircle, History, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { CONSENT_TEXT } from '@/components/heidi/ai-consent'
+import { AIPrivacyLink } from '@/components/heidi/ai-consent'
 import { usageKey } from '@/components/heidi/use-heidi'
 import { errorMessage } from '@/lib/api'
 import { heidiApi } from '@/lib/heidi'
@@ -424,10 +424,12 @@ function AllowAI({ onAllowed }: { onAllowed: () => void }) {
     return <p className="text-muted-foreground">{translate('askAnOwnerOrAdminOfThisWorkspace')}</p>
   return (
     <div className="grid gap-2">
-      <p className="text-[12.5px] text-pretty text-muted-foreground">{CONSENT_TEXT}</p>
-      <Button size="sm" className="w-fit" disabled={allow.isPending} onClick={() => allow.mutate()}>
-        {allow.isPending ? translate('allowing') : translate('allowOpenAI')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+        <Button size="sm" disabled={allow.isPending} onClick={() => allow.mutate()}>
+          {allow.isPending ? translate('allowing') : translate('allowOpenAI')}
+        </Button>
+        <AIPrivacyLink />
+      </div>
       {allow.error && <p className="text-destructive">{errorMessage(allow.error)}</p>}
     </div>
   )

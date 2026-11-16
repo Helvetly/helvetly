@@ -30,11 +30,23 @@ import { errorMessage, type ApiError } from '@/lib/api'
 import { heidiApi, type HeidiConsent } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
+import { siteUrl } from '@/lib/site'
 
 import { usageKey } from './use-heidi'
 
-/** What turning consent on means, in one place for the panel and the settings card. */
-export const CONSENT_TEXT = translate('heidiThenSendsOpenAIUSATheMessageYouWrite')
+/** What turning consent on means lives in the privacy policy; the panel and the import link to it. */
+export function AIPrivacyLink() {
+  return (
+    <a
+      href={siteUrl('/privacy#4-heidi-ai-import-and-openai')}
+      target="_blank"
+      rel="noreferrer"
+      className="w-fit text-caption underline underline-offset-2 hover:text-foreground"
+    >
+      {translate('howHeidiUsesOpenAI')}
+    </a>
+  )
+}
 
 function useAIConsent() {
   const queryClient = useQueryClient()
@@ -59,18 +71,18 @@ export function AIConsentNotice() {
   return (
     <div
       role="note"
-      className="mb-2 grid gap-2 rounded-lg bg-muted px-3 py-2.5 text-[12.5px] text-muted-foreground"
+      className="mb-2 grid gap-2 rounded-lg bg-muted px-3 py-2.5 text-caption text-muted-foreground"
     >
       <p className="text-pretty">
         <span className="font-medium text-foreground">{translate('aiAnswersAreOff')}</span>
         {translate('heidiAnswersFromYourRecordsOnly')}
-        {CONSENT_TEXT}
       </p>
       {canManage ? (
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <Button size="sm" disabled={change.isPending} onClick={() => change.mutate(true)}>
             {change.isPending ? translate('allowing') : translate('allowOpenAI')}
           </Button>
+          <AIPrivacyLink />
         </div>
       ) : (
         <p>{translate('anOwnerOrAdminCanAllowIt')}</p>

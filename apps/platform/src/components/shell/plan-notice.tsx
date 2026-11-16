@@ -51,12 +51,12 @@ const planName = (billing: Billing) =>
 const capitalizeId = (id: string) => id.charAt(0).toUpperCase() + id.slice(1)
 const days = (count: number) => `${count} ${count === 1 ? 'day' : 'days'}`
 
-/** What the trial turns into under the subscription's promotion code: "free forever with code X". */
+/** What the trial turns into under the subscription's promotion code; the code itself stays private. */
 function afterDiscount(billing: Billing, discount: Discount): string {
-  if (freeForever(billing)) return translate('freeForeverWithCode', { code: discount.code })
+  if (freeForever(billing)) return translate('freeForever')
   const charge = nextCharge(billing)
   const price = charge && 'amount' in charge ? charge.amount : null
-  const terms = translate('code2', { code: discount.code, value2: describeDiscount(discount) })
+  const terms = describeDiscount(discount)
   return price && billing.interval
     ? `${formatPrice(price)} / ${billing.interval} with ${terms}`
     : translate('dynamicApplies', { terms: terms })
