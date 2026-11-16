@@ -30,12 +30,12 @@ export function Hero() {
 
           className="rise group ring-gradient bg-site/80 inline-flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-body-sm text-muted-foreground backdrop-blur transition-colors hover:border-foreground/15 hover:text-foreground"
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-heidi-soft px-2 py-0.5 font-medium text-heidi-ink">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-heidi-soft px-2 py-0.5 font-medium whitespace-nowrap text-heidi-ink">
             <HeidiMark className="size-3.5" animated />
             {translate('new')}
           </span>
           {translate('meetHeidiTheAssistantWhoKnowsYourBooks')}
-          <ArrowRight aria-hidden className="size-3.5" />
+          <ArrowRight aria-hidden className="size-3.5 shrink-0" />
         </Link>
 
         <h1
@@ -74,9 +74,9 @@ export function Hero() {
         >
           {(
             [
-              ['Swiss QR bill built in', 'bg-mint text-mint-ink'],
-              ['Passwordless sign-in', 'bg-lilac text-lilac-ink'],
-              ['Export everything, any time', 'bg-peach text-peach-ink'],
+              [translate('swissQrBillBuiltIn'), 'bg-mint text-mint-ink'],
+              [translate('passwordlessSignIn'), 'bg-lilac text-lilac-ink'],
+              [translate('exportEverythingAnyTime'), 'bg-peach text-peach-ink'],
             ] as const
           ).map(([item, tone]) => (
             <li key={item} className="inline-flex items-center gap-2">

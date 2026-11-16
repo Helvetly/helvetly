@@ -67,7 +67,7 @@ function PlanHead({ plan }: { plan: Plan }) {
   const unavailable = useOfferStatus().status === 'unavailable'
   return (
     <>
-      <span className="flex items-center gap-2">
+      <span className="flex flex-wrap items-center gap-2">
         <span
           aria-hidden
           className={cn('size-2.5 rounded-full', TONES[PLAN_TONE[plan.id]].solid)}
@@ -95,7 +95,7 @@ function StartCta({ plan }: { plan: Plan }) {
       disabled={useOfferStatus().status === 'unavailable'}
       variant={plan.id === RECOMMENDED ? 'primary' : 'outline'}
       arrow={false}
-      className="mt-3 h-9 w-full px-4 text-body-sm"
+      className="mt-3 min-h-9 w-full px-4 py-1.5 text-body-sm"
     >
       {translate('startWith')}
       {plan.name}
@@ -108,7 +108,7 @@ const band = (plan: PlanId) => plan === RECOMMENDED && 'bg-lilac/35'
 /** Every feature side by side in one table, grouped by area, with the plans' heads pinned while it scrolls. */
 function WideTable() {
   return (
-    <table className="w-full border-separate border-spacing-0 text-left text-body">
+    <table className="w-full table-fixed border-separate border-spacing-0 text-left text-body">
       <caption className="sr-only">{translate('whatEachPlanIncludes')}</caption>
       <thead>
         <tr>
@@ -197,7 +197,7 @@ function PlanCard({ plan }: { plan: Plan }) {
                 <dt className={cn('text-body-sm', !row.plans[plan.id] && 'text-muted-foreground')}>
                   {row.label}
                 </dt>
-                <dd className="shrink-0 text-right text-body-sm">
+                <dd className="max-w-[50%] text-right text-body-sm">
                   <Cell row={row} plan={plan.id} />
                 </dd>
               </div>
@@ -213,10 +213,10 @@ function PlanCard({ plan }: { plan: Plan }) {
 export function PlanTable() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <WideTable />
       </div>
-      <div className="grid gap-4 md:hidden">
+      <div className="grid gap-4 lg:hidden">
         {PLANS.map((plan) => (
           <PlanCard key={plan.id} plan={plan} />
         ))}

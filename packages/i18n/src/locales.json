@@ -1,6 +1,12 @@
 {
   "defaultLocale": "en",
+  "browserLocales": ["en"],
   "locales": {
+    "de": {
+      "name": "Deutsch",
+      "languageTag": "de-CH",
+      "numberLocale": "de-CH"
+    },
     "en": {
       "name": "English",
       "languageTag": "en-GB",

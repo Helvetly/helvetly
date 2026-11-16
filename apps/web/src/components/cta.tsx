@@ -34,14 +34,14 @@ export function Cta({
 }) {
   const external = href.startsWith('http')
   const classes = cn(
-    'inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-body font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+    'inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-body font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     variants[variant],
     className,
   )
   const content = (
     <>
       {children}
-      {arrow && <ArrowRight aria-hidden className="size-4" />}
+      {arrow && <ArrowRight aria-hidden className="size-4 shrink-0" />}
     </>
   )
   if (disabled)

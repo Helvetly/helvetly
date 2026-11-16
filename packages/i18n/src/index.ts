@@ -11,21 +11,25 @@ export {
 } from './browser-locale'
 
 export const defaultLocale = configuration.defaultLocale
-export const locales = configuration.locales
-export type Locale = keyof typeof locales
+export const browserLanguage = process.env.NEXT_PUBLIC_I18N_MODE === 'browser'
+export type Locale = keyof typeof configuration.locales
+export const locales = Object.fromEntries(
+  Object.entries(configuration.locales).filter(
+    ([language]) => !browserLanguage || configuration.browserLocales.includes(language),
+  ),
+)
 
 export function isLocale(value: string): value is Locale {
   return Object.hasOwn(locales, value)
 }
 
-export const browserLanguage = process.env.NEXT_PUBLIC_I18N_MODE === 'browser'
 const configuredLocale =
   browserLanguage && typeof window !== 'undefined'
     ? currentBrowserLocale()
     : (process.env.NEXT_PUBLIC_LOCALE ?? defaultLocale)
 export const locale = isLocale(configuredLocale) ? configuredLocale : 'en'
-export const languageTag = locales[locale].languageTag
-export const numberLocale = locales[locale].numberLocale
+export const languageTag = configuration.locales[locale].languageTag
+export const numberLocale = configuration.locales[locale].numberLocale
 export const localePrefix = browserLanguage || locale === defaultLocale ? '' : `/${locale}`
 
 /** The language stays fixed for the lifetime of the page, including module-level labels. */

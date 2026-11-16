@@ -58,6 +58,10 @@ TanStack Query, Turborepo, Vitest, Storybook and Playwright.
 ## Languages
 
 All interfaces use English catalogs (`src/messages/en.json`) in each app and `packages/ui`.
+The public website and developer documentation also support Swiss Standard German (`de-CH`) at `/de/`.
+The signed-in application and client portal currently support English only. Their enabled languages are
+listed separately in `browserLocales` in `packages/i18n/src/locales.json`; enable a language there only
+after translating both applications.
 The shared `packages/i18n` runtime provides typed keys, ICU messages, interpolation and English fallback.
 User data, API identifiers and the language of issued financial documents remain separate from interface language.
 
@@ -68,7 +72,7 @@ Marketing and documentation keep English at the existing URLs; other languages u
 Their builds create a separate static export for each configured language; for marketing development, set
 `HELVETLY_BUILD_LOCALE=de` before starting Next.js.
 
-Platform and portal keep all routes unprefixed. Open a link with `?lang=de` to select a language and save it
+Platform and portal keep all routes unprefixed. Open a link with `?lang=en` to select a supported language and save it
 under `helvetly.language` in that origin's `localStorage`. Without a supported query parameter, the saved
 language is used, then English. The language menu changes `?lang` while preserving other query parameters
 and the fragment; switching reloads the page so module-level labels use the selected language too.
