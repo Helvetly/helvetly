@@ -17,6 +17,9 @@ type Member struct {
 type WorkspaceRole struct {
 	ID, Name, Role string
 	LogoFileID     *string
+	// Plan is the plan the workspace is on now: nil without a billing record (billing off, or never opened),
+	// "" when it has none (locked), else the plan id. Same rule as billing.PlanOf.
+	Plan *string
 }
 
 // Invitation: InvitedBy is the inviter's id when written and the inviter's name (else email) when read.
@@ -98,8 +101,14 @@ func (q Q) RemoveMember(ctx context.Context, workspaceID, userID string) error {
 }
 
 func (q Q) UserWorkspaces(ctx context.Context, userID string) ([]WorkspaceRole, error) {
-	rows, err := q.db.Query(ctx, `SELECT w.id, w.name, m.role, w.logo_file_id FROM workspace_members m
-		JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = $1 ORDER BY lower(w.name), w.id`, userID)
+	rows, err := q.db.Query(ctx, `SELECT w.id, w.name, m.role, w.logo_file_id,
+			CASE WHEN b.workspace_id IS NULL THEN NULL
+			     WHEN b.status IN ('active', 'trialing', 'past_due') AND b.plan <> ''
+			          AND (b.plan_expires_at IS NULL OR now() < b.plan_expires_at) THEN b.plan
+			     ELSE '' END
+		FROM workspace_members m JOIN workspaces w ON w.id = m.workspace_id
+		LEFT JOIN workspace_billing b ON b.workspace_id = w.id
+		WHERE m.user_id = $1 ORDER BY lower(w.name), w.id`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +116,7 @@ func (q Q) UserWorkspaces(ctx context.Context, userID string) ([]WorkspaceRole, 
 	out := []WorkspaceRole{}
 	for rows.Next() {
 		var w WorkspaceRole
-		if err := rows.Scan(&w.ID, &w.Name, &w.Role, &w.LogoFileID); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.Role, &w.LogoFileID, &w.Plan); err != nil {
 			return nil, err
 		}
 		out = append(out, w)

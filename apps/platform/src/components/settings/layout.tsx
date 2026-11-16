@@ -35,7 +35,7 @@ export function SettingsPage({
       <div
         data-slot="settings-page"
         className={cn(
-          // The whole panel's width: fields and long text cap their own width (settings.css).
+          // The whole panel's width (the page header's hairline runs edge to edge): fields and long text cap their own width (settings.css).
           'grid w-full items-start gap-x-10 gap-y-6 px-4 pt-5 pb-24 sm:px-6 md:pt-7 lg:px-8',
           nav && '@4xl:grid-cols-[11.5rem_minmax(0,1fr)]',
         )}
@@ -43,7 +43,7 @@ export function SettingsPage({
         {/* Above the page's own nav too: one title line and hairline on every settings tab. */}
         <div
           data-slot="settings-page-header"
-          className="col-span-full flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b pb-5"
+          className="col-span-full -mx-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b px-4 pb-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
         >
           <div className="grid max-w-[68ch] min-w-0 gap-1">
             <h1 className="text-title font-semibold tracking-[-0.015em]">{title}</h1>
@@ -173,7 +173,7 @@ export function SettingsSection({
           <div
             data-slot="settings-section-footer"
             className={cn(
-              'animate-in rounded-lg bg-muted/40 px-3 py-1.5 transition-colors duration-200 fade-in',
+              'w-full max-w-[var(--settings-form,44rem)] animate-in rounded-lg bg-muted/40 px-3 py-1.5 transition-colors duration-200 fade-in',
               // Unsaved: tinted, and on a phone it stays in view until saved or discarded.
               'has-[[data-dirty]]:bg-muted max-sm:has-[[data-dirty]]:sticky max-sm:has-[[data-dirty]]:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-sm:has-[[data-dirty]]:z-10',
             )}

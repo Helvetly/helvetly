@@ -36,6 +36,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { addressLines } from '@/components/clients/client-bits'
+import { ClientForm } from '@/components/clients/client-form'
 import { countryName } from '@/components/clients/client-form-model'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
@@ -1246,6 +1247,7 @@ function ClientBlock({
   onPick: (client: Client) => void
 }) {
   const lines = client ? addressLines(client) : []
+  const [creating, setCreating] = useState(false)
   return (
     <div className="grid content-start gap-2">
       <span
@@ -1304,10 +1306,22 @@ function ClientBlock({
           <ClientSearch
             selectedId={client?.id ?? null}
             onSelect={onPick}
-            onCreate={() => window.open('/clients?new=1', '_blank')}
+            onCreate={() => {
+              onOpenChange(false)
+              setCreating(true)
+            }}
           />
         </PopoverContent>
       </Popover>
+      {creating && (
+        <ClientForm
+          onClose={() => setCreating(false)}
+          onSaved={(created) => {
+            setCreating(false)
+            onPick(created)
+          }}
+        />
+      )}
       {invalid && (
         <span className="text-[12px] text-destructive">
           {translate('chooseWhoThisInvoiceIsFor')}
