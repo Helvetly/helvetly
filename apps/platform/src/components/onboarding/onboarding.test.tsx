@@ -158,9 +158,22 @@ describe('the redirect', () => {
     expect(screen.queryByText('The app')).not.toBeInTheDocument()
   })
 
+  test('without a plan yet, the wait after Checkout stays put', async () => {
+    billing = billingFixture()
+    pathname = '/activating/'
+    wrap(
+      <OnboardingRedirect session={session()}>
+        <p>The app</p>
+      </OnboardingRedirect>,
+    )
+    expect(await screen.findByText('The app')).toBeInTheDocument()
+    expect(replace).not.toHaveBeenCalled()
+  })
+
   test.each([
     ['/', '/welcome'],
     ['/welcome?next=%2F', '/welcome'],
+    ['/activating/', '/welcome'],
     ['//evil.example', '/welcome'],
     ['/clients?id=cli_1', '/welcome?next=%2Fclients%3Fid%3Dcli_1'],
   ])('welcomeHref(%s) is %s', (next, want) => expect(welcomeHref(next)).toBe(want))

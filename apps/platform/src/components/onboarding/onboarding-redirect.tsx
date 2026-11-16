@@ -4,6 +4,7 @@ import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 
+import { isActivating } from '@/components/billing/activating'
 import { CHOOSE_PLAN_PATH } from '@/components/shell/plan-gate'
 import type { Session } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
@@ -15,10 +16,11 @@ export const WELCOME_PATH = '/welcome'
 export const isWelcome = (pathname: string) =>
   localizedHref(pathname, defaultLocale).replace(/\/$/, '') === WELCOME_PATH
 
-/** The welcome, coming back to `next` once it is finished. */
+/** The welcome, coming back to `next` once it is finished; never to itself or the wait after Checkout. */
 export function welcomeHref(next: string) {
   const safe = safeNextPath(next)
-  return safe === '/' || isWelcome(new URL(safe, 'http://x').pathname)
+  const path = new URL(safe, 'http://x').pathname
+  return safe === '/' || isWelcome(path) || isActivating(path)
     ? WELCOME_PATH
     : `${WELCOME_PATH}?next=${encodeURIComponent(safe)}`
 }

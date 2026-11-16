@@ -97,8 +97,8 @@ export function BillingSettings() {
   )
 }
 
-/** Back from Checkout or a plan change (?checkout=success|switched|scheduled|canceled): read the
- * subscription now, then tidy the URL. */
+/** Back from a plan change (?checkout=switched|scheduled|canceled): read the subscription now, then
+ * tidy the URL. A first Checkout comes back to /activating instead. */
 function useCheckoutReturn() {
   const params = useSearchParams()
   const router = useRouter()
@@ -120,9 +120,7 @@ function useCheckoutReturn() {
         toast.success(
           outcome === 'scheduled'
             ? translate('yourPlanChangesAtTheEndOfThePaidPeriod')
-            : billing.plan === ''
-              ? translate('paymentReceivedThePlanAppearsHereInAMoment')
-              : translate('welcomeTo', { value1: capitalize(billing.plan) }),
+            : translate('welcomeTo', { value1: capitalize(billing.plan) }),
         ),
       onError: toastError,
     })
