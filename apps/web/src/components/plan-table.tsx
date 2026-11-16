@@ -10,6 +10,7 @@ import {
   FilePen,
   FileSignature,
   FileText,
+  IdCard,
   type LucideIcon,
   Minus,
   QrCode,
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   corrections_vat: FilePen,
   einvoice_xml: FileCode2,
   ledger_exports: BookOpenCheck,
+  employees: IdCard,
 }
 
 const SCOPE: Record<Scope, string> = {
