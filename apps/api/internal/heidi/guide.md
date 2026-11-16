@@ -24,6 +24,7 @@ Keywords: keyboard, shortcut, shortcuts, hotkey, keys, cmd b, ctrl b, hide sideb
 ## Add a client
 
 Keywords: client, customer, new client, kunde, add customer, address, VAT number, UID
+Pages: /clients
 
 1. Go to **Clients** and click **New client**. You can also use Quick Actions → New client.
 2. Choose the **Client type** (company or person) and enter the name. Only the name is required.
@@ -73,6 +74,7 @@ Keywords: change request, client changed address, portal request, approve, rejec
 ## Add products and services to your catalogue
 
 Keywords: product, service, catalogue, price list, item, SKU, artikel, leistung, archive product
+Pages: /products
 
 1. Go to **Products & services** and click **New item**.
 2. Choose the **Item type**: **Service** or **Product**.
@@ -85,6 +87,7 @@ Keywords: product, service, catalogue, price list, item, SKU, artikel, leistung,
 ## Create and issue an invoice
 
 Keywords: invoice, issue, bill, new invoice, rechnung, faktura, draft, create invoice, number
+Pages: /invoices, /invoices/new, /invoices/edit
 
 1. Go to **Invoices** and click **New invoice**. You can also use Quick Actions or the **Invoice** button on a client.
 2. Under **Bill to**, click **Choose a client**.
@@ -97,6 +100,7 @@ Keywords: invoice, issue, bill, new invoice, rechnung, faktura, draft, create in
 ## Make a quote (Offerte) and turn it into an invoice
 
 Keywords: quote, quotation, offer, offerte, offerta, offre, estimate, angebot, accept quote, decline quote, revise quote, quote to invoice
+Pages: /quotes
 
 1. Go to **Quotes** and click **New quote**, or click **New quote** in the Quotes section on a client's page.
 2. Choose the **Client**, check the **Date** and **Valid until** (30 days by default), and add lines like on an invoice. **Currency**, **Document language**, **VAT**, an **Introduction** and a **Reference** are optional.
@@ -211,6 +215,7 @@ Keywords: e-invoice, xml, xrechnung, peppol, zugferd, e-factura, ksef, einvoice,
 ## Set up an engagement (retainer or recurring work)
 
 Keywords: engagement, retainer, recurring, contract, abo, hours package, subscription work, mandat
+Pages: /engagements
 
 1. Go to **Engagements** and click **New engagement**.
 2. Under **Client & service**, pick the **Client** and enter a **Title**.
@@ -243,6 +248,7 @@ Keywords: invoice engagement, invoice upfront, invoice usage, arrears, advance, 
 ## Add an expense with a receipt
 
 Keywords: expense, receipt, beleg, quittung, ausgabe, spesen, cost, supplier invoice, book expense
+Pages: /expenses
 
 1. Go to **Expenses** and click **New expense**.
 2. Under **Receipt**, drop the receipt file or click to choose it. PDF or photo, up to 20 MB.
@@ -274,6 +280,7 @@ Keywords: mark paid, unpaid, reimburse, out of pocket, pay back employee, to rei
 ## Organize documents (upload, folders, move, star)
 
 Keywords: documents, files, upload, folder, dokumente, ablage, move file, rename, star, storage
+Pages: /documents
 
 1. Go to **Documents** and click **Upload**, or drag files onto the page.
 2. To make a folder, click **Create → New folder**.
@@ -327,6 +334,7 @@ Keywords: import, ai import, migrate, spreadsheet, csv, excel, bulk upload, brin
 ## Set up invoice settings (company details, logo, IBAN, numbering)
 
 Keywords: invoice settings, company details, seller, logo, IBAN, QR-IBAN, bank, numbering, number format, VAT registered, MWST, footer, defaults, payment terms, Revolut
+Pages: /settings/invoices
 
 1. Go to **Settings → Invoices**, or **Invoice settings** in the **Invoices** page menu.
 2. Fill in **Logo**, **Company** (name and address) and **VAT**. Under VAT, turn on **Registered for VAT**, then add your UID with MWST, the default rate and whether prices are entered net or gross.
@@ -339,6 +347,7 @@ Keywords: invoice settings, company details, seller, logo, IBAN, QR-IBAN, bank, 
 ## Close a month (month-end close, periods)
 
 Keywords: close period, close month, month-end, lock books, periods, abschluss, reopen month, accounting period
+Pages: /settings/periods
 
 1. Go to **Settings → Closing**. Each month shows the invoices issued and expenses booked in it, and a warning when drafts are still dated in it.
 2. Click **Close through …** at the top to close every open month up to the latest one that ended (the arrow beside it picks an earlier month), then confirm.
@@ -348,6 +357,7 @@ Keywords: close period, close month, month-end, lock books, periods, abschluss, 
 ## View the audit log
 
 Keywords: audit log, audit trail, history, who changed, compliance, protokoll, financial events
+Pages: /settings/audit-log
 
 1. Go to **Settings → Audit log**. The tab is shown to owners, admins and members with View on the audit log.
 2. Scroll through every financial event in order, with who did it. Click **Load more** for older entries.
@@ -357,6 +367,7 @@ Keywords: audit log, audit trail, history, who changed, compliance, protokoll, f
 ## Prepare the Swiss VAT return (MWST, ESTV, eCH-0217)
 
 Keywords: VAT return, MWST, mehrwertsteuer, ESTV, abrechnung, eCH-0217, tax return, net tax rate, saldosteuersatz
+Pages: /settings/vat-return
 
 1. Go to **Settings → VAT return**.
 2. In the VAT settings, set the method (**Effective method** or **Net tax rate method**), the period length and the basis (**Agreed** or **Received consideration**), then save. With net tax rates, add your **Approved net tax rates**.
@@ -368,6 +379,7 @@ Keywords: VAT return, MWST, mehrwertsteuer, ESTV, abrechnung, eCH-0217, tax retu
 ## See the ledger and export it for your accountant (Saldenliste, Hauptbuch, Treuhänder)
 
 Keywords: ledger, saldenliste, hauptbuch, buchhaltung, trial balance, general ledger, kontenplan, chart of accounts, treuhänder, accountant, banana, bexio, abacus, journal export
+Pages: /settings/ledger
 
 1. Go to **Settings → Ledger**. The **Saldenliste** lists every account with **Opening**, **Debit**, **Credit** and **Closing**. Choose the **Year** and **Period**.
 2. Click an account to see its **Hauptbuch**: every posting with the **Contra** account and a running **Balance**.
@@ -387,6 +399,7 @@ Keywords: workspace, new workspace, switch company, add workspace, second compan
 ## Rename a workspace or change its time zone
 
 Keywords: rename workspace, workspace name, time zone, timezone, zeitzone
+Pages: /settings/workspace
 
 1. Go to **Settings → Workspace**.
 2. Change the **Workspace name** and/or **Time zone**.
@@ -405,6 +418,7 @@ Keywords: delete workspace, remove workspace, close company, workspace löschen
 ## Invite a team member
 
 Keywords: invite, member, team, add user, colleague, accountant, invitation, einladen, benutzer
+Pages: /members, /invite
 
 1. Go to **Members** and click **Invite member**.
 2. Enter their **Email**.
@@ -417,6 +431,7 @@ Keywords: invite, member, team, add user, colleague, accountant, invitation, ein
 ## Change a member's role or access, or remove them
 
 Keywords: role, permissions, access, scopes, admin, change role, remove member, leave workspace, rechte
+Pages: /members
 
 1. Go to **Members** and open the row's **Actions** (…) menu.
 2. Pick a new role: Owner, Admin or Member.
@@ -428,6 +443,7 @@ Keywords: role, permissions, access, scopes, admin, change role, remove member, 
 ## Choose or change a plan (billing, trial, limits)
 
 Keywords: billing, plan, subscription, trial, upgrade, pricing, per person, per seat, per user, team size, abo, limit reached, read-only, cancel subscription, promotion code, invoice from helvetly
+Pages: /settings/billing, /settings/billing/plans, /choose-plan, /activating
 
 1. Go to **Settings → Billing** (Plan & billing) to see your plan, its status and usage against limits.
 2. Under **Plans**, choose **Monthly** or **Yearly**, then pick **Basic**, **Pro** or **Business**; **Compare plans** shows every limit side by side. Prices include Swiss VAT. A new workspace can start a free Basic trial, and a card is required.
@@ -440,6 +456,7 @@ Keywords: billing, plan, subscription, trial, upgrade, pricing, per person, per 
 ## Update your profile
 
 Keywords: profile, name, avatar, my account, account settings, personal settings
+Pages: /account, /settings/security
 
 1. Click your name at the bottom left and choose **Settings**, or go to **Settings → Account settings**.
 2. Under **Profile**, change your **Full name** and click **Save**.
@@ -448,6 +465,7 @@ Keywords: profile, name, avatar, my account, account settings, personal settings
 ## Manage sign-in methods and passkeys
 
 Keywords: sign in, login, passkey, google login, password, face id, touch id, email code, connect google
+Pages: /account, /settings/security
 
 1. Go to **Settings → Account settings → Sign-in methods**.
 2. **Email code** sends a 6-digit code to your email. There are no passwords.
@@ -457,6 +475,7 @@ Keywords: sign in, login, passkey, google login, password, face id, touch id, em
 ## Turn on two-factor authentication (2FA) in your account
 
 Keywords: 2FA, two-factor, authenticator, TOTP, security, recovery codes, zwei-faktor
+Pages: /account, /settings/security
 
 1. Go to **Settings → Account settings → Two-factor authentication** and click **Turn on**.
 2. Scan the code with an authenticator app such as 1Password, Google Authenticator or Authy.
@@ -467,6 +486,7 @@ Keywords: 2FA, two-factor, authenticator, TOTP, security, recovery codes, zwei-f
 ## See and end active sessions
 
 Keywords: sessions, devices, sign out everywhere, logged in devices, log out other devices, security
+Pages: /account, /settings/security
 
 1. Go to **Settings → Account settings → Active sessions**.
 2. Check the browsers and devices signed in to your account.
@@ -476,6 +496,7 @@ Keywords: sessions, devices, sign out everywhere, logged in devices, log out oth
 ## Connect Claude or your own scripts (API tokens, MCP, API)
 
 Keywords: api, api token, access token, personal access token, mcp, claude, chatgpt, integration, automation, openapi, developer, zapier, script
+Pages: /settings/api, /developers
 
 1. Go to **Settings → API & MCP** and click **Create token**.
 2. Give it a name, choose its access (**Read everything**, **Full access**, or **Custom** to tick Read and Write per area such as Clients or Invoices) and an expiry. The panel shows what the token can do before you create it.
@@ -496,6 +517,7 @@ Keywords: delete account, close account, remove me, konto löschen, gdpr delete
 ## Manage notifications
 
 Keywords: notifications, bell, email notifications, alerts, unread, mark as read, digest
+Pages: /notifications, /account/notifications
 
 1. Click **Notifications** in the sidebar to open the bell with the latest items, or click **All notifications** to see the full page.
 2. On the Notifications page, click **Mark all as read**.
@@ -532,3 +554,54 @@ Keywords: help, feedback, support, report bug, problem, feature request, suggest
 4. Write a **Description**. Optionally add **Screenshots** (drop, paste or browse): up to 5 PNG, JPEG or WebP images, 5 MB each.
 5. Click **Send feedback**.
    Your account, workspace and the page you are on are included, but your screen is not recorded. Remove any private information from screenshots first.
+
+## Read the dashboard
+
+Keywords: dashboard, home, overview, key figures, cash flow, needs attention, start page
+Pages: /
+
+1. The **Dashboard** is the first page after sign-in: **Home** in the sidebar.
+2. **Key figures** sum up the period you pick (30D, 90D or 12M).
+3. **Cash flow** shows income (invoice payments and refunds) against paid expenses, in the currency you choose.
+4. **Needs attention** lists open invoices; click **All that needs attention** for the rest. **New invoice** starts one.
+   You only see the sections your access lets you read.
+
+## Set up your workspace (welcome)
+
+Keywords: welcome, onboarding, get started, first steps, setup, first invoice
+Pages: /welcome
+
+1. A new workspace starts on the welcome page: five steps for your company details and your first invoice.
+2. What you fill in on the left appears in the **Invoice preview** on the right, down to the QR bill, exactly as clients will see it.
+3. Pick the interface language at the top. You can change everything later in **Settings**.
+
+## Keep employee records
+
+Keywords: employees, staff, employee, personnel, mitarbeiter, pracownicy, department, pay terms, hr
+Pages: /employees
+
+1. Go to **Employees** and click **New employee**. Fill in their details, place of work and pay terms.
+2. Filter the list by department; open an employee to edit them or **Add a document** (contracts, certificates).
+3. **Export employee data** downloads the records.
+   Employees are your company's staff, not members: adding one gives no access to Helvetly, sends no invitation and adds no paid seat. Employees and payroll come with the Business plan; only people with Employees access see them.
+
+## Record payroll (payroll register)
+
+Keywords: payroll, salary, lohn, wages, payslip, payroll register, lohnbuchhaltung, net pay, approve payroll
+Pages: /employees/payroll
+
+1. Go to **Employees → Payroll** and pick the month. Click **New entry** for an employee, or **Import** a payroll CSV.
+2. Enter the figures you or your payroll provider computed. Helvetly records pay; it does not calculate pay, taxes or contributions.
+3. **Approve** confirms an entry, **Mark as paid** records the payment. Approved entries become journal lines for your books.
+4. To change an approved entry, click **Correct**: the correction replaces it and keeps the original. **Export CSV** downloads the month.
+   Only people with Payroll access see this page; payroll edit access is needed to enter or approve.
+
+## Set up employment (employer and payroll approval)
+
+Keywords: employment, employer, employing company, payroll approval, second approver, employment profile
+Pages: /settings/employment
+
+1. Go to **Settings → Employment**.
+2. The **Company employment profile** pre-fills the employing company and country of work for new employees. Each employee keeps their own place of work.
+3. Turn on **Require a second person to approve payroll** so whoever entered an entry cannot approve it.
+   Only people with Employees and Payroll edit access can change this.

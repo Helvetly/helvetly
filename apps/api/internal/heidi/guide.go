@@ -2,6 +2,7 @@ package heidi
 
 import (
 	_ "embed"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -13,6 +14,8 @@ import (
 var guideText string
 
 type section struct {
+	title    string
+	pages    []string // the app paths of the screens it describes (Pages: line)
 	text     string
 	heading  map[string]bool // words of the title and the Keywords line
 	contents map[string]bool
@@ -27,16 +30,22 @@ func parseGuide(text string) []section {
 		if strings.HasPrefix(title, "# ") {
 			continue // the document title
 		}
-		heading := title
+		heading, s := title, section{title: title}
 		lines := []string{}
 		for line := range strings.SplitSeq(strings.TrimSpace(body), "\n") {
 			if keywords, ok := strings.CutPrefix(line, "Keywords:"); ok {
 				heading += " " + keywords
 				continue
 			}
+			if pages, ok := strings.CutPrefix(line, "Pages:"); ok {
+				s.pages = strings.Split(strings.ReplaceAll(pages, " ", ""), ",")
+				continue
+			}
 			lines = append(lines, line)
 		}
-		out = append(out, section{text: "**" + title + "**\n\n" + strings.Join(lines, "\n"), heading: words(heading), contents: words(body)})
+		steps := strings.Join(lines, "\n")
+		s.text, s.heading, s.contents = "**"+title+"**\n\n"+steps, words(heading), words(steps)
+		out = append(out, s)
 	}
 	return out
 }
@@ -78,4 +87,23 @@ func guideAnswer(question string) (string, bool) {
 		}
 	}
 	return best, top >= 3
+}
+
+// screen names the Helvetly screen the user asks from and the guide sections about it, so "what is this?" has a
+// referent for the scope check and the answer. path is already validated (pagePath); empty = unknown.
+func screen(path string) string {
+	if path == "" {
+		return ""
+	}
+	titles := []string{}
+	for _, s := range guide {
+		if slices.Contains(s.pages, path) {
+			titles = append(titles, `"`+s.title+`"`)
+		}
+	}
+	text := "The user is on the Helvetly screen " + path
+	if len(titles) > 0 {
+		text += ", described in the guide sections " + strings.Join(titles, ", ")
+	}
+	return text + `. "This page", "here" or "this" in the message mean that screen.`
 }

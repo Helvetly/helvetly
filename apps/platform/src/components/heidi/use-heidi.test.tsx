@@ -174,9 +174,13 @@ test('the chat is the same object until something it uses changes', async () => 
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
   let page = ''
+  let path = ''
+  window.history.pushState({}, '', '/settings/periods/')
   server.use(
     http.post('/api/v1/heidi/chat', async ({ request }) => {
-      page = String((await request.formData()).get('page'))
+      const form = await request.formData()
+      page = String(form.get('page'))
+      path = String(form.get('path'))
       return new HttpResponse('data: {"type":"done","usage":{"tokens":0}}\n\n', {
         headers: { 'Content-Type': 'text/event-stream' },
       })
@@ -199,6 +203,9 @@ test('the chat is the same object until something it uses changes', async () => 
   await act(() => result.current.send('Question'))
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(page).toBe('clients')
+  // The screen the question is asked from goes along, so "what is this page?" has an answer.
+  expect(path).toBe('/settings/periods/')
+  window.history.pushState({}, '', '/')
 })
 
 test('a different workspace does not restore the previous workspace transcript', async () => {

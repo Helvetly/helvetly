@@ -30,6 +30,7 @@ type upload struct {
 // input is one chat message: its text, the conversation, and either attachments or the import its files went to.
 type input struct {
 	conversation, message, importID string
+	path                            string // the app screen it was sent from; context only, never for access
 	files                           []upload
 }
 
@@ -47,7 +48,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	f := r.MultipartForm
 	bad := func(message string) (input, error) { return input{}, invalid(message) }
 	for k, v := range f.Value {
-		if !slices.Contains([]string{"message", "conversation_id", "page", "import_id"}, k) || len(v) != 1 {
+		if !slices.Contains([]string{"message", "conversation_id", "page", "path", "import_id"}, k) || len(v) != 1 {
 			return bad("The message contains repeated or unknown fields.")
 		}
 	}
@@ -68,6 +69,13 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	}
 	if page := value("page"); page != "" && !slices.Contains(pages, page) {
 		return bad("Unknown page.")
+	}
+	screenPath := value("path")
+	if screenPath != "" && !pagePath.MatchString(screenPath) {
+		return bad("The page path is invalid.")
+	}
+	if screenPath != "/" {
+		screenPath = strings.TrimSuffix(screenPath, "/") // the static export's URLs end in a slash, the guide's paths do not
 	}
 	if len(f.File["files[]"]) > 4 {
 		return bad("Send up to four attachments.")
@@ -112,10 +120,14 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 		}
 		files = append(files, upload{Header: h, Name: name, Type: ct, Hash: sum})
 	}
-	return input{conversation: id, message: message, importID: importID, files: files}, nil
+	return input{conversation: id, message: message, importID: importID, path: screenPath, files: files}, nil
 }
 
-var importIDPattern = regexp.MustCompile(`^imp_[A-Za-z0-9_-]{1,64}$`)
+var (
+	importIDPattern = regexp.MustCompile(`^imp_[A-Za-z0-9_-]{1,64}$`)
+	// pagePath is a relative app path: it reaches the model's instructions, so nothing but lowercase path segments.
+	pagePath = regexp.MustCompile(`^/[a-z0-9/-]{0,100}$`)
+)
 
 func (s *Service) checkUploads(ctx context.Context, q store.Q, sess store.Session, files []upload) error {
 	if len(files) == 0 {
@@ -275,7 +287,7 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			result.Provider = false
 		default:
 			progress := func(label string) { _ = st.status(label) }
-			result, err = s.modelAnswer(r.Context(), sess, id, message, files, localVerdict(message) == inScope, progress)
+			result, err = s.modelAnswer(r.Context(), sess, id, message, in.path, files, localVerdict(message) == inScope, progress)
 			if err != nil {
 				return err
 			}

@@ -285,6 +285,8 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         form.set('message', text)
         form.set('conversation_id', conversationId)
         form.set('page', page)
+        // The screen it is asked from, so "what is this page?" has an answer.
+        form.set('path', window.location.pathname)
         if (goesToImport(text, files)) {
           // The files go to an import that works out what they are; the answer then follows it.
           update(assistantId, () => ({
