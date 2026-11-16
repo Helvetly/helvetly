@@ -231,6 +231,11 @@ func TestOfferV2Migration(t *testing.T) {
 		`SELECT value FROM limit_plans WHERE offer_id = 'helvetly-v2' AND limit_key = 'quotes_per_month' AND plan_id = 'pro'`:      100,
 		`SELECT count(*) FROM limit_plans WHERE offer_id = 'helvetly-v2' AND plan_id = 'business' AND state = 'unlimited'`:         7,
 		`SELECT l.position - i.position FROM limits l, limits i WHERE l.key = 'quotes_per_month' AND i.key = 'invoices_per_month'`: 1,
+		// Every other value is v1's, such as the AI import from Pro up.
+		`SELECT count(*) FROM limit_plans n JOIN limit_plans o USING (plan_id, limit_key) WHERE n.offer_id = 'helvetly-v2'
+			AND o.offer_id = 'helvetly-v1' AND limit_key NOT IN ('clients', 'products', 'engagements', 'invoices_per_month',
+			'expenses_per_month', 'signatures_per_month') AND (n.state, n.value, n.per_additional_paid_seat)
+			IS DISTINCT FROM (o.state, o.value, o.per_additional_paid_seat)`: 0,
 	} {
 		if n := count(sql); n != want {
 			t.Fatalf("%s: %d, want %d", sql, n, want)
