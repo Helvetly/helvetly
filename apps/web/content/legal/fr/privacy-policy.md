@@ -1,0 +1,154 @@
+# Politique de confidentialité
+
+## 1. Qui nous sommes
+
+Helvetly (« Helvetly », « nous ») exploite le site helvetly.com, la documentation sur
+docs.helvetly.com, la plateforme Helvetly et le portail client. Contact pour la protection des
+données : [support@helvetly.com](mailto:support@helvetly.com).
+
+Helvetly est un service destiné aux entreprises. Il ne s’adresse pas aux enfants.
+
+## 2. Deux rôles
+
+- **Responsable du traitement** pour les données des personnes utilisant Helvetly : données de
+  compte et de connexion, facturation des formules Helvetly, données de sécurité, retours et
+  demandes d’assistance, et site web.
+- **Sous-traitant** pour les données de gestion conservées par nos clients dans leurs espaces :
+  clients et contacts (dont les personnes se connectant à leur portail client), factures, dépenses,
+  documents, demandes de signature et signataires, mandats, imports par IA, conversations avec
+  Heidi, dossiers du personnel et des salaires de leurs employés. Le client est responsable de
+  ces données ; nous les traitons uniquement sur ses instructions, conformément à
+  l’[accord de traitement des données](dpa.md). Si vous êtes un client, contact, signataire ou
+  employé de l’un de nos clients, adressez-vous à ce dernier au sujet de vos données.
+
+**Données des employés et des salaires.** Un client Business peut conserver dans Helvetly les
+dossiers de son personnel et des salaires : identité (nom, numéro d’employé), coordonnées, données
+d’emploi (poste, service, type de contrat, dates, délai de congé, temps de travail, lieu et pays de
+travail, pays de résidence et de sécurité sociale, statut frontalier), conditions de rémunération
+et chiffres de paie saisis ou importés, numéros de sécurité sociale (comme le numéro AVS suisse),
+identifiants fiscaux, coordonnées bancaires, statut et canton de l’impôt à la source, documents
+importés pour un employé (contrats, fiches de salaire ou permis, par exemple). Helvetly ne calcule
+ni rémunération, ni impôts, ni cotisations, ne conserve pas de données de santé ou d’absence et ne
+prévoit aucun champ pour d’autres catégories particulières de données ; les documents importés par
+le client peuvent en contenir, sous sa responsabilité. Les données des employés et des salaires ne
+sont jamais transmises à OpenAI et ne sont pas accessibles via MCP ou les jetons d’API personnels.
+Il appartient au client, en tant que responsable du traitement, de déterminer la base juridique
+applicable (par exemple art. 6, par. 1, let. b et c, et art. 88 RGPD, nLPD, art. 328b du code suisse
+des obligations ou art. 50e à 50g LAVS pour le numéro AVS) ; les détails figurent dans
+l’[accord de traitement des données](dpa.md).
+
+## 3. Données traitées comme responsable, finalités et bases juridiques
+
+| Données                                                                                                                                                                                                                                   | Finalité                                             | Base (RGPD)                                                                    | Conservation                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E-mail, nom, photo de profil (Google, si utilisé, ou photo importée), identités de connexion, clés d’accès (clés publiques uniquement), paramètres de double authentification (secret chiffré par AES-GCM ; codes de récupération hachés) | Créer et sécuriser le compte, permettre la connexion | Contrat (art. 6, par. 1, let. b)                                               | Jusqu’à la suppression du compte ; les données de connexion sont ensuite supprimées et le profil anonymisé (e-mail remplacé, nom et photo retirés) |
+| Sessions : navigateur, système d’exploitation, adresse IP, heure de connexion, dernière activité                                                                                                                                          | Afficher et fermer les sessions actives, sécurité    | Intérêt légitime à la sécurité (art. 6, par. 1, let. f)                        | Jusqu’à la fin ou l’expiration de la session (30 jours par défaut) ; les sessions expirées sont supprimées                                         |
+| Codes de connexion à usage unique et échecs de double authentification                                                                                                                                                                    | Empêcher la prise de contrôle des comptes            | Intérêt légitime (art. 6, par. 1, let. f)                                      | Codes : valables quelques minutes, supprimés après 24 heures ; échecs : jusqu’à la prochaine connexion réussie                                     |
+| Jetons d’API personnels : nom, périmètres, premiers caractères, création et dernière utilisation (jeton lui-même conservé uniquement comme empreinte SHA-256)                                                                             | Vous permettre de connecter vos outils               | Contrat                                                                        | Jusqu’à révocation ou expiration ; refusés dès la fermeture du compte                                                                              |
+| E-mail du propriétaire, nom de l’espace, adresse de facturation et numéro fiscal saisis au paiement, formule, places et statut de paiement (les données de carte restent chez Stripe)                                                     | Facturer les formules Helvetly                       | Contrat ; obligation légale de conservation comptable (art. 6, par. 1, let. c) | 10 ans pour les pièces comptables (art. 958f du code suisse des obligations)                                                                       |
+| Identité de la personne ayant commencé un essai gratuit, sous forme d’empreintes à sens unique du compte, de son e-mail et de l’empreinte de la carte (jamais de la carte elle-même)                                                      | Accorder un essai à chaque client                    | Intérêt légitime à prévenir les abus d’essai (art. 6, par. 1, let. f)          | 24 mois après le début de l’essai, puis suppression                                                                                                |
+| Retours et signalements : description, page affichée, jusqu’à cinq captures, compte et espace                                                                                                                                             | Vous répondre et améliorer Helvetly                  | Intérêt légitime (art. 6, par. 1, let. f)                                      | 2 ans après la clôture du signalement ; les signalements sont aussi envoyés à la boîte e-mail de notre équipe                                      |
+| E-mails envoyés : codes de connexion, invitations, avis, alertes de sécurité, récapitulatifs                                                                                                                                              | Exploiter le service                                 | Contrat                                                                        | Pendant la durée de conservation des journaux d’envoi par le prestataire d’e-mail                                                                  |
+| Journaux d’erreurs (route, erreur, heure) et journaux de l’hébergeur (pouvant contenir des adresses IP)                                                                                                                                   | Exploiter et sécuriser le service                    | Intérêt légitime                                                               | 30 jours. L’application ne produit aucun journal d’accès ; les erreurs sont journalisées sans les jetons des URL                                   |
+
+Nous ne vendons pas de données personnelles, ne les utilisons pas à des fins publicitaires,
+n’établissons pas de profil et ne prenons aucune décision vous concernant sur une base exclusivement
+automatisée (art. 21 nLPD, art. 22 RGPD).
+
+**Cookies et stockage du navigateur.** Le site (www.helvetly.com) utilise Google Analytics 4 pour
+compter les visites et identifier les pages et canaux qui amènent des visiteurs ; il dépose les
+cookies Google `_ga` (jusqu’à 2 ans) et transmet les pages vues et données d’appareil à Google, qui
+utilise l’adresse IP uniquement pour déterminer une localisation approximative, sans la conserver
+(intérêt légitime, art. 6, par. 1, let. f). Le blocage des cookies ou scripts dans votre navigateur
+désactive cette fonction. La documentation ne dépose aucun cookie et n’utilise ni analyse, ni
+publicité, ni suivi. La plateforme (app.helvetly.com) utilise Google Analytics 4 de la même manière,
+mais transmet uniquement l’adresse de chaque page sans ses paramètres ni son fragment, jamais ce que
+vous saisissez ni les données de l’espace. Le portail client ne charge aucun outil d’analyse.
+En dehors des cookies Google `_ga`, la plateforme et le portail ne déposent que les cookies
+strictement nécessaires à la connexion :
+
+| Nom                       | Déposé par     | Finalité                                                      | Durée                                  |
+| ------------------------- | -------------- | ------------------------------------------------------------- | -------------------------------------- |
+| `helvetly_session`        | Plateforme     | Maintenir votre connexion                                     | Jusqu’à la déconnexion ou 30 jours     |
+| `helvetly_login`          | Plateforme     | Protéger une connexion Google en cours                        | 10 minutes                             |
+| `helvetly_portal_session` | Portail client | Maintenir la connexion d’un client de notre client au portail | Jusqu’à la déconnexion ou l’expiration |
+
+La plateforme conserve aussi des préférences d’affichage dans le stockage local du navigateur
+(par exemple barre latérale repliée, colonnes choisies, période du tableau de bord, avis masqué).
+Elles ne quittent jamais votre navigateur. L’espace d’essai de l’API dans la documentation conserve
+le jeton d’API que vous collez uniquement dans le stockage de session de cet onglet du navigateur.
+
+## 4. Heidi, import par IA et OpenAI
+
+Heidi répond à de nombreuses questions à partir des données de votre espace sans service externe.
+Pour d’autres questions et pour **l’import par IA** (lecture de fichiers et proposition
+d’enregistrements), Helvetly utilise l’API OpenAI (OpenAI, États-Unis), mais **uniquement après
+l’autorisation d’un propriétaire ou administrateur de l’espace** dans Settings → Workspace ou le
+panneau de Heidi. Jusque-là, rien n’est transmis et l’import par IA est indisponible.
+
+Après autorisation :
+
+- Heidi envoie votre message, jusqu’à 20 messages précédents de la conversation (pouvant contenir
+  des chiffres affichés par Heidi) et les fichiers joints à ce message. Une vérification rapide
+  visant à déterminer si le message concerne Helvetly ou votre activité, ainsi qu’un décompte des
+  tokens de la requête, sont également envoyés à OpenAI.
+- L’import par IA transmet le contenu des fichiers importés, partie par partie.
+
+Les données des employés et des salaires ne sont jamais transmises, quel que soit le réglage.
+
+Nous demandons à OpenAI de ne pas conserver les requêtes et réponses (`store: false`). Selon ses
+conditions API, ces données ne servent pas à entraîner les modèles et peuvent être conservées
+jusqu’à 30 jours pour détecter les abus. Heidi est présentée comme une assistante IA ; ses réponses
+et les données importées peuvent être erronées et sont des propositions à vérifier. Les propriétaires
+et administrateurs peuvent désactiver cette fonction à tout moment ; chaque changement est enregistré.
+
+## 5. Destinataires et transferts à l’étranger
+
+Les services traitant des données pour nous figurent dans la [liste des sous-traitants](subprocessors.md).
+Certains se trouvent aux États-Unis (Stripe, Google, OpenAI, Cloudflare). Nous ne communiquons des
+données à l’étranger que dans les conditions des art. 16 à 17 nLPD et du chapitre V du RGPD : vers des
+pays reconnus adéquats par le Conseil fédéral ou la Commission européenne (pour les États-Unis,
+entreprises certifiées au titre des Data Privacy Framework Suisse–États-Unis et UE–États-Unis), ou
+sur la base des clauses contractuelles types reconnues par le PFPDT et la Commission européenne.
+
+Helvetly n’envoie rien aux autorités fiscales ni aux réseaux de facturation électronique : les
+clients téléchargent les décomptes TVA et fichiers de facturation électronique et les transmettent eux-mêmes.
+
+## 6. Vos droits
+
+Vous pouvez demander l’accès à vos données (art. 25 nLPD, art. 15 RGPD), leur rectification ou
+suppression, vous opposer au traitement ou en demander la limitation, et les recevoir dans un format
+courant lisible par machine (art. 28 nLPD, art. 20 RGPD). Nous répondons dans les 30 jours (RGPD : un
+mois, prolongeable dans les cas prévus par la loi). Vous pouvez effectuer vous-même la plupart des démarches :
+
+- **Télécharger vos données :** Account settings → Your data fournit un fichier JSON contenant
+  votre profil, méthodes de connexion, clés d’accès, sessions, jetons d’API (sans les jetons
+  eux-mêmes), espaces de travail, messages à Heidi et retours envoyés.
+- **Données de l’espace :** un propriétaire télécharge toutes les données et tous les fichiers de
+  l’espace au format ZIP dans Settings → Workspace → Export all data, y compris les données des
+  employés et des salaires dans un dossier distinct.
+- **Supprimer votre compte :** Account settings → Delete account. Vos méthodes de connexion,
+  sessions et appartenances sont supprimées et votre profil anonymisé. Ce que vous avez écrit
+  dans un espace (par exemple conversations avec Heidi ou enregistrements créés) appartient à
+  cet espace et y reste sans vos nom et adresse ; demandez au propriétaire ou à nous de le retirer.
+
+Un espace supprimé devient inaccessible à tous, mais ses données restent stockées : les pièces
+soumises à conservation comptable (factures, justificatifs, journal d’audit : 10 ans, art. 958f CO
+et Olico) sont conservées pendant cette durée uniquement à cette fin, puis effacées. Pour toute autre
+demande, écrivez à [support@helvetly.com](mailto:support@helvetly.com) ; nous pouvons d’abord vous
+demander de confirmer votre identité. Vous pouvez déposer une réclamation auprès du Préposé fédéral
+à la protection des données et à la transparence (PFPDT, www.edoeb.admin.ch) ou, dans l’UE, auprès de
+votre autorité nationale de protection des données.
+
+## 7. Sécurité
+
+Connexion sans mot de passe (Google, codes par e-mail, clés d’accès) avec double authentification
+facultative ; jetons de session et d’API conservés uniquement sous forme d’empreintes SHA-256 ;
+connexions chiffrées ; séparation des données de chaque espace dans toutes les requêtes ; écritures
+financières dans un journal chaîné par hachage en ajout uniquement ; si le stockage est configuré à
+cet effet, factures émises et justificatifs comptabilisés protégés contre la suppression (S3 Object
+Lock) ; données au repos chiffrées et sauvegardées régulièrement.
+
+## 8. Modifications
+
+Nous publions ici les modifications avec leur date. Dernière modification : 16 novembre 2026.

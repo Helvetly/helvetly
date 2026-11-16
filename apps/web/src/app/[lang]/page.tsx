@@ -29,11 +29,12 @@ export default async function HomePage({ params }: Props) {
       <section id="pricing" className="py-12 sm:py-16">
         <Container>
           <SectionHeading
+            className="lg:max-w-5xl [&>h2]:max-w-2xl"
             eyebrow={translate('pricing')}
             title={
               <>
                 {translate('simplePlans')}
-                <span className="accent">{translate('onePrice')}</span>
+                <span className="accent ink-gradient">{translate('onePrice')}</span>
                 {translate('perPerson')}
               </>
             }
@@ -55,7 +56,7 @@ export default async function HomePage({ params }: Props) {
         title={
           <>
             {translate('goodTo')}
-            <span className="accent">{translate('know')}</span>
+            <span className="accent ink-gradient">{translate('know')}</span>
           </>
         }
         lead={translate('whatPeopleAskBeforeTheyMoveTheirBooksTo')}

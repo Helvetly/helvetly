@@ -10,6 +10,21 @@ describe('legal', () => {
     expect(markdown).not.toMatch(/DRAFT|TBD|\[[^\]]*\](?!\()/)
   })
 
+  it.each(
+    (['fr', 'it'] as const).flatMap((language) =>
+      Object.keys(LEGAL)
+        .filter(isLegalSlug)
+        .map((slug) => [language, slug] as const),
+    ),
+  )('reads the %s %s text with its own section anchors', (language, slug) => {
+    const english = readLegal(slug, 'en')
+    const local = readLegal(slug, language)
+    expect(local.markdown).not.toBe(english.markdown)
+    expect(local.markdown).not.toMatch(/^# /)
+    expect(local.headings).toHaveLength(english.headings.length)
+    for (const heading of local.headings) expect(heading.id).toBe(slugify(heading.text))
+  })
+
   it('lists the numbered sections as headings', () => {
     expect(readLegal('terms', 'en').headings[0]).toEqual({
       text: '1. Parties and scope',

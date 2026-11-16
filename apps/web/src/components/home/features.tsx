@@ -410,11 +410,12 @@ export function Features({ lang }: { lang: Locale }) {
     <section id="features" className="pt-12 pb-4 sm:pt-16">
       <Container>
         <SectionHeading
+          className="max-w-3xl [&>h2]:max-w-2xl"
           eyebrow={translate('everythingInOnePlace')}
           title={
             <>
               {translate('fromTheFirstInvoiceToThe')}
-              <span className="accent">{translate('filed')}</span>
+              <span className="accent ink-gradient">{translate('filed')}</span>
               {translate('return')}
             </>
           }

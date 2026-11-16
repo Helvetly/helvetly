@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation'
 
 import de from '../messages/de.json'
 import en from '../messages/en.json'
+import fr from '../messages/fr.json'
+import it from '../messages/it.json'
 
-export const translatorFor = createTranslators({ en, de })
+export const translatorFor = createTranslators({ en, de, fr, it })
 export type Translate = ReturnType<typeof translatorFor>
 export type MessageKey = Parameters<Translate>[0]
 

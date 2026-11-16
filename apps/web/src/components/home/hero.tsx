@@ -42,10 +42,12 @@ export function Hero({ lang }: { lang: Locale }) {
 
         <h1
           style={{ ['--d' as string]: '80ms' }}
-          className="rise text-hero mt-7 max-w-4xl font-semibold text-balance"
+          className="rise text-hero mt-7 max-w-4xl font-semibold text-balance wrap-anywhere"
         >
           {translate('yourSwissBackOffice')}
-          <span className="accent ink-gradient pr-1">{translate('beautifully')}</span>
+          <span className="accent ink-gradient -my-[0.15em] inline-block max-w-full py-[0.15em] pr-1">
+            {translate('beautifully')}
+          </span>
           {translate('inOrder')}
         </h1>
 

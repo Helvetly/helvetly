@@ -1,0 +1,23 @@
+---
+title: Importer des données avec l’IA
+description: Importez clients, produits, mandats, factures et dépenses depuis des tableurs, PDF, photos ou fichiers Word grâce à l’IA.
+category: Getting started
+categoryLabel: Premiers pas
+order: 3
+updated: 2026-11-15
+---
+
+Vous quittez un autre système ? Laissez l’IA lire vos anciens fichiers et les transformer en données Helvetly.
+
+L’import par IA nécessite **Pro** ou **Business** et utilise le quota de tokens d’IA de la formule.
+
+1. Ouvrez **Clients**, **Products & services**, **Engagements** ou **Invoices**, puis choisissez **Import** dans le menu **…** de la page. Pour les dépenses, utilisez plutôt **Upload receipts**.
+2. Déposez des tableurs, PDF, photos ou fichiers Word, puis cliquez sur **Read files**.
+3. Vérifiez les enregistrements trouvés. Modifiez les lignes, décochez celles à exclure et résolvez les conflits.
+4. Cliquez sur **Import** pour créer les enregistrements sélectionnés, puis sur **Done**.
+5. Vous pouvez aussi joindre des fichiers dans Heidi et choisir « Import as ». Le volet d’import s’ouvre alors avec ces fichiers.
+
+## Bon à savoir
+
+- Un propriétaire ou administrateur doit autoriser l’IA pour l’espace de travail ; les imports consomment le quota mensuel d’IA.
+- Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Settings → Periods**.

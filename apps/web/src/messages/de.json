@@ -256,7 +256,7 @@
   "findYourWayAroundShortcutsAndBringingYourData": "Finden Sie sich zurecht, nutzen Sie Verknüpfungen und bringen Sie Ihre Daten ein.",
   "firstReminderSent": "Erste Mahnung gesendet",
   "fiscalYearsCanBeLocked": "Geschäftsjahre können gesperrt werden",
-  "for": "{length} {value2} für „{query}“",
+  "for": "{length, plural, one {# Antwort} other {# Antworten}} für „{query}“",
   "for11112026HomepageReview": " für 11.11.2026, „Homepage-Rezension“?",
   "forABusinessThatWantsItsWholeBackOffice": "Für ein Unternehmen, das sein gesamtes Backoffice an einem Ort haben möchte.",
   "forAGrowingTeamRoomForManyClientsEngagements": "Für ein wachsendes Team: jeden Monat Platz für viele Kunden, Aufträge und Unterschriften.",
@@ -891,5 +891,9 @@
   "perTeamMemberShort": "pro Teammitglied",
   "perTeamMemberAMonthShort": "pro Teammitglied und Monat",
   "whatCountsAsAnAutomatedAction": "Was zählt als automatisierte Aktion?",
-  "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro umfasst {value1} und Business {value2} automatisierte Aktionen pro bezahltem Teammitglied und Monat. Jeder automatische Schritt zählt einmal: eine planmässig ausgestellte Rechnung (eine Rate oder eine Auftragsperiode), ein für Sie erstellter Entwurf, eine geplante Mitteilung oder eine automatische E-Mail an einen Empfänger, etwa eine Zahlungserinnerung. Eine Rechnung automatisch auszustellen und einem Kunden zu senden, sind also zwei Aktionen. Prüfungen ohne Ergebnis und Wiederholungen desselben Schritts zählen nicht erneut. Die Kontingente für E-Mails, Rechnungen und KI gelten ebenfalls. Sind die Aktionen aufgebraucht, warten die Automatisierungen auf den nächsten Monat; alles, was Sie von Hand erledigen, funktioniert weiter."
+  "proIncludesAndBusinessAutomatedActionsPerTeamMember": "Pro umfasst {value1} und Business {value2} automatisierte Aktionen pro bezahltem Teammitglied und Monat. Jeder automatische Schritt zählt einmal: eine planmässig ausgestellte Rechnung (eine Rate oder eine Auftragsperiode), ein für Sie erstellter Entwurf, eine geplante Mitteilung oder eine automatische E-Mail an einen Empfänger, etwa eine Zahlungserinnerung. Eine Rechnung automatisch auszustellen und einem Kunden zu senden, sind also zwei Aktionen. Prüfungen ohne Ergebnis und Wiederholungen desselben Schritts zählen nicht erneut. Die Kontingente für E-Mails, Rechnungen und KI gelten ebenfalls. Sind die Aktionen aufgebraucht, warten die Automatisierungen auf den nächsten Monat; alles, was Sie von Hand erledigen, funktioniert weiter.",
+  "helpQuickImport": "Import",
+  "helpQuickInvite": "Einladen",
+  "helpQuickPasskey": "Passkey",
+  "helpQuickReminder": "Mahnung"
 }
