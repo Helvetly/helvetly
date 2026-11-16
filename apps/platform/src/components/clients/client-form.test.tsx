@@ -216,3 +216,22 @@ test('a learned country stays when a phone from another country is typed', async
   expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ country: 'DE' })
   localStorage.clear()
 })
+
+test('payment terms offer the 7, 14 and 30 day presets with help, and keep a typed custom number', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof globalThis.fetch>(async () => Response.json({ data: [] })),
+  )
+  renderForm()
+
+  expect(screen.getByRole('button', { name: 'About Payment terms' })).toBeInTheDocument()
+  for (const days of ['7 days', '14 days', '30 days'])
+    expect(screen.getByRole('radio', { name: days })).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: '10 days' })).not.toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('radio', { name: 'Custom' }))
+  const days = screen.getByRole('textbox', { name: 'Days' })
+  await userEvent.clear(days)
+  await userEvent.type(days, '45')
+  expect(days).toHaveValue('45')
+})

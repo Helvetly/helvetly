@@ -94,7 +94,7 @@
 4 text-px apps/platform/src/components/clients/client-contacts.tsx
 13 text-px apps/platform/src/components/clients/client-detail.tsx
 4 text-px apps/platform/src/components/clients/client-engagements.tsx
-3 text-px apps/platform/src/components/clients/client-form.tsx
+2 text-px apps/platform/src/components/clients/client-form.tsx
 14 text-px apps/platform/src/components/clients/clients-page.tsx
 2 text-px apps/platform/src/components/clients/fields.tsx
 4 text-px apps/platform/src/components/clients/self-billing-agreements.tsx

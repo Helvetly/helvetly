@@ -495,6 +495,7 @@ export function ClientForm({
           <FormField
             field="payment_terms_days"
             label={translate('paymentTerms')}
+            tip={translate('paymentTermsHelp')}
             error={errors.payment_terms_days}
           >
             <div className="flex min-h-9 flex-wrap items-center gap-2">
@@ -514,7 +515,7 @@ export function ClientForm({
                 }}
               />
               {customTerms && (
-                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <span className="flex items-center gap-2 text-body-sm text-muted-foreground">
                   <input
                     {...describe('payment_terms_days')}
                     inputMode="numeric"
