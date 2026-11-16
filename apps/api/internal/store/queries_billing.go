@@ -55,6 +55,7 @@ type Usage struct {
 	StorageBytes                                           int64
 	AITokensThisMonth                                      int64 // heidi_usage of the quota month
 	InvoiceDrafts, QuotesRetained                          int64
+	AutomationsThisMonth                                   int64 // automatic actions used and reserved
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
@@ -161,9 +162,10 @@ func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now ti
 			+ (SELECT coalesce(sum(size), 0) FROM expense_receipts WHERE workspace_id = $1),
 			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4),
 			(SELECT count(*) FROM invoices WHERE workspace_id = $1 AND status = 'draft'),
-			(SELECT count(*) FROM quotes WHERE workspace_id = $1)`,
+			(SELECT count(*) FROM quotes WHERE workspace_id = $1),
+			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0)`,
 		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained)
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained, &u.AutomationsThisMonth)
 	return u, err
 }
 

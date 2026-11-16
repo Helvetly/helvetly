@@ -50,10 +50,17 @@ func (s *Service) Tick(ctx context.Context, now time.Time) error {
 			errs = append(errs, err)
 			continue
 		}
-		errs = append(errs, s.db.Tx(ctx, func(q store.Q) error {
+		err := s.db.Tx(ctx, func(q store.Q) error {
+			// one automatic action per period: a retry or the next tick counts nothing more
+			if err := q.CountAutomation(ctx, v.Workspace.ID, "vat.return_due:"+p.Name, now); err != nil {
+				return err
+			}
 			return notifications.Notify(ctx, q, v.Workspace.ID, "vat.return_due", map[string]any{"period": p.Name, "last": p.Last},
 				store.NotifyTo{Roles: notifications.Managers, Once: "vat.return_due:" + p.Name}, now)
-		}))
+		})
+		if !errors.Is(err, store.ErrAdmissionDenied) { // no room: the reminder waits while the period is news
+			errs = append(errs, err)
+		}
 	}
 	return errors.Join(errs...)
 }
