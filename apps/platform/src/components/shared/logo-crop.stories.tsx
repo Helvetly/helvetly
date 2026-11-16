@@ -28,19 +28,19 @@ async function picture(width: number, height: number, clear = true) {
  * A 600 × 400 JPEG of a disc and a corner mark whose EXIF orientation is `turn` (6 or 8), so browsers show it
  * 400 × 600. The EXIF segment is spliced in after the JPEG's start marker.
  */
-async function turnedJpeg(turn: 6 | 8) {
+async function turnedJpeg(turn: 6 | 8, width = 600, height = 400) {
   const canvas = document.createElement('canvas')
-  canvas.width = 600
-  canvas.height = 400
+  canvas.width = width
+  canvas.height = height
   const context = canvas.getContext('2d')
   if (!context) throw new Error('no canvas')
   context.fillStyle = '#ffffff'
-  context.fillRect(0, 0, 600, 400)
+  context.fillRect(0, 0, width, height)
   context.fillStyle = '#0000ff'
   context.fillRect(0, 0, 60, 60)
   context.fillStyle = '#ff00ff'
   context.beginPath()
-  context.arc(300, 200, 100, 0, Math.PI * 2)
+  context.arc(width / 2, height / 2, 100, 0, Math.PI * 2)
   context.fill()
   const jpeg = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 1))
   if (!jpeg) throw new Error('no jpeg')
@@ -108,6 +108,24 @@ async function discSize(blob: Blob) {
       }
     }
   return { width: right - left + 1, height: bottom - top + 1 }
+}
+
+/** Whether the pixel at the given fraction of a PNG is the blue corner mark. */
+async function isBlueAt(blob: Blob, fx: number, fy: number) {
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.drawImage(bitmap, 0, 0)
+  const [r, g, b] = context.getImageData(
+    Math.floor(fx * bitmap.width),
+    Math.floor(fy * bitmap.height),
+    1,
+    1,
+  ).data
+  return b! > 200 && r! < 60 && g! < 60
 }
 
 const made = new Map<string, Promise<File>>()
@@ -195,8 +213,8 @@ const saved = fn<(logo: Blob) => void>()
 function TurnedDialog({ file }: { file: Promise<File> }) {
   return <Dialog file={use(file)} onSave={saved} />
 }
-function Turned({ turn }: { turn: 6 | 8 }) {
-  const [file] = useState(() => turnedJpeg(turn))
+function Turned({ turn, width, height }: { turn: 6 | 8; width?: number; height?: number }) {
+  const [file] = useState(() => turnedJpeg(turn, width, height))
   return (
     <Suspense fallback={null}>
       <TurnedDialog file={file} />
@@ -228,4 +246,35 @@ export const ExifTurnedClockwise: Story = {
 export const ExifTurnedAnticlockwise: Story = {
   render: () => <Turned turn={8} />,
   play: keepsTheDiscRound,
+}
+
+/** Saved as a re-encoded PNG at 2.5 : 1 with the blue corner mark where the browser shows it, not as the picked JPEG. */
+const exactTurned =
+  (corner: readonly [number, number]): Story['play'] =>
+  async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const field = await frame(canvasElement.ownerDocument.body)
+    // Saving before the picture decodes would use the header's unturned size, not the shape the browser shows.
+    await waitFor(() => expect(field.querySelector('img')?.naturalWidth).toBe(1000))
+    saved.mockClear()
+    await userEvent.click(await body.findByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(saved).toHaveBeenCalled())
+    const logo = saved.mock.calls[0]?.[0]
+    if (!logo) throw new Error('nothing saved')
+    await expect(logo.type).toBe('image/png')
+    const bitmap = await createImageBitmap(logo)
+    await expect(bitmap.width / bitmap.height).toBeCloseTo(2.5, 2)
+    await expect(await isBlueAt(logo, corner[0], corner[1])).toBe(true)
+  }
+
+/** A 400 × 1000 JPEG turned by EXIF 6 is shown 1000 × 400: already the field's shape, yet still re-encoded. */
+export const ExactRatioExifClockwise: Story = {
+  render: () => <Turned turn={6} width={400} height={1000} />,
+  play: exactTurned([0.97, 0.075]),
+}
+
+/** The same turned the other way (orientation 8): the mark lands bottom left. */
+export const ExactRatioExifAnticlockwise: Story = {
+  render: () => <Turned turn={8} width={400} height={1000} />,
+  play: exactTurned([0.03, 0.925]),
 }

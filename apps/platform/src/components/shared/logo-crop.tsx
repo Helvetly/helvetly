@@ -17,7 +17,7 @@ import Cropper from 'react-easy-crop'
 
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { LOGO_MAX_BYTES, logoProblem, LOGO_TYPES } from '@/lib/invoices'
+import { LOGO_MAX_BYTES, logoProblem } from '@/lib/invoices'
 import {
   clampView,
   cropWorkspaceLogo,
@@ -42,6 +42,12 @@ const ODD_RATIO = [1.4, 6] as const
 const ZOOM_STEP = 0.1
 // What the server keeps a workspace's mark to; the browser saves 512 × 512 (lib/logo-crop.ts).
 const WORKSPACE_MAX_SIDE = 1024
+
+/** Whether the bytes, not the claimed type, are a PNG: the server and the PDF library go by bytes too. */
+async function isPngBytes(file: Blob) {
+  const head = new DataView(await file.slice(0, 4).arrayBuffer())
+  return head.byteLength === 4 && head.getUint32(0) === 0x89504e47
+}
 
 export type LogoKind = 'workspace' | 'document'
 
@@ -195,14 +201,16 @@ export function LogoCropDialog({
     setEncoding(true)
     setProblem('')
     try {
-      // A picture that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
+      // A PNG that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
+      // A JPEG never is, whatever its name or type says: its EXIF turn (the PDF library ignores it) is only applied by decoding and re-encoding it.
       if (
         isDocument &&
         file.size <= LOGO_MAX_BYTES &&
-        LOGO_TYPES.includes(file.type) &&
+        file.type === 'image/png' &&
         Math.max(natural.width, natural.height) <= LOGO_MAX_SIDE &&
         Math.min(natural.width, natural.height) >= LOGO_MIN_SIDE &&
-        isWholePicture(natural, view)
+        isWholePicture(natural, view) &&
+        (await isPngBytes(file))
       ) {
         onSave(file)
         return

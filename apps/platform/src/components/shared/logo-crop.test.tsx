@@ -82,6 +82,40 @@ describe('LogoCropDialog, document logo', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
   })
 
+  test('a JPEG of the field shape is never saved as picked: its EXIF turn only survives decoding', async () => {
+    const decode = vi.fn<() => Promise<ImageBitmap>>().mockRejectedValue(new Error('decoded'))
+    vi.stubGlobal('createImageBitmap', decode)
+    try {
+      const file = png(1000, 400, 24, 'image/jpeg')
+      const onSave = open(file)
+      await picture()
+      await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+      await waitFor(() => expect(decode).toHaveBeenCalledWith(file))
+      expect(onSave).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('a JPEG labelled as a PNG is still decoded, since the bytes decide', async () => {
+    const decode = vi.fn<() => Promise<ImageBitmap>>().mockRejectedValue(new Error('decoded'))
+    vi.stubGlobal('createImageBitmap', decode)
+    try {
+      // A JPEG start, then a start-of-frame header saying 1000 × 400.
+      const bytes = new Uint8Array([
+        0xff, 0xd8, 0xff, 0xc0, 0, 17, 8, 0x01, 0x90, 0x03, 0xe8, 3, 0, 0, 0, 0, 0,
+      ])
+      const file = new File([bytes], 'logo.png', { type: 'image/png' })
+      const onSave = open(file)
+      await picture()
+      await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+      await waitFor(() => expect(decode).toHaveBeenCalledWith(file))
+      expect(onSave).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   test('a portrait picture starts contained and centred, moves with the arrow keys, and fits again', async () => {
     open(png(300, 400))
     const img = (await picture())?.parentElement
