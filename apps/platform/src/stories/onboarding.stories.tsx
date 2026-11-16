@@ -133,13 +133,11 @@ export const AllSteps: Story = {
     const done = within(await step(canvasElement, 'done'))
     await waitFor(() => expect(done.getByRole('heading', { name: 'You’re all set' })).toBeVisible())
     await expect(done.getByText('Your company is ready to issue invoices')).toBeVisible()
-    for (const name of [
-      /Add your first client/,
-      /Create an invoice/,
-      /Import your clients/,
-      /Ask Heidi/,
-    ])
-      expect(done.getByRole('button', { name })).toBeEnabled()
+    await Promise.all(
+      [/Add your first client/, /Create an invoice/, /Import your clients/, /Ask Heidi/].map(
+        (name) => waitFor(() => expect(done.getByRole('button', { name })).toBeEnabled()),
+      ),
+    )
   },
 }
 
