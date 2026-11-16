@@ -161,6 +161,7 @@ const FEATURE_FROM = {
   automations: 'pro',
   client_portal: 'business',
   einvoice_xml: 'business',
+  employees: 'business',
 } as const satisfies Record<string, PlanId>
 
 export type Feature = keyof typeof FEATURE_FROM
@@ -219,7 +220,7 @@ export type Benefit = {
 const INCLUDED = translate('included')
 const from = (feature: Feature) => (plan: PlanId) => (has(plan, feature) ? INCLUDED : null)
 
-/** The twelve business benefits compared on the pricing page, in this order. */
+/** The thirteen business benefits compared on the pricing page, in this order. */
 export const BENEFITS: Benefit[] = [
   {
     key: 'invoicing',
@@ -300,6 +301,13 @@ export const BENEFITS: Benefit[] = [
     note: translate('accountingReportsAndSupportedExportsIncludingClientAndProduct'),
     limitKeys: [],
     cell: from('ledger_exports'),
+  },
+  {
+    key: 'employees',
+    label: translate('employeesAndPayrollRegister'),
+    note: translate('staffRecordsEmployeeDocumentsAndAPayrollRegister'),
+    limitKeys: [],
+    cell: from('employees'),
   },
 ]
 
@@ -436,6 +444,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       { key: 'workspace_roles', label: translate('featureRoles'), plans: ALL },
       { key: 'identity_security', label: translate('featureSignIn'), plans: ALL },
       { key: 'notifications', label: translate('featureNotifications'), plans: ALL },
+      {
+        key: 'employees',
+        label: translate('employeesAndPayrollRegister'),
+        hint: translate('staffRecordsEmployeeDocumentsAndAPayrollRegister'),
+        plans: BUSINESS_ONLY,
+      },
     ],
   },
   {
@@ -513,6 +527,7 @@ export const PLANS: Plan[] = [
     highlights: [
       translate('clientPortalPortalRecipientsAreNotPaidSeats'),
       translate('eInvoiceXMLExportsInSupportedFormats'),
+      translate('employeesAndPayrollRegister'),
       translate('clientsPerWorkspace', { value1: n('clients', 'business') }),
       translate('invoiceIssuesAndExpensesPerPersonAMonth', {
         value1: n('invoices_per_month', 'business'),

@@ -1,5 +1,5 @@
 {
-  "offer_id": "helvetly-2026-11-v2",
+  "offer_id": "helvetly-2026-11-v3",
   "comparison": [
     {
       "key": "invoicing",
@@ -123,6 +123,17 @@
         "basic": false,
         "business": true,
         "pro": true
+      }
+    },
+    {
+      "key": "employees",
+      "label": "Employees and payroll register",
+      "note": "Staff records, employee documents and a payroll register you fill in or import. No payroll calculation, payslips or filings.",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": false
       }
     }
   ],

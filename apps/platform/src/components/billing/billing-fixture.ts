@@ -54,7 +54,7 @@ const PRO_FEATURES: FeatureKey[] = [
 const features: Record<PlanId, FeatureKey[]> = {
   basic: [],
   pro: PRO_FEATURES,
-  business: [...PRO_FEATURES, 'client_portal', 'einvoice_xml'],
+  business: [...PRO_FEATURES, 'client_portal', 'einvoice_xml', 'employees'],
 }
 const prices = (month: number, currency: string) => ({
   month: { amount: month, currency },

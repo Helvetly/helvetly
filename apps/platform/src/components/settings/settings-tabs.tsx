@@ -1,6 +1,7 @@
 'use client'
 import {
   BookOpen,
+  BriefcaseBusiness,
   Building2,
   CalendarCheck,
   CreditCard,
@@ -17,7 +18,7 @@ import type { ReactNode } from 'react'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
-import { can, resourceForPath, useScopes } from '@/lib/permissions'
+import { canReadPath, useScopes } from '@/lib/permissions'
 
 type Page = { label: string; href: string; icon: LucideIcon }
 
@@ -33,6 +34,7 @@ export const SETTINGS_PAGES: Page[] = [
   // The books in the order of a month-end: record, declare, post, close, audit.
   { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
   { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
+  { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -54,11 +56,8 @@ export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const router = useRouter()
   const guard = useLeaveGuard()
   const scopes = useScopes()
-  // A page of an area the person cannot read is left out, as in the sidebar.
-  const pages = SETTINGS_PAGES.filter((page) => {
-    const resource = resourceForPath(page.href)
-    return !resource || can(scopes, `read:${resource}`)
-  })
+  // A page of an area the person cannot read is left out, as in the sidebar (employment also opens with payroll view).
+  const pages = SETTINGS_PAGES.filter((page) => canReadPath(scopes, page.href))
   const current = settingsPageAt(usePathname() ?? '')
   return (
     <>

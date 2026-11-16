@@ -877,5 +877,7 @@
   "swissQrBillBuiltIn": "Swiss QR bill built in",
   "passwordlessSignIn": "Passwordless sign-in",
   "exportEverythingAnyTime": "Export everything, any time",
-  "sent": "Sent"
+  "sent": "Sent",
+  "employeesAndPayrollRegister": "Employees and payroll register",
+  "staffRecordsEmployeeDocumentsAndAPayrollRegister": "Staff records, employee documents and a payroll register you fill in or import. No payroll calculation, payslips or filings."
 }

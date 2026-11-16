@@ -3682,5 +3682,20 @@
   "canViewAndEditEverythingMembersWorkspaceAndBilling": "Can view and edit everything. Members, the workspace and billing stay with owners and admins.",
   "chooseWhatTheyCanViewAndEditInEachArea": "Choose what they can view and edit in each area.",
   "membersWorkspaceAndBillingStayWithOwnersAndAdmins": "Members, the workspace and billing stay with owners and admins.",
-  "viewOnlyAskAnOwnerOrAdminForEditAccess": "View only: ask an owner or admin for edit access."
+  "viewOnlyAskAnOwnerOrAdminForEditAccess": "View only: ask an owner or admin for edit access.",
+  "accessEmployees": "Employees",
+  "accessEmployeesDescription": "Staff records and employee documents",
+  "accessPayroll": "Payroll",
+  "accessPayrollDescription": "Pay terms, payroll register, approval and export",
+  "accessViewArea": "view {area}",
+  "accessEditArea": "edit {area}",
+  "accessWithHR": "{general}; HR: {hr}",
+  "accessNoHR": "no access",
+  "accessHRSection": "Employees and payroll",
+  "accessHRHelpLabel": "About access to employees and payroll",
+  "accessSealedHelp": "Bank account, tax ID and AHV/social-security number stay sealed: only Payroll Edit can reveal them, and every reveal is logged. Full access includes Payroll View; Read only includes no HR access.",
+  "accessHROwnerOnly": "Only the workspace owner can change access to employees and payroll.",
+  "accessAdminGeneral": "Full access as admin",
+  "planEmployees": "employees and payroll",
+  "accessHRSummary": "HR: {hr}."
 }
