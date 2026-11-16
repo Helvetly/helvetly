@@ -33,3 +33,15 @@ test('Employees needs an HR scope, which a member\'s "*" never gives', () => {
   )
   expect(labels(['read:employees'])).toContain('Employees')
 })
+
+const employeesHref = (scopes: readonly string[]) =>
+  visibleNav(scopes)
+    .flatMap((group) => group.items)
+    .find((item) => item.label === 'Employees')?.href
+
+test('payroll alone leads Employees to the payroll register; employees keep the list', () => {
+  const href = employeesHref
+  expect(href(['read:payroll'])).toBe('/employees/payroll')
+  expect(href(['read:employees', 'read:payroll'])).toBe('/employees')
+  expect(href(['read:clients'])).toBeUndefined()
+})

@@ -16,6 +16,7 @@ import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { countryName } from '@helvetly/ui/lib/countries'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -52,12 +53,12 @@ import {
   useSaveEmployee,
   type Employee,
 } from '@/lib/employees'
-import { useCan } from '@/lib/permissions'
-import { useSession } from '@/lib/queries'
+import { translate } from '@/lib/i18n'
 
 import { EmployeeDocuments } from './employee-documents'
 import { EmployeePay } from './employee-pay'
 import { EmployeeStatusBadge } from './employee-status'
+import { DisabledTip, useHrAccess, type HrAccess } from './hr-access'
 
 /** One employee, in a sheet from the right (full screen on phones). */
 export function EmployeeDetail({
@@ -78,22 +79,24 @@ export function EmployeeDetail({
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 overflow-y-auto bg-panel p-0 sm:w-[min(760px,100vw)]! dark:bg-background"
       >
-        <SheetTitle className="sr-only">{employee ? fullName(employee) : 'Employee'}</SheetTitle>
-        <SheetDescription className="sr-only">Employee record</SheetDescription>
+        <SheetTitle className="sr-only">
+          {employee ? fullName(employee) : translate('employeeTitle')}
+        </SheetTitle>
+        <SheetDescription className="sr-only">{translate('employeeRecord')}</SheetDescription>
         {employee ? (
           <Detail employee={employee} onClose={onClose} onEdit={() => onEdit(employee)} />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-title-sm">This employee couldn’t be loaded.</p>
+            <p className="text-title-sm">{translate('employeeLoadFailed')}</p>
             <p className="text-sm text-muted-foreground">
-              {loadProblemText(query.error, 'This employee')}
+              {loadProblemText(query.error, translate('employeeThisEmployee'))}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-                Try again
+                {translate('employeeTryAgain')}
               </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
+                {translate('close')}
               </Button>
             </div>
           </div>
@@ -116,10 +119,7 @@ function Detail({
   onClose: () => void
   onEdit: () => void
 }) {
-  const owner = useSession().data?.role === 'owner'
-  const canWrite = useCan('write:employees')
-  const canPay = useCan('read:payroll')
-  const canDocuments = useCan('read:employee-documents')
+  const hr = useHrAccess()
   const [tab, setTab] = useState('employment')
   const [pending, setPending] = useState<Pending>(null)
   const [reason, setReason] = useState('')
@@ -128,12 +128,13 @@ function Detail({
   const save = useSaveEmployee()
   const archived = employee.archived_at !== null
   const locked = employee.restricted || employee.erased_at !== null
+  const hasMenu = hr.seesEmployeeWrites || hr.owner
 
   const tabs = [
-    { value: 'employment', label: 'Employment' },
-    ...(canPay ? [{ value: 'pay', label: 'Pay' }] : []),
-    ...(canDocuments ? [{ value: 'documents', label: 'Documents' }] : []),
-    { value: 'history', label: 'History' },
+    { value: 'employment', label: translate('employeeTabEmployment') },
+    ...(hr.readPayroll ? [{ value: 'pay', label: translate('employeeTabPay') }] : []),
+    { value: 'documents', label: translate('employeeTabDocuments') },
+    { value: 'history', label: translate('employeeTabHistory') },
   ]
 
   const decide = (approved: boolean) => {
@@ -144,7 +145,10 @@ function Detail({
       erase.mutate(employee.id, {
         onSuccess: (result) =>
           toast.success(
-            `Personal data erased. ${result.kept_documents} document(s) kept, ${result.deleted_documents} deleted.`,
+            translate('employeeErasedToast', {
+              kept: result.kept_documents,
+              deleted: result.deleted_documents,
+            }),
           ),
         onError: (error) => toast.error(errorMessage(error)),
       })
@@ -158,7 +162,9 @@ function Detail({
         },
         {
           onSuccess: (saved) =>
-            toast.success(saved.legal_hold ? 'Legal hold set.' : 'Legal hold lifted.'),
+            toast.success(
+              translate(saved.legal_hold ? 'employeeHoldSetToast' : 'employeeHoldLiftedToast'),
+            ),
           onError: (error) => toast.error(errorMessage(error)),
         },
       )
@@ -174,31 +180,53 @@ function Detail({
             </span>
           )}
           <div className="ml-auto flex items-center gap-1">
-            {(canWrite || owner) && (
+            {hasMenu && hr.lockReason && (
+              <DisabledTip reason={hr.lockReason}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={translate('moreActions')}
+                  disabled
+                >
+                  <Ellipsis />
+                </Button>
+              </DisabledTip>
+            )}
+            {hasMenu && !hr.lockReason && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                    <Ellipsis />
-                  </Button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label={translate('moreActions')}>
+                        <Ellipsis />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>{translate('moreActions')}</TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent align="end" className="min-w-52">
-                  {canWrite && (
+                  {hr.seesEmployeeWrites && (
                     <DropdownMenuItem
                       onSelect={() =>
                         archive.mutate(
                           { id: employee.id, archived: !archived },
                           {
-                            onSuccess: () => toast.success(archived ? 'Restored.' : 'Archived.'),
+                            onSuccess: () =>
+                              toast.success(
+                                translate(
+                                  archived ? 'employeeRestoredToast' : 'employeeArchivedToast',
+                                ),
+                              ),
                             onError: (error) => toast.error(errorMessage(error)),
                           },
                         )
                       }
                     >
                       {archived ? <ArchiveRestore /> : <Archive />}
-                      {archived ? 'Restore from archive' : 'Archive'}
+                      {translate(archived ? 'employeeRestore' : 'employeeArchive')}
                     </DropdownMenuItem>
                   )}
-                  {owner && (
+                  {hr.owner && (
                     <DropdownMenuItem
                       onSelect={() => {
                         setReason('')
@@ -206,28 +234,45 @@ function Detail({
                       }}
                     >
                       {employee.legal_hold ? <LockOpen /> : <Lock />}
-                      {employee.legal_hold ? 'Lift legal hold' : 'Set legal hold'}
+                      {translate(employee.legal_hold ? 'employeeLiftHold' : 'employeeSetHold')}
                     </DropdownMenuItem>
                   )}
-                  {canWrite && employee.erased_at === null && (
+                  {hr.owner && employee.erased_at === null && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onSelect={() => setPending('erase')}>
-                        <Eraser /> Erase personal data
+                        <Eraser /> {translate('employeeErase')}
                       </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {canWrite && !locked && (
-              <Button variant="outline" className="gap-1.5" onClick={onEdit}>
-                <Pencil className="size-3.5" /> Edit
-              </Button>
+            {hr.seesEmployeeWrites && !locked && (
+              <DisabledTip reason={hr.lockReason}>
+                <Button
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={Boolean(hr.lockReason)}
+                  onClick={onEdit}
+                >
+                  <Pencil className="size-3.5" /> {translate('employeeEdit')}
+                </Button>
+              </DisabledTip>
             )}
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
-              <X />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={translate('close')}
+                  onClick={onClose}
+                >
+                  <X />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{translate('close')}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
         <div className="grid gap-1 px-6 pt-5 pb-3">
@@ -236,9 +281,13 @@ function Detail({
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
             <EmployeeStatusBadge status={employee.status} />
-            {employee.legal_hold && <StatusBadge tone="amber">Legal hold</StatusBadge>}
-            {employee.restricted && <StatusBadge tone="red">Restricted</StatusBadge>}
-            {employee.erased_at && <StatusBadge>Erased</StatusBadge>}
+            {employee.legal_hold && (
+              <StatusBadge tone="amber">{translate('employeeLegalHold')}</StatusBadge>
+            )}
+            {employee.restricted && (
+              <StatusBadge tone="red">{translate('employeeRestricted')}</StatusBadge>
+            )}
+            {employee.erased_at && <StatusBadge>{translate('employeeErased')}</StatusBadge>}
             <span className="text-body-sm text-muted-foreground">
               {[employee.position, employee.department].filter(Boolean).join(' · ')}
             </span>
@@ -264,34 +313,32 @@ function Detail({
 
       {employee.legal_hold && employee.legal_hold_reason && (
         <div className="px-4 pt-4 sm:px-5">
-          <Callout tone="warning" icon={Lock} title="Under a legal hold">
+          <Callout tone="warning" icon={Lock} title={translate('employeeUnderHold')}>
             {employee.legal_hold_reason}
           </Callout>
         </div>
       )}
 
       <TabsContent value="employment" className="grid content-start gap-3 p-4 sm:p-5">
-        <EmploymentTab employee={employee} canReveal={canPay} />
+        <EmploymentTab employee={employee} hr={hr} />
       </TabsContent>
-      {canPay && (
+      {hr.readPayroll && (
         <TabsContent value="pay" className="grid content-start gap-3 p-4 sm:p-5">
           <EmployeePay employee={employee} />
         </TabsContent>
       )}
-      {canDocuments && (
-        <TabsContent value="documents" className="grid content-start gap-3 p-4 sm:p-5">
-          <EmployeeDocuments employee={employee} owner={owner} />
-        </TabsContent>
-      )}
+      <TabsContent value="documents" className="grid content-start gap-3 p-4 sm:p-5">
+        <EmployeeDocuments employee={employee} />
+      </TabsContent>
       <TabsContent value="history" className="grid content-start gap-3 p-4 sm:p-5">
         <HistoryTab id={employee.id} enabled={tab === 'history'} />
       </TabsContent>
 
       {pending === 'erase' && (
         <ConfirmDialog
-          title={`Erase ${fullName(employee)}’s personal data?`}
-          body="Contact details, bank account, tax ID and the member link are removed, and documents past their retention date are deleted. What a retention duty or a legal hold covers is kept (pay terms, payroll and those documents), with only the name and employment dates; the record then stays read-only. This can’t be undone."
-          confirmLabel="Erase personal data"
+          title={translate('employeeEraseTitle', { name: fullName(employee) })}
+          body={translate('employeeEraseBody')}
+          confirmLabel={translate('employeeErase')}
           confirmIcon={<Eraser />}
           tone="destructive"
           onDecide={decide}
@@ -300,32 +347,32 @@ function Detail({
       {pending === 'hold' &&
         (employee.legal_hold ? (
           <ConfirmDialog
-            title="Lift the legal hold?"
-            body="Retention rules apply again: documents past their date can then be deleted."
-            confirmLabel="Lift legal hold"
+            title={translate('employeeLiftHoldTitle')}
+            body={translate('employeeLiftHoldBody')}
+            confirmLabel={translate('employeeLiftHold')}
             confirmIcon={<LockOpen />}
             tone="default"
             onDecide={decide}
           />
         ) : (
           <ConfirmDialog
-            title="Set a legal hold?"
-            body="Nothing of this employee can be deleted or erased while the hold is on, whatever the retention rules say."
-            confirmLabel="Set legal hold"
+            title={translate('employeeSetHoldTitle')}
+            body={translate('employeeSetHoldBody')}
+            confirmLabel={translate('employeeSetHold')}
             tone="default"
             onDecide={(approved) =>
               !approved || reason.trim()
                 ? decide(approved)
-                : toast.error('Say why the data must be kept.')
+                : toast.error(translate('employeeHoldReasonNeeded'))
             }
           >
             <label className="grid gap-1.5 text-body-sm font-medium">
-              Reason
+              {translate('employeeHoldReason')}
               <textarea
                 rows={2}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                placeholder="E.g. a dispute or an authority’s request"
+                placeholder={translate('employeeHoldReasonPlaceholder')}
                 className={cn(inputClass, 'h-auto min-h-16 resize-y py-2 font-normal')}
               />
             </label>
@@ -347,75 +394,134 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const country = (code: string | null) => (code ? countryName(code) : null)
+const yesNo = (value: boolean) => translate(value ? 'employeeYes' : 'employeeNo')
 
-function EmploymentTab({ employee, canReveal }: { employee: Employee; canReveal: boolean }) {
+function EmploymentTab({ employee, hr }: { employee: Employee; hr: HrAccess }) {
   const countries = useCountries().data
   const address = [employee.street, [employee.postal_code, employee.city].filter(Boolean).join(' ')]
     .filter(Boolean)
     .join(', ')
   return (
     <>
-      <Panel title="Employment">
-        <Row label="Employment type">
+      <Panel title={translate('employeePanelEmployment')}>
+        <Row label={translate('employeeEmploymentType')}>
           {EMPLOYMENT_TYPES.find((type) => type.value === employee.employment_type)?.label}
         </Row>
-        <Row label="Start">{formatDate(employee.employment_start)}</Row>
-        <Row label="End">{employee.employment_end && formatDate(employee.employment_end)}</Row>
-        <Row label="Working time">{employee.working_time && `${employee.working_time} %`}</Row>
-        <Row label="Employing company">{employee.employing_entity}</Row>
-        <Row label="Member link">
+        <Row label={translate('employeeRowDates')}>
+          {employee.employment_end
+            ? translate('employeeDatesRange', {
+                start: formatDate(employee.employment_start),
+                end: formatDate(employee.employment_end),
+              })
+            : translate('employeeDatesSince', { start: formatDate(employee.employment_start) })}
+        </Row>
+        <Row label={translate('employeeRowWorkingTime')}>
+          {[
+            employee.weekly_hours &&
+              translate('employeeHoursPerWeek', { hours: employee.weekly_hours }),
+            employee.working_time && `${employee.working_time} %`,
+          ]
+            .filter(Boolean)
+            .join(' · ') || null}
+        </Row>
+        <Row label={translate('employeeNoticePeriod')}>{employee.notice_period}</Row>
+        <Row label={translate('employeeThirteenth')}>{yesNo(employee.thirteenth_salary)}</Row>
+        <Row label={translate('employeeEmployingEntity')}>{employee.employing_entity}</Row>
+        <Row label={translate('employeeMemberLink')}>
           <span className="inline-flex items-center gap-1.5">
             {employee.member_name ? (
               <>
                 {employee.member_name}
-                {!employee.member_active && <StatusBadge>No longer a member</StatusBadge>}
+                {!employee.member_active && (
+                  <StatusBadge>{translate('employeeNoLongerMember')}</StatusBadge>
+                )}
               </>
             ) : (
-              <span className="text-muted-foreground">Not linked</span>
+              <span className="text-muted-foreground">{translate('employeeNotLinked')}</span>
             )}
-            <HelpTip label="About the member link">
-              A link to a member only says who this is in Helvetly. It grants nothing: access comes
-              from the member’s own role and permissions.
+            <HelpTip label={translate('employeeMemberLinkLabel')}>
+              {translate('employeeMemberLinkTip')}
             </HelpTip>
           </span>
         </Row>
       </Panel>
 
-      <Panel title="Contact">
-        <Row label="Email">{employee.email}</Row>
-        <Row label="Phone">{employee.phone}</Row>
-        <Row label="Address">
+      <Panel title={translate('employeePanelContact')}>
+        <Row label={translate('employeeEmail')}>{employee.email}</Row>
+        <Row label={translate('employeePhone')}>{employee.phone}</Row>
+        <Row label={translate('employeeRowAddress')}>
           {address || employee.address_country
             ? [address, country(employee.address_country)].filter(Boolean).join(', ')
             : null}
         </Row>
       </Panel>
 
-      <Panel title="Place of work">
-        <Row label="Work">
+      <Panel title={translate('employeeSectionWork')}>
+        <Row label={translate('employeeRowWork')}>
           {placeLabel(countries, employee.work_country, employee.work_region)}
           {employee.work_locality && ` (${employee.work_locality})`}
         </Row>
-        <Row label="Place of work">{employee.place_of_work}</Row>
-        <Row label="Employer country">{country(employee.employer_country)}</Row>
-        <Row label="Residence">{country(employee.residence_country)}</Row>
-        <Row label="Social security">{country(employee.social_security_country)}</Row>
-        <Row label="Cross-border">
-          {employee.cross_border ? (employee.cross_border_note ?? 'Yes') : 'No'}
+        <Row label={translate('employeePlaceOfWork')}>{employee.place_of_work}</Row>
+        <Row label={translate('employeeEmployerCountry')}>{country(employee.employer_country)}</Row>
+        <Row label={translate('employeeRowResidence')}>{country(employee.residence_country)}</Row>
+        <Row label={translate('employeeRowSocialSecurity')}>
+          {country(employee.social_security_country)}
+        </Row>
+        <Row label={translate('employeeRowCrossBorder')}>
+          {employee.cross_border
+            ? (employee.cross_border_note ?? translate('employeeYes'))
+            : translate('employeeNo')}
         </Row>
       </Panel>
 
+      {employee.work_country === 'CH' && <SwissPanel employee={employee} />}
+
       <JurisdictionPanel id={employee.id} />
 
-      <ProtectedPanel employee={employee} canReveal={canReveal} />
+      {hr.readPayroll && <ProtectedPanel employee={employee} canReveal={hr.reveal} />}
     </>
   )
 }
 
+function SwissPanel({ employee }: { employee: Employee }) {
+  const countries = useCountries().data
+  return (
+    <Panel
+      title={translate('employeeSectionSwiss')}
+      action={
+        <HelpTip label={translate('employeeSectionSwiss')}>
+          {translate('employeeSectionSwissTip')}
+        </HelpTip>
+      }
+    >
+      <Row label={translate('employeeRowWithholding')}>
+        {employee.withholding_tax
+          ? (countries
+              ?.find((entry) => entry.code === 'CH')
+              ?.regions?.find((region) => region.code === employee.withholding_tax_canton)?.name ??
+            employee.withholding_tax_canton ??
+            translate('employeeYes'))
+          : translate('employeeNo')}
+      </Row>
+      <Row label={translate('employeePensionInsurer')}>{employee.pension_insurer}</Row>
+      <Row label={translate('employeeAccidentInsurer')}>{employee.accident_insurer}</Row>
+      <Row label={translate('employeeSicknessInsurer')}>{employee.sickness_insurer}</Row>
+      <Row label={translate('employeeRowCertificate')}>
+        {[
+          employee.free_transport && translate('employeeFreeTransport'),
+          employee.canteen_meals && translate('employeeCanteenMeals'),
+        ]
+          .filter(Boolean)
+          .join(' · ') || null}
+      </Row>
+    </Panel>
+  )
+}
+
 const RESOLUTION = {
-  register_only: { tone: 'blue', label: 'Register mode' },
-  ambiguous: { tone: 'amber', label: 'Needs a closer look' },
-  unsupported: { tone: 'gray', label: 'Not modelled' },
+  register_only: { tone: 'blue', label: translate('employeeResolutionRegister') },
+  ambiguous: { tone: 'amber', label: translate('employeeResolutionAmbiguous') },
+  unsupported: { tone: 'gray', label: translate('employeeResolutionUnsupported') },
 } as const
 
 function JurisdictionPanel({ id }: { id: string }) {
@@ -423,12 +529,9 @@ function JurisdictionPanel({ id }: { id: string }) {
   const resolution = query.data
   return (
     <Panel
-      title="Rules that apply"
+      title={translate('employeeRulesTitle')}
       action={
-        <HelpTip label="About the rules">
-          Helvetly looks at where the employee works to suggest retention dates. It does not
-          calculate pay, taxes or contributions and does not check that you meet your obligations.
-        </HelpTip>
+        <HelpTip label={translate('employeeRulesLabel')}>{translate('employeeRulesTip')}</HelpTip>
       }
     >
       {resolution ? (
@@ -441,7 +544,7 @@ function JurisdictionPanel({ id }: { id: string }) {
               {resolution.country_name || resolution.jurisdiction}
             </span>
           </div>
-          <p className="text-body-sm">Register mode: pay is recorded, not calculated.</p>
+          <p className="text-body-sm">{translate('employeeRegisterMode')}</p>
           {resolution.reasons.length > 0 && (
             <ul className="grid list-disc gap-1 pl-5 text-body-sm text-muted-foreground">
               {resolution.reasons.map((reason) => (
@@ -451,7 +554,9 @@ function JurisdictionPanel({ id }: { id: string }) {
           )}
           {resolution.blocked.length > 0 && (
             <div className="grid gap-1">
-              <p className="text-body-sm font-medium text-muted-foreground">Not automated</p>
+              <p className="text-body-sm font-medium text-muted-foreground">
+                {translate('employeeNotAutomated')}
+              </p>
               <ul className="grid gap-1 text-body-sm">
                 {resolution.blocked.map((block) => (
                   <li key={block.feature}>{block.reason}</li>
@@ -462,7 +567,7 @@ function JurisdictionPanel({ id }: { id: string }) {
         </div>
       ) : query.error ? (
         <p className="text-body-sm text-muted-foreground">
-          {loadProblemText(query.error, 'The rules')}
+          {loadProblemText(query.error, translate('employeeTheRules'))}
         </p>
       ) : (
         <Loader className="h-16" />
@@ -477,39 +582,54 @@ function ProtectedPanel({ employee, canReveal }: { employee: Employee; canReveal
   // A mutation, not a query: the revealed values live in this panel's state and go when it closes.
   const reveal = useRevealProtected(employee.id)
   const shown = reveal.data
+  const stored = Boolean(
+    employee.bank_account_hint || employee.tax_id_hint || employee.social_security_number_hint,
+  )
   return (
     <Panel
-      title="Protected"
+      title={translate('employeeSectionProtected')}
       action={
-        canReveal &&
-        (employee.bank_account_hint || employee.tax_id_hint) &&
-        (shown ? (
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => reveal.reset()}>
-            <EyeOff className="size-3.5" /> Hide
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            disabled={reveal.isPending}
-            onClick={() =>
-              reveal.mutate(undefined, { onError: (error) => toast.error(errorMessage(error)) })
-            }
-          >
-            <Eye className="size-3.5" /> Reveal
-          </Button>
-        ))
+        <span className="flex items-center gap-1">
+          {canReveal &&
+            stored &&
+            (shown ? (
+              <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => reveal.reset()}>
+                <EyeOff className="size-3.5" /> {translate('employeeHide')}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                disabled={reveal.isPending}
+                onClick={() =>
+                  reveal.mutate(undefined, {
+                    onError: (error) => toast.error(errorMessage(error)),
+                  })
+                }
+              >
+                <Eye className="size-3.5" /> {translate('employeeReveal')}
+              </Button>
+            ))}
+          <HelpTip label={translate('employeeSectionProtected')}>
+            {translate('employeeSectionProtectedTip')}
+          </HelpTip>
+        </span>
       }
     >
-      <Row label="Bank account">
+      <Row label={translate('employeeRowBankAccount')}>
         <span className="font-mono text-body-sm">
           {shown ? shown.bank_account : hint(employee.bank_account_hint)}
         </span>
       </Row>
-      <Row label="Tax ID">
+      <Row label={translate('employeeTaxId')}>
         <span className="font-mono text-body-sm">
           {shown ? shown.tax_id : hint(employee.tax_id_hint)}
+        </span>
+      </Row>
+      <Row label={translate('employeeSocialSecurityNumber')}>
+        <span className="font-mono text-body-sm">
+          {shown ? shown.social_security_number : hint(employee.social_security_number_hint)}
         </span>
       </Row>
     </Panel>
@@ -521,14 +641,14 @@ function HistoryTab({ id, enabled }: { id: string; enabled: boolean }) {
   if (query.error)
     return (
       <p className="text-body-sm text-muted-foreground">
-        {loadProblemText(query.error, 'The history')}
+        {loadProblemText(query.error, translate('employeeTheHistory'))}
       </p>
     )
   if (!query.data) return <Loader className="h-24" />
   if (query.data.length === 0)
-    return <p className="text-body-sm text-muted-foreground">Nothing recorded yet.</p>
+    return <p className="text-body-sm text-muted-foreground">{translate('employeeNoHistory')}</p>
   return (
-    <Panel title="History">
+    <Panel title={translate('employeeTabHistory')}>
       <ol className="grid">
         {query.data.map((event) => (
           <li

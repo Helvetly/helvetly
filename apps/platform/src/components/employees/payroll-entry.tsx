@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, CircleCheck, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react'
+import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -18,8 +19,10 @@ import { Combobox, CURRENCY_OPTIONS, inputClass, NativeSelect } from '@/componen
 import { loadProblemText } from '@/components/data/load-problem'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
-import { formatPay, fullName, useEmployeeList } from '@/lib/employees'
+import { formatPay, fullName, useEmployeeList, useEmploymentSettings } from '@/lib/employees'
+import { translate } from '@/lib/i18n'
 import {
+  approvalBlock,
   COMPONENT_KINDS,
   monthPeriod,
   useApproveEntry,
@@ -32,26 +35,30 @@ import {
   type EntryInput,
   type PayrollEntry,
 } from '@/lib/payroll'
-import { useCan } from '@/lib/permissions'
+import { useSession } from '@/lib/queries'
+
+import { DisabledTip, useHrAccess } from './hr-access'
 
 const SHEET = 'w-full! max-w-none! gap-0 p-0 sm:w-[min(720px,100vw)]! dark:bg-card'
-const STALE = 'This entry was changed meanwhile. Reload it and try again.'
+const STALE = translate('payrollStale')
 
 export function EntryStatus({ entry }: { entry: PayrollEntry }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {entry.status === 'approved' ? (
-        <StatusBadge tone="green">Approved</StatusBadge>
+        <StatusBadge tone="green">{translate('payrollApproved')}</StatusBadge>
       ) : (
-        <StatusBadge>Draft</StatusBadge>
+        <StatusBadge>{translate('payrollDraft')}</StatusBadge>
       )}
       {entry.status === 'approved' &&
         (entry.payment_status === 'paid' ? (
-          <StatusBadge tone="blue">Paid</StatusBadge>
+          <StatusBadge tone="blue">{translate('payrollStatusPaid')}</StatusBadge>
         ) : (
-          <StatusBadge tone="amber">Unpaid</StatusBadge>
+          <StatusBadge tone="amber">{translate('payrollUnpaid')}</StatusBadge>
         ))}
-      {entry.superseded_by && <StatusBadge tone="gray">Corrected</StatusBadge>}
+      {entry.superseded_by && (
+        <StatusBadge tone="gray">{translate('payrollCorrected')}</StatusBadge>
+      )}
     </span>
   )
 }
@@ -73,9 +80,13 @@ export function EntrySheet({
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" showCloseButton={false} className={SHEET}>
         <SheetTitle className="sr-only">
-          {entry ? `Payroll entry for ${entry.employee_name}` : 'Payroll entry'}
+          {entry
+            ? translate('payrollEntryFor', { name: entry.employee_name })
+            : translate('payrollEntry')}
         </SheetTitle>
-        <SheetDescription className="sr-only">Payroll register entry</SheetDescription>
+        <SheetDescription className="sr-only">
+          {translate('payrollEntryDescription')}
+        </SheetDescription>
         {entry && editing ? (
           <EntryForm entry={entry} onDone={() => setEditing(false)} />
         ) : entry ? (
@@ -88,12 +99,12 @@ export function EntrySheet({
           />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
-            <p className="text-title-sm">This entry couldn’t be loaded.</p>
+            <p className="text-title-sm">{translate('payrollEntryLoadFailed')}</p>
             <p className="text-sm text-muted-foreground">
-              {loadProblemText(query.error, 'This entry')}
+              {loadProblemText(query.error, translate('payrollThisEntry'))}
             </p>
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Close
+              {translate('close')}
             </Button>
           </div>
         ) : (
@@ -128,8 +139,9 @@ function EntryView({
   onOpen: (id: string) => void
   onReload: () => void
 }) {
-  const canWrite = useCan('write:payroll')
-  const canApprove = useCan('write:payroll-approval')
+  const hr = useHrAccess()
+  const userId = useSession().data?.user.id
+  const settings = useEmploymentSettings().data
   const approve = useApproveEntry()
   const payment = usePayment()
   const correct = useCorrectEntry()
@@ -139,10 +151,20 @@ function EntryView({
   const [deleting, setDeleting] = useState(false)
   const current = !entry.superseded_by
   const draft = entry.status === 'draft'
+  const shows = hr.seesPayrollWrites
+  // Four-eyes: the person who entered the current figures cannot approve them.
+  const blocked = approvalBlock(entry, userId, settings)
+  const approveReason = hr.lockReason ?? blocked
 
   const failed = (error: unknown) => {
     if (error instanceof ApiError && error.status === 409 && error.code === 'conflict')
       setStale(true)
+    else if (error instanceof ApiError && error.code === 'second_approver_required')
+      toast.error(
+        settings && settings.payroll_approvers < 2
+          ? `${translate('payrollYouEnteredThese')} ${translate('payrollNobodyElseCanApprove')}`
+          : translate('payrollYouEnteredThese'),
+      )
     else toast.error(errorMessage(error))
   }
   const reload = () => {
@@ -153,7 +175,8 @@ function EntryView({
     payment.mutate(
       { entry, paidOn: date },
       {
-        onSuccess: () => toast.success(date ? 'Marked as paid.' : 'Marked as unpaid.'),
+        onSuccess: () =>
+          toast.success(translate(date ? 'payrollMarkedPaid' : 'payrollMarkedUnpaid')),
         onError: failed,
       },
     )
@@ -163,20 +186,37 @@ function EntryView({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <header className="flex items-start gap-3 border-b px-5 py-4 md:px-6">
         <div className="grid min-w-0 flex-1 gap-1">
-          <h2 className="truncate text-lg font-semibold">{entry.employee_name}</h2>
+          <h2 className="truncate text-lg font-semibold">
+            {hr.readEmployees ? (
+              <Link
+                href={`/employees?id=${encodeURIComponent(entry.employee_id)}`}
+                className="underline underline-offset-4"
+              >
+                {entry.employee_name}
+              </Link>
+            ) : (
+              entry.employee_name
+            )}
+          </h2>
           <p className="text-body-sm text-muted-foreground">
             {formatDate(entry.period_start)} – {formatDate(entry.period_end)}
-            {entry.pay_date && ` · paid out ${formatDate(entry.pay_date)}`}
+            {entry.pay_date &&
+              ` · ${translate('payrollPaidOut', { date: formatDate(entry.pay_date) })}`}
           </p>
           <EntryStatus entry={entry} />
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('close')}
+              onClick={onClose}
+            >
               <X />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Close</TooltipContent>
+          <TooltipContent>{translate('close')}</TooltipContent>
         </Tooltip>
       </header>
 
@@ -187,7 +227,7 @@ function EntryView({
             tone="warning"
             actions={
               <Button size="sm" variant="outline" onClick={reload}>
-                <RotateCcw /> Reload
+                <RotateCcw /> {translate('payrollReload')}
               </Button>
             }
           >
@@ -195,31 +235,28 @@ function EntryView({
           </Callout>
         )}
         {entry.superseded_by && (
-          <Callout tone="neutral">
-            A correction replaced this entry. It stays in the register as it was approved.
-          </Callout>
+          <Callout tone="neutral">{translate('payrollSupersededNote')}</Callout>
         )}
         {entry.supersedes_id && draft && (
-          <Callout tone="info">
-            This draft corrects an approved entry, which is kept until this one is approved.
-          </Callout>
+          <Callout tone="info">{translate('payrollCorrectionNote')}</Callout>
         )}
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Figure label="Gross" value={money(entry.gross)} />
-          <Figure label="Deductions" value={money(entry.deductions)} />
-          <Figure label="Net pay" value={money(entry.net)} />
-          <Figure label="Employer costs" value={money(entry.employer_costs)} />
-          <Figure label="Total cost" value={money(entry.total_cost)} />
+          <Figure label={translate('payrollGross')} value={money(entry.gross)} />
+          <Figure label={translate('payrollDeductions')} value={money(entry.deductions)} />
+          <Figure label={translate('payrollNetPay')} value={money(entry.net)} />
+          <Figure label={translate('payrollEmployerCosts')} value={money(entry.employer_costs)} />
+          <Figure label={translate('payrollTotalCost')} value={money(entry.total_cost)} />
         </div>
         {!entry.complete && (
-          <p className="text-body-sm text-muted-foreground">
-            Some figures are not known yet; a dash means missing, never zero.
-          </p>
+          <p className="text-body-sm text-muted-foreground">{translate('payrollIncompleteNote')}</p>
         )}
 
         {entry.components.length > 0 && (
-          <ul aria-label="Components" className="divide-y rounded-lg ring-1 ring-border">
+          <ul
+            aria-label={translate('payrollComponents')}
+            className="divide-y rounded-lg ring-1 ring-border"
+          >
             {entry.components.map((component) => (
               <li
                 key={`${component.kind}:${component.label}:${component.amount}`}
@@ -236,118 +273,132 @@ function EntryView({
         )}
 
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body-sm">
-          <dt className="text-muted-foreground">Source</dt>
+          <dt className="text-muted-foreground">{translate('employeeSource')}</dt>
           <dd>
             {entry.source}
             {entry.source_ref && ` · ${entry.source_ref}`}
           </dd>
-          {entry.approved_by && (
-            <>
-              <dt className="text-muted-foreground">Approved by</dt>
-              <dd>{entry.approved_by}</dd>
-            </>
-          )}
           {entry.paid_on && (
             <>
-              <dt className="text-muted-foreground">Paid on</dt>
+              <dt className="text-muted-foreground">{translate('payrollPaidOn')}</dt>
               <dd>{formatDate(entry.paid_on)}</dd>
             </>
           )}
           {entry.note && (
             <>
-              <dt className="text-muted-foreground">Note</dt>
+              <dt className="text-muted-foreground">{translate('payrollNote')}</dt>
               <dd className="whitespace-pre-wrap">{entry.note}</dd>
             </>
           )}
         </dl>
 
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
-          <span>Recording an entry does not certify it.</span>
-          <span>Approved is not paid.</span>
-          <HelpTip label="About approval and payment">
-            Approving confirms the figures someone computed; marking it paid records that the net
-            pay left your account. Helvetly moves no money.
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-caption text-muted-foreground">
+          <span>{auditLine(entry)}</span>
+          <HelpTip label={translate('payrollApprovalLabel')}>
+            {translate('payrollApprovalTip')}
           </HelpTip>
         </p>
 
         <div className="flex flex-wrap items-center gap-2 border-t pt-4">
-          {draft && canWrite && (
-            <Button variant="outline" onClick={onEdit}>
-              <Pencil /> Edit
-            </Button>
+          {draft && shows && (
+            <DisabledTip reason={hr.lockReason}>
+              <Button variant="outline" disabled={Boolean(hr.lockReason)} onClick={onEdit}>
+                <Pencil /> {translate('employeeEdit')}
+              </Button>
+            </DisabledTip>
           )}
-          {draft && canApprove && (
-            <Button
-              disabled={approve.isPending}
-              onClick={() =>
-                approve.mutate(entry, {
-                  onSuccess: () => toast.success('Entry approved.'),
-                  onError: failed,
-                })
-              }
-            >
-              <CircleCheck /> Approve
-            </Button>
+          {draft && shows && (
+            <DisabledTip reason={approveReason}>
+              <Button
+                disabled={approve.isPending || Boolean(approveReason)}
+                onClick={() =>
+                  approve.mutate(entry, {
+                    onSuccess: () => toast.success(translate('payrollApprovedToast')),
+                    onError: failed,
+                  })
+                }
+              >
+                <CircleCheck /> {translate('payrollApprove')}
+              </Button>
+            </DisabledTip>
           )}
-          {!draft && current && canApprove && entry.payment_status === 'unpaid' && (
+          {!draft && current && shows && entry.payment_status === 'unpaid' && (
             <span className="flex items-center gap-2">
               <input
                 type="date"
-                aria-label="Payment date"
+                aria-label={translate('payrollPaymentDate')}
                 value={paidOn}
+                disabled={Boolean(hr.lockReason)}
                 onChange={(event) => setPaidOn(event.target.value)}
                 className={cn(inputClass, 'w-40')}
               />
-              <Button disabled={payment.isPending || !paidOn} onClick={() => pay(paidOn)}>
-                <Check /> Mark as paid
-              </Button>
+              <DisabledTip reason={hr.lockReason}>
+                <Button
+                  disabled={payment.isPending || !paidOn || Boolean(hr.lockReason)}
+                  onClick={() => pay(paidOn)}
+                >
+                  <Check /> {translate('payrollMarkPaid')}
+                </Button>
+              </DisabledTip>
             </span>
           )}
-          {!draft && current && canApprove && entry.payment_status === 'paid' && (
-            <Button variant="outline" disabled={payment.isPending} onClick={() => pay(null)}>
-              Mark as unpaid
-            </Button>
+          {!draft && current && shows && entry.payment_status === 'paid' && (
+            <DisabledTip reason={hr.lockReason}>
+              <Button
+                variant="outline"
+                disabled={payment.isPending || Boolean(hr.lockReason)}
+                onClick={() => pay(null)}
+              >
+                {translate('payrollMarkUnpaid')}
+              </Button>
+            </DisabledTip>
           )}
-          {!draft && current && canWrite && (
-            <Button
-              variant="outline"
-              disabled={correct.isPending}
-              onClick={() =>
-                correct.mutate(entry.id, {
-                  onSuccess: (created) => {
-                    toast.success('Correction started as a draft.')
-                    onOpen(created.id)
-                  },
-                  onError: failed,
-                })
-              }
-            >
-              <RotateCcw /> Correct
-            </Button>
+          {!draft && current && shows && (
+            <DisabledTip reason={hr.lockReason}>
+              <Button
+                variant="outline"
+                disabled={correct.isPending || Boolean(hr.lockReason)}
+                onClick={() =>
+                  correct.mutate(entry.id, {
+                    onSuccess: (created) => {
+                      toast.success(translate('payrollCorrectionStarted'))
+                      onOpen(created.id)
+                    },
+                    onError: failed,
+                  })
+                }
+              >
+                <RotateCcw /> {translate('payrollCorrect')}
+              </Button>
+            </DisabledTip>
           )}
-          {draft && canWrite && (
-            <Button
-              variant="destructive-ghost"
-              className="ml-auto"
-              onClick={() => setDeleting(true)}
-            >
-              <Trash2 /> Delete draft
-            </Button>
+          {draft && shows && (
+            <span className="ml-auto">
+              <DisabledTip reason={hr.lockReason}>
+                <Button
+                  variant="destructive-ghost"
+                  disabled={Boolean(hr.lockReason)}
+                  onClick={() => setDeleting(true)}
+                >
+                  <Trash2 /> {translate('payrollDeleteDraft')}
+                </Button>
+              </DisabledTip>
+            </span>
           )}
         </div>
       </div>
       {deleting && (
         <ConfirmDialog
-          title="Delete this draft?"
-          body="The draft entry is removed from the register. Approved entries are never deleted."
-          confirmLabel="Delete draft"
+          title={translate('payrollDeleteDraftTitle')}
+          body={translate('payrollDeleteDraftBody')}
+          confirmLabel={translate('payrollDeleteDraft')}
           tone="destructive"
           onDecide={(approved) => {
             setDeleting(false)
             if (approved)
               remove.mutate(entry.id, {
                 onSuccess: () => {
-                  toast.success('Draft deleted.')
+                  toast.success(translate('payrollDraftDeleted'))
                   onClose()
                 },
                 onError: failed,
@@ -444,8 +495,8 @@ export function NewEntrySheet({
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" showCloseButton={false} className={SHEET}>
-        <SheetTitle className="sr-only">New entry</SheetTitle>
-        <SheetDescription className="sr-only">Record a payroll entry</SheetDescription>
+        <SheetTitle className="sr-only">{translate('payrollNewEntry')}</SheetTitle>
+        <SheetDescription className="sr-only">{translate('payrollRecordEntry')}</SheetDescription>
         <EntryForm month={month} onDone={onClose} onCreated={onCreated} />
       </SheetContent>
     </Sheet>
@@ -453,10 +504,10 @@ export function NewEntrySheet({
 }
 
 const AMOUNTS = [
-  ['gross', 'Gross'],
-  ['deductions', 'Deductions'],
-  ['net', 'Net pay'],
-  ['employer_costs', 'Employer costs'],
+  ['gross', translate('payrollGross')],
+  ['deductions', translate('payrollDeductions')],
+  ['net', translate('payrollNetPay')],
+  ['employer_costs', translate('payrollEmployerCosts')],
 ] as const
 
 function EntryForm({
@@ -497,7 +548,7 @@ function EntryForm({
       { id: entry?.id, version: entry?.version, input: entryInput(values) },
       {
         onSuccess: (saved) => {
-          toast.success(entry ? 'Entry saved.' : 'Entry recorded as a draft.')
+          toast.success(translate(entry ? 'payrollEntrySaved' : 'payrollEntryRecorded'))
           if (entry) onDone()
           else onCreated?.(saved)
         },
@@ -539,11 +590,12 @@ function EntryForm({
       className="flex min-h-0 flex-1 flex-col"
     >
       <div className="grid shrink-0 gap-0.5 border-b px-5 py-4 md:px-6">
-        <h2 className="text-lg font-semibold">{entry ? 'Edit entry' : 'New entry'}</h2>
-        <p className="text-body-sm text-muted-foreground">
-          Enter the figures your payroll provider computed. Leave a figure empty when it is not
-          known.
-        </p>
+        <h2 className="flex items-center gap-1.5 text-lg font-semibold">
+          {translate(entry ? 'payrollEditEntry' : 'payrollNewEntry')}
+          <HelpTip label={translate('payrollFiguresLabel')}>
+            {translate('payrollFiguresTip')}
+          </HelpTip>
+        </h2>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-5 md:p-6">
         {stale && (
@@ -553,7 +605,7 @@ function EntryForm({
         )}
         {field(
           'employee_id',
-          'Employee',
+          translate('payrollColEmployee'),
           <NativeSelect
             {...describe('employee_id')}
             value={values.employee_id}
@@ -561,7 +613,7 @@ function EntryForm({
             onChange={(event) => set('employee_id', event.target.value)}
           >
             <option value="" disabled>
-              {options.length === 0 ? 'No employees yet' : 'Choose an employee'}
+              {translate(options.length === 0 ? 'payrollNoEmployees' : 'payrollChooseEmployee')}
             </option>
             {options.map((person) => (
               <option key={person.id} value={person.id}>
@@ -573,18 +625,23 @@ function EntryForm({
           true,
         )}
         <div className="grid gap-4 sm:grid-cols-3">
-          {field('period_start', 'Period start', text('period_start', 'date'), true)}
-          {field('period_end', 'Period end', text('period_end', 'date'), true)}
-          {field('pay_date', 'Pay date', text('pay_date', 'date'))}
+          {field(
+            'period_start',
+            translate('payrollPeriodStart'),
+            text('period_start', 'date'),
+            true,
+          )}
+          {field('period_end', translate('payrollPeriodEnd'), text('period_end', 'date'), true)}
+          {field('pay_date', translate('payrollPayDate'), text('pay_date', 'date'))}
         </div>
         {field(
           'currency',
-          'Currency',
+          translate('payrollCurrency'),
           <Combobox
             id={id('currency')}
             value={values.currency}
             options={CURRENCY_OPTIONS}
-            placeholder="Choose a currency"
+            placeholder={translate('payrollChooseCurrency')}
             invalid={Boolean(errors.currency)}
             onChange={(code) => set('currency', code)}
           />,
@@ -598,16 +655,15 @@ function EntryForm({
 
         <fieldset className="grid gap-2">
           <legend className="mb-1 flex items-center gap-1 text-body-sm font-medium">
-            Components
-            <HelpTip label="About components">
-              Optional lines that make up the totals. Each kind must add up to its total when both
-              are given.
+            {translate('payrollComponents')}
+            <HelpTip label={translate('payrollComponentsLabel')}>
+              {translate('payrollComponentsTip')}
             </HelpTip>
           </legend>
           {values.components.map((line, index) => (
             <div key={line.key} className="flex items-center gap-2">
               <NativeSelect
-                aria-label={`Component ${index + 1} kind`}
+                aria-label={translate('payrollComponentKind', { n: index + 1 })}
                 value={line.kind}
                 wrapperClassName="w-40 shrink-0"
                 onChange={(event) => {
@@ -622,14 +678,14 @@ function EntryForm({
                 ))}
               </NativeSelect>
               <input
-                aria-label={`Component ${index + 1} label`}
+                aria-label={translate('payrollComponentLabel', { n: index + 1 })}
                 value={line.label}
-                placeholder="Salary"
+                placeholder={translate('payrollComponentPlaceholder')}
                 onChange={(event) => setLine(index, { label: event.target.value })}
                 className={cn(inputClass, 'min-w-0 flex-1')}
               />
               <input
-                aria-label={`Component ${index + 1} amount`}
+                aria-label={translate('payrollComponentAmount', { n: index + 1 })}
                 inputMode="decimal"
                 value={line.amount}
                 placeholder="0.00"
@@ -642,7 +698,7 @@ function EntryForm({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remove component ${index + 1}`}
+                    aria-label={translate('payrollComponentRemove', { n: index + 1 })}
                     onClick={() =>
                       set(
                         'components',
@@ -653,7 +709,7 @@ function EntryForm({
                     <X />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Remove line</TooltipContent>
+                <TooltipContent>{translate('payrollRemoveLine')}</TooltipContent>
               </Tooltip>
             </div>
           ))}
@@ -670,26 +726,33 @@ function EntryForm({
               ])
             }
           >
-            <Plus /> Add line
+            <Plus /> {translate('payrollAddLine')}
           </Button>
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {field('source_ref', 'Source reference', text('source_ref'))}
-          {field('note', 'Note', text('note'))}
+          {field('source_ref', translate('payrollSourceRef'), text('source_ref'))}
+          {field('note', translate('payrollNote'), text('note'))}
         </div>
-        <p className="text-caption text-muted-foreground">
-          Recording an entry does not certify it.
-        </p>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3 md:px-6">
         <Button type="button" variant="ghost" onClick={onDone}>
-          Cancel
+          {translate('cancel')}
         </Button>
         <Button type="submit" disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? translate('employeeSaving') : translate('employeeSave')}
         </Button>
       </div>
     </form>
   )
+}
+
+/** "Created by Anna · Approved by Luca" for the audit trail; names come from the server. */
+function auditLine(entry: PayrollEntry): string {
+  return [
+    entry.created_by && translate('payrollCreatedBy', { name: entry.created_by }),
+    entry.approved_by && translate('payrollApprovedBy', { name: entry.approved_by }),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }

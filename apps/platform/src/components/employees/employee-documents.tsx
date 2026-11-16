@@ -27,45 +27,63 @@ import {
   type Employee,
   type EmployeeDocument,
 } from '@/lib/employees'
-import { useCan } from '@/lib/permissions'
+import { translate } from '@/lib/i18n'
 
-const icon = (label: string, onClick: () => void, children: ReactNode, destructive = false) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={label}
-        onClick={onClick}
-        className={destructive ? 'text-destructive' : undefined}
-      >
+import { DisabledTip, useHrAccess } from './hr-access'
+
+const icon = (
+  label: string,
+  onClick: () => void,
+  children: ReactNode,
+  {
+    destructive = false,
+    disabledReason = null,
+  }: { destructive?: boolean; disabledReason?: string | null } = {},
+) =>
+  disabledReason ? (
+    <DisabledTip reason={`${label}: ${disabledReason}`}>
+      <Button variant="ghost" size="icon-sm" aria-label={label} disabled>
         {children}
       </Button>
-    </TooltipTrigger>
-    <TooltipContent>{label}</TooltipContent>
-  </Tooltip>
-)
+    </DisabledTip>
+  ) : (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          onClick={onClick}
+          className={destructive ? 'text-destructive' : undefined}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
 
 /** Private HR files: kept apart from Documents, each with how long it must be kept. */
-export function EmployeeDocuments({ employee, owner }: { employee: Employee; owner: boolean }) {
+export function EmployeeDocuments({ employee }: { employee: Employee }) {
   const query = useEmployeeDocuments(employee.id, true)
-  const canWrite = useCan('write:employee-documents') && !employee.restricted && !employee.erased_at
+  const hr = useHrAccess()
+  const canWrite = hr.seesEmployeeWrites && !employee.restricted && !employee.erased_at
   const hold = useDocumentHold(employee.id)
   const remove = useDeleteDocument(employee.id)
   const [deleting, setDeleting] = useState<EmployeeDocument | null>(null)
 
   return (
     <>
-      {canWrite && <UploadForm id={employee.id} />}
-      <Panel title="Documents">
+      {canWrite && <UploadForm id={employee.id} lockReason={hr.lockReason} />}
+      <Panel title={translate('employeeTabDocuments')}>
         {query.error ? (
           <p className="text-body-sm text-muted-foreground">
-            {loadProblemText(query.error, 'The documents')}
+            {loadProblemText(query.error, translate('employeeTheDocuments'))}
           </p>
         ) : !query.data ? (
           <Loader className="h-16" />
         ) : query.data.length === 0 ? (
-          <p className="text-body-sm text-muted-foreground">No documents yet.</p>
+          <p className="text-body-sm text-muted-foreground">{translate('employeeNoDocuments')}</p>
         ) : (
           <ul className="grid">
             {query.data.map((doc) => (
@@ -83,38 +101,49 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
                     </a>
                     <span className="text-body-sm text-muted-foreground">
                       {documentTypeLabel(doc.type)}
-                      {doc.document_date && ` · dated ${formatDate(doc.document_date)}`} ·{' '}
-                      {formatFileSize(doc.size)}
+                      {doc.document_date &&
+                        ` · ${translate('employeeDocDated', { date: formatDate(doc.document_date) })}`}{' '}
+                      · {formatFileSize(doc.size)}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center">
                     {icon(
-                      `Download ${doc.name}`,
+                      translate('employeeDocDownload', { name: doc.name }),
                       () => window.location.assign(documentDownloadUrl(employee.id, doc.id)),
                       <Download />,
                     )}
-                    {owner &&
+                    {hr.owner &&
                       icon(
-                        doc.legal_hold ? 'Lift legal hold' : 'Set legal hold',
+                        translate(doc.legal_hold ? 'employeeLiftHold' : 'employeeSetHold'),
                         () =>
                           hold.mutate(
                             { doc: doc.id, hold: !doc.legal_hold },
                             { onError: (error) => toast.error(errorMessage(error)) },
                           ),
                         doc.legal_hold ? <LockOpen /> : <Lock />,
+                        { disabledReason: hr.lockReason },
                       )}
                     {canWrite &&
-                      icon(`Delete ${doc.name}`, () => setDeleting(doc), <Trash2 />, true)}
+                      icon(
+                        translate('employeeDocDelete', { name: doc.name }),
+                        () => setDeleting(doc),
+                        <Trash2 />,
+                        { destructive: true, disabledReason: hr.lockReason },
+                      )}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 text-body-sm">
-                  {doc.legal_hold && <StatusBadge tone="amber">Legal hold</StatusBadge>}
-                  {doc.retention_due && <StatusBadge tone="red">Review for deletion</StatusBadge>}
+                  {doc.legal_hold && (
+                    <StatusBadge tone="amber">{translate('employeeLegalHold')}</StatusBadge>
+                  )}
+                  {doc.retention_due && (
+                    <StatusBadge tone="red">{translate('employeeDocReview')}</StatusBadge>
+                  )}
                   <span className="text-muted-foreground">{retentionText(doc)}</span>
                 </div>
                 {doc.retention_guidance && doc.retention_guidance.length > 0 && (
                   <ul
-                    aria-label="Retention guidance"
+                    aria-label={translate('employeeRetentionGuidance')}
                     className="grid gap-1 rounded-md bg-muted/50 px-3 py-2 text-caption"
                   >
                     {doc.retention_guidance.map((rule) => (
@@ -129,7 +158,7 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
                           rel="noreferrer"
                           className="text-muted-foreground underline underline-offset-2"
                         >
-                          {rule.source ?? 'Source'}
+                          {rule.source ?? translate('employeeSource')}
                         </a>
                       </li>
                     ))}
@@ -141,20 +170,20 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
         )}
       </Panel>
       <p className="px-1 text-caption text-muted-foreground">
-        Retention dates are guidance from the rules of the place of work. Check them for your case.
+        {translate('employeeRetentionNote')}
       </p>
       {deleting && (
         <ConfirmDialog
-          title={`Delete ${deleting.name}?`}
-          body="A document can be deleted within a day of uploading it, or once its retention date has passed. Deleting can’t be undone."
-          confirmLabel="Delete document"
+          title={translate('employeeDocDeleteTitle', { name: deleting.name })}
+          body={translate('employeeDocDeleteBody')}
+          confirmLabel={translate('employeeDocDeleteConfirm')}
           tone="destructive"
           onDecide={(approved) => {
             const doc = deleting
             setDeleting(null)
             if (approved)
               remove.mutate(doc.id, {
-                onSuccess: () => toast.success('Document deleted.'),
+                onSuccess: () => toast.success(translate('employeeDocDeleted')),
                 onError: (error) => toast.error(errorMessage(error)),
               })
           }}
@@ -166,28 +195,29 @@ export function EmployeeDocuments({ employee, owner }: { employee: Employee; own
 
 /** "Keep until 31 Dec 2036 · set by rule", or why there is no date yet. */
 export function retentionText(doc: EmployeeDocument): string {
-  if (!doc.retain_until) return 'No retention date yet'
-  const until = `Keep until ${formatDate(doc.retain_until)}`
-  return doc.retention_rule ? `${until} · set by its retention rule` : `${until} · set by hand`
+  if (!doc.retain_until) return translate('employeeNoRetentionDate')
+  return translate(doc.retention_rule ? 'employeeKeepUntilRule' : 'employeeKeepUntilHand', {
+    date: formatDate(doc.retain_until),
+  })
 }
 
-function UploadForm({ id }: { id: string }) {
+function UploadForm({ id, lockReason }: { id: string; lockReason: string | null }) {
   const upload = useUploadDocument(id)
   const file = useRef<HTMLInputElement>(null)
   const [type, setType] = useState('')
   const [date, setDate] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   return (
-    <Panel title="Add a document">
+    <Panel title={translate('employeeDocAdd')}>
       <form
         noValidate
-        aria-label="Add a document"
+        aria-label={translate('employeeDocAdd')}
         onSubmit={(event) => {
           event.preventDefault()
           const chosen = file.current?.files?.[0]
           const found: FieldErrors = {}
-          if (!chosen) found.file = 'Choose a file.'
-          if (!type) found.type = 'Choose the kind of document.'
+          if (!chosen) found.file = translate('employeeDocChooseFile')
+          if (!type) found.type = translate('employeeDocChooseKind')
           setErrors(found)
           if (!chosen || !type) return
           const form = new FormData()
@@ -196,7 +226,7 @@ function UploadForm({ id }: { id: string }) {
           if (date) form.append('document_date', date)
           upload.mutate(form, {
             onSuccess: () => {
-              toast.success(`${chosen.name} added.`)
+              toast.success(translate('employeeAddedToast', { name: chosen.name }))
               if (file.current) file.current.value = ''
               setDate('')
             },
@@ -211,7 +241,7 @@ function UploadForm({ id }: { id: string }) {
       >
         <FormField
           id="employee-doc-file"
-          label="File"
+          label={translate('employeeDocFile')}
           error={errors.file}
           required
           className="sm:col-span-2"
@@ -224,14 +254,19 @@ function UploadForm({ id }: { id: string }) {
             className={`${inputClass} py-1.5 file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium`}
           />
         </FormField>
-        <FormField id="employee-doc-type" label="Type" error={errors.type} required>
+        <FormField
+          id="employee-doc-type"
+          label={translate('employeeDocType')}
+          error={errors.type}
+          required
+        >
           <NativeSelect
             id="employee-doc-type"
             value={type}
             aria-invalid={errors.type ? true : undefined}
             onChange={(event) => setType(event.target.value)}
           >
-            <option value="">Choose a type</option>
+            <option value="">{translate('employeeDocChooseType')}</option>
             {DOCUMENT_TYPES.map((entry) => (
               <option key={entry.value} value={entry.value}>
                 {entry.label}
@@ -241,9 +276,9 @@ function UploadForm({ id }: { id: string }) {
         </FormField>
         <FormField
           id="employee-doc-date"
-          label="Document date"
+          label={translate('employeeDocDate')}
           error={errors.document_date}
-          tip="The date on the document; retention periods often count from it."
+          tip={translate('employeeDocDateTip')}
         >
           <input
             id="employee-doc-date"
@@ -254,9 +289,19 @@ function UploadForm({ id }: { id: string }) {
           />
         </FormField>
         <div className="flex justify-end sm:col-span-2">
-          <Button type="submit" size="sm" className="gap-1.5" disabled={upload.isPending}>
-            <Upload className="size-3.5" /> {upload.isPending ? 'Uploading…' : 'Upload'}
-          </Button>
+          <DisabledTip reason={lockReason}>
+            <Button
+              type="submit"
+              size="sm"
+              className="gap-1.5"
+              disabled={upload.isPending || Boolean(lockReason)}
+            >
+              <Upload className="size-3.5" />{' '}
+              {upload.isPending
+                ? translate('employeeDocUploading')
+                : translate('employeeDocUpload')}
+            </Button>
+          </DisabledTip>
         </div>
       </form>
     </Panel>

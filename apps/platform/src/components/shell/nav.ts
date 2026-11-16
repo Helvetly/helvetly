@@ -32,6 +32,8 @@ export type NavItem = {
   bell?: boolean
   /** The plan feature it needs; without it the item carries the plan's tag. */
   feature?: FeatureKey
+  /** Another page of the same area for those who may read only that one (payroll without employees). */
+  also?: { need: Need; href: string }
 }
 
 // Items without a page yet have no href: they look the same and say "coming soon".
@@ -53,7 +55,13 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
     label: translate('team'),
     items: [
       { label: translate('members'), icon: Users, href: '/members' },
-      { label: translate('employees'), icon: IdCard, href: '/employees' },
+      {
+        label: translate('employees'),
+        icon: IdCard,
+        href: '/employees',
+        feature: 'employees',
+        also: { need: 'read:payroll', href: '/employees/payroll' },
+      },
     ],
   },
   {
@@ -73,12 +81,13 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
 export function visibleNav(scopes: readonly string[]) {
-  const allowed = ({ href }: NavItem) => {
-    const resource = href ? resourceForPath(href) : null
-    return !resource || can(scopes, `read:${resource}`)
+  const readable = (item: NavItem): NavItem[] => {
+    const resource = item.href ? resourceForPath(item.href) : null
+    if (!resource || can(scopes, `read:${resource}`)) return [item]
+    return item.also && can(scopes, item.also.need) ? [{ ...item, href: item.also.href }] : []
   }
   return NAV.flatMap((group) => {
-    const items = group.items.filter(allowed)
+    const items = group.items.flatMap(readable)
     return items.length > 0 ? [{ ...group, items }] : []
   })
 }

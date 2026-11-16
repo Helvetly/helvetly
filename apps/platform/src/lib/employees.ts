@@ -13,9 +13,16 @@ import {
 
 import { request, type ApiError } from '@/lib/api'
 import type { Page } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
 
 export type EmployeeStatus = 'active' | 'upcoming' | 'ended' | 'archived'
-export type EmploymentType = 'permanent' | 'fixed_term' | 'temporary' | 'apprentice' | 'other'
+export type EmploymentType =
+  | 'permanent'
+  | 'fixed_term'
+  | 'hourly'
+  | 'temporary'
+  | 'apprentice'
+  | 'other'
 
 export type Employee = {
   id: string
@@ -51,6 +58,24 @@ export type Employee = {
   /** The last characters only; the value is sealed and shown by `protected`. */
   bank_account_hint: string | null
   tax_id_hint: string | null
+  social_security_number_hint: string | null
+  /** Decimal string, above 0 and up to 168. */
+  weekly_hours: string | null
+  notice_period: string | null
+  thirteenth_salary: boolean
+  /** Swiss withholding tax (Quellensteuer); only for work in Switzerland. */
+  withholding_tax: boolean
+  withholding_tax_canton: string | null
+  /** BVG/LPP pension fund. */
+  pension_insurer: string | null
+  /** UVG/LAA accident insurer. */
+  accident_insurer: string | null
+  /** KTG daily sickness allowance insurer. */
+  sickness_insurer: string | null
+  /** Salary certificate (form 11) box F. */
+  free_transport: boolean
+  /** Salary certificate (form 11) box G. */
+  canteen_meals: boolean
   legal_hold: boolean
   legal_hold_reason: string | null
   restricted: boolean
@@ -61,24 +86,25 @@ export type Employee = {
   updated_at: string
 }
 
-/** What a create or edit sends, field by field (the server validates each); `bank_account` and `tax_id` are
- * write-only. */
+/** What a create or edit sends, field by field (the server validates each); `bank_account`, `tax_id` and
+ * `social_security_number` are write-only. */
 export type EmployeeInput = Partial<Record<string, string | boolean | null>>
 
 export const EMPLOYMENT_TYPES: { value: EmploymentType; label: string }[] = [
-  { value: 'permanent', label: 'Permanent' },
-  { value: 'fixed_term', label: 'Fixed term' },
-  { value: 'temporary', label: 'Temporary' },
-  { value: 'apprentice', label: 'Apprentice' },
-  { value: 'other', label: 'Other' },
+  { value: 'permanent', label: translate('employeeTypePermanent') },
+  { value: 'fixed_term', label: translate('employeeTypeFixedTerm') },
+  { value: 'hourly', label: translate('employeeTypeHourly') },
+  { value: 'temporary', label: translate('employeeTypeTemporary') },
+  { value: 'apprentice', label: translate('employeeTypeApprentice') },
+  { value: 'other', label: translate('employeeTypeOther') },
 ]
 
 export const STATUSES: { value: EmployeeStatus | 'all'; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'ended', label: 'Ended' },
-  { value: 'archived', label: 'Archived' },
-  { value: 'all', label: 'All' },
+  { value: 'active', label: translate('employeeStatusActive') },
+  { value: 'upcoming', label: translate('employeeStatusUpcoming') },
+  { value: 'ended', label: translate('employeeStatusEnded') },
+  { value: 'archived', label: translate('employeeStatusArchived') },
+  { value: 'all', label: translate('employeeStatusAll') },
 ]
 
 export const fullName = (employee: Pick<Employee, 'first_name' | 'last_name'>) =>
@@ -148,14 +174,14 @@ export type PayTermsInput = Pick<
 > & { note: string | null }
 
 export const PAY_BASES: { value: PayBasis; label: string }[] = [
-  { value: 'monthly', label: 'Monthly salary' },
-  { value: 'hourly', label: 'Hourly rate' },
+  { value: 'monthly', label: translate('payrollBasisMonthly') },
+  { value: 'hourly', label: translate('payrollBasisHourly') },
 ]
 export const PAY_FREQUENCIES: { value: PayFrequency; label: string }[] = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'semimonthly', label: 'Twice a month' },
-  { value: 'biweekly', label: 'Every two weeks' },
-  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: translate('payrollFrequencyMonthly') },
+  { value: 'semimonthly', label: translate('payrollFrequencySemimonthly') },
+  { value: 'biweekly', label: translate('payrollFrequencyBiweekly') },
+  { value: 'weekly', label: translate('payrollFrequencyWeekly') },
 ]
 
 export type RetentionRule = {
@@ -192,18 +218,18 @@ export type EmployeeDocument = {
 }
 
 export const DOCUMENT_TYPES: { value: string; label: string }[] = [
-  { value: 'employment_contract', label: 'Employment contract' },
-  { value: 'contract_amendment', label: 'Contract amendment' },
-  { value: 'termination_document', label: 'Termination document' },
-  { value: 'personnel_file', label: 'Personnel file' },
-  { value: 'payslip', label: 'Payslip' },
-  { value: 'payroll_record', label: 'Payroll record' },
-  { value: 'tax_withholding_record', label: 'Tax withholding record' },
-  { value: 'social_security_record', label: 'Social security record' },
-  { value: 'time_record', label: 'Time record' },
-  { value: 'work_permit_copy', label: 'Work permit copy' },
-  { value: 'id_document_copy', label: 'ID document copy' },
-  { value: 'other', label: 'Other' },
+  { value: 'employment_contract', label: translate('employeeDocEmploymentContract') },
+  { value: 'contract_amendment', label: translate('employeeDocContractAmendment') },
+  { value: 'termination_document', label: translate('employeeDocTermination') },
+  { value: 'personnel_file', label: translate('employeeDocPersonnelFile') },
+  { value: 'payslip', label: translate('employeeDocPayslip') },
+  { value: 'payroll_record', label: translate('employeeDocPayrollRecord') },
+  { value: 'tax_withholding_record', label: translate('employeeDocTaxWithholding') },
+  { value: 'social_security_record', label: translate('employeeDocSocialSecurity') },
+  { value: 'time_record', label: translate('employeeDocTimeRecord') },
+  { value: 'work_permit_copy', label: translate('employeeDocWorkPermit') },
+  { value: 'id_document_copy', label: translate('employeeDocIdCopy') },
+  { value: 'other', label: translate('employeeTypeOther') },
 ]
 export const documentTypeLabel = (type: string) =>
   DOCUMENT_TYPES.find((entry) => entry.value === type)?.label ?? type
@@ -233,7 +259,34 @@ export type EmploymentSettings = {
   employing_entity: string | null
   country: string | null
   region: string | null
+  /** Four-eyes: whoever entered an entry's current figures cannot approve it. */
+  require_second_approver: boolean
+  /** Owners and members with payroll edit: who could approve. */
+  payroll_approvers: number
   updated_at: string | null
+}
+export type EmploymentSettingsInput = Pick<
+  EmploymentSettings,
+  'employing_entity' | 'country' | 'region'
+> & { require_second_approver?: boolean }
+
+/** What erasing a former employee would do today; GET /employment/retention changes nothing. */
+export type RetentionItem = {
+  employee_id: string
+  name: string
+  employment_end: string
+  blocked_by: null | 'legal_hold' | 'erased' | 'restricted'
+  documents_due: EmployeeDocument[]
+  documents_kept: number
+  /** The earliest retention end still to come. */
+  next_due: string | null
+}
+
+/** The sealed fields, revealed on purpose (and audited by the server). */
+export type ProtectedFields = {
+  bank_account: string | null
+  tax_id: string | null
+  social_security_number: string | null
 }
 
 export type HistoryEvent = {
@@ -245,24 +298,25 @@ export type HistoryEvent = {
 }
 
 const HISTORY_LABELS: Record<string, string> = {
-  'employee.created': 'Employee added',
-  'employee.archived': 'Archived',
-  'employee.unarchived': 'Restored from the archive',
-  'employee.erased': 'Personal data erased',
-  'employee.legal_hold_set': 'Legal hold set',
-  'employee.legal_hold_lifted': 'Legal hold lifted',
-  'employee.restricted': 'Processing restricted',
-  'employee.unrestricted': 'Restriction lifted',
-  'employee.pay_terms_added': 'Pay terms added',
-  'employee.pay_terms_removed': 'Future pay terms removed',
-  'employee.document_added': 'Document added',
-  'employee.document_deleted': 'Document deleted',
-  'employee.document_hold_set': 'Legal hold set on a document',
-  'employee.document_hold_lifted': 'Legal hold lifted from a document',
-  'payroll.approved': 'Payroll entry approved',
-  'payroll.corrected': 'Payroll entry corrected',
-  'payroll.paid': 'Payroll entry marked as paid',
-  'payroll.unpaid': 'Payroll entry marked as unpaid',
+  'employee.created': translate('employeeHistoryCreated'),
+  'employee.archived': translate('employeeHistoryArchived'),
+  'employee.unarchived': translate('employeeHistoryUnarchived'),
+  'employee.erased': translate('employeeHistoryErased'),
+  'employee.legal_hold_set': translate('employeeHistoryLegalHoldSet'),
+  'employee.legal_hold_lifted': translate('employeeHistoryLegalHoldLifted'),
+  'employee.restricted': translate('employeeHistoryRestricted'),
+  'employee.unrestricted': translate('employeeHistoryUnrestricted'),
+  'employee.pay_terms_added': translate('employeeHistoryPayTermsAdded'),
+  'employee.pay_terms_removed': translate('employeeHistoryPayTermsRemoved'),
+  'employee.document_added': translate('employeeHistoryDocumentAdded'),
+  'employee.document_deleted': translate('employeeHistoryDocumentDeleted'),
+  'employee.document_hold_set': translate('employeeHistoryDocumentHoldSet'),
+  'employee.document_hold_lifted': translate('employeeHistoryDocumentHoldLifted'),
+  'employee.protected_viewed': translate('employeeHistoryProtectedViewed'),
+  'payroll.approved': translate('payrollHistoryApproved'),
+  'payroll.corrected': translate('payrollHistoryCorrected'),
+  'payroll.paid': translate('payrollHistoryPaid'),
+  'payroll.unpaid': translate('payrollHistoryUnpaid'),
 }
 /** "employee.pay_terms_added" as people read it; an unknown kind keeps its words. */
 export const historyLabel = (kind: string) =>
@@ -287,10 +341,7 @@ export const employeesApi = {
       `${path(id)}/erase`,
       { method: 'POST' },
     ),
-  protected: (id: string) =>
-    request<{ data: { bank_account: string | null; tax_id: string | null } }>(
-      `${path(id)}/protected`,
-    ),
+  protected: (id: string) => request<{ data: ProtectedFields }>(`${path(id)}/protected`),
   jurisdiction: (id: string) => request<{ data: Resolution }>(`${path(id)}/jurisdiction`),
   history: (id: string) => request<{ data: HistoryEvent[] }>(`${path(id)}/history`),
   payTerms: (id: string) => request<{ data: PayTerms[] }>(`${path(id)}/pay-terms`),
@@ -307,8 +358,9 @@ export const employeesApi = {
   deleteDocument: (id: string, doc: string) =>
     request<void>(`${path(id)}/documents/${encodeURIComponent(doc)}`, { method: 'DELETE' }),
   settings: () => request<{ data: EmploymentSettings }>('/employment/settings'),
-  putSettings: (input: Omit<EmploymentSettings, 'updated_at'>) =>
+  putSettings: (input: EmploymentSettingsInput) =>
     request<{ data: EmploymentSettings }>('/employment/settings', { method: 'PUT', json: input }),
+  retention: () => request<{ data: RetentionItem[] }>('/employment/retention'),
   jurisdictions: () => request<{ data: { countries: Country[] } }>('/employment/jurisdictions'),
 }
 
@@ -324,13 +376,15 @@ export const employeeKeys = {
     ['employees', id, part] as const,
   settings: ['employment', 'settings'] as const,
   jurisdictions: ['employment', 'jurisdictions'] as const,
+  retention: ['employment', 'retention'] as const,
 }
 
-export function useEmployeeList(params: ListParams) {
+export function useEmployeeList(params: ListParams, enabled = true) {
   return useQuery({
     queryKey: employeeKeys.list(params),
     queryFn: () => employeesApi.list(params),
     placeholderData: keepPreviousData,
+    enabled,
   })
 }
 
@@ -367,6 +421,15 @@ export function useEmploymentSettings(enabled = true) {
   return useQuery({
     queryKey: employeeKeys.settings,
     queryFn: async () => (await employeesApi.settings()).data,
+    enabled,
+  })
+}
+
+/** The owner's dry run of erasure after retention. */
+export function useRetentionReview(enabled: boolean) {
+  return useQuery({
+    queryKey: employeeKeys.retention,
+    queryFn: async () => (await employeesApi.retention()).data,
     enabled,
   })
 }
@@ -410,7 +473,10 @@ export function useEraseEmployee() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: employeesApi.erase,
-    onSuccess: (result) => refresh(queryClient, result.data),
+    onSuccess: (result) => {
+      refresh(queryClient, result.data)
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.retention })
+    },
   })
 }
 
@@ -445,14 +511,14 @@ export const useDocumentHold = (id: string) =>
 export const useDeleteDocument = (id: string) =>
   useDocumentWrite(id, (doc: string) => employeesApi.deleteDocument(id, doc))
 
-/** Reveals the bank account and tax id; a mutation, so the values live only in the view's state. */
+/** Reveals the sealed fields; a mutation, so the values live only in the view's state. */
 export function useRevealProtected(id: string) {
   return useMutation({ mutationFn: async () => (await employeesApi.protected(id)).data })
 }
 
 export function useSaveEmploymentSettings() {
   const queryClient = useQueryClient()
-  return useMutation<EmploymentSettings, ApiError, Omit<EmploymentSettings, 'updated_at'>>({
+  return useMutation<EmploymentSettings, ApiError, EmploymentSettingsInput>({
     mutationFn: async (input) => (await employeesApi.putSettings(input)).data,
     onSuccess: (settings) => queryClient.setQueryData(employeeKeys.settings, settings),
   })

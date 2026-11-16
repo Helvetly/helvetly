@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 export type ComponentKind = 'earning' | 'deduction' | 'employer_cost'
 export type PayrollComponent = { kind: ComponentKind; label: string; amount: string }
@@ -43,6 +44,10 @@ export type PayrollEntry = {
   created_by: string | null
   created_at: string
   updated_at: string
+  /** User ids: who created, last changed and approved the entry (four-eyes approval and its audit). */
+  created_by_id: string | null
+  updated_by_id: string | null
+  approved_by_id: string | null
 }
 
 export type EntryInput = {
@@ -97,9 +102,9 @@ export type PayrollBooking = {
 }
 
 export const COMPONENT_KINDS: { value: ComponentKind; label: string }[] = [
-  { value: 'earning', label: 'Earning' },
-  { value: 'deduction', label: 'Deduction' },
-  { value: 'employer_cost', label: 'Employer cost' },
+  { value: 'earning', label: translate('payrollKindEarning') },
+  { value: 'deduction', label: translate('payrollKindDeduction') },
+  { value: 'employer_cost', label: translate('payrollKindEmployerCost') },
 ]
 
 export const BOOKING_FORMATS = [
@@ -150,18 +155,36 @@ export const monthLabel = (month: string) =>
     new Date(`${month}-01T00:00:00Z`),
   )
 
-const countEntries = (count: number) => (count === 1 ? '1 entry' : `${count} entries`)
-
 /** "n entries missing net pay" lines for a currency's totals. */
 export function missingNotes(totals: PayrollTotals): string[] {
   return (
     [
-      [totals.missing_gross, 'gross pay'],
-      [totals.missing_deductions, 'deductions'],
-      [totals.missing_net, 'net pay'],
-      [totals.missing_employer_costs, 'employer costs'],
+      [totals.missing_gross, translate('payrollMissingGross')],
+      [totals.missing_deductions, translate('payrollMissingDeductions')],
+      [totals.missing_net, translate('payrollMissingNet')],
+      [totals.missing_employer_costs, translate('payrollMissingEmployerCosts')],
     ] as const
-  ).flatMap(([count, what]) => (count > 0 ? [`${countEntries(count)} missing ${what}`] : []))
+  ).flatMap(([count, what]) =>
+    count > 0 ? [translate('payrollEntriesMissing', { count, what })] : [],
+  )
+}
+
+/** The person whose figures an entry carries: its last editor, else its creator. */
+export const authorOf = (entry: PayrollEntry) => entry.updated_by_id ?? entry.created_by_id
+
+/**
+ * Why the signed-in person may not approve a draft under four-eyes approval, or null when they may: they entered
+ * its current figures (the server refuses with `second_approver_required` too).
+ */
+export function approvalBlock(
+  entry: PayrollEntry,
+  userId: string | undefined,
+  settings: { require_second_approver: boolean; payroll_approvers: number } | undefined,
+): string | null {
+  if (!settings?.require_second_approver || !userId || authorOf(entry) !== userId) return null
+  return settings.payroll_approvers < 2
+    ? `${translate('payrollYouEnteredThese')} ${translate('payrollNobodyElseCanApprove')}`
+    : translate('payrollYouEnteredThese')
 }
 
 const entryPath = (id: string) => `/payroll/entries/${encodeURIComponent(id)}`
@@ -218,10 +241,11 @@ export const payrollKeys = {
   preview: (to: string) => ['payroll', 'preview', to] as const,
 }
 
-export function usePayrollEntries(month: string, superseded: boolean) {
+export function usePayrollEntries(month: string, superseded: boolean, enabled = true) {
   return useQuery({
     queryKey: payrollKeys.entries(month, superseded),
     queryFn: async () => (await payrollApi.entries(month, superseded)).data,
+    enabled,
   })
 }
 
@@ -233,10 +257,11 @@ export function usePayrollEntry(id: string | null) {
   })
 }
 
-export function usePayrollSummary(month: string) {
+export function usePayrollSummary(month: string, enabled = true) {
   return useQuery({
     queryKey: payrollKeys.summary(month),
     queryFn: async () => (await payrollApi.summary(month)).data.currencies,
+    enabled,
   })
 }
 

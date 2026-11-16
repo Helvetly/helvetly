@@ -10,6 +10,7 @@ import type {
   HistoryEvent,
   PayTerms,
   Resolution,
+  RetentionItem,
 } from '@/lib/employees'
 import type { BookingPreview, PayrollBooking, PayrollEntry, PayrollTotals } from '@/lib/payroll'
 
@@ -47,6 +48,17 @@ export const employee = (change: Partial<Employee> = {}): Employee => ({
   cross_border_note: null,
   bank_account_hint: '3012',
   tax_id_hint: null,
+  social_security_number_hint: '0097',
+  weekly_hours: '42',
+  notice_period: '3 months to the end of a month',
+  thirteenth_salary: true,
+  withholding_tax: false,
+  withholding_tax_canton: null,
+  pension_insurer: 'Pensionskasse Muster',
+  accident_insurer: 'Suva',
+  sickness_insurer: null,
+  free_transport: false,
+  canteen_meals: true,
   legal_hold: false,
   legal_hold_reason: null,
   restricted: false,
@@ -255,6 +267,8 @@ export const employmentSettings: EmploymentSettings = {
   employing_entity: 'Muster AG',
   country: 'CH',
   region: 'ZH',
+  require_second_approver: false,
+  payroll_approvers: 2,
   updated_at: at,
 }
 
@@ -291,6 +305,9 @@ export const entry = (change: Partial<PayrollEntry> = {}): PayrollEntry => ({
   version: 1,
   note: null,
   created_by: 'Anna Muster',
+  created_by_id: 'usr_story',
+  updated_by_id: null,
+  approved_by_id: null,
   created_at: at,
   updated_at: at,
   ...change,
@@ -425,12 +442,49 @@ const one = <T extends { id: string }>(list: T[], id: unknown) => {
     : HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 })
 }
 
+/** Lara left; erasing her would delete one payslip past its date. Elena's record is under a legal hold. */
+export const retention: RetentionItem[] = [
+  {
+    employee_id: 'emp_1',
+    name: 'Lara Brunner',
+    employment_end: '2015-06-30',
+    blocked_by: null,
+    documents_due: [
+      {
+        id: 'doc_old',
+        name: 'Payslip June 2015.pdf',
+        size: 61_000,
+        content_type: 'application/pdf',
+        type: 'payslip',
+        document_date: '2015-06-25',
+        retain_until: '2025-12-31',
+        retention_rule: 'ch-co-958f-payroll',
+        legal_hold: false,
+        uploaded_by: 'Anna Muster',
+        created_at: at,
+      },
+    ],
+    documents_kept: 1,
+    next_due: '2034-06-30',
+  },
+  {
+    employee_id: 'emp_3',
+    name: 'Elena Rossi',
+    employment_end: '2025-01-31',
+    blocked_by: 'legal_hold',
+    documents_due: [],
+    documents_kept: 2,
+    next_due: null,
+  },
+]
+
 /** Reads answer from the fixtures; writes echo what was sent on top of them. */
 export const employeesHandlers = [
   http.get('/api/v1/employment/jurisdictions', () =>
     HttpResponse.json({ data: { countries, rules: [] } }),
   ),
   http.get('/api/v1/employment/settings', () => HttpResponse.json({ data: employmentSettings })),
+  http.get('/api/v1/employment/retention', () => HttpResponse.json({ data: retention })),
   http.put<never, Partial<EmploymentSettings>>('/api/v1/employment/settings', async ({ request }) =>
     HttpResponse.json({ data: { ...employmentSettings, ...(await request.json()) } }),
   ),
@@ -439,7 +493,13 @@ export const employeesHandlers = [
   http.get('/api/v1/employees/:id/pay-terms', () => HttpResponse.json({ data: payTerms })),
   http.get('/api/v1/employees/:id/documents', () => HttpResponse.json({ data: documents })),
   http.get('/api/v1/employees/:id/protected', () =>
-    HttpResponse.json({ data: { bank_account: 'CH9300762011623853012', tax_id: null } }),
+    HttpResponse.json({
+      data: {
+        bank_account: 'CH9300762011623853012',
+        tax_id: null,
+        social_security_number: '756.1234.5678.97',
+      },
+    }),
   ),
   http.get('/api/v1/employees/:id', ({ params }) => one(employees, params.id)),
   http.get('/api/v1/employees', () =>

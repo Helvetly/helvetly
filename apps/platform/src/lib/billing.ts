@@ -36,6 +36,7 @@ export type FeatureKey =
   | 'automations'
   | 'client_portal'
   | 'einvoice_xml'
+  | 'employees'
 
 /**
  * One meter of the usage panel. `limit` is the API's key (any limit, not only `LimitKey`); `max` null is unlimited
@@ -337,6 +338,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   automations: translate('automations'),
   client_portal: translate('theClientPortal'),
   einvoice_xml: translate('eInvoiceXML2'),
+  employees: translate('employeesModule'),
 }
 
 /**
