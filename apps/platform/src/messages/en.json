@@ -2053,7 +2053,6 @@
   "notificationSettings": "notification settings",
   "notificationSettingsSaved": "Notification settings saved.",
   "notIncluded": "Not included",
-  "notIncluded2": "Not included: ",
   "notInTheLedger": "{length} {value2} not in the ledger",
   "notIssuedYetDated": "Not issued yet · dated {value1}",
   "notLinkedYetAttachItToAClientTo": "Not linked yet. Attach it to a client to see it on their page.",

@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { toast } from 'sonner'
 
-import type { Billing } from '@/lib/billing'
+import type { Billing, PublicOffer } from '@/lib/billing'
 
 import { billingFixture as billing, flatBillingFixture } from './billing-fixture'
 import {
@@ -18,6 +18,7 @@ import {
   planFeatures,
   selfServiceSeats,
 } from './plan-cards'
+import offerFixture from './public-offer.fixture.json'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
@@ -101,6 +102,28 @@ const renderCards = (value: Billing) =>
   )
 
 const card = (name: string) => screen.getByRole('region', { name })
+
+test('a card lists only what its plan offers: limits, then what the plan below lacks', () => {
+  const offer: PublicOffer = {
+    ...offerFixture,
+    comparison: offerFixture.comparison.map((r) => ({ ...r })),
+  }
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <TooltipProvider>
+        <PlanCards billing={billing()} offer={offer} />
+      </TooltipProvider>
+    </QueryClientProvider>,
+  )
+  const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
+  expect(list('Basic')).not.toHaveTextContent('Client portal')
+  expect(list('Basic')).not.toHaveTextContent('Heidi AI assistant')
+  expect(list('Pro')).toHaveTextContent('Heidi AI assistant')
+  expect(list('Pro')).not.toHaveTextContent('Client portal')
+  expect(list('Business')).toHaveTextContent('Client portal')
+  expect(list('Business')).not.toHaveTextContent('Heidi AI assistant')
+  expect(screen.queryByText('Not included:', { exact: false })).toBeNull()
+})
 
 test('Business offers the trial with its line; the others are charged today', async () => {
   renderCards(billing())

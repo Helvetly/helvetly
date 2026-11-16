@@ -275,7 +275,9 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
       </div>
 
       <div className="grid items-stretch gap-4 md:grid-cols-3 lg:gap-5">
-        {billing.plans.map((plan) => {
+        {billing.plans.map((plan, index) => {
+          // a card lists what it offers: its limits and the features the plan below it lacks
+          const below = index > 0 ? billing.plans[index - 1] : undefined
           const onPlan = billing.plan === plan.id
           const current = onPlan && billing.interval === interval
           const scheduled =
@@ -442,7 +444,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                 >
                   {keys.map((key) => {
                     const value = plan.limits[key] ?? null
-                    // excluded features are listed below
+                    // a limit of 0 is something the plan does not offer: not listed
                     if (value === 0) return null
                     const fact = planFact(key, value)
                     return (
@@ -459,17 +461,14 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                     )
                   })}
                   {offer?.comparison
-                    .filter((row) => !row.plans[plan.id])
+                    .filter((row) => row.plans[plan.id] && !(below && row.plans[below.id]))
                     .map((row) => (
-                      <li
-                        key={row.key}
-                        className="flex items-baseline gap-2.5 text-muted-foreground"
-                      >
-                        <Minus className="size-3.5 shrink-0 translate-y-0.5" aria-hidden />
-                        <span className="min-w-0 text-pretty">
-                          <span className="sr-only">{translate('notIncluded2')}</span>
-                          {row.label}
-                        </span>
+                      <li key={row.key} className="flex items-baseline gap-2.5">
+                        <Check
+                          className="size-3.5 shrink-0 translate-y-0.5 text-brand"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 text-pretty">{row.label}</span>
                       </li>
                     ))}
                 </ul>
