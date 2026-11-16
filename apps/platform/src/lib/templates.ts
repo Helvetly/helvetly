@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
-import type { Client } from '@/lib/clients'
+import { streetLine, type Client } from '@/lib/clients'
 import { refreshDocuments } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
@@ -220,9 +220,8 @@ export function dataValue(kind: DataKind, client: Client, today: Date): string {
     case 'client.name':
       return client.name
     case 'client.address': {
-      const street = [client.street, client.street_number].filter(Boolean).join(' ')
       const city = [client.zip, client.city].filter(Boolean).join(' ')
-      return [[street, client.apt].filter(Boolean).join(', '), city].filter(Boolean).join('\n')
+      return [streetLine(client), city].filter(Boolean).join('\n')
     }
     case 'client.email':
       return client.email ?? ''

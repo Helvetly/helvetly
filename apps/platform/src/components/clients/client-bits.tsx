@@ -1,6 +1,6 @@
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 
-import type { Client } from '@/lib/clients'
+import { streetLine, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
 export function ClientStatusBadge({ client }: { client: Pick<Client, 'is_draft' | 'is_active'> }) {
@@ -31,8 +31,7 @@ export function ClientTypeBadge({ company }: { company: boolean }) {
 
 /** "Bahnhofstrasse 1, Apt 3" / "8001 Zürich" — what there is of the address. */
 export function addressLines(client: Client): string[] {
-  const street = [client.street, client.street_number].filter(Boolean).join(' ')
-  const line1 = [street, client.apt].filter(Boolean).join(', ')
+  const line1 = streetLine(client)
   const line2 = [client.zip, client.city].filter(Boolean).join(' ')
   return [line1, line2].filter(Boolean)
 }

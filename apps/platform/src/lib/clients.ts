@@ -15,6 +15,25 @@ import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 export type AddressField = 'street' | 'street_number' | 'zip' | 'city' | 'country'
 export type ElectronicAddress = { scheme: string; id: string }
 
+type StreetParts = {
+  street?: string | null
+  street_number?: string | null
+  apt?: string | null
+  country?: string | null
+}
+
+/** "Street 3/3" in Poland, "Street 3, Apt 3" elsewhere: the street line as printed, the stored fields stay separate. */
+export function streetLine({ street, street_number, apt, country }: StreetParts): string {
+  const line = [street, street_number]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ')
+  const unit = apt?.trim()
+  if (!unit) return line
+  if (!line) return unit
+  return country === 'PL' && street_number?.trim() ? `${line}/${unit}` : `${line}, ${unit}`
+}
+
 export type Client = {
   id: string
   number: number

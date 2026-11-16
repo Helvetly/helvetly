@@ -7,6 +7,7 @@ import {
   listParamsToQuery,
   parseListParams,
   statusView,
+  streetLine,
 } from './clients'
 
 test('reads the list state from the URL and ignores what it does not know', () => {
@@ -94,4 +95,19 @@ test('names the status quick view, whatever the order, and none for other combin
   expect(statusView(['inactive'])).toBe('inactive')
   expect(statusView(['complete'])).toBeNull()
   expect(statusView(['active', 'draft'])).toBeNull()
+})
+
+const at = (country: string, street_number: string, apt: string | null) =>
+  streetLine({ street: 'Marszałkowska', street_number, apt, country })
+
+test('puts the apartment on the street line: slash in Poland, comma elsewhere', () => {
+  expect(at('PL', '3', '3')).toBe('Marszałkowska 3/3')
+  expect(at('PL', '3A', ' 2 ')).toBe('Marszałkowska 3A/2')
+  expect(at('PL', '', '5')).toBe('Marszałkowska, 5')
+  expect(at('CH', '21', 'Apt 21')).toBe('Marszałkowska 21, Apt 21')
+  expect(at('US', '1', 'Suite 4B')).toBe('Marszałkowska 1, Suite 4B')
+  expect(at('PL', '3', null)).toBe('Marszałkowska 3')
+  expect(at('PL', '3', '  ')).toBe('Marszałkowska 3')
+  expect(streetLine({ apt: '12' })).toBe('12')
+  expect(streetLine({})).toBe('')
 })

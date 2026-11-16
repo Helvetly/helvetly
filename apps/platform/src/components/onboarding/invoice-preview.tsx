@@ -2,6 +2,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import Image from 'next/image'
 
 import { COUNTRY_OPTIONS } from '@/components/clients/fields'
+import { streetLine } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { ibanInfo, type DocLanguage } from '@/lib/invoices'
 
@@ -67,8 +68,7 @@ export function InvoicePreview({ values, logo }: { values: Values | null; logo: 
   const country = COUNTRY_OPTIONS.find((option) => option.value === values?.country)?.label
   const iban = values && ibanInfo(values.iban)
   const place = [values?.zip, values?.city].filter(Boolean).join(' ')
-  const street = [values?.street, values?.street_number].filter(Boolean).join(' ')
-  const apt = values?.apt.trim()
+  const street = values ? streetLine(values) : ''
 
   return (
     <div className="relative w-full max-w-[25rem] rounded-xl bg-white p-7 text-[10.5px] leading-relaxed text-neutral-900 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.35),0_2px_8px_rgb(0_0_0/0.06)] ring-1 ring-black/5">
@@ -96,7 +96,6 @@ export function InvoicePreview({ values, logo }: { values: Values | null; logo: 
             <Gap className="w-28" />
           )}
           {street ? <span>{street}</span> : <Gap className="mt-1 w-20" />}
-          {apt && <span>{apt}</span>}
           {place ? <span>{place}</span> : <Gap className="mt-1 w-16" />}
           {country && <span className="text-neutral-500">{country}</span>}
           {values?.vat_registered && values.vat_number && (

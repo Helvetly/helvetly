@@ -141,11 +141,7 @@ func logoType(b []byte) string {
 }
 
 func address(p store.Party, sellerCountry string) []string {
-	out := []string{p.Name}
-	if p.Apt != nil {
-		out = append(out, *p.Apt)
-	}
-	out = append(out, strings.TrimSpace(p.Street+" "+p.StreetNumber))
+	out := []string{p.Name, p.StreetLine()}
 	city := strings.TrimSpace(p.Zip + " " + p.City)
 	if p.Country != "" && p.Country != sellerCountry {
 		city = p.Country + "-" + city
@@ -185,7 +181,7 @@ func (r *renderer) header() float64 {
 	// return line above the recipient window, as in invoicepdf (C5/6 envelope)
 	r.set("", 7)
 	p.SetTextColor(110, 110, 110)
-	r.cell(left, 47, 85, 3, strings.Join(slices.DeleteFunc([]string{d.Seller.Name, strings.TrimSpace(d.Seller.Street + " " + d.Seller.StreetNumber),
+	r.cell(left, 47, 85, 3, strings.Join(slices.DeleteFunc([]string{d.Seller.Name, d.Seller.StreetLine(),
 		strings.TrimSpace(d.Seller.Zip + " " + d.Seller.City)}, func(s string) bool { return s == "" }), ", "), "L")
 	p.SetTextColor(0, 0, 0)
 	y = 52

@@ -79,6 +79,9 @@ const template: Template = {
 test('reads each kind of client data as it is stamped', () => {
   const today = new Date(2026, 10, 7)
   expect(dataValue('client.address', client, today)).toBe('Rue du Lac 12\n1003 Lausanne')
+  expect(
+    dataValue('client.address', { ...client, country: 'PL', street_number: '3A', apt: '2' }, today),
+  ).toBe('Rue du Lac 3A/2\n1003 Lausanne')
   expect(dataValue('client.number', client, today)).toBe('7')
   expect(dataValue('contact.name', client, today)).toBe('Luc Morel')
   expect(dataValue('client.vat_number', client, today)).toBe('')
