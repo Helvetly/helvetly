@@ -34,7 +34,7 @@ export function LanguageMenuItems() {
         >
           <Flag
             region={details.languageTag.split('-')[1] ?? ''}
-            className="h-3 w-4 shrink-0 rounded-[2px]"
+            className="h-3 w-4 shrink-0 rounded-xs"
           />
           <span className="flex-1">{details.name}</span>
           {language === current && <Check aria-hidden />}

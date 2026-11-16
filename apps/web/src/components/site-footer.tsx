@@ -135,7 +135,7 @@ export function SiteFooter({ lang }: { lang: Locale }) {
                 </span>
               </p>
               <p className="inline-flex items-center gap-2">
-                <Flag region="CH" className="size-4 rounded-[3px]" />
+                <Flag region="CH" className="size-4 rounded-xs" />
                 {translate('madeInSwitzerland')}
               </p>
             </div>

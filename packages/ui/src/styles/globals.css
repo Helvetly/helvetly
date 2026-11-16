@@ -44,6 +44,10 @@
   --color-info-surface: var(--info-surface);
   --color-logo-from: var(--logo-from);
   --color-logo-to: var(--logo-to);
+  /* Flag colours are the flags' own, the same in every theme. */
+  --color-flag-swiss-red: #d52b1e;
+  --color-flag-uk-blue: #012169;
+  --color-flag-uk-red: #c8102e;
   --color-toggle: var(--toggle);
   --color-toggle-surface: var(--toggle-surface);
   --color-toggle-border: var(--toggle-border);
