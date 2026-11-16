@@ -32,12 +32,12 @@ export default function PricingPage() {
         lead={translate('everyTeamMemberIsBilledAtThePlanS')}
       />
       <OfferProvider>
-        <section className="pb-24">
+        <section className="pb-8">
           <Container>
             <PricingCards />
           </Container>
         </section>
-        <section id="compare-plans" className="py-24">
+        <section id="compare-plans" className="scroll-mt-24 pt-16 pb-24">
           <Container>
             <SectionHeading
               eyebrow={translate('comparePlans')}

@@ -4,8 +4,6 @@
 // figures are the same in each. currency.test.ts checks these lists against the Go ones.
 import { useEffect, useState, useSyncExternalStore } from 'react'
 
-import { translate } from '@/lib/i18n'
-
 export type Currency = 'chf' | 'eur' | 'usd'
 
 export const CHF_COUNTRIES = ['CH', 'LI']
@@ -132,8 +130,3 @@ export function useCurrency(): Currency {
 
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 const noChanges = () => () => {}
-
-/** What the prices include: VAT in francs and euros, sales tax (where due) in dollars. */
-export function taxNote(currency: Currency): string {
-  return currency === 'usd' ? translate('inclTax') : translate('inclVAT')
-}

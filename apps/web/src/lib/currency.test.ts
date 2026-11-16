@@ -9,7 +9,6 @@ import {
   currencyOf,
   EUR_COUNTRIES,
   EUR_ZONES,
-  taxNote,
   traceCountry,
 } from './currency'
 
@@ -53,13 +52,5 @@ describe('currency', () => {
     expect(traceCountry('loc=T1\n')).toBe('')
     expect(traceCountry('<html>404</html>')).toBe('')
     expect(traceCountry('')).toBe('')
-  })
-
-  it('names VAT for francs and euros, tax for dollars', () => {
-    expect([taxNote('chf'), taxNote('eur'), taxNote('usd')]).toEqual([
-      'incl. VAT',
-      'incl. VAT',
-      'incl. tax',
-    ])
   })
 })
