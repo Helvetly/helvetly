@@ -94,9 +94,6 @@ func readLogo(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 
 // putLogo stores the new logo, points the settings at it, then removes the previous object.
 func (s *Service) putLogo(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	b, err := readLogo(w, r)
 	if err != nil {
 		return err
@@ -154,9 +151,6 @@ func (s *Service) putLogo(w http.ResponseWriter, r *http.Request, sess store.Ses
 }
 
 func (s *Service) deleteLogo(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if !canManage(sess) {
-		return errForbidden
-	}
 	_, old, err := s.setLogo(r.Context(), sess, nil)
 	if err != nil {
 		return err

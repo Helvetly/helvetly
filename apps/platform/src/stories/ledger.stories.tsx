@@ -11,7 +11,8 @@ const session = (role: string) => ({
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
   workspace: { id: 'wrk_story', name: 'Muster AG', timezone: 'Europe/Zurich' },
   role,
-  scopes: ['*:*'],
+  // a member here views the books but has no edit right on them
+  scopes: role === 'member' ? ['read:*'] : ['*:*'],
   onboarded: true,
   csrf_token: 'storybook-only',
 })
@@ -165,7 +166,7 @@ export const Member: Story = {
     const drawer = body(canvasElement)
     await expect(await drawer.findByLabelText('Revenue')).toBeDisabled()
     await waitFor(() =>
-      expect(drawer.getByText('Only an owner or admin can change these.')).toBeVisible(),
+      expect(drawer.getByText('View only: ask an owner or admin for edit access.')).toBeVisible(),
     )
   },
 }

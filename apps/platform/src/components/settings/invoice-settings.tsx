@@ -59,7 +59,6 @@ import {
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
-  canManageInvoices,
   exampleNumber,
   formatIban,
   ibanInfo,
@@ -85,7 +84,7 @@ import {
   type VatMode,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
-import { useSession } from '@/lib/queries'
+import { useCan } from '@/lib/permissions'
 
 import { DunningSteps, stepErrors, timingProblems, type StepDraft } from './dunning-steps'
 import { SettingsNotice, SettingsPage, SettingsPreview, SettingsSection } from './layout'
@@ -651,7 +650,7 @@ export const currencyLock = (error: unknown) =>
 const bigInput = cn(inputClass, 'placeholder:text-placeholder')
 
 function SettingsForm({ settings }: { settings: InvoiceSettings }) {
-  const canEdit = canManageInvoices(useSession().data?.role)
+  const canEdit = useCan('write:invoice-settings')
   const remindersLock = useFeatureLock('automations')
   const save = useSaveInvoiceSettings()
   // The API has no flag to read up front: the first refused change locks the field.
@@ -722,7 +721,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
           canEdit ? undefined : (
             <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
               <Lock className="size-3.5" />
-              {translate('readOnlyOwnersAndAdminsChangeThese')}
+              {translate('viewOnlyAskAnOwnerOrAdminForEditAccess')}
             </span>
           )
         }

@@ -106,6 +106,7 @@ func run() error {
 	}
 	authSvc.OnJoin = notifications.MemberJoined
 	authSvc.BearerRoutes = openapi.BearerRoutes("POST /api/mcp") // API tokens: the public catalogue and MCP only
+	authSvc.BearerMember = permissions.MayUseAPI
 	for _, r := range openapi.Resources() {
 		authSvc.TokenResources = append(authSvc.TokenResources, r.Name)
 	}

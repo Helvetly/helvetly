@@ -293,7 +293,8 @@ func TestSettingsAndFormats(t *testing.T) {
 		t.Fatalf("default settings: %d %s", resp.StatusCode, raw)
 	}
 	valid := map[string]any{"method": "effective", "period": "quarterly", "basis": "agreed", "net_rates": []any{}}
-	if resp, _ := e.send(member, "PUT", "/api/v1/vat-return/settings", valid); resp.StatusCode != http.StatusForbidden {
+	// full access covers write:vat-return; the guard (permissions) refuses a member without it
+	if resp, _ := e.send(member, "PUT", "/api/v1/vat-return/settings", valid); resp.StatusCode != http.StatusOK {
 		t.Errorf("member PUT: %d", resp.StatusCode)
 	}
 	for name, body := range map[string]map[string]any{

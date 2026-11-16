@@ -28,11 +28,12 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
-function wrap(role: string, ui: ReactNode) {
+// A member's scopes come with the session; owners and admins have every scope.
+function wrap(role: string, ui: ReactNode, scopes = ['*:*']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
-  client.setQueryData(queryKeys.session, { role })
+  client.setQueryData(queryKeys.session, { role, scopes })
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>{ui}</TooltipProvider>
@@ -246,11 +247,20 @@ describe('PeriodsCard', () => {
     )
   })
 
-  it('lets a member read but not change', async () => {
-    wrap('member', <PeriodsCard />)
-    expect(await screen.findByText(/Only an owner or admin can close/)).toBeTruthy()
+  it('lets a member with view of period closing read but not change', async () => {
+    wrap('member', <PeriodsCard />, ['read:*'])
+    expect(
+      await screen.findByText('View only: ask an owner or admin for edit access.'),
+    ).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Actions for/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Close/ })).toBeNull()
+  })
+
+  it('lets a member with edit of period closing close a month', async () => {
+    wrap('member', <PeriodsCard />, ['read:*', 'write:periods'])
+    const august = await screen.findByRole('listitem', { name: 'August 2026' })
+    expect(within(august).getByRole('button', { name: 'Actions for August 2026' })).toBeTruthy()
+    expect(screen.queryByText('View only: ask an owner or admin for edit access.')).toBeNull()
   })
 })
 
@@ -298,9 +308,9 @@ describe('AuditLog', () => {
     expect(await screen.findByText(/Chain broken at entry #7/)).toBeTruthy()
   })
 
-  it('is closed to members', () => {
-    wrap('member', <AuditLog />)
-    expect(screen.getByText(/Only an owner or admin can read/)).toBeTruthy()
+  it('opens to a member with view of the audit log', async () => {
+    wrap('member', <AuditLog />, ['read:audit-log'])
+    expect(await screen.findByText('Chain verified')).toBeTruthy()
   })
 })
 

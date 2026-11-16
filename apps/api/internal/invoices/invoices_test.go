@@ -342,13 +342,11 @@ func (e *env) issued(b *browser, clientID string, extra map[string]any) Invoice 
 func TestSettings(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
-	member := e.join(b.workspace, "member")
 	var got struct{ Data Settings }
 	e.do(b, "GET", "/api/v1/invoice-settings", nil, http.StatusOK, &got)
 	if got.Data.IsComplete || got.Data.Currency != "CHF" || got.Data.DefaultVATRate != 810 || !slices.Contains(got.Data.MissingFields, "iban") {
 		t.Fatalf("defaults: %+v", got.Data)
 	}
-	e.fails(member, "PUT", "/api/v1/invoice-settings", map[string]any{"currency": "EUR"}, http.StatusForbidden, "forbidden")
 	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"iban": "CH44 3199 9123 0008 8901 3", "seller": map[string]any{"country": "XX"}},
 		http.StatusUnprocessableEntity, "validation_failed", "iban", "seller.country")
 	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"colour": "red"}, http.StatusBadRequest, "invalid_request")

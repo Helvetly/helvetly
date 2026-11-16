@@ -3,15 +3,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { useId, useState } from 'react'
 
 import { translate } from '@/lib/i18n'
-import {
-  describeAccess,
-  levelsOf,
-  PRESETS,
-  presetOf,
-  RESOURCES,
-  scopesFor,
-  type Level,
-} from '@/lib/permissions'
+import { levelsOf, PRESETS, presetOf, RESOURCES, scopesFor, type Level } from '@/lib/permissions'
 
 const LEVELS: { level: Level; label: string }[] = [
   { level: 'none', label: translate('noAccess') },
@@ -38,7 +30,7 @@ export function AccessEditor({
 
   return (
     <div className="grid gap-2">
-      {/* Scrolls sideways on a phone rather than wrapping the four choices. */}
+      {/* Scrolls sideways on a phone rather than wrapping the choices. */}
       <div className="min-w-0 [scrollbar-width:none] overflow-x-auto">
         <Segmented
           label={translate('access')}
@@ -51,7 +43,9 @@ export function AccessEditor({
           }}
         />
       </div>
-      <p className="text-[13px] text-muted-foreground">{describeAccess(value)}</p>
+      <p className="text-[13px] text-muted-foreground">
+        {PRESETS.find((preset) => preset.id === selected)?.description}
+      </p>
       {custom && (
         <table className="w-full text-[13px]">
           <thead>
@@ -76,10 +70,7 @@ export function AccessEditor({
                 {LEVELS.map(({ level, label }) => (
                   <td key={level} className="text-center">
                     {level === 'edit' && 'viewOnly' in resource ? (
-                      <span
-                        className="text-muted-foreground"
-                        title={translate('ownersAndAdminsManageThis')}
-                      >
+                      <span className="text-muted-foreground" title={resource.viewOnly}>
                         –
                       </span>
                     ) : (
@@ -100,7 +91,7 @@ export function AccessEditor({
           <tfoot>
             <tr>
               <td colSpan={4} className="border-t pt-2 text-[12px] text-muted-foreground">
-                {translate('managingMembersSettingsAndBillingStaysWithOwnersAnd')}
+                {translate('membersWorkspaceAndBillingStayWithOwnersAndAdmins')}
               </td>
             </tr>
           </tfoot>
