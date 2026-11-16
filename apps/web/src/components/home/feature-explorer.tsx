@@ -113,7 +113,7 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
       </p>
       {/* Remounted per feature, so its small animations play again each time it shows. */}
       <div className="relative flex flex-1 items-center justify-center py-8">
-        <div className="pop relative w-full max-w-md lg:origin-center lg:scale-115">{f.art}</div>
+        <div className="pop relative w-full max-w-md">{f.art}</div>
         {f.facts.map((fact, i) => (
           <span
             key={fact}
@@ -144,11 +144,11 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
       ref={ref}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-10"
+      className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-10"
     >
       <div
         ref={viewport}
-        className="lg:h-[34rem] lg:overflow-hidden lg:data-more-down:mask-b-from-85% lg:data-more-up:mask-t-from-85%"
+        className="lg:h-[28rem] lg:overflow-hidden lg:data-more-down:mask-b-from-85% lg:data-more-up:mask-t-from-85%"
       >
         <div
           ref={list}
@@ -221,7 +221,7 @@ export function FeatureExplorer({ features }: { features: Feature[] }) {
         id="feature-preview"
         role="tabpanel"
         aria-labelledby={`feature-${feature.id}`}
-        className="sticky top-24 hidden h-[34rem] lg:block"
+        className="sticky top-24 hidden h-[28rem] lg:block"
       >
         {preview(feature)}
       </div>

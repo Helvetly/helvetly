@@ -33,9 +33,9 @@ export default async function HomePage({ params }: Props) {
             eyebrow={translate('pricing')}
             title={
               <>
-                {translate('simplePlans')}
-                <span className="accent ink-gradient">{translate('onePrice')}</span>
-                {translate('perPerson')}
+                {translate('knowYourBill')}
+                <span className="accent ink-gradient">{translate('beforeItArrives')}</span>
+                {translate('pricingHeadingEnd')}
               </>
             }
             lead={translate('eachTeamMemberPaysThePlanSPriceStart', {

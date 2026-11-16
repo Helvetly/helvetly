@@ -11,6 +11,10 @@ import { plansIn } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
 import { siteIn } from '@/lib/site'
 
+import de from '../messages/de.json'
+import en from '../messages/en.json'
+import fr from '../messages/fr.json'
+import italian from '../messages/it.json'
 import ComparePage from './[lang]/compare/[slug]/page'
 import CompareIndexPage from './[lang]/compare/page'
 import FaqPage from './[lang]/faq/page'
@@ -36,6 +40,13 @@ function serve({ offer = true, trace = '' } = {}) {
 }
 
 afterEach(() => vi.unstubAllGlobals())
+
+it.each(Object.entries({ en, de, fr, it: italian }))(
+  '%s marketing percentages have no preceding whitespace',
+  (_, catalog) => {
+    expect(Object.entries(catalog).filter(([, message]) => /\s+%/u.test(message))).toEqual([])
+  },
+)
 
 describe('home page', () => {
   beforeEach(() => serve())
@@ -145,19 +156,48 @@ describe('pricing page', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
+  describe.each(['en', 'de', 'fr', 'it'] as const)('%s annual pricing formatting', (language) => {
+    it.each([
+      ['home', HomePage],
+      ['pricing', PricingPage],
+    ] as const)('bolds only annual amounts and keeps percentages joined on %s', async (_, Page) => {
+      const { container } = render(
+        <LanguageProvider language={language}>
+          {await Page({ params: Promise.resolve({ lang: language }) })}
+        </LanguageProvider>,
+      )
+      await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
+      expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
+      expect(container.textContent).toContain('20%')
+      for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 951'].entries()) {
+        const card = screen.getAllByRole('article')[index]!
+        const annual = within(card).getByText(
+          (_text, element) =>
+            element?.tagName === 'P' && (element.textContent ?? '').includes(amount),
+        )
+        expect(annual.querySelector('strong')?.textContent).toBe(amount)
+        expect(annual.textContent).not.toBe(amount)
+      }
+    })
+  })
+
   it('shows the same figures in the visitor’s currency', async () => {
     inZone('Europe/Berlin')
     render(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('EUR')).toBeTruthy()
-    expect(within(pro).getByText('EUR 471 a year, billed yearly')).toBeTruthy()
+    expect(within(pro).getByText('EUR 471').closest('p')?.textContent).toBe(
+      'EUR 471 a year, billed yearly',
+    )
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     render(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
-    expect(await within(pro).findByText('USD 471 a year, billed yearly')).toBeTruthy()
+    expect((await within(pro).findByText('USD 471')).closest('p')?.textContent).toBe(
+      'USD 471 a year, billed yearly',
+    )
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -175,7 +215,11 @@ describe('pricing page', () => {
   it('shows no price and no checkout while the API cannot confirm the offer', async () => {
     serve({ offer: false })
     render(await PricingPage(english))
-    expect(await screen.findByText('Pricing is temporarily unavailable.')).toBeTruthy()
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('Pricing is temporarily unavailable.')).toBeTruthy()
+    expect(within(alert).getByRole('button', { name: 'Retry' }).getAttribute('aria-busy')).toBe(
+      'false',
+    )
     for (const card of screen.getAllByRole('article')) {
       expect(card.textContent).not.toMatch(/CHF|\/ person \/|billed|\b(19|49|99|183|471|951)\b/)
       expect(within(card).getByText('Price unavailable')).toBeTruthy()
@@ -188,8 +232,19 @@ describe('pricing page', () => {
       'mailto:support@helvetly.com',
     )
 
-    const again = serve()
+    const answered = Promise.withResolvers<void>()
+    const again = vi.fn<typeof globalThis.fetch>(async (input) => {
+      await answered.promise
+      return String(input) === OFFER_URL
+        ? new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
+        : new Response('')
+    })
+    vi.stubGlobal('fetch', again)
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    const checking = await within(alert).findByRole('button', { name: 'Checking…' })
+    expect(checking.hasAttribute('disabled')).toBe(true)
+    expect(checking.getAttribute('aria-busy')).toBe('true')
+    answered.resolve()
     await waitFor(() =>
       expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull(),
     )
@@ -201,7 +256,9 @@ describe('pricing page', () => {
     render(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('39')).toBeTruthy()
-    expect(within(pro).getByText('CHF 471 a year, billed yearly')).toBeTruthy()
+    expect(within(pro).getByText('CHF 471').closest('p')?.textContent).toBe(
+      'CHF 471 a year, billed yearly',
+    )
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
