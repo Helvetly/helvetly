@@ -112,3 +112,27 @@ test('someone already signed in is sent on to where they were going, without the
   await waitFor(() => expect(replace).toHaveBeenCalledWith('/clients'))
   expect(screen.queryByRole('textbox', { name: 'Email' })).toBeNull()
 })
+
+test('a recent code on the email step opens code entry instead of a dead-end error', async () => {
+  server.use(
+    http.post('/api/v1/auth/email/start', () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'code_cooldown',
+            message: 'A code was just sent.',
+            details: { resend_in: 20, expires_in: 570 },
+          },
+        },
+        { status: 429 },
+      ),
+    ),
+  )
+  renderSignIn()
+  await userEvent.type(await screen.findByRole('textbox', { name: 'Email' }), 'alice@example.com')
+  await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  await screen.findByRole('heading', { name: 'Check your email' })
+  expect(screen.getByRole('button', { name: /Resend code in/ })).toBeDisabled()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), '123456')
+  await screen.findByRole('heading', { name: 'Two-factor authentication' })
+})

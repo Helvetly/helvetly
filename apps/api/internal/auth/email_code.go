@@ -184,8 +184,11 @@ func (s *Service) sendEmailCode(ctx context.Context, email, ip string, deliver b
 		latest, err := q.LatestEmailCode(ctx, email)
 		if err == nil && now.Before(latest.CreatedAt.Add(emailCodeCooldown)) {
 			wait := int(math.Ceil(latest.CreatedAt.Add(emailCodeCooldown).Sub(now).Seconds()))
+			// The same for every address and state of the code (used, exhausted, never mailed): the form opens code
+			// entry from it, and a verify of a dead code is refused as usual. Nothing here reveals a sign-in.
+			left := int(math.Ceil(latest.CreatedAt.Add(emailCodeTTL).Sub(now).Seconds()))
 			return &apiError{status: http.StatusTooManyRequests, code: "code_cooldown",
-				message: fmt.Sprintf("A code was just sent: wait %d seconds before asking for another.", wait), details: map[string]any{"resend_in": wait}}
+				message: fmt.Sprintf("A code was just sent: wait %d seconds before asking for another.", wait), details: map[string]any{"resend_in": wait, "expires_in": left}}
 		}
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return err
