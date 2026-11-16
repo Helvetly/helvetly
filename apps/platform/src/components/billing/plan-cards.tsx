@@ -368,15 +368,19 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                 <p className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
                   {interval === 'year' && shown ? (
                     <span className="text-caption text-muted-foreground tabular-nums">
-                      {formatPrice(shown)}
+                      <strong className="font-semibold text-foreground">
+                        {formatPrice(shown)}
+                      </strong>
                       {translate('aYearBilledYearly')}
                     </span>
                   ) : interval === 'month' && plan.prices.year && yearlySaving(plan) > 0 ? (
                     <span className="text-caption text-muted-foreground tabular-nums">
                       {translate('or')}
-                      {formatPrice(plan.prices.year)}
+                      <strong className="font-semibold text-foreground">
+                        {formatPrice(plan.prices.year)}
+                      </strong>
                       {translate('aYearSave')}
-                      {yearlySaving(plan)} %
+                      {yearlySaving(plan)}%
                     </span>
                   ) : null}
                 </p>
@@ -464,6 +468,13 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           )
         })}
       </div>
+
+      <p
+        data-slot="allowance-legend"
+        className="mx-auto max-w-2xl text-center text-caption text-pretty text-muted-foreground"
+      >
+        {translate('allowanceLegend')} {translate('allowanceMonthlyNote')}
+      </p>
 
       <div className="flex flex-col items-center gap-3 text-center text-body-sm text-muted-foreground">
         {billing.can_manage && billing.enabled && (

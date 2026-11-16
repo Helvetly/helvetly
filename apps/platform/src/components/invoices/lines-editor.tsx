@@ -517,7 +517,7 @@ export function LinesEditor({
         <Button
           variant="ghost"
           data-field="add-line"
-          className="gap-1.5 px-2 text-muted-foreground"
+          className="gap-1.5 px-2 text-link hover:text-link"
           onClick={() => insertAfter(lines.length - 1)}
         >
           <Plus className="size-4" />
@@ -555,7 +555,7 @@ export function LinesEditor({
                 { key: next.key, field: 'quantity', select: true }
           }}
           trigger={
-            <Button variant="ghost" className="gap-1.5 px-2 text-muted-foreground">
+            <Button variant="ghost" className="gap-1.5 px-2 text-link hover:text-link">
               <Package className="size-3.5" />
               {translate('addFromCatalogue')}
             </Button>
@@ -564,7 +564,7 @@ export function LinesEditor({
         {!showDiscount && (
           <Button
             variant="ghost"
-            className="gap-1.5 px-2 text-muted-foreground"
+            className="gap-1.5 px-2 text-link hover:text-link"
             onClick={() => setShowDiscount(true)}
           >
             <Percent className="size-3.5" />

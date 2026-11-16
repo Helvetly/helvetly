@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { type MessageKey, perLanguage } from '@/lib/i18n'
-import { MAX_SELF_SERVICE_SEATS, plansIn, TRIAL } from '@/lib/plans'
+import { plansIn, SELF_SERVICE_SEATS, TRIAL } from '@/lib/plans'
 
 /** The topics the FAQ page groups its questions under, in page order, with their headings. */
 export const TOPICS = {
@@ -112,7 +112,7 @@ export const faqIn = perLanguage((translate, language) => {
       teaser: 'pricing',
       q: translate('arePricesPerPerson'),
       a: translate('yesEveryTeamMemberOwnersAdminsMembersAccountantsAnd', {
-        MAX_SELF_SERVICE_SEATS: MAX_SELF_SERVICE_SEATS,
+        MAX_SELF_SERVICE_SEATS: SELF_SERVICE_SEATS.pro, // Basic's 5 is written in the answer; a test keeps both in step
       }),
     },
     {

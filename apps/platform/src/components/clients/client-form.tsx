@@ -56,6 +56,7 @@ function FormField({
 export function ClientForm({
   client,
   focus,
+  prefillName,
   onClose,
   onSaved,
 }: {
@@ -63,6 +64,8 @@ export function ClientForm({
   client?: Client
   /** Scroll to and focus this section when the form opens. */
   focus?: 'address'
+  /** The name a new client starts with, e.g. the one an imported document gave. */
+  prefillName?: string
   onClose: () => void
   onSaved: (client: Client, created: boolean) => void
 }) {
@@ -70,7 +73,7 @@ export function ClientForm({
   const [initial] = useState(() =>
     client
       ? valuesFromClient(client)
-      : withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
+      : withHabits({ ...emptyValues(), name: prefillName ?? '' }, habits, 'client', CLIENT_HABITS, {
           allowed: CLIENT_HABIT_OPTIONS,
         }),
   )
@@ -492,6 +495,7 @@ export function ClientForm({
           <FormField
             field="payment_terms_days"
             label={translate('paymentTerms')}
+            tip={translate('paymentTermsHelp')}
             error={errors.payment_terms_days}
           >
             <div className="flex min-h-9 flex-wrap items-center gap-2">
@@ -511,7 +515,7 @@ export function ClientForm({
                 }}
               />
               {customTerms && (
-                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <span className="flex items-center gap-2 text-body-sm text-muted-foreground">
                   <input
                     {...describe('payment_terms_days')}
                     inputMode="numeric"

@@ -8,7 +8,19 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarRange, ChevronsUpDown, FastForward, Hourglass, Plus, Repeat } from 'lucide-react'
+import {
+  CalendarDays,
+  CalendarRange,
+  ChevronsUpDown,
+  FastForward,
+  Gauge,
+  Handshake,
+  Hourglass,
+  Plus,
+  Receipt,
+  Repeat,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
@@ -309,6 +321,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
             <div className="min-w-0 flex-1 lg:overflow-y-auto">
               <FormSection
+                icon={Handshake}
                 title={translate('clientService')}
                 description={translate('whoItIsForAndWhatYouDeliver')}
                 action={
@@ -391,6 +404,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
+                icon={Gauge}
                 title={translate('scope')}
                 description={translate('howMuchYouDeliverInEachPeriod')}
               >
@@ -425,6 +439,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
+                icon={CalendarDays}
                 title={translate('schedule')}
                 description={translate('aFixedPeriodOrOneThatRepeatsWithThe')}
               >
@@ -509,6 +524,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
+                icon={Receipt}
                 title={translate('priceVAT')}
                 description={translate('whenYouInvoiceAndWhatYouCharge')}
               >
@@ -649,6 +665,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
               </FormSection>
 
               <FormSection
+                icon={SlidersHorizontal}
                 title={translate('detailsAutomation')}
                 description={translate('optionalNothingIsSentOrIssuedWithoutYou')}
               >

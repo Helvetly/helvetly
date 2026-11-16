@@ -159,7 +159,10 @@ export const PlanTilesPerPerson: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(basic.getByText('per person / month')).toBeVisible()
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 549 / year')
-    await expect(basic.getByText('CHF 183 a year, billed yearly')).toBeVisible()
+    // The yearly amount is bold, so the sentence is split in two nodes.
+    await expect(
+      basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
+    ).toHaveTextContent('CHF 183 a year, billed yearly')
     await expect(basic.getByText('CHF 15', { exact: true })).toBeVisible()
   },
 }

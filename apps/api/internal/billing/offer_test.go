@@ -33,6 +33,9 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
+// currentOffer is the offer on sale in the seeded database: the latest published by the migrations (00018).
+const currentOffer = "helvetly-people-2026-11"
+
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]
 }
@@ -43,7 +46,7 @@ func TestSeededOffer(t *testing.T) {
 		t.Fatalf("the current offer does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != currentOffer || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
 	}
 	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
@@ -187,11 +190,11 @@ func TestPublishOffer(t *testing.T) {
 		next.ID).Scan(&before, &after, &reason); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(before, `"helvetly"`) || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
+	if !strings.Contains(before, `"`+currentOffer+`"`) || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != currentOffer || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

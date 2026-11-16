@@ -3,7 +3,16 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { has, PLAN_IDS, plansIn, priceOf, USAGE_DETAILS, YEARLY_DISCOUNT_PERCENT } from './plans'
+import { faqIn } from './faq'
+import {
+  has,
+  PLAN_IDS,
+  plansIn,
+  priceOf,
+  SELF_SERVICE_SEATS,
+  USAGE_DETAILS,
+  YEARLY_DISCOUNT_PERCENT,
+} from './plans'
 
 const { BENEFITS, bytes, formatLimit, LIMITS, PLANS, plansWith, tokens, FEATURE_GROUPS } =
   plansIn('en')
@@ -108,8 +117,8 @@ describe('offer helvetly public projection', () => {
   it('leaves Basic a manual invoicing plan, and keeps the portal and XML for Business', () => {
     const cells = Object.fromEntries(BENEFITS.map((b) => [b.key, PLAN_IDS.map(b.cell)]))
     expect(cells.invoicing).toEqual([
-      '15 invoices and 5 quotes per team member a month',
-      '100 invoices and 100 quotes per team member a month',
+      '15 invoices and 5 quotes / month',
+      '100 invoices and 100 quotes / month',
       'Unlimited',
     ])
     expect(cells.engagements).toEqual([
@@ -119,14 +128,14 @@ describe('offer helvetly public projection', () => {
     ])
     expect(cells.automations).toEqual([
       null,
-      '1’500 automated actions per team member a month',
-      '6’000 automated actions per team member a month',
+      '1’500 automated actions / month',
+      '6’000 automated actions / month',
     ])
-    expect(cells.expenses).toEqual([null, '300 expenses per team member a month', 'Unlimited'])
+    expect(cells.expenses).toEqual([null, '300 expenses / month', 'Unlimited'])
     expect(cells.heidi).toEqual([
       null,
-      'Included; 5M shared AI tokens per team member a month',
-      'Included; 20M shared AI tokens per team member a month',
+      'Included; 5M AI tokens / month',
+      'Included; 20M AI tokens / month',
     ])
     for (const key of [
       'automations',
@@ -161,11 +170,13 @@ describe('offer helvetly public projection', () => {
       ].toSorted(),
     )
     const [basic, pro, business] = PLANS.map((p) => p.highlights)
-    expect(basic).toContain('15 invoices and 5 quotes per team member a month')
-    expect(pro).toContain('100 invoices, 100 quotes and 300 expenses per team member a month')
+    expect(basic).toContain('15 invoices and 5 quotes / month')
+    expect(pro).toContain('100 invoices, 100 quotes and 300 expenses / month')
     expect(business).toContain('Unlimited clients, products and engagements')
     expect(business).toContain('Unlimited invoices, quotes, expenses and signature requests')
     expect(PLANS.flatMap((p) => p.highlights).join(' ')).not.toMatch(/per (paid )?person/)
+    // The scope is said once in the legend, not on every feature line.
+    expect(PLANS.flatMap((p) => p.highlights).join(' ')).not.toMatch(/team member/)
   })
 
   it('quotes the quotes allowance and explains automated actions in the full comparison', () => {
@@ -174,6 +185,21 @@ describe('offer helvetly public projection', () => {
     const automations = rows.find((r) => r.key === 'automations')
     expect(automations?.label).toBe('Automated actions')
     expect(automations?.hint).toMatch(/counts once/)
+  })
+
+  it('gives each plan its own people limit, the owner included, and Business none', () => {
+    expect(SELF_SERVICE_SEATS).toEqual({ basic: 5, pro: 25, business: null })
+    expect(PLANS.map((p) => p.highlights[0])).toEqual([
+      'Up to 5 people',
+      'Up to 25 people',
+      'Unlimited people',
+    ])
+  })
+
+  it('says each plan’s people limit in the FAQ answer as the plans do', () => {
+    const answer = String(faqIn('en').find((f) => f.id === 'price-per-person')?.a)
+    expect(answer).toContain(String(SELF_SERVICE_SEATS.basic))
+    expect(answer).toContain(String(SELF_SERVICE_SEATS.pro))
   })
 
   it('formats decimal bytes and short tokens', () => {

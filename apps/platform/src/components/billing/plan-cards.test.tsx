@@ -262,7 +262,7 @@ test('a valid promotion code discounts the plans it covers and goes with the che
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
   await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'launch20')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
-  expect(await screen.findByText('LAUNCH20 · −20 % for 3 months')).toBeInTheDocument()
+  expect(await screen.findByText('LAUNCH20 · −20% for 3 months')).toBeInTheDocument()
   const pro = card('Pro')
   expect(pro).toHaveTextContent('CHF 39.20')
   expect(pro.querySelector('s')).toHaveTextContent('CHF 49')
@@ -456,28 +456,39 @@ test('a workspace with no seats counted yet is totalled for one person', () => {
 
 test('limits read as short facts with the key number first', () => {
   expect(planFact('clients', 30)).toEqual({ value: '30', label: 'clients / workspace' })
+  // The scope ("per team member") is said once in the legend: a fact names only its unit, its month or its workspace.
   expect(planFact('invoices_per_month', null)).toEqual({
     value: 'Unlimited',
-    label: 'invoice issues / team member / month',
+    label: 'invoice issues / month',
   })
-  expect(planFact('quotes_per_month', 5)).toEqual({
-    value: '5',
-    label: 'quotes sent / team member / month',
-  })
+  expect(planFact('quotes_per_month', 5)).toEqual({ value: '5', label: 'quotes sent / month' })
+  // People: Basic 5 and Pro 25 count the owner (members + 1); Business has none.
   expect(planFact('members', null)).toEqual({ value: 'Any number', label: 'of people' })
+  expect(planFact('members', 4)).toEqual({ value: '5', label: 'people at most' })
   expect(planFact('members', 24)).toEqual({ value: '25', label: 'people at most' })
   expect(planFact('ai_tokens_per_month', 250_000)).toEqual({
     value: "250'000",
-    label: 'AI tokens / team member / month',
+    label: 'AI tokens / month',
   })
-  expect(planFact('storage_bytes', 5_000_000_000)).toEqual({
-    value: '5 GB',
-    label: 'storage / team member',
-  })
+  expect(planFact('storage_bytes', 5_000_000_000)).toEqual({ value: '5 GB', label: 'storage' })
   expect(planFact('ai_tokens_per_month', 5_000_000)).toEqual({
     value: '5M',
-    label: 'AI tokens / team member / month',
+    label: 'AI tokens / month',
   })
+})
+
+test('one legend says whose allowances they are, the yearly amount is bold and a percent has no space', async () => {
+  renderCards(billing({ trial_available: false }))
+  expect(screen.getAllByText(/combine in one shared workspace pool/)).toHaveLength(1)
+  expect(document.body.textContent).not.toMatch(/per team member/i)
+  // Monthly view: "or CHF … a year, save 20%".
+  const monthly = card('Pro').querySelector('strong')
+  expect(monthly?.textContent).toMatch(/^CHF/)
+  expect(card('Pro').textContent).toMatch(/save \d+%/)
+  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
+  expect(card('Pro').querySelector('strong')?.textContent).toMatch(/^CHF/)
+  // Cards and the "Save 20% yearly" badge alike: no space between a number and its percent sign.
+  expect(document.body.textContent).not.toMatch(/\d %/)
 })
 
 const scheduledDowngrade = (over: Partial<Billing> = {}) =>

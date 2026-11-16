@@ -37,7 +37,7 @@ import {
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
 import { DropZone, FileProgress } from './import-files'
-import { EditRecord, GroupedReview, ReviewTable } from './import-review'
+import { EDIT_FORM_ID, EditRecord, GroupedReview, ReviewTable } from './import-review'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
@@ -212,6 +212,16 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
       />
     )
     status = translate('editingARow')
+    actions = (
+      <>
+        <Button variant="ghost" onClick={() => setEditing(null)}>
+          {translate('cancel')}
+        </Button>
+        <Button type="submit" form={EDIT_FORM_ID}>
+          {translate('save2')}
+        </Button>
+      </>
+    )
   } else {
     body = (
       <div className="grid gap-4">
@@ -280,7 +290,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
+        className="w-full! max-w-none! gap-0 p-0 sm:w-[min(1180px,calc(100vw-4rem))]! dark:bg-card"
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
           <div className="grid min-w-0 gap-0.5">
