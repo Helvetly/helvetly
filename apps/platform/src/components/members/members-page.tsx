@@ -168,7 +168,7 @@ export function MembersPage() {
                     <td className="px-3">
                       <span className="flex flex-wrap items-center gap-1">
                         <StatusBadge>{capitalize(member.role)}</StatusBadge>
-                        <AccessBadge scopes={member.scopes} />
+                        <AccessBadge role={member.role} scopes={member.scopes} />
                       </span>
                     </td>
                     <td className="hidden px-3 @4xl:table-cell">
@@ -199,7 +199,7 @@ export function MembersPage() {
                   <td className="px-3">
                     <span className="flex flex-wrap items-center gap-1">
                       <StatusBadge>{capitalize(invitation.role)}</StatusBadge>
-                      <AccessBadge scopes={invitation.scopes} />
+                      <AccessBadge role={invitation.role} scopes={invitation.scopes} />
                     </span>
                   </td>
                   <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
@@ -264,12 +264,14 @@ function memberMenu(
             {entry === member.role ? <Check /> : <span className="size-4" />} {capitalize(entry)}
           </Item>
         ))}
-        {roles.length > 0 && member.role === 'member' && (
-          <Item onSelect={() => run.editAccess(member)}>
-            <KeyRound />
-            {translate('changeAccess')}
-          </Item>
-        )}
+        {/* An admin's access editor holds only the HR rows, which only an owner changes. */}
+        {roles.length > 0 &&
+          (member.role === 'member' || (member.role === 'admin' && actor === 'owner')) && (
+            <Item onSelect={() => run.editAccess(member)}>
+              <KeyRound />
+              {translate('changeAccess')}
+            </Item>
+          )}
         {roles.length > 0 && !member.is_you && <Separator />}
         {roles.length > 0 && !member.is_you && (
           <Item variant="destructive" onSelect={() => run.ask({ kind: 'remove', member })}>

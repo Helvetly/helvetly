@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -33,6 +34,7 @@ function setup(
   status = 201,
   body: JsonBodyType = { data: invitation },
   plan: Billing = billingFixture({ enabled: false }),
+  actorRole = 'owner',
 ) {
   const sent = vi.fn<(body: unknown) => void>()
   server.use(
@@ -44,7 +46,9 @@ function setup(
   )
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <InviteDialog actorRole="owner" onClose={() => {}} />
+      <TooltipProvider>
+        <InviteDialog actorRole={actorRole} onClose={() => {}} />
+      </TooltipProvider>
     </QueryClientProvider>,
   )
   return sent
@@ -70,10 +74,11 @@ test('a member is invited with Full access unless another preset is picked', asy
 
 test.each([
   ['Read only', ['read:*'], 'Can view everything'],
+  // An owner's pick of Accountant also gives the payroll register to view.
   [
     'Accountant',
-    ['read:*', 'write:invoices', 'write:expenses'],
-    'Can view everything, edit invoices and expenses',
+    ['read:*', 'write:invoices', 'write:expenses', 'read:payroll'],
+    'Can view everything, edit invoices and expenses; HR: view payroll',
   ],
 ])('the %s preset sends its scopes and says what they allow', async (name, scopes, summary) => {
   const sent = setup()
@@ -136,14 +141,61 @@ test('no area left blocks sending', async () => {
   expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled()
 })
 
-test('an admin invitation has no scopes and no access block', async () => {
+test('an admin invitation keeps the default HR access unless the owner changes it', async () => {
   const sent = setup()
   await userEvent.click(screen.getByRole('radio', { name: /Admin/ }))
+  // No presets: an admin's general access is fixed; only the HR rows are shown.
   expect(screen.queryByRole('group', { name: 'Access' })).toBeNull()
+  expect(screen.getByText('Full access as admin; HR: view payroll')).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Payroll: View' })).toBeChecked()
   await send()
   await waitFor(() =>
     expect(sent).toHaveBeenCalledWith({ email: 'new@example.ch', role: 'admin', send_email: true }),
   )
+})
+
+test("an owner sets an admin invitation's HR access", async () => {
+  const sent = setup()
+  await userEvent.click(screen.getByRole('radio', { name: /Admin/ }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Employees: Edit' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Payroll: No access' }))
+  await send()
+  await waitFor(() =>
+    expect(sent).toHaveBeenCalledWith({
+      email: 'new@example.ch',
+      role: 'admin',
+      send_email: true,
+      scopes: ['write:employees'],
+    }),
+  )
+})
+
+test('an admin inviting cannot touch HR access, and a preset leaves it alone', async () => {
+  const sent = setup(201, { data: invitation }, billingFixture({ enabled: false }), 'admin')
+  for (const radio of screen.getAllByRole('radio', { name: /^(Employees|Payroll):/ }))
+    expect(radio).toBeDisabled()
+  expect(
+    screen.getByRole('button', {
+      name: 'Only the workspace owner can change access to employees and payroll.',
+    }),
+  ).toBeVisible()
+  await userEvent.click(screen.getByRole('radio', { name: 'Accountant' }))
+  await send()
+  await waitFor(() =>
+    expect(sent).toHaveBeenCalledWith({
+      email: 'new@example.ch',
+      role: 'member',
+      send_email: true,
+      scopes: ['read:*', 'write:invoices', 'write:expenses'],
+    }),
+  )
+})
+
+test('without Employees in the plan the HR rows are locked with the plan that has them', async () => {
+  setup(201, { data: invitation }, billingFixture({ plan: 'pro', locked: false, status: 'active' }))
+  expect(await screen.findByText('Business', { selector: '[data-slot=plan-tag]' })).toBeVisible()
+  for (const radio of screen.getAllByRole('radio', { name: /^(Employees|Payroll):/ }))
+    expect(radio).toBeDisabled()
 })
 
 test('a 422 on scopes is shown under the access block', async () => {
