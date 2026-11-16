@@ -250,7 +250,7 @@ function EditorBar({
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-card px-3">
       <Icon className="ml-1 size-4 shrink-0 text-muted-foreground" />
-      <h2 className="truncate text-body font-medium">{title}</h2>
+      <h2 className="min-w-0 truncate text-body font-medium">{title}</h2>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {menu && (
           <DropdownMenu>
@@ -652,7 +652,8 @@ function Editor({
                     onClick={() => setPreviewing(true)}
                   >
                     <Eye className="size-4" />
-                    {translate('preview3')}
+                    {/* Phones keep the bar to one row with Close in reach: the label stays for screen readers. */}
+                    <span className="max-sm:sr-only">{translate('preview3')}</span>
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -683,7 +684,7 @@ function Editor({
           ref={top}
           className="@container min-w-0 flex-1 scroll-mt-16 px-3 pt-5 pb-16 sm:px-6 md:pt-8"
         >
-          <div className="mx-auto grid w-full max-w-[1040px] gap-4">
+          <div className="mx-auto grid w-full max-w-[1040px] grid-cols-[minmax(0,1fr)] gap-4">
             {preceding && invoice?.credited_invoice && (
               <Callout tone="warning" icon={CircleAlert}>
                 {preceding}{' '}
