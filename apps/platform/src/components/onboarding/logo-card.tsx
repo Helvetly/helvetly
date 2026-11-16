@@ -70,7 +70,7 @@ export function LogoCard({ url }: { url: string | null }) {
       >
         <span
           className={cn(
-            'relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border',
+            'relative flex aspect-[5/2] w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border sm:w-44',
             url ? CHECKER : 'bg-muted text-muted-foreground',
           )}
         >
@@ -80,7 +80,7 @@ export function LogoCard({ url }: { url: string | null }) {
               alt={translate('yourLogo')}
               fill
               unoptimized
-              sizes="80px"
+              sizes="176px"
               className="object-contain p-1.5"
             />
           ) : (

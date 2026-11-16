@@ -1,6 +1,7 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
-import { pickProblem } from './logo-crop'
+import { LogoCropDialog, pickProblem } from './logo-crop'
 import { WorkspaceMark } from './workspace-mark'
 
 const png = (width: number, height: number, bytes = 24, type = 'image/png') => {
@@ -48,5 +49,64 @@ describe('WorkspaceMark', () => {
     if (img) fireEvent.error(img)
     expect(container.querySelector('img')).toBeNull()
     expect(container).toHaveTextContent('M')
+  })
+})
+
+const picture = () =>
+  screen.findByRole('button', { name: /arrow keys/ }).then((frame) => frame.querySelector('img'))
+
+const open = (file: File) => {
+  const onSave = vi.fn<(logo: Blob) => void>()
+  render(
+    <LogoCropDialog
+      kind="document"
+      file={file}
+      url="blob:logo"
+      saving={false}
+      progress={null}
+      error=""
+      onCancel={vi.fn<() => void>()}
+      onSave={onSave}
+    />,
+  )
+  return onSave
+}
+
+describe('LogoCropDialog, document logo', () => {
+  test('a picture of the field shape, shown whole, is saved as the very file picked', async () => {
+    const file = png(1000, 400)
+    const onSave = open(file)
+    await picture()
+    expect(screen.getByRole('button', { name: 'Fit the whole picture' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
+  })
+
+  test('a portrait picture starts contained and centred, moves with the arrow keys, and fits again', async () => {
+    open(png(300, 400))
+    const img = (await picture())?.parentElement
+    const left = () => parseFloat(img?.style.left ?? '')
+    const start = left()
+    expect(img?.style.height).toBe('100%')
+    expect(start).toBeCloseTo(35, 5)
+    expect(screen.getByText(/wide area on documents/)).toBeInTheDocument()
+
+    const group = screen.getByRole('button', { name: /arrow keys/ })
+    fireEvent.keyDown(group, { key: 'ArrowLeft' })
+    expect(left()).toBeLessThan(start)
+    for (let press = 0; press < 40; press += 1) fireEvent.keyDown(group, { key: 'ArrowLeft' })
+    expect(left()).toBe(0)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fit the whole picture' }))
+    expect(left()).toBeCloseTo(start, 5)
+    fireEvent.keyDown(group, { key: '+' })
+    expect(parseFloat(img?.style.height ?? '')).toBeCloseTo(110, 5)
+  })
+
+  test('an unreadable picture says so', async () => {
+    open(png(300, 400))
+    const img = await picture()
+    if (img) fireEvent.error(img)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/can’t be read/)
   })
 })

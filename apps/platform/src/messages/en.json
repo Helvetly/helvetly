@@ -4132,5 +4132,7 @@
   "logoCouldNotBeUploaded": "The logo could not be uploaded.",
   "logoSizeLimits": "PNG or JPEG. Saved logos must be {min}–{max} pixels on each side and no larger than 2 MB.",
   "workspaceLogoSaved": "Workspace logo saved.",
-  "workspaceLogoRemoved": "Workspace logo removed."
+  "workspaceLogoRemoved": "Workspace logo removed.",
+  "fitWholePicture": "Fit the whole picture",
+  "logoFrameHint": "Your logo appears in a wide area on documents. Zoom and drag to adjust it."
 }

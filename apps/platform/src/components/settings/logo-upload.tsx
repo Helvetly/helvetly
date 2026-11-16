@@ -96,8 +96,8 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
       >
         {url ? (
           <>
-            {/* Logos are made for paper: always on white, as on the PDF. */}
-            <span className="flex h-24 w-56 shrink-0 items-center justify-center rounded-lg bg-white p-3 shadow-elevation-1">
+            {/* Logos are made for paper: always on white, in the PDF's 2.5 : 1 field; older logos keep their own shape inside it. */}
+            <span className="flex aspect-[5/2] w-56 shrink-0 items-center justify-center rounded-lg bg-white p-2 shadow-elevation-1">
               <span className="relative size-full">
                 <Image
                   src={url}
