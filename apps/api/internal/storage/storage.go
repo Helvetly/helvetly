@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/url"
 	"strings"
@@ -31,6 +32,11 @@ type Registry interface {
 	SetObjectVersion(ctx context.Context, key, version string, at time.Time) error
 	ForgetObjectVersion(ctx context.Context, key, version string) error
 	DeleteBlocked(ctx context.Context, key string, now time.Time) (bool, error)
+	// The bytes a workspace keeps (storage_bytes): what a write stored, an object confirmed deleted, and reservations
+	// whose write storage never confirmed.
+	ObjectStored(ctx context.Context, key string, size int64, at time.Time) error
+	ObjectDeleted(ctx context.Context, key string) error
+	UnverifiedObjects(ctx context.Context, before time.Time, limit int) ([]string, error)
 }
 
 // Kinds of storage failure, so "the bucket cannot do this" is never confused with "these keys may not" or "try again".
@@ -48,6 +54,7 @@ type S3 struct {
 	lockMode minio.RetentionMode
 	proxy    bool
 	media    *Media
+	meter    Meter
 	now      func() time.Time
 }
 
@@ -227,7 +234,19 @@ func (s *S3) Put(ctx context.Context, key string, body io.Reader, size int64, co
 	if err != nil {
 		return fmt.Errorf("storage put %s: %w", key, classify(err))
 	}
-	return s.record(ctx, key, info.VersionID)
+	if err := s.record(ctx, key, info.VersionID); err != nil {
+		return err
+	}
+	s.stored(ctx, key, info.Size)
+	return nil
+}
+
+// stored confirms a write's actual size to the storage count. Failing here loses nothing: the reservation stays
+// counted, unverified, until the reconciler reads the size.
+func (s *S3) stored(ctx context.Context, key string, size int64) {
+	if err := s.reg.ObjectStored(context.WithoutCancel(ctx), key, size, s.now()); err != nil {
+		slog.WarnContext(ctx, "storage count: confirm size", "key", key, "err", err)
+	}
 }
 
 // Get reads a whole object (small ones, such as an invoice PDF).
@@ -290,8 +309,9 @@ func (s *S3) ProxyDownloads() bool { return s.proxy }
 // UseMedia makes Serve redirect downloads to m's signed links (MEDIA_URL), ahead of presigning or proxying.
 func (s *S3) UseMedia(m *Media) { s.media = m }
 
-// MediaLink: a signed MEDIA_URL link to the recorded version of the object, or "" without UseMedia.
-func (s *S3) MediaLink(ctx context.Context, key, filename, contentType string) (string, error) {
+// MediaLink: a signed MEDIA_URL link to the recorded version of the object, or "" without UseMedia. Its downloads
+// count against workspaceID's allowance ("" for none).
+func (s *S3) MediaLink(ctx context.Context, workspaceID, key, filename, contentType string) (string, error) {
 	if s.media == nil {
 		return "", nil
 	}
@@ -299,7 +319,7 @@ func (s *S3) MediaLink(ctx context.Context, key, filename, contentType string) (
 	if err != nil {
 		return "", err
 	}
-	return s.media.link(key, v, filename, contentType), nil
+	return s.media.link(workspaceID, key, v, filename, contentType), nil
 }
 
 // Copy duplicates the recorded version of src inside the bucket, without the bytes passing through the API, and
@@ -314,7 +334,11 @@ func (s *S3) Copy(ctx context.Context, src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("storage copy %s: %w", src, classify(err))
 	}
-	return s.record(ctx, dst, info.VersionID)
+	if err := s.record(ctx, dst, info.VersionID); err != nil {
+		return err
+	}
+	s.stored(ctx, dst, info.Size)
+	return nil
 }
 
 // Delete removes the recorded version of key (permanently, on a versioned bucket), or the key itself when no version
@@ -340,5 +364,62 @@ func (s *S3) Delete(ctx context.Context, key string) error {
 			return fmt.Errorf("storage delete %s: forget version: %w", key, err)
 		}
 	}
+	// released only now that storage confirmed the delete
+	if err := s.reg.ObjectDeleted(context.WithoutCancel(ctx), key); err != nil {
+		return fmt.Errorf("storage delete %s: release count: %w", key, err)
+	}
 	return nil
+}
+
+// Reconcile settles counted objects whose write storage never confirmed within an hour: the size storage reports
+// when the object exists, the row dropped when it does not (a PUT that failed or never ran). It returns how many it
+// settled; at most limit per call.
+func (s *S3) Reconcile(ctx context.Context, limit int) (int, error) {
+	keys, err := s.reg.UnverifiedObjects(ctx, s.now().Add(-time.Hour), limit)
+	if err != nil {
+		return 0, fmt.Errorf("storage reconcile: %w", err)
+	}
+	for i, key := range keys {
+		v, err := s.version(ctx, key)
+		if err != nil {
+			return i, err
+		}
+		info, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{VersionID: v})
+		switch err := classify(err); {
+		case err == nil:
+			err = s.reg.ObjectStored(ctx, key, info.Size, s.now())
+			if err != nil {
+				return i, fmt.Errorf("storage reconcile %s: %w", key, err)
+			}
+		case errors.Is(err, store.ErrNotFound):
+			if err := s.reg.ObjectDeleted(ctx, key); err != nil {
+				return i, fmt.Errorf("storage reconcile %s: %w", key, err)
+			}
+		default:
+			return i, fmt.Errorf("storage reconcile %s: %w", key, err)
+		}
+	}
+	return len(keys), nil
+}
+
+// RunReconcile reconciles the storage count every ten minutes, batch by batch, until ctx ends.
+func (s *S3) RunReconcile(ctx context.Context) {
+	tick := time.NewTicker(10 * time.Minute)
+	defer tick.Stop()
+	for {
+		for {
+			n, err := s.Reconcile(ctx, 500)
+			if err != nil {
+				slog.ErrorContext(ctx, "storage count reconcile", "error", err)
+			}
+			if err != nil || n < 500 {
+				break
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+	}
 }

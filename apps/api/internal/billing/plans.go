@@ -94,7 +94,7 @@ const (
 	Products    Limit = "products"               // catalogue entries not deleted (archived ones too)
 	Engagements Limit = "engagements"            // engagements not cancelled and not ended
 	Signatures  Limit = "signatures_per_month"   // signature packages sent this quota month (usage_events)
-	Storage     Limit = "storage_bytes"          // documents and expense receipts
+	Storage     Limit = "storage_bytes"          // bytes kept in storage (stored_objects)
 	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
 	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
@@ -103,6 +103,11 @@ const (
 
 	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
 	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
+
+	Downloads        Limit = "download_bytes_per_month"         // bytes of workspace files sent this quota month (usage_events)
+	Emails           Limit = "emails_per_month"                 // business email recipients accepted this quota month (usage_events)
+	EmailAttachments Limit = "email_attachment_bytes_per_month" // attachment bytes times recipients this quota month (usage_events)
+	MaxEmailAttach   Limit = "max_email_attachment_bytes"       // one message's attachments, per recipient
 )
 
 // Unlimited: the plan has no cap on that limit.
@@ -208,6 +213,12 @@ func used(u store.Usage, l Limit) int64 {
 		return u.QuotesRetained
 	case AutomationActions:
 		return u.AutomationsThisMonth
+	case Downloads:
+		return u.DownloadBytesThisMonth
+	case Emails:
+		return u.EmailsThisMonth
+	case EmailAttachments:
+		return u.EmailAttachmentBytesThisMonth
 	}
 	return 0
 }

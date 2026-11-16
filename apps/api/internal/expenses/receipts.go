@@ -281,13 +281,14 @@ func (s *Service) downloadReceipt(w http.ResponseWriter, r *http.Request, sess s
 		if err != nil {
 			return err
 		}
-		w.Header().Set("Content-Type", f.ContentType) // one of the sniffed receipt types, never HTML
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": f.Name}))
-		_, _ = w.Write(b)
-		return nil
+		return storage.Metered(w, r, storage.MeterOf(s.files), sess.Workspace.ID, int64(len(b)), func(w http.ResponseWriter) {
+			w.Header().Set("Content-Type", f.ContentType) // one of the sniffed receipt types, never HTML
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": f.Name}))
+			_, _ = w.Write(b)
+		})
 	}
-	return storage.Serve(w, r, s.files, f.ObjectKey, f.Name, f.ContentType)
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, f.ObjectKey, f.Name, f.ContentType)
 }
 
 // deleteReceipt: drafts only (a booked expense keeps its evidence). Row and object go together: if the object

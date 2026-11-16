@@ -133,7 +133,7 @@ func TestS3(t *testing.T) {
 	}
 	s.proxy = true
 	w := httptest.NewRecorder()
-	if err := Serve(w, httptest.NewRequest("GET", "/", nil), s, key, "Grüezi.txt", ""); err != nil || w.Code != 200 ||
+	if err := Serve(w, httptest.NewRequest("GET", "/", nil), s, "", key, "Grüezi.txt", ""); err != nil || w.Code != 200 ||
 		w.Body.String() != body || w.Header().Get("Content-Type") != "text/plain" || w.Header().Get("ETag") == "" {
 		t.Fatalf("proxied download: %v %d %q %v", err, w.Code, w.Body.String(), w.Header())
 	}

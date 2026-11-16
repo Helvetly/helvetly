@@ -133,3 +133,82 @@ func (q Q) UsageInPeriods(ctx context.Context, workspaceID, resource, from, to s
 		WHERE workspace_id = $1 AND resource = $2 AND period BETWEEN $3 AND $4`, workspaceID, resource, from, to).Scan(&u.Consumed, &u.Reserved)
 	return u, err
 }
+
+// Snapshots is what a workspace's whole exports (own_data_export) have done recently, for the next one's admission:
+// an export that sent nothing (it failed first) does not count.
+type Snapshots struct {
+	Running   bool       // one has not settled yet, started in the last six hours (an older one crashed)
+	LastAt    *time.Time // the latest counted export in the last seven days
+	ThisMonth int64      // exports counted in now's quota month
+	Bytes     int64      // what they sent or hold
+}
+
+// ReserveSnapshot admits one whole export of the workspace as the usage operation id of resource, holding amount bytes:
+// under the workspace's admission lock, check sees the recent exports and refuses with its error, or the export is
+// reserved. SettleUsage records what it sent.
+func (q Q) ReserveSnapshot(ctx context.Context, workspaceID, resource, id string, amount int64, now time.Time, check func(Snapshots) error) error {
+	return q.writeTx(ctx, func(q Q) error {
+		if err := q.LockAdmission(ctx, workspaceID, resource); err != nil {
+			return err
+		}
+		var s Snapshots
+		err := q.db.QueryRow(ctx, `SELECT
+				coalesce(bool_or(settled_at IS NULL AND created_at > $3::timestamptz - interval '6 hours'), false),
+				max(created_at) FILTER (WHERE created_at > $3::timestamptz - interval '7 days' AND (settled_at IS NULL OR consumed > 0)),
+				count(*) FILTER (WHERE period = $4 AND (settled_at IS NULL OR consumed > 0)),
+				coalesce(sum(consumed + reserved) FILTER (WHERE period = $4), 0)
+			FROM usage_events WHERE workspace_id = $1 AND resource = $2`, workspaceID, resource, now, UsagePeriod(now)).
+			Scan(&s.Running, &s.LastAt, &s.ThisMonth, &s.Bytes)
+		if err != nil {
+			return err
+		}
+		if err := check(s); err != nil {
+			return err
+		}
+		_, err = q.db.Exec(ctx, `INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at)
+			VALUES ($1, $2, $3, '', $4, $5, 0, $6)`, workspaceID, resource, id, UsagePeriod(now), amount, now)
+		return err
+	})
+}
+
+// CapExceeded is why ReserveCapped refused: the limit's usage and cap when the operation came.
+type CapExceeded struct {
+	Resource  string
+	Used, Max int64
+	Requested int64
+}
+
+func (e *CapExceeded) Error() string {
+	return fmt.Sprintf("%s: %d used of %d, %d more requested", e.Resource, e.Used, e.Max, e.Requested)
+}
+
+// ReserveCapped reserves every op, all or none, each within its cap (-1: none) counting usage from the quota month
+// from through now's, under each resource's own admission lock and not the workspace's billing lock: for an effect
+// started inside another transaction that may hold the billing lock already (an email sent while a quote is saved),
+// where a second connection taking it again would wait on itself. The caller reads the caps (billing). A refusal is
+// ErrAdmissionDenied wrapping *CapExceeded. ops come in their resources' lexicographic order.
+func (q Q) ReserveCapped(ctx context.Context, workspaceID string, ops []UsageOp, caps []int64, from string, now time.Time) error {
+	return q.writeTx(ctx, func(q Q) error {
+		for i, op := range ops {
+			if op.Resource == "" || op.ID == "" || op.Amount < 0 {
+				return fmt.Errorf("usage %q of %q: an operation needs a resource, an id and an amount of 0 or more", op.ID, op.Resource)
+			}
+			if _, err := q.db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,7))`, "resource-admission:"+workspaceID+":"+op.Resource); err != nil {
+				return err
+			}
+			u, err := q.UsageInPeriods(ctx, workspaceID, op.Resource, from, UsagePeriod(now))
+			if err != nil {
+				return err
+			}
+			if caps[i] >= 0 && (u.Total() > caps[i] || op.Amount > caps[i]-u.Total()) {
+				return fmt.Errorf("%w: %w", ErrAdmissionDenied, &CapExceeded{Resource: op.Resource, Used: u.Total(), Max: caps[i], Requested: op.Amount})
+			}
+			sum := sha256.Sum256([]byte(op.Params))
+			if _, err := q.db.Exec(ctx, `INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, 0, $7)`, workspaceID, op.Resource, op.ID, hex.EncodeToString(sum[:]), UsagePeriod(now), op.Amount, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"net/textproto"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +25,10 @@ import (
 )
 
 type Message struct {
+	// Workspace is the workspace a business email is sent for (an invoice, a reminder, a signature request, a portal
+	// invitation, a report, a notification): Metered counts it against that workspace's allowances. Empty for the
+	// email no business limit may stop: sign-in codes, security notices, invitations to join, feedback to Helvetly.
+	Workspace           string
 	To, Cc              []string
 	ReplyTo             string // optional
 	Subject, Text, HTML string
@@ -46,6 +51,10 @@ type Sender struct {
 func NewSender(cfg config.SMTP, publicURL string) *Sender {
 	return &Sender{cfg: cfg, publicURL: publicURL}
 }
+
+// ErrUncertain: the server may have accepted the message although Send failed (the connection dropped after the
+// whole message was sent). It is not safe to send again as if nothing happened.
+var ErrUncertain = errors.New("delivery outcome unknown")
 
 func (s *Sender) Send(ctx context.Context, m Message) error {
 	c := s.cfg
@@ -108,6 +117,10 @@ func (s *Sender) Send(ctx context.Context, m Message) error {
 		return fmt.Errorf("smtp write: %w", err)
 	}
 	if err := w.Close(); err != nil {
+		var reply *textproto.Error
+		if !errors.As(err, &reply) { // the message was sent and no answer came: it may have been accepted
+			return fmt.Errorf("smtp: %w: %w", ErrUncertain, err)
+		}
 		return fmt.Errorf("smtp: %w", err)
 	}
 	_ = cl.Quit()

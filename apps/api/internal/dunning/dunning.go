@@ -265,7 +265,9 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 		if err := notifications.Notify(ctx, q, ws.ID, "dunning.sent", data, to, now); err != nil {
 			return err
 		}
-		if err := s.mailer.Send(ctx, st.message(n, letter, invoicePDF)); err != nil {
+		m := st.message(n, letter, invoicePDF)
+		m.Workspace = ws.ID
+		if err := s.mailer.Send(ctx, m); err != nil {
 			return fmt.Errorf("send: %w", err)
 		}
 		sent = true

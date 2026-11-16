@@ -216,6 +216,9 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	}
 	key := "workspaces/" + sess.Workspace.ID + "/invoices/" + inv.ID + "/" + fileName(inv)
 	inv.PDFKey = &key
+	if err := q.ReserveObject(ctx, sess.Workspace.ID, key, int64(len(body)), false, s.now()); err != nil {
+		return err
+	}
 	if err := s.files.Put(ctx, key, bytes.NewReader(body), int64(len(body)), "application/pdf", fileName(inv)); err != nil {
 		return err
 	}

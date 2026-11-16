@@ -134,9 +134,12 @@ func run() error {
 	var portalInviteMailer clients.Mailer
 	var feedbackMailer feedback.Mailer
 	var quoteMailer quotes.Mailer
+	var businessMail *mail.Metered // counts business email against the workspace's allowances once billing is wired
 	if cfg.MailConfigured() {
 		sender := mail.NewSender(cfg.SMTP, cfg.PublicURL)
-		mailer, inviteMailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, feedbackMailer, quoteMailer = sender, sender, sender, sender, sender, sender, sender, sender // two vars: copying a nil interface between types is fine, a typed nil pointer is not
+		businessMail = &mail.Metered{Sender: sender}
+		inviteMailer, feedbackMailer = sender, sender                                                                                                                          // joining a workspace and feedback to Helvetly: no business limit
+		mailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, quoteMailer = businessMail, businessMail, businessMail, businessMail, businessMail, businessMail // two vars: copying a nil interface between types is fine, a typed nil pointer is not
 	}
 	clientsSvc.SetMailer(portalInviteMailer, cfg.PortalURL)
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
@@ -153,6 +156,13 @@ func run() error {
 		return err
 	}
 	db.SetAdmission(billingSvc.AllowResource)
+	if businessMail != nil {
+		businessMail.Meter = billingSvc
+	}
+	if cfg.BillingEnabled() { // downloads count against plans: no more presigned links, which cannot be counted
+		files.UseMeter(billingSvc)
+	}
+	bg.Go(ctx, "storage count", files.RunReconcile) // every 10 min: counted objects whose write storage never confirmed
 	db.SetFeatureGate(billingSvc.RequireFeature)
 	membersSvc.SetSeats(billingSvc)      // a member who leaves frees a seat
 	invitationsSvc.SetSeats(billingSvc)  // an accepted invitation takes one
@@ -189,6 +199,7 @@ func run() error {
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, slog.Default())
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
+	exportSvc.SetSnapshots(billingSvc.ReserveSnapshot) // the owner's whole export: its own small allowance
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{
 		Provider: model, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,

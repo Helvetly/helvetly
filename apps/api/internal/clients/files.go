@@ -312,7 +312,7 @@ func (s *Service) downloadFile(w http.ResponseWriter, r *http.Request, sess stor
 	if err != nil {
 		return err
 	}
-	return storage.Serve(w, r, s.files, f.ObjectKey, f.Name, f.ContentType)
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, f.ObjectKey, f.Name, f.ContentType)
 }
 
 // deleteFile moves the file to the Documents Trash (restorable for 30 days); a business record stays (409).
