@@ -514,7 +514,8 @@ func (s *Service) createCustomer(ctx context.Context, q store.Q, sess store.Sess
 		ID string `json:"id"`
 	}
 	form := url.Values{"email": {sess.User.Email}, "name": {sess.Workspace.Name},
-		"description": {"Helvetly workspace " + sess.Workspace.Name}, "metadata[workspace_id]": {sess.Workspace.ID}}
+		"description": {"Helvetly workspace " + sess.Workspace.Name}, "metadata[workspace_id]": {sess.Workspace.ID},
+		"metadata[user_id]": {sess.User.ID}} // who opened the customer, to find their account from Stripe
 	// The key makes a retried request return the same customer instead of a second one; it covers the parameters, as
 	// Stripe refuses a key reused with others (a renamed workspace, another email).
 	sum := sha256.Sum256([]byte(form.Encode()))

@@ -446,8 +446,8 @@ func newEnv(t *testing.T, enabled bool) *env {
 }
 
 type browser struct {
-	token, csrf, workspace string
-	header                 http.Header // sent with every request, such as CF-IPCountry and X-Forwarded-For
+	token, csrf, workspace, user string
+	header                       http.Header // sent with every request, such as CF-IPCountry and X-Forwarded-For
 }
 
 // viaCloudflare makes b's requests come from a visitor in country through Cloudflare's edge (104.16.0.1).
@@ -475,7 +475,7 @@ func (e *env) join(ws, role string) *browser {
 	e.t.Helper()
 	ctx, now := context.Background(), time.Now()
 	u := store.User{ID: auth.NewID("usr"), Email: strings.ToLower(rand.Text()) + "@example.com", Name: "Anna"}
-	b := &browser{token: rand.Text(), csrf: rand.Text(), workspace: ws}
+	b := &browser{token: rand.Text(), csrf: rand.Text(), workspace: ws, user: u.ID}
 	sum := sha256.Sum256([]byte(b.token))
 	for _, err := range []error{
 		e.st.CreateUser(ctx, u, now),
@@ -1039,8 +1039,11 @@ func TestCustomerIdempotencyKeyCoversItsParameters(t *testing.T) {
 		t.Fatalf("checkout: %d", code)
 	}
 	f := e.stripe.form("POST /v1/customers")
+	if f.Get("metadata[user_id]") != owner.user {
+		t.Fatalf("user_id %q, want %q", f.Get("metadata[user_id]"), owner.user)
+	}
 	sent := url.Values{}
-	for _, k := range []string{"email", "name", "description", "metadata[workspace_id]"} {
+	for _, k := range []string{"email", "name", "description", "metadata[workspace_id]", "metadata[user_id]"} {
 		sent.Set(k, f.Get(k))
 	}
 	sum := sha256.Sum256([]byte(sent.Encode()))
