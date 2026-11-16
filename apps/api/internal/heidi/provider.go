@@ -44,8 +44,12 @@ func answerLabel(files []upload) string {
 
 // modelAnswer asks the model; known skips the scope classifier for a message the first pass already let through.
 // progress reports each step as its provider call starts.
-func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, message string, files []upload, known bool, progress func(label string)) (turn, error) {
+func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, message, path string, files []upload, known bool, progress func(label string)) (turn, error) {
 	request := ProviderRequest{Instructions: instructions, Message: message}
+	here := screen(path)
+	if here != "" {
+		request.Instructions += "\n\n# Current screen\n\n" + here
+	}
 	history, err := s.db.HeidiMessages(ctx, sess.Workspace.ID, sess.User.ID, id)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return turn{}, err
@@ -87,7 +91,7 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 	var spent int64
 	if !known {
 		budget.Calling = func() { progress(labelClassify) }
-		in, tokens, ok := classify(ctx, budget, s.provider, sess.Workspace, call, request.History, message, len(files))
+		in, tokens, ok := classify(ctx, budget, s.provider, sess.Workspace, call, request.History, message, here, len(files))
 		spent = tokens
 		if ok && !in {
 			t := refusal(sess, message)
