@@ -103,6 +103,8 @@ const renderCards = (value: Billing) =>
 
 const card = (name: string) => screen.getByRole('region', { name })
 
+const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
+
 test('a card lists only what its plan offers: limits, then what the plan below lacks', () => {
   const offer: PublicOffer = {
     ...offerFixture,
@@ -115,7 +117,6 @@ test('a card lists only what its plan offers: limits, then what the plan below l
       </TooltipProvider>
     </QueryClientProvider>,
   )
-  const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
   expect(list('Basic')).not.toHaveTextContent('Client portal')
   expect(list('Basic')).not.toHaveTextContent('Heidi AI assistant')
   expect(list('Pro')).toHaveTextContent('Heidi AI assistant')

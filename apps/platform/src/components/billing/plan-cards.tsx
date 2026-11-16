@@ -6,7 +6,7 @@ import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Lock, Minus, Sparkles, X } from 'lucide-react'
+import { CalendarClock, Check, Lock, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
