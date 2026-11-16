@@ -34,3 +34,40 @@ test('a seller in a market Helvetly cannot serve yet is refused before saving', 
     expect(validate({ ...values, country }).country).toMatch(`seller in ${country}`)
   expect(validate({ ...values, country: 'DE' })).not.toHaveProperty('country')
 })
+
+test('the company name and address are required, the apartment and the IBAN are not', () => {
+  const settings = sampleSettings({ iban: null })
+  const values = valuesFrom(settings)
+  expect(validate(values)).toEqual({})
+  expect(values.apt).toBe('')
+  const blank = {
+    ...values,
+    name: ' ',
+    street: '',
+    street_number: '',
+    zip: '  ',
+    city: '',
+    country: '',
+  }
+  expect(Object.keys(validate(blank)).toSorted()).toEqual(
+    ['city', 'country', 'name', 'street', 'street_number', 'zip'].toSorted(),
+  )
+})
+
+test('a VAT number is required exactly when the company is VAT-registered', () => {
+  const values = { ...valuesFrom(sampleSettings()), vat_number: ' ' }
+  expect(validate({ ...values, vat_registered: true })).toHaveProperty('vat_number')
+  expect(validate({ ...values, vat_registered: false })).toEqual({})
+  expect(
+    validate({ ...values, vat_registered: true, vat_number: 'CHE-109.322.552' }),
+  ).toHaveProperty('vat_number')
+})
+
+test('the apartment is trimmed, and sent as null when blank', () => {
+  const settings = sampleSettings()
+  settings.seller.apt = '3rd floor'
+  const values = valuesFrom(settings)
+  expect(values.apt).toBe('3rd floor')
+  expect(toSettingsInput(settings, { ...values, apt: '  Suite 2 ' }).seller.apt).toBe('Suite 2')
+  expect(toSettingsInput(settings, { ...values, apt: '   ' }).seller.apt).toBeNull()
+})

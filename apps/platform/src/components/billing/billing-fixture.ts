@@ -77,7 +77,7 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
   cancel_at_period_end: false,
   trial_end: null,
   trial_days: 7,
-  trial_plan: 'business',
+  trial_plan: 'pro',
   trial_seats: 2,
   trial_available: true,
   trial: false,

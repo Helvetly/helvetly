@@ -43,8 +43,11 @@ func TestSeededOffer(t *testing.T) {
 		t.Fatalf("the current offer does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly-v2" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != "helvetly-v2-pro-trial" || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
+	}
+	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
+		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
 	if len(o.Records) != 68 || len(defs) != 68 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
@@ -188,7 +191,7 @@ func TestPublishOffer(t *testing.T) {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v2" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v2-pro-trial" || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

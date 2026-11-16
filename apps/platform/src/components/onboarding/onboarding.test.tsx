@@ -101,6 +101,17 @@ const wrap = (children: ReactNode) =>
     </QueryClientProvider>,
   )
 
+type User = ReturnType<typeof userEvent.setup>
+/** The company step's required fields (the country starts on Switzerland). */
+const fillCompany = async (user: User, name = 'Muster GmbH') => {
+  await waitFor(() => expect(screen.getByLabelText(/Company name/)).toBeEnabled()) // once the settings have loaded
+  await user.type(screen.getByLabelText(/Company name/), name)
+  await user.type(screen.getByLabelText(/^Street/), 'Bahnhofstrasse')
+  await user.type(screen.getByLabelText(/^Number/), '12')
+  await user.type(screen.getByLabelText(/^ZIP/), '8001')
+  await user.type(screen.getByLabelText(/^City/), 'Zürich')
+}
+
 const welcome = () => screen.findByRole('heading', { name: 'Welcome to Helvetly, Anna' })
 const left = () => waitFor(() => expect(replace).toHaveBeenCalledWith('/invoices?status=open'))
 
@@ -203,11 +214,39 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: /Get started/ }))
     await screen.findByRole('heading', { name: 'Your company' })
     await user.keyboard('{Escape}')
-    // A step's own skip only moves on.
-    await user.click(screen.getByRole('button', { name: 'I’ll do it later' }))
-    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+    // The company step cannot be skipped, and cannot be left empty or with only some of it.
+    expect(screen.queryByRole('button', { name: 'I’ll do it later' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    const name = await screen.findByLabelText(/Company name/)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(name).toHaveFocus())
+    expect(screen.getAllByText('Required').length).toBeGreaterThanOrEqual(5)
+    expect(screen.getByRole('heading', { name: 'Your company' })).toBeInTheDocument()
+    expect(saved).toHaveLength(0)
     expect(finished).toBe(0)
     expect(replace).not.toHaveBeenCalled()
+    await user.type(name, 'Muster GmbH')
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(await screen.findByLabelText(/^Street/)).toHaveFocus()
+    expect(screen.getByLabelText(/Company name/)).not.toHaveAttribute('aria-invalid')
+    expect(saved).toHaveLength(0)
+  })
+
+  test('a VAT-registered company needs its VAT number; the apartment is always optional', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await user.click(await screen.findByRole('button', { name: /Get started/ }))
+    await screen.findByRole('heading', { name: 'Your company' })
+    await fillCompany(user)
+    await user.click(screen.getByLabelText(/Registered for VAT/))
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(await screen.findByLabelText('UID number')).toHaveAttribute('aria-invalid', 'true')
+    expect(saved).toHaveLength(0)
+    await user.click(screen.getByLabelText(/Registered for VAT/))
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
+    expect(saved[0]?.seller).toMatchObject({ apt: null, vat_number: null })
   })
 
   test('an invalid entry stays, so it is not silently thrown away', async () => {
@@ -246,7 +285,7 @@ describe('the welcome', () => {
     await user.click(await screen.findByRole('button', { name: /Get started/ }))
     const company = await screen.findByRole('heading', { name: 'Your company' })
     await waitFor(() => expect(company).toHaveFocus())
-    await user.type(screen.getByLabelText('Company name'), 'Muster Treuhand GmbH')
+    await fillCompany(user, 'Muster Treuhand GmbH')
     await user.type(screen.getByLabelText('IBAN'), 'CH9300762011623852957')
     await user.click(screen.getByRole('button', { name: /Continue/ }))
     expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
@@ -260,7 +299,8 @@ describe('the welcome', () => {
 
     const company = await screen.findByRole('heading', { name: 'Your company' })
     await waitFor(() => expect(company).toHaveFocus())
-    await user.type(screen.getByLabelText('Company name'), 'Muster GmbH')
+    await fillCompany(user)
+    await user.type(screen.getByLabelText(/Apt \/ suite/), '  3rd floor ')
     await user.click(screen.getByLabelText(/Registered for VAT/))
     await user.type(screen.getByLabelText('UID number'), '109322552')
     expect(screen.getByLabelText('UID number')).toHaveValue('109.322.552')
@@ -278,7 +318,16 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: /Continue/ }))
     expect(await screen.findByRole('heading', { name: 'Add your logo' })).toBeInTheDocument()
     expect(saved[0]).toMatchObject({
-      seller: { name: 'Muster GmbH', country: 'CH', vat_number: 'CHE-109.322.551 MWST' },
+      seller: {
+        name: 'Muster GmbH',
+        street: 'Bahnhofstrasse',
+        street_number: '12',
+        apt: '3rd floor',
+        zip: '8001',
+        city: 'Zürich',
+        country: 'CH',
+        vat_number: 'CHE-109.322.551 MWST',
+      },
       vat_registered: true,
       default_vat_mode: 'exclusive',
       iban: 'CH9300762011623852957',

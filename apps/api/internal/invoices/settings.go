@@ -84,6 +84,41 @@ func (s *Settings) derive() {
 	}
 }
 
+// CompleteOnboarding runs mark when the workspace's stored company details are complete: the name, the address (the
+// apartment is optional), a supported country and, for a VAT-registered seller, the VAT number. It reads them under
+// the settings lock, so a concurrent change cannot slip between the check and mark. The bank account stays optional
+// here; saving partial settings stays allowed.
+func (s *Service) CompleteOnboarding(ctx context.Context, workspaceID string, mark func(q store.Q) error) error {
+	return s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockInvoiceSettings(ctx, workspaceID); err != nil {
+			return err
+		}
+		set, err := loadSettings(ctx, q, workspaceID)
+		if err != nil {
+			return err
+		}
+		p := newParser()
+		for _, f := range []struct{ key, value string }{
+			{"seller.name", set.Seller.Name}, {"seller.street", set.Seller.Street}, {"seller.street_number", set.Seller.StreetNumber},
+			{"seller.zip", set.Seller.Zip}, {"seller.city", set.Seller.City}, {"seller.country", set.Seller.Country},
+		} {
+			if strings.TrimSpace(f.value) == "" {
+				p.fail(f.key, "This is required.")
+			}
+		}
+		if msg := unsupportedSeller(set.Seller.Country); msg != "" {
+			p.fail("seller.country", msg)
+		}
+		if set.VATRegistered && (set.Seller.VATNumber == nil || strings.TrimSpace(*set.Seller.VATNumber) == "") {
+			p.fail("seller.vat_number", "This is required.")
+		}
+		if err := p.err(); err != nil {
+			return err
+		}
+		return mark(q)
+	})
+}
+
 func (s *Service) getSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	set, err := loadSettings(r.Context(), s.db.Q, sess.Workspace.ID)
 	if err != nil {

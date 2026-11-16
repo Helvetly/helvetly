@@ -3457,7 +3457,7 @@
   "whoSignsAs": "Who signs as {value1}",
   "whoTheClientIsAndHowToReachThem": "Who the client is and how to reach them.",
   "whoYouPaidWhenAndForWhat": "Who you paid, when, and for what.",
-  "whoYourInvoicesComeFromFillInWhatYou": "Who your invoices come from. Fill in what you have now; the rest can wait for Settings.",
+  "whoYourInvoicesComeFromFillInWhatYou": "Enter the required company details. Apt. and IBAN are optional. A VAT number is required only if you are registered for VAT.",
   "whoYouWorkForWithTheirAddressAndContacts": "Who you work for, with their address and contacts.",
   "willBeDeletedForGoodBusinessRecordsStayThis": "{value1} will be deleted for good. Business records stay. This can’t be undone.",
   "willNeedToSignInAgainYouStaySigned": "{value1} will need to sign in again. You stay signed in here.",
@@ -4120,5 +4120,6 @@
   "accessAdminGeneral": "Full access as admin",
   "planEmployees": "employees and payroll",
   "payrollAMember": "a member",
-  "accessHRSummary": "HR: {hr}."
+  "accessHRSummary": "HR: {hr}.",
+  "thisIsRequired": "Required"
 }

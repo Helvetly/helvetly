@@ -126,13 +126,15 @@ test('a card lists only what its plan offers: limits, then what the plan below l
   expect(screen.queryByText('Not included:', { exact: false })).toBeNull()
 })
 
-test('Business offers the trial with its line; the others are charged today', async () => {
+test('only Pro offers the trial, with its line; the others are charged today', async () => {
   renderCards(billing())
-  const business = card('Business')
-  expect(within(business).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
-  expect(business).toHaveTextContent(
-    "Business free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 99 per person a month.",
+  const pro = card('Pro')
+  expect(within(pro).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
+  expect(pro).toHaveTextContent(
+    "Pro free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 49 per person a month.",
   )
+  expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
+  expect(card('Business')).toHaveTextContent('Charged today.')
   const basic = card('Basic')
   expect(within(basic).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
   expect(basic).toHaveTextContent('Charged today.')
@@ -141,8 +143,6 @@ test('Business offers the trial with its line; the others are charged today', as
   expect(basic.querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 57 / month',
   )
-  expect(within(card('Pro')).getByRole('button', { name: 'Choose Pro' })).toBeEnabled()
-  expect(card('Pro')).toHaveTextContent('Charged today.')
   await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
   expect(card('Basic')).toHaveTextContent('CHF 183')
   expect(card('Basic')).toHaveTextContent('CHF 15per person / month')
@@ -151,9 +151,9 @@ test('Business offers the trial with its line; the others are charged today', as
   expect(card('Basic').querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 549 / year',
   )
-  await userEvent.click(within(card('Business')).getByRole('button', { name: /Start 7-day/ }))
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: /Start 7-day/ }))
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/c'))
-  expect(checkout).toEqual({ plan: 'business', interval: 'year' })
+  expect(checkout).toEqual({ plan: 'pro', interval: 'year' })
 })
 
 test('the picker shows the workspace currency and what its prices include', () => {
@@ -165,7 +165,7 @@ test('the picker shows the workspace currency and what its prices include', () =
   unmount()
 
   renderCards(billing({ currency: 'usd' }))
-  expect(card('Business')).toHaveTextContent('Then USD 99 per person a month.')
+  expect(card('Pro')).toHaveTextContent('Then USD 49 per person a month.')
   expect(card('Basic')).toHaveTextContent('per person / month')
   expect(screen.getByText(/Prices incl. tax/)).toBeVisible()
 })
@@ -319,7 +319,7 @@ test('an amount off takes the amount the API gives in the workspace currency', a
 
 test('people who cannot manage billing see the plans without the way to change them', () => {
   renderCards(billing({ can_manage: false }))
-  expect(within(card('Pro')).getByRole('button', { name: 'Choose Pro' })).toBeDisabled()
+  expect(within(card('Pro')).getByRole('button', { name: 'Start 7-day free trial' })).toBeDisabled()
   expect(screen.getByText(/Only an owner or admin/)).toBeInTheDocument()
   expect(screen.queryByText('Have a promotion code?')).toBeNull()
 })
@@ -405,12 +405,10 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
 test('choiceLabel names the way to each plan from the workspace’s', () => {
   const [basic, pro, business] = billing().plans
   if (!basic || !pro || !business) throw new Error('fixture plans missing')
-  expect(choiceLabel(billing(), business, 'month')).toBe('Start 7-day free trial')
+  expect(choiceLabel(billing(), pro, 'month')).toBe('Start 7-day free trial')
   expect(choiceLabel(billing(), basic, 'month')).toBe('Choose Basic')
-  expect(choiceLabel(billing(), pro, 'month')).toBe('Choose Pro')
-  expect(choiceLabel(billing({ trial_available: false }), business, 'month')).toBe(
-    'Choose Business',
-  )
+  expect(choiceLabel(billing(), business, 'month')).toBe('Choose Business')
+  expect(choiceLabel(billing({ trial_available: false }), pro, 'month')).toBe('Choose Pro')
   const onPro = billing({ plan: 'pro', interval: 'month' })
   expect(choiceLabel(onPro, basic, 'month')).toBe('Switch to Basic')
   expect(choiceLabel(onPro, pro, 'year')).toBe('Switch yearly')
@@ -570,7 +568,7 @@ test('more seats than self-service sells is refused with the API’s reason', as
     ),
   )
   renderCards(billing())
-  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Choose Pro' }))
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Start 7-day free trial' }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
   expect(assign).not.toHaveBeenCalled()
 })

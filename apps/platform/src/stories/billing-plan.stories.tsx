@@ -54,7 +54,7 @@ const usage: Billing['usage'] = [
   { limit: 'signatures_per_month', used: 4, max: 5 },
   { limit: 'members', used: 3, max: null },
 ]
-// The trial: Business for up to two people, its allowances lasting the whole trial.
+// A trial started on the older Business offer, which keeps its terms: Business for up to two people, its allowances lasting the whole trial.
 const trialing = subscribed({
   plan: 'business',
   status: 'trialing',
@@ -421,7 +421,7 @@ export const NoPlan: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'No plan' })).toBeVisible()
     await expect(canvas.getByRole('region', { name: 'Read-only' })).toHaveTextContent(
-      'Try Business free for 7 days with up to 2 people; until then nothing can be changed.',
+      'Try Pro free for 7 days with up to 2 people; until then nothing can be changed.',
     )
     // No limits without a plan, so no "0 of unlimited" tiles.
     await expect(canvas.queryByRole('heading', { name: 'Usage' })).not.toBeInTheDocument()
@@ -721,15 +721,15 @@ export const PlansNoPlan: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     await expect(await canvas.findByRole('heading', { name: 'Choose a plan' })).toBeVisible()
-    // The trial is on Business, for a small team, and its allowances last the whole trial.
-    const businessCard = card(canvas, 'Business')
+    // The trial is on Pro, for a small team, and its allowances last the whole trial.
+    const proCard = card(canvas, 'Pro')
     await expect(
-      businessCard.getByText(
-        "Business free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 99 per person a month.",
+      proCard.getByText(
+        "Pro free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 49 per person a month.",
       ),
     ).toBeVisible()
     await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()
-    await userEvent.click(businessCard.getByRole('button', { name: 'Start 7-day free trial' }))
+    await userEvent.click(proCard.getByRole('button', { name: 'Start 7-day free trial' }))
     await waitFor(() =>
       expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'business', interval: 'month' }),
     )

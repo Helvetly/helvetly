@@ -25,7 +25,7 @@ func TestEmployeesOnBusinessOnly(t *testing.T) {
 	for _, c := range []struct {
 		name, ws string
 		allowed  bool
-	}{{"basic", basic, false}, {"pro", pro, false}, {"business", business, true}, {"trial", trial, true}} {
+	}{{"basic", basic, false}, {"pro", pro, false}, {"business", business, true}, {"pro trial", trial, false}} {
 		err := e.svc.Require(ctx, e.st.Q, c.ws, store.FeatureEmployees)
 		if c.allowed {
 			if err != nil {

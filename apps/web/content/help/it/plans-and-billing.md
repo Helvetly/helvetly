@@ -20,7 +20,7 @@ Ogni spazio di lavoro ha il proprio piano. Ecco come sceglierlo e gestirlo.
 - **Basic** serve per la fatturazione manuale. **Pro** aggiunge Heidi, spese, modelli, firme, correzioni, rendiconti IVA, registro contabile, esportazioni dei dati e automazioni. **Business** aggiunge il portale clienti e le esportazioni XML delle fatture elettroniche.
 - Clienti, prodotti e incarichi hanno limiti fissi per spazio di lavoro; **Business** non pone limiti né a questi né a fatture, preventivi, spese e richieste di firma. Le altre disponibilità sono per membro pagante del team e si sommano in un unico fondo condiviso. Le disponibilità mensili si rinnovano alle 00:00 UTC del primo giorno del mese.
 - Quando una disponibilità si esaurisce, si ferma solo la nuova azione che la richiede; nulla viene eliminato e non ci sono addebiti aggiuntivi.
-- Un nuovo cliente può provare Business per 7 giorni con un massimo di 2 membri e disponibilità di prova ridotte. È richiesta una carta.
+- Le nuove prove idonee includono solo Pro per 7 giorni, con un massimo di 2 membri e disponibilità condivise ridotte per l’intera prova. È richiesta una carta. Le disponibilità di prova non si rinnovano e non aumentano con il numero di membri. Le prove già concesse nell’ambito di offerte precedenti mantengono le condizioni originarie.
 - Non esiste un piano gratuito. Senza un piano attivo lo spazio di lavoro è in sola lettura: nulla viene eliminato e si sblocca non appena viene scelto un piano.
 - Solo titolari e amministratori possono cambiare piano.
 - Quando raggiungi un limite, appare l’invito **See plans**.

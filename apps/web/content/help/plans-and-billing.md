@@ -19,7 +19,7 @@ Each workspace has its own plan. Here is how to choose and manage it.
 - **Basic** is for invoicing by hand. **Pro** adds Heidi, expenses, templates, signatures, corrections, VAT returns, the ledger, data exports and automations. **Business** adds the client portal and e-invoice XML exports.
 - Clients, products and engagements are fixed caps for the workspace; **Business** has no cap on them, nor on invoices, quotes, expenses and signature requests. The other allowances are per paid team member and add up into one shared pool. Monthly allowances start again at 00:00 UTC on the first of the month.
 - When an allowance is used up, only the new action that needs it stops; nothing is deleted and nothing is charged extra.
-- A new customer can try Business for 7 days with up to 2 members and smaller trial allowances. A card is required.
+- New eligible trials include only Pro for 7 days with up to 2 members and smaller shared allowances for the whole trial. A card is required. Trial allowances do not reset or grow with team size. Trials already granted under earlier offers keep their original terms.
 - There is no free plan. Without an active plan the workspace is read-only: nothing is deleted, and it opens again once a plan is chosen.
 - Only owners and admins can change the plan.
 - When you reach a limit, you see a prompt with **See plans**.

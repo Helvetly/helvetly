@@ -56,9 +56,9 @@ describe('home page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Your Swiss back office, beautifully in order.',
     )
-    expect(screen.getByRole('link', { name: /Start your 7-day trial/ }).getAttribute('href')).toBe(
-      'http://localhost:8000/login',
-    )
+    expect(
+      screen.getByRole('link', { name: /Start your 7-day Pro trial/ }).getAttribute('href'),
+    ).toBe('http://localhost:8000/login')
   })
 
   it('shows Heidi’s first example answered, and another one on request', async () => {

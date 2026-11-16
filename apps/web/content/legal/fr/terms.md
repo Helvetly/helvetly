@@ -61,7 +61,7 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   solde Stripe (utilisé pour vos prochaines factures), au prorata à compter du jour du changement.
   Les abonnements souscrits à un ancien prix fixe par espace conservent ce prix et leur limite
   de membres jusqu’à un changement de formule ou de périodicité.
-- **Essai :** un nouveau client peut essayer les fonctionnalités de Business pendant 7 jours,
+- **Essai :** les nouveaux essais éligibles donnent accès uniquement aux fonctionnalités de Pro pendant 7 jours,
   avec jusqu’à 2 membres et de petits quotas pour l’ensemble de l’essai (10 émissions de factures,
   10 envois de devis,
   20 dépenses, 2 demandes de signature, 100 Mo de stockage, 250,000 tokens d’IA et 50 actions
@@ -69,6 +69,7 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   nécessaire. Sans carte valide à la fin de l’essai, l’abonnement prend fin. Chaque client ne
   bénéficie que d’un essai. Après conversion, chaque membre est facturé au prix complet de la
   formule choisie.
+  Les essais déjà accordés dans le cadre d’offres antérieures conservent leurs conditions initiales.
 - Les codes promotionnels s’appliquent uniquement selon les conditions indiquées avec le code.
 
 ## 4. Paiement, renouvellement, changements et résiliation

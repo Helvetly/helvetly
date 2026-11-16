@@ -138,10 +138,10 @@ export type Plan = {
   highlights: string[]
 }
 
-/** The trial: Business features for a short time, with small allowances that neither reset nor grow with people. */
+/** The trial: Pro features for a short time, with small allowances that neither reset nor grow with people. */
 export const TRIAL = {
   days: 7,
-  plan: 'business' satisfies PlanId,
+  plan: 'pro' satisfies PlanId,
   members: 2,
   invoices: 10,
   quotes: 10,

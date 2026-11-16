@@ -91,7 +91,7 @@ export function Welcome() {
 /**
  * The welcome at /welcome: a full-screen page shown once per new workspace, the
  * steps on the left, a live invoice on the right. There is no way out but through: a step's own
- * "Skip" only moves on to the next step. Reaching the last step ends it for good
+ * "Skip" only moves on to the next step, except on the company step, which has none. Reaching the last step ends it for good
  * (POST /session/onboarded), and its actions go on to where the person was going. Each step saves
  * what it has before moving on, so nothing typed is lost. Only a new workspace's owner gets here
  * (GET /session's `onboarded`); invited people never do.
@@ -169,8 +169,15 @@ export function WelcomePage({ session }: { session: Session }) {
   }
   const next = () => go(steps[Math.min(index + 1, steps.length - 1)] ?? 'done')
   const back = index > 0 ? () => go(steps[index - 1] ?? 'welcome') : undefined
+  // Focus goes to the first field with an error once the errors are on screen.
+  const [invalidTick, setInvalidTick] = useState(0)
+  useEffect(() => {
+    if (invalidTick) document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [invalidTick])
   const saveAndNext = async () => {
+    if (save.isPending) return
     if (await persist(true)) next()
+    else setInvalidTick((tick) => tick + 1)
   }
 
   /** Leaves the welcome through one of the last step's actions, keeping what was typed. */
@@ -226,11 +233,9 @@ export function WelcomePage({ session }: { session: Session }) {
                 heading={heading}
                 values={values}
                 errors={errors}
-                edited={edited !== null}
                 busy={busy}
                 onChange={change}
                 onBack={back}
-                onSkip={next}
                 onDone={() => void saveAndNext()}
               />
             )}
@@ -490,29 +495,29 @@ function CompanyStep({
   heading,
   values,
   errors,
-  edited,
   busy,
   onChange,
   onBack,
-  onSkip,
   onDone,
 }: {
   heading: HeadingRef
   values: Values | null
   errors: Errors
-  edited: boolean
   busy: boolean
   onChange: (patch: Partial<Values>) => void
   onBack?: () => void
-  onSkip: () => void
   onDone: () => void
 }) {
   const iban = values ? ibanInfo(values.iban) : { valid: false as const }
-  const text = (field: 'name' | 'street' | 'street_number' | 'zip' | 'city', maxLength: number) => (
+  const text = (
+    field: 'name' | 'street' | 'street_number' | 'apt' | 'zip' | 'city',
+    maxLength: number,
+  ) => (
     <input
       {...describedBy(`onboarding-${field}`, errors[field])}
       className={inputClass}
       maxLength={maxLength}
+      autoComplete={field === 'apt' ? 'address-line2' : undefined}
       value={values?.[field] ?? ''}
       disabled={!values}
       onChange={(event) => onChange({ [field]: event.target.value })}
@@ -530,26 +535,44 @@ function CompanyStep({
         {translate('whoYourInvoicesComeFromFillInWhatYou')}
       </StepHeader>
       <div className="mt-7 grid gap-4">
-        <FormField id="onboarding-name" label={translate('companyName')} error={errors.name}>
+        <FormField
+          id="onboarding-name"
+          label={translate('companyName')}
+          error={errors.name}
+          required
+        >
           {text('name', 70)}
         </FormField>
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
-          <FormField id="onboarding-street" label={translate('street')} error={errors.street}>
+          <FormField
+            id="onboarding-street"
+            label={translate('street')}
+            error={errors.street}
+            required
+          >
             {text('street', 70)}
           </FormField>
           <FormField
             id="onboarding-street_number"
             label={translate('number')}
             error={errors.street_number}
+            required
           >
             {text('street_number', 16)}
           </FormField>
         </div>
+        <FormField
+          id="onboarding-apt"
+          label={`${translate('aptSuite')} (${translate('optional').toLowerCase()})`}
+          error={errors.apt}
+        >
+          {text('apt', 50)}
+        </FormField>
         <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
-          <FormField id="onboarding-zip" label="ZIP" error={errors.zip}>
+          <FormField id="onboarding-zip" label="ZIP" error={errors.zip} required>
             {text('zip', 16)}
           </FormField>
-          <FormField id="onboarding-city" label={translate('city')} error={errors.city}>
+          <FormField id="onboarding-city" label={translate('city')} error={errors.city} required>
             {text('city', 35)}
           </FormField>
         </div>
@@ -557,6 +580,7 @@ function CompanyStep({
           id="onboarding-country"
           label={translate('country')}
           error={errors.country ?? unsupportedSellerCountry(values?.country ?? '')}
+          required
         >
           <Combobox
             id="onboarding-country"
@@ -596,10 +620,7 @@ function CompanyStep({
           />
         </FormField>
       </div>
-      <Actions
-        onBack={onBack}
-        skip={!edited && <SkipButton onClick={onSkip}>{translate('iLlDoItLater')}</SkipButton>}
-      >
+      <Actions onBack={onBack}>
         <Button size="xl" type="submit" className={bigButton} disabled={busy || !values}>
           {busy ? translate('saving') : translate('continue')} <ArrowRight />
         </Button>

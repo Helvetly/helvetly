@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"helvetly.com/api/internal/store"
 )
 
 func TestPricesByLookupKey(t *testing.T) {
@@ -110,17 +112,17 @@ func TestTrialOnlyOnTheTrialPlan(t *testing.T) {
 			t.Fatalf("checkout %s: %d %v", plan, code, body)
 		}
 	}
-	for _, plan := range []string{Basic, Pro} {
+	for _, plan := range []string{Basic, Business} {
 		checkout(plan)
 		if f := e.stripe.form("POST /v1/checkout/sessions"); f.Get("subscription_data[trial_period_days]") != "" || f.Has("subscription_data[metadata][trial_user]") {
 			t.Fatalf("%s got a trial: %v", plan, f)
 		}
 	}
-	checkout(Business) // the offer's trial plan
+	checkout(Pro) // the offer's trial plan
 	f := e.stripe.form("POST /v1/checkout/sessions")
 	if f.Get("subscription_data[trial_period_days]") != "7" || f.Get("subscription_data[trial_settings][end_behavior][missing_payment_method]") != "cancel" ||
 		f.Get("payment_method_collection") != "always" || f.Get("subscription_data[metadata][trial_user]") == "" {
-		t.Fatalf("Business has no 7-day trial with card: %v", f)
+		t.Fatalf("Pro has no 7-day trial with card: %v", f)
 	}
 }
 
@@ -362,5 +364,29 @@ func TestPlanAmountYearly(t *testing.T) {
 		if got := PlanAmount(tt.plan, "year"); got != tt.year {
 			t.Errorf("%s yearly = %d, want %d", tt.plan, got, tt.year)
 		}
+	}
+}
+
+// A workspace on an older offer is sold the current one: its next Checkout starts the Pro trial, never a Business one,
+// while a trial it already started keeps the Business terms it was sold.
+func TestOlderOfferWorkspacesGetOnlyTheProTrial(t *testing.T) {
+	e := newEnv(t, true)
+	owner := e.workspace()
+	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'helvetly-v2', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'helvetly-v2'`, owner.workspace)
+	for plan, trial := range map[string]string{Basic: "", Business: "", Pro: "7"} {
+		if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": "month"}); code != http.StatusOK {
+			t.Fatalf("checkout %s: %d %v", plan, code, body)
+		}
+		f := e.stripe.form("POST /v1/checkout/sessions")
+		if f.Get("subscription_data[trial_period_days]") != trial || f.Get("subscription_data[metadata][offer_id]") != "helvetly-v2-pro-trial" {
+			t.Fatalf("%s on an older offer: %v", plan, f)
+		}
+	}
+
+	started := e.workspace()
+	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'helvetly-v2', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'helvetly-v2'`, started.workspace)
+	e.trialing(started.workspace, "fp_old", time.Now().Add(-time.Hour))
+	if r := mustRights(t, e, started.workspace); !r.Trial || r.Plan != Business || r.OfferID != "helvetly-v2" || !r.Includes(store.FeatureEmployees) {
+		t.Fatalf("a trial started on the older offer: %+v", r)
 	}
 }

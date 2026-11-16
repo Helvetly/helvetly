@@ -53,12 +53,13 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   each prorated from the day of the change. Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
-- **Trial:** a new customer can try the features of Business for 7 days, with up to 2 members and
+- **Trial:** New eligible trials include only Pro features for 7 days, with up to 2 members and
   small allowances for the whole trial (10 invoice issues, 10 quote sends, 20 expenses, 2 signature requests,
   100 MB storage, 250,000 AI tokens and 50 automation actions) that neither restart nor grow with
   the number of members. A card is required. Without a valid card at the end of the trial, the
   subscription ends. Each customer gets one trial only. Once the trial converts, every member is
   billed at the full price of the chosen plan.
+  Trials already granted under earlier offers keep their original terms.
 - Promotion codes apply only as stated with the code.
 
 ## 4. Payment, renewal, changes and cancellation

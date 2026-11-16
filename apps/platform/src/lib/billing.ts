@@ -109,7 +109,7 @@ export type Billing = {
   cancel_at_period_end: boolean
   trial_end: string | null
   trial_days: number
-  /** The plan whose features a trial gives (Business); only its checkout starts a trial. */
+  /** The plan whose features a trial gives (Pro); only its checkout starts a trial. */
   trial_plan: PlanId
   /** The most people a workspace may have to start the trial. */
   trial_seats: number

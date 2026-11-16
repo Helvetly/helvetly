@@ -94,7 +94,7 @@ export const faqIn = perLanguage((translate, language) => {
       topic: 'start',
       teaser: 'pricing',
       q: translate('howDoesTheTrialWork'),
-      a: translate('tryBusinessForDaysWithUpToTeamMembers', {
+      a: translate('tryProForDaysWithUpToTeamMembers', {
         days: TRIAL.days,
         members: TRIAL.members,
         invoices: TRIAL.invoices,
