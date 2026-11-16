@@ -334,3 +334,68 @@ export const KeyboardTabs: Story = {
     )
   },
 }
+
+/** A password manager adds a zero-size relative box after an input; focusing it must move nothing. */
+const frame = () => new Promise((done) => requestAnimationFrame(done))
+
+const injectedHost = (input: HTMLElement) => {
+  const host = document.createElement('div')
+  for (const [name, value] of Object.entries({
+    position: 'relative',
+    height: '0',
+    width: '0',
+    display: 'initial',
+    float: 'left',
+  }))
+    host.style.setProperty(name, value, 'important')
+  input.after(host)
+  return host
+}
+
+export const ExtensionBoxBesideInput: Story = {
+  render: () => (
+    <div data-testid="rows" className="grid max-w-md gap-4">
+      <FormField id="story-email" label="Email">
+        <Input id="story-email" type="email" />
+      </FormField>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField id="story-phone" label="Phone">
+          <Input id="story-phone" />
+        </FormField>
+        <FormField id="story-web" label="Website">
+          <Input id="story-web" />
+        </FormField>
+      </div>
+      <FormField id="story-street" label="Street">
+        <Input id="story-street" />
+      </FormField>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const email = canvas.getByRole('textbox', { name: 'Email' })
+    let host: HTMLElement | undefined
+    const boxes = () =>
+      [...canvasElement.querySelectorAll('[data-testid=rows] *')]
+        .filter((element) => element !== host)
+        .map((element) => {
+          const { left, top, width, height } = element.getBoundingClientRect()
+          return [left, top, width, height]
+        })
+    const before = boxes()
+    host = injectedHost(email)
+    try {
+      await userEvent.click(email)
+      await frame()
+      await frame()
+      const after = boxes()
+      const moved = after.flatMap((box, index) =>
+        box.some((value, i) => Math.abs(value - (before[index]?.[i] ?? 0)) >= 0.5) ? [index] : [],
+      )
+      await expect(email).toHaveFocus()
+      await expect(moved).toEqual([])
+    } finally {
+      host.remove()
+    }
+  },
+}

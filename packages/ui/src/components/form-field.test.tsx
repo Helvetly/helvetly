@@ -32,3 +32,22 @@ test('a group field names its set of choices, with no label pointing at nothing'
   expect(container.querySelector('label[for]')).toBeNull()
   expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeChecked()
 })
+
+test('each control sits in its own box, an empty child adds none, and the error stays after them', () => {
+  const { container } = render(
+    <FormField id="terms" label="Terms" error="Enter 0 to 365.">
+      <input id="terms" />
+      {null}
+      <span>days</span>
+    </FormField>,
+  )
+  const field = container.querySelector('[data-slot="form-field"]')
+  // label, one box per control (the null child makes none), then the error
+  expect([...(field?.children ?? [])].map((child) => child.tagName)).toEqual([
+    'SPAN',
+    'DIV',
+    'DIV',
+    'P',
+  ])
+  expect(screen.getByText('Enter 0 to 365.')).toHaveAttribute('id', 'terms-error')
+})
