@@ -16,7 +16,7 @@ export function PageHero({
 }) {
   return (
     <section className="relative overflow-x-clip pt-36 pb-12 sm:pt-44">
-      <div aria-hidden className="grid-lines absolute inset-0 -z-10" />
+      <div aria-hidden className="dot-field absolute inset-0 -z-10" />
       <div aria-hidden className="absolute inset-0 -z-10">
         <div className="aurora animate-drift bg-mint top-[-20%] left-[12%] h-[420px] w-[560px]" />
         <div className="aurora animate-drift-slow bg-lilac top-[-10%] right-[10%] h-[400px] w-[520px]" />

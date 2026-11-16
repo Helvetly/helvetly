@@ -1,7 +1,7 @@
 'use client'
-
-// What a member may see and change, mirroring "Permission scopes" in docs/members-contract.md and
-// permissions.Allows in apps/api/internal/permissions. The Go API enforces, this only hides what would be refused.
+// What a member may see and change, mirroring "Permission scopes" in docs/members-contract.md.
+// Owners and admins have `*:*`, which never reaches the HR areas (permissions.Allows); the Go API enforces, this only
+// hides what would be refused.
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -38,19 +38,51 @@ export const RESOURCES = [
     id: 'members',
     label: translate('members'),
     description: translate('theTeamAndInvitations'),
-    viewOnly: true,
+    viewOnly: translate('ownersAndAdminsManageThis'),
   },
   {
-    id: 'settings',
-    label: translate('settings'),
-    description: translate('invoiceWorkspaceAndEngagementSettings'),
-    viewOnly: true,
+    id: 'invoice-settings',
+    label: translate('invoiceSettings'),
+    description: translate('sellerDetailsNumberingPaymentRemindersAndLogo'),
+  },
+  {
+    id: 'vat-return',
+    label: translate('vatReturn'),
+    description: translate('theVatReturnAndItsMethod'),
+  },
+  {
+    id: 'ledger',
+    label: translate('ledger'),
+    description: translate('theBooksTheirExportsAndTheChartOfAccounts'),
+  },
+  {
+    id: 'periods',
+    label: translate('periodClosing'),
+    description: translate('closingAndReopeningMonths'),
+  },
+  {
+    id: 'audit-log',
+    label: translate('auditLog'),
+    description: translate('theRecordOfFinancialEventsAndItsExport'),
+    viewOnly: translate('theAuditLogCannotBeChanged'),
+  },
+  {
+    id: 'workspace',
+    label: translate('workspace'),
+    description: translate('theWorkspaceSNameAndTimeZone'),
+    viewOnly: translate('ownersAndAdminsManageThis'),
   },
   {
     id: 'billing',
     label: translate('billing'),
     description: translate('planUsageAndInvoicesFromHelvetly'),
-    viewOnly: true,
+    viewOnly: translate('ownersAndAdminsManageThis'),
+  },
+  {
+    id: 'api',
+    label: translate('apiMCP'),
+    description: translate('personalApiTokensNeverBeyondTheirOwnAccess'),
+    viewOnly: translate('viewLetsThemCreateAndUseTokens'),
   },
   // HR: a "*" resource never reaches these; owners hold both, admins ADMIN_HR until the owner sets their own list.
   {
@@ -77,11 +109,12 @@ export const HR_RESOURCES: readonly Resource[] = RESOURCES.flatMap((resource) =>
   'hr' in resource ? [resource.id] : [],
 )
 const isHR = (resource: string | undefined) => HR_RESOURCES.some((id) => id === resource)
-/** The HR part of a scope list, which presets and "*" never carry. */
+/** The HR part of a scope list, which "*" never reaches. */
 export const hrScopes = (scopes: readonly string[]) =>
   scopes.filter((scope) => isHR(scope.split(':')[1]))
 
-/** What an admin holds of HR until the owner sets their own list: the Accountant level (permissions.AdminHR). */
+/** What an admin holds of HR until the owner sets their own list: payroll view, an outside accountant's level
+ * (permissions.AdminHR). */
 export const ADMIN_HR = ['read:payroll']
 
 /** The HR scopes a membership holds, as permissions.EffectiveHR: both at Edit for an owner, an admin's own list or
@@ -128,7 +161,7 @@ export function can(scopes: readonly string[], need: Need): boolean {
 export type Level = 'none' | 'view' | 'edit'
 export type Levels = Record<Resource, Level>
 
-/** Members, settings and billing are managed by role, so a scope never reaches past "view". */
+/** Areas managed by role (or never changed) stop at "view", whatever the scope says. */
 export function levelsOf(scopes: readonly string[]): Levels {
   const levels: Levels = {
     clients: 'none',
@@ -138,8 +171,14 @@ export function levelsOf(scopes: readonly string[]): Levels {
     documents: 'none',
     engagements: 'none',
     members: 'none',
-    settings: 'none',
+    'invoice-settings': 'none',
+    'vat-return': 'none',
+    ledger: 'none',
+    periods: 'none',
+    'audit-log': 'none',
+    workspace: 'none',
     billing: 'none',
+    api: 'none',
     employees: 'none',
     payroll: 'none',
   }
@@ -151,19 +190,37 @@ export function levelsOf(scopes: readonly string[]): Levels {
   return levels
 }
 
-export type PresetId = 'full' | 'read' | 'accountant' | 'custom'
+export type PresetId = 'read' | 'full' | 'custom'
 
 /** `scopes` the general areas, `hr` what an owner's pick of the preset sets on the HR rows. */
-export const PRESETS: { id: PresetId; label: string; scopes: string[] | null; hr: string[] }[] = [
-  { id: 'full', label: translate('fullAccess'), scopes: ['*:*'], hr: ADMIN_HR },
-  { id: 'read', label: translate('readOnly2'), scopes: ['read:*'], hr: [] },
+export const PRESETS: {
+  id: PresetId
+  label: string
+  description: string
+  scopes: string[] | null
+  hr: string[]
+}[] = [
   {
-    id: 'accountant',
-    label: translate('accountant'),
-    scopes: ['read:*', 'write:invoices', 'write:expenses'],
+    id: 'read',
+    label: translate('readOnly2'),
+    description: translate('canViewEverythingAndChangeNothing'),
+    scopes: ['read:*'],
+    hr: [],
+  },
+  {
+    id: 'full',
+    label: translate('fullAccess'),
+    description: translate('canViewAndEditEverythingMembersWorkspaceAndBilling'),
+    scopes: ['*:*'],
     hr: ADMIN_HR,
   },
-  { id: 'custom', label: translate('custom'), scopes: null, hr: [] },
+  {
+    id: 'custom',
+    label: translate('custom'),
+    description: translate('chooseWhatTheyCanViewAndEditInEachArea'),
+    scopes: null,
+    hr: [],
+  },
 ]
 
 const GENERAL = RESOURCES.filter((resource) => !('hr' in resource))
@@ -178,7 +235,7 @@ const rowScopes = (rows: readonly { id: Resource }[], levels: Levels) =>
     levels[id] === 'none' ? [] : [`${levels[id] === 'edit' ? 'write' : 'read'}:${id}`],
   )
 
-/** The preset whose effect on the general areas equals these scopes, else custom. `null` (owner, admin) is full. */
+/** The preset whose effect equals these scopes, else custom. `null` (owner, admin) is full. */
 export function presetOf(scopes: readonly string[] | null): PresetId {
   if (!scopes) return 'full'
   const levels = levelsOf(scopes)
@@ -197,43 +254,20 @@ export function scopesFor(levels: Levels): string[] {
   return [...(match?.scopes ?? rowScopes(GENERAL, levels)), ...rowScopes(HR, levels)]
 }
 
-const name = (resource: { label: string }) => resource.label.toLowerCase()
-
 const list = (names: string[]) =>
   names.length < 2
     ? names.join('')
     : translate('dynamicAnd', { value1: names.slice(0, -1).join(', '), value2: names.at(-1) })
-
-function describeGeneral(levels: Levels): string {
-  const viewable = GENERAL.filter(({ id }) => levels[id] !== 'none')
-  const editable = GENERAL.filter(({ id }) => levels[id] === 'edit')
-  if (viewable.length === 0) return translate('noAccess')
-  const everythingEditable = GENERAL.filter((resource) => !('viewOnly' in resource))
-  const all = viewable.length === GENERAL.length
-  if (all && editable.length === everythingEditable.length)
-    return translate('canViewAndEditEverything')
-  const view = all ? translate('accessEverything') : list(viewable.map(name))
-  return editable.length === 0
-    ? translate('canView', { view: view })
-    : translate('canViewEdit', { view: view, value2: list(editable.map(name)) })
-}
 
 /** The HR rows in a few words: "view payroll", "edit employees and view payroll"; null without HR access. */
 export function describeHR(scopes: readonly string[]): string | null {
   const levels = levelsOf(scopes)
   const hr = HR.filter(({ id }) => levels[id] !== 'none').map((resource) =>
     translate(levels[resource.id] === 'edit' ? 'accessEditArea' : 'accessViewArea', {
-      area: name(resource),
+      area: resource.label.toLowerCase(),
     }),
   )
   return hr.length === 0 ? null : list(hr)
-}
-
-/** One line for the access summary: "Can view everything, edit invoices and expenses; HR: view payroll". */
-export function describeAccess(scopes: readonly string[] | null): string {
-  const general = describeGeneral(levelsOf(scopes ?? EVERYTHING))
-  const hr = describeHR(scopes ?? [])
-  return hr ? translate('accessWithHR', { general, hr }) : general
 }
 
 const ROUTES: [string, Resource][] = [
@@ -245,19 +279,27 @@ const ROUTES: [string, Resource][] = [
   ['/engagements', 'engagements'],
   ['/documents', 'documents'],
   ['/members', 'members'],
+  ['/settings/workspace', 'workspace'],
+  ['/settings/api', 'api'],
+  ['/settings/billing', 'billing'],
+  ['/settings/invoices', 'invoice-settings'],
+  ['/settings/vat-return', 'vat-return'],
+  ['/settings/ledger', 'ledger'],
+  ['/settings/periods', 'periods'],
+  ['/settings/audit-log', 'audit-log'],
   ['/employees/payroll', 'payroll'],
   // The list also serves payroll, which picks employees by name: see `canReadPath`.
   ['/employees', 'employees'],
-  ['/settings/invoices', 'settings'],
-  ['/settings/workspace', 'settings'],
   ['/settings/employment', 'employees'],
-  ['/settings/billing', 'billing'],
 ]
 
 /** The resource a page shows; none for the dashboard, security and the like. */
 export function resourceForPath(pathname: string): Resource | null {
   return ROUTES.find(([base]) => pathname === base || pathname.startsWith(`${base}/`))?.[1] ?? null
 }
+
+export const labelOf = (resource: Resource) =>
+  RESOURCES.find(({ id }) => id === resource)?.label ?? resource
 
 // Pages the API also serves with payroll view (GET /employees, GET /employment/settings).
 const ALSO_PAYROLL = new Set(['/employees', '/settings/employment'])
@@ -269,9 +311,6 @@ export function canReadPath(scopes: readonly string[], pathname: string): boolea
   if (!resource || can(scopes, `read:${resource}`)) return true
   return ALSO_PAYROLL.has(pathname.replace(/\/$/, '')) && can(scopes, 'read:payroll')
 }
-
-export const labelOf = (resource: Resource) =>
-  RESOURCES.find(({ id }) => id === resource)?.label ?? resource
 
 /** The signed-in person's scopes as `can` reads them (`effectiveScopes`); none from the API means everything. */
 export function useScopes(): readonly string[] {

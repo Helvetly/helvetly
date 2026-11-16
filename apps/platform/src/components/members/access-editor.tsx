@@ -8,7 +8,6 @@ import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { HelpTip } from '@/components/settings/help-tip'
 import { translate } from '@/lib/i18n'
 import {
-  describeAccess,
   describeHR,
   hrScopes,
   levelsOf,
@@ -55,6 +54,7 @@ export function AccessEditor({
   const hrEditable = canChangeHR && !lock
   const selected = custom ? 'custom' : presetOf(value)
   const levels = levelsOf(value)
+  const hr = describeHR(value)
   const problem =
     error ?? (!admin && value.length === 0 ? translate('giveAccessToAtLeastOneArea') : null)
 
@@ -64,12 +64,12 @@ export function AccessEditor({
         <p className="text-[13px] text-muted-foreground">
           {translate('accessWithHR', {
             general: translate('accessAdminGeneral'),
-            hr: describeHR(value) ?? translate('accessNoHR'),
+            hr: hr ?? translate('accessNoHR'),
           })}
         </p>
       ) : (
         <>
-          {/* Scrolls sideways on a phone rather than wrapping the four choices. */}
+          {/* Scrolls sideways on a phone rather than wrapping the choices. */}
           <div className="min-w-0 [scrollbar-width:none] overflow-x-auto">
             <Segmented
               label={translate('access')}
@@ -83,18 +83,21 @@ export function AccessEditor({
               }}
             />
           </div>
-          <p className="text-[13px] text-muted-foreground">{describeAccess(value)}</p>
+          <p className="text-[13px] text-muted-foreground">
+            {PRESETS.find((preset) => preset.id === selected)?.description}
+            {hr && ` ${translate('accessHRSummary', { hr })}`}
+          </p>
         </>
       )}
       {!admin && custom && (
         <Matrix
-          label={translate('accessAreas')}
-          heading={translate('accessArea')}
+          label={translate('area')}
+          heading={translate('area')}
           rows={GENERAL}
           name={id}
           levels={levels}
           onChange={onChange}
-          note={translate('accessManagedByRoleNote')}
+          note={translate('membersWorkspaceAndBillingStayWithOwnersAndAdmins')}
         />
       )}
       <Matrix
@@ -177,7 +180,7 @@ function Matrix({
           {LEVELS.map(({ level, label: levelLabel }) => (
             <td key={level} className="text-center">
               {level === 'edit' && 'viewOnly' in resource ? (
-                <span className="text-muted-foreground" title={translate('accessOwnersManage')}>
+                <span className="text-muted-foreground" title={resource.viewOnly}>
                   –
                 </span>
               ) : (

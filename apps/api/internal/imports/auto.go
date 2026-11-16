@@ -50,21 +50,67 @@ func byCommitOrder(ids []string, records []store.ImportRecord) []string {
 	return out
 }
 
-// autoSchema asks for the document type and one array per kind.
-func autoSchema() map[string]any {
+// fills says which arrays each document type fills, and how.
+var fills = []struct {
+	Type  string
+	Kinds []string
+	Text  string
+}{
+	{"sales_invoice", []string{"invoices", "clients"}, "invoices (one per invoice) and clients (the billed customer, once)"},
+	{"bill", []string{"expenses"}, "expenses"},
+	{"contract", []string{"engagements", "clients"}, "engagements and clients (the customer, once)"},
+	{"client_list", []string{"clients"}, "clients"},
+	{"product_list", []string{"products"}, "products"},
+}
+
+// missing lists the kinds a document type fills that the plan does not offer.
+func missing(docType string, offered []string) []string {
+	var out []string
+	for _, f := range fills {
+		if f.Type == docType {
+			for _, k := range f.Kinds {
+				if !slices.Contains(offered, k) {
+					out = append(out, k)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// offeredKinds are the auto kinds the workspace's plan includes now: the model is not asked for the others.
+func offeredKinds(ctx context.Context, q store.Q, workspaceID string) ([]string, error) {
+	var out []string
+	for _, name := range autoKinds {
+		if f := Kinds[name].Feature; f != "" {
+			ok, err := q.FeatureAllowed(ctx, workspaceID, f)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				continue
+			}
+		}
+		out = append(out, name)
+	}
+	return out, nil
+}
+
+// autoSchema asks for the document type and one array per offered kind.
+func autoSchema(kinds []string) map[string]any {
 	types := []string{}
 	for _, t := range documentTypes {
 		types = append(types, t.Name)
 	}
 	props := map[string]any{"document_type": map[string]any{"type": "string", "enum": types}}
-	for _, name := range autoKinds {
+	for _, name := range kinds {
 		props[name] = map[string]any{"type": "array", "items": Kinds[name].Schema}
 	}
 	return record(props)
 }
 
 // autoPrompt names the workspace (so "issued" and "received" can be told apart), the document types and each kind's rules.
-func autoPrompt(seller store.Party, workspaceName string) string {
+func autoPrompt(seller store.Party, workspaceName string, kinds []string) string {
 	var b strings.Builder
 	name := cmp.Or(strings.TrimSpace(seller.Name), workspaceName)
 	b.WriteString("You read business documents for Helvetly's import and decide what each one is. The workspace importing " +
@@ -77,22 +123,27 @@ func autoPrompt(seller store.Party, workspaceName string) string {
 	for _, t := range documentTypes {
 		b.WriteString("- " + t.Name + ": " + t.Means + "\n")
 	}
-	b.WriteString("\nThen fill only the arrays that type holds and leave every other array empty:\n" +
-		"- sales_invoice: invoices (one per invoice) and clients (the billed customer, once).\n" +
-		"- bill: expenses.\n- contract: engagements and clients (the customer, once).\n" +
-		"- client_list: clients.\n- product_list: products.\n- other: nothing.\n\nRules per array:\n")
-	for _, kind := range autoKinds {
+	b.WriteString("\nThen fill only the arrays that type holds and leave every other array empty:\n")
+	for _, f := range fills {
+		if gone := missing(f.Type, kinds); len(gone) > 0 {
+			b.WriteString("- " + f.Type + ": nothing (this workspace's plan does not include " + strings.Join(gone, ", ") + ").\n")
+		} else {
+			b.WriteString("- " + f.Type + ": " + f.Text + ".\n")
+		}
+	}
+	b.WriteString("- other: nothing.\n\nRules per array:\n")
+	for _, kind := range kinds {
 		b.WriteString("- " + kind + ": " + Kinds[kind].Prompt + "\n")
 	}
 	return b.String()
 }
 
-func (s *Service) autoInstructions(ctx context.Context, ws store.Workspace) (string, error) {
+func (s *Service) autoInstructions(ctx context.Context, ws store.Workspace, kinds []string) (string, error) {
 	seller, err := invoices.SellerOf(ctx, s.db.Q, ws.ID)
 	if err != nil {
 		return "", err
 	}
-	return autoPrompt(seller, ws.Name), nil
+	return autoPrompt(seller, ws.Name, kinds), nil
 }
 
 // linkedClient: the record's client is not in the workspace yet but a client record of the same batch has its name,

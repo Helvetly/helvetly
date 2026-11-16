@@ -3,6 +3,7 @@ package dunning
 import (
 	"context"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -105,5 +106,47 @@ func TestRemindersPauseAtTheLimitAndNeverChaseAPaidInvoice(t *testing.T) {
 	}
 	if u := e.actions(b.workspace); u.Total() != 1501 {
 		t.Fatalf("used %+v", u)
+	}
+}
+
+// TestTheJobLeavesAWaitingNoticeAlone: while billing says the workspace's action or email limits wait, the job neither
+// renders, reserves nor sends the due notice, and asks for the limits a notice needs; once the wait ends the next
+// tick sends it. "Send now" does not ask: a person gets the limit's answer.
+func TestTheJobLeavesAWaitingNoticeAlone(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		wait bool
+		sent int
+	}{{"waiting", true, 0}, {"not waiting", false, 1}} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			b := e.ready(nil)
+			e.invoice(b, nil)
+			var asked []string
+			e.st.SetAutomationWait(func(_ context.Context, ws string, limits ...string) (bool, error) {
+				if ws != b.workspace {
+					t.Errorf("asked about workspace %s", ws)
+				}
+				asked = limits
+				return tc.wait, nil
+			})
+			e.tickAt(10)
+			if got := e.mail.subjects(); len(got) != tc.sent {
+				t.Fatalf("sent %v", got)
+			}
+			if u := e.actions(b.workspace); u.Total() != 0 && tc.wait {
+				t.Fatalf("a waiting notice reserved %+v", u)
+			}
+			if !slices.Equal(asked, []string{store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes}) {
+				t.Fatalf("asked for %v", asked)
+			}
+			if tc.wait {
+				e.st.SetAutomationWait(nil)
+				e.tickAt(11)
+				if got := e.mail.subjects(); len(got) != 1 {
+					t.Fatalf("after the wait: %v", got)
+				}
+			}
+		})
 	}
 }

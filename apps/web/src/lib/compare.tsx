@@ -101,6 +101,9 @@ const yearly = (id: PlanId) => {
 const monthly = (id: PlanId) =>
   translate('offerMonthlyPrice', { name: planById(id).name, amount: count(planById(id).monthly) })
 
+/** The rows where Helvetly's cell quotes plans.ts prices, shown only while the API's offer confirms them. */
+export const PRICE_ROWS: ReadonlySet<RowKey> = new Set(['price', 'yearlyCost'])
+
 /** Helvetly's side of every comparison. */
 export const OURS: Record<RowKey, Cell> = {
   madeFor: translate('swissCompaniesOfAnySizeAloneOrAsA'),

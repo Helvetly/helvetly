@@ -20,6 +20,11 @@ function text(node: ReactNode): string {
 
 // Section headings get ids for "On this page"; links to other sites open in place, marked as external.
 const MARKDOWN: Components = {
+  table: ({ children }) => (
+    <section aria-label={translate('table')} tabIndex={0} className="legal-table">
+      <table>{children}</table>
+    </section>
+  ),
   h2: ({ children }) => <h2 id={slugify(text(children))}>{children}</h2>,
   a: ({ href = '', children }) =>
     href.startsWith('http') ? (

@@ -192,7 +192,8 @@ export function formatLimit(key: LimitKey, plan: PlanId): string | null {
   const { unit, values } = LIMITS[key]
   const amount = values[plan]
   if (amount === null) return null
-  return unit === 'byte' ? bytes(amount) : count(amount)
+  if (unit === 'byte') return bytes(amount)
+  return unit === 'token' ? tokens(amount) : count(amount)
 }
 
 function value(key: LimitKey, plan: PlanId): number {
@@ -310,6 +311,157 @@ export const BENEFITS: Benefit[] = [
   },
 ]
 
+const ALL: PerPlan<boolean> = { basic: true, pro: true, business: true }
+const PRO_UP: PerPlan<boolean> = { basic: false, pro: true, business: true }
+const BUSINESS_ONLY: PerPlan<boolean> = { basic: false, pro: false, business: true }
+
+/** One line of the full comparison: an offer feature (its API key) or an allowance, and who gets it. */
+export type FeatureRow = {
+  key: string
+  label: string
+  hint?: string
+  plans: PerPlan<boolean>
+  /** The allowance the cell quotes instead of a tick. */
+  limit?: LimitKey
+}
+export type FeatureGroup = { title: string; rows: FeatureRow[] }
+
+const allowance = (limit: LimitKey): FeatureRow => ({
+  key: limit,
+  label: LIMITS[limit].label,
+  plans: ALL,
+  limit,
+})
+
+/** Every feature of the offer by area, as plan access in 00007_offers.sql (checked in plans.test.ts). */
+export const FEATURE_GROUPS: FeatureGroup[] = [
+  {
+    title: translate('featureGroupInvoicing'),
+    rows: [
+      { key: 'quotes', label: translate('featureQuotes'), plans: ALL },
+      {
+        key: 'invoice_documents',
+        label: translate('featureInvoices'),
+        plans: ALL,
+        limit: 'invoices_per_month',
+      },
+      { key: 'swiss_qr', label: translate('swissQRBills'), plans: ALL },
+      { key: 'revolut_payment_link', label: translate('revolutPaymentLink'), plans: ALL },
+      { key: 'invoice_delivery', label: translate('featureInvoiceDelivery'), plans: ALL },
+      { key: 'invoice_payments', label: translate('featurePaymentTracking'), plans: ALL },
+      { key: 'invoice_corrections', label: translate('featureCorrections'), plans: PRO_UP },
+      { key: 'invoice_reminders', label: translate('featureReminders'), plans: PRO_UP },
+      { key: 'invoice_instalments', label: translate('featureInstalments'), plans: PRO_UP },
+      {
+        key: 'einvoice_xml',
+        label: translate('eInvoiceXMLExport'),
+        hint: translate('supportedFileFormatsOnlyNoNetworkDelivery'),
+        plans: BUSINESS_ONLY,
+      },
+    ],
+  },
+  {
+    title: translate('featureGroupClients'),
+    rows: [
+      { key: 'clients_contacts', label: translate('featureClients'), plans: ALL, limit: 'clients' },
+      {
+        key: 'products_catalog',
+        label: translate('productsAndServices'),
+        plans: ALL,
+        limit: 'products',
+      },
+      {
+        key: 'engagement_management',
+        label: translate('engagementsAndRetainers'),
+        plans: ALL,
+        limit: 'engagements',
+      },
+      {
+        key: 'engagement_automation',
+        label: translate('featureEngagementAutomation'),
+        plans: PRO_UP,
+      },
+      { key: 'recipient_document_access', label: translate('featureSharedDocuments'), plans: ALL },
+      { key: 'client_portal', label: translate('clientPortal'), plans: BUSINESS_ONLY },
+    ],
+  },
+  {
+    title: translate('featureGroupDocuments'),
+    rows: [
+      {
+        key: 'document_library',
+        label: translate('featureDocumentLibrary'),
+        plans: ALL,
+        limit: 'storage_bytes',
+      },
+      { key: 'ai_import', label: translate('featureAIImport'), plans: ALL },
+      {
+        key: 'expenses',
+        label: translate('featureExpenses'),
+        plans: PRO_UP,
+        limit: 'expenses_per_month',
+      },
+      { key: 'document_templates', label: translate('featureTemplates'), plans: PRO_UP },
+      {
+        key: 'simple_signatures',
+        label: translate('featureSignatures'),
+        plans: PRO_UP,
+        limit: 'signatures_per_month',
+      },
+    ],
+  },
+  {
+    title: translate('featureGroupBooks'),
+    rows: [
+      { key: 'dashboard_reports', label: translate('featureDashboard'), plans: ALL },
+      { key: 'period_closing_audit', label: translate('featurePeriodClosing'), plans: ALL },
+      { key: 'vat_returns', label: translate('featureVATReturns'), plans: PRO_UP },
+      { key: 'ledger_exports', label: translate('featureLedger'), plans: PRO_UP },
+      { key: 'data_export', label: translate('featureDataExport'), plans: PRO_UP },
+    ],
+  },
+  {
+    title: translate('featureGroupHeidi'),
+    rows: [
+      {
+        key: 'heidi',
+        label: translate('heidiAIAssistant'),
+        plans: PRO_UP,
+        limit: 'ai_tokens_per_month',
+      },
+      {
+        key: 'automations',
+        label: translate('featureAutomations'),
+        plans: PRO_UP,
+        limit: 'automation_actions_per_month',
+      },
+      { key: 'api_access', label: translate('featureAPI'), plans: PRO_UP },
+    ],
+  },
+  {
+    title: translate('featureGroupTeam'),
+    rows: [
+      { key: 'workspace_roles', label: translate('featureRoles'), plans: ALL },
+      { key: 'identity_security', label: translate('featureSignIn'), plans: ALL },
+      { key: 'notifications', label: translate('featureNotifications'), plans: ALL },
+      {
+        key: 'employees',
+        label: translate('employeesAndPayrollRegister'),
+        hint: translate('staffRecordsEmployeeDocumentsAndAPayrollRegister'),
+        plans: BUSINESS_ONLY,
+      },
+    ],
+  },
+  {
+    title: translate('featureGroupUsage'),
+    rows: [
+      allowance('download_bytes_per_month'),
+      allowance('emails_per_month'),
+      allowance('email_attachment_bytes_per_month'),
+    ],
+  },
+]
+
 export type Plan = {
   id: PlanId
   name: string
@@ -318,8 +470,6 @@ export type Plan = {
   tagline: string
   pitch: string
   highlights: string[]
-  /** What the plan leaves out, shown before purchase. */
-  excludes: string[]
 }
 
 const PLAN_NAMES: PerPlan<string> = {
@@ -345,11 +495,6 @@ export const PLANS: Plan[] = [
       translate('upToEngagementsManagedByHand', { value1: n('engagements', 'basic') }),
       translate('storagePerPerson', { value1: storage('basic') }),
     ],
-    excludes: [
-      translate('expensesAndHeidi'),
-      translate('templatesSignaturesCorrectionsAndVATReturns'),
-      translate('ledgerDataExportsAndAutomations'),
-    ],
   },
   {
     id: 'pro',
@@ -372,7 +517,6 @@ export const PLANS: Plan[] = [
       }),
       translate('storagePerPerson', { value1: storage('pro') }),
     ],
-    excludes: [translate('clientPortalAndEInvoiceXML'), translate('employeesAndPayrollRegister')],
   },
   {
     id: 'business',
@@ -395,7 +539,6 @@ export const PLANS: Plan[] = [
       }),
       translate('storagePerPerson', { value1: storage('business') }),
     ],
-    excludes: [],
   },
 ]
 

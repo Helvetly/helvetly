@@ -310,7 +310,8 @@ export const BillingActiveDetails: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'Pro', level: 2 })).toBeVisible()
     await expect(await canvas.findByText('4242')).toBeVisible()
-    await expect(canvas.getByText('WELCOME')).toBeVisible()
+    await expect(canvas.getByText(/−10 % for 3 months until 1 Jan 2027/)).toBeVisible()
+    await expect(canvas.queryByText('WELCOME')).not.toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Download BILL-1 as PDF' })).toHaveAttribute(
       'href',
       'https://billing.example.invalid/invoice.pdf',

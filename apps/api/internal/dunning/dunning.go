@@ -202,6 +202,12 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 		}
 		return false, err
 	}
+	// The job leaves a notice refused for a used-up limit until the month or the cap changes, before rendering it.
+	if by == nil {
+		if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes); err != nil || wait {
+			return false, err
+		}
+	}
 	st, err := s.load(ctx, s.db.Q, ws, id)
 	if err != nil {
 		return false, err

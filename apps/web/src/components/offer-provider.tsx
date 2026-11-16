@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, use } from 'react'
 
+import { translate } from '@/lib/i18n'
 import { type Offer, useOffer } from '@/lib/offer'
 
 const OfferContext = createContext<Offer | null>(null)
@@ -16,4 +17,9 @@ export function useOfferStatus(): Offer {
   const offer = use(OfferContext)
   if (!offer) throw new Error('useOfferStatus needs an OfferProvider around it')
   return offer
+}
+
+/** A price from plans.ts, shown while the API has not refused it, as on the pricing page. */
+export function OfferPrice({ children }: { children: ReactNode }) {
+  return useOfferStatus().status === 'unavailable' ? translate('priceUnavailable') : children
 }

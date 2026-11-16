@@ -269,7 +269,7 @@ export function ExpensesPage() {
     update({ sort: field, desc: params.sort === field ? !params.desc : field !== 'supplier' })
   // Receipts go through the AI import: read into drafts that are reviewed in its drawer, then land in "To review".
   const importDrawer = useImportDrawer()
-  const uploadReceipts = importDrawer.open
+  const importReceipts = importDrawer.open
   const startWith = (dropped: File[]) => {
     const heic = dropped.filter(isHeic)
     if (heic.length)
@@ -331,9 +331,9 @@ export function ExpensesPage() {
   const pageItems = ({ Item }: MenuKit) => (
     <>
       {canAdd && (
-        <Item onSelect={uploadReceipts}>
+        <Item onSelect={importReceipts}>
           <FileUp />
-          {translate('uploadReceipts2')}
+          {translate('importReceipts')}
         </Item>
       )}
       <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
@@ -491,10 +491,10 @@ export function ExpensesPage() {
                         variant="outline"
                         size="sm"
                         className="cursor-pointer"
-                        onClick={uploadReceipts}
+                        onClick={importReceipts}
                       >
                         <FileUp />
-                        {translate('uploadReceipts2')}
+                        {translate('importReceipts')}
                       </Button>
                     </div>
                   )}

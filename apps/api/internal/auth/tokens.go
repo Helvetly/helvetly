@@ -21,6 +21,8 @@ const tokenPrefix = "hvt_"
 var (
 	errTokenNotAllowed = &apiError{status: http.StatusForbidden, code: "token_not_allowed",
 		message: "An API token cannot call this endpoint: sign in to the app instead."}
+	errTokenMember = Error(http.StatusForbidden, "forbidden", "Your access to this workspace no longer includes the API.",
+		map[string]any{"scope": "read:api"})
 	errTokenRate = &apiError{status: http.StatusTooManyRequests, code: "rate_limited",
 		message: "Too many requests with this API token: slow down.", retryAfter: "60"}
 )
@@ -47,6 +49,9 @@ func (s *Service) bearerSession(r *http.Request, header string) (store.Session, 
 	}
 	if resource != "" && !scopesAllow(ts.TokenScopes, resource, write) {
 		return store.Session{}, r, tokenScopeError(resource, write)
+	}
+	if s.BearerMember != nil && !s.BearerMember(ts.Session) {
+		return store.Session{}, r, errTokenMember
 	}
 	return ts.Session, r, nil
 }

@@ -103,7 +103,8 @@ export const TrialFreeForever: Story = {
   }),
   play: async ({ canvasElement }) => {
     const card = await notice(canvasElement)
-    await expect(card.getByText(/then free forever with code LIFETIME-135F29\./)).toBeVisible()
+    await expect(card.getByText(/then free forever\./)).toBeVisible()
+    await expect(card.queryByText(/LIFETIME-135F29/)).not.toBeInTheDocument()
     await expect(card.queryByRole('link', { name: 'Upgrade' })).toBeNull()
     await expect(card.getByRole('link', { name: 'View plan' })).toHaveAttribute(
       'href',

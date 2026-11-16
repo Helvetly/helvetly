@@ -64,7 +64,7 @@ export function HeidiSection() {
     <section id="heidi" className="relative mt-32 sm:mt-48">
       <Ridge edge="rise" />
       <div className="dark night relative overflow-hidden pt-6 pb-36 text-white sm:pb-52">
-        <div aria-hidden className="grid-lines absolute inset-0 mask-t-from-70% opacity-30" />
+        <div aria-hidden className="dot-field absolute inset-0 mask-t-from-70% opacity-30" />
         <div
           aria-hidden
           className="beams beam absolute top-[-30%] left-1/2 size-[70rem] -translate-x-1/2"

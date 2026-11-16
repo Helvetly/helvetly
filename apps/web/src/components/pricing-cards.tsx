@@ -1,12 +1,12 @@
 'use client'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
-import { Check, Minus } from 'lucide-react'
+import { Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import { useState } from 'react'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
-import { taxNote, useCurrency } from '@/lib/currency'
+import { useCurrency } from '@/lib/currency'
 import { translate } from '@/lib/i18n'
 import {
   type Interval,
@@ -129,30 +129,32 @@ export function PricingCards() {
                     key={interval}
                     className="pop text-price font-semibold tracking-tight tabular-nums"
                   >
-                    {formatAmount(priceOf(plan, interval, currency))}
+                    {formatAmount(
+                      interval === 'year'
+                        ? monthOf(priceOf(plan, 'year', currency))
+                        : priceOf(plan, 'month', currency),
+                    )}
                   </span>
                   <span
                     className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
                   >
-                    {translate('person')}
-                    {interval}
+                    {translate('personMonth')}
                   </span>
                 </p>
               )}
               <p
                 className={cn(
-                  'mt-2 h-5 text-body-sm',
+                  'mt-2 min-h-5 text-body-sm',
                   featured ? 'opacity-60' : 'text-muted-foreground',
                 )}
               >
                 {unavailable
                   ? ''
                   : interval === 'year'
-                    ? translate('aMonthBilledYearly', {
-                        value1: formatPrice(monthOf(priceOf(plan, 'year', currency))),
-                        value2: taxNote(currency),
+                    ? translate('aYearBilledYearly', {
+                        value1: formatPrice(priceOf(plan, 'year', currency)),
                       })
-                    : translate('billedMonthly', { value1: taxNote(currency) })}
+                    : translate('billedMonthly')}
               </p>
               <Cta
                 href={START_URL}
@@ -179,37 +181,40 @@ export function PricingCards() {
                     {item}
                   </li>
                 ))}
-                {plan.excludes.map((item) => (
-                  <li
-                    key={item}
-                    className={cn(
-                      'flex gap-2.5',
-                      featured ? 'opacity-60' : 'text-muted-foreground',
-                    )}
-                  >
-                    <span className="mt-0.5 inline-flex size-4.5 shrink-0 items-center justify-center">
-                      <Minus aria-hidden className="size-3.5" />
-                    </span>
-                    <span>
-                      <span className="sr-only">{translate('notIncluded2')}</span>
-                      {item}
-                    </span>
-                  </li>
-                ))}
               </ul>
             </article>
           )
         })}
       </div>
-      <p className="mt-10 max-w-3xl text-center text-body-sm text-muted-foreground">
-        {translate('pricesArePerPersonEveryTeamMemberIsBilled')}
-        {MAX_SELF_SERVICE_SEATS}
-        {translate('peopleInTheAppWhatEachPersonAddsGoes')}
-        {TRIAL.days}
-        {translate('daysWithUpTo')}
-        {TRIAL.members}
-        {translate('peoplePricesAreInCHFInSwitzerlandAndLiechtenstein')}
-      </p>
+      <ul className="mt-14 grid w-full max-w-5xl gap-x-6 gap-y-4 text-body-sm sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            icon: Sparkles,
+            tone: TONES.lilac,
+            text: translate('stripTrial', { days: TRIAL.days, members: TRIAL.members }),
+          },
+          {
+            icon: UsersRound,
+            tone: TONES.sky,
+            text: translate('stripPerPerson', { seats: MAX_SELF_SERVICE_SEATS }),
+          },
+          { icon: Globe, tone: TONES.mint, text: translate('stripCurrencies') },
+          { icon: RefreshCw, tone: TONES.peach, text: translate('stripCancel') },
+        ].map(({ icon: Icon, tone, text }) => (
+          <li key={text} className="flex items-center gap-3">
+            <span
+              className={cn(
+                'inline-flex size-9 shrink-0 items-center justify-center rounded-xl',
+                tone.surface,
+                tone.ink,
+              )}
+            >
+              <Icon aria-hidden className="size-4" />
+            </span>
+            <span className="text-muted-foreground">{text}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

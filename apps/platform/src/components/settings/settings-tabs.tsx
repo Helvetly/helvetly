@@ -19,10 +19,8 @@ import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
 import { canReadPath, useScopes } from '@/lib/permissions'
-import { useSession } from '@/lib/queries'
 
-/** `hr`: shown to those who may open it (employees or payroll view), never through a `*` resource. */
-type Page = { label: string; href: string; icon: LucideIcon; managers?: true; hr?: true }
+type Page = { label: string; href: string; icon: LucideIcon }
 
 /** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
@@ -32,16 +30,11 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
   { label: translate('vatReturn'), href: '/settings/vat-return', icon: Landmark },
-  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen, managers: true },
+  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen },
   // The books in the order of a month-end: record, declare, post, close, audit.
   { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
-  { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText, managers: true },
-  {
-    label: translate('employment'),
-    href: '/settings/employment',
-    icon: BriefcaseBusiness,
-    hr: true,
-  },
+  { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
+  { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -62,11 +55,9 @@ export function settingsPageAt(pathname: string): Page | undefined {
 export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const router = useRouter()
   const guard = useLeaveGuard()
-  const manager = isManager(useSession().data?.role)
   const scopes = useScopes()
-  const pages = SETTINGS_PAGES.filter(
-    (page) => (manager || !page.managers) && (!page.hr || canReadPath(scopes, page.href)),
-  )
+  // A page of an area the person cannot read is left out, as in the sidebar (employment also opens with payroll view).
+  const pages = SETTINGS_PAGES.filter((page) => canReadPath(scopes, page.href))
   const current = settingsPageAt(usePathname() ?? '')
   return (
     <>

@@ -18,14 +18,15 @@ const maxScopes = 30
 var (
 	actions   = []string{"read", "write", "*"}
 	resources = []string{"clients", "invoices", "expenses", "products", "documents", "engagements", "members",
-		"settings", "billing", "*", "employees", "payroll"}
+		"invoice-settings", "vat-return", "ledger", "periods", "audit-log", "workspace", "billing", "api", "*", "employees",
+		"payroll"}
 	// hr are the HR resources (docs/planning/2026-11-15-employees.md): employees (records and their documents) and
 	// payroll (pay terms, the register, its approval, export and bookings). A "*" resource never reaches them; only an
 	// owner holds them without a grant, and only an owner changes them.
 	hr = []string{"employees", "payroll"}
-	// AdminHR is what an admin holds of HR until the owner sets otherwise: the Accountant level, the payroll register
+	// AdminHR is what an admin holds of HR until the owner sets otherwise: an outside accountant's level, the payroll register
 	// to view, no personnel records and no sealed fields (Art. 328b OR: only what the job needs).
-	AdminHR = []string{"read:payroll"}
+	AdminHR = store.AdminHR
 	ownerHR = []string{"write:employees", "write:payroll"}
 )
 
@@ -102,21 +103,24 @@ func AllowsAny(role string, scopes []string, need string) bool {
 	return slices.ContainsFunc(strings.Split(need, "|"), func(s string) bool { return Allows(role, scopes, s) })
 }
 
+// MayUseAPI reports whether the membership's "api" area lets its API tokens work (auth's BearerMember).
+func MayUseAPI(sess store.Session) bool { return Allows(sess.Role, sess.Scopes, "read:api") }
+
 // prefixes maps each guarded path (and everything below it) to its resource. Unlisted paths (auth, session,
 // account, invitations preview/accept, public signing, creating a new workspace, a person's own notifications)
-// are not scope-checked.
+// are not scope-checked; a person's own API tokens need the api area (tokensPath).
 // Dashboard, Heidi and imports instead check permissions for each included resource, requested action or kind.
 var prefixes = []struct{ path, resource string }{
 	{"/api/v1/clients", "clients"},
 	{"/api/v1/invoices", "invoices"},
-	{"/api/v1/invoice-settings", "settings"},
+	{"/api/v1/invoice-settings", "invoice-settings"},
 	{"/api/v1/instalment-plans", "invoices"},
 	{"/api/v1/quotes", "invoices"},
-	{"/api/v1/periods", "settings"},
-	{"/api/v1/audit-log", "settings"},
-	{"/api/v1/vat-return", "settings"},
-	{"/api/v1/ledger", "settings"},
-	{"/api/v1/transmission-channels", "settings"},
+	{"/api/v1/periods", "periods"},
+	{"/api/v1/audit-log", "audit-log"},
+	{"/api/v1/vat-return", "vat-return"},
+	{"/api/v1/ledger", "ledger"},
+	{"/api/v1/transmission-channels", "invoice-settings"},
 	{"/api/v1/expenses", "expenses"},
 	{"/api/v1/expense-categories", "expenses"},
 	{"/api/v1/products", "products"},
@@ -124,9 +128,9 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/signatures", "documents"},
 	{"/api/v1/templates", "documents"},
 	{"/api/v1/engagements", "engagements"},
-	{"/api/v1/engagement-settings", "settings"},
+	{"/api/v1/engagement-settings", "engagements"},
 	{"/api/v1/members", "members"},
-	{"/api/v1/workspace", "settings"},
+	{"/api/v1/workspace", "workspace"},
 	{"/api/v1/billing", "billing"},
 	{"/api/v1/employees", "employees"},
 	{"/api/v1/employment", "employees"},
@@ -155,9 +159,16 @@ var instead = []struct {
 	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
 }
 
+// tokensPath is a person's own API tokens: the "api" area lets them create, list and revoke them whatever the
+// method, since a token never reaches past its person's own scopes.
+const tokensPath = "/api/v1/account/tokens"
+
 // Required is the scopes a request needs, each one scope or alternatives separated by "|": read:<resource> for GET
 // and HEAD, else write:<resource>; nil when the path is not scope-checked.
 func Required(method, p string) []string {
+	if p == tokensPath || strings.HasPrefix(p, tokensPath+"/") {
+		return []string{"read:api"}
+	}
 	write := method != http.MethodGet && method != http.MethodHead
 	for _, in := range instead {
 		if ok, _ := path.Match(in.pattern, p); ok && in.write == write {

@@ -76,6 +76,13 @@ describe('useOffer', () => {
   it.each([
     ['another price', async () => new Response(body(other))],
     [
+      'another seat cap',
+      async () =>
+        new Response(
+          body({ ...golden, max_self_service_seats: { basic: 25, pro: 25, business: null } }),
+        ),
+    ],
+    [
       'another comparison',
       async () => new Response(body({ ...golden, comparison: golden.comparison.slice(1) })),
     ],

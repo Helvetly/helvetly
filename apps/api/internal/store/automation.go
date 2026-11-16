@@ -11,6 +11,29 @@ import (
 // new month counts it once. Emails, issues, AI and storage the action uses count in their own allowances too.
 const AutomationActions = "automation_actions_per_month"
 
+// The business email limits an automatic message counts against besides AutomationActions.
+const (
+	EmailRecipients      = "emails_per_month"
+	EmailAttachmentBytes = "email_attachment_bytes_per_month"
+)
+
+// AutomationWait reports whether an automatic action needing these monthly limits should wait (billing).
+type AutomationWait func(ctx context.Context, workspaceID string, limits ...string) (bool, error)
+
+// SetAutomationWait is startup wiring, like SetAdmission: call once before jobs start.
+func (s *Store) SetAutomationWait(w AutomationWait) { s.Q.waits = w }
+
+// AutomationWaits reports whether a job should leave an automatic action needing limits for later, before preparing
+// it: what was last refused of one of them still does not fit the workspace's cap and usage, so trying again would
+// only be refused again. The action stays due and runs once a new month, a bigger cap or a reservation given back
+// makes room. Without a gate (billing off, package tests) none waits.
+func (q Q) AutomationWaits(ctx context.Context, workspaceID string, limits ...string) (bool, error) {
+	if q.waits == nil {
+		return false, nil
+	}
+	return q.waits(ctx, workspaceID, limits...)
+}
+
 func automationOp(id string) UsageOp { return UsageOp{Resource: AutomationActions, ID: id, Amount: 1} }
 
 // CountAutomation counts a database-only automatic effect in q's transaction, so it commits or rolls back with the

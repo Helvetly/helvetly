@@ -4,7 +4,6 @@ import { ApiError } from './api'
 import {
   can,
   canReadPath,
-  describeAccess,
   describeHR,
   effectiveHR,
   effectiveScopes,
@@ -38,8 +37,8 @@ test.each([
 test.each([
   [['*:*'], 'full'],
   [['read:*'], 'read'],
-  [['read:*', 'write:invoices', 'write:expenses'], 'accountant'],
-  [['write:expenses', 'write:invoices', 'read:*'], 'accountant'],
+  // the former accountant preset reads as custom
+  [['read:*', 'write:invoices', 'write:expenses'], 'custom'],
   [['read:clients'], 'custom'],
   [['read:*', 'write:invoices'], 'custom'],
   [[], 'custom'],
@@ -51,9 +50,21 @@ test('null scopes (owner, admin) are full access', () => {
   expect(presetOf(null)).toBe('full')
 })
 
-test('members, settings and billing never go past view', () => {
-  expect(levelsOf(['*:*']).members).toBe('view')
+test('areas managed by role, the audit log and the API never go past view', () => {
+  const full = levelsOf(['*:*'])
+  for (const area of ['members', 'workspace', 'billing', 'audit-log', 'api'] as const)
+    expect(full[area]).toBe('view')
   expect(levelsOf(['write:billing']).billing).toBe('view')
+})
+
+test('each settings area has its own level', () => {
+  const levels = levelsOf(['write:ledger', 'read:vat-return', 'read:api'])
+  expect(levels.ledger).toBe('edit')
+  expect(levels['vat-return']).toBe('view')
+  expect(levels['invoice-settings']).toBe('none')
+  expect(levels.periods).toBe('none')
+  expect(levels.api).toBe('view')
+  expect(levelsOf(['*:*'])['invoice-settings']).toBe('edit')
 })
 
 test('a matrix that equals a preset turns back into its list', () => {
@@ -63,23 +74,19 @@ test('a matrix that equals a preset turns back into its list', () => {
 })
 
 test.each([
-  [['*:*'], 'Can view and edit everything'],
-  [['read:*'], 'Can view everything'],
-  [
-    ['read:*', 'write:invoices', 'write:expenses'],
-    'Can view everything, edit invoices and expenses',
-  ],
-  [['read:clients', 'write:invoices'], 'Can view clients and invoices, edit invoices'],
-  [[], 'No access'],
-] as const)('describeAccess(%j)', (scopes, text) => {
-  expect(describeAccess(scopes)).toBe(text)
-})
-
-test.each([
   ['/clients', 'clients'],
   ['/clients/', 'clients'],
   ['/invoices/new', 'invoices'],
   ['/settings/billing', 'billing'],
+  ['/settings/billing/plans', 'billing'],
+  ['/settings/invoices', 'invoice-settings'],
+  ['/settings/vat-return', 'vat-return'],
+  ['/settings/ledger', 'ledger'],
+  ['/settings/periods', 'periods'],
+  ['/settings/audit-log', 'audit-log'],
+  ['/settings/workspace', 'workspace'],
+  ['/settings/api', 'api'],
+  ['/settings/security', null],
   ['/employees', 'employees'],
   ['/employees/payroll', 'payroll'],
   ['/settings/employment', 'employees'],
@@ -101,7 +108,7 @@ test.each([
   ['admin', null, 'write:payroll', false],
   ['admin', null, 'read:employees', false],
   ['admin', [], 'read:payroll', false],
-  ['admin', [], 'write:clients', true],
+  ['admin', [], 'write:ledger', true],
   ['admin', ['write:employees'], 'write:employees', true],
   ['admin', ['write:employees'], 'read:payroll', false],
   // An admin's list carries HR only: a general scope in it changes nothing.
@@ -131,11 +138,9 @@ test.each([
   expect(effectiveHR(role, scopes)).toEqual(hr)
 })
 
-test('presets set Payroll View for Full access and Accountant, nothing for Read only', () => {
-  const hr = Object.fromEntries(PRESETS.map((preset) => [preset.id, preset.hr]))
-  expect(hr).toEqual({
+test('Full access sets Payroll View, Read only and Custom no HR access', () => {
+  expect(Object.fromEntries(PRESETS.map((preset) => [preset.id, preset.hr]))).toEqual({
     full: ['read:payroll'],
-    accountant: ['read:payroll'],
     read: [],
     custom: [],
   })
@@ -143,11 +148,7 @@ test('presets set Payroll View for Full access and Accountant, nothing for Read 
 
 test('a preset is recognised by the general areas, whatever the HR rows hold', () => {
   expect(presetOf(['*:*', 'read:payroll'])).toBe('full')
-  expect(presetOf(['*:*'])).toBe('full')
   expect(presetOf(['*:*', 'write:employees'])).toBe('full')
-  expect(presetOf(['read:*', 'write:invoices', 'write:expenses', 'read:payroll'])).toBe(
-    'accountant',
-  )
   expect(presetOf(['read:*', 'write:payroll'])).toBe('read')
 })
 
@@ -166,24 +167,17 @@ test('HR access is set row by row, beside the general list', () => {
 })
 
 test.each([
-  [['*:*', 'read:payroll'], 'Can view and edit everything; HR: view payroll'],
-  [
-    ['read:*', 'write:employees', 'read:payroll'],
-    'Can view everything; HR: edit employees and view payroll',
-  ],
-  [['read:clients'], 'Can view clients'],
-] as const)('describeAccess(%j) is %s', (scopes, text) => {
-  expect(describeAccess(scopes)).toBe(text)
-})
-
-test('describeHR is null without HR access', () => {
-  expect(describeHR(['*:*'])).toBeNull()
-  expect(describeHR(['write:payroll'])).toBe('edit payroll')
+  [['*:*'], null],
+  [['write:payroll'], 'edit payroll'],
+  [['read:*', 'write:employees', 'read:payroll'], 'edit employees and view payroll'],
+] as const)('describeHR(%j) is %s', (scopes, text) => {
+  expect(describeHR(scopes)).toBe(text)
 })
 
 test.each([
   [['read:employees'], '/employees', true],
   [['read:payroll'], '/employees', true],
+  [['read:payroll'], '/employees/', true],
   [['read:payroll'], '/employees/payroll', true],
   [['read:employees'], '/employees/payroll', false],
   [['read:payroll'], '/settings/employment', true],
@@ -191,7 +185,7 @@ test.each([
   [['*:*'], '/employees', false],
   [['*:*'], '/settings/employment', false],
   [['read:clients'], '/clients', true],
-  [['read:clients'], '/invoices', false],
+  [['read:clients'], '/settings/ledger', false],
   [[], '/account', true],
 ] as const)('canReadPath(%j, %s) is %s', (scopes, path, expected) => {
   expect(canReadPath(scopes, path)).toBe(expected)

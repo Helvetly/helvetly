@@ -69,6 +69,10 @@ func (q Q) CountOwners(ctx context.Context, workspaceID string) (int, error) {
 	return n, err
 }
 
+// AdminHR is the HR access an admin holds while their scopes are nil (the owner never set any): an outside
+// accountant's level, the payroll register to view. permissions.EffectiveHR and the session answer read it.
+var AdminHR = []string{"read:payroll"}
+
 // SetMemberRole stores the role and the scopes the caller worked out (members.nextScopes): none for an owner; an
 // admin's HR scopes (nil for the admin default); a member's scopes.
 func (q Q) SetMemberRole(ctx context.Context, workspaceID, userID, role string, scopes []string) error {
