@@ -5,7 +5,7 @@ import { confirms, OFFER_URL, projectPlans, sameJSON, useOffer } from './offer'
 import golden from './public-offer.golden.json'
 
 const published = {
-  offer_id: 'helvetly-2026-11-v3',
+  offer_id: 'helvetly-v1',
   schema_version: 1,
   checksum: 'x',
   published_at: '2026-11-15T00:00:00Z',

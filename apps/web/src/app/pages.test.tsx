@@ -25,7 +25,7 @@ function serve({ offer = true, trace = '' } = {}) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
     if (String(input) !== OFFER_URL) return new Response(trace)
     if (!offer) throw new TypeError('Failed to fetch')
-    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-2026-11-v2', ...golden } }))
+    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v1', ...golden } }))
   })
   vi.stubGlobal('fetch', fetch)
   return fetch

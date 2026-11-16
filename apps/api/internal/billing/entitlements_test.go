@@ -146,7 +146,7 @@ func TestEntitlementsInTheDatabase(t *testing.T) {
 	e.subscribe(b.workspace, "price_bm")
 	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 5 WHERE workspace_id = $1`, b.workspace)
 	r := mustRights(t, e, b.workspace)
-	if r.Plan != Basic || r.OfferID != "helvetly-2026-11-v3" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
+	if r.Plan != Basic || r.OfferID != "helvetly-v1" || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
 		r.Items["clients"].Value != 30 || r.Includes("expenses") || r.Items["expenses_per_month"].Value != 0 {
 		t.Fatalf("basic × 5: %+v", r)
 	}

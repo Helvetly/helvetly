@@ -40,10 +40,10 @@ func recordOf(o *Offer, key string) *OfferRecord {
 func TestSeededOffer(t *testing.T) {
 	e, o, defs := seeded(t)
 	if err := o.Validate(defs); err != nil {
-		t.Fatalf("offer v3 does not validate: %v", err)
+		t.Fatalf("offer helvetly-v1 does not validate: %v", err)
 	}
 	v, err := e.st.CurrentOffer(context.Background())
-	if err != nil || v.ID != "helvetly-2026-11-v3" || v.Checksum != o.Checksum() {
+	if err != nil || v.ID != "helvetly-v1" || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
 	}
 	if len(o.Records) != 67 || len(defs) != 67 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 11 {
@@ -160,7 +160,7 @@ func TestPublishOffer(t *testing.T) {
 		t.Fatalf("same terms: %v", err)
 	}
 	next := clone(t, base)
-	next.ID = "helvetly-2026-12-v2"
+	next.ID = "helvetly-v2"
 	recordOf(&next, "clients").Values[Pro] = OfferValue{State: StateLimited, Value: n64(400)}
 	if err := PublishOffer(ctx, e.st, next, "", "no actor"); err == nil {
 		t.Fatal("published without an actor")
@@ -182,11 +182,11 @@ func TestPublishOffer(t *testing.T) {
 		next.ID).Scan(&before, &after, &reason); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(before, "helvetly-2026-11-v3") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
+	if !strings.Contains(before, "helvetly-v1") || !strings.Contains(after, next.ID) || reason != "more clients on Pro" {
 		t.Fatalf("audit: %s -> %s (%s)", before, after, reason)
 	}
 	// The workspace keeps the offer it bought; a new subscription gets the new one.
-	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-2026-11-v3" || r.Items["clients"].Value != 300 {
+	if r := mustRights(t, e, b.workspace); r.OfferID != "helvetly-v1" || r.Items["clients"].Value != 300 {
 		t.Fatalf("existing workspace: %s %+v", r.OfferID, r.Items["clients"])
 	}
 	n := e.workspace()

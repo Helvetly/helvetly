@@ -166,7 +166,7 @@ export const PlanErrorToasts: Story = {
             limit: 15,
             unit: 'count',
             reset_at: '2026-12-01T00:00:00Z',
-            offer_id: 'helvetly-2026-11-v2',
+            offer_id: 'helvetly-v1',
             upgrade_plan: 'pro',
           }),
         ),
