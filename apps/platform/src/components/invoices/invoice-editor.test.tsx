@@ -529,6 +529,42 @@ test('Back with unsavable input asks to discard; Keep editing retains it and gua
   expect(onClose).not.toHaveBeenCalled()
 })
 
+/** Whether the tab-close warning would ask. */
+const warns = () => {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+// The tab-close warning guards before and after Keep editing, but not the departure the person approved with Discard.
+test('an explicit Discard on Back is not asked again by the tab-close warning', async () => {
+  vi.spyOn(window.history, 'back').mockImplementation(() => {})
+  await typeUnsaved()
+  expect(warns()).toBe(true)
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Keep editing',
+      },
+    ),
+  )
+  expect(warns()).toBe(true) // kept: reload and tab close still warn
+  backButton()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      {
+        name: 'Discard',
+      },
+    ),
+  )
+  expect(warns()).toBe(false) // the approved departure goes without a second question
+  backButton() // the Back stayed on this page: the warning is armed again
+  expect(warns()).toBe(true)
+})
+
 test('an untouched editor adds no history entry', async () => {
   const pushed = vi.spyOn(window.history, 'pushState')
   renderEditor()

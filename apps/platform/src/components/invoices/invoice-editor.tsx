@@ -505,12 +505,16 @@ function Editor({
   // Browser Back with input that cannot be saved: one guard history entry (same state, so Next's own popstate handling
   // stays a no-op) turns the Back into the discard question. Keep editing puts the guard back; Discard lets the Back go on.
   const guarded = useRef(false)
+  // Set only by an explicit Discard on Back: that departure may leave the page, and the tab-close warning must not ask
+  // a second time. Any later popstate means the page stayed, so the warning is armed again.
+  const leaving = useRef(false)
   useEffect(() => {
     if (!unsaved || guarded.current) return
     window.history.pushState(window.history.state, '', window.location.href)
     guarded.current = true
   }, [unsaved])
   const back = useEffectEvent(() => {
+    leaving.current = false
     if (!guarded.current) return
     guarded.current = false
     if (unsaved) setDiscarding('back')
@@ -528,7 +532,7 @@ function Editor({
     window.history.back()
   }
   const warn = useEffectEvent((event: BeforeUnloadEvent) => {
-    if (unsaved || (dirty && values.client_id)) event.preventDefault()
+    if (!leaving.current && (unsaved || (dirty && values.client_id))) event.preventDefault()
   })
   useEffect(() => {
     window.addEventListener('beforeunload', warn)
@@ -1238,7 +1242,11 @@ function Editor({
           onDecide={(discard) => {
             const wasBack = discarding === 'back'
             setDiscarding(false)
-            if (discard) return wasBack ? window.history.back() : onClose()
+            if (discard && wasBack) {
+              leaving.current = true
+              return window.history.back()
+            }
+            if (discard) return onClose()
             if (wasBack) {
               window.history.pushState(window.history.state, '', window.location.href)
               guarded.current = true
