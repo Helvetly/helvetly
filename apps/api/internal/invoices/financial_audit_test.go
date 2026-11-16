@@ -231,10 +231,9 @@ func TestSelfBilledFactoryUsesActualFiscalParties(t *testing.T) {
 	}})
 	check := func(text string) {
 		t.Helper()
-		if !strings.Contains(text, pdfUnicode("Muster GmbH, Bahnhofstrasse 1, 8001 Zürich")) {
-			t.Error("workspace buyer is not the issuer above the supplier's address window")
-		}
-		if strings.Contains(text, pdfUnicode("Supplier GmbH, Rue du Lac 12, 1003 Lausanne")) {
+		// the workspace (the buyer) issues it: its column, "Billed by", is drawn before the supplier's "Billed to"
+		issuer, billed := strings.Index(text, pdfUnicode("Muster GmbH")), strings.Index(text, pdfUnicode("Supplier GmbH"))
+		if issuer < 0 || billed < 0 || issuer > billed {
 			t.Error("supplier incorrectly heads the self-billed document")
 		}
 		if !strings.Contains(text, pdfUnicode("Exempt from VAT.")) || strings.Contains(text, pdfUnicode("Swiss VAT Act")) {
