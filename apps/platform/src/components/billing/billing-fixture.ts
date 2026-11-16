@@ -3,7 +3,7 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, Entitlement, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 1_000_000_000
-// One seat's values of offer v2 (apps/api/internal/store/migrations/00007_offers.sql); 0 is not included.
+// One seat's values of offer helvetly-v1 (apps/api/internal/store/migrations/00013_offer_employees.sql); 0 is not included.
 const basic: Record<LimitKey, number | null> = {
   members: null,
   clients: 30,
@@ -13,7 +13,7 @@ const basic: Record<LimitKey, number | null> = {
   engagements: 3,
   signatures_per_month: 0,
   storage_bytes: GB / 2,
-  ai_tokens_per_month: 250_000,
+  ai_tokens_per_month: 0,
 }
 const pro: Record<LimitKey, number | null> = {
   members: null,
@@ -50,7 +50,7 @@ const PRO_FEATURES: FeatureKey[] = [
   'data_export',
   'automations',
 ]
-// The gated features of offer v2 per plan; the ones every plan has are left out.
+// The gated features of offer helvetly-v1 per plan; the ones every plan has are left out.
 const features: Record<PlanId, FeatureKey[]> = {
   basic: [],
   pro: PRO_FEATURES,
@@ -163,7 +163,7 @@ const ALLOWANCES: Allowance[] = [
     'ai_tokens_per_month',
     'period_counter',
     true,
-    { basic: 250_000, pro: 5_000_000, business: 20_000_000 },
+    { basic: 0, pro: 5_000_000, business: 20_000_000 },
   ],
   ['automation_actions_per_month', 'period_counter', true, { basic: 0, pro: 1500, business: 6000 }],
 ]

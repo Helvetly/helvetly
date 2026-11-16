@@ -145,10 +145,10 @@ You must not:
 - AI answers and extracted records can be **wrong or incomplete**. Check them before you rely on
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.
-- Each plan includes a monthly allowance of AI tokens per paid seat, shared by the workspace.
-  Requests, responses and conversation context use tokens. In Basic the tokens serve only the AI
-  import into the modules Basic includes; Heidi and receipt import need Pro or Business. When the
-  allowance is used up, the AI features pause until the next month or an upgrade.
+- Heidi and AI import need Pro or Business, which include a monthly allowance of AI tokens per paid
+  seat, shared by the workspace; Basic includes no AI features and no AI tokens. Requests, responses
+  and conversation context use tokens. When the allowance is used up, the AI features pause until
+  the next month or an upgrade.
 - **Automations** (such as scheduled invoices, automatic sending and payment reminders) need Pro or
   Business and use automation actions: each business action or outgoing message per recipient is
   one action; empty checks and retries of the same action do not count again. When the allowance is

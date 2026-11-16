@@ -110,15 +110,15 @@ func TestChargebacksAndRefunds(t *testing.T) {
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
 			c.dispute("evt_1", created, "ch_sub", "needs_response") // replay
 			c.dispute("evt_2", updated, "ch_sub", "under_review")
-		}, outcome{"basic", true, 1_000_000, 2, 0}},
+		}, outcome{"basic", true, 0, 2, 0}},
 		{"a won dispute clears the alert", func(c chargeback) {
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
 			c.dispute("evt_2", closed, "ch_sub", "won")
-		}, outcome{"basic", false, 1_000_000, 2, 0}},
+		}, outcome{"basic", false, 0, 2, 0}},
 		{"a won dispute delivered before its opening stays closed", func(c chargeback) {
 			c.dispute("evt_2", closed, "ch_sub", "won")
 			c.dispute("evt_1", created, "ch_sub", "won")
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 		{"a lost dispute on the subscription ends it now, once", func(c chargeback) {
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
 			c.dispute("evt_2", closed, "ch_sub", "lost")
@@ -136,54 +136,54 @@ func TestChargebacksAndRefunds(t *testing.T) {
 			c.dispute("evt_2", closed, "ch_pack", "lost")
 			c.dispute("evt_2", closed, "ch_pack", "lost")
 			c.refund("evt_3", "ch_pack", 4000) // refunded as well: still taken back once
-		}, outcome{"basic", false, 1_000_000, 2, 0}},
+		}, outcome{"basic", false, 0, 2, 0}},
 		{"a lost pack dispute takes no more than is left this month", func(c chargeback) {
 			c.credit()
-			c.use(5_500_000) // of 6M: 500k left
+			c.use(4_500_000) // of 5M: 500k left
 			c.dispute("evt_2", closed, "ch_pack", "lost")
-		}, outcome{"basic", false, 5_500_000, 0, 0}},
+		}, outcome{"basic", false, 4_500_000, 0, 0}},
 		{"nothing to take back when the month's tokens are spent", func(c chargeback) {
 			c.credit()
 			c.use(7_000_000)
 			c.dispute("evt_2", closed, "ch_pack", "lost")
-		}, outcome{"basic", false, 6_000_000, 0, 0}},
+		}, outcome{"basic", false, 5_000_000, 0, 0}},
 		{"a fully refunded pack loses its tokens, once", func(c chargeback) {
 			c.credit()
 			c.refund("evt_1", "ch_pack", 4000)
 			c.refund("evt_1", "ch_pack", 4000) // replay
 			c.refund("evt_2", "ch_pack", 4000) // another delivery of the same state
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 		{"a refund delivered before the pack's credit leaves no tokens", func(c chargeback) {
 			c.refund("evt_1", "ch_pack", 4000)
 			c.credit()
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 		{"a partly refunded pack loses that share of its tokens", func(c chargeback) {
 			c.credit()
 			c.refund("evt_1", "ch_pack", 1000) // a quarter of 5M
-		}, outcome{"basic", false, 4_750_000, 0, 0}},
+		}, outcome{"basic", false, 3_750_000, 0, 0}},
 		{"a second partial refund takes the difference", func(c chargeback) {
 			c.credit()
 			c.refund("evt_1", "ch_pack", 1000)
 			c.refund("evt_2", "ch_pack", 3000) // three quarters in all
 			c.refund("evt_2", "ch_pack", 3000) // replay
-		}, outcome{"basic", false, 2_250_000, 0, 0}},
+		}, outcome{"basic", false, 1_250_000, 0, 0}},
 		{"a partial refund rounds in the customer's favour", func(c chargeback) {
 			c.credit()
 			c.refund("evt_1", "ch_pack", 3) // 5M * 3 / 4000 = 3750
-		}, outcome{"basic", false, 5_996_250, 0, 0}},
+		}, outcome{"basic", false, 4_996_250, 0, 0}},
 		{"a partial refund takes no more than is left, and a later one never less", func(c chargeback) {
 			c.credit()
-			c.use(5_500_000)                   // of 6M: 500k left
+			c.use(4_500_000)                   // of 5M: 500k left
 			c.refund("evt_1", "ch_pack", 2000) // half: 2.5M wanted, 500k taken
 			c.refund("evt_2", "ch_pack", 4000) // all: nothing left to take
-		}, outcome{"basic", false, 5_500_000, 0, 0}},
+		}, outcome{"basic", false, 4_500_000, 0, 0}},
 		{"a partial refund delivered before the pack's credit leaves the rest", func(c chargeback) {
 			c.refund("evt_1", "ch_pack", 2000)
 			c.credit()
-		}, outcome{"basic", false, 3_500_000, 0, 0}},
+		}, outcome{"basic", false, 2_500_000, 0, 0}},
 		{"a refunded subscription payment is the operator's call: nothing ends", func(c chargeback) {
 			c.refund("evt_1", "ch_sub", 1900)
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 		{"a lost dispute delivered before the subscription is recorded still ends it", func(c chargeback) {
 			c.e.exec(`DELETE FROM workspace_billing WHERE workspace_id = $1`, c.ws)
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
@@ -197,11 +197,11 @@ func TestChargebacksAndRefunds(t *testing.T) {
 			c.e.stripe.mu.Unlock()
 			c.dispute("evt_1", created, "ch_sub", "needs_response")
 			c.dispute("evt_2", closed, "ch_sub", "lost")
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 		{"another customer's charge changes nothing", func(c chargeback) {
 			c.dispute("evt_1", created, "ch_other", "needs_response")
 			c.dispute("evt_2", closed, "ch_other", "lost")
-		}, outcome{"basic", false, 1_000_000, 0, 0}},
+		}, outcome{"basic", false, 0, 0, 0}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := newChargeback(t)

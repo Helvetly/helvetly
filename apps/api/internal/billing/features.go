@@ -29,6 +29,7 @@ var featureNames = map[Feature]string{
 	store.FeatureVATReturns:           "VAT returns",
 	store.FeatureInvoiceCorrections:   "invoice corrections, credit notes and voids",
 	store.FeatureExpenses:             "expenses",
+	store.FeatureAIImport:             "the AI import",
 	store.FeatureLedgerExports:        "the ledger and its exports",
 	store.FeatureDataExport:           "business data exports",
 	store.FeatureAutomations:          "automations",

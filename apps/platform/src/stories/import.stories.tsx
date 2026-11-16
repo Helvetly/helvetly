@@ -1,8 +1,18 @@
+import { Button } from '@helvetly/ui/components/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@helvetly/ui/components/dropdown-menu'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
+import { useState } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
+import { dropdownKit } from '@/components/data/menus'
+import { ImportItem } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import type { ImportBatch, ImportFile, ImportRecord, ImportSummary } from '@/lib/imports'
 
@@ -482,5 +492,74 @@ export const DarkReview: Story = {
     await expect(body().getByRole('checkbox', { name: 'Select Web design' })).toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Office chair' })).not.toBeChecked()
     await expect(body().getByText('Enter a price like 49.90.')).toBeVisible()
+  },
+}
+
+const onPlan = (plan: 'basic' | 'pro') =>
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({ data: billingFixture({ plan, status: 'active' }) }),
+  )
+
+/** Basic has no AI import: the drawer names Pro and its way to the plans, and nothing can be chosen or read. */
+export const NotInPlan: Story = {
+  parameters: { msw: { handlers: [sessionHandler(), noBatches, onPlan('basic')] } },
+  play: async () => {
+    await opened()
+    await expect(
+      await body().findByText(/Your plan doesn’t include the AI import; Pro does\./),
+    ).toBeVisible()
+    await expect(body().getByText(/Imports already read stay open for review\./)).toBeVisible()
+    await expect(body().getByRole('link', { name: 'See Pro' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans/),
+    )
+    await expect(body().getByLabelText('Choose files to import')).toBeDisabled()
+    await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
+  },
+}
+
+const ImportMenu = () => {
+  const [drawer, setDrawer] = useState(false)
+  return (
+    <div className="p-8">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">More actions</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <ImportItem Item={dropdownKit.Item} onSelect={() => setDrawer(true)}>
+            Import
+          </ImportItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {drawer && <p>Drawer opened</p>}
+    </div>
+  )
+}
+
+/** A page's "…" menu on Basic: Import is off, tagged with the plan that has it. */
+export const MenuItemOnBasic: Story = {
+  render: () => <ImportMenu />,
+  parameters: { layout: 'centered', msw: { handlers: [sessionHandler(), onPlan('basic')] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'More actions' }))
+    const item = await body().findByRole('menuitem', { name: /Import/ })
+    await waitFor(() => expect(item).toHaveAttribute('data-disabled'))
+    await expect(item.querySelector('[data-slot=plan-tag]')).toHaveTextContent('Pro')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(item).not.toBeInTheDocument())
+  },
+}
+
+/** On Pro the same item opens the import. */
+export const MenuItemOnPro: Story = {
+  render: () => <ImportMenu />,
+  parameters: { layout: 'centered', msw: { handlers: [sessionHandler(), onPlan('pro')] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'More actions' }))
+    await userEvent.click(await body().findByRole('menuitem', { name: 'Import' }))
+    await expect(await canvas.findByText('Drawer opened')).toBeVisible()
   },
 }

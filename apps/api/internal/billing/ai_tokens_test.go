@@ -24,8 +24,12 @@ func TestAITokensFollowThePlan(t *testing.T) {
 		t.Fatalf("no plan: %d", n)
 	}
 	e.subscribe(b.workspace, "price_bm")
-	if n := allowance(e, b.workspace); n != 250_000 {
+	if n := allowance(e, b.workspace); n != 0 { // Basic has neither Heidi nor the AI import
 		t.Fatalf("basic: %d", n)
+	}
+	e.subscribe(b.workspace, "price_pm")
+	if n := allowance(e, b.workspace); n != 5_000_000 {
+		t.Fatalf("pro: %d", n)
 	}
 	// The month's model usage is what the limit counts.
 	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, updated_at) VALUES ($1, to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 1234, now()),

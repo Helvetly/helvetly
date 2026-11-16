@@ -12,6 +12,7 @@ import { AlertCircle, History, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
 import { AIPrivacyLink } from '@/components/heidi/ai-consent'
 import { usageKey } from '@/components/heidi/use-heidi'
 import { errorMessage } from '@/lib/api'
@@ -52,6 +53,9 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
   const config = kind === 'auto' ? null : IMPORT_KINDS[kind]
   const noun = config ? config.label.toLowerCase() : 'records'
   const [files, setFiles] = useState(() => peekHandOff(kind))
+  const aiLock = useFeatureLock('ai_import')
+  // payroll files are parsed, not read by the AI
+  const lock = kind === 'payroll' ? null : aiLock
   const [batchId, setBatchId] = useState<string | null>(null)
   // Set once the person chose: continue the unfinished batch, or start over.
   const [fresh, setFresh] = useState(false)
@@ -154,8 +158,9 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
             </Button>
           </div>
         )}
+        <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={read} />}
-        <DropZone files={files} disabled={upload.isPending} onChange={setFiles} />
+        <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
         <p className="text-[12.5px] text-pretty text-muted-foreground">
           {config ? translate('importSuggestions', { noun }) : translate('importAutoSuggestions')}{' '}
           {translate('importReviewFirst')}
@@ -171,7 +176,7 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           })
         : translate('noFilesChosenYet')
     actions = (
-      <Button disabled={!files.length || upload.isPending} onClick={read}>
+      <Button disabled={!files.length || upload.isPending || Boolean(lock)} onClick={read}>
         {upload.isPending ? translate('uploading3') : translate('readFiles')}
       </Button>
     )

@@ -217,7 +217,7 @@ export const plansIn = perLanguage((translate, language) => {
       label: translate('aiTokensAMonthForAvailableFunctions'),
       scope: 'person',
       unit: 'token',
-      values: { basic: 250_000, pro: 5_000_000, business: 20_000_000 },
+      values: { basic: null, pro: 5_000_000, business: 20_000_000 },
     },
     automation_actions_per_month: {
       label: translate('automationActionsAMonth'),
@@ -431,18 +431,18 @@ export const plansIn = perLanguage((translate, language) => {
       title: translate('featureGroupDocuments'),
       rows: [
         {
-          key: 'document_library',
-          label: translate('featureDocumentLibrary'),
-          plans: ALL,
-          limit: 'storage_bytes',
-        },
-        { key: 'ai_import', label: translate('featureAIImport'), plans: ALL },
-        {
           key: 'expenses',
           label: translate('featureExpenses'),
           plans: PRO_UP,
           limit: 'expenses_per_month',
         },
+        {
+          key: 'document_library',
+          label: translate('featureDocumentLibrary'),
+          plans: ALL,
+          limit: 'storage_bytes',
+        },
+        { key: 'ai_import', label: translate('featureAIImport'), plans: PRO_UP },
         { key: 'document_templates', label: translate('featureTemplates'), plans: PRO_UP },
         {
           key: 'simple_signatures',

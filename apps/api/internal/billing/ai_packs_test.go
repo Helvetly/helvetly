@@ -22,7 +22,7 @@ func TestAITokenPacks(t *testing.T) {
 	// Packs are no longer sold (offer v2 has no top-ups), with a plan or without.
 	for _, subscribed := range []bool{false, true} {
 		if subscribed {
-			e.subscribe(owner.workspace, "price_bm")
+			e.subscribe(owner.workspace, "price_pm")
 			e.override(owner.workspace, AITokens, StateLimited, n64(1_000_000), nil) // the plan allowance packs add to
 		}
 		code, body := e.do(owner, http.MethodPost, "/api/v1/billing/ai-tokens", map[string]any{"tokens": 5_000_000})
