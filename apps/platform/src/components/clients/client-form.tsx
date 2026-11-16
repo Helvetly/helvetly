@@ -512,7 +512,7 @@ export function ClientForm({
                 }}
               />
               {customTerms && (
-                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <span className="flex items-center gap-2 text-body-sm text-muted-foreground">
                   <input
                     {...describe('payment_terms_days')}
                     inputMode="numeric"
