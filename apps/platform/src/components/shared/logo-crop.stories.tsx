@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Suspense, use, useState } from 'react'
+import { useState } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { normalizeLogo } from '@/lib/logo-crop'
@@ -130,14 +130,6 @@ async function isBlueAt(blob: Blob, fx: number, fy: number) {
   return b! > 200 && r! < 60 && g! < 60
 }
 
-const made = new Map<string, Promise<File>>()
-const cached = (width: number, height: number, clear: boolean) => {
-  const key = `${width}x${height}${clear}`
-  const hit = made.get(key) ?? picture(width, height, clear)
-  made.set(key, hit)
-  return hit
-}
-
 function Dialog({
   file,
   onSave = fn(),
@@ -165,18 +157,6 @@ function Dialog({
   )
 }
 
-function Opened({ width, height, clear }: { width: number; height: number; clear: boolean }) {
-  return <Dialog file={use(cached(width, height, clear))} />
-}
-
-function Pick({ width, height, clear = true }: { width: number; height: number; clear?: boolean }) {
-  return (
-    <Suspense fallback={null}>
-      <Opened width={width} height={height} clear={clear} />
-    </Suspense>
-  )
-}
-
 const meta = {
   title: 'Shared/Document logo framing',
   parameters: { layout: 'fullscreen' },
@@ -184,11 +164,24 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const saved = fn<(logo: Blob) => void>()
+/** Fixtures are made by loaders, so they exist before the story renders and its play starts. */
+const fileLoader = (make: () => Promise<File>) => async () => ({ file: await make() })
+const turnedLoader = (turn: 6 | 8, width?: number, height?: number) =>
+  fileLoader(() => turnedJpeg(turn, width, height))
+const pictureLoader = (width: number, height: number, clear?: boolean) =>
+  fileLoader(() => picture(width, height, clear))
+const renderLoaded: Story['render'] = (_args, { loaded }) => {
+  if (!(loaded.file instanceof File)) throw new Error('the loader did not provide the picture')
+  return <Dialog file={loaded.file} onSave={saved} />
+}
+
 const frame = (body: HTMLElement) => within(body).findByRole('button', { name: /arrow keys/ })
 
 /** A portrait photo starts whole and centred in the wide field; arrows move it, Fit puts it back. */
 export const Portrait: Story = {
-  render: () => <Pick width={600} height={800} />,
+  loaders: [pictureLoader(600, 800)],
+  render: renderLoaded,
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     const field = await frame(canvasElement.ownerDocument.body)
@@ -207,11 +200,12 @@ export const Portrait: Story = {
 }
 
 /** A wide, low wordmark fills the field's width. */
-export const Wordmark: Story = { render: () => <Pick width={1500} height={300} /> }
+export const Wordmark: Story = { loaders: [pictureLoader(1500, 300)], render: renderLoaded }
 
 /** Already 2.5 : 1: saved as picked, nothing to fit. */
 export const ExactRatio: Story = {
-  render: () => <Pick width={1000} height={400} />,
+  loaders: [pictureLoader(1000, 400)],
+  render: renderLoaded,
   play: async ({ canvasElement }) => {
     const body = canvasElement.ownerDocument.body
     await frame(body)
@@ -220,18 +214,7 @@ export const ExactRatio: Story = {
 }
 
 /** The smallest allowed picture, on white instead of transparent. */
-export const Tiny: Story = { render: () => <Pick width={64} height={64} clear={false} /> }
-
-const saved = fn<(logo: Blob) => void>()
-/** The EXIF-turned JPEG is made by a loader, so it exists before the story renders and its play starts. */
-const turnedLoader = (turn: 6 | 8, width?: number, height?: number) => async () => ({
-  file: await turnedJpeg(turn, width, height),
-})
-const Turned = ({ file }: { file: File }) => <Dialog file={file} onSave={saved} />
-const renderTurned: Story['render'] = (_args, { loaded }) => {
-  if (!(loaded.file instanceof File)) throw new Error('the turnedLoader did not provide the JPEG')
-  return <Turned file={loaded.file} />
-}
+export const Tiny: Story = { loaders: [pictureLoader(64, 64, false)], render: renderLoaded }
 
 const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
   const body = within(canvasElement.ownerDocument.body)
@@ -250,14 +233,14 @@ const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
 /** A JPEG turned by EXIF (orientation 6) keeps its proportions in the saved PNG. */
 export const ExifTurnedClockwise: Story = {
   loaders: [turnedLoader(6)],
-  render: renderTurned,
+  render: renderLoaded,
   play: keepsTheDiscRound,
 }
 
 /** The same turned the other way (orientation 8). */
 export const ExifTurnedAnticlockwise: Story = {
   loaders: [turnedLoader(8)],
-  render: renderTurned,
+  render: renderLoaded,
   play: keepsTheDiscRound,
 }
 
@@ -283,14 +266,14 @@ const exactTurned =
 /** A 400 × 1000 JPEG turned by EXIF 6 is shown 1000 × 400: already the field's shape, yet still re-encoded. */
 export const ExactRatioExifClockwise: Story = {
   loaders: [turnedLoader(6, 400, 1000)],
-  render: renderTurned,
+  render: renderLoaded,
   play: exactTurned([0.97, 0.075]),
 }
 
 /** The same turned the other way (orientation 8): the mark lands bottom left. */
 export const ExactRatioExifAnticlockwise: Story = {
   loaders: [turnedLoader(8, 400, 1000)],
-  render: renderTurned,
+  render: renderLoaded,
   play: exactTurned([0.03, 0.925]),
 }
 
@@ -454,25 +437,22 @@ export const SvgForeignObjectIsRefused: Story = {
 }
 
 const savedVector = fn<(logo: Blob) => void>()
-function VectorDialog({ pending }: { pending: ReturnType<typeof prepareLogo> }) {
-  const result = use(pending)
+const vectorLoader = (size: string, body: string) => async () => {
+  const result = await prepareLogo(svg(body, size))
   if ('problem' in result) throw new Error(result.problem)
-  return <Dialog kind="workspace" file={result.file} origin={result.origin} onSave={savedVector} />
+  return result
 }
-function WorkspaceSvg({ size, body }: { size: string; body: string }) {
-  const [pending] = useState(() => prepareLogo(svg(body, size)))
-  return (
-    <Suspense fallback={null}>
-      <VectorDialog pending={pending} />
-    </Suspense>
-  )
+const renderVector: Story['render'] = (_args, { loaded }) => {
+  const { file, origin } = loaded
+  if (!(file instanceof File) || (origin !== 'vector' && origin !== 'raster' && origin !== 'file'))
+    throw new Error('the vectorLoader did not provide the logo')
+  return <Dialog kind="workspace" file={file} origin={origin} onSave={savedVector} />
 }
 
 /** A 20 : 1 SVG becomes a 2048 × 102 raster: its square workspace crop is 102 px, held to the same 160 px floor as a PNG. */
 export const SvgWideWorkspaceFloor: Story = {
-  render: () => (
-    <WorkspaceSvg size='width="400" height="20"' body='<rect width="400" height="20"/>' />
-  ),
+  loaders: [vectorLoader('width="400" height="20"', '<rect width="400" height="20"/>')],
+  render: renderVector,
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     savedVector.mockClear()
@@ -486,9 +466,8 @@ export const SvgWideWorkspaceFloor: Story = {
 
 /** A square SVG is still a usable workspace logo: its raster is large enough for the floor. */
 export const SvgSquareWorkspaceSaves: Story = {
-  render: () => (
-    <WorkspaceSvg size='width="100" height="100"' body='<rect width="100" height="100"/>' />
-  ),
+  loaders: [vectorLoader('width="100" height="100"', '<rect width="100" height="100"/>')],
+  render: renderVector,
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     savedVector.mockClear()
