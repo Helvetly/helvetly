@@ -187,7 +187,7 @@ export const BookingsPreview: Story = {
       await drawer.findByText(/Blocked: Some figures are missing/, {}, { timeout: 8000 }),
     ).toBeVisible()
     await expect(drawer.getByRole('button', { name: /Book 1/ })).toBeEnabled()
-    await expect(drawer.getByRole('link', { name: /as Banana/ })).toHaveAttribute(
+    await expect(await drawer.findByRole('link', { name: /as Banana/ })).toHaveAttribute(
       'href',
       '/api/v1/payroll/bookings/pb_1/export?format=banana',
     )
