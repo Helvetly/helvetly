@@ -3,6 +3,7 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowLeft, Check, Pencil } from 'lucide-react'
@@ -29,6 +30,8 @@ import { ImportClientField } from './import-client-field'
 const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
   displayValue(record.data[config.labelKey ?? 'name']) ||
   translate('dynamicRow', { value1: index + 1 })
+/** The drawer footer's Save submits this form. */
+export const EDIT_FORM_ID = 'import-edit-record'
 const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
 
 /** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
@@ -292,6 +295,7 @@ export function EditRecord({
   )
   const toggles = config.toggles ?? []
   const save = () => {
+    if (patch.isPending) return
     const changes = recordChanges(record.data, values, toggles)
     if (!Object.keys(changes).length) return onDone(null)
     patch.mutate(
@@ -303,8 +307,9 @@ export function EditRecord({
   return (
     <form
       noValidate
+      id={EDIT_FORM_ID}
       aria-label={translate('editRecord')}
-      className="grid gap-5"
+      className="grid gap-6"
       onSubmit={(event) => {
         event.preventDefault()
         save()
@@ -339,26 +344,20 @@ export function EditRecord({
             )
           if (toggles.includes(field))
             return (
-              <FormField
+              <SwitchRow
                 key={field}
                 id={id}
                 label={config.fields[field] ?? field}
-                error={error}
-                tip={config.tips?.[field]}
-              >
-                <span className="flex h-9 items-center">
-                  <Checkbox
-                    {...describedBy(id, error)}
-                    checked={values[field] === translate('yes')}
-                    onCheckedChange={(on) =>
-                      setValues((current) => ({
-                        ...current,
-                        [field]: on === true ? translate('yes') : translate('no4'),
-                      }))
-                    }
-                  />
-                </span>
-              </FormField>
+                description={config.tips?.[field]}
+                checked={values[field] === translate('yes')}
+                onCheckedChange={(on) =>
+                  setValues((current) => ({
+                    ...current,
+                    [field]: on ? translate('yes') : translate('no4'),
+                  }))
+                }
+                className="sm:col-span-2"
+              />
             )
           return (
             <FormField
@@ -391,14 +390,6 @@ export function EditRecord({
           {errorMessage(patch.error)}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => onDone(null)}>
-          {translate('cancel')}
-        </Button>
-        <Button type="submit" disabled={patch.isPending}>
-          {patch.isPending ? translate('saving') : translate('save2')}
-        </Button>
-      </div>
     </form>
   )
 }

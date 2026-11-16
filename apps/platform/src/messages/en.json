@@ -1437,6 +1437,7 @@
   "importReadyToReview": "Import ready to review",
   "importsAlreadyReadStayOpenForReview": "Imports already read stay open for review.",
   "importReviewFirst": "You check and fix them first: nothing is created until you choose rows and press Import. The files are kept in Documents.",
+  "importCreateClient": "Add \"{name}\" as a new client",
   "importSuggestions": "Heidi’s AI reads the files and suggests {noun}.",
   "importsYouStarted": "Imports you started",
   "importYourClients": "Import your clients",

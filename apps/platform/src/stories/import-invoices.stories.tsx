@@ -403,7 +403,7 @@ export const IssuedElsewhereToggle: Story = {
     await expect(body().getByRole('columnheader', { name: 'Already issued' })).toBeVisible()
     await expect(body().queryByText('Already declared for VAT?')).not.toBeInTheDocument()
     await userEvent.click(body().getByRole('button', { name: 'Edit ALT-5' }))
-    const toggle = await body().findByRole('checkbox', { name: 'Already issued' })
+    const toggle = await body().findByRole('switch', { name: 'Already issued' })
     await expect(toggle).not.toBeChecked()
     await userEvent.click(toggle)
     await expect(toggle).toBeChecked()
