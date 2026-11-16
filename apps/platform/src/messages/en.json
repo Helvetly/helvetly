@@ -309,6 +309,7 @@
   "aYear": " a year",
   "aYear2": "a year",
   "aYear3": "% a year",
+  "aYearBilledYearly": " a year, billed yearly",
   "aYearSave": " a year, save ",
   "aZIPWithEveryRecordOfThisWorkspaceAs": "A ZIP with every record of this workspace as JSON, deleted and voided ones included, and its stored files: documents, receipts, issued invoices and e-invoices. Large workspaces take a while.",
   "back": " Back",
