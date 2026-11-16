@@ -58,7 +58,8 @@ export function SiteFooter({ lang }: { lang: Locale }) {
 
         <Container className="relative grid grid-cols-1 items-center gap-14 pt-20 pb-16 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:pt-24">
           <div data-reveal className="flex flex-col items-start">
-            <h2 className="text-subhero font-semibold text-balance">
+            {/* Long words (FR) wrap at large text sizes instead of widening the page. */}
+            <h2 className="text-subhero max-w-full font-semibold text-balance wrap-break-word hyphens-auto">
               {translate('spendFridayOnYourBusiness')}{' '}
               <span className="accent ink-gradient pr-2">{translate('notOnPaperwork')}</span>
             </h2>
@@ -117,7 +118,7 @@ export function SiteFooter({ lang }: { lang: Locale }) {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="w-fit text-body-sm text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
+                    className="w-fit max-w-full text-body-sm wrap-break-word hyphens-auto text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
                   >
                     {link.label}
                   </Link>

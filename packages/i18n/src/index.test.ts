@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { createTranslator, createTranslators, localizedAlternates, localizedHref } from './index'
+import {
+  browserLocale,
+  createTranslator,
+  createTranslators,
+  isLocale,
+  localeDetails,
+  localizedAlternates,
+  localizedHref,
+} from './index'
+import configuration from './locales.json'
 
 describe('translations', () => {
   const english = {
@@ -50,7 +59,13 @@ describe('localizedAlternates', () => {
   it('names the page in its own language and links every language', () => {
     expect(localizedAlternates('/pricing', 'de')).toEqual({
       canonical: '/de/pricing',
-      languages: { 'de-CH': '/de/pricing', 'en-GB': '/pricing', 'x-default': '/pricing' },
+      languages: {
+        'de-CH': '/de/pricing',
+        'en-GB': '/pricing',
+        'fr-CH': '/fr/pricing',
+        'it-CH': '/it/pricing',
+        'x-default': '/pricing',
+      },
     })
     expect(localizedAlternates('/', 'en').canonical).toBe('/')
   })
@@ -73,4 +88,35 @@ describe('localizedHref', () => {
     '#features',
     'mailto:a@example.com',
   ])('preserves %s', (href) => expect(localizedHref(href, 'de')).toBe(href))
+})
+
+describe('public languages', () => {
+  it.each([
+    ['fr', 'Français', 'fr-CH'],
+    ['it', 'Italiano', 'it-CH'],
+  ])(
+    'publishes %s on the website as a Swiss language with Swiss number formats',
+    (code, name, tag) => {
+      if (!isLocale(code)) throw new Error(`${code} is not a public language`)
+      expect(localeDetails(code)).toEqual({
+        name,
+        languageTag: tag,
+        numberLocale: 'de-CH',
+      })
+      expect(localizedHref('/pricing#basic', code)).toBe(`/${code}/pricing#basic`)
+      expect(localizedHref(`/${code}/pricing`, 'en')).toBe('/pricing')
+    },
+  )
+
+  it('keeps the application in English when a public page hands over ?lang', () => {
+    expect(configuration.browserLocales).toEqual(['en'])
+    const storage = new Map<string, string>()
+    const store = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => void storage.set(key, value),
+    }
+    for (const language of ['de', 'fr', 'it'])
+      expect(browserLocale(`?lang=${language}`, store)).toBe('en')
+    expect(storage.size).toBe(0)
+  })
 })

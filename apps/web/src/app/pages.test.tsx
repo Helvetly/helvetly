@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { compareIn } from '@/lib/compare'
 import { faqIn, TOPICS } from '@/lib/faq'
+import { translatorFor } from '@/lib/i18n'
 import { OFFER_URL } from '@/lib/offer'
 import { plansIn } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
@@ -83,6 +84,41 @@ describe('home page in German', () => {
       .map((link) => link.getAttribute('href') ?? '')
       .filter((href) => href.startsWith('/'))
     expect(internal.filter((href) => !href.startsWith('/de/'))).toEqual([])
+  })
+})
+
+describe.each(['fr', 'it'] as const)('home page in %s', (language) => {
+  beforeEach(() => serve())
+
+  it('is worded in the language, links to its pages and hands the language to sign-in', async () => {
+    const translate = translatorFor(language)
+    const inEnglish = translatorFor('en')
+    render(
+      <LanguageProvider language={language}>
+        {await HomePage({ params: Promise.resolve({ lang: language }) })}
+      </LanguageProvider>,
+    )
+    const title = screen.getByRole('heading', { level: 1 }).textContent
+    expect(title).toBe(
+      translate('yourSwissBackOffice') + translate('beautifully') + translate('inOrder'),
+    )
+    expect(title).not.toBe(
+      inEnglish('yourSwissBackOffice') + inEnglish('beautifully') + inEnglish('inOrder'),
+    )
+    expect(screen.getByRole('link', { name: translate('seePricing') }).getAttribute('href')).toBe(
+      `/${language}/pricing`,
+    )
+    const anchors = screen.getAllByRole('link')
+    const trial = anchors.find((link) => link.textContent?.includes(translate('startYour').trim()))
+    expect(trial?.getAttribute('href')).toBe(`http://localhost:8000/login?lang=${language}`)
+    const internal = anchors
+      .map((link) => link.getAttribute('href') ?? '')
+      .filter((href) => href.startsWith('/'))
+    expect(internal.filter((href) => !href.startsWith(`/${language}/`))).toEqual([])
+    const faq = siteIn(language)
+      .FOOTER.flatMap(({ links }) => links)
+      .find(({ href }) => href === `/${language}/faq`)
+    expect(faq?.label).toBe(translate('questions'))
   })
 })
 

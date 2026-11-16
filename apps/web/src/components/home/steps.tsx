@@ -37,7 +37,7 @@ export function Steps({ lang }: { lang: Locale }) {
           title={
             <>
               {translate('setUpInAnAfternoon')}
-              <span className="accent">{translate('calm')}</span>
+              <span className="accent ink-gradient">{translate('calm')}</span>
               {translate('everyMonthAfter')}
             </>
           }

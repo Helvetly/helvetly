@@ -9,10 +9,28 @@ import { useState } from 'react'
 import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import { helpTopic, helpTopicsIn, POPULAR_HELP, topicSlug } from '@/lib/help-topics'
-import { translatorFor } from '@/lib/i18n'
+import { type MessageKey, translatorFor } from '@/lib/i18n'
 import { TONES } from '@/lib/tones'
 
 export type HelpEntry = { slug: string; title: string; description: string; category: string }
+
+/** Suggested searches, each worded so it finds at least one article in every language. */
+export const HELP_QUICK = [
+  'qrBill',
+  'helpQuickReminder',
+  'vatReturn',
+  'helpQuickPasskey',
+  'helpQuickImport',
+  'helpQuickInvite',
+] as const satisfies readonly MessageKey[]
+
+/** The articles whose title, description or category contain every word of the query. */
+export function matchingHelp(entries: HelpEntry[], query: string) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  return entries.filter((e) =>
+    words.every((w) => `${e.title} ${e.description} ${e.category}`.toLowerCase().includes(w)),
+  )
+}
 
 function TopicIcon({ category, size = 'md' }: { category: string; size?: 'sm' | 'md' }) {
   const language = useLanguage()
@@ -59,19 +77,11 @@ function ArticleRow({ entry }: { entry: HelpEntry }) {
 export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
   const language = useLanguage()
   const translate = translatorFor(language)
-  const QUICK = [
-    translate('qrBill'),
-    'reminder',
-    translate('vatReturn'),
-    'passkey',
-    'import',
-    'invite',
-  ]
+  const QUICK = HELP_QUICK.map((key) => translate(key))
   const [query, setQuery] = useState('')
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const matches = entries.filter((e) =>
-    words.every((w) => `${e.title} ${e.description} ${e.category}`.toLowerCase().includes(w)),
-  )
+  const matches = matchingHelp(entries, query)
+
   const popular = POPULAR_HELP.flatMap((slug) => entries.filter((e) => e.slug === slug))
 
   return (
@@ -118,11 +128,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
           <h2 className="text-body-sm text-muted-foreground">
             {matches.length === 0
               ? translate('nothingMatches', { query: query })
-              : translate('for', {
-                  length: matches.length,
-                  value2: matches.length === 1 ? 'answer' : 'answers',
-                  query: query,
-                })}
+              : translate('for', { length: matches.length, query: query })}
           </h2>
           {matches.length === 0 ? (
             <p className="mt-3 text-body text-muted-foreground">

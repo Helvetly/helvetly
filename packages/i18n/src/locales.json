@@ -11,6 +11,16 @@
       "name": "English",
       "languageTag": "en-GB",
       "numberLocale": "de-CH"
+    },
+    "fr": {
+      "name": "Français",
+      "languageTag": "fr-CH",
+      "numberLocale": "de-CH"
+    },
+    "it": {
+      "name": "Italiano",
+      "languageTag": "it-CH",
+      "numberLocale": "de-CH"
     }
   }
 }

@@ -27,7 +27,7 @@ export function Trust({ lang }: { lang: Locale }) {
           title={
             <>
               {translate('swissAboutThe')}
-              <span className="accent">{translate('details')}</span>
+              <span className="accent ink-gradient">{translate('details')}</span>
             </>
           }
           lead={translate('yourBooksAreTheRecordOfYourCompanyHelvetly')}
