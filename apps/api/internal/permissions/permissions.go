@@ -26,7 +26,7 @@ var (
 	hr = []string{"employees", "payroll"}
 	// AdminHR is what an admin holds of HR until the owner sets otherwise: an outside accountant's level, the payroll register
 	// to view, no personnel records and no sealed fields (Art. 328b OR: only what the job needs).
-	AdminHR = []string{"read:payroll"}
+	AdminHR = store.AdminHR
 	ownerHR = []string{"write:employees", "write:payroll"}
 )
 

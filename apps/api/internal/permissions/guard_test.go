@@ -130,12 +130,21 @@ func TestGuardEngagementInvoiceNeedsInvoices(t *testing.T) {
 
 func TestGuardOwnerAndAdminUnaffected(t *testing.T) {
 	e := newGuardEnv(t)
-	for _, p := range []person{e.join("owner", nil), e.join("admin", nil)} {
-		e.allowed(p, "POST", "/api/v1/engagements/eng_1/periods/per_1/invoice")
-		e.allowed(p, "PUT", "/api/v1/invoice-settings")
-		e.allowed(p, "POST", "/api/v1/billing/checkout")
-		if _, body := e.do(p, "GET", "/api/v1/session"); !strings.Contains(body, `"scopes":["*:*"]`) {
-			t.Fatalf("effective scopes: %s", body)
+	// the session answers the effective scopes: everything a "*" reaches plus the HR areas held (EffectiveHR)
+	for _, c := range []struct {
+		p    person
+		want string
+	}{
+		{e.join("owner", nil), `"scopes":["*:*","write:employees","write:payroll"]`},
+		{e.join("admin", nil), `"scopes":["*:*","read:payroll"]`},
+		{e.join("admin", []string{}), `"scopes":["*:*"]`},
+		{e.join("admin", []string{"write:employees"}), `"scopes":["*:*","write:employees"]`},
+	} {
+		e.allowed(c.p, "POST", "/api/v1/engagements/eng_1/periods/per_1/invoice")
+		e.allowed(c.p, "PUT", "/api/v1/invoice-settings")
+		e.allowed(c.p, "POST", "/api/v1/billing/checkout")
+		if _, body := e.do(c.p, "GET", "/api/v1/session"); !strings.Contains(body, c.want) {
+			t.Fatalf("effective scopes: %s, want %s", body, c.want)
 		}
 	}
 }

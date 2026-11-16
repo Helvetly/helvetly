@@ -103,9 +103,17 @@ func (s *Service) SignedIn(next func(http.ResponseWriter, *http.Request, store.S
 
 func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.Session) {
 	u := sess.User
-	scopes := sess.Scopes // effective: owners and admins have every scope
-	if sess.Role == "owner" || sess.Role == "admin" {
-		scopes = []string{"*:*"}
+	// effective: owners and admins have every scope a "*" reaches, plus the HR areas they hold (permissions.EffectiveHR)
+	scopes := sess.Scopes
+	switch sess.Role {
+	case "owner":
+		scopes = []string{"*:*", "write:employees", "write:payroll"}
+	case "admin":
+		hr := sess.Scopes
+		if hr == nil {
+			hr = store.AdminHR
+		}
+		scopes = append([]string{"*:*"}, hr...)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"user":      map[string]string{"id": u.ID, "email": u.Email, "name": u.Name, "avatar_url": u.AvatarURL},
