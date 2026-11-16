@@ -489,7 +489,6 @@
   "notOnPaperwork": "not on paperwork.",
   "noTrackersNoAds": "No trackers, no ads",
   "offerHeidiDataDetails": "Heidi is included in {plans}. Nothing leaves for an AI model until an owner or admin switches AI on for the workspace; until then Heidi answers only from built-in commands. Either way she reads only what you may see yourself, and changes nothing without your confirmation. The details are in the ",
-  "offerMillions": "{count} million",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "offerPerPersonAllowance": "{count} {allowance}/person/month",
   "offersComesFromItsPublicWebsite": " offers comes from its public website,",

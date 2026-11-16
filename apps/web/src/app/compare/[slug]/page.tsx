@@ -6,9 +6,10 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 
 import { Cta } from '@/components/cta'
+import { OfferPrice, OfferProvider } from '@/components/offer-provider'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
-import { type Cell, competitor, COMPETITORS, OURS, ROW_GROUPS } from '@/lib/compare'
+import { type Cell, competitor, COMPETITORS, OURS, PRICE_ROWS, ROW_GROUPS } from '@/lib/compare'
 import { translate } from '@/lib/i18n'
 import { TRIAL } from '@/lib/plans'
 import { START_URL } from '@/lib/site'
@@ -143,70 +144,78 @@ export default async function ComparePage({ params }: Props) {
             data-reveal
             className="border-site-line relative mt-12 overflow-x-auto rounded-3xl border"
           >
-            <table className="w-full min-w-[680px] border-collapse text-left">
-              <caption className="sr-only">
-                {translate('helvetlyComparedWith')}
-                {them.name}
-              </caption>
-              <thead className="bg-site-tint">
-                <tr>
-                  <th
-                    scope="col"
-                    className="w-2/5 p-5 text-body-sm font-medium text-muted-foreground"
-                  >
-                    &nbsp;
-                  </th>
-                  <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
-                    <span className="flex items-center gap-2.5">
-                      <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
-                      {translate('helvetly')}
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-[30%] p-5 text-title-sm font-semibold text-muted-foreground"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <Image
-                        src={them.logo}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5"
-                      />
-                      {them.name}
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              {ROW_GROUPS.map(({ group, rows }) => (
-                <tbody key={group}>
-                  <tr key={group} className="border-site-line bg-site-tint border-t">
+            <OfferProvider>
+              <table className="w-full min-w-[680px] border-collapse text-left">
+                <caption className="sr-only">
+                  {translate('helvetlyComparedWith')}
+                  {them.name}
+                </caption>
+                <thead className="bg-site-tint">
+                  <tr>
                     <th
-                      scope="rowgroup"
-                      colSpan={3}
-                      className="p-5 py-3 text-body-sm font-medium text-muted-foreground"
+                      scope="col"
+                      className="w-2/5 p-5 text-body-sm font-medium text-muted-foreground"
                     >
-                      {group}
+                      &nbsp;
+                    </th>
+                    <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
+                      <span className="flex items-center gap-2.5">
+                        <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
+                        {translate('helvetly')}
+                      </span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="w-[30%] p-5 text-title-sm font-semibold text-muted-foreground"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Image
+                          src={them.logo}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5"
+                        />
+                        {them.name}
+                      </span>
                     </th>
                   </tr>
-                  {rows.map(({ key, label }) => (
-                    <tr key={key} className="border-site-line border-t align-top">
-                      <th scope="row" className="p-5 py-4 text-body font-normal">
-                        {label}
+                </thead>
+                {ROW_GROUPS.map(({ group, rows }) => (
+                  <tbody key={group}>
+                    <tr key={group} className="border-site-line bg-site-tint border-t">
+                      <th
+                        scope="rowgroup"
+                        colSpan={3}
+                        className="p-5 py-3 text-body-sm font-medium text-muted-foreground"
+                      >
+                        {group}
                       </th>
-                      {/* Helvetly's column is tinted, so it reads as one band down the table. */}
-                      <td className="bg-mint/25 p-5 py-4 font-medium">
-                        <Value cell={OURS[key]} />
-                      </td>
-                      <td className="p-5 py-4 text-muted-foreground">
-                        <Value cell={them.rows[key]} />
-                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
+                    {rows.map(({ key, label }) => (
+                      <tr key={key} className="border-site-line border-t align-top">
+                        <th scope="row" className="p-5 py-4 text-body font-normal">
+                          {label}
+                        </th>
+                        {/* Helvetly's column is tinted, so it reads as one band down the table. */}
+                        <td className="bg-mint/25 p-5 py-4 font-medium">
+                          {PRICE_ROWS.has(key) ? (
+                            <OfferPrice>
+                              <Value cell={OURS[key]} />
+                            </OfferPrice>
+                          ) : (
+                            <Value cell={OURS[key]} />
+                          )}
+                        </td>
+                        <td className="p-5 py-4 text-muted-foreground">
+                          <Value cell={them.rows[key]} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
+              </table>
+            </OfferProvider>
           </div>
           <p className="mx-auto mt-6 max-w-3xl text-center text-body-sm text-muted-foreground">
             {translate('what')}
