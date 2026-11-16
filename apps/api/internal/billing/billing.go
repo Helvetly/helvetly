@@ -897,7 +897,8 @@ func (s *Service) details(w http.ResponseWriter, r *http.Request, sess store.Ses
 
 // EndSubscription ends billing for a workspace being deleted: its open plan Checkouts expire (one paid afterwards
 // would start a subscription nobody can reach) and every subscription of its customer Stripe could still bill or
-// resume is cancelled at once.
+// resume is cancelled at once, its scheduled change released first. Every step is safe to repeat, so a deletion
+// stopped by a Stripe failure ends billing on its retry.
 func (s *Service) EndSubscription(ctx context.Context, workspaceID string) error {
 	if !s.enabled {
 		return nil
@@ -916,6 +917,10 @@ func (s *Service) EndSubscription(ctx context.Context, workspaceID string) error
 	for _, sub := range subs.Data {
 		if sub.Status == "canceled" || sub.Status == "incomplete_expired" {
 			continue
+		}
+		// A scheduled change (a downgrade at the period's end) goes first, so nothing of the schedule lives on.
+		if err := s.releaseSchedule(ctx, sub); err != nil {
+			return err
 		}
 		if err := s.stripe.Call(ctx, http.MethodDelete, "/v1/subscriptions/"+url.PathEscape(sub.ID), nil, "", &sub); err != nil {
 			return err
