@@ -89,7 +89,7 @@ test('an owner records an employee, their pay, a document, and a payroll month a
   })
   await page.goto(`/employees/payroll?month=2026-10&entry=${text(entry.id)}`)
   const sheet = page.locator('[data-slot=sheet-content]')
-  await expect(sheet.getByText('Approved is not paid.')).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Approve' })).toBeEnabled()
   await shoot(page, '07-payroll-entry-draft')
   await sheet.getByRole('button', { name: 'Approve' }).click()
   await expect(sheet.getByRole('button', { name: 'Mark as paid' })).toBeVisible()
@@ -114,7 +114,7 @@ test('an owner records an employee, their pay, a document, and a payroll month a
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.evaluate(() => localStorage.setItem('theme', 'dark'))
   await page.goto('/employees/payroll?month=2026-10')
-  await expect(page.getByRole('heading', { name: 'Payroll' }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'October 2026' })).toBeVisible()
   await shoot(page, '11-payroll-dark')
 })
 

@@ -35,7 +35,7 @@ describe('TOKEN_RESOURCES', () => {
   })
 
   it('offers no HR resource: employees and payroll stay out of the public API', () => {
-    const hr = ['employees', 'payroll', 'employee-documents', 'payroll-approval', 'payroll-export']
+    const hr = ['employees', 'payroll']
     expect(TOKEN_RESOURCES.filter(({ name }) => hr.includes(name))).toEqual([])
   })
 })

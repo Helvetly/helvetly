@@ -4,7 +4,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { FormField } from '@helvetly/ui/components/form-field'
+import { FormField, HelpTip } from '@helvetly/ui/components/form-field'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { COUNTRIES } from '@helvetly/ui/lib/countries'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -24,10 +24,13 @@ import {
   type Employee,
   type EmploymentSettings,
 } from '@/lib/employees'
+import { translate } from '@/lib/i18n'
 
 import {
+  needsEnd,
   newValues,
   regionsOf,
+  swissFields,
   toInput,
   validate,
   valuesFromEmployee,
@@ -36,37 +39,21 @@ import {
 } from './employee-form-model'
 
 const fieldId = (field: keyof FormValues) => `employee-${field}`
+const describe = (field: keyof FormValues, error: string | undefined) => ({
+  id: fieldId(field),
+  'aria-invalid': error ? true : undefined,
+  'aria-describedby': error ? `${fieldId(field)}-error` : undefined,
+})
 
-function CountrySelect({
-  field,
-  value,
-  invalid,
-  optional,
-  onChange,
-}: {
-  field: keyof FormValues
-  value: string
-  invalid?: boolean
-  optional?: boolean
-  onChange: (code: string) => void
-}) {
-  return (
-    <NativeSelect
-      id={fieldId(field)}
-      value={value}
-      aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? `${fieldId(field)}-error` : undefined}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      <option value="">{optional ? 'Not set' : 'Choose a country'}</option>
-      {COUNTRIES.map((country) => (
-        <option key={country.code} value={country.code}>
-          {country.name}
-        </option>
-      ))}
-    </NativeSelect>
-  )
-}
+type TextKey = {
+  [K in keyof FormValues]: FormValues[K] extends string ? K : never
+}[keyof FormValues]
+type FlagKey = {
+  [K in keyof FormValues]: FormValues[K] extends boolean ? K : never
+}[keyof FormValues]
+
+const stored = (hint: string | null | undefined) =>
+  hint ? translate('employeeStoredHint', { hint }) : undefined
 
 /** Creates or edits an employee in a drawer from the right (full width on phones). */
 export function EmployeeForm({
@@ -90,7 +77,8 @@ export function EmployeeForm({
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   const suggested = !employee && Boolean(settings?.country)
   const work = regionsOf(countries, values.work_country)
-  const title = employee ? 'Edit employee' : 'New employee'
+  const cantons = regionsOf(countries, 'CH')?.regions ?? []
+  const title = employee ? translate('employeeEditTitle') : translate('employeeNewTitle')
 
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
@@ -106,7 +94,11 @@ export function EmployeeForm({
       { id: employee?.id, input: toInput(values, employee ? initial : undefined) },
       {
         onSuccess: (saved) => {
-          toast.success(employee ? `${fullName(saved)} saved.` : `${fullName(saved)} added.`)
+          toast.success(
+            translate(employee ? 'employeeSavedToast' : 'employeeAddedToast', {
+              name: fullName(saved),
+            }),
+          )
           onSaved(saved, !employee)
         },
         onError: (error) => {
@@ -114,8 +106,8 @@ export function EmployeeForm({
           if (fields && Object.keys(fields).length > 0) {
             setErrors(fields)
             focusFirst(fields)
-          } else if (error instanceof ApiError && error.status === 409)
-            // e.g. protected_fields_unavailable: the server cannot store bank account and tax id.
+          } else if (error instanceof ApiError && (error.status === 409 || error.status === 403))
+            // e.g. protected_fields_unavailable, restricted, or a plan without the module
             setErrors({ form: error.message })
           else toast.error(errorMessage(error))
         },
@@ -140,30 +132,56 @@ export function EmployeeForm({
     </FormField>
   )
   const text = (
-    name: keyof FormValues,
+    name: TextKey,
     props: {
       type?: string
       placeholder?: string
       autoComplete?: string
       inputMode?: 'decimal'
     } = {},
-  ) => {
-    const value = values[name]
-    return (
-      <input
-        id={fieldId(name)}
-        value={typeof value === 'string' ? value : ''}
-        aria-invalid={errors[name] ? true : undefined}
-        aria-describedby={errors[name] ? `${fieldId(name)}-error` : undefined}
-        onChange={(event) => set(name, event.target.value)}
-        className={inputClass}
-        {...props}
-      />
-    )
-  }
-  const suggestion = suggested ? (
-    <span className="text-xs text-muted-foreground">Suggested from company settings</span>
-  ) : undefined
+  ) => (
+    <input
+      {...describe(name, errors[name])}
+      value={values[name]}
+      onChange={(event) => set(name, event.target.value)}
+      className={inputClass}
+      {...props}
+    />
+  )
+  const country = (name: TextKey, optional = false) => (
+    <NativeSelect
+      {...describe(name, errors[name])}
+      value={values[name]}
+      onChange={(event) => set(name, event.target.value)}
+    >
+      <option value="">
+        {optional ? translate('employeeNotSet') : translate('employeeChooseCountry')}
+      </option>
+      {COUNTRIES.map((entry) => (
+        <option key={entry.code} value={entry.code}>
+          {entry.name}
+        </option>
+      ))}
+    </NativeSelect>
+  )
+  const flag = (name: FlagKey, label: string, tip?: string) => (
+    <div className="grid gap-1">
+      <span className="flex min-h-8 items-center gap-2 text-body-sm">
+        <Checkbox
+          {...describe(name, errors[name])}
+          checked={values[name]}
+          onCheckedChange={(checked) => set(name, checked === true)}
+        />
+        <label htmlFor={fieldId(name)}>{label}</label>
+        {tip && <HelpTip label={label}>{tip}</HelpTip>}
+      </span>
+      {errors[name] && (
+        <p id={`${fieldId(name)}-error`} className="text-xs text-destructive">
+          {errors[name]}
+        </p>
+      )}
+    </div>
+  )
 
   return (
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
@@ -173,7 +191,7 @@ export function EmployeeForm({
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
-        <SheetDescription className="sr-only">Employee record</SheetDescription>
+        <SheetDescription className="sr-only">{translate('employeeRecord')}</SheetDescription>
         <form
           noValidate
           onSubmit={(event) => {
@@ -182,13 +200,13 @@ export function EmployeeForm({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="grid shrink-0 gap-0.5 border-b px-5 py-4 md:px-8">
+          <div className="flex shrink-0 items-center gap-1.5 border-b px-5 py-4 md:px-8">
             <h2 className="truncate text-lg font-semibold">
-              {employee ? `Edit ${fullName(employee)}` : title}
+              {employee ? translate('employeeEditName', { name: fullName(employee) }) : title}
             </h2>
-            <p className="text-body-sm text-muted-foreground">
-              A staff record only: it gives no access to Helvetly and adds no paid seat.
-            </p>
+            <HelpTip label={translate('employeeStaffRecordLabel')}>
+              {translate('employeeStaffRecordTip')}
+            </HelpTip>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -199,45 +217,42 @@ export function EmployeeForm({
                 </Callout>
               </div>
             )}
-            <FormSection title="Personal" description="Who the employee is and how to reach them.">
+            <FormSection title={translate('employeeSectionPerson')}>
               <div className="grid gap-4 sm:grid-cols-2">
-                {field('first_name', 'First name', text('first_name', { autoComplete: 'off' }), {
-                  required: true,
-                })}
-                {field('last_name', 'Last name', text('last_name', { autoComplete: 'off' }), {
-                  required: true,
-                })}
                 {field(
-                  'employee_number',
-                  'Employee number',
-                  text('employee_number', { placeholder: 'E-001' }),
-                  { tip: 'Your own number; the payroll import can match employees by it.' },
+                  'first_name',
+                  translate('employeeFirstName'),
+                  text('first_name', { autoComplete: 'off' }),
+                  { required: true },
                 )}
-                {field('email', 'Email', text('email', { type: 'email' }))}
-                {field('phone', 'Phone', text('phone', { type: 'tel' }))}
-                {field('street', 'Street', text('street'))}
-                {field('postal_code', 'Postcode', text('postal_code'))}
-                {field('city', 'City', text('city'))}
+                {field(
+                  'last_name',
+                  translate('employeeLastName'),
+                  text('last_name', { autoComplete: 'off' }),
+                  { required: true },
+                )}
+                {field('email', translate('employeeEmail'), text('email', { type: 'email' }))}
+                {field('phone', translate('employeePhone'), text('phone', { type: 'tel' }))}
+                {field('street', translate('employeeStreet'), text('street'), {
+                  className: 'sm:col-span-2',
+                })}
+                {field('postal_code', translate('employeePostcode'), text('postal_code'))}
+                {field('city', translate('employeeCity'), text('city'))}
                 {field(
                   'address_country',
-                  'Country',
-                  <CountrySelect
-                    field="address_country"
-                    optional
-                    value={values.address_country}
-                    onChange={(code) => set('address_country', code)}
-                  />,
+                  translate('employeeAddressCountry'),
+                  country('address_country', true),
                 )}
               </div>
             </FormSection>
 
-            <FormSection title="Employment" description="The role and the dates it runs.">
+            <FormSection title={translate('employeeSectionContract')}>
               <div className="grid gap-4 sm:grid-cols-2">
                 {field(
                   'employment_type',
-                  'Employment type',
+                  translate('employeeEmploymentType'),
                   <NativeSelect
-                    id={fieldId('employment_type')}
+                    {...describe('employment_type', errors.employment_type)}
                     value={values.employment_type}
                     onChange={(event) => set('employment_type', event.target.value)}
                   >
@@ -248,126 +263,145 @@ export function EmployeeForm({
                     ))}
                   </NativeSelect>,
                 )}
-                {field('position', 'Position', text('position'))}
-                {field('department', 'Department', text('department'))}
                 {field(
-                  'working_time',
-                  'Working time %',
-                  text('working_time', { inputMode: 'decimal', placeholder: '100' }),
+                  'employee_number',
+                  translate('employeeNumber'),
+                  text('employee_number', { placeholder: 'E-001' }),
+                  { tip: translate('employeeNumberTip') },
                 )}
+                {field('position', translate('employeePosition'), text('position'))}
+                {field('department', translate('employeeDepartment'), text('department'))}
                 {field(
                   'employment_start',
-                  'Start date',
+                  translate('employeeStart'),
                   text('employment_start', { type: 'date' }),
-                  {
-                    required: true,
-                  },
+                  { required: true },
                 )}
-                {field('employment_end', 'End date', text('employment_end', { type: 'date' }), {
-                  tip: 'Leave empty for an open-ended employment.',
-                })}
+                {field(
+                  'employment_end',
+                  translate('employeeEnd'),
+                  text('employment_end', { type: 'date' }),
+                  needsEnd(values) ? { required: true } : { tip: translate('employeeEndTip') },
+                )}
+                {field(
+                  'weekly_hours',
+                  translate('employeeWeeklyHours'),
+                  text('weekly_hours', { inputMode: 'decimal', placeholder: '42' }),
+                )}
+                {field(
+                  'working_time',
+                  translate('employeeWorkingTime'),
+                  text('working_time', { inputMode: 'decimal', placeholder: '100' }),
+                  { tip: translate('employeeWorkingTimeTip') },
+                )}
+                {field(
+                  'notice_period',
+                  translate('employeeNoticePeriod'),
+                  text('notice_period', { placeholder: translate('employeeNoticePlaceholder') }),
+                  { className: 'sm:col-span-2' },
+                )}
               </div>
+              {flag(
+                'thirteenth_salary',
+                translate('employeeThirteenth'),
+                translate('employeeThirteenthTip'),
+              )}
             </FormSection>
 
             <FormSection
-              title="Place of work & jurisdiction"
-              description="Where the work happens decides which rules apply, not the company’s seat."
+              title={translate('employeeSectionWork')}
+              tip={
+                suggested
+                  ? `${translate('employeeWorkTip')} ${translate('employeeSuggestedTip')}`
+                  : translate('employeeWorkTip')
+              }
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                {field('employing_entity', 'Employing company', text('employing_entity'), {
-                  className: 'sm:col-span-2',
-                  hint: suggestion,
-                  tip: 'Empty takes the company name from the employment settings.',
-                })}
+                {field(
+                  'employing_entity',
+                  translate('employeeEmployingEntity'),
+                  text('employing_entity'),
+                  {
+                    className: 'sm:col-span-2',
+                    tip: translate('employeeEmployingEntityTip'),
+                  },
+                )}
                 {field(
                   'employer_country',
-                  'Employer country',
-                  <CountrySelect
-                    field="employer_country"
-                    value={values.employer_country}
-                    invalid={Boolean(errors.employer_country)}
-                    onChange={(code) => set('employer_country', code)}
-                  />,
-                  { required: true, hint: suggestion },
+                  translate('employeeEmployerCountry'),
+                  country('employer_country'),
+                  { required: true },
                 )}
                 {field(
                   'work_country',
-                  'Work country',
-                  <CountrySelect
-                    field="work_country"
+                  translate('employeeWorkCountry'),
+                  <NativeSelect
+                    {...describe('work_country', errors.work_country)}
                     value={values.work_country}
-                    invalid={Boolean(errors.work_country)}
-                    onChange={(code) => {
-                      set('work_country', code)
+                    onChange={(event) => {
+                      set('work_country', event.target.value)
                       set('work_region', '')
                     }}
-                  />,
-                  { required: true, hint: suggestion },
+                  >
+                    <option value="">{translate('employeeChooseCountry')}</option>
+                    {COUNTRIES.map((entry) => (
+                      <option key={entry.code} value={entry.code}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </NativeSelect>,
+                  { required: true },
                 )}
                 {work?.region_label &&
                   field(
                     'work_region',
                     work.region_label,
                     <NativeSelect
-                      id={fieldId('work_region')}
+                      {...describe('work_region', errors.work_region)}
                       value={values.work_region}
-                      aria-invalid={errors.work_region ? true : undefined}
                       onChange={(event) => set('work_region', event.target.value)}
                     >
-                      <option value="">Choose a {work.region_label.toLowerCase()}</option>
+                      <option value="">
+                        {translate('employeeChooseRegion', {
+                          region: work.region_label.toLowerCase(),
+                        })}
+                      </option>
                       {work.regions?.map((region) => (
                         <option key={region.code} value={region.code}>
                           {region.name}
                         </option>
                       ))}
                     </NativeSelect>,
-                    { hint: suggestion },
                   )}
                 {work?.locality &&
-                  field('work_locality', 'City or county', text('work_locality'), {
-                    tip: 'Some cities and counties have their own rules.',
+                  field('work_locality', translate('employeeLocality'), text('work_locality'), {
+                    tip: translate('employeeLocalityTip'),
                   })}
-                {field('place_of_work', 'Place of work', text('place_of_work'), {
-                  tip: 'The office or site, e.g. “Zürich office” or “Remote”.',
+                {field('place_of_work', translate('employeePlaceOfWork'), text('place_of_work'), {
+                  tip: translate('employeePlaceOfWorkTip'),
                 })}
                 {field(
                   'residence_country',
-                  'Residence country',
-                  <CountrySelect
-                    field="residence_country"
-                    optional
-                    value={values.residence_country}
-                    onChange={(code) => set('residence_country', code)}
-                  />,
+                  translate('employeeResidenceCountry'),
+                  country('residence_country', true),
                 )}
                 {field(
                   'social_security_country',
-                  'Social security country',
-                  <CountrySelect
-                    field="social_security_country"
-                    optional
-                    value={values.social_security_country}
-                    onChange={(code) => set('social_security_country', code)}
-                  />,
+                  translate('employeeSocialSecurityCountry'),
+                  country('social_security_country', true),
                 )}
               </div>
-              <label
-                htmlFor={fieldId('cross_border')}
-                className="flex items-center gap-2 text-body-sm"
-              >
-                <Checkbox
-                  id={fieldId('cross_border')}
-                  checked={values.cross_border}
-                  onCheckedChange={(checked) => set('cross_border', checked === true)}
-                />
-                Works across a border (lives or works in more than one country)
-              </label>
+              {flag(
+                'cross_border',
+                translate('employeeCrossBorder'),
+                translate('employeeCrossBorderTip'),
+              )}
               {values.cross_border &&
                 field(
                   'cross_border_note',
-                  'Cross-border note',
+                  translate('employeeCrossBorderNote'),
                   <textarea
-                    id={fieldId('cross_border_note')}
+                    {...describe('cross_border_note', errors.cross_border_note)}
                     rows={2}
                     value={values.cross_border_note}
                     onChange={(event) => set('cross_border_note', event.target.value)}
@@ -376,49 +410,124 @@ export function EmployeeForm({
                 )}
             </FormSection>
 
+            {swissFields(values) && (
+              <FormSection
+                title={translate('employeeSectionSwiss')}
+                tip={translate('employeeSectionSwissTip')}
+              >
+                {flag(
+                  'withholding_tax',
+                  translate('employeeWithholdingTax'),
+                  translate('employeeWithholdingTaxTip'),
+                )}
+                {values.withholding_tax && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {field(
+                      'withholding_tax_canton',
+                      translate('employeeWithholdingCanton'),
+                      <NativeSelect
+                        {...describe('withholding_tax_canton', errors.withholding_tax_canton)}
+                        value={values.withholding_tax_canton}
+                        onChange={(event) => set('withholding_tax_canton', event.target.value)}
+                      >
+                        <option value="">{translate('employeeChooseCanton')}</option>
+                        {cantons.map((region) => (
+                          <option key={region.code} value={region.code}>
+                            {region.name}
+                          </option>
+                        ))}
+                      </NativeSelect>,
+                      { required: true },
+                    )}
+                  </div>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {field(
+                    'pension_insurer',
+                    translate('employeePensionInsurer'),
+                    text('pension_insurer'),
+                    {
+                      tip: translate('employeePensionInsurerTip'),
+                    },
+                  )}
+                  {field(
+                    'accident_insurer',
+                    translate('employeeAccidentInsurer'),
+                    text('accident_insurer'),
+                    { tip: translate('employeeAccidentInsurerTip') },
+                  )}
+                  {field(
+                    'sickness_insurer',
+                    translate('employeeSicknessInsurer'),
+                    text('sickness_insurer'),
+                    { tip: translate('employeeSicknessInsurerTip') },
+                  )}
+                </div>
+                <div className="grid gap-1">
+                  {flag(
+                    'free_transport',
+                    translate('employeeFreeTransport'),
+                    translate('employeeFreeTransportTip'),
+                  )}
+                  {flag(
+                    'canteen_meals',
+                    translate('employeeCanteenMeals'),
+                    translate('employeeCanteenMealsTip'),
+                  )}
+                </div>
+              </FormSection>
+            )}
+
             <FormSection
-              title="Protected"
-              description="Stored encrypted. Only people who may see pay can reveal them."
+              title={translate('employeeSectionProtected')}
+              tip={translate('employeeSectionProtectedTip')}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 {field(
                   'bank_account',
-                  'Bank account (IBAN)',
+                  translate('employeeBankAccount'),
                   text('bank_account', { autoComplete: 'off' }),
+                  { hint: stored(employee?.bank_account_hint) },
+                )}
+                {field(
+                  'tax_id',
+                  translate('employeeTaxId'),
+                  text('tax_id', { autoComplete: 'off' }),
                   {
-                    hint: employee?.bank_account_hint ? (
-                      <span className="text-xs text-muted-foreground">
-                        Stored: ending {employee.bank_account_hint}. Leave empty to keep it.
-                      </span>
-                    ) : undefined,
+                    hint: stored(employee?.tax_id_hint),
                   },
                 )}
-                {field('tax_id', 'Tax ID', text('tax_id', { autoComplete: 'off' }), {
-                  hint: employee?.tax_id_hint ? (
-                    <span className="text-xs text-muted-foreground">
-                      Stored: ending {employee.tax_id_hint}. Leave empty to keep it.
-                    </span>
-                  ) : undefined,
-                })}
+                {field(
+                  'social_security_number',
+                  translate('employeeSocialSecurityNumber'),
+                  text('social_security_number', {
+                    autoComplete: 'off',
+                    placeholder: swissFields(values) ? '756.0000.0000.00' : undefined,
+                  }),
+                  {
+                    hint: stored(employee?.social_security_number_hint),
+                    tip: translate('employeeSocialSecurityNumberTip'),
+                  },
+                )}
               </div>
             </FormSection>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3 md:px-7">
             <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
-              Cancel
+              {translate('cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'Saving…' : 'Save'}
+              {save.isPending ? translate('employeeSaving') : translate('employeeSave')}
             </Button>
           </div>
 
           {discarding && (
             <ConfirmDialog
-              title="Discard your changes?"
-              body="What you entered in this form will be lost."
-              confirmLabel="Discard"
-              cancelLabel="Keep editing"
+              title={translate('employeeDiscardTitle')}
+              body={translate('employeeDiscardBody')}
+              confirmLabel={translate('employeeDiscard')}
+              cancelLabel={translate('employeeKeepEditing')}
               tone="destructive"
               onDecide={(discard) => {
                 setDiscarding(false)

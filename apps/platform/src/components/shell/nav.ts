@@ -19,7 +19,7 @@ import type { ComponentType } from 'react'
 import { featureLock } from '@/components/billing/feature-lock'
 import type { Billing, FeatureKey } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-import { can, resourceForPath, type Need } from '@/lib/permissions'
+import { can, canReadPath, type Need } from '@/lib/permissions'
 
 export type NavItem = {
   label: string
@@ -53,7 +53,12 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
     label: translate('team'),
     items: [
       { label: translate('members'), icon: Users, href: '/members' },
-      { label: translate('employees'), icon: IdCard, href: '/employees' },
+      {
+        label: translate('employees'),
+        icon: IdCard,
+        href: '/employees',
+        feature: 'employees',
+      },
     ],
   },
   {
@@ -73,10 +78,7 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
 export function visibleNav(scopes: readonly string[]) {
-  const allowed = ({ href }: NavItem) => {
-    const resource = href ? resourceForPath(href) : null
-    return !resource || can(scopes, `read:${resource}`)
-  }
+  const allowed = ({ href }: NavItem) => !href || canReadPath(scopes, href)
   return NAV.flatMap((group) => {
     const items = group.items.filter(allowed)
     return items.length > 0 ? [{ ...group, items }] : []

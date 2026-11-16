@@ -27,9 +27,15 @@ test('write alone is enough to see a page; the dashboard and Heidi always stay',
 
 test('Employees needs an HR scope, which a member\'s "*" never gives', () => {
   expect(labels(['*:*'])).not.toContain('Employees')
-  expect(labels(effectiveScopes('admin', undefined))).not.toContain('Employees')
+  // An admin holds payroll view by default (ADMIN_HR), which opens the module's list and register.
+  expect(labels(effectiveScopes('admin', undefined))).toContain('Employees')
   expect(labels(effectiveScopes('owner', undefined))).toEqual(
     expect.arrayContaining(['Members', 'Employees']),
   )
   expect(labels(['read:employees'])).toContain('Employees')
+})
+
+test('payroll view alone shows Employees: the list serves picking employees by name', () => {
+  expect(labels(['read:payroll'])).toContain('Employees')
+  expect(labels(['read:clients'])).not.toContain('Employees')
 })

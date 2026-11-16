@@ -23,7 +23,9 @@ import {
   type PayBasis,
   type PayFrequency,
 } from '@/lib/employees'
-import { useCan } from '@/lib/permissions'
+import { translate } from '@/lib/i18n'
+
+import { DisabledTip, useHrAccess } from './hr-access'
 
 const CURRENCIES = ['CHF', 'EUR', 'USD', 'GBP']
 const basisLabel = (basis: PayBasis) => PAY_BASES.find((entry) => entry.value === basis)?.label
@@ -33,30 +35,39 @@ const frequencyLabel = (frequency: PayFrequency) =>
 /** Pay terms with their history: each change is new terms from a date, the old ones stay. */
 export function EmployeePay({ employee }: { employee: Employee }) {
   const query = usePayTerms(employee.id, true)
-  const canWrite = useCan('write:payroll') && !employee.restricted && !employee.erased_at
+  const hr = useHrAccess()
+  const shown = hr.seesPayrollWrites && !employee.restricted && !employee.erased_at
   const [adding, setAdding] = useState(false)
   return (
     <>
       <Panel
-        title="Pay terms"
+        title={translate('payrollPayTerms')}
         action={
-          canWrite &&
+          shown &&
           !adding && (
-            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setAdding(true)}>
-              <Plus className="size-3.5" /> Add pay terms
-            </Button>
+            <DisabledTip reason={hr.lockReason}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                disabled={Boolean(hr.lockReason)}
+                onClick={() => setAdding(true)}
+              >
+                <Plus className="size-3.5" /> {translate('payrollAddPayTerms')}
+              </Button>
+            </DisabledTip>
           )
         }
       >
         {adding && <PayTermsForm employee={employee} onDone={() => setAdding(false)} />}
         {query.error ? (
           <p className="text-body-sm text-muted-foreground">
-            {loadProblemText(query.error, 'The pay terms')}
+            {loadProblemText(query.error, translate('payrollThePayTerms'))}
           </p>
         ) : !query.data ? (
           <Loader className="h-16" />
         ) : query.data.length === 0 ? (
-          <p className="text-body-sm text-muted-foreground">No pay terms recorded yet.</p>
+          <p className="text-body-sm text-muted-foreground">{translate('payrollNoPayTerms')}</p>
         ) : (
           <ul className="grid">
             {query.data.map((terms) => (
@@ -69,13 +80,17 @@ export function EmployeePay({ employee }: { employee: Employee }) {
                     {formatMoney(terms.amount, terms.currency)}
                   </span>
                   <span className="text-muted-foreground">
-                    {basisLabel(terms.basis)} · paid{' '}
-                    {frequencyLabel(terms.frequency)?.toLowerCase()}
+                    {translate('payrollTermsBasis', {
+                      basis: basisLabel(terms.basis),
+                      frequency: frequencyLabel(terms.frequency)?.toLowerCase(),
+                    })}
                   </span>
-                  {terms.current && <StatusBadge tone="green">Current</StatusBadge>}
+                  {terms.current && (
+                    <StatusBadge tone="green">{translate('payrollCurrent')}</StatusBadge>
+                  )}
                 </span>
                 <span className="text-body-sm text-muted-foreground">
-                  From {formatDate(terms.effective_from)}
+                  {translate('payrollFrom', { date: formatDate(terms.effective_from) })}
                   {terms.note && ` · ${terms.note}`}
                 </span>
               </li>
@@ -83,9 +98,7 @@ export function EmployeePay({ employee }: { employee: Employee }) {
           </ul>
         )}
       </Panel>
-      <p className="px-1 text-caption text-muted-foreground">
-        Pay terms are a record of what was agreed. Helvetly does not calculate pay from them.
-      </p>
+      <p className="px-1 text-caption text-muted-foreground">{translate('payrollTermsNote')}</p>
     </>
   )
 }
@@ -116,14 +129,14 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
   return (
     <form
       noValidate
-      aria-label="New pay terms"
+      aria-label={translate('payrollNewPayTerms')}
       onSubmit={(event) => {
         event.preventDefault()
         add.mutate(
           { ...values, note: values.note.trim() || null },
           {
             onSuccess: () => {
-              toast.success('Pay terms added.')
+              toast.success(translate('payrollPayTermsAdded'))
               onDone()
             },
             onError: (error) => {
@@ -138,7 +151,7 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
     >
       <FormField
         id={id('effective_from')}
-        label="Effective from"
+        label={translate('payrollEffectiveFrom')}
         error={errors.effective_from}
         required
       >
@@ -150,7 +163,7 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
           className={inputClass}
         />
       </FormField>
-      <FormField id={id('basis')} label="Basis" error={errors.basis}>
+      <FormField id={id('basis')} label={translate('payrollBasis')} error={errors.basis}>
         <NativeSelect
           {...describe('basis')}
           value={values.basis}
@@ -168,7 +181,12 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
           ))}
         </NativeSelect>
       </FormField>
-      <FormField id={id('amount')} label="Amount" error={errors.amount} required>
+      <FormField
+        id={id('amount')}
+        label={translate('payrollAmount')}
+        error={errors.amount ?? errors.currency}
+        required
+      >
         <div className="flex gap-1.5">
           <input
             inputMode="decimal"
@@ -179,7 +197,8 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
             className={`${inputClass} text-right tabular-nums`}
           />
           <NativeSelect
-            aria-label="Currency"
+            aria-label={translate('payrollCurrency')}
+            aria-invalid={errors.currency ? true : undefined}
             wrapperClassName="w-24 shrink-0"
             value={values.currency}
             onChange={(event) => set('currency', event.target.value)}
@@ -190,7 +209,7 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
           </NativeSelect>
         </div>
       </FormField>
-      <FormField id={id('frequency')} label="Paid" error={errors.frequency}>
+      <FormField id={id('frequency')} label={translate('payrollPaid')} error={errors.frequency}>
         <NativeSelect
           {...describe('frequency')}
           value={values.frequency}
@@ -209,7 +228,12 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
           ))}
         </NativeSelect>
       </FormField>
-      <FormField id={id('note')} label="Note" error={errors.note} className="sm:col-span-2">
+      <FormField
+        id={id('note')}
+        label={translate('payrollNote')}
+        error={errors.note}
+        className="sm:col-span-2"
+      >
         <input
           {...describe('note')}
           value={values.note}
@@ -219,10 +243,10 @@ function PayTermsForm({ employee, onDone }: { employee: Employee; onDone: () => 
       </FormField>
       <div className="flex justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
-          Cancel
+          {translate('cancel')}
         </Button>
         <Button type="submit" size="sm" disabled={add.isPending}>
-          {add.isPending ? 'Saving…' : 'Add pay terms'}
+          {add.isPending ? translate('employeeSaving') : translate('payrollAddPayTerms')}
         </Button>
       </div>
     </form>
