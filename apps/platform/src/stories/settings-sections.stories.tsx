@@ -36,6 +36,16 @@ const saving = async ({ request }: { request: Request }) => {
   return HttpResponse.json({ data: sampleSettings() })
 }
 
+/** What a utility class (text-success, bg-warning-solid…) paints in this page, as the browser's computed colour. */
+const painted = (near: Element, className: string, property: 'color' | 'backgroundColor') => {
+  const probe = document.createElement('span')
+  probe.className = className
+  near.append(probe)
+  const color = getComputedStyle(probe)[property]
+  probe.remove()
+  return color
+}
+
 const meta = {
   title: 'Settings/Section save',
   parameters: { layout: 'fullscreen', msw: { handlers: handlers(saving) } },
@@ -67,6 +77,25 @@ export const SaveOneSection: Story = {
     await userEvent.type(iban, 'CH9300762011623852957')
     await userEvent.type(footer.getByLabelText('Footer text'), 'Thank you.')
     await expect(bank.getByText('Unsaved changes')).toBeVisible()
+    // Unsaved is orange, text and dot; its bar stays inside the 44rem form, not out to the far column.
+    const unsaved = bank.getByText('Unsaved changes')
+    await expect(getComputedStyle(unsaved).color).toBe(painted(unsaved, 'text-warning', 'color'))
+    const dot = unsaved.firstElementChild
+    if (!dot) throw new Error('The unsaved status has no dot')
+    await expect(getComputedStyle(dot).backgroundColor).toBe(
+      painted(unsaved, 'bg-warning-solid', 'backgroundColor'),
+    )
+    const bar = bank.getByText('Unsaved changes').closest('[data-slot="settings-section-footer"]')
+    await expect(bar?.getBoundingClientRect().width).toBeLessThanOrEqual(44 * 16 + 1)
+    // The page header's hairline reaches both edges of the panel.
+    const pageBox = canvasElement
+      .querySelector('[data-slot="settings-page"]')
+      ?.getBoundingClientRect()
+    const headBox = canvasElement
+      .querySelector('[data-slot="settings-page-header"]')
+      ?.getBoundingClientRect()
+    await expect(Math.round(headBox?.left ?? -1)).toBe(Math.round(pageBox?.left ?? -2))
+    await expect(Math.round(headBox?.right ?? -1)).toBe(Math.round(pageBox?.right ?? -2))
     // The section nav (a sidebar on wide screens, a row of chips on narrow ones) marks it too.
     await expect(
       page.getByRole('button', { name: /^Bank account.*unsaved changes/i }),
@@ -75,6 +104,8 @@ export const SaveOneSection: Story = {
     await userEvent.click(bank.getByRole('button', { name: 'Save' }))
     await expect(await bank.findByRole('button', { name: 'Saving…' })).toBeDisabled()
     await expect(await bank.findByText('Saved')).toBeVisible()
+    const saved = await bank.findByText('Saved')
+    await expect(getComputedStyle(saved).color).toBe(painted(saved, 'text-success', 'color'))
     await expect(lastSent()?.iban).toBe('CH93 0076 2011 6238 5295 7')
     await expect(lastSent()?.footer).toBeNull() // the footer's edit was not part of this save
     await expect(await within(document.body).findAllByText('Bank account saved.')).not.toHaveLength(
