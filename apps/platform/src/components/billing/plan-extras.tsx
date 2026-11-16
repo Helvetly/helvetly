@@ -1,22 +1,69 @@
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, InfinityIcon, Minus } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import {
-  FEATURE_LABELS,
-  comparisonLimitLabel,
   formatLimit,
+  formatTokens,
+  usageLabel,
   type Billing,
-  type FeatureKey,
-  type Plan,
+  type PlanId,
+  type PublicOffer,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
-import { LIMIT_ORDER } from './plan-cards'
+const PLAN_NAMES: Record<PlanId, string> = { basic: 'Basic', pro: 'Pro', business: 'Business' }
+const PLANS: PlanId[] = ['basic', 'pro', 'business']
 
-/** Every limit of every plan side by side, read from the plans. */
-export function PlanComparison({ plans, current }: { plans: Plan[]; current: Billing['plan'] }) {
-  const keys = LIMIT_ORDER.filter((key) => plans.some((plan) => key in plan.limits))
-  const features = [...new Set(plans.flatMap((plan) => plan.features))]
+/** One allowance for one person on a plan: "150", "5 GB", "5M"; null when the plan does not include it. */
+function allowance(offer: PublicOffer, key: string, plan: PlanId): string | null {
+  const limit = offer.limits[key]
+  const value = limit?.plans[plan]
+  if (!limit || !value?.included || value.value === 0) return null
+  if (value.value === null) return translate('unlimited2')
+  return limit.unit === 'token' ? formatTokens(value.value) : formatLimit(key, value.value)
+}
+
+/** How an allowance is counted: "/ person / month", "/ workspace". */
+function per(offer: PublicOffer, key: string): string {
+  const limit = offer.limits[key]
+  if (!limit) return ''
+  return translate('allowancePer', {
+    scope: limit.per_person ? 'person' : 'workspace',
+    monthly: String(limit.period !== null),
+  })
+}
+
+const NotIncluded = () => (
+  <span className="inline-flex items-center gap-1 text-muted-foreground">
+    <Minus className="size-4 shrink-0" aria-hidden />
+    <span className="max-sm:sr-only">{translate('notIncluded')}</span>
+  </span>
+)
+
+/**
+ * The business comparison and the allowances of the offer on sale, the same rows as the public pricing page: what
+ * each plan includes, and what each paid person adds or the workspace gets.
+ */
+export function PlanComparison({
+  offer,
+  current,
+}: {
+  offer: PublicOffer
+  current: Billing['plan']
+}) {
+  const cell = (plan: PlanId, content: ReactNode) => (
+    <td
+      key={plan}
+      data-plan={plan}
+      className={cn(
+        'px-1.5 py-3.5 text-center tabular-nums sm:px-4',
+        plan === current && 'bg-brand-surface/40',
+      )}
+    >
+      {content ?? <NotIncluded />}
+    </td>
+  )
   return (
     <section aria-labelledby="compare" className="mt-20 w-full max-w-[1080px]">
       <h2 id="compare" className="text-center text-page font-semibold tracking-[-0.02em]">
@@ -27,23 +74,20 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
         <table className="w-full table-fixed text-caption sm:text-body-sm">
           <thead>
             <tr className="border-b border-black/[0.06] dark:border-white/[0.08]">
-              <th
-                scope="col"
-                className="px-3 py-4 text-left font-medium text-muted-foreground sm:px-5"
-              >
-                <span className="sr-only">{translate('limit')}</span>
+              <th scope="col" className="px-3 py-4 text-left sm:px-5">
+                <span className="sr-only">{translate('whatYouGet')}</span>
               </th>
-              {plans.map((plan) => (
+              {PLANS.map((plan) => (
                 <th
-                  key={plan.id}
+                  key={plan}
                   scope="col"
                   className={cn(
                     'px-1.5 py-4 text-center font-semibold sm:px-4',
-                    plan.id === current && 'bg-brand-surface/40',
+                    plan === current && 'bg-brand-surface/40',
                   )}
                 >
-                  {plan.name}
-                  {plan.id === current && (
+                  {PLAN_NAMES[plan]}
+                  {plan === current && (
                     <span className="mx-auto mt-1 block w-fit rounded-full bg-brand-surface px-2 text-caption leading-5 font-medium text-brand sm:mt-0 sm:ml-1.5 sm:inline">
                       {translate('current')}
                     </span>
@@ -53,87 +97,87 @@ export function PlanComparison({ plans, current }: { plans: Plan[]; current: Bil
             </tr>
           </thead>
           <tbody className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
-            {keys.map((key) => (
-              <tr key={key}>
+            {offer.comparison.map((row) => (
+              <tr key={row.key} data-row={row.key}>
                 <th
                   scope="row"
                   className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5"
                 >
-                  {comparisonLimitLabel(key)}
+                  {row.label}
+                  {row.note && (
+                    <span className="mt-0.5 block text-caption text-pretty max-sm:hidden">
+                      {row.note}
+                    </span>
+                  )}
                 </th>
-                {plans.map((plan) => {
-                  const value = plan.limits[key]
-                  return (
-                    <td
-                      key={plan.id}
-                      className={cn(
-                        'px-1.5 py-3.5 text-center tabular-nums sm:px-4',
-                        plan.id === current && 'bg-brand-surface/40',
-                      )}
-                    >
-                      {value === null && key === 'members' ? (
-                        <span className="font-medium text-brand">{translate('anyNumber')}</span>
-                      ) : value === null ? (
-                        <span className="inline-flex items-center gap-1 font-medium text-brand">
-                          <InfinityIcon className="size-4" aria-hidden />
-                          {/* A phone's column has room for the sign only. */}
-                          <span className="max-sm:sr-only">{translate('unlimited2')}</span>
-                        </span>
-                      ) : value === 0 ? (
-                        <Minus
-                          className="mx-auto size-4 text-muted-foreground"
-                          aria-label={translate('notIncluded')}
-                        />
-                      ) : (
-                        formatLimit(key, value)
-                      )}
-                    </td>
+                {PLANS.map((plan) => {
+                  if (!row.plans[plan]) return cell(plan, null)
+                  const key = row.limit_keys[0] ?? ''
+                  const value = allowance(offer, key, plan)
+                  return cell(
+                    plan,
+                    value ? (
+                      <span className="font-medium">
+                        {value}
+                        <span className="font-normal text-muted-foreground">{per(offer, key)}</span>
+                      </span>
+                    ) : (
+                      <Check
+                        className="mx-auto size-4 text-brand"
+                        aria-label={translate('included')}
+                      />
+                    ),
                   )
                 })}
               </tr>
             ))}
-            {features.map((feature) => (
-              <FeatureRow key={feature} feature={feature} plans={plans} current={current} />
+          </tbody>
+          <tbody className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
+            <tr className="border-t border-black/[0.06] dark:border-white/[0.08]">
+              <th
+                scope="colgroup"
+                colSpan={4}
+                className="px-3 pt-6 pb-2 text-left font-semibold sm:px-5"
+              >
+                {translate('allowances')}
+                <span className="mt-0.5 block text-caption font-normal text-pretty text-muted-foreground">
+                  {translate('eachPaidPersonAddsThePerPersonAmounts')}
+                </span>
+              </th>
+            </tr>
+            {offer.usage_details.map((key) => (
+              <tr key={key} data-row={key}>
+                <th
+                  scope="row"
+                  className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5"
+                >
+                  {usageLabel(key).replace(/ this month$/, '')}
+                  <span className="mt-0.5 block text-caption">
+                    {translate('allowanceScope', {
+                      scope: offer.limits[key]?.per_person ? 'person' : 'workspace',
+                      monthly: String(Boolean(offer.limits[key]?.period)),
+                    })}
+                  </span>
+                </th>
+                {PLANS.map((plan) => {
+                  const value = allowance(offer, key, plan)
+                  return cell(
+                    plan,
+                    value === translate('unlimited2') ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-brand">
+                        <InfinityIcon className="size-4" aria-hidden />
+                        <span className="max-sm:sr-only">{translate('unlimited2')}</span>
+                      </span>
+                    ) : (
+                      value
+                    ),
+                  )
+                })}
+              </tr>
             ))}
           </tbody>
         </table>
       </div>
     </section>
-  )
-}
-
-function FeatureRow({
-  feature,
-  plans,
-  current,
-}: {
-  feature: FeatureKey
-  plans: Plan[]
-  current: Billing['plan']
-}) {
-  return (
-    <tr>
-      <th scope="row" className="px-3 py-3.5 text-left font-normal text-muted-foreground sm:px-5">
-        {FEATURE_LABELS[feature]}
-      </th>
-      {plans.map((plan) => (
-        <td
-          key={plan.id}
-          className={cn(
-            'px-1.5 py-3.5 text-center sm:px-4',
-            plan.id === current && 'bg-brand-surface/40',
-          )}
-        >
-          {plan.features.includes(feature) ? (
-            <Check className="mx-auto size-4 text-brand" aria-label={translate('included')} />
-          ) : (
-            <Minus
-              className="mx-auto size-4 text-muted-foreground"
-              aria-label={translate('notIncluded')}
-            />
-          )}
-        </td>
-      ))}
-    </tr>
   )
 }

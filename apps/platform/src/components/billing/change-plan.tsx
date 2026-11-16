@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 import { PlanScreen } from '@/components/shell/plan-gate'
 import { errorMessage } from '@/lib/api'
-import { people, trialDaysLeft, useBilling, type Billing } from '@/lib/billing'
+import { people, trialDaysLeft, useBilling, usePublicOffer, type Billing } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 import { PlanCards } from './plan-cards'
@@ -18,6 +18,7 @@ import { PlanComparison } from './plan-extras'
  */
 export function ChangePlan() {
   const billing = useBilling()
+  const offer = usePublicOffer()
   const data = billing.data
   return (
     <PlanScreen
@@ -52,14 +53,10 @@ export function ChangePlan() {
         ) : !data ? (
           <Loader label={translate('loadingPlans')} className="min-h-96" />
         ) : (
-          <PlanCards billing={data} />
+          <PlanCards billing={data} offer={offer.data} />
         )}
       </div>
-      {data && (
-        <>
-          <PlanComparison plans={data.plans} current={data.plan} />
-        </>
-      )}
+      {data && offer.data && <PlanComparison offer={offer.data} current={data.plan} />}
     </PlanScreen>
   )
 }

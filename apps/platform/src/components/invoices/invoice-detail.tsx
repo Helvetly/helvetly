@@ -40,6 +40,7 @@ import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { dropdownKit } from '@/components/data/menus'
 import { RecordLink } from '@/components/record-link'
@@ -781,6 +782,7 @@ function EinvoiceItems({
   buyerCountry?: string
 }) {
   const [busy, setBusy] = useState(false)
+  const lock = useFeatureLock('einvoice_xml')
   const download = async (format: Parameters<typeof downloadEinvoice>[1]) => {
     if (busy) return
     setBusy(true)
@@ -797,11 +799,12 @@ function EinvoiceItems({
       <DropdownMenuSeparator />
       <DropdownMenuLabel className="text-[12px] font-normal text-muted-foreground">
         {translate('eInvoiceXML')}
+        {lock && <PlanTag lock={lock} className="ml-1.5" />}
       </DropdownMenuLabel>
       {einvoiceFormatsFor(sellerCountry, buyerCountry).map((format) => (
         <DropdownMenuItem
           key={format.value}
-          disabled={busy}
+          disabled={busy || Boolean(lock)}
           onSelect={() => void download(format.value)}
         >
           <FileCode2 />

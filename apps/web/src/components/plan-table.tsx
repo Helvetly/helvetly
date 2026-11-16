@@ -1,3 +1,5 @@
+'use client'
+
 import { formatPrice } from '@helvetly/ui/lib/price'
 import {
   Banknote,
@@ -19,6 +21,7 @@ import {
 import type { ReactNode } from 'react'
 
 import { Cta } from '@/components/cta'
+import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { translate } from '@/lib/i18n'
 import {
@@ -105,6 +108,7 @@ function Value({ text }: { text: string | null }) {
 
 function PlanHead({ plan }: { plan: Plan }) {
   const recommended = plan.id === RECOMMENDED
+  const unavailable = useOfferStatus().status === 'unavailable'
   return (
     <>
       <span className="flex items-center gap-2">
@@ -125,14 +129,30 @@ function PlanHead({ plan }: { plan: Plan }) {
           recommended ? 'text-white/70' : 'text-muted-foreground',
         )}
       >
-        {formatPrice(priceOf(plan, 'month'))}
-        {translate('personMonth')}
+        {unavailable
+          ? translate('priceUnavailable')
+          : `${formatPrice(priceOf(plan, 'month'))}${translate('personMonth')}`}
       </span>
     </>
   )
 }
 
 /** One wide table: Pro's column is a lit band down the middle. */
+function StartCta({ plan }: { plan: Plan }) {
+  return (
+    <Cta
+      href={START_URL}
+      disabled={useOfferStatus().status === 'unavailable'}
+      variant={plan.id === RECOMMENDED ? 'light' : 'outline'}
+      arrow={false}
+      className="mt-4 h-9 w-full px-4 text-body-sm"
+    >
+      {translate('startWith')}
+      {plan.name}
+    </Cta>
+  )
+}
+
 function WideTable({
   caption,
   corner,
@@ -164,17 +184,7 @@ function WideTable({
               )}
             >
               <PlanHead plan={plan} />
-              {head && (
-                <Cta
-                  href={START_URL}
-                  variant={plan.id === RECOMMENDED ? 'light' : 'outline'}
-                  arrow={false}
-                  className="mt-4 h-9 w-full px-4 text-body-sm"
-                >
-                  {translate('startWith')}
-                  {plan.name}
-                </Cta>
-              )}
+              {head && <StartCta plan={plan} />}
             </th>
           ))}
         </tr>

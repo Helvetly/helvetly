@@ -54,9 +54,12 @@ const usage: Billing['usage'] = [
   { limit: 'signatures_per_month', used: 4, max: 5 },
   { limit: 'members', used: 3, max: null },
 ]
+// The trial: Business for up to two people, its allowances lasting the whole trial.
 const trialing = subscribed({
-  plan: 'basic',
+  plan: 'business',
   status: 'trialing',
+  trial: true,
+  seats: 2,
   // Four and a half days ahead reads as "5 days left" whenever the story runs.
   trial_end: new Date(Date.now() + 4.5 * 86_400_000).toISOString(),
   usage,
@@ -142,7 +145,7 @@ export const Trial: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
-    await expect(await summary.findByRole('heading', { name: 'Basic' })).toBeVisible()
+    await expect(await summary.findByRole('heading', { name: 'Business' })).toBeVisible()
     await expect(summary.getByText('Trial', { exact: true })).toBeVisible()
     await expect(summary.getByText(/^Trial ends on \d+ \w+ \d{4}$/)).toBeVisible()
     await expect(summary.getByText('Day 3 of 7')).toBeVisible()
@@ -152,38 +155,29 @@ export const Trial: Story = {
     )
     // The total with how it adds up, then what is charged after the trial.
     await expect(price(canvasElement)).toHaveTextContent(
-      /CHF 19 per person × 3 people\s*CHF 57\s*\/ month/,
+      /CHF 99 per person × 2 people\s*CHF 198\s*\/ month/,
     )
-    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 57 is charged.')
+    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 198 is charged.')
     await expect(canvasElement.querySelector('[data-slot=countdown]')).toHaveTextContent(
       '5days left',
     )
     // The plans are a page of their own: no tiles here, one way there.
     await expect(canvas.queryByRole('region', { name: 'Pro' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('radio', { name: 'Yearly' })).not.toBeInTheDocument()
-    // A trial on Basic: the next plan up is the primary way, the plans page beside it.
-    await changePlanLink(summary, 'Upgrade to Pro')
-    await changePlanLink(summary, 'Compare plans')
+    // A trial on Business: nothing above it, so one way to the plans page.
+    await changePlanLink(summary)
 
-    // Usage, closest to its limit first; signature requests are at 4 of 5 (80 %): orange, with a note; red only from 90 %.
+    // The trial's allowances last the whole trial, not a month.
+    const usagePanel = within(canvas.getByRole('region', { name: 'Usage' }))
+    await expect(usagePanel.getAllByText('For the whole trial').length).toBeGreaterThan(0)
+    await expect(usagePanel.queryByText(/This month since/)).toBeNull()
+    // Usage, closest to its limit first; signature requests are at 4 of 5 (80 %): orange, with a note.
     const signatures = canvas
       .getByText('Signature requests', { exact: true })
       .closest('[data-slot=usage-meter]')
     await expect(canvasElement.querySelector('[data-slot=usage-meter]')).toBe(signatures)
     await expect(signatures).toHaveAttribute('data-state', 'near')
-    await expect(signatures?.querySelector('[data-slot=meter]')).toHaveAttribute(
-      'data-tone',
-      'warning',
-    )
     await expect(within(signatures as HTMLElement).getByText('Almost at limit')).toBeVisible()
-    // One nudge for it, to the next plan up.
-    const nudge = canvasElement.querySelector<HTMLElement>('[data-slot=usage-nudge]')
-    await expect(nudge).toHaveTextContent(
-      'Signature requests: almost at the plan’s limit. Pro includes 50 signature requests a month.',
-    )
-    await expect(
-      within(nudge as HTMLElement).getByRole('link', { name: 'See Pro' }),
-    ).toHaveAttribute('href', '/settings/billing/plans/')
     // No member cap on a per-seat plan: the meter has no limit to reach.
     const members = canvas.getByText('Members').closest('[data-slot=usage-meter]')
     await expect(members).toHaveAttribute('data-state', 'ok')
@@ -426,7 +420,9 @@ export const NoPlan: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'No plan' })).toBeVisible()
-    await expect(canvas.getByRole('region', { name: 'Read-only' })).toBeVisible()
+    await expect(canvas.getByRole('region', { name: 'Read-only' })).toHaveTextContent(
+      'Try Business free for 7 days with up to 2 people; until then nothing can be changed.',
+    )
     // No limits without a plan, so no "0 of unlimited" tiles.
     await expect(canvas.queryByRole('heading', { name: 'Usage' })).not.toBeInTheDocument()
     await changePlanLink(canvas, 'Choose a plan')
@@ -439,7 +435,7 @@ export const NoPlanMobile: Story = {
   ...mobile,
 }
 
-export const PlansTrialUpgrade: Story = {
+export const PlansTrialSwitch: Story = {
   ...plansPage(trialing),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -447,53 +443,115 @@ export const PlansTrialUpgrade: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
     // Where the workspace stands, in the overview's words.
     await expect(canvasElement.querySelector('[data-slot=current-plan-pill]')).toHaveTextContent(
-      /You’re on Basic\s*·\s*5 days left in the trial/,
+      /You’re on Business\s*·\s*5 days left in the trial/,
     )
     await expect(canvas.getByRole('link', { name: 'Back to billing' })).toHaveAttribute(
       'href',
       '/settings/billing/',
     )
     const proCard = card(canvas, 'Pro')
-    await expect(proCard.getByText('Recommended')).toBeVisible()
     await expect(proCard.getByText('CHF 49')).toBeVisible()
     await expect(proCard.getByText('or CHF 471 a year, save 20 %')).toBeVisible()
     await expect(
       canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
-    ).toHaveTextContent('For 3 peopleCHF 147 / month')
+    ).toHaveTextContent('For 2 peopleCHF 98 / month')
     // Limits read number first.
-    await expect(
-      proCard.getByText(/^1.000$/, { selector: 'strong' }).parentElement,
-    ).toHaveTextContent(/^1.000 clients$/)
-    const basic = card(canvas, 'Basic')
-    await expect(basic.getByText('Current')).toBeVisible()
-    await expect(basic.getByRole('button', { name: 'Current plan' })).toBeDisabled()
+    await expect(proCard.getByText(/clients \/ workspace$/).parentElement).toHaveTextContent(
+      /^300 clients \/ workspace$/,
+    )
+    // Business's own features read as left out of Pro, once the public offer has loaded.
+    await waitFor(() =>
+      expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
+        /Not included: Client portal/,
+      ),
+    )
+    await expect(proCard.getByText('Your trial ends now and Pro is charged today.')).toBeVisible()
+    const businessCard = card(canvas, 'Business')
+    await expect(businessCard.getByText('Current')).toBeVisible()
+    await expect(businessCard.getByRole('button', { name: 'Current plan' })).toBeDisabled()
     await expect(canvas.getByText('Save 20 % yearly')).toBeVisible()
+    await expect(canvas.getByText('Every member is a paid seat')).toBeVisible()
 
-    await userEvent.click(proCard.getByRole('button', { name: 'Upgrade to Pro' }))
+    await userEvent.click(proCard.getByRole('button', { name: 'Switch to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     // The dialog fades in.
     await waitFor(() =>
       expect(
         dialog.getByText(
-          'Your trial ends now and Pro is charged today: CHF 49 per person a month, incl. VAT (CHF 147 for 3 people).',
+          'Your trial ends now and Pro is charged today: CHF 49 per person a month, incl. VAT (CHF 98 for 2 people).',
         ),
       ).toBeVisible(),
     )
-    await userEvent.click(dialog.getByRole('button', { name: 'Upgrade' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Switch plan' }))
     await waitFor(() =>
       expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'pro', interval: 'month' }),
     )
   },
 }
 
-export const PlansTrialUpgradeDark: Story = {
-  ...PlansTrialUpgrade,
-  parameters: { ...PlansTrialUpgrade.parameters, dark: true },
+export const PlansTrialSwitchDark: Story = {
+  ...PlansTrialSwitch,
+  parameters: { ...PlansTrialSwitch.parameters, dark: true },
 }
 
-export const PlansTrialUpgradeMobile: Story = {
-  ...PlansTrialUpgrade,
-  parameters: { ...PlansTrialUpgrade.parameters, ...phone },
+export const PlansTrialSwitchMobile: Story = {
+  ...PlansTrialSwitch,
+  parameters: { ...PlansTrialSwitch.parameters, ...phone },
+  ...mobile,
+}
+
+/** A downgrade waits for the paid period's end: the hero says so, and the picker can keep the current plan. */
+const downgrading = paid({
+  plan: 'business',
+  pending_plan: 'pro',
+  pending_interval: 'month',
+  pending_at: '2026-12-01T00:00:00Z',
+})
+
+export const PendingDowngrade: Story = {
+  parameters: { msw: { handlers: handlers(downgrading) } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    await expect(await summary.findByRole('heading', { name: 'Business' })).toBeVisible()
+    await expect(summary.getByText('Changes to Pro monthly on 1 Dec 2026.')).toBeVisible()
+  },
+}
+
+export const PendingDowngradeDark: Story = {
+  ...PendingDowngrade,
+  parameters: { ...PendingDowngrade.parameters, dark: true },
+}
+
+export const PendingDowngradeMobile: Story = {
+  ...PendingDowngrade,
+  parameters: { ...PendingDowngrade.parameters, ...phone },
+  ...mobile,
+}
+
+export const PlansPendingDowngrade: Story = {
+  ...plansPage(downgrading),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await plansLoaded(canvas)
+    const proCard = card(canvas, 'Pro')
+    await expect(await proCard.findByText('Scheduled', { selector: 'span' })).toBeVisible()
+    await expect(proCard.getByRole('button', { name: 'Scheduled' })).toBeDisabled()
+    await expect(proCard.getByText('Starts on 1 Dec 2026.')).toBeVisible()
+    const businessCard = card(canvas, 'Business')
+    await expect(businessCard.getByText('Cancels the scheduled change.')).toBeVisible()
+    // Keeping the current plan cancels the change at once, without a confirmation.
+    await userEvent.click(businessCard.getByRole('button', { name: 'Keep Business' }))
+    await waitFor(() =>
+      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'business', interval: 'month' }),
+    )
+    await expect(within(document.body).queryByRole('dialog')).toBeNull()
+  },
+}
+
+export const PlansPendingDowngradeMobile: Story = {
+  ...PlansPendingDowngrade,
+  parameters: { ...PlansPendingDowngrade.parameters, ...phone },
   ...mobile,
 }
 
@@ -542,10 +600,11 @@ export const PlansProToBusiness: Story = {
     await plansLoaded(canvas)
     await canvas.findByRole('region', { name: 'Business' })
     const businessCard = card(canvas, 'Business')
-    await expect(businessCard.getByText('Recommended')).toBeVisible()
+    // Pro is the recommendation; a workspace already on it sees no badge
+    await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(businessCard.getByText('CHF 99')).toBeVisible()
     await expect(businessCard.getByRole('list', { name: 'Business includes' })).toHaveTextContent(
-      /Unlimited clients/,
+      /1'500 clients \/ workspace/,
     )
     await expect(
       card(canvas, 'Basic').getByRole('button', { name: 'Switch to Basic' }),
@@ -644,11 +703,17 @@ export const PlansNoPlan: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     await expect(await canvas.findByRole('heading', { name: 'Choose a plan' })).toBeVisible()
-    await userEvent.click(
-      card(canvas, 'Basic').getByRole('button', { name: 'Start 7-day free trial' }),
-    )
+    // The trial is on Business, for a small team, and its allowances last the whole trial.
+    const businessCard = card(canvas, 'Business')
+    await expect(
+      businessCard.getByText(
+        "Business free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 99 per person a month.",
+      ),
+    ).toBeVisible()
+    await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()
+    await userEvent.click(businessCard.getByRole('button', { name: 'Start 7-day free trial' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'basic', interval: 'month' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'business', interval: 'month' }),
     )
   },
 }

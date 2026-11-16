@@ -1,5 +1,5 @@
 'use client'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   createContext,
   useCallback,
@@ -11,7 +11,9 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { featureLock, PLANS_HREF, toastLocked } from '@/components/billing/feature-lock'
 import { addFiles as addImportFiles } from '@/components/import/import-files'
+import { useBilling } from '@/lib/billing'
 import { chatReadable, importable, type HeidiPage } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import { useShortcut } from '@/lib/shortcuts'
@@ -90,6 +92,10 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const returnFocus = useRef<HTMLElement | null>(null)
+  const router = useRouter()
+  const billing = useBilling().data
+  // Heidi needs a plan with it: the panel stays shut and says which plan has it
+  const lock = useMemo(() => featureLock(billing, 'heidi'), [billing])
 
   const persist = useCallback((next: PanelState) => {
     setPanel(next)
@@ -100,6 +106,10 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
 
   const setOpen = useCallback(
     (open: boolean) => {
+      if (open && lock) {
+        toastLocked(lock, () => router.push(PLANS_HREF))
+        return
+      }
       if (open && !panel.open && document.activeElement instanceof HTMLElement)
         returnFocus.current = document.activeElement
       if (!open) {
@@ -109,7 +119,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
       }
       persist({ ...panel, open })
     },
-    [panel, persist],
+    [panel, persist, lock, router],
   )
 
   const setMax = useCallback(
@@ -132,11 +142,11 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
     })
   }, [])
 
-  useShortcut('heidi', () => setOpen(!panel.open))
+  useShortcut('heidi', () => setOpen(!panel.open || Boolean(lock)))
 
   const value = useMemo<HeidiContextValue>(
     () => ({
-      open: panel.open,
+      open: panel.open && !lock,
       max,
       width: panel.width,
       page,
@@ -152,10 +162,10 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
       clearFiles: () => setFiles([]),
       ask: (prompt) => {
         if (prompt) setDraft(prompt)
-        if (!panel.open) setOpen(true)
+        if (!panel.open || lock) setOpen(true)
       },
     }),
-    [panel, max, page, draft, files, chat, setOpen, setMax, persist, addFiles],
+    [panel, lock, max, page, draft, files, chat, setOpen, setMax, persist, addFiles],
   )
 
   return <HeidiContext.Provider value={value}>{children}</HeidiContext.Provider>

@@ -2,7 +2,7 @@
   "abaninja": "AbaNinja",
   "abaninjaPacksInvoicingAccountingAndPayrollFromTheAbacus": "AbaNinja packs invoicing, accounting and payroll from the Abacus world into one app with a free plan. Helvetly concentrates on the back office around your invoices, with e-invoices for Europe, retainers, the eCH-0217 VAT file and a hash-chained audit log.",
   "aBroadSwissBusinessSuiteWithAccountingPayrollAnd": "A broad Swiss business suite with accounting, payroll and an app marketplace.",
-  "accountingReportsAndSupportedExportsIncludingClientAndProduct": "Accounting reports and supported exports, including client and product CSV. Single invoice PDFs stay available in Basic.",
+  "accountingReportsAndSupportedExportsIncludingClientAndProduct": "Accounting reports and supported exports, including client and product CSV exports. Individual invoice PDFs remain available in Basic; e-invoice XML requires Business.",
   "accountPayableTo": "Account / Payable to",
   "acmeTreuhand": "Acme Treuhand",
   "activeEngagements": "Active engagements",
@@ -428,7 +428,7 @@
   "magicHeidiIsAFineAppForTheSelf": "Magic Heidi is a fine app for the self-employed keeping simple books. Helvetly is built for companies that invoice across borders, sign contracts, work in a team and want an assistant who knows the numbers.",
   "magicHeidiIsAFineAppForTheSelf2": "Magic Heidi is a fine app for the self-employed keeping simple books. Helvetly adds what growing companies need around their invoices: contracts to sign, retainers, e-invoice XML for Europe, a client portal and an assistant built into the product.",
   "main": "Main",
-  "managedByHandInEveryPlanScheduledWorkflowsNeed": "Managed by hand in every plan; scheduled workflows need Pro or Business.",
+  "manualEngagementManagementInEveryPlanScheduledWorkflows": "Manual engagement management in every plan; scheduled workflows require Pro or Business.",
   "manageSeveralClientCompaniesAsAFiduciary": "manage several client companies as a fiduciary",
   "manualWorkflows": ", manual workflows",
   "maySuitYouBetterIfYou": " may suit you better if you…",
@@ -848,8 +848,13 @@
   "yourDataYoursToTake": "Your data, yours to take",
   "yourFilesStayOnYourOwnComputer": "Your files stay on your own computer",
   "yourRecords": "Your records",
-  "yourRevolutMeLinkAndQRCodeTheClient": "Your revolut.me link and QR code; the client enters the amount and reference shown. No bank synchronisation or automatic payment confirmation.",
+  "revolutMeLinkAndQRThePayerEntersTheDisplayed": "revolut.me link and QR; the payer enters the displayed amount and reference. No bank sync or automatic payment confirmation.",
   "yourSwissBackOffice": "Your Swiss back office, ",
   "yourWorkspaceBecomesReadOnlyNothingIsDeletedYou": "Your workspace becomes read-only. Nothing is deleted, you can still read and download everything, and choosing a plan again unlocks it at once.",
-  "yourWorkspaceSharesTheAITokensContributedByEach": "Your workspace shares the AI tokens contributed by each paid person. Basic includes {value1} tokens for import into its available modules; Heidi and receipt import require {value2}. Pro includes {value3} and Business {value4} tokens per paid person a month. Requests, responses and conversation context use tokens, so there is no fixed number of documents or conversations."
+  "yourWorkspaceSharesTheAITokensContributedByEach": "Your workspace shares the AI tokens contributed by each paid person. Basic includes {value1} tokens for import into its available modules; Heidi and receipt import require {value2}. Pro includes {value3} and Business {value4} tokens per paid person a month. Requests, responses and conversation context use tokens, so there is no fixed number of documents or conversations.",
+  "priceUnavailable": "Price unavailable",
+  "pricingIsTemporarilyUnavailable": "Pricing is temporarily unavailable.",
+  "tryAgainInAMomentOrWriteTo": "Try again in a moment, or write to",
+  "checking": "Checking…",
+  "retry": "Retry"
 }

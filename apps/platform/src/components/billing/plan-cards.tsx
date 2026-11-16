@@ -3,9 +3,10 @@ import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Lock, Sparkles, X } from 'lucide-react'
+import { CalendarClock, Check, Lock, Minus, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -17,9 +18,9 @@ import {
   describeDiscount,
   discounted,
   formatPrice,
+  isLimitKey,
   isUpgrade,
   monthOf,
-  nextPlan,
   paymentFailed,
   people,
   seatsCost,
@@ -31,22 +32,34 @@ import {
   type Billing,
   LIMIT_LABELS,
   limitNoun,
-  limitFactLabel,
+  offerNoun,
   type Interval,
   type LimitKey,
   type Plan,
   type PlanPrice,
   type Promotion,
+  type PublicOffer,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 import { PromoCodeDialog } from './promo-code-dialog'
 
 const TAGLINES: Record<Plan['id'], string> = {
-  basic: translate('forASmallBusinessThatInvoicesEveryWeek'),
-  pro: translate('forTeamsWithManyClientsAndFewCeilings'),
-  business: translate('forLargerTeamsWithNoCeilings'),
+  basic: translate('startInvoicingForFreelancersWithASmallClient'),
+  pro: translate('runYourBusinessWithHeidiExpensesSignaturesAnd'),
+  business: translate('workWithClientsAtScaleTheClientPortal'),
 }
+
+/** A product recommendation, not measured popularity. */
+const RECOMMENDED: Plan['id'] = 'pro'
+
+/** Limits that are one fixed cap for the workspace; every other limit is added by each paid person. */
+const WORKSPACE_LIMITS: ReadonlySet<string> = new Set([
+  'members',
+  'clients',
+  'products',
+  'engagements',
+])
 
 /** A refused change says why; an unpaid one also offers Stripe's page to pay it, and stays until dismissed. */
 const fail = (error: unknown) => {
@@ -63,27 +76,31 @@ const fail = (error: unknown) => {
 
 const textLink = 'underline underline-offset-2 hover:no-underline'
 
-const isLimitKey = (key: string): key is LimitKey => key in LIMIT_LABELS
-
 /** Every limit the app knows, in the order the app lists them. */
 export const LIMIT_ORDER: LimitKey[] = Object.keys(LIMIT_LABELS).filter(isLimitKey)
 
-/** A limit as a plan line: "15 members", "100 invoices a month", "Unlimited clients". */
+const scopeOf = (key: string) => (WORKSPACE_LIMITS.has(key) ? 'workspace' : 'person')
+
+/**
+ * A limit as a plan line: "300 clients per workspace", "150 invoice issues a month per paid person", "Unlimited
+ * clients", "No expenses".
+ */
 export function limitLine(key: LimitKey, value: number | null): string {
-  if (key === 'storage_bytes')
-    return translate('forDocumentsAndReceipts', { value1: formatLimit(key, value) })
-  if (key === 'ai_tokens_per_month')
-    return translate('aiTokensAMonthForHeidiAndImports', { value1: formatLimit(key, value) })
   if (key === 'members' && value === null) return ANY_PEOPLE
   if (key === 'members')
     return translate('besidesTheOwner', {
       value1: formatLimit(key, value),
       value2: limitNoun('members', value ?? 2),
     })
-  const monthly = key.endsWith('_per_month')
-  const noun = limitNoun(key, value ?? 2)
-  if (value === null) return translate('unlimited', { noun: noun })
-  return `${formatLimit(key, value)} ${noun}${monthly ? translate('aMonth2') : ''}`
+  const noun = offerNoun(key, value ?? 2)
+  if (value === null) return translate('unlimited', { noun })
+  if (value === 0) return translate('noLimitNoun', { noun })
+  return translate('planLimitLine', {
+    value: formatLimit(key, value),
+    noun,
+    monthly: String(key.endsWith('_per_month')),
+    scope: scopeOf(key),
+  })
 }
 
 /** What a plan includes, from its limits; with `previous`, only what grows over that plan. */
@@ -91,6 +108,15 @@ export function planFeatures(plan: Plan, previous?: Plan): string[] {
   return LIMIT_ORDER.filter((key) => key in plan.limits)
     .filter((key) => !previous || plan.limits[key] !== previous.limits[key])
     .map((key) => limitLine(key, plan.limits[key]))
+}
+
+/** The seats a change bills: the subscription's paid seats, else the people in the workspace now. */
+const billedSeats = (billing: Billing) => billing.paid_seats ?? billing.seats
+
+/** "Up to 25 people" for self-service plans: the most seats a plan here sells (members besides the owner + 1). */
+export function selfServiceSeats(plans: Plan[]): number | null {
+  const caps = plans.map((plan) => plan.limits.members)
+  return caps.length > 0 && caps.every((cap) => cap !== null) ? Math.max(...caps) + 1 : null
 }
 
 /** The way to a plan from the workspace's: start the trial, choose, upgrade or switch. */
@@ -112,28 +138,38 @@ export function choiceLabel(billing: Billing, plan: Plan, interval: Interval): s
 export function usePlanCheckout() {
   const queryClient = useQueryClient()
   const checkout = useCheckout()
-  const go = (url: string) => {
+  const go = (url: string, done?: string) => {
     // A plan change answers with this page: refresh in place instead of reloading.
     if (url.startsWith(window.location.origin)) {
       void queryClient.invalidateQueries({ queryKey: billingKeys.overview })
-      toast.success(translate('planChangedImmediately'))
+      const scheduled = new URL(url).searchParams.get('checkout') === 'scheduled'
+      toast.success(
+        done ??
+          (scheduled
+            ? translate('yourPlanChangesAtTheEndOfThePaidPeriod')
+            : translate('planChangedImmediately')),
+      )
       return
     }
     window.location.assign(url)
   }
-  const start = (input: { plan: Plan['id']; interval: Interval; promotion_code?: string }) =>
-    checkout.mutate(input, { onSuccess: ({ url }) => go(url), onError: fail })
+  /** `done` replaces the success message of a change made in place. */
+  const start = (
+    input: { plan: Plan['id']; interval: Interval; promotion_code?: string },
+    done?: string,
+  ) => checkout.mutate(input, { onSuccess: ({ url }) => go(url, done), onError: fail })
   return { start, busy: checkout.isPending }
 }
 
 /** What a change costs, for its confirmation: per person, and for the people in the workspace now. */
 export function confirmBody(billing: Billing, plan: Plan, interval: Interval): string {
   const price = plan.prices[interval]
+  const seats = billedSeats(billing)
   const total =
-    price && billing.seats > 0
+    price && seats > 0
       ? translate('for2', {
-          value1: formatPrice(seatsCost(price, billing.seats)),
-          value2: people(billing.seats),
+          value1: formatPrice(seatsCost(price, seats)),
+          value2: people(seats),
         })
       : ''
   const charge = price
@@ -152,9 +188,13 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
   return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 
-/** A limit as a short fact with its key number first: "50" clients, "Unlimited" invoices / month. */
+/** A limit as a short fact with its key number first: "300" clients / workspace, "150" invoice issues / person / month. */
 export function planFact(key: LimitKey, value: number | null): { value: string; label: string } {
-  const label = limitFactLabel(key)
+  const label = translate('planFactLabel', {
+    noun: offerNoun(key),
+    scope: scopeOf(key),
+    monthly: String(key.endsWith('_per_month')),
+  })
   if (key === 'members')
     return {
       value: value === null ? translate('anyNumber') : formatLimit(key, value),
@@ -165,6 +205,17 @@ export function planFact(key: LimitKey, value: number | null): { value: string; 
     return { value: `${+(value / 1_000_000).toFixed(1)}M`, label }
   return { value: formatLimit(key, value), label }
 }
+
+/** The limits a plan card lists, in this order; the comparison below has the rest. */
+const CARD_LIMITS: LimitKey[] = [
+  'members',
+  'clients',
+  'invoices_per_month',
+  'expenses_per_month',
+  'signatures_per_month',
+  'ai_tokens_per_month',
+  'storage_bytes',
+]
 
 /** What a year saves against twelve months, per person. */
 const yearSaving = (plan: Plan): PlanPrice | null => {
@@ -180,10 +231,11 @@ const yearSaving = (plan: Plan): PlanPrice | null => {
  * total (seats follow the members, nobody picks them), the yearly saving, one way to each plan (a live subscription
  * confirms first) and the limits as short facts with the number first.
  */
-export function PlanCards({ billing }: { billing: Billing }) {
+export function PlanCards({ billing, offer }: { billing: Billing; offer?: PublicOffer }) {
   const [interval, setPeriod] = useState<Interval>(billing.interval || 'month')
   // the subscription bills the workspace's people, kept in step by the API as members join or leave
-  const team = Math.max(1, billing.seats)
+  const team = Math.max(1, billedSeats(billing))
+  const most = selfServiceSeats(billing.plans)
   const [confirm, setConfirm] = useState<Plan | null>(null)
   const [promo, setPromo] = useState<Promotion | null>(null)
   const [promoDialog, setPromoDialog] = useState(false)
@@ -197,8 +249,9 @@ export function PlanCards({ billing }: { billing: Billing }) {
   const subscribed = billing.plan !== ''
   const trialing = subscribed && billing.status === 'trialing'
   const pastDue = subscribed && billing.status === 'past_due'
-  const recommended = subscribed ? nextPlan(billing)?.id : 'pro'
-  const keys = LIMIT_ORDER.filter((key) => billing.plans.some((plan) => key in plan.limits))
+  // Pro, unless the workspace already has Pro or more
+  const recommended = isUpgrade(billing.plan, RECOMMENDED) ? RECOMMENDED : undefined
+  const keys = CARD_LIMITS.filter((key) => billing.plans.some((plan) => key in plan.limits))
 
   return (
     <div className="grid gap-10">
@@ -225,28 +278,43 @@ export function PlanCards({ billing }: { billing: Billing }) {
         {billing.plans.map((plan) => {
           const onPlan = billing.plan === plan.id
           const current = onPlan && billing.interval === interval
+          const scheduled =
+            billing.pending_plan === plan.id && billing.pending_interval === interval
+          // choosing the current plan again cancels the scheduled change
+          const keep = current && billing.pending_plan !== null
           const price = plan.prices[interval]
-          const offer =
+          const promoted =
             promo && promoApplies(promo, plan.id) && price ? discounted(price, promo) : null
           const highlight = plan.id === recommended
           const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
           const label = choiceLabel(billing, plan, interval)
-          const shown = offer ?? price
+          const shown = promoted ?? price
           const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
           const yearly = yearSaving(plan)
           let note = ''
-          if (pastDue && !current) note = translate('updateThePaymentMethodFirst')
+          if (keep) note = translate('cancelsTheScheduledChange')
+          else if (scheduled && billing.pending_at)
+            note = translate('startsOnDate', { date: formatDate(billing.pending_at) })
+          else if (pastDue && !current) note = translate('updateThePaymentMethodFirst')
           else if (trialing && !current)
             note = translate('yourTrialEndsNowAndIsChargedToday', { name: plan.name })
           else if (trial && shown)
-            note = translate('freeForDaysCardRequiredThenPerPerson', {
+            note = translate('trialNote', {
+              plan: plan.name,
               trial_days: billing.trial_days,
+              trial_seats: billing.trial_seats,
               value2: formatPrice(shown),
               per: per,
             })
           else if (!subscribed) note = translate('chargedToday')
           const disabled =
-            current || busy || pastDue || !billing.enabled || !billing.can_manage || !price
+            (current && !keep) ||
+            scheduled ||
+            busy ||
+            pastDue ||
+            !billing.enabled ||
+            !billing.can_manage ||
+            !price
           return (
             <section
               key={plan.id}
@@ -274,6 +342,12 @@ export function PlanCards({ billing }: { billing: Billing }) {
                       {translate('current')}
                     </span>
                   )}
+                  {scheduled && !onPlan && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 text-caption leading-5 font-medium text-muted-foreground">
+                      <CalendarClock className="size-3" aria-hidden />
+                      {translate('scheduled')}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 min-h-[2lh] text-body-sm text-pretty text-muted-foreground">
                   {TAGLINES[plan.id]}
@@ -284,7 +358,7 @@ export function PlanCards({ billing }: { billing: Billing }) {
                     <span className="text-display font-semibold tracking-[-0.035em]">
                       {shown ? formatPrice(shown) : '—'}
                     </span>
-                    {offer && price && (
+                    {promoted && price && (
                       <s className="text-body text-muted-foreground">{formatPrice(price)}</s>
                     )}
                   </p>
@@ -339,9 +413,24 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   className="mt-5 w-full"
                   variant={!current && (highlight || trial) && !pastDue ? 'default' : 'outline'}
                   disabled={disabled}
-                  onClick={() => (subscribed ? setConfirm(plan) : choose(plan))}
+                  onClick={() =>
+                    keep
+                      ? start(
+                          { plan: plan.id, interval },
+                          translate('youStayOnPlan', { name: plan.name }),
+                        )
+                      : subscribed
+                        ? setConfirm(plan)
+                        : choose(plan)
+                  }
                 >
-                  {current ? translate('currentPlan') : label}
+                  {keep
+                    ? translate('keepPlan', { name: plan.name })
+                    : scheduled
+                      ? translate('scheduled')
+                      : current
+                        ? translate('currentPlan')
+                        : label}
                 </Button>
                 <p className="mt-2.5 min-h-[2lh] text-center text-caption text-pretty text-muted-foreground">
                   {note}
@@ -352,7 +441,10 @@ export function PlanCards({ billing }: { billing: Billing }) {
                   className="mt-4 grid gap-2.5 border-t pt-5 text-body-sm"
                 >
                   {keys.map((key) => {
-                    const fact = planFact(key, plan.limits[key] ?? null)
+                    const value = plan.limits[key] ?? null
+                    // excluded features are listed below
+                    if (value === 0) return null
+                    const fact = planFact(key, value)
                     return (
                       <li key={key} className="flex items-baseline gap-2.5">
                         <Check
@@ -366,6 +458,20 @@ export function PlanCards({ billing }: { billing: Billing }) {
                       </li>
                     )
                   })}
+                  {offer?.comparison
+                    .filter((row) => !row.plans[plan.id])
+                    .map((row) => (
+                      <li
+                        key={row.key}
+                        className="flex items-baseline gap-2.5 text-muted-foreground"
+                      >
+                        <Minus className="size-3.5 shrink-0 translate-y-0.5" aria-hidden />
+                        <span className="min-w-0 text-pretty">
+                          <span className="sr-only">{translate('notIncluded2')}</span>
+                          {row.label}
+                        </span>
+                      </li>
+                    ))}
                 </ul>
               </div>
             </section>
@@ -399,6 +505,11 @@ export function PlanCards({ billing }: { billing: Billing }) {
               </button>
             )}
           </div>
+        )}
+        {billing.pricing !== 'flat' && (
+          <p data-slot="seat-rule" className="text-caption">
+            {translate('everyMemberIsAPaidSeat', { most: most ?? 'none' })}
+          </p>
         )}
         <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-caption">
           <Lock className="size-3" aria-hidden />

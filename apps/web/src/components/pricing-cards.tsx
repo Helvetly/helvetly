@@ -4,6 +4,7 @@ import { Check, Minus } from 'lucide-react'
 import { useState } from 'react'
 
 import { Cta } from '@/components/cta'
+import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { taxNote, useCurrency } from '@/lib/currency'
 import { translate } from '@/lib/i18n'
@@ -16,7 +17,7 @@ import {
   TRIAL,
   YEARLY_DISCOUNT_PERCENT,
 } from '@/lib/plans'
-import { START_URL } from '@/lib/site'
+import { START_URL, SUPPORT_EMAIL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
 
 // Basic and Business sit on their own pastel; Pro, the recommended plan, is the night card, as Heidi's band.
@@ -25,6 +26,8 @@ const PLAN_TONE = { basic: TONES.sky, pro: TONES.lilac, business: TONES.mint }
 export function PricingCards() {
   const [interval, setInterval] = useState<Interval>('year')
   const currency = useCurrency()
+  const offer = useOfferStatus()
+  const unavailable = offer.status === 'unavailable'
 
   return (
     <div className="flex flex-col items-center">
@@ -58,6 +61,29 @@ export function PricingCards() {
         ))}
       </fieldset>
 
+      {unavailable && (
+        <output className="border-site-line bg-site-tint mt-8 flex w-full max-w-3xl flex-col items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-center text-body-sm sm:flex-row sm:text-left">
+          <span>
+            <span className="font-medium">{translate('pricingIsTemporarilyUnavailable')}</span>{' '}
+            <span className="text-muted-foreground">
+              {translate('tryAgainInAMomentOrWriteTo')}{' '}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2">
+                {SUPPORT_EMAIL}
+              </a>
+              .
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={offer.retry}
+            disabled={offer.checking}
+            className="hover:bg-lilac inline-flex h-9 shrink-0 items-center rounded-full border border-foreground/15 bg-card px-4 font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-60"
+          >
+            {offer.checking ? translate('checking') : translate('retry')}
+          </button>
+        </output>
+      )}
+
       <div className="mt-12 grid w-full gap-4 lg:grid-cols-3">
         {PLANS.map((plan, i) => {
           const featured = plan.id === RECOMMENDED
@@ -90,40 +116,47 @@ export function PricingCards() {
               >
                 {plan.pitch}
               </p>
-              <p className="mt-6 flex items-baseline gap-1.5">
-                <span
-                  className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
-                >
-                  {currency.toUpperCase()}
-                </span>
-                <span
-                  key={interval}
-                  className="pop text-price font-semibold tracking-tight tabular-nums"
-                >
-                  {formatAmount(priceOf(plan, interval, currency))}
-                </span>
-                <span
-                  className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
-                >
-                  {translate('person')}
-                  {interval}
-                </span>
-              </p>
+              {unavailable ? (
+                <p className="mt-6 text-title font-semibold">{translate('priceUnavailable')}</p>
+              ) : (
+                <p className="mt-6 flex items-baseline gap-1.5">
+                  <span
+                    className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
+                  >
+                    {currency.toUpperCase()}
+                  </span>
+                  <span
+                    key={interval}
+                    className="pop text-price font-semibold tracking-tight tabular-nums"
+                  >
+                    {formatAmount(priceOf(plan, interval, currency))}
+                  </span>
+                  <span
+                    className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
+                  >
+                    {translate('person')}
+                    {interval}
+                  </span>
+                </p>
+              )}
               <p
                 className={cn(
                   'mt-2 h-5 text-body-sm',
                   featured ? 'opacity-60' : 'text-muted-foreground',
                 )}
               >
-                {interval === 'year'
-                  ? translate('aMonthBilledYearly', {
-                      value1: formatPrice(monthOf(priceOf(plan, 'year', currency))),
-                      value2: taxNote(currency),
-                    })
-                  : translate('billedMonthly', { value1: taxNote(currency) })}
+                {unavailable
+                  ? ''
+                  : interval === 'year'
+                    ? translate('aMonthBilledYearly', {
+                        value1: formatPrice(monthOf(priceOf(plan, 'year', currency))),
+                        value2: taxNote(currency),
+                      })
+                    : translate('billedMonthly', { value1: taxNote(currency) })}
               </p>
               <Cta
                 href={START_URL}
+                disabled={unavailable}
                 variant={featured ? 'light' : 'primary'}
                 className="mt-6 w-full"
               >

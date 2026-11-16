@@ -13,10 +13,10 @@ import { toast } from 'sonner'
 
 import { errorMessage } from '@/lib/api'
 import {
-  featureNotInPlan,
-  LIMIT_LABELS,
+  formatReset,
   limitReached,
-  planRequired,
+  planRefusal,
+  usageLabel,
   type LimitReached,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
@@ -44,12 +44,7 @@ export function promptUpgrade(error: unknown): boolean {
 
 /** toast.error for a failed action, unless the upgrade prompt, the plan toast or the permission toast already explains it. */
 export function toastError(error: unknown) {
-  if (
-    !limitReached(error) &&
-    !planRequired(error) &&
-    !featureNotInPlan(error) &&
-    !refusedScope(error)
-  )
+  if (!limitReached(error) && !planRefusal(error) && !refusedScope(error))
     toast.error(errorMessage(error))
 }
 
@@ -58,7 +53,7 @@ const close = () => {
   emit()
 }
 
-const TITLES: Record<LimitReached['limit'], string> = {
+const TITLES: Record<string, string> = {
   members: translate('memberLimitReached'),
   clients: translate('clientLimitReached'),
   invoices_per_month: translate('monthlyInvoiceLimitReached'),
@@ -68,6 +63,10 @@ const TITLES: Record<LimitReached['limit'], string> = {
   signatures_per_month: translate('monthlySignatureLimitReached'),
   storage_bytes: translate('storageIsFull'),
   ai_tokens_per_month: translate('monthlyAIAllowanceUsed'),
+  automation_actions_per_month: translate('monthlyAutomationActionsUsed'),
+  emails_per_month: translate('monthlyEmailAllowanceUsed'),
+  email_attachment_bytes_per_month: translate('monthlyAttachmentAllowanceUsed'),
+  download_bytes_per_month: translate('monthlyDownloadAllowanceUsed'),
 }
 
 export function UpgradePrompt() {
@@ -77,7 +76,7 @@ export function UpgradePrompt() {
     () => null,
   )
   if (!limit) return null
-  const label = LIMIT_LABELS[limit.limit]
+  const label = usageLabel(limit.limit)
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent
@@ -91,10 +90,14 @@ export function UpgradePrompt() {
           <Sparkles className="size-5 stroke-[1.75]" />
         </span>
         <DialogTitle className="mt-5 text-[17px] font-medium tracking-[-0.01em]">
-          {TITLES[limit.limit]}
+          {TITLES[limit.limit] ?? translate('planLimitReached')}
         </DialogTitle>
         <DialogDescription className="mt-1.5 text-[14px] leading-relaxed text-pretty">
           {limit.message}
+          {limit.limit === 'invoices_per_month' &&
+            ` ${translate('yourDraftIsSavedAndCanBeIssued')}`}
+          {limit.reset_at &&
+            ` ${translate('theAllowanceResetsOn', { at: formatReset(limit.reset_at) })}`}
         </DialogDescription>
         <UsageMeter
           className="mt-5"

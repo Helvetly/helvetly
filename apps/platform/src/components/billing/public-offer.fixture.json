@@ -1,0 +1,372 @@
+{
+  "offer_id": "helvetly-2026-11-v2",
+  "comparison": [
+    {
+      "key": "invoicing",
+      "label": "Invoices and quotes",
+      "limit_keys": ["invoices_per_month"],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "swiss_qr",
+      "label": "Swiss QR bills",
+      "limit_keys": [],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "revolut",
+      "label": "Revolut payment link",
+      "note": "revolut.me link and QR; the payer enters the displayed amount and reference. No bank sync or automatic payment confirmation.",
+      "limit_keys": [],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "engagements",
+      "label": "Engagements and retainers",
+      "note": "Manual engagement management in every plan; scheduled workflows require Pro or Business.",
+      "limit_keys": ["engagements"],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "automations",
+      "label": "Automations and payment reminders",
+      "limit_keys": ["automation_actions_per_month"],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "heidi",
+      "label": "Heidi AI assistant",
+      "limit_keys": ["ai_tokens_per_month"],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "client_portal",
+      "label": "Client portal",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": false
+      }
+    },
+    {
+      "key": "expenses",
+      "label": "Expenses and AI receipt import",
+      "limit_keys": ["expenses_per_month"],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "documents_signatures",
+      "label": "Document templates and simple signatures",
+      "limit_keys": ["signatures_per_month"],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "corrections_vat",
+      "label": "Invoice corrections and VAT returns",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "einvoice_xml",
+      "label": "E-invoice XML export",
+      "note": "Supported file formats only; no network delivery.",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": false
+      }
+    },
+    {
+      "key": "ledger_exports",
+      "label": "Ledger and data exports",
+      "note": "Accounting reports and supported exports, including client and product CSV exports. Individual invoice PDFs remain available in Basic; e-invoice XML requires Business.",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "pro": true
+      }
+    }
+  ],
+  "usage_details": [
+    "clients",
+    "products",
+    "invoices_per_month",
+    "expenses_per_month",
+    "signatures_per_month",
+    "storage_bytes",
+    "download_bytes_per_month",
+    "emails_per_month",
+    "email_attachment_bytes_per_month",
+    "ai_tokens_per_month",
+    "automation_actions_per_month"
+  ],
+  "limits": {
+    "ai_tokens_per_month": {
+      "unit": "token",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 250000
+        },
+        "business": {
+          "included": true,
+          "value": 20000000
+        },
+        "pro": {
+          "included": true,
+          "value": 5000000
+        }
+      }
+    },
+    "automation_actions_per_month": {
+      "unit": "automation_action",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": false,
+          "value": 0
+        },
+        "business": {
+          "included": true,
+          "value": 6000
+        },
+        "pro": {
+          "included": true,
+          "value": 1500
+        }
+      }
+    },
+    "clients": {
+      "unit": "client",
+      "period": null,
+      "per_person": false,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 30
+        },
+        "business": {
+          "included": true,
+          "value": 1500
+        },
+        "pro": {
+          "included": true,
+          "value": 300
+        }
+      }
+    },
+    "download_bytes_per_month": {
+      "unit": "byte",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 2000000000
+        },
+        "business": {
+          "included": true,
+          "value": 100000000000
+        },
+        "pro": {
+          "included": true,
+          "value": 20000000000
+        }
+      }
+    },
+    "email_attachment_bytes_per_month": {
+      "unit": "byte",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 100000000
+        },
+        "business": {
+          "included": true,
+          "value": 5000000000
+        },
+        "pro": {
+          "included": true,
+          "value": 1000000000
+        }
+      }
+    },
+    "emails_per_month": {
+      "unit": "recipient_message",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 100
+        },
+        "business": {
+          "included": true,
+          "value": 5000
+        },
+        "pro": {
+          "included": true,
+          "value": 1000
+        }
+      }
+    },
+    "engagements": {
+      "unit": "engagement",
+      "period": null,
+      "per_person": false,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 3
+        },
+        "business": {
+          "included": true,
+          "value": 100
+        },
+        "pro": {
+          "included": true,
+          "value": 20
+        }
+      }
+    },
+    "expenses_per_month": {
+      "unit": "expense",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": false,
+          "value": 0
+        },
+        "business": {
+          "included": true,
+          "value": 1200
+        },
+        "pro": {
+          "included": true,
+          "value": 300
+        }
+      }
+    },
+    "invoices_per_month": {
+      "unit": "issued_document",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 15
+        },
+        "business": {
+          "included": true,
+          "value": 600
+        },
+        "pro": {
+          "included": true,
+          "value": 150
+        }
+      }
+    },
+    "products": {
+      "unit": "catalog_item",
+      "period": null,
+      "per_person": false,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 25
+        },
+        "business": {
+          "included": true,
+          "value": 1000
+        },
+        "pro": {
+          "included": true,
+          "value": 250
+        }
+      }
+    },
+    "signatures_per_month": {
+      "unit": "signature_envelope",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": false,
+          "value": 0
+        },
+        "business": {
+          "included": true,
+          "value": 200
+        },
+        "pro": {
+          "included": true,
+          "value": 50
+        }
+      }
+    },
+    "storage_bytes": {
+      "unit": "byte",
+      "period": null,
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 500000000
+        },
+        "business": {
+          "included": true,
+          "value": 20000000000
+        },
+        "pro": {
+          "included": true,
+          "value": 5000000000
+        }
+      }
+    }
+  }
+}

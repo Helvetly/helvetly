@@ -7,6 +7,7 @@ export const PLATFORM_URL = process.env.NEXT_PUBLIC_PLATFORM_URL ?? 'http://loca
 // Sign-in is passwordless and makes the account on first use, so starting and signing in share a page.
 export const SIGN_IN_URL = `${PLATFORM_URL}${locale === defaultLocale ? '/login' : languageHref('/login', locale)}`
 export const START_URL = SIGN_IN_URL
+export const SUPPORT_EMAIL = 'support@helvetly.com'
 
 export const NAV = [
   { href: '/#features', label: translate('product') },

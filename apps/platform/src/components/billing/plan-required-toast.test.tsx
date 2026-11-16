@@ -57,7 +57,7 @@ test('a feature_not_in_plan refusal is the same toast, and the action’s own to
   expect(toastPlanRequired(lacking, seePlans)).toBe(true)
   toastError(lacking)
   expect(await screen.findAllByText('The Basic plan does not include expenses.')).toHaveLength(1)
-  fireEvent.click(screen.getByRole('button', { name: 'See plans' }))
+  fireEvent.click(screen.getByRole('button', { name: 'See Pro' }))
   expect(seePlans).toHaveBeenCalledOnce()
   // A 403 for a missing scope is not a plan refusal.
   expect(

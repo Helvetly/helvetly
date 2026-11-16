@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Combobox, type Option } from '@/components/clients/fields'
 import { AIConsentCard } from '@/components/heidi/ai-consent'
@@ -216,17 +217,27 @@ export function GeneralCard({
 }
 
 function ExportCard() {
+  const lock = useFeatureLock('data_export')
   return (
     <SettingsSection id="export-workspace" icon={FolderArchive} title={translate('yourData')}>
       <ActionRow
         title={translate('exportAllData')}
         description={translate('aZIPWithEveryRecordOfThisWorkspaceAs')}
       >
-        <Button asChild size="sm" variant="outline">
-          <a href="/api/v1/workspace/export" download>
-            {translate('downloadExport')}
-          </a>
-        </Button>
+        {lock ? (
+          <span className="flex items-center gap-2">
+            <PlanTag lock={lock} />
+            <Button size="sm" variant="outline" disabled>
+              {translate('downloadExport')}
+            </Button>
+          </span>
+        ) : (
+          <Button asChild size="sm" variant="outline">
+            <a href="/api/v1/workspace/export" download>
+              {translate('downloadExport')}
+            </a>
+          </Button>
+        )}
       </ActionRow>
     </SettingsSection>
   )
