@@ -24,7 +24,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   type ComponentProps,
   memo,
@@ -87,9 +87,11 @@ import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
 import { ClientSearch } from './client-search'
+import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { InvoiceNumber, KIND_ICONS, Money, RowStatus } from './invoice-bits'
 import { CommandItems, useInvoiceCommands, type InvoiceCommand } from './invoice-commands'
 import { InvoiceDetail } from './invoice-detail'
+import { InvoiceEditorDrawer } from './invoice-editor'
 import { InvoiceKpis } from './invoice-kpis'
 import { PaymentMarks } from './payment-methods'
 
@@ -101,8 +103,6 @@ const CREATABLE_KINDS: InvoiceKind[] = [
   'proforma',
   'self_billed',
 ]
-const newHref = (kind: InvoiceKind) =>
-  kind === 'invoice' ? '/invoices/new' : `/invoices/new?kind=${kind}`
 
 const STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
   { value: 'draft', label: translate('draft') },
@@ -261,9 +261,13 @@ const COLUMNS: ColumnDef[] = [
 export function InvoicesPage() {
   const canWrite = useCan('write:invoices')
   const importDrawer = useImportDrawer()
-  const router = useRouter()
   const pathname = usePathname()
-  const query = useSearchParams()
+  const urlQuery = useSearchParams()
+  // On the older /invoices/new and /invoices/edit URLs the query belongs to the editor, not the list.
+  const legacy = isLegacyEditorPath(pathname)
+  const query = legacy ? new URLSearchParams() : urlQuery
+  const listPath = legacy ? '/invoices' : pathname
+  const compose = canWrite ? parseCompose(pathname, urlQuery) : null
   const params = parseListParams(query)
   const openId = query.get('id')
   const canManage = canManageInvoices(useSession().data?.role)
@@ -276,8 +280,10 @@ export function InvoicesPage() {
   const prefetch = usePrefetch(invoiceQuery)
 
   const navigate = (next: URLSearchParams) => {
-    setUrlQuery(pathname, next)
+    setUrlQuery(listPath, next)
   }
+  const openEditor = (kind: InvoiceKind) =>
+    navigate(composeQuery(query, { id: null, kind, client: null }))
   const update = (change: Partial<ListParams>) =>
     navigate(listParamsToQuery({ ...params, page: 1, ...change }, query))
   const openInvoice = (id: string | null) => {
@@ -365,7 +371,7 @@ export function InvoicesPage() {
   }
 
   const kind = kindInfo(params.kind)
-  const newInvoice = () => router.push(newHref('invoice'))
+  const newInvoice = () => openEditor('invoice')
   const tabs = INVOICE_KINDS.map((info) => info.plural)
   const active = INVOICE_KINDS.indexOf(kind)
   const selectTab = (index: number) => update({ kind: INVOICE_KINDS[index]?.kind })
@@ -417,7 +423,7 @@ export function InvoicesPage() {
         onSelect={selectTab}
         primary={translate('newInvoice')}
         onPrimary={newInvoice}
-        primaryMenu={<NewMenuItems onNew={(next) => router.push(newHref(next))} />}
+        primaryMenu={<NewMenuItems onNew={openEditor} />}
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="invoices" onClose={importDrawer.close} />}
@@ -511,7 +517,7 @@ export function InvoicesPage() {
                 action={
                   canWrite &&
                   CREATABLE_KINDS.includes(params.kind) && (
-                    <Button size="sm" onClick={() => router.push(newHref(params.kind))}>
+                    <Button size="sm" onClick={() => openEditor(params.kind)}>
                       {translate('new2')}
                       {kind.label.toLowerCase()}
                     </Button>
@@ -671,6 +677,13 @@ export function InvoicesPage() {
           onClose={() => openInvoice(null)}
           run={commands.run}
           busy={commands.busy}
+        />
+      )}
+      {compose && (
+        <InvoiceEditorDrawer
+          compose={compose}
+          onClose={() => navigate(composeQuery(query, null))}
+          onCreated={(id) => navigate(composeQuery(query, { ...compose, id }))}
         />
       )}
       {commands.dialogs}

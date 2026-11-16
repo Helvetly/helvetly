@@ -50,7 +50,7 @@ import {
 } from './quote-model'
 
 /** The drawer's width while a quote is edited: room for the lines grid. */
-export const EDITOR_WIDTH = 'sm:w-[min(920px,100vw)]!'
+export const EDITOR_WIDTH = 'sm:w-[min(1200px,96vw)]!'
 
 const textArea = cn(inputClass, 'h-auto resize-y py-2 leading-relaxed')
 

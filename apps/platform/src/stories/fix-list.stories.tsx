@@ -64,7 +64,7 @@ const issueDialog = (reasons: IssueReason[]) => (
   <IssueBlockersDialog
     reasons={reasons}
     clientId="cli_2"
-    editHref="/invoices/edit?id=inv_1"
+    editHref="/invoices?compose=inv_1"
     onClose={() => {}}
   />
 )

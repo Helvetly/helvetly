@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
-import { listItem, sampleInvoice, sampleSummary } from '@/test/invoice-api'
+import { editorApi, listItem, sampleInvoice, sampleSummary } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { bulkActions, datePresets, InvoicesPage } from './invoices-page'
@@ -17,9 +17,10 @@ const replace = vi.spyOn(window.history, 'replaceState')
 const lastUrl = () => replace.mock.lastCall?.[2]
 const push = vi.fn<(href: string) => void>()
 let search = new URLSearchParams()
+let pathname = '/invoices'
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
-  usePathname: () => '/invoices',
+  usePathname: () => pathname,
   useSearchParams: () => search,
 }))
 
@@ -61,10 +62,12 @@ const server = setupServer(
       meta: { page: 1, page_size: 50, total: invoices.length, total_pages: 1 },
     }),
   ),
+  ...editorApi(clients),
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
   search = new URLSearchParams()
+  pathname = '/invoices'
   replace.mockClear()
   push.mockClear()
 })
@@ -127,7 +130,7 @@ test('status is filtered in the Filters popover, Replaced included', async () =>
 test('New invoice makes an invoice; its menu makes the other types', async () => {
   renderPage()
   await userEvent.click(screen.getByRole('button', { name: 'New invoice' }))
-  expect(push).toHaveBeenLastCalledWith('/invoices/new')
+  expect(lastUrl()).toBe('/invoices?compose=new')
 
   await userEvent.click(screen.getByRole('button', { name: 'New invoice options' }))
   expect(screen.getByRole('menuitem', { name: /Credit note/ })).toHaveAttribute(
@@ -135,7 +138,7 @@ test('New invoice makes an invoice; its menu makes the other types', async () =>
     'true',
   )
   await userEvent.click(screen.getByRole('menuitem', { name: 'Prepayment invoice' }))
-  expect(push).toHaveBeenLastCalledWith('/invoices/new?kind=prepayment')
+  expect(lastUrl()).toBe('/invoices?compose=new&ckind=prepayment')
 })
 
 test('the KPI band shows on receivable tabs only', async () => {
@@ -262,4 +265,26 @@ test('right-clicking the page outside the rows offers the page’s actions', asy
   // The search box keeps the browser's menu.
   const searchBox = screen.getByRole('searchbox', { name: 'Search invoices' })
   expect(fireEvent.contextMenu(searchBox)).toBe(true)
+})
+
+test.each([
+  ['?compose=new', '/invoices'],
+  ['?client=cli_1', '/invoices/new'],
+])('a direct link (%s on %s) shows the list with the editor drawer open', async (query, path) => {
+  search = new URLSearchParams(query)
+  pathname = path
+  renderPage()
+  const drawer = await screen.findByRole('dialog', { name: 'New invoice' })
+  expect(await within(drawer).findByLabelText('Line 1 description')).toBeInTheDocument()
+  // The list is still there behind it, and the older URL's query is not read as list filters.
+  expect(screen.getByRole('button', { name: 'Invoices', hidden: true })).toBeInTheDocument()
+})
+
+test('closing the editor drawer goes back to the plain list URL', async () => {
+  search = new URLSearchParams('compose=new&status=open')
+  renderPage()
+  const drawer = await screen.findByRole('dialog', { name: 'New invoice' })
+  await within(drawer).findByLabelText('Line 1 description')
+  await userEvent.click(within(drawer).getByRole('button', { name: 'Close editor' }))
+  expect(lastUrl()).toBe('/invoices?status=open')
 })

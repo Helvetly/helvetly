@@ -256,7 +256,7 @@ test('Correct calls /correct and opens the new draft in the editor', async () =>
   await userEvent.click(screen.getByRole('menuitem', { name: 'Correct' }))
   const dialog = await screen.findByRole('dialog')
   await userEvent.click(within(dialog).getByRole('button', { name: 'Create correction' }))
-  await waitFor(() => expect(push).toHaveBeenCalledWith('/invoices/edit?id=inv_corr'))
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/invoices?compose=inv_corr'))
   expect(corrected).toBe('inv_open')
 })
 

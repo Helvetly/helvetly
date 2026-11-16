@@ -17,9 +17,12 @@ import {
 } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
-import { InvoiceEditorPage } from './invoice-editor'
+import { parseCompose } from './compose'
+import { InvoiceEditorDrawer } from './invoice-editor'
 
 const push = vi.fn<(href: string) => void>()
+const onClose = vi.fn<() => void>()
+const onCreated = vi.fn<(id: string) => void>()
 let search = new URLSearchParams()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn<() => void>() }),
@@ -82,6 +85,8 @@ server.events.on('request:start', async ({ request }) => {
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
   requests.length = 0
+  onClose.mockClear()
+  onCreated.mockClear()
   search = new URLSearchParams()
 })
 afterEach(() => server.resetHandlers())
@@ -94,7 +99,13 @@ const renderEditor = () =>
     >
       <TooltipProvider>
         <SidebarProvider>
-          <InvoiceEditorPage />
+          <InvoiceEditorDrawer
+            compose={
+              parseCompose('/invoices/new', search) ?? { id: null, kind: 'invoice', client: null }
+            }
+            onClose={onClose}
+            onCreated={onCreated}
+          />
         </SidebarProvider>
       </TooltipProvider>
     </QueryClientProvider>,
@@ -137,7 +148,7 @@ test('picking a client starts a draft; typing autosaves it and totals come from 
     ],
   })
   expect(await screen.findByText('Saved', {}, { timeout: 3000 })).toBeInTheDocument()
-  expect(window.location.search).toMatch(/^\?id=inv_/)
+  expect(onCreated).toHaveBeenCalledWith(expect.stringMatching(/^inv_/))
 })
 
 test('Enter in a description adds the next line and keeps typing there', async () => {
@@ -441,4 +452,44 @@ test('closing the editor while a save is in flight still saves what was typed me
     expect(writes.at(-1)).toMatchObject({ lines: [{ description: 'Workshop and follow-up' }] }),
   )
   expect(creates).toHaveLength(1)
+})
+
+test('closing an untouched new editor needs no question', async () => {
+  renderEditor()
+  await screen.findByLabelText('Line 1 description')
+  await userEvent.click(screen.getByRole('button', { name: 'Close editor' }))
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+test('closing typed work that autosave would not keep asks to discard it, with the button and with Esc', async () => {
+  renderEditor()
+  // No client yet, so nothing is saved: closing would throw the line away.
+  await userEvent.type(await screen.findByLabelText('Line 1 description'), 'Workshop')
+  await userEvent.click(screen.getByRole('button', { name: 'Close editor' }))
+  expect(onClose).not.toHaveBeenCalled()
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      { name: 'Keep editing' },
+    ),
+  )
+  expect(onClose).not.toHaveBeenCalled()
+
+  await userEvent.keyboard('{Escape}')
+  await userEvent.click(
+    within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
+      'button',
+      { name: 'Discard' },
+    ),
+  )
+  expect(onClose).toHaveBeenCalledOnce()
+})
+
+test('a draft that has a client closes without a question: autosave keeps it', async () => {
+  renderEditor()
+  await pick('Alpenglow')
+  await userEvent.type(screen.getByLabelText('Line 1 description'), 'Workshop')
+  await userEvent.type(screen.getByLabelText('Line 1 price'), '100')
+  await userEvent.click(screen.getByRole('button', { name: 'Close editor' }))
+  expect(onClose).toHaveBeenCalledOnce()
 })
