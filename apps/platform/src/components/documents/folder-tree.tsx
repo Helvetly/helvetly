@@ -16,7 +16,6 @@ import {
   HardDrive,
   Pencil,
   Plus,
-  ShieldCheck,
   Trash2,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -258,10 +257,6 @@ export function FolderTree({
             {trashCount > 0 && <Count>{trashCount}</Count>}
           </button>
         </Pinnable>
-        <p className="mt-2 flex gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-[12px] leading-snug text-muted-foreground">
-          <ShieldCheck className="mt-px size-3.5 shrink-0 stroke-[1.75] text-success-solid" />
-          <span>{translate('issuedInvoicesAndBookedReceiptsAreKept10Years')}</span>
-        </p>
       </div>
     </div>
   )

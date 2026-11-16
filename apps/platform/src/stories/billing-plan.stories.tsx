@@ -289,8 +289,9 @@ export const WithDiscount: Story = {
     const summary = within(
       await within(canvasElement).findByRole('region', { name: 'Current plan' }),
     )
-    await expect(await summary.findByText('WELCOME20')).toBeVisible()
-    await expect(summary.getByText(/−20 % for 3 months until 1 Feb 2027/)).toBeVisible()
+    await expect(await summary.findByText(/−20 % for 3 months until 1 Feb 2027/)).toBeVisible()
+    // The promotion code itself is never shown.
+    await expect(summary.queryByText(/WELCOME20/)).not.toBeInTheDocument()
     // The total stays the list price; the next charge has the discount taken off.
     await expect(price(canvasElement)).toHaveTextContent(/CHF 57\s*\/ month/)
     await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 45.60.')
@@ -318,9 +319,8 @@ export const TrialFreeForever: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByRole('region', { name: 'Current plan' })
-    await expect(nextStep(canvasElement)).toHaveTextContent(
-      'Then free forever with code LIFETIME-135F29.',
-    )
+    await expect(nextStep(canvasElement)).toHaveTextContent('Then free forever.')
+    await expect(nextStep(canvasElement)).not.toHaveTextContent('LIFETIME-135F29')
   },
 }
 
