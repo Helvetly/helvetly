@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { TriangleAlert, UserRound } from 'lucide-react'
@@ -144,11 +145,7 @@ export function IssueSummary({
           {translate('importRowsNeedFixBody')}
         </Callout>
       )}
-      {patch.error && (
-        <p role="alert" className="text-caption text-destructive">
-          {errorMessage(patch.error)}
-        </p>
-      )}
+      {patch.error && <InlineError>{errorMessage(patch.error)}</InlineError>}
     </div>
   )
 }

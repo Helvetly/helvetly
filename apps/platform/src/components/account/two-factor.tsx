@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -158,7 +159,7 @@ function EnableDialog({
               </DialogDescription>
             </DialogHeader>
             {start.error ? (
-              <p className="text-sm text-destructive">{errorMessage(start.error)}</p>
+              <InlineError>{errorMessage(start.error)}</InlineError>
             ) : !setup ? (
               <Loader className="min-h-40" />
             ) : (

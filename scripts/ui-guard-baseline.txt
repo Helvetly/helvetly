@@ -100,7 +100,7 @@
 3 text-px apps/platform/src/components/data/list-table.tsx
 6 text-px apps/platform/src/components/data/row-details.tsx
 8 text-px apps/platform/src/components/data/table-page.tsx
-2 text-px apps/platform/src/components/documents/dialogs.tsx
+1 text-px apps/platform/src/components/documents/dialogs.tsx
 12 text-px apps/platform/src/components/documents/documents-page.tsx
 5 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
@@ -109,7 +109,6 @@
 10 text-px apps/platform/src/components/documents/preview.tsx
 2 text-px apps/platform/src/components/documents/recent-strip.tsx
 2 text-px apps/platform/src/components/documents/section.tsx
-1 text-px apps/platform/src/components/documents/share-drawer.tsx
 3 text-px apps/platform/src/components/documents/storage-overview.tsx
 1 text-px apps/platform/src/components/documents/thumbnail.tsx
 4 text-px apps/platform/src/components/documents/trash-view.tsx
@@ -178,7 +177,7 @@
 17 text-px apps/platform/src/components/signatures/placement.tsx
 16 text-px apps/platform/src/components/signatures/request-drawer.tsx
 6 text-px apps/platform/src/components/signatures/signatures-view.tsx
-14 text-px apps/platform/src/components/signatures/signing-page.tsx
+12 text-px apps/platform/src/components/signatures/signing-page.tsx
 15 text-px apps/platform/src/components/templates/fill-drawer.tsx
 5 text-px apps/platform/src/components/templates/template-editor.tsx
 3 text-px apps/platform/src/components/templates/templates-view.tsx

@@ -6,6 +6,7 @@ import {
   isWholePicture,
   normalizeLogo,
   placeOnCanvas,
+  workspaceCropTooSmall,
   renderDocumentLogo,
   sizeProblem,
   sniffFormat,
@@ -364,5 +365,26 @@ describe('normalizeLogo', () => {
       vi.unstubAllGlobals()
       vi.restoreAllMocks()
     }
+  })
+})
+
+const area = (width: number, height: number) => ({ x: 0, y: 0, width, height })
+
+describe('workspaceCropTooSmall', () => {
+  it.each([
+    [400, 400],
+    [512, 512],
+    [128, 128],
+    [1200, 200],
+    [64, 64],
+  ])('accepts a %i × %i crop', (width, height) => {
+    expect(workspaceCropTooSmall(area(width, height))).toBe(false)
+  })
+  it.each([
+    [63, 63],
+    [2048, 51],
+    [40, 400],
+  ])('refuses a %i × %i crop', (width, height) => {
+    expect(workspaceCropTooSmall(area(width, height))).toBe(true)
   })
 })

@@ -16,8 +16,11 @@ export const LOGO_MAX_PIXELS = 40_000_000
 
 export type LogoProblem = 'unreadable' | 'too-large' | 'too-small'
 
-/** The smallest crop of the picked picture a workspace mark is made from: 80 px shown at 2x. */
-export const WORKSPACE_MIN_CROP = 160
+/**
+ * The smallest crop of the picked picture a workspace mark is made from: the API's own floor. A mark is saved at
+ * 512 px, so a smaller source is only upscaled; that is soft, not wrong, and only a tiny crop is refused.
+ */
+export const WORKSPACE_MIN_CROP = LOGO_MIN_SIDE
 /** The least detail the printed document logo may have, at the size it occupies on the paper. */
 export const DOCUMENT_MIN_DPI = 150
 /** The longest side a picture without a size of its own (SVG) is drawn at. */

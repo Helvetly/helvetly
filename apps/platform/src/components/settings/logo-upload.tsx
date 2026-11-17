@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ImagePlus, LoaderCircle, Plus, Trash2 } from 'lucide-react'
 import Image from 'next/image'
@@ -174,11 +175,7 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
           </span>
         )}
       </div>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
+      {error && <InlineError>{error}</InlineError>}
       <output
         aria-live="polite"
         className="flex min-h-5 items-center gap-1.5 text-body-sm font-medium text-success"

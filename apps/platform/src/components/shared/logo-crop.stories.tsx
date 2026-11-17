@@ -449,9 +449,9 @@ const renderVector: Story['render'] = (_args, { loaded }) => {
   return <Dialog kind="workspace" file={file} origin={origin} onSave={savedVector} />
 }
 
-/** A 20 : 1 SVG becomes a 2048 × 102 raster: its square workspace crop is 102 px, held to the same 160 px floor as a PNG. */
+/** A 50 : 1 SVG becomes a 2048 × 51 raster: its square workspace crop is 51 px, under the 64 px floor. */
 export const SvgWideWorkspaceFloor: Story = {
-  loaders: [vectorLoader('width="400" height="20"', '<rect width="400" height="20"/>')],
+  loaders: [vectorLoader('width="400" height="8"', '<rect width="400" height="8"/>')],
   render: renderVector,
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
@@ -475,5 +475,23 @@ export const SvgSquareWorkspaceSaves: Story = {
     await waitFor(() => expect(confirm).toBeEnabled())
     await userEvent.click(confirm)
     await waitFor(() => expect(savedVector).toHaveBeenCalled())
+  },
+}
+
+/** A realistic 400 × 400 logo is accepted at the default zoom: the size rule only refuses tiny crops. */
+export const SquareWorkspaceLogoAccepted: Story = {
+  loaders: [pictureLoader(400, 400)],
+  render: (_args, { loaded }) => {
+    if (!(loaded.file instanceof File)) throw new Error('the loader did not provide the picture')
+    return <Dialog kind="workspace" file={loaded.file} onSave={saved} />
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    saved.mockClear()
+    const confirm = await body.findByRole('button', { name: 'Use this logo' })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await userEvent.click(confirm)
+    await waitFor(() => expect(saved).toHaveBeenCalled())
+    await expect(body.queryByRole('alert')).toBeNull()
   },
 }

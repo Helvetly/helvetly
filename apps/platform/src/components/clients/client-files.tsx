@@ -3,6 +3,7 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -187,7 +188,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
         {files.isPending ? (
           <Loader className="min-h-24" />
         ) : files.error ? (
-          <p className="py-2 text-body-sm text-destructive">
+          <InlineError>
             {errorMessage(files.error)}{' '}
             <button
               type="button"
@@ -196,7 +197,7 @@ export function ClientFiles({ clientId }: { clientId: string }) {
             >
               {translate('tryAgain')}
             </button>
-          </p>
+          </InlineError>
         ) : count === 0 ? (
           <EmptyState
             icon={Paperclip}

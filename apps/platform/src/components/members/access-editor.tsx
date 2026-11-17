@@ -1,4 +1,5 @@
 'use client'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Lock } from 'lucide-react'
@@ -118,11 +119,7 @@ export function AccessEditor({
         disabled={!hrEditable}
         reason={lock ? `${lock.hint}.` : translate('accessHROwnerOnly')}
       />
-      {problem && (
-        <p role="alert" className="text-body-sm text-destructive">
-          {problem}
-        </p>
-      )}
+      {problem && <InlineError>{problem}</InlineError>}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Slider } from '@helvetly/ui/components/slider'
 import { type CropArea, cropPhoto } from '@helvetly/ui/lib/photo'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -120,11 +121,7 @@ export function PhotoCropDialog({
           />
           <ZoomIn aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         </div>
-        {shown && (
-          <p role="alert" className="text-body-sm text-destructive">
-            {shown}
-          </p>
-        )}
+        {shown && <InlineError>{shown}</InlineError>}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
             {translate('cancel')}

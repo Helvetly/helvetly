@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { LogoMark } from '@helvetly/ui/components/logo'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { formatDate } from '@helvetly/ui/lib/format'
@@ -363,11 +364,7 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
               {translate('finish')}
             </Button>
           </div>
-          {error && (
-            <p role="alert" className="text-[13px] text-destructive sm:col-span-2">
-              {error}
-            </p>
-          )}
+          {error && <InlineError className="sm:col-span-2">{error}</InlineError>}
         </div>
       </footer>
 
@@ -509,7 +506,7 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
           value={reason}
           onChange={(event) => setReason(event.target.value)}
         />
-        {error && <p className="text-[13px] text-destructive">{error}</p>}
+        {error && <InlineError>{error}</InlineError>}
         <div className="grid grid-cols-2 gap-2">
           <Button size="xl" variant="outline" className="cursor-pointer" onClick={onClose}>
             {translate('keepSigning')}
