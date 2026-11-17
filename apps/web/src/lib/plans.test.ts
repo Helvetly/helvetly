@@ -81,8 +81,8 @@ describe('offer helvetly public projection', () => {
     ])
   })
 
-  it('shows twelve allowances, workspace caps apart from per-team-member pools', () => {
-    expect(USAGE_DETAILS).toHaveLength(12)
+  it('shows ten allowances, workspace caps apart from per-team-member pools', () => {
+    expect(USAGE_DETAILS).toHaveLength(10)
     expect(USAGE_DETAILS.filter((k) => LIMITS[k].scope === 'workspace')).toEqual([
       'clients',
       'products',
@@ -105,9 +105,7 @@ describe('offer helvetly public projection', () => {
     ['expenses_per_month', [null, '300', 'Unlimited']],
     ['signatures_per_month', [null, '50', 'Unlimited']],
     ['storage_bytes', ['500 MB', '5 GB', '20 GB']],
-    ['download_bytes_per_month', ['2 GB', '20 GB', '100 GB']],
-    ['emails_per_month', ['100', '1’000', '5’000']],
-    ['email_attachment_bytes_per_month', ['100 MB', '1 GB', '5 GB']],
+    ['emails_per_month', ['100', '500', '2’000']],
     ['ai_tokens_per_month', [null, '5M', '20M']],
     ['automation_actions_per_month', [null, '1’500', '6’000']],
   ] as const)('%s per plan', (key, expected) => {

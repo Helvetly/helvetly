@@ -35,13 +35,13 @@ func or(a, b string) string {
 
 // monthly: limits counted per quota month (UTC), so nearing one is news again next month.
 var monthlyLimits = map[Limit]bool{Invoices: true, Quotes: true, Expenses: true, Signatures: true, AITokens: true, AutomationActions: true,
-	Downloads: true, Emails: true, EmailAttachments: true}
+	Emails: true}
 
 var limitNouns = map[Limit]string{Members: "member seats", Clients: "clients", Invoices: "invoices this month", Quotes: "quotes this month",
 	Expenses: "expenses this month", Products: "products and services", Engagements: "running engagements",
 	Signatures: "signature requests this month", Storage: "storage", AITokens: "AI tokens this month",
 	InvoiceDrafts: "invoice drafts", QuotesRetained: "quotes", AutomationActions: "automatic actions this month",
-	Downloads: "downloads this month", Emails: "business emails this month", EmailAttachments: "email attachments this month"}
+	Emails: "business emails this month"}
 
 // notifyNear tells the owners and admins once when an admitted write brings a limit to 90 % or more: once a month
 // for a monthly limit, once per cap for the others (a new plan's cap is news again).
@@ -54,7 +54,7 @@ func notifyNear(ctx context.Context, q store.Q, workspaceID, plan string, limit 
 		key += ":" + period
 	}
 	used, cap := fmt.Sprint(n), fmt.Sprint(max)
-	if limit == Storage || limit == Downloads || limit == EmailAttachments {
+	if limit == Storage {
 		used, cap = bytesText(n), bytesText(max)
 	}
 	return notifications.Notify(ctx, q, workspaceID, "billing.limit_near", map[string]any{"limit": limitNouns[limit],

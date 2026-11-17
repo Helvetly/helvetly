@@ -1,7 +1,6 @@
 package portal
 
 import (
-	"errors"
 	"mime"
 	"net/http"
 	"slices"
@@ -170,9 +169,5 @@ func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess 
 	if err != nil {
 		return err
 	}
-	err = storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
-	if errors.Is(err, store.ErrAdmissionDenied) { // the client sees no plan
-		return auth.Error(http.StatusPaymentRequired, "download_unavailable", storage.ErrDownloadsUsedUp, nil)
-	}
-	return err
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
 }

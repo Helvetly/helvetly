@@ -115,7 +115,7 @@ func (s *Service) sendOnce(ctx context.Context, ws store.Workspace, invoiceID st
 	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureInvoiceInstalments); err != nil || !on {
 		return err
 	}
-	if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes); err != nil || wait {
+	if wait, err := s.db.AutomationWaits(ctx, ws.ID, store.AutomationActions, store.EmailRecipients); err != nil || wait {
 		return err // it stays among the unsent partials until the month or the cap changes
 	}
 	won, err := s.db.ClaimPlanSend(ctx, invoiceID, now)
@@ -153,7 +153,7 @@ func (s *Service) remind(ctx context.Context, t store.ReminderTarget, now time.T
 	if on, err := s.db.FeatureAllowed(ctx, t.WorkspaceID, store.FeatureInvoiceInstalments); err != nil || !on {
 		return err
 	}
-	if wait, err := s.db.AutomationWaits(ctx, t.WorkspaceID, store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes); err != nil || wait {
+	if wait, err := s.db.AutomationWaits(ctx, t.WorkspaceID, store.AutomationActions, store.EmailRecipients); err != nil || wait {
 		return err // paused before the PDF is loaded: tried again once the month or the cap changes
 	}
 	inv, err := s.db.Invoice(ctx, t.WorkspaceID, t.InvoiceID, t.Today, false)

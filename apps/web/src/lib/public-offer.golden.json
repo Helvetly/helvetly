@@ -195,44 +195,6 @@
         }
       }
     },
-    "download_bytes_per_month": {
-      "unit": "byte",
-      "period": "calendar_month_utc",
-      "per_person": true,
-      "plans": {
-        "basic": {
-          "included": true,
-          "value": 2000000000
-        },
-        "business": {
-          "included": true,
-          "value": 100000000000
-        },
-        "pro": {
-          "included": true,
-          "value": 20000000000
-        }
-      }
-    },
-    "email_attachment_bytes_per_month": {
-      "unit": "byte",
-      "period": "calendar_month_utc",
-      "per_person": true,
-      "plans": {
-        "basic": {
-          "included": true,
-          "value": 100000000
-        },
-        "business": {
-          "included": true,
-          "value": 5000000000
-        },
-        "pro": {
-          "included": true,
-          "value": 1000000000
-        }
-      }
-    },
     "emails_per_month": {
       "unit": "recipient_message",
       "period": "calendar_month_utc",
@@ -244,11 +206,11 @@
         },
         "business": {
           "included": true,
-          "value": 5000
+          "value": 2000
         },
         "pro": {
           "included": true,
-          "value": 1000
+          "value": 500
         }
       }
     },
@@ -457,9 +419,7 @@
     "expenses_per_month",
     "signatures_per_month",
     "storage_bytes",
-    "download_bytes_per_month",
     "emails_per_month",
-    "email_attachment_bytes_per_month",
     "ai_tokens_per_month",
     "automation_actions_per_month"
   ]

@@ -84,8 +84,7 @@ type VersionOpener interface {
 }
 
 // Handler serves GET (and HEAD) /api/media/{token}: no session, the signature is the permission. Any bad, tampered
-// or expired token, and a missing object, is a bare 404. Every GET counts against the link's workspace's downloads
-// (src's meter); a refusal answers 402 before any byte, neutrally: a client of the workspace may hold the link.
+// or expired token, and a missing object, is a bare 404.
 func (m *Media) Handler(src VersionOpener) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
@@ -105,16 +104,6 @@ func (m *Media) Handler(src VersionOpener) http.Handler {
 			return
 		}
 		defer obj.Close()
-		size, err := sizeOf(obj)
-		if err == nil {
-			err = Metered(w, r, MeterOf(src), c.Workspace, size, func(w http.ResponseWriter) { stream(w, r, obj, c.Filename, c.ContentType) })
-		}
-		switch {
-		case errors.Is(err, store.ErrAdmissionDenied):
-			http.Error(w, ErrDownloadsUsedUp, http.StatusPaymentRequired)
-		case err != nil:
-			slog.ErrorContext(r.Context(), "media download", "err", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+		stream(w, r, obj, c.Filename, c.ContentType)
 	})
 }

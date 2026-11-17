@@ -584,18 +584,17 @@ func (s *Service) content(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if previewable(d.ContentType) {
 		disposition = "inline"
 	}
-	return storage.Metered(w, r, storage.MeterOf(s.files), sess.Workspace.ID, d.Size, func(w http.ResponseWriter) {
-		h := w.Header()
-		h.Set("Content-Type", d.ContentType)
-		h.Set("Content-Disposition", contentDisposition(disposition, d.Name))
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-		h.Set("Cache-Control", "private, max-age=300")
-		if d.SHA256 != nil {
-			h.Set("ETag", `"`+*d.SHA256+`"`)
-		}
-		http.ServeContent(w, r, "", d.CreatedAt, obj)
-	})
+	h := w.Header()
+	h.Set("Content-Type", d.ContentType)
+	h.Set("Content-Disposition", contentDisposition(disposition, d.Name))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	h.Set("Cache-Control", "private, max-age=300")
+	if d.SHA256 != nil {
+		h.Set("ETag", `"`+*d.SHA256+`"`)
+	}
+	http.ServeContent(w, r, "", d.CreatedAt, obj)
+	return nil
 }
 
 func (s *Service) link(w http.ResponseWriter, r *http.Request, sess store.Session) error {

@@ -158,13 +158,7 @@ const ALLOWANCES: Allowance[] = [
   ['expenses_per_month', 'period_counter', true, { basic: 0, pro: 300, business: null }],
   ['signatures_per_month', 'period_counter', true, { basic: 0, pro: 50, business: null }],
   ['storage_bytes', 'resource_state', true, { basic: GB / 2, pro: 5 * GB, business: 20 * GB }],
-  [
-    'download_bytes_per_month',
-    'period_counter',
-    true,
-    { basic: 2 * GB, pro: 20 * GB, business: 100 * GB },
-  ],
-  ['emails_per_month', 'period_counter', true, { basic: 100, pro: 1000, business: 5000 }],
+  ['emails_per_month', 'period_counter', true, { basic: 100, pro: 500, business: 2000 }],
   [
     'ai_tokens_per_month',
     'period_counter',

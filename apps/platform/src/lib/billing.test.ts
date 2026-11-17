@@ -81,7 +81,6 @@ test.each([
   ['storage_bytes', 500_000_000, '500 MB'],
   ['storage_bytes', 10_000_000_000, '10 GB'],
   ['storage_bytes', 1e12, '1 TB'],
-  ['download_bytes_per_month', 2_000_000_000, '2 GB'],
   ['invoices_per_month', 1500, "1'500"],
 ] as const)('formatLimit(%s, %s) = %s', (limit, value, text) => {
   expect(formatLimit(limit, value)).toBe(text)
@@ -398,7 +397,7 @@ test('usageItems shows the allowances of the entitlements, pooled ones grown by 
   const entitlements = [
     ...entitlementsFixture('basic', {
       seats: 2,
-      used: { invoices_per_month: 12, download_bytes_per_month: null },
+      used: { invoices_per_month: 12, signatures_per_month: null },
       over: {
         clients: { source: 'workspace', value: 50, expires_at: '2027-01-31T00:00:00Z' },
         emails_per_month: { state: 'unlimited', value: null },
@@ -428,7 +427,7 @@ test('usageItems shows the allowances of the entitlements, pooled ones grown by 
   })
   expect(items.find((item) => item.limit === 'expenses_per_month')).toMatchObject({ max: 0 })
   expect(items.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: null })
-  expect(items.find((item) => item.limit === 'download_bytes_per_month')?.used).toBeNull()
+  expect(items.find((item) => item.limit === 'signatures_per_month')?.used).toBeNull()
   expect(items.find((item) => item.limit === 'quotes_per_month')).toMatchObject({
     max: 10,
     per_seat: true,
@@ -454,7 +453,7 @@ test('usageItems shows the allowances of the entitlements, pooled ones grown by 
       per_seat: false,
     })
   expect(business.find((item) => item.limit === 'quotes_per_month')?.used).toBe(42)
-  expect(business.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: 15_000 })
+  expect(business.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: 6_000 })
   expect(usageHint('automation_actions_per_month')).toMatch(/^Each automatic step counts once/)
   expect(usageHint('clients')).toBeUndefined()
   // no plan, or self-hosted: the earlier usage list

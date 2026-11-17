@@ -7,12 +7,11 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// costly are the monthly allowances that cost Helvetly money to provide (the model, email, transfer, automations). An
+// costly are the monthly allowances that cost Helvetly money to provide (the model, email, automations). An
 // increase of them within the UTC quota month (a new subscription, a bigger plan, more paid seats) is granted pro rata
 // to the seconds left in the month; the next month starts with the full allowance. Annual billing grants a month at a
 // time like monthly billing. Usage and reservations stay: what is left is the new allowance less what was used.
-var costly = []Limit{AITokens, AICost, "emails_per_month", "email_attachment_bytes_per_month", "download_bytes_per_month",
-	"automation_actions_per_month"}
+var costly = []Limit{AITokens, AICost, Emails, AutomationActions}
 
 // utcMonth is the UTC calendar month around t: its start and the next month's.
 func utcMonth(t time.Time) (time.Time, time.Time) {

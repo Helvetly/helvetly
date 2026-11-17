@@ -163,9 +163,6 @@ func run() error {
 	if businessMail != nil {
 		businessMail.Meter = billingSvc
 	}
-	if cfg.BillingEnabled() { // downloads count against plans: no more presigned links, which cannot be counted
-		files.UseMeter(billingSvc)
-	}
 	bg.Go(ctx, "storage count", files.RunReconcile) // every 10 min: counted objects whose write storage never confirmed
 	db.SetFeatureGate(billingSvc.RequireFeature)
 	// a job leaves an automatic action refused for a used-up limit alone until the month or the cap changes

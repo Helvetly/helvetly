@@ -11,34 +11,9 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// ReserveDownload holds n bytes of the workspace's monthly download allowance before a file is sent
-// (storage.Meter); settle records the bytes actually sent and releases the rest, in the month it was reserved in.
-// Without billing, without a plan (a locked workspace still reads its own files) or while the offer cannot be read
-// (a single existing file never needs it), nothing is counted.
-func (s *Service) ReserveDownload(ctx context.Context, workspaceID string, n int64) (func(sent int64), error) {
-	noop := func(int64) {}
-	if !s.enabled {
-		return noop, nil
-	}
-	r, err := s.Entitlements(ctx, s.db.Q, workspaceID)
-	if err != nil {
-		s.log.WarnContext(ctx, "download not counted: entitlements unavailable", "workspace", workspaceID, "error", err)
-		return noop, nil
-	}
-	if r.SelfHosted || r.Plan == "" {
-		return noop, nil
-	}
-	id := "download:" + auth.NewID("dl")
-	if _, err := s.db.ReserveUsage(ctx, workspaceID, store.UsageOp{Resource: string(Downloads), ID: id, Amount: n}, s.now()); err != nil {
-		return nil, err
-	}
-	return func(sent int64) { s.settle(ctx, workspaceID, Downloads, id, sent) }, nil
-}
-
-// ReserveEmail holds a business email's recipients (To and Cc alike) in emails_per_month and its attachment bytes
-// times the recipients in email_attachment_bytes_per_month, both or neither, before the SMTP send (mail.Meter). A
-// message whose attachments exceed max_email_attachment_bytes is refused as too large. settle(true) records the
-// whole reservation used (the server accepted the message), settle(false) releases it (it was not sent); an outcome
+// ReserveEmail holds a business email's recipients (To and Cc alike) in emails_per_month before the SMTP send
+// (mail.Meter). A message whose attachments exceed max_email_attachment_bytes is refused as too large. settle(true)
+// records the whole reservation used (the server accepted the message), settle(false) releases it (it was not sent); an outcome
 // that stays unknown is not settled, so it keeps counting. Emails are often sent from inside a transaction that holds
 // the workspace's billing lock, so the reservation takes only the limits' own locks (store.ReserveCapped).
 func (s *Service) ReserveEmail(ctx context.Context, workspaceID string, recipients, attachmentBytes int64) (func(sent bool), error) {
@@ -65,23 +40,17 @@ func (s *Service) ReserveEmail(ctx context.Context, workspaceID string, recipien
 			fmt.Sprintf("The attachments add up to %.1f MiB; one email can carry at most %.0f MiB. Send fewer files, or download them to send yourself.",
 				float64(attachmentBytes)/(1<<20), float64(max)/(1<<20)), map[string]any{"limit": MaxEmailAttach, "max": max})
 	}
-	id := "email:" + auth.NewID("eml")
-	attached := attachmentBytes * recipients
-	var ops []store.UsageOp
-	var caps []int64
-	for _, l := range []Limit{EmailAttachments, Emails} { // the lock order of their keys
-		amount := map[Limit]int64{EmailAttachments: attached, Emails: recipients}[l]
-		if amount == 0 {
-			continue
-		}
-		max, err := r.Cap(l)
-		if err != nil {
-			return nil, err
-		}
-		ops, caps = append(ops, store.UsageOp{Resource: string(l), ID: id, Amount: amount}), append(caps, max)
+	if recipients == 0 {
+		return noop, nil
 	}
+	max, err := r.Cap(Emails)
+	if err != nil {
+		return nil, err
+	}
+	id := "email:" + auth.NewID("eml")
+	op := store.UsageOp{Resource: string(Emails), ID: id, Amount: recipients}
 	now := s.now()
-	err = s.db.ReserveCapped(ctx, workspaceID, ops, caps, store.UsagePeriod(quotaStart(b, now)), now)
+	err = s.db.ReserveCapped(ctx, workspaceID, []store.UsageOp{op}, []int64{max}, store.UsagePeriod(quotaStart(b, now)), now)
 	var over *store.CapExceeded
 	if errors.As(err, &over) {
 		l := Limit(over.Resource)
@@ -93,13 +62,11 @@ func (s *Service) ReserveEmail(ctx context.Context, workspaceID string, recipien
 		return nil, err
 	}
 	return func(sent bool) {
-		for _, op := range ops {
-			used := int64(0)
-			if sent {
-				used = op.Amount
-			}
-			s.settle(ctx, workspaceID, Limit(op.Resource), id, used)
+		used := int64(0)
+		if sent {
+			used = op.Amount
 		}
+		s.settle(ctx, workspaceID, Emails, id, used)
 	}, nil
 }
 
@@ -109,9 +76,9 @@ func (s *Service) settle(ctx context.Context, workspaceID string, limit Limit, i
 	}
 }
 
-// The owner's whole-workspace export has its own small allowance (the offer's own_data_export), apart from downloads, so
-// a workspace that used its downloads can still take its data: one export at a time, one a week, four a month, of
-// at most four times the larger of what it keeps and what its plan lets it keep.
+// The owner's whole-workspace export has its own small allowance (own_data_export), because one export reads every
+// file the workspace keeps: one export at a time, one a week, four a month, of at most four times the larger of what
+// it keeps and what its plan lets it keep.
 const (
 	snapshotResource   = "own_data_export"
 	snapshotsPerMonth  = 4

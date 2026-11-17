@@ -105,10 +105,8 @@ const (
 	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
 	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
 
-	Downloads        Limit = "download_bytes_per_month"   // bytes of workspace files sent this quota month (usage_events)
-	Emails           Limit = store.EmailRecipients        // business email recipients accepted this quota month (usage_events)
-	EmailAttachments Limit = store.EmailAttachmentBytes   // attachment bytes times recipients this quota month (usage_events)
-	MaxEmailAttach   Limit = "max_email_attachment_bytes" // one message's attachments, per recipient
+	Emails         Limit = store.EmailRecipients        // business email recipients accepted this quota month (usage_events)
+	MaxEmailAttach Limit = "max_email_attachment_bytes" // one message's attachments, per recipient
 )
 
 // Unlimited: the plan has no cap on that limit.
@@ -216,12 +214,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.QuotesRetained
 	case AutomationActions:
 		return u.AutomationsThisMonth
-	case Downloads:
-		return u.DownloadBytesThisMonth
 	case Emails:
 		return u.EmailsThisMonth
-	case EmailAttachments:
-		return u.EmailAttachmentBytesThisMonth
 	}
 	return 0
 }

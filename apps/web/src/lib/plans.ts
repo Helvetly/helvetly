@@ -55,9 +55,7 @@ export type LimitKey =
   | 'expenses_per_month'
   | 'signatures_per_month'
   | 'storage_bytes'
-  | 'download_bytes_per_month'
   | 'emails_per_month'
-  | 'email_attachment_bytes_per_month'
   | 'ai_tokens_per_month'
   | 'automation_actions_per_month'
 
@@ -81,9 +79,7 @@ export const USAGE_DETAILS: LimitKey[] = [
   'expenses_per_month',
   'signatures_per_month',
   'storage_bytes',
-  'download_bytes_per_month',
   'emails_per_month',
-  'email_attachment_bytes_per_month',
   'ai_tokens_per_month',
   'automation_actions_per_month',
 ]
@@ -214,23 +210,11 @@ export const plansIn = perLanguage((translate, language) => {
       unit: 'byte',
       values: { basic: 500 * MB, pro: 5 * GB, business: 20 * GB },
     },
-    download_bytes_per_month: {
-      label: translate('fileDownloadsAMonth'),
-      scope: 'person',
-      unit: 'byte',
-      values: { basic: 2 * GB, pro: 20 * GB, business: 100 * GB },
-    },
     emails_per_month: {
       label: translate('businessEmailRecipientsAMonth'),
       scope: 'person',
       unit: 'recipient_message',
-      values: { basic: 100, pro: 1000, business: 5000 },
-    },
-    email_attachment_bytes_per_month: {
-      label: translate('totalEmailAttachmentsAMonth'),
-      scope: 'person',
-      unit: 'byte',
-      values: { basic: 100 * MB, pro: 1 * GB, business: 5 * GB },
+      values: { basic: 100, pro: 500, business: 2000 },
     },
     ai_tokens_per_month: {
       label: translate('aiTokensAMonthForAvailableFunctions'),
@@ -539,11 +523,7 @@ export const plansIn = perLanguage((translate, language) => {
     },
     {
       title: translate('featureGroupUsage'),
-      rows: [
-        allowance('download_bytes_per_month'),
-        allowance('emails_per_month'),
-        allowance('email_attachment_bytes_per_month'),
-      ],
+      rows: [allowance('emails_per_month')],
     },
   ]
 

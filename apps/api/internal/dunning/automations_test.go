@@ -137,7 +137,7 @@ func TestTheJobLeavesAWaitingNoticeAlone(t *testing.T) {
 			if u := e.actions(b.workspace); u.Total() != 0 && tc.wait {
 				t.Fatalf("a waiting notice reserved %+v", u)
 			}
-			if !slices.Equal(asked, []string{store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes}) {
+			if !slices.Equal(asked, []string{store.AutomationActions, store.EmailRecipients}) {
 				t.Fatalf("asked for %v", asked)
 			}
 			if tc.wait {

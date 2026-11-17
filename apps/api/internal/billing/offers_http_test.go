@@ -54,7 +54,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 	rows, _ := d["comparison"].([]any)
 	details, _ := d["usage_details"].([]any)
 	limits, _ := d["limits"].(map[string]any)
-	if len(rows) != 13 || len(details) != 12 {
+	if len(rows) != 13 || len(details) != 10 {
 		t.Fatalf("%d rows, %d allowances", len(rows), len(details))
 	}
 	raw, _ := json.Marshal(d)
@@ -157,7 +157,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != currentOffer || len(items) != 67 {
+	if data["offer_id"] != currentOffer || len(items) != 65 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {

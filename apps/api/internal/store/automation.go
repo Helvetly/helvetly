@@ -11,11 +11,8 @@ import (
 // new month counts it once. Emails, issues, AI and storage the action uses count in their own allowances too.
 const AutomationActions = "automation_actions_per_month"
 
-// The business email limits an automatic message counts against besides AutomationActions.
-const (
-	EmailRecipients      = "emails_per_month"
-	EmailAttachmentBytes = "email_attachment_bytes_per_month"
-)
+// EmailRecipients is the business email limit an automatic message counts against besides AutomationActions.
+const EmailRecipients = "emails_per_month"
 
 // AutomationWait reports whether an automatic action needing these monthly limits should wait (billing).
 type AutomationWait func(ctx context.Context, workspaceID string, limits ...string) (bool, error)

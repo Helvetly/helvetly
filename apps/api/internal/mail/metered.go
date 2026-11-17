@@ -5,9 +5,9 @@ import (
 	"errors"
 )
 
-// Meter counts business email against a workspace's monthly allowances (billing.Service): ReserveEmail holds the
-// recipients and attachment bytes before the send, or refuses with the error to answer; settle(true) records them
-// used, settle(false) releases them.
+// Meter counts business email against a workspace's monthly allowance (billing.Service): ReserveEmail holds the
+// recipients before the send, or refuses with the error to answer (also a message whose attachments are too large);
+// settle(true) records them used, settle(false) releases them.
 type Meter interface {
 	ReserveEmail(ctx context.Context, workspaceID string, recipients, attachmentBytes int64) (settle func(sent bool), err error)
 }

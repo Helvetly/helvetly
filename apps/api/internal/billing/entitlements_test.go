@@ -72,7 +72,7 @@ func TestResolveMatrix(t *testing.T) {
 		// The current offer: Pro issues 100 invoices per paid seat; quotes are new; Business counts no records.
 		{Pro, 2, Invoices, 200}, {Basic, 1, Quotes, 5}, {Basic, 3, Quotes, 15}, {Pro, 5, Quotes, 500},
 		{Business, 25, Quotes, Unlimited}, {Business, 25, Invoices, Unlimited}, {Business, 25, Expenses, Unlimited},
-		{Business, 25, Signatures, Unlimited}, {Business, 1, Products, Unlimited}, {Business, 25, Emails, 125_000},
+		{Business, 25, Signatures, Unlimited}, {Business, 1, Products, Unlimited}, {Business, 25, Emails, 50_000},
 	} {
 		r, err := resolve(rowsOf(o, defs, c.plan), c.seats)
 		if err != nil {

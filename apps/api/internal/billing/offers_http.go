@@ -30,7 +30,7 @@ type entitlementItem struct {
 
 // metered are the limits counted today (WorkspaceUsage), monthly ones in the UTC quota month.
 var metered = []Limit{Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens, InvoiceDrafts, QuotesRetained,
-	AutomationActions, Downloads, Emails, EmailAttachments}
+	AutomationActions, Emails}
 
 // entitlementItems lists the workspace's entitlements for its panel, without the internal AI cost budget: the panel
 // shows tokens. reset is when the monthly counts start again (nil in the trial, whose allowances last it whole).

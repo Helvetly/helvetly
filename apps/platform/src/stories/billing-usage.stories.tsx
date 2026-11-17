@@ -178,11 +178,11 @@ export const OverridePhone: Story = { ...Override, ...phone }
 
 /** A count the API does not report yet reads as such, not as zero. */
 export const NotCountedYet: Story = {
-  args: { billing: onPlan('pro', { download_bytes_per_month: null }) },
+  args: { billing: onPlan('pro', { emails_per_month: null }) },
   play: async ({ canvasElement }) => {
-    const downloads = tile(canvasElement, 'File downloads')
-    await expect(downloads).toHaveTextContent('—of 20 GB')
-    await expect(within(downloads).getByText('Not counted yet')).toBeVisible()
+    const emails = tile(canvasElement, 'Email recipients')
+    await expect(emails).toHaveTextContent('—of 500')
+    await expect(within(emails).getByText('Not counted yet')).toBeVisible()
   },
 }
 
