@@ -6,11 +6,32 @@ type Locale = keyof typeof configuration.locales
 const supported = (value: string | null): value is Locale =>
   value !== null && configuration.browserLocales.includes(value)
 
-/** An explicit link wins over the saved preference, then the browser's languages; blocked storage still permits language links. */
+// Countries that speak one language of the application; Switzerland speaks three of them.
+const countryLanguages: Record<string, readonly string[]> = {
+  AT: ['de'],
+  BE: ['fr'],
+  CH: ['de', 'fr', 'it'],
+  DE: ['de'],
+  FR: ['fr'],
+  IT: ['it'],
+  LI: ['de'],
+  LU: ['fr'],
+  MC: ['fr'],
+  SM: ['it'],
+  VA: ['it'],
+}
+
+const primary = (tag: string) => tag.slice(0, 2).toLowerCase()
+
+/**
+ * An explicit link wins over the saved preference, then the visitor's country (the browser's languages pick among a
+ * multilingual country's, else its first), then the browser's languages; blocked storage still permits language links.
+ */
 export function browserLocale(
   search: string,
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   languages: readonly string[] = [],
+  country = '',
 ): Locale {
   const requested = new URLSearchParams(search).get('lang')
   if (supported(requested)) {
@@ -27,11 +48,19 @@ export function browserLocale(
   } catch {
     // Storage may be disabled by the browser.
   }
-  for (const tag of languages) {
-    const language = tag.slice(0, 2).toLowerCase()
-    if (supported(language)) return language
+  const spoken = (countryLanguages[country.toUpperCase()] ?? []).filter(supported)
+  const preferred = languages.map(primary)
+  for (const language of preferred) {
+    const local = spoken.find((s) => s === language)
+    if (local) return local
   }
-  return 'en'
+  if (spoken[0]) return spoken[0]
+  return preferred.find(supported) ?? 'en'
+}
+
+/** The country the server read from Cloudflare (apps/api/internal/platform, CountryCookie). */
+function visitorCountry(cookie: string): string {
+  return /(?:^|;\s*)helvetly_country=([A-Z]{2})(?:;|$)/.exec(cookie)?.[1] ?? ''
 }
 
 export function currentBrowserLocale(search = window.location.search): Locale {
@@ -43,6 +72,7 @@ export function currentBrowserLocale(search = window.location.search): Locale {
       setItem: (key, value) => window.localStorage.setItem(key, value),
     },
     navigator.languages,
+    visitorCountry(document.cookie),
   )
 }
 
