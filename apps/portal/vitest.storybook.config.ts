@@ -13,7 +13,7 @@ export default defineConfig({
     dedupe: ['vitest', '@vitest/runner', '@vitest/expect', '@vitest/spy', '@vitest/utils'],
   },
   optimizeDeps: {
-    include: ['msw-storybook-addon/csf3'],
+    include: ['msw', 'msw/browser'],
   },
   plugins: [storybookTest({ configDir: resolve(directory, '.storybook') })],
   test: {
