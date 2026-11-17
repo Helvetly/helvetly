@@ -4,6 +4,7 @@ import (
 	"context"
 	"helvetly.com/api/internal/store"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -73,6 +74,8 @@ func TestAccountProfileAndSessionIsolation(t *testing.T) {
 		t.Fatalf("account: %+v", account)
 	}
 	e.do(b, "PATCH", "/api/v1/account", map[string]string{"name": "   "}, 422, nil)
+	e.do(b, "PATCH", "/api/v1/account", map[string]string{"name": strings.Repeat("x", maxPersonNameRunes+1)}, 422, nil)
+	e.do(b, "PATCH", "/api/v1/account", map[string]string{"name": strings.Repeat("ä", maxPersonNameRunes)}, 200, nil)
 	e.do(b, "PATCH", "/api/v1/account", map[string]string{"name": "  Alice  "}, 200, nil)
 	if got := e.session(b); got.User.Name != "Alice" || got.User.ID != sess.User.ID {
 		t.Fatalf("profile: %+v", got)

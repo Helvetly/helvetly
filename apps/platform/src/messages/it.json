@@ -1090,7 +1090,7 @@
   "enterACodeFromYourAuthenticatorAppOrOne": "Inserisci un codice dalla tua app di autenticazione o uno dei tuoi codici di ripristino non utilizzati.",
   "enterAGTINOf81213Or14": "Inserisci un GTIN di 8, 12, 13 o 14 cifre con una cifra di controllo valida.",
   "enterAName": "Immettere un nome.",
-  "enterANameOfUpTo100Characters": "Immettere un nome composto da un massimo di 100 caratteri.",
+  "enterANameOfUpToCharacters": "Immettere un nome composto da un massimo di {max} caratteri.",
   "enterAnAmountAbove0": "Immettere un importo superiore a 0.",
   "enterAnAmountSuchAs4990": "Inserisci un importo come 49,90.",
   "enterAnEmailAddress": "Inserisci un indirizzo email.",
@@ -4211,5 +4211,11 @@
   "importDocumentRecords": "{count, plural, one {# elemento} other {# elementi}}",
   "monthIsNotClosedYet": "{value1} non è ancora chiuso. Chiudilo così le sue cifre non possono più cambiare.",
   "monthsAreNotClosedYet": "{length} mesi non sono ancora chiusi: da {value1} a {value2}. Chiudili così le loro cifre non possono più cambiare.",
-  "closeTheMonth": "{length, plural, one {Chiudi il mese} other {Chiudi i mesi}}"
+  "closeTheMonth": "{length, plural, one {Chiudi il mese} other {Chiudi i mesi}}",
+  "bringYourData": "Porta i tuoi dati",
+  "bringYourDataIntro": "Rilascia fatture, spese, elenchi di clienti o listini in un formato comune. L’IA di Heidi riconosce che cos’è ogni documento e tu controlli e correggi tutto prima dell’importazione.",
+  "importedSummary": "Importato: {summary}.",
+  "importMoreDocuments": "Importa altri documenti",
+  "importMoreDocumentsHint": "Aggiungi altre fatture, spese, clienti o listini da file.",
+  "yourNextInvoiceNumber": "La tua prossima fattura: {number}"
 }

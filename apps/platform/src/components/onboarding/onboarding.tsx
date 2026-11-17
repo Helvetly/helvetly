@@ -16,7 +16,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,21 +37,27 @@ import {
   inputClass,
 } from '@/components/clients/fields'
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { ImportDrawer } from '@/components/import/import-drawer'
 import { HelpTip } from '@/components/settings/help-tip'
+import { NumberFormatCombobox } from '@/components/settings/number-format-combobox'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { useUpdateProfile } from '@/lib/account'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
+import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
+  exampleNumber,
   ibanInfo,
   logoSrc,
   MISSING_LABELS,
   useInvoiceSettings,
+  today,
   useSaveInvoiceSettings,
   type DocLanguage,
   type InvoiceSettings,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { queryKeys, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
 import { useUpdateWorkspace } from '@/lib/workspaces'
@@ -62,10 +68,15 @@ import {
   fieldErrors,
   toSettingsInput,
   uidDigits,
+  stepsFor,
   validate,
   validPersonName,
+  validWorkspaceName,
+  MAX_PERSON_NAME,
+  MAX_WORKSPACE_NAME,
   valuesFrom,
   vatSuffix,
+  type StepId,
   type Values,
 } from './onboarding-model'
 import { TypedWelcomeTitle } from './welcome-intro'
@@ -73,7 +84,6 @@ import { TypedWelcomeTitle } from './welcome-intro'
 // The platform keeps one language per page load (a change reloads), so the module-level locale is current.
 const interfaceLanguage = locale
 
-type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
 
 const LANGUAGES: { value: DocLanguage; label: string }[] = [
@@ -105,7 +115,11 @@ export function WelcomePage({ session }: { session: Session }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const heidi = useHeidi()
-  const steps: StepId[] = ['welcome', 'company', 'logo', 'preferences', 'done']
+  // The import step needs the server's AI model (GET /heidi/usage) and write access to documents.
+  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
+  const canImport = useCan('write:documents') && usage.data?.provider_available === true
+  const steps = stepsFor(canImport)
+  const [imported, setImported] = useState<string | null>(null)
   const [step, setStep] = useState<StepId>('welcome')
   const index = steps.indexOf(step)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -213,10 +227,12 @@ export function WelcomePage({ session }: { session: Session }) {
     const workspace = workspaceInput.trim()
     const nameProblem = validPersonName(name)
       ? undefined
-      : translate('enterANameOfUpTo100Characters')
-    const workspaceProblem = validPersonName(workspace)
+      : translate('enterANameOfUpToCharacters', { max: MAX_PERSON_NAME })
+    const workspaceProblem = validWorkspaceName(workspace)
       ? undefined
-      : translate(workspace ? 'enterANameOfUpTo100Characters' : 'thisIsRequired')
+      : workspace
+        ? translate('enterANameOfUpToCharacters', { max: MAX_WORKSPACE_NAME })
+        : translate('thisIsRequired')
     setNameError(nameProblem)
     setWorkspaceError(workspaceProblem)
     if (nameProblem || workspaceProblem) {
@@ -357,9 +373,19 @@ export function WelcomePage({ session }: { session: Session }) {
                   onDone={() => void saveAndNext()}
                 />
               )}
+              {step === 'import' && (
+                <ImportStep
+                  heading={heading}
+                  imported={imported}
+                  onCreated={setImported}
+                  onBack={back}
+                  onDone={next}
+                />
+              )}
               {step === 'done' && (
                 <DoneStep
                   heading={heading}
+                  imported={imported}
                   name={confirmedName}
                   settings={settings.data}
                   busy={busy}
@@ -569,7 +595,7 @@ function WelcomeStep({
           <input
             {...describedBy('onboarding-display-name', error)}
             className={inputClass}
-            maxLength={100}
+            maxLength={MAX_PERSON_NAME}
             autoComplete="off"
             value={input}
             readOnly={busy}
@@ -587,7 +613,7 @@ function WelcomeStep({
           <input
             {...describedBy('onboarding-workspace-name', workspaceError)}
             className={inputClass}
-            maxLength={100}
+            maxLength={MAX_WORKSPACE_NAME}
             autoComplete="off"
             value={workspace}
             readOnly={busy}
@@ -901,6 +927,7 @@ function PreferencesStep({
   onDone: () => void
 }) {
   const days = values?.default_terms_days ?? 30
+  const currentYear = Number(today().slice(0, 4))
   // A saved 10, 60 or any other number is shown as Custom with its value, never rewritten by showing it.
   const [customChosen, setCustomChosen] = useState(false)
   // What is typed in the days field while it is not (yet) a number that can be saved.
@@ -944,6 +971,20 @@ function PreferencesStep({
             options={CURRENCY_OPTIONS}
             placeholder={translate('chooseACurrency2')}
             onChange={(currency) => onChange({ currency })}
+          />
+        </FormField>
+        <FormField
+          id="onboarding-number-format"
+          label={translate('numberFormat')}
+          hint={translate('yourNextInvoiceNumber', {
+            number: exampleNumber(values?.number_format ?? 'YYYY-NNN', currentYear, 1),
+          })}
+          className="max-w-56"
+        >
+          <NumberFormatCombobox
+            id="onboarding-number-format"
+            value={values?.number_format ?? 'YYYY-NNN'}
+            onChange={(number_format) => onChange({ number_format })}
           />
         </FormField>
         <fieldset className="grid gap-1.5">
@@ -1009,8 +1050,69 @@ function PreferencesStep({
   )
 }
 
+/** Optional: the existing AI import in its drawer; the drawer asks for the AI approval when the files are read. */
+function ImportStep({
+  heading,
+  imported,
+  onCreated,
+  onBack,
+  onDone,
+}: {
+  heading: HeadingRef
+  imported: string | null
+  onCreated: (summary: string) => void
+  onBack?: () => void
+  onDone: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <StepHeader heading={heading} title={translate('bringYourData')}>
+        {translate('bringYourDataIntro')}
+      </StepHeader>
+      {imported && (
+        <output className="mt-7 block">
+          <Callout tone="success">{translate('importedSummary', { summary: imported })}</Callout>
+        </output>
+      )}
+      <Actions
+        onBack={onBack}
+        skip={
+          imported ? (
+            <SkipButton onClick={() => setOpen(true)}>
+              {translate('importMoreDocuments')}
+            </SkipButton>
+          ) : (
+            <SkipButton onClick={onDone} />
+          )
+        }
+      >
+        <Button
+          size="xl"
+          type="button"
+          className={bigButton}
+          onClick={imported ? onDone : () => setOpen(true)}
+        >
+          {imported ? (
+            <>
+              {translate('continue2')} <ArrowRight />
+            </>
+          ) : (
+            <>
+              <FileUp />
+              {translate('importDocuments')}
+            </>
+          )}
+        </Button>
+      </Actions>
+      {open && <ImportDrawer kind="auto" onCreated={onCreated} onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
 function DoneStep({
   heading,
+  imported,
   name,
   settings,
   busy,
@@ -1019,6 +1121,7 @@ function DoneStep({
   onClose,
 }: {
   heading: HeadingRef
+  imported: string | null
   name: string | null
   settings: InvoiceSettings | undefined
   busy: boolean
@@ -1034,6 +1137,9 @@ function DoneStep({
           ? [{ key: 'company', text: translate('yourCompanyIsReadyToIssueInvoices') }]
           : []),
         ...(settings.logo_url ? [{ key: 'logo', text: translate('yourLogoIsOnEveryPDF') }] : []),
+        ...(imported
+          ? [{ key: 'import', text: translate('importedSummary', { summary: imported }) }]
+          : []),
       ]
     : []
   return (
@@ -1100,10 +1206,14 @@ function DoneStep({
         />
         <NextStep
           icon={<FileUp />}
-          title={translate('importYourClients')}
-          description={translate('fromASpreadsheetPDFOrYourOldToolYou')}
+          title={imported ? translate('importMoreDocuments') : translate('importYourClients')}
+          description={
+            imported
+              ? translate('importMoreDocumentsHint')
+              : translate('fromASpreadsheetPDFOrYourOldToolYou')
+          }
           disabled={busy}
-          onClick={() => onOpen('/clients?import=1')}
+          onClick={() => onOpen(imported ? '/documents?import=1' : '/clients?import=1')}
         />
         <NextStep
           icon={<HeidiSparkle />}

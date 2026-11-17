@@ -6,9 +6,11 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
+import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
 import { sampleSettings } from '@/test/invoice-api'
 
@@ -30,7 +32,19 @@ let renamed: unknown[] = []
 let named: unknown[] = []
 let asked: unknown[] = [] // any call to the (retired) name-suggestion endpoint
 let workspaceName = 'Muster GmbH'
+let usage: HeidiUsage = { ...noAI() }
+let uploads = 0
 let billing: Billing = billingFixture({ enabled: false, locked: false })
+function noAI(): HeidiUsage {
+  return {
+    period: '2026-11',
+    tokens_used: 0,
+    tokens_included: null,
+    tokens_purchased: 0,
+    tokens_remaining: null,
+    provider_available: false,
+  }
+}
 // A brand-new workspace: nothing about the company yet.
 const empty = sampleSettings({
   seller: {
@@ -66,6 +80,11 @@ afterEach(() => localStorage.clear())
 const server = setupServer(
   http.get('/api/v1/session', () => HttpResponse.json(session())),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
+  http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage)),
+  http.post('/api/v1/imports', () => {
+    uploads++
+    return HttpResponse.json({ error: { code: 'x', message: 'x' } }, { status: 500 })
+  }),
   http.post('/api/v1/session/onboarded', () => {
     finished++
     onboarded = true
@@ -95,6 +114,8 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
   server.resetHandlers()
   onboarded = false
+  usage = noAI()
+  uploads = 0
   finished = 0
   saved = []
   renamed = []
@@ -113,7 +134,9 @@ const wrap = (children: ReactNode) =>
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <TooltipProvider>{children}</TooltipProvider>
+      <TooltipProvider>
+        <AIApprovalProvider>{children}</AIApprovalProvider>
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 
@@ -309,6 +332,19 @@ describe('the welcome', () => {
     ).toBeInTheDocument()
   })
 
+  test('a name over 60 characters is refused before anything is sent', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    const input = await screen.findByRole('textbox', { name: /What should we call you\?/ })
+    expect(input).toHaveAttribute('maxlength', '60')
+    expect(workspaceField()).toHaveAttribute('maxlength', '50')
+    fireEvent.change(input, { target: { value: 'x'.repeat(61) } })
+    await user.click(get())
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
+    expect(named).toEqual([])
+  })
+
   test('an empty, over-long or refused name stays on the first step with its input', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
@@ -316,7 +352,7 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: /Get started/ }))
     expect(input).toHaveAttribute('aria-invalid', 'true')
     await waitFor(() => expect(input).toHaveFocus())
-    expect(screen.getByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    expect(screen.getByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
     server.use(
       http.patch('/api/v1/account', () =>
         HttpResponse.json(
@@ -324,7 +360,7 @@ describe('the welcome', () => {
             error: {
               code: 'validation_failed',
               message: 'Check the highlighted fields.',
-              details: { fields: { name: 'Enter a name of up to 100 characters.' } },
+              details: { fields: { name: 'Enter a name of up to 60 characters.' } },
             },
           },
           { status: 422 },
@@ -333,7 +369,7 @@ describe('the welcome', () => {
     )
     await user.type(input, 'Anna')
     await user.click(screen.getByRole('button', { name: /Get started/ }))
-    expect(await screen.findByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    expect(await screen.findByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
     expect(input).toHaveValue('Anna')
     expect(screen.queryByRole('heading', { name: 'Your company' })).not.toBeInTheDocument()
   })
@@ -449,13 +485,13 @@ describe('the welcome', () => {
     test.each([
       ['', 'Required'],
       ['   ', 'Required'],
-      ['x'.repeat(101), 'Enter a name of up to 100 characters.'],
+      ['x'.repeat(51), 'Enter a name of up to 50 characters.'],
     ])('the blank or over-long workspace name %j sends nothing', async (value, message) => {
       workspaceName = 'My workspace'
       const user = userEvent.setup()
       wrap(<Welcome />)
       await user.type(await nameField(), 'Anna')
-      // maxLength stops typing at 100, so a longer value goes in without typing.
+      // maxLength stops typing at 50, so a longer value goes in without typing.
       fireEvent.change(workspaceField(), { target: { value } })
       await user.click(get())
       expect(workspaceField()).toHaveAttribute('aria-invalid', 'true')
@@ -722,6 +758,18 @@ describe('the welcome', () => {
       await waitFor(() => expect(termsSaved()).toBe(10))
     })
 
+    test('the number format starts as the workspace has it, shows this year’s example and is saved', async () => {
+      const user = userEvent.setup()
+      await toDefaults(user, { ...empty, number_format: 'YYYY/NNN' })
+      const year = new Date().getFullYear()
+      expect(screen.getByText(`Your next invoice: ${year}/001`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Number format/ }))
+      await user.click(await screen.findByRole('option', { name: new RegExp(`RE-${year}-001`) }))
+      expect(screen.getByText(`Your next invoice: RE-${year}-001`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(saved.at(-1)?.number_format).toBe('RE-YYYY-NNN'))
+    })
+
     test.each([['0'], ['365'], ['45']])('custom %s days is saved as that number', async (text) => {
       const user = userEvent.setup({ delay: null })
       await toDefaults(user)
@@ -784,5 +832,55 @@ describe('a reload on the welcome', () => {
     localStorage.setItem('helvetly.onboarding-name.usr_1', 'Pete')
     wrap(<Welcome />)
     expect(await nameField()).toHaveValue('')
+  })
+})
+
+const available = () => {
+  usage = {
+    ...noAI(),
+    provider_available: true,
+    consent: { granted: false, changed_at: null, changed_by: '' },
+  }
+}
+const toImport = async (user: User) => {
+  await toDefaults(user)
+  await user.click(screen.getByRole('button', { name: /Continue/ }))
+  await screen.findByRole('heading', { name: 'Bring your data' })
+}
+
+describe('the import step', () => {
+  test('is absent without an AI model: five steps, the defaults lead to the end', async () => {
+    const user = userEvent.setup()
+    await toDefaults(user)
+    expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '5')
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: /all set/ })
+  })
+
+  test('comes before the last step when AI is available, and Skip goes on', async () => {
+    available()
+    const user = userEvent.setup()
+    await toImport(user)
+    expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '6')
+    expect(screen.getByText('Step 5 of 6')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    await screen.findByRole('heading', { name: /all set/ })
+    expect(screen.getByText('Import your clients')).toBeInTheDocument()
+  })
+
+  test('declining the AI approval keeps the chosen files and sends nothing', async () => {
+    available()
+    const user = userEvent.setup()
+    await toDefaults(user)
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: 'Bring your data' })
+    await user.click(screen.getByRole('button', { name: 'Import documents' }))
+    const drawer = await screen.findByRole('dialog')
+    const input = drawer.querySelector('input[type=file]') as HTMLInputElement
+    await user.upload(input, new File(['a,b'], 'clients.csv', { type: 'text/csv' }))
+    await user.click(within(drawer).getByRole('button', { name: 'Read files' }))
+    await user.click(await screen.findByRole('button', { name: 'Not now' }))
+    expect(await within(drawer).findByText('clients.csv')).toBeInTheDocument()
+    expect(uploads).toBe(0)
   })
 })

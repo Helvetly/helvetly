@@ -5,6 +5,7 @@ import {
   ibanInfo,
   type DocLanguage,
   type InvoiceSettings,
+  type NumberFormat,
   type SettingsInput,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
@@ -24,6 +25,7 @@ export type Values = {
   language: DocLanguage
   currency: string
   default_terms_days: number
+  number_format: NumberFormat
 }
 
 /**
@@ -47,6 +49,7 @@ export function valuesFrom(settings: InvoiceSettings, interfaceLanguage?: DocLan
     language: settings.is_complete ? settings.language : (interfaceLanguage ?? settings.language),
     currency: settings.currency || 'CHF',
     default_terms_days: settings.default_terms_days,
+    number_format: settings.number_format,
   }
 }
 
@@ -93,6 +96,7 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
     language: values.language,
     currency: values.currency,
     default_terms_days: values.default_terms_days,
+    number_format: values.number_format,
   }
 }
 
@@ -133,8 +137,29 @@ export function fieldErrors(details: Record<string, unknown>): Partial<Record<st
   return errors
 }
 
-/** A person's name as the account takes it: 1 to 100 characters once trimmed (PATCH /account). */
-export const validPersonName = (name: string) => {
+/** The longest name a person or a workspace can be given; the API checks the same limits (older, longer names stay readable). */
+export const MAX_PERSON_NAME = 60
+export const MAX_WORKSPACE_NAME = 50
+
+const withinLength = (name: string, max: number) => {
   const length = Array.from(name.trim()).length
-  return length >= 1 && length <= 100
+  return length >= 1 && length <= max
 }
+
+/** A person's name as the account takes it: 1 to MAX_PERSON_NAME characters once trimmed (PATCH /account). */
+export const validPersonName = (name: string) => withinLength(name, MAX_PERSON_NAME)
+
+/** A workspace's name as the workspace takes it: 1 to MAX_WORKSPACE_NAME characters once trimmed. */
+export const validWorkspaceName = (name: string) => withinLength(name, MAX_WORKSPACE_NAME)
+
+export type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'import' | 'done'
+
+/** The "Bring your data" step needs the server's AI model and the right to read documents; without either it is absent. */
+export const stepsFor = (canImport: boolean): StepId[] => [
+  'welcome',
+  'company',
+  'logo',
+  'preferences',
+  ...(canImport ? (['import'] as const) : []),
+  'done',
+]

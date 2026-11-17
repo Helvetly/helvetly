@@ -18,6 +18,7 @@ import { useState, type FormEvent } from 'react'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useRedirectToPrefs } from '@/components/notifications/prefs-drawer'
+import { MAX_PERSON_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { DangerRow, DangerZone } from '@/components/settings/danger-zone'
 import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from '@/components/settings/layout'
@@ -101,6 +102,7 @@ function Profile({ user }: { user: User }) {
           >
             <Input
               {...describedBy('profile-name', form.errors.name)}
+              maxLength={MAX_PERSON_NAME}
               autoComplete="name"
               placeholder={translate('annaMuster')}
               value={form.values.name}

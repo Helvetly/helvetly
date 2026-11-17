@@ -1090,7 +1090,7 @@
   "enterACodeFromYourAuthenticatorAppOrOne": "Enter a code from your authenticator app or one of your unused recovery codes.",
   "enterAGTINOf81213Or14": "Enter a GTIN of 8, 12, 13 or 14 digits with a valid check digit.",
   "enterAName": "Enter a name.",
-  "enterANameOfUpTo100Characters": "Enter a name of up to 100 characters.",
+  "enterANameOfUpToCharacters": "Enter a name of up to {max} characters.",
   "enterAnAmountAbove0": "Enter an amount above 0.",
   "enterAnAmountSuchAs4990": "Enter an amount such as 49.90.",
   "enterAnEmailAddress": "Enter an email address.",
@@ -4211,5 +4211,11 @@
   "importDocumentRecords": "{count, plural, one {# record} other {# records}}",
   "monthIsNotClosedYet": "{value1} is not closed yet. Close it so its figures can't change.",
   "monthsAreNotClosedYet": "{length} months are not closed yet: {value1} to {value2}. Close them so their figures can't change.",
-  "closeTheMonth": "{length, plural, one {Close the month} other {Close the months}}"
+  "closeTheMonth": "{length, plural, one {Close the month} other {Close the months}}",
+  "bringYourData": "Bring your data",
+  "bringYourDataIntro": "Drop invoices, expenses, client lists or price lists in any common format. Heidi’s AI works out what each document is, and you check and correct everything before it is imported.",
+  "importedSummary": "Imported: {summary}.",
+  "importMoreDocuments": "Import more documents",
+  "importMoreDocumentsHint": "Add more invoices, expenses, clients or price lists from files.",
+  "yourNextInvoiceNumber": "Your next invoice: {number}"
 }

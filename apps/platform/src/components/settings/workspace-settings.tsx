@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Combobox, type Option } from '@/components/clients/fields'
+import { MAX_WORKSPACE_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
@@ -183,7 +184,7 @@ export function GeneralCard({
           >
             <Input
               {...describedBy('workspace-name', form.errors.name)}
-              maxLength={100}
+              maxLength={MAX_WORKSPACE_NAME}
               disabled={!owner}
               value={form.values.name}
               onChange={(event) => form.set('name', event.target.value)}
