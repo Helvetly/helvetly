@@ -120,11 +120,12 @@ export function AuditLog() {
     <div className="grid gap-5">
       <ChainStatus check={verify.data} failed={verify.isError} />
       {rows.length === 0 ? (
-        <SettingsSection id="audit-log-empty" icon={ListOrdered} title={translate('entries')}>
+        // Nothing to list yet: only the placeholder, a little lower, without an "Entries" band and its rule.
+        <div className="pt-10">
           <SettingsEmpty icon={<History />} title={translate('nothingRecordedYet')}>
             {translate('issuedInvoicesPaymentsBookedExpensesAndClosedMonthsAppear')}
           </SettingsEmpty>
-        </SettingsSection>
+        </div>
       ) : (
         <SettingsSection
           id="audit-log-entries"
