@@ -138,9 +138,7 @@ export function AppSidebar({ session }: { session: Session }) {
                 </span>
                 {/* The plan, not the role (that is in the user menu); nothing while billing is off or loading. */}
                 {planLabel(billing) && (
-                  <MiniBadge className="mt-0.5" testId="workspace-plan">
-                    {planLabel(billing)}
-                  </MiniBadge>
+                  <PlanText testId="workspace-plan">{planLabel(billing)}</PlanText>
                 )}
               </span>
               <ChevronsUpDown className="ml-auto size-4! stroke-[1.75] text-[#a8a7aa]" />
@@ -170,7 +168,7 @@ export function AppSidebar({ session }: { session: Session }) {
                     {workspace.name}
                   </span>
                   {rowPlan(workspace, billing) && (
-                    <MiniBadge className="mt-0.5">{rowPlan(workspace, billing)}</MiniBadge>
+                    <PlanText>{rowPlan(workspace, billing)}</PlanText>
                   )}
                 </span>
                 {workspace.current && <Check className="ml-auto text-foreground" />}
@@ -334,7 +332,16 @@ function rowPlan(workspace: WorkspaceItem, billing: Billing | undefined): string
   )
 }
 
-/** A small muted tag, a notch under the shared status badge, for a plan or a role. */
+/** The plan as a quiet second line under a workspace name: plain text reads calmer than a tag there. */
+function PlanText({ children, testId }: { children: ReactNode; testId?: string }) {
+  return (
+    <span data-testid={testId} className="mt-0.5 truncate text-[12px] text-muted-foreground">
+      {children}
+    </span>
+  )
+}
+
+/** A small muted tag, a notch under the shared status badge, for a role. */
 function MiniBadge({
   children,
   className,
