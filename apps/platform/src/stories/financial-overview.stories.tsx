@@ -207,7 +207,7 @@ export const OpenInvoicesFailureAndRetry: Story = {
     )
     invoicesFailed = false
     await userEvent.click(canvas.getByRole('button', { name: 'Retry invoices' }))
-    await expect(await canvas.findByText('Nothing open. Every invoice is paid.')).toBeVisible()
+    await expect(await canvas.findByText('All done. Nothing needs your attention.')).toBeVisible()
   },
 }
 

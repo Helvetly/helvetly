@@ -83,4 +83,7 @@ export const screenHandlers = [
   http.get('/api/v1/invoices/summary', () => HttpResponse.json({ data: emptySummary })),
   http.get('/api/v1/invoices', () => HttpResponse.json(emptyPage)),
   http.get('/api/v1/reports/key-figures', () => HttpResponse.json(emptyDashboard)),
+  // Nothing recorded, so nothing to close on the dashboard's to-do list.
+  http.get('/api/v1/periods', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/periods/activity', () => HttpResponse.json({ data: [] })),
 ]
