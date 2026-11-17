@@ -135,11 +135,11 @@ test('a logo with too little detail for its purpose is refused before anything i
   const small = Buffer.from(
     await page.evaluate(async () => {
       const canvas = window.document.createElement('canvas')
-      canvas.width = 120
-      canvas.height = 120
+      canvas.width = 48
+      canvas.height = 48
       const context = canvas.getContext('2d')
       if (!context) throw new Error('no canvas')
-      context.fillRect(0, 0, 120, 120)
+      context.fillRect(0, 0, 48, 48)
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('no png')
       return [...new Uint8Array(await blob.arrayBuffer())]
