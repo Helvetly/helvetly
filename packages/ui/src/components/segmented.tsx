@@ -8,6 +8,7 @@ export function Segmented<T extends string>({
   options,
   onChange,
   fill = false,
+  size = 'md',
 }: {
   label: string
   /** null: none of the options is chosen (the state was set elsewhere). */
@@ -20,6 +21,11 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void
   /** Spans the field's width in equal parts, for a row under an input. */
   fill?: boolean
+  /**
+   * `md` (default): the height of a form field (36 px), so a segmented choice and an input beside it line up and
+   * a field appearing next to it never moves the row. `sm` (32 px): compact toolbars whose other controls are 32 px.
+   */
+  size?: 'sm' | 'md'
 }) {
   // One radio group per control, even when two share a label.
   const name = useId()
@@ -36,7 +42,8 @@ export function Segmented<T extends string>({
         <label
           key={option.value}
           className={cn(
-            'relative flex min-h-7 items-center justify-center rounded-md px-3 text-body-sm text-muted-foreground transition-colors duration-150 hover:text-foreground has-checked:bg-card has-checked:text-foreground has-checked:shadow-elevation-1 has-focus-visible:ring-2 has-focus-visible:ring-ring/50',
+            'relative flex items-center justify-center rounded-md px-3 text-body-sm text-muted-foreground transition-colors duration-150 hover:text-foreground has-checked:bg-card has-checked:text-foreground has-checked:shadow-elevation-1 has-focus-visible:ring-2 has-focus-visible:ring-ring/50',
+            size === 'sm' ? 'min-h-7' : 'min-h-8',
             // Filling a narrow field, a long option wraps instead of running off the page.
             fill ? 'py-1 text-center text-balance' : 'whitespace-nowrap',
           )}

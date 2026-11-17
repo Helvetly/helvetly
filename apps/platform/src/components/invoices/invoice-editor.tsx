@@ -746,6 +746,7 @@ function Editor({
                 </div>
               )}
               <Segmented
+                size="sm"
                 label={translate('documentLanguage')}
                 value={values.language}
                 options={LANGUAGE_CHOICES}
@@ -753,6 +754,7 @@ function Editor({
               />
               {!credit && (
                 <Segmented
+                  size="sm"
                   label={translate('vat')}
                   value={values.vat_mode}
                   options={VAT_CHOICES}
