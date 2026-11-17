@@ -38,7 +38,7 @@ export function SignInMethods({ email }: { email: string }) {
         title={translate('signInMethods')}
         description={translate('helvetlyHasNoPasswordsSignInWithACode')}
       >
-        <ul className="divide-y">
+        <ul className="grid">
           <SettingsRow
             icon={<Mail />}
             title={
@@ -196,7 +196,7 @@ function Passkeys() {
           {translate('addOneToSignInWithYourFingerprintFace')}
         </SettingsEmpty>
       ) : (
-        <ul className="divide-y">
+        <ul className="grid">
           {passkeys.data.map((passkey) => (
             <SettingsRow
               key={passkey.id}

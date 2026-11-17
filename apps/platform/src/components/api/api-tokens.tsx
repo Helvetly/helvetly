@@ -160,7 +160,7 @@ export function ApiTokens() {
           {translate('createOneToConnectAScriptOrAnAI')}
         </SettingsEmpty>
       ) : (
-        <ul className="divide-y">
+        <ul className="grid">
           {tokens.data.map((token) => (
             <SettingsRow
               key={token.id}

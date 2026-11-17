@@ -1,9 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import {
   Sheet,
@@ -14,12 +12,19 @@ import {
 } from '@helvetly/ui/components/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ChevronsUpDown, Lock, X } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
-import { ClientSearch } from '@/components/invoices/client-search'
+import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
+import { DateField, quietValue } from '@/components/invoices/date-fields'
+import {
+  ClientBlock,
+  MetaLabel,
+  proseInput,
+  SellerBlock,
+  TotalLine,
+} from '@/components/invoices/document-parts'
 import {
   applyClient,
   changeVatMode,
@@ -28,16 +33,20 @@ import {
   VAT_CHOICES,
 } from '@/components/invoices/editor-model'
 import { LinesEditor } from '@/components/invoices/lines-editor'
+import { LetterheadLogo } from '@/components/settings/logo-upload'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import {
+  canManageInvoices,
   formatAmount,
   isZero,
+  logoSrc,
   useInvoicePreview,
   useInvoiceSettings,
   type InvoiceSettings,
 } from '@/lib/invoices'
+import { useSession } from '@/lib/queries'
 import { quoteNumber, useSaveQuote, type Quote } from '@/lib/quotes'
 
 import { failQuote } from './quote-dialogs'
@@ -51,8 +60,6 @@ import {
 
 /** The drawer's width while a quote is edited: room for the lines grid. */
 export const EDITOR_WIDTH = 'sm:w-[min(1200px,96vw)]!'
-
-const textArea = cn(inputClass, 'h-auto resize-y py-2 leading-relaxed')
 
 /** A new quote in a drawer of its own (from the list or a client), opened in place. */
 export function NewQuoteSheet({
@@ -133,31 +140,35 @@ export function QuoteEditor({
 function Frame({
   title,
   onCancel,
+  actions,
   children,
 }: {
   title: string
   onCancel: () => void
+  actions?: ReactNode
   children: ReactNode
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-border/60 bg-card px-3">
-        <h2 className="ml-1 truncate text-body font-medium">{title}</h2>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={translate('closeEditor')}
-              className="ml-auto"
-              onClick={onCancel}
-            >
-              <X />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{translate('closeWithoutSaving')}</TooltipContent>
-        </Tooltip>
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-card px-3">
+        <h2 className="ml-1 min-w-0 truncate text-body font-medium">{title}</h2>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {actions}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={translate('closeEditor')}
+                onClick={onCancel}
+              >
+                <X />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{translate('closeWithoutSaving')}</TooltipContent>
+          </Tooltip>
+        </div>
       </header>
       {children}
     </div>
@@ -185,6 +196,7 @@ function Editor({
   const [discarding, setDiscarding] = useState(false)
   const [tried, setTried] = useState(false)
   const save = useSaveQuote()
+  const canManage = canManageInvoices(useSession().data?.role)
   const client = useClient(values.client_id).data
   const converted = toQuoteInput(values)
   const errors: Record<string, string> = {
@@ -232,107 +244,42 @@ function Editor({
   // Esc is Cancel too: it asks before throwing typed work away.
   useSheetEscape(cancel)
 
-  return (
-    <Frame title={title} onCancel={cancel}>
-      <form
-        noValidate
-        aria-label={title}
-        onSubmit={(event) => {
-          event.preventDefault()
-          submit()
-        }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        {/* A plain scroller around the grid: a grid that scrolls itself squeezes its rows. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="grid content-start gap-5 p-4 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                id="quote-client"
-                label={translate('client')}
-                required
-                error={errors.client_id}
-              >
-                <Popover open={picking} onOpenChange={setPicking}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      {...describedBy('quote-client', errors.client_id)}
-                      className={cn(inputClass, 'flex items-center justify-between text-left')}
-                    >
-                      <span className={cn('truncate', !client && 'text-muted-foreground')}>
-                        {client?.name ??
-                          (values.client_id ? translate('loading') : translate('chooseAClient'))}
-                      </span>
-                      <ChevronsUpDown className="size-4 text-muted-foreground" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
-                    <ClientSearch
-                      selectedId={values.client_id}
-                      onSelect={(picked) => {
-                        // The client brings its currency and language, as on an invoice.
-                        setValues((current) => ({
-                          ...current,
-                          ...applyClient(current, picked, settings),
-                        }))
-                        setPicking(false)
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </FormField>
-              <FormField
-                id="quote-reference"
-                label={translate('reference')}
-                error={errors.reference}
-                tip={translate('theClientSProjectOrRequestNumberPrintedOn')}
-              >
-                <input
-                  {...describedBy('quote-reference', errors.reference)}
-                  value={values.reference}
-                  maxLength={100}
-                  onChange={(event) => set('reference', event.target.value)}
-                  placeholder={translate('optional')}
-                  className={inputClass}
-                />
-              </FormField>
-              <FormField
-                id="quote-issue_date"
-                label={translate('date')}
-                required
-                error={errors.issue_date}
-              >
-                <input
-                  {...describedBy('quote-issue_date', errors.issue_date)}
-                  type="date"
-                  required
-                  value={values.issue_date}
-                  onChange={(event) => event.target.value && set('issue_date', event.target.value)}
-                  className={cn(inputClass, 'tabular-nums')}
-                />
-              </FormField>
-              <FormField
-                id="quote-valid_until"
-                label={translate('validUntil3')}
-                required
-                error={errors.valid_until}
-                tip={translate('afterThisDateTheClientCanNoLongerAccept')}
-              >
-                <input
-                  {...describedBy('quote-valid_until', errors.valid_until)}
-                  type="date"
-                  required
-                  min={values.issue_date}
-                  value={values.valid_until}
-                  onChange={(event) => event.target.value && set('valid_until', event.target.value)}
-                  className={cn(inputClass, 'tabular-nums')}
-                />
-              </FormField>
-            </div>
+  const metaError = errors.issue_date ?? errors.valid_until ?? errors.reference
 
-            {/* Document options: how the whole quote is priced and printed, as on an invoice. */}
-            <div className="flex flex-wrap items-center gap-2">
+  return (
+    // The form wraps the bar too, so Save in the bar submits it.
+    <form
+      noValidate
+      aria-label={title}
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit()
+      }}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <Frame
+        title={title}
+        onCancel={cancel}
+        actions={
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="submit" size="sm" disabled={save.isPending}>
+                {save.isPending
+                  ? translate('saving')
+                  : quote
+                    ? translate('saveChanges')
+                    : translate('saveDraft')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{translate('savedAsADraftNothingIsSentYet')}</TooltipContent>
+          </Tooltip>
+        }
+      >
+        {/* As on an invoice: the options above and the internal note below stay put from md up, and only the
+            page scrolls; on a phone everything scrolls together. */}
+        <div className="flex min-h-0 flex-1 flex-col max-md:overflow-y-auto">
+          <div className="shrink-0 border-b border-border/60 px-3 py-3 sm:px-6">
+            <div className="mx-auto flex w-full max-w-[1040px] items-center gap-2 max-sm:-mx-3 max-sm:[scrollbar-width:none] max-sm:overflow-x-auto max-sm:px-3 max-sm:py-1 max-sm:*:shrink-0 sm:flex-wrap sm:justify-center">
               <div className="w-[104px]">
                 <Combobox
                   value={values.currency}
@@ -363,105 +310,220 @@ function Editor({
                 }
               />
             </div>
+          </div>
 
-            <FormField id="quote-intro" label={translate('introduction')} error={errors.intro}>
-              <textarea
-                {...describedBy('quote-intro', errors.intro)}
-                rows={2}
-                maxLength={1000}
-                value={values.intro}
-                onChange={(event) => set('intro', event.target.value)}
-                placeholder={translate('printedAboveTheLinesEGThankYouFor')}
-                className={textArea}
-              />
-            </FormField>
+          <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
+            <div className="@container min-w-0 px-3 pb-8 sm:px-6">
+              <div className="mx-auto w-full max-w-[1040px]">
+                <article
+                  aria-label={translate('quote2')}
+                  // A flat page that starts at the options bar's line, its sides at the work area's edges.
+                  className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border border-t-0 bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
+                >
+                  <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+                    <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
+                    <div className="grid justify-items-end gap-1 text-right max-sm:justify-items-start max-sm:text-left">
+                      <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
+                        {translate('quote2')}
+                      </h1>
+                      <span className="text-[13px] text-muted-foreground">
+                        {quote?.number ? quoteNumber(quote) : translate('noAssignedWhenSent')}
+                      </span>
+                    </div>
+                  </header>
 
-            {/* The padding (cancelled by the margins) and the scroll padding, kept when a focused cell
-              scrolls into view on a phone, leave room for the controls' focus rings. */}
-            <div className="-m-1 scroll-px-2 overflow-x-auto p-1">
-              <LinesEditor
-                lines={values.lines}
-                vatMode={values.vat_mode}
-                defaultRate={settings.default_vat_rate}
-                amounts={totals?.lines.map((line) => line.amount)}
-                errors={errors}
-                onChange={(lines) => set('lines', lines)}
-                currency={values.currency}
-              />
+                  <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-3">
+                    <SellerBlock settings={settings} label={translate('from')} />
+                    <ClientBlock
+                      label={translate('quoteFor')}
+                      missing={translate('chooseWhoThisQuoteIsFor')}
+                      client={client ?? null}
+                      open={picking}
+                      locked={false}
+                      invalid={tried && !values.client_id}
+                      onOpenChange={setPicking}
+                      onPick={(picked) => {
+                        // The client brings its currency and language, as on an invoice.
+                        setValues((current) => ({
+                          ...current,
+                          ...applyClient(current, picked, settings),
+                        }))
+                        setPicking(false)
+                      }}
+                    />
+                    <dl className="grid w-full max-w-[300px] grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-[13.5px] md:col-span-2 @4xl:col-span-1">
+                      <MetaLabel htmlFor="quote-issue_date" error={errors.issue_date}>
+                        {translate('date')}
+                      </MetaLabel>
+                      <dd>
+                        <DateField
+                          id="quote-issue_date"
+                          label={translate('date')}
+                          value={values.issue_date}
+                          invalid={Boolean(errors.issue_date)}
+                          onChange={(date) => set('issue_date', date)}
+                        />
+                      </dd>
+                      <MetaLabel
+                        htmlFor="quote-valid_until"
+                        error={errors.valid_until}
+                        tip={translate('afterThisDateTheClientCanNoLongerAccept')}
+                      >
+                        {translate('validUntil3')}
+                      </MetaLabel>
+                      <dd>
+                        <DateField
+                          id="quote-valid_until"
+                          label={translate('validUntil3')}
+                          value={values.valid_until}
+                          min={values.issue_date}
+                          invalid={Boolean(errors.valid_until)}
+                          onChange={(date) => set('valid_until', date)}
+                        />
+                      </dd>
+                      <MetaLabel
+                        htmlFor="quote-reference"
+                        error={errors.reference}
+                        tip={translate('theClientSProjectOrRequestNumberPrintedOn')}
+                      >
+                        {translate('reference')}
+                      </MetaLabel>
+                      <dd>
+                        <input
+                          id="quote-reference"
+                          value={values.reference}
+                          maxLength={100}
+                          onChange={(event) => set('reference', event.target.value)}
+                          placeholder={translate('addPONumber')}
+                          className={quietValue}
+                        />
+                      </dd>
+                      {metaError && (
+                        <p className="col-span-2 px-2 pt-1 text-[12px] text-destructive">
+                          {metaError}
+                        </p>
+                      )}
+                    </dl>
+                  </div>
+
+                  <textarea
+                    aria-label={translate('introduction')}
+                    aria-invalid={errors.intro ? true : undefined}
+                    value={values.intro}
+                    maxLength={1000}
+                    onChange={(event) => set('intro', event.target.value)}
+                    placeholder={translate('printedAboveTheLinesEGThankYouFor')}
+                    rows={1}
+                    className={cn(proseInput, 'mt-10')}
+                  />
+
+                  {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
+                  <div className="-mx-1 mt-3 -mb-1 scroll-px-2 overflow-x-auto p-1">
+                    <LinesEditor
+                      lines={values.lines}
+                      vatMode={values.vat_mode}
+                      defaultRate={settings.default_vat_rate}
+                      amounts={totals?.lines.map((line) => line.amount)}
+                      errors={errors}
+                      onChange={(lines) => set('lines', lines)}
+                      currency={values.currency}
+                    />
+                  </div>
+
+                  <dl
+                    aria-label={translate('totals')}
+                    aria-busy={preview.isFetching}
+                    className={cn(
+                      'mt-6 ml-auto grid w-full gap-2 text-[14px] transition-opacity sm:w-[320px]',
+                      preview.isFetching && 'opacity-70',
+                    )}
+                  >
+                    <TotalLine
+                      label={translate('subtotal')}
+                      value={totals ? formatAmount(totals.subtotal) : null}
+                    />
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="flex items-center gap-2 text-muted-foreground">
+                        <label htmlFor="quote-discount_percent">{translate('discount2')}</label>
+                        <span className="relative">
+                          <input
+                            id="quote-discount_percent"
+                            aria-invalid={errors.discount_percent ? true : undefined}
+                            inputMode="decimal"
+                            value={values.discount_percent}
+                            onChange={(event) => set('discount_percent', event.target.value)}
+                            placeholder="0"
+                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-[13px] tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                          />
+                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[12px] text-muted-foreground">
+                            %
+                          </span>
+                        </span>
+                      </dt>
+                      <dd className="tabular-nums">
+                        {totals && !isZero(totals.discount_amount) ? (
+                          `−${formatAmount(totals.discount_amount)}`
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </dd>
+                    </div>
+                    {values.vat_mode !== 'none' &&
+                      totals?.vat_breakdown.map((group) => (
+                        <TotalLine
+                          key={`${group.category}${group.rate}`}
+                          muted
+                          label={translate('vatGroupLabel', {
+                            category: group.category === 'S' ? `${group.rate}%` : group.category,
+                          })}
+                          value={formatAmount(group.vat_amount)}
+                        />
+                      ))}
+                    <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-3">
+                      <dt className="text-[14px] font-medium">
+                        {translate('total2')}
+                        {values.currency}
+                      </dt>
+                      <dd className="text-[22px] font-medium tracking-[-0.02em] tabular-nums">
+                        {totals ? formatAmount(totals.payable_total) : '—'}
+                      </dd>
+                    </div>
+                    {errors.discount_percent && (
+                      <p className="text-xs text-destructive">
+                        {translate('discount3')}
+                        {errors.discount_percent}
+                      </p>
+                    )}
+                  </dl>
+
+                  {/* The rule sits outside the field, so focus outlines only the text. */}
+                  <div className="mt-10 border-t border-border/70 pt-4">
+                    <textarea
+                      aria-label={translate('footer')}
+                      aria-invalid={errors.footer ? true : undefined}
+                      value={values.footer}
+                      maxLength={1000}
+                      onChange={(event) => set('footer', event.target.value)}
+                      placeholder={translate('printedAtTheBottomEGTermsOrWhat')}
+                      rows={1}
+                      className={cn(proseInput, 'text-[13px] text-muted-foreground')}
+                    />
+                  </div>
+                  {(errors.intro || errors.footer) && (
+                    <p className="mt-2 text-[12px] text-destructive">
+                      {errors.intro ?? errors.footer}
+                    </p>
+                  )}
+                </article>
+              </div>
             </div>
+          </div>
 
-            <dl
-              aria-label={translate('totals')}
-              aria-busy={preview.isFetching}
-              className={cn(
-                'grid w-full gap-2 justify-self-end text-body transition-opacity sm:w-80',
-                preview.isFetching && 'opacity-70',
-              )}
-            >
-              <TotalRow label={translate('subtotal')} value={totals?.subtotal} />
-              <div className="flex items-center justify-between gap-3">
-                <dt className="flex items-center gap-2 text-muted-foreground">
-                  <label htmlFor="quote-discount_percent">{translate('discount4')}</label>
-                  <input
-                    id="quote-discount_percent"
-                    aria-invalid={errors.discount_percent ? true : undefined}
-                    inputMode="decimal"
-                    value={values.discount_percent}
-                    onChange={(event) => set('discount_percent', event.target.value)}
-                    placeholder="0"
-                    className={cn(inputClass, 'h-8 w-16 px-2 text-right tabular-nums')}
-                  />
-                </dt>
-                <dd className="tabular-nums">
-                  {totals && !isZero(totals.discount_amount)
-                    ? `−${formatAmount(totals.discount_amount)}`
-                    : '—'}
-                </dd>
-              </div>
-              {values.vat_mode !== 'none' &&
-                totals?.vat_breakdown.map((group) => (
-                  <TotalRow
-                    key={`${group.category}${group.rate}`}
-                    muted
-                    label={translate('vatGroupLabel', {
-                      category: group.category === 'S' ? `${group.rate}%` : group.category,
-                    })}
-                    value={group.vat_amount}
-                  />
-                ))}
-              <div className="flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-2 font-medium">
-                <dt>
-                  {translate('total2')}
-                  {values.currency}
-                </dt>
-                <dd className="text-title tabular-nums">
-                  {totals ? formatAmount(totals.payable_total) : '—'}
-                </dd>
-              </div>
-              {errors.discount_percent && (
-                <p className="text-xs text-destructive">
-                  {translate('discount3')}
-                  {errors.discount_percent}
-                </p>
-              )}
-            </dl>
-
-            <FormField id="quote-footer" label={translate('footer')} error={errors.footer}>
-              <textarea
-                {...describedBy('quote-footer', errors.footer)}
-                rows={2}
-                maxLength={1000}
-                value={values.footer}
-                onChange={(event) => set('footer', event.target.value)}
-                placeholder={translate('printedAtTheBottomEGTermsOrWhat')}
-                className={textArea}
-              />
-            </FormField>
-
-            <section className="grid gap-1.5">
+          <div className="shrink-0 border-t border-border/60 px-3 py-3 sm:px-6">
+            <section className="mx-auto grid w-full max-w-[1040px] gap-1.5 px-1">
               <label
                 htmlFor="quote-note"
-                className="flex items-center gap-1.5 text-body-sm font-medium text-muted-foreground"
+                className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground"
               >
                 <Lock className="size-3.5" />
                 {translate('internalNote2')}
@@ -469,33 +531,17 @@ function Editor({
               </label>
               <textarea
                 id="quote-note"
-                rows={2}
-                maxLength={1000}
                 value={values.note}
+                maxLength={1000}
                 onChange={(event) => set('note', event.target.value)}
                 placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
-                className={textArea}
+                rows={1}
+                className="[field-sizing:content] max-h-32 w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-[14px] leading-relaxed shadow-xs outline-none placeholder:text-placeholder focus:border-ring focus:ring-2 focus:ring-ring/40"
               />
             </section>
           </div>
         </div>
-
-        <footer className="flex shrink-0 items-center gap-2 border-t border-border/60 bg-card px-4 py-3">
-          <span className="text-body-sm text-muted-foreground max-sm:hidden">
-            {translate('savedAsADraftNothingIsSentYet')}
-          </span>
-          <Button type="button" variant="ghost" className="ml-auto" onClick={cancel}>
-            {translate('cancel')}
-          </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending
-              ? translate('saving')
-              : quote
-                ? translate('saveChanges')
-                : translate('saveDraft')}
-          </Button>
-        </footer>
-      </form>
+      </Frame>
 
       {discarding && (
         <ConfirmDialog
@@ -509,23 +555,6 @@ function Editor({
           }}
         />
       )}
-    </Frame>
-  )
-}
-
-function TotalRow({
-  label,
-  value,
-  muted,
-}: {
-  label: string
-  value: string | undefined
-  muted?: boolean
-}) {
-  return (
-    <div className={cn('flex justify-between gap-3', muted && 'text-muted-foreground')}>
-      <dt>{label}</dt>
-      <dd className="tabular-nums">{value === undefined ? '—' : formatAmount(value)}</dd>
-    </div>
+    </form>
   )
 }

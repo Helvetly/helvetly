@@ -16,7 +16,7 @@ import { HelpTip } from './help-tip'
 import { SettingsSection } from './layout'
 
 /**
- * The workspace's own mark, in the same dashed card as the document logo: its preview, and the buttons to choose (or drop a
+ * The workspace's own mark: its preview, and the buttons to choose (or drop a
  * file), replace or remove it. Picking or dropping opens the square crop; nothing is saved until it is confirmed. Only an owner or admin may change it.
  */
 export function WorkspaceLogoControl({
@@ -84,7 +84,7 @@ export function WorkspaceLogoControl({
           event.target.value = ''
         }}
       />
-      {/* The same card as the document logo's: dashed, a pale thumbnail, a title, what fits and the buttons; drop works too. */}
+      {/* A pale thumbnail, a title, what fits and the buttons; drop works too. */}
       <div
         onDragOver={(event) => {
           event.preventDefault()
@@ -93,9 +93,9 @@ export function WorkspaceLogoControl({
         onDragLeave={() => setOver(false)}
         onDrop={drop}
         className={cn(
-          'relative flex items-center gap-4 rounded-xl border-2 border-dashed border-border bg-card p-4 transition-colors sm:gap-5',
-          over && 'border-primary bg-primary/5',
-          error && 'border-destructive/60',
+          'relative flex items-center gap-4 rounded-xl transition-colors sm:gap-5',
+          // No frame of its own, level with the other fields; a dragged file still shows where it lands.
+          over && 'bg-primary/5 ring-2 ring-primary ring-offset-4 ring-offset-background',
         )}
       >
         {logoUrl ? (
@@ -113,7 +113,7 @@ export function WorkspaceLogoControl({
           <span className="text-sm font-medium">
             {logoUrl ? translate('yourLogo') : translate('uploadYourLogo')}
           </span>
-          <span className="text-body-sm text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {translate('pngOrJPEGUpTo2MBDropIt')}
           </span>
           <span className="mt-1.5 flex flex-wrap gap-2">

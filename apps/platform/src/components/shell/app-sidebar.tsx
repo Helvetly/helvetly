@@ -9,7 +9,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
-import { LanguageMenuItems } from '@helvetly/ui/components/language-switcher'
 import {
   Sidebar,
   SidebarContent,
@@ -454,7 +453,6 @@ function UserMenu({
               </DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <LanguageMenuItems />
             <ThemeSwitcher />
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={signOut.isPending} onSelect={() => signOut.mutate()}>

@@ -10,8 +10,9 @@ import {
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
+import { LanguageChoice } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Download, UserRound, Trash2 } from 'lucide-react'
+import { Download, Languages, UserRound, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
@@ -46,6 +47,7 @@ export function AccountSettings() {
         {user ? (
           <>
             <Profile user={user} />
+            <Language />
             <SignInMethods email={user.email} />
             <TwoFactor />
             <Sessions />
@@ -115,6 +117,20 @@ function Profile({ user }: { user: User }) {
           </FormField>
         </FieldGrid>
       </form>
+    </SettingsSection>
+  )
+}
+
+/** The interface language, kept in this browser: a reload shows every label in it. */
+function Language() {
+  return (
+    <SettingsSection
+      id="language"
+      icon={Languages}
+      title={translate('language')}
+      description={translate('theLanguageOfHelvetlyInThisBrowser')}
+    >
+      <LanguageChoice />
     </SettingsSection>
   )
 }

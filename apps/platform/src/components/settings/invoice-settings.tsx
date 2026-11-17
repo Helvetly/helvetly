@@ -40,7 +40,7 @@ import {
 import { useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 
 import { useFeatureLock } from '@/components/billing/feature-lock'
-import { formatUid } from '@/components/clients/client-form-model'
+import { formatUid, TERM_PRESETS } from '@/components/clients/client-form-model'
 import {
   Combobox,
   COUNTRY_OPTIONS,
@@ -356,7 +356,6 @@ const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
   { value: 'it', label: translate('italiano') },
   { value: 'en', label: translate('english') },
 ]
-const TERMS = ['10', '30', '60']
 
 /** What issuing needs, in the contract's missing_fields order; computed live from the form. */
 export function missingFrom(values: Values): string[] {
@@ -672,7 +671,9 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
   const [customRate, setCustomRate] = useState(
     () => !(VAT_RATES as readonly string[]).includes(values.default_vat_rate),
   )
-  const [customTerms, setCustomTerms] = useState(() => !TERMS.includes(values.default_terms_days))
+  const [customTerms, setCustomTerms] = useState(
+    () => !TERM_PRESETS.includes(values.default_terms_days),
+  )
   const [active, setActive] = useSectionInView()
   const iban = ibanInfo(values.iban)
   const year = Number(today().slice(0, 4))
@@ -1292,7 +1293,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                     label={translate('paymentTerms')}
                     value={customTerms ? 'custom' : values.default_terms_days}
                     options={[
-                      ...TERMS.map((days) => ({
+                      ...TERM_PRESETS.map((days) => ({
                         value: days,
                         label: translate('days3', { days: days }),
                       })),

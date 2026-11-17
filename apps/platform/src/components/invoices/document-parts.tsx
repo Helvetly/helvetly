@@ -1,0 +1,237 @@
+'use client'
+import { localizedHref } from '@helvetly/i18n'
+import { Callout } from '@helvetly/ui/components/callout'
+import { Loader } from '@helvetly/ui/components/loader'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { cn } from '@helvetly/ui/lib/utils'
+import { ArrowUpRight, CircleAlert, CircleHelp, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
+
+import { addressLines } from '@/components/clients/client-bits'
+import { ClientForm } from '@/components/clients/client-form'
+import { countryName } from '@/components/clients/client-form-model'
+import { type Client } from '@/lib/clients'
+import { translate } from '@/lib/i18n'
+import { type InvoiceSettings } from '@/lib/invoices'
+
+import { ClientSearch } from './client-search'
+
+// The printed-page parts the invoice and quote editors share.
+
+export const PARTY_LABEL =
+  'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase'
+
+export const proseInput =
+  'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-[14px] leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+
+/** Name, address lines, country and VAT number, set the same way for seller and client. */
+function PartyLines({
+  party,
+}: {
+  party: Pick<
+    Client,
+    'name' | 'street' | 'street_number' | 'apt' | 'zip' | 'city' | 'country' | 'vat_number'
+  >
+}) {
+  return (
+    <>
+      <span className="pr-14 text-[16px] font-medium">{party.name}</span>
+      {addressLines(party).map((line) => (
+        <span key={line} className="text-[14px] leading-relaxed">
+          {line}
+        </span>
+      ))}
+      {party.country && (
+        <span className="text-[14px] leading-relaxed text-muted-foreground">
+          {countryName(party.country)}
+        </span>
+      )}
+      {party.vat_number && (
+        <span className="mt-0.5 font-mono text-[12.5px] text-muted-foreground">
+          {party.vat_number}
+        </span>
+      )}
+    </>
+  )
+}
+
+/** The workspace's company, as it prints ("Billed by" on an invoice). */
+export function SellerBlock({ settings, label }: { settings: InvoiceSettings; label: string }) {
+  return (
+    <div className="grid content-start gap-2">
+      <span className={PARTY_LABEL}>{label}</span>
+      {/* mt-1: level with the client's name, which sits inside its padded picker button */}
+      <div className="mt-1 grid">
+        <PartyLines
+          party={{
+            ...settings.seller,
+            name: settings.seller.name || translate('yourCompany'),
+          }}
+        />
+      </div>
+      {!settings.is_complete && (
+        <Link
+          href="/settings/invoices"
+          className="inline-flex w-fit items-center gap-1 text-[12.5px] text-link underline underline-offset-2 hover:no-underline"
+        >
+          {translate('completeYourCompanyDetails')}
+          <ArrowUpRight className="size-3" />
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/** The client (with its address as it will print) or the picker ("Billed to" on an invoice). */
+export function ClientBlock({
+  label,
+  missing,
+  client,
+  open,
+  locked,
+  invalid,
+  onOpenChange,
+  onPick,
+}: {
+  label: string
+  /** Shown under an empty picker once the document was tried without a client. */
+  missing: string
+  client: Client | null
+  open: boolean
+  locked: boolean
+  invalid: boolean
+  onOpenChange: (open: boolean) => void
+  onPick: (client: Client) => void
+}) {
+  const [creating, setCreating] = useState(false)
+  return (
+    <div className="grid content-start gap-2">
+      <span className={cn(PARTY_LABEL, invalid && 'text-destructive')}>
+        {label}
+        <span aria-hidden className="ml-0.5 text-destructive">
+          *
+        </span>
+      </span>
+      <Popover open={open && !locked} onOpenChange={onOpenChange}>
+        <PopoverTrigger asChild disabled={locked}>
+          {client ? (
+            <button
+              type="button"
+              className="group relative -mx-3 -my-2 grid w-[calc(100%+24px)] max-w-[344px] rounded-lg p-3 text-left transition-colors outline-none hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:hover:bg-transparent"
+            >
+              {!locked && (
+                // Hidden from the name: it starts with what the button shows (the client), Change last.
+                <span
+                  aria-hidden
+                  className="absolute top-3 right-3 text-[12px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                >
+                  {translate('change')}
+                </span>
+              )}
+              <PartyLines party={client} />
+              {!locked && <span className="sr-only">{translate('change')}</span>}
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-invalid={invalid || undefined}
+              className="flex h-[92px] w-full max-w-[320px] items-center justify-center gap-2 rounded-xl border border-dashed border-border text-[14px] text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground data-invalid:border-destructive/60 data-invalid:text-destructive"
+            >
+              <Plus className="size-4" />
+              {translate('chooseAClient3')}
+            </button>
+          )}
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
+          <ClientSearch
+            selectedId={client?.id ?? null}
+            onSelect={onPick}
+            onCreate={() => {
+              onOpenChange(false)
+              setCreating(true)
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+      {creating && (
+        <ClientForm
+          onClose={() => setCreating(false)}
+          onSaved={(created) => {
+            setCreating(false)
+            onPick(created)
+          }}
+        />
+      )}
+      {invalid && <span className="text-[12px] text-destructive">{missing}</span>}
+      {client?.is_draft && (
+        <Callout tone="warning" icon={CircleAlert} className="max-w-sm rounded-lg px-3 py-2">
+          <span>
+            {translate('theAddressIsIncompleteSoThisCanBeDrafted')}{' '}
+            <a
+              href={localizedHref(`/clients?id=${encodeURIComponent(client.id)}`)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium underline underline-offset-4 hover:no-underline"
+            >
+              {translate('completeIt')}
+            </a>
+          </span>
+        </Callout>
+      )}
+    </div>
+  )
+}
+
+export function MetaLabel({
+  htmlFor,
+  error,
+  tip,
+  children,
+}: {
+  htmlFor: string
+  error: string | undefined
+  tip?: string
+  children: string
+}) {
+  return (
+    <dt className="flex h-8 items-center gap-1">
+      <label htmlFor={htmlFor} className={cn('text-muted-foreground', error && 'text-destructive')}>
+        {children}
+      </label>
+      {tip && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              tabIndex={-1} // Tab goes field to field, not through every (?)
+              aria-label={translate('about', { children: children })}
+              className="text-muted-foreground/70 hover:text-foreground"
+            >
+              <CircleHelp className="size-3.5 stroke-[1.75]" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-60">{tip}</TooltipContent>
+        </Tooltip>
+      )}
+    </dt>
+  )
+}
+
+export function TotalLine({
+  label,
+  value,
+  muted,
+}: {
+  label: string
+  value: string | null
+  muted?: boolean
+}) {
+  return (
+    <div className={cn('flex justify-between gap-3', muted && 'text-muted-foreground')}>
+      <dt>{label}</dt>
+      <dd className="tabular-nums">{value ?? <Loader className="inline-flex min-h-0 w-auto" />}</dd>
+    </div>
+  )
+}

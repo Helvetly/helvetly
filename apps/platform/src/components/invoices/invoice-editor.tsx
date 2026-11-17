@@ -11,7 +11,6 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import {
   Sheet,
@@ -26,16 +25,16 @@ import {
   ArrowUpRight,
   Check,
   CircleAlert,
-  CircleHelp,
   CloudOff,
   Ellipsis,
   Download,
   ExternalLink,
   Eye,
   FileLock2,
+  Landmark,
+  type LucideIcon,
   Lock,
   LoaderCircle,
-  Plus,
   Trash2,
   X,
   ArrowLeft,
@@ -47,9 +46,6 @@ import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { addressLines } from '@/components/clients/client-bits'
-import { ClientForm } from '@/components/clients/client-form'
-import { countryName } from '@/components/clients/client-form-model'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
 import { RecordLink } from '@/components/record-link'
@@ -93,9 +89,16 @@ import {
 } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
 
-import { ClientSearch } from './client-search'
 import type { Compose } from './compose'
 import { DateField, DueDateField, quietValue, ServiceField } from './date-fields'
+import {
+  ClientBlock,
+  MetaLabel,
+  PARTY_LABEL,
+  proseInput,
+  SellerBlock,
+  TotalLine,
+} from './document-parts'
 import {
   applyClient,
   changeVatMode,
@@ -116,7 +119,7 @@ import { InstalmentsSection } from './instalments-section'
 import { KIND_ICONS } from './invoice-bits'
 import { IssueBlockers } from './invoice-dialogs'
 import { focusCell, LinesEditor } from './lines-editor'
-import { PaymentToggles } from './payment-methods'
+import { METHOD_ICONS, PaymentToggles } from './payment-methods'
 import { PdfView } from './pdf-view'
 import { PlanCard } from './plan-card'
 import { PlanDialog } from './plan-dialog'
@@ -406,6 +409,8 @@ function Editor({
   const canManage = canManageInvoices(useSession().data?.role)
   const noun = kindInfo(kind).label.toLowerCase()
   const preceding = PRECEDING[kind]
+  // A notice between the options bar and the page needs a gap; without one the page starts at the bar's line.
+  const banner = Boolean((preceding && invoice?.credited_invoice) || reasons?.length)
   const hasPaymentMethods = !credit && kind !== 'proforma' && kind !== 'self_billed'
 
   // A method that cannot apply (settings, IBAN, currency) is sent as off, so the saved choice never
@@ -718,7 +723,8 @@ function Editor({
       <div className="flex min-h-0 flex-1 flex-col max-md:overflow-y-auto">
         <div className="shrink-0 border-b border-border/60 px-3 py-3 sm:px-6">
           <div className="mx-auto w-full max-w-[1040px]">
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            {/* One row on a phone, scrolled sideways, instead of three stacked rows above the page. */}
+            <div className="flex items-center gap-2 max-sm:-mx-3 max-sm:[scrollbar-width:none] max-sm:overflow-x-auto max-sm:px-3 max-sm:py-1 max-sm:*:shrink-0 sm:flex-wrap sm:justify-center">
               {credit ? (
                 <span className="text-[13px] text-muted-foreground">
                   {values.currency} ·{' '}
@@ -767,7 +773,14 @@ function Editor({
           </div>
         </div>
         <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
-          <div ref={top} className="@container min-w-0 flex-1 scroll-mt-16 px-3 pt-4 pb-8 sm:px-6">
+          <div
+            ref={top}
+            className={cn(
+              '@container min-w-0 flex-1 scroll-mt-16 px-3 pb-8 sm:px-6',
+              // The page starts at the options bar's line; only a notice above it needs the gap.
+              banner && 'pt-4',
+            )}
+          >
             <div className="mx-auto grid w-full max-w-[1040px] grid-cols-[minmax(0,1fr)] gap-4">
               {preceding && invoice?.credited_invoice && (
                 <Callout tone="warning" icon={CircleAlert}>
@@ -792,7 +805,10 @@ function Editor({
               <article
                 aria-label={title}
                 // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
-                className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
+                className={cn(
+                  'relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
+                  !banner && 'border-t-0',
+                )}
               >
                 {/* Letterhead: logo left; title and dates right. */}
                 {/* Letterhead: logo left, title right; below it seller, client and dates side by side. */}
@@ -808,9 +824,11 @@ function Editor({
                   </div>
                 </header>
 
-                <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_300px]">
-                  <SellerBlock settings={settings} />
+                <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-3">
+                  <SellerBlock settings={settings} label={translate('billedBy')} />
                   <ClientBlock
+                    label={translate('billedTo')}
+                    missing={translate('chooseWhoThisInvoiceIsFor')}
                     client={client ?? null}
                     open={picking}
                     locked={credit}
@@ -823,7 +841,7 @@ function Editor({
                       focusCell(values.lines[0]?.key ?? '', 'description')
                     }}
                   />
-                  <dl className="grid w-[300px] max-w-full grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-[13.5px] md:col-span-2 @4xl:col-span-1">
+                  <dl className="grid w-full max-w-[300px] grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-[13.5px] md:col-span-2 @4xl:col-span-1">
                     <MetaLabel htmlFor="invoice-issue_date" error={errors.issue_date}>
                       {translate('issueDate')}
                     </MetaLabel>
@@ -859,6 +877,7 @@ function Editor({
                     <MetaLabel
                       htmlFor="invoice-service_date"
                       error={errors.service_date ?? errors.service_date_end}
+                      tip={translate('theDayOrPeriodYouDeliveredPrintedOn')}
                     >
                       {translate('service')}
                     </MetaLabel>
@@ -1269,61 +1288,6 @@ function Editor({
   )
 }
 
-const proseInput =
-  'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-[14px] leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
-
-function MetaLabel({
-  htmlFor,
-  error,
-  tip,
-  children,
-}: {
-  htmlFor: string
-  error: string | undefined
-  tip?: string
-  children: string
-}) {
-  return (
-    <dt className="flex h-8 items-center gap-1">
-      <label htmlFor={htmlFor} className={cn('text-muted-foreground', error && 'text-destructive')}>
-        {children}
-      </label>
-      {tip && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              tabIndex={-1} // Tab goes field to field, not through every (?)
-              aria-label={translate('about', { children: children })}
-              className="text-muted-foreground/70 hover:text-foreground"
-            >
-              <CircleHelp className="size-3.5 stroke-[1.75]" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-60">{tip}</TooltipContent>
-        </Tooltip>
-      )}
-    </dt>
-  )
-}
-
-function TotalLine({
-  label,
-  value,
-  muted,
-}: {
-  label: string
-  value: string | null
-  muted?: boolean
-}) {
-  return (
-    <div className={cn('flex justify-between gap-3', muted && 'text-muted-foreground')}>
-      <dt>{label}</dt>
-      <dd className="tabular-nums">{value ?? <Loader className="inline-flex min-h-0 w-auto" />}</dd>
-    </div>
-  )
-}
-
 function Hint({ keys, children }: { keys: string; children: ReactNode }) {
   return (
     <span className="flex items-center gap-1.5">
@@ -1370,161 +1334,6 @@ function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => vo
   )
 }
 
-const PARTY_LABEL = 'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase'
-
-/** Name, address lines, country and VAT number, set the same way for seller and client. */
-function PartyLines({
-  party,
-}: {
-  party: Pick<
-    Client,
-    'name' | 'street' | 'street_number' | 'apt' | 'zip' | 'city' | 'country' | 'vat_number'
-  >
-}) {
-  return (
-    <>
-      <span className="pr-14 text-[16px] font-medium">{party.name}</span>
-      {addressLines(party).map((line) => (
-        <span key={line} className="text-[14px] leading-relaxed">
-          {line}
-        </span>
-      ))}
-      {party.country && (
-        <span className="text-[14px] leading-relaxed text-muted-foreground">
-          {countryName(party.country)}
-        </span>
-      )}
-      {party.vat_number && (
-        <span className="mt-0.5 font-mono text-[12.5px] text-muted-foreground">
-          {party.vat_number}
-        </span>
-      )}
-    </>
-  )
-}
-
-/** "Billed by": the workspace's company, as it prints. */
-function SellerBlock({ settings }: { settings: InvoiceSettings }) {
-  return (
-    <div className="grid content-start gap-2">
-      <span className={PARTY_LABEL}>{translate('billedBy')}</span>
-      {/* mt-1: level with the client's name, which sits inside its padded picker button */}
-      <div className="mt-1 grid">
-        <PartyLines
-          party={{
-            ...settings.seller,
-            name: settings.seller.name || translate('yourCompany'),
-          }}
-        />
-      </div>
-      {!settings.is_complete && (
-        <Link
-          href="/settings/invoices"
-          className="inline-flex w-fit items-center gap-1 text-[12.5px] text-link underline underline-offset-2 hover:no-underline"
-        >
-          {translate('completeYourCompanyDetails')}
-          <ArrowUpRight className="size-3" />
-        </Link>
-      )}
-    </div>
-  )
-}
-
-/** "Billed to": the client (with its address as it will print) or the picker. */
-function ClientBlock({
-  client,
-  open,
-  locked,
-  invalid,
-  onOpenChange,
-  onPick,
-}: {
-  client: Client | null
-  open: boolean
-  locked: boolean
-  invalid: boolean
-  onOpenChange: (open: boolean) => void
-  onPick: (client: Client) => void
-}) {
-  const [creating, setCreating] = useState(false)
-  return (
-    <div className="grid content-start gap-2">
-      <span className={cn(PARTY_LABEL, invalid && 'text-destructive')}>
-        {translate('billedTo')}
-        <span aria-hidden className="ml-0.5 text-destructive">
-          *
-        </span>
-      </span>
-      <Popover open={open && !locked} onOpenChange={onOpenChange}>
-        <PopoverTrigger asChild disabled={locked}>
-          {client ? (
-            <button
-              type="button"
-              aria-label={translate('clientChangeClient', { name: client.name })}
-              className="group relative -mx-3 -my-2 grid w-[calc(100%+24px)] max-w-[344px] rounded-lg p-3 text-left transition-colors outline-none hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:hover:bg-transparent"
-            >
-              {!locked && (
-                <span className="absolute top-3 right-3 text-[12px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                  {translate('change')}
-                </span>
-              )}
-              <PartyLines party={client} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              data-invalid={invalid || undefined}
-              className="flex h-[92px] w-full max-w-[320px] items-center justify-center gap-2 rounded-xl border border-dashed border-border text-[14px] text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground data-invalid:border-destructive/60 data-invalid:text-destructive"
-            >
-              <Plus className="size-4" />
-              {translate('chooseAClient3')}
-            </button>
-          )}
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
-          <ClientSearch
-            selectedId={client?.id ?? null}
-            onSelect={onPick}
-            onCreate={() => {
-              onOpenChange(false)
-              setCreating(true)
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-      {creating && (
-        <ClientForm
-          onClose={() => setCreating(false)}
-          onSaved={(created) => {
-            setCreating(false)
-            onPick(created)
-          }}
-        />
-      )}
-      {invalid && (
-        <span className="text-[12px] text-destructive">
-          {translate('chooseWhoThisInvoiceIsFor')}
-        </span>
-      )}
-      {client?.is_draft && (
-        <Callout tone="warning" icon={CircleAlert} className="max-w-sm rounded-lg px-3 py-2">
-          <span>
-            {translate('theAddressIsIncompleteSoThisCanBeDrafted')}{' '}
-            <a
-              href={localizedHref(`/clients?id=${encodeURIComponent(client.id)}`)}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4 hover:no-underline"
-            >
-              {translate('completeIt')}
-            </a>
-          </span>
-        </Callout>
-      )}
-    </div>
-  )
-}
-
 function PaymentNote({
   settings,
   ibanValid,
@@ -1537,28 +1346,25 @@ function PaymentNote({
   revolutUrl: string | null
 }) {
   return (
-    <div className="grid max-w-sm content-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+    <div className="grid w-full max-w-sm content-start gap-2.5 text-[13px] leading-snug">
       <span className={PARTY_LABEL}>{translate('payment')}</span>
       {settings.iban ? (
-        <div className="grid gap-0.5">
-          <span className="font-mono text-[13px] tracking-tight text-foreground">
-            {formatIban(settings.iban)}
-          </span>
-          <span className={cn('flex items-center gap-1.5', !ibanValid && 'text-destructive')}>
-            {ibanValid ? (
-              <Check className="size-3.5 text-success" />
-            ) : (
-              <CircleAlert className="size-3.5" />
-            )}
-            {settings.bank_name}
-            {settings.bank_name && ' · '}
-            {qrBill
-              ? translate('qrBillAttached')
-              : ibanValid
-                ? translate('bankDetailsPrinted')
-                : translate('checkTheIBAN')}
-          </span>
-        </div>
+        <ul className="grid gap-2">
+          <PaymentRow
+            icon={ibanValid ? Landmark : CircleAlert}
+            invalid={!ibanValid}
+            title={<span className="font-mono tracking-tight">{formatIban(settings.iban)}</span>}
+            detail={ibanValid ? settings.bank_name : translate('checkTheIBAN')}
+          />
+          {qrBill && <PaymentRow icon={METHOD_ICONS.qr_bill} title={translate('swissQRBill')} />}
+          {revolutUrl && (
+            <PaymentRow
+              icon={METHOD_ICONS.revolut}
+              title={translate('revolut2')}
+              detail={revolutUrl.replace('https://', '')}
+            />
+          )}
+        </ul>
       ) : (
         <Link
           href="/settings/invoices"
@@ -1568,12 +1374,39 @@ function PaymentNote({
           <ArrowUpRight className="size-3" />
         </Link>
       )}
-      {revolutUrl && (
-        <span className="text-foreground">
-          {translate('revolut')}
-          <span className="text-muted-foreground">{revolutUrl.replace('https://', '')}</span>
-        </span>
-      )}
     </div>
+  )
+}
+
+function PaymentRow({
+  icon: Icon,
+  title,
+  detail,
+  invalid = false,
+}: {
+  icon: LucideIcon
+  title: ReactNode
+  detail?: string | null
+  invalid?: boolean
+}) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-muted-foreground',
+          invalid && 'border-destructive/40 bg-destructive/5 text-destructive',
+        )}
+      >
+        <Icon aria-hidden className="size-4 stroke-[1.5]" />
+      </span>
+      <span className="grid min-w-0">
+        <span className="truncate text-foreground">{title}</span>
+        {detail && (
+          <span className={cn('truncate text-muted-foreground', invalid && 'text-destructive')}>
+            {detail}
+          </span>
+        )}
+      </span>
+    </li>
   )
 }
