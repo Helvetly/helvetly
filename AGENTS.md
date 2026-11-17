@@ -97,7 +97,8 @@ are the reference.
 - Next.js 16 changed many APIs: read the guides in `node_modules/next/dist/docs/` before relying
   on older knowledge.
 - Next.js 16, React 19, Tailwind CSS 4, shadcn/ui (`radix-nova` style), Vitest 5 + Testing Library.
-- Lint: oxlint. Format: oxfmt (imports, `package.json` and Tailwind classes are sorted by it).
+- Lint: oxlint; a warning fails the gate like an error (`--deny-warnings`). `oxc/no-map-spread` is off: React state
+  is never changed in place, so a changed copy inside `map` is the correct update, not waste. Format: oxfmt (imports, `package.json` and Tailwind classes are sorted by it).
 
 ## 6. Commands
 

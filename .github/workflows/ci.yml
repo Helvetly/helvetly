@@ -86,7 +86,7 @@ jobs:
       - &install
         run: pnpm install --frozen-lockfile
       - run: pnpm format:check
-      - run: pnpm exec oxlint
+      - run: pnpm exec oxlint --deny-warnings
       - if: needs.changes.outputs.backend == 'true'
         run: pnpm --filter @helvetly/api lint
       - run: pnpm lint:ui

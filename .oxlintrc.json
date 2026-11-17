@@ -18,6 +18,7 @@
   "rules": {
     "react/react-in-jsx-scope": "off",
     "typescript/no-explicit-any": "error",
+    "oxc/no-map-spread": "off",
     "typescript/consistent-type-imports": "error",
     "import/no-cycle": "error",
     "jsx-a11y/no-noninteractive-tabindex": [

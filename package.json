@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "build:storybook": "pnpm --filter @helvetly/platform exec storybook build --disable-telemetry && pnpm --filter @helvetly/portal exec storybook build --disable-telemetry",
     "typecheck": "turbo run typecheck",
-    "lint": "oxlint && turbo run lint",
+    "lint": "oxlint --deny-warnings && turbo run lint",
     "lint:ui": "bash scripts/ui-guard.sh",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
