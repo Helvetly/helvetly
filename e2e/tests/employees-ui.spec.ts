@@ -33,6 +33,10 @@ test('an owner records an employee, their pay, a document, and a payroll month a
   const form = page.getByRole('dialog', { name: 'New employee' })
   await form.getByLabel('First name').fill('Anna')
   await form.getByLabel('Last name').fill(last)
+  await form.getByLabel('Phone', { exact: true }).fill('079 123 45 67')
+  await form.getByLabel('Street').fill('Seefeldstrasse')
+  await form.getByLabel('Number', { exact: true }).fill('12')
+  await form.getByLabel('Apt / suite').fill('3rd floor')
   await form.getByLabel('Start date').fill('2024-01-01')
   await expect(form.getByLabel('Work country')).toHaveValue('CH') // suggested from the company settings
   await shoot(page, '02-employee-form')
@@ -42,6 +46,13 @@ test('an owner records an employee, their pay, a document, and a payroll month a
   const rows = object(await (await api.request.get('/api/v1/employees')).json()).data
   if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Expected one employee')
   const id = text(object(rows[0]).id)
+  // The number goes in with the phone's country prefix; house number and apartment stay their own fields.
+  expect(object(rows[0])).toMatchObject({
+    phone: '+41791234567',
+    street: 'Seefeldstrasse',
+    street_number: '12',
+    apt: '3rd floor',
+  })
   const terms = await api.write(`/employees/${id}/pay-terms`, {
     effective_from: '2024-01-01',
     basis: 'monthly',

@@ -4164,5 +4164,17 @@
   "heicCantBeRead": "Le foto HEIC non possono essere lette automaticamente. Esporta la foto come JPEG o inserisci tu stesso i dettagli.",
   "receiptReadFailed": "Impossibile leggere la ricevuta: {reason} I tuoi dati sono rimasti invariati.",
   "billedBy": "Mittente",
-  "changeLogo": "Cambia logo"
+  "changeLogo": "Cambia logo",
+  "employeeLastNamePlaceholder": "Muster",
+  "employeeEmailPlaceholder": "anna.muster@example.ch",
+  "employeePositionPlaceholder": "Ad es. Designer",
+  "employeeDepartmentPlaceholder": "Ad es. Studio",
+  "employeeEmployingEntityPlaceholder": "Ad es. Muster SA",
+  "employeeLocalityPlaceholder": "Ad es. Winterthur",
+  "employeePlaceOfWorkPlaceholder": "Ad es. Ufficio di Zurigo",
+  "employeeCrossBorderNotePlaceholder": "Ad es. Vive in Germania, lavora tre giorni a Zurigo",
+  "employeePensionInsurerPlaceholder": "Ad es. Swiss Life",
+  "employeeAccidentInsurerPlaceholder": "Ad es. Suva",
+  "employeeSicknessInsurerPlaceholder": "Ad es. Helsana",
+  "employeeTaxIdPlaceholder": "Ad es. 123.456.789"
 }

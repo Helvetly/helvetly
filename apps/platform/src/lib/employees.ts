@@ -35,6 +35,8 @@ export type Employee = {
   email: string | null
   phone: string | null
   street: string | null
+  street_number: string | null
+  apt: string | null
   postal_code: string | null
   city: string | null
   address_country: string | null

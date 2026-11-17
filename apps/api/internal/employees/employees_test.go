@@ -304,6 +304,20 @@ func TestEmployeeWithoutAndWithMember(t *testing.T) {
 	}
 }
 
+func TestEmployeeAddressParts(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	id := e.employee(owner, with(anna, "street", "Seefeldstrasse", "street_number", "12", "apt", "3rd floor"))
+	got := e.must(owner, 200, "GET", "/api/v1/employees/"+id, nil)
+	if got["street"] != "Seefeldstrasse" || got["street_number"] != "12" || got["apt"] != "3rd floor" {
+		t.Fatalf("address parts after create: %v", got)
+	}
+	got = e.must(owner, 200, "PATCH", "/api/v1/employees/"+id, map[string]any{"street_number": "14", "apt": nil})
+	if got["street_number"] != "14" || got["apt"] != nil || got["street"] != "Seefeldstrasse" {
+		t.Fatalf("address parts after edit: %v", got)
+	}
+}
+
 func TestEmployeeValidationAndList(t *testing.T) {
 	e := newEnv(t)
 	owner := e.workspace()

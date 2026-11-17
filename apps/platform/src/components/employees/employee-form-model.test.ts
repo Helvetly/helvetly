@@ -102,3 +102,23 @@ test('Swiss fields show for work in Switzerland only, and withholding tax needs 
 test('weekly hours go with a decimal point', () => {
   expect(toInput({ ...newValues(undefined), weekly_hours: '42,5' }).weekly_hours).toBe('42.5')
 })
+
+test('phone: validated with its country, sent as E.164, read back nationally', () => {
+  const values = { ...newValues(undefined), phone: '079 123 45 67', phone_country: 'CH' as const }
+  expect(validate(values).phone).toBeUndefined()
+  expect(toInput(values).phone).toBe('+41791234567')
+  expect(validate({ ...values, phone: '12' }).phone).toBeTruthy()
+  const stored = valuesFromEmployee(employee())
+  expect(stored).toMatchObject({ phone: '044 555 01 01', phone_country: 'CH' })
+  expect(toInput(stored, stored)).not.toHaveProperty('phone')
+  expect(toInput({ ...stored, phone_country: 'DE' }, stored)).toHaveProperty('phone')
+})
+
+test('house number and apartment are their own fields', () => {
+  const values = { ...newValues(undefined), street: 'Seefeldstrasse', street_number: '12', apt: '' }
+  expect(toInput(values)).toMatchObject({
+    street: 'Seefeldstrasse',
+    street_number: '12',
+    apt: null,
+  })
+})
