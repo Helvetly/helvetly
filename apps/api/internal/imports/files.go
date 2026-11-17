@@ -245,7 +245,7 @@ func xlsxSheets(b []byte) ([]string, error) {
 		var buf strings.Builder
 		w := csv.NewWriter(&buf)
 		n := 0
-		for rows.Next() && n < maxSheetRows {
+		for rows.Next() {
 			cols, err := rows.Columns()
 			if err != nil {
 				_ = rows.Close()
@@ -253,6 +253,10 @@ func xlsxSheets(b []byte) ([]string, error) {
 			}
 			if strings.TrimSpace(strings.Join(cols, "")) == "" {
 				continue
+			}
+			if n == maxSheetRows {
+				_ = rows.Close()
+				return nil, unsupported{fmt.Sprintf("the Excel sheet exceeds %d non-empty rows: split it into smaller files.", maxSheetRows)}
 			}
 			if err := w.Write(cols); err != nil {
 				_ = rows.Close()
