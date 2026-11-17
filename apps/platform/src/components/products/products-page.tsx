@@ -11,8 +11,6 @@ import {
   ArchiveRestore,
   ArrowDown,
   ArrowUp,
-  ChevronLeft,
-  ChevronRight,
   CopyPlus,
   Download,
   ListFilter,
@@ -35,6 +33,7 @@ import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
+import { listTable, Pager } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
   dropdownKit,
@@ -541,10 +540,10 @@ export function ProductsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
-                  <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-12 pl-5">
+                  <tr className={listTable.head}>
+                    <th className={listTable.select}>
                       <Checkbox
                         aria-label={translate('selectAllItemsOnThisPage')}
                         className="bg-card"
@@ -563,7 +562,7 @@ export function ProductsPage() {
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
                           className={cn(
-                            'px-3 font-medium',
+                            listTable.th,
                             column.width,
                             column.align === 'right' && 'text-right',
                             column.wide && 'hidden @6xl:table-cell',
@@ -592,7 +591,7 @@ export function ProductsPage() {
                         </th>
                       )
                     })}
-                    <th className="w-12">
+                    <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
@@ -612,7 +611,7 @@ export function ProductsPage() {
                 </tbody>
               </table>
 
-              <ul className="divide-y divide-border/70 @4xl:hidden">
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((product) => (
                   <ProductItem
                     key={product.id}
@@ -625,45 +624,7 @@ export function ProductsPage() {
                 ))}
               </ul>
 
-              {meta && (
-                <nav
-                  aria-label={translate('pages')}
-                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
-                >
-                  <span className="tabular-nums">
-                    {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)}
-                    {translate('of5')}
-                    {meta.total}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('previousPage')}
-                      disabled={meta.page <= 1}
-                      onClick={() => update({ page: meta.page - 1 })}
-                    >
-                      <ChevronLeft />
-                    </Button>
-                    <span className="tabular-nums">
-                      {translate('page')}
-                      {meta.page}
-                      {translate('of5')}
-                      {Math.max(meta.total_pages, 1)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('nextPage')}
-                      disabled={meta.page >= meta.total_pages}
-                      onClick={() => update({ page: meta.page + 1 })}
-                    >
-                      <ChevronRight />
-                    </Button>
-                  </span>
-                </nav>
-              )}
+              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -950,9 +911,9 @@ const ProductRow = memo(function ProductRow({
             return
           act.open(product.id)
         }}
-        className="h-[58px] cursor-pointer transition-colors duration-150 hover:bg-card/70 data-selected:bg-card data-selected:shadow-[0_0_0_1px_var(--color-border),0_1px_2px_oklch(0_0_0/0.04)]"
+        className={cn(listTable.row, 'cursor-pointer')}
       >
-        <td className="pl-5">
+        <td className={listTable.select}>
           <Checkbox
             aria-label={translate('select', { name: product.name })}
             className="bg-card"
@@ -964,8 +925,8 @@ const ProductRow = memo(function ProductRow({
           <td
             key={column.id}
             className={cn(
-              'px-3 py-2',
-              column.align === 'right' && 'text-right',
+              listTable.td,
+              column.align === 'right' && listTable.numeric,
               column.wide && 'hidden @6xl:table-cell',
             )}
           >
@@ -976,7 +937,7 @@ const ProductRow = memo(function ProductRow({
             )}
           </td>
         ))}
-        <td className="pr-3 text-right">
+        <td className={listTable.menu}>
           <RowMenuButton label={translate('actionsFor', { name: product.name })} menu={menu} />
         </td>
       </tr>
@@ -991,7 +952,7 @@ const ProductItem = memo(function ProductItem({ product, selected, bulk, access,
       <li
         data-selected={selected || undefined}
         onPointerEnter={() => act.prefetch(product.id)}
-        className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
+        className={listTable.item}
       >
         <Checkbox
           aria-label={translate('select', { name: product.name })}

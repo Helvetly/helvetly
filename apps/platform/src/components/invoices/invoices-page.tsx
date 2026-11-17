@@ -11,8 +11,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
   ArrowUp,
-  ChevronLeft,
-  ChevronRight,
   CloudOff,
   Download,
   FileDown,
@@ -38,6 +36,7 @@ import {
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import { listTable, Pager } from '@/components/data/list-table'
 import {
   dropdownKit,
   PageContextMenu,
@@ -535,10 +534,10 @@ export function InvoicesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
-                  <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-12 pl-5">
+                  <tr className={listTable.head}>
+                    <th className={listTable.select}>
                       <Checkbox
                         aria-label={translate('selectAllInvoicesOnThisPage')}
                         className="bg-card"
@@ -557,7 +556,7 @@ export function InvoicesPage() {
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
                           className={cn(
-                            'px-3 font-medium',
+                            listTable.th,
                             column.width,
                             column.align === 'right' && 'text-right',
                             column.wide && 'hidden @6xl:table-cell',
@@ -586,7 +585,7 @@ export function InvoicesPage() {
                         </th>
                       )
                     })}
-                    <th className="w-12">
+                    <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
@@ -606,7 +605,7 @@ export function InvoicesPage() {
                 </tbody>
               </table>
 
-              <ul className="divide-y divide-border/70 @4xl:hidden">
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((invoice) => (
                   <InvoiceItem
                     key={invoice.id}
@@ -620,45 +619,7 @@ export function InvoicesPage() {
                 ))}
               </ul>
 
-              {meta && (
-                <nav
-                  aria-label={translate('pages')}
-                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
-                >
-                  <span className="tabular-nums">
-                    {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)}
-                    {translate('of5')}
-                    {meta.total}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('previousPage')}
-                      disabled={meta.page <= 1}
-                      onClick={() => update({ page: meta.page - 1 })}
-                    >
-                      <ChevronLeft />
-                    </Button>
-                    <span className="tabular-nums">
-                      {translate('page')}
-                      {meta.page}
-                      {translate('of5')}
-                      {Math.max(meta.total_pages, 1)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('nextPage')}
-                      disabled={meta.page >= meta.total_pages}
-                      onClick={() => update({ page: meta.page + 1 })}
-                    >
-                      <ChevronRight />
-                    </Button>
-                  </span>
-                </nav>
-              )}
+              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -1027,9 +988,9 @@ const InvoiceRow = memo(function InvoiceRow({
             return
           act.open(invoice.id)
         }}
-        className="h-[58px] cursor-pointer border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-muted/50"
+        className={cn(listTable.row, 'cursor-pointer')}
       >
-        <td className="pl-5">
+        <td className={listTable.select}>
           <Checkbox
             aria-label={translate('selectFor', {
               value1: invoice.number ?? translate('draft4'),
@@ -1044,15 +1005,15 @@ const InvoiceRow = memo(function InvoiceRow({
           <td
             key={column.id}
             className={cn(
-              'truncate px-3',
-              column.align === 'right' && 'text-right',
+              listTable.td,
+              column.align === 'right' && listTable.numeric,
               column.wide && 'hidden @6xl:table-cell',
             )}
           >
             {column.cell(invoice)}
           </td>
         ))}
-        <td className="pr-3 text-right">
+        <td className={listTable.menu}>
           <RowMenuButton
             label={translate('actionsFor2', {
               value1: invoice.number ?? translate('draft4'),
@@ -1073,7 +1034,7 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
       <li
         data-selected={selected || undefined}
         onPointerEnter={() => act.prefetch(invoice.id)}
-        className="flex items-center gap-3 px-4 py-3 data-selected:bg-muted/50"
+        className={listTable.item}
       >
         <Checkbox
           aria-label={translate('selectFor', {

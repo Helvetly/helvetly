@@ -26,6 +26,7 @@ import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
+import { listTable } from './list-table'
 import { DetailsPopover, DetailsSheet, type RowDetails } from './row-details'
 
 export type Column<Row> = {
@@ -142,10 +143,10 @@ export function TablePage<Row extends { id: string }>({
           <LoadingRows />
         ) : (
           <>
-            <table className="hidden w-full table-fixed text-[15px] xl:table">
+            <table className={cn(listTable.table, 'hidden xl:table')}>
               <thead>
-                <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                  <th className="w-12 pl-5">
+                <tr className={listTable.head}>
+                  <th className={listTable.select}>
                     <Checkbox
                       aria-label={translate('selectAll2', { noun: noun })}
                       className="bg-card"
@@ -156,7 +157,7 @@ export function TablePage<Row extends { id: string }>({
                     />
                   </th>
                   {first && (
-                    <th className={cn('px-3 font-medium text-foreground', first.width)}>
+                    <th className={cn(listTable.th, 'text-foreground', first.width)}>
                       <span className="inline-flex items-center gap-1">
                         {first.header} <ChevronDown className="size-3.5" />
                       </span>
@@ -166,9 +167,9 @@ export function TablePage<Row extends { id: string }>({
                     <th
                       key={column.header}
                       className={cn(
-                        'px-3 font-medium last:pr-5',
+                        listTable.th,
                         column.width,
-                        column.align === 'right' && 'text-right',
+                        column.align === 'right' && listTable.numeric,
                         column.wide && 'hidden 2xl:table-cell',
                       )}
                     >
@@ -182,9 +183,9 @@ export function TablePage<Row extends { id: string }>({
                   <tr
                     key={row.id}
                     data-selected={selected.has(row.id) || undefined}
-                    className="h-[50px] transition-colors duration-150 hover:bg-card/70 data-selected:bg-card data-selected:shadow-[0_0_0_1px_var(--color-border),0_1px_2px_oklch(0_0_0/0.04)]"
+                    className={listTable.row}
                   >
-                    <td className="pl-5">
+                    <td className={listTable.select}>
                       <Checkbox
                         aria-label={translate('select2', { title: line(row).title })}
                         className="bg-card"
@@ -193,7 +194,7 @@ export function TablePage<Row extends { id: string }>({
                       />
                     </td>
                     {first && (
-                      <td className="truncate px-3">
+                      <td className={listTable.td}>
                         <DetailsPopover details={details(row)}>{first.cell(row)}</DetailsPopover>
                       </td>
                     )}
@@ -201,8 +202,8 @@ export function TablePage<Row extends { id: string }>({
                       <td
                         key={column.header}
                         className={cn(
-                          'truncate px-3 last:pr-5',
-                          column.align === 'right' && 'text-right tabular-nums',
+                          listTable.td,
+                          column.align === 'right' && listTable.numeric,
                           column.wide && 'hidden 2xl:table-cell',
                         )}
                       >
@@ -214,14 +215,14 @@ export function TablePage<Row extends { id: string }>({
               </tbody>
             </table>
 
-            <ul className="divide-y divide-border/70 xl:hidden">
+            <ul className={cn(listTable.list, 'xl:hidden')}>
               {rows.map((row) => {
                 const { title, subtitle, value, status } = line(row)
                 return (
                   <li
                     key={row.id}
                     data-selected={selected.has(row.id) || undefined}
-                    className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
+                    className={listTable.item}
                   >
                     <Checkbox
                       aria-label={translate('select2', { title: title })}

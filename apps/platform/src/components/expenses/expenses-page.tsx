@@ -10,8 +10,6 @@ import {
   ArrowUp,
   Ban,
   BookCheck,
-  ChevronLeft,
-  ChevronRight,
   CircleCheck,
   CircleDashed,
   Copy,
@@ -43,6 +41,7 @@ import {
   useFeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { listTable, Pager } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
   dropdownKit,
@@ -513,10 +512,10 @@ export function ExpensesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
-                  <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-12 pl-5">
+                  <tr className={listTable.head}>
+                    <th className={listTable.select}>
                       <Checkbox
                         aria-label={translate('selectAllExpensesOnThisPage')}
                         className="cursor-pointer bg-card"
@@ -535,7 +534,7 @@ export function ExpensesPage() {
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
                           className={cn(
-                            'px-3 font-medium',
+                            listTable.th,
                             column.width,
                             column.align === 'right' && 'text-right',
                             column.wide && 'hidden @6xl:table-cell',
@@ -564,7 +563,7 @@ export function ExpensesPage() {
                         </th>
                       )
                     })}
-                    <th className="w-12">
+                    <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
@@ -583,7 +582,7 @@ export function ExpensesPage() {
                 </tbody>
               </table>
 
-              <ul className="divide-y divide-border/70 @4xl:hidden">
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((expense) => (
                   <ExpenseItem
                     key={expense.id}
@@ -596,47 +595,7 @@ export function ExpensesPage() {
                 ))}
               </ul>
 
-              {meta && (
-                <nav
-                  aria-label={translate('pages')}
-                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
-                >
-                  <span className="tabular-nums">
-                    {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)}
-                    {translate('of5')}
-                    {meta.total}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('previousPage')}
-                      className="cursor-pointer"
-                      disabled={meta.page <= 1}
-                      onClick={() => update({ page: meta.page - 1 })}
-                    >
-                      <ChevronLeft />
-                    </Button>
-                    <span className="tabular-nums">
-                      {translate('page')}
-                      {meta.page}
-                      {translate('of5')}
-                      {Math.max(meta.total_pages, 1)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('nextPage')}
-                      className="cursor-pointer"
-                      disabled={meta.page >= meta.total_pages}
-                      onClick={() => update({ page: meta.page + 1 })}
-                    >
-                      <ChevronRight />
-                    </Button>
-                  </span>
-                </nav>
-              )}
+              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -972,9 +931,9 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
             return
           act.open(expense.id)
         }}
-        className="h-[54px] cursor-pointer border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-selected:bg-muted/60"
+        className={cn(listTable.row, 'cursor-pointer')}
       >
-        <td className="pl-5">
+        <td className={listTable.select}>
           <Checkbox
             aria-label={translate('selectExpense', { number: expense.number })}
             className="cursor-pointer bg-card"
@@ -982,7 +941,9 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
             onCheckedChange={() => act.toggle(expense.id)}
           />
         </td>
-        <td className="px-3 text-muted-foreground tabular-nums">#{expense.number}</td>
+        <td className={cn(listTable.td, 'text-muted-foreground tabular-nums')}>
+          #{expense.number}
+        </td>
         <td className="px-3">
           <span className="grid min-w-0 leading-tight">
             <span className="truncate" title={expense.supplier_name ?? undefined}>
@@ -1046,7 +1007,7 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
             </span>
           )}
         </td>
-        <td className="pr-3 text-right">
+        <td className={listTable.menu}>
           <RowMenuButton
             label={translate('actionsForExpense', { number: expense.number })}
             menu={menu}
@@ -1064,7 +1025,7 @@ const ExpenseItem = memo(function ExpenseItem({ expense, selected, bulk, access,
       <li
         data-selected={selected || undefined}
         onPointerEnter={() => act.prefetch(expense.id)}
-        className="flex items-center gap-3 px-4 py-3 data-selected:bg-muted/60"
+        className={listTable.item}
       >
         <Checkbox
           aria-label={translate('selectExpense', { number: expense.number })}

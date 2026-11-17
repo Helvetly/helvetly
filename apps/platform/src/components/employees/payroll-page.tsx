@@ -5,6 +5,7 @@ import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatMoney } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
 import {
   BookOpenCheck,
   ChevronLeft,
@@ -18,6 +19,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
@@ -263,17 +265,17 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
 function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: string) => void }) {
   return (
     <>
-      <table className="hidden w-full table-fixed text-title-sm lg:table">
+      <table className={cn(listTable.table, 'hidden lg:table')}>
         <thead>
-          <tr className="h-11 border-b bg-muted/50 text-left text-body-sm text-muted-foreground">
-            <th className="w-[17%] pl-5 font-medium">{translate('payrollColEmployee')}</th>
-            <th className="w-[15%] px-3 font-medium">{translate('payrollColPeriod')}</th>
+          <tr className={listTable.head}>
+            <th className={cn(listTable.th, 'w-[17%]')}>{translate('payrollColEmployee')}</th>
+            <th className={cn(listTable.th, 'w-[15%]')}>{translate('payrollColPeriod')}</th>
             {AMOUNTS.map(([key, label]) => (
-              <th key={key} className="px-2 text-right font-medium">
+              <th key={key} className={cn(listTable.th, listTable.numeric)}>
                 {label}
               </th>
             ))}
-            <th className="w-[15%] px-3 pr-5 font-medium">{translate('employeeStatusLabel')}</th>
+            <th className={cn(listTable.th, 'w-[15%]')}>{translate('employeeStatusLabel')}</th>
           </tr>
         </thead>
         <tbody>
@@ -281,9 +283,9 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
             <tr
               key={entry.id}
               data-superseded={entry.superseded_by ? true : undefined}
-              className="h-[52px] border-b border-border/60 hover:bg-card/70 data-superseded:text-muted-foreground"
+              className={cn(listTable.row, 'data-superseded:text-muted-foreground')}
             >
-              <td className="truncate pl-5">
+              <td className={listTable.td}>
                 <button
                   type="button"
                   onClick={() => onOpen(entry.id)}
@@ -292,22 +294,22 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
                   {entry.employee_name}
                 </button>
               </td>
-              <td className="truncate px-3 text-body-sm tabular-nums">
+              <td className={cn(listTable.td, 'tabular-nums')}>
                 {entry.period_start.slice(5)} – {entry.period_end.slice(5)}
               </td>
               {AMOUNTS.map(([key]) => (
-                <td key={key} className="truncate px-2 text-right text-body tabular-nums">
+                <td key={key} className={cn(listTable.td, listTable.numeric)}>
                   {formatPay(entry[key], entry.currency)}
                 </td>
               ))}
-              <td className="px-3 pr-5">
+              <td className={listTable.td}>
                 <EntryStatus entry={entry} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <ul className="divide-y divide-border/70 lg:hidden">
+      <ul className={cn(listTable.list, 'lg:hidden')}>
         {entries.map((entry) => (
           <li key={entry.id}>
             <button
