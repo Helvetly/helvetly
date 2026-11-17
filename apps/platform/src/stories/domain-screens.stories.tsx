@@ -276,7 +276,7 @@ export const DashboardEmpty: Story = {
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Nothing open. Every invoice is paid.')).toBeVisible()
+    await expect(await canvas.findByText('All done. Nothing needs your attention.')).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'New invoice' })).toBeEnabled()
     await expect(canvas.getByText('none fully paid yet')).toBeVisible()
   },
@@ -289,7 +289,7 @@ export const DashboardReadOnly: Story = {
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await canvas.findByText('Nothing open. Every invoice is paid.')
+    await canvas.findByText('All done. Nothing needs your attention.')
     await expect(canvas.queryByRole('button', { name: 'New invoice' })).not.toBeInTheDocument()
   },
 }

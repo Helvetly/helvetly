@@ -2027,7 +2027,6 @@
   "nothingMatches3": "Rien ne correspond à « {term} »",
   "nothingMatches4": "Rien ne correspond.",
   "nothingMoreIsCharged": "Rien de plus n’est facturé.",
-  "nothingOpenEveryInvoiceIsPaid": "Rien d’ouvert. Chaque facture est payée.",
   "nothingOpenEveryInvoiceIsSettled": "Rien d’ouvert : chaque facture est réglée.",
   "nothingOutForSignature": "Rien à signer",
   "nothingRecordedYet": "Rien d’enregistré pour l’instant",
@@ -4206,8 +4205,6 @@
   "importContinueShort": "Reprendre l'import",
   "importMoreComing": "D'autres documents sont encore en cours de lecture. Leurs lignes apparaissent ici dès que chacun est terminé.",
   "importDocumentRecords": "{count, plural, one {# enregistrement} other {# enregistrements}}",
-  "monthIsNotClosedYet": "{value1} n’est pas encore clôturé. Clôturez-le pour que ses chiffres ne puissent plus changer.",
-  "monthsAreNotClosedYet": "{length} mois ne sont pas encore clôturés : {value1} à {value2}. Clôturez-les pour que leurs chiffres ne puissent plus changer.",
   "closeTheMonth": "{length, plural, one {Clôturer le mois} other {Clôturer les mois}}",
   "bringYourData": "Apportez vos données",
   "bringYourDataIntro": "Déposez des factures, des notes de frais, des listes de clients ou de prix dans un format courant. L’IA de Heidi reconnaît chaque document, et vous vérifiez et corrigez tout avant l’import.",
@@ -4223,5 +4220,12 @@
   "sales": "Ventes",
   "books": "Comptabilité",
   "yourBooks": "votre comptabilité",
-  "booksClosing": "Comptabilité → Clôture"
+  "booksClosing": "Comptabilité → Clôture",
+  "allDoneNothingNeedsYourAttention": "Tout est fait. Rien ne requiert votre attention.",
+  "vatReturnPeriod": "Déclaration de TVA {period}",
+  "monthsAreReadyToClose": "{months} {length, plural, one {peut être clôturé} other {peuvent être clôturés}}",
+  "theVATReturnCouldnTBeChecked": "La déclaration de TVA n’a pas pu être vérifiée : ",
+  "retryVATReturn": "Réessayer la déclaration de TVA",
+  "closingCouldnTBeChecked": "Les mois à clôturer n’ont pas pu être vérifiés : ",
+  "retryClosing": "Réessayer la clôture"
 }

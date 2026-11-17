@@ -18,14 +18,23 @@ import {
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { formatDate, formatWhole } from '@helvetly/ui/lib/format'
-import { ArrowRight, CalendarDays, ChevronDown, LayoutGrid } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronDown,
+  Landmark,
+  LayoutGrid,
+  Lock,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
 import { NativeSelect } from '@/components/clients/fields'
-import { ClosingReminder } from '@/components/dashboard/closing-reminder'
+import { useMonthsToClose, useVatReturnDue } from '@/components/dashboard/attention'
 import { EngagementsCard } from '@/components/engagements/engagements-card'
 import { Initials } from '@/components/initials'
 import { Money, RowStatus } from '@/components/invoices/invoice-bits'
@@ -40,7 +49,7 @@ import {
   dueLabel,
   formatRange,
   isPositive,
-  useInvoiceList,
+  invoiceListQuery,
   useInvoiceSummary,
   type SummaryPeriod,
 } from '@/lib/invoices'
@@ -76,6 +85,9 @@ export function Dashboard() {
   const canReadInvoices = useCan('read:invoices')
   const canReadExpenses = useCan('read:expenses')
   const canReadEngagements = useCan('read:engagements')
+  const canReadPeriods = useCan('read:periods')
+  const canReadVATReturn = useCan('read:vat-return')
+  const canReadBooks = canReadPeriods || canReadVATReturn
   if (session.error) {
     return (
       <div className="grid justify-items-start gap-3 p-5">
@@ -105,13 +117,12 @@ export function Dashboard() {
         onPrimary={() => router.push('/invoices/new')}
         actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
       />
-      <ClosingReminder />
       {canReadInvoices && <InvoiceKpis period={period} />}
       <div className="grid flex-1 content-start gap-4 p-4 md:p-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        {canReadInvoices && <NeedsAttention />}
+        {(canReadInvoices || canReadBooks) && <NeedsAttention />}
         {(canReadInvoices || canReadExpenses) && <CashFlow />}
         {canReadEngagements && <EngagementsCard />}
-        {!canReadInvoices && !canReadExpenses && !canReadEngagements && (
+        {!canReadInvoices && !canReadBooks && !canReadExpenses && !canReadEngagements && (
           <p className="text-sm text-muted-foreground">
             {translate('yourWorkspaceOverviewShowsTheSectionsYouHavePermission')}
           </p>
@@ -198,46 +209,97 @@ const ATTENTION = {
   desc: false,
 }
 
+const ROW = 'flex h-14 items-center gap-3 px-4 transition-colors duration-150 hover:bg-muted/50'
+const list = new Intl.ListFormat(languageTag, { type: 'conjunction' })
+// The latest few months, so their names alone are clear: "September and October".
+const monthName = new Intl.DateTimeFormat(languageTag, { month: 'long', timeZone: 'UTC' })
+const monthLabel = (month: string) => monthName.format(new Date(`${month}-01T00:00:00Z`))
+
+/** The workspace's to-do list, most important first: the VAT return, months to close, open invoices. */
 function NeedsAttention() {
-  const invoices = useInvoiceList(ATTENTION)
+  const canReadInvoices = useCan('read:invoices')
+  const vat = useVatReturnDue()
+  const closing = useMonthsToClose()
+  const invoices = useQuery({ ...invoiceListQuery(ATTENTION), enabled: canReadInvoices })
   const rows = (invoices.data?.data ?? []).slice(0, 8)
+  const months = closing.value ?? []
+  const pending =
+    vat.pending || closing.pending || (canReadInvoices && !invoices.data && !invoices.error)
+  const empty = !vat.value && months.length === 0 && rows.length === 0
 
   return (
     <Section
       title={translate('needsAttention')}
       action={
-        <Button asChild variant="ghost" size="sm" className="font-normal text-muted-foreground">
-          <Link href="/invoices?status=open&status=refund_due&kind=invoice">
-            {translate('allThatNeedsAttention')}
-            <ArrowRight className="stroke-[1.5]" />
-          </Link>
-        </Button>
+        canReadInvoices && (
+          <Button asChild variant="ghost" size="sm" className="font-normal text-muted-foreground">
+            <Link href="/invoices?status=open&status=refund_due&kind=invoice">
+              {translate('allThatNeedsAttention')}
+              <ArrowRight className="stroke-[1.5]" />
+            </Link>
+          </Button>
+        )
       }
     >
-      {invoices.error ? (
-        <div className="grid justify-items-start gap-3 p-4">
-          <p role="alert" className="text-sm text-muted-foreground">
-            {translate('openInvoicesCouldnTBeLoaded')}
-            {errorMessage(invoices.error)}
-          </p>
-          <Button size="sm" variant="outline" onClick={() => void invoices.refetch()}>
-            {translate('retryInvoices')}
-          </Button>
-        </div>
-      ) : !invoices.data ? (
+      {vat.error && (
+        <SourceError
+          message={translate('theVATReturnCouldnTBeChecked')}
+          error={vat.error}
+          retry={translate('retryVATReturn')}
+          onRetry={vat.retry}
+        />
+      )}
+      {closing.error && (
+        <SourceError
+          message={translate('closingCouldnTBeChecked')}
+          error={closing.error}
+          retry={translate('retryClosing')}
+          onRetry={closing.retry}
+        />
+      )}
+      {invoices.error && (
+        <SourceError
+          message={translate('openInvoicesCouldnTBeLoaded')}
+          error={invoices.error}
+          retry={translate('retryInvoices')}
+          onRetry={() => void invoices.refetch()}
+        />
+      )}
+      {pending ? (
         <Loader className="min-h-72" />
-      ) : rows.length === 0 ? (
-        <p className="px-4 py-12 text-center text-[14px] text-muted-foreground">
-          {translate('nothingOpenEveryInvoiceIsPaid')}
-        </p>
+      ) : empty ? (
+        !vat.error &&
+        !closing.error &&
+        !invoices.error && (
+          <p className="px-4 py-12 text-center text-[14px] text-muted-foreground">
+            {translate('allDoneNothingNeedsYourAttention')}
+          </p>
+        )
       ) : (
         <ul className="py-1.5">
+          {vat.value && (
+            <TaskRow
+              href="/books/vat-return"
+              icon={Landmark}
+              title={translate('vatReturnPeriod', { period: vat.value.period })}
+              detail={dueLabel(vat.value.due)}
+              side={formatDate(vat.value.due)}
+            />
+          )}
+          {months.length > 0 && (
+            <TaskRow
+              href="/books"
+              icon={Lock}
+              title={translate('monthsAreReadyToClose', {
+                months: list.format(months.map(monthLabel)),
+                length: months.length,
+              })}
+              detail={translate('closeTheMonth', { length: months.length })}
+            />
+          )}
           {rows.map((row) => (
             <li key={row.id}>
-              <RecordLink
-                href={`/invoices?id=${encodeURIComponent(row.id)}`}
-                className="flex h-14 items-center gap-3 px-4 transition-colors duration-150 hover:bg-muted/50"
-              >
+              <RecordLink href={`/invoices?id=${encodeURIComponent(row.id)}`} className={ROW}>
                 <span className="flex min-w-0 items-center gap-2.5">
                   <Initials name={row.client.name} />
                   <span className="grid min-w-0 leading-tight">
@@ -264,6 +326,71 @@ function NeedsAttention() {
         </ul>
       )}
     </Section>
+  )
+}
+
+/** A to-do from the books: an icon where invoices show initials, a title, a hint, a link. */
+function TaskRow({
+  href,
+  icon: Icon,
+  title,
+  detail,
+  side,
+}: {
+  href: string
+  icon: LucideIcon
+  title: string
+  detail: string
+  side?: string
+}) {
+  return (
+    <li>
+      <Link href={href} className={ROW}>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span
+            aria-hidden
+            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border ring-inset"
+          >
+            <Icon className="size-3.5 stroke-[1.5]" />
+          </span>
+          <span className="grid min-w-0 leading-tight">
+            <span className="truncate">{title}</span>
+            <span className="truncate text-body-sm leading-tight text-muted-foreground">
+              {detail}
+            </span>
+          </span>
+        </span>
+        <span className="ml-auto flex shrink-0 items-center gap-2 text-body-sm text-muted-foreground">
+          {side}
+          <ArrowRight aria-hidden className="size-4 stroke-[1.5]" />
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+/** One source of the list failed: say which, offer a retry, and keep showing the others. */
+function SourceError({
+  message,
+  error,
+  retry,
+  onRetry,
+}: {
+  message: string
+  error: Error
+  retry: string
+  onRetry: () => void
+}) {
+  return (
+    <div className="grid justify-items-start gap-3 border-b p-4">
+      <p role="alert" className="text-sm text-muted-foreground">
+        {message}
+        {errorMessage(error)}
+      </p>
+      <Button size="sm" variant="outline" onClick={onRetry}>
+        {retry}
+      </Button>
+    </div>
   )
 }
 

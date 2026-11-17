@@ -2027,7 +2027,6 @@
   "nothingMatches3": "Niente corrisponde a “{term}”",
   "nothingMatches4": "Niente corrisponde.",
   "nothingMoreIsCharged": "Non viene addebitato altro.",
-  "nothingOpenEveryInvoiceIsPaid": "Niente di aperto. Ogni fattura viene pagata.",
   "nothingOpenEveryInvoiceIsSettled": "Niente da aprire: ogni fattura è saldata.",
   "nothingOutForSignature": "Niente da firmare",
   "nothingRecordedYet": "Ancora nulla di registrato",
@@ -4206,8 +4205,6 @@
   "importContinueShort": "Continua l'importazione",
   "importMoreComing": "Altri documenti sono ancora in lettura. Le loro righe compaiono qui appena ciascuno è pronto.",
   "importDocumentRecords": "{count, plural, one {# elemento} other {# elementi}}",
-  "monthIsNotClosedYet": "{value1} non è ancora chiuso. Chiudilo così le sue cifre non possono più cambiare.",
-  "monthsAreNotClosedYet": "{length} mesi non sono ancora chiusi: da {value1} a {value2}. Chiudili così le loro cifre non possono più cambiare.",
   "closeTheMonth": "{length, plural, one {Chiudi il mese} other {Chiudi i mesi}}",
   "bringYourData": "Porta i tuoi dati",
   "bringYourDataIntro": "Rilascia fatture, spese, elenchi di clienti o listini in un formato comune. L’IA di Heidi riconosce che cos’è ogni documento e tu controlli e correggi tutto prima dell’importazione.",
@@ -4223,5 +4220,12 @@
   "sales": "Vendite",
   "books": "Contabilità",
   "yourBooks": "la tua contabilità",
-  "booksClosing": "Contabilità → Chiusura"
+  "booksClosing": "Contabilità → Chiusura",
+  "allDoneNothingNeedsYourAttention": "Tutto fatto. Niente richiede la tua attenzione.",
+  "vatReturnPeriod": "Rendiconto IVA {period}",
+  "monthsAreReadyToClose": "{months} {length, plural, one {è pronto da chiudere} other {sono pronti da chiudere}}",
+  "theVATReturnCouldnTBeChecked": "Impossibile verificare il rendiconto IVA: ",
+  "retryVATReturn": "Riprova rendiconto IVA",
+  "closingCouldnTBeChecked": "Impossibile verificare i mesi da chiudere: ",
+  "retryClosing": "Riprova chiusura"
 }

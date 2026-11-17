@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import publicOffer from '@/components/billing/public-offer.fixture.json'
+import type { Period as BooksPeriod } from '@/lib/books'
 import type { DocFile, Folder } from '@/lib/documents'
 import type { Engagement, Entry, Period } from '@/lib/engagements'
 import type { Expense, Summary as ExpenseSummary } from '@/lib/expenses'
@@ -11,7 +12,8 @@ import type { Line } from '@/lib/invoices'
 import type { Invitation, Member } from '@/lib/members'
 import type { Product } from '@/lib/products'
 import type { Template } from '@/lib/templates'
-import { dashboard } from '@/mocks/data'
+import type { VATReturn } from '@/lib/vat-return'
+import { dashboard, sampleActivity } from '@/mocks/data'
 import { employeesHandlers } from '@/mocks/employees'
 import { heidiHandlers } from '@/mocks/heidi'
 import { notificationHandlers } from '@/mocks/notifications'
@@ -618,4 +620,43 @@ export const shellHandlers = [
   ...notificationHandlers,
   ...heidiHandlers,
   ...screenHandlers,
+]
+
+/** A monthly VAT return ("2026-10"), so the filing window of the latest one is open whatever the date. */
+const monthlyReturn = (name: string): VATReturn => {
+  const [year = 0, month = 1] = name.split('-').map(Number)
+  return {
+    period: name,
+    from: `${name}-01`,
+    to: new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10),
+    method: 'effective',
+    basis: 'agreed',
+    currency: 'CHF',
+    months: 1,
+    closed_months: 0,
+    net_rates: [],
+    lines: [],
+    warnings: [],
+  }
+}
+
+/** The books behind the dashboard's to-do list: a VAT return to file and the closed months given. */
+export const attentionHandlers = (closed: BooksPeriod[] = []) => [
+  http.get('/api/v1/vat-return/settings', () =>
+    HttpResponse.json({
+      data: { method: 'effective', period: 'monthly', basis: 'agreed', net_rates: [] },
+    }),
+  ),
+  http.get('/api/v1/vat-return', ({ request }) =>
+    HttpResponse.json({
+      data: monthlyReturn(new URL(request.url).searchParams.get('period') ?? ''),
+    }),
+  ),
+  http.get('/api/v1/periods', () => HttpResponse.json({ data: closed })),
+  http.get('/api/v1/periods/activity', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    return HttpResponse.json({
+      data: sampleActivity(query.get('from') ?? '', query.get('to') ?? ''),
+    })
+  }),
 ]

@@ -2027,7 +2027,6 @@
   "nothingMatches3": "Nothing matches “{term}”",
   "nothingMatches4": "Nothing matches.",
   "nothingMoreIsCharged": "Nothing more is charged.",
-  "nothingOpenEveryInvoiceIsPaid": "Nothing open. Every invoice is paid.",
   "nothingOpenEveryInvoiceIsSettled": "Nothing open: every invoice is settled.",
   "nothingOutForSignature": "Nothing out for signature",
   "nothingRecordedYet": "Nothing recorded yet",
@@ -4206,8 +4205,6 @@
   "importContinueShort": "Continue import",
   "importMoreComing": "More documents are still being read. Their rows appear here as soon as each is done.",
   "importDocumentRecords": "{count, plural, one {# record} other {# records}}",
-  "monthIsNotClosedYet": "{value1} is not closed yet. Close it so its figures can't change.",
-  "monthsAreNotClosedYet": "{length} months are not closed yet: {value1} to {value2}. Close them so their figures can't change.",
   "closeTheMonth": "{length, plural, one {Close the month} other {Close the months}}",
   "bringYourData": "Bring your data",
   "bringYourDataIntro": "Drop invoices, expenses, client lists or price lists in any common format. Heidi’s AI works out what each document is, and you check and correct everything before it is imported.",
@@ -4223,5 +4220,12 @@
   "sales": "Sales",
   "books": "Books",
   "yourBooks": "your books",
-  "booksClosing": "Books → Closing"
+  "booksClosing": "Books → Closing",
+  "allDoneNothingNeedsYourAttention": "All done. Nothing needs your attention.",
+  "vatReturnPeriod": "VAT return {period}",
+  "monthsAreReadyToClose": "{months} {length, plural, one {is} other {are}} ready to close",
+  "theVATReturnCouldnTBeChecked": "The VAT return couldn’t be checked: ",
+  "retryVATReturn": "Retry VAT return",
+  "closingCouldnTBeChecked": "Months to close couldn’t be checked: ",
+  "retryClosing": "Retry closing"
 }
