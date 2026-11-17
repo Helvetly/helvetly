@@ -283,6 +283,7 @@ const ROUTES: [string, Resource][] = [
   ['/settings/api', 'api'],
   ['/settings/billing', 'billing'],
   ['/settings/invoices', 'invoice-settings'],
+  ['/settings/emails', 'invoice-settings'],
   ['/settings/vat-return', 'vat-return'],
   ['/settings/ledger', 'ledger'],
   ['/settings/periods', 'periods'],

@@ -17,8 +17,8 @@ import {
 } from '@/components/invoices/invoice-dialogs'
 import { ApiError } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { useQuoteEmailDraft } from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
-import { useInvoiceSettings } from '@/lib/invoices'
 import {
   quoteErrorMessage,
   quoteName,
@@ -41,16 +41,19 @@ export function failQuote(error: unknown) {
 /** Emails the quote's PDF, or only marks it sent (numbered and filed) to send it yourself. */
 export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () => void }) {
   const client = useClient(quote.client.id).data
-  const seller = useInvoiceSettings().data?.seller.name
+  const draft = useQuoteEmailDraft(quote.id)
   const fallback = client?.email ?? client?.billing_email ?? ''
+  // null = untouched: the draft shows through, and what the user typed is never replaced by it.
   const [to, setTo] = useState<string | null>(null)
   const [cc, setCc] = useState('')
-  const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState('')
+  const [subject, setSubject] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [mailDown, setMailDown] = useState(false)
   const send = useQuoteAction((input: QuoteSendInput) => quotesApi.send(quote.id, input))
-  const recipients = to ?? fallback
+  const recipients = to ?? (draft.data?.to.join(', ') || fallback)
+  const shownSubject = subject ?? draft.data?.subject ?? ''
+  const shownMessage = message ?? draft.data?.message ?? ''
   const name = quoteName(quote)
 
   const run = (input: QuoteSendInput, done: (sent: Quote) => string) =>
@@ -76,9 +79,9 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       {
         to: list,
         ...(emails(cc).length ? { cc: emails(cc) } : {}),
-        // Left empty, the server writes the subject and text in the quote's language.
-        ...(subject.trim() ? { subject: subject.trim() } : {}),
-        ...(message.trim() ? { message: message.trim() } : {}),
+        // Left empty (draft failed), the server writes both in the quote's language.
+        ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
+        ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
       },
       (sent) => translate('sentTo', { value1: quoteName(sent), value2: list.join(', ') }),
     )
@@ -129,6 +132,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           type="email"
           multiple
           value={recipients}
+          disabled={draft.isPending}
           onChange={(event) => setTo(event.target.value)}
           placeholder={translate('helloClientCh')}
           className={fieldClass}
@@ -148,12 +152,9 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       <FormField id="quote-send-subject" label={translate('subject')} error={errors.subject}>
         <input
           {...describedBy('quote-send-subject', errors.subject)}
-          value={subject}
+          value={shownSubject}
+          disabled={draft.isPending}
           onChange={(event) => setSubject(event.target.value)}
-          placeholder={translate('inTheQuoteSLanguage', {
-            name: name,
-            value2: seller ? translate('from2', { seller: seller }) : '',
-          })}
           className={fieldClass}
         />
       </FormField>
@@ -161,9 +162,9 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         <textarea
           {...describedBy('quote-send-message', errors.message)}
           rows={4}
-          value={message}
+          value={shownMessage}
+          disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder={translate('helloPleaseFindOurQuoteAttachedKindRegards')}
           className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
         />
       </FormField>

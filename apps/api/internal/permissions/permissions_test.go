@@ -101,6 +101,7 @@ func TestRequired(t *testing.T) {
 		{"POST", "/api/v1/quotes/quo_1/invoice", []string{"write:invoices"}},
 		{"PUT", "/api/v1/invoice-settings", []string{"write:invoice-settings"}},
 		{"DELETE", "/api/v1/invoice-settings/logo", []string{"write:invoice-settings"}},
+		{"PUT", "/api/v1/email-templates/quote/fr", []string{"write:invoice-settings"}},
 		{"GET", "/api/v1/transmission-channels", []string{"read:invoice-settings"}},
 		{"GET", "/api/v1/engagement-settings", []string{"read:engagements"}},
 		{"PATCH", "/api/v1/workspace", []string{"write:workspace"}},

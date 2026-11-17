@@ -512,7 +512,10 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 	if err != nil {
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
-	subject, message := defaultEmail(inv)
+	subject, message, err := s.draft(ctx, s.db.Q, ws.ID, inv)
+	if err != nil {
+		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
+	}
 	m := mail.Message{Workspace: ws.ID, To: []string{*to}, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
@@ -523,24 +526,4 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
 	return s.recordDelivery(ctx, inv.ID, nil, []string{*to}, []string{})
-}
-
-// defaultEmail: the subject and message POST /send uses when none are given.
-func defaultEmail(inv store.Invoice) (string, string) {
-	text := emailTexts[inv.Language]
-	seller := ""
-	if inv.Seller != nil {
-		seller = inv.Seller.Name
-	}
-	subject := strings.TrimSpace(Title(inv) + " " + deref(inv.Number) + " " + text.from + " " + seller)
-	if sentence := map[string]string{"credit_note": text.creditNote, "proforma": text.proforma}[inv.Kind]; sentence != "" {
-		return subject, text.greeting + "\n\n" + fmt.Sprintf(sentence, deref(inv.Number), inv.Currency, inv.Payable().Swiss("'")) +
-			"\n\n" + text.signOff + "\n" + seller
-	}
-	message := text.greeting + "\n\n" + fmt.Sprintf(text.invoice, deref(inv.Number), inv.Currency, inv.Payable().Swiss("'"),
-		swissDate(inv.DueDate)) + "\n\n"
-	if inv.Payment.RevolutURL != nil {
-		message += text.revolut + ": " + *inv.Payment.RevolutURL + "\n\n"
-	}
-	return subject, message + text.signOff + "\n" + seller
 }

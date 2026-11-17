@@ -312,7 +312,10 @@ func TestSendIssuedRecordsSystemDelivery(t *testing.T) {
 	if len(list) != 1 || list[0].SentBy != nil || !slices.Equal(list[0].To, []string{"ap@kunde.ch"}) {
 		t.Fatalf("deliveries %+v, want one by the system to the client", list)
 	}
-	subject, message := defaultEmail(inv)
+	subject, message, err := e.svc.draft(ctx, e.st.Q, b.workspace, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(e.mail.sent) != 1 || e.mail.sent[0].Subject != subject || e.mail.sent[0].Text != message {
 		t.Errorf("mail %+v, want the default subject and message", e.mail.sent)
 	}

@@ -16,25 +16,9 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// emailText is the default email of one language: greeting, the sentence for an invoice (number, currency,
-// amount, due date), a credit note or a proforma invoice (number, currency, amount), sign-off, and the "from" of
-// the subject.
-type emailText struct{ greeting, invoice, creditNote, signOff, from, revolut, proforma string }
-
-var emailTexts = map[string]emailText{
-	"de": {"Guten Tag", "Im Anhang finden Sie unsere Rechnung %s über %s %s, zahlbar bis %s.",
-		"Im Anhang finden Sie unsere Gutschrift %s über %s %s.", "Freundliche Grüsse", "von", "Mit Revolut bezahlen",
-		"Im Anhang finden Sie unsere Proforma-Rechnung %s über %s %s."},
-	"fr": {"Bonjour", "Veuillez trouver ci-joint notre facture %s d'un montant de %s %s, payable jusqu'au %s.",
-		"Veuillez trouver ci-joint notre note de crédit %s d'un montant de %s %s.", "Meilleures salutations", "de", "Payer avec Revolut",
-		"Veuillez trouver ci-joint notre facture proforma %s d'un montant de %s %s."},
-	"it": {"Buongiorno", "In allegato trovate la nostra fattura %s di %s %s, pagabile entro il %s.",
-		"In allegato trovate la nostra nota di credito %s di %s %s.", "Cordiali saluti", "di", "Paga con Revolut",
-		"In allegato trovate la nostra fattura proforma %s di %s %s."},
-	"en": {"Hello", "Please find attached our invoice %s for %s %s, payable by %s.",
-		"Please find attached our credit note %s for %s %s.", "Kind regards", "from", "Pay with Revolut",
-		"Please find attached our proforma invoice %s for %s %s."},
-}
+// revolutLabel is the label of the Revolut payment link line in each language.
+var revolutLabel = map[string]string{"de": "Mit Revolut bezahlen", "fr": "Payer avec Revolut", "it": "Paga con Revolut",
+	"en": "Pay with Revolut"}
 
 const maxRecipients = 10
 
@@ -62,37 +46,25 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if s.mail == nil {
 		return auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up on this server.", nil)
 	}
-	client, clientErr := s.db.Client(ctx, sess.Workspace.ID, inv.ClientID) // missing for a deleted client
-	to := body.To
-	if len(to) == 0 {
-		if clientErr == nil && buyerOf(client).Email != nil {
-			to = []string{*buyerOf(client).Email}
-		} else if inv.Buyer != nil && inv.Buyer.Email != nil {
-			to = []string{*inv.Buyer.Email}
-		}
-	}
+	client, clientErr, to := s.recipients(ctx, sess.Workspace.ID, inv, body.To)
 	p := newParser()
 	to = addresses(p, "to", to)
 	cc := addresses(p, "cc", body.Cc)
 	if len(to) == 0 {
 		p.fail("to", "Enter an address: the client has no email address.")
 	}
-	subject, message := defaultEmail(inv)
+	subject, message, err := s.draft(ctx, s.db.Q, sess.Workspace.ID, inv)
+	if err != nil {
+		return err
+	}
 	if body.Subject != nil {
-		if v := p.text("subject", body.Subject, 200, nil); v != nil {
+		if v := p.text("subject", body.Subject, limitFor(body.Subject, subject, 200), nil); v != nil {
 			subject = *v
 		}
 	}
-	revolut := ""
-	if inv.Payment.RevolutURL != nil {
-		revolut = emailTexts[inv.Language].revolut + ": " + *inv.Payment.RevolutURL
-	}
 	if body.Message != nil {
-		if v := p.text("message", body.Message, 5000, nil); v != nil {
-			message = *v
-			if revolut != "" && !strings.Contains(message, *inv.Payment.RevolutURL) {
-				message += "\n\n" + revolut
-			}
+		if v := p.text("message", body.Message, limitFor(body.Message, message, 5000), nil); v != nil {
+			message = withRevolut(*v, inv)
 		}
 	}
 	if err := p.err(); err != nil {

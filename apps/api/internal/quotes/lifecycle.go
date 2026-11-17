@@ -24,16 +24,6 @@ const (
 	maxNote       = 1000
 )
 
-// emailText: greeting, the sentence (number, currency, amount, valid until), sign-off, the "from" of the subject.
-type emailText struct{ greeting, sentence, signOff, from string }
-
-var emailTexts = map[string]emailText{
-	"de": {"Guten Tag", "Im Anhang finden Sie unsere Offerte %s über %s %s, gültig bis %s.", "Freundliche Grüsse", "von"},
-	"fr": {"Bonjour", "Veuillez trouver ci-joint notre offre %s d'un montant de %s %s, valable jusqu'au %s.", "Meilleures salutations", "de"},
-	"it": {"Buongiorno", "In allegato trovate la nostra offerta %s di %s %s, valida fino al %s.", "Cordiali saluti", "di"},
-	"en": {"Hello", "Please find attached our quote %s for %s %s, valid until %s.", "Kind regards", "from"},
-}
-
 var titles = map[string]string{"de": "Offerte", "fr": "Offre", "it": "Offerta", "en": "Quote"}
 
 func swissDate(d string) string {
@@ -133,40 +123,33 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 	message *string) (mail.Message, error) {
 	invalid := map[string]string{}
 	if len(to) == 0 {
-		if c, err := q.Client(ctx, workspaceID, t.ClientID); err == nil {
-			if c.Email != nil {
-				to = []string{*c.Email}
-			} else if c.BillingEmail != nil {
-				to = []string{*c.BillingEmail}
-			}
-		}
+		to = clientAddress(ctx, q, workspaceID, t.ClientID)
 	}
 	to, cc = addresses(invalid, "to", to), addresses(invalid, "cc", cc)
 	if len(to) == 0 && invalid["to"] == "" {
 		invalid["to"] = "Enter an address: the client has no email address."
 	}
-	if subject != nil && (strings.TrimSpace(*subject) == "" || utf8.RuneCountInString(*subject) > 200) {
+	seller, _, _, err := s.invoices.Seller(ctx, q, workspaceID)
+	if err != nil {
+		return mail.Message{}, err
+	}
+	draft, err := s.draftText(ctx, q, workspaceID, t)
+	if err != nil {
+		return mail.Message{}, err
+	}
+	// the dialog posts the rendered draft back: it passes as it is, since only a typed text is held to the limit
+	if subject != nil && (strings.TrimSpace(*subject) == "" ||
+		utf8.RuneCountInString(*subject) > 200 && strings.TrimSpace(*subject) != strings.TrimSpace(draft.Subject)) {
 		invalid["subject"] = "Enter a subject of at most 200 characters."
 	}
-	if message != nil && (strings.TrimSpace(*message) == "" || utf8.RuneCountInString(*message) > 5000) {
+	if message != nil && (strings.TrimSpace(*message) == "" ||
+		utf8.RuneCountInString(*message) > 5000 && strings.TrimSpace(*message) != strings.TrimSpace(draft.Body)) {
 		invalid["message"] = "Enter a message of at most 5000 characters."
 	}
 	if len(invalid) > 0 {
 		return mail.Message{}, validationFailed(invalid)
 	}
-	seller, _, _, err := s.invoices.Seller(ctx, q, workspaceID)
-	if err != nil {
-		return mail.Message{}, err
-	}
-	text := emailTexts[t.Language]
-	number := ""
-	if t.Number != nil {
-		number = *t.Number
-	}
-	m := mail.Message{Workspace: workspaceID, To: to, Cc: cc,
-		Subject: strings.TrimSpace(titles[t.Language] + " " + number + " " + text.from + " " + seller.Name),
-		Text: text.greeting + "\n\n" + fmt.Sprintf(text.sentence, number, t.Currency, t.PayableTotal.Swiss("'"), swissDate(t.ValidUntil)) +
-			"\n\n" + text.signOff + "\n" + seller.Name}
+	m := mail.Message{Workspace: workspaceID, To: to, Cc: cc, Subject: draft.Subject, Text: draft.Body}
 	if subject != nil {
 		m.Subject = strings.TrimSpace(*subject)
 	}

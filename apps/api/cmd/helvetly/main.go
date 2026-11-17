@@ -26,6 +26,7 @@ import (
 	"helvetly.com/api/internal/documents"
 	"helvetly.com/api/internal/dunning"
 	"helvetly.com/api/internal/einvoice"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/employees"
 	"helvetly.com/api/internal/engagements"
 	"helvetly.com/api/internal/expenses"
@@ -225,6 +226,7 @@ func run() error {
 		Provider: importModel, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
 	})
 	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
+	emailTemplatesSvc := emailtemplate.New(db, authSvc)
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
@@ -263,6 +265,7 @@ func run() error {
 		workspacesSvc.Register(mux)
 		dashboardSvc.Register(mux)
 		heidiSvc.Register(mux)
+		emailTemplatesSvc.Register(mux)
 		feedbackSvc.Register(mux)
 		avatarsSvc.Register(mux)
 		importsSvc.Register(mux)
