@@ -3482,6 +3482,8 @@
   "writingTheAnswer": "Writing the answer",
   "x": "⌘X",
   "xrechnungCII": "XRechnung (CII)",
+  "facturX": "ZUGFeRD / Factur-X (PDF)",
+  "facturXHint": "PDF/A-3 with the XML inside",
   "xrechnungUBL": "XRechnung (UBL)",
   "year": "Year",
   "yearly": "yearly",

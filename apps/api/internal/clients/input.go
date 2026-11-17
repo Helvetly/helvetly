@@ -51,13 +51,14 @@ var clientFields = map[string]fieldParser{
 	"portal_enabled":      boolean,
 }
 
-// EInvoiceFormats: the XML a client wants attached to its invoice emails ("none" for the PDF alone).
-var EInvoiceFormats = []string{"none", "xrechnung_ubl", "xrechnung_cii", "peppol"}
+// EInvoiceFormats: the e-invoice a client wants on its invoice emails ("none" for the PDF alone; factur_x replaces
+// the PDF with the Factur-X PDF that carries the XML).
+var EInvoiceFormats = []string{"none", "xrechnung_ubl", "xrechnung_cii", "peppol", "factur_x"}
 
 func einvoiceFormat(raw json.RawMessage) (any, string) {
 	var v string
 	if isNull(raw) || json.Unmarshal(raw, &v) != nil || !slices.Contains(EInvoiceFormats, v) {
-		return nil, "Choose none, xrechnung_ubl, xrechnung_cii or peppol."
+		return nil, "Choose none, xrechnung_ubl, xrechnung_cii, peppol or factur_x."
 	}
 	return v, ""
 }

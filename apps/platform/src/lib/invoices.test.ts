@@ -328,16 +328,17 @@ describe('instalments and e-invoices', () => {
     expect(data).toMatchObject({ plan: null, reminders_enabled: true })
   })
 
-  test('e-invoice XML downloads in the four formats', async () => {
+  test('e-invoice downloads in the five formats', async () => {
     expect(EINVOICE_FORMATS.map((entry) => entry.value)).toEqual([
       'xrechnung-ubl',
       'xrechnung-cii',
       'peppol',
+      'factur-x',
       'ro-cius',
     ])
     expect(einvoiceUrl('inv_1', 'peppol')).toBe('/api/v1/invoices/inv_1/einvoice?format=peppol')
     const values = einvoiceFormatValues
-    expect(values('CH', 'DE')).toEqual(['xrechnung-ubl', 'xrechnung-cii', 'peppol'])
+    expect(values('CH', 'DE')).toEqual(['xrechnung-ubl', 'xrechnung-cii', 'peppol', 'factur-x'])
     expect(values('CH', 'RO')).toContain('ro-cius')
     expect(values('PL', 'DE').at(-1)).toBe('ksef-fa3')
     const res = await fetch(
@@ -346,6 +347,9 @@ describe('instalments and e-invoices', () => {
     expect(res.headers.get('content-type')).toContain('application/xml')
     expect(res.headers.get('content-disposition')).toContain('2026-042.xml')
     expect(await res.text()).toContain('CrossIndustryInvoice')
+    const hybrid = await fetch(new URL(einvoiceUrl('inv_mock_schedule', 'factur-x'), location.href))
+    expect(hybrid.headers.get('content-type')).toBe('application/pdf')
+    expect(hybrid.headers.get('content-disposition')).toContain('2026-042.pdf')
     const bad = await fetch(new URL('/api/v1/invoices/inv_1/einvoice?format=pdf', location.href))
     expect(bad.status).toBe(400)
   })

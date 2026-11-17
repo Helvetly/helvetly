@@ -76,3 +76,20 @@ test('an API refusal never becomes a downloaded JSON file', async () => {
   expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled()
   expect(createObjectURL).not.toHaveBeenCalled()
 })
+
+test('a Factur-X file without a server filename is saved as a PDF', async () => {
+  server.use(
+    http.get('/api/v1/invoices/inv_1/einvoice', ({ request }) => {
+      expect(new URL(request.url).searchParams.get('format')).toBe('factur-x')
+      return new HttpResponse('%PDF-1.7', { headers: { 'content-type': 'application/pdf' } })
+    }),
+  )
+  const names: string[] = []
+  vi.mocked(HTMLAnchorElement.prototype.click).mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    names.push(this.download)
+  })
+  await downloadEinvoice('inv_1', 'factur-x')
+  expect(names).toEqual(['inv_1.pdf'])
+})

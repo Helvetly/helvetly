@@ -1,10 +1,10 @@
 ---
-title: E-Rechnung exportieren (XRechnung, Peppol, e-Factura, KSeF)
+title: E-Rechnung exportieren (XRechnung, Peppol, ZUGFeRD / Factur-X, e-Factura, KSeF)
 description: Laden Sie ausgestellte Rechnungen als XRechnung, Peppol BIS 3.0, e-Factura oder KSEF XML herunter und hängen Sie das XML an Rechnungs-E-Mails an.
 category: Invoices and getting paid
 categoryLabel: Rechnungen und Bezahlung
 order: 13
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 Einige Kunden und Behörden benötigen Rechnungen als strukturiertes XML. So exportieren Sie sie.
@@ -13,7 +13,7 @@ Der XML-Export für E-Rechnungen ist Teil von **Business**. Helvetly erstellt di
 
 1. Geben Sie zunächst **Settings → Invoices → E-invoices** ein (Registrierungsnummer, E-Rechnungs-Adressschema und elektronische Adresse).
 2. Öffnen Sie eine ausgestellte Rechnung und öffnen Sie das Menü **…**.
-3. Wählen Sie unter **E-invoice XML** **XRechnung (UBL)**, **XRechnung (CII)** oder **Peppol BIS 3.0** aus. Sie sehen ausserdem **e-Factura (CIUS-RO)** für einen rumänischen Kunden und **KSeF FA(3)**, wenn Ihr Unternehmen polnisch ist.
+3. Wählen Sie unter **E-invoice XML** **XRechnung (UBL)**, **XRechnung (CII)**, **Peppol BIS 3.0** oder **ZUGFeRD / Factur-X (PDF)** aus: das ausgestellte PDF als PDF/A-3 mit dem EN-16931-XML darin, eine Datei für Menschen und Software. Sie sehen ausserdem **e-Factura (CIUS-RO)** für einen rumänischen Kunden und **KSeF FA(3)**, wenn Ihr Unternehmen polnisch ist.
 4. Laden Sie die heruntergeladene Datei selbst im Empfangsportal hoch, zum Beispiel SPV für e-Factura oder Aplikacja Podatnika für KSeF.
 5. Um das XML automatisch anzuhängen, wenn Sie Rechnungen per E-Mail versenden, bearbeiten Sie den Client und wählen Sie das Format unter **E-invoice** aus. Geben Sie für eine deutsche öffentliche Einrichtung zusätzlich **Leitweg-ID** ein.
 

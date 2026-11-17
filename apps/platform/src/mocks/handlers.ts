@@ -223,6 +223,8 @@ const EINVOICE_ROOTS: Record<EinvoiceFormat, string> = {
   peppol: '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>',
   'ro-cius': '<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"/>',
   'ksef-fa3': '<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/"/>',
+  'factur-x':
+    '<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"/>',
 }
 const isFormat = (value: string | null): value is EinvoiceFormat =>
   value !== null && value in EINVOICE_ROOTS
@@ -286,6 +288,14 @@ const goServedFakes = [
     const format = new URL(request.url).searchParams.get('format')
     if (!isFormat(format)) return fail(400, 'invalid_request', 'Choose an e-invoice format.')
     const number = params.id === scheduledInvoice.id ? scheduledInvoice.number : params.id
+    if (format === 'factur-x')
+      return new HttpResponse('%PDF-1.7\n%%EOF\n', {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${number}.pdf"`,
+          'X-Helvetly-Preview': 'true',
+        },
+      })
     return new HttpResponse(`<?xml version="1.0" encoding="UTF-8"?>\n${EINVOICE_ROOTS[format]}\n`, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',

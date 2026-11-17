@@ -52,10 +52,10 @@ type Service struct {
 	planCreated func()
 }
 
-// EInvoiceExporter is internal/einvoice's Export: the XML file of an issued invoice in format.
+// EInvoiceExporter is internal/einvoice's Export: the e-invoice file (XML, or the Factur-X PDF) of an issued invoice.
 type EInvoiceExporter func(ctx context.Context, sess store.Session, inv store.Invoice, format string) (name string, xml []byte, err error)
 
-// SetEInvoice is startup wiring: emails then attach the XML a client asked for (einvoice_format).
+// SetEInvoice is startup wiring: emails then carry the e-invoice a client asked for (einvoice_format).
 func (s *Service) SetEInvoice(f EInvoiceExporter) { s.einvoice = f }
 
 // SetPlanCreated is startup wiring: a new plan wakes the job, so the items already due are issued now, not within the hour.

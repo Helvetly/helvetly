@@ -524,13 +524,14 @@ export function uploadClientFiles(
   return uploadInPacks<ClientFile>(`/api/v1${path(id)}/files`, files, MAX_FILE_BYTES, onProgress)
 }
 
-export type EInvoiceFormat = 'none' | 'xrechnung_ubl' | 'xrechnung_cii' | 'peppol'
+export type EInvoiceFormat = 'none' | 'xrechnung_ubl' | 'xrechnung_cii' | 'peppol' | 'factur_x'
 
 export const EINVOICE_FORMATS: { value: EInvoiceFormat; label: string }[] = [
   { value: 'none', label: translate('pdfOnly') },
   { value: 'xrechnung_ubl', label: translate('xrechnungUBL') },
   { value: 'xrechnung_cii', label: translate('xrechnungCII') },
   { value: 'peppol', label: translate('peppolBIS') },
+  { value: 'factur_x', label: translate('facturX') },
 ]
 
 /**

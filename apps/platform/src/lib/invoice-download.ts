@@ -1,8 +1,9 @@
 import { invoicesApi, type EinvoiceFormat } from '@/lib/invoices'
 
-/** Only a successful XML response becomes a file; API errors stay in the application's error flow. */
+/** Only a successful XML (or Factur-X PDF) response becomes a file; API errors stay in the application's error flow. */
 export async function downloadEinvoice(id: string, format: EinvoiceFormat): Promise<void> {
-  await saveResponse(await invoicesApi.einvoice(id, format), `${id}.xml`)
+  const extension = format === 'factur-x' ? 'pdf' : 'xml'
+  await saveResponse(await invoicesApi.einvoice(id, format), `${id}.${extension}`)
 }
 
 /** Saves a successful API response as a file named by its Content-Disposition, else `fallback`. */

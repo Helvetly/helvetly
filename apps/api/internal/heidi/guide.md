@@ -201,15 +201,15 @@ Keywords: dunning, reminder, mahnung, overdue, late payment, payment reminder, f
 5. To leave a client out, edit the client and turn off **Payment reminders**.
    Dunning applies only to invoices without instalments. You can send a reminder by hand even when automatic sending is off.
 
-## Export an e-invoice (XRechnung, Peppol, e-Factura, KSeF)
+## Export an e-invoice (XRechnung, Peppol, ZUGFeRD / Factur-X, e-Factura, KSeF)
 
-Keywords: e-invoice, xml, xrechnung, peppol, zugferd, e-factura, ksef, einvoice, electronic invoice, leitweg
+Keywords: e-invoice, xml, xrechnung, peppol, zugferd, factur-x, facturx, pdf/a-3, e-factura, ksef, einvoice, electronic invoice, leitweg
 
 1. First fill in **Settings → Invoices → E-invoices** (registration number, e-invoice address scheme and electronic address).
 2. Open an issued invoice and open the **…** menu.
-3. Under **E-invoice XML**, pick **XRechnung (UBL)**, **XRechnung (CII)** or **Peppol BIS 3.0**. You also see **e-Factura (CIUS-RO)** for a Romanian client and **KSeF FA(3)** if your company is Polish.
+3. Under **E-invoice XML**, pick **XRechnung (UBL)**, **XRechnung (CII)**, **Peppol BIS 3.0** or **ZUGFeRD / Factur-X (PDF)**: the issued PDF as PDF/A-3 with the EN 16931 XML inside, one file for people and software. You also see **e-Factura (CIUS-RO)** for a Romanian client and **KSeF FA(3)** if your company is Polish.
 4. Upload the downloaded file in the receiving portal yourself, for example SPV for e-Factura or Aplikacja Podatnika for KSeF.
-5. To attach the XML automatically when you email invoices, edit the client and choose the format under **E-invoice**. For a German public body, also enter the **Leitweg-ID**.
+5. To attach the XML automatically when you email invoices, edit the client and choose the format under **E-invoice**. With ZUGFeRD / Factur-X the email carries that PDF in place of the plain one. For a German public body, also enter the **Leitweg-ID**.
    Helvetly does not send e-invoices through a Peppol network or government API. The XML export is only a file. If a transmission exists, it shows in **E-invoice transmissions** on the invoice.
 
 ## Set up an engagement (retainer or recurring work)

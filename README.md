@@ -22,7 +22,7 @@ Each item below is implemented and covered by tests in this repository:
   CSV, PDF and the eCH-0217 file the ESTV ePortal imports), and a double-entry journal with exports for Banana, bexio,
   Abacus and CSV.
 - **E-invoice files**: XRechnung (UBL/CII), Peppol BIS UBL, RO e-Factura (CIUS-RO) and Polish KSeF FA(3) XML of an
-  issued invoice. Network delivery (Peppol access points, national APIs) is not built in; files can be exported.
+  issued invoice, and ZUGFeRD 2.x / Factur-X 1.0 (EN 16931): the issued PDF as PDF/A-3B with the CII XML embedded. Network delivery (Peppol access points, national APIs) is not built in; files can be exported.
 - **Engagements**: committed work per client with a delivery log and draft invoices in advance or in arrears.
 - **Signatures and templates**: simple electronic signatures (SES, not qualified) on PDFs with an audit trail, and
   PDF templates filled from client data.
