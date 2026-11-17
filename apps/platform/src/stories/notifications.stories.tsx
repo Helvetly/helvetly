@@ -85,8 +85,8 @@ export const BellHidesOldReads: Story = {
   render: () => bell(),
   play: async ({ canvasElement }) => {
     const bubble = await openBell(canvasElement)
-    // Read a minute ago: still in the bubble; read yesterday: only on the page.
-    await expect(bubble.getByRole('link', { name: /RE-2026-0037 is overdue/ })).toBeVisible()
+    // Read a minute ago: still in the bubble; read yesterday: only on the page. The list may still be loading.
+    await expect(await bubble.findByRole('link', { name: /RE-2026-0037 is overdue/ })).toBeVisible()
     await expect(bubble.queryByText(/expenses import/)).toBeNull()
     await expect(bubble.queryByText(/Lea Meier joined/)).toBeNull()
   },
