@@ -595,6 +595,29 @@ export const ExpensesReadOnly: Story = {
   },
 }
 
+// A workspace without expenses: typing in the search never brings back the band of zero figures.
+export const ExpensesEmptySearch: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/expenses', query: { q: 'sss' } } },
+    msw: {
+      handlers: [
+        http.get('/api/v1/expenses', () => HttpResponse.json(emptyPage)),
+        http.get('/api/v1/expenses/summary', () => HttpResponse.json({ data: expenseSummary })),
+        http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: [] })),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <ExpensesPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // A search with no match: the list says so, and no figures for an empty workspace appear above it.
+    await waitFor(() => expect(canvas.getByRole('searchbox')).toHaveValue('sss'))
+    await waitFor(() => expect(canvasElement.querySelector('[aria-busy="true"]')).toBeNull())
+    await expect(canvas.queryByText('Spent this month')).not.toBeInTheDocument()
+  },
+}
+
 // Every list page's "…" menu leads with its import entry, with the same icon (Clients, Invoices, ... use "Import").
 export const ExpensesImportMenu: Story = {
   parameters: {

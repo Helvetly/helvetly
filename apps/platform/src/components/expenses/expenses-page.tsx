@@ -5,6 +5,7 @@ import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 import {
   ArrowDown,
   ArrowUp,
@@ -65,6 +66,7 @@ import {
   exportIdsUrl,
   exportUrl,
   listParamsToQuery,
+  expenseListQuery,
   parseListParams,
   useBulkExpenses,
   useDeleteExpense,
@@ -148,6 +150,8 @@ export function ExpensesPage() {
   const list = useExpenseList(params)
   const prefetch = usePrefetch(expenseQuery)
   const summary = useExpenseSummary()
+  // The plain first page (shared with the list's own query when nothing is filtered).
+  const unfiltered = useQuery(expenseListQuery(parseListParams(new URLSearchParams())))
   const bulk = useBulkExpenses()
   const remove = useDeleteExpense()
   const book = useExpenseAction((id: string) => expensesApi.book(id))
@@ -191,6 +195,8 @@ export function ExpensesPage() {
     Boolean(params.search) || params.categories.length > 0 || Boolean(params.from || params.to)
   // A workspace without expenses gets the welcome, not a band of zeros.
   const empty = rows.length === 0 && Boolean(list.data) && !filtered && params.view === 'all'
+  // Whether the workspace has any expense at all, whatever is typed in the filters: the figures show only then.
+  const noExpenses = unfiltered.data !== undefined && unfiltered.data.data.length === 0
   const viewIndex = VIEWS.findIndex((entry) => entry.view === params.view)
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
   const toggleRow = (id: string) =>
@@ -372,7 +378,7 @@ export function ExpensesPage() {
         kept={translate('expensesYouAlreadyHaveStayAvailableToRead')}
         className="mx-4 mt-4 sm:mx-6"
       />
-      {!empty && <ExpenseKpis />}
+      {!empty && !noExpenses && <ExpenseKpis />}
       {dropping && (
         <div
           aria-hidden
