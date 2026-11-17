@@ -144,7 +144,7 @@
 9 text-px apps/platform/src/components/invoices/instalments-section.tsx
 40 text-px apps/platform/src/components/invoices/invoice-detail.tsx
 6 text-px apps/platform/src/components/invoices/invoice-dialogs.tsx
-34 text-px apps/platform/src/components/invoices/invoice-editor.tsx
+31 text-px apps/platform/src/components/invoices/invoice-editor.tsx
 16 text-px apps/platform/src/components/invoices/invoices-page.tsx
 10 text-px apps/platform/src/components/invoices/lines-editor.tsx
 1 text-px apps/platform/src/components/invoices/payment-methods.tsx
@@ -168,6 +168,7 @@
 1 text-px apps/platform/src/components/products/product-picker.tsx
 15 text-px apps/platform/src/components/products/products-page.tsx
 1 text-px apps/platform/src/components/section-form.tsx
+1 text-px apps/platform/src/components/settings/logo-upload.tsx
 13 text-px apps/platform/src/components/shell/app-sidebar.tsx
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
