@@ -47,6 +47,16 @@ func (f fakeFiles) Open(_ context.Context, key string) (io.ReadSeekCloser, error
 	}{strings.NewReader(body), io.NopCloser(nil)}, nil
 }
 
+// Put stores the object; a "fail-put" entry makes every write fail.
+func (f fakeFiles) Put(_ context.Context, key string, body io.Reader, _ int64, _, _ string) error {
+	if _, fail := f["fail-put"]; fail {
+		return errors.New("storage down")
+	}
+	b, err := io.ReadAll(body)
+	f[key] = string(b)
+	return err
+}
+
 type env struct {
 	t    *testing.T
 	st   *store.Store

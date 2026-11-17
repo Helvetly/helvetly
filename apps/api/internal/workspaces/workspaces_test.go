@@ -328,3 +328,89 @@ func TestDeleteNeedsTheOwner(t *testing.T) {
 		t.Fatal("a refused deletion ended a subscription")
 	}
 }
+
+// TestRestore: only whoever deleted a workspace sees and restores it, within restoreWindow; it comes back with its
+// members (not the ones whose accounts closed meanwhile) and the session moves into it.
+func TestRestore(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	owner, ws := e.person("Acme", "owner")
+	home := auth.NewID("wsp")
+	if err := e.st.CreateWorkspace(ctx, store.Workspace{ID: home, Name: "Home"}, "UTC", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.AddMember(ctx, home, owner.userID, "owner", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	teammate, _ := e.person("Teammate home", "owner")
+	if err := e.st.AddMember(ctx, ws, teammate.userID, "admin", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	gone, _ := e.person("Gone home", "owner")
+	if err := e.st.AddMember(ctx, ws, gone.userID, "member", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := e.do(owner, http.MethodDelete, "/api/v1/workspace", map[string]string{"confirm": "Acme"}); code != http.StatusOK {
+		t.Fatalf("delete: %d", code)
+	}
+	if _, err := e.raw.Exec(ctx, `UPDATE users SET deleted_at = now() WHERE id = $1`, gone.userID); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, list := e.do(teammate, http.MethodGet, "/api/v1/workspaces/deleted", nil); len(list["data"].([]any)) != 0 {
+		t.Fatalf("a teammate sees the deletion: %v", list)
+	}
+	code, list := e.do(owner, http.MethodGet, "/api/v1/workspaces/deleted", nil)
+	rows, _ := list["data"].([]any)
+	if code != http.StatusOK || len(rows) != 1 {
+		t.Fatalf("list: %d %v", code, list)
+	}
+	row := rows[0].(map[string]any)
+	deletedAt, _ := time.Parse(time.RFC3339Nano, row["deleted_at"].(string))
+	until, _ := time.Parse(time.RFC3339Nano, row["restore_until"].(string))
+	if row["workspace_id"] != ws || row["name"] != "Acme" || until.Sub(deletedAt) != restoreWindow {
+		t.Fatalf("row: %v", row)
+	}
+	id := row["id"].(string)
+	restorePath := "/api/v1/workspaces/deleted/" + id + "/restore"
+	if code, _ := e.do(teammate, http.MethodPost, restorePath, map[string]any{}); code != http.StatusNotFound {
+		t.Fatalf("a teammate restored: %d", code)
+	}
+
+	realNow := e.svc.now
+	e.svc.now = func() time.Time { return realNow().Add(restoreWindow + time.Minute) }
+	if _, list := e.do(owner, http.MethodGet, "/api/v1/workspaces/deleted", nil); len(list["data"].([]any)) != 0 {
+		t.Fatalf("listed after the window: %v", list)
+	}
+	if code, _ := e.do(owner, http.MethodPost, restorePath, map[string]any{}); code != http.StatusNotFound {
+		t.Fatalf("restored after the window: %d", code)
+	}
+	e.svc.now = realNow
+
+	if code, _ := e.do(owner, http.MethodPost, restorePath, map[string]any{}); code != http.StatusOK {
+		t.Fatalf("restore: %d", code)
+	}
+	if _, s := e.session(owner); s["workspace"].(map[string]any)["id"] != ws {
+		t.Fatalf("not moved into the restored workspace: %v", s)
+	}
+	var deleted bool
+	var roles []string
+	err := e.raw.QueryRow(ctx, `SELECT deleted_at IS NOT NULL, (SELECT array_agg(role || ':' || user_id ORDER BY role)
+		FROM workspace_members WHERE workspace_id = $1) FROM workspaces WHERE id = $1`, ws).Scan(&deleted, &roles)
+	want := []string{"admin:" + teammate.userID, "owner:" + owner.userID}
+	if err != nil || deleted || strings.Join(roles, ",") != strings.Join(want, ",") {
+		t.Fatalf("deleted %v members %v: %v", deleted, roles, err)
+	}
+	if code, _ := e.do(owner, http.MethodPost, restorePath, map[string]any{}); code != http.StatusNotFound {
+		t.Fatalf("restored twice: %d", code)
+	}
+
+	// Deleted again: the new deletion is the one to restore, the old one stays used.
+	if code, _ := e.do(owner, http.MethodDelete, "/api/v1/workspace", map[string]string{"confirm": "Acme"}); code != http.StatusOK {
+		t.Fatalf("delete again: %d", code)
+	}
+	if _, list := e.do(owner, http.MethodGet, "/api/v1/workspaces/deleted", nil); len(list["data"].([]any)) != 1 ||
+		list["data"].([]any)[0].(map[string]any)["id"] == id {
+		t.Fatalf("after deleting again: %v", list)
+	}
+}

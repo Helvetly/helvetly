@@ -177,6 +177,8 @@ export function resetAccountMock() {
 }
 
 export const accountHandlers = [
+  // The account page asks for deleted workspaces; none by default (the restore stories bring their own).
+  http.get('/api/v1/workspaces/deleted', () => HttpResponse.json({ data: [] })),
   http.put('/api/v1/account/avatar', async ({ request }) => {
     const file = (await request.formData()).get('file')
     if (!(file instanceof Blob) || !['image/png', 'image/jpeg'].includes(file.type))

@@ -202,6 +202,7 @@ var ExportExcluded = map[string]string{
 	"transmission_credentials": "sealed e-invoice channel credentials",
 	"heidi_confirmations":      "pending confirmations of Heidi actions, minutes long; the conversation is in heidi_messages",
 	"digest_days":              "job bookkeeping: the days the engagements digest was sent",
+	"workspace_deletions":      "the operator's record of a deletion and its archive; a live workspace has none to export",
 	"name_suggestion_uses":     "abuse-cap bookkeeping of one person (ids and times only, kept a week); the suggestion itself is in workspace_name_suggestions",
 	"invoice_xml_retention":    "history: the old, unverified mark of an archived XML's object lock",
 	"object_retention":         "storage protection state of the workspace's objects, not business data",

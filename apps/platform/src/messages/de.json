@@ -1152,7 +1152,6 @@
   "everyoneAtOnce": "Alle auf einmal",
   "everyoneHasSigned": "Alle haben unterschrieben",
   "everyoneHasSignedIt": "Jeder hat es unterschrieben.",
-  "everyoneLosesAccessToInvoicesAndReceiptsStayArchived": "Jeder verliert den Zugriff auf {name}. Rechnungen und Quittungen bleiben für die zehn Jahre, die das Schweizer Gesetz vorschreibt, archiviert; Ein kostenpflichtiger Plan endet sofort. Dies kann nicht rückgängig gemacht werden.",
   "everySigningLinkStopsWorkingAtOnceSignaturesAlready": "Jeder Signaturlink funktioniert auf einmal nicht mehr. Bereits erteilte Unterschriften bleiben im Prüfpfad erhalten. Dies kann nicht rückgängig gemacht werden.",
   "everythingIncludingBillingAndDeletingTheWorkspace": "Alles, inklusive Abrechnung und Löschung des Arbeitsbereichs.",
   "everythingIsPaid": "Alles ist bezahlt",
@@ -1795,7 +1794,6 @@
   "member": "Mitglied",
   "memberLimitReached": "Mitgliederlimit erreicht",
   "members": "Mitglieder",
-  "membersInvitationsAndSessionsEndNowAndNobodyCan": "Mitglieder, Einladungen und Sitzungen enden jetzt und niemand kann sie wieder öffnen.",
   "membersWorkWithClientsInvoicesAndDocuments": "Mitglieder arbeiten mit Kunden, Rechnungen und Dokumenten.",
   "menu": "Menü",
   "message": "Nachricht",
@@ -4261,5 +4259,12 @@
   "numberSuggestionText": "Sie folgen {format}. Ihre nächste Rechnung wäre {next}.",
   "useThisFormat": "Dieses Format verwenden",
   "keepMyFormat": "Mein Format behalten",
-  "numberSuggestionApplied": "Neue Rechnungen machen bei {next} weiter."
+  "numberSuggestionApplied": "Neue Rechnungen machen bei {next} weiter.",
+  "deletedWorkspaces": "Gelöschte Arbeitsbereiche",
+  "restoreAWorkspaceYouDeletedWithinThirtyDays": "Einen gelöschten Arbeitsbereich kannst du 30 Tage lang mitsamt seinen Mitgliedern wiederherstellen.",
+  "deletedOnCanBeRestoredUntil": "Gelöscht am {deleted}, wiederherstellbar bis {until}",
+  "restoring": "Wird wiederhergestellt…",
+  "wasRestored": "{name} wurde wiederhergestellt.",
+  "everyoneLosesAccessToAndAPaidPlanEnds": "Alle verlieren den Zugriff auf {name}, und ein bezahlter Tarif endet sofort. Du kannst den Arbeitsbereich 30 Tage lang in deinem Konto wiederherstellen. Rechnungen und Belege bleiben für die vom Schweizer Recht verlangten zehn Jahre archiviert.",
+  "membersInvitationsAndSessionsEndNowYouCanRestore": "Mitglieder, Einladungen und Sitzungen enden jetzt. Du kannst den Arbeitsbereich 30 Tage lang in deinem Konto wiederherstellen. Eine Sicherung aller Datensätze und Dateien wird als Archiv aufbewahrt."
 }

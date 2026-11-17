@@ -131,6 +131,10 @@ La maggior parte delle operazioni è disponibile direttamente:
   lavoro (ad esempio conversazioni con Heidi o record creati) appartiene allo spazio e resta senza
   il tuo nome o indirizzo; chiedi al titolare dello spazio o a noi se vuoi che venga rimosso.
 
+Il titolare che ha eliminato uno spazio di lavoro può ripristinarlo entro 30 giorni.
+All’eliminazione conserviamo inoltre una copia d’archivio (uno ZIP di tutti i suoi record e file),
+tenuta con l’archivio per il periodo di conservazione indicato di seguito.
+
 Nessuno può più accedere a uno spazio di lavoro eliminato, ma i suoi dati restano memorizzati: quelli
 che la normativa contabile impone di conservare (fatture, ricevute, registro di audit: 10 anni,
 art. 958f CO e Olc) vengono mantenuti per quel periodo e solo a tale scopo, poi cancellati.

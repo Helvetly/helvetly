@@ -225,14 +225,17 @@ func (q Q) UpdateWorkspace(ctx context.Context, w Workspace) error {
 	return err
 }
 
-// DeleteWorkspace marks the workspace deleted and removes everyone's way in: members, sessions, open invitations.
-func (q Q) DeleteWorkspace(ctx context.Context, workspaceID string, now time.Time) error {
+// DeleteWorkspace marks the workspace deleted and removes everyone's way in: members, sessions, open invitations. The
+// deletion keeps the members, so whoever deleted it can restore it (RestoreWorkspace), and waits for its backup.
+func (q Q) DeleteWorkspace(ctx context.Context, workspaceID, deletionID, userID string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `WITH
 			w AS (UPDATE workspaces SET deleted_at = $2 WHERE id = $1),
+			d AS (INSERT INTO workspace_deletions (id, workspace_id, deleted_by, deleted_at, members)
+				SELECT $3, $1, $4, $2, coalesce(jsonb_agg(to_jsonb(m)), '[]') FROM workspace_members m WHERE m.workspace_id = $1),
 			i AS (UPDATE workspace_invitations SET revoked_at = $2
 				WHERE workspace_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL),
 			s AS (DELETE FROM sessions WHERE workspace_id = $1)
-		DELETE FROM workspace_members WHERE workspace_id = $1`, workspaceID, now)
+		DELETE FROM workspace_members WHERE workspace_id = $1`, workspaceID, now, deletionID, userID)
 	return err
 }
 

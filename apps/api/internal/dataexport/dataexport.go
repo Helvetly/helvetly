@@ -29,8 +29,10 @@ type HR interface {
 	Export(ctx context.Context, workspaceID string, w store.ExportWriter) (files []store.ExportFile, included bool, err error)
 }
 
+// Storage reads the files an export copies and keeps the archives of deleted workspaces.
 type Storage interface {
 	Open(ctx context.Context, key string) (io.ReadSeekCloser, error)
+	Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error
 }
 
 type Service struct {
@@ -89,36 +91,52 @@ func (s *Service) workspace(w http.ResponseWriter, r *http.Request, sess store.S
 	}}
 	defer func() { settle(out.n) }()
 	z := zip.NewWriter(out)
+	err := s.writeWorkspace(r.Context(), z, sess.Workspace, nil)
+	if err == nil {
+		err = z.Close()
+	}
+	s.finish(w, r, out, err)
+}
+
+// writeWorkspace writes the workspace's records, files, HR part and README into z; extra files (name → content) are
+// added at the root, for an archive.
+func (s *Service) writeWorkspace(ctx context.Context, z *zip.Writer, ws store.Workspace, extra map[string][]byte) error {
 	tables := &zipTables{z: z}
-	files, err := s.db.Export(r.Context(), sess.Workspace.ID, store.WorkspaceExportTables, tables, true)
+	files, err := s.db.Export(ctx, ws.ID, store.WorkspaceExportTables, tables, true)
 	if err == nil {
 		err = tables.close()
 	}
 	var missing []string
 	if err == nil {
-		missing, err = s.addFiles(r.Context(), z, "files/", files)
+		missing, err = s.addFiles(ctx, z, "files/", files)
 	}
 	hr := false
 	if err == nil && s.hr != nil {
 		var hrFiles []store.ExportFile
 		hrTables := &zipTables{z: z, prefix: "employees/data/"}
-		if hrFiles, hr, err = s.hr.Export(r.Context(), sess.Workspace.ID, hrTables); err == nil {
+		if hrFiles, hr, err = s.hr.Export(ctx, ws.ID, hrTables); err == nil {
 			err = hrTables.close()
 		}
 		var gone []string
 		if err == nil && hr {
-			gone, err = s.addFiles(r.Context(), z, "employees/files/", hrFiles)
+			gone, err = s.addFiles(ctx, z, "employees/files/", hrFiles)
 			files = append(files, hrFiles...)
 			missing = append(missing, gone...)
 		}
 	}
-	if err == nil {
-		err = readme(z, sess.Workspace, s.now(), len(files), missing, hr)
+	for name, content := range extra {
+		if err != nil {
+			break
+		}
+		var f io.Writer
+		if f, err = z.Create(name); err == nil {
+			_, err = f.Write(content)
+		}
 	}
 	if err == nil {
-		err = z.Close()
+		err = readme(z, ws, s.now(), len(files), missing, hr)
 	}
-	s.finish(w, r, out, err)
+	return err
 }
 
 // addFiles copies each stored object into the ZIP; an object that is gone is listed instead of failing the export.

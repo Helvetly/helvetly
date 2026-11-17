@@ -116,6 +116,10 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   (propriétaire uniquement ; saisie du nom de l’espace pour confirmer). La suppression d’un espace
   résilie immédiatement son abonnement. Exportez d’abord vos données : après suppression,
   l’espace devient inaccessible à tous.
+- Dans les 30 jours, le propriétaire qui a supprimé un espace peut le restaurer depuis son compte, avec
+  ses membres ; son abonnement reste résilié. À la suppression, nous conservons en outre une copie
+  d’archive (un ZIP de tous les enregistrements et fichiers), gardée avec les archives pendant la
+  durée de conservation.
 - Les données d’un espace supprimé restent stockées, mais inaccessibles. La conservation de vos
   pièces de gestion pendant la durée légale (en Suisse, 10 ans, art. 958f CO, Olico) vous incombe ;
   exportez-les avant la suppression. Le sort des données conservées après suppression est décrit

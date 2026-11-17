@@ -152,7 +152,7 @@ func TestDigestWorkspacesOnlyWithPendingAndDigestOn(t *testing.T) {
 		t.Fatalf("all notified: %v", ids)
 	}
 	_, _ = s.AddNotice(ctx, notice("n3", "eng_1", "under_pace"))
-	if err := s.DeleteWorkspace(ctx, "wsp_a", t0); err != nil {
+	if err := s.DeleteWorkspace(ctx, "wsp_a", "wdl_a", "usr_a", t0); err != nil {
 		t.Fatal(err)
 	}
 	if ids, _ := s.DigestWorkspaces(ctx); len(ids) != 0 {

@@ -137,6 +137,10 @@ mois, prolongeable dans les cas prévus par la loi). Vous pouvez effectuer vous-
   dans un espace (par exemple conversations avec Heidi ou enregistrements créés) appartient à
   cet espace et y reste sans vos nom et adresse ; demandez au propriétaire ou à nous de le retirer.
 
+Le propriétaire qui a supprimé un espace peut le restaurer dans les 30 jours. À la suppression, nous
+conservons en outre une copie d’archive (un ZIP de tous ses enregistrements et fichiers), gardée
+avec les archives pendant la durée de conservation indiquée ci-dessous.
+
 Un espace supprimé devient inaccessible à tous, mais ses données restent stockées : les pièces
 soumises à conservation comptable (factures, justificatifs, journal d’audit : 10 ans, art. 958f CO
 et Olico) sont conservées pendant cette durée uniquement à cette fin, puis effacées. Pour toute autre

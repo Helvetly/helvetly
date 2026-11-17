@@ -111,6 +111,9 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   il titolare può farlo e deve digitare il nome dello spazio per confermare). L’eliminazione di
   uno spazio annulla subito il relativo abbonamento. Esporta prima i dati: dopo l’eliminazione
   nessuno può più accedere allo spazio.
+- Entro 30 giorni il titolare che ha eliminato uno spazio può ripristinarlo dal proprio account, con
+  i suoi membri; il suo abbonamento resta annullato. All’eliminazione conserviamo inoltre una copia
+  d’archivio (uno ZIP di tutti i record e file), tenuta con l’archivio per il periodo di conservazione.
 - I dati di uno spazio eliminato restano memorizzati ma inaccessibili. Conservare i documenti
   aziendali per il periodo richiesto dalla legge (in Svizzera 10 anni, art. 958f CO, Olc) è un tuo
   obbligo; esportali prima di eliminare lo spazio. Il trattamento successivo dei dati memorizzati

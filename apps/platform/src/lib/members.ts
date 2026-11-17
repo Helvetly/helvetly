@@ -95,6 +95,7 @@ const keys = {
   members: ['members', 'list'],
   invitations: ['members', 'invitations'],
   workspaces: ['workspaces'],
+  deletedWorkspaces: ['workspaces', 'deleted'],
 } as const
 
 const json = (method: 'POST' | 'PATCH', body: unknown) => ({ method, json: body }) as const
@@ -241,6 +242,34 @@ export function useDeleteWorkspace() {
       return { moved: true }
     },
     onSuccess: () => resetForNewSession(queryClient),
+  })
+}
+
+/** A workspace the person deleted that they can still restore (30 days). */
+export type DeletedWorkspace = {
+  id: string
+  workspace_id: string
+  name: string
+  deleted_at: string
+  restore_until: string
+}
+
+export function useDeletedWorkspaces() {
+  return useQuery({
+    queryKey: keys.deletedWorkspaces,
+    queryFn: async () => (await request<{ data: DeletedWorkspace[] }>('/workspaces/deleted')).data,
+  })
+}
+
+/** Brings a deleted workspace back with its members; the session moves into it. */
+export function useRestoreWorkspace() {
+  const queryClient = useQueryClient()
+  return useMutation<{ csrf_token: string }, ApiError, string>({
+    mutationFn: (id) => request(`/workspaces/deleted/${path(id)}/restore`, json('POST', {})),
+    onSuccess: (res) => {
+      setCsrfToken(res.csrf_token)
+      resetForNewSession(queryClient)
+    },
   })
 }
 

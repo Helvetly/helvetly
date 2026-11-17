@@ -101,6 +101,9 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - You can end the contract by cancelling every subscription and deleting your workspaces (owner only;
   the workspace name must be typed to confirm). Deleting a workspace cancels its subscription at
   once. Export your data first: after deletion nobody can reach the workspace any more.
+- Within 30 days the owner who deleted a workspace can restore it from their account, with its
+  members; its subscription stays cancelled. On deletion we also store an archive copy (a ZIP of
+  all records and files), kept with the archive for the retention period.
 - A deleted workspace's records stay stored but unreachable. Keeping your business records for the
   period the law requires (in Switzerland 10 years, OR Art. 958f, GeBüV) is your obligation; export
   them before you delete. What happens to stored records after deletion is described in the

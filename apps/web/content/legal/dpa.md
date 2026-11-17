@@ -79,11 +79,13 @@ During the contract the Customer can export all of its data at any time (Setting
 Export all data). When a workspace is deleted, nobody can reach it any more, but its records and
 files stay stored; the platform does not yet erase them automatically. Keeping business records for
 the period the law requires (in Switzerland 10 years, OR Art. 958f, GeBüV) is the Customer's
-obligation as controller. Helvetly keeps a deleted workspace's records as an archive until the end of
-that retention period and then erases them; on the Customer's request it erases them earlier where
-the law allows. Backups are erased in their normal rotation. Employee and payroll data are part of
-the workspace: the owner's export includes them in a separate folder, and on deletion they are
-treated like its other records.
+obligation as controller. Helvetly keeps a deleted workspace's records as an archive until the end
+of that retention period and then erases them; on the Customer's request it erases them earlier
+where the law allows. Backups are erased in their normal rotation. Within 30 days the owner who
+deleted the workspace can restore it, with its members. On deletion Helvetly also stores an archive
+copy, a ZIP of all records and files of the workspace, which it keeps with the archive for the
+retention period and then erases. Employee and payroll data are part of the workspace: the owner's
+export includes them in a separate folder, and on deletion they are treated like its other records.
 
 ## 10. Data breaches
 

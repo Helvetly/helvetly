@@ -1152,7 +1152,6 @@
   "everyoneAtOnce": "Tout le monde à la fois",
   "everyoneHasSigned": "Tout le monde a signé",
   "everyoneHasSignedIt": "Tout le monde l’a signé.",
-  "everyoneLosesAccessToInvoicesAndReceiptsStayArchived": "Tout le monde perd l’accès à {name}. Les factures et reçus restent archivés pendant les dix ans requis par la loi suisse ; un forfait payant se termine immédiatement. Cela ne peut pas être annulé.",
   "everySigningLinkStopsWorkingAtOnceSignaturesAlready": "Chaque lien de signature cesse de fonctionner d’un seul coup. Les signatures déjà données restent dans la piste d’audit. Cela ne peut pas être annulé.",
   "everythingIncludingBillingAndDeletingTheWorkspace": "Tout, y compris la facturation et la suppression de l’espace de travail.",
   "everythingIsPaid": "Tout est payé",
@@ -1795,7 +1794,6 @@
   "member": "Membre",
   "memberLimitReached": "Limite de membres atteinte",
   "members": "Membres",
-  "membersInvitationsAndSessionsEndNowAndNobodyCan": "Les membres, les invitations et les sessions se terminent maintenant et personne ne peut plus l’ouvrir.",
   "membersWorkWithClientsInvoicesAndDocuments": "Les membres travaillent avec des clients, des factures et des documents.",
   "menu": "Menus",
   "message": "Message",
@@ -4261,5 +4259,12 @@
   "numberSuggestionText": "Elles suivent {format}. Votre prochaine facture serait {next}.",
   "useThisFormat": "Utiliser ce format",
   "keepMyFormat": "Garder mon format",
-  "numberSuggestionApplied": "Les nouvelles factures continuent à {next}."
+  "numberSuggestionApplied": "Les nouvelles factures continuent à {next}.",
+  "deletedWorkspaces": "Espaces de travail supprimés",
+  "restoreAWorkspaceYouDeletedWithinThirtyDays": "Un espace de travail supprimé peut être restauré pendant 30 jours, avec ses membres.",
+  "deletedOnCanBeRestoredUntil": "Supprimé le {deleted}, restaurable jusqu’au {until}",
+  "restoring": "Restauration…",
+  "wasRestored": "{name} a été restauré.",
+  "everyoneLosesAccessToAndAPaidPlanEnds": "Tout le monde perd l’accès à {name} et un forfait payant se termine immédiatement. Vous pouvez le restaurer depuis votre compte pendant 30 jours. Les factures et reçus restent archivés pendant les dix ans requis par la loi suisse.",
+  "membersInvitationsAndSessionsEndNowYouCanRestore": "Les membres, les invitations et les sessions prennent fin maintenant. Vous pouvez restaurer l’espace de travail depuis votre compte pendant 30 jours. Une sauvegarde de tous les enregistrements et fichiers est conservée comme archive."
 }

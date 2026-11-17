@@ -1152,7 +1152,6 @@
   "everyoneAtOnce": "Everyone at once",
   "everyoneHasSigned": "Everyone has signed",
   "everyoneHasSignedIt": "Everyone has signed it.",
-  "everyoneLosesAccessToInvoicesAndReceiptsStayArchived": "Everyone loses access to {name}. Invoices and receipts stay archived for the ten years Swiss law requires; a paid plan ends at once. This can’t be undone.",
   "everySigningLinkStopsWorkingAtOnceSignaturesAlready": "Every signing link stops working at once. Signatures already given stay in the audit trail. This can’t be undone.",
   "everythingIncludingBillingAndDeletingTheWorkspace": "Everything, including billing and deleting the workspace.",
   "everythingIsPaid": "Everything is paid",
@@ -1795,7 +1794,6 @@
   "member": "Member",
   "memberLimitReached": "Member limit reached",
   "members": "Members",
-  "membersInvitationsAndSessionsEndNowAndNobodyCan": "Members, invitations and sessions end now and nobody can open it again.",
   "membersWorkWithClientsInvoicesAndDocuments": "Members work with clients, invoices and documents.",
   "menu": "Menu",
   "message": "Message",
@@ -4261,5 +4259,12 @@
   "numberSuggestionText": "They follow {format}. Your next invoice would be {next}.",
   "useThisFormat": "Use this format",
   "keepMyFormat": "Keep my format",
-  "numberSuggestionApplied": "New invoices continue at {next}."
+  "numberSuggestionApplied": "New invoices continue at {next}.",
+  "deletedWorkspaces": "Deleted workspaces",
+  "restoreAWorkspaceYouDeletedWithinThirtyDays": "A workspace you deleted can be restored for 30 days, with its members.",
+  "deletedOnCanBeRestoredUntil": "Deleted on {deleted}, can be restored until {until}",
+  "restoring": "Restoring…",
+  "wasRestored": "{name} was restored.",
+  "everyoneLosesAccessToAndAPaidPlanEnds": "Everyone loses access to {name} and a paid plan ends at once. You can restore it from your account for 30 days. Invoices and receipts stay archived for the ten years Swiss law requires.",
+  "membersInvitationsAndSessionsEndNowYouCanRestore": "Members, invitations and sessions end now. You can restore the workspace from your account for 30 days. A backup of all records and files is kept as an archive."
 }
