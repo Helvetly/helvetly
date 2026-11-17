@@ -269,7 +269,7 @@ export function SettingsRow({
 }: {
   icon: ReactNode
   title: ReactNode
-  meta: ReactNode
+  meta?: ReactNode
   children?: ReactNode
 }) {
   return (
@@ -282,7 +282,7 @@ export function SettingsRow({
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="flex flex-wrap items-center gap-2 text-sm font-medium">{title}</span>
-        <span className="text-body-sm text-pretty text-muted-foreground">{meta}</span>
+        {meta && <span className="text-body-sm text-pretty text-muted-foreground">{meta}</span>}
       </span>
       {children && <span className="flex shrink-0 items-center gap-1">{children}</span>}
     </li>

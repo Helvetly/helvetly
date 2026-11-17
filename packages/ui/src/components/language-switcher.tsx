@@ -20,6 +20,7 @@ import {
 import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Check, Globe, Languages } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it: 'IT' }
 
@@ -69,11 +70,21 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   )
 }
 
+/** The interface language's name and the region of its flag, for a settings row that shows it. */
+export function useCurrentLanguage() {
+  const current = useLanguage()
+  return {
+    name: locales[current as keyof typeof locales]?.name ?? current,
+    region: languageFlags[current] ?? '',
+  }
+}
+
 /**
  * A quiet footer control: the current language's flag and name, opening a dialog with every language. For
- * screens where the language is chosen once (sign-in), so it should not compete with the form.
+ * screens where the language is chosen once (sign-in), so it should not compete with the form. `children` replaces
+ * that trigger (a settings row's own button).
  */
-export function LanguageDialogButton() {
+export function LanguageDialogButton({ children }: { children?: ReactNode }) {
   const current = useLanguage()
   const translate = useTranslate()
   if (Object.keys(locales).length < 2) return null
@@ -82,12 +93,14 @@ export function LanguageDialogButton() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="xs" className="rounded-full px-2.5 text-muted-foreground">
-          {/* The name says what it does and keeps the visible language in it. */}
-          <span className="sr-only">{translate('changeLanguage')}: </span>
-          <Globe aria-hidden />
-          {currentName}
-        </Button>
+        {children ?? (
+          <Button variant="outline" size="xs" className="rounded-full px-2.5 text-muted-foreground">
+            {/* The name says what it does and keeps the visible language in it. */}
+            <span className="sr-only">{translate('changeLanguage')}: </span>
+            <Globe aria-hidden />
+            {currentName}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
