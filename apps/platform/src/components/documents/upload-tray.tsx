@@ -13,7 +13,7 @@ import {
   Replace,
   X,
 } from 'lucide-react'
-import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 
 import { promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -76,7 +76,8 @@ export function useUploads() {
   }
   const add = (files: File[], folderId: string | null, folderName: string) =>
     dispatch({ type: 'add', uploads: newUploads(files, folderId, folderName) })
-  return { uploads, add, act }
+  const clear = useCallback(() => dispatch({ type: 'clear' }), [])
+  return { uploads, add, act, clear }
 }
 
 /** The server's sentence about the file ("… is not a supported file"), not the generic one. */

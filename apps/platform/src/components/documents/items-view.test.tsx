@@ -25,6 +25,8 @@ const file = (id: string, name: string): DocFile => ({
   content_type: 'text/plain',
   kind: 'text',
   sha256: null,
+  tags: [],
+  ai_filing: null,
   previewable: false,
   links: [],
   retained_until: null,

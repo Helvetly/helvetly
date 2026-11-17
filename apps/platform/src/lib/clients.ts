@@ -321,11 +321,12 @@ export const clientKeys = {
 }
 
 /** Every tag in the workspace with how many clients use it, for autocomplete and filters. */
-export function useClientTags() {
+export function useClientTags(enabled = true) {
   return useQuery({
     queryKey: clientKeys.tags,
     queryFn: async () => (await clientsApi.tags()).data,
     staleTime: 60_000,
+    enabled,
   })
 }
 

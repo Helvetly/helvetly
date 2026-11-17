@@ -4234,5 +4234,11 @@
   "theVATReturnCouldnTBeChecked": "Impossibile verificare il rendiconto IVA: ",
   "retryVATReturn": "Riprova rendiconto IVA",
   "closingCouldnTBeChecked": "Impossibile verificare i mesi da chiudere: ",
-  "retryClosing": "Riprova chiusura"
+  "retryClosing": "Riprova chiusura",
+  "aiFiledInto": "{count, plural, one {# file archiviato} other {# file archiviati}} in {folder}.",
+  "aiFiledIntoFolders": "{count, plural, one {# file archiviato} other {# file archiviati}} in {folders, plural, one {# cartella} other {# cartelle}}.",
+  "aiTagged": "{count, plural, one {# file etichettato} other {# file etichettati}}.",
+  "aiFilingUndone": "{count, plural, one {File riportato} other {File riportati}} dove caricati.",
+  "sortedByAI": "Ordinato dall’IA",
+  "sortedByAIInto": "Ordinato dall’IA in {folder}"
 }

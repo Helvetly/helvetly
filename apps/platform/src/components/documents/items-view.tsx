@@ -33,6 +33,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
 
+import { SortedByAI, TagChips } from './ai-filing'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderArt, FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
@@ -485,9 +486,15 @@ function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
 /** Small marks for links and business records. */
 function FileBadges({ file, className }: { file: DocFile; className?: string }) {
   const retained = isRetained(file.retained_until)
-  if (!retained && file.links.length === 0) return null
+  const sorted = file.ai_filing?.status === 'filed'
+  if (!retained && !sorted && file.links.length === 0) return null
   return (
     <span className={cn('flex gap-1', className)}>
+      {sorted && (
+        <span className="flex size-5 items-center justify-center rounded-full bg-card/95 shadow-elevation-1">
+          <SortedByAI file={file} />
+        </span>
+      )}
       {file.links.length > 0 && (
         <span
           title={file.links.map((link) => link.label).join(', ')}
@@ -605,12 +612,15 @@ function NameCell({
   name,
   isFile,
   detail,
+  aside,
 }: {
   props: ItemsProps
   item: ItemKey
   name: string
   isFile: boolean
   detail: string
+  /** After the detail line's text: a file's tags. */
+  aside?: ReactNode
 }) {
   return (
     <span className="block min-w-0 flex-1">
@@ -625,7 +635,10 @@ function NameCell({
           {name}
         </span>
       )}
-      <span className="block truncate text-[12px] text-muted-foreground">{detail}</span>
+      <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+        <span className="shrink-0 truncate">{detail}</span>
+        {aside}
+      </span>
     </span>
   )
 }
@@ -760,6 +773,12 @@ function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
               name={file.name}
               isFile
               detail={`${formatSize(file.size)} · ${KIND_LABELS[file.kind]}`}
+              aside={
+                <>
+                  <SortedByAI file={file} />
+                  <TagChips tags={file.tags} />
+                </>
+              }
             />
           </span>
         </td>

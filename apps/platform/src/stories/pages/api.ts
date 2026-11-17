@@ -391,6 +391,8 @@ const file = (id: string, name: string, kind: DocFile['kind'], type: string): Do
   content_type: type,
   kind,
   sha256: null,
+  tags: [],
+  ai_filing: null,
   previewable: false,
   links: [],
   retained_until: null,

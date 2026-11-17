@@ -4234,5 +4234,11 @@
   "theVATReturnCouldnTBeChecked": "La déclaration de TVA n’a pas pu être vérifiée : ",
   "retryVATReturn": "Réessayer la déclaration de TVA",
   "closingCouldnTBeChecked": "Les mois à clôturer n’ont pas pu être vérifiés : ",
-  "retryClosing": "Réessayer la clôture"
+  "retryClosing": "Réessayer la clôture",
+  "aiFiledInto": "{count, plural, one {# fichier classé} other {# fichiers classés}} dans {folder}.",
+  "aiFiledIntoFolders": "{count, plural, one {# fichier classé} other {# fichiers classés}} dans {folders, plural, one {# dossier} other {# dossiers}}.",
+  "aiTagged": "{count, plural, one {# fichier balisé} other {# fichiers balisés}}.",
+  "aiFilingUndone": "{count, plural, one {Fichier remis} other {Fichiers remis}} à leur emplacement d’envoi.",
+  "sortedByAI": "Classé par l’IA",
+  "sortedByAIInto": "Classé par l’IA dans {folder}"
 }

@@ -15,6 +15,8 @@ const document: DocFile = {
   content_type: 'application/pdf',
   kind: 'pdf',
   sha256: null,
+  tags: [],
+  ai_filing: null,
   previewable: true,
   links: [],
   retained_until: null,

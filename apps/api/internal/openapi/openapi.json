@@ -991,6 +991,15 @@
             }
           },
           {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "description": "Only documents with this tag.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "kind",
             "in": "query",
             "required": false,
@@ -8130,6 +8139,24 @@
           "sha256": {
             "type": ["string", "null"]
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Lower-case tags, at most 10."
+          },
+          "ai_filing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentFiling"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What AI filing did with the file after its upload; null when it was not filed by AI."
+          },
           "links": {
             "type": "array",
             "items": {
@@ -11053,6 +11080,14 @@
             "enum": ["fail", "keep_both", "replace"],
             "default": "fail",
             "description": "A same-named live file in the target folder: fail (409 name_taken), keep_both (\"Offer (2).pdf\") or replace (the other file goes to the Trash; 409 retained if it is a business record)."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "description": "Replaces the tags: trimmed, lower-cased, at most 32 characters each."
           }
         },
         "examples": [
@@ -12244,6 +12279,38 @@
           "unread"
         ],
         "description": "Key figures in one currency, in major units (JSON numbers). Invoice figures stay 0 without read access to invoices, expense figures without read access to expenses."
+      },
+      "DocumentFiling": {
+        "type": "object",
+        "description": "AI filing of an upload: queued, filed (folder is where it went), skipped (nothing changed) or undone.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["queued", "filed", "skipped", "undone"]
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FolderRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_folder": {
+            "type": "boolean",
+            "description": "Filing made the folder."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The tags filing added."
+          }
+        },
+        "required": ["status", "folder", "created_folder", "tags"]
       }
     }
   }

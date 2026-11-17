@@ -4234,5 +4234,11 @@
   "theVATReturnCouldnTBeChecked": "Die MWST-Abrechnung konnte nicht geprüft werden: ",
   "retryVATReturn": "MWST-Abrechnung erneut versuchen",
   "closingCouldnTBeChecked": "Abzuschliessende Monate konnten nicht geprüft werden: ",
-  "retryClosing": "Abschluss erneut versuchen"
+  "retryClosing": "Abschluss erneut versuchen",
+  "aiFiledInto": "{count, plural, one {# Datei} other {# Dateien}} in {folder} abgelegt.",
+  "aiFiledIntoFolders": "{count, plural, one {# Datei} other {# Dateien}} in {folders, plural, one {# Ordner} other {# Ordner}} abgelegt.",
+  "aiTagged": "{count, plural, one {# Datei} other {# Dateien}} getaggt.",
+  "aiFilingUndone": "{count, plural, one {Datei} other {Dateien}} wieder am Upload-Ort.",
+  "sortedByAI": "Von KI einsortiert",
+  "sortedByAIInto": "Von KI in {folder} einsortiert"
 }

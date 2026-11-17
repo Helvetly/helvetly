@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Building2,
   ChevronLeft,
@@ -33,6 +34,7 @@ import {
   Receipt,
   RotateCcw,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react'
@@ -42,6 +44,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { toastError } from '@/components/billing/upgrade-prompt'
+import type { KnownTag } from '@/components/clients/fields'
+import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
 import { useClientSearch } from '@/lib/clients'
@@ -52,7 +57,10 @@ import {
   formatSize,
   isRetained,
   KIND_LABELS,
+  docsApi,
   linkHref,
+  refreshDocuments,
+  tagCounts,
   useDoc,
   type DocFile,
   type DocLink,
@@ -240,7 +248,7 @@ export function Preview({
           </div>
           {file && (
             <aside className="hidden w-[380px] shrink-0 overflow-y-auto border-l bg-panel lg:block dark:bg-background">
-              <Details file={file} commands={commands} />
+              <Details file={file} commands={commands} known={tagCounts(siblings)} />
             </aside>
           )}
         </div>
@@ -323,7 +331,15 @@ function Stage({ file }: { file: DocFile }) {
   )
 }
 
-function Details({ file, commands }: { file: DocFile; commands: PreviewCommands }) {
+function Details({
+  file,
+  commands,
+  known,
+}: {
+  file: DocFile
+  commands: PreviewCommands
+  known: KnownTag[]
+}) {
   const canWrite = useCan('write:documents')
   const retained = isRetained(file.retained_until)
   const rows: [string, ReactNode][] = [
@@ -372,6 +388,7 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
           ))}
         </dl>
       </Panel>
+      <TagsPanel file={file} canWrite={canWrite && !file.deleted_at} known={known} />
       <Panel
         title={translate('linkedTo')}
         className="grid grid-cols-[minmax(0,1fr)]"
@@ -445,6 +462,81 @@ function Details({ file, commands }: { file: DocFile; commands: PreviewCommands 
         </Panel>
       )}
     </div>
+  )
+}
+
+/** The file's tags, edited in place, and what AI filing did with it (with Undo). */
+function TagsPanel({
+  file,
+  canWrite,
+  known,
+}: {
+  file: DocFile
+  canWrite: boolean
+  known: KnownTag[]
+}) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const undo = () =>
+    void docsApi.undoFiling(file.id).then(() => {
+      refreshDocuments(queryClient)
+      toast(translate('aiFilingUndone', { count: 1 }))
+    }, toastError)
+  const filed = file.ai_filing?.status === 'filed' ? file.ai_filing : null
+  return (
+    <Panel
+      title={translate('tags')}
+      className="grid grid-cols-[minmax(0,1fr)] gap-2"
+      action={
+        canWrite &&
+        !editing && (
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <Pencil />
+            {translate('edit')}
+          </Button>
+        )
+      }
+    >
+      {editing ? (
+        <InlineTagsEditor
+          initial={file.tags}
+          known={known}
+          save={(tags) =>
+            docsApi.update(file.id, { tags }).then(() => refreshDocuments(queryClient))
+          }
+          onDone={() => setEditing(false)}
+        />
+      ) : file.tags.length > 0 ? (
+        <span className="flex flex-wrap gap-1">
+          {file.tags.map((tag) => (
+            <span key={tag} className="rounded-md bg-muted px-1.5 py-0.5 text-caption">
+              {tag}
+            </span>
+          ))}
+        </span>
+      ) : (
+        <p className="text-body-sm text-muted-foreground">{translate('noTagsYet')}</p>
+      )}
+      {filed && (
+        <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
+          <Sparkles className="size-3.5 shrink-0" />
+          <span className="min-w-0 truncate">
+            {filed.folder
+              ? translate('sortedByAIInto', { folder: filed.folder.name })
+              : translate('sortedByAI')}
+          </span>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={undo}
+              className="shrink-0 cursor-pointer underline underline-offset-2 hover:no-underline"
+            >
+              {translate('undo')}
+            </button>
+          )}
+        </p>
+      )}
+    </Panel>
   )
 }
 

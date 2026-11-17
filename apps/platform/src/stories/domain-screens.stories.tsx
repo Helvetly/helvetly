@@ -303,6 +303,8 @@ const storyDocument: DocFile = {
   content_type: 'application/pdf',
   kind: 'pdf',
   sha256: '0'.repeat(64),
+  tags: [],
+  ai_filing: null,
   previewable: true,
   links: [],
   retained_until: null,

@@ -51,7 +51,9 @@ export function NativeSelect({
   )
 }
 
-/** Chips for tags, with suggestions from the tags the workspace already uses. */
+export type KnownTag = { name: string; count: number }
+
+/** Chips for tags, with suggestions from the tags already in use (the workspace's client tags by default). */
 export function TagsInput({
   id,
   value,
@@ -60,6 +62,7 @@ export function TagsInput({
   label,
   onInputKeyDown,
   onLeave,
+  known,
 }: {
   id: string
   value: string[]
@@ -71,6 +74,8 @@ export function TagsInput({
   onInputKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
   /** Focus left the field and its suggestions, after typed text became a tag. */
   onLeave?: () => void
+  /** The tags to suggest, instead of the clients' ones. */
+  known?: KnownTag[]
 }) {
   const root = useRef<HTMLDivElement>(null)
   const leave = (event: FocusEvent) => {
@@ -78,9 +83,9 @@ export function TagsInput({
   }
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
-  const known = useClientTags()
+  const clientTags = useClientTags(!known)
   const needle = draft.trim().toLowerCase()
-  const suggestions = (known.data ?? [])
+  const suggestions = (known ?? clientTags.data ?? [])
     .filter(
       (tag) =>
         tag.name.toLowerCase().includes(needle) &&
