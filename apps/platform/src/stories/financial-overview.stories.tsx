@@ -309,7 +309,7 @@ export const BillingActiveDetails: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'Pro', level: 3 })).toBeVisible()
-    await expect(await canvas.findByText('4242')).toBeVisible()
+    await expect(await canvas.findByText('Visa •••• 4242')).toBeVisible()
     await expect(canvas.getByText(/−10% for 3 months until 1 Jan 2027/)).toBeVisible()
     await expect(canvas.queryByText('WELCOME')).not.toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Download BILL-1 as PDF' })).toHaveAttribute(
