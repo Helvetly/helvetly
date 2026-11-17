@@ -191,12 +191,14 @@ export const ActiveMonthly: Story = {
     await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 57.')
     await changePlanLink(summary, 'Upgrade to Pro')
     const payment = within(canvas.getByRole('region', { name: 'Payment method' }))
-    await expect(await payment.findByText('4242')).toBeVisible()
-    await expect(payment.getByText('04/28')).toBeVisible()
-    await expect(payment.getByText('4242').closest('[data-slot=payment-card]')).toHaveAttribute(
-      'data-brand',
-      'visa',
+    // One row: brand and last four digits, the expiry under them, Update on the right.
+    await expect(await payment.findByText('Visa •••• 4242')).toBeVisible()
+    await expect(payment.getByText('Expires 04/28')).toBeVisible()
+    // Above the usage, right under the plan.
+    const sections = [...canvasElement.querySelectorAll('[data-slot=settings-section]')].map(
+      (section) => section.id,
     )
+    await expect(sections.indexOf('payment-method')).toBe(sections.indexOf('usage') - 1)
     // Helvetly's invoices: date, number, amount, status and the PDF.
     const invoices = within(canvas.getByRole('region', { name: 'Invoices' }))
     await expect(await invoices.findByText('1 Nov 2026')).toBeVisible()
@@ -308,9 +310,7 @@ export const NoCardNoInvoices: Story = {
     const canvas = within(canvasElement)
     const payment = within(await canvas.findByRole('region', { name: 'Payment method' }))
     await expect(await payment.findByText('No card on file')).toBeVisible()
-    await expect(
-      payment.getByText('No card on file').closest('[data-slot=payment-card]'),
-    ).toHaveAttribute('data-brand', 'none')
+    await expect(payment.getByText('Add one so the subscription keeps running.')).toBeVisible()
     await userEvent.click(payment.getByRole('button', { name: 'Add card' }))
     await waitFor(() => expect(portalRequest).toHaveBeenCalledTimes(1))
     const invoices = within(canvas.getByRole('region', { name: 'Invoices' }))

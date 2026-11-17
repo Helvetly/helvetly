@@ -3,7 +3,6 @@ import { render as renderPlain, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 
 import { billingFixture, entitlementsFixture } from './billing-fixture'
-import { PaymentCard } from './card-brand'
 import { UsageOverview } from './usage-overview'
 
 const render = (ui: ReactElement) => renderPlain(<TooltipProvider>{ui}</TooltipProvider>)
@@ -44,18 +43,6 @@ test('no nudge while every item has room', () => {
     />,
   )
   expect(container.querySelector('[data-slot=usage-nudge]')).toBeNull()
-})
-
-test('the payment card shows the last four digits and expiry, or an empty outline', () => {
-  const { rerender, container } = render(
-    <PaymentCard card={{ brand: 'mastercard', last4: '4444', exp_month: 3, exp_year: 2031 }} />,
-  )
-  const card = container.querySelector('[data-slot=payment-card]')
-  expect(card).toHaveAttribute('data-brand', 'mastercard')
-  expect(card).toHaveTextContent('Card ending in 4444')
-  expect(card).toHaveTextContent('Expires 03/31')
-  rerender(<PaymentCard card={null} />)
-  expect(screen.getByText('No card on file')).toBeInTheDocument()
 })
 
 const withEntitlements = (used: Record<string, number | null>, over = {}) =>
