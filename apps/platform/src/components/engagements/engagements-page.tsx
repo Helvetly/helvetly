@@ -36,8 +36,10 @@ import { listTable, Pager } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
   dropdownKit,
+  PageContextMenu,
   RowContextMenu,
   RowMenuButton,
+  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
@@ -372,7 +374,7 @@ function EngagementItem({
   )
 }
 
-/** The "…" menu's own items: export what the filters show, and (owner/admin) the daily digest. */
+/** The page's actions (import, export what the filters show) and the "…" menu's owner/admin daily digest. */
 function useMenu(filters: EngagementQuery) {
   const client = useQueryClient()
   const canWrite = useCan('write:engagements')
@@ -398,8 +400,7 @@ function useMenu(filters: EngagementQuery) {
       toast.error(translate('couldNotChangeTheDailyDigest'))
     },
   })
-  const { Item } = dropdownKit
-  return (
+  const items = ({ Item }: MenuKit) => (
     <>
       {canWrite && (
         <ImportItem Item={Item} onSelect={importDrawer.open}>
@@ -409,26 +410,27 @@ function useMenu(filters: EngagementQuery) {
       <ExportItem Item={Item} href={localizedHref(exportUrl(filters))}>
         {translate('exportCSV')}
       </ExportItem>
-      {canManage && (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem
-            checked={settings.data?.digest ?? false}
-            disabled={!settings.data}
-            onCheckedChange={(digest) => toggle.mutate({ digest })}
-            className="items-start"
-          >
-            <span className="grid leading-snug">
-              {translate('dailyEMailDigest')}
-              <span className="text-[12px] text-muted-foreground">
-                {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
-              </span>
-            </span>
-          </DropdownMenuCheckboxItem>
-        </>
-      )}
     </>
   )
+  const digestToggle = canManage && (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuCheckboxItem
+        checked={settings.data?.digest ?? false}
+        disabled={!settings.data}
+        onCheckedChange={(digest) => toggle.mutate({ digest })}
+        className="items-start"
+      >
+        <span className="grid leading-snug">
+          {translate('dailyEMailDigest')}
+          <span className="text-[12px] text-muted-foreground">
+            {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
+          </span>
+        </span>
+      </DropdownMenuCheckboxItem>
+    </>
+  )
+  return { items, digestToggle }
 }
 
 /** The work you committed to per client: server-side views, search and paging. */
@@ -470,7 +472,7 @@ export function EngagementsPage() {
   }, [search, term])
 
   const params: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, page }
-  const menu = useMenu({ ...VIEWS[view]?.query, q: term || undefined })
+  const { items, digestToggle } = useMenu({ ...VIEWS[view]?.query, q: term || undefined })
   const list = useQuery({ ...engagementListQuery(params), placeholderData: keepPreviousData })
   const prefetch = usePrefetch(engagementQuery)
   const summary = useQuery({
@@ -571,7 +573,12 @@ export function EngagementsPage() {
         savedViews={false}
         primary={translate('newEngagement2')}
         onPrimary={() => setCreating(true)}
-        menu={menu}
+        menu={
+          <>
+            {items(dropdownKit)}
+            {digestToggle}
+          </>
+        }
       />
       {importDrawer.isOpen && <ImportDrawer kind="engagements" onClose={importDrawer.close} />}
       <KpiBand loading={!stats}>
@@ -605,119 +612,134 @@ export function EngagementsPage() {
           </>
         )}
       </KpiBand>
-      <div className="relative flex flex-1 flex-col">
-        <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-            <Search className="size-4 shrink-0 stroke-[1.5]" />
-            <input
-              type="search"
-              aria-label={translate('searchEngagements')}
-              placeholder={translate('searchTitleClientOrReference')}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
-            />
-          </label>
-        </div>
-
-        {list.error ? (
-          <LoadProblem
-            error={list.error}
-            what={translate('engagements')}
-            onRetry={() => void list.refetch()}
-          />
-        ) : !list.data ? (
-          <LoadingRows />
-        ) : rows.length === 0 ? (
-          term || view > 0 ? (
-            <State
-              icon={<SearchX />}
-              title={
-                term ? translate('nothingMatches3', { term: term }) : translate('nothingInThisView')
-              }
-              text={translate('tryAnotherSearchOrLookAtAllEngagements')}
-              action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearch('')
-                    select(0)
-                  }}
-                >
-                  {translate('showAllEngagements')}
-                </Button>
-              }
-            />
-          ) : (
-            <State
-              icon={<ClipboardCheck />}
-              title={translate('noEngagementsYet')}
-              text={translate('agreeAQuantityOfWorkPerClientLogWhat')}
-              action={
-                canWrite && (
-                  <Button size="sm" className="cursor-pointer" onClick={() => setCreating(true)}>
-                    {translate('newEngagement2')}
-                  </Button>
-                )
-              }
-            />
-          )
-        ) : (
-          <div
-            className={cn(
-              'transition-opacity duration-150',
-              list.isPlaceholderData && 'opacity-60',
-            )}
-          >
-            <table className={cn(listTable.table, 'hidden @4xl:table')}>
-              <thead>
-                <tr className={listTable.head}>
-                  <th className={listTable.select}>
-                    <Checkbox
-                      aria-label={translate('selectAllItemsOnThisPage')}
-                      className="bg-card"
-                      checked={allSelected}
-                      onCheckedChange={(checked) =>
-                        setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                      }
-                    />
-                  </th>
-                  {HEADERS.map(([label, width]) => (
-                    <th key={label} className={cn(listTable.th, width)}>
-                      {label}
-                    </th>
-                  ))}
-                  <th className={listTable.menu}>
-                    <span className="sr-only">{translate('actions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((engagement) => (
-                  <EngagementRow key={engagement.id} {...rowProps(engagement)} />
-                ))}
-              </tbody>
-            </table>
-
-            <ul className={cn(listTable.list, '@4xl:hidden')}>
-              {rows.map((engagement) => (
-                <EngagementItem key={engagement.id} {...rowProps(engagement)} />
-              ))}
-            </ul>
-
-            {meta && <Pager meta={meta} onPage={turnPage} />}
+      <PageContextMenu
+        title={translate('engagements')}
+        primary={{ label: translate('newEngagement2'), onSelect: () => setCreating(true) }}
+        items={items}
+        views={{ tabs: VIEWS.map((entry) => entry.label), active: view, onSelect: select }}
+        selectAll={
+          rows.length && !allSelected
+            ? { onSelect: () => setSelected(new Set(rows.map((row) => row.id))) }
+            : undefined
+        }
+        onRefresh={refresh}
+      >
+        <div className="relative flex flex-1 flex-col">
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
+            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
+              <Search className="size-4 shrink-0 stroke-[1.5]" />
+              <input
+                type="search"
+                aria-label={translate('searchEngagements')}
+                placeholder={translate('searchTitleClientOrReference')}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
+              />
+            </label>
           </div>
-        )}
 
-        {selected.size > 0 && (
-          <BulkBar
-            count={selected.size}
-            onClear={() => setSelected(new Set())}
-            actions={selection.actions}
-          />
-        )}
-      </div>
+          {list.error ? (
+            <LoadProblem
+              error={list.error}
+              what={translate('engagements')}
+              onRetry={() => void list.refetch()}
+            />
+          ) : !list.data ? (
+            <LoadingRows />
+          ) : rows.length === 0 ? (
+            term || view > 0 ? (
+              <State
+                icon={<SearchX />}
+                title={
+                  term
+                    ? translate('nothingMatches3', { term: term })
+                    : translate('nothingInThisView')
+                }
+                text={translate('tryAnotherSearchOrLookAtAllEngagements')}
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('')
+                      select(0)
+                    }}
+                  >
+                    {translate('showAllEngagements')}
+                  </Button>
+                }
+              />
+            ) : (
+              <State
+                icon={<ClipboardCheck />}
+                title={translate('noEngagementsYet')}
+                text={translate('agreeAQuantityOfWorkPerClientLogWhat')}
+                action={
+                  canWrite && (
+                    <Button size="sm" className="cursor-pointer" onClick={() => setCreating(true)}>
+                      {translate('newEngagement2')}
+                    </Button>
+                  )
+                }
+              />
+            )
+          ) : (
+            <div
+              className={cn(
+                'transition-opacity duration-150',
+                list.isPlaceholderData && 'opacity-60',
+              )}
+            >
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+                <thead>
+                  <tr className={listTable.head}>
+                    <th className={listTable.select}>
+                      <Checkbox
+                        aria-label={translate('selectAllItemsOnThisPage')}
+                        className="bg-card"
+                        checked={allSelected}
+                        onCheckedChange={(checked) =>
+                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
+                        }
+                      />
+                    </th>
+                    {HEADERS.map(([label, width]) => (
+                      <th key={label} className={cn(listTable.th, width)}>
+                        {label}
+                      </th>
+                    ))}
+                    <th className={listTable.menu}>
+                      <span className="sr-only">{translate('actions')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((engagement) => (
+                    <EngagementRow key={engagement.id} {...rowProps(engagement)} />
+                  ))}
+                </tbody>
+              </table>
+
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
+                {rows.map((engagement) => (
+                  <EngagementItem key={engagement.id} {...rowProps(engagement)} />
+                ))}
+              </ul>
+
+              {meta && <Pager meta={meta} onPage={turnPage} />}
+            </div>
+          )}
+
+          {selected.size > 0 && (
+            <BulkBar
+              count={selected.size}
+              onClear={() => setSelected(new Set())}
+              actions={selection.actions}
+            />
+          )}
+        </div>
+      </PageContextMenu>
 
       {openId && (
         <EngagementDetail

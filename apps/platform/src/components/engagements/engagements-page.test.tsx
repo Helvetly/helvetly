@@ -222,6 +222,21 @@ test('empty state CTA opens create', async () => {
   expect(await screen.findByText('Form open')).toBeInTheDocument()
 })
 
+test('right-clicking the empty page offers the page’s actions', async () => {
+  lib.listEngagements.mockResolvedValue(page([]))
+  renderPage()
+  fireEvent.contextMenu(await screen.findByText('No engagements yet'))
+  const menu = await screen.findByRole('menu')
+  expect(within(menu).getByText('Engagements')).toBeInTheDocument()
+  expect(
+    within(menu)
+      .getAllByRole('menuitem')
+      .map((item) => item.textContent?.trim()),
+  ).toEqual(['New engagement', 'Import', 'Export CSV', 'View', 'Refresh'])
+  fireEvent.click(within(menu).getByRole('menuitem', { name: 'New engagement' }))
+  expect(await screen.findByText('Form open')).toBeInTheDocument()
+})
+
 const openMenu = async () => {
   fireEvent.pointerDown(screen.getByRole('button', { name: 'More' }), { button: 0 })
   return screen.findByRole('menu')
