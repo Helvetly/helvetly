@@ -4176,16 +4176,11 @@
   "emailTemplatesTitle": "E-Mail-Vorlagen",
   "emailTemplatesDescription": "Der Text, der eingefüllt wird, wenn Sie eine Rechnung, Gutschrift, Proforma oder Offerte per E-Mail senden. Vor dem Senden können Sie ihn noch ändern.",
   "emailTemplatesWhat": "Die E-Mail-Vorlagen",
-  "emailTemplatesPickTitle": "Welche E-Mail",
-  "emailTemplatesPickDescription": "Eine Vorlage pro Dokumenttyp und Sprache. Die Sprache des Kunden bestimmt, welche verwendet wird.",
-  "emailTemplatesKind": "Dokumenttyp",
-  "emailTemplatesLanguage": "Sprache",
   "emailTemplatesKindInvoice": "Rechnung",
   "emailTemplatesKindCreditNote": "Gutschrift",
   "emailTemplatesKindProforma": "Proforma",
   "emailTemplatesKindQuote": "Offerte",
   "emailTemplatesCustom": "Angepasst",
-  "emailTemplatesTextTitle": "Text",
   "emailTemplatesTextDescription": "Nur reiner Text. Variablen werden beim Senden durch die echten Werte ersetzt.",
   "emailTemplatesHelpLabel": "die E-Mail-Vorlagen",
   "emailTemplatesHelp": "Variablen wie {example} werden durch die echten Angaben des Dokuments ersetzt. Klicken Sie unter der Nachricht auf eine, um sie an der Cursorposition einzufügen. Eine Sprache, die Sie nicht geändert haben, verwendet den Standardtext.",
@@ -4262,5 +4257,10 @@
   "numberSuggestionText": "Sie folgen {format}. Ihre nächste Rechnung wäre {next}.",
   "useThisFormat": "Dieses Format verwenden",
   "keepMyFormat": "Mein Format behalten",
-  "numberSuggestionApplied": "Neue Rechnungen machen bei {next} weiter."
+  "numberSuggestionApplied": "Neue Rechnungen machen bei {next} weiter.",
+  "emailTemplatesCustomCount": "{count, plural, one {# Sprache angepasst} other {# Sprachen angepasst}}",
+  "emailTemplatesEditIn": "E-Mail für {kind} auf {language} bearbeiten",
+  "emailTemplatesDialogTitle": "E-Mail für {kind} · {language}",
+  "emailTemplatesEnterSubject": "Geben Sie einen Betreff ein.",
+  "emailTemplatesEnterMessage": "Geben Sie eine Nachricht ein."
 }

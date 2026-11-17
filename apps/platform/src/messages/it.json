@@ -4176,16 +4176,11 @@
   "emailTemplatesTitle": "Modelli e-mail",
   "emailTemplatesDescription": "Il testo proposto quando invii per e-mail una fattura, una nota di credito, una proforma o un preventivo. Puoi ancora modificarlo prima dell’invio.",
   "emailTemplatesWhat": "I modelli e-mail",
-  "emailTemplatesPickTitle": "Quale e-mail",
-  "emailTemplatesPickDescription": "Un modello per ogni tipo di documento e lingua. La lingua del cliente decide quale viene usato.",
-  "emailTemplatesKind": "Tipo di documento",
-  "emailTemplatesLanguage": "Lingua",
   "emailTemplatesKindInvoice": "Fattura",
   "emailTemplatesKindCreditNote": "Nota di credito",
   "emailTemplatesKindProforma": "Proforma",
   "emailTemplatesKindQuote": "Preventivo",
   "emailTemplatesCustom": "Personalizzato",
-  "emailTemplatesTextTitle": "Testo",
   "emailTemplatesTextDescription": "Solo testo semplice. Le variabili vengono sostituite con i valori reali all’invio.",
   "emailTemplatesHelpLabel": "i modelli e-mail",
   "emailTemplatesHelp": "Le variabili come {example} vengono sostituite con i dati reali del documento. Clicca su una sotto il messaggio per inserirla dove si trova il cursore. Una lingua che non hai modificato usa il testo standard.",
@@ -4262,5 +4257,10 @@
   "numberSuggestionText": "Seguono {format}. La tua prossima fattura sarebbe {next}.",
   "useThisFormat": "Usa questo formato",
   "keepMyFormat": "Mantieni il mio formato",
-  "numberSuggestionApplied": "Le nuove fatture continuano da {next}."
+  "numberSuggestionApplied": "Le nuove fatture continuano da {next}.",
+  "emailTemplatesCustomCount": "{count, plural, one {# lingua personalizzata} other {# lingue personalizzate}}",
+  "emailTemplatesEditIn": "Modifica l’e-mail «{kind}» in {language}",
+  "emailTemplatesDialogTitle": "E-mail «{kind}» · {language}",
+  "emailTemplatesEnterSubject": "Inserisci un oggetto.",
+  "emailTemplatesEnterMessage": "Inserisci un messaggio."
 }

@@ -1,17 +1,24 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@helvetly/ui/components/dialog'
 import { FormField, HelpTip, describedBy } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Segmented } from '@helvetly/ui/components/segmented'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { Mail, PenLine, RotateCcw } from 'lucide-react'
+import { cn } from '@helvetly/ui/lib/utils'
+import { Mail, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { LoadProblem } from '@/components/data/load-problem'
-import { useSectionForm, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   EMAIL_KINDS,
@@ -52,147 +59,140 @@ const VARIABLE_HINTS: Record<string, string> = {
   valid_until: translate('emailTemplatesVarValidUntil'),
 }
 
+type Fields = { subject?: string; body?: string }
+
 /** The API refuses a template with its field names ("subject", "body") under details.fields. */
-function templateFieldErrors(error: unknown): FieldErrors | null {
+function templateFieldErrors(error: unknown): Fields | null {
   if (!(error instanceof ApiError) || (error.status !== 400 && error.status !== 422)) return null
   const { fields } = error.details
   if (typeof fields !== 'object' || fields === null) return null
-  return Object.fromEntries(
-    Object.entries(fields).flatMap(([name, message]) =>
-      typeof message === 'string' ? [[name, message]] : [],
-    ),
-  )
+  const found: Fields = {}
+  for (const [name, message] of Object.entries(fields))
+    if ((name === 'subject' || name === 'body') && typeof message === 'string')
+      found[name] = message
+  return found
 }
 
-/** The email wording as sections of the workspace settings page; each shows the standard text until it is customised. */
+/** The emails to clients as a list, one row per document type with a button per language; a button opens that
+ * template in a dialog. Each language shows the standard wording until it is customised. */
 export function EmailTemplatesSections() {
   const templates = useEmailTemplates()
   const writable = useCan('write:invoice-settings')
-  const [kind, setKind] = useState<EmailKind>('invoice')
-  const [language, setLanguage] = useState<EmailLanguage>('de')
+  const [open, setOpen] = useState<EmailTemplate | null>(null)
   const data = templates.data
-  if (templates.error)
-    return (
-      <LoadProblem
-        error={templates.error}
-        what={translate('emailTemplatesWhat')}
-        onRetry={() => void templates.refetch()}
-      />
-    )
-  if (!data) return <Loader className="min-h-36" />
   return (
-    <>
-      <SettingsSection
-        id="email-template-pick"
-        icon={Mail}
-        title={translate('emailTemplatesTitle')}
-        description={translate('emailTemplatesDescription')}
-      >
-        <div className="grid gap-4">
-          <Segmented
-            label={translate('emailTemplatesKind')}
-            value={kind}
-            options={EMAIL_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
-            onChange={setKind}
-          />
-          <Segmented
-            label={translate('emailTemplatesLanguage')}
-            value={language}
-            options={EMAIL_LANGUAGES.map((code) => {
-              const custom = data.find(
-                (entry) => entry.kind === kind && entry.language === code,
-              )?.custom
-              return {
-                value: code,
-                // The dot says "customised" to the eye; the name says it to everyone else.
-                name: custom
-                  ? `${LANGUAGE_NAMES[code]}, ${translate('emailTemplatesCustom').toLowerCase()}`
-                  : undefined,
-                label: (
-                  <span className="inline-flex items-center gap-1.5">
-                    {LANGUAGE_NAMES[code]}
-                    {custom && <span aria-hidden className="size-1.5 rounded-full bg-primary" />}
-                  </span>
-                ),
-              }
-            })}
-            onChange={setLanguage}
-          />
-        </div>
-      </SettingsSection>
-      {/* Every template keeps its own unsaved edits while another is shown. */}
-      {data.map((template) => (
-        <TemplateEditor
-          key={`${template.kind}-${template.language}`}
-          template={template}
-          shown={template.kind === kind && template.language === language}
-          writable={writable}
-        />
-      ))}
-    </>
-  )
-}
-
-function TemplateEditor({
-  template,
-  shown,
-  writable,
-}: {
-  template: EmailTemplate
-  shown: boolean
-  writable: boolean
-}) {
-  const reset = useResetEmailTemplate()
-  return (
-    <EditorForm
-      // A reset loads the standard wording again: the form starts over from the refreshed template.
-      key={String(template.custom)}
-      template={template}
-      shown={shown}
-      writable={writable}
-      resetting={reset.isPending}
-      onReset={() =>
-        reset
-          .mutateAsync({ kind: template.kind, language: template.language })
-          .then(() => void toast.success(translate('emailTemplatesResetDone')))
-          .catch((error: unknown) => void toast.error(errorMessage(error)))
+    <SettingsSection
+      id="email-templates"
+      icon={Mail}
+      title={translate('emailTemplatesTitle')}
+      description={
+        writable ? translate('emailTemplatesDescription') : translate('emailTemplatesReadOnly')
       }
-    />
+    >
+      {templates.error ? (
+        <LoadProblem
+          error={templates.error}
+          what={translate('emailTemplatesWhat')}
+          onRetry={() => void templates.refetch()}
+        />
+      ) : !data ? (
+        <Loader className="min-h-36" />
+      ) : (
+        <ul className="grid gap-1" aria-label={translate('emailTemplatesTitle')}>
+          {EMAIL_KINDS.map((kind) => {
+            const ofKind = EMAIL_LANGUAGES.flatMap((language) =>
+              data.filter((entry) => entry.kind === kind && entry.language === language),
+            )
+            const first = ofKind[0]
+            if (!first) return null
+            const custom = ofKind.filter((entry) => entry.custom).length
+            return (
+              <li
+                key={kind}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50"
+              >
+                <button
+                  type="button"
+                  className="grid min-w-0 flex-1 gap-0.5 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  onClick={() => setOpen(first)}
+                >
+                  <span className="text-body font-medium">{KIND_LABELS[kind]}</span>
+                  <span className="truncate text-body-sm text-muted-foreground">
+                    {first.subject}
+                  </span>
+                  {custom > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {translate('emailTemplatesCustomCount', { count: custom })}
+                    </span>
+                  )}
+                </button>
+                <div className="flex gap-1">
+                  {ofKind.map((template) => (
+                    <Tooltip key={template.language}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="relative w-10 font-mono uppercase"
+                          aria-label={translate('emailTemplatesEditIn', {
+                            kind: KIND_LABELS[kind],
+                            language: LANGUAGE_NAMES[template.language],
+                          })}
+                          onClick={() => setOpen(template)}
+                        >
+                          {template.language}
+                          {template.custom && (
+                            <span
+                              aria-hidden
+                              className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
+                            />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {LANGUAGE_NAMES[template.language]}
+                        {template.custom ? ` · ${translate('emailTemplatesCustom')}` : ''}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {open && (
+        <TemplateDialog
+          key={`${open.kind}-${open.language}`}
+          template={open}
+          writable={writable}
+          onClose={() => setOpen(null)}
+        />
+      )}
+    </SettingsSection>
   )
 }
 
-function EditorForm({
+function TemplateDialog({
   template,
-  shown,
   writable,
-  resetting,
-  onReset,
+  onClose,
 }: {
   template: EmailTemplate
-  shown: boolean
   writable: boolean
-  resetting: boolean
-  onReset: () => void
+  onClose: () => void
 }) {
   const save = useSaveEmailTemplate()
-  const form = useSectionForm({
-    initial: { subject: template.subject, body: template.body },
-    sections: [{ id: 'text', fields: ['subject', 'body'] }],
-    save: (values) =>
-      save.mutateAsync({
-        kind: template.kind,
-        language: template.language,
-        subject: values.subject.trim(),
-        body: values.body,
-      }),
-    fieldErrors: templateFieldErrors,
-    savedMessage: () => translate('emailTemplatesSaved'),
-  })
+  const reset = useResetEmailTemplate()
+  const [values, setValues] = useState({ subject: template.subject, body: template.body })
+  const [errors, setErrors] = useState<Fields>({})
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const lastField = useRef<'subject' | 'body'>('body')
   const caret = useRef<number | null>(null)
   const prefix = `email-template-${template.kind}-${template.language}`
+  const busy = save.isPending || reset.isPending
 
   // The new text is in the field only after the render; the cursor goes after it then.
   useEffect(() => {
@@ -203,115 +203,174 @@ function EditorForm({
     caret.current = null
   })
 
+  const set = (field: 'subject' | 'body', text: string) => {
+    setValues((current) => ({ ...current, [field]: text }))
+    setErrors((current) => ({ ...current, [field]: undefined }))
+  }
+
   const insert = (variable: string) => {
     const field = lastField.current
     const element = field === 'subject' ? subjectRef.current : bodyRef.current
-    const text = form.values[field]
+    const text = values[field]
     const start = element?.selectionStart ?? text.length
     const end = element?.selectionEnd ?? start
     const token = `{${variable}}`
     caret.current = start + token.length
-    form.set(field, text.slice(0, start) + token + text.slice(end))
+    set(field, text.slice(0, start) + token + text.slice(end))
   }
 
-  const section = form.section('text')
+  const submit = async () => {
+    const missing: Fields = {}
+    if (!values.subject.trim()) missing.subject = translate('emailTemplatesEnterSubject')
+    if (!values.body.trim()) missing.body = translate('emailTemplatesEnterMessage')
+    if (missing.subject || missing.body) {
+      setErrors(missing)
+      ;(missing.subject ? subjectRef : bodyRef).current?.focus()
+      return
+    }
+    try {
+      await save.mutateAsync({
+        kind: template.kind,
+        language: template.language,
+        subject: values.subject.trim(),
+        body: values.body,
+      })
+      toast.success(translate('emailTemplatesSaved'))
+      onClose()
+    } catch (error) {
+      const fields = templateFieldErrors(error)
+      if (fields) setErrors(fields)
+      else toast.error(errorMessage(error))
+    }
+  }
+
   return (
-    <SettingsSection
-      id={prefix}
-      // Hidden, not unmounted, and without a wrapper: one would make it a first child and drop the hairline above it.
-      hidden={!shown}
-      icon={PenLine}
-      title={
-        <span className="inline-flex items-center gap-1.5">
-          {translate('emailTemplatesTextTitle')}
-          <HelpTip label={translate('emailTemplatesHelpLabel')}>
-            {translate('emailTemplatesHelp', { example: '{client}' })}
-          </HelpTip>
-        </span>
-      }
-      description={
-        writable ? translate('emailTemplatesTextDescription') : translate('emailTemplatesReadOnly')
-      }
-      section={writable ? section : undefined}
-    >
-      <form
-        className="grid gap-4"
-        noValidate
-        onSubmit={(event) => {
+    <Dialog open onOpenChange={(next) => !next && !busy && onClose()}>
+      <DialogContent
+        className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-xl"
+        // The subject, not the help icon before it: focus on the icon would open its tooltip.
+        onOpenAutoFocus={(event) => {
+          if (!writable) return
           event.preventDefault()
-          section.save()
+          subjectRef.current?.focus()
         }}
       >
-        <FormField
-          id={`${prefix}-subject`}
-          label={translate('emailTemplatesSubject')}
-          error={form.errors.subject}
+        <DialogHeader>
+          <DialogTitle>
+            {translate('emailTemplatesDialogTitle', {
+              kind: KIND_LABELS[template.kind],
+              language: LANGUAGE_NAMES[template.language],
+            })}
+          </DialogTitle>
+          <DialogDescription className="inline-flex items-center gap-1.5">
+            {writable
+              ? translate('emailTemplatesTextDescription')
+              : translate('emailTemplatesReadOnly')}
+            <HelpTip label={translate('emailTemplatesHelpLabel')}>
+              {translate('emailTemplatesHelp', { example: '{client}' })}
+            </HelpTip>
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="grid gap-4"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
         >
-          <Input
-            {...describedBy(`${prefix}-subject`, form.errors.subject)}
-            ref={subjectRef}
-            disabled={!writable}
-            value={form.values.subject}
-            onFocus={() => (lastField.current = 'subject')}
-            onChange={(event) => form.set('subject', event.target.value)}
-          />
-        </FormField>
-        <FormField
-          id={`${prefix}-body`}
-          label={translate('emailTemplatesMessage')}
-          error={form.errors.body}
-        >
-          <Textarea
-            {...describedBy(`${prefix}-body`, form.errors.body)}
-            ref={bodyRef}
-            className="min-h-40"
-            disabled={!writable}
-            value={form.values.body}
-            onFocus={() => (lastField.current = 'body')}
-            onChange={(event) => form.set('body', event.target.value)}
-          />
-        </FormField>
-        {writable && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-body-sm text-muted-foreground">
-              {translate('emailTemplatesVariables')}
-            </span>
-            {template.variables.map((variable) => (
-              <Tooltip key={variable}>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    className="font-mono"
-                    onClick={() => insert(variable)}
-                  >
-                    {`{${variable}}`}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {VARIABLE_HINTS[variable] ?? translate('emailTemplatesVariableUnknown')}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        )}
-        {writable && template.custom && (
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              disabled={resetting || section.saving}
-              onClick={onReset}
-            >
-              <RotateCcw className="size-3.5" />
-              {translate('emailTemplatesReset')}
-            </Button>
-          </div>
-        )}
-      </form>
-    </SettingsSection>
+          <FormField
+            id={`${prefix}-subject`}
+            label={translate('emailTemplatesSubject')}
+            required
+            error={errors.subject}
+          >
+            <Input
+              {...describedBy(`${prefix}-subject`, errors.subject)}
+              ref={subjectRef}
+              required
+              disabled={!writable}
+              value={values.subject}
+              onFocus={() => (lastField.current = 'subject')}
+              onChange={(event) => set('subject', event.target.value)}
+            />
+          </FormField>
+          <FormField
+            id={`${prefix}-body`}
+            label={translate('emailTemplatesMessage')}
+            required
+            error={errors.body}
+          >
+            <Textarea
+              {...describedBy(`${prefix}-body`, errors.body)}
+              ref={bodyRef}
+              required
+              className="min-h-48"
+              disabled={!writable}
+              value={values.body}
+              onFocus={() => (lastField.current = 'body')}
+              onChange={(event) => set('body', event.target.value)}
+            />
+          </FormField>
+          {writable && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-body-sm text-muted-foreground">
+                {translate('emailTemplatesVariables')}
+              </span>
+              {template.variables.map((variable) => (
+                <Tooltip key={variable}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      className="font-mono"
+                      onClick={() => insert(variable)}
+                    >
+                      {`{${variable}}`}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {VARIABLE_HINTS[variable] ?? translate('emailTemplatesVariableUnknown')}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          )}
+          <DialogFooter className={cn('items-center', template.custom && 'sm:justify-between')}>
+            {writable && template.custom && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="sm:mr-auto"
+                disabled={busy}
+                onClick={() =>
+                  reset
+                    .mutateAsync({ kind: template.kind, language: template.language })
+                    .then(() => {
+                      toast.success(translate('emailTemplatesResetDone'))
+                      onClose()
+                    })
+                    .catch((error: unknown) => void toast.error(errorMessage(error)))
+                }
+              >
+                <RotateCcw aria-hidden />
+                {translate('emailTemplatesReset')}
+              </Button>
+            )}
+            <div className="flex gap-2 max-sm:grid max-sm:grid-cols-2">
+              <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+                {writable ? translate('cancel') : translate('close')}
+              </Button>
+              {writable && (
+                <Button type="submit" disabled={busy}>
+                  {save.isPending ? translate('saving') : translate('save')}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
