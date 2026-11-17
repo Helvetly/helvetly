@@ -165,9 +165,10 @@ export function FolderTree({
             {branch('', 0)}
           </ul>
         ) : (
-          <div className="grid gap-2 px-2 pt-0.5">
+          // A hint, not a warning: the info tint, like the other first-run notes.
+          <div className="mx-1 grid gap-2 rounded-lg bg-info-surface p-2.5 ring-1 ring-info/20 ring-inset">
             <div className="grid gap-0.5 text-[12px] leading-4 text-muted-foreground">
-              <p>{translate('noFoldersYet')}</p>
+              <p className="font-medium text-foreground">{translate('noFoldersYet')}</p>
               {canWrite && <p>{translate('uploadsAreSortedIntoFoldersAutomatically')}</p>}
             </div>
             {canWrite && (
@@ -179,7 +180,7 @@ export function FolderTree({
                       aria-label={translate('createFolderName', { name })}
                       title={translate('createFolderName', { name })}
                       onClick={() => actions.create(name)}
-                      className="flex h-6 cursor-pointer items-center gap-1 rounded-md border border-dashed border-border px-2 text-[12px] text-muted-foreground transition-colors outline-none hover:border-foreground/25 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="flex h-6 cursor-pointer items-center gap-1 rounded-md border border-dashed border-border bg-card px-2 text-[12px] text-muted-foreground transition-colors outline-none hover:border-foreground/25 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                     >
                       <Plus className="size-3 shrink-0 stroke-[1.75]" />
                       {name}
