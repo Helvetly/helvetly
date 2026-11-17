@@ -119,7 +119,7 @@ async function chooseAndRead() {
 /** Opens the unfinished batch the drawer offers. */
 async function continueImport() {
   await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
-  await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+  await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
   await body().findByRole('table', { name: 'Records found' })
 }
 
@@ -131,7 +131,7 @@ export const Empty: Story = {
     await expect(body().getByText(/nothing is created until you choose rows/)).toBeVisible()
     await expect(body().getByText(/Up to 10 files of 25 MB each/)).toBeVisible()
     await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
-    await expect(body().queryByRole('button', { name: /^Continue the import/ })).toBeNull()
+    await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()
   },
 }
 
@@ -213,7 +213,10 @@ export const ReviewWithIssues: Story = {
     await expect(body().getByRole('checkbox', { name: 'Select Muster AG' })).toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Beta GmbH' })).not.toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Gamma SA' })).not.toBeChecked()
-    await expect(body().getByText('Enter a valid email address.')).toBeVisible()
+    await expect(
+      body().getByRole('button', { name: /Email: Enter a valid email address./ }),
+    ).toBeVisible()
+    await expect(body().getByText('1 row needs a fix')).toBeVisible()
     await expect(body().getByText('Possible duplicate: Gamma SA (same name)')).toBeVisible()
     await expect(body().getByText(/already in Documents/)).toBeVisible()
     await expect(body().getByRole('button', { name: 'Import 1' })).toBeEnabled()
@@ -256,13 +259,16 @@ export const EditRecord: Story = {
   play: async () => {
     await continueImport()
     await userEvent.click(body().getByRole('button', { name: 'Edit Beta GmbH' }))
-    const email = await body().findByRole('textbox', { name: 'Email' })
+    // A second drawer over the import one, not a view that replaces the list.
+    const editor = await body().findByRole('dialog', { name: 'Edit record' })
+    const email = await within(editor).findByRole('textbox', { name: 'Email' })
     await expect(email).toHaveAttribute('aria-invalid', 'true')
     await userEvent.clear(email)
     await userEvent.type(email, 'info@beta.ch')
-    await userEvent.click(body().getByRole('button', { name: 'Save' }))
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Edit record' })).toBeNull())
     await body().findByRole('table', { name: 'Records found' })
-    await expect(body().queryByText('Enter a valid email address.')).toBeNull()
+    await expect(body().queryByRole('button', { name: /Enter a valid email/ })).toBeNull()
     await expect(body().getByText('info@beta.ch')).toBeVisible()
     await expect(body().getByRole('checkbox', { name: 'Select Beta GmbH' })).toBeChecked()
     await expect(body().getByRole('button', { name: 'Import 2' })).toBeEnabled()
@@ -529,7 +535,7 @@ export const DarkReview: Story = {
     await continueImport()
     await expect(body().getByRole('checkbox', { name: 'Select Web design' })).toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Office chair' })).not.toBeChecked()
-    await expect(body().getByText('Enter a price like 49.90.')).toBeVisible()
+    await expect(body().getByRole('button', { name: /Enter a price like 49.90./ })).toBeVisible()
   },
 }
 
@@ -599,5 +605,97 @@ export const MenuItemOnPro: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'More actions' }))
     await userEvent.click(await body().findByRole('menuitem', { name: 'Import' }))
     await expect(await canvas.findByText('Drawer opened')).toBeVisible()
+  },
+}
+
+const invoiceRecord = (id: string, over: Partial<ImportRecord> = {}) =>
+  record(id, {
+    file_id: 'imf_inv',
+    kind: 'invoices',
+    data: {
+      number: 'RE-1001',
+      client_name: 'Muster AG',
+      issue_date: '2026-11-05',
+      due_date: '2026-12-05',
+      currency: 'CHF',
+      total: '1200.00',
+      paid_amount: '200.00',
+      paid_on: '',
+    },
+    issues: { client_id: 'No client matches. Import the client first or pick one.' },
+    ...over,
+  })
+
+const reading = (): ImportBatch =>
+  batch({
+    kind: 'auto',
+    status: 'extracting',
+    files: [
+      file({ id: 'imf_inv', name: 'invoice-1001.pdf', document_type: 'sales_invoice' }),
+      file({ id: 'imf_2', name: 'invoice-1002.pdf', status: 'extracting', chunks_total: null }),
+      file({ id: 'imf_3', name: 'scan.png', status: 'queued', chunks_total: null }),
+      file({ id: 'imf_4', name: 'broken.pdf', status: 'failed', error: 'Could not be read.' }),
+    ],
+    records: [
+      invoiceRecord('imr_inv1'),
+      invoiceRecord('imr_inv2', { data: { number: 'RE-1002' } }),
+    ],
+  })
+
+const autoBatches = http.get('/api/v1/imports', () =>
+  HttpResponse.json({ data: [summary({ kind: 'auto' })] }),
+)
+
+/** Each document's rows appear as soon as its file is read; the others keep their own state chip. */
+export const ReviewWhileReading: Story = {
+  parameters: { msw: { handlers: [sessionHandler(), autoBatches, getBatch(reading)] } },
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  play: async () => {
+    await opened('Import documents')
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    const document = await body().findByRole('region', { name: 'invoice-1001.pdf' })
+    await expect(within(document).getByText('RE-1001')).toBeVisible()
+    const list = body().getByRole('list', { name: 'Files' })
+    const states = within(list)
+      .getAllByRole('listitem')
+      .map((item) => item.getAttribute('data-status'))
+    await expect(states).toEqual(['done', 'extracting', 'queued', 'failed'])
+    await expect(body().getByText('2 rows need a client')).toBeVisible()
+    await expect(body().getByRole('button', { name: 'Choose a client for all' })).toBeVisible()
+    await expect(body().getByText('Read 2 of 4 files…')).toBeVisible()
+    await expect(body().getByRole('button', { name: /^Import/ })).toBeDisabled()
+  },
+}
+
+/** The edit drawer stacks over the import one; dates and amounts use the same fields as the invoice editor. */
+export const EditInvoiceDrawer: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        autoBatches,
+        getBatch(() => ({ ...reading(), status: 'review' })),
+      ],
+    },
+  },
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  play: async () => {
+    await opened('Import documents')
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    await userEvent.click(await body().findByRole('button', { name: 'Edit RE-1001' }))
+    const editor = await body().findByRole('dialog', { name: 'Edit record' })
+    await expect(within(editor).getByRole('button', { name: /^Date: / })).toBeVisible()
+    await expect(within(editor).getByRole('button', { name: /^Due: / })).toBeVisible()
+    await expect(
+      within(editor).getByRole('button', { name: 'Paid on: Choose a date' }),
+    ).toBeVisible()
+    await expect(within(editor).getByRole('button', { name: /Currency.*CHF/ })).toBeVisible()
+    await expect(within(editor).getByRole('textbox', { name: 'Total' })).toHaveValue('1200.00')
+    await expect(within(editor).getByRole('textbox', { name: 'Already paid' })).toHaveValue(
+      '200.00',
+    )
+    await userEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Edit record' })).toBeNull())
+    await expect(body().getByRole('dialog', { name: 'Import documents' })).toBeVisible()
   },
 }

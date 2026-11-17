@@ -2,83 +2,96 @@
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
-import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowLeft, Check, Pencil } from 'lucide-react'
+import { Check, FileText, Pencil } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
 
-import { inputClass } from '@/components/clients/fields'
-import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
   displayValue,
+  DOCUMENT_TYPES,
   IMPORT_KINDS,
   isSettled,
-  recordChanges,
   recordsByKind,
-  usePatchImportRecord,
   type CommitResult,
+  type ImportFile,
   type ImportKindConfig,
   type ImportRecord,
 } from '@/lib/imports'
 
-import { ImportClientField } from './import-client-field'
+import { IssueChip, issuesId } from './import-issues'
 
-const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
+export const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
   displayValue(record.data[config.labelKey ?? 'name']) ||
   translate('dynamicRow', { value1: index + 1 })
-/** The drawer footer's Save submits this form. */
-export const EDIT_FORM_ID = 'import-edit-record'
-const issueId = (record: ImportRecord, field: string) => `${record.id}-${field}-issue`
 
-/** An `auto` import's records, one table per kind under its own heading; one selection across them all. */
+/**
+ * An `auto` import's records, one section per document (file) with its records beneath, so each
+ * document's rows show up as soon as that file is read; one selection across them all.
+ */
 export function GroupedReview({
+  files,
   records,
   selected,
   results,
+  reading,
   onSelect,
   onEdit,
 }: {
+  files: ImportFile[]
   records: ImportRecord[]
   selected: ReadonlySet<string>
   results: ReadonlyMap<string, CommitResult>
+  /** More files are still being read: no records yet is not "nothing found". */
+  reading: boolean
   onSelect: (selected: Set<string>) => void
   onEdit: (id: string) => void
 }) {
-  const groups = recordsByKind(records)
-  if (!groups.length)
-    return (
+  const documents = files
+    .map((file) => ({ file, records: records.filter((record) => record.file_id === file.id) }))
+    .filter((document) => document.records.length > 0)
+  if (!documents.length)
+    return reading ? null : (
       <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
         {translate('nothingToImportWasFoundInTheseFilesTry')}
       </p>
     )
   return (
-    <div className="grid gap-5">
-      {groups.map(({ kind, records: group }) => {
-        const ids = new Set(group.map((record) => record.id))
-        return (
-          <section key={kind} aria-label={IMPORT_KINDS[kind].label} className="grid gap-2">
-            <h3 className="text-body-sm font-medium">
-              {IMPORT_KINDS[kind].label}{' '}
-              <span className="font-normal text-muted-foreground tabular-nums">{group.length}</span>
-            </h3>
-            <ReviewTable
-              config={IMPORT_KINDS[kind]}
-              records={group}
-              selected={selected}
-              results={results}
-              // The table selects within its kind; keep the other kinds' ticks.
-              onSelect={(next) =>
-                onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
-              }
-              onEdit={onEdit}
-            />
-          </section>
-        )
-      })}
+    <div className="grid gap-6">
+      {documents.map(({ file, records: own }) => (
+        <section key={file.id} aria-label={file.name} className="grid gap-2">
+          <h3 className="flex items-center gap-2 text-body-sm font-medium">
+            <FileText className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
+            <span className="min-w-0 truncate">{file.name}</span>
+            {file.document_type && file.document_type !== 'other' && (
+              <Badge variant="secondary">{DOCUMENT_TYPES[file.document_type]}</Badge>
+            )}
+            <span className="font-normal text-muted-foreground">
+              {translate('importDocumentRecords', { count: own.length })}
+            </span>
+          </h3>
+          <div className="grid gap-3">
+            {recordsByKind(own).map(({ kind, records: group }) => {
+              const ids = new Set(group.map((record) => record.id))
+              return (
+                <ReviewTable
+                  key={kind}
+                  config={IMPORT_KINDS[kind]}
+                  records={group}
+                  selected={selected}
+                  results={results}
+                  // The table selects within its kind; keep the other ticks.
+                  onSelect={(next) =>
+                    onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
+                  }
+                  onEdit={onEdit}
+                />
+              )
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }
@@ -154,7 +167,6 @@ export function ReviewTable({
             const created = record.status === 'created'
             const skipped = record.status === 'skipped'
             const issues = Object.keys(record.issues)
-            const otherIssues = issues.filter((field) => !config.columns.includes(field))
             const result = results.get(record.id)
             return (
               <tr
@@ -170,11 +182,7 @@ export function ReviewTable({
                   ) : skipped ? null : (
                     <Checkbox
                       aria-label={translate('select', { name: name })}
-                      aria-describedby={
-                        issues.length
-                          ? issues.map((field) => issueId(record, field)).join(' ')
-                          : undefined
-                      }
+                      aria-describedby={issues.length ? issuesId(record) : undefined}
                       checked={selected.has(record.id)}
                       onCheckedChange={(on) => toggle(record.id, on === true)}
                     />
@@ -184,17 +192,16 @@ export function ReviewTable({
                   const value = displayValue(record.data[field])
                   return (
                     <td key={field} className="max-w-48 px-2 py-2">
-                      <span className={cn('block truncate', !value && 'text-muted-foreground')}>
+                      <span
+                        className={cn(
+                          'block truncate',
+                          !value && 'text-muted-foreground',
+                          record.issues[field] &&
+                            'underline decoration-warning decoration-dotted underline-offset-4',
+                        )}
+                      >
                         {value || '—'}
                       </span>
-                      {record.issues[field] && (
-                        <span
-                          id={issueId(record, field)}
-                          className="block text-[11.5px] text-destructive"
-                        >
-                          {record.issues[field]}
-                        </span>
-                      )}
                     </td>
                   )
                 })}
@@ -218,15 +225,14 @@ export function ReviewTable({
                         {record.duplicate.label} ({record.duplicate.reason})
                       </Badge>
                     )}
-                    {otherIssues.map((field) => (
-                      <span
-                        key={field}
-                        id={issueId(record, field)}
-                        className="text-[11.5px] text-destructive"
-                      >
-                        {config.fields[field] ?? field}: {record.issues[field]}
-                      </span>
-                    ))}
+                    {issues.length > 0 && !created && !skipped && (
+                      <IssueChip
+                        id={issuesId(record)}
+                        config={config}
+                        record={record}
+                        onFix={() => onEdit(record.id)}
+                      />
+                    )}
                     {record.status === 'failed' && record.error && (
                       <span className="text-[11.5px] text-destructive">
                         {record.error}
@@ -269,127 +275,5 @@ export function ReviewTable({
         </tbody>
       </table>
     </div>
-  )
-}
-
-/** Fixes one record in place of the table; saving re-checks it on the server. */
-export function EditRecord({
-  config,
-  batchId,
-  record,
-  onDone,
-}: {
-  config: ImportKindConfig
-  batchId: string
-  record: ImportRecord
-  onDone: (record: ImportRecord | null) => void
-}) {
-  const patch = usePatchImportRecord(batchId)
-  const [values, setValues] = useState(() =>
-    Object.fromEntries(
-      [...config.editable, ...(config.pickClient ? ['client_name'] : [])].map((field) => [
-        field,
-        displayValue(record.data[field]),
-      ]),
-    ),
-  )
-  const toggles = config.toggles ?? []
-  const save = () => {
-    if (patch.isPending) return
-    const changes = recordChanges(record.data, values, toggles)
-    if (!Object.keys(changes).length) return onDone(null)
-    patch.mutate(
-      { recordId: record.id, data: changes },
-      { onSuccess: (saved) => !Object.keys(saved.issues).length && onDone(saved) },
-    )
-  }
-
-  return (
-    <form
-      noValidate
-      id={EDIT_FORM_ID}
-      aria-label={translate('editRecord')}
-      className="grid gap-6"
-      onSubmit={(event) => {
-        event.preventDefault()
-        save()
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={() => onDone(null)}>
-          <ArrowLeft />
-          {translate('backToTheList')}
-        </Button>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {config.editable.map((field) => {
-          const id = `import-${record.id}-${field}`
-          const error = record.issues[field]
-          if (config.pickClient && field === 'client_id')
-            return (
-              <ImportClientField
-                key={field}
-                id={id}
-                clientId={values.client_id ?? ''}
-                clientName={values.client_name ?? ''}
-                error={error}
-                onPick={(client) =>
-                  setValues((current) => ({
-                    ...current,
-                    client_id: client.id,
-                    client_name: client.name,
-                  }))
-                }
-              />
-            )
-          if (toggles.includes(field))
-            return (
-              <SwitchRow
-                key={field}
-                id={id}
-                label={config.fields[field] ?? field}
-                description={config.tips?.[field]}
-                checked={values[field] === translate('yes')}
-                onCheckedChange={(on) =>
-                  setValues((current) => ({
-                    ...current,
-                    [field]: on ? translate('yes') : translate('no4'),
-                  }))
-                }
-                className="sm:col-span-2"
-              />
-            )
-          return (
-            <FormField
-              key={field}
-              id={id}
-              label={config.fields[field] ?? field}
-              error={error}
-              tip={config.tips?.[field]}
-            >
-              <input
-                {...describedBy(id, error)}
-                value={values[field] ?? ''}
-                onChange={(event) =>
-                  setValues((current) => ({ ...current, [field]: event.target.value }))
-                }
-                className={inputClass}
-              />
-            </FormField>
-          )
-        })}
-      </div>
-      {record.duplicate && (
-        <p className="text-[12.5px] text-muted-foreground">
-          {translate('possibleDuplicate')}
-          {record.duplicate.label} ({record.duplicate.reason}).
-        </p>
-      )}
-      {patch.error && (
-        <p role="alert" className="text-[12.5px] text-destructive">
-          {errorMessage(patch.error)}
-        </p>
-      )}
-    </form>
   )
 }

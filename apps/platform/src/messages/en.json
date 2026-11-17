@@ -4203,5 +4203,18 @@
   "emailTemplatesReset": "Reset to default",
   "emailTemplatesSaved": "Template saved.",
   "emailTemplatesResetDone": "Template reset to the standard wording.",
-  "emailTemplatesReadOnly": "Only people who can edit invoice settings can change these templates."
+  "emailTemplatesReadOnly": "Only people who can edit invoice settings can change these templates.",
+  "chooseADate": "Choose a date",
+  "clearDate": "Clear date",
+  "importNeedsFix": "Needs a fix",
+  "importFixHint": "Click to fix this row.",
+  "importRowsNeedClient": "{count, plural, one {# row needs a client} other {# rows need a client}}",
+  "importRowsNeedClientBody": "No existing client matches the name on the document. Choose one client for all of them, or fix each row.",
+  "importChooseClientForAll": "Choose a client for all",
+  "importRowsNeedFix": "{count, plural, one {# row needs a fix} other {# rows need a fix}}",
+  "importRowsNeedFixBody": "They stay unticked until they are fixed. Hover the badge on a row to see what is wrong.",
+  "importFixFirst": "Fix the first one",
+  "importContinueShort": "Continue import",
+  "importMoreComing": "More documents are still being read. Their rows appear here as soon as each is done.",
+  "importDocumentRecords": "{count, plural, one {# record} other {# records}}"
 }

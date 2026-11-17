@@ -38,14 +38,17 @@ export function DateField({
   min,
   max,
   invalid,
+  className,
 }: {
   id: string
   label: string
+  /** A civil date, or '' for none yet (the button then asks to choose one). */
   value: string
   onChange: (date: string) => void
   min?: string
   max?: string
   invalid?: boolean
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -54,19 +57,23 @@ export function DateField({
         <button
           id={id}
           type="button"
-          aria-label={`${label}: ${formatDay(value)}`}
+          aria-label={`${label}: ${value ? formatDay(value) : translate('chooseADate')}`}
           data-invalid={invalid || undefined}
-          className={quietValue}
+          className={cn(quietValue, className)}
         >
-          {formatDay(value)}
+          {value ? (
+            formatDay(value)
+          ) : (
+            <span className="text-muted-foreground">{translate('chooseADate')}</span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className={popover}>
         <Calendar
           mode="single"
           weekStartsOn={1}
-          selected={toDate(value)}
-          defaultMonth={toDate(value)}
+          selected={value ? toDate(value) : undefined}
+          defaultMonth={value ? toDate(value) : undefined}
           disabled={bounds(min, max)}
           onSelect={(date) => {
             if (!date) return
