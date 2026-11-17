@@ -42,10 +42,11 @@ const seeLabel = (lock: NonNullable<FeatureLock>) =>
 
 /**
  * Employees and payroll are not shown at all on a plan without them, unless the owner still has records to read and
- * export (a downgrade): then the pages stay, read-only.
+ * export (a downgrade): then the pages stay, read-only. Until billing has answered they are hidden too, so nothing
+ * flashes in and out.
  */
 export const employeesHidden = (billing: Billing | undefined) =>
-  Boolean(featureLock(billing, 'employees')) && !billing?.has_employees
+  !billing || (Boolean(featureLock(billing, 'employees')) && !billing.has_employees)
 
 export const useEmployeesHidden = () => employeesHidden(useBilling().data)
 

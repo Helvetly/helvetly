@@ -190,7 +190,7 @@ test("an owner sets an admin invitation's HR access", async () => {
 
 test('an admin inviting cannot touch HR access, and a preset leaves it alone', async () => {
   const sent = setup(201, { data: invitation }, billingFixture({ enabled: false }), 'admin')
-  for (const radio of screen.getAllByRole('radio', { name: /^(Employees|Payroll):/ }))
+  for (const radio of await screen.findAllByRole('radio', { name: /^(Employees|Payroll):/ }))
     expect(radio).toBeDisabled()
   expect(
     screen.getByRole('button', {
@@ -209,8 +209,18 @@ test('an admin inviting cannot touch HR access, and a preset leaves it alone', a
   )
 })
 
-test('without Employees in the plan the HR rows are locked with the plan that has them', async () => {
+test('without Employees in the plan, and no records, the HR rows are not offered', async () => {
   setup(201, { data: invitation }, billingFixture({ plan: 'pro', locked: false, status: 'active' }))
+  await screen.findByRole('radio', { name: 'Read only' })
+  await waitFor(() => expect(screen.queryByRole('radio', { name: /^Employees:/ })).toBeNull())
+})
+
+test('without Employees in the plan, with records, the HR rows are locked with the plan that has them', async () => {
+  setup(
+    201,
+    { data: invitation },
+    { ...billingFixture({ plan: 'pro', locked: false, status: 'active' }), has_employees: true },
+  )
   expect(await screen.findByText('Business', { selector: '[data-slot=plan-tag]' })).toBeVisible()
   for (const radio of screen.getAllByRole('radio', { name: /^(Employees|Payroll):/ }))
     expect(radio).toBeDisabled()

@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { Lock } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
-import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { PlanTag, useEmployeesHidden, useFeatureLock } from '@/components/billing/feature-lock'
 import { HelpTip } from '@/components/settings/help-tip'
 import { translate } from '@/lib/i18n'
 import {
@@ -55,7 +55,8 @@ export function AccessEditor({
   const hrEditable = canChangeHR && !lock
   const selected = custom ? 'custom' : presetOf(value)
   const levels = levelsOf(value)
-  const hr = describeHR(value)
+  const noHR = useEmployeesHidden()
+  const hr = noHR ? null : describeHR(value)
   const problem =
     error ?? (!admin && value.length === 0 ? translate('giveAccessToAtLeastOneArea') : null)
 
@@ -63,10 +64,12 @@ export function AccessEditor({
     <div className="grid gap-2">
       {admin ? (
         <p className="text-body-sm text-muted-foreground">
-          {translate('accessWithHR', {
-            general: translate('accessAdminGeneral'),
-            hr: hr ?? translate('accessNoHR'),
-          })}
+          {noHR
+            ? translate('accessAdminGeneral')
+            : translate('accessWithHR', {
+                general: translate('accessAdminGeneral'),
+                hr: hr ?? translate('accessNoHR'),
+              })}
         </p>
       ) : (
         <>
@@ -101,24 +104,26 @@ export function AccessEditor({
           note={translate('membersWorkspaceAndBillingStayWithOwnersAndAdmins')}
         />
       )}
-      <Matrix
-        label={translate('accessHRSection')}
-        heading={
-          <span className="inline-flex items-center gap-1.5">
-            {translate('accessHRSection')}
-            <HelpTip label={translate('accessHRHelpLabel')}>
-              {translate('accessSealedHelp')}
-            </HelpTip>
-            {lock ? <PlanTag lock={lock} className="ml-0" /> : !canChangeHR && <OwnerOnly />}
-          </span>
-        }
-        rows={HR}
-        name={id}
-        levels={levels}
-        onChange={(scopes) => onChange(admin ? hrScopes(scopes) : scopes)}
-        disabled={!hrEditable}
-        reason={lock ? `${lock.hint}.` : translate('accessHROwnerOnly')}
-      />
+      {!noHR && (
+        <Matrix
+          label={translate('accessHRSection')}
+          heading={
+            <span className="inline-flex items-center gap-1.5">
+              {translate('accessHRSection')}
+              <HelpTip label={translate('accessHRHelpLabel')}>
+                {translate('accessSealedHelp')}
+              </HelpTip>
+              {lock ? <PlanTag lock={lock} className="ml-0" /> : !canChangeHR && <OwnerOnly />}
+            </span>
+          }
+          rows={HR}
+          name={id}
+          levels={levels}
+          onChange={(scopes) => onChange(admin ? hrScopes(scopes) : scopes)}
+          disabled={!hrEditable}
+          reason={lock ? `${lock.hint}.` : translate('accessHROwnerOnly')}
+        />
+      )}
       {problem && <InlineError>{problem}</InlineError>}
     </div>
   )

@@ -65,3 +65,11 @@ test('employee pages lead home on a plan without them and without records, and s
   expect(replace).not.toHaveBeenCalled()
   pathname = '/clients'
 })
+
+test('employee pages show nothing, and do not redirect, while billing loads', () => {
+  pathname = '/employees'
+  renderGate(['*:*'])
+  expect(screen.queryByText('The list')).toBeNull()
+  expect(replace).not.toHaveBeenCalled()
+  pathname = '/clients'
+})

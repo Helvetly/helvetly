@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { EmploymentSettings } from '@/components/settings/employment-settings'
+import { SettingsHeader } from '@/components/settings/settings-tabs'
 
 import { hr } from './pages/api'
 import { closeHeidi, dark, desktop, Frame, phone } from './pages/frame'
@@ -174,18 +175,22 @@ export const OwnerAfterDowngradeDark = dark(OwnerAfterDowngrade)
 
 /** A plan without the module and no employee records: no Employment tab, nothing about the module. */
 export const HiddenWithoutRecords: Story = {
-  parameters: hrPage('/settings/employment', {}, [billingOn('pro', false)]),
+  // Another settings page: the employment URL itself leads home there (AccessGate), so its header never renders.
+  parameters: hrPage('/settings/workspace', {}, [billingOn('pro', false)]),
+  render: () => (
+    <Frame>
+      <SettingsHeader />
+    </Frame>
+  ),
   play: async () => {
     const body = within(document.body)
-    // the other tabs are there, so the missing one is not just a header that has not rendered
-    // the sidebar is there, and loses Employees once billing says the plan lacks it
+    // the settings header's other tabs are there, so the missing one is not just a header that has not rendered
+    const tabs = within(await body.findByRole('navigation', { name: 'Views' }))
     await expect(
-      await body.findByRole('link', { name: /^Clients/ }, { timeout: 8000 }),
+      await tabs.findByRole('button', { name: /^Workspace/ }, { timeout: 8000 }),
     ).toBeVisible()
-    await waitFor(() => expect(body.queryByRole('link', { name: /^Employees/ })).toBeNull(), {
-      timeout: 8000,
-    })
-    await expect(body.queryByRole('button', { name: /^Employment/ })).toBeNull()
+    await expect(tabs.queryByRole('button', { name: /^Employment/ })).toBeNull()
+    await waitFor(() => expect(body.queryByRole('link', { name: /^Employees/ })).toBeNull())
     await expect(body.queryByText(/Business does/)).toBeNull()
   },
 }

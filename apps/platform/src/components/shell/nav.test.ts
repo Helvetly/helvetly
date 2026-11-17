@@ -6,7 +6,7 @@ import { visibleNav } from './nav'
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
 
 const labels = (scopes: readonly string[]) =>
-  visibleNav(scopes).flatMap((group) => group.items.map((item) => item.label))
+  visibleNav(scopes, billingFixture()).flatMap((group) => group.items.map((item) => item.label))
 
 test('everything is in the menu with full access', () => {
   expect(labels(['*:*'])).toEqual(expect.arrayContaining(['Clients', 'Invoices', 'Members']))
@@ -17,7 +17,7 @@ test('pages without read are left out, along with groups left empty', () => {
   expect(labels(scopes)).toContain('Clients')
   expect(labels(scopes)).not.toContain('Invoices')
   expect(labels(scopes)).not.toContain('Members')
-  expect(visibleNav(scopes).map((group) => group.label)).not.toContain('Team')
+  expect(visibleNav(scopes, billingFixture()).map((group) => group.label)).not.toContain('Team')
 })
 
 test('write alone is enough to see a page; the dashboard and Heidi always stay', () => {
@@ -49,4 +49,11 @@ test('Employees is left out on a plan without it, kept for an owner with records
   expect(names(pro)).not.toContain('Employees')
   expect(names({ ...pro, has_employees: true })).toContain('Employees')
   expect(names(billingFixture({ plan: 'business', locked: false }))).toContain('Employees')
+})
+
+test('Employees waits for billing, so it never appears and disappears', () => {
+  const owner = effectiveScopes('owner', undefined)
+  const items = visibleNav(owner).flatMap((group) => group.items.map((item) => item.label))
+  expect(items).not.toContain('Employees')
+  expect(items).toContain('Members')
 })
