@@ -4164,5 +4164,17 @@
   "heicCantBeRead": "HEIC-Fotos können nicht automatisch gelesen werden. Exportieren Sie das Foto als JPEG oder geben Sie die Details selbst ein.",
   "receiptReadFailed": "Der Beleg konnte nicht gelesen werden: {reason} Ihre Eingaben bleiben unverändert.",
   "billedBy": "Absender",
-  "changeLogo": "Logo ändern"
+  "changeLogo": "Logo ändern",
+  "employeeLastNamePlaceholder": "Muster",
+  "employeeEmailPlaceholder": "anna.muster@example.ch",
+  "employeePositionPlaceholder": "Z.B. Designerin",
+  "employeeDepartmentPlaceholder": "Z.B. Studio",
+  "employeeEmployingEntityPlaceholder": "Z.B. Muster AG",
+  "employeeLocalityPlaceholder": "Z.B. Winterthur",
+  "employeePlaceOfWorkPlaceholder": "Z.B. Büro Zürich",
+  "employeeCrossBorderNotePlaceholder": "Z.B. Wohnt in Deutschland, arbeitet drei Tage in Zürich",
+  "employeePensionInsurerPlaceholder": "Z.B. Swiss Life",
+  "employeeAccidentInsurerPlaceholder": "Z.B. Suva",
+  "employeeSicknessInsurerPlaceholder": "Z.B. Helsana",
+  "employeeTaxIdPlaceholder": "Z.B. 123.456.789"
 }

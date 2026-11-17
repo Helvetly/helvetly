@@ -4164,5 +4164,17 @@
   "heicCantBeRead": "Les photos HEIC ne peuvent pas être lues automatiquement. Exportez la photo au format JPEG ou saisissez les détails vous-même.",
   "receiptReadFailed": "Le reçu n’a pas pu être lu : {reason} Vos entrées sont inchangées.",
   "billedBy": "Émetteur",
-  "changeLogo": "Changer le logo"
+  "changeLogo": "Changer le logo",
+  "employeeLastNamePlaceholder": "Muster",
+  "employeeEmailPlaceholder": "anna.muster@example.ch",
+  "employeePositionPlaceholder": "Par ex. Designer",
+  "employeeDepartmentPlaceholder": "Par ex. Studio",
+  "employeeEmployingEntityPlaceholder": "Par ex. Muster SA",
+  "employeeLocalityPlaceholder": "Par ex. Winterthour",
+  "employeePlaceOfWorkPlaceholder": "Par ex. Bureau de Zurich",
+  "employeeCrossBorderNotePlaceholder": "Par ex. Vit en Allemagne, travaille trois jours à Zurich",
+  "employeePensionInsurerPlaceholder": "Par ex. Swiss Life",
+  "employeeAccidentInsurerPlaceholder": "Par ex. Suva",
+  "employeeSicknessInsurerPlaceholder": "Par ex. Helsana",
+  "employeeTaxIdPlaceholder": "Par ex. 123.456.789"
 }
