@@ -335,7 +335,7 @@ function rowPlan(workspace: WorkspaceItem, billing: Billing | undefined): string
 /** The plan as a quiet second line under a workspace name: plain text reads calmer than a tag there. */
 function PlanText({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
-    <span data-testid={testId} className="mt-0.5 truncate text-[12px] text-muted-foreground">
+    <span data-testid={testId} className="mt-0.5 truncate text-xs text-muted-foreground">
       {children}
     </span>
   )
