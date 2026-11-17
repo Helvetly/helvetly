@@ -344,6 +344,17 @@ Pages: /settings/invoices
 6. When the checklist shows **Ready to issue invoices**, you're done.
    Only owners and admins can change these. Numbers are given at issue, without gaps, and restart every year. There is one number sequence, and credit notes get their own numbers.
 
+## Change the email text for invoices and quotes (email templates)
+
+Keywords: email template, email text, send by email, subject, message, wording, variables, invoice email, quote email, credit note email
+Pages: /settings/emails
+
+1. Go to **Settings → Emails**.
+2. Pick the document type (**Invoice**, **Credit note**, **Proforma** or **Quote**) and the language (**DE**, **FR**, **IT** or **EN**). The client's document language decides which one is used.
+3. Edit the **Subject** and **Message**. Click a variable such as **{client}** or **{number}** to insert it where your cursor is; it is replaced with the real value when you send.
+4. Click **Save**. A dot on the language marks a customised template; **Reset to default** brings back the standard wording.
+   The **Send by email** dialog opens with this text filled in, and you can still change it before sending. Only people who can edit invoice settings can change the templates.
+
 ## Close a month (month-end close, periods)
 
 Keywords: close period, close month, month-end, lock books, periods, abschluss, reopen month, accounting period

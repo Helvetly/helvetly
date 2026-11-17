@@ -80,6 +80,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("PATCH /api/v1/quotes/{id}", s.update)
 	handle("DELETE /api/v1/quotes/{id}", s.delete)
 	handle("GET /api/v1/quotes/{id}/pdf", s.pdf)
+	handle("GET /api/v1/quotes/{id}/email", s.emailDraft)
 	handle("POST /api/v1/quotes/{id}/send", s.send)
 	handle("POST /api/v1/quotes/{id}/accept", s.decide(true))
 	handle("POST /api/v1/quotes/{id}/decline", s.decide(false))

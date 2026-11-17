@@ -104,6 +104,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/invoices/{id}/refunds", s.addRefund)
 	handle("DELETE /api/v1/invoices/{id}/refunds/{refund_id}", s.deleteRefund)
 	handle("POST /api/v1/invoices/{id}/send", s.send)
+	handle("GET /api/v1/invoices/{id}/email", s.emailDraft)
 	handle("GET /api/v1/invoices/{id}/deliveries", s.deliveries)
 	handle("GET /api/v1/invoices/{id}/pdf", s.pdf)
 	s.registerDerived(mux)
