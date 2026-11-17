@@ -468,7 +468,7 @@ function Detail({
               <dl className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
                 <div>
                   <dt className="text-muted-foreground">{translate('total')}</dt>
-                  <dd className="text-[15px] tabular-nums">
+                  <dd className="text-title-sm tabular-nums">
                     {formatMoney(fromCents(payable), invoice.currency)}
                   </dd>
                   {!isZero(invoice.amount_credited) && (
@@ -484,14 +484,14 @@ function Detail({
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{translate('paid')}</dt>
-                  <dd className="text-[15px] tabular-nums">
+                  <dd className="text-title-sm tabular-nums">
                     {formatMoney(invoice.amount_paid, invoice.currency)}
                   </dd>
                 </div>
                 {!isZero(invoice.amount_credited) && (
                   <div>
                     <dt className="text-muted-foreground">{translate('creditedStatus')}</dt>
-                    <dd className="text-[15px] tabular-nums">
+                    <dd className="text-title-sm tabular-nums">
                       {formatMoney(invoice.amount_credited, invoice.currency)}
                     </dd>
                   </div>
@@ -499,7 +499,7 @@ function Detail({
                 {!isZero(invoice.amount_refunded) && (
                   <div>
                     <dt className="text-muted-foreground">{translate('refundedStatus')}</dt>
-                    <dd className="text-[15px] tabular-nums">
+                    <dd className="text-title-sm tabular-nums">
                       {formatMoney(invoice.amount_refunded, invoice.currency)}
                     </dd>
                   </div>
@@ -508,7 +508,7 @@ function Detail({
                   <dt className="text-muted-foreground">
                     {isPositive(invoice.refund_due) ? translate('owedBack') : translate('due')}
                   </dt>
-                  <dd className="text-[15px] font-medium tabular-nums">
+                  <dd className="text-title-sm font-medium tabular-nums">
                     {formatMoney(
                       isPositive(invoice.refund_due) ? invoice.refund_due : invoice.amount_due,
                       invoice.currency,
