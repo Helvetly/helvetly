@@ -4216,5 +4216,8 @@
   "importFixFirst": "Correggi la prima",
   "importContinueShort": "Continua l'importazione",
   "importMoreComing": "Altri documenti sono ancora in lettura. Le loro righe compaiono qui appena ciascuno è pronto.",
-  "importDocumentRecords": "{count, plural, one {# elemento} other {# elementi}}"
+  "importDocumentRecords": "{count, plural, one {# elemento} other {# elementi}}",
+  "monthIsNotClosedYet": "{value1} non è ancora chiuso. Chiudilo così le sue cifre non possono più cambiare.",
+  "monthsAreNotClosedYet": "{length} mesi non sono ancora chiusi: da {value1} a {value2}. Chiudili così le loro cifre non possono più cambiare.",
+  "closeTheMonth": "{length, plural, one {Chiudi il mese} other {Chiudi i mesi}}"
 }

@@ -4216,5 +4216,8 @@
   "importFixFirst": "Corriger la première",
   "importContinueShort": "Reprendre l'import",
   "importMoreComing": "D'autres documents sont encore en cours de lecture. Leurs lignes apparaissent ici dès que chacun est terminé.",
-  "importDocumentRecords": "{count, plural, one {# enregistrement} other {# enregistrements}}"
+  "importDocumentRecords": "{count, plural, one {# enregistrement} other {# enregistrements}}",
+  "monthIsNotClosedYet": "{value1} n’est pas encore clôturé. Clôturez-le pour que ses chiffres ne puissent plus changer.",
+  "monthsAreNotClosedYet": "{length} mois ne sont pas encore clôturés : {value1} à {value2}. Clôturez-les pour que leurs chiffres ne puissent plus changer.",
+  "closeTheMonth": "{length, plural, one {Clôturer le mois} other {Clôturer les mois}}"
 }
