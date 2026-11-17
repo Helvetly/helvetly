@@ -10,7 +10,7 @@ import {
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
-import { LanguageChoice } from '@helvetly/ui/components/language-switcher'
+import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Download, Languages, UserRound, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -132,7 +132,7 @@ function Language() {
       title={translate('language')}
       description={translate('theLanguageOfHelvetlyInThisBrowser')}
     >
-      <LanguageChoice />
+      <LanguageDialogButton />
     </SettingsSection>
   )
 }
