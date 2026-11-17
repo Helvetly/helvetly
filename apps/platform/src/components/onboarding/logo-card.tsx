@@ -91,7 +91,7 @@ export function LogoCard({ url }: { url: string | null }) {
           <span className="text-sm font-medium">
             {url ? translate('yourLogo') : translate('uploadYourLogo')}
           </span>
-          <span className="text-[13px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {translate('pngOrJPEGUpTo2MBDropIt')}
           </span>
           <span className="mt-1.5 flex flex-wrap gap-2">

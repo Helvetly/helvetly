@@ -110,7 +110,7 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
               </span>
             </span>
             <span className="grid gap-2">
-              <span className="text-body-sm text-muted-foreground">
+              <span className="text-caption text-muted-foreground">
                 {translate('dropANewImageHereToReplaceIt')}
               </span>
               {canEdit && (
@@ -155,7 +155,9 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
             <span className="text-body font-medium text-foreground">
               {translate('dropYourLogoHereOrClickToChoose')}
             </span>
-            <span className="text-caption">{translate('pngOrJPEGUpTo2MBAWide')}</span>
+            <span className="text-caption text-muted-foreground">
+              {translate('pngOrJPEGUpTo2MBAWide')}
+            </span>
           </button>
         )}
         {busy && (
