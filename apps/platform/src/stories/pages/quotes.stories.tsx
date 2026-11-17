@@ -202,9 +202,9 @@ export const SendValidation: Story = {
     await userEvent.click(await body.findByRole('button', { name: 'Send' }, wait))
     const dialog = await body.findByRole('dialog', { name: 'Send quote' })
     const to = within(dialog).getByRole('textbox', { name: /To/ })
-    // The fields unlock once the drafted email has loaded.
+    // The fields unlock once the drafted email has loaded; the address fills in on a later render.
     await waitFor(() => expect(to).toBeEnabled())
-    await expect(to).toHaveValue('hello@alpenglow.ch')
+    await waitFor(() => expect(to).toHaveValue('hello@alpenglow.ch'))
     await userEvent.clear(to)
     await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
     await seen(within(dialog).getByText('Add at least one email address.'))
