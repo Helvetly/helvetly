@@ -225,6 +225,8 @@ export const RowMenu: Story = {
         .map((item) => item.textContent?.trim()),
     ).toEqual(['Open details', 'Edit', 'Renew', 'Cancel engagement', 'Delete'])
     await userEvent.keyboard('{Escape}')
+    // The open menu hides the rest of the page from the accessibility tree until it has closed.
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
     await userEvent.click(body.getByRole('button', { name: 'Actions for Bookkeeping support' }))
     await expect(
       within(await body.findByRole('menu')).queryByRole('menuitem', { name: 'Renew' }),
