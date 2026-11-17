@@ -902,17 +902,11 @@ func (q Q) InvoicePeriod(ctx context.Context, workspaceID, currency, clientID st
 // netInvoiced: what an issued invoice is still worth after its credit notes (payable_total − amount_credited, ≥ 0).
 const netInvoiced = `GREATEST(0, i.total + i.rounding_amount - i.amount_credited)`
 
-// InvoiceSummary: the KPIs of one currency's invoices (credit notes count through amount_credited).
-func (q Q) InvoiceSummary(ctx context.Context, workspaceID, currency, today, clientID string) (InvoiceSummary, error) {
+// InvoiceMetrics reads balances and collection statistics without the summary's monthly series.
+func (q Q) InvoiceMetrics(ctx context.Context, workspaceID, currency, today, clientID string) (InvoiceSummary, error) {
 	s := InvoiceSummary{Currency: currency}
 	const scope = ` FROM invoices i WHERE i.workspace_id = $1 AND i.currency = $2 AND $3::date IS NOT NULL AND i.kind IN ` + receivableKinds + `
 		AND i.status <> 'replaced' AND ($4 = '' OR i.client_id = $4)`
-	// inMonth: money moved (table t: invoice_payments or invoice_refunds, dated by col) in the month $5 away from today.
-	inMonth := func(table, col string) string {
-		return ` FROM ` + table + ` t JOIN invoices i ON i.id = t.invoice_id
-		WHERE i.workspace_id = $1 AND i.currency = $2 AND ($4 = '' OR i.client_id = $4) AND i.kind IN ` + receivableKinds + `
-		AND t.` + col + ` >= date_trunc('month', $3::date) + $5::interval AND t.` + col + ` < date_trunc('month', $3::date) + $5::interval + interval '1 month'`
-	}
 	err := q.db.QueryRow(ctx, `SELECT
 		(SELECT COALESCE(sum(`+amountDue+`), 0)`+scope+` AND i.status = 'open'),
 		(SELECT count(*)`+scope+` AND i.status = 'open'),
@@ -929,8 +923,20 @@ func (q Q) InvoiceSummary(ctx context.Context, workspaceID, currency, today, cli
 			AND i.status <> 'draft' AND i.issue_date > $3::date - interval '12 months')`,
 		workspaceID, currency, today, clientID).Scan(&s.Outstanding.Amount, &s.Outstanding.Count, &s.Overdue.Amount, &s.Overdue.Count,
 		&s.Drafts.Amount, &s.Drafts.Count, &s.RefundDue.Amount, &s.RefundDue.Count, &s.AvgDaysToPay, &s.CollectionRate)
+	return s, err
+}
+
+// InvoiceSummary: the KPIs of one currency's invoices (credit notes count through amount_credited).
+func (q Q) InvoiceSummary(ctx context.Context, workspaceID, currency, today, clientID string) (InvoiceSummary, error) {
+	s, err := q.InvoiceMetrics(ctx, workspaceID, currency, today, clientID)
 	if err != nil {
 		return s, err
+	}
+	// inMonth: money moved (table t: invoice_payments or invoice_refunds, dated by col) in the month $5 away from today.
+	inMonth := func(table, col string) string {
+		return ` FROM ` + table + ` t JOIN invoices i ON i.id = t.invoice_id
+		WHERE i.workspace_id = $1 AND i.currency = $2 AND ($4 = '' OR i.client_id = $4) AND i.kind IN ` + receivableKinds + `
+		AND t.` + col + ` >= date_trunc('month', $3::date) + $5::interval AND t.` + col + ` < date_trunc('month', $3::date) + $5::interval + interval '1 month'`
 	}
 	for _, m := range []struct {
 		shift string

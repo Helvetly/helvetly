@@ -104,3 +104,18 @@ func TestDashboardCashFlowUsesCashDatesAndKeepsCurrenciesAndTenantsSeparate(t *t
 		})
 	}
 }
+
+func TestInvoiceMetricsKeepWorkspaceCurrencyAndBalanceRules(t *testing.T) {
+	db, raw := dashboardFixture(t)
+	dashboardInvoice(t, raw, "metrics-chf", "dash-own", "CHF", "open", 20000, 5000, 2000)
+	dashboardInvoice(t, raw, "metrics-eur", "dash-own", "EUR", "open", 7000, 0, 0)
+	dashboardInvoice(t, raw, "metrics-other", "dash-foreign", "CHF", "open", 90000, 0, 0)
+
+	m, err := db.InvoiceMetrics(context.Background(), "dash-own", "CHF", "2026-11-01", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Outstanding.Amount != 13000 || m.Outstanding.Count != 1 || m.Overdue.Amount != 13000 || m.Monthly != nil {
+		t.Fatalf("metrics = %+v, want one overdue CHF 130.00 balance without monthly series", m)
+	}
+}
