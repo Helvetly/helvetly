@@ -47,10 +47,21 @@ type Service struct {
 	limits Limits
 	log    *slog.Logger
 	now    func() time.Time
+	wake   chan struct{}
 }
 
 func New(db *store.Store, a Auth, inv *invoices.Service, files Storage, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, inv: inv, files: files, log: log, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{db: db, auth: a, inv: inv, files: files, log: log, now: func() time.Time { return time.Now().UTC() },
+		wake: make(chan struct{}, 1)}
+}
+
+// Wake makes Run tick now instead of at the next hour, e.g. for a new plan whose first item is due today. It never
+// blocks: wakes before the loop gets to them fold into one tick.
+func (s *Service) Wake() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
 }
 
 // SetMailer enables the reminders.

@@ -48,6 +48,8 @@ type Service struct {
 	now   func() time.Time
 	// einvoice exports an issued invoice's archived XML (internal/einvoice, which imports this package)
 	einvoice EInvoiceExporter
+	// planCreated runs after a plan commits (internal/instalments' Wake, which imports this package)
+	planCreated func()
 }
 
 // EInvoiceExporter is internal/einvoice's Export: the XML file of an issued invoice in format.
@@ -55,6 +57,9 @@ type EInvoiceExporter func(ctx context.Context, sess store.Session, inv store.In
 
 // SetEInvoice is startup wiring: emails then attach the XML a client asked for (einvoice_format).
 func (s *Service) SetEInvoice(f EInvoiceExporter) { s.einvoice = f }
+
+// SetPlanCreated is startup wiring: a new plan wakes the job, so the items already due are issued now, not within the hour.
+func (s *Service) SetPlanCreated(f func()) { s.planCreated = f }
 
 func New(db *store.Store, a Auth, files Storage, mailer Mailer, log *slog.Logger) *Service {
 	return &Service{db: db, auth: a, files: files, mail: mailer, log: log, now: func() time.Time { return time.Now().UTC() }}

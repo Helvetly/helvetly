@@ -347,6 +347,9 @@ func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.
 	if err != nil {
 		return err
 	}
+	if s.planCreated != nil {
+		s.planCreated()
+	}
 	auth.WriteJSON(w, http.StatusCreated, data(PresentPlan(plan)))
 	return nil
 }

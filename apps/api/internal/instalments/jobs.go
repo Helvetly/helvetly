@@ -11,7 +11,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Run ticks hourly until ctx ends (like engagements.Service.Run).
+// Run ticks hourly, and on Wake, until ctx ends (like engagements.Service.Run).
 func (s *Service) Run(ctx context.Context) {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -23,6 +23,7 @@ func (s *Service) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
+		case <-s.wake:
 		}
 	}
 }
