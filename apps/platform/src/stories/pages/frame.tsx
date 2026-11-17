@@ -57,10 +57,30 @@ type Story = StoryObj
 export const shows =
   (...texts: (string | RegExp)[]): Story['play'] =>
   async ({ canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body)
-    await expect(
-      await body.findByRole('main', { hidden: true }, { timeout: 8000 }),
-    ).toBeInTheDocument()
+    const document = canvasElement.ownerDocument
+    const body = within(document.body)
+    await body.findByRole('main', { hidden: true }, { timeout: 8000 }).catch(async () => {
+      // What the page showed instead, so a hang in CI says where it stopped.
+      const probe = await Promise.race([
+        fetch('/api/v1/public/offers/current').then((response) => `status ${response.status}`),
+        new Promise<string>((resolve) => setTimeout(() => resolve('no answer in 2 s'), 2000)),
+      ]).catch((error: unknown) => `error ${String(error)}`)
+      const requests = performance
+        .getEntriesByType('resource')
+        .filter((entry) => entry.name.includes('/api/'))
+        .slice(-8)
+        .map((entry) => `${entry.name} ${Math.round(entry.duration)} ms`)
+      throw new Error(
+        [
+          'No <main> after 8 s.',
+          `page age: ${Math.round(performance.now())} ms`,
+          `service worker: ${navigator.serviceWorker?.controller?.state ?? 'none'}`,
+          `probe: ${probe}`,
+          `last api requests:\n${requests.join('\n')}`,
+          `canvas: ${canvasElement.innerHTML.slice(0, 1500)}`,
+        ].join('\n'),
+      )
+    })
     // A list can render a phone card and a desktop row for the same record; one must be visible.
     await waitFor(
       () => {
