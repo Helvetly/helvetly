@@ -68,6 +68,9 @@ import {
   stepsFor,
   validate,
   validPersonName,
+  validWorkspaceName,
+  MAX_PERSON_NAME,
+  MAX_WORKSPACE_NAME,
   valuesFrom,
   vatSuffix,
   type StepId,
@@ -221,10 +224,12 @@ export function WelcomePage({ session }: { session: Session }) {
     const workspace = workspaceInput.trim()
     const nameProblem = validPersonName(name)
       ? undefined
-      : translate('enterANameOfUpTo100Characters')
-    const workspaceProblem = validPersonName(workspace)
+      : translate('enterANameOfUpToCharacters', { max: MAX_PERSON_NAME })
+    const workspaceProblem = validWorkspaceName(workspace)
       ? undefined
-      : translate(workspace ? 'enterANameOfUpTo100Characters' : 'thisIsRequired')
+      : workspace
+        ? translate('enterANameOfUpToCharacters', { max: MAX_WORKSPACE_NAME })
+        : translate('thisIsRequired')
     setNameError(nameProblem)
     setWorkspaceError(workspaceProblem)
     if (nameProblem || workspaceProblem) {
@@ -587,7 +592,7 @@ function WelcomeStep({
           <input
             {...describedBy('onboarding-display-name', error)}
             className={inputClass}
-            maxLength={100}
+            maxLength={MAX_PERSON_NAME}
             autoComplete="off"
             value={input}
             readOnly={busy}
@@ -605,7 +610,7 @@ function WelcomeStep({
           <input
             {...describedBy('onboarding-workspace-name', workspaceError)}
             className={inputClass}
-            maxLength={100}
+            maxLength={MAX_WORKSPACE_NAME}
             autoComplete="off"
             value={workspace}
             readOnly={busy}

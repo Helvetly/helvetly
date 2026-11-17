@@ -133,11 +133,20 @@ export function fieldErrors(details: Record<string, unknown>): Partial<Record<st
   return errors
 }
 
-/** A person's name as the account takes it: 1 to 100 characters once trimmed (PATCH /account). */
-export const validPersonName = (name: string) => {
+/** The longest name a person or a workspace can be given; the API checks the same limits (older, longer names stay readable). */
+export const MAX_PERSON_NAME = 60
+export const MAX_WORKSPACE_NAME = 50
+
+const withinLength = (name: string, max: number) => {
   const length = Array.from(name.trim()).length
-  return length >= 1 && length <= 100
+  return length >= 1 && length <= max
 }
+
+/** A person's name as the account takes it: 1 to MAX_PERSON_NAME characters once trimmed (PATCH /account). */
+export const validPersonName = (name: string) => withinLength(name, MAX_PERSON_NAME)
+
+/** A workspace's name as the workspace takes it: 1 to MAX_WORKSPACE_NAME characters once trimmed. */
+export const validWorkspaceName = (name: string) => withinLength(name, MAX_WORKSPACE_NAME)
 
 export type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'import' | 'done'
 

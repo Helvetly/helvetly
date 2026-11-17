@@ -1090,7 +1090,7 @@
   "enterACodeFromYourAuthenticatorAppOrOne": "Geben Sie einen Code aus Ihrer Authentifizierungs-App oder einen Ihrer nicht verwendeten Wiederherstellungscodes ein.",
   "enterAGTINOf81213Or14": "Geben Sie eine GTIN mit 8, 12, 13 oder 14 Ziffern und einer gültigen Prüfziffer ein.",
   "enterAName": "Geben Sie einen Namen ein.",
-  "enterANameOfUpTo100Characters": "Geben Sie einen Namen mit bis zu 100 Zeichen ein.",
+  "enterANameOfUpToCharacters": "Geben Sie einen Namen mit bis zu {max} Zeichen ein.",
   "enterAnAmountAbove0": "Geben Sie einen Betrag über 0 ein.",
   "enterAnAmountSuchAs4990": "Geben Sie einen Betrag ein, z. B. 49,90.",
   "enterAnEmailAddress": "Geben Sie eine E-Mail-Adresse ein.",

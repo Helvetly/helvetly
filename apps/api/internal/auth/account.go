@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -41,6 +42,9 @@ func (s *Service) account(w http.ResponseWriter, r *http.Request, sess store.Ses
 	WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"identities": ids, "two_factor": map[string]any{"enabled": factor.Enabled, "recovery_codes_left": factor.RecoveryCodes}}})
 }
 
+// maxPersonNameRunes is the longest name a person can give themselves; longer ones stored earlier stay as they are.
+const maxPersonNameRunes = 60
+
 func (s *Service) updateAccount(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	var in struct {
 		Name string `json:"name"`
@@ -49,8 +53,9 @@ func (s *Service) updateAccount(w http.ResponseWriter, r *http.Request, sess sto
 		return
 	}
 	name := strings.TrimSpace(in.Name)
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > 100 {
-		s.WriteError(w, r, Error(http.StatusUnprocessableEntity, "validation_failed", "Check the highlighted fields.", map[string]any{"fields": map[string]string{"name": "Enter a name of up to 100 characters."}}))
+	// Saving the name already stored (a longer one from before the limit) is not a change to refuse.
+	if name == "" || !utf8.ValidString(name) || (utf8.RuneCountInString(name) > maxPersonNameRunes && name != sess.User.Name) {
+		s.WriteError(w, r, Error(http.StatusUnprocessableEntity, "validation_failed", "Check the highlighted fields.", map[string]any{"fields": map[string]string{"name": fmt.Sprintf("Enter a name of up to %d characters.", maxPersonNameRunes)}}))
 		return
 	}
 	u, err := s.db.UpdateAccountName(r.Context(), sess.User.ID, name, s.now())

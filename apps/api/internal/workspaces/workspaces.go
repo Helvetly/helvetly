@@ -5,6 +5,7 @@ package workspaces
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -70,17 +71,20 @@ func (s *Service) Register(mux *http.ServeMux) {
 
 var errOwnerOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can change or delete the workspace.", nil)
 
+// maxNameRunes is the longest name a workspace can be given; longer ones stored earlier stay as they are.
+const maxNameRunes = 50
+
 // validName trims the name; "" when it is empty, too long or has control characters.
 func validName(name string) string {
 	name = strings.TrimSpace(name)
-	if name == "" || utf8.RuneCountInString(name) > 100 || strings.ContainsFunc(name, unicode.IsControl) {
+	if name == "" || utf8.RuneCountInString(name) > maxNameRunes || strings.ContainsFunc(name, unicode.IsControl) {
 		return ""
 	}
 	return name
 }
 
 func invalidName() error {
-	return auth.Error(http.StatusBadRequest, "invalid_request", "Give the workspace a name of up to 100 characters.",
+	return auth.Error(http.StatusBadRequest, "invalid_request", fmt.Sprintf("Give the workspace a name of up to %d characters.", maxNameRunes),
 		map[string]any{"fields": map[string]string{"name": "invalid"}})
 }
 
@@ -131,9 +135,12 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	}
 	ws := sess.Workspace
 	if in.Name != nil {
-		if ws.Name = validName(*in.Name); ws.Name == "" {
-			s.auth.WriteError(w, r, invalidName())
-			return
+		// Saving the name already stored (a longer one from before the limit) is not a change to refuse.
+		if name := strings.TrimSpace(*in.Name); name != sess.Workspace.Name {
+			if ws.Name = validName(name); ws.Name == "" {
+				s.auth.WriteError(w, r, invalidName())
+				return
+			}
 		}
 	}
 	if in.Timezone != nil {

@@ -1090,7 +1090,7 @@
   "enterACodeFromYourAuthenticatorAppOrOne": "Inserisci un codice dalla tua app di autenticazione o uno dei tuoi codici di ripristino non utilizzati.",
   "enterAGTINOf81213Or14": "Inserisci un GTIN di 8, 12, 13 o 14 cifre con una cifra di controllo valida.",
   "enterAName": "Immettere un nome.",
-  "enterANameOfUpTo100Characters": "Immettere un nome composto da un massimo di 100 caratteri.",
+  "enterANameOfUpToCharacters": "Immettere un nome composto da un massimo di {max} caratteri.",
   "enterAnAmountAbove0": "Immettere un importo superiore a 0.",
   "enterAnAmountSuchAs4990": "Inserisci un importo come 49,90.",
   "enterAnEmailAddress": "Inserisci un indirizzo email.",

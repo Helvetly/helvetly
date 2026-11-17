@@ -187,6 +187,39 @@ func TestRename(t *testing.T) {
 	}
 }
 
+func TestNameLength(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.person("Acme", "owner")
+	for _, tc := range []struct {
+		name string
+		want int
+	}{
+		{strings.Repeat("x", maxNameRunes), http.StatusOK},
+		{strings.Repeat("x", maxNameRunes+1), http.StatusBadRequest},
+		{strings.Repeat("ä", maxNameRunes+1), http.StatusBadRequest},
+	} {
+		if code, _ := e.do(owner, http.MethodPatch, "/api/v1/workspace", map[string]string{"name": tc.name}); code != tc.want {
+			t.Fatalf("rename to %d characters: %d, want %d", len([]rune(tc.name)), code, tc.want)
+		}
+		if code, _ := e.do(owner, http.MethodPost, "/api/v1/workspaces", map[string]string{"name": tc.name}); code != tc.want {
+			t.Fatalf("create with %d characters: %d, want %d", len([]rune(tc.name)), code, tc.want)
+		}
+	}
+	// A longer name stored before the limit stays: saving it again is not refused, changing it to another long one is.
+	// (creating moved the first session to a new workspace)
+	owner, ws := e.person("Old", "owner")
+	long := strings.Repeat("y", 80)
+	if _, err := e.raw.Exec(context.Background(), `UPDATE workspaces SET name = $1 WHERE id = $2`, long, ws); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := e.do(owner, http.MethodPatch, "/api/v1/workspace", map[string]string{"name": long}); code != http.StatusOK {
+		t.Fatalf("unchanged long name: %d", code)
+	}
+	if code, _ := e.do(owner, http.MethodPatch, "/api/v1/workspace", map[string]string{"name": long + "z"}); code != http.StatusBadRequest {
+		t.Fatalf("another long name: %d", code)
+	}
+}
+
 func TestTimezone(t *testing.T) {
 	e := newEnv(t)
 	owner, ws := e.person("Acme", "owner")

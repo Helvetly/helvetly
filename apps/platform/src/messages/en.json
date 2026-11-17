@@ -1090,7 +1090,7 @@
   "enterACodeFromYourAuthenticatorAppOrOne": "Enter a code from your authenticator app or one of your unused recovery codes.",
   "enterAGTINOf81213Or14": "Enter a GTIN of 8, 12, 13 or 14 digits with a valid check digit.",
   "enterAName": "Enter a name.",
-  "enterANameOfUpTo100Characters": "Enter a name of up to 100 characters.",
+  "enterANameOfUpToCharacters": "Enter a name of up to {max} characters.",
   "enterAnAmountAbove0": "Enter an amount above 0.",
   "enterAnAmountSuchAs4990": "Enter an amount such as 49.90.",
   "enterAnEmailAddress": "Enter an email address.",

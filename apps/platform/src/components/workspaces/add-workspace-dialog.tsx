@@ -13,6 +13,7 @@ import { Input } from '@helvetly/ui/components/input'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
+import { MAX_WORKSPACE_NAME } from '@/components/onboarding/onboarding-model'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useCreateWorkspace } from '@/lib/members'
@@ -58,7 +59,7 @@ export function AddWorkspaceDialog({ onClose }: { onClose: () => void }) {
           >
             <Input
               {...describedBy('workspace-name', error)}
-              maxLength={100}
+              maxLength={MAX_WORKSPACE_NAME}
               placeholder={translate('musterGmbH')}
               value={name}
               onChange={(event) => {

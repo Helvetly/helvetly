@@ -332,6 +332,19 @@ describe('the welcome', () => {
     ).toBeInTheDocument()
   })
 
+  test('a name over 60 characters is refused before anything is sent', async () => {
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    const input = await screen.findByRole('textbox', { name: /What should we call you\?/ })
+    expect(input).toHaveAttribute('maxlength', '60')
+    expect(workspaceField()).toHaveAttribute('maxlength', '50')
+    fireEvent.change(input, { target: { value: 'x'.repeat(61) } })
+    await user.click(get())
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
+    expect(named).toEqual([])
+  })
+
   test('an empty, over-long or refused name stays on the first step with its input', async () => {
     const user = userEvent.setup()
     wrap(<Welcome />)
@@ -339,7 +352,7 @@ describe('the welcome', () => {
     await user.click(screen.getByRole('button', { name: /Get started/ }))
     expect(input).toHaveAttribute('aria-invalid', 'true')
     await waitFor(() => expect(input).toHaveFocus())
-    expect(screen.getByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    expect(screen.getByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
     server.use(
       http.patch('/api/v1/account', () =>
         HttpResponse.json(
@@ -347,7 +360,7 @@ describe('the welcome', () => {
             error: {
               code: 'validation_failed',
               message: 'Check the highlighted fields.',
-              details: { fields: { name: 'Enter a name of up to 100 characters.' } },
+              details: { fields: { name: 'Enter a name of up to 60 characters.' } },
             },
           },
           { status: 422 },
@@ -356,7 +369,7 @@ describe('the welcome', () => {
     )
     await user.type(input, 'Anna')
     await user.click(screen.getByRole('button', { name: /Get started/ }))
-    expect(await screen.findByText('Enter a name of up to 100 characters.')).toBeInTheDocument()
+    expect(await screen.findByText('Enter a name of up to 60 characters.')).toBeInTheDocument()
     expect(input).toHaveValue('Anna')
     expect(screen.queryByRole('heading', { name: 'Your company' })).not.toBeInTheDocument()
   })
@@ -472,13 +485,13 @@ describe('the welcome', () => {
     test.each([
       ['', 'Required'],
       ['   ', 'Required'],
-      ['x'.repeat(101), 'Enter a name of up to 100 characters.'],
+      ['x'.repeat(51), 'Enter a name of up to 50 characters.'],
     ])('the blank or over-long workspace name %j sends nothing', async (value, message) => {
       workspaceName = 'My workspace'
       const user = userEvent.setup()
       wrap(<Welcome />)
       await user.type(await nameField(), 'Anna')
-      // maxLength stops typing at 100, so a longer value goes in without typing.
+      // maxLength stops typing at 50, so a longer value goes in without typing.
       fireEvent.change(workspaceField(), { target: { value } })
       await user.click(get())
       expect(workspaceField()).toHaveAttribute('aria-invalid', 'true')

@@ -104,7 +104,7 @@ export const NameRequired: Story = {
     await userEvent.click(welcome.getByRole('button', { name: /Get started/ }))
     await expect(input).toHaveAttribute('aria-invalid', 'true')
     await waitFor(() => expect(input).toHaveFocus())
-    await expect(welcome.getByText('Enter a name of up to 100 characters.')).toBeVisible()
+    await expect(welcome.getByText('Enter a name of up to 60 characters.')).toBeVisible()
     await expect(canvasElement.querySelector('[data-testid="onboarding-step-company"]')).toBeNull()
   },
 }
@@ -120,7 +120,7 @@ export const NameRefused: Story = {
               error: {
                 code: 'validation_failed',
                 message: 'Check the highlighted fields.',
-                details: { fields: { name: 'Enter a name of up to 100 characters.' } },
+                details: { fields: { name: 'Enter a name of up to 60 characters.' } },
               },
             },
             { status: 422 },
@@ -135,7 +135,7 @@ export const NameRefused: Story = {
     const input = await welcome.findByRole('textbox', { name: /What should we call you/ })
     await userEvent.type(input, 'Anna')
     await userEvent.click(welcome.getByRole('button', { name: /Get started/ }))
-    await expect(await welcome.findByText('Enter a name of up to 100 characters.')).toBeVisible()
+    await expect(await welcome.findByText('Enter a name of up to 60 characters.')).toBeVisible()
     await expect(input).toHaveValue('Anna')
     await expect(canvasElement.querySelector('[data-testid="onboarding-step-company"]')).toBeNull()
   },
