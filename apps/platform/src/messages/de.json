@@ -4211,5 +4211,10 @@
   "importDocumentRecords": "{count, plural, one {# Eintrag} other {# Einträge}}",
   "monthIsNotClosedYet": "{value1} ist noch nicht abgeschlossen. Schliessen Sie den Monat, damit sich die Zahlen nicht mehr ändern.",
   "monthsAreNotClosedYet": "{length} Monate sind noch nicht abgeschlossen: {value1} bis {value2}. Schliessen Sie sie, damit sich die Zahlen nicht mehr ändern.",
-  "closeTheMonth": "{length, plural, one {Monat schliessen} other {Monate schliessen}}"
+  "closeTheMonth": "{length, plural, one {Monat schliessen} other {Monate schliessen}}",
+  "bringYourData": "Bringen Sie Ihre Daten mit",
+  "bringYourDataIntro": "Legen Sie Rechnungen, Spesen, Kundenlisten oder Preislisten in einem gängigen Format ab. Die KI von Heidi erkennt, um welches Dokument es sich handelt, und Sie prüfen und korrigieren alles, bevor es importiert wird.",
+  "importedSummary": "Importiert: {summary}.",
+  "importMoreDocuments": "Weitere Dokumente importieren",
+  "importMoreDocumentsHint": "Weitere Rechnungen, Spesen, Kunden oder Preislisten aus Dateien hinzufügen."
 }

@@ -138,3 +138,15 @@ export const validPersonName = (name: string) => {
   const length = Array.from(name.trim()).length
   return length >= 1 && length <= 100
 }
+
+export type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'import' | 'done'
+
+/** The "Bring your data" step needs the server's AI model and the right to read documents; without either it is absent. */
+export const stepsFor = (canImport: boolean): StepId[] => [
+  'welcome',
+  'company',
+  'logo',
+  'preferences',
+  ...(canImport ? (['import'] as const) : []),
+  'done',
+]

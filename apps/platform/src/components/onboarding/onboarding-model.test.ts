@@ -1,6 +1,6 @@
 import { sampleSettings } from '@/test/invoice-api'
 
-import { toSettingsInput, validate, valuesFrom } from './onboarding-model'
+import { stepsFor, toSettingsInput, validate, valuesFrom } from './onboarding-model'
 
 test.each([
   ['registering moves the VAT mode off none', 'none', true, 'exclusive'],
@@ -91,4 +91,9 @@ test('a company not set up yet starts in the interface language; a set-up one ke
   const fresh = { ...sampleSettings(), is_complete: false, language: 'de' as const }
   expect(valuesFrom(fresh, 'en').language).toBe('en')
   expect(valuesFrom({ ...fresh, is_complete: true }, 'en').language).toBe('de')
+})
+
+test('the import step sits before the last one, and only when it can be used', () => {
+  expect(stepsFor(false)).toEqual(['welcome', 'company', 'logo', 'preferences', 'done'])
+  expect(stepsFor(true)).toEqual(['welcome', 'company', 'logo', 'preferences', 'import', 'done'])
 })

@@ -16,7 +16,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,10 +37,12 @@ import {
   inputClass,
 } from '@/components/clients/fields'
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { ImportDrawer } from '@/components/import/import-drawer'
 import { HelpTip } from '@/components/settings/help-tip'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { useUpdateProfile } from '@/lib/account'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
+import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   ibanInfo,
@@ -52,6 +54,7 @@ import {
   type InvoiceSettings,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { queryKeys, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
 import { useUpdateWorkspace } from '@/lib/workspaces'
@@ -62,10 +65,12 @@ import {
   fieldErrors,
   toSettingsInput,
   uidDigits,
+  stepsFor,
   validate,
   validPersonName,
   valuesFrom,
   vatSuffix,
+  type StepId,
   type Values,
 } from './onboarding-model'
 import { TypedWelcomeTitle } from './welcome-intro'
@@ -73,7 +78,6 @@ import { TypedWelcomeTitle } from './welcome-intro'
 // The platform keeps one language per page load (a change reloads), so the module-level locale is current.
 const interfaceLanguage = locale
 
-type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
 
 const LANGUAGES: { value: DocLanguage; label: string }[] = [
@@ -105,7 +109,11 @@ export function WelcomePage({ session }: { session: Session }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const heidi = useHeidi()
-  const steps: StepId[] = ['welcome', 'company', 'logo', 'preferences', 'done']
+  // The import step needs the server's AI model (GET /heidi/usage) and write access to documents.
+  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
+  const canImport = useCan('write:documents') && usage.data?.provider_available === true
+  const steps = stepsFor(canImport)
+  const [imported, setImported] = useState<string | null>(null)
   const [step, setStep] = useState<StepId>('welcome')
   const index = steps.indexOf(step)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -357,9 +365,19 @@ export function WelcomePage({ session }: { session: Session }) {
                   onDone={() => void saveAndNext()}
                 />
               )}
+              {step === 'import' && (
+                <ImportStep
+                  heading={heading}
+                  imported={imported}
+                  onCreated={setImported}
+                  onBack={back}
+                  onDone={next}
+                />
+              )}
               {step === 'done' && (
                 <DoneStep
                   heading={heading}
+                  imported={imported}
                   name={confirmedName}
                   settings={settings.data}
                   busy={busy}
@@ -1009,8 +1027,69 @@ function PreferencesStep({
   )
 }
 
+/** Optional: the existing AI import in its drawer; the drawer asks for the AI approval when the files are read. */
+function ImportStep({
+  heading,
+  imported,
+  onCreated,
+  onBack,
+  onDone,
+}: {
+  heading: HeadingRef
+  imported: string | null
+  onCreated: (summary: string) => void
+  onBack?: () => void
+  onDone: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <StepHeader heading={heading} title={translate('bringYourData')}>
+        {translate('bringYourDataIntro')}
+      </StepHeader>
+      {imported && (
+        <output className="mt-7 block">
+          <Callout tone="success">{translate('importedSummary', { summary: imported })}</Callout>
+        </output>
+      )}
+      <Actions
+        onBack={onBack}
+        skip={
+          imported ? (
+            <SkipButton onClick={() => setOpen(true)}>
+              {translate('importMoreDocuments')}
+            </SkipButton>
+          ) : (
+            <SkipButton onClick={onDone} />
+          )
+        }
+      >
+        <Button
+          size="xl"
+          type="button"
+          className={bigButton}
+          onClick={imported ? onDone : () => setOpen(true)}
+        >
+          {imported ? (
+            <>
+              {translate('continue2')} <ArrowRight />
+            </>
+          ) : (
+            <>
+              <FileUp />
+              {translate('importDocuments')}
+            </>
+          )}
+        </Button>
+      </Actions>
+      {open && <ImportDrawer kind="auto" onCreated={onCreated} onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
 function DoneStep({
   heading,
+  imported,
   name,
   settings,
   busy,
@@ -1019,6 +1098,7 @@ function DoneStep({
   onClose,
 }: {
   heading: HeadingRef
+  imported: string | null
   name: string | null
   settings: InvoiceSettings | undefined
   busy: boolean
@@ -1034,6 +1114,9 @@ function DoneStep({
           ? [{ key: 'company', text: translate('yourCompanyIsReadyToIssueInvoices') }]
           : []),
         ...(settings.logo_url ? [{ key: 'logo', text: translate('yourLogoIsOnEveryPDF') }] : []),
+        ...(imported
+          ? [{ key: 'import', text: translate('importedSummary', { summary: imported }) }]
+          : []),
       ]
     : []
   return (
@@ -1100,10 +1183,14 @@ function DoneStep({
         />
         <NextStep
           icon={<FileUp />}
-          title={translate('importYourClients')}
-          description={translate('fromASpreadsheetPDFOrYourOldToolYou')}
+          title={imported ? translate('importMoreDocuments') : translate('importYourClients')}
+          description={
+            imported
+              ? translate('importMoreDocumentsHint')
+              : translate('fromASpreadsheetPDFOrYourOldToolYou')
+          }
           disabled={busy}
-          onClick={() => onOpen('/clients?import=1')}
+          onClick={() => onOpen(imported ? '/documents?import=1' : '/clients?import=1')}
         />
         <NextStep
           icon={<HeidiSparkle />}

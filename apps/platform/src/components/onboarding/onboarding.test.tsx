@@ -6,9 +6,11 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
+import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
 import { sampleSettings } from '@/test/invoice-api'
 
@@ -30,7 +32,19 @@ let renamed: unknown[] = []
 let named: unknown[] = []
 let asked: unknown[] = [] // any call to the (retired) name-suggestion endpoint
 let workspaceName = 'Muster GmbH'
+let usage: HeidiUsage = { ...noAI() }
+let uploads = 0
 let billing: Billing = billingFixture({ enabled: false, locked: false })
+function noAI(): HeidiUsage {
+  return {
+    period: '2026-11',
+    tokens_used: 0,
+    tokens_included: null,
+    tokens_purchased: 0,
+    tokens_remaining: null,
+    provider_available: false,
+  }
+}
 // A brand-new workspace: nothing about the company yet.
 const empty = sampleSettings({
   seller: {
@@ -66,6 +80,11 @@ afterEach(() => localStorage.clear())
 const server = setupServer(
   http.get('/api/v1/session', () => HttpResponse.json(session())),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
+  http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage)),
+  http.post('/api/v1/imports', () => {
+    uploads++
+    return HttpResponse.json({ error: { code: 'x', message: 'x' } }, { status: 500 })
+  }),
   http.post('/api/v1/session/onboarded', () => {
     finished++
     onboarded = true
@@ -95,6 +114,8 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
   server.resetHandlers()
   onboarded = false
+  usage = noAI()
+  uploads = 0
   finished = 0
   saved = []
   renamed = []
@@ -113,7 +134,9 @@ const wrap = (children: ReactNode) =>
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <TooltipProvider>{children}</TooltipProvider>
+      <TooltipProvider>
+        <AIApprovalProvider>{children}</AIApprovalProvider>
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 
@@ -784,5 +807,55 @@ describe('a reload on the welcome', () => {
     localStorage.setItem('helvetly.onboarding-name.usr_1', 'Pete')
     wrap(<Welcome />)
     expect(await nameField()).toHaveValue('')
+  })
+})
+
+const available = () => {
+  usage = {
+    ...noAI(),
+    provider_available: true,
+    consent: { granted: false, changed_at: null, changed_by: '' },
+  }
+}
+const toImport = async (user: User) => {
+  await toDefaults(user)
+  await user.click(screen.getByRole('button', { name: /Continue/ }))
+  await screen.findByRole('heading', { name: 'Bring your data' })
+}
+
+describe('the import step', () => {
+  test('is absent without an AI model: five steps, the defaults lead to the end', async () => {
+    const user = userEvent.setup()
+    await toDefaults(user)
+    expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '5')
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: /all set/ })
+  })
+
+  test('comes before the last step when AI is available, and Skip goes on', async () => {
+    available()
+    const user = userEvent.setup()
+    await toImport(user)
+    expect(screen.getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('max', '6')
+    expect(screen.getByText('Step 5 of 6')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    await screen.findByRole('heading', { name: /all set/ })
+    expect(screen.getByText('Import your clients')).toBeInTheDocument()
+  })
+
+  test('declining the AI approval keeps the chosen files and sends nothing', async () => {
+    available()
+    const user = userEvent.setup()
+    await toDefaults(user)
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: 'Bring your data' })
+    await user.click(screen.getByRole('button', { name: 'Import documents' }))
+    const drawer = await screen.findByRole('dialog')
+    const input = drawer.querySelector('input[type=file]') as HTMLInputElement
+    await user.upload(input, new File(['a,b'], 'clients.csv', { type: 'text/csv' }))
+    await user.click(within(drawer).getByRole('button', { name: 'Read files' }))
+    await user.click(await screen.findByRole('button', { name: 'Not now' }))
+    expect(await within(drawer).findByText('clients.csv')).toBeInTheDocument()
+    expect(uploads).toBe(0)
   })
 })

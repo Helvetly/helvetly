@@ -2,14 +2,26 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { WelcomePage } from '@/components/onboarding/onboarding'
 import type { Session } from '@/lib/api'
+import type { HeidiUsage } from '@/lib/heidi'
+import type { ImportBatch } from '@/lib/imports'
 import { sampleSettings } from '@/test/invoice-api'
 
 import { storySession } from './screen-fixtures'
 
 const session: Session = { ...storySession, onboarded: false }
 const settings = sampleSettings()
+const usage = (available: boolean, granted = false): HeidiUsage => ({
+  period: '2026-11',
+  tokens_used: 0,
+  tokens_included: null,
+  tokens_purchased: 0,
+  tokens_remaining: null,
+  provider_available: available,
+  consent: { granted, changed_at: granted ? '2026-11-16T10:00:00Z' : null, changed_by: '' },
+})
 
 const meta = {
   title: 'Onboarding',
@@ -24,6 +36,7 @@ const meta = {
     msw: {
       handlers: [
         http.get('/api/v1/session', () => HttpResponse.json(session)),
+        http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage(false))),
         http.patch('/api/v1/account', async ({ request }) => {
           const input = (await request.json()) as { name: string }
           return HttpResponse.json({ data: { ...session.user, name: input.name } })
@@ -550,4 +563,140 @@ export const SaveError: Story = {
 export const SaveErrorDark: Story = {
   ...SaveError,
   parameters: { ...SaveError.parameters, dark: true },
+}
+
+/** With an AI model on the server, "Bring your data" sits before the last step and reuses the import drawer. */
+const aiHandlers = (granted: boolean, extra: ReturnType<typeof http.get>[] = []) => [
+  http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage(true, granted))),
+  http.put('/api/v1/heidi/consent', () =>
+    HttpResponse.json({
+      data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' },
+    }),
+  ),
+  http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
+  ...extra,
+  ...meta.parameters.msw.handlers,
+]
+const withAI = (handlers: ReturnType<typeof aiHandlers>) => ({
+  parameters: { msw: { handlers } },
+  render: () => (
+    <AIApprovalProvider>
+      <WelcomePage session={session} />
+    </AIApprovalProvider>
+  ),
+})
+
+const toImportStep = async (canvasElement: HTMLElement) => {
+  await begin(canvasElement)
+  await next(canvasElement, 'company', /Continue/)
+  await next(canvasElement, 'logo', /^Continue/)
+  await next(canvasElement, 'preferences', /Continue/)
+  const importing = within(await step(canvasElement, 'import'))
+  const heading = await importing.findByRole('heading', { name: 'Bring your data' })
+  await waitFor(() => expect(heading).toHaveFocus())
+  return importing
+}
+
+const body = () => within(document.body)
+const chooseFile = async () => {
+  const input = await body().findByLabelText('Choose files to import')
+  await userEvent.upload(input, new File(['name;email\nMuster AG;info@muster.ch'], 'clients.csv'))
+  await expect(body().getByText('clients.csv')).toBeVisible()
+}
+
+/** The step is optional: a primary action to import and a Skip; the count includes it. */
+export const ImportStepEmpty: Story = {
+  ...withAI(aiHandlers(true)),
+  play: async ({ canvasElement }) => {
+    const importing = await toImportStep(canvasElement)
+    await expect(canvasElement.querySelector('progress')).toHaveAttribute('max', '6')
+    await expect(importing.getByRole('button', { name: 'Skip' })).toBeVisible()
+    await expect(importing.getByRole('button', { name: 'Import documents' })).toBeEnabled()
+  },
+}
+
+export const ImportStepEmptyDark: Story = {
+  ...ImportStepEmpty,
+  parameters: { ...ImportStepEmpty.parameters, dark: true },
+}
+
+/** The approval is asked when the files are read; Not now keeps them in the drawer. */
+export const ImportStepConsent: Story = {
+  ...withAI(aiHandlers(false)),
+  play: async ({ canvasElement }) => {
+    const importing = await toImportStep(canvasElement)
+    await userEvent.click(importing.getByRole('button', { name: 'Import documents' }))
+    await chooseFile()
+    await userEvent.click(body().getByRole('button', { name: 'Read files' }))
+    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Not now' }))
+    await waitFor(() =>
+      expect(body().queryByRole('dialog', { name: 'Use AI in this workspace?' })).toBeNull(),
+    )
+    await expect(body().getByText('clients.csv')).toBeVisible()
+  },
+}
+
+const reviewBatch: ImportBatch = {
+  id: 'imp_onboarding',
+  kind: 'auto',
+  status: 'review',
+  created_at: '2026-11-16T09:30:00Z',
+  files: [
+    {
+      id: 'imf_1',
+      name: 'clients.csv',
+      size: 4800,
+      status: 'done',
+      error: null,
+      chunks_done: 1,
+      chunks_total: 1,
+      reused: false,
+      document_type: 'client_list',
+    },
+  ],
+  records: [
+    {
+      id: 'imr_1',
+      file_id: 'imf_1',
+      kind: 'clients',
+      status: 'pending',
+      data: { name: 'Muster AG', email: 'info@muster.ch', city: 'Bern', country: 'CH' },
+      issues: {},
+      duplicate: null,
+      entity_id: null,
+      error: null,
+    },
+  ],
+}
+
+/** Approved: the files are read and the review shows the recognised documents, ready to import. */
+export const ImportStepReview: Story = {
+  ...withAI(
+    aiHandlers(true, [
+      http.post('/api/v1/imports', () => HttpResponse.json({ data: reviewBatch }, { status: 201 })),
+      http.get('/api/v1/imports/:id', () => HttpResponse.json({ data: reviewBatch })),
+    ]),
+  ),
+  play: async ({ canvasElement }) => {
+    const importing = await toImportStep(canvasElement)
+    await userEvent.click(importing.getByRole('button', { name: 'Import documents' }))
+    await chooseFile()
+    await userEvent.click(body().getByRole('button', { name: 'Read files' }))
+    const review = await body().findByRole('region', { name: 'clients.csv' })
+    await expect(within(review).getByText('Muster AG')).toBeVisible()
+  },
+}
+
+/** No AI model on the server: no import step, five steps, and the defaults lead to the end. */
+export const ImportStepAbsent: Story = {
+  play: async ({ canvasElement }) => {
+    await begin(canvasElement)
+    await next(canvasElement, 'company', /Continue/)
+    await next(canvasElement, 'logo', /^Continue/)
+    await next(canvasElement, 'preferences', /Continue/)
+    await within(await step(canvasElement, 'done')).findByRole('heading', { name: /all set/ })
+    await expect(canvasElement.querySelector('progress')).toHaveAttribute('max', '5')
+    await expect(canvasElement.querySelector('[data-testid="onboarding-step-import"]')).toBeNull()
+  },
 }

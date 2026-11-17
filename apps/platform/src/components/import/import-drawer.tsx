@@ -49,7 +49,16 @@ import { GroupedReview, ReviewTable, rowName } from './import-review'
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
  * content follows the batch. Closing keeps the batch; the next open offers to continue it.
  */
-export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: () => void }) {
+export function ImportDrawer({
+  kind,
+  onClose,
+  onCreated,
+}: {
+  kind: ImportTarget
+  onClose: () => void
+  /** After a commit that created records: what the batch has created so far. */
+  onCreated?: (summary: string) => void
+}) {
   // `auto`: the AI works out what each file is, and the review shows each kind's records under its own heading.
   const config = kind === 'auto' ? null : IMPORT_KINDS[kind]
   const noun = config ? config.label.toLowerCase() : 'records'
@@ -125,7 +134,9 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           const merged = new Map(results)
           for (const result of answer.results) merged.set(result.id, result)
           setResults(merged)
-          setSummary(commitSummary([...merged.values()]))
+          const text = commitSummary([...merged.values()])
+          setSummary(text)
+          if (answer.results.some((result) => result.status === 'created')) onCreated?.(text)
           setConflicts(conflictsOf(answer.results))
           const settled = new Set(
             answer.results

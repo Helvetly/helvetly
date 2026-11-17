@@ -4211,5 +4211,10 @@
   "importDocumentRecords": "{count, plural, one {# enregistrement} other {# enregistrements}}",
   "monthIsNotClosedYet": "{value1} n’est pas encore clôturé. Clôturez-le pour que ses chiffres ne puissent plus changer.",
   "monthsAreNotClosedYet": "{length} mois ne sont pas encore clôturés : {value1} à {value2}. Clôturez-les pour que leurs chiffres ne puissent plus changer.",
-  "closeTheMonth": "{length, plural, one {Clôturer le mois} other {Clôturer les mois}}"
+  "closeTheMonth": "{length, plural, one {Clôturer le mois} other {Clôturer les mois}}",
+  "bringYourData": "Apportez vos données",
+  "bringYourDataIntro": "Déposez des factures, des notes de frais, des listes de clients ou de prix dans un format courant. L’IA de Heidi reconnaît chaque document, et vous vérifiez et corrigez tout avant l’import.",
+  "importedSummary": "Importé : {summary}.",
+  "importMoreDocuments": "Importer d’autres documents",
+  "importMoreDocumentsHint": "Ajoutez d’autres factures, notes de frais, clients ou listes de prix à partir de fichiers."
 }
