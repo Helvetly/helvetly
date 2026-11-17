@@ -4174,16 +4174,11 @@
   "emailTemplatesTitle": "Email templates",
   "emailTemplatesDescription": "The wording filled in when you email an invoice, credit note, proforma or quote. You can still change it before sending.",
   "emailTemplatesWhat": "The email templates",
-  "emailTemplatesPickTitle": "Which email",
-  "emailTemplatesPickDescription": "One template for each document type and language. The client’s language decides which one is used.",
-  "emailTemplatesKind": "Document type",
-  "emailTemplatesLanguage": "Language",
   "emailTemplatesKindInvoice": "Invoice",
   "emailTemplatesKindCreditNote": "Credit note",
   "emailTemplatesKindProforma": "Proforma",
   "emailTemplatesKindQuote": "Quote",
   "emailTemplatesCustom": "Customised",
-  "emailTemplatesTextTitle": "Wording",
   "emailTemplatesTextDescription": "Plain text only. Leave a variable in and it is replaced with the real value when you send.",
   "emailTemplatesHelpLabel": "the email templates",
   "emailTemplatesHelp": "Variables such as {example} are replaced with the real details of the document. Click one under the message to put it where your cursor is. A language you have not changed uses the standard wording.",
@@ -4261,5 +4256,10 @@
   "numberSuggestionText": "They follow {format}. Your next invoice would be {next}.",
   "useThisFormat": "Use this format",
   "keepMyFormat": "Keep my format",
-  "numberSuggestionApplied": "New invoices continue at {next}."
+  "numberSuggestionApplied": "New invoices continue at {next}.",
+  "emailTemplatesCustomCount": "{count, plural, one {# language customised} other {# languages customised}}",
+  "emailTemplatesEditIn": "Edit the {kind} email in {language}",
+  "emailTemplatesDialogTitle": "{kind} email · {language}",
+  "emailTemplatesEnterSubject": "Enter a subject.",
+  "emailTemplatesEnterMessage": "Enter a message."
 }

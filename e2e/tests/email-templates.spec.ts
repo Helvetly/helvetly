@@ -30,18 +30,26 @@ test('owner customises the English invoice email, the send dialog shows it rende
   const number = text(invoice.number)
 
   await page.goto('/settings/workspace')
-  await page.getByRole('radio', { name: 'English' }).click()
-  await page.locator('#email-template-invoice-en-subject').fill('Bill {number} for {client}')
-  await page.locator('#email-template-invoice-en-body').fill('Dear {client}, see {number}.')
-  await page.locator('#email-template-invoice-en').getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('radio', { name: 'English, customised' })).toBeVisible()
+  const editEnglish = page.getByRole('button', { name: 'Edit the Invoice email in English' })
+  await editEnglish.click()
+  let editor = page.getByRole('dialog', { name: /Invoice email · English/ })
+  // Both fields are required: an empty subject is refused before anything is sent.
+  await editor.locator('#email-template-invoice-en-subject').fill('')
+  await editor.getByRole('button', { name: 'Save' }).click()
+  await expect(editor.getByText('Enter a subject.')).toBeVisible()
+  await editor.locator('#email-template-invoice-en-subject').fill('Bill {number} for {client}')
+  await editor.locator('#email-template-invoice-en-body').fill('Dear {client}, see {number}.')
+  await editor.getByRole('button', { name: 'Save' }).click()
+  await expect(editor).toBeHidden()
+  await expect(page.getByText('1 language customised')).toBeVisible()
 
   // A refresh keeps the saved template.
   await page.reload()
-  await page.getByRole('radio', { name: 'English, customised' }).click()
-  await expect(page.locator('#email-template-invoice-en-subject')).toHaveValue(
+  await editEnglish.click()
+  await expect(editor.locator('#email-template-invoice-en-subject')).toHaveValue(
     'Bill {number} for {client}',
   )
+  await page.keyboard.press('Escape')
 
   const rendered = await draftEmail(api, `/invoices/${text(invoice.id)}`)
   expect(rendered.subject).toBe(`Bill ${number} for ${text(client.name)}`)
@@ -62,9 +70,11 @@ test('owner customises the English invoice email, the send dialog shows it rende
 
   // Reset restores the standard wording.
   await page.goto('/settings/workspace')
-  await page.getByRole('radio', { name: 'English, customised' }).click()
-  await page.getByRole('button', { name: 'Reset to default' }).click()
-  await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeVisible()
+  await editEnglish.click()
+  editor = page.getByRole('dialog', { name: /Invoice email · English/ })
+  await editor.getByRole('button', { name: 'Reset to default' }).click()
+  await expect(editor).toBeHidden()
+  await expect(page.getByText(/language customised/)).toHaveCount(0)
   const standard = await draftEmail(api, `/invoices/${text(invoice.id)}`)
   expect(standard.subject).toBe(`Invoice ${number} from E2E Zürich GmbH`)
 })
@@ -123,8 +133,11 @@ test('a member without invoice-settings write sees the page read-only and the AP
         .getByText('Only people who can edit invoice settings can change these templates.')
         .first(),
     ).toBeVisible()
-    await expect(page.locator('#email-template-invoice-en-subject')).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Edit the Invoice email in English' }).click()
+    const editor = page.getByRole('dialog')
+    await expect(editor.locator('#email-template-invoice-en-subject')).toBeDisabled()
+    await expect(editor.getByRole('button', { name: 'Save' })).toHaveCount(0)
+    await expect(editor.getByRole('button', { name: 'Reset to default' })).toHaveCount(0)
     const refused = await member.write(
       '/email-templates/invoice/en',
       { subject: 'x', body: 'y' },

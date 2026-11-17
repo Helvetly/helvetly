@@ -4174,16 +4174,11 @@
   "emailTemplatesTitle": "Modèles d’e-mail",
   "emailTemplatesDescription": "Le texte proposé lorsque vous envoyez par e-mail une facture, un avoir, une proforma ou un devis. Vous pouvez encore le modifier avant l’envoi.",
   "emailTemplatesWhat": "Les modèles d’e-mail",
-  "emailTemplatesPickTitle": "Quel e-mail",
-  "emailTemplatesPickDescription": "Un modèle par type de document et par langue. La langue du client détermine lequel est utilisé.",
-  "emailTemplatesKind": "Type de document",
-  "emailTemplatesLanguage": "Langue",
   "emailTemplatesKindInvoice": "Facture",
   "emailTemplatesKindCreditNote": "Avoir",
   "emailTemplatesKindProforma": "Proforma",
   "emailTemplatesKindQuote": "Devis",
   "emailTemplatesCustom": "Personnalisé",
-  "emailTemplatesTextTitle": "Texte",
   "emailTemplatesTextDescription": "Texte brut uniquement. Les variables sont remplacées par les vraies valeurs lors de l’envoi.",
   "emailTemplatesHelpLabel": "les modèles d’e-mail",
   "emailTemplatesHelp": "Les variables comme {example} sont remplacées par les vraies données du document. Cliquez sur l’une d’elles sous le message pour l’insérer à l’emplacement du curseur. Une langue que vous n’avez pas modifiée utilise le texte standard.",
@@ -4261,5 +4256,10 @@
   "numberSuggestionText": "Elles suivent {format}. Votre prochaine facture serait {next}.",
   "useThisFormat": "Utiliser ce format",
   "keepMyFormat": "Garder mon format",
-  "numberSuggestionApplied": "Les nouvelles factures continuent à {next}."
+  "numberSuggestionApplied": "Les nouvelles factures continuent à {next}.",
+  "emailTemplatesCustomCount": "{count, plural, one {# langue personnalisée} other {# langues personnalisées}}",
+  "emailTemplatesEditIn": "Modifier l’e-mail « {kind} » en {language}",
+  "emailTemplatesDialogTitle": "E-mail « {kind} » · {language}",
+  "emailTemplatesEnterSubject": "Saisissez un objet.",
+  "emailTemplatesEnterMessage": "Saisissez un message."
 }

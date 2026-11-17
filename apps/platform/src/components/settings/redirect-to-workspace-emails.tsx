@@ -5,6 +5,6 @@ import { useEffect } from 'react'
 
 export function RedirectToWorkspaceEmails() {
   const router = useRouter()
-  useEffect(() => router.replace('/settings/workspace#email-template-pick'), [router])
+  useEffect(() => router.replace('/settings/workspace#email-templates'), [router])
   return null
 }
