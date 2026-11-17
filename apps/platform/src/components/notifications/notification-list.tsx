@@ -1,3 +1,4 @@
+import { languageTag } from '@helvetly/i18n'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -31,7 +32,7 @@ export function NotificationMeta({ n, className }: { n: Notification; className?
       )}
       <time
         dateTime={n.created_at}
-        title={new Date(n.created_at).toLocaleString()}
+        title={new Date(n.created_at).toLocaleString(languageTag)}
         className="shrink-0"
       >
         {formatRelative(n.created_at)}

@@ -625,7 +625,8 @@ export function DocumentsPage() {
         </ContextMenuLabel>
         {single && (
           <ContextMenuItem onSelect={() => openItem(key)}>
-            {file ? <Eye /> : <FolderOpen />} {file ? translate('preview') : translate('open')}
+            {file ? <Eye /> : <FolderOpen />}{' '}
+            {file ? translate('preview') : translate('openAction')}
             <ContextMenuShortcut>↵</ContextMenuShortcut>
           </ContextMenuItem>
         )}

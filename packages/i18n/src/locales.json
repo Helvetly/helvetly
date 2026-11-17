@@ -1,6 +1,6 @@
 {
   "defaultLocale": "en",
-  "browserLocales": ["en"],
+  "browserLocales": ["de", "en", "fr", "it"],
   "locales": {
     "de": {
       "name": "Deutsch",

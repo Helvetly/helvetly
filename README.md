@@ -60,17 +60,17 @@ TanStack Query, Turborepo, Vitest, Storybook and Playwright.
 
 ## Languages
 
-All interfaces use English catalogs (`src/messages/en.json`) in each app and `packages/ui`.
-The public website and developer documentation also support Swiss Standard German (`de-CH`) at `/de/`.
-The signed-in application and client portal currently support English only. Their enabled languages are
-listed separately in `browserLocales` in `packages/i18n/src/locales.json`; enable a language there only
-after translating both applications.
+All interfaces keep their English source catalogs (`src/messages/en.json`) in each app and `packages/ui`.
+The public website, signed-in application and client portal support English (`en-GB`), Swiss Standard
+German (`de-CH`), French (`fr-CH`) and Italian (`it-CH`). The applications' enabled languages are listed
+in `browserLocales` in `packages/i18n/src/locales.json`; enable another language there only after
+translating both applications.
 The shared `packages/i18n` runtime provides typed keys, ICU messages, interpolation and English fallback.
 User data, API identifiers and the language of issued financial documents remain separate from interface language.
 
 To enable another language, add it to `packages/i18n/src/locales.json`, add its JSON catalogs next to
-`en.json`, and import them into each `src/lib/i18n.ts` (`createMessages({ en, de })` in platform and portal,
-`createTranslators({ en, de })` on the website).
+`en.json`, and import them into each `src/lib/i18n.ts` (`createMessages({ en, de, fr, it })` in platform and portal,
+`createTranslators({ en, de, fr, it })` on the website).
 Translate complete messages; ICU plural rules are available for counts.
 Marketing and documentation keep English at the existing URLs; other languages use prefixes such as `/de/`.
 The website is one static export and one `next dev` server for every configured language: English pages live in
@@ -223,7 +223,6 @@ Stripe Managed Payments (Stripe is the merchant of record); the products then ne
 - The business year is the calendar year.
 - E-invoice network delivery (Peppol, KSeF API) is not wired; the XML export works.
 - File retention needs S3 Object Lock (above); there are no qualified timestamps or qualified e-signatures.
-- The interface is in English only.
 - The employees module calculates no pay, tax or contributions and produces no payslips, certificates or filings: it
   records and exports what a person or a payroll system computed. Jurisdiction data is research, not legal advice.
 

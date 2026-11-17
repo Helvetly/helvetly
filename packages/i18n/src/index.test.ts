@@ -108,15 +108,18 @@ describe('public languages', () => {
     },
   )
 
-  it('keeps the application in English when a public page hands over ?lang', () => {
-    expect(configuration.browserLocales).toEqual(['en'])
+  it('accepts and remembers every public language handed over through ?lang', () => {
+    expect(configuration.browserLocales.toSorted()).toEqual(
+      Object.keys(configuration.locales).toSorted(),
+    )
     const storage = new Map<string, string>()
     const store = {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => void storage.set(key, value),
     }
-    for (const language of ['de', 'fr', 'it'])
-      expect(browserLocale(`?lang=${language}`, store)).toBe('en')
-    expect(storage.size).toBe(0)
+    for (const language of Object.keys(configuration.locales)) {
+      expect(browserLocale(`?lang=${language}`, store)).toBe(language)
+      expect(browserLocale('', store)).toBe(language)
+    }
   })
 })

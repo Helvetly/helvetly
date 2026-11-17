@@ -110,6 +110,23 @@ export const Welcome: Story = {
   },
 }
 
+export const Languages: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Change language' }))
+    const page = within(document.body)
+
+    await Promise.all(
+      ['Deutsch', 'English', 'Français', 'Italiano'].map((name) =>
+        expect(page.getByRole('menuitem', { name })).toBeVisible(),
+      ),
+    )
+
+    await userEvent.keyboard('{Escape}')
+    await expect(await canvas.findByRole('button', { name: 'Change language' })).toHaveFocus()
+  },
+}
+
 export const WelcomeDark: Story = { ...Welcome, parameters: { ...meta.parameters, dark: true } }
 
 export const WelcomePhone: Story = {

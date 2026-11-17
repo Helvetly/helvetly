@@ -1,8 +1,6 @@
 import { cn } from '@helvetly/ui/lib/utils'
 import { useId } from 'react'
 
-import { translate } from '@/lib/i18n'
-
 // One soft blue for every folder, as CSS variables the illustration and the small icon both read.
 const FOLDER_TONE =
   '[--folder-back:#5d97e3] [--folder-top:#a9d1fb] [--folder-bottom:#6aa8ef] [--folder-ink:#4a8ae0] [--folder-fill:#d8e9fd] dark:[--folder-back:#3d6fbd] dark:[--folder-top:#86b8f2] dark:[--folder-bottom:#4d8ad8] dark:[--folder-ink:#8dbdfa] dark:[--folder-fill:rgb(96_160_240/0.24)]'
@@ -53,7 +51,8 @@ export function FolderArt({ full, className }: { full: boolean; className?: stri
   const back = `${uid}-back`
   const front = `${uid}-front`
   const shine = `${uid}-shine`
-  const motion = translate('transitionTransformDuration300EaseCubicBezier02')
+  const motion =
+    'transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] [transform-box:fill-box]'
   return (
     <svg
       aria-hidden
