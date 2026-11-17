@@ -4216,5 +4216,8 @@
   "importFixFirst": "Fix the first one",
   "importContinueShort": "Continue import",
   "importMoreComing": "More documents are still being read. Their rows appear here as soon as each is done.",
-  "importDocumentRecords": "{count, plural, one {# record} other {# records}}"
+  "importDocumentRecords": "{count, plural, one {# record} other {# records}}",
+  "monthIsNotClosedYet": "{value1} is not closed yet. Close it so its figures can't change.",
+  "monthsAreNotClosedYet": "{length} months are not closed yet: {value1} to {value2}. Close them so their figures can't change.",
+  "closeTheMonth": "{length, plural, one {Close the month} other {Close the months}}"
 }

@@ -25,6 +25,7 @@ import { useState, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
 import { NativeSelect } from '@/components/clients/fields'
+import { ClosingReminder } from '@/components/dashboard/closing-reminder'
 import { EngagementsCard } from '@/components/engagements/engagements-card'
 import { Initials } from '@/components/initials'
 import { Money, RowStatus } from '@/components/invoices/invoice-bits'
@@ -104,6 +105,7 @@ export function Dashboard() {
         onPrimary={() => router.push('/invoices/new')}
         actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
       />
+      <ClosingReminder />
       {canReadInvoices && <InvoiceKpis period={period} />}
       <div className="grid flex-1 content-start gap-4 p-4 md:p-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
         {canReadInvoices && <NeedsAttention />}

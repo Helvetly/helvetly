@@ -46,8 +46,8 @@ import { useCan } from '@/lib/permissions'
 import { SettingsPage } from './layout'
 import { SettingsHeader } from './settings-tabs'
 
-const PERIODS_KEY = ['books', 'periods'] as const
-const ACTIVITY_KEY = ['books', 'activity'] as const
+export const PERIODS_KEY = ['books', 'periods'] as const
+export const ACTIVITY_KEY = ['books', 'activity'] as const
 const MAX_ACTIVITY_MONTHS = 36
 
 const utc = (month: string) => new Date(`${month}-01T00:00:00Z`)
