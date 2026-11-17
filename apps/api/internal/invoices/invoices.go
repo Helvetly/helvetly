@@ -81,6 +81,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle := func(pattern string, h handler) { s.handle(mux, pattern, h) }
 	handle("GET /api/v1/invoice-settings", s.getSettings)
 	handle("PUT /api/v1/invoice-settings", s.putSettings)
+	handle("GET /api/v1/invoice-settings/number-suggestion", s.getNumberSuggestion)
+	handle("POST /api/v1/invoice-settings/number-suggestion", s.applyNumberSuggestion)
 	handle("GET /api/v1/invoice-settings/logo", s.getLogo)
 	handle("PUT /api/v1/invoice-settings/logo", s.putLogo)
 	handle("DELETE /api/v1/invoice-settings/logo", s.deleteLogo)

@@ -390,7 +390,7 @@ export function ExpensesPage() {
               {translate('dropToReadTheseReceiptsIntoDraftExpenses')}
             </p>
             <p className="text-xs text-muted-foreground">
-              {translate('pdfPhotosOrSpreadsheetsUpTo10FilesOf')}
+              {translate('pdfPhotosOrSpreadsheetsUpTo25FilesOf')}
             </p>
           </div>
         </div>

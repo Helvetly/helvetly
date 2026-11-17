@@ -32,6 +32,7 @@ type Invoices interface {
 	NewQuote(ctx context.Context, q store.Q, sess store.Session, body map[string]json.RawMessage) (store.Invoice, error)
 	ApplyQuote(ctx context.Context, q store.Q, workspaceID string, inv *store.Invoice, body map[string]json.RawMessage) error
 	QuotePDF(ctx context.Context, q store.Q, workspaceID string, inv store.Invoice, draft bool) ([]byte, error)
+	QuoteNumber(ctx context.Context, q store.Q, workspaceID, issueDate string, seq int64) (string, error)
 	CreateDraft(ctx context.Context, q store.Q, sess store.Session, clientID string, fill func(*store.Invoice)) (string, error)
 	Seller(ctx context.Context, q store.Q, workspaceID string) (store.Party, []byte, string, error)
 }

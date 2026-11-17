@@ -21,6 +21,7 @@ import {
   displayStatus,
   dueLabel,
   exampleNumber,
+  numberFormatError,
   formatAmount,
   formatMoney,
   formatWholeAmount,
@@ -175,10 +176,28 @@ test('derives what the list shows from kind, status and due date', () => {
   expect(addDays('2026-12-15', 30)).toBe('2027-01-14')
 })
 
-test('numbers follow the chosen format; credit notes get CN-', () => {
-  expect(exampleNumber('YYYY-NNN', 2026, 7)).toBe('2026-007')
-  expect(exampleNumber('NNN/YYYY', 2026, 1234)).toBe('1234/2026')
-  expect(exampleNumber('RE-YYYY-NNN', 2026, 1, true)).toBe('CN-RE-2026-001')
+test('numbers follow the chosen format; credit notes get CN- unless it prints the type', () => {
+  expect(exampleNumber('{YYYY}-{NNN}', '2026-03-05', 7)).toBe('2026-007')
+  expect(exampleNumber('{NNN}/{YYYY}', '2026-03-05', 1234)).toBe('1234/2026')
+  expect(exampleNumber('RE-{YYYY}-{NNN}', '2026-03-05', 1, 'credit_note')).toBe('CN-RE-2026-001')
+  expect(exampleNumber('FV/{N}/{MM}/{YY}', '2026-03-05', 17)).toBe('FV/17/03/26')
+  expect(exampleNumber('{TYPE}-{YYYY}{MM}{DD}-{NN}', '2026-03-05', 3, 'credit_note')).toBe(
+    'CN-20260305-03',
+  )
+})
+
+test('number formats are checked as the API checks them', () => {
+  expect(numberFormatError('{YYYY}-{NNN}')).toBeNull()
+  expect(numberFormatError('FV/{N}/{MM}/{YYYY}')).toBeNull()
+  expect(numberFormatError('{NNN}')).toBe(
+    'Put the year in: the running number starts again each year.',
+  )
+  expect(numberFormatError('{YYYY}')).toBe('Put the running number in exactly once.')
+  expect(numberFormatError('{YYYY}-{N}-{NN}')).toBe('Put the running number in exactly once.')
+  expect(numberFormatError('{YYYY}:{NNN}')).toMatch(/^Use only letters/)
+  expect(numberFormatError('{YYYY}-{X}')).toMatch(/^Use only letters/)
+  expect(numberFormatError('{YYYY}-{NNNNNNN}')).toMatch(/^Use only letters/)
+  expect(numberFormatError(`${'A'.repeat(32)}{YYYY}{N}`)).toBe('Use at most 40 characters.')
 })
 
 test('reads the structured cannot_issue reasons, and nothing from other errors', () => {

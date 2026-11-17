@@ -2,7 +2,7 @@ import { addFiles } from './import-files'
 
 const file = (name: string, size = 10) => new File(['x'.repeat(size)], name, { lastModified: 1 })
 
-test('adds new files once, refuses big ones and stops at ten', () => {
+test('adds new files once, refuses big ones and stops at 25', () => {
   const a = file('a.csv')
   expect(addFiles([a], [a, file('b.csv')]).files.map((entry) => entry.name)).toEqual([
     'a.csv',
@@ -14,10 +14,10 @@ test('adds new files once, refuses big ones and stops at ten', () => {
 
   const many = addFiles(
     [],
-    Array.from({ length: 12 }, (_, index) => file(`${index}.csv`)),
+    Array.from({ length: 27 }, (_, index) => file(`${index}.csv`)),
   )
-  expect(many.files).toHaveLength(10)
-  expect(many.note).toBe('Up to 10 files at a time.')
+  expect(many.files).toHaveLength(25)
+  expect(many.note).toBe('Up to 25 files at a time.')
 })
 
 test('keeps one import request under 95 MB, under Cloudflare’s 100 MB', () => {

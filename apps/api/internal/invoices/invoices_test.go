@@ -474,7 +474,7 @@ func TestIssue(t *testing.T) {
 	e.fails(b, "POST", "/api/v1/invoices/"+first.ID+"/issue", nil, http.StatusConflict, "invalid_state")
 
 	// a normal IBAN gets an ISO 11649 reference; USD gets no QR bill
-	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"iban": "CH93 0076 2011 6238 5295 7", "number_format": "RE-YYYY-NNN"}, http.StatusOK, nil)
+	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"iban": "CH93 0076 2011 6238 5295 7", "number_format": "RE-{YYYY}-{NNN}"}, http.StatusOK, nil)
 	usd := e.issued(b, clientID, map[string]any{"currency": "USD"})
 	if *usd.Number != "RE-"+year+"-003" || usd.Payment.ReferenceType != "SCOR" || !swissqr.ValidSCOR(*usd.Payment.Reference) ||
 		usd.Payment.QRBill || usd.RoundingAmount != "0.00" {

@@ -113,7 +113,8 @@ export type VatCategory = 'S' | 'Z' | 'E' | 'AE' | 'K' | 'G' | 'O'
 export type Unit = 'hour' | 'day' | 'piece' | 'month' | 'km' | 'flat'
 export type DocLanguage = 'de' | 'fr' | 'it' | 'en'
 export type PaymentMethod = 'bank_transfer' | 'cash' | 'card' | 'twint' | 'other'
-export type NumberFormat = 'YYYY-NNN' | 'YYYY/NNN' | 'NNN/YYYY' | 'RE-YYYY-NNN'
+/** Literal text with {YYYY} {YY} {MM} {DD} {TYPE} and one {N}…{NNNNNN} placeholder; the API checks it too. */
+export type NumberFormat = string
 
 export type Party = {
   name: string
@@ -805,13 +806,55 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'other', label: translate('other') },
 ]
 
-export const NUMBER_FORMATS: NumberFormat[] = ['YYYY-NNN', 'YYYY/NNN', 'NNN/YYYY', 'RE-YYYY-NNN']
+export const NUMBER_FORMATS: NumberFormat[] = [
+  '{YYYY}-{NNN}',
+  '{YYYY}/{NNN}',
+  '{NNN}/{YYYY}',
+  'RE-{YYYY}-{NNN}',
+]
 
-/** "2026-001" for format, year and sequence; credit notes get the "CN-" prefix. */
-export function exampleNumber(format: NumberFormat, year: number, seq: number, credit = false) {
-  const number = format.replace('YYYY', String(year)).replace('NNN', String(seq).padStart(3, '0'))
-  return credit ? `CN-${number}` : number
+/** What {TYPE} prints, as the API does; without {TYPE} a credit note gets the "CN-" prefix. */
+const TYPE_LETTERS = { invoice: 'INV', credit_note: 'CN' } as const
+
+/** The number a document of the kind issued on date (YYYY-MM-DD) gets with the sequence seq. */
+export function exampleNumber(
+  format: NumberFormat,
+  date: string,
+  seq: number,
+  kind: keyof typeof TYPE_LETTERS = 'invoice',
+) {
+  const parts: Record<string, string> = {
+    YYYY: date.slice(0, 4),
+    YY: date.slice(2, 4),
+    MM: date.slice(5, 7),
+    DD: date.slice(8, 10),
+    TYPE: TYPE_LETTERS[kind],
+  }
+  const number = format.replace(/\{([A-Z]+)\}/g, (token, name: string) =>
+    /^N{1,6}$/.test(name) ? String(seq).padStart(name.length, '0') : (parts[name] ?? token),
+  )
+  return kind === 'credit_note' && !format.includes('{TYPE}') ? `CN-${number}` : number
 }
+
+/** Why the API would refuse the format, or null. */
+export function numberFormatError(format: NumberFormat): string | null {
+  const tokens = format.match(/\{[A-Z]+\}/g) ?? []
+  const known = /^\{(YYYY|YY|MM|DD|TYPE|N{1,6})\}$/
+  if (format.length > 40) return translate('numberFormatTooLong')
+  if (
+    tokens.some((token) => !known.test(token)) ||
+    !/^[A-Za-z0-9 ./_#-]*$/.test(format.replace(/\{[A-Z]+\}/g, ''))
+  )
+    return translate('numberFormatCharacters')
+  if (tokens.filter((token) => /^\{N+\}$/.test(token)).length !== 1)
+    return translate('numberFormatOneRunningNumber')
+  if (!tokens.some((token) => token === '{YYYY}' || token === '{YY}'))
+    return translate('numberFormatNeedsYear')
+  return null
+}
+
+/** What the imported invoices' numbers suggest for a workspace that has issued none of its own. */
+export type NumberSuggestion = { format: NumberFormat; year: number; last: number; next: string }
 
 /** What each missing_fields entry is called, as the settings form labels it. */
 export const MISSING_LABELS: Record<string, string> = {
@@ -1254,6 +1297,16 @@ export const invoicesApi = {
       ).data,
     ),
   createPlan: (id: string, body: PlanInput) => request<One<Plan>>(`${path(id)}/plan`, post(body)),
+  numberSuggestion: async () =>
+    (await request<One<NumberSuggestion | null>>('/invoice-settings/number-suggestion')).data,
+  applyNumberSuggestion: async () =>
+    settingsFrom(
+      (
+        await request<One<InvoiceSettingsResponse>>('/invoice-settings/number-suggestion', {
+          method: 'POST',
+        })
+      ).data,
+    ),
 }
 
 // Downloads go through plain links so the browser sends the session cookie and saves the file.

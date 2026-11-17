@@ -125,7 +125,7 @@ export type ImportKindConfig = {
 
 export const IMPORT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.csv,.txt,.xlsx,.docx,.zip'
 export const IMPORT_FILE_TYPES = translate('pdfPhotosPNGJPEGWEBPExcelXlsxWordDocx')
-export const MAX_IMPORT_FILES = 10
+export const MAX_IMPORT_FILES = 25
 export const MAX_IMPORT_FILE_BYTES = MAX_FILE_BYTES
 
 /** The registered kinds (docs/imports-contract.md, "Adding a kind"): one entry per kind the Go API registers. */
@@ -715,7 +715,7 @@ export function importProblem(error: unknown): ImportProblem {
     return {
       kind: 'file',
       title: translate('theseFilesCannotBeRead'),
-      message: translate('theUploadIsTooLargeUpTo10Files'),
+      message: translate('theUploadIsTooLargeUpTo25Files'),
     }
   const code = error instanceof ApiError ? error.code : ''
   const message = error instanceof Error ? error.message : ''

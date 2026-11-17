@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/invoicecalc"
@@ -106,6 +107,19 @@ func (s *Service) ApplyQuote(ctx context.Context, q store.Q, workspaceID string,
 		}
 	}
 	return nil
+}
+
+// QuoteNumber: Q-{YYYY}-{NNN}, or the workspace's format when it prints the type, so quotes follow it too.
+func (s *Service) QuoteNumber(ctx context.Context, q store.Q, workspaceID, issueDate string, seq int64) (string, error) {
+	set, err := loadSettings(ctx, q, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	format := "Q-{YYYY}-{NNN}"
+	if strings.Contains(set.NumberFormat, "{TYPE}") {
+		format = set.NumberFormat
+	}
+	return formatNumber(format, "quote", issueDate, seq), nil
 }
 
 // QuotePDF renders a quote (kind "quote", valid-until in DueDate) with the current seller settings, logo and client;

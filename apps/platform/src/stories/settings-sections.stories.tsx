@@ -156,6 +156,39 @@ export const SaveRefused: Story = {
   },
 }
 
+/** A custom number format: placeholders go in at the cursor, the next numbers follow it, and a format without
+ * the running number is refused before anything is sent. */
+export const CustomNumberFormat: Story = {
+  play: async ({ canvasElement }) => {
+    sent.length = 0
+    const numbering = await region(canvasElement, 'Numbering')
+    await userEvent.click(numbering.getByRole('button', { name: /Number format/ }))
+    await userEvent.click(
+      await within(document.body).findByRole('option', { name: /Custom format/ }),
+    )
+    const field = numbering.getByRole('textbox', { name: 'Custom format' })
+    await userEvent.clear(field)
+    await userEvent.type(field, 'FV-')
+    const placeholders = within(numbering.getByRole('group', { name: 'Insert a placeholder' }))
+    await userEvent.click(placeholders.getByRole('button', { name: /{TYPE}/ }))
+    await userEvent.click(numbering.getByRole('button', { name: 'Save' }))
+    await expect(
+      await numbering.findByText('Put the running number in exactly once.'),
+    ).toBeVisible()
+    await expect(sent).toHaveLength(0)
+    await userEvent.type(field, '-')
+    await userEvent.click(placeholders.getByRole('button', { name: /{YYYY}/ }))
+    await userEvent.type(field, '-')
+    await userEvent.click(placeholders.getByRole('button', { name: /{NNN}/ }))
+    const year = new Date().getFullYear()
+    const preview = numbering.getByRole('status', { name: 'Next numbers' })
+    await expect(preview).toHaveTextContent(`FV-INV-${year}-001`)
+    await expect(preview).toHaveTextContent(`FV-CN-${year}-001`)
+    await userEvent.click(numbering.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(lastSent()?.number_format).toBe('FV-{TYPE}-{YYYY}-{NNN}'))
+  },
+}
+
 /** Discard puts the section back as saved. */
 export const DiscardSection: Story = {
   play: async ({ canvasElement }) => {

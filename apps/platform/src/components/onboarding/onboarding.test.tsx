@@ -760,14 +760,39 @@ describe('the welcome', () => {
 
     test('the number format starts as the workspace has it, shows this year’s example and is saved', async () => {
       const user = userEvent.setup()
-      await toDefaults(user, { ...empty, number_format: 'YYYY/NNN' })
+      await toDefaults(user, { ...empty, number_format: '{YYYY}/{NNN}' })
       const year = new Date().getFullYear()
       expect(screen.getByText(`Your next invoice: ${year}/001`)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Number format/ }))
       await user.click(await screen.findByRole('option', { name: new RegExp(`RE-${year}-001`) }))
       expect(screen.getByText(`Your next invoice: RE-${year}-001`)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Continue/ }))
-      await waitFor(() => expect(saved.at(-1)?.number_format).toBe('RE-YYYY-NNN'))
+      await waitFor(() => expect(saved.at(-1)?.number_format).toBe('RE-{YYYY}-{NNN}'))
+    })
+
+    test('a custom number format is built from placeholders, checked and saved', async () => {
+      const user = userEvent.setup()
+      await toDefaults(user)
+      const year = new Date().getFullYear()
+      await user.click(screen.getByRole('button', { name: /Number format/ }))
+      await user.click(await screen.findByRole('option', { name: /Custom format/ }))
+      const field = screen.getByRole('textbox', { name: 'Custom format' })
+      await user.clear(field)
+      await user.type(field, 'FV/')
+      const savedBefore = saved.length
+      const placeholders = within(screen.getByRole('group', { name: 'Insert a placeholder' }))
+      await user.click(placeholders.getByRole('button', { name: /Running number/ }))
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      expect(
+        await screen.findByText('Put the year in: the running number starts again each year.'),
+      ).toBeInTheDocument()
+      expect(saved).toHaveLength(savedBefore)
+      await user.type(field, '/')
+      await user.click(placeholders.getByRole('button', { name: /{YYYY}/ }))
+      expect(field).toHaveValue('FV/{NNN}/{YYYY}')
+      expect(screen.getByText(`Your next invoice: FV/001/${year}`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(saved.at(-1)?.number_format).toBe('FV/{NNN}/{YYYY}'))
     })
 
     test.each([['0'], ['365'], ['45']])('custom %s days is saved as that number', async (text) => {

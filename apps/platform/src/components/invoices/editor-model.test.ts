@@ -84,7 +84,7 @@ const settings = {
   currency: 'CHF',
   language: 'de',
   default_terms_days: 30,
-  number_format: 'YYYY-NNN',
+  number_format: '{YYYY}-{NNN}',
   footer: 'Thank you.',
   qr_bill_enabled: true,
   revolut_enabled: false,

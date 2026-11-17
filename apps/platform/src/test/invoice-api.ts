@@ -34,7 +34,7 @@ export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSe
   currency: 'CHF',
   language: 'de',
   default_terms_days: 30,
-  number_format: 'YYYY-NNN',
+  number_format: '{YYYY}-{NNN}',
   footer: null,
   logo_file_id: null,
   qr_bill_enabled: true,

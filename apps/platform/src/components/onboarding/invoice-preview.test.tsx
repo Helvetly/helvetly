@@ -17,7 +17,7 @@ const values: Values = {
   language: 'de',
   currency: 'CHF',
   default_terms_days: 30,
-  number_format: 'YYYY-NNN',
+  number_format: '{YYYY}-{NNN}',
 }
 
 test('prints the apartment on the street line, in Poland after a slash', () => {
