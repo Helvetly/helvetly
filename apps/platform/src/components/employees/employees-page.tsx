@@ -4,6 +4,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
 import {
   Download,
   IdCard,
@@ -19,6 +20,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { NativeSelect } from '@/components/clients/fields'
+import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
@@ -246,20 +248,20 @@ export function EmployeesPage() {
 function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string) => void }) {
   return (
     <>
-      <table className="hidden w-full table-fixed text-title-sm lg:table">
+      <table className={cn(listTable.table, 'hidden lg:table')}>
         <thead>
-          <tr className="h-11 border-b bg-muted/50 text-left text-body-sm text-muted-foreground">
-            <th className="w-[30%] pl-5 font-medium">{translate('employeeColName')}</th>
-            <th className="w-[22%] px-3 font-medium">{translate('employeePosition')}</th>
-            <th className="w-[16%] px-3 font-medium">{translate('employeeDepartment')}</th>
-            <th className="w-[16%] px-3 font-medium">{translate('employeeColSince')}</th>
-            <th className="w-[16%] px-3 pr-5 font-medium">{translate('employeeStatusLabel')}</th>
+          <tr className={listTable.head}>
+            <th className={cn(listTable.th, 'w-[30%]')}>{translate('employeeColName')}</th>
+            <th className={cn(listTable.th, 'w-[22%]')}>{translate('employeePosition')}</th>
+            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeDepartment')}</th>
+            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeColSince')}</th>
+            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeStatusLabel')}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((employee) => (
-            <tr key={employee.id} className="h-[54px] hover:bg-card/70">
-              <td className="truncate pl-5">
+            <tr key={employee.id} className={listTable.row}>
+              <td className={listTable.td}>
                 {onOpen ? (
                   <button
                     type="button"
@@ -277,19 +279,19 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string
                   </span>
                 )}
               </td>
-              <td className="truncate px-3">{employee.position ?? '—'}</td>
-              <td className="truncate px-3">{employee.department ?? '—'}</td>
-              <td className="px-3 text-muted-foreground">
+              <td className={listTable.td}>{employee.position ?? '—'}</td>
+              <td className={listTable.td}>{employee.department ?? '—'}</td>
+              <td className={cn(listTable.td, 'text-muted-foreground')}>
                 {formatDate(employee.employment_start)}
               </td>
-              <td className="px-3 pr-5">
+              <td className={listTable.td}>
                 <EmployeeStatusBadge status={employee.status} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <ul className="divide-y divide-border/70 lg:hidden">
+      <ul className={cn(listTable.list, 'lg:hidden')}>
         {rows.map((employee) => {
           const content = (
             <>

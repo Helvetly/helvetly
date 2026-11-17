@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
+import { listTable } from '@/components/data/list-table'
 import { PageContextMenu } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { Initials } from '@/components/initials'
@@ -145,17 +146,19 @@ export function QuotesPage() {
             )
           ) : (
             <>
-              <table className="hidden w-full table-fixed text-title-sm @4xl:table">
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
-                  <tr className="h-11 border-b bg-muted/50 text-left text-xs tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-[180px] pl-5 font-medium">{translate('number')}</th>
-                    <th className="px-3 font-medium">{translate('client')}</th>
-                    <th className="hidden w-[128px] px-3 font-medium @6xl:table-cell">
+                  <tr className={listTable.head}>
+                    <th className={cn(listTable.th, 'w-[180px]')}>{translate('number')}</th>
+                    <th className={listTable.th}>{translate('client')}</th>
+                    <th className={cn(listTable.th, 'hidden w-[128px] @6xl:table-cell')}>
                       {translate('date')}
                     </th>
-                    <th className="w-[128px] px-3 font-medium">{translate('validUntil3')}</th>
-                    <th className="w-[17%] px-3 text-right font-medium">{translate('total')}</th>
-                    <th className="w-[120px] px-3 pr-5 font-medium">{translate('status')}</th>
+                    <th className={cn(listTable.th, 'w-[128px]')}>{translate('validUntil3')}</th>
+                    <th className={cn(listTable.th, listTable.numeric, 'w-[17%]')}>
+                      {translate('total')}
+                    </th>
+                    <th className={cn(listTable.th, 'w-[120px]')}>{translate('status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,9 +168,9 @@ export function QuotesPage() {
                       data-open={quote.id === openId || undefined}
                       onPointerEnter={() => prefetch(quote.id)}
                       onClick={() => open(quote.id)}
-                      className="h-[58px] cursor-pointer border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50"
+                      className={cn(listTable.row, 'cursor-pointer')}
                     >
-                      <td className="pl-5">
+                      <td className={cn(listTable.td, 'overflow-visible')}>
                         {/* The row opens on click; the button makes it reachable by keyboard. It truncates
                             itself, so the cell does not clip its focus ring. */}
                         <button
@@ -184,24 +187,29 @@ export function QuotesPage() {
                           {quoteNumber(quote)}
                         </button>
                       </td>
-                      <td className="truncate px-3">
+                      <td className={listTable.td}>
                         <span className="flex min-w-0 items-center gap-2.5">
                           <Initials name={quote.client.name} />
                           <span className="truncate">{quote.client.name}</span>
                         </span>
                       </td>
-                      <td className="hidden px-3 text-muted-foreground @6xl:table-cell">
+                      <td
+                        className={cn(listTable.td, 'hidden text-muted-foreground @6xl:table-cell')}
+                      >
                         {formatDay(quote.issue_date)}
                       </td>
                       <td
-                        className={cn('px-3', quote.status !== 'sent' && 'text-muted-foreground')}
+                        className={cn(
+                          listTable.td,
+                          quote.status !== 'sent' && 'text-muted-foreground',
+                        )}
                       >
                         {formatDay(quote.valid_until)}
                       </td>
-                      <td className="px-3 text-right">
+                      <td className={cn(listTable.td, listTable.numeric)}>
                         <Money value={quote.payable_total} currency={quote.currency} />
                       </td>
-                      <td className="px-3 pr-5">
+                      <td className={listTable.td}>
                         <QuoteStatusBadge status={quote.status} />
                       </td>
                     </tr>
@@ -209,7 +217,7 @@ export function QuotesPage() {
                 </tbody>
               </table>
 
-              <ul className="divide-y divide-border/70 @4xl:hidden">
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((quote) => (
                   <QuoteItem key={quote.id} quote={quote} onOpen={open} />
                 ))}

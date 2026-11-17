@@ -13,8 +13,6 @@ import {
   ArrowUp,
   AtSign,
   Building2,
-  ChevronLeft,
-  ChevronRight,
   CircleDot,
   CloudOff,
   Copy,
@@ -40,6 +38,7 @@ import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { listTable, Pager } from '@/components/data/list-table'
 import {
   dropdownKit,
   PageContextMenu,
@@ -504,10 +503,10 @@ export function ClientsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+              <table className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
-                  <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                    <th className="w-12 pl-5">
+                  <tr className={listTable.head}>
+                    <th className={listTable.select}>
                       <Checkbox
                         aria-label={translate('selectAllClientsOnThisPage')}
                         className="bg-card"
@@ -526,7 +525,7 @@ export function ClientsPage() {
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
                           className={cn(
-                            'px-3 font-medium',
+                            listTable.th,
                             column.width,
                             column.wide && 'hidden @6xl:table-cell',
                           )}
@@ -554,7 +553,7 @@ export function ClientsPage() {
                         </th>
                       )
                     })}
-                    <th className="w-12">
+                    <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
                     </th>
                   </tr>
@@ -574,7 +573,7 @@ export function ClientsPage() {
                 </tbody>
               </table>
 
-              <ul className="divide-y divide-border/70 @4xl:hidden">
+              <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((client) => (
                   <ClientItem
                     key={client.id}
@@ -587,45 +586,7 @@ export function ClientsPage() {
                 ))}
               </ul>
 
-              {meta && (
-                <nav
-                  aria-label={translate('pages')}
-                  className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
-                >
-                  <span className="tabular-nums">
-                    {(meta.page - 1) * meta.page_size + 1}–
-                    {Math.min(meta.page * meta.page_size, meta.total)}
-                    {translate('of5')}
-                    {meta.total}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('previousPage')}
-                      disabled={meta.page <= 1}
-                      onClick={() => update({ page: meta.page - 1 })}
-                    >
-                      <ChevronLeft />
-                    </Button>
-                    <span className="tabular-nums">
-                      {translate('page')}
-                      {meta.page}
-                      {translate('of5')}
-                      {Math.max(meta.total_pages, 1)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={translate('nextPage')}
-                      disabled={meta.page >= meta.total_pages}
-                      onClick={() => update({ page: meta.page + 1 })}
-                    >
-                      <ChevronRight />
-                    </Button>
-                  </span>
-                </nav>
-              )}
+              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -1069,9 +1030,9 @@ const ClientRow = memo(function ClientRow({
             return
           act.open(client.id)
         }}
-        className="h-[54px] cursor-pointer transition-colors duration-150 hover:bg-card/70 data-selected:bg-card data-selected:shadow-[0_0_0_1px_var(--color-border),0_1px_2px_oklch(0_0_0/0.04)]"
+        className={cn(listTable.row, 'cursor-pointer')}
       >
-        <td className="pl-5">
+        <td className={listTable.select}>
           <Checkbox
             aria-label={translate('select', { name: client.name })}
             className="bg-card"
@@ -1080,10 +1041,7 @@ const ClientRow = memo(function ClientRow({
           />
         </td>
         {columns.map((column) => (
-          <td
-            key={column.id}
-            className={cn('truncate px-3', column.wide && 'hidden @6xl:table-cell')}
-          >
+          <td key={column.id} className={cn(listTable.td, column.wide && 'hidden @6xl:table-cell')}>
             {column.id === 'name' ? (
               <NameCell client={client} onOpen={() => act.open(client.id)} />
             ) : (
@@ -1091,7 +1049,7 @@ const ClientRow = memo(function ClientRow({
             )}
           </td>
         ))}
-        <td className="pr-3 text-right">
+        <td className={listTable.menu}>
           <RowMenuButton label={translate('actionsFor', { name: client.name })} menu={menu} />
         </td>
       </tr>
@@ -1106,7 +1064,7 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
       <li
         data-selected={selected || undefined}
         onPointerEnter={() => act.prefetch(client.id)}
-        className="flex items-center gap-3 px-4 py-3 data-selected:bg-card"
+        className={listTable.item}
       >
         <Checkbox
           aria-label={translate('select', { name: client.name })}

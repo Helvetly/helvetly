@@ -10,8 +10,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   Archive,
   CalendarClock,
-  ChevronLeft,
-  ChevronRight,
   ClipboardCheck,
   Layers,
   ReceiptText,
@@ -25,6 +23,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem } from '@/components/billing/feature-lock'
+import { listTable, Pager } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -378,14 +377,11 @@ export function EngagementsPage() {
               list.isPlaceholderData && 'opacity-60',
             )}
           >
-            <table className="hidden w-full table-fixed text-[15px] @4xl:table">
+            <table className={cn(listTable.table, 'hidden @4xl:table')}>
               <thead>
-                <tr className="h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-                  {HEADERS.map(([label, width], index) => (
-                    <th
-                      key={label}
-                      className={cn('px-3 font-medium', width, index === 0 && 'pl-5')}
-                    >
+                <tr className={listTable.head}>
+                  {HEADERS.map(([label, width]) => (
+                    <th key={label} className={cn(listTable.th, width)}>
                       {label}
                     </th>
                   ))}
@@ -397,9 +393,9 @@ export function EngagementsPage() {
                     key={engagement.id}
                     onPointerEnter={() => prefetch(engagement.id)}
                     onClick={() => openEngagement(engagement.id)}
-                    className="h-[62px] cursor-pointer transition-colors duration-150 hover:bg-card/70"
+                    className={cn(listTable.row, 'cursor-pointer')}
                   >
-                    <td className="py-2 pr-3 pl-5">
+                    <td className={listTable.td}>
                       <button
                         type="button"
                         onClick={(event) => {
@@ -411,23 +407,23 @@ export function EngagementsPage() {
                         <TitleCell engagement={engagement} />
                       </button>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={listTable.td}>
                       <PeriodCell engagement={engagement} />
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={listTable.td}>
                       {engagement.current_period ? (
                         <ProgressBar period={engagement.current_period} unit={engagement.unit} />
                       ) : (
                         dash
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className={cn(listTable.td, listTable.numeric)}>
                       <RemainingCell engagement={engagement} />
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={listTable.td}>
                       <BillingLabel engagement={engagement} />
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={listTable.td}>
                       {engagement.attention.length ? (
                         <AttentionBadges attention={engagement.attention} />
                       ) : (
@@ -439,7 +435,7 @@ export function EngagementsPage() {
               </tbody>
             </table>
 
-            <ul className="divide-y divide-border/70 @4xl:hidden">
+            <ul className={cn(listTable.list, '@4xl:hidden')}>
               {rows.map((engagement) => (
                 <li key={engagement.id}>
                   <button
@@ -458,45 +454,7 @@ export function EngagementsPage() {
               ))}
             </ul>
 
-            {meta && (
-              <nav
-                aria-label={translate('pages')}
-                className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
-              >
-                <span className="tabular-nums">
-                  {(meta.page - 1) * meta.page_size + 1}–
-                  {Math.min(meta.page * meta.page_size, meta.total)}
-                  {translate('of5')}
-                  {meta.total}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={translate('previousPage')}
-                    disabled={meta.page <= 1}
-                    onClick={() => setPage(meta.page - 1)}
-                  >
-                    <ChevronLeft />
-                  </Button>
-                  <span className="tabular-nums">
-                    {translate('page')}
-                    {meta.page}
-                    {translate('of5')}
-                    {Math.max(meta.total_pages, 1)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={translate('nextPage')}
-                    disabled={meta.page >= meta.total_pages}
-                    onClick={() => setPage(meta.page + 1)}
-                  >
-                    <ChevronRight />
-                  </Button>
-                </span>
-              </nav>
-            )}
+            {meta && <Pager meta={meta} onPage={setPage} />}
           </div>
         )}
       </div>

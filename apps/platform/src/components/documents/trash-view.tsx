@@ -7,6 +7,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { Lock, RotateCcw, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { daysLeft, formatSize, isRetained, type TrashItem } from '@/lib/documents'
@@ -71,26 +72,26 @@ export function TrashView({
           </Button>
         )}
       </div>
-      <table className="w-full table-fixed text-[14px]">
+      <table className={listTable.table}>
         <thead>
-          <tr className="h-10 border-b text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-            <th className="w-12 pl-4">
+          <tr className={listTable.head}>
+            <th className={listTable.select}>
               <Checkbox
                 aria-label={translate('selectEverythingInTheTrash')}
                 checked={all}
                 onCheckedChange={(checked) => onToggleAll(checked === true)}
               />
             </th>
-            <th className="px-3 font-medium">{translate('name')}</th>
-            <th className="hidden w-[18%] px-3 font-medium @4xl:table-cell">
+            <th className={listTable.th}>{translate('name')}</th>
+            <th className={cn(listTable.th, 'hidden w-[18%] @4xl:table-cell')}>
               {translate('wasIn')}
             </th>
-            <th className="hidden w-[18%] px-3 font-medium @5xl:table-cell">
+            <th className={cn(listTable.th, 'hidden w-[18%] @5xl:table-cell')}>
               {translate('deleted2')}
             </th>
-            <th className="w-[10%] px-3 text-right font-medium">{translate('size')}</th>
-            <th className="w-[150px] px-3 font-medium">{translate('deletedForGood')}</th>
-            <th className="w-[92px] pr-4">
+            <th className={cn(listTable.th, listTable.numeric, 'w-[10%]')}>{translate('size')}</th>
+            <th className={cn(listTable.th, 'w-[150px]')}>{translate('deletedForGood')}</th>
+            <th className="w-[92px] pr-3">
               <span className="sr-only">{translate('actions')}</span>
             </th>
           </tr>
@@ -104,9 +105,9 @@ export function TrashView({
                 key={item.id}
                 data-selected={selected.has(item.id) || undefined}
                 onDoubleClick={() => onOpen(item)}
-                className="group/row h-12 border-b border-border/70 hover:bg-muted/50 data-selected:bg-primary/[0.06]"
+                className={cn(listTable.row, 'group/row')}
               >
-                <td className="pl-4">
+                <td className={listTable.select}>
                   <Checkbox
                     aria-label={translate('select', { name: item.name })}
                     checked={selected.has(item.id)}
@@ -148,7 +149,7 @@ export function TrashView({
                     {item.deleted_by?.name ? ` · ${item.deleted_by.name}` : ''}
                   </span>
                 </td>
-                <td className="px-3 text-right text-muted-foreground tabular-nums">
+                <td className={cn(listTable.td, listTable.numeric, 'text-muted-foreground')}>
                   {formatSize(item.size)}
                 </td>
                 <td className="px-3">
@@ -172,7 +173,7 @@ export function TrashView({
                     </span>
                   )}
                 </td>
-                <td className="pr-4">
+                <td className="pr-3">
                   <span className="flex justify-end gap-0.5">
                     {canWrite && (
                       <RowAction label={translate('restore')} onClick={() => onRestore([item])}>

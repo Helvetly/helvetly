@@ -2,12 +2,14 @@
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
 import { Check, KeyRound, Link2, LogOut, Mail, RefreshCw, Trash2, UserX, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -138,16 +140,16 @@ export function MembersPage() {
             action={null}
           />
         ) : (
-          <table className="w-full table-fixed text-[15px]">
+          <table className={listTable.table}>
             <thead>
-              <tr className="h-11 border-b bg-muted/50 text-left text-[13px] text-muted-foreground">
-                <th className="w-[34%] pl-5 font-medium">{translate('member')}</th>
-                <th className="w-[26%] px-3 font-medium">{translate('roleAndAccess')}</th>
-                <th className="hidden w-[20%] px-3 font-medium @4xl:table-cell">
+              <tr className={listTable.head}>
+                <th className={cn(listTable.th, 'w-[34%]')}>{translate('member')}</th>
+                <th className={cn(listTable.th, 'w-[26%]')}>{translate('roleAndAccess')}</th>
+                <th className={cn(listTable.th, 'hidden w-[20%] @4xl:table-cell')}>
                   {translate('lastActive')}
                 </th>
-                <th className="w-[14%] px-3 font-medium">{translate('status')}</th>
-                <th className="w-12">
+                <th className={cn(listTable.th, 'w-[14%]')}>{translate('status')}</th>
+                <th className={listTable.menu}>
                   <span className="sr-only">{translate('actions')}</span>
                 </th>
               </tr>
@@ -156,8 +158,8 @@ export function MembersPage() {
               {memberRows.map((member) => {
                 const menu = memberMenu(member, manager ? role : '', memberRun)
                 return (
-                  <tr key={member.user_id} className="h-[62px] hover:bg-card/70">
-                    <td className="pl-5">
+                  <tr key={member.user_id} className={listTable.row}>
+                    <td className={listTable.td}>
                       <MemberCell
                         name={member.name}
                         detail={member.email}
@@ -177,7 +179,7 @@ export function MembersPage() {
                     <td className="px-3">
                       <StatusBadge tone="green">{translate('active')}</StatusBadge>
                     </td>
-                    <td className="pr-3 text-right">
+                    <td className={listTable.menu}>
                       {menu && (
                         <RowMenuButton
                           label={translate('actionsFor', { name: member.name })}
@@ -189,8 +191,8 @@ export function MembersPage() {
                 )
               })}
               {invitationRows.map((invitation) => (
-                <tr key={invitation.id} className="h-[62px] hover:bg-card/70">
-                  <td className="pl-5">
+                <tr key={invitation.id} className={listTable.row}>
+                  <td className={listTable.td}>
                     <MemberCell
                       name={invitation.email}
                       detail={translate('invitedBy', { invited_by: invitation.invited_by })}
@@ -208,7 +210,7 @@ export function MembersPage() {
                   <td className="px-3">
                     <StatusBadge tone="blue">{translate('invited')}</StatusBadge>
                   </td>
-                  <td className="pr-3 text-right">
+                  <td className={listTable.menu}>
                     {manager && (
                       <RowMenuButton
                         label={translate('actionsFor3', { email: invitation.email })}
