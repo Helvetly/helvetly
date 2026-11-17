@@ -44,7 +44,7 @@ export function settingsPageAt(pathname: string): Page | undefined {
   const path = pathname.replace(/\/$/, '') || '/'
   return (
     SETTINGS_PAGES.find((page) => page.href === path) ??
-    SETTINGS_PAGES.filter((page) => path.startsWith(`${page.href}/`)).at(-1)
+    SETTINGS_PAGES.findLast((page) => path.startsWith(`${page.href}/`))
   )
 }
 

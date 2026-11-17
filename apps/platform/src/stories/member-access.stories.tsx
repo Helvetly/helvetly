@@ -153,7 +153,8 @@ export const HRRowsLockedForAdmin: Story = {
     const canvas = within(canvasElement)
     const table = canvas.getByRole('table', { name: 'Employees and payroll' })
     const hr = within(table)
-    for (const radio of hr.getAllByRole('radio')) await expect(radio).toBeDisabled()
+    const radios = hr.getAllByRole('radio')
+    await expect(radios.map((radio) => radio.matches(':disabled'))).toEqual(radios.map(() => true))
     await expect(hr.getByRole('radio', { name: 'Payroll: View' })).toBeChecked()
     // A preset leaves the HR rows as they are.
     await userEvent.click(canvas.getByRole('radio', { name: 'Read only' }))
@@ -204,7 +205,8 @@ export const WithoutEmployeesModule: Story = {
     const canvas = within(canvasElement)
     const hr = within(canvas.getByRole('table', { name: 'Employees and payroll' }))
     await expect(await hr.findByText('Business')).toBeVisible()
-    for (const radio of hr.getAllByRole('radio')) await expect(radio).toBeDisabled()
+    const radios = hr.getAllByRole('radio')
+    await expect(radios.map((radio) => radio.matches(':disabled'))).toEqual(radios.map(() => true))
     await userEvent.hover(hr.getByRole('rowheader', { name: /Employees/ }))
     await expect(
       await within(document.body).findByRole('tooltip', {

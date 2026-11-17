@@ -157,10 +157,15 @@ test('a client opens and closes from the keyboard alone, and focus returns to it
   await expect(trigger).toBeVisible()
   // Tab from the top of the page, as a keyboard user would, until the client's name has focus.
   await page.locator('body').focus()
-  for (let step = 0; step < 80; step += 1) {
-    await page.keyboard.press('Tab')
-    if (await trigger.evaluate((element) => element === document.activeElement)) break
-  }
+  await expect
+    .poll(
+      async () => {
+        await page.keyboard.press('Tab')
+        return trigger.evaluate((element) => element === document.activeElement)
+      },
+      { intervals: [0] },
+    )
+    .toBe(true)
   await expect(trigger).toBeFocused()
   await page.keyboard.press('Enter')
   const card = page.getByRole('dialog', { name })

@@ -292,15 +292,14 @@ test('client files over 95 MB go in requests under Cloudflare’s 100 MB, with o
       bodies.push((await request.sizes()).requestBodySize)
   })
   // Five distinct files of almost 20 MB: over 95 MB in all. Playwright takes files this big only from disk.
-  const scans = async (prefix: string) => {
-    const paths: string[] = []
-    for (let i = 0; i < 5; i++) {
-      const file = testInfo.outputPath(`${prefix}-${i}.txt`)
-      await writeFile(file, Buffer.alloc(19.5 * 1024 * 1024 - i, `${randomUUID()} ${i}\n`))
-      paths.push(file)
-    }
-    return paths
-  }
+  const scans = (prefix: string) =>
+    Promise.all(
+      [0, 1, 2, 3, 4].map(async (i) => {
+        const file = testInfo.outputPath(`${prefix}-${i}.txt`)
+        await writeFile(file, Buffer.alloc(19.5 * 1024 * 1024 - i, `${randomUUID()} ${i}\n`))
+        return file
+      }),
+    )
   await page.goto(`/clients?id=${id}`)
   await page.getByRole('tab', { name: /^Files/ }).click()
   const picker = page.getByLabel('Upload files', { exact: true })
@@ -324,7 +323,10 @@ test('client files over 95 MB go in requests under Cloudflare’s 100 MB, with o
 
   // The API refuses one request over 95 MB, though every file is under 20 MB.
   const form = new FormData()
-  for (const file of fresh) form.append('files[]', new Blob([await readFile(file)]), basename(file))
+  const blobs = await Promise.all(
+    fresh.map(async (file) => [new Blob([await readFile(file)]), basename(file)] as const),
+  )
+  for (const [blob, name] of blobs) form.append('files[]', blob, name)
   const refused = await api.request.post(endpoint, {
     headers: { 'X-CSRF-Token': api.csrf },
     multipart: form,

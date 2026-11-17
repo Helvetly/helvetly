@@ -95,22 +95,28 @@ test('a GIF, an SVG and a WebP are saved as the same PNG logos the API already a
   const vector = picked('logo.svg', 'image/svg+xml', svg)
   const still = picked('logo.webp', 'image/webp', webp)
 
-  for (const file of [gif, vector, still])
-    expect(await save(workspace, file, '/api/v1/workspace/logo')).toEqual({
-      width: 512,
-      height: 512,
-    })
+  // One upload at a time: both logos keep a per-workspace guard against concurrent replacement.
+  const square = { width: 512, height: 512 }
+  expect(await save(workspace, gif, '/api/v1/workspace/logo')).toEqual(square)
+  expect(await save(workspace, vector, '/api/v1/workspace/logo')).toEqual(square)
+  expect(await save(workspace, still, '/api/v1/workspace/logo')).toEqual(square)
 
   // The document logo lives on the invoice settings page.
   await openPage(page, '/settings/invoices', 'Invoices')
   const document = page.getByRole('region', { name: 'Logo' }).locator('input[type=file]')
   // The document logo keeps the field's 2.5 : 1 shape within the 1600 × 640 cap, whatever the format.
-  for (const [file, size] of [
-    [gif, { width: 750, height: 300 }],
-    [vector, { width: 1600, height: 640 }],
-    [still, { width: 600, height: 240 }],
-  ] as const)
-    expect(await save(document, file, '/api/v1/invoice-settings/logo')).toEqual(size)
+  expect(await save(document, gif, '/api/v1/invoice-settings/logo')).toEqual({
+    width: 750,
+    height: 300,
+  })
+  expect(await save(document, vector, '/api/v1/invoice-settings/logo')).toEqual({
+    width: 1600,
+    height: 640,
+  })
+  expect(await save(document, still, '/api/v1/invoice-settings/logo')).toEqual({
+    width: 600,
+    height: 240,
+  })
 
   expect(probes).toEqual([])
   expect(await page.evaluate(() => Reflect.get(window, 'svgRan'))).toBeUndefined()

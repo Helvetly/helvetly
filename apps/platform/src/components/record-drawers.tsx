@@ -1,7 +1,7 @@
 'use client'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
@@ -54,23 +54,41 @@ export function RecordDrawers({ children }: { children: ReactNode }) {
       ),
     [],
   )
+  const leave = useCallback(() => setStack([]), [])
 
   return (
     <RecordDrawersContext.Provider value={open}>
       {children}
       {stack.map((record, index) => (
-        <RecordPageContext.Provider
+        <StackedRecord
           key={`${record.kind}:${record.id}`}
-          value={{ href: recordPageHref(record), leave: () => setStack([]) }}
-        >
-          <RecordDrawer
-            record={record}
-            open={open}
-            onClose={() => setStack((current) => current.slice(0, index))}
-          />
-        </RecordPageContext.Provider>
+          record={record}
+          open={open}
+          leave={leave}
+          onClose={() => setStack((current) => current.slice(0, index))}
+        />
       ))}
     </RecordDrawersContext.Provider>
+  )
+}
+
+/** One drawer of the stack, telling what it shows which record page it stands for. */
+function StackedRecord({
+  record,
+  open,
+  leave,
+  onClose,
+}: {
+  record: RecordRef
+  open: (record: RecordRef) => void
+  leave: () => void
+  onClose: () => void
+}) {
+  const page = useMemo(() => ({ href: recordPageHref(record), leave }), [record, leave])
+  return (
+    <RecordPageContext.Provider value={page}>
+      <RecordDrawer record={record} open={open} onClose={onClose} />
+    </RecordPageContext.Provider>
   )
 }
 

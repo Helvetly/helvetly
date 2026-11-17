@@ -106,10 +106,7 @@ const card = (name: string) => screen.getByRole('region', { name })
 const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
 
 test('a card lists only what its plan offers: limits, then what the plan below lacks', () => {
-  const offer: PublicOffer = {
-    ...offerFixture,
-    comparison: offerFixture.comparison.map((r) => ({ ...r })),
-  }
+  const offer: PublicOffer = structuredClone(offerFixture)
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>

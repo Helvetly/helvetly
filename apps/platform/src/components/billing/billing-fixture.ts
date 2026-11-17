@@ -192,7 +192,7 @@ export function entitlementsFixture(
 ): Entitlement[] {
   return ALLOWANCES.map(([key, kind, perSeat, values]) => {
     const value = values[plan]
-    return {
+    const planned: Entitlement = {
       key,
       kind,
       unit: key.includes('bytes') ? 'byte' : key.includes('tokens') ? 'token' : 'count',
@@ -205,7 +205,7 @@ export function entitlementsFixture(
       expires_at: null,
       used: used[key] === undefined ? 0 : used[key],
       reset_at: kind === 'period_counter' ? '2026-12-01T00:00:00Z' : null,
-      ...over[key],
     }
+    return Object.assign(planned, over[key])
   })
 }
