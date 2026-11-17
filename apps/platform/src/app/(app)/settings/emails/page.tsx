@@ -1,11 +1,12 @@
 import { PageTitle } from '@/components/page-title'
-import { EmailTemplatesSettingsPage } from '@/components/settings/email-templates-settings'
+import { RedirectToWorkspaceEmails } from '@/components/settings/redirect-to-workspace-emails'
 
+/** Email templates moved into the workspace settings; old links and bookmarks land there. */
 export default function Page() {
   return (
     <>
-      <PageTitle message="emailTemplatesTitle" />
-      <EmailTemplatesSettingsPage />
+      <PageTitle message="workspace" />
+      <RedirectToWorkspaceEmails />
     </>
   )
 }

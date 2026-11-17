@@ -9,12 +9,14 @@ import { setupServer } from 'msw/node'
 import { resetEmailTemplatesMock } from '@/mocks/email-templates'
 import { handlers } from '@/mocks/handlers'
 
-import { EmailTemplatesSettingsPage } from './email-templates-settings'
+import { EmailTemplatesSections } from './email-templates-settings'
+import { SettingsPage } from './layout'
+import { SettingsHeader } from './settings-tabs'
 
 const push = vi.fn<(href: string) => void>()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn<() => void>() }),
-  usePathname: () => '/settings/emails/',
+  usePathname: () => '/settings/workspace/',
 }))
 
 const session = (role: string, scopes: string[]) =>
@@ -51,7 +53,10 @@ function setup() {
     <QueryClientProvider client={client}>
       <TooltipProvider>
         <SidebarProvider>
-          <EmailTemplatesSettingsPage />
+          <SettingsHeader />
+          <SettingsPage title="Workspace" description="">
+            <EmailTemplatesSections />
+          </SettingsPage>
         </SidebarProvider>
       </TooltipProvider>
     </QueryClientProvider>,
@@ -159,4 +164,10 @@ test('is read-only without invoice-settings write', async () => {
   expect(subject()).toBeDisabled()
   expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
   expect(screen.queryByRole('button', { name: '{client}' })).toBeNull()
+})
+
+test('the Emails tab is gone: the templates are a section of the workspace settings', async () => {
+  setup()
+  await message()
+  expect(screen.queryByRole('button', { name: 'Emails' })).toBeNull()
 })
