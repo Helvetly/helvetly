@@ -21,7 +21,7 @@ import (
 
 // Limits on what one upload may hold (docs/imports-contract.md, "Files").
 const (
-	maxFiles      = 10
+	maxFiles      = 25
 	maxFileBytes  = uploads.MaxFileBytes
 	maxEntries    = 50
 	maxEntryBytes = 10 << 20

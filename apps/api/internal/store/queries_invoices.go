@@ -543,6 +543,34 @@ func (q Q) NextInvoiceSeq(ctx context.Context, workspaceID, kind string, year in
 	return seq, err
 }
 
+// RaiseInvoiceCounter makes the (workspace, kind, year) sequence continue after seq, never moving it back.
+func (q Q) RaiseInvoiceCounter(ctx context.Context, workspaceID, kind string, year int, seq int64) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO invoice_counters (workspace_id, kind, year, seq) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (workspace_id, kind, year) DO UPDATE SET seq = GREATEST(invoice_counters.seq, EXCLUDED.seq)`,
+		workspaceID, kind, year, seq)
+	return err
+}
+
+// ImportedInvoiceNumber: the number of an invoice imported as issued elsewhere, and its issue date.
+type ImportedInvoiceNumber struct{ Number, IssueDate string }
+
+// ImportedInvoiceNumbers: the numbers of the workspace's imported invoices of the invoice series, while it has issued
+// none of its own (nil once it has: its numbering is then settled).
+func (q Q) ImportedInvoiceNumbers(ctx context.Context, workspaceID string) ([]ImportedInvoiceNumber, error) {
+	rows, err := q.db.Query(ctx, `SELECT number, issue_date::text FROM invoices
+		WHERE workspace_id = $1 AND origin = 'imported' AND number IS NOT NULL
+		AND kind IN ('invoice', 'partial', 'prepayment', 'debit_note', 'corrected')
+		AND NOT EXISTS (SELECT 1 FROM invoices WHERE workspace_id = $1 AND origin = 'helvetly' AND status <> 'draft')`,
+		workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (ImportedInvoiceNumber, error) {
+		var n ImportedInvoiceNumber
+		return n, r.Scan(&n.Number, &n.IssueDate)
+	})
+}
+
 // InvoiceNumberUsed: a document of the workspace, of any kind, already carries the number (one imported as issued
 // elsewhere keeps its own, which the workspace's series may reach later).
 func (q Q) InvoiceNumberUsed(ctx context.Context, workspaceID, number string) (bool, error) {

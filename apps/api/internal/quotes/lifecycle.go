@@ -73,7 +73,10 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			if err != nil {
 				return err
 			}
-			n := fmt.Sprintf("Q-%d-%03d", year, seq)
+			n, err := s.invoices.QuoteNumber(ctx, q, sess.Workspace.ID, t.IssueDate, seq)
+			if err != nil {
+				return err
+			}
 			t.Number = &n
 		}
 		var m mail.Message

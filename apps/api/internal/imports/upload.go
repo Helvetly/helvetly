@@ -39,7 +39,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 			_ = r.MultipartForm.RemoveAll()
 		}
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "Send at most 10 files of 25 MB each, 95 MB in all.", nil)
+			return auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "Send at most 25 files of 25 MB each, 95 MB in all.", nil)
 		}
 		return invalid("Send a multipart form with kind and files[].")
 	}

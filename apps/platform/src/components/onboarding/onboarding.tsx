@@ -39,7 +39,7 @@ import {
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { HelpTip } from '@/components/settings/help-tip'
-import { NumberFormatCombobox } from '@/components/settings/number-format-combobox'
+import { NumberFormatField } from '@/components/settings/number-format-field'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { useUpdateProfile } from '@/lib/account'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
@@ -47,6 +47,7 @@ import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   exampleNumber,
+  numberFormatError,
   ibanInfo,
   logoSrc,
   MISSING_LABELS,
@@ -55,6 +56,7 @@ import {
   useSaveInvoiceSettings,
   type DocLanguage,
   type InvoiceSettings,
+  type NumberFormat,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
@@ -64,6 +66,7 @@ import { useUpdateWorkspace } from '@/lib/workspaces'
 
 import { InvoicePreview } from './invoice-preview'
 import { LogoCard } from './logo-card'
+import { NumberSuggestion } from './number-suggestion'
 import {
   fieldErrors,
   toSettingsInput,
@@ -378,6 +381,9 @@ export function WelcomePage({ session }: { session: Session }) {
                   heading={heading}
                   imported={imported}
                   onCreated={setImported}
+                  onNumberFormat={(number_format) =>
+                    setEdited((current) => current && { ...current, number_format })
+                  }
                   onBack={back}
                   onDone={next}
                 />
@@ -927,7 +933,9 @@ function PreferencesStep({
   onDone: () => void
 }) {
   const days = values?.default_terms_days ?? 30
-  const currentYear = Number(today().slice(0, 4))
+  const numberFormat = values?.number_format ?? '{YYYY}-{NNN}'
+  const [formatInvalid, setFormatInvalid] = useState(false)
+  const formatError = formatInvalid ? (numberFormatError(numberFormat) ?? undefined) : undefined
   // A saved 10, 60 or any other number is shown as Custom with its value, never rewritten by showing it.
   const [customChosen, setCustomChosen] = useState(false)
   // What is typed in the days field while it is not (yet) a number that can be saved.
@@ -946,6 +954,10 @@ function PreferencesStep({
         if (custom && typedDays === null) {
           setTermsInvalid(true)
           termsField.current?.focus()
+          return
+        }
+        if (numberFormatError(numberFormat)) {
+          setFormatInvalid(true)
           return
         }
         onDone()
@@ -976,14 +988,17 @@ function PreferencesStep({
         <FormField
           id="onboarding-number-format"
           label={translate('numberFormat')}
-          hint={translate('yourNextInvoiceNumber', {
-            number: exampleNumber(values?.number_format ?? 'YYYY-NNN', currentYear, 1),
-          })}
+          error={formatError}
+          hint={
+            !formatError &&
+            translate('yourNextInvoiceNumber', { number: exampleNumber(numberFormat, today(), 1) })
+          }
           className="max-w-56"
         >
-          <NumberFormatCombobox
+          <NumberFormatField
             id="onboarding-number-format"
-            value={values?.number_format ?? 'YYYY-NNN'}
+            value={numberFormat}
+            invalid={Boolean(formatError)}
             onChange={(number_format) => onChange({ number_format })}
           />
         </FormField>
@@ -1055,12 +1070,14 @@ function ImportStep({
   heading,
   imported,
   onCreated,
+  onNumberFormat,
   onBack,
   onDone,
 }: {
   heading: HeadingRef
   imported: string | null
   onCreated: (summary: string) => void
+  onNumberFormat: (format: NumberFormat) => void
   onBack?: () => void
   onDone: () => void
 }) {
@@ -1074,6 +1091,11 @@ function ImportStep({
         <output className="mt-7 block">
           <Callout tone="success">{translate('importedSummary', { summary: imported })}</Callout>
         </output>
+      )}
+      {imported && (
+        <div className="mt-3">
+          <NumberSuggestion imported={imported} onApplied={onNumberFormat} />
+        </div>
       )}
       <Actions
         onBack={onBack}

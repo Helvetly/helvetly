@@ -186,7 +186,7 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 		if seq, err = q.NextInvoiceSeq(ctx, sess.Workspace.ID, series, year); err != nil {
 			return err
 		}
-		number = prefix + formatNumber(set.NumberFormat, year, seq)
+		number = documentNumber(set.NumberFormat, prefix, inv.Kind, inv.IssueDate, seq)
 		if used, err = q.InvoiceNumberUsed(ctx, sess.Workspace.ID, number); err != nil {
 			return err
 		}
@@ -490,20 +490,6 @@ func creditRateReasons(credit, credited store.Invoice, earlier []store.Invoice) 
 // refunds: the credit note takes the credited invoice above its payable amount, so money goes back to the buyer.
 func refunds(credit store.Invoice, credited *store.Invoice) bool {
 	return credit.Kind == "credit_note" && credited != nil && credited.AmountPaid > 0 && credited.AmountPaid+credited.AmountCredited+credit.Payable() > credited.Payable()
-}
-
-// formatNumber writes the sequence zero-padded to at least three digits in the chosen format.
-func formatNumber(format string, year int, seq int64) string {
-	y, n := strconv.Itoa(year), fmt.Sprintf("%03d", seq)
-	switch format {
-	case "YYYY/NNN":
-		return y + "/" + n
-	case "NNN/YYYY":
-		return n + "/" + y
-	case "RE-YYYY-NNN":
-		return "RE-" + y + "-" + n
-	}
-	return y + "-" + n
 }
 
 func buyerOf(c store.Client) store.Party {

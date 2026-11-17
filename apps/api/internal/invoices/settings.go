@@ -43,11 +43,9 @@ type Seller struct {
 	store.Party
 }
 
-var numberFormats = []string{"YYYY-NNN", "YYYY/NNN", "NNN/YYYY", "RE-YYYY-NNN"}
-
 func defaultSettings() Settings {
 	return Settings{Seller: Seller{Party: store.Party{Country: "CH"}}, VATRegistered: true, DefaultVATMode: invoicecalc.Exclusive,
-		DefaultVATRate: 810, Currency: "CHF", Language: "de", DefaultTermsDays: 30, NumberFormat: "YYYY-NNN", QRBillEnabled: true,
+		DefaultVATRate: 810, Currency: "CHF", Language: "de", DefaultTermsDays: 30, NumberFormat: "{YYYY}-{NNN}", QRBillEnabled: true,
 		Instalments: defaultInstalmentSettings(), Dunning: defaultDunningSettings()}
 }
 
@@ -238,7 +236,7 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 					p.fail(k, "Enter a number of days from 0 to 365.")
 				}
 			case "number_format":
-				set.NumberFormat = p.required(k, v, 20, oneOf(numberFormats...), "Choose a number format.")
+				set.NumberFormat = p.required(k, v, maxFormatLen, parseNumberFormat, "Enter a number format, such as {YYYY}-{NNN}.")
 			case "footer":
 				set.Footer = p.text(k, v, 1000, nil)
 			case "qr_bill_enabled", "revolut_enabled":

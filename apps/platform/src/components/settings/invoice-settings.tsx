@@ -56,11 +56,12 @@ import {
   type FieldErrors,
   type SectionState,
 } from '@/components/section-form'
-import { NumberFormatCombobox } from '@/components/settings/number-format-combobox'
+import { NumberFormatField } from '@/components/settings/number-format-field'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
   exampleNumber,
+  numberFormatError,
   formatIban,
   ibanInfo,
   INTERVALS,
@@ -311,6 +312,8 @@ export function validate(values: Values): FieldErrors {
   const days = Number(values.default_terms_days)
   if (!/^\d{1,3}$/.test(values.default_terms_days) || days > 365)
     errors.default_terms_days = translate('from0To365Days')
+  const numberFormat = numberFormatError(values.number_format)
+  if (numberFormat) errors.number_format = numberFormat
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
     errors.email = translate('checkTheEmailAddress')
   if (values.phone.trim() && !toE164(values.phone, values.phone_country)) errors.phone = PHONE_ERROR
@@ -676,7 +679,6 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
   )
   const [active, setActive] = useSectionInView()
   const iban = ibanInfo(values.iban)
-  const year = Number(today().slice(0, 4))
 
   // What issuing needs, from what is saved: unsaved edits don't make invoices issuable yet.
   const missing = missingFrom(form.saved)
@@ -1204,10 +1206,16 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               title={translate('numbering')}
               description={translate('numbersAreGivenWhenAnInvoiceIsIssuedWithout')}
             >
-              <FormField id={inputId('number_format')} label={translate('numberFormat')} width="md">
-                <NumberFormatCombobox
+              <FormField
+                id={inputId('number_format')}
+                label={translate('numberFormat')}
+                error={shown.number_format}
+                width="md"
+              >
+                <NumberFormatField
                   id={inputId('number_format')}
                   value={values.number_format}
+                  invalid={Boolean(shown.number_format)}
                   onChange={(format) => set('number_format', format)}
                 />
               </FormField>
@@ -1222,11 +1230,11 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   items={[
                     {
                       label: translate('invoice2'),
-                      value: exampleNumber(values.number_format, year, 1),
+                      value: exampleNumber(values.number_format, today(), 1),
                     },
                     {
                       label: translate('creditNote2'),
-                      value: exampleNumber(values.number_format, year, 1, true),
+                      value: exampleNumber(values.number_format, today(), 1, 'credit_note'),
                     },
                   ]}
                 />
