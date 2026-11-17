@@ -31,48 +31,58 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const body = () => within(document.body)
-const message = () => body().findByRole('textbox', { name: 'Message' }, { timeout: 8000 })
+const openTemplate = async (name = 'Edit the Invoice email in Deutsch') => {
+  await userEvent.click(await body().findByRole('button', { name }, { timeout: 8000 }))
+  return within(await body().findByRole('dialog'))
+}
+const field = (box: ReturnType<typeof within>, name: string) =>
+  box.getByRole('textbox', { name: new RegExp(`^${name}`) })
 
-/** The standard wording; a chip puts its variable at the cursor of the field last used. */
+/** One row per document type with a button per language; a button opens that email in a dialog, where a chip
+ * puts its variable at the cursor and explains itself in a tooltip. */
 export const Default: Story = {
   play: async () => {
-    const text = await message()
+    const list = await body().findByRole('list', { name: 'Email templates' }, { timeout: 8000 })
+    await expect(within(list).getAllByRole('listitem')).toHaveLength(4)
+    const box = await openTemplate()
+    const text = field(box, 'Message')
     await expect(text).toHaveDisplayValue(/\{number\}/)
     await userEvent.clear(text)
     await userEvent.type(text, 'Hi ')
-    await userEvent.click(body().getByRole('button', { name: '{client}' }))
+    await userEvent.click(box.getByRole('button', { name: '{client}' }))
     await expect(text).toHaveValue('Hi {client}')
-    await userEvent.hover(body().getByRole('button', { name: '{due_date}' }))
+    await userEvent.hover(box.getByRole('button', { name: '{due_date}' }))
     await expect(await body().findByText('Due date, e.g. 31.12.2026')).toBeVisible()
-    // The two pickers are one control of one height, like the other settings pages' choices.
-    const kinds = body().getByRole('group', { name: 'Document type' })
-    const languages = body().getByRole('group', { name: 'Language' })
-    await expect(within(languages).getByRole('radio', { name: 'Deutsch' })).toBeChecked()
-    await expect(languages.getBoundingClientRect().height).toBe(
-      kinds.getBoundingClientRect().height,
-    )
-    // The wording is its own section, divided from the picker by a hairline like every other one.
-    const wording = text.closest('section')
-    await expect(wording && getComputedStyle(wording).borderTopWidth).toBe('1px')
   },
 }
 export const DefaultDark = dark(Default)
 export const DefaultPhone = phone(Default)
 
-/** Saved wording shows a dot on its language, and Reset to default appears. */
+/** Subject and message are required: an empty one is named under its field and nothing is sent. */
+export const Required: Story = {
+  play: async () => {
+    const box = await openTemplate()
+    await userEvent.clear(field(box, 'Subject'))
+    await userEvent.clear(field(box, 'Message'))
+    await userEvent.click(box.getByRole('button', { name: 'Save' }))
+    await expect(await box.findByText('Enter a subject.')).toBeVisible()
+    await expect(box.getByText('Enter a message.')).toBeVisible()
+    await expect(body().getByRole('dialog')).toBeVisible()
+  },
+}
+
+/** Saved wording marks its language and the row, and Reset to default appears in the dialog. */
 export const Custom: Story = {
   play: async () => {
-    const text = await message()
-    await userEvent.click(body().getByRole('radio', { name: 'Français' }))
-    const french = await body().findByRole('textbox', { name: 'Message' })
-    await userEvent.clear(french)
-    await userEvent.type(french, 'Bonjour {client}')
-    await userEvent.click(body().getByRole('button', { name: 'Save' }))
-    await expect(
-      await body().findByRole('radio', { name: 'Français, customised' }),
-    ).toBeInTheDocument()
-    await expect(await body().findByRole('button', { name: 'Reset to default' })).toBeVisible()
-    await expect(text).toBeInTheDocument()
+    let box = await openTemplate('Edit the Invoice email in Français')
+    await userEvent.clear(field(box, 'Message'))
+    await userEvent.type(field(box, 'Message'), 'Bonjour {{client}')
+    await userEvent.click(box.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(body().queryByRole('dialog')).toBeNull())
+    await expect(await body().findByText('1 language customised')).toBeVisible()
+    box = await openTemplate('Edit the Invoice email in Français')
+    await expect(field(box, 'Message')).toHaveValue('Bonjour {client}')
+    await expect(box.getByRole('button', { name: 'Reset to default' })).toBeVisible()
   },
 }
 export const CustomDark = dark(Custom)
@@ -88,7 +98,7 @@ export const Loading: Story = {
     await waitFor(() => expect(body().getByRole('status', { name: 'Loading' })).toBeVisible(), {
       timeout: 8000,
     })
-    await expect(body().queryByRole('textbox', { name: 'Message' })).toBeNull()
+    await expect(body().queryByRole('list', { name: 'Email templates' })).toBeNull()
   },
 }
 
@@ -123,10 +133,10 @@ export const ValidationError: Story = {
     ...emailTemplateHandlers,
   ]),
   play: async () => {
-    await message()
-    const subject = body().getByRole('textbox', { name: 'Subject' })
+    const box = await openTemplate()
+    const subject = field(box, 'Subject')
     await userEvent.type(subject, '!')
-    await userEvent.click(body().getByRole('button', { name: 'Save' }))
+    await userEvent.click(box.getByRole('button', { name: 'Save' }))
     await expect(
       await body().findByText('Enter a subject of at most 200 characters.'),
     ).toBeVisible()
@@ -141,11 +151,11 @@ export const ReadOnly: Story = {
     ...emailTemplateHandlers,
   ]),
   play: async () => {
-    const text = await message()
-    await waitFor(() => expect(text).toBeDisabled())
-    await expect(body().getByRole('textbox', { name: 'Subject' })).toBeDisabled()
-    await expect(body().queryByRole('button', { name: 'Save' })).toBeNull()
-    await expect(body().queryByRole('button', { name: '{client}' })).toBeNull()
+    const box = await openTemplate()
+    await waitFor(() => expect(field(box, 'Message')).toBeDisabled())
+    await expect(field(box, 'Subject')).toBeDisabled()
+    await expect(box.queryByRole('button', { name: 'Save' })).toBeNull()
+    await expect(box.queryByRole('button', { name: '{client}' })).toBeNull()
   },
 }
 export const ReadOnlyPhone = phone(ReadOnly)

@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	en16931ID     = "urn:cen.eu:en16931:2017" // BT-24 of the Factur-X / ZUGFeRD EN 16931 profile
 	xrechnungID   = "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"
 	peppolID      = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
 	peppolProcess = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0" // BT-23, also used by XRechnung

@@ -12,7 +12,7 @@ import (
 )
 
 // A number format is a template: literal text and tokens in braces, filled from the document's issue date, its
-// type and its sequence, which counts per series and year (so a format must contain the year).
+// type and its sequence, which counts per series and year, or per series for ever when the format has no year.
 const maxFormatLen = 40
 
 var (
@@ -49,10 +49,18 @@ func parseNumberFormat(v string) (string, string) {
 		return "", "Besides the {…} placeholders, use only letters, digits, spaces and . / _ # -"
 	case seqs != 1:
 		return "", "Put the running number in exactly once, as {N} or {NNN} (zero-padded to three digits)."
-	case years == 0:
-		return "", "Put the year in, as {YYYY} or {YY}: the running number starts again each year."
 	}
 	return v, ""
+}
+
+// counterYear is the year whose counter numbers a document issued on date: without a year in the format the
+// running number never restarts, so every year shares counter 0.
+func counterYear(format, date string) int {
+	if !strings.Contains(format, "{YYYY}") && !strings.Contains(format, "{YY}") {
+		return 0
+	}
+	year, _ := strconv.Atoi(date[:4])
+	return year
 }
 
 // formatNumber fills the format for a document of the kind issued on date (YYYY-MM-DD) with the sequence seq.
@@ -135,7 +143,9 @@ func suggestFormat(numbers []store.ImportedInvoiceNumber) (NumberSuggestion, boo
 		token = "{" + strings.Repeat("N", min(best.pad, 6)) + "}"
 	}
 	format, msg := parseNumberFormat(strings.Replace(keys[0], "{SEQ}", token, 1))
-	if msg != "" {
+	// shortcut: a suggestion raises one year's counter, so a yearless format is not suggested; upgrade when
+	// imports should continue a continuous series.
+	if msg != "" || counterYear(format, "2000-01-01") == 0 {
 		return NumberSuggestion{}, false
 	}
 	return NumberSuggestion{Format: format, Year: best.year, Last: best.last}, true

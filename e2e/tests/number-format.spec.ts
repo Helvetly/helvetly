@@ -1,6 +1,6 @@
 import { expect, object, test, text, today } from './fixtures'
 
-test('a custom number format is refused without the year, saved from the browser and numbers issued invoices', async ({
+test('a custom number format is refused without a running number, saved from the browser and numbers issued invoices', async ({
   page,
   api,
 }) => {
@@ -11,13 +11,11 @@ test('a custom number format is refused without the year, saved from the browser
   await page.getByRole('option', { name: /Custom format/ }).click()
   const field = numbering.getByRole('textbox', { name: 'Custom format' })
 
-  await field.fill('E2E/{NN}')
+  await field.fill('E2E/{YYYY}')
   await numbering.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(
-    numbering.getByText('Put the year in: the running number starts again each year.'),
-  ).toBeVisible()
+  await expect(numbering.getByText('Put the running number in exactly once.')).toBeVisible()
   // the API refuses it too, whatever the browser lets through
-  const refused = await api.write('/invoice-settings', { number_format: 'E2E/{NN}' }, 'PUT')
+  const refused = await api.write('/invoice-settings', { number_format: 'E2E/{YYYY}' }, 'PUT')
   expect(refused.status()).toBe(422)
 
   await field.fill('E2E/{TYPE}/{MM}/{YYYY}/{NN}')

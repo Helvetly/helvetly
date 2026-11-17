@@ -37,6 +37,14 @@ describe('browser language', () => {
     expect(browserLocale('', localStorage)).toBe('en')
   })
 
+  it('falls back to the first supported browser language before English', () => {
+    expect(browserLocale('', localStorage, ['fr-CH', 'pl-PL', 'en-GB'])).toBe('pl')
+    expect(browserLocale('', localStorage, ['fr-CH'])).toBe('en')
+    localStorage.setItem(languageStorageKey, 'en')
+    expect(browserLocale('', localStorage, ['pl'])).toBe('en')
+    expect(browserLocale('?lang=pl', localStorage, ['en'])).toBe('pl')
+  })
+
   it('supports explicit language links when storage is blocked', () => {
     const blocked = {
       getItem: () => {

@@ -85,11 +85,16 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if err := s.db.RequireFeature(ctx, sess.Workspace.ID, store.FeatureEInvoiceXML); err != nil {
 			return err
 		}
-		name, xml, err := s.einvoice(ctx, sess, inv, strings.ReplaceAll(client.EInvoiceFormat, "_", "-"))
+		format := strings.ReplaceAll(client.EInvoiceFormat, "_", "-")
+		name, file, err := s.einvoice(ctx, sess, inv, format)
 		if err != nil {
 			return err
 		}
-		m.Attachments = append(m.Attachments, mail.Attachment{Name: name, ContentType: "application/xml", Data: xml})
+		if format == "factur-x" { // the same pages with the XML inside: one PDF, not two
+			m.Attachments[0].Data = file
+		} else {
+			m.Attachments = append(m.Attachments, mail.Attachment{Name: name, ContentType: "application/xml", Data: file})
+		}
 	}
 	// a double-click must not email the client twice: an overlapping send of the same document is refused
 	err = s.db.Tx(ctx, func(q store.Q) error {

@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/facturx"
 	"helvetly.com/api/internal/store"
 )
 
@@ -21,12 +23,13 @@ type Auth interface {
 
 type Service struct {
 	auth    Auth
+	files   FileStorage
 	load    func(ctx context.Context, sess store.Session, id string) (store.Invoice, error)
 	archive func(context.Context, store.Session, store.Invoice, string, func(store.Invoice) ([]byte, error)) (archivedXML, error)
 }
 
 func New(db *store.Store, a Auth, files FileStorage) *Service {
-	return &Service{auth: a,
+	return &Service{auth: a, files: files,
 		archive: (&xmlArchive{db: db, files: files, now: time.Now, log: slog.Default()}).export,
 		load: func(ctx context.Context, sess store.Session, id string) (store.Invoice, error) {
 			return db.Invoice(ctx, sess.Workspace.ID, id, sess.Workspace.Today(time.Now()), false)
@@ -56,6 +59,42 @@ func (s *Service) fa3(ctx context.Context, sess store.Session, inv store.Invoice
 	return func(inv store.Invoice) ([]byte, error) { return FA3(inv, orig, time.Now()) }, nil
 }
 
+// facturX renders the Factur-X file from the PDF stored when the document was issued.
+func (s *Service) facturX(ctx context.Context, inv store.Invoice) (func(store.Invoice) ([]byte, error), error) {
+	if inv.IssuedElsewhere() {
+		return nil, errIssuedElsewhere
+	}
+	if inv.PDFKey == nil || s.files == nil {
+		return nil, ErrUnsupported
+	}
+	f, err := s.files.Open(ctx, *inv.PDFKey)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read issued PDF: %w", errXMLArchiveStorage, err)
+	}
+	pdf, err := io.ReadAll(io.LimitReader(f, maxXMLArchiveSize+1))
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: read issued PDF: %w", errXMLArchiveStorage, err)
+	}
+	return func(inv store.Invoice) ([]byte, error) { return FacturX(inv, pdf, time.Now()) }, nil
+}
+
+// renderer is the serializer of format, or ok false for a format that does not exist.
+func (s *Service) renderer(ctx context.Context, sess store.Session, inv store.Invoice, format string) (render func(store.Invoice) ([]byte, error), ok bool, err error) {
+	switch format {
+	case FormatFA3:
+		render, err = s.fa3(ctx, sess, inv)
+		return render, true, err
+	case FormatFacturX:
+		render, err = s.facturX(ctx, inv)
+		return render, true, err
+	}
+	render, ok = formats[format]
+	return render, ok, nil
+}
+
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/invoices/{id}/einvoice", s.auth.SignedIn(s.get))
 }
@@ -65,30 +104,31 @@ const FormatFA3 = "ksef-fa3"
 
 func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	format := r.URL.Query().Get("format")
-	render, ok := formats[format]
-	if !ok && format != FormatFA3 {
+	if _, ok := formats[format]; !ok && format != FormatFA3 && format != FormatFacturX {
 		s.auth.WriteError(w, r, auth.Error(http.StatusBadRequest, "invalid_request",
-			"format must be xrechnung-ubl, xrechnung-cii, peppol, ro-cius or ksef-fa3.", nil))
+			"format must be xrechnung-ubl, xrechnung-cii, peppol, ro-cius, ksef-fa3 or factur-x.", nil))
 		return
 	}
 	inv, err := s.load(r.Context(), sess, r.PathValue("id"))
-	if err == nil && format == FormatFA3 {
-		render, err = s.fa3(r.Context(), sess, inv)
+	var render func(store.Invoice) ([]byte, error)
+	if err == nil {
+		render, _, err = s.renderer(r.Context(), sess, inv, format)
 	}
-	if errors.Is(err, store.ErrNotFound) {
-		err = auth.ErrNotFound
+	if err != nil {
+		s.auth.WriteError(w, r, problem(err))
+		return
 	}
+	saved, err := s.export(r.Context(), sess, inv, format, render)
 	if err != nil {
 		s.auth.WriteError(w, r, err)
 		return
 	}
-	saved, err := s.export(r.Context(), sess, inv, r.URL.Query().Get("format"), render)
-	if err != nil {
-		s.auth.WriteError(w, r, err)
-		return
+	ext, contentType := fileType(format)
+	if ext == ".xml" {
+		contentType += "; charset=utf-8"
 	}
-	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	filename := deref(inv.Number) + ".xml"
+	w.Header().Set("Content-Type", contentType)
+	filename := deref(inv.Number) + ext
 	if saved.record.Filename != "" {
 		filename = saved.record.Filename
 	}
@@ -104,18 +144,25 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session
 	_, _ = w.Write(saved.bytes)
 }
 
-// Export is an issued invoice's XML in format (xrechnung-ubl, xrechnung-cii or peppol), archived on first export
-// as the download is, with its file name; errors are the API's. Invoice emails and deliveries attach it.
+// Export is an issued invoice's e-invoice file in format (xrechnung-ubl, xrechnung-cii, peppol or factur-x), archived
+// on first export as the download is, with its file name; errors are the API's. Invoice emails and deliveries attach it.
 func (s *Service) Export(ctx context.Context, sess store.Session, inv store.Invoice, format string) (name string, xml []byte, err error) {
-	render, ok := formats[format]
-	if !ok {
+	if format == FormatFA3 {
 		return "", nil, fmt.Errorf("einvoice: unknown format %q", format)
+	}
+	render, ok, err := s.renderer(ctx, sess, inv, format)
+	if err == nil && !ok {
+		err = fmt.Errorf("einvoice: unknown format %q", format)
+	}
+	if err != nil {
+		return "", nil, problem(err)
 	}
 	saved, err := s.export(ctx, sess, inv, format, render)
 	if err != nil {
 		return "", nil, err
 	}
-	name = deref(inv.Number) + ".xml"
+	ext, _ := fileType(format)
+	name = deref(inv.Number) + ext
 	if saved.record.Filename != "" {
 		name = saved.record.Filename
 	}
@@ -147,6 +194,12 @@ func problem(err error) error {
 	case errors.As(err, &ro):
 		err = auth.Error(http.StatusConflict, "einvoice_cius_ro_incomplete",
 			"This document cannot be an RO e-Factura yet: "+strings.Join(ro.Reasons, "; ")+".", map[string]any{"reasons": ro.Reasons})
+	case errors.Is(err, facturx.ErrCMYK):
+		err = auth.Error(http.StatusConflict, "einvoice_facturx_cmyk",
+			"This invoice's PDF uses CMYK colour (usually a CMYK JPEG logo), which a Factur-X PDF/A-3 file cannot carry. Upload the logo as an RGB image; documents issued after that can be exported.", nil)
+	case errors.Is(err, facturx.ErrUnsupported):
+		err = auth.Error(http.StatusConflict, "einvoice_facturx_unsupported",
+			"This invoice's stored PDF cannot be made a PDF/A-3 Factur-X file. Export the XML instead.", nil)
 	case errors.Is(err, ErrUnsupported):
 		err = auth.Error(http.StatusConflict, "invalid_state", "Only issued invoices and credit notes have e-invoice XML.", nil)
 	case errors.Is(err, ErrSellerContact):

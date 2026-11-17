@@ -20,10 +20,21 @@ import (
 
 // serializerVersion is recorded with each archived file, so a later change of the serializer stays traceable.
 func serializerVersion(format string) string {
-	if format == FormatFA3 {
+	switch format {
+	case FormatFA3:
 		return "helvetly-ksef-fa3-2"
+	case FormatFacturX:
+		return "helvetly-factur-x-1"
 	}
 	return "helvetly-en16931-1"
+}
+
+// fileType is the archived file's extension and media type: XML, or a PDF for Factur-X.
+func fileType(format string) (ext, contentType string) {
+	if format == FormatFacturX {
+		return ".pdf", "application/pdf"
+	}
+	return ".xml", "application/xml"
 }
 
 const maxXMLArchiveSize = 16 << 20
@@ -77,18 +88,19 @@ func (a *xmlArchive) export(ctx context.Context, sess store.Session, invoice sto
 			return fmt.Errorf("e-invoice XML size %d is outside archive limits", len(data))
 		}
 		digest := sha256.Sum256(data)
+		ext, contentType := fileType(format)
 		created := a.now().UTC().Truncate(time.Microsecond)
 		var actor *string
 		if sess.User.ID != "" {
 			actor = &sess.User.ID
 		}
-		record = store.InvoiceXML{InvoiceID: inv.ID, Format: format, Version: serializerVersion(format), ObjectKey: "workspaces/" + sess.Workspace.ID + "/invoices/" + inv.ID + "/xml/" + auth.NewID("xml") + ".xml",
-			SHA256: hex.EncodeToString(digest[:]), Size: int64(len(data)), Filename: deref(inv.Number) + ".xml", CreatedAt: created, CreatedBy: actor}
+		record = store.InvoiceXML{InvoiceID: inv.ID, Format: format, Version: serializerVersion(format), ObjectKey: "workspaces/" + sess.Workspace.ID + "/invoices/" + inv.ID + "/xml/" + auth.NewID("xml") + ext,
+			SHA256: hex.EncodeToString(digest[:]), Size: int64(len(data)), Filename: deref(inv.Number) + ext, CreatedAt: created, CreatedBy: actor}
 		if err := q.ReserveObject(ctx, sess.Workspace.ID, record.ObjectKey, record.Size, false, created); err != nil {
 			return err
 		}
 		written = record.ObjectKey
-		if err := a.files.Put(ctx, record.ObjectKey, bytes.NewReader(data), record.Size, "application/xml", record.Filename); err != nil {
+		if err := a.files.Put(ctx, record.ObjectKey, bytes.NewReader(data), record.Size, contentType, record.Filename); err != nil {
 			return fmt.Errorf("%w: %w", errXMLArchiveStorage, err)
 		}
 		if err := q.CreateInvoiceXML(ctx, sess.Workspace.ID, record); err != nil {

@@ -109,14 +109,15 @@ func (s *Service) ApplyQuote(ctx context.Context, q store.Q, workspaceID string,
 	return nil
 }
 
-// QuoteNumber: Q-{YYYY}-{NNN}, or the workspace's format when it prints the type, so quotes follow it too.
+// QuoteNumber: Q-{YYYY}-{NNN}, or the workspace's format when it prints the type, so quotes follow it too. Quotes
+// count per year, so a yearless format would repeat their numbers and keeps the default.
 func (s *Service) QuoteNumber(ctx context.Context, q store.Q, workspaceID, issueDate string, seq int64) (string, error) {
 	set, err := loadSettings(ctx, q, workspaceID)
 	if err != nil {
 		return "", err
 	}
 	format := "Q-{YYYY}-{NNN}"
-	if strings.Contains(set.NumberFormat, "{TYPE}") {
+	if strings.Contains(set.NumberFormat, "{TYPE}") && counterYear(set.NumberFormat, issueDate) != 0 {
 		format = set.NumberFormat
 	}
 	return formatNumber(format, "quote", issueDate, seq), nil

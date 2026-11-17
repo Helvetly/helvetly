@@ -48,6 +48,7 @@ import { translate } from '@/lib/i18n'
 import {
   exampleNumber,
   numberFormatError,
+  numberFormatsFor,
   ibanInfo,
   logoSrc,
   MISSING_LABELS,
@@ -731,7 +732,7 @@ function CompanyStep({
             options={COUNTRY_OPTIONS}
             placeholder={translate('chooseACountry2')}
             invalid={!!(errors.country ?? unsupportedSellerCountry(values?.country ?? ''))}
-            onChange={(country) => onChange({ country })}
+            onChange={(country) => onChange({ country, ...presetFor(values, country) })}
           />
         </FormField>
         {values && <VatCard values={values} error={errors.vat_number} onChange={onChange} />}
@@ -851,6 +852,14 @@ function VatCard({
       )}
     </div>
   )
+}
+
+/** A preset number format follows the country to the new country's first preset; a custom one stays. */
+function presetFor(values: Values | null, country: string): Partial<Values> {
+  const format = values?.number_format ?? '{YYYY}-{NNN}'
+  return numberFormatsFor(values?.country ?? 'CH').includes(format)
+    ? { number_format: numberFormatsFor(country)[0] }
+    : {}
 }
 
 function LogoStep({
@@ -997,6 +1006,7 @@ function PreferencesStep({
         >
           <NumberFormatField
             id="onboarding-number-format"
+            country={values?.country ?? 'CH'}
             value={numberFormat}
             invalid={Boolean(formatError)}
             onChange={(number_format) => onChange({ number_format })}

@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import { Combobox, inputClass } from '@/components/clients/fields'
 import { HelpTip } from '@/components/settings/help-tip'
 import { translate } from '@/lib/i18n'
-import { exampleNumber, NUMBER_FORMATS, today, type NumberFormat } from '@/lib/invoices'
+import { exampleNumber, numberFormatsFor, today, type NumberFormat } from '@/lib/invoices'
 
 const CUSTOM = 'custom'
 
@@ -24,18 +24,22 @@ const TOKENS = [
  * Settings → Invoices and the welcome share it. */
 export function NumberFormatField({
   id,
+  country,
   value,
   invalid,
   onChange,
 }: {
   id: string
+  /** The seller's country, which picks the presets. */
+  country: string | undefined
   value: NumberFormat
   invalid?: boolean
   onChange: (format: NumberFormat) => void
 }) {
   const date = today()
   const [customChosen, setCustomChosen] = useState(false)
-  const custom = customChosen || !NUMBER_FORMATS.includes(value)
+  const presets = numberFormatsFor(country)
+  const custom = customChosen || !presets.includes(value)
   const input = useRef<HTMLInputElement>(null)
   const insert = (token: string) => {
     const field = input.current
@@ -53,7 +57,7 @@ export function NumberFormatField({
         id={id}
         value={custom ? CUSTOM : value}
         options={[
-          ...NUMBER_FORMATS.map((format) => ({
+          ...presets.map((format) => ({
             value: format,
             label: exampleNumber(format, date, 1),
             hint: format,
