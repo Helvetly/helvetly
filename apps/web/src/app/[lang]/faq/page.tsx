@@ -1,4 +1,3 @@
-import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { FaqItem, FaqList } from '@/components/faq'
@@ -7,6 +6,7 @@ import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
 import { faqIn, TOPICS } from '@/lib/faq'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { textOf } from '@/lib/text-of'
 
 type Props = { params: Promise<{ lang?: string }> }
@@ -14,11 +14,12 @@ type Props = { params: Promise<{ lang?: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  return {
-    alternates: localizedAlternates('/faq', lang),
-    title: translate('questionsAndAnswers'),
-    description: translate('faqPageDescription'),
-  }
+  return pageMetadata(
+    lang,
+    '/faq',
+    translate('questionsAndAnswers'),
+    translate('metaFaqDescription'),
+  )
 }
 
 export default async function FaqPage({ params }: Props) {

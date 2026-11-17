@@ -1,4 +1,4 @@
-import { defaultLocale, localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -7,6 +7,7 @@ import { ArticleView } from '@/components/article'
 import { categoryLabel } from '@/lib/categories'
 import { readArticle, readCollection } from '@/lib/content'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 
 type Props = { params: Promise<{ lang?: string; slug: string }> }
 
@@ -20,11 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const guide = readArticle('guides', (await params).slug, lang)
   return guide
-    ? {
-        alternates: localizedAlternates(`/guides/${(await params).slug}`, lang),
-        title: guide.title,
-        description: guide.description,
-      }
+    ? pageMetadata(lang, `/guides/${(await params).slug}`, guide.title, guide.description)
     : {}
 }
 

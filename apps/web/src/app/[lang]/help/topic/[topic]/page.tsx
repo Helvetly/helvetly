@@ -1,4 +1,4 @@
-import { defaultLocale, type Locale, localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, type Locale, localizedHref } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn'
 import { readCollection } from '@/lib/content'
 import { topicsWithArticles } from '@/lib/help-topics'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { TONES } from '@/lib/tones'
 
 type Props = { params: Promise<{ lang?: string; topic: string }> }
@@ -29,11 +30,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = (await params).topic
   const topic = topics(lang).find((t) => t.slug === slug)
   return topic
-    ? {
-        alternates: localizedAlternates(`/help/topic/${(await params).topic}`, lang),
-        title: translate('helpCenter2', { name: categoryLabel(topic.name, lang) }),
-        description: topic.blurb,
-      }
+    ? pageMetadata(
+        lang,
+        `/help/topic/${slug}`,
+        translate('helpCenter2', { name: categoryLabel(topic.name, lang) }),
+        topic.blurb,
+      )
     : {}
 }
 

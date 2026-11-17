@@ -1,4 +1,4 @@
-import { localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { localizedHref } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -9,6 +9,7 @@ import { categoryLabel } from '@/lib/categories'
 import { cn } from '@/lib/cn'
 import { readCollection } from '@/lib/content'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { type Tone, TONES } from '@/lib/tones'
 
 type Props = { params: Promise<{ lang?: string }> }
@@ -16,12 +17,12 @@ type Props = { params: Promise<{ lang?: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  return {
-    alternates: localizedAlternates('/guides', lang),
-
-    title: translate('guides'),
-    description: translate('plainEnglishGuidesToSwissVATTheQRBill'),
-  }
+  return pageMetadata(
+    lang,
+    '/guides',
+    translate('metaGuidesTitle'),
+    translate('metaGuidesDescription'),
+  )
 }
 
 const TONE: Record<string, Tone> = {

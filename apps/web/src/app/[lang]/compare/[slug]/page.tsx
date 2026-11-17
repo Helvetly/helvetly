@@ -1,4 +1,4 @@
-import { defaultLocale, type Locale, localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, type Locale, localizedHref } from '@helvetly/i18n'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Check, Minus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -11,6 +11,7 @@ import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
 import { type Cell, compareIn, PRICE_ROWS } from '@/lib/compare'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { TRIAL } from '@/lib/plans'
 import { siteIn } from '@/lib/site'
 
@@ -25,16 +26,15 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  const them = compareIn(lang).competitor((await params).slug)
+  const { slug } = await params
+  const them = compareIn(lang).competitor(slug)
   return them
-    ? {
-        alternates: localizedAlternates(`/compare/${(await params).slug}`, lang),
-
-        title: translate('helvetlyVs', { name: them.name }),
-        description: translate('anHonestComparisonOfHelvetlyAndForSwissCompanies', {
-          name: them.name,
-        }),
-      }
+    ? pageMetadata(
+        lang,
+        `/compare/${slug}`,
+        { absolute: translate('helvetlyVs', { name: them.name }) },
+        translate('metaCompareVsDescription', { name: them.name }),
+      )
     : {}
 }
 
