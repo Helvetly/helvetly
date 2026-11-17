@@ -53,7 +53,9 @@ test('Employees is left out on a plan without it, kept for an owner with records
 
 test('Employees waits for billing, so it never appears and disappears', () => {
   const owner = effectiveScopes('owner', undefined)
-  const items = visibleNav(owner).flatMap((group) => group.items.map((item) => item.label))
+  const items = visibleNav(owner, undefined, true).flatMap((group) =>
+    group.items.map((item) => item.label),
+  )
   expect(items).not.toContain('Employees')
   expect(items).toContain('Members')
 })

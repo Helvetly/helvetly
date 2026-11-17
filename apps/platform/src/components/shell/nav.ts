@@ -77,9 +77,10 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 ]
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
-export function visibleNav(scopes: readonly string[], billing?: Billing) {
+export function visibleNav(scopes: readonly string[], billing?: Billing, loading = false) {
   const allowed = ({ href, feature }: NavItem) =>
-    (!href || canReadPath(scopes, href)) && !(feature === 'employees' && employeesHidden(billing))
+    (!href || canReadPath(scopes, href)) &&
+    !(feature === 'employees' && employeesHidden(billing, loading))
   return NAV.flatMap((group) => {
     const items = group.items.filter(allowed)
     return items.length > 0 ? [{ ...group, items }] : []

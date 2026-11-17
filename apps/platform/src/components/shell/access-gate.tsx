@@ -29,7 +29,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
   const billing = useBilling()
   const inModule = /^\/(employees|settings\/employment)(\/|$)/.test(pathname)
   // Billing still loading: show nothing yet, but do not redirect on a guess.
-  const redirect = inModule && Boolean(billing.data) && employeesHidden(billing.data)
+  const redirect = inModule && !billing.isPending && employeesHidden(billing.data)
   useEffect(() => {
     if (redirect) router.replace('/')
   }, [redirect, router])

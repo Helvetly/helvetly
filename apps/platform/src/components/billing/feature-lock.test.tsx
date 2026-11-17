@@ -33,7 +33,8 @@ test('employees are hidden on a plan without them unless the owner has records t
   const business = billingFixture({ plan: 'business', locked: false })
   expect(employeesHidden(business)).toBe(false)
   expect(employeesHidden({ ...business, has_employees: false })).toBe(false)
-  // billing not answered yet: hidden, so nothing flashes in and out; no plan at all: nothing is hidden
-  expect(employeesHidden(undefined)).toBe(true)
+  // billing not answered yet: hidden while loading, so nothing flashes in and out; unreadable: nothing is hidden
+  expect(employeesHidden(undefined, true)).toBe(true)
+  expect(employeesHidden(undefined)).toBe(false)
   expect(employeesHidden(billingFixture())).toBe(false)
 })

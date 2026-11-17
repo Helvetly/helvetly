@@ -31,7 +31,8 @@ export function MobileTabBar() {
   const { setOpenMobile } = useSidebar()
   const [creating, setCreating] = useState(false)
   const primary = usePrimaryAction()
-  const pages = visibleNav(scopes, useBilling().data).flatMap((group) => group.items)
+  const { data: billing, isPending } = useBilling()
+  const pages = visibleNav(scopes, billing, isPending).flatMap((group) => group.items)
   const tabs = TABS.flatMap((href) => pages.filter((item) => item.href === href))
   const [first, ...rest] = tabs
 
