@@ -30,7 +30,6 @@
   "nothingFound": "Aucun résultat.",
   "notNow": "Pas maintenant",
   "phoneCountry": "Pays du numéro de téléphone",
-  "prefersReducedMotionReduce": "(prefers-reduced-motion: reduce)",
   "requestFailed": "Échec de la requête ({status}).",
   "resendCode": "Renvoyer le code",
   "resendCodeInS": "Renvoyer le code dans {wait}s",

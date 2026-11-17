@@ -125,13 +125,18 @@ function SheetContent({
   const [escape] = React.useState(escapeSlot)
   const opener = React.useRef<HTMLElement[]>([])
   React.useLayoutEffect(() => {
-    const elements = [overlay.current, content.current]
+    // Read the refs when used, never here: the portal mounts its children a render after this effect.
+    const elements = () => [overlay.current, content.current]
     // Taking the place of a sheet that just left (a loading sheet becoming the form, a detail
     // becoming its editor): one drawer stays on screen, so it neither slides in again nor out.
-    if (vacated && !vacated.taken && vacated.content !== content.current) {
+    // A vacated sheet still in the page is Strict Mode's rehearsal unmount, not a replacement.
+    if (vacated && !vacated.taken && !vacated.content.isConnected) {
       vacated.taken = true
-      for (const element of elements)
-        for (const animation of animations(element)) animation.finish()
+      // After the portal's own render, still before the first paint.
+      queueMicrotask(() => {
+        for (const element of elements())
+          for (const animation of animations(element)) animation.finish()
+      })
     }
     return () => {
       const node = content.current
@@ -142,7 +147,7 @@ function SheetContent({
         if (vacated === slot) vacated = null
       })
       // Most drawers close by being unmounted; they still slide out instead of vanishing.
-      leaveExitGhost(elements, () => slot.taken)
+      leaveExitGhost(elements(), () => slot.taken)
     }
   }, [])
 

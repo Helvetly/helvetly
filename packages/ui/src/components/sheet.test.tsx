@@ -87,6 +87,46 @@ test('a drawer unmounted while open leaves nothing behind without animations', a
   expect(document.querySelector('[data-slot=exit-ghost]')).toBeNull()
 })
 
+/** A browser's Web Animations API, which jsdom lacks: every element runs one animation until `end`. */
+function animateElements() {
+  const { promise: finished, resolve: end } = Promise.withResolvers<void>()
+  const finish = vi.fn<() => void>()
+  Object.defineProperty(HTMLElement.prototype, 'getAnimations', {
+    configurable: true,
+    value: () => [{ finished, finish }],
+  })
+  onTestFinished(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, 'getAnimations')
+  })
+  return { end, finish }
+}
+
+const ghost = () => document.querySelector('[data-slot=exit-ghost]')
+
+test('a drawer unmounted while open stays on screen, closing, until its exit animation ends', async () => {
+  const { end } = animateElements()
+  render(<Toggle />)
+  await userEvent.keyboard('{Escape}')
+  expect(await screen.findByText('Closed')).toBeVisible()
+  // Both the backdrop and the drawer play their closed-state animation from an inert copy.
+  await vi.waitFor(() => expect(ghost()).not.toBeNull())
+  expect(ghost()?.querySelector('[data-slot=sheet-content][data-closed]')).not.toBeNull()
+  expect(ghost()?.querySelector('[data-slot=sheet-overlay][data-closed]')).not.toBeNull()
+  expect(screen.queryByRole('dialog')).toBeNull()
+  end()
+  await vi.waitFor(() => expect(ghost()).toBeNull())
+})
+
+test('a drawer replaced by another neither slides out nor lets the new one slide in', async () => {
+  const { finish } = animateElements()
+  render(<Swap />)
+  await userEvent.click(screen.getByRole('button', { name: 'Open row' }))
+  expect(finish).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  await vi.waitFor(() => expect(finish).toHaveBeenCalled())
+  expect(ghost()).toBeNull()
+})
+
 // A drawer opened from state (a row, a URL), not a SheetTrigger: Radix has no trigger to refocus.
 function StateDrawer({ unmountOnClose = false }: { unmountOnClose?: boolean }) {
   const [open, setOpen] = useState(false)
