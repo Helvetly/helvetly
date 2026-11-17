@@ -457,15 +457,17 @@ export function EngagementsPage() {
     onError: (error: unknown) => toast.error(friendlyError(error)),
   })
 
-  // Search waits for a pause in typing, then goes to the server.
+  // Search waits for a pause in typing, then goes to the server. Only a changed term resets page and selection.
   useEffect(() => {
+    const next = search.trim()
+    if (next === term) return
     const timer = setTimeout(() => {
-      setTerm(search.trim())
+      setTerm(next)
       setPage(1)
       setSelected(new Set())
     }, 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [search, term])
 
   const params: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, page }
   const menu = useMenu({ ...VIEWS[view]?.query, q: term || undefined })

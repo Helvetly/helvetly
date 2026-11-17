@@ -331,3 +331,14 @@ test('a member selects and exports but cannot delete', async () => {
   expect(within(bar).getByRole('button', { name: 'Export CSV' })).toBeInTheDocument()
   expect(within(bar).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
+
+test('a row ticked right after the list loads stays ticked past the search pause', async () => {
+  two()
+  renderPage()
+  await screen.findAllByText('Design sprint')
+  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select Design sprint' })[0]!)
+  expect(await screen.findByRole('toolbar', { name: 'Selected rows' })).toBeInTheDocument()
+  // Longer than the 300 ms the search waits before it resets the page and the selection.
+  await new Promise((resolve) => setTimeout(resolve, 450))
+  expect(screen.getByRole('toolbar', { name: 'Selected rows' })).toBeInTheDocument()
+})
