@@ -63,7 +63,7 @@ export function LogoCard({ url }: { url: string | null }) {
         onDragLeave={() => setOver(false)}
         onDrop={drop}
         className={cn(
-          'relative flex items-center gap-4 rounded-xl border-2 border-dashed border-border bg-card p-4 transition-colors sm:gap-5',
+          'relative flex items-center gap-4 rounded-xl border border-dashed border-border bg-card p-4 transition-colors sm:gap-5',
           over && 'border-primary bg-primary/5',
           error && 'border-destructive/60',
         )}
@@ -87,7 +87,7 @@ export function LogoCard({ url }: { url: string | null }) {
             <ImagePlus className="size-7 stroke-[1.5]" />
           )}
         </span>
-        <span className="grid min-w-0 flex-1 gap-1">
+        <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="text-sm font-medium">
             {url ? translate('yourLogo') : translate('uploadYourLogo')}
           </span>
