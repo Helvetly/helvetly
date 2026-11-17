@@ -10,10 +10,13 @@ import {
   FilePlus2,
   Files,
   Hourglass,
+  Search,
+  SearchX,
   Send,
   type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 import { listTable } from '@/components/data/list-table'
 import { PageContextMenu } from '@/components/data/menus'
@@ -31,6 +34,7 @@ import {
   QUOTE_STATUSES,
   quoteNumber,
   quoteQuery,
+  searchQuotes,
   useQuotes,
   type Quote,
   type QuoteStatus,
@@ -58,7 +62,7 @@ const VIEWS: { status: QuoteStatus | null; label: string; icon: LucideIcon }[] =
   })),
 ]
 
-/** The quotes list; the status view, the open quote (?id=) and a new one (?new=1) live in the URL. */
+/** The quotes list; the status view, the search (?q=), the open quote (?id=) and a new one (?new=1) live in the URL. */
 export function QuotesPage() {
   const canWrite = useCan('write:invoices')
   const pathname = usePathname()
@@ -68,9 +72,12 @@ export function QuotesPage() {
   const status = isQuoteStatus(raw) ? raw : null
   const openId = query.get('id')
   const creating = query.get('new') === '1' && canWrite
+  const term = query.get('q') ?? ''
+  const [search, setSearch] = useState(term)
   const list = useQuotes({ status })
   const prefetch = usePrefetch(quoteQuery)
-  const rows = list.data ?? []
+  // shortcut: the API returns every quote unpaged, so the search filters here; move it to the API with paging.
+  const rows = searchQuotes(list.data ?? [], term)
   const active = VIEWS.findIndex((view) => view.status === status)
 
   const navigate = (change: Record<string, string | null>) => {
@@ -82,6 +89,13 @@ export function QuotesPage() {
   }
   const open = (id: string | null) => navigate({ id })
   const newQuote = () => navigate({ new: '1', client: null })
+
+  // Search waits for a pause in typing, then goes to the URL.
+  useEffect(() => {
+    if (search === term) return
+    const timer = setTimeout(() => navigate({ q: search || null }), 300)
+    return () => clearTimeout(timer)
+  })
 
   return (
     <>
@@ -105,6 +119,19 @@ export function QuotesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['quotes'] })}
       >
         <div className="relative flex flex-1 flex-col">
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
+            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
+              <Search className="size-4 shrink-0 stroke-[1.5]" />
+              <input
+                type="search"
+                aria-label={translate('searchQuotes')}
+                placeholder={translate('searchNumberClientOrReference')}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
+              />
+            </label>
+          </div>
           {list.error ? (
             <State
               icon={<CloudOff />}
@@ -119,7 +146,25 @@ export function QuotesPage() {
           ) : !list.data ? (
             <LoadingRows />
           ) : rows.length === 0 ? (
-            status ? (
+            term ? (
+              <State
+                icon={<SearchX />}
+                title={translate('nothingMatches', { search: term })}
+                text={translate('tryAnotherSearchOrClearTheFilters')}
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('')
+                      navigate({ q: null, status: null })
+                    }}
+                  >
+                    {translate('clearSearchAndFilters')}
+                  </Button>
+                }
+              />
+            ) : status ? (
               <State
                 icon={<Files />}
                 title={translate('nothingInThisView')}

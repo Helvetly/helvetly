@@ -190,3 +190,25 @@ test('a declined quote is revised under the same number and sent again', async (
     payable_total: '1686.35',
   })
 })
+
+test('the quotes list searches by number and keeps the search over a reload', async ({
+  api,
+  page,
+}) => {
+  const { quote } = await sentQuote(api)
+  const number = text(quote.number)
+  await page.goto('/quotes')
+  const search = page.getByRole('searchbox', { name: 'Search quotes' })
+  await search.fill(number.toLowerCase())
+  await expect(page).toHaveURL(new RegExp(`q=${number.toLowerCase()}`))
+  await expect(page.getByRole('button', { name: number })).toBeVisible()
+  await page.reload()
+  await expect(search).toHaveValue(number.toLowerCase())
+  await expect(page.getByRole('button', { name: number })).toBeVisible()
+
+  await search.fill('no such quote')
+  await expect(page.getByText('Nothing matches “no such quote”')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear search and filters' }).click()
+  await expect(search).toHaveValue('')
+  await expect(page.getByRole('button', { name: number })).toBeVisible()
+})

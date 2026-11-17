@@ -97,6 +97,17 @@ export function quoteNumber(quote: Pick<Quote, 'number' | 'revision'>) {
 export const quoteName = (quote: Pick<Quote, 'number' | 'revision'>) =>
   quote.number ? translate('quote3', { value1: quoteNumber(quote) }) : translate('draftQuote')
 
+/** Quotes whose number, client or reference contain `search`, ignoring case; all of them for none. */
+export function searchQuotes(quotes: Quote[], search: string) {
+  const term = search.trim().toLowerCase()
+  if (!term) return quotes
+  return quotes.filter((quote) =>
+    [quoteNumber(quote), quote.client.name, quote.reference ?? ''].some((text) =>
+      text.toLowerCase().includes(term),
+    ),
+  )
+}
+
 export type QuoteCommand = 'edit' | 'delete' | 'send' | 'accept' | 'decline' | 'revise' | 'invoice'
 
 /** What staff may do to a quote in its state (the lifecycle table of the contract). */

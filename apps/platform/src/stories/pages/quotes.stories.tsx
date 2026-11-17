@@ -87,6 +87,60 @@ export const ExpiredView: Story = {
   },
 }
 
+/** Typing goes to the URL (?q=) after a pause; the list follows the URL. */
+export const Search: Story = {
+  play: async (context) => {
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(context.canvasElement)
+    await userEvent.type(body.getByRole('searchbox', { name: 'Search quotes' }), 'holzbau')
+    await waitFor(() => expect(window.location.search).toContain('q=holzbau'), wait)
+  },
+}
+
+/** The search covers number, client and reference. */
+export const Searched: Story = {
+  parameters: quotes({ q: 'holzbau' }),
+  play: async (context) => {
+    // Both Keller Holzbau quotes; a phone lists each by client, so count those.
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(context.canvasElement)
+    await expect(
+      body.getAllByText('Keller Holzbau AG').filter((node) => node.checkVisibility()),
+    ).toHaveLength(2)
+    await expect(body.queryAllByText('Sophie Meier')).toHaveLength(0)
+  },
+}
+export const SearchedPhone = phone(Searched)
+
+/** No quote matches: the empty state clears the search and the status view in one go. */
+export const NoMatches: Story = {
+  parameters: quotes({ status: 'sent', q: 'nobody' }),
+  play: async (context) => {
+    await shows('Nothing matches “nobody”')?.(context)
+    const body = page(context.canvasElement)
+    await userEvent.click(body.getByRole('button', { name: 'Clear search and filters' }))
+    await expect(body.getByRole('searchbox', { name: 'Search quotes' })).toHaveValue('')
+    await expect(window.location.search).not.toMatch(/q=|status=/)
+  },
+}
+export const NoMatchesDark = dark(NoMatches)
+export const NoMatchesPhone = phone(NoMatches)
+
+/** A reload keeps the search and the view: both come back from the URL. */
+export const UrlRestore: Story = {
+  parameters: quotes({ status: 'expired', q: 'rev. 2' }),
+  play: async (context) => {
+    await shows('Q-2026-001 (Rev. 2)')?.(context)
+    const body = page(context.canvasElement)
+    await expect(body.getByRole('searchbox', { name: 'Search quotes' })).toHaveValue('rev. 2')
+    const views = body.getByRole('navigation', { name: 'Views' })
+    await expect(within(views).getByRole('button', { current: 'page' })).toHaveTextContent(
+      'Expired',
+    )
+    await expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0)
+  },
+}
+
 export const Detail: Story = {
   parameters: quotes({ id: 'quo_sent' }),
   play: shows('Valid until 27 Nov 2026'),

@@ -47,7 +47,40 @@ export type WorkspaceItem = {
   plan?: string | null
 }
 
-const ROLES: Role[] = ['owner', 'admin', 'member']
+export const ROLES: Role[] = ['owner', 'admin', 'member']
+
+/** The team list's view, search and roles, as kept in the URL (`?view=invited&q=…&role=…`). */
+export type TeamFilter = { invited: boolean; search: string; roles: Role[] }
+
+export function parseTeamFilter(query: URLSearchParams): TeamFilter {
+  return {
+    invited: query.get('view') === 'invited',
+    search: query.get('q') ?? '',
+    roles: ROLES.filter((role) => query.getAll('role').includes(role)),
+  }
+}
+
+/** The filter as URL query, leaving out defaults. Keeps other keys. */
+export function teamFilterToQuery(filter: TeamFilter, base = new URLSearchParams()) {
+  const query = new URLSearchParams(base)
+  for (const key of ['view', 'q', 'role']) query.delete(key)
+  if (filter.invited) query.set('view', 'invited')
+  if (filter.search) query.set('q', filter.search)
+  for (const role of filter.roles) query.append('role', role)
+  return query
+}
+
+/** A member or invitation passes when its role is picked (or none is) and its name or email holds the search. */
+export function matchesTeamFilter(
+  row: { role: Role; email: string; name?: string },
+  { search, roles }: TeamFilter,
+) {
+  const term = search.trim().toLowerCase()
+  return (
+    (roles.length === 0 || roles.includes(row.role)) &&
+    (!term || [row.name ?? '', row.email].some((text) => text.toLowerCase().includes(term)))
+  )
+}
 
 export const canManage = (role: string) => role === 'owner' || role === 'admin'
 
