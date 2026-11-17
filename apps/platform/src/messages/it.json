@@ -4219,5 +4219,7 @@
   "importMoreDocumentsHint": "Aggiungi altre fatture, spese, clienti o listini da file.",
   "yourNextInvoiceNumber": "La tua prossima fattura: {number}",
   "planSectionHint": "Il piano di questo spazio di lavoro, il suo costo e cosa succede dopo.",
-  "usageSectionHint": "Cosa consente il piano e quanto ne è usato."
+  "usageSectionHint": "Cosa consente il piano e quanto ne è usato.",
+  "updateCard": "Modifica",
+  "addCard": "Aggiungi carta"
 }

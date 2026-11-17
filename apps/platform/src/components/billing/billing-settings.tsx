@@ -174,7 +174,7 @@ function PaymentMethod({
               }
             >
               <Button size="sm" variant="outline" disabled={portalPending} onClick={onPortal}>
-                {card ? 'Update' : 'Add card'}
+                {card ? translate('updateCard') : translate('addCard')}
               </Button>
             </SettingsRow>
           </ul>
