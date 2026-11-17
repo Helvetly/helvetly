@@ -223,7 +223,7 @@ type InvoiceListItem struct {
 	RefundDue      Money          `json:"refund_due"`
 	PaymentMethods PaymentMethods `json:"payment_methods"`
 	DeductedOn     *InvoiceRef    `json:"deducted_on"`
-	Paid           Money          `json:"-"`
+	Paid           Money          `json:"amount_paid"`
 	Reference      *string        `json:"-"`
 	SentAt         *time.Time     `json:"sent_at"`
 	CreatedAt      time.Time      `json:"created_at"`

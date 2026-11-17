@@ -166,11 +166,23 @@ test('tells QR-IBANs, Swiss and foreign IBANs apart and checks their digits', ()
 })
 
 test('derives what the list shows from kind, status and due date', () => {
-  expect(displayStatus({ kind: 'invoice', status: 'open', is_overdue: true })).toBe('overdue')
-  expect(displayStatus({ kind: 'invoice', status: 'open', is_overdue: false })).toBe('open')
-  expect(displayStatus({ kind: 'credit_note', status: 'paid', is_overdue: false })).toBe(
-    'credit_applied',
-  )
+  const paid = '0.00'
+  expect(
+    displayStatus({ kind: 'invoice', status: 'open', is_overdue: true, amount_paid: paid }),
+  ).toBe('overdue')
+  expect(
+    displayStatus({ kind: 'invoice', status: 'open', is_overdue: false, amount_paid: paid }),
+  ).toBe('open')
+  expect(
+    displayStatus({ kind: 'credit_note', status: 'paid', is_overdue: false, amount_paid: paid }),
+  ).toBe('credit_applied')
+  // Fully credited: void, which reads "Credited" when it was paid first (and then refunded).
+  expect(
+    displayStatus({ kind: 'partial', status: 'void', is_overdue: false, amount_paid: paid }),
+  ).toBe('void')
+  expect(
+    displayStatus({ kind: 'partial', status: 'void', is_overdue: false, amount_paid: '400.00' }),
+  ).toBe('credited')
   expect(dueLabel('2026-11-10', '2026-11-05')).toBe('Due in 5 days')
   expect(dueLabel('2026-11-04', '2026-11-05')).toBe('1 day overdue')
   expect(addDays('2026-12-15', 30)).toBe('2027-01-14')

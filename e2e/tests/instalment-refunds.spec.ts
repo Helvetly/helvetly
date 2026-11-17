@@ -45,6 +45,13 @@ async function creditNoteFromMenu(page: Page) {
     .click()
 }
 
+/** The amount the invoice summary shows under a label (Paid, Credited, Refunded, …). */
+const summary = (page: Page, label: string) =>
+  page
+    .getByRole('dialog')
+    .locator('dt', { hasText: new RegExp(`^${label}$`) })
+    .locator('+ dd')
+
 async function refundDueList(page: Page, number: string, listed: boolean) {
   await page.goto('/invoices')
   await page.getByRole('button', { name: /Filters/ }).click()
@@ -126,7 +133,7 @@ test('instalment schedule: a CHF 600 credit after full payment is refunded and s
   })
   // the credit comes off the last instalments first
   const paid = { effective: '200.00', paid: '200.00', open: '0.00', status: 'paid' }
-  const creditedAway = { effective: '0.00', paid: '0.00', open: '0.00', status: 'paid' }
+  const creditedAway = { effective: '0.00', paid: '0.00', open: '0.00', status: 'credited' }
   expect(instalments(credited)).toEqual([paid, paid, creditedAway, creditedAway, creditedAway])
 
   await refundDueList(page, number, true)
@@ -137,11 +144,11 @@ test('instalment schedule: a CHF 600 credit after full payment is refunded and s
     .click()
   await expect(page.getByText('Refund due CHF 600.00')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Instalments' }).getByRole('row')).toContainText([
-    /^1.*CHF 200\.00/,
-    /^2.*CHF 200\.00/,
-    /^3.*CHF 0\.00/,
-    /^4.*CHF 0\.00/,
-    /^5.*CHF 0\.00/,
+    /^1.*CHF 200\.00.*Paid$/,
+    /^2.*CHF 200\.00.*Paid$/,
+    /^3.*CHF 0\.00CHF 200\.00 credited.*Credited$/,
+    /^4.*CHF 0\.00CHF 200\.00 credited.*Credited$/,
+    /^5.*CHF 0\.00CHF 200\.00 credited.*Credited$/,
   ])
   await shot(page, 'a4-refund-due')
 
@@ -151,6 +158,12 @@ test('instalment schedule: a CHF 600 credit after full payment is refunded and s
   await refund.getByRole('button', { name: 'Record refund' }).click()
   await expect(refund).toBeHidden()
   await expect(page.getByText('Refund due CHF 600.00')).toBeHidden()
+  // Every movement under its own name, with the net: never "Paid · credited CHF 1'000.00 · 600.00".
+  await expect(summary(page, 'Paid')).toHaveText('CHF 1’000.00')
+  await expect(summary(page, 'Credited')).toHaveText('CHF 600.00')
+  await expect(summary(page, 'Refunded')).toHaveText('CHF 600.00')
+  await expect(page.getByText('Net CHF 400.00')).toBeVisible()
+  await expect(page.getByText(/Paid · credited/)).toHaveCount(0)
   const settled = await api.read(path)
   expect(settled).toMatchObject({ status: 'paid', refund_due: '0.00', amount_refunded: '600.00' })
   expect(instalments(settled)).toEqual([paid, paid, creditedAway, creditedAway, creditedAway])
@@ -177,12 +190,10 @@ test('instalment plan: partials 3 to 5 credited in full are refunded, 1 and 2 st
   await dialog.getByRole('button', { name: 'Create plan' }).click()
   await expect(dialog).toBeHidden()
 
-  // Issued at once by the job the new plan wakes, not at its next hourly run.
+  // Issued at once by the job the new plan wakes, not at its next hourly run; the card shows them
+  // without a reload.
   const card = page.getByRole('region', { name: 'Instalment plan' })
-  await expect(async () => {
-    await page.reload()
-    await expect(card.getByRole('link')).toHaveCount(5, { timeout: 1000 })
-  }).toPass({ timeout: 15_000 })
+  await expect(card.getByRole('link')).toHaveCount(5, { timeout: 15_000 })
   await shot(page, 'b1-plan-issued')
   const plan = await api.read(
     `/instalment-plans/${text(object((await api.read(`/invoices/${id}`)).plan).id)}`,
@@ -196,6 +207,19 @@ test('instalment plan: partials 3 to 5 credited in full are refunded, 1 and 2 st
       .getByRole('link')
       .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
   ).toEqual(partials.map((partial) => `/invoices?id=${partial.id}`))
+  // A partial's link shows it in the same drawer, not one stacked on top; Back returns to the source.
+  const source = page.url()
+  await card.getByRole('link').first().click()
+  await expect(page).toHaveURL(new RegExp(`[?&]id=${partials[0]?.id}`))
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(
+    page.getByRole('dialog').getByText(partials[0]?.number ?? '', { exact: true }),
+  ).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(source)
+  await expect(card.getByRole('link')).toHaveCount(5)
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+
   // each partial's own page, where its link on the plan card leads
   const open = async (partial: { id: string; number: string }) => {
     await page.goto(`/invoices?id=${partial.id}`)
@@ -255,5 +279,13 @@ test('instalment plan: partials 3 to 5 credited in full are refunded, 1 and 2 st
       refund_due: '0.00',
     })
   }
+  // void in the data, but paid before it was credited: it reads "Credited", never "Void"
+  await open(partials[2] ?? { id: '', number: '' })
+  await expect(summary(page, 'Refunded')).toHaveText('CHF 200.00')
+  await expect(page.getByRole('dialog').getByText('Void', { exact: true })).toHaveCount(0)
+  await expect(
+    page.getByRole('dialog').getByText('Credited', { exact: true }).first(),
+  ).toBeVisible()
+  await shot(page, 'b3-credited-badge')
   await refundDueList(page, partials[2]?.number ?? '', false)
 })

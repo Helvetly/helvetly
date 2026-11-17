@@ -103,17 +103,26 @@ export function RecordPageButton() {
 
 export const RecordDrawersContext = createContext<((record: RecordRef) => void) | null>(null)
 
+/** The drawer around a link: shows another record in its own place, instead of stacking a drawer on it. */
+export const RecordReplaceContext = createContext<((record: RecordRef) => void) | null>(null)
+
 // A new tab or window asked for with a modifier key or the middle button keeps the plain link.
 const modified = (event: MouseEvent) =>
   event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
 
-/** A link that opens a record's drawer in place, stacked on the current one, instead of going to its page. */
+/**
+ * A link that opens a record's drawer in place, stacked on the current one, instead of going to its page;
+ * `inPlace` shows it in the current drawer instead, where that drawer allows it.
+ */
 export function RecordLink({
   href,
   onClick,
+  inPlace,
   ...props
-}: ComponentProps<typeof Link> & { href: string }) {
-  const open = useContext(RecordDrawersContext)
+}: ComponentProps<typeof Link> & { href: string; inPlace?: boolean }) {
+  const stack = useContext(RecordDrawersContext)
+  const replace = useContext(RecordReplaceContext)
+  const open = (inPlace && replace) || stack
   return (
     <Link
       href={href}

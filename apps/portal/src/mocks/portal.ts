@@ -43,6 +43,7 @@ const invoice = (fields: Partial<PortalInvoice> & Pick<PortalInvoice, 'id' | 'nu
   due_date: day(25),
   total: '0.00',
   amount_due: '0.00',
+  amount_paid: '0.00',
   ...fields,
 })
 

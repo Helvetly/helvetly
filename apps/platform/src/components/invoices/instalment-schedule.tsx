@@ -7,11 +7,14 @@ import { translate } from '@/lib/i18n'
 import {
   formatDay,
   formatMoney,
+  fromCents,
   groupReference,
   INSTALMENT_STATUS_LABELS,
   INTERVALS,
+  type InstalmentItem,
   type InstalmentStatus,
   type Invoice,
+  toCents,
 } from '@/lib/invoices'
 
 const TONE: Record<InstalmentStatus, string> = {
@@ -19,7 +22,11 @@ const TONE: Record<InstalmentStatus, string> = {
   part_paid: TONES.amber,
   open: 'bg-muted text-muted-foreground',
   overdue: TONES.red,
+  credited: 'bg-muted text-muted-foreground',
 }
+
+/** What credit notes took off the instalment. */
+const credited = (item: InstalmentItem) => toCents(item.amount) - toCents(item.effective)
 
 /** An invoice's instalments with what each still owes; every one has its own QR bill page. */
 export function InstalmentSchedule({
@@ -73,6 +80,13 @@ export function InstalmentSchedule({
               </td>
               <td className="py-2 pl-3 text-right whitespace-nowrap tabular-nums">
                 {formatMoney(item.effective, invoice.currency)}
+                {credited(item) > 0n && (
+                  <span className="block text-xs text-muted-foreground">
+                    {translate('instalmentCredited', {
+                      amount: formatMoney(fromCents(credited(item)), invoice.currency),
+                    })}
+                  </span>
+                )}
                 {/* Phones drop the Open column; a part-paid instalment still says what is left. */}
                 {item.status === 'part_paid' && (
                   <span className="block text-xs text-muted-foreground sm:hidden">
@@ -81,7 +95,9 @@ export function InstalmentSchedule({
                 )}
               </td>
               <td className="py-2 pl-3 text-right whitespace-nowrap text-muted-foreground tabular-nums max-sm:hidden">
-                {item.status === 'paid' ? '—' : formatMoney(item.open, invoice.currency)}
+                {item.status === 'paid' || item.status === 'credited'
+                  ? '—'
+                  : formatMoney(item.open, invoice.currency)}
               </td>
               <td className="py-2 pl-3 text-right">
                 <span

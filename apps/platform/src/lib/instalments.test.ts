@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node'
 import { handlers } from '@/mocks/handlers'
 
 import { ApiError } from './api'
-import { instalmentsApi, issuedCount, type Plan } from './instalments'
+import { awaitingIssue, instalmentsApi, issuedCount, type Plan } from './instalments'
 import { INTERVALS, invoicesApi } from './invoices'
 
 const server = setupServer(...handlers)
@@ -59,4 +59,16 @@ test('a plan needs 2–12 instalments and a known interval', async () => {
       first_due_date: '2027-01-01',
     }),
   ).rejects.toMatchObject({ status: 422, details: { fields: { count: expect.any(String) } } })
+})
+
+const item = (status: 'scheduled' | 'issued', issue_on: string) =>
+  ({ seq: 1, due_date: issue_on, issue_on, invoice_id: null, number: null, status }) as const
+const plan = (status: Plan['status'], ...items: ReturnType<typeof item>[]) => ({ status, items })
+
+test('a plan awaits the server only while an active plan has a due partial not yet issued', () => {
+  const now = '2026-11-17'
+  expect(awaitingIssue(plan('active', item('scheduled', '2026-11-17')), now)).toBe(true)
+  expect(awaitingIssue(plan('active', item('scheduled', '2026-11-18')), now)).toBe(false)
+  expect(awaitingIssue(plan('active', item('issued', '2026-11-01')), now)).toBe(false)
+  expect(awaitingIssue(plan('paused', item('scheduled', '2026-11-01')), now)).toBe(false)
 })

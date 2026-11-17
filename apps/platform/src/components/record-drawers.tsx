@@ -32,6 +32,7 @@ import {
   RecordDrawersContext,
   RecordPageContext,
   recordPageHref,
+  RecordReplaceContext,
   type RecordRef,
 } from './record-link'
 
@@ -40,7 +41,7 @@ import {
  * stacked on top of the screen; closing one uncovers the one below. A page change clears them.
  */
 export function RecordDrawers({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<RecordRef[]>([])
+  const [stack, setStack] = useState<StackEntry[]>([])
   const pathname = usePathname()
   const [shownOn, setShownOn] = useState(pathname)
   if (shownOn !== pathname) {
@@ -55,15 +56,30 @@ export function RecordDrawers({ children }: { children: ReactNode }) {
     [],
   )
   const leave = useCallback(() => setStack([]), [])
+  const replaceAt = useCallback(
+    (index: number, record: RecordRef) =>
+      setStack((current) => {
+        const here = current[index]
+        if (!here) return current
+        return [
+          ...current.slice(0, index),
+          { ...record, slot: here.slot ?? `${here.kind}:${here.id}` },
+        ]
+      }),
+    [],
+  )
 
   return (
     <RecordDrawersContext.Provider value={open}>
       {children}
       {stack.map((record, index) => (
         <StackedRecord
-          key={`${record.kind}:${record.id}`}
+          // A record shown in place of another keeps the slot's key: its drawer stays open (no flicker).
+          key={record.slot ?? `${record.kind}:${record.id}`}
           record={record}
+          index={index}
           open={open}
+          replaceAt={replaceAt}
           leave={leave}
           onClose={() => setStack((current) => current.slice(0, index))}
         />
@@ -72,22 +88,32 @@ export function RecordDrawers({ children }: { children: ReactNode }) {
   )
 }
 
+/** A stacked record; `slot` is the key of the record it replaced in place, if any. */
+type StackEntry = RecordRef & { slot?: string }
+
 /** One drawer of the stack, telling what it shows which record page it stands for. */
 function StackedRecord({
   record,
+  index,
   open,
+  replaceAt,
   leave,
   onClose,
 }: {
   record: RecordRef
+  index: number
   open: (record: RecordRef) => void
+  replaceAt: (index: number, record: RecordRef) => void
   leave: () => void
   onClose: () => void
 }) {
   const page = useMemo(() => ({ href: recordPageHref(record), leave }), [record, leave])
+  const replace = useCallback((next: RecordRef) => replaceAt(index, next), [replaceAt, index])
   return (
     <RecordPageContext.Provider value={page}>
-      <RecordDrawer record={record} open={open} onClose={onClose} />
+      <RecordReplaceContext.Provider value={replace}>
+        <RecordDrawer record={record} open={open} onClose={onClose} />
+      </RecordReplaceContext.Provider>
     </RecordPageContext.Provider>
   )
 }

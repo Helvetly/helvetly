@@ -154,6 +154,7 @@
   "validUntil2": "Gültig bis {value1}",
   "vatNumber": "Umsatzsteuer-Identifikationsnummer",
   "viewInvoices": "Rechnungen anzeigen",
+  "credited": "Gutgeschrieben",
   "void": "Storniert",
   "waitingForApproval": "Warten auf Genehmigung",
   "youAskedForTheseChangesOn": "Sie haben diese Änderungen am angefordert ",

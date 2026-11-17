@@ -154,6 +154,7 @@
   "validUntil2": "Valido fino al {value1}",
   "vatNumber": "Partita IVA",
   "viewInvoices": "Visualizza le fatture",
+  "credited": "Accreditata",
   "void": "Annullata",
   "waitingForApproval": "In attesa di approvazione",
   "youAskedForTheseChangesOn": "Hai chiesto queste modifiche il ",

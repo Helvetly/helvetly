@@ -141,7 +141,7 @@
 4 text-px apps/platform/src/components/invoices/dunning-card.tsx
 5 text-px apps/platform/src/components/invoices/instalment-schedule.tsx
 9 text-px apps/platform/src/components/invoices/instalments-section.tsx
-40 text-px apps/platform/src/components/invoices/invoice-detail.tsx
+37 text-px apps/platform/src/components/invoices/invoice-detail.tsx
 6 text-px apps/platform/src/components/invoices/invoice-dialogs.tsx
 1 text-px apps/platform/src/components/invoices/invoice-editor.tsx
 13 text-px apps/platform/src/components/invoices/invoices-page.tsx

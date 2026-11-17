@@ -154,6 +154,7 @@
   "validUntil2": "Valid until {value1}",
   "vatNumber": "VAT number",
   "viewInvoices": "View invoices",
+  "credited": "Credited",
   "void": "Void",
   "waitingForApproval": "Waiting for approval",
   "youAskedForTheseChangesOn": "You asked for these changes on ",

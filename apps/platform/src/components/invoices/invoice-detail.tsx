@@ -126,7 +126,15 @@ export function InvoiceDetail({
         </SheetTitle>
         <SheetDescription className="sr-only">{translate('invoiceDetails')}</SheetDescription>
         {invoice ? (
-          <Detail invoice={invoice} canManage={canManage} onClose={onClose} run={run} busy={busy} />
+          // Keyed, so another invoice shown in this drawer starts fresh (tabs, page count).
+          <Detail
+            key={invoice.id}
+            invoice={invoice}
+            canManage={canManage}
+            onClose={onClose}
+            run={run}
+            busy={busy}
+          />
         ) : query.error ? (
           <div className="grid justify-items-center gap-3 px-6 py-20 text-center">
             <p className="text-[15px]">{translate('thisInvoiceCouldnTBeLoaded')}</p>
@@ -456,34 +464,51 @@ function Detail({
                   style={{ width: `${Math.min(100, paidShare)}%` }}
                 />
               </div>
-              <dl className="grid grid-cols-3 gap-2 text-[13px]">
+              {/* Every movement under its own name, so a credit and a refund are never read as payments. */}
+              <dl className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
                 <div>
                   <dt className="text-muted-foreground">{translate('total')}</dt>
-                  <dd className="text-[15px] tabular-nums">
+                  <dd className="text-title-sm tabular-nums">
                     {formatMoney(fromCents(payable), invoice.currency)}
                   </dd>
+                  {!isZero(invoice.amount_credited) && (
+                    <dd className="text-xs text-muted-foreground tabular-nums">
+                      {translate('netAfterCredits', {
+                        amount: formatMoney(
+                          fromCents(payable - toCents(invoice.amount_credited)),
+                          invoice.currency,
+                        ),
+                      })}
+                    </dd>
+                  )}
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">
-                    {isZero(invoice.amount_credited)
-                      ? translate('paid')
-                      : translate('paidCredited')}
-                  </dt>
-                  <dd className="text-[15px] tabular-nums">
+                  <dt className="text-muted-foreground">{translate('paid')}</dt>
+                  <dd className="text-title-sm tabular-nums">
                     {formatMoney(invoice.amount_paid, invoice.currency)}
-                    {!isZero(invoice.amount_credited) && (
-                      <span className="text-muted-foreground">
-                        {' '}
-                        · {formatAmount(invoice.amount_credited)}
-                      </span>
-                    )}
                   </dd>
                 </div>
-                <div className="text-right">
+                {!isZero(invoice.amount_credited) && (
+                  <div>
+                    <dt className="text-muted-foreground">{translate('creditedStatus')}</dt>
+                    <dd className="text-title-sm tabular-nums">
+                      {formatMoney(invoice.amount_credited, invoice.currency)}
+                    </dd>
+                  </div>
+                )}
+                {!isZero(invoice.amount_refunded) && (
+                  <div>
+                    <dt className="text-muted-foreground">{translate('refundedStatus')}</dt>
+                    <dd className="text-title-sm tabular-nums">
+                      {formatMoney(invoice.amount_refunded, invoice.currency)}
+                    </dd>
+                  </div>
+                )}
+                <div className="ml-auto text-right">
                   <dt className="text-muted-foreground">
                     {isPositive(invoice.refund_due) ? translate('owedBack') : translate('due')}
                   </dt>
-                  <dd className="text-[15px] font-medium tabular-nums">
+                  <dd className="text-title-sm font-medium tabular-nums">
                     {formatMoney(
                       isPositive(invoice.refund_due) ? invoice.refund_due : invoice.amount_due,
                       invoice.currency,

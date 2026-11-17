@@ -40,11 +40,13 @@ func (s *Service) invoices(w http.ResponseWriter, r *http.Request, sess store.Po
 		Currency  string      `json:"currency"`
 		Total     store.Money `json:"total"`
 		AmountDue store.Money `json:"amount_due"`
+		// AmountPaid tells a void invoice that took payments (fully credited, then refunded) from one voided unpaid.
+		AmountPaid store.Money `json:"amount_paid"`
 	}
 	out := []item{}
 	for _, i := range list {
 		if i.Status != "draft" {
-			out = append(out, item{i.ID, i.Kind, i.Number, i.Status, i.IsOverdue, i.IssueDate, i.DueDate, i.Currency, i.Total, i.AmountDue})
+			out = append(out, item{i.ID, i.Kind, i.Number, i.Status, i.IsOverdue, i.IssueDate, i.DueDate, i.Currency, i.Total, i.AmountDue, i.Paid})
 		}
 	}
 	auth.WriteJSON(w, http.StatusOK, data(out))
