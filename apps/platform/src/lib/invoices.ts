@@ -324,7 +324,13 @@ export type PlanInput = {
   lead_days?: number
   auto_send?: boolean
 }
-export type EinvoiceFormat = 'xrechnung-ubl' | 'xrechnung-cii' | 'peppol' | 'ro-cius' | 'ksef-fa3'
+export type EinvoiceFormat =
+  | 'xrechnung-ubl'
+  | 'xrechnung-cii'
+  | 'peppol'
+  | 'factur-x'
+  | 'ro-cius'
+  | 'ksef-fa3'
 
 export type PaymentMethods = { qr_bill: boolean; revolut: boolean }
 
@@ -763,6 +769,7 @@ export const EINVOICE_FORMATS: { value: EinvoiceFormat; label: string; hint?: st
   { value: 'xrechnung-ubl', label: translate('xrechnungUBL') },
   { value: 'xrechnung-cii', label: translate('xrechnungCII') },
   { value: 'peppol', label: translate('peppolBIS30') },
+  { value: 'factur-x', label: translate('facturX'), hint: translate('facturXHint') },
   {
     value: 'ro-cius',
     label: translate('eFacturaCIUSRO'),

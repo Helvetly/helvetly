@@ -47,6 +47,16 @@ func TestEmailAttachesTheClientsEInvoice(t *testing.T) {
 		t.Fatalf("plain client got %d attachments", len(m.Attachments))
 	}
 
+	// Factur-X replaces the PDF with the hybrid under the PDF's own name: one PDF, no separate XML
+	refuse = nil
+	hybrid := e.client(b, map[string]any{"name": "Dupont SARL", "country": "FR", "einvoice_format": "factur_x"})
+	fx := e.issued(b, hybrid, nil)
+	e.do(b, "POST", "/api/v1/invoices/"+fx.ID+"/send", map[string]any{}, http.StatusOK, nil)
+	if m := e.mail.sent[len(e.mail.sent)-1]; len(m.Attachments) != 1 || m.Attachments[0].ContentType != "application/pdf" ||
+		string(m.Attachments[0].Data) != "<Invoice/>" || asked[len(asked)-1] != "factur-x" {
+		t.Fatalf("Factur-X client got %+v, formats asked %v", m.Attachments, asked)
+	}
+
 	// the XML cannot be made: nothing is sent rather than the PDF alone
 	refuse = auth.Error(http.StatusConflict, "einvoice_seller_contact_missing", "XRechnung needs the seller's phone.", nil)
 	sent := len(e.mail.sent)

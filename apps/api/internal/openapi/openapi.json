@@ -2914,7 +2914,7 @@
         "operationId": "get_invoice_einvoice",
         "tags": ["Invoices"],
         "summary": "Download the e-invoice XML",
-        "description": "The structured XML of an issued invoice or credit note in the chosen format: xrechnung-ubl, xrechnung-cii (XRechnung), peppol (Peppol BIS UBL), ro-cius (RO e-Factura for SPV) or ksef-fa3 (Polish KSeF FA(3), PLN only). The first export of a format archives the bytes (SHA-256 in X-Helvetly-XML-SHA256); later calls return the archived bytes unchanged. Answers 409 invalid_state for drafts, issued_elsewhere for imported invoices, and einvoice_* codes when data is missing (seller contact, endpoint, NIP, VAT categories). Synthetic validation only: the response carries X-Helvetly-Preview: true; check the recipient's requirements. Peppol delivery is not done by this call.",
+        "description": "The structured XML of an issued invoice or credit note in the chosen format: xrechnung-ubl, xrechnung-cii (XRechnung), peppol (Peppol BIS UBL), ro-cius (RO e-Factura for SPV), ksef-fa3 (Polish KSeF FA(3), PLN only) or factur-x (Factur-X 1.0 / ZUGFeRD 2.x: the issued PDF as PDF/A-3B with the EN 16931 CII XML embedded as factur-x.xml, served as application/pdf; 409 einvoice_facturx_cmyk or einvoice_facturx_unsupported when the stored PDF cannot be PDF/A-3). The first export of a format archives the bytes (SHA-256 in X-Helvetly-XML-SHA256); later calls return the archived bytes unchanged. Answers 409 invalid_state for drafts, issued_elsewhere for imported invoices, and einvoice_* codes when data is missing (seller contact, endpoint, NIP, VAT categories). Synthetic validation only: the response carries X-Helvetly-Preview: true; check the recipient's requirements. Peppol delivery is not done by this call.",
         "parameters": [
           {
             "name": "id",
@@ -2929,18 +2929,31 @@
             "name": "format",
             "in": "query",
             "required": true,
-            "description": "The XML profile.",
+            "description": "The XML profile, or factur-x for the hybrid PDF.",
             "schema": {
               "type": "string",
-              "enum": ["xrechnung-ubl", "xrechnung-cii", "peppol", "ro-cius", "ksef-fa3"]
+              "enum": [
+                "xrechnung-ubl",
+                "xrechnung-cii",
+                "peppol",
+                "ro-cius",
+                "ksef-fa3",
+                "factur-x"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "The XML file.",
+            "description": "The XML file, or the Factur-X PDF.",
             "content": {
               "application/xml": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -6532,7 +6545,7 @@
           },
           "einvoice_format": {
             "type": "string",
-            "enum": ["none", "xrechnung_ubl", "xrechnung_cii", "peppol"]
+            "enum": ["none", "xrechnung_ubl", "xrechnung_cii", "peppol", "factur_x"]
           },
           "leitweg_id": {
             "type": ["string", "null"]
@@ -6703,7 +6716,7 @@
           },
           "einvoice_format": {
             "type": "string",
-            "enum": ["none", "xrechnung_ubl", "xrechnung_cii", "peppol"]
+            "enum": ["none", "xrechnung_ubl", "xrechnung_cii", "peppol", "factur_x"]
           }
         },
         "required": [],

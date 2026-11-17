@@ -14,7 +14,7 @@ type ciiDoc struct {
 	Rsm        string        `xml:"xmlns:rsm,attr"`
 	Ram        string        `xml:"xmlns:ram,attr"`
 	Udt        string        `xml:"xmlns:udt,attr"`
-	Process    string        `xml:"rsm:ExchangedDocumentContext>ram:BusinessProcessSpecifiedDocumentContextParameter>ram:ID"`
+	Process    *ciiParam     `xml:"rsm:ExchangedDocumentContext>ram:BusinessProcessSpecifiedDocumentContextParameter"`
 	Guideline  string        `xml:"rsm:ExchangedDocumentContext>ram:GuidelineSpecifiedDocumentContextParameter>ram:ID"`
 	ID         string        `xml:"rsm:ExchangedDocument>ram:ID"`
 	TypeCode   string        `xml:"rsm:ExchangedDocument>ram:TypeCode"`
@@ -60,7 +60,7 @@ type ciiAllowance struct {
 }
 
 type ciiAgreement struct {
-	BuyerReference string     `xml:"ram:BuyerReference"`
+	BuyerReference string     `xml:"ram:BuyerReference,omitempty"`
 	Seller         ciiParty   `xml:"ram:SellerTradeParty"`
 	Buyer          ciiParty   `xml:"ram:BuyerTradeParty"`
 	Order          *ciiDocRef `xml:"ram:BuyerOrderReferencedDocument"`
@@ -80,9 +80,17 @@ type ciiLegal struct {
 }
 
 type ciiContact struct {
-	Name  string `xml:"ram:PersonName"`
-	Phone string `xml:"ram:TelephoneUniversalCommunication>ram:CompleteNumber"`
-	Email string `xml:"ram:EmailURIUniversalCommunication>ram:URIID"`
+	Name  string    `xml:"ram:PersonName"`
+	Phone *ciiPhone `xml:"ram:TelephoneUniversalCommunication"`
+	Email *ciiEmail `xml:"ram:EmailURIUniversalCommunication"`
+}
+
+type ciiPhone struct {
+	Number string `xml:"ram:CompleteNumber"`
+}
+
+type ciiEmail struct {
+	ID string `xml:"ram:URIID"`
 }
 
 type ciiAddress struct {
@@ -117,12 +125,18 @@ type ciiSum struct {
 
 // CII renders the XRechnung CII syntax; a credit note keeps the same structure with type 381 and positive amounts.
 // XRechnung needs the seller contact's phone and email (ErrSellerContact).
-func CII(inv store.Invoice) ([]byte, error) {
+func CII(inv store.Invoice) ([]byte, error) { return cii(inv, false) }
+
+// FacturXML is the same CII invoice in the Factur-X / ZUGFeRD EN 16931 profile: the plain EN 16931 core, without
+// XRechnung's national rules or Peppol's process identifier.
+func FacturXML(inv store.Invoice) ([]byte, error) { return cii(inv, true) }
+
+func cii(inv store.Invoice, facturX bool) ([]byte, error) {
 	d, err := build(inv)
 	if err != nil {
 		return nil, err
 	}
-	sc, err := d.sellerContact(true)
+	sc, err := d.sellerContact(!facturX)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +144,7 @@ func CII(inv store.Invoice) ([]byte, error) {
 		Rsm:     "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100",
 		Ram:     "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
 		Udt:     "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100",
-		Process: peppolProcess, Guideline: xrechnungID,
+		Process: &ciiParam{peppolProcess}, Guideline: xrechnungID,
 		ID: deref(inv.Number), TypeCode: d.typeCode, IssueDate: date102(inv.IssueDate),
 		Agreement: ciiAgreement{BuyerReference: d.buyerReference(), Seller: ciiPartyOf(d.xmlParty(*inv.Seller)),
 			Buyer: ciiPartyOf(d.xmlParty(*inv.Buyer))},
@@ -138,7 +152,19 @@ func CII(inv store.Invoice) ([]byte, error) {
 			Sum: ciiSum{LineTotal: d.lineTotal.String(), TaxBasis: inv.NetTotal.String(),
 				TaxTotal: ublAmount{inv.Currency, inv.VATTotal.String()}, Grand: inv.Total.String(), Due: inv.Payable().String()}},
 	}
-	c.Agreement.Seller.Contact = &ciiContact{Name: inv.Seller.Name, Phone: sc.Phone, Email: sc.Email}
+	if facturX { // BT-10 is optional in EN 16931: no "n/a" stand-in as XRechnung needs
+		c.Process, c.Guideline, c.Agreement.BuyerReference = nil, en16931ID, deref(inv.Reference)
+	}
+	if sc != nil { // a partial contact (EN 16931 only) leaves out what is missing rather than writing it empty
+		contact := &ciiContact{Name: inv.Seller.Name}
+		if sc.Phone != "" {
+			contact.Phone = &ciiPhone{sc.Phone}
+		}
+		if sc.Email != "" {
+			contact.Email = &ciiEmail{sc.Email}
+		}
+		c.Agreement.Seller.Contact = contact
+	}
 	if n := d.note(); n != "" {
 		c.Note = &ciiNote{n}
 	}
@@ -206,6 +232,10 @@ func ciiPartyOf(p store.Party) ciiParty {
 
 // date102 is a civil date in UNTDID 2379 format 102 (CCYYMMDD).
 func date102(d string) ciiDate { return ciiDate{"102", strings.ReplaceAll(d, "-", "")} }
+
+type ciiParam struct {
+	ID string `xml:"ram:ID"`
+}
 
 type ciiNote struct {
 	Content string `xml:"ram:Content"`

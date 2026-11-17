@@ -479,6 +479,7 @@ func TestHandler(t *testing.T) {
 		{"", "/api/v1/invoices/inv-1/einvoice?format=xrechnung-cii", 200, "<rsm:CrossIndustryInvoice"},
 		{"", "/api/v1/invoices/inv-1/einvoice", 400, "invalid_request"},
 		{"", "/api/v1/invoices/inv-1/einvoice?format=zugferd", 400, "invalid_request"},
+		{"", "/api/v1/invoices/inv-1/einvoice?format=factur-x", 409, "invalid_state"}, // no stored PDF
 		{"", "/api/v1/invoices/nope/einvoice?format=peppol", 404, "not_found"},
 		{"", "/api/v1/invoices/draft/einvoice?format=peppol", 409, "invalid_state"},
 		{"", "/api/v1/invoices/proforma/einvoice?format=xrechnung-cii", 409, "invalid_state"},

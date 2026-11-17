@@ -38,6 +38,11 @@ download bis.zip 399395de5f6240a76ccc5751e4ee9dd329e37f5f7cfe4ee5c93188294ce8cd6
 # cross-checked against the downloaded bytes on 2026-11-09.
 download schxslt.jar cefb6c45441252675270bacc67a1ec4421ed1133f7fb8fee8f314ecfa6a0171a \
   'https://repo1.maven.org/maven2/name/dmaus/schxslt/cli/1.10.1/cli-1.10.1.jar'
+# Mustang (Apache-2.0) validates Factur-X / ZUGFeRD files: PDF/A-3 with its bundled veraPDF, the XML with the
+# Factur-X XSD and Schematron of the profile the XMP declares. Digest from Maven Central's .sha1 cross-checked against the
+# downloaded bytes on 2026-11-17.
+download mustang.jar 42d7868cb68264874a7b8cab4c3587b03b23ccc7cd72373da917f66758bb9736 \
+  'https://repo1.maven.org/maven2/org/mustangproject/Mustang-CLI/2.26.0/Mustang-CLI-2.26.0.jar'
 unzip -q "$audit_dir/config.zip" -d "$audit_dir/config"
 unzip -q "$audit_dir/bis.zip" -d "$audit_dir/bis"
 mv "$audit_dir/validator.jar" "$audit_dir/config/validator.jar"
@@ -108,6 +113,44 @@ exec docker run --rm --network none --read-only --cap-drop ALL --security-opt no
 SHIM
 chmod 700 "$audit_dir/bin/cius-ro"
 
+mkdir -p "$audit_dir/mustang"
+mv "$audit_dir/mustang.jar" "$audit_dir/mustang/mustang.jar"
+
+# TestFacturXOfficial calls this with its fixture directory: each PDF is validated offline and read-only, and every
+# report must end in a valid summary (Mustang's exit status alone does not cover every failure).
+cat > "$audit_dir/bin/facturx" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ $# -ne 1 ]]; then
+  printf 'Usage: facturx <fixture-dir>\n' >&2
+  exit 2
+fi
+report_dir="$HELVETLY_KOSIT_ROOT/reports/facturx-$(basename -- "$1")"
+mkdir -p "$report_dir"
+docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+  --user "$(id -u):$(id -g)" \
+  --memory 2g --cpus 2 --tmpfs /tmp:rw,noexec,nosuid,size=256m \
+  --mount "type=bind,src=$HELVETLY_KOSIT_ROOT/mustang,dst=/mustang,readonly" \
+  --mount "type=bind,src=$1,dst=/fixtures,readonly" \
+  --mount "type=bind,src=$report_dir,dst=/output" \
+  --workdir /tmp \
+  "$HELVETLY_KOSIT_IMAGE" sh -ec '
+    for f in /fixtures/*.pdf; do
+      java -Xmx1g -Djava.io.tmpdir=/tmp -jar /mustang/mustang.jar --disable-file-logging --no-notices \
+        --action validate --source "$f" > "/output/$(basename "$f").xml" 2>&1 || true
+    done'
+failed=0
+for report in "$report_dir"/*.xml; do
+  if ! grep -q '<summary status="valid"/>' "$report"; then
+    printf '%s is not valid Factur-X:\n' "$(basename -- "$report" .xml)" >&2
+    cat "$report" >&2
+    failed=1
+  fi
+done
+exit "$failed"
+SHIM
+chmod 700 "$audit_dir/bin/facturx"
+
 export HELVETLY_KOSIT_ROOT="$audit_dir"
 export HELVETLY_KOSIT_IMAGE='eclipse-temurin@sha256:0b99b3376fbb50dbf9c0af8535fdd5b8eb0d3fdfc8b1e4967f383b6919f6901a'
 docker image inspect "$HELVETLY_KOSIT_IMAGE" >/dev/null 2>&1 || docker pull "$HELVETLY_KOSIT_IMAGE"
@@ -115,6 +158,7 @@ export PATH="$audit_dir/bin:$PATH"
 export HELVETLY_TEST_KOSIT="$audit_dir/config/validator.jar"
 export HELVETLY_TEST_PEPPOL_KOSIT="$audit_dir/bis/validator.jar"
 export HELVETLY_TEST_CIUS_RO="$audit_dir/bin/cius-ro"
+export HELVETLY_TEST_FACTURX="$audit_dir/bin/facturx"
 export HELVETLY_CIUS_RO_RULES="$api_dir/internal/einvoice/testdata/cius-ro"
 cd "$api_dir"
-go test -v ./internal/einvoice -run '^(TestKoSIT|TestPeppolKoSIT|TestCIUSROSchematron)$' -count=1
+go test -v ./internal/einvoice -run '^(TestKoSIT|TestPeppolKoSIT|TestCIUSROSchematron|TestFacturXOfficial)$' -count=1
