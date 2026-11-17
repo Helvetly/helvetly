@@ -203,6 +203,13 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 			return err
 		}
 	}
+	// Only an owner reads HR data once the plan lacks it, so only an owner is told whether any exists.
+	hasEmployees := false
+	if sess.Role == "owner" {
+		if hasEmployees, err = s.db.HasEmployees(r.Context(), sess.Workspace.ID); err != nil {
+			return err
+		}
+	}
 	prices := s.planPrices(r.Context())
 	cur, err := s.requestCurrency(r, sess, b.CustomerID)
 	if err != nil {
@@ -267,7 +274,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 		"can_manage": members.CanManage(sess.Role), "period_start": start.Format(time.DateOnly),
 		"usage": usage, "features": features, "offer_id": nil, "entitlements": nil, "plans": list, "currency": cur, "discount": nil,
 		"pricing": "", "seats": seats, "paid_seats": nil, "pending_plan": nil, "pending_interval": nil, "pending_at": nil,
-		"ai_tokens_bought": bought, "ai_packs": []struct{}{}, "disputed": disputed, // packs are no longer sold
+		"ai_tokens_bought": bought, "ai_packs": []struct{}{}, "disputed": disputed, "has_employees": hasEmployees, // packs are no longer sold
 		"payment_overdue": s.enabled && lapsed(b, now), "plan_expires_at": b.PlanExpiresAt,
 	}
 	if plan != "" {

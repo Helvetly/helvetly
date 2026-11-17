@@ -45,6 +45,9 @@ func TestEmployeesTakeNoSeat(t *testing.T) {
 	}
 	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 	data, _ := body["data"].(map[string]any)
+	if data["has_employees"] != true {
+		t.Fatalf("the owner is not told HR data exists: %v", data["has_employees"])
+	}
 	if data["seats"] != 1.0 {
 		t.Fatalf("the billing overview counts employees as seats: %v", data["seats"])
 	}

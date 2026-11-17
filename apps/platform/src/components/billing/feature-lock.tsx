@@ -40,6 +40,15 @@ export type FeatureLock = ReturnType<typeof featureLock>
 const seeLabel = (lock: NonNullable<FeatureLock>) =>
   lock.plan ? translate('see2', { name: lock.plan.name }) : translate('seePlans')
 
+/**
+ * Employees and payroll are not shown at all on a plan without them, unless the owner still has records to read and
+ * export (a downgrade): then the pages stay, read-only.
+ */
+export const employeesHidden = (billing: Billing | undefined) =>
+  Boolean(featureLock(billing, 'employees')) && !billing?.has_employees
+
+export const useEmployeesHidden = () => employeesHidden(useBilling().data)
+
 /** `featureLock` for the signed-in workspace. */
 export const useFeatureLock = (feature: FeatureKey) => featureLock(useBilling().data, feature)
 
@@ -77,7 +86,7 @@ export function toastLocked(
   })
 }
 
-/** Why a page's new work is off, above its content: what stays available and the way to the plans. */
+/** Why a page's new work is off, in the page's content: what stays available and the way to the plans. */
 export function FeatureLockNotice({
   lock,
   kept,
@@ -92,6 +101,7 @@ export function FeatureLockNotice({
   return (
     <Callout
       data-slot="feature-lock-notice"
+      tone="warning"
       className={className}
       icon={Lock}
       actions={
@@ -133,5 +143,30 @@ export function ExportItem({
         <Download /> {children}
       </a>
     </Item>
+  )
+}
+
+/**
+ * Content the plan lacks that must still be on screen: blurred, inert and out of the tab order, with the notice and
+ * its way to the plans on top. Read-only data the person may still use is not wrapped in it.
+ */
+export function LockedArea({
+  lock,
+  kept,
+  children,
+}: {
+  lock: NonNullable<FeatureLock>
+  kept: string
+  children: ReactNode
+}) {
+  return (
+    <div data-slot="locked-area" className="relative">
+      <div inert aria-hidden className="pointer-events-none opacity-50 blur-[3px] select-none">
+        {children}
+      </div>
+      <div className="absolute inset-x-0 top-0 p-4">
+        <FeatureLockNotice lock={lock} kept={kept} />
+      </div>
+    </div>
   )
 }

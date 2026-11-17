@@ -6,7 +6,8 @@ import type { PlanId } from '@/lib/billing'
 
 import { pageParameters } from './frame'
 
-export const billingOn = (plan: PlanId) =>
+/** `records: false` is a workspace that never had employees: on a plan without the module it hides it entirely. */
+export const billingOn = (plan: PlanId, records = true) =>
   http.get('/api/v1/billing', () =>
     HttpResponse.json({
       data: billingFixture({
@@ -16,6 +17,7 @@ export const billingOn = (plan: PlanId) =>
         pricing: 'per_seat',
         locked: false,
         has_customer: true,
+        has_employees: records,
         current_period_end: '2026-12-01',
       }),
     }),

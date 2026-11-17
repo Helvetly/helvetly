@@ -2,9 +2,10 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Lock } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { type ReactNode, useEffect } from 'react'
 
+import { useEmployeesHidden } from '@/components/billing/feature-lock'
 import { State } from '@/components/data/table-page'
 import { translate } from '@/lib/i18n'
 import { canReadPath, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
@@ -22,6 +23,13 @@ const iconOf = (resource: string) =>
 export function AccessGate({ children }: { children: ReactNode }) {
   const scopes = useScopes()
   const pathname = usePathname() ?? ''
+  const router = useRouter()
+  // Not on the plan and nothing kept to read: the module does not exist here, so its URLs lead home.
+  const hidden = useEmployeesHidden() && /^\/(employees|settings\/employment)(\/|$)/.test(pathname)
+  useEffect(() => {
+    if (hidden) router.replace('/')
+  }, [hidden, router])
+  if (hidden) return null
   const resource = resourceForPath(pathname)
   if (!resource || canReadPath(scopes, pathname)) return children
   const what = labelOf(resource).toLowerCase()

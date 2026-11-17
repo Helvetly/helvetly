@@ -15,6 +15,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { useEmployeesHidden } from '@/components/billing/feature-lock'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
@@ -60,9 +61,12 @@ export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   // A page of an area the person cannot read is left out, as in the sidebar (employment also opens with payroll view).
   // A business not registered for VAT files no VAT return: the tab shows once the invoice settings say it is.
   const notVatRegistered = useInvoiceSettings().data?.vat_registered === false
+  const noEmployment = useEmployeesHidden()
   const pages = SETTINGS_PAGES.filter(
     (page) =>
-      canReadPath(scopes, page.href) && !(notVatRegistered && page.href === '/settings/vat-return'),
+      canReadPath(scopes, page.href) &&
+      !(notVatRegistered && page.href === '/settings/vat-return') &&
+      !(noEmployment && page.href === '/settings/employment'),
   )
   const current = settingsPageAt(usePathname() ?? '')
   return (

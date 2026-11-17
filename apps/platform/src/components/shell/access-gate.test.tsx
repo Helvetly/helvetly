@@ -3,13 +3,20 @@ import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
+
 import { AccessGate } from './access-gate'
 
 let pathname = '/clients'
-vi.mock('next/navigation', () => ({ usePathname: () => pathname }))
+const replace = vi.fn<(href: string) => void>()
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathname,
+  useRouter: () => ({ replace }),
+}))
 
-function renderGate(scopes?: string[]) {
+function renderGate(scopes?: string[], billing?: unknown) {
   const client = new QueryClient()
+  if (billing) client.setQueryData(['billing'], billing)
   client.setQueryData(['session'], { role: 'member', scopes })
   render(
     <QueryClientProvider client={client}>
@@ -44,5 +51,17 @@ test('pages without a resource are always shown', () => {
   pathname = '/settings/security'
   renderGate(['read:invoices'])
   expect(screen.getByText('The list')).toBeVisible()
+  pathname = '/clients'
+})
+
+test('employee pages lead home on a plan without them and without records, and stay with records', () => {
+  const pro = billingFixture({ plan: 'pro', locked: false })
+  pathname = '/employees/payroll'
+  renderGate(['*:*'], pro)
+  expect(screen.queryByText('The list')).toBeNull()
+  expect(replace).toHaveBeenCalledWith('/')
+  replace.mockClear()
+  renderGate(['*:*'], { ...pro, has_employees: true })
+  expect(replace).not.toHaveBeenCalled()
   pathname = '/clients'
 })
