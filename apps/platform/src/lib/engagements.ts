@@ -299,5 +299,7 @@ export const exportUrl = ({ page: _page, page_size: _size, ...query }: Engagemen
     if (value !== undefined && value !== '') params.set(key, String(value))
   return `/api/v1/engagements/export?${params}`
 }
+export const exportIdsUrl = (ids: string[]) =>
+  `/api/v1/engagements/export?${new URLSearchParams({ ids: ids.join(',') })}`
 export const entriesExportUrl = (id: string, periodId?: string) =>
   `/api/v1${path(id)}/entries/export${periodId ? `?${new URLSearchParams({ period_id: periodId })}` : ''}`

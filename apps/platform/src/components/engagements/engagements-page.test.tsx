@@ -1,7 +1,7 @@
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, expect, test, vi } from 'vitest'
 
 import type { Page } from '@/lib/clients'
@@ -19,6 +19,7 @@ const lib = vi.hoisted(() => ({
   getEngagementSummary: vi.fn<() => Promise<{ data: EngagementSummary }>>(),
   getEngagementSettings: vi.fn<() => Promise<{ digest: boolean }>>(),
   putEngagementSettings: vi.fn<(body: { digest: boolean }) => Promise<{ digest: boolean }>>(),
+  deleteEngagement: vi.fn<(id: string) => Promise<void>>(),
   exportUrl: vi.fn<(query: EngagementQuery) => string>(
     (query) => `/api/v1/engagements/export?status=${query.status}&q=${query.q ?? ''}`,
   ),
@@ -53,7 +54,7 @@ vi.mock('./engagement-form', () => ({
 
 import { AttentionBadges, ProgressBar } from './engagement-bits'
 import { EngagementsCard } from './engagements-card'
-import { EngagementsPage } from './engagements-page'
+import { bulkActions, EngagementsPage } from './engagements-page'
 
 const period = (patch: Partial<PeriodSummary> = {}): PeriodSummary => ({
   id: 'epr_1',
@@ -135,6 +136,7 @@ function renderPage() {
 
 beforeEach(() => {
   session.role = 'owner'
+  lib.deleteEngagement.mockReset().mockResolvedValue(undefined)
   lib.getEngagementSettings.mockReset().mockResolvedValue({ digest: false })
   lib.putEngagementSettings.mockReset().mockImplementation(async (body) => body)
   lib.listEngagements.mockReset().mockResolvedValue(page([engagement()]))
@@ -288,4 +290,44 @@ test('dashboard card hides without engagements', async () => {
   renderCard()
   await waitFor(() => expect(lib.getEngagementSummary).toHaveBeenCalled())
   expect(screen.queryByText('Engagements')).toBeNull()
+})
+
+test('bulk actions: export for everyone, delete only for managers', () => {
+  const run = { exportCsv: vi.fn<() => void>(), remove: vi.fn<() => void>() }
+  expect(bulkActions(false, run).map((action) => action.label)).toEqual(['Export CSV'])
+  const managed = bulkActions(true, run)
+  expect(managed.map((action) => action.label)).toEqual(['Export CSV', 'Delete'])
+  expect(managed[1]).toMatchObject({ destructive: true, write: true })
+})
+
+const two = () =>
+  lib.listEngagements.mockResolvedValue(
+    page([engagement(), engagement({ id: 'eng_2', number: 5, title: 'Design sprint' })]),
+  )
+
+test('selected rows are deleted together after confirming', async () => {
+  two()
+  renderPage()
+  await screen.findAllByText('Design sprint')
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select all items on this page' }))
+  const bar = await screen.findByRole('toolbar', { name: 'Selected rows' })
+  expect(bar).toHaveTextContent('2')
+  fireEvent.click(within(bar).getByRole('button', { name: 'Delete' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+  await waitFor(() => expect(lib.deleteEngagement).toHaveBeenCalledTimes(2))
+  expect(lib.deleteEngagement.mock.calls.map(([id]) => id)).toEqual(['eng_1', 'eng_2'])
+  await waitFor(() =>
+    expect(screen.queryByRole('toolbar', { name: 'Selected rows' })).not.toBeInTheDocument(),
+  )
+})
+
+test('a member selects and exports but cannot delete', async () => {
+  session.role = 'member'
+  two()
+  renderPage()
+  await screen.findAllByText('Design sprint')
+  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select Design sprint' })[0]!)
+  const bar = await screen.findByRole('toolbar', { name: 'Selected rows' })
+  expect(within(bar).getByRole('button', { name: 'Export CSV' })).toBeInTheDocument()
+  expect(within(bar).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
