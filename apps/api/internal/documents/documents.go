@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
@@ -43,6 +44,9 @@ type Service struct {
 	log     *slog.Logger
 	maxSize int64
 	now     func() time.Time
+	filer   aimodel.Provider // nil: AI filing is off
+	budget  aimodel.Budget
+	text    func([]byte, int) string
 }
 
 func New(db *store.Store, a Auth, files Storage, maxSize int64, log *slog.Logger) *Service {
@@ -76,6 +80,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/documents/{id}", s.get)
 	handle("PATCH /api/v1/documents/{id}", s.update)
 	handle("POST /api/v1/documents/{id}/copy", s.copy)
+	handle("DELETE /api/v1/documents/{id}/filing", s.undoFiling)
 	handle("GET /api/v1/documents/{id}/download", s.download)
 	handle("GET /api/v1/documents/{id}/content", s.content)
 	handle("POST /api/v1/documents/{id}/links", s.link)
@@ -353,7 +358,8 @@ const (
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	v := r.URL.Query()
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
-		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to")}
+		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"),
+		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag")))}
 	for _, k := range v["kind"] {
 		if !slices.Contains(kinds, k) {
 			return badRequest("Unknown kind " + strconv.Quote(k) + ".")
@@ -464,8 +470,18 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return nil
 	}
 	mode := ""
+	var tags []string
 	for k, raw := range body {
 		switch k {
+		case "tags":
+			var typed []string
+			if err := json.Unmarshal(raw, &typed); err != nil {
+				return validationFailed(map[string]string{"tags": "Send tags as a list of words."})
+			}
+			var problem string
+			if tags, problem = cleanTags(typed); problem != "" {
+				return validationFailed(map[string]string{"tags": problem})
+			}
 		case "name", "folder_id":
 		case "on_conflict":
 			_ = json.Unmarshal(raw, &mode)
@@ -504,6 +520,11 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if name, err = s.placeFile(q, r.Context(), sess, d.ID, name, folder, mode); err != nil {
 			return err
+		}
+		if tags != nil {
+			if err := q.SetDocumentTags(r.Context(), sess.Workspace.ID, d.ID, tags, s.now()); err != nil {
+				return err
+			}
 		}
 		return q.UpdateDocument(r.Context(), sess.Workspace.ID, d.ID, name, folder, s.now())
 	})

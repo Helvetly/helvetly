@@ -4234,5 +4234,11 @@
   "theVATReturnCouldnTBeChecked": "The VAT return couldn’t be checked: ",
   "retryVATReturn": "Retry VAT return",
   "closingCouldnTBeChecked": "Months to close couldn’t be checked: ",
-  "retryClosing": "Retry closing"
+  "retryClosing": "Retry closing",
+  "aiFiledInto": "{count, plural, one {Filed # file} other {Filed # files}} into {folder}.",
+  "aiFiledIntoFolders": "{count, plural, one {Filed # file} other {Filed # files}} into {folders, plural, one {# folder} other {# folders}}.",
+  "aiTagged": "{count, plural, one {Tagged # file} other {Tagged # files}}.",
+  "aiFilingUndone": "{count, plural, one {File put back} other {Files put back}} where uploaded.",
+  "sortedByAI": "Sorted by AI",
+  "sortedByAIInto": "Sorted by AI into {folder}"
 }

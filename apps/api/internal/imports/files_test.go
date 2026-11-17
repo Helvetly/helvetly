@@ -308,3 +308,21 @@ func TestEntriesThatUnderstateTheirSizeAreRefused(t *testing.T) {
 		t.Fatal("xlsx sheet read past its declared size")
 	}
 }
+
+func TestText(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		in    []byte
+		limit int
+		want  string
+	}{
+		{"csv", []byte("name,amount\nAcme,10\n"), 100, "name,amount\nAcme,10\n"},
+		{"cut", []byte("abcdefghij"), 5, "abcde"},
+		{"pdf", []byte("%PDF-1.7\n"), 100, ""},
+		{"empty", nil, 100, ""},
+	} {
+		if got := Text(tc.in, tc.limit); got != tc.want {
+			t.Errorf("%s: Text = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

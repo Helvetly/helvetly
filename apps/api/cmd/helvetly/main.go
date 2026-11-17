@@ -223,6 +223,13 @@ func run() error {
 		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
 	})
 	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
+	if importModel != nil {
+		// counted in the automation pool with AI import, never in Heidi's
+		documentsSvc.SetFiler(importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation,
+			Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost,
+			Now: func() time.Time { return time.Now().UTC() }}, imports.Text)
+		bg.Go(ctx, "documents AI filing", documentsSvc.RunFiling) // every few seconds: uploads to tag and file
+	}
 	emailTemplatesSvc := emailtemplate.New(db, authSvc)
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())

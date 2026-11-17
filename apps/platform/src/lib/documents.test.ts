@@ -4,6 +4,7 @@ import {
   childrenOf,
   daysLeft,
   DEFAULT_VIEW,
+  filingSummary,
   formatSize,
   freeName,
   isRetained,
@@ -13,9 +14,11 @@ import {
   parseView,
   pathTo,
   presetFrom,
+  tagCounts,
   uploadDocument,
   viewToQuery,
   withStar,
+  type DocFile,
   type Folder,
 } from './documents'
 
@@ -164,5 +167,66 @@ describe('uploadDocument', () => {
       code: 'payload_too_large',
       message: 'Upload files of up to 25 MB.',
     })
+  })
+})
+
+const doc = (id: string, over: Partial<DocFile> = {}): DocFile => ({
+  id,
+  name: id,
+  folder_id: null,
+  folder: null,
+  size: 1,
+  content_type: 'application/pdf',
+  kind: 'pdf',
+  sha256: null,
+  tags: [],
+  ai_filing: null,
+  previewable: true,
+  links: [],
+  retained_until: null,
+  uploaded_by: null,
+  created_at: '',
+  updated_at: '',
+  deleted_at: null,
+  deleted_by: null,
+  purge_at: null,
+  ...over,
+})
+const filedInto = (name: string | null) => ({
+  status: 'filed' as const,
+  folder: name ? { id: name, name } : null,
+  created_folder: false,
+  tags: ['x'],
+})
+
+describe('AI filing', () => {
+  it('names the one folder a batch went to', () => {
+    const summary = filingSummary([
+      doc('a', { ai_filing: filedInto('Invoices') }),
+      doc('b', { ai_filing: filedInto('Invoices') }),
+      doc('c', { ai_filing: { ...filedInto(null), status: 'skipped' } }),
+    ])
+    expect(summary).toMatchObject({ moved: 2, folders: 1, folder: 'Invoices' })
+    expect(summary.filed.map((file) => file.id)).toEqual(['a', 'b'])
+  })
+
+  it('counts several folders, and files only tagged', () => {
+    expect(
+      filingSummary([
+        doc('a', { ai_filing: filedInto('Invoices') }),
+        doc('b', { ai_filing: filedInto('Contracts') }),
+        doc('c', { ai_filing: filedInto(null) }),
+      ]),
+    ).toMatchObject({ moved: 2, folders: 2, folder: null })
+    expect(filingSummary([doc('a')]).filed).toEqual([])
+  })
+
+  it('suggests the tags in use, most used first', () => {
+    expect(
+      tagCounts([doc('a', { tags: ['paid', 'invoice'] }), doc('b', { tags: ['invoice'] })]),
+    ).toEqual([
+      { name: 'invoice', count: 2 },
+      { name: 'paid', count: 1 },
+    ])
   })
 })

@@ -132,6 +132,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.removeObjects(r.Context(), key)
 		return err
 	}
+	s.queueFiling(r.Context(), sess, id, folder == nil)
 	return s.writeDocument(w, r, sess, http.StatusCreated, id)
 }
 

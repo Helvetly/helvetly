@@ -5,8 +5,10 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"path"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 // Fake answers without any external call, for end-to-end tests and local development only (HELVETLY_E2E_FAKE_AI, which
@@ -37,6 +39,10 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["name"] != nil {
 		name := []rune(strings.TrimSpace(r.Message))
 		b, _ := json.Marshal(map[string]string{"name": string(name[:min(len(name), 40)])})
+		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
+	}
+	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["new_folder"] != nil {
+		b, _ := json.Marshal(fakeFiling(r.Message))
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 	}
 	// An import that works out the document type (one array per kind) reads the CSV as a client list.
@@ -76,6 +82,50 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		return Reply{}, errors.New("fake model could not encode its answer")
 	}
 	return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
+}
+
+// fakeFiling files by the file name: its first two words (of three letters or more) are the tags; the folder is the
+// first listed one whose name, without a plural s, is in the file name, else a new folder named after the first word.
+func fakeFiling(message string) map[string]any {
+	var name string
+	var folders [][2]string
+	inFolders := false
+	for line := range strings.Lines(message) {
+		line = strings.TrimRight(line, "\n")
+		switch {
+		case strings.HasPrefix(line, "File name: "):
+			name = strings.ToLower(strings.TrimPrefix(line, "File name: "))
+		case line == "Folders:":
+			inFolders = true
+		case line == "":
+			inFolders = false
+		case inFolders:
+			if id, path, ok := strings.Cut(line, "\t"); ok {
+				folders = append(folders, [2]string{id, path})
+			}
+		}
+	}
+	base := strings.TrimSuffix(name, path.Ext(name))
+	var words []string
+	for _, w := range strings.FieldsFunc(base, func(r rune) bool { return !unicode.IsLetter(r) }) {
+		if len([]rune(w)) >= 3 && len(words) < 2 {
+			words = append(words, w)
+		}
+	}
+	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil}
+	for _, f := range folders {
+		leaf := strings.ToLower(f[1][strings.LastIndex(f[1], "/")+1:])
+		if strings.Contains(base, strings.TrimSuffix(leaf, "s")) {
+			out["folder_id"] = f[0]
+			return out
+		}
+	}
+	folder := "Other"
+	if len(words) > 0 {
+		folder = strings.ToUpper(words[0][:1]) + words[0][1:]
+	}
+	out["new_folder"] = folder
+	return out
 }
 
 // recordProperties: the JSON types of each property of the items of the schema's array at key.

@@ -5,13 +5,13 @@ import { useClaimEscape } from '@/components/inline-add'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 
-import { TagsInput } from './fields'
+import { TagsInput, type KnownTag } from './fields'
 
 const same = (a: string[], b: string[]) =>
   a.length === b.length && a.every((tag, index) => tag === b[index])
 
 /**
- * A client's tags edited in place: chips with suggestions from the workspace, saved when focus leaves the
+ * Tags edited in place (a client's, or a file's with `known` suggestions): chips with suggestions from the workspace, saved when focus leaves the
  * field or on Enter with nothing typed; Escape closes it without saving. A failed save keeps the chips and
  * shows why.
  */
@@ -19,10 +19,12 @@ export function InlineTagsEditor({
   initial,
   save,
   onDone,
+  known,
 }: {
   initial: string[]
   save: (tags: string[]) => Promise<unknown>
   onDone: () => void
+  known?: KnownTag[]
 }) {
   const id = useId()
   const [tags, setTags] = useState(initial)
@@ -66,6 +68,7 @@ export function InlineTagsEditor({
         id={id}
         label={translate('tags')}
         value={tags}
+        known={known}
         invalid={Boolean(error)}
         onChange={change}
         onLeave={() => void commit()}

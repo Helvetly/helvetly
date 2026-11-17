@@ -49,6 +49,15 @@ export type DocLink = {
   retains: boolean
 }
 
+/** What AI filing did with an upload: queued, filed (`folder` is where it went), skipped or undone. */
+export type AIFiling = {
+  status: 'queued' | 'filed' | 'skipped' | 'undone'
+  folder: { id: string; name: string } | null
+  created_folder: boolean
+  /** The tags filing added. */
+  tags: string[]
+}
+
 export type DocFile = {
   id: string
   name: string
@@ -58,6 +67,9 @@ export type DocFile = {
   content_type: string
   kind: Kind
   sha256: string | null
+  /** Lower-case, at most 10. */
+  tags: string[]
+  ai_filing: AIFiling | null
   previewable: boolean
   links: DocLink[]
   retained_until: string | null
@@ -302,8 +314,16 @@ export const docsApi = {
   get: (id: string) => request<{ data: DocFile }>(path(id)),
   update: (
     id: string,
-    change: { name?: string; folder_id?: string | null; on_conflict?: OnConflict },
+    change: {
+      name?: string
+      folder_id?: string | null
+      on_conflict?: OnConflict
+      tags?: string[]
+    },
   ) => request<{ data: DocFile }>(path(id), { method: 'PATCH', json: change }),
+  /** Puts an AI-filed file back where it was uploaded and removes the tags filing added. */
+  undoFiling: (id: string) =>
+    request<{ data: DocFile }>(`${path(id)}/filing`, { method: 'DELETE' }),
   copy: (id: string, folderId: string | null) =>
     request<{ data: DocFile }>(`${path(id)}/copy`, {
       method: 'POST',
@@ -329,6 +349,31 @@ export const docsApi = {
   usage: () => request<{ data: Usage }>('/documents/usage'),
   emptyTrash: () =>
     request<{ data: { updated: number } }>('/documents/trash/empty', { method: 'POST' }),
+}
+
+/** The tags in use on the files in view, most used first, for suggestions. */
+export function tagCounts(files: DocFile[]) {
+  const counts = new Map<string, number>()
+  for (const file of files) for (const tag of file.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  return [...counts]
+    .map(([name, count]) => ({ name, count }))
+    .toSorted((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+}
+
+/**
+ * What a batch of AI filings did, for one toast: the files filed, and the one folder they all went to
+ * (null when several, or when filing only tagged them).
+ */
+export function filingSummary(files: DocFile[]) {
+  const filed = files.filter((file) => file.ai_filing?.status === 'filed')
+  const folders = new Set(filed.flatMap((file) => file.ai_filing?.folder?.name ?? []))
+  const moved = filed.filter((file) => file.ai_filing?.folder)
+  return {
+    filed,
+    moved: moved.length,
+    folders: folders.size,
+    folder: folders.size === 1 ? [...folders][0] : null,
+  }
 }
 
 /** Same-origin links, so the browser sends the session cookie. */

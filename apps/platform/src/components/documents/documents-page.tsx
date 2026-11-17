@@ -119,6 +119,7 @@ import { useSession } from '@/lib/queries'
 import type { Template } from '@/lib/templates'
 import { setUrlQuery } from '@/lib/url-query'
 
+import { useAIFilingToast } from './ai-filing'
 import { NewFolderDialog, FolderPickerDialog } from './dialogs'
 import { DropProvider, useDropTarget, type DropActions } from './drop-target'
 import { FolderMark } from './folder-art'
@@ -259,6 +260,7 @@ export function DocumentsPage() {
   >(undefined)
   const [filling, setFilling] = useState<Template | null | undefined>(undefined)
   const uploads = useUploads()
+  useAIFilingToast(uploads.uploads, uploads.clear)
   const importDrawer = useImportDrawer()
   const picker$ = useRef<HTMLInputElement>(null)
   const surface = useRef<HTMLDivElement>(null)

@@ -44,6 +44,8 @@ type Document struct {
 	Kind          string         `json:"kind"`        // set by internal/documents
 	Previewable   bool           `json:"previewable"` // set by internal/documents
 	SHA256        *string        `json:"sha256"`
+	Tags          []string       `json:"tags"`
+	AIFiling      *Filing        `json:"ai_filing"`
 	Links         []DocumentLink `json:"links"`
 	RetainedUntil *string        `json:"retained_until"`
 	UploadedBy    *Uploader      `json:"uploaded_by"`
@@ -396,15 +398,27 @@ func (q Q) ClientsFolder(ctx context.Context, workspaceID, userID string, now ti
 // ---- documents ----
 
 const documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
-		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, x.id, x.name, ` + retentionSQL + `
+		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, x.id, x.name, ` + retentionSQL + `,
+		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}')
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
-	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by `
+	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by
+	LEFT JOIN document_filings ff ON ff.document_id = d.id
+	LEFT JOIN document_folders fl ON fl.id = ff.folder_id AND fl.deleted_at IS NULL `
 
 func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, error) {
 	var d Document
-	var folderName, uid, uname, xid, xname *string
+	var folderName, uid, uname, xid, xname, filing, filedID, filedName *string
+	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
-		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &xid, &xname, &d.RetainedUntil}, extra...)...)
+		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &xid, &xname, &d.RetainedUntil,
+		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags}, extra...)...)
+	if filing != nil {
+		filed.Status = *filing
+		if filedID != nil && filedName != nil {
+			filed.Folder = &FolderRef{ID: *filedID, Name: *filedName}
+		}
+		d.AIFiling = &filed
+	}
 	if d.FolderID != nil && folderName != nil {
 		d.Folder = &FolderRef{ID: *d.FolderID, Name: *folderName}
 	}
@@ -419,6 +433,9 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 		d.PurgeAt = &purge
 	}
 	d.Links = []DocumentLink{}
+	if d.Tags == nil {
+		d.Tags = []string{}
+	}
 	return d, err
 }
 
@@ -490,6 +507,13 @@ func (q Q) UpdateDocument(ctx context.Context, workspaceID, id, name string, fol
 	return err
 }
 
+// SetDocumentTags replaces a live file's tags.
+func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE documents SET tags = $3, updated_at = $4
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
+	return err
+}
+
 // TrashDocument moves a live file to the Trash unless it is a business record; false when it is.
 func (q Q) TrashDocument(ctx context.Context, workspaceID, id, userID, today string, now time.Time) (bool, error) {
 	tag, err := q.db.Exec(ctx, `UPDATE documents d SET deleted_at = $3, deleted_by = $4, trashed_with = NULL
@@ -519,6 +543,7 @@ type DocumentFilter struct {
 	UploadedBy   string
 	From, To     string // YYYY-MM-DD in the workspace's time zone
 	ClientID     string
+	Tag          string
 	Sort         string // a key of DocumentSorts
 	Desc         bool
 }
@@ -560,6 +585,9 @@ func (q Q) ListDocuments(ctx context.Context, workspaceID string, f DocumentFilt
 	if f.ClientID != "" {
 		where = append(where, "EXISTS (SELECT 1 FROM document_links l WHERE l.document_id = d.id AND l.target_type = 'client' AND l.target_id = "+
 			arg(f.ClientID)+")")
+	}
+	if f.Tag != "" {
+		where = append(where, arg(f.Tag)+" = ANY(d.tags)")
 	}
 	order, ok := DocumentSorts[f.Sort]
 	if !ok {

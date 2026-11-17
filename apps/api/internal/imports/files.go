@@ -331,3 +331,24 @@ func docxText(b []byte) (string, error) {
 	}
 	return "", unsupported{"the Word file has no document part."}
 }
+
+// Text is the readable text of a text, CSV, Word or Excel file (decided from its bytes), cut to about limit bytes;
+// "" for any other file. AI filing reads it to see what a document is about.
+func Text(b []byte, limit int) string {
+	ct, err := sniff("", b)
+	if err != nil {
+		return ""
+	}
+	parts, err := chunks("", ct, b)
+	if err != nil {
+		return ""
+	}
+	var out strings.Builder
+	for _, c := range parts {
+		if c.file != nil || out.Len() >= limit {
+			break
+		}
+		out.WriteString(c.text)
+	}
+	return strings.ToValidUTF8(out.String()[:min(out.Len(), limit)], "")
+}
