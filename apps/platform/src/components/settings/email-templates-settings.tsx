@@ -26,8 +26,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
-import { SettingsPage, SettingsSection } from './layout'
-import { SettingsHeader } from './settings-tabs'
+import { SettingsSection } from './layout'
 
 const KIND_LABELS: Record<EmailKind, string> = {
   invoice: translate('emailTemplatesKindInvoice'),
@@ -65,81 +64,71 @@ function templateFieldErrors(error: unknown): FieldErrors | null {
   )
 }
 
-export function EmailTemplatesSettingsPage() {
+/** The email wording as sections of the workspace settings page; each shows the standard text until it is customised. */
+export function EmailTemplatesSections() {
   const templates = useEmailTemplates()
   const writable = useCan('write:invoice-settings')
   const [kind, setKind] = useState<EmailKind>('invoice')
   const [language, setLanguage] = useState<EmailLanguage>('de')
   const data = templates.data
+  if (templates.error)
+    return (
+      <LoadProblem
+        error={templates.error}
+        what={translate('emailTemplatesWhat')}
+        onRetry={() => void templates.refetch()}
+      />
+    )
+  if (!data) return <Loader className="min-h-36" />
   return (
     <>
-      <SettingsHeader />
-      <SettingsPage
+      <SettingsSection
+        id="email-template-pick"
+        icon={Mail}
         title={translate('emailTemplatesTitle')}
         description={translate('emailTemplatesDescription')}
       >
-        {templates.error ? (
-          <LoadProblem
-            error={templates.error}
-            what={translate('emailTemplatesWhat')}
-            onRetry={() => void templates.refetch()}
+        <div className="grid gap-4">
+          <Segmented
+            label={translate('emailTemplatesKind')}
+            value={kind}
+            options={EMAIL_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
+            onChange={setKind}
           />
-        ) : data ? (
-          <>
-            <SettingsSection
-              id="email-template-pick"
-              icon={Mail}
-              title={translate('emailTemplatesPickTitle')}
-              description={translate('emailTemplatesPickDescription')}
-            >
-              <div className="grid gap-4">
-                <Segmented
-                  label={translate('emailTemplatesKind')}
-                  value={kind}
-                  options={EMAIL_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
-                  onChange={setKind}
-                />
-                <Segmented
-                  label={translate('emailTemplatesLanguage')}
-                  value={language}
-                  options={EMAIL_LANGUAGES.map((code) => {
-                    const custom = data.find(
-                      (entry) => entry.kind === kind && entry.language === code,
-                    )?.custom
-                    return {
-                      value: code,
-                      // The dot says "customised" to the eye; the name says it to everyone else.
-                      name: custom
-                        ? `${LANGUAGE_NAMES[code]}, ${translate('emailTemplatesCustom').toLowerCase()}`
-                        : undefined,
-                      label: (
-                        <span className="inline-flex items-center gap-1.5">
-                          {LANGUAGE_NAMES[code]}
-                          {custom && (
-                            <span aria-hidden className="size-1.5 rounded-full bg-primary" />
-                          )}
-                        </span>
-                      ),
-                    }
-                  })}
-                  onChange={setLanguage}
-                />
-              </div>
-            </SettingsSection>
-            {/* Every template keeps its own unsaved edits while another is shown. */}
-            {data.map((template) => (
-              <TemplateEditor
-                key={`${template.kind}-${template.language}`}
-                template={template}
-                shown={template.kind === kind && template.language === language}
-                writable={writable}
-              />
-            ))}
-          </>
-        ) : (
-          <Loader className="min-h-36" />
-        )}
-      </SettingsPage>
+          <Segmented
+            label={translate('emailTemplatesLanguage')}
+            value={language}
+            options={EMAIL_LANGUAGES.map((code) => {
+              const custom = data.find(
+                (entry) => entry.kind === kind && entry.language === code,
+              )?.custom
+              return {
+                value: code,
+                // The dot says "customised" to the eye; the name says it to everyone else.
+                name: custom
+                  ? `${LANGUAGE_NAMES[code]}, ${translate('emailTemplatesCustom').toLowerCase()}`
+                  : undefined,
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    {LANGUAGE_NAMES[code]}
+                    {custom && <span aria-hidden className="size-1.5 rounded-full bg-primary" />}
+                  </span>
+                ),
+              }
+            })}
+            onChange={setLanguage}
+          />
+        </div>
+      </SettingsSection>
+      {/* Every template keeps its own unsaved edits while another is shown. */}
+      {data.map((template) => (
+        <TemplateEditor
+          key={`${template.kind}-${template.language}`}
+          template={template}
+          shown={template.kind === kind && template.language === language}
+          writable={writable}
+        />
+      ))}
     </>
   )
 }

@@ -24,16 +24,20 @@ import { setCsrfToken } from '@/lib/api'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { canManage, useDeleteWorkspace } from '@/lib/members'
+import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import { useUpdateWorkspace, type WorkspaceUpdate } from '@/lib/workspaces'
 
 import { DangerRow, DangerZone } from './danger-zone'
+import { EmailTemplatesSections } from './email-templates-settings'
 import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from './layout'
 import { SettingsHeader } from './settings-tabs'
 import { WorkspaceLogoSection } from './workspace-logo'
 
 export function WorkspaceSettings() {
   const session = useSession().data
+  // The email wording is read through the invoice settings' scope: without it the section stays out.
+  const showEmails = useCan('read:invoice-settings')
   return (
     <>
       <SettingsHeader />
@@ -53,6 +57,7 @@ export function WorkspaceSettings() {
               logoUrl={session.workspace.logo_url}
               canEdit={canManage(session.role)}
             />
+            {showEmails && <EmailTemplatesSections />}
             {session.role === 'owner' && <ExportCard />}
             {session.role === 'owner' && <DeleteCard name={session.workspace.name} />}
           </>

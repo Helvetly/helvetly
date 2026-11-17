@@ -141,7 +141,6 @@ test('the settings tabs mark this page and open another one', async () => {
     'API & MCP',
     'Billing',
     'Invoices',
-    'Emails',
     'VAT return',
     'Ledger',
     'Closing',

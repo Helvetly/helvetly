@@ -29,11 +29,11 @@ test('owner customises the English invoice email, the send dialog shows it rende
   const { client, invoice } = await issued(api, 'en')
   const number = text(invoice.number)
 
-  await page.goto('/settings/emails')
+  await page.goto('/settings/workspace')
   await page.getByRole('radio', { name: 'English' }).click()
   await page.locator('#email-template-invoice-en-subject').fill('Bill {number} for {client}')
   await page.locator('#email-template-invoice-en-body').fill('Dear {client}, see {number}.')
-  await page.getByRole('button', { name: 'Save' }).filter({ visible: true }).first().click()
+  await page.locator('#email-template-invoice-en').getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('radio', { name: 'English, customised' })).toBeVisible()
 
   // A refresh keeps the saved template.
@@ -61,7 +61,7 @@ test('owner customises the English invoice email, the send dialog shows it rende
   await page.keyboard.press('Escape')
 
   // Reset restores the standard wording.
-  await page.goto('/settings/emails')
+  await page.goto('/settings/workspace')
   await page.getByRole('radio', { name: 'English, customised' }).click()
   await page.getByRole('button', { name: 'Reset to default' }).click()
   await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeVisible()
@@ -110,14 +110,14 @@ test('a member without invoice-settings write sees the page read-only and the AP
   await api.save('/members/invitations', {
     email,
     role: 'member',
-    scopes: ['read:invoice-settings'],
+    scopes: ['read:workspace', 'read:invoice-settings'],
     send_email: false,
   })
   const context = await browser.newContext({ baseURL })
   try {
     const member = await signIn(context.request, email)
     const page = await context.newPage()
-    await page.goto('/settings/emails')
+    await page.goto('/settings/workspace')
     await expect(
       page
         .getByText('Only people who can edit invoice settings can change these templates.')

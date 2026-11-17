@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { EmailTemplatesSettingsPage } from '@/components/settings/email-templates-settings'
+import { EmailTemplatesSections } from '@/components/settings/email-templates-settings'
+import { SettingsPage } from '@/components/settings/layout'
+import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { emailTemplateHandlers, resetEmailTemplatesMock } from '@/mocks/email-templates'
 
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone } from './pages/frame'
@@ -14,10 +16,13 @@ const meta = {
     closeHeidi()
     resetEmailTemplatesMock()
   },
-  parameters: pageParameters('/settings/emails', {}, [...emailTemplateHandlers]),
+  parameters: pageParameters('/settings/workspace', {}, [...emailTemplateHandlers]),
   render: () => (
     <Frame>
-      <EmailTemplatesSettingsPage />
+      <SettingsHeader />
+      <SettingsPage title="Workspace" description="">
+        <EmailTemplatesSections />
+      </SettingsPage>
     </Frame>
   ),
   globals: desktop,
@@ -73,22 +78,22 @@ export const Custom: Story = {
 export const CustomDark = dark(Custom)
 
 export const Loading: Story = {
-  parameters: pageParameters('/settings/emails', {}, [
+  parameters: pageParameters('/settings/workspace', {}, [
     http.get('/api/v1/email-templates', async () => {
       await delay('infinite')
       return HttpResponse.json({ data: [] })
     }),
   ]),
   play: async () => {
-    await expect(
-      await body().findByText('Email templates', undefined, { timeout: 8000 }),
-    ).toBeVisible()
+    await waitFor(() => expect(body().getByRole('status', { name: 'Loading' })).toBeVisible(), {
+      timeout: 8000,
+    })
     await expect(body().queryByRole('textbox', { name: 'Message' })).toBeNull()
   },
 }
 
 export const LoadError: Story = {
-  parameters: pageParameters('/settings/emails', {}, [
+  parameters: pageParameters('/settings/workspace', {}, [
     http.get('/api/v1/email-templates', () =>
       HttpResponse.json({ error: { code: 'unavailable', message: 'Down.' } }, { status: 503 }),
     ),
@@ -102,7 +107,7 @@ export const LoadError: Story = {
 
 /** The server's refusal lands under its field. */
 export const ValidationError: Story = {
-  parameters: pageParameters('/settings/emails', {}, [
+  parameters: pageParameters('/settings/workspace', {}, [
     http.put('/api/v1/email-templates/:kind/:language', () =>
       HttpResponse.json(
         {
@@ -131,8 +136,8 @@ export const ValidationError: Story = {
 
 /** Without invoice-settings edit the fields are shown, disabled, with no Save and no chips. */
 export const ReadOnly: Story = {
-  parameters: pageParameters('/settings/emails', {}, [
-    sessionHandler({ role: 'member', scopes: ['read:invoice-settings'] }),
+  parameters: pageParameters('/settings/workspace', {}, [
+    sessionHandler({ role: 'member', scopes: ['read:workspace', 'read:invoice-settings'] }),
     ...emailTemplateHandlers,
   ]),
   play: async () => {
