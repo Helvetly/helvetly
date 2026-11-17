@@ -3,7 +3,7 @@ import { yearOf } from '@helvetly/ui/lib/price'
 import type { Billing, Entitlement, FeatureKey, LimitKey, PlanId } from '@/lib/billing'
 
 const GB = 1_000_000_000
-// One seat's values of offer helvetly (apps/api/internal/store/migrations/00014_offer_v2.sql); 0 is not included,
+// One seat's values of offer helvetly-v1 (apps/api/internal/store/migrations/00007_offers.sql); 0 is not included,
 // null unlimited (members: no cap on a per-seat price).
 const basic: Record<LimitKey, number | null> = {
   members: null,

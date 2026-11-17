@@ -41,6 +41,22 @@ func (e *env) publishVariant(change func(*Offer)) string {
 	return o.ID
 }
 
+// publishOlder publishes the current offer changed by change under id, through the operator's path, dated before the
+// offer on sale so that one stays current: a workspace on it is on an older offer.
+func (e *env) publishOlder(id string, change func(*Offer)) {
+	e.t.Helper()
+	o := e.currentOffer()
+	change(&o)
+	o.ID = id
+	if err := PublishOffer(context.Background(), e.st, o, "test", "older offer"); err != nil {
+		e.t.Fatal(err)
+	}
+	// Published offers are immutable; only this test's own database is backdated.
+	e.exec(`ALTER TABLE offer_versions DISABLE TRIGGER offer_versions_immutable`)
+	e.exec(`UPDATE offer_versions SET published_at = (SELECT min(published_at) FROM offer_versions) - interval '1 day' WHERE id = $1`, id)
+	e.exec(`ALTER TABLE offer_versions ENABLE TRIGGER offer_versions_immutable`)
+}
+
 // setPlanValue publishes a variant where key on plan has state and value (nil: none), without per-seat growth.
 func (e *env) setPlanValue(plan string, key Limit, state string, value *int64) {
 	e.t.Helper()

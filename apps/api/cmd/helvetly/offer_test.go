@@ -50,7 +50,7 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-email-2026-11" || len(c.Plans) != 3 ||
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1" || len(c.Plans) != 3 ||
 		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
 		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
 		t.Fatalf("catalog: %q %v", out, err)

@@ -37,15 +37,14 @@ describe('plans', () => {
 
 describe('full comparison', () => {
   // The offer's access features as seeded: key -> plans with the feature on.
+  const sql = readFileSync(join(api, 'store/migrations/00007_offers.sql'), 'utf8')
+  const offer: {
+    records: { key: string; type: string; values: Record<string, { state: string }> }[]
+  } = JSON.parse(sql.slice(sql.indexOf("now(), '") + "now(), '".length, sql.indexOf("\n');")))
   const seeded = new Map(
-    [
-      ...readFileSync(join(api, 'store/migrations/00014_offer_v2.sql'), 'utf8').matchAll(
-        /\{"key": "(\w+)", "type": "access".*?"values": (\{.*?\}\})/g,
-      ),
-    ].map(([, key, values]) => {
-      const states: Record<string, { state: string }> = JSON.parse(values ?? '{}')
-      return [key, PLAN_IDS.filter((id) => states[id]?.state === 'enabled')]
-    }),
+    offer.records
+      .filter((r) => r.type === 'access')
+      .map((r) => [r.key, PLAN_IDS.filter((id) => r.values[id]?.state === 'enabled')]),
   )
   const rows = FEATURE_GROUPS.flatMap((g) => g.rows).filter((r) => !(r.key in LIMITS))
 

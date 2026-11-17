@@ -387,7 +387,7 @@ export const plansIn = perLanguage((translate, language) => {
     limit,
   })
 
-  /** Every feature of the offer by area, as plan access in 00014_offer_v2.sql (checked in plans.test.ts). */
+  /** Every feature of the offer by area, as plan access in 00007_offers.sql (checked in plans.test.ts). */
   const FEATURE_GROUPS: FeatureGroup[] = [
     {
       title: translate('featureGroupInvoicing'),
