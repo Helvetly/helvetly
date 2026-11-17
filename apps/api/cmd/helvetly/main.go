@@ -220,7 +220,7 @@ func run() error {
 		importModel = aimodel.Fake{}
 	}
 	importsSvc := imports.New(db, authSvc, files, slog.Default(), imports.Options{
-		Provider: importModel, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
+		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
 	})
 	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
 	emailTemplatesSvc := emailtemplate.New(db, authSvc)

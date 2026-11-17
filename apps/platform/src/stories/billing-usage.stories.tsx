@@ -111,6 +111,37 @@ export const AtLimit: Story = {
 export const AtLimitDark: Story = { ...AtLimit, parameters: { dark: true } }
 
 /**
+ * Heidi and AI import & filing are separate allowances: the import pool used up, Heidi still open. Each row says in its
+ * help tip that the other has its own allowance.
+ */
+export const AIPools: Story = {
+  args: {
+    billing: onPlan('pro', {
+      ai_tokens_per_month: 1_200_000,
+      ai_automation_tokens_per_month: 5_000_000,
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const heidi = row(canvasElement, 'Heidi AI tokens')
+    const automation = row(canvasElement, 'AI import & filing tokens')
+    await expect(heidi).toHaveAttribute('data-state', 'ok')
+    await expect(heidi).toHaveTextContent("1'200'000 of 5'000'000")
+    await expect(automation).toHaveAttribute('data-state', 'full')
+    await expect(canvasElement.querySelector('[data-slot=usage-nudge]')).toHaveTextContent(
+      'AI import & filing tokens: the plan’s limit is reached.',
+    )
+    await userEvent.hover(within(heidi).getByRole('button', { name: /Heidi AI tokens/ }))
+    await expect(
+      await within(document.body).findAllByText(
+        /AI import and document filing have their own allowance/,
+      ),
+    ).not.toHaveLength(0)
+  },
+}
+export const AIPoolsDark: Story = { ...AIPools, parameters: { dark: true } }
+export const AIPoolsPhone: Story = { ...AIPools, ...phone }
+
+/**
  * Business: no cap on clients, products, engagements, invoices, quotes, expenses and signatures; the count with
  * "of unlimited" and no meter to fill, never under pressure. An operator's unlimited value reads the same.
  */
@@ -200,6 +231,7 @@ export const Trial: Story = {
           invoices_per_month: { state: 'limited', value: 10, reset_at: null, per_seat: false },
           quotes_per_month: { state: 'limited', value: 10, reset_at: null, per_seat: false },
           ai_tokens_per_month: { reset_at: null, per_seat: false },
+          ai_automation_tokens_per_month: { reset_at: null, per_seat: false },
           emails_per_month: { reset_at: null, per_seat: false },
         },
       ),

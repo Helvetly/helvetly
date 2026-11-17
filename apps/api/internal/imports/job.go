@@ -289,9 +289,9 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	case errors.Is(err, aimodel.ErrUnaccounted):
 		return "", nil, failure{"The AI model's answer was lost and its usage is unknown, so it is not asked again. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrQuota):
-		return "", nil, failure{"This workspace has used its monthly AI allowance. The rest of this file was not read."}
+		return "", nil, failure{"This workspace has used its monthly AI import and filing allowance. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrTooLarge):
-		return "", nil, failure{"This part of the file is larger than the remaining monthly AI allowance."}
+		return "", nil, failure{"This part of the file is larger than the remaining monthly AI import and filing allowance."}
 	case errors.Is(err, aimodel.ErrCap):
 		return "", nil, failure{"This file is larger than one AI import may read, whatever is left of the monthly allowance. Split it into smaller files and upload them again."}
 	case errors.Is(err, aimodel.ErrAttempts):

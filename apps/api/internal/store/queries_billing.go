@@ -54,7 +54,8 @@ type Usage struct {
 	QuotesThisMonth                                        int64 // quotes first sent in the quota months
 	Products, Engagements, SignaturesThisMonth             int64
 	StorageBytes                                           int64 // stored_objects: bytes kept in storage
-	AITokensThisMonth                                      int64 // heidi_usage of the quota month
+	AITokensThisMonth                                      int64 // Heidi's pool of heidi_usage in the quota months
+	AIAutomationTokensThisMonth                            int64 // the automation pool (AI import, filing)
 	InvoiceDrafts, QuotesRetained                          int64
 	AutomationsThisMonth                                   int64 // automatic actions used and reserved
 	EmailsThisMonth                                        int64
@@ -161,14 +162,15 @@ func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now ti
 				AND (cancelled_on IS NULL OR cancelled_on >= $3::date) AND (end_date IS NULL OR end_date >= $3::date)),
 			coalesce((SELECT n FROM monthly WHERE resource = 'signatures_per_month'), 0),
 			(SELECT coalesce(sum(size), 0) FROM stored_objects WHERE workspace_id = $1),
-			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4),
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4 AND pool = 'heidi'),
+			(SELECT coalesce(sum(tokens_used), 0) FROM heidi_usage WHERE workspace_id = $1 AND period BETWEEN $2 AND $4 AND pool = 'automation'),
 			(SELECT count(*) FROM invoices WHERE workspace_id = $1 AND status = 'draft'),
 			(SELECT count(*) FROM quotes WHERE workspace_id = $1),
 			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0),
 			coalesce((SELECT n FROM monthly WHERE resource = 'emails_per_month'), 0),
 			coalesce((SELECT n FROM monthly WHERE resource = 'quotes_per_month'), 0)`,
 		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
-		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained,
+		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.AIAutomationTokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained,
 		&u.AutomationsThisMonth, &u.EmailsThisMonth, &u.QuotesThisMonth)
 	return u, err
 }
@@ -380,12 +382,12 @@ func (q Q) ForgetTrialClaims(ctx context.Context, before time.Time) (int64, erro
 	return tag.RowsAffected(), err
 }
 
-// AIUsage is the model tokens and cost in micro-USD the workspace used or holds reserved in the heidi_usage months from
-// through to (2006-01, both included).
-func (q Q) AIUsage(ctx context.Context, workspaceID, from, to string) (tokens, micros int64, err error) {
+// AIUsage is the model tokens and cost in micro-USD the workspace used or holds reserved in one pool's heidi_usage
+// months from through to (2006-01, both included).
+func (q Q) AIUsage(ctx context.Context, workspaceID, pool, from, to string) (tokens, micros int64, err error) {
 	err = q.db.QueryRow(ctx, `SELECT coalesce(sum(tokens_used + tokens_reserved), 0)::bigint,
 			coalesce(sum(cost_micros + cost_reserved_micros), 0)::bigint
-		FROM heidi_usage WHERE workspace_id = $1 AND period >= $2 AND period <= $3`, workspaceID, from, to).Scan(&tokens, &micros)
+		FROM heidi_usage WHERE workspace_id = $1 AND period >= $2 AND period <= $3 AND pool = $4`, workspaceID, from, to, pool).Scan(&tokens, &micros)
 	return tokens, micros, err
 }
 

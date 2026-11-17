@@ -202,7 +202,8 @@ export function planFact(key: LimitKey, value: number | null): { value: string; 
       ? { value: translate('anyNumber'), label: translate('ofPeople') }
       : { value: formatLimit(key, value + 1), label: translate('peopleAtMost') }
   if (value === null) return { value: translate('unlimited2'), label }
-  if (key === 'ai_tokens_per_month') return { value: formatTokens(value), label }
+  if (key === 'ai_tokens_per_month' || key === 'ai_automation_tokens_per_month')
+    return { value: formatTokens(value), label }
   return { value: formatLimit(key, value), label }
 }
 

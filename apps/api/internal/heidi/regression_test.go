@@ -268,7 +268,7 @@ func TestProviderUsageIsActualAndInputBudgetIsCheckedBeforeGeneration(t *testing
 	if w.Code != 200 {
 		t.Fatalf("provider: %d %s", w.Code, w.Body)
 	}
-	u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, s.now().In(sess.Workspace.Location()).Format("2006-01"))
+	u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, aimodel.PoolHeidi, s.now().In(sess.Workspace.Location()).Format("2006-01"))
 	if err != nil || u.TokensUsed != 43 || u.Uncertain {
 		t.Fatalf("usage=%+v err=%v", u, err)
 	}
@@ -277,7 +277,7 @@ func TestProviderUsageIsActualAndInputBudgetIsCheckedBeforeGeneration(t *testing
 	if w.Code != 403 || p.calls.Load() != 1 {
 		t.Fatalf("oversized input generated: %d calls=%d %s", w.Code, p.calls.Load(), w.Body)
 	}
-	u, err = s.db.HeidiUsage(context.Background(), sess.Workspace.ID, s.now().In(sess.Workspace.Location()).Format("2006-01"))
+	u, err = s.db.HeidiUsage(context.Background(), sess.Workspace.ID, aimodel.PoolHeidi, s.now().In(sess.Workspace.Location()).Format("2006-01"))
 	if err != nil || u.Uncertain || u.TokensUsed != 43 {
 		t.Fatalf("declined input usage=%+v err=%v", u, err)
 	}
@@ -299,7 +299,7 @@ func TestUnknownProviderUsageBlocksOnlyFurtherModelCalls(t *testing.T) {
 	if w.Code != 503 || p.calls.Load() != 1 {
 		t.Fatalf("unknown usage retried provider: %d calls=%d", w.Code, p.calls.Load())
 	}
-	u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, s.now().In(sess.Workspace.Location()).Format("2006-01"))
+	u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, aimodel.PoolHeidi, s.now().In(sess.Workspace.Location()).Format("2006-01"))
 	if err != nil || !u.Uncertain || u.TokensUsed != 0 {
 		t.Fatalf("unknown was fabricated: %+v %v", u, err)
 	}

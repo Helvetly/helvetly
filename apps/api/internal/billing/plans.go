@@ -96,11 +96,16 @@ const (
 	Engagements Limit = "engagements"            // engagements not cancelled and not ended
 	Signatures  Limit = "signatures_per_month"   // signature packages sent this quota month (usage_events)
 	Storage     Limit = "storage_bytes"          // bytes kept in storage (stored_objects)
-	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi and the AI import used this month (heidi_usage)
-	AICost      Limit = "ai_cost_usd_micros"     // the internal model cost guard in micro-USD, never shown as a limit
+	AITokens    Limit = "ai_tokens_per_month"    // model tokens Heidi used this month (heidi_usage, Heidi's pool)
+	AICost      Limit = "ai_cost_usd_micros"     // Heidi's internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
 
 	AutomationActions Limit = store.AutomationActions // automatic actions this quota month (usage_events)
+
+	// The automation pool: model tokens AI import and automatic filing used this month, apart from Heidi's
+	// (heidi_usage, the automation pool), and its internal cost guard in micro-USD.
+	AIAutomationTokens Limit = "ai_automation_tokens_per_month"
+	AIAutomationCost   Limit = "ai_automation_cost_usd_micros"
 
 	InvoiceDrafts  Limit = "invoice_drafts"  // invoice drafts that exist, of any kind
 	QuotesRetained Limit = "quotes_retained" // quotes that exist, a revision being the same quote
@@ -117,7 +122,7 @@ const gb = 1_000_000_000 // storage is sold in decimal gigabytes (the offer)
 var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
 
 // limitOrder is the order limits are listed in.
-var limitOrder = []Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens}
+var limitOrder = []Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens, AIAutomationTokens}
 
 // quotaStart is when b's workspace's monthly counts start: now's quota month (UTC), or a trial's start, whose
 // allowances last the whole trial and do not restart with a month.
@@ -208,6 +213,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.StorageBytes
 	case AITokens:
 		return u.AITokensThisMonth
+	case AIAutomationTokens:
+		return u.AIAutomationTokensThisMonth
 	case InvoiceDrafts:
 		return u.InvoiceDrafts
 	case QuotesRetained:

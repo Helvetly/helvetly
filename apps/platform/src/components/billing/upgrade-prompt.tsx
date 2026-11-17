@@ -64,6 +64,7 @@ const TITLES: Record<string, string> = {
   signatures_per_month: translate('monthlySignatureLimitReached'),
   storage_bytes: translate('storageIsFull'),
   ai_tokens_per_month: translate('monthlyAIAllowanceUsed'),
+  ai_automation_tokens_per_month: translate('monthlyAIAutomationAllowanceUsed'),
   automation_actions_per_month: translate('monthlyAutomationActionsUsed'),
   emails_per_month: translate('monthlyEmailAllowanceUsed'),
 }

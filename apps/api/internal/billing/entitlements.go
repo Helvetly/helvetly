@@ -137,7 +137,7 @@ func (s *Service) entitlementsOf(ctx context.Context, q store.Q, workspaceID str
 	}
 	r.prorate(b, s.now())
 	if b.Status == "past_due" { // a payment is overdue: no new model cost until it is paid, the rest works on in the grace
-		for _, l := range []Limit{AITokens, AICost} {
+		for _, l := range []Limit{AITokens, AICost, AIAutomationTokens, AIAutomationCost} {
 			if e, ok := r.Items[string(l)]; ok {
 				e.State, e.Value, e.Source = StateLimited, 0, SourcePaymentOverdue
 				r.Items[string(l)] = e

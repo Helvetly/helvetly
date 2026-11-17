@@ -68,7 +68,7 @@ func (c chargeback) refund(eventID, charge string, amount int) {
 }
 
 func (c chargeback) use(tokens int64) {
-	c.e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, updated_at) VALUES ($1, $2, $3, now())`,
+	c.e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, updated_at) VALUES ($1, 'heidi', $2, $3, now())`,
 		c.ws, time.Now().UTC().Format("2006-01"), tokens)
 }
 

@@ -239,9 +239,9 @@ func previewError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, aimodel.ErrQuota):
-		return auth.Error(http.StatusForbidden, "quota_exceeded", "This workspace has used its monthly AI allowance.", nil)
+		return auth.Error(http.StatusForbidden, "quota_exceeded", "This workspace has used its monthly AI import and filing allowance.", nil)
 	case errors.Is(err, aimodel.ErrTooLarge):
-		return auth.Error(http.StatusForbidden, "quota_exceeded", "This receipt is larger than the remaining monthly AI allowance.", nil)
+		return auth.Error(http.StatusForbidden, "quota_exceeded", "This receipt is larger than the remaining monthly AI import and filing allowance.", nil)
 	case errors.Is(err, aimodel.ErrCap), errors.Is(err, aimodel.ErrAttempts):
 		return auth.Error(http.StatusRequestEntityTooLarge, "receipt_too_large", "This receipt is larger than one AI reading may be. Use a smaller photo or enter the details yourself.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):

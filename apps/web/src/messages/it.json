@@ -817,7 +817,7 @@
   "revolutMeLinkAndQRThePayerEntersTheDisplayed": "Link revolut.me e QR; chi paga inserisce l’importo e il riferimento visualizzati. Nessuna sincronizzazione bancaria o conferma automatica del pagamento.",
   "yourSwissBackOffice": "La tua amministrazione svizzera, ",
   "yourWorkspaceBecomesReadOnlyNothingIsDeletedYou": "Il tuo spazio di lavoro passa in sola lettura. Nulla viene eliminato, puoi ancora leggere e scaricare tutto e scegliere di nuovo un piano lo sblocca immediatamente.",
-  "yourWorkspaceSharesTheAITokensContributedByEach": "Il tuo spazio di lavoro condivide i token IA apportati da ogni membro pagante del team. Heidi e l’importazione con IA richiedono {value2}: Pro include {value3} token e Business {value4} per membro pagante del team al mese, mentre Basic non ne include. Richieste, risposte e contesto della conversazione consumano token, quindi non esiste un numero fisso di documenti o conversazioni.",
+  "yourWorkspaceSharesTheAITokensContributedByEach": "Il tuo spazio di lavoro condivide i token IA apportati da ogni membro pagante del team. Heidi e l’importazione IA richiedono {value2}. Heidi ha una propria quota mensile: Pro include {value3} e Business {value4} token per membro pagante, Basic nessuno. L’importazione IA e l’archiviazione automatica dei documenti hanno una quota separata della stessa dimensione e non usano mai i token di Heidi. Richieste, risposte e contesto della conversazione consumano token, quindi non esiste un numero fisso di documenti o conversazioni.",
   "priceUnavailable": "Prezzo non disponibile",
   "pricingIsTemporarilyUnavailable": "I prezzi sono temporaneamente non disponibili.",
   "tryAgainInAMomentOrWriteTo": "Riprova tra poco oppure scrivi a",

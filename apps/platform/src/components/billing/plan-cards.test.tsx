@@ -333,7 +333,8 @@ test('features read from the limits', () => {
     '20 active engagements per workspace',
     '50 signature requests a month per team member',
     '5 GB storage per team member',
-    "5'000'000 AI tokens a month per team member",
+    "5'000'000 Heidi AI tokens a month per team member",
+    "5'000'000 AI import & filing tokens a month per team member",
   ])
 })
 
@@ -349,7 +350,8 @@ test('Business lists its uncapped records and quotes as unlimited, never as a nu
     'Unlimited active engagements',
     'Unlimited signature requests',
     '20 GB storage per team member',
-    "20'000'000 AI tokens a month per team member",
+    "20'000'000 Heidi AI tokens a month per team member",
+    "20'000'000 AI import & filing tokens a month per team member",
   ])
 })
 
@@ -365,7 +367,8 @@ test('a larger plan lists only what grows over the one before it', () => {
     '20 active engagements per workspace',
     '50 signature requests a month per team member',
     '5 GB storage per team member',
-    "5'000'000 AI tokens a month per team member",
+    "5'000'000 Heidi AI tokens a month per team member",
+    "5'000'000 AI import & filing tokens a month per team member",
   ])
   expect(limitLine('members', 1)).toBe('1 member besides the owner')
   expect(limitLine('invoices_per_month', 1)).toBe('1 invoice issue a month per team member')
@@ -465,12 +468,12 @@ test('limits read as short facts with the key number first', () => {
   expect(planFact('members', 24)).toEqual({ value: '25', label: 'people at most' })
   expect(planFact('ai_tokens_per_month', 250_000)).toEqual({
     value: "250'000",
-    label: 'AI tokens / month',
+    label: 'Heidi AI tokens / month',
   })
   expect(planFact('storage_bytes', 5_000_000_000)).toEqual({ value: '5 GB', label: 'storage' })
   expect(planFact('ai_tokens_per_month', 5_000_000)).toEqual({
     value: '5M',
-    label: 'AI tokens / month',
+    label: 'Heidi AI tokens / month',
   })
 })
 

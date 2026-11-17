@@ -123,8 +123,9 @@ func (q Q) DeleteHeidiConfirmation(ctx context.Context, workspace, user, convers
 	return err
 }
 
-// HeidiUsage is a workspace's model usage in one month, shared by Heidi and AI import: tokens and their cost in
-// micro-USD, used and reserved by calls in flight or not yet reconciled (ai_calls).
+// HeidiUsage is a workspace's model usage of one pool in one month (aimodel.PoolHeidi for Heidi, PoolAutomation for
+// AI import and filing): tokens and their cost in micro-USD, used and reserved by calls in flight or not yet
+// reconciled (ai_calls).
 type HeidiUsage struct {
 	TokensUsed, TokensReserved int64
 	CostMicros, CostReserved   int64
@@ -137,9 +138,9 @@ func (u *HeidiUsage) fields() []any {
 	return []any{&u.TokensUsed, &u.TokensReserved, &u.CostMicros, &u.CostReserved, &u.Uncertain}
 }
 
-func (q Q) HeidiUsage(ctx context.Context, workspace, period string) (HeidiUsage, error) {
+func (q Q) HeidiUsage(ctx context.Context, workspace, pool, period string) (HeidiUsage, error) {
 	var u HeidiUsage
-	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2`, workspace, period).Scan(u.fields()...)
+	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2 AND pool=$3`, workspace, period, pool).Scan(u.fields()...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return HeidiUsage{}, nil
 	}
@@ -147,17 +148,17 @@ func (q Q) HeidiUsage(ctx context.Context, workspace, period string) (HeidiUsage
 }
 
 // LockHeidiUsage protects provider admission; a missing row is zero usage, never a fabricated provider result.
-func (q Q) LockHeidiUsage(ctx context.Context, workspace, period string, now time.Time) (HeidiUsage, error) {
-	if _, err := q.db.Exec(ctx, `INSERT INTO heidi_usage(workspace_id,period,updated_at) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, workspace, period, now); err != nil {
+func (q Q) LockHeidiUsage(ctx context.Context, workspace, pool, period string, now time.Time) (HeidiUsage, error) {
+	if _, err := q.db.Exec(ctx, `INSERT INTO heidi_usage(workspace_id,period,pool,updated_at) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`, workspace, period, pool, now); err != nil {
 		return HeidiUsage{}, err
 	}
 	var u HeidiUsage
-	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2 FOR UPDATE`, workspace, period).Scan(u.fields()...)
+	err := q.db.QueryRow(ctx, `SELECT `+heidiUsageColumns+` FROM heidi_usage WHERE workspace_id=$1 AND period=$2 AND pool=$3 FOR UPDATE`, workspace, period, pool).Scan(u.fields()...)
 	return u, err
 }
-func (q Q) SaveHeidiUsage(ctx context.Context, workspace, period string, u HeidiUsage, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE heidi_usage SET tokens_used=$3,tokens_reserved=$4,cost_micros=$5,cost_reserved_micros=$6,uncertain=$7,updated_at=$8 WHERE workspace_id=$1 AND period=$2`,
-		workspace, period, u.TokensUsed, u.TokensReserved, u.CostMicros, u.CostReserved, u.Uncertain, now)
+func (q Q) SaveHeidiUsage(ctx context.Context, workspace, pool, period string, u HeidiUsage, now time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE heidi_usage SET tokens_used=$3,tokens_reserved=$4,cost_micros=$5,cost_reserved_micros=$6,uncertain=$7,updated_at=$8 WHERE workspace_id=$1 AND period=$2 AND pool=$9`,
+		workspace, period, u.TokensUsed, u.TokensReserved, u.CostMicros, u.CostReserved, u.Uncertain, now, pool)
 	return err
 }
 

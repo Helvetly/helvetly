@@ -148,9 +148,10 @@ func (s *Service) endTrial(ctx context.Context, sub subscription) error {
 	return s.apply(ctx, sub, event{})
 }
 
-// trialAI is a trialing workspace's model allowance for the month (an aimodel.Allowance counts the month): the trial's
-// allowance less what earlier months of the trial used; for the cost, also no more than the day's trial budget left.
-func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID string, allowance int64, cost bool) (int64, error) {
+// trialAI is a trialing workspace's model allowance of one pool for the month (an aimodel.Allowance counts the
+// month): the trial's allowance less what earlier months of the trial used in that pool; for the cost, also no more
+// than the day's trial budget left, which every pool of every trial shares.
+func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID, pool string, allowance int64, cost bool) (int64, error) {
 	b, err := q.WorkspaceBilling(ctx, workspaceID)
 	if err != nil {
 		return 0, err
@@ -158,7 +159,7 @@ func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID string, al
 	now := s.now()
 	month := store.UsagePeriodStart(now)
 	if b.TrialStart != nil {
-		tokens, micros, err := q.AIUsage(ctx, workspaceID, store.UsagePeriod(*b.TrialStart), store.UsagePeriod(month.AddDate(0, 0, -1)))
+		tokens, micros, err := q.AIUsage(ctx, workspaceID, pool, store.UsagePeriod(*b.TrialStart), store.UsagePeriod(month.AddDate(0, 0, -1)))
 		if err != nil {
 			return 0, err
 		}
@@ -177,7 +178,7 @@ func (s *Service) trialAI(ctx context.Context, q store.Q, workspaceID string, al
 	if err != nil {
 		return 0, err
 	}
-	_, mine, err := q.AIUsage(ctx, workspaceID, store.UsagePeriod(month), store.UsagePeriod(month))
+	_, mine, err := q.AIUsage(ctx, workspaceID, pool, store.UsagePeriod(month), store.UsagePeriod(month))
 	if err != nil {
 		return 0, err
 	}

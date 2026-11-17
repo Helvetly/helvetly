@@ -82,7 +82,7 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 		request.Files = append(request.Files, ProviderFile{Name: f.Name, ContentType: f.Type, Bytes: b})
 	}
-	budget := aimodel.Budget{DB: s.db, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now,
+	budget := aimodel.Budget{DB: s.db, Pool: aimodel.PoolHeidi, Allowance: s.allowance, CostAllowance: s.costAllowance, Now: s.now,
 		Gate: func(ctx context.Context, q store.Q, ws string) error {
 			return auth.RequireAIConsent(ctx, q, ws, sess.User.ID)
 		}}

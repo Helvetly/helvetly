@@ -80,7 +80,7 @@ func TestModelQualityOnMultilingualInvoices(t *testing.T) {
 			}
 		}
 	}
-	u, err := e.db.HeidiUsage(context.Background(), ws.ID, e.s.now().In(ws.Location()).Format("2006-01"))
+	u, err := e.db.HeidiUsage(context.Background(), ws.ID, aimodel.PoolAutomation, e.s.now().In(ws.Location()).Format("2006-01"))
 	if err != nil {
 		t.Fatal(err)
 	}

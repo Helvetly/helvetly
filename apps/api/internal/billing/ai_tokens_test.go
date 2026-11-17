@@ -32,8 +32,8 @@ func TestAITokensFollowThePlan(t *testing.T) {
 		t.Fatalf("pro: %d", n)
 	}
 	// The month's model usage is what the limit counts.
-	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, updated_at) VALUES ($1, to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 1234, now()),
-		($1, '2001-01', 99, now())`, b.workspace)
+	e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, updated_at) VALUES ($1, 'heidi', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 1234, now()),
+		($1, 'heidi', '2001-01', 99, now())`, b.workspace)
 	now := time.Now()
 	u, err := e.st.WorkspaceUsage(ctx, store.Workspace{ID: b.workspace, Timezone: "UTC"}, store.UsagePeriod(now), now)
 	if err != nil || used(u, AITokens) != 1234 {
@@ -76,4 +76,45 @@ func TestAICostFollowsTheOffer(t *testing.T) {
 			t.Fatalf("billing off: %d", n)
 		}
 	})
+}
+
+// TestAIPoolsAreSeparateAllowances: Heidi's pool and the automation pool (AI import, filing) each have their plan
+// values pooled by paid seats, count only their own usage, and both stop while a payment is overdue.
+func TestAIPoolsAreSeparateAllowances(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t, true)
+	b := e.workspace()
+	e.subscribe(b.workspace, "price_pm")
+	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 2 WHERE workspace_id = $1`, b.workspace)
+	e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, updated_at) VALUES
+		($1, 'heidi', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 1234, now()),
+		($1, 'automation', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM'), 777, now())`, b.workspace)
+	now := time.Now()
+	u, err := e.st.WorkspaceUsage(ctx, store.Workspace{ID: b.workspace, Timezone: "UTC"}, store.UsagePeriod(now), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name         string
+		tokens, cost func(context.Context, store.Q, string) (int64, error)
+		limit        Limit
+		wantT, wantC int64
+		wantUsed     int64
+	}{
+		{"Heidi", e.svc.AITokens, e.svc.AICost, AITokens, 10_000_000, 6_000_000, 1234},
+		{"AI import and filing", e.svc.AIAutomationTokens, e.svc.AIAutomationCost, AIAutomationTokens, 10_000_000, 6_000_000, 777},
+	} {
+		tokens, errT := tc.tokens(ctx, e.st.Q, b.workspace)
+		cost, errC := tc.cost(ctx, e.st.Q, b.workspace)
+		if errT != nil || errC != nil || tokens != tc.wantT || cost != tc.wantC || used(u, tc.limit) != tc.wantUsed {
+			t.Fatalf("%s: %d tokens, %d cost, %d used (%v %v); want %d, %d, %d", tc.name, tokens, cost, used(u, tc.limit), errT, errC,
+				tc.wantT, tc.wantC, tc.wantUsed)
+		}
+	}
+	e.exec(`UPDATE workspace_billing SET status = 'past_due' WHERE workspace_id = $1`, b.workspace)
+	for _, a := range []func(context.Context, store.Q, string) (int64, error){e.svc.AIAutomationTokens, e.svc.AIAutomationCost} {
+		if n, err := a(ctx, e.st.Q, b.workspace); err != nil || n != 0 {
+			t.Fatalf("past due: %d %v, want no automation spend", n, err)
+		}
+	}
 }

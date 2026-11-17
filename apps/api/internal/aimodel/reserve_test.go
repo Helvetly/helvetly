@@ -72,7 +72,7 @@ func reserveDB(t *testing.T) (*store.Store, *pgxpool.Pool, store.Workspace) {
 
 func usageOf(t *testing.T, db *store.Store, ws store.Workspace, period string) store.HeidiUsage {
 	t.Helper()
-	u, err := db.HeidiUsage(context.Background(), ws.ID, period)
+	u, err := db.HeidiUsage(context.Background(), ws.ID, PoolHeidi, period)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPriceCountsCacheAndReasoningOnce(t *testing.T) {
 func TestReservesBothThenSettlesActualAndReleasesTheRest(t *testing.T) {
 	db, raw, ws := reserveDB(t)
 	p := &scripted{input: 100, reply: used(100, 40, 20, 5)}
-	b := Budget{DB: db, Now: func() time.Time { return nov }, Allowance: fixed(10_000), CostAllowance: fixed(1_000_000)}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }, Allowance: fixed(10_000), CostAllowance: fixed(1_000_000)}
 	p.during = func() {
 		u := usageOf(t, db, ws, "2026-11")
 		if u.TokensReserved != 1100 || u.CostReserved != luna.Cost(100, 0, 1000) || u.TokensUsed != 0 {
@@ -185,7 +185,7 @@ func TestReservesBothThenSettlesActualAndReleasesTheRest(t *testing.T) {
 func TestUnknownOutcomeKeepsBothReservationsAndIsNotRetried(t *testing.T) {
 	db, raw, ws := reserveDB(t)
 	p := &scripted{input: 100, reply: func(Request) (Reply, error) { return Reply{}, context.DeadlineExceeded }}
-	b := Budget{DB: db, Now: func() time.Time { return nov }, CostAllowance: fixed(1_000_000)}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }, CostAllowance: fixed(1_000_000)}
 	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUnaccounted) {
 		t.Fatalf("err = %v, want ErrUnaccounted", err)
 	}
@@ -207,7 +207,7 @@ func TestTotalWithoutBreakdownSettlesTokensAndKeepsTheCostPending(t *testing.T) 
 	db, raw, ws := reserveDB(t)
 	total := int64(130)
 	p := &scripted{input: 100, reply: func(Request) (Reply, error) { return Reply{Text: "ok", Tokens: &total}, nil }}
-	b := Budget{DB: db, Now: func() time.Time { return nov }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
 	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestConcurrentCallsForTheLastBudgetOneWins(t *testing.T) {
 	release := make(chan struct{})
 	p := &scripted{input: 100, reply: used(100, 0, 100, 0), during: func() { <-release }}
 	last := luna.Cost(100, 0, 100)
-	b := Budget{DB: wide, Now: func() time.Time { return nov }, CostAllowance: fixed(last)}
+	b := Budget{DB: wide, Pool: PoolHeidi, Now: func() time.Time { return nov }, CostAllowance: fixed(last)}
 	errs := make(chan error, 2)
 	for i := range 2 {
 		go func() {
@@ -278,7 +278,7 @@ func TestCallSettlesInTheMonthItWasAdmittedIn(t *testing.T) {
 	db, _, ws := reserveDB(t)
 	now := time.Date(2026, 11, 30, 22, 59, 59, 0, time.UTC) // 23:59:59 in Zurich
 	p := &scripted{input: 100, reply: used(100, 0, 50, 0), during: func() { now = now.Add(2 * time.Second) }}
-	b := Budget{DB: db, Now: func() time.Time { return now }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return now }}
 	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func TestCallSettlesInTheMonthItWasAdmittedIn(t *testing.T) {
 
 func TestPerCallCaps(t *testing.T) {
 	db, _, ws := reserveDB(t)
-	b := Budget{DB: db, Now: func() time.Time { return nov }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
 	ctx := context.Background()
 
 	big := &scripted{input: MaxInputTokens + 1, reply: used(1, 0, 1, 0)}
@@ -348,7 +348,7 @@ func TestAStepIsTriedAtMostTwice(t *testing.T) {
 	p := &scripted{input: 10, reply: func(Request) (Reply, error) {
 		return Reply{Tokens: &zero, Usage: &Usage{Model: luna.Model, Tier: luna.Tier}}, errors.New("HTTP 400")
 	}}
-	b := Budget{DB: db, Now: func() time.Time { return nov }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
 	for range 2 {
 		if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrProvider) {
 			t.Fatalf("err = %v, want ErrProvider", err)
@@ -364,14 +364,14 @@ func TestAStepIsTriedAtMostTwice(t *testing.T) {
 
 func TestAReservationLeftByADeadProcessBecomesUncertain(t *testing.T) {
 	db, raw, ws := reserveDB(t)
-	ok, err := db.InsertAICall(context.Background(), store.AICall{ID: "aic_dead", WorkspaceID: ws.ID, Period: "2026-11", Kind: "import",
+	ok, err := db.InsertAICall(context.Background(), store.AICall{ID: "aic_dead", WorkspaceID: ws.ID, Period: "2026-11", Pool: PoolHeidi, Kind: "heidi",
 		Operation: "f", Step: "0", RateCard: luna.Version, Model: luna.Model, Tier: luna.Tier, Region: luna.Region,
 		ReservedTokens: 10, ReservedMicros: 5, CreatedAt: nov.Add(-staleAfter - time.Second)})
 	if err != nil || !ok {
 		t.Fatal(ok, err)
 	}
 	p := &scripted{input: 10, reply: used(10, 0, 1, 0)}
-	b := Budget{DB: db, Now: func() time.Time { return nov }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
 	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUncertain) || p.counts.Load() != 0 {
 		t.Fatalf("err = %v, want ErrUncertain without contacting the provider", err)
 	}
@@ -383,7 +383,7 @@ func TestAReservationLeftByADeadProcessBecomesUncertain(t *testing.T) {
 func TestACardThatCannotFundThePoolStopsNewCalls(t *testing.T) {
 	db, _, ws := reserveDB(t)
 	p := &scripted{card: Cards["gpt-6-astra"], input: 10, reply: used(10, 0, 1, 0)}
-	b := Budget{DB: db, Now: func() time.Time { return nov }, Allowance: fixed(5_000_000), CostAllowance: fixed(3_000_000)}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }, Allowance: fixed(5_000_000), CostAllowance: fixed(3_000_000)}
 	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUnfunded) || p.counts.Load() != 0 {
 		t.Fatalf("err = %v, want ErrUnfunded before anything is sent", err)
 	}
@@ -396,7 +396,7 @@ func TestACardThatCannotFundThePoolStopsNewCalls(t *testing.T) {
 
 func TestFakeIsPricedAndSettled(t *testing.T) {
 	db, raw, ws := reserveDB(t)
-	b := Budget{DB: db, Now: func() time.Time { return nov }, Allowance: fixed(250_000), CostAllowance: fixed(200_000)}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }, Allowance: fixed(250_000), CostAllowance: fixed(200_000)}
 	if _, err := b.Generate(context.Background(), Fake{}, ws, Request{Message: "hello"}, testCall); err != nil {
 		t.Fatal(err)
 	}
