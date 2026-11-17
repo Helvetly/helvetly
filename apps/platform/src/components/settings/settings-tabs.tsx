@@ -1,11 +1,8 @@
 'use client'
 import {
-  BookOpen,
   BriefcaseBusiness,
   Building2,
-  CalendarCheck,
   CreditCard,
-  Landmark,
   PlugZap,
   ReceiptText,
   ScrollText,
@@ -19,10 +16,9 @@ import { useEmployeesHidden } from '@/components/billing/feature-lock'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
-import { useInvoiceSettings } from '@/lib/invoices'
 import { canReadPath, useScopes } from '@/lib/permissions'
 
-type Page = { label: string; href: string; icon: LucideIcon }
+export type Page = { label: string; href: string; icon: LucideIcon }
 
 /** The workspace first, then your own settings (the same in every workspace), employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
@@ -32,21 +28,17 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
-  { label: translate('vatReturn'), href: '/settings/vat-return', icon: Landmark },
-  { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen },
-  // The books in the order of a month-end: record, declare, post, close, audit.
-  { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
   { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
 
-/** The settings page at this path: an exact match, else the closest parent (billing's plans). */
-export function settingsPageAt(pathname: string): Page | undefined {
+/** The page of these tabs at this path: an exact match, else the closest parent (billing's plans). */
+export function settingsPageAt(pathname: string, pages = SETTINGS_PAGES): Page | undefined {
   const path = pathname.replace(/\/$/, '') || '/'
   return (
-    SETTINGS_PAGES.find((page) => page.href === path) ??
-    SETTINGS_PAGES.findLast((page) => path.startsWith(`${page.href}/`))
+    pages.find((page) => page.href === path) ??
+    pages.findLast((page) => path.startsWith(`${page.href}/`))
   )
 }
 
@@ -55,32 +47,34 @@ export function settingsPageAt(pathname: string): Page | undefined {
  * page's own actions. Moving to another tab asks first when a section has unsaved changes.
  */
 export function SettingsHeader({ actions }: { actions?: ReactNode }) {
+  // Employment is not offered on a plan without employees (an owner with records still reaches it).
+  const noEmployment = useEmployeesHidden()
+  const pages = noEmployment
+    ? SETTINGS_PAGES.filter((page) => page.href !== '/settings/employment')
+    : SETTINGS_PAGES
+  return <TabsHeader pages={pages} actions={actions} />
+}
+
+/** Pages shown as tabs of one area (settings, books); a page of an area the person cannot read is left out, as in the sidebar. */
+export function TabsHeader({ pages, actions }: { pages: Page[]; actions?: ReactNode }) {
   const router = useRouter()
   const guard = useLeaveGuard()
   const scopes = useScopes()
-  // A page of an area the person cannot read is left out, as in the sidebar (employment also opens with payroll view).
-  // A business not registered for VAT files no VAT return: the tab shows once the invoice settings say it is.
-  const notVatRegistered = useInvoiceSettings().data?.vat_registered === false
-  const noEmployment = useEmployeesHidden()
-  const pages = SETTINGS_PAGES.filter(
-    (page) =>
-      canReadPath(scopes, page.href) &&
-      !(notVatRegistered && page.href === '/settings/vat-return') &&
-      !(noEmployment && page.href === '/settings/employment'),
-  )
-  const current = settingsPageAt(usePathname() ?? '')
+  // Employment also opens with payroll view: see `canReadPath`.
+  const readable = pages.filter((page) => canReadPath(scopes, page.href))
+  const current = settingsPageAt(usePathname() ?? '', readable)
   return (
     <>
       {guard.dialog}
       <PageHeader
-        tabs={pages.map((page) => page.label)}
-        tabIcons={pages.map((page) => page.icon)}
+        tabs={readable.map((page) => page.label)}
+        tabIcons={readable.map((page) => page.icon)}
         active={Math.max(
           0,
-          pages.findIndex((page) => page === current),
+          readable.findIndex((page) => page === current),
         )}
         onSelect={(index) => {
-          const page = pages[index]
+          const page = readable[index]
           if (page && page !== current) guard.leave(() => router.push(page.href))
         }}
         savedViews={false}

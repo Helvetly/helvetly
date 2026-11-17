@@ -98,7 +98,7 @@ export const ExpensesOnBasicPhone: Story = {
 
 /** The ledger on Basic: the notice instead of the report, and the report is not even asked for. */
 export const LedgerOnBasic: Story = {
-  parameters: pageParameters('/settings/ledger', {}, [
+  parameters: pageParameters('/books/ledger', {}, [
     billingIs(basic),
     http.get('/api/v1/ledger', () => {
       throw new Error('the ledger is asked for on a plan without it')

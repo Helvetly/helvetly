@@ -24,4 +24,4 @@ L’import par IA nécessite **Pro** ou **Business** et utilise le quota de toke
   uniquement pour vous. Refuser ou fermer la boîte de dialogue ne lance aucun téléversement ni
   traitement par IA ; votre brouillon et vos fichiers sont conservés.
 - Les imports consomment le quota mensuel d’IA.
-- Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Settings → Periods**.
+- Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Books → Closing**.

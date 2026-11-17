@@ -10,7 +10,7 @@ Helvetly prepares the figures for your Swiss VAT (MWST) return and the file to i
 
 Preparing VAT returns needs **Pro** or **Business**. VAT on invoices is calculated in every plan.
 
-1. Go to **Settings → VAT return**.
+1. Go to **Books → VAT return**.
 2. In the VAT settings, set the method (**Effective method** or **Net tax rate method**), the period length and the basis (**Agreed** or **Received consideration**), then save. With net tax rates, add your **Approved net tax rates**.
 3. Choose the **Period** and check the figures and any warnings.
 4. Click **Export → ESTV file (XML)** to get the eCH-0217 file. The same menu has **PDF summary** and **CSV**.

@@ -329,7 +329,7 @@ Keywords: import, ai import, migrate, spreadsheet, csv, excel, bulk upload, brin
 3. Review the records found. Edit a row, untick any you don't want and resolve conflicts.
 4. Click **Import** to create the selected records, then **Done**.
 5. You can also attach files in Heidi and pick "Import as". The import drawer then opens with those files.
-   This needs AI to be allowed by an owner or admin, and it uses the monthly AI allowance. If your old system already declared VAT for imported invoices, close those months in **Settings → Closing** first.
+   This needs AI to be allowed by an owner or admin, and it uses the monthly AI allowance. If your old system already declared VAT for imported invoices, close those months in **Books → Closing** first.
 
 ## Set up invoice settings (company details, logo, IBAN, numbering)
 
@@ -358,9 +358,9 @@ Pages: /settings/emails
 ## Close a month (month-end close, periods)
 
 Keywords: close period, close month, month-end, lock books, periods, abschluss, reopen month, accounting period
-Pages: /settings/periods
+Pages: /books, /settings/periods
 
-1. Go to **Settings → Closing**. Each month shows the invoices issued and expenses booked in it, and a warning when drafts are still dated in it.
+1. Go to **Books → Closing**. Each month shows the invoices issued and expenses booked in it, and a warning when drafts are still dated in it.
 2. Click **Close through …** at the top to close every open month up to the latest one that ended (the arrow beside it picks an earlier month), then confirm.
 3. To make changes again, open the month's **…** menu, choose **Reopen**, and give a reason; it is kept in the audit log.
    While a month is closed, nothing dated in it can be issued, paid, voided or booked. Owners and admins can close or reopen months, and so can members with Edit on period closing.
@@ -378,9 +378,9 @@ Pages: /settings/audit-log
 ## Prepare the Swiss VAT return (MWST, ESTV, eCH-0217)
 
 Keywords: VAT return, MWST, mehrwertsteuer, ESTV, abrechnung, eCH-0217, tax return, net tax rate, saldosteuersatz
-Pages: /settings/vat-return
+Pages: /books/vat-return, /settings/vat-return
 
-1. Go to **Settings → VAT return**.
+1. Go to **Books → VAT return**.
 2. In the VAT settings, set the method (**Effective method** or **Net tax rate method**), the period length and the basis (**Agreed** or **Received consideration**), then save. With net tax rates, add your **Approved net tax rates**.
 3. Choose the **Period** and check the figures and any warnings.
 4. Click **Export → ESTV file (XML)** to get the eCH-0217 file. The same menu has **PDF summary** and **CSV**.
@@ -390,9 +390,9 @@ Pages: /settings/vat-return
 ## See the ledger and export it for your accountant (Saldenliste, Hauptbuch, Treuhänder)
 
 Keywords: ledger, saldenliste, hauptbuch, buchhaltung, trial balance, general ledger, kontenplan, chart of accounts, treuhänder, accountant, banana, bexio, abacus, journal export
-Pages: /settings/ledger
+Pages: /books/ledger, /settings/ledger
 
-1. Go to **Settings → Ledger**. The **Saldenliste** lists every account with **Opening**, **Debit**, **Credit** and **Closing**. Choose the **Year** and **Period**.
+1. Go to **Books → Ledger**. The **Saldenliste** lists every account with **Opening**, **Debit**, **Credit** and **Closing**. Choose the **Year** and **Period**.
 2. Click an account to see its **Hauptbuch**: every posting with the **Contra** account and a running **Balance**.
 3. Click **Export** and choose **Banana**, **bexio**, **Abacus** or **CSV** to download the journal of the period for your Treuhänder. Banana takes only your base currency, so other currencies are skipped.
 4. To change which account a posting uses, click **Accounts**, edit the codes (3 to 10 digits) and click **Save**. Only owners and admins can do this.

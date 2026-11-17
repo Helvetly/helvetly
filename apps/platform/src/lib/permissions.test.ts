@@ -81,9 +81,10 @@ test.each([
   ['/settings/billing/plans', 'billing'],
   ['/settings/invoices', 'invoice-settings'],
   ['/settings/emails', 'invoice-settings'],
-  ['/settings/vat-return', 'vat-return'],
-  ['/settings/ledger', 'ledger'],
-  ['/settings/periods', 'periods'],
+  ['/books/vat-return', 'vat-return'],
+  ['/books/ledger', 'ledger'],
+  ['/books', 'periods'],
+  ['/books/', 'periods'],
   ['/settings/audit-log', 'audit-log'],
   ['/settings/workspace', 'workspace'],
   ['/settings/api', 'api'],
@@ -186,7 +187,7 @@ test.each([
   [['*:*'], '/employees', false],
   [['*:*'], '/settings/employment', false],
   [['read:clients'], '/clients', true],
-  [['read:clients'], '/settings/ledger', false],
+  [['read:clients'], '/books/ledger', false],
   [[], '/account', true],
 ] as const)('canReadPath(%j, %s) is %s', (scopes, path, expected) => {
   expect(canReadPath(scopes, path)).toBe(expected)

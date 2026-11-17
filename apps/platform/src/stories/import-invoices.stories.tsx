@@ -419,9 +419,9 @@ export const IssuedElsewhereToggle: Story = {
     })
     // An invoice issued elsewhere counts in the VAT return: the note says how not to count it twice.
     await expect(await body().findByText('Already declared for VAT?')).toBeVisible()
-    await expect(body().getByRole('link', { name: 'Settings → Closing' })).toHaveAttribute(
+    await expect(body().getByRole('link', { name: 'Books → Closing' })).toHaveAttribute(
       'href',
-      '/settings/periods/', // trailingSlash export
+      '/books/', // trailingSlash export
     )
   },
 }

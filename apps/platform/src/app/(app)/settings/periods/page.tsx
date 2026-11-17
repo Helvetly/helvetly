@@ -1,11 +1,6 @@
-import { PageTitle } from '@/components/page-title'
-import { PeriodsSettings } from '@/components/settings/periods-settings'
+import { RedirectTo } from '@/components/redirect-to'
 
+// The books moved out of settings: old links and bookmarks still land on the page.
 export default function Page() {
-  return (
-    <>
-      <PageTitle message="monthEndClose" />
-      <PeriodsSettings />
-    </>
-  )
+  return <RedirectTo href="/books" />
 }

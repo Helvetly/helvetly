@@ -175,7 +175,7 @@ test('the chat is the same object until something it uses changes', async () => 
   )
   let page = ''
   let path = ''
-  window.history.pushState({}, '', '/settings/periods/')
+  window.history.pushState({}, '', '/books/')
   server.use(
     http.post('/api/v1/heidi/chat', async ({ request }) => {
       const form = await request.formData()
@@ -204,7 +204,7 @@ test('the chat is the same object until something it uses changes', async () => 
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(page).toBe('clients')
   // The screen the question is asked from goes along, so "what is this page?" has an answer.
-  expect(path).toBe('/settings/periods/')
+  expect(path).toBe('/books/')
   window.history.pushState({}, '', '/')
 })
 

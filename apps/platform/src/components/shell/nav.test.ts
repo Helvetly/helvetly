@@ -59,3 +59,15 @@ test('Employees waits for billing, so it never appears and disappears', () => {
   expect(items).not.toContain('Employees')
   expect(items).toContain('Members')
 })
+
+const booksHref = (scopes: readonly string[]) =>
+  visibleNav(scopes)
+    .flatMap((group) => group.items)
+    .find((item) => item.label === 'Books')?.href
+
+test('Books links to the first of its tabs the person may read, and hides without any', () => {
+  expect(booksHref(['*:*'])).toBe('/books')
+  expect(booksHref(['read:ledger'])).toBe('/books/ledger')
+  expect(booksHref(['read:vat-return', 'read:ledger'])).toBe('/books/vat-return')
+  expect(booksHref(['read:clients'])).toBeUndefined()
+})

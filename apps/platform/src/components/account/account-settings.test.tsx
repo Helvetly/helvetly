@@ -145,9 +145,6 @@ test('the settings tabs mark this page and open another one', async () => {
     'API & MCP',
     'Billing',
     'Invoices',
-    'VAT return',
-    'Ledger',
-    'Closing',
     'Audit log',
   ])
   expect(within(tabs).getByRole('button', { name: 'Account' })).toHaveAttribute(
@@ -160,7 +157,7 @@ test('the settings tabs mark this page and open another one', async () => {
 
 test('settingsPageAt picks the tab by path, or its closest parent', () => {
   expect(settingsPageAt('/account')?.label).toBe('Account')
-  expect(settingsPageAt('/settings/vat-return/')?.label).toBe('VAT return')
+  expect(settingsPageAt('/settings/invoices/')?.label).toBe('Invoices')
   expect(settingsPageAt('/settings/billing/plans')?.label).toBe('Billing')
   expect(settingsPageAt('/clients')).toBeUndefined()
 })

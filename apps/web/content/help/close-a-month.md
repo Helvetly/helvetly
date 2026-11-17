@@ -8,7 +8,7 @@ updated: 2026-11-11
 
 Close a month once its books are done, so nothing in it changes by accident.
 
-1. Go to **Settings → Periods**.
+1. Go to **Books → Closing**.
 2. Click **Close month** next to a month whose books are done.
 3. To make changes again, click **Reopen**.
 
