@@ -809,13 +809,42 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'other', label: translate('other') },
 ]
 
-export const NUMBER_FORMATS: NumberFormat[] = [
+const TYPED_FORMAT: NumberFormat = '{YYYY}/{TYPE}/{NNN}'
+
+/** The preset formats usual in each seller country; formats without a year count on and never restart. */
+const SWISS_FORMATS: NumberFormat[] = [
   '{YYYY}-{NNN}',
-  '{YYYY}/{NNN}',
-  '{NNN}/{YYYY}',
   'RE-{YYYY}-{NNN}',
-  '{YYYY}/{TYPE}/{NNN}',
+  '{YY}{NNNN}',
+  TYPED_FORMAT,
 ]
+const GERMAN_FORMATS: NumberFormat[] = [
+  'RE-{YYYY}-{NNN}',
+  '{YYYY}-{NNNN}',
+  'RE{YY}{MM}-{NNN}',
+  TYPED_FORMAT,
+]
+const COUNTRY_NUMBER_FORMATS: Record<string, NumberFormat[]> = {
+  CH: SWISS_FORMATS,
+  LI: SWISS_FORMATS,
+  DE: GERMAN_FORMATS,
+  AT: GERMAN_FORMATS,
+  FR: ['F{YYYY}-{NNNN}', 'FA-{YYYY}-{NNN}', '{YYYY}{MM}-{NNN}', TYPED_FORMAT],
+  IT: ['{N}/{YYYY}', '{NNN}/{YYYY}', 'FT-{YYYY}-{NNN}', TYPED_FORMAT],
+  ES: ['F{YYYY}-{NNNN}', '{YYYY}/{NNN}', 'FAC-{YYYY}-{NNN}', TYPED_FORMAT],
+  PL: ['FV/{N}/{YYYY}', 'FV/{N}/{MM}/{YYYY}', 'FV/{YYYY}/{NNN}', TYPED_FORMAT],
+  GB: ['INV-{NNNN}', 'INV-{YYYY}-{NNN}', '{YYYY}-{NNNN}', TYPED_FORMAT],
+  US: ['INV-{NNNN}', '{NNNNN}', 'INV-{YYYY}-{NNNN}', '{YYYY}{MM}-{NNN}'],
+}
+
+/** The preset number formats for a seller in country; elsewhere a neutral set. */
+export const numberFormatsFor = (country: string | undefined): NumberFormat[] =>
+  COUNTRY_NUMBER_FORMATS[country ?? ''] ?? [
+    '{YYYY}-{NNN}',
+    '{YYYY}/{NNN}',
+    'INV-{YYYY}-{NNN}',
+    TYPED_FORMAT,
+  ]
 
 /** What {TYPE} prints, as the API does; without {TYPE} a credit note gets the "CN-" prefix. */
 const TYPE_LETTERS = { invoice: 'INV', credit_note: 'CN' } as const
@@ -852,8 +881,6 @@ export function numberFormatError(format: NumberFormat): string | null {
     return translate('numberFormatCharacters')
   if (tokens.filter((token) => /^\{N+\}$/.test(token)).length !== 1)
     return translate('numberFormatOneRunningNumber')
-  if (!tokens.some((token) => token === '{YYYY}' || token === '{YY}'))
-    return translate('numberFormatNeedsYear')
   return null
 }
 

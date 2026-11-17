@@ -22,6 +22,7 @@ import {
   dueLabel,
   exampleNumber,
   numberFormatError,
+  numberFormatsFor,
   formatAmount,
   formatMoney,
   formatWholeAmount,
@@ -201,9 +202,7 @@ test('numbers follow the chosen format; credit notes get CN- unless it prints th
 test('number formats are checked as the API checks them', () => {
   expect(numberFormatError('{YYYY}-{NNN}')).toBeNull()
   expect(numberFormatError('FV/{N}/{MM}/{YYYY}')).toBeNull()
-  expect(numberFormatError('{NNN}')).toBe(
-    'Put the year in: the running number starts again each year.',
-  )
+  expect(numberFormatError('INV-{NNNN}')).toBeNull()
   expect(numberFormatError('{YYYY}')).toBe('Put the running number in exactly once.')
   expect(numberFormatError('{YYYY}-{N}-{NN}')).toBe('Put the running number in exactly once.')
   expect(numberFormatError('{YYYY}:{NNN}')).toMatch(/^Use only letters/)
@@ -394,4 +393,14 @@ test('keeps the steps of a current API as they are', () => {
 test('formatRange keeps the first year only across years', () => {
   expect(formatRange('2026-10-01', '2026-11-08')).toBe('1 Oct – 8 Nov 2026')
   expect(formatRange('2025-12-01', '2026-11-30')).toBe('1 Dec 2025 – 30 Nov 2026')
+})
+
+test('preset number formats follow the seller country; every preset is valid', () => {
+  expect(numberFormatsFor('US')[0]).toBe('INV-{NNNN}')
+  expect(numberFormatsFor('LI')).toEqual(numberFormatsFor('CH'))
+  expect(numberFormatsFor('JP')).toContain('{YYYY}/{TYPE}/{NNN}')
+  for (const country of ['CH', 'DE', 'AT', 'FR', 'IT', 'ES', 'PL', 'GB', 'US', undefined]) {
+    expect(numberFormatsFor(country)).toHaveLength(4)
+    for (const format of numberFormatsFor(country)) expect(numberFormatError(format)).toBeNull()
+  }
 })

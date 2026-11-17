@@ -770,6 +770,22 @@ describe('the welcome', () => {
       await waitFor(() => expect(saved.at(-1)?.number_format).toBe('RE-{YYYY}-{NNN}'))
     })
 
+    test('a preset number format follows the company’s country', async () => {
+      const user = userEvent.setup()
+      server.use(http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: empty })))
+      wrap(<Welcome />)
+      await start(user)
+      await fillCompany(user)
+      await user.click(screen.getByRole('button', { name: /^Country/ }))
+      await user.click(await screen.findByRole('option', { name: /United States/ }))
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await user.click(await screen.findByRole('button', { name: 'Skip' }, { timeout: 5000 }))
+      await screen.findByRole('heading', { name: 'Invoice defaults' }, { timeout: 5000 })
+      expect(screen.getByText('Your next invoice: INV-0001')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Number format/ }))
+      expect(await screen.findByRole('option', { name: /^00001/ })).toBeInTheDocument()
+    })
+
     test('a custom number format is built from placeholders, checked and saved', async () => {
       const user = userEvent.setup()
       await toDefaults(user)
@@ -781,13 +797,12 @@ describe('the welcome', () => {
       await user.type(field, 'FV/')
       const savedBefore = saved.length
       const placeholders = within(screen.getByRole('group', { name: 'Insert a placeholder' }))
-      await user.click(placeholders.getByRole('button', { name: /Running number/ }))
       await user.click(screen.getByRole('button', { name: /Continue/ }))
-      expect(
-        await screen.findByText('Put the year in: the running number starts again each year.'),
-      ).toBeInTheDocument()
+      expect(await screen.findByText('Put the running number in exactly once.')).toBeInTheDocument()
       expect(saved).toHaveLength(savedBefore)
-      await user.type(field, '/')
+      await user.click(placeholders.getByRole('button', { name: /Running number/ }))
+      await waitFor(() => expect(field).toHaveFocus()) // the caret lands after the placeholder a frame later
+      await user.type(field, '/', { skipClick: true })
       await user.click(placeholders.getByRole('button', { name: /{YYYY}/ }))
       expect(field).toHaveValue('FV/{NNN}/{YYYY}')
       expect(screen.getByText(`Your next invoice: FV/001/${year}`)).toBeInTheDocument()

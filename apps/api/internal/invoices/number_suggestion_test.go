@@ -52,6 +52,6 @@ func TestNumberSuggestion(t *testing.T) {
 		t.Fatalf("once an invoice is issued: %+v", s)
 	}
 	e.fails(b, "POST", "/api/v1/invoice-settings/number-suggestion", nil, http.StatusConflict, "no_number_suggestion")
-	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"number_format": "{NNN}"}, http.StatusUnprocessableEntity,
+	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"number_format": "{YYYY}"}, http.StatusUnprocessableEntity,
 		"validation_failed", "number_format")
 }

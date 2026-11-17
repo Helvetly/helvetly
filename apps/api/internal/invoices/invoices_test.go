@@ -481,6 +481,14 @@ func TestIssue(t *testing.T) {
 		t.Fatalf("usd: %+v", usd)
 	}
 
+	// without a year the running number never restarts: one series across years, references kept apart
+	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"number_format": "INV-{NNNN}"}, http.StatusOK, nil)
+	now := e.issued(b, clientID, nil)
+	past := e.issued(b, clientID, map[string]any{"issue_date": "2025-06-30"})
+	if *now.Number != "INV-0001" || *past.Number != "INV-0002" || *now.Payment.Reference == *usd.Payment.Reference {
+		t.Fatalf("yearless: %s %s %s", *now.Number, *past.Number, *now.Payment.Reference)
+	}
+
 	// the PDF: drafts render live, issued ones come from storage
 	d := e.draft(b, clientID, nil)
 	for _, id := range []string{d.ID, first.ID} {

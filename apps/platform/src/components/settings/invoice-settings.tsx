@@ -1214,6 +1214,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               >
                 <NumberFormatField
                   id={inputId('number_format')}
+                  country={values.country}
                   value={values.number_format}
                   invalid={Boolean(shown.number_format)}
                   onChange={(format) => set('number_format', format)}

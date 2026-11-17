@@ -25,7 +25,7 @@ func TestParseNumberFormat(t *testing.T) {
 		{"FV/{N}/{MM}/{YYYY}", true},
 		{"{TYPE}-{YY}{MM}{DD}-{NNNN}", true},
 		{"RE #{YYYY}.{NNNNNN}", true},
-		{"{NNN}", false},                                     // no year: the sequence restarts each year
+		{"INV-{NNNN}", true},                                 // no year: one running number for ever
 		{"{YYYY}", false},                                    // no sequence
 		{"{YYYY}-{N}-{NN}", false},                           // two sequences
 		{"{YYYY}-{NNNNNNN}", false},                          // padded past six digits
@@ -38,6 +38,15 @@ func TestParseNumberFormat(t *testing.T) {
 	} {
 		if _, msg := parseNumberFormat(tc.format); (msg == "") != tc.ok {
 			t.Errorf("%q: message %q, want ok = %v", tc.format, msg, tc.ok)
+		}
+	}
+}
+
+func TestCounterYear(t *testing.T) {
+	t.Parallel()
+	for format, want := range map[string]int{"{YYYY}-{NNN}": 2026, "{YY}{NNNN}": 2026, "INV-{NNNN}": 0, "{MM}/{NNN}": 0} {
+		if got := counterYear(format, "2026-03-05"); got != want {
+			t.Errorf("%q = %d, want %d", format, got, want)
 		}
 	}
 }
