@@ -2,10 +2,9 @@ import '@helvetly/ui/globals.css'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
+import { mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { mswLoader } from 'msw-storybook-addon/csf3'
-import { setupWorker } from 'msw/browser'
 import { useState, type ReactNode } from 'react'
 import { configure } from 'storybook/test'
 
@@ -79,18 +78,7 @@ const preview: Preview = {
       </StoryProviders>
     ),
   ],
-  loaders: [
-    mswLoader(async () => {
-      const worker = setupWorker()
-      await worker.start({
-        quiet: true,
-        onUnhandledRequest(request, print) {
-          if (new URL(request.url).pathname.startsWith('/api/')) print.error()
-        },
-      })
-      return worker
-    }),
-  ],
+  loaders: [mswLoader()],
   parameters: {
     nextjs: { appDirectory: true },
     a11y: { test: 'error' },

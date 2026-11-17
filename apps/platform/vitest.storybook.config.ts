@@ -14,7 +14,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      'msw-storybook-addon/csf3',
+      'msw',
+      'msw/browser',
       'recharts',
       '@helvetly/ui > react-day-picker',
       'react-markdown',
