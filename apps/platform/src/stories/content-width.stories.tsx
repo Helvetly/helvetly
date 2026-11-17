@@ -78,11 +78,12 @@ const iconsApart: Story['play'] = async ({ canvasElement }) => {
   const card = within(canvasElement).getByRole('region', { name: 'Sign-in methods' })
   const rows = [...card.querySelectorAll<HTMLElement>('[data-slot="row-icon"]')]
   await expect(rows).toHaveLength(3)
-  for (const row of rows) {
-    const style = getComputedStyle(row)
-    await expect(style.backgroundColor).toBe(transparent)
-    await expect(style.borderTopWidth).toBe('1px')
-  }
+  await expect(
+    rows.map((row) => {
+      const style = getComputedStyle(row)
+      return { background: style.backgroundColor, border: style.borderTopWidth }
+    }),
+  ).toEqual(rows.map(() => ({ background: transparent, border: '1px' })))
 }
 
 /** The page uses the panel's whole width, sections are bands, no sideways scroll. */
@@ -135,15 +136,21 @@ const titleIcons: Story['play'] = async ({ canvasElement }) => {
     ...canvasElement.querySelectorAll<HTMLElement>('[data-slot="settings-section"] h2'),
   ]
   await expect(titles).toHaveLength(2)
-  for (const title of titles) {
-    const icon = title.querySelector<SVGElement>('[data-slot="settings-section-icon"]')
-    await expect(icon).not.toBeNull()
-    if (!icon) continue
-    await expect(icon).toHaveAttribute('aria-hidden', 'true')
-    await expect(icon.getBoundingClientRect().width).toBe(16)
-    await expect(getComputedStyle(icon).color).not.toBe(getComputedStyle(title).color)
-    await expect(title.firstElementChild).toBe(icon)
-  }
+  await expect(
+    titles.map((title) => {
+      const icon = title.firstElementChild
+      return (
+        icon && {
+          slot: icon.getAttribute('data-slot'),
+          hidden: icon.getAttribute('aria-hidden'),
+          width: icon.getBoundingClientRect().width,
+          muted: getComputedStyle(icon).color !== getComputedStyle(title).color,
+        }
+      )
+    }),
+  ).toEqual(
+    titles.map(() => ({ slot: 'settings-section-icon', hidden: 'true', width: 16, muted: true })),
+  )
 }
 
 const play: Story['play'] = async (context) => {

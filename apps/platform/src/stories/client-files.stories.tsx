@@ -45,11 +45,21 @@ const handlers = (initial: ClientFile[]) => {
     http.post('/api/v1/clients/cli_1/files', async ({ request }) => {
       const form = await request.formData()
       requests(form.getAll('files[]').length)
-      const added = form.getAll('files[]').map((entry, index) => {
-        const name = entry instanceof File ? entry.name : String(entry)
-        uploaded(name)
-        return { ...receipt, id: `new_${index}`, name, created_at: '2026-11-11T10:00:00Z' }
-      })
+      // The stored record describes the file that was sent, as the server's does.
+      const added = form
+        .getAll('files[]')
+        .filter((entry) => entry instanceof File)
+        .map((file, index): ClientFile => {
+          uploaded(file.name)
+          return {
+            id: `new_${index}`,
+            name: file.name,
+            size: file.size,
+            content_type: file.type,
+            created_at: '2026-11-11T10:00:00Z',
+            uploaded_by: receipt.uploaded_by,
+          }
+        })
       files = [...added, ...files]
       return HttpResponse.json({ data: added }, { status: 201 })
     }),

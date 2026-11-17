@@ -40,7 +40,7 @@ async function rows(api: FinancialAPI, path: string): Promise<Record<string, unk
 test('employees are not members: no user, no invitation, no seat', async ({ api }) => {
   const before = await rows(api, '/members')
   const invitationsBefore = await rows(api, '/members/invitations')
-  for (let i = 0; i < 3; i++) await employee(api, { employee_number: `E-${i}` })
+  await Promise.all([0, 1, 2].map((i) => employee(api, { employee_number: `E-${i}` })))
   expect(await rows(api, '/employees')).toHaveLength(3)
   expect(await rows(api, '/members')).toHaveLength(before.length)
   expect(await rows(api, '/members/invitations')).toHaveLength(invitationsBefore.length)
@@ -212,15 +212,15 @@ test('HR data stays out of documents, members with full access and API tokens', 
   const secret = text(object(object(await token.json()).data).token)
   const bare = await playwright.request.newContext({ baseURL })
   try {
-    for (const path of [
-      '/api/v1/employees',
-      `/api/v1/employees/${text(anna.id)}`,
-      '/api/v1/payroll/entries',
-    ]) {
-      const response = await bare.get(path, { headers: { Authorization: `Bearer ${secret}` } })
-      expect(response.status(), path).toBe(403)
-      expect(object(object(await response.json()).error).code).toBe('token_not_allowed')
-    }
+    await Promise.all(
+      ['/api/v1/employees', `/api/v1/employees/${text(anna.id)}`, '/api/v1/payroll/entries'].map(
+        async (path) => {
+          const response = await bare.get(path, { headers: { Authorization: `Bearer ${secret}` } })
+          expect(response.status(), path).toBe(403)
+          expect(object(object(await response.json()).error).code).toBe('token_not_allowed')
+        },
+      ),
+    )
   } finally {
     await bare.dispose()
   }

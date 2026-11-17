@@ -41,10 +41,13 @@ export async function checkSameBatch(packs: File[][]) {
   const files = packs.flat()
   const sizes = new Map<number, number>()
   for (const file of files) sizes.set(file.size, (sizes.get(file.size) ?? 0) + 1)
+  const hashed = await Promise.all(
+    files
+      .filter((file) => (sizes.get(file.size) ?? 0) > 1)
+      .map(async (file) => [file, await sha256(file)] as const),
+  )
   const seen = new Map<string, string>()
-  for (const file of files) {
-    if ((sizes.get(file.size) ?? 0) < 2) continue
-    const sum = await sha256(file)
+  for (const [file, sum] of hashed) {
     const first = seen.get(sum)
     if (first !== undefined)
       throw new ApiError(
@@ -119,16 +122,15 @@ export async function uploadInPacks<T>(
   const packs = packFiles(files)
   await checkSameBatch(packs)
   const total = files.reduce((sum, file) => sum + file.size, 0)
-  const added: T[] = []
-  let sent = 0
-  for (const pack of packs) {
+  // One pack at a time: the next request starts only once the server has taken the one before.
+  const sendFrom = async (index: number, sent: number): Promise<T[]> => {
+    const pack = packs[index]
+    if (!pack) return []
     const bytes = pack.reduce((sum, file) => sum + file.size, 0)
-    added.push(
-      ...(await postFiles<T>(url, pack, (share) =>
-        onProgress(total > 0 ? (sent + share * bytes) / total : share),
-      )),
+    const added = await postFiles<T>(url, pack, (share) =>
+      onProgress(total > 0 ? (sent + share * bytes) / total : share),
     )
-    sent += bytes
+    return [...added, ...(await sendFrom(index + 1, sent + bytes))]
   }
-  return added
+  return sendFrom(0, 0)
 }

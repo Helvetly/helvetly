@@ -29,7 +29,7 @@ function stories(app: App) {
 /** Installs `window.focusLayout` in the story: one object, as the page gets this code as text. */
 function install(page: Page) {
   return page.evaluate(() => {
-    const notTyped = [
+    const notTyped = new Set([
       'checkbox',
       'radio',
       'file',
@@ -39,7 +39,7 @@ function install(page: Page) {
       'submit',
       'reset',
       'image',
-    ]
+    ])
     let before = new Map<Element, number[] | null>()
     const audit = {
       controls: () =>
@@ -60,7 +60,7 @@ function install(page: Page) {
           .filter(
             (control) =>
               control instanceof HTMLTextAreaElement ||
-              (control instanceof HTMLInputElement && !notTyped.includes(control.type)),
+              (control instanceof HTMLInputElement && !notTyped.has(control.type)),
           ),
       frame: () => new Promise((done) => requestAnimationFrame(done)),
       quiet: () => new Promise((done) => setTimeout(done, 400)),
@@ -119,12 +119,14 @@ function install(page: Page) {
       settle: async (control: HTMLElement) => {
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
         control.scrollIntoView({ block: 'center', inline: 'nearest' })
-        for (let tries = 0; tries < 30; tries++) {
-          before = audit.boxes()
-          await audit.frame()
-          await audit.frame()
-          if (audit.changed().length === 0) return
-        }
+        await audit.still(30)
+      },
+      /** Up to `tries` two-frame looks, until one finds nothing moving. */
+      still: async (tries: number): Promise<void> => {
+        before = audit.boxes()
+        await audit.frame()
+        await audit.frame()
+        if (audit.changed().length > 0 && tries > 1) await audit.still(tries - 1)
       },
       keyboardFocus: async (control: HTMLElement) => {
         await audit.settle(control)
@@ -135,16 +137,19 @@ function install(page: Page) {
       },
 
       /** Focuses each control from script after a key press, which Chromium shows as keyboard focus. */
-      keyboard: async () => {
-        const found: string[] = []
-        for (const control of audit.controls()) {
-          // A shift counts only when it happens again: late data or a lazy image can land mid-check.
-          if (!(await audit.keyboardFocus(control)).length) continue
-          await audit.quiet()
-          const shifted = await audit.keyboardFocus(control)
-          if (shifted.length) found.push(audit.report('Tab to', control, shifted))
-        }
-        return found
+      keyboard: () => audit.keyboardEach(audit.controls()),
+      /** One control after the other: focusing two at once is not a thing. */
+      keyboardEach: async ([control, ...rest]: HTMLElement[]): Promise<string[]> => {
+        if (!control) return []
+        const found = await audit.tabTo(control)
+        return [...found, ...(await audit.keyboardEach(rest))]
+      },
+      tabTo: async (control: HTMLElement) => {
+        // A shift counts only when it happens again: late data or a lazy image can land mid-check.
+        if (!(await audit.keyboardFocus(control)).length) return []
+        await audit.quiet()
+        const shifted = await audit.keyboardFocus(control)
+        return shifted.length ? [audit.report('Tab to', control, shifted)] : []
       },
       textFields: () => audit.typed().length,
       /** Readies text field `index` for a click: where to click, or null when something covers it. */
@@ -214,11 +219,17 @@ for (const app of ['platform', 'portal'] as const) {
           return strings(await call(page, 'afterClick'))
         }
         const fields = Number(await call(page, 'textFields'))
-        for (let index = 0; index < fields; index++) {
-          if (!(await click(index)).length) continue
-          await page.waitForTimeout(400)
-          found.push(...(await click(index)))
+        // One field after the other, as each click moves focus away from the one before.
+        const clickFrom = async (index: number): Promise<string[]> => {
+          if (index >= fields) return []
+          const recheck = async () => {
+            await page.waitForTimeout(400)
+            return click(index)
+          }
+          const shifted = (await click(index)).length ? await recheck() : []
+          return [...shifted, ...(await clickFrom(index + 1))]
         }
+        found.push(...(await clickFrom(0)))
         expect(found, 'focusing a control moved or resized these elements').toEqual([])
       })
     }

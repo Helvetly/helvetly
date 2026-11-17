@@ -80,10 +80,13 @@ function Panel() {
 
 /** The column is capped and centred, and the composer row lines up with it. */
 async function expectColumn(column: HTMLElement, composerRow: HTMLElement) {
-  for (const element of [column, composerRow]) {
-    await expect(getComputedStyle(element).maxWidth).toBe(`${COLUMN}px`)
-    await expect(element.getBoundingClientRect().width).toBeLessThanOrEqual(COLUMN)
-  }
+  const both = [column, composerRow]
+  await expect(both.map((element) => getComputedStyle(element).maxWidth)).toEqual(
+    both.map(() => `${COLUMN}px`),
+  )
+  await expect(
+    Math.max(...both.map((element) => element.getBoundingClientRect().width)),
+  ).toBeLessThanOrEqual(COLUMN)
   const a = column.getBoundingClientRect()
   const b = composerRow.getBoundingClientRect()
   await expect(Math.abs(a.left + a.width / 2 - (b.left + b.width / 2))).toBeLessThan(1)
