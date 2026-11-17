@@ -164,29 +164,31 @@ export function FolderTree({
           <ul aria-label={translate('folderTree')} className="grid">
             {branch('', 0)}
           </ul>
-        ) : canWrite ? (
-          <>
-            {SUGGESTED.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => actions.create(name)}
-                className={cn(row, 'pl-2.5 text-muted-foreground')}
-              >
-                <FolderMark className="size-4 opacity-70" />
-                <span className="flex-1 truncate">{name}</span>
-                <span className="flex items-center gap-0.5 text-[12px] opacity-0 transition-opacity group-hover/row:opacity-100">
-                  <Plus className="size-3.5" />
-                  {translate('create2')}
-                </span>
-              </button>
-            ))}
-            <p className="px-2 pt-1 text-[12px] text-muted-foreground">
-              {translate('suggestedClickOneToCreateIt')}
-            </p>
-          </>
         ) : (
-          <p className="px-2 text-xs text-muted-foreground">{translate('noFoldersYet')}</p>
+          <div className="grid gap-2 px-2 pt-0.5">
+            <div className="grid gap-0.5 text-[12px] leading-4 text-muted-foreground">
+              <p>{translate('noFoldersYet')}</p>
+              {canWrite && <p>{translate('uploadsAreSortedIntoFoldersAutomatically')}</p>}
+            </div>
+            {canWrite && (
+              <ul aria-label={translate('suggested')} className="flex flex-wrap gap-1.5">
+                {SUGGESTED.map((name) => (
+                  <li key={name}>
+                    <button
+                      type="button"
+                      aria-label={translate('createFolderName', { name })}
+                      title={translate('createFolderName', { name })}
+                      onClick={() => actions.create(name)}
+                      className="flex h-6 cursor-pointer items-center gap-1 rounded-md border border-dashed border-border px-2 text-[12px] text-muted-foreground transition-colors outline-none hover:border-foreground/25 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <Plus className="size-3 shrink-0 stroke-[1.75]" />
+                      {name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </nav>
 
