@@ -30,15 +30,15 @@ test('owner customises the English invoice email, the send dialog shows it rende
   const number = text(invoice.number)
 
   await page.goto('/settings/emails')
-  await page.getByRole('tab', { name: 'EN, English' }).click()
+  await page.getByRole('radio', { name: 'English' }).click()
   await page.locator('#email-template-invoice-en-subject').fill('Bill {number} for {client}')
   await page.locator('#email-template-invoice-en-body').fill('Dear {client}, see {number}.')
   await page.getByRole('button', { name: 'Save' }).filter({ visible: true }).first().click()
-  await expect(page.getByRole('tab', { name: 'EN, English, customised' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'English, customised' })).toBeVisible()
 
   // A refresh keeps the saved template.
   await page.reload()
-  await page.getByRole('tab', { name: 'EN, English, customised' }).click()
+  await page.getByRole('radio', { name: 'English, customised' }).click()
   await expect(page.locator('#email-template-invoice-en-subject')).toHaveValue(
     'Bill {number} for {client}',
   )
@@ -62,9 +62,9 @@ test('owner customises the English invoice email, the send dialog shows it rende
 
   // Reset restores the standard wording.
   await page.goto('/settings/emails')
-  await page.getByRole('tab', { name: 'EN, English, customised' }).click()
+  await page.getByRole('radio', { name: 'English, customised' }).click()
   await page.getByRole('button', { name: 'Reset to default' }).click()
-  await expect(page.getByRole('tab', { name: 'EN, English', exact: true })).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeVisible()
   const standard = await draftEmail(api, `/invoices/${text(invoice.id)}`)
   expect(standard.subject).toBe(`Invoice ${number} from E2E Zürich GmbH`)
 })

@@ -4,7 +4,6 @@ import { FormField, HelpTip, describedBy } from '@helvetly/ui/components/form-fi
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Mail, PenLine, RotateCcw } from 'lucide-react'
@@ -100,42 +99,31 @@ export function EmailTemplatesSettingsPage() {
                   options={EMAIL_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
                   onChange={setKind}
                 />
-                <Tabs
+                <Segmented
+                  label={translate('emailTemplatesLanguage')}
                   value={language}
-                  onValueChange={(next) => {
-                    const code = EMAIL_LANGUAGES.find((entry) => entry === next)
-                    if (code) setLanguage(code)
-                  }}
-                >
-                  <TabsList aria-label={translate('emailTemplatesLanguage')}>
-                    {EMAIL_LANGUAGES.map((code) => {
-                      const custom = data.find(
-                        (entry) => entry.kind === kind && entry.language === code,
-                      )?.custom
-                      return (
-                        <TabsTrigger
-                          key={code}
-                          value={code}
-                          // The dot says "customised" to the eye; the name says it to everyone else.
-                          aria-label={
-                            custom
-                              ? `${code.toUpperCase()}, ${LANGUAGE_NAMES[code]}, ${translate('emailTemplatesCustom').toLowerCase()}`
-                              : `${code.toUpperCase()}, ${LANGUAGE_NAMES[code]}`
-                          }
-                        >
-                          {code.toUpperCase()}
+                  options={EMAIL_LANGUAGES.map((code) => {
+                    const custom = data.find(
+                      (entry) => entry.kind === kind && entry.language === code,
+                    )?.custom
+                    return {
+                      value: code,
+                      // The dot says "customised" to the eye; the name says it to everyone else.
+                      name: custom
+                        ? `${LANGUAGE_NAMES[code]}, ${translate('emailTemplatesCustom').toLowerCase()}`
+                        : undefined,
+                      label: (
+                        <span className="inline-flex items-center gap-1.5">
+                          {LANGUAGE_NAMES[code]}
                           {custom && (
                             <span aria-hidden className="size-1.5 rounded-full bg-primary" />
                           )}
-                        </TabsTrigger>
-                      )
-                    })}
-                  </TabsList>
-                  {/* The text itself is below, in its own section; these only give each tab its panel. */}
-                  {EMAIL_LANGUAGES.map((code) => (
-                    <TabsContent key={code} value={code} className="hidden" />
-                  ))}
-                </Tabs>
+                        </span>
+                      ),
+                    }
+                  })}
+                  onChange={setLanguage}
+                />
               </div>
             </SettingsSection>
             {/* Every template keeps its own unsaved edits while another is shown. */}
@@ -239,104 +227,102 @@ function EditorForm({
 
   const section = form.section('text')
   return (
-    <div hidden={!shown}>
-      <SettingsSection
-        id={prefix}
-        icon={PenLine}
-        title={
-          <span className="inline-flex items-center gap-1.5">
-            {translate('emailTemplatesTextTitle')}
-            <HelpTip label={translate('emailTemplatesHelpLabel')}>
-              {translate('emailTemplatesHelp', { example: '{client}' })}
-            </HelpTip>
-          </span>
-        }
-        description={
-          writable
-            ? translate('emailTemplatesTextDescription')
-            : translate('emailTemplatesReadOnly')
-        }
-        section={writable ? section : undefined}
+    <SettingsSection
+      id={prefix}
+      // Hidden, not unmounted, and without a wrapper: one would make it a first child and drop the hairline above it.
+      hidden={!shown}
+      icon={PenLine}
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          {translate('emailTemplatesTextTitle')}
+          <HelpTip label={translate('emailTemplatesHelpLabel')}>
+            {translate('emailTemplatesHelp', { example: '{client}' })}
+          </HelpTip>
+        </span>
+      }
+      description={
+        writable ? translate('emailTemplatesTextDescription') : translate('emailTemplatesReadOnly')
+      }
+      section={writable ? section : undefined}
+    >
+      <form
+        className="grid gap-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          section.save()
+        }}
       >
-        <form
-          className="grid gap-4"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault()
-            section.save()
-          }}
+        <FormField
+          id={`${prefix}-subject`}
+          label={translate('emailTemplatesSubject')}
+          error={form.errors.subject}
         >
-          <FormField
-            id={`${prefix}-subject`}
-            label={translate('emailTemplatesSubject')}
-            error={form.errors.subject}
-          >
-            <Input
-              {...describedBy(`${prefix}-subject`, form.errors.subject)}
-              ref={subjectRef}
-              disabled={!writable}
-              value={form.values.subject}
-              onFocus={() => (lastField.current = 'subject')}
-              onChange={(event) => form.set('subject', event.target.value)}
-            />
-          </FormField>
-          <FormField
-            id={`${prefix}-body`}
-            label={translate('emailTemplatesMessage')}
-            error={form.errors.body}
-          >
-            <Textarea
-              {...describedBy(`${prefix}-body`, form.errors.body)}
-              ref={bodyRef}
-              className="min-h-40"
-              disabled={!writable}
-              value={form.values.body}
-              onFocus={() => (lastField.current = 'body')}
-              onChange={(event) => form.set('body', event.target.value)}
-            />
-          </FormField>
-          {writable && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-body-sm text-muted-foreground">
-                {translate('emailTemplatesVariables')}
-              </span>
-              {template.variables.map((variable) => (
-                <Tooltip key={variable}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      className="font-mono"
-                      onClick={() => insert(variable)}
-                    >
-                      {`{${variable}}`}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {VARIABLE_HINTS[variable] ?? translate('emailTemplatesVariableUnknown')}
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          )}
-          {writable && template.custom && (
-            <div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                disabled={resetting || section.saving}
-                onClick={onReset}
-              >
-                <RotateCcw className="size-3.5" />
-                {translate('emailTemplatesReset')}
-              </Button>
-            </div>
-          )}
-        </form>
-      </SettingsSection>
-    </div>
+          <Input
+            {...describedBy(`${prefix}-subject`, form.errors.subject)}
+            ref={subjectRef}
+            disabled={!writable}
+            value={form.values.subject}
+            onFocus={() => (lastField.current = 'subject')}
+            onChange={(event) => form.set('subject', event.target.value)}
+          />
+        </FormField>
+        <FormField
+          id={`${prefix}-body`}
+          label={translate('emailTemplatesMessage')}
+          error={form.errors.body}
+        >
+          <Textarea
+            {...describedBy(`${prefix}-body`, form.errors.body)}
+            ref={bodyRef}
+            className="min-h-40"
+            disabled={!writable}
+            value={form.values.body}
+            onFocus={() => (lastField.current = 'body')}
+            onChange={(event) => form.set('body', event.target.value)}
+          />
+        </FormField>
+        {writable && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-body-sm text-muted-foreground">
+              {translate('emailTemplatesVariables')}
+            </span>
+            {template.variables.map((variable) => (
+              <Tooltip key={variable}>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="font-mono"
+                    onClick={() => insert(variable)}
+                  >
+                    {`{${variable}}`}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {VARIABLE_HINTS[variable] ?? translate('emailTemplatesVariableUnknown')}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+        {writable && template.custom && (
+          <div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              disabled={resetting || section.saving}
+              onClick={onReset}
+            >
+              <RotateCcw className="size-3.5" />
+              {translate('emailTemplatesReset')}
+            </Button>
+          </div>
+        )}
+      </form>
+    </SettingsSection>
   )
 }

@@ -113,6 +113,7 @@ export function SettingsSection({
   icon: Icon,
   tone,
   className,
+  hidden,
   children,
   ...data
 }: {
@@ -126,12 +127,15 @@ export function SettingsSection({
   /** "danger": what can't be undone; it ends the page, its title in red. */
   tone?: 'danger'
   className?: string
+  /** Kept mounted but out of view, e.g. one of several editors of which one is shown. */
+  hidden?: boolean
   children?: ReactNode
   'data-section'?: string
 }) {
   return (
     <section
       id={id}
+      hidden={hidden}
       aria-labelledby={`${id}-title`}
       ref={section?.attach}
       data-slot="settings-section"

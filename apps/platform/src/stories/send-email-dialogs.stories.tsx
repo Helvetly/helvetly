@@ -53,6 +53,9 @@ export const InvoicePrefilled: Story = {
       expect(dialog.getByRole('textbox', { name: /^Subject/ })).toHaveValue(draft.subject),
     )
     await expect(dialog.getByRole('textbox', { name: /^Message/ })).toHaveValue(draft.message)
+    // The whole prefilled message is in view, without scrolling the field.
+    const field = dialog.getByRole('textbox', { name: /^Message/ })
+    await expect(field.scrollHeight).toBeLessThanOrEqual(field.clientHeight)
     await userEvent.click(dialog.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(read()).toEqual(draft))
   },

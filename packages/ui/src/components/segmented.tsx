@@ -1,5 +1,5 @@
 import { cn } from '@helvetly/ui/lib/utils'
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 
 /** A row of mutually exclusive choices ("Company | Person", "10 | 30 | 60 | Custom"). */
 export function Segmented<T extends string>({
@@ -16,7 +16,7 @@ export function Segmented<T extends string>({
    * `name`: what is spoken when the visible label is abbreviated ("3 mo" for "3 months").
    * `count`: how many records the option holds, shown muted after its label.
    */
-  options: { value: T; label: string; name?: string; count?: number }[]
+  options: { value: T; label: ReactNode; name?: string; count?: number }[]
   onChange: (value: T) => void
   /** Spans the field's width in equal parts, for a row under an input. */
   fill?: boolean
