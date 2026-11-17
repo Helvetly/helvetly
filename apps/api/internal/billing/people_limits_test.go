@@ -113,12 +113,23 @@ func TestDowngradeNeverRemovesPeople(t *testing.T) {
 	}
 }
 
-// legacyOffer is the offer sold before 2026-11, which migration 00018 left Basic (25 people) and Pro workspaces on.
-const legacyOffer = "helvetly"
+// legacyOffer is an offer sold before the one on sale: 25 people on every plan.
+const legacyOffer = "legacy"
 
-// legacy puts a subscribed workspace on the legacy offer, as the migration left it.
+// legacy puts a subscribed workspace on the legacy offer, publishing it first.
 func (e *env) legacy(ws string) {
 	e.t.Helper()
+	var n int
+	if err := e.raw.QueryRow(e.t.Context(), `SELECT count(*) FROM offer_versions WHERE id = $1`, legacyOffer).Scan(&n); err != nil {
+		e.t.Fatal(err)
+	}
+	if n == 0 {
+		e.publishOlder(legacyOffer, func(o *Offer) {
+			seats := recordOf(o, string(MaxSeats))
+			seats.Values[Basic] = OfferValue{State: StateLimited, Value: n64(25)}
+			seats.Values[Business] = OfferValue{State: StateLimited, Value: n64(25)}
+		})
+	}
 	e.exec(`UPDATE workspace_billing SET offer_id = $2 WHERE workspace_id = $1`, ws, legacyOffer)
 }
 
@@ -299,7 +310,7 @@ func TestLegacyBasicKeepsItsTerms(t *testing.T) {
 	}
 }
 
-// A Business the migration left on the legacy offer (an override) shows its real limit and stays on its offer.
+// A Business left on the legacy offer (an override) shows its real limit and stays on its offer.
 func TestExcludedLegacyBusinessShowsItsTerms(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
@@ -318,7 +329,7 @@ func TestExcludedLegacyBusinessShowsItsTerms(t *testing.T) {
 	}
 }
 
-// A Business the migration left on the legacy offer for its scheduled change (no override) shows the 25 people it
+// A Business left on the legacy offer for its scheduled change (no override) shows the 25 people it
 // holds, and neither a renewal nor cancelling the change moves it.
 func TestPendingLegacyBusinessShowsItsTerms(t *testing.T) {
 	e := newEnv(t, true)

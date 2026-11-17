@@ -11,7 +11,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// seeded is the first offer, as 00007 published it, with the definitions.
+// seeded is the offer 00007 publishes, with the definitions.
 func seeded(t *testing.T) (*env, Offer, []store.LimitDef) {
 	t.Helper()
 	e := newEnv(t, true)
@@ -33,8 +33,8 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database: the latest published by the migrations (00021).
-const currentOffer = "helvetly-email-2026-11"
+// currentOffer is the offer on sale in the seeded database, the one 00007 publishes.
+const currentOffer = "helvetly-v1"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]

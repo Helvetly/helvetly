@@ -371,8 +371,9 @@ func TestPlanAmountYearly(t *testing.T) {
 // while a trial it already started keeps the Business terms it was sold.
 func TestOlderOfferWorkspacesGetOnlyTheProTrial(t *testing.T) {
 	e := newEnv(t, true)
+	e.publishOlder("older", func(o *Offer) { o.Trial.AccessPlan = Business })
 	owner := e.workspace()
-	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'helvetly-v2', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'helvetly-v2'`, owner.workspace)
+	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'older', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'older'`, owner.workspace)
 	for plan, trial := range map[string]string{Basic: "", Business: "", Pro: "7"} {
 		if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": "month"}); code != http.StatusOK {
 			t.Fatalf("checkout %s: %d %v", plan, code, body)
@@ -384,9 +385,9 @@ func TestOlderOfferWorkspacesGetOnlyTheProTrial(t *testing.T) {
 	}
 
 	started := e.workspace()
-	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'helvetly-v2', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'helvetly-v2'`, started.workspace)
+	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'older', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'older'`, started.workspace)
 	e.trialing(started.workspace, "fp_old", time.Now().Add(-time.Hour))
-	if r := mustRights(t, e, started.workspace); !r.Trial || r.Plan != Business || r.OfferID != "helvetly-v2" || !r.Includes(store.FeatureEmployees) {
+	if r := mustRights(t, e, started.workspace); !r.Trial || r.Plan != Business || r.OfferID != "older" || !r.Includes(store.FeatureEmployees) {
 		t.Fatalf("a trial started on the older offer: %+v", r)
 	}
 }
