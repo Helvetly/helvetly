@@ -1,11 +1,6 @@
 'use client'
-import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
-import { Kbd } from '@helvetly/ui/components/kbd'
 import { cn } from '@helvetly/ui/lib/utils'
-import { FileUp, FolderOpen, ReceiptText } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
-
-import { translate } from '@/lib/i18n'
+import { useEffect, useState } from 'react'
 
 const BRAND = 'Helvetly'
 const START_MS = 350
@@ -88,65 +83,5 @@ export function TypedWelcomeTitle({ title }: { title: string }) {
         })}
       </span>
     </>
-  )
-}
-
-function Benefit({
-  icon,
-  title,
-  heidi,
-  children,
-}: {
-  icon: ReactNode
-  title: string
-  heidi?: boolean
-  children: ReactNode
-}) {
-  return (
-    <li className="flex items-start gap-3 px-4 py-3">
-      <span
-        className={cn(
-          'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
-          heidi ? 'bg-heidi-soft/60' : 'bg-muted text-muted-foreground',
-        )}
-      >
-        {icon}
-      </span>
-      <span className="grid gap-0.5">
-        <span className="text-sm font-semibold tracking-tight">{title}</span>
-        <span className="text-sm text-pretty text-muted-foreground">{children}</span>
-      </span>
-    </li>
-  )
-}
-
-/** What the product does, as one quiet panel under the first action rather than four cards. */
-export function WelcomeBenefits() {
-  return (
-    <ul className="grid divide-y overflow-hidden rounded-xl border bg-muted/30">
-      <Benefit icon={<ReceiptText className="size-4 stroke-[1.75]" />} title={translate('getPaid')}>
-        {translate('invoicesWithTheSwissQRBillOrAsE')}
-      </Benefit>
-      <Benefit
-        icon={<FolderOpen className="size-4 stroke-[1.75]" />}
-        title={translate('clientsDocuments')}
-      >
-        {translate('contractsFromTemplatesESignaturesAndAPortalWhere')}
-      </Benefit>
-      <Benefit
-        icon={<FileUp className="size-4 stroke-[1.75]" />}
-        title={translate('bringYourData')}
-      >
-        {translate('dropInSpreadsheetsPDFsOrReceiptsAITurnsThem')}
-      </Benefit>
-      <Benefit
-        heidi
-        icon={<HeidiSparkle className="size-4" />}
-        title={translate('heidiYourAssistant')}
-      >
-        {translate('askAboutYourNumbersOrLetHerDraftFor')}
-        <Kbd>{translate('j')}</Kbd>.
-      </Benefit>
-    </ul>
   )
 }
