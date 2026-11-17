@@ -47,7 +47,7 @@ export function IssueChip({
           type="button"
           aria-label={`${translate('importNeedsFix')}: ${lines.join('. ')}`}
           onClick={onFix}
-          className="inline-flex items-center gap-1 rounded-full bg-warning-surface px-2 py-0.5 text-[12px] font-medium text-warning ring-1 ring-warning-border transition-colors ring-inset hover:bg-warning-surface/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+          className="inline-flex items-center gap-1 rounded-full bg-warning-surface px-2 py-0.5 text-caption font-medium text-warning ring-1 ring-warning-border transition-colors ring-inset hover:bg-warning-surface/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
         >
           <TriangleAlert className="size-3" />
           {translate('importNeedsFix')}
@@ -145,7 +145,7 @@ export function IssueSummary({
         </Callout>
       )}
       {patch.error && (
-        <p role="alert" className="text-[12.5px] text-destructive">
+        <p role="alert" className="text-caption text-destructive">
           {errorMessage(patch.error)}
         </p>
       )}

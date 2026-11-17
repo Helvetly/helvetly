@@ -179,7 +179,7 @@ export function EditRecordDrawer({
           <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4">
             <div className="grid min-w-0 gap-0.5">
               <SheetTitle className="text-lg font-semibold">{translate('editRecord')}</SheetTitle>
-              <SheetDescription className="truncate text-[13px] text-muted-foreground">
+              <SheetDescription className="truncate text-body-sm text-muted-foreground">
                 {name}
               </SheetDescription>
             </div>
@@ -277,13 +277,13 @@ export function EditRecordDrawer({
               )
             })}
             {record.duplicate && (
-              <p className="text-[12.5px] text-muted-foreground sm:col-span-2">
+              <p className="text-caption text-muted-foreground sm:col-span-2">
                 {translate('possibleDuplicate')}
                 {record.duplicate.label} ({record.duplicate.reason}).
               </p>
             )}
             {patch.error && (
-              <p role="alert" className="text-[12.5px] text-destructive sm:col-span-2">
+              <p role="alert" className="text-caption text-destructive sm:col-span-2">
                 {errorMessage(patch.error)}
               </p>
             )}
