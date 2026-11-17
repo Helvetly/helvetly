@@ -259,7 +259,7 @@ function DeleteCard({ name }: { name: string }) {
     <DangerZone id="delete-workspace">
       <DangerRow
         title={translate('deleteWorkspace')}
-        description={translate('everyoneLosesAccessToInvoicesAndReceiptsStayArchived', {
+        description={translate('everyoneLosesAccessToAndAPaidPlanEnds', {
           name: name,
         })}
         action="Delete workspace"
@@ -300,7 +300,7 @@ export function DeleteDialog({ name, onClose }: { name: string; onClose: () => v
             {name}”?
           </DialogTitle>
           <DialogDescription>
-            {translate('membersInvitationsAndSessionsEndNowAndNobodyCan')}
+            {translate('membersInvitationsAndSessionsEndNowYouCanRestore')}
             {paid && translate('itsSubscriptionIsCancelledImmediatelyWithoutARefundFor')}
           </DialogDescription>
         </DialogHeader>

@@ -54,6 +54,10 @@ are the reference.
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
+- **Workspace deletion** is soft: `workspaces.deleted_at`, members, sessions and open invitations end, and a
+  `workspace_deletions` row keeps the members so whoever deleted it can restore it for 30 days. A job
+  (`dataexport.RunBackups`) stores the owner's whole export plus `deletion.json` as a ZIP at
+  `workspaces/<id>/backups/<deletion>.zip`, under the records' retention; the records themselves stay.
 - **Employees** (`internal/employees`, `internal/employment`): own staff, never users, on the Business plan (feature
   `employees`; after a downgrade the owner still reads and exports, nobody writes). Two HR areas, `employees` and
   `payroll` (read = View, write = Edit), never reached by a `*` resource; owners hold both, admins `permissions.AdminHR`

@@ -35,6 +35,7 @@ import { setCsrfToken, type User } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
+import { DeletedWorkspaces } from './deleted-workspaces'
 import { ProfilePhoto } from './profile-photo'
 import { Sessions } from './sessions'
 import { SignInMethods } from './sign-in-methods'
@@ -59,6 +60,7 @@ export function AccountSettings() {
             <SignInMethods email={user.email} />
             <TwoFactor />
             <Sessions />
+            <DeletedWorkspaces />
             <ExportAccount />
             <DeleteAccount email={user.email} />
           </>

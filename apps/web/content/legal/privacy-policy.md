@@ -126,6 +126,9 @@ you can do yourself:
   Heidi conversations or records you created) belongs to that workspace and stays there without your
   name or address; ask the workspace's owner, or us, if you want it removed.
 
+The owner who deleted a workspace can restore it within 30 days. On deletion we also store an archive copy
+(a ZIP of all its records and files), kept with the archive for the retention period below.
+
 A deleted workspace can no longer be reached by anyone, but its records stay stored: records that
 accounting law requires to be kept (invoices, receipts, the audit log: 10 years, OR Art. 958f and
 GeBüV) are kept for that period, and only for that purpose, and then erased. Write to

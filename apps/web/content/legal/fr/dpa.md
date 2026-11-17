@@ -82,13 +82,17 @@ export du compte. Helvetly l’assiste également, si nécessaire, pour les anal
 
 Pendant le contrat, le Client peut exporter toutes ses données à tout moment (Settings → Workspace →
 Export all data). Lorsqu’un espace est supprimé, plus personne ne peut y accéder, mais ses données
-et fichiers restent stockés ; la plateforme ne les efface pas encore automatiquement. La conservation
-des pièces de gestion pendant la durée légale (en Suisse, 10 ans, art. 958f CO, Olico) incombe au Client
-en tant que responsable du traitement. Helvetly conserve les données d’un espace supprimé comme
-archives jusqu’à la fin de cette durée, puis les efface ; sur demande du Client, il les efface plus
-tôt si la loi le permet. Les sauvegardes sont effacées selon leur cycle normal. Les données des
-employés et des salaires font partie de l’espace : l’export du propriétaire les inclut dans un
-dossier distinct ; à la suppression, elles sont traitées comme les autres données de l’espace.
+et fichiers restent stockés ; la plateforme ne les efface pas encore automatiquement. La
+conservation des pièces de gestion pendant la durée légale (en Suisse, 10 ans, art. 958f CO, Olico)
+incombe au Client en tant que responsable du traitement. Helvetly conserve les données d’un espace
+supprimé comme archives jusqu’à la fin de cette durée, puis les efface ; sur demande du Client, il
+les efface plus tôt si la loi le permet. Les sauvegardes sont effacées selon leur cycle normal. Dans
+les 30 jours, le propriétaire qui a supprimé l’espace peut le restaurer, avec ses membres. À la
+suppression, Helvetly conserve en outre une copie d’archive, un ZIP de tous les enregistrements et
+fichiers de l’espace, qu’il garde avec les archives pendant la durée de conservation, puis efface.
+Les données des employés et des salaires font partie de l’espace : l’export du propriétaire les
+inclut dans un dossier distinct ; à la suppression, elles sont traitées comme les autres données de
+l’espace.
 
 ## 10. Violations de données
 

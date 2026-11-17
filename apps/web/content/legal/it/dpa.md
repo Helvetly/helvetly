@@ -80,15 +80,18 @@ dei dati e nelle notifiche alle autorità, ove necessario.
 ## 9. Cancellazione e restituzione
 
 Durante il contratto, il Cliente può esportare tutti i dati in qualsiasi momento (Settings →
-Workspace → Export all data). Quando uno spazio di lavoro viene eliminato, nessuno può più accedervi,
-ma record e file restano memorizzati; la piattaforma non li cancella ancora automaticamente.
-Conservare i documenti aziendali per il periodo richiesto dalla legge (in Svizzera 10 anni, art. 958f
-CO, Olc) è un obbligo del Cliente in qualità di titolare del trattamento. Helvetly conserva in
-archivio i dati dello spazio di lavoro eliminato fino alla fine del periodo di conservazione e poi
-li cancella; su richiesta del Cliente li cancella prima, ove consentito dalla legge. I backup vengono
-cancellati secondo la normale rotazione. I dati dei dipendenti e dei salari fanno parte dello spazio
-di lavoro: l’esportazione del titolare li include in una cartella separata e, in caso di eliminazione,
-vengono trattati come gli altri dati.
+Workspace → Export all data). Quando uno spazio di lavoro viene eliminato, nessuno può più
+accedervi, ma record e file restano memorizzati; la piattaforma non li cancella ancora
+automaticamente. Conservare i documenti aziendali per il periodo richiesto dalla legge (in Svizzera
+10 anni, art. 958f CO, Olc) è un obbligo del Cliente in qualità di titolare del trattamento.
+Helvetly conserva in archivio i dati dello spazio di lavoro eliminato fino alla fine del periodo di
+conservazione e poi li cancella; su richiesta del Cliente li cancella prima, ove consentito dalla
+legge. I backup vengono cancellati secondo la normale rotazione. Entro 30 giorni il titolare che ha
+eliminato lo spazio di lavoro può ripristinarlo, con i suoi membri. All’eliminazione Helvetly
+conserva inoltre una copia d’archivio, uno ZIP di tutti i record e file dello spazio, che tiene con
+l’archivio per il periodo di conservazione e poi cancella. I dati dei dipendenti e dei salari fanno
+parte dello spazio di lavoro: l’esportazione del titolare li include in una cartella separata e, in
+caso di eliminazione, vengono trattati come gli altri dati.
 
 ## 10. Violazioni dei dati
 

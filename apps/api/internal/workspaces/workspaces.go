@@ -1,4 +1,4 @@
-// Package workspaces creates, updates (name, time zone) and deletes workspaces (docs/workspaces-contract.md);
+// Package workspaces creates, updates (name, time zone), deletes and restores workspaces (docs/workspaces-contract.md);
 // listing and switching are sessions, in internal/auth.
 package workspaces
 
@@ -62,6 +62,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/workspaces", s.auth.SignedIn(s.create))
 	mux.HandleFunc("PATCH /api/v1/workspace", s.auth.SignedIn(s.update))
 	mux.HandleFunc("DELETE /api/v1/workspace", s.auth.SignedIn(s.delete))
+	mux.HandleFunc("GET /api/v1/workspaces/deleted", s.auth.SignedIn(s.deleted))
+	mux.HandleFunc("POST /api/v1/workspaces/deleted/{id}/restore", s.auth.SignedIn(s.restore))
 	mux.HandleFunc("POST /api/v1/workspace/name-suggestion", s.auth.SignedIn(s.suggestName))
 	mux.HandleFunc("GET /api/v1/workspace/logo", s.auth.SignedIn(s.getLogo))
 	mux.HandleFunc("PUT /api/v1/workspace/logo", s.auth.SignedIn(s.putLogo))
@@ -165,6 +167,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"id": ws.ID, "name": ws.Name, "timezone": ws.Timezone}})
 }
 
+// restoreWindow is how long whoever deleted a workspace can restore it.
+const restoreWindow = 30 * 24 * time.Hour
+
 // delete needs the workspace's name typed as confirm. A live subscription is cancelled at once first (a Stripe
 // failure stops the deletion, so it can be retried). The session moves to another of the person's workspaces
 // ({csrf_token}); without one it ends (204).
@@ -189,7 +194,7 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return
 	}
 	if err := s.db.Tx(r.Context(), func(q store.Q) error {
-		return q.DeleteWorkspace(r.Context(), sess.Workspace.ID, s.now())
+		return q.DeleteWorkspace(r.Context(), sess.Workspace.ID, auth.NewID("wdl"), sess.User.ID, s.now())
 	}); err != nil {
 		s.auth.WriteError(w, r, err)
 		return
@@ -211,4 +216,44 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// deleted lists the workspaces the person deleted that they can still restore, with the last moment they can.
+func (s *Service) deleted(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	list, err := s.db.DeletedWorkspaces(r.Context(), sess.User.ID, s.now().Add(-restoreWindow))
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	type row struct {
+		store.WorkspaceDeletion
+		RestoreUntil time.Time `json:"restore_until"`
+	}
+	out := make([]row, len(list))
+	for i, d := range list {
+		out[i] = row{d, d.DeletedAt.Add(restoreWindow)}
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out})
+}
+
+// restore brings back a workspace the person deleted within the window, with its members, and moves the session into
+// it ({csrf_token}). Its subscription stays cancelled.
+func (s *Service) restore(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	var workspaceID string
+	err := s.db.Tx(r.Context(), func(q store.Q) error {
+		var err error
+		now := s.now()
+		workspaceID, err = q.RestoreWorkspace(r.Context(), r.PathValue("id"), sess.User.ID, now.Add(-restoreWindow), now)
+		return err
+	})
+	if errors.Is(err, store.ErrNotFound) {
+		err = auth.ErrNotFound
+	}
+	if err == nil {
+		s.log.InfoContext(r.Context(), "workspace restored", "workspace", workspaceID, "by", sess.User.ID)
+		err = s.auth.SwitchWorkspace(w, r, sess, workspaceID)
+	}
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+	}
 }

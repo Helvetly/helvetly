@@ -212,7 +212,8 @@ func run() error {
 	dashboardSvc := dashboard.New(db, authSvc)
 	exportSvc := dataexport.New(db, authSvc, files, slog.Default())
 	exportSvc.SetHR(employeesSvc)
-	exportSvc.SetSnapshots(billingSvc.ReserveSnapshot) // the owner's whole export: its own small allowance
+	exportSvc.SetSnapshots(billingSvc.ReserveSnapshot)    // the owner's whole export: its own small allowance
+	bg.Go(ctx, "workspace backups", exportSvc.RunBackups) // every minute: the archive of each deleted workspace
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{
 		Provider: model, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
