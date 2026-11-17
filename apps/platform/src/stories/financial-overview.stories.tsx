@@ -308,7 +308,7 @@ export const BillingActiveDetails: Story = {
   render: () => <BillingSettings />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 2 })).toBeVisible()
+    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 3 })).toBeVisible()
     await expect(await canvas.findByText('4242')).toBeVisible()
     await expect(canvas.getByText(/−10% for 3 months until 1 Jan 2027/)).toBeVisible()
     await expect(canvas.queryByText('WELCOME')).not.toBeInTheDocument()
@@ -365,7 +365,7 @@ export const BillingReadOnlyMember: Story = {
   render: () => <BillingSettings />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 2 })).toBeVisible()
+    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 3 })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Manage billing' })).not.toBeInTheDocument()
     await expect(canvas.queryByText('Payments', { exact: true })).not.toBeInTheDocument()
   },

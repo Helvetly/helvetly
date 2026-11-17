@@ -26,7 +26,7 @@ const meta = {
   title: 'Financial overview/Usage',
   args: { billing: onPlan('basic', { clients: 12, invoices_per_month: 5 }) },
   render: ({ billing }) => (
-    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+    <div className="@container/sections mx-auto max-w-5xl p-4 sm:p-6">
       <UsageOverview billing={billing} />
     </div>
   ),
@@ -43,9 +43,9 @@ const phone = {
   globals: { viewport: { value: 'phone' } },
 }
 
-const tile = (canvas: HTMLElement, label: string) => {
+const row = (canvas: HTMLElement, label: string) => {
   const found = within(canvas).getByText(label, { exact: true }).closest('[data-slot=usage-meter]')
-  if (!(found instanceof HTMLElement)) throw new Error(`no tile ${label}`)
+  if (!(found instanceof HTMLElement)) throw new Error(`no row ${label}`)
   return found
 }
 
@@ -62,24 +62,17 @@ export const Normal: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(canvasElement.querySelector('[data-slot=usage-nudge]')).toBeNull()
-    await expect(tile(canvasElement, 'Clients')).toHaveTextContent('12of 30')
-    await expect(tile(canvasElement, 'Clients')).toHaveTextContent('Per workspace')
-    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent(
+    await expect(row(canvasElement, 'Clients')).toHaveTextContent('12 of 30')
+    await expect(row(canvasElement, 'Clients')).toHaveTextContent('Per workspace')
+    await expect(row(canvasElement, 'Invoice issues')).toHaveTextContent(
       'Per team member, shared · Resets 1 Dec, 00:00 UTC',
     )
-    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('2of 5')
-    await expect(tile(canvasElement, 'Storage')).toHaveTextContent('120 MBof 500 MB')
-    await expect(tile(canvasElement, 'Expenses')).toHaveAttribute('data-state', 'off')
-    await expect(tile(canvasElement, 'Expenses')).toHaveTextContent('Not included')
-    const automated = tile(canvasElement, 'Automated actions')
-    await expect(automated).toHaveTextContent('Not included')
-    // what counts is explained in a help tip, not on the tile
-    await userEvent.hover(
-      within(automated).getByRole('button', { name: 'About Automated actions' }),
-    )
-    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
-      /^Each automatic step counts once/,
-    )
+    await expect(row(canvasElement, 'Quotes sent')).toHaveTextContent('2 of 5')
+    await expect(row(canvasElement, 'Storage')).toHaveTextContent('120 MB of 500 MB')
+    // What the plan does not include has no row.
+    await expect(within(canvasElement).queryByText('Expenses')).toBeNull()
+    await expect(within(canvasElement).queryByText('Automated actions')).toBeNull()
+    await expect(within(canvasElement).queryByText(/Not included/)).toBeNull()
   },
 }
 export const NormalDark: Story = { ...Normal, parameters: { dark: true } }
@@ -89,8 +82,7 @@ export const NormalPhone: Story = { ...Normal, ...phone }
 export const NearLimit: Story = {
   args: { billing: onPlan('basic', { invoices_per_month: 12, clients: 4 }) },
   play: async ({ canvasElement }) => {
-    const issues = tile(canvasElement, 'Invoice issues')
-    await expect(canvasElement.querySelector('[data-slot=usage-meter]')).toBe(issues)
+    const issues = row(canvasElement, 'Invoice issues')
     await expect(issues).toHaveAttribute('data-state', 'near')
     await expect(within(issues).getByText('Almost at limit')).toBeVisible()
     const nudge = canvasElement.querySelector<HTMLElement>('[data-slot=usage-nudge]')
@@ -109,7 +101,7 @@ export const NearLimitPhone: Story = { ...NearLimit, ...phone }
 export const AtLimit: Story = {
   args: { billing: onPlan('basic', { invoices_per_month: 15 }) },
   play: async ({ canvasElement }) => {
-    await expect(tile(canvasElement, 'Invoice issues')).toHaveAttribute('data-state', 'full')
+    await expect(row(canvasElement, 'Invoice issues')).toHaveAttribute('data-state', 'full')
     await expect(within(canvasElement).getByText('Limit reached')).toBeVisible()
     await expect(canvasElement.querySelector('[data-slot=usage-nudge]')).toHaveTextContent(
       'Invoice issues: the plan’s limit is reached. Drafts stay saved and can be issued once the allowance resets or the plan grows.',
@@ -142,14 +134,23 @@ export const Unlimited: Story = {
       ['Signature requests', '0'],
       ['Email recipients', '820'],
     ] as const) {
-      const found = tile(canvasElement, label)
-      expect(found).toHaveTextContent(`${used}of unlimited`)
+      const found = row(canvasElement, label)
+      expect(found).toHaveTextContent(`${used} · Unlimited`)
       expect(found).toHaveAttribute('data-state', 'ok')
       expect(found).not.toHaveTextContent(/∞|NaN|-1|Not included/)
       expect(found.querySelector('[data-slot=meter]')).toBeNull()
     }
-    await expect(tile(canvasElement, 'Storage')).toHaveTextContent('of 40 GB')
+    await expect(row(canvasElement, 'Storage')).toHaveTextContent('of 40 GB')
     await expect(canvasElement.querySelector('[data-slot=usage-nudge]')).toBeNull()
+    // What counts is explained in a help tip, not in the row.
+    await userEvent.hover(
+      within(row(canvasElement, 'Automated actions')).getByRole('button', {
+        name: 'About Automated actions',
+      }),
+    )
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
+      /^Each automatic step counts once/,
+    )
   },
 }
 export const UnlimitedDark: Story = { ...Unlimited, parameters: { dark: true } }
@@ -165,12 +166,12 @@ export const Override: Story = {
     ),
   },
   play: async ({ canvasElement }) => {
-    const clients = tile(canvasElement, 'Clients')
-    await expect(clients).toHaveTextContent('280of 400')
+    const clients = row(canvasElement, 'Clients')
+    await expect(clients).toHaveTextContent('280 of 400')
     await expect(within(clients).getByText(/^Custom limit until/)).toBeVisible()
     // 100 per team member × 3, one pool
-    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('90of 300')
-    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('0of 300')
+    await expect(row(canvasElement, 'Invoice issues')).toHaveTextContent('90 of 300')
+    await expect(row(canvasElement, 'Quotes sent')).toHaveTextContent('0 of 300')
   },
 }
 export const OverrideDark: Story = { ...Override, parameters: { dark: true } }
@@ -180,9 +181,9 @@ export const OverridePhone: Story = { ...Override, ...phone }
 export const NotCountedYet: Story = {
   args: { billing: onPlan('pro', { emails_per_month: null }) },
   play: async ({ canvasElement }) => {
-    const emails = tile(canvasElement, 'Email recipients')
-    await expect(emails).toHaveTextContent('—of 500')
-    await expect(within(emails).getByText('Not counted yet')).toBeVisible()
+    const emails = row(canvasElement, 'Email recipients')
+    await expect(emails).toHaveTextContent('— of 500')
+    await expect(within(emails).getByText(/Not counted yet/)).toBeVisible()
   },
 }
 
@@ -212,9 +213,9 @@ export const Trial: Story = {
       'For the whole trial',
     )
     await expect(canvas.queryByText(/This month since/)).toBeNull()
-    await expect(tile(canvasElement, 'Invoice issues')).toHaveTextContent('For the whole trial')
-    await expect(tile(canvasElement, 'Clients')).not.toHaveTextContent('For the whole trial')
-    await expect(tile(canvasElement, 'Quotes sent')).toHaveTextContent('3of 10')
+    await expect(row(canvasElement, 'Invoice issues')).toHaveTextContent('For the whole trial')
+    await expect(row(canvasElement, 'Clients')).not.toHaveTextContent('For the whole trial')
+    await expect(row(canvasElement, 'Quotes sent')).toHaveTextContent('3 of 10')
     await expect(canvas.queryByText(/Resets|Per team member/)).toBeNull()
   },
 }

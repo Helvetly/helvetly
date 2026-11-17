@@ -79,7 +79,7 @@ export const PerSeatSummary: Story = {
   ...settings(perSeat()),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(price(canvasElement)).toHaveTextContent(
       /CHF 49 per person × 3 people\s*CHF 147\s*\/ month/,
     )
@@ -105,7 +105,7 @@ export const PerSeatSummaryMobile: Story = {
 export const PerSeatYearlySummary: Story = {
   ...settings(perSeat({ plan: 'basic', interval: 'year', seats: 2 })),
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findByRole('region', { name: 'Current plan' })
+    await within(canvasElement).findByRole('region', { name: 'Plan' })
     await expect(price(canvasElement)).toHaveTextContent(
       /CHF 183 per person × 2 people\s*CHF 366\s*\/ year/,
     )
@@ -116,7 +116,7 @@ export const FlatLegacySummary: Story = {
   ...settings(flat()),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     // A flat price is one figure, no sum; why it is flat is a quiet tooltip.
     await expect(price(canvasElement)).toHaveTextContent(
       /Flat price for the workspace\s*CHF 49\s*\/ month/,

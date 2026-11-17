@@ -4,9 +4,10 @@ import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Meter } from '@helvetly/ui/components/meter'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { ArrowRight, Gauge, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
+import { SettingsSection } from '@/components/settings/layout'
 import {
   formatLimit,
   formatReset,
@@ -24,62 +25,50 @@ import { translate } from '@/lib/i18n'
 import { limitLine } from './plan-cards'
 
 const STATE = {
-  near: {
-    text: translate('almostAtLimit'),
-    className: 'text-warning',
-    ring: 'ring-warning-border',
-  },
-  full: {
-    text: translate('limitReached'),
-    className: 'text-destructive',
-    ring: 'ring-destructive/40',
-  },
+  near: { text: translate('almostAtLimit'), className: 'text-warning' },
+  full: { text: translate('limitReached'), className: 'text-destructive' },
 }
 
-/** How full an item is, 0–1+; an unlimited, uncounted or excluded item counts as empty so it sorts last. */
+/** How full an item is, 0–1+; an unlimited or uncounted item counts as empty. */
 const share = (item: UsageItem) =>
   item.max === null || item.max === 0 || item.used === null ? -1 : item.used / item.max
 
-/** The usage, closest to its limit first. */
-export function byPressure(usage: UsageItem[]): UsageItem[] {
-  return usage.toSorted((a, b) => share(b) - share(a))
-}
-
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
 
-/** "Signature requests this month" reads "Signature requests" under a "This month" heading. */
-const tileLabel = (item: UsageItem) => usageLabel(item.limit).replace(/ this month$/, '')
+/** "Signature requests this month" reads "Signature requests" under a "This month" note. */
+const rowLabel = (item: UsageItem) => usageLabel(item.limit).replace(/ this month$/, '')
 
 /**
- * The plan's usage as tiles, numbers first, closest to its limit first: orange near a limit, red at
- * it, with one nudge to the next plan for the item under the most pressure.
+ * The plan's usage as a compact list, two columns on a wide panel: a name, a slim bar and "used of
+ * limit" per row. Limits the plan does not include are left out. One nudge to the next plan for the
+ * item under the most pressure.
  */
 export function UsageOverview({ billing }: { billing: Billing }) {
-  const items = byPressure(usageItems(billing))
-  const pressing = items.find((item) => ['near', 'full'].includes(meterState(item)))
+  const items = usageItems(billing).filter((item) => meterState(item) !== 'off')
+  const pressing = items
+    .filter((item) => ['near', 'full'].includes(meterState(item)))
+    .toSorted((a, b) => share(b) - share(a))[0]
   return (
-    <section
-      aria-labelledby="usage-title"
-      data-slot="usage-overview"
-      className="@container grid gap-2.5"
+    <SettingsSection
+      id="usage"
+      icon={Gauge}
+      title={translate('usage')}
+      description={translate('usageSectionHint')}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-1">
-        <h2 id="usage-title" className="text-body font-semibold">
-          {translate('usage')}
-        </h2>
+      <div data-slot="usage-overview" className="grid gap-3">
         <p className="text-body-sm text-muted-foreground tabular-nums">
           {billing.trial
             ? translate('forTheWholeTrial')
             : `${translate('thisMonthSince')}${formatDate(billing.period_start)}`}
         </p>
+        {pressing && <UpgradeNudge billing={billing} item={pressing} />}
+        <ul className="grid gap-x-10 divide-y @xl:grid-cols-2">
+          {items.map((item) => (
+            <UsageRow key={item.limit} item={item} trial={billing.trial} />
+          ))}
+        </ul>
       </div>
-      {pressing && <UpgradeNudge billing={billing} item={pressing} />}
-      <ul className="grid grid-cols-2 gap-2.5 @2xl:grid-cols-3 @4xl:grid-cols-4">
-        {items.map((item) => (
-          <UsageTile key={item.limit} item={item} trial={billing.trial} />
-        ))}
-      </ul>
-    </section>
+    </SettingsSection>
   )
 }
 
@@ -87,7 +76,7 @@ export function UsageOverview({ billing }: { billing: Billing }) {
 function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) {
   const full = meterState(item) === 'full'
   const next = billing.enabled ? nextPlan(billing) : undefined
-  const label = tileLabel(item)
+  const label = rowLabel(item)
   const key = isLimitKey(item.limit) ? item.limit : null
   // A full invoice allowance stops issuing only: drafts are saved and can be issued later.
   const kept =
@@ -127,113 +116,89 @@ function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) 
 }
 
 /**
- * Where the cap comes from and when it starts again, as a short line under the meter. A trial's allowances neither
- * reset nor grow with people: its monthly counts are one pool for the whole trial.
+ * Where the cap comes from and when it starts again. A trial's allowances neither reset nor grow with
+ * people: its monthly counts are one pool for the whole trial.
  */
-function TileFacts({ item, trial = false }: { item: UsageItem; trial?: boolean }) {
-  const facts = (
-    trial
-      ? [item.limit.endsWith('_per_month') ? translate('forTheWholeTrial') : null]
-      : [
-          item.per_seat === undefined
-            ? null
-            : item.per_seat
-              ? translate('perPaidPersonShared')
-              : translate('perWorkspace'),
-          item.reset_at && item.max !== 0
-            ? translate('resets', { at: formatReset(item.reset_at) })
-            : null,
-        ]
-  ).filter(Boolean)
-  return (
-    <>
-      {facts.length > 0 && (
-        <span className="-mt-1 text-caption text-muted-foreground">{facts.join(' · ')}</span>
-      )}
-      {item.custom && (
-        <span data-slot="usage-custom" className="-mt-1 text-caption font-medium text-brand">
-          {item.custom.expires_at
-            ? translate('customLimitUntil', { date: formatDate(item.custom.expires_at) })
-            : translate('customLimit')}
-        </span>
-      )}
-    </>
-  )
+function rowFacts(item: UsageItem, trial: boolean): string[] {
+  const facts = trial
+    ? [item.limit.endsWith('_per_month') ? translate('forTheWholeTrial') : null]
+    : [
+        item.per_seat === undefined
+          ? null
+          : item.per_seat
+            ? translate('perPaidPersonShared')
+            : translate('perWorkspace'),
+        item.reset_at && item.max !== 0
+          ? translate('resets', { at: formatReset(item.reset_at) })
+          : null,
+      ]
+  return facts.filter((fact): fact is string => fact !== null)
 }
 
-/** A tile's name, with a help tip where the name alone does not say what counts. */
-function TileLabel({ item }: { item: UsageItem }) {
-  const label = tileLabel(item)
+/**
+ * One limit: its name (a help tip where the name alone does not say what counts), the count over its
+ * limit, a slim bar (none when unlimited) and one muted note.
+ */
+function UsageRow({ item, trial = false }: { item: UsageItem; trial?: boolean }) {
+  const label = rowLabel(item)
   const hint = usageHint(item.limit)
-  return (
-    <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-pretty text-muted-foreground">
-      {label}
-      {hint && <HelpTip label={label}>{hint}</HelpTip>}
-    </span>
-  )
-}
-
-/** One limit: the count in large type over its limit, a meter, and a note near or at the limit. */
-export function UsageTile({ item, trial }: { item: UsageItem; trial?: boolean }) {
-  const label = tileLabel(item)
   const state = meterState(item)
-  if (state === 'off')
-    return (
-      <li
-        data-slot="usage-meter"
-        data-state={state}
-        className="grid min-w-0 content-start gap-2.5 rounded-xl bg-card p-3.5 shadow-elevation-1"
-      >
-        <TileLabel item={item} />
-        <p className="text-title-sm font-medium text-muted-foreground">
-          {translate('notIncluded')}
-        </p>
-        <div aria-hidden className="h-1.5 rounded-full bg-muted" />
-        <TileFacts item={{ ...item, per_seat: undefined }} />
-      </li>
-    )
   const used = item.used === null ? '—' : formatLimit(item.limit, item.used)
-  const note = state === 'ok' ? null : STATE[state]
+  const note = state === 'near' || state === 'full' ? STATE[state] : null
   const max = item.max === null ? null : formatLimit(item.limit, item.max)
+  const notes = rowFacts(item, trial)
+  if (item.used === null) notes.unshift(translate('notCountedYet'))
   return (
     <li
       data-slot="usage-meter"
       data-state={state}
-      className={cn(
-        'grid min-w-0 content-start gap-2.5 rounded-xl bg-card p-3.5 shadow-elevation-1',
-        note && `ring-1 ${note.ring}`,
-      )}
+      className="grid min-w-0 content-start gap-1.5 py-2.5"
     >
-      <TileLabel item={item} />
-      <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 tabular-nums">
-        <span className="text-page font-semibold tracking-[-0.02em]">{used}</span>
-        <span className="text-body-sm text-muted-foreground">
-          {max === null ? translate('ofUnlimited') : translate('dynamicOf', { max: max })}
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-pretty">
+          {label}
+          {hint && <HelpTip label={label}>{hint}</HelpTip>}
         </span>
-      </p>
-      {max === null || item.used === null ? (
-        <div aria-hidden className="h-1.5 rounded-full bg-muted" />
-      ) : (
+        <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
+          <span className={cn('font-medium', note ? note.className : 'text-foreground')}>
+            {used}
+          </span>
+          {max === null ? ` · ${translate('unlimited2')}` : ` ${translate('dynamicOf', { max })}`}
+        </span>
+      </div>
+      {max !== null && item.used !== null && (
         <Meter
           label={translate('of4', {
-            label: label,
-            used: used,
-            max: max,
+            label,
+            used,
+            max,
             value4: note ? `, ${note.text.toLowerCase()}` : '',
           })}
           value={item.used}
           max={item.max ?? 0}
         />
       )}
-      {note && (
-        <span className={cn('-mt-1 text-caption font-medium', note.className)}>{note.text}</span>
-      )}
-      {item.used === null && (
-        <span className="-mt-1 text-caption text-muted-foreground">
-          {translate('notCountedYet')}
+      {(note || notes.length > 0 || item.custom) && (
+        <span className="text-caption text-muted-foreground">
+          {[
+            note && (
+              <span key="state" className={cn('font-medium', note.className)}>
+                {note.text}
+              </span>
+            ),
+            ...notes,
+            item.custom && (
+              <span key="custom" data-slot="usage-custom" className="font-medium text-brand">
+                {item.custom.expires_at
+                  ? translate('customLimitUntil', { date: formatDate(item.custom.expires_at) })
+                  : translate('customLimit')}
+              </span>
+            ),
+          ]
+            .filter(Boolean)
+            .flatMap((part, index) => (index === 0 ? [part] : [' · ', part]))}
         </span>
       )}
-      <TileFacts item={item} trial={trial} />
     </li>
   )
 }

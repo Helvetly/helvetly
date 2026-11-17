@@ -4217,5 +4217,7 @@
   "importedSummary": "Imported: {summary}.",
   "importMoreDocuments": "Import more documents",
   "importMoreDocumentsHint": "Add more invoices, expenses, clients or price lists from files.",
-  "yourNextInvoiceNumber": "Your next invoice: {number}"
+  "yourNextInvoiceNumber": "Your next invoice: {number}",
+  "planSectionHint": "What this workspace is on, what it costs and what happens next.",
+  "usageSectionHint": "What the plan allows and how much of it is used."
 }
