@@ -122,7 +122,9 @@ test('picking a client starts a draft; typing autosaves it and totals come from 
   renderEditor()
   // The picker is open from the start: the client is the first thing an invoice needs.
   await pick('Alpenglow')
-  expect(screen.getByRole('button', { name: /^Alpenglow Studio GmbH.*Change$/ })).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: /^Alpenglow Studio GmbH.*Change$/ }),
+  ).toBeInTheDocument()
 
   await userEvent.type(screen.getByLabelText('Line 1 description'), 'Workshop')
   await userEvent.clear(screen.getByLabelText('Line 1 quantity'))
