@@ -8,9 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { Flag } from '@helvetly/ui/components/flag'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
-import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
+import { LanguageDialogButton, useCurrentLanguage } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Download, Languages, UserRound, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -21,7 +22,13 @@ import { useRedirectToPrefs } from '@/components/notifications/prefs-drawer'
 import { MAX_PERSON_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { DangerRow, DangerZone } from '@/components/settings/danger-zone'
-import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from '@/components/settings/layout'
+import {
+  ActionRow,
+  FieldGrid,
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+} from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { useDeleteAccount, useUpdateProfile } from '@/lib/account'
 import { setCsrfToken, type User } from '@/lib/api'
@@ -125,6 +132,7 @@ function Profile({ user }: { user: User }) {
 
 /** The interface language, kept in this browser: a reload shows every label in it. */
 function Language() {
+  const language = useCurrentLanguage()
   return (
     <SettingsSection
       id="language"
@@ -132,7 +140,18 @@ function Language() {
       title={translate('language')}
       description={translate('theLanguageOfHelvetlyInThisBrowser')}
     >
-      <LanguageDialogButton />
+      <ul className="grid">
+        <SettingsRow
+          icon={<Flag region={language.region} className="h-3 w-4 rounded-xs" />}
+          title={language.name}
+        >
+          <LanguageDialogButton>
+            <Button variant="outline" size="sm">
+              {translate('change')}
+            </Button>
+          </LanguageDialogButton>
+        </SettingsRow>
+      </ul>
     </SettingsSection>
   )
 }
