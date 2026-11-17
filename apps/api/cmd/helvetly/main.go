@@ -170,6 +170,8 @@ func run() error {
 	membersSvc.SetSeats(billingSvc)      // a member who leaves frees a seat
 	invitationsSvc.SetSeats(billingSvc)  // an accepted invitation takes one
 	instalmentsSvc.SetLimits(billingSvc) // the job issues invoices outside the guarded routes
+	// a new plan's items already due are issued at once, not at the job's next hourly tick
+	invoicesSvc.SetPlanCreated(instalmentsSvc.Wake)
 	dunningSvc := dunning.New(db, authSvc, invoicesSvc, files, slog.Default())
 	dunningSvc.SetMailer(mailer)
 	engagementsSvc.AddDigestSource(instalmentsSvc)

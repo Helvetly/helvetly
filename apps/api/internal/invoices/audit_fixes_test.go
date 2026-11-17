@@ -363,3 +363,17 @@ func TestPlanResponseItemStatus(t *testing.T) {
 		t.Errorf("cancelled plan items %+v", got.Items)
 	}
 }
+
+func TestPlanCreatedWakesTheJobOnce(t *testing.T) {
+	e := newEnv(t)
+	woken := 0
+	e.svc.SetPlanCreated(func() { woken++ })
+	b, client := e.ready()
+	src := e.draft1081(b, client, nil)
+	body := map[string]any{"count": 3, "interval": "monthly", "first_due_date": e.today()}
+	e.do(b, "POST", path(src.ID, "plan"), body, http.StatusCreated, nil)
+	e.do(b, "POST", path(src.ID, "plan"), body, http.StatusConflict, nil)
+	if woken != 1 {
+		t.Errorf("woken %d times, want once: for the created plan, not the refused one", woken)
+	}
+}
