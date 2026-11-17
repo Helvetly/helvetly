@@ -353,7 +353,7 @@
   "bihor": "Bihor",
   "billedAfterDelivery": "fatturato dopo la consegna",
   "billedMonthly": "Fatturazione mensile",
-  "billedTo": "Fatturato a",
+  "billedTo": "Destinatario",
   "billedUpfront": "fatturato in anticipo",
   "billedYearly": "Fatturato annualmente",
   "billing": "Fatturazione",
@@ -4162,5 +4162,7 @@
   "nothingNewReadFromTheReceipt": "Da questa ricevuta non si è potuto leggere nulla di nuovo. Le tue voci sono invariate.",
   "checkTheseFromTheReceipt": "Assegno dalla ricevuta: {issues}",
   "heicCantBeRead": "Le foto HEIC non possono essere lette automaticamente. Esporta la foto come JPEG o inserisci tu stesso i dettagli.",
-  "receiptReadFailed": "Impossibile leggere la ricevuta: {reason} I tuoi dati sono rimasti invariati."
+  "receiptReadFailed": "Impossibile leggere la ricevuta: {reason} I tuoi dati sono rimasti invariati.",
+  "billedBy": "Mittente",
+  "changeLogo": "Cambia logo"
 }

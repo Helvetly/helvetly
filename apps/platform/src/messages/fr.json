@@ -353,7 +353,7 @@
   "bihor": "Bihor",
   "billedAfterDelivery": "facturé après livraison",
   "billedMonthly": "Facturé mensuellement",
-  "billedTo": "Facturé à",
+  "billedTo": "Destinataire",
   "billedUpfront": "facturé d’avance",
   "billedYearly": "Facturé annuellement",
   "billing": "Facturation",
@@ -431,7 +431,7 @@
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Chaîne cassée à l’entrée #{broken_at}",
   "chainVerified": "Chaîne vérifiée",
-  "change": "Changement",
+  "change": "Modifier",
   "changeAccess": " Modifier l’accès…",
   "changeNothing": "Ne rien changer.",
   "changeNotificationSettings": "Modifier les paramètres de notification",
@@ -4162,5 +4162,7 @@
   "nothingNewReadFromTheReceipt": "Rien de nouveau ne peut être lu sur ce reçu. Vos entrées sont inchangées.",
   "checkTheseFromTheReceipt": "Chèque sur récépissé : {issues}",
   "heicCantBeRead": "Les photos HEIC ne peuvent pas être lues automatiquement. Exportez la photo au format JPEG ou saisissez les détails vous-même.",
-  "receiptReadFailed": "Le reçu n’a pas pu être lu : {reason} Vos entrées sont inchangées."
+  "receiptReadFailed": "Le reçu n’a pas pu être lu : {reason} Vos entrées sont inchangées.",
+  "billedBy": "Émetteur",
+  "changeLogo": "Changer le logo"
 }

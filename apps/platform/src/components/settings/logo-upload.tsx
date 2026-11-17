@@ -194,23 +194,49 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
 /** The logo on the editor's letterhead, or a quiet "Add logo" that opens the crop. */
 export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: boolean }) {
   const { logo, error, field, dialog, open } = useLogoPicker()
+  const busy = logo.progress !== null
+  const image = url && (
+    <span className="relative block h-14 w-56 dark:rounded-md dark:bg-white dark:p-1.5">
+      <Image
+        src={url}
+        alt={translate('yourLogo')}
+        fill
+        unoptimized
+        sizes="224px"
+        className="object-contain object-left"
+      />
+    </span>
+  )
+  if (url && !canEdit) return image
+  // The logo is changed where it shows, like every other part of the document.
   if (url)
     return (
-      <span className="relative mb-4 block h-14 w-56 dark:rounded-md dark:bg-white dark:p-1.5">
-        <Image
-          src={url}
-          alt={translate('yourLogo')}
-          fill
-          unoptimized
-          sizes="224px"
-          className="object-contain object-left"
-        />
-      </span>
+      <div className="grid gap-1">
+        {field}
+        {dialog}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={open}
+          aria-label={translate('changeLogo')}
+          className="group relative -m-1.5 w-fit rounded-lg p-1.5 transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          {image}
+          <span className="absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded-md bg-card/95 px-1.5 py-0.5 text-[12px] text-muted-foreground opacity-0 shadow-xs transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {busy ? (
+              <LoaderCircle className="size-3 animate-spin" />
+            ) : (
+              <ImagePlus className="size-3" />
+            )}
+            {busy ? translate('uploading3') : translate('change')}
+          </span>
+        </button>
+        {error && <span className="text-caption text-destructive">{error}</span>}
+      </div>
     )
   if (!canEdit) return null
-  const busy = logo.progress !== null
   return (
-    <div className="mb-4 grid gap-1">
+    <div className="grid gap-1">
       {field}
       {dialog}
       <button

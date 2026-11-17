@@ -711,34 +711,12 @@ function Editor({
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div
-          ref={top}
-          className="@container min-w-0 flex-1 scroll-mt-16 px-3 pt-5 pb-16 sm:px-6 md:pt-8"
-        >
-          <div className="mx-auto grid w-full max-w-[1040px] grid-cols-[minmax(0,1fr)] gap-4">
-            {preceding && invoice?.credited_invoice && (
-              <Callout tone="warning" icon={CircleAlert}>
-                {preceding}{' '}
-                <RecordLink
-                  href={`/invoices?id=${encodeURIComponent(invoice.credited_invoice.id)}`}
-                  className="font-medium underline underline-offset-4 hover:no-underline"
-                >
-                  {invoice.credited_invoice.number}
-                </RecordLink>
-                {credit && '. Remove or lower lines for a partial credit.'}
-              </Callout>
-            )}
-            {reasons && reasons.length > 0 && (
-              <IssueBlockers
-                reasons={reasons}
-                clientId={values.client_id ?? ''}
-                onFixInline={fixInline}
-              />
-            )}
-
-            {/* Document options: how the whole document is priced and printed. */}
-            <div className="flex flex-wrap items-center gap-2">
+      {/* From md up the document options stay above and the internal note below, and only the document scrolls;
+          on a phone everything scrolls together, so the pinned bars never cover the page. */}
+      <div className="flex min-h-0 flex-1 flex-col max-md:overflow-y-auto">
+        <div className="shrink-0 border-b border-border/60 px-3 py-3 sm:px-6">
+          <div className="mx-auto w-full max-w-[1040px]">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               {credit ? (
                 <span className="text-[13px] text-muted-foreground">
                   {values.currency} ·{' '}
@@ -784,23 +762,66 @@ function Editor({
                 />
               )}
             </div>
+          </div>
+        </div>
+        <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
+          <div ref={top} className="@container min-w-0 flex-1 scroll-mt-16 px-3 pt-4 pb-8 sm:px-6">
+            <div className="mx-auto grid w-full max-w-[1040px] grid-cols-[minmax(0,1fr)] gap-4">
+              {preceding && invoice?.credited_invoice && (
+                <Callout tone="warning" icon={CircleAlert}>
+                  {preceding}{' '}
+                  <RecordLink
+                    href={`/invoices?id=${encodeURIComponent(invoice.credited_invoice.id)}`}
+                    className="font-medium underline underline-offset-4 hover:no-underline"
+                  >
+                    {invoice.credited_invoice.number}
+                  </RecordLink>
+                  {credit && '. Remove or lower lines for a partial credit.'}
+                </Callout>
+              )}
+              {reasons && reasons.length > 0 && (
+                <IssueBlockers
+                  reasons={reasons}
+                  clientId={values.client_id ?? ''}
+                  onFixInline={fixInline}
+                />
+              )}
 
-            <article
-              aria-label={title}
-              // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
-              className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
-            >
-              {/* Letterhead: logo left; title and dates right. */}
-              <header className="flex flex-wrap items-start justify-between gap-6 max-md:flex-col">
-                <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
-                <div className="grid justify-items-end gap-1 text-right max-md:justify-items-start max-md:text-left">
-                  <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
-                    {kindInfo(kind).label}
-                  </h1>
-                  <span className="text-[13px] text-muted-foreground">
-                    {translate('noAssignedWhenIssued')}
-                  </span>
-                  <dl className="mt-4 grid w-[300px] max-w-full grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 text-left text-[13.5px]">
+              <article
+                aria-label={title}
+                // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
+                className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
+              >
+                {/* Letterhead: logo left; title and dates right. */}
+                {/* Letterhead: logo left, title right; below it seller, client and dates side by side. */}
+                <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+                  <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
+                  <div className="grid justify-items-end gap-1 text-right max-sm:justify-items-start max-sm:text-left">
+                    <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
+                      {kindInfo(kind).label}
+                    </h1>
+                    <span className="text-[13px] text-muted-foreground">
+                      {translate('noAssignedWhenIssued')}
+                    </span>
+                  </div>
+                </header>
+
+                <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_300px]">
+                  <SellerBlock settings={settings} />
+                  <ClientBlock
+                    client={client ?? null}
+                    open={picking}
+                    locked={credit}
+                    invalid={clientError && !values.client_id}
+                    onOpenChange={setPicking}
+                    onPick={(picked) => {
+                      setValues((current) => applyClient(current, picked, settings))
+                      setClientError(false)
+                      setPicking(false)
+                      focusCell(values.lines[0]?.key ?? '', 'description')
+                    }}
+                  />
+                  <dl className="grid w-[300px] max-w-full grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-[13.5px] md:col-span-2 @4xl:col-span-1">
                     <MetaLabel htmlFor="invoice-issue_date" error={errors.issue_date}>
                       {translate('issueDate')}
                     </MetaLabel>
@@ -908,208 +929,172 @@ function Editor({
                     )}
                   </dl>
                 </div>
-              </header>
 
-              {/* Seller and client side by side, as on the printed invoice. */}
-              <div className="mt-10 grid gap-8 md:grid-cols-2">
-                <div className="grid content-start gap-0.5 text-[13px] leading-relaxed text-muted-foreground">
-                  <span className={cn(PARTY_LABEL, 'mb-1.5')}>{translate('from')}</span>
-                  <span className="text-[15px] font-medium text-foreground">
-                    {settings.seller.name || translate('yourCompany')}
-                  </span>
-                  {settings.seller.street && (
-                    <span>
-                      {settings.seller.street} {settings.seller.street_number},{' '}
-                      {settings.seller.zip} {settings.seller.city}
-                    </span>
-                  )}
-                  {settings.seller.vat_number && <span>{settings.seller.vat_number}</span>}
-                  {!settings.is_complete && (
-                    <Link
-                      href="/settings/invoices"
-                      className="mt-1 inline-flex items-center gap-1 text-[12.5px] text-link underline underline-offset-2 hover:no-underline"
-                    >
-                      {translate('completeYourCompanyDetails')}
-                      <ArrowUpRight className="size-3" />
-                    </Link>
-                  )}
-                </div>
-                <ClientBlock
-                  client={client ?? null}
-                  open={picking}
-                  locked={credit}
-                  invalid={clientError && !values.client_id}
-                  onOpenChange={setPicking}
-                  onPick={(picked) => {
-                    setValues((current) => applyClient(current, picked, settings))
-                    setClientError(false)
-                    setPicking(false)
-                    focusCell(values.lines[0]?.key ?? '', 'description')
-                  }}
-                />
-              </div>
-
-              <textarea
-                aria-label={translate('introduction')}
-                value={values.intro}
-                maxLength={1000}
-                onChange={(event) => set('intro', event.target.value)}
-                placeholder={translate('addAMessageAboveTheLinesOptionalEG')}
-                rows={1}
-                className={cn(proseInput, 'mt-10')}
-              />
-
-              {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
-              <div className="-mx-1 mt-3 -mb-1 overflow-x-auto p-1">
-                <LinesEditor
-                  lines={values.lines}
-                  vatMode={values.vat_mode}
-                  defaultRate={settings.default_vat_rate}
-                  amounts={amounts}
-                  errors={errors}
-                  onChange={(lines) => set('lines', lines)}
-                  currency={values.currency}
-                />
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-start justify-between gap-8">
-                <PaymentNote
-                  settings={settings}
-                  ibanValid={iban.valid}
-                  qrBill={totals?.payment.qr_bill ?? false}
-                  revolutUrl={totals?.payment.revolut_url ?? null}
-                />
-                <dl
-                  aria-busy={preview.isFetching}
-                  className={cn(
-                    'grid w-full gap-2 text-[14px] transition-opacity sm:w-[320px]',
-                    preview.isFetching && 'opacity-70',
-                  )}
-                >
-                  <TotalLine
-                    label={translate('subtotal')}
-                    value={totals ? formatAmount(totals.subtotal) : null}
-                  />
-                  <div className="flex items-center justify-between gap-3">
-                    <dt className="flex items-center gap-2 text-muted-foreground">
-                      {translate('discount2')}
-                      <span className="relative">
-                        <input
-                          id="invoice-discount_percent"
-                          aria-label={translate('discountOnTheWholeDocumentPercent')}
-                          aria-invalid={errors.discount_percent ? true : undefined}
-                          inputMode="decimal"
-                          disabled={credit}
-                          value={values.discount_percent}
-                          onChange={(event) => set('discount_percent', event.target.value)}
-                          placeholder="0"
-                          className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-[13px] tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
-                        />
-                        <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[12px] text-muted-foreground">
-                          %
-                        </span>
-                      </span>
-                    </dt>
-                    <dd className="tabular-nums">
-                      {totals && !isZero(totals.discount_amount) ? (
-                        `−${formatAmount(totals.discount_amount)}`
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </dd>
-                  </div>
-                  {values.vat_mode !== 'none' &&
-                    totals?.vat_breakdown.map((group) => (
-                      <TotalLine
-                        key={`${group.category}${group.rate}`}
-                        muted
-                        label={translate('vatOn2', {
-                          value1: group.category === 'S' ? `${group.rate}%` : group.category,
-                          value2: formatAmount(group.taxable_amount),
-                        })}
-                        value={formatAmount(group.vat_amount)}
-                      />
-                    ))}
-                  {totals && !isZero(totals.rounding_amount) && (
-                    <TotalLine
-                      muted
-                      label={translate('roundingTo005')}
-                      value={formatAmount(totals.rounding_amount)}
-                    />
-                  )}
-                  <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-3">
-                    <dt className="text-[14px] font-medium">
-                      {translate('total2')}
-                      {values.currency}
-                      {values.vat_mode === 'inclusive' && (
-                        <span className="font-normal text-muted-foreground">
-                          {translate('inclVAT2')}
-                        </span>
-                      )}
-                    </dt>
-                    <dd className="text-[22px] font-medium tracking-[-0.02em] tabular-nums">
-                      {payable === null ? '—' : formatAmount(payable)}
-                    </dd>
-                  </div>
-                  {prepaid &&
-                    values.prepayments.map((prepayment) => (
-                      <TotalLine
-                        key={prepayment.id}
-                        muted
-                        label={`Prepayment ${prepayment.number ?? ''}`.trim()}
-                        value={`−${formatAmount(prepayment.payable_total)}`}
-                      />
-                    ))}
-                  {prepaid && (
-                    <TotalLine
-                      label={translate('amountDue2', { currency: values.currency })}
-                      value={amountDue === null ? null : formatAmount(amountDue)}
-                    />
-                  )}
-                </dl>
-              </div>
-
-              {/* The rule sits outside the field, so focus outlines only the text. */}
-              <div className="mt-10 border-t border-border/70 pt-4">
                 <textarea
-                  aria-label={translate('footer')}
-                  value={values.footer}
+                  aria-label={translate('introduction')}
+                  value={values.intro}
                   maxLength={1000}
-                  onChange={(event) => set('footer', event.target.value)}
-                  placeholder={translate('footerPrintedAtTheBottomEGPaymentConditions')}
+                  onChange={(event) => set('intro', event.target.value)}
+                  placeholder={translate('addAMessageAboveTheLinesOptionalEG')}
                   rows={1}
-                  className={cn(proseInput, 'text-[13px] text-muted-foreground')}
+                  className={cn(proseInput, 'mt-10')}
                 />
-              </div>
-            </article>
 
-            {kind === 'invoice' && values.client_id && (
-              <PrepaymentPicker
-                clientId={values.client_id}
-                currency={values.currency}
-                value={values.prepayments}
-                onChange={(prepayments) => set('prepayments', prepayments)}
-              />
-            )}
+                {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
+                <div className="-mx-1 mt-3 -mb-1 overflow-x-auto p-1">
+                  <LinesEditor
+                    lines={values.lines}
+                    vatMode={values.vat_mode}
+                    defaultRate={settings.default_vat_rate}
+                    amounts={amounts}
+                    errors={errors}
+                    onChange={(lines) => set('lines', lines)}
+                    currency={values.currency}
+                  />
+                </div>
 
-            {isReceivable(kind) && (
-              <InstalmentsSection
-                value={values.instalments}
-                onChange={(instalments) => set('instalments', instalments)}
-                reminders={values.reminders_enabled}
-                onReminders={(on) => set('reminders_enabled', on)}
-                payable={payable}
-                generated={generated}
-                currency={values.currency}
-                issueDate={values.issue_date}
-                firstDue={values.due_date}
-                settings={settings}
-                errors={errors}
-                blocker={blocker}
-                onSplit={draftId && valid ? () => void openPlan() : undefined}
-              />
-            )}
+                <div className="mt-6 flex flex-wrap items-start justify-between gap-8">
+                  <PaymentNote
+                    settings={settings}
+                    ibanValid={iban.valid}
+                    qrBill={totals?.payment.qr_bill ?? false}
+                    revolutUrl={totals?.payment.revolut_url ?? null}
+                  />
+                  <dl
+                    aria-busy={preview.isFetching}
+                    className={cn(
+                      'grid w-full gap-2 text-[14px] transition-opacity sm:w-[320px]',
+                      preview.isFetching && 'opacity-70',
+                    )}
+                  >
+                    <TotalLine
+                      label={translate('subtotal')}
+                      value={totals ? formatAmount(totals.subtotal) : null}
+                    />
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="flex items-center gap-2 text-muted-foreground">
+                        {translate('discount2')}
+                        <span className="relative">
+                          <input
+                            id="invoice-discount_percent"
+                            aria-label={translate('discountOnTheWholeDocumentPercent')}
+                            aria-invalid={errors.discount_percent ? true : undefined}
+                            inputMode="decimal"
+                            disabled={credit}
+                            value={values.discount_percent}
+                            onChange={(event) => set('discount_percent', event.target.value)}
+                            placeholder="0"
+                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-[13px] tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                          />
+                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[12px] text-muted-foreground">
+                            %
+                          </span>
+                        </span>
+                      </dt>
+                      <dd className="tabular-nums">
+                        {totals && !isZero(totals.discount_amount) ? (
+                          `−${formatAmount(totals.discount_amount)}`
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </dd>
+                    </div>
+                    {values.vat_mode !== 'none' &&
+                      totals?.vat_breakdown.map((group) => (
+                        <TotalLine
+                          key={`${group.category}${group.rate}`}
+                          muted
+                          label={translate('vatOn2', {
+                            value1: group.category === 'S' ? `${group.rate}%` : group.category,
+                            value2: formatAmount(group.taxable_amount),
+                          })}
+                          value={formatAmount(group.vat_amount)}
+                        />
+                      ))}
+                    {totals && !isZero(totals.rounding_amount) && (
+                      <TotalLine
+                        muted
+                        label={translate('roundingTo005')}
+                        value={formatAmount(totals.rounding_amount)}
+                      />
+                    )}
+                    <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-3">
+                      <dt className="text-[14px] font-medium">
+                        {translate('total2')}
+                        {values.currency}
+                        {values.vat_mode === 'inclusive' && (
+                          <span className="font-normal text-muted-foreground">
+                            {translate('inclVAT2')}
+                          </span>
+                        )}
+                      </dt>
+                      <dd className="text-[22px] font-medium tracking-[-0.02em] tabular-nums">
+                        {payable === null ? '—' : formatAmount(payable)}
+                      </dd>
+                    </div>
+                    {prepaid &&
+                      values.prepayments.map((prepayment) => (
+                        <TotalLine
+                          key={prepayment.id}
+                          muted
+                          label={`Prepayment ${prepayment.number ?? ''}`.trim()}
+                          value={`−${formatAmount(prepayment.payable_total)}`}
+                        />
+                      ))}
+                    {prepaid && (
+                      <TotalLine
+                        label={translate('amountDue2', { currency: values.currency })}
+                        value={amountDue === null ? null : formatAmount(amountDue)}
+                      />
+                    )}
+                  </dl>
+                </div>
 
+                {/* The rule sits outside the field, so focus outlines only the text. */}
+                <div className="mt-10 border-t border-border/70 pt-4">
+                  <textarea
+                    aria-label={translate('footer')}
+                    value={values.footer}
+                    maxLength={1000}
+                    onChange={(event) => set('footer', event.target.value)}
+                    placeholder={translate('footerPrintedAtTheBottomEGPaymentConditions')}
+                    rows={1}
+                    className={cn(proseInput, 'text-[13px] text-muted-foreground')}
+                  />
+                </div>
+              </article>
+
+              {kind === 'invoice' && values.client_id && (
+                <PrepaymentPicker
+                  clientId={values.client_id}
+                  currency={values.currency}
+                  value={values.prepayments}
+                  onChange={(prepayments) => set('prepayments', prepayments)}
+                />
+              )}
+
+              {isReceivable(kind) && (
+                <InstalmentsSection
+                  value={values.instalments}
+                  onChange={(instalments) => set('instalments', instalments)}
+                  reminders={values.reminders_enabled}
+                  onReminders={(on) => set('reminders_enabled', on)}
+                  payable={payable}
+                  generated={generated}
+                  currency={values.currency}
+                  issueDate={values.issue_date}
+                  firstDue={values.due_date}
+                  settings={settings}
+                  errors={errors}
+                  blocker={blocker}
+                  onSplit={draftId && valid ? () => void openPlan() : undefined}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 border-t border-border/60 px-3 py-3 sm:px-6">
+          <div className="mx-auto grid w-full max-w-[1040px] gap-2">
             <section className="grid gap-1.5 rounded-xl px-1">
               <label
                 htmlFor="invoice-note"
@@ -1125,12 +1110,12 @@ function Editor({
                 maxLength={1000}
                 onChange={(event) => set('note', event.target.value)}
                 placeholder={translate('anythingYourTeamShouldKnowAboutThisInvoice')}
-                rows={2}
-                className="[field-sizing:content] w-full resize-none rounded-xl bg-muted/50 px-3.5 py-2.5 text-[14px] leading-relaxed outline-none placeholder:text-placeholder focus:bg-card focus:ring-2 focus:ring-ring/40"
+                rows={1}
+                className="[field-sizing:content] max-h-32 w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-[14px] leading-relaxed shadow-xs outline-none placeholder:text-placeholder focus:border-ring focus:ring-2 focus:ring-ring/40"
               />
             </section>
 
-            <p className="hidden flex-wrap justify-center gap-x-4 gap-y-1 pt-2 text-[12px] text-muted-foreground md:flex">
+            <p className="hidden flex-wrap justify-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground md:flex">
               <Hint keys="Enter">{translate('newLine')}</Hint>
               <Hint keys="⇧ Enter">{translate('lineBreak')}</Hint>
               <Hint keys="⌥ ↑ ↓">{translate('moveLine')}</Hint>
@@ -1385,7 +1370,65 @@ function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => vo
 
 const PARTY_LABEL = 'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase'
 
-/** "Bill to": the client (with its address as it will print) or the picker. */
+/** Name, address lines, country and VAT number, set the same way for seller and client. */
+function PartyLines({
+  party,
+}: {
+  party: Pick<
+    Client,
+    'name' | 'street' | 'street_number' | 'apt' | 'zip' | 'city' | 'country' | 'vat_number'
+  >
+}) {
+  return (
+    <>
+      <span className="pr-14 text-[16px] font-medium">{party.name}</span>
+      {addressLines(party).map((line) => (
+        <span key={line} className="text-[14px] leading-relaxed">
+          {line}
+        </span>
+      ))}
+      {party.country && (
+        <span className="text-[14px] leading-relaxed text-muted-foreground">
+          {countryName(party.country)}
+        </span>
+      )}
+      {party.vat_number && (
+        <span className="mt-0.5 font-mono text-[12.5px] text-muted-foreground">
+          {party.vat_number}
+        </span>
+      )}
+    </>
+  )
+}
+
+/** "Billed by": the workspace's company, as it prints. */
+function SellerBlock({ settings }: { settings: InvoiceSettings }) {
+  return (
+    <div className="grid content-start gap-2">
+      <span className={PARTY_LABEL}>{translate('billedBy')}</span>
+      {/* mt-1: level with the client's name, which sits inside its padded picker button */}
+      <div className="mt-1 grid">
+        <PartyLines
+          party={{
+            ...settings.seller,
+            name: settings.seller.name || translate('yourCompany'),
+          }}
+        />
+      </div>
+      {!settings.is_complete && (
+        <Link
+          href="/settings/invoices"
+          className="inline-flex w-fit items-center gap-1 text-[12.5px] text-link underline underline-offset-2 hover:no-underline"
+        >
+          {translate('completeYourCompanyDetails')}
+          <ArrowUpRight className="size-3" />
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/** "Billed to": the client (with its address as it will print) or the picker. */
 function ClientBlock({
   client,
   open,
@@ -1401,12 +1444,11 @@ function ClientBlock({
   onOpenChange: (open: boolean) => void
   onPick: (client: Client) => void
 }) {
-  const lines = client ? addressLines(client) : []
   const [creating, setCreating] = useState(false)
   return (
     <div className="grid content-start gap-2">
       <span className={cn(PARTY_LABEL, invalid && 'text-destructive')}>
-        {translate('billTo')}
+        {translate('billedTo')}
         <span aria-hidden className="ml-0.5 text-destructive">
           *
         </span>
@@ -1419,27 +1461,12 @@ function ClientBlock({
               aria-label={translate('clientChangeClient', { name: client.name })}
               className="group relative -mx-3 -my-2 grid w-[calc(100%+24px)] max-w-[344px] rounded-lg p-3 text-left transition-colors outline-none hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:hover:bg-transparent"
             >
-              <span className="pr-14 text-[16px] font-medium">{client.name}</span>
               {!locked && (
                 <span className="absolute top-3 right-3 text-[12px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                   {translate('change')}
                 </span>
               )}
-              {lines.map((line) => (
-                <span key={line} className="text-[14px] leading-relaxed">
-                  {line}
-                </span>
-              ))}
-              {client.country && (
-                <span className="text-[14px] leading-relaxed text-muted-foreground">
-                  {countryName(client.country)}
-                </span>
-              )}
-              {client.vat_number && (
-                <span className="mt-0.5 font-mono text-[12.5px] text-muted-foreground">
-                  {client.vat_number}
-                </span>
-              )}
+              <PartyLines party={client} />
             </button>
           ) : (
             <button
@@ -1508,14 +1535,19 @@ function PaymentNote({
   revolutUrl: string | null
 }) {
   return (
-    <div className="grid max-w-xs gap-1 text-[12.5px] leading-relaxed text-muted-foreground">
-      <span className="text-[11px] font-medium tracking-[0.04em] uppercase">
-        {translate('payment')}
-      </span>
+    <div className="grid max-w-sm content-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+      <span className={PARTY_LABEL}>{translate('payment')}</span>
       {settings.iban ? (
-        <>
-          <span className="font-mono text-[12px] text-foreground">{formatIban(settings.iban)}</span>
-          <span>
+        <div className="grid gap-0.5">
+          <span className="font-mono text-[13px] tracking-tight text-foreground">
+            {formatIban(settings.iban)}
+          </span>
+          <span className={cn('flex items-center gap-1.5', !ibanValid && 'text-destructive')}>
+            {ibanValid ? (
+              <Check className="size-3.5 text-success" />
+            ) : (
+              <CircleAlert className="size-3.5" />
+            )}
             {settings.bank_name}
             {settings.bank_name && ' · '}
             {qrBill
@@ -1524,7 +1556,7 @@ function PaymentNote({
                 ? translate('bankDetailsPrinted')
                 : translate('checkTheIBAN')}
           </span>
-        </>
+        </div>
       ) : (
         <Link
           href="/settings/invoices"
@@ -1535,9 +1567,9 @@ function PaymentNote({
         </Link>
       )}
       {revolutUrl && (
-        <span>
+        <span className="text-foreground">
           {translate('revolut')}
-          {revolutUrl.replace('https://', '')}
+          <span className="text-muted-foreground">{revolutUrl.replace('https://', '')}</span>
         </span>
       )}
     </div>
