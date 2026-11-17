@@ -16,8 +16,8 @@ import (
 )
 
 // The trial (offer.trial): the first subscription of a customer starts with Days days of the access plan's features
-// (Business) for at most Seats people, with small allowances for the whole trial that neither grow with seats nor
-// restart with the month. A card is required, and a customer gets one trial: the person who starts it, their email
+// (Pro) for at most Seats people, with the plan's limits (Overrides may lower some; helvetly-v1.1 has none): monthly ones
+// are one pool for the whole trial that neither grows with seats nor restarts with the month. A card is required, and a customer gets one trial: the person who starts it, their email
 // and their card's fingerprint are recorded as digests (trial_claims), so a new workspace does not open a second one.
 // After the trial Stripe bills the chosen plan for every member; what the trial used counts in that first month.
 

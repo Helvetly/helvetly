@@ -3668,7 +3668,7 @@
   "keepPlan": "{name} behalten",
   "packTokensAddToThePlan": "Tokens aus Paketen, die zuvor gekauft wurden, erhöhen den Freibetrag Ihres Plans und werden verwendet, sobald dieser aufgebraucht ist. Packungen werden nicht mehr verkauft.",
   "startsOnDate": "Beginnt am {date}.",
-  "trialNote": "{plan} kostenlos für {trial_days} Tage, bis zu {trial_seats} Personen, Karte erforderlich. Probegelder ändern sich nicht und wachsen nicht mit den Menschen. Dann {value2} pro Person {per}.",
+  "trialNote": "{plan} kostenlos für {trial_days} Tage, bis zu {trial_seats} Personen, Karte erforderlich. Volle {plan}-Kontingente, die sich das Team teilt. Dann {value2} pro Person {per}.",
   "tryPlanFreeUntilThenNothingCanBeChanged": "Testen Sie {plan} {trial_days} Tage lang kostenlos mit bis zu {trial_seats} Personen; Bis dahin kann nichts geändert werden.",
   "youStayOnPlan": "Sie bleiben auf {name}. Die geplante Änderung wird abgebrochen.",
   "employeeTypePermanent": "Offenes Ende",

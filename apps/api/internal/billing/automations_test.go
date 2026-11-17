@@ -166,9 +166,9 @@ func TestAnActionCountsOnceAcrossRetriesAndMonths(t *testing.T) {
 	}
 }
 
-// TestTrialHasFiftyActionsForItsWholeLife: the trial's 50 are shared by its two people and do not restart with the
-// month.
-func TestTrialHasFiftyActionsForItsWholeLife(t *testing.T) {
+// TestTrialHasProActionsForItsWholeLife: the trial's 1500 (Pro's) are shared by its two people and do not restart
+// with the month.
+func TestTrialHasProActionsForItsWholeLife(t *testing.T) {
 	ctx := context.Background()
 	e := newEnv(t, true)
 	e.st.SetAdmission(e.svc.AllowResource)
@@ -177,12 +177,12 @@ func TestTrialHasFiftyActionsForItsWholeLife(t *testing.T) {
 	now := time.Now().UTC()
 	month := store.UsagePeriodStart(now)
 	e.trialing(ws, "fp_1", month.Add(-48*time.Hour))
-	e.automated(ws, store.UsagePeriod(month.Add(-time.Hour)), 30)
+	e.automated(ws, store.UsagePeriod(month.Add(-time.Hour)), 1480)
 	e.automated(ws, store.UsagePeriod(now), 19)
-	if err := e.st.CountAutomation(ctx, ws, "test:50", now); err != nil {
-		t.Fatalf("the 50th: %v", err)
+	if err := e.st.CountAutomation(ctx, ws, "test:1500", now); err != nil {
+		t.Fatalf("the 1500th: %v", err)
 	}
-	refusedWith(t, e.st.CountAutomation(ctx, ws, "test:51", now), "limit_reached")
+	refusedWith(t, e.st.CountAutomation(ctx, ws, "test:1501", now), "limit_reached")
 }
 
 // TestPlanChangesNeitherResetNorDropActions: Business→Pro keeps the month's usage against Pro's smaller pool, Basic

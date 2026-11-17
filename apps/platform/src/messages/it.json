@@ -3668,7 +3668,7 @@
   "keepPlan": "Mantieni {name}",
   "packTokensAddToThePlan": "I gettoni dei pacchetti acquistati in precedenza si aggiungono alla franchigia del tuo piano e vengono utilizzati una volta esaurita. I pacchetti non vengono più venduti.",
   "startsOnDate": "Inizia il {date}.",
-  "trialNote": "{plan} gratuito per {trial_days} giorni, fino a {trial_seats} persone, tessera obbligatoria. Le indennità di prova non si ripristinano né crescono con le persone. Quindi {value2} a persona {per}.",
+  "trialNote": "{plan} gratuito per {trial_days} giorni, fino a {trial_seats} persone, carta obbligatoria. Limiti completi di {plan}, condivisi dal team. Poi {value2} a persona {per}.",
   "tryPlanFreeUntilThenNothingCanBeChanged": "Prova {plan} gratuitamente per {trial_days} giorni con un massimo di {trial_seats} persone; fino ad allora nulla può essere cambiato.",
   "youStayOnPlan": "Rimani su {name}. La modifica programmata viene annullata.",
   "employeeTypePermanent": "A tempo indeterminato",

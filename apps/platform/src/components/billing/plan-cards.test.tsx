@@ -128,7 +128,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   const pro = card('Pro')
   expect(within(pro).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
   expect(pro).toHaveTextContent(
-    "Pro free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 49 per person a month.",
+    'Pro free for 7 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 49 per person a month.',
   )
   expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
   expect(card('Business')).toHaveTextContent('Charged today.')

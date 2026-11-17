@@ -3668,7 +3668,7 @@
   "keepPlan": "Gardez {name}",
   "packTokensAddToThePlan": "Les jetons des packs achetés précédemment s’ajoutent à l’allocation de votre plan et sont utilisés une fois celui-ci épuisé. Les packs ne sont plus vendus.",
   "startsOnDate": "Commence le {date}.",
-  "trialNote": "{plan} gratuit pendant {trial_days} jours, dans la limite de {trial_seats} personnes, carte obligatoire. Les allocations d’essai ne sont pas réinitialisées ni n’augmentent avec les gens. Puis {value2} par personne {per}.",
+  "trialNote": "{plan} gratuit pendant {trial_days} jours, dans la limite de {trial_seats} personnes, carte obligatoire. Quotas complets de {plan}, partagés par l’équipe. Puis {value2} par personne {per}.",
   "tryPlanFreeUntilThenNothingCanBeChanged": "Essayez {plan} gratuitement pendant {trial_days} jours avec un maximum de {trial_seats} personnes ; jusque-là, rien ne peut être changé.",
   "youStayOnPlan": "Vous restez sur {name}. Le changement programmé est annulé.",
   "employeeTypePermanent": "Ouvert",
