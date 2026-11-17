@@ -1,6 +1,8 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
@@ -9,12 +11,19 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Archive,
+  Ban,
   CalendarClock,
   ClipboardCheck,
+  Download,
   Layers,
+  PanelRightOpen,
+  Pencil,
   ReceiptText,
+  RefreshCw,
+  RotateCcw,
   Search,
   SearchX,
+  Trash2,
   TrendingDown,
   type LucideIcon,
 } from 'lucide-react'
@@ -22,16 +31,25 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import { ExportItem } from '@/components/billing/feature-lock'
+import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable, Pager } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
-import { dropdownKit } from '@/components/data/menus'
-import { LoadingRows, State } from '@/components/data/table-page'
+import {
+  dropdownKit,
+  RowContextMenu,
+  RowMenuButton,
+  type RowMenuSpec,
+} from '@/components/data/menus'
+import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
 import { PageHeader } from '@/components/shell/page-header'
+import { ApiError, errorMessage } from '@/lib/api'
 import {
+  cancelEngagement,
+  deleteEngagement,
+  exportIdsUrl,
   exportUrl,
   getEngagementSettings,
   getEngagementSummary,
@@ -40,6 +58,8 @@ import {
   engagementQuery,
   putEngagementSettings,
   periodLabel,
+  renewEngagement,
+  resumeEngagement,
   type Engagement,
   type EngagementQuery,
 } from '@/lib/engagements'
@@ -58,6 +78,7 @@ import {
 } from './engagement-bits'
 import { EngagementDetail } from './engagement-detail'
 import { EngagementForm } from './engagement-form'
+import { friendlyError, useRefreshEngagement } from './entry-log'
 
 const LIVE = 'scheduled,active'
 
@@ -153,6 +174,204 @@ const HEADERS = [
   [translate('attention'), 'w-[17%]'],
 ] as const
 
+type Command = 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
+type Access = { canWrite: boolean; canManage: boolean }
+
+/** A row's actions, for its "…" button and its right-click menu: the drawer's own, no more. */
+export function engagementMenu(
+  engagement: Engagement,
+  access: Access,
+  onOpen: () => void,
+  onCommand: (command: Command, engagement: Engagement) => void,
+): RowMenuSpec {
+  const cancellable = engagement.status === 'active' || engagement.status === 'scheduled'
+  const manage = access.canWrite && access.canManage
+  return {
+    title: `#${engagement.number} · ${engagement.client.name}`,
+    items: ({ Item, Separator }) => (
+      <>
+        <Item onSelect={onOpen}>
+          <PanelRightOpen />
+          {translate('openDetails')}
+        </Item>
+        {access.canWrite && (
+          <Item onSelect={() => onCommand('edit', engagement)}>
+            <Pencil />
+            {translate('edit4')}
+          </Item>
+        )}
+        {access.canWrite && engagement.recurrence === 'none' && (
+          <Item onSelect={() => onCommand('renew', engagement)}>
+            <RefreshCw />
+            {translate('renew')}
+          </Item>
+        )}
+        {manage && (cancellable || engagement.status === 'cancelled') && (
+          <Item onSelect={() => onCommand(cancellable ? 'cancel' : 'resume', engagement)}>
+            {cancellable ? <Ban /> : <RotateCcw />}
+            {cancellable ? translate('cancelEngagement') : translate('resume')}
+          </Item>
+        )}
+        {manage && (
+          <>
+            <Separator />
+            <Item variant="destructive" onSelect={() => onCommand('delete', engagement)}>
+              <Trash2 />
+              {translate('delete')}
+            </Item>
+          </>
+        )}
+      </>
+    ),
+  }
+}
+
+/** The bulk bar's buttons: export for everyone, delete for owners and admins. */
+export function bulkActions(
+  canManage: boolean,
+  run: { exportCsv: () => void; remove: () => void },
+): BulkAction[] {
+  return [
+    { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
+    ...(canManage
+      ? [
+          {
+            label: translate('delete3'),
+            icon: <Trash2 />,
+            onClick: run.remove,
+            destructive: true,
+            write: true,
+          },
+        ]
+      : []),
+  ]
+}
+
+/** Why one delete failed: invoiced engagements stay, the rest is the API's own message. */
+const deleteProblem = (error: unknown) =>
+  error instanceof ApiError && error.code === 'engagement_invoiced'
+    ? translate('thisEngagementHasInvoicesVoidOrDeleteThemFirst')
+    : errorMessage(error)
+
+type RowProps = {
+  engagement: Engagement
+  selected: boolean
+  bulk?: { count: number; actions: BulkAction[] }
+  menu: RowMenuSpec
+  onOpen: () => void
+  onToggle: () => void
+  onPrefetch: () => void
+}
+
+function EngagementRow({
+  engagement,
+  selected,
+  bulk,
+  menu,
+  onOpen,
+  onToggle,
+  onPrefetch,
+}: RowProps) {
+  return (
+    <RowContextMenu menu={menu} bulk={bulk}>
+      <tr
+        data-selected={selected || undefined}
+        onPointerEnter={onPrefetch}
+        onClick={(event) => {
+          // The row's own controls, and portalled menus React bubbles up here, do their own thing.
+          const target = event.target
+          if (
+            !(target instanceof Element) ||
+            !event.currentTarget.contains(target) ||
+            target.closest('button, a, [role=checkbox], input')
+          )
+            return
+          onOpen()
+        }}
+        className={cn(listTable.row, 'cursor-pointer')}
+      >
+        <td className={listTable.select}>
+          <Checkbox
+            aria-label={translate('select', { name: engagement.title })}
+            className="bg-card"
+            checked={selected}
+            onCheckedChange={onToggle}
+          />
+        </td>
+        <td className={listTable.td}>
+          <button type="button" onClick={onOpen} className="block w-full cursor-pointer text-left">
+            <TitleCell engagement={engagement} />
+          </button>
+        </td>
+        <td className={listTable.td}>
+          <PeriodCell engagement={engagement} />
+        </td>
+        <td className={listTable.td}>
+          {engagement.current_period ? (
+            <ProgressBar period={engagement.current_period} unit={engagement.unit} />
+          ) : (
+            dash
+          )}
+        </td>
+        <td className={cn(listTable.td, listTable.numeric)}>
+          <RemainingCell engagement={engagement} />
+        </td>
+        <td className={listTable.td}>
+          <BillingLabel engagement={engagement} />
+        </td>
+        <td className={listTable.td}>
+          {engagement.attention.length ? (
+            <AttentionBadges attention={engagement.attention} />
+          ) : (
+            <EngagementStatusBadge status={engagement.status} />
+          )}
+        </td>
+        <td className={listTable.menu}>
+          <RowMenuButton label={translate('actionsFor', { name: engagement.title })} menu={menu} />
+        </td>
+      </tr>
+    </RowContextMenu>
+  )
+}
+
+function EngagementItem({
+  engagement,
+  selected,
+  bulk,
+  menu,
+  onOpen,
+  onToggle,
+  onPrefetch,
+}: RowProps) {
+  return (
+    <RowContextMenu menu={menu} bulk={bulk}>
+      <li
+        data-selected={selected || undefined}
+        onPointerEnter={onPrefetch}
+        className={listTable.item}
+      >
+        <Checkbox
+          aria-label={translate('select', { name: engagement.title })}
+          className="bg-card"
+          checked={selected}
+          onCheckedChange={onToggle}
+        />
+        <button
+          type="button"
+          onClick={onOpen}
+          className="grid min-w-0 flex-1 cursor-pointer gap-2 text-left"
+        >
+          <TitleCell engagement={engagement} />
+          {engagement.current_period && (
+            <ProgressBar period={engagement.current_period} unit={engagement.unit} />
+          )}
+          <AttentionBadges attention={engagement.attention} />
+        </button>
+      </li>
+    </RowContextMenu>
+  )
+}
+
 /** The "…" menu's own items: export what the filters show, and (owner/admin) the daily digest. */
 function useMenu(filters: EngagementQuery) {
   const client = useQueryClient()
@@ -224,13 +443,26 @@ export function EngagementsPage() {
   const [search, setSearch] = useState('')
   const [term, setTerm] = useState('')
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<Engagement | null>(null)
+  const [deleting, setDeleting] = useState<Engagement[] | null>(null)
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const showForm = creating || url.get('new') === '1'
+  const role = useSession().data?.role
+  const access = { canWrite, canManage: role === 'owner' || role === 'admin' }
+  const refresh = useRefreshEngagement()
+  const exportLock = useFeatureLock('data_export')
+  const act = useMutation({
+    mutationFn: (run: () => Promise<unknown>) => run(),
+    onSuccess: () => refresh(),
+    onError: (error: unknown) => toast.error(friendlyError(error)),
+  })
 
   // Search waits for a pause in typing, then goes to the server.
   useEffect(() => {
     const timer = setTimeout(() => {
       setTerm(search.trim())
       setPage(1)
+      setSelected(new Set())
     }, 300)
     return () => clearTimeout(timer)
   }, [search])
@@ -247,6 +479,11 @@ export function EngagementsPage() {
   const select = (index: number) => {
     setView(index)
     setPage(1)
+    setSelected(new Set())
+  }
+  const turnPage = (next: number) => {
+    setPage(next)
+    setSelected(new Set())
   }
   const openEngagement = (id: string | null) => {
     const next = new URLSearchParams(url)
@@ -257,6 +494,7 @@ export function EngagementsPage() {
   const closeForm = (open: boolean) => {
     if (open) return
     setCreating(false)
+    setEditing(null)
     if (url.get('new') !== '1') return
     const next = new URLSearchParams(url)
     next.delete('new')
@@ -267,6 +505,59 @@ export function EngagementsPage() {
   const meta = list.data?.meta
   const stats = summary.data
   const share = (count: number) => (stats && stats.active > 0 ? count / stats.active : 0)
+
+  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
+  const toggleRow = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+  const command = (name: Command, engagement: Engagement) => {
+    if (name === 'edit') setEditing(engagement)
+    if (name === 'delete') setDeleting([engagement])
+    if (name === 'renew')
+      act.mutate(async () => {
+        await renewEngagement(engagement.id)
+        toast.success(translate('renewedForTheNextPeriod'))
+      })
+    if (name === 'cancel') act.mutate(() => cancelEngagement(engagement.id))
+    if (name === 'resume') act.mutate(() => resumeEngagement(engagement.id))
+  }
+  const confirmDelete = async (approved: boolean) => {
+    const targets = deleting ?? []
+    setDeleting(null)
+    if (!approved) return
+    const results = await Promise.allSettled(targets.map((row) => deleteEngagement(row.id)))
+    const failed = results.filter((result) => result.status === 'rejected')
+    refresh()
+    setSelected(new Set())
+    if (targets.length === 1 && failed[0]) toast.error(deleteProblem(failed[0].reason))
+    else if (targets.length === 1) toast.success(translate('engagementDeleted'))
+    else if (failed.length)
+      toast.error(
+        translate('engagementsNotDeleted', { failed: failed.length, count: targets.length }),
+      )
+    else toast.success(translate('engagementsDeleted', { count: targets.length }))
+  }
+  const selection = {
+    count: selected.size,
+    actions: bulkActions(access.canWrite && access.canManage, {
+      exportCsv: unlessLocked(exportLock, () =>
+        window.location.assign(localizedHref(exportIdsUrl([...selected]))),
+      ),
+      remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
+    }),
+  }
+  const rowProps = (engagement: Engagement) => ({
+    engagement,
+    selected: selected.has(engagement.id),
+    bulk: selected.has(engagement.id) ? selection : undefined,
+    menu: engagementMenu(engagement, access, () => openEngagement(engagement.id), command),
+    onOpen: () => openEngagement(engagement.id),
+    onToggle: () => toggleRow(engagement.id),
+    onPrefetch: () => prefetch(engagement.id),
+  })
 
   return (
     <>
@@ -380,82 +671,49 @@ export function EngagementsPage() {
             <table className={cn(listTable.table, 'hidden @4xl:table')}>
               <thead>
                 <tr className={listTable.head}>
+                  <th className={listTable.select}>
+                    <Checkbox
+                      aria-label={translate('selectAllItemsOnThisPage')}
+                      className="bg-card"
+                      checked={allSelected}
+                      onCheckedChange={(checked) =>
+                        setSelected(new Set(checked ? rows.map((row) => row.id) : []))
+                      }
+                    />
+                  </th>
                   {HEADERS.map(([label, width]) => (
                     <th key={label} className={cn(listTable.th, width)}>
                       {label}
                     </th>
                   ))}
+                  <th className={listTable.menu}>
+                    <span className="sr-only">{translate('actions')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((engagement) => (
-                  <tr
-                    key={engagement.id}
-                    onPointerEnter={() => prefetch(engagement.id)}
-                    onClick={() => openEngagement(engagement.id)}
-                    className={cn(listTable.row, 'cursor-pointer')}
-                  >
-                    <td className={listTable.td}>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          openEngagement(engagement.id)
-                        }}
-                        className="block w-full cursor-pointer text-left"
-                      >
-                        <TitleCell engagement={engagement} />
-                      </button>
-                    </td>
-                    <td className={listTable.td}>
-                      <PeriodCell engagement={engagement} />
-                    </td>
-                    <td className={listTable.td}>
-                      {engagement.current_period ? (
-                        <ProgressBar period={engagement.current_period} unit={engagement.unit} />
-                      ) : (
-                        dash
-                      )}
-                    </td>
-                    <td className={cn(listTable.td, listTable.numeric)}>
-                      <RemainingCell engagement={engagement} />
-                    </td>
-                    <td className={listTable.td}>
-                      <BillingLabel engagement={engagement} />
-                    </td>
-                    <td className={listTable.td}>
-                      {engagement.attention.length ? (
-                        <AttentionBadges attention={engagement.attention} />
-                      ) : (
-                        <EngagementStatusBadge status={engagement.status} />
-                      )}
-                    </td>
-                  </tr>
+                  <EngagementRow key={engagement.id} {...rowProps(engagement)} />
                 ))}
               </tbody>
             </table>
 
             <ul className={cn(listTable.list, '@4xl:hidden')}>
               {rows.map((engagement) => (
-                <li key={engagement.id}>
-                  <button
-                    type="button"
-                    onPointerEnter={() => prefetch(engagement.id)}
-                    onClick={() => openEngagement(engagement.id)}
-                    className="grid w-full cursor-pointer gap-2 px-4 py-3 text-left"
-                  >
-                    <TitleCell engagement={engagement} />
-                    {engagement.current_period && (
-                      <ProgressBar period={engagement.current_period} unit={engagement.unit} />
-                    )}
-                    <AttentionBadges attention={engagement.attention} />
-                  </button>
-                </li>
+                <EngagementItem key={engagement.id} {...rowProps(engagement)} />
               ))}
             </ul>
 
-            {meta && <Pager meta={meta} onPage={setPage} />}
+            {meta && <Pager meta={meta} onPage={turnPage} />}
           </div>
+        )}
+
+        {selected.size > 0 && (
+          <BulkBar
+            count={selected.size}
+            onClear={() => setSelected(new Set())}
+            actions={selection.actions}
+          />
         )}
       </div>
 
@@ -467,10 +725,27 @@ export function EngagementsPage() {
         />
       )}
       <EngagementForm
-        open={showForm}
+        key={editing?.id ?? 'new'}
+        open={showForm || editing !== null}
         onOpenChange={closeForm}
-        onSaved={(saved) => openEngagement(saved.id)}
+        engagement={editing ?? undefined}
+        onSaved={(saved) => {
+          if (!editing) openEngagement(saved.id)
+        }}
       />
+      {deleting && deleting.length > 0 && (
+        <ConfirmDialog
+          title={
+            deleting.length === 1
+              ? translate('deleteThisEngagement')
+              : translate('deleteEngagements', { count: deleting.length })
+          }
+          body={translate('itsLogAndPeriodsAreRemovedThisCanT')}
+          confirmLabel={translate('delete3')}
+          tone="destructive"
+          onDecide={(approved) => void confirmDelete(approved)}
+        />
+      )}
     </>
   )
 }

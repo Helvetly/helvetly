@@ -5,6 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { EngagementsPage } from '@/components/engagements/engagements-page'
 import type { Entry, Period } from '@/lib/engagements'
 
+import { sessionHandler } from '../screen-fixtures'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const meta = {
@@ -158,5 +159,103 @@ export const DetailNoEntries: Story = {
   play: async (context) => {
     await shows(/Nothing logged yet\./)?.(context)
     await expect(within(document.body).queryByRole('link', { name: 'Export CSV' })).toBeNull()
+  },
+}
+
+const visible = (elements: HTMLElement[]) => {
+  const found = elements.find((element) => element.checkVisibility())
+  if (!found) throw new Error('Nothing visible')
+  return found
+}
+const bar = () => within(document.body).findByRole('toolbar', { name: 'Selected rows' })
+
+/** Ticking rows brings up the shared bulk bar; its icon buttons carry their names, and ✕ clears. */
+export const Selection: Story = {
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(visible(body.getAllByRole('checkbox', { name: 'Select German lessons' })))
+    await userEvent.click(
+      visible(body.getAllByRole('checkbox', { name: 'Select Bookkeeping support' })),
+    )
+    const toolbar = await bar()
+    await expect(toolbar).toHaveTextContent('Selected: 2')
+    await expect(within(toolbar).getByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(within(toolbar).getByRole('button', { name: 'Delete' })).toBeVisible()
+    await userEvent.click(body.getByRole('button', { name: 'Clear selection' }))
+    await waitFor(() => expect(body.queryByRole('toolbar', { name: 'Selected rows' })).toBeNull())
+  },
+}
+export const SelectionDark = dark(Selection)
+export const SelectionPhone = phone(Selection)
+
+/** Select all, delete from the bar: one confirmation, then every selected engagement goes. */
+export const BulkDelete: Story = {
+  parameters: pageParameters('/engagements', {}, [
+    http.delete('/api/v1/engagements/:id', () => new HttpResponse(null, { status: 204 })),
+  ]),
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('checkbox', { name: 'Select all items on this page' }))
+    const toolbar = await bar()
+    await expect(toolbar).toHaveTextContent('Selected: 3')
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Delete' }))
+    const dialog = await body.findByRole('dialog', { name: 'Delete 3 engagements?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await waitFor(() =>
+      expect(
+        body.getAllByText('3 engagements deleted.').some((node) => node.checkVisibility()),
+      ).toBe(true),
+    )
+    await expect(body.queryByRole('toolbar', { name: 'Selected rows' })).toBeNull()
+  },
+}
+
+/** A row's "…" menu: the drawer's actions, renew only for a one-off engagement. */
+export const RowMenu: Story = {
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for German lessons' }))
+    const menu = await body.findByRole('menu')
+    await expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(['Open details', 'Edit', 'Renew', 'Cancel engagement', 'Delete'])
+    await userEvent.keyboard('{Escape}')
+    // The open menu hides the rest of the page from the accessibility tree until it has closed.
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+    await userEvent.click(body.getByRole('button', { name: 'Actions for Bookkeeping support' }))
+    await expect(
+      within(await body.findByRole('menu')).queryByRole('menuitem', { name: 'Renew' }),
+    ).toBeNull()
+    await userEvent.click(body.getByRole('menuitem', { name: 'Edit' }))
+    await expect(
+      await body.findByRole('dialog', { name: /Edit Bookkeeping support/ }),
+    ).toBeVisible()
+  },
+}
+export const RowMenuDark = dark(RowMenu)
+
+/** A member who may only read: rows still select and export, but nothing changes them. */
+export const ReadOnlyMember: Story = {
+  parameters: pageParameters('/engagements', {}, [
+    sessionHandler({ role: 'member', scopes: ['read:*'] }),
+  ]),
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for German lessons' }))
+    const menu = await body.findByRole('menu')
+    await expect(within(menu).getAllByRole('menuitem')).toHaveLength(1)
+    await expect(within(menu).getByRole('menuitem', { name: 'Open details' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+    await userEvent.click(visible(body.getAllByRole('checkbox', { name: 'Select German lessons' })))
+    const toolbar = await bar()
+    await expect(within(toolbar).getByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(within(toolbar).queryByRole('button', { name: 'Delete' })).toBeNull()
   },
 }
