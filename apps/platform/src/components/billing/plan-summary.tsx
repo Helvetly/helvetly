@@ -11,6 +11,7 @@ import {
   CreditCard,
   ExternalLink,
   Info,
+  Layers,
   Lock,
   Tag,
   Zap,
@@ -18,8 +19,8 @@ import {
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { SettingsSection } from '@/components/settings/layout'
 import {
-  billingPeriod,
   describeDiscount,
   formatPrice,
   freeForever,
@@ -34,8 +35,6 @@ import {
   type PlanId,
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-
-import { Countdown } from './countdown'
 
 const BADGES = {
   past_due: { tone: 'red', label: translate('pastDue') },
@@ -75,38 +74,34 @@ export function PlanSummary({
   const badge = badgeOf(billing)
   const notes = notesOf(billing)
   return (
-    <section
-      aria-label={translate('currentPlan')}
-      data-slot="plan-summary"
-      className="@container overflow-hidden rounded-2xl bg-card shadow-elevation-1"
+    <SettingsSection
+      id="plan"
+      icon={Layers}
+      title={translate('plan')}
+      description={translate('planSectionHint')}
     >
-      <div className="grid @3xl:grid-cols-[minmax(0,1fr)_minmax(18rem,23rem)]">
-        <div className="grid content-start gap-4 p-4 @lg:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-            <div className="grid min-w-0 gap-1">
-              <div className="flex items-center gap-2">
-                <span className="text-caption font-medium text-muted-foreground">
-                  {translate('currentPlan')}
-                </span>
-                {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
-              </div>
-              <h2 className="text-page font-semibold tracking-[-0.025em]">
+      <div data-slot="plan-summary" className="grid gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div className="grid min-w-0 gap-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-title font-semibold tracking-[-0.015em]">
                 {plan ? plan.name : translate('noPlan')}
-              </h2>
-              <p className="text-body-sm text-muted-foreground">
-                {!plan
-                  ? translate('thisWorkspaceIsReadOnlyUntilItHasA')
-                  : `${billing.interval === 'year' ? translate('billedYearly') : translate('billedMonthly')} · ${taxNoteLong(billing.currency)}`}
-              </p>
+              </h3>
+              {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
             </div>
-            {plan && <Price billing={billing} />}
+            <p className="text-body-sm text-muted-foreground">
+              {!plan
+                ? translate('thisWorkspaceIsReadOnlyUntilItHasA')
+                : `${billing.interval === 'year' ? translate('billedYearly') : translate('billedMonthly')} · ${taxNoteLong(billing.currency)}`}
+            </p>
           </div>
-          <Actions billing={billing} onPortal={onPortal} portalPending={portalPending} />
+          {plan && <Price billing={billing} />}
         </div>
         <NextStep billing={billing} onPortal={onPortal} portalPending={portalPending} />
+        {notes}
+        <Actions billing={billing} onPortal={onPortal} portalPending={portalPending} />
       </div>
-      {notes}
-    </section>
+    </SettingsSection>
   )
 }
 
@@ -117,7 +112,7 @@ function Price({ billing }: { billing: Billing }) {
   if (!total) return null
   const interval = billing.interval || 'month'
   return (
-    <div data-slot="plan-price" className="grid gap-1 tabular-nums @lg:border-l @lg:pl-6">
+    <div data-slot="plan-price" className="grid gap-1 tabular-nums sm:text-right">
       <p className="text-body-sm text-muted-foreground">
         {perSeat ? (
           translate('perPerson2', { value1: formatPrice(perSeat), value2: people(billing.seats) })
@@ -142,7 +137,7 @@ function Price({ billing }: { billing: Billing }) {
         )}
       </p>
       <p className="flex items-baseline gap-1.5">
-        <span className="text-page font-semibold tracking-[-0.025em]">{formatPrice(total)}</span>
+        <span className="text-title font-semibold tracking-[-0.015em]">{formatPrice(total)}</span>
         <span className="text-body text-muted-foreground">/ {interval}</span>
       </p>
     </div>
@@ -208,15 +203,7 @@ function NextStep({
     const left = trialDaysLeft(billing.trial_end)
     const days = Math.max(billing.trial_days, left)
     return (
-      <CountdownPanel
-        countdown={
-          <Countdown
-            value={days - left}
-            max={days}
-            left={left}
-            label={translate('trialDaysUsed')}
-          />
-        }
+      <NextPanel
         title={
           left === 0
             ? translate('yourTrialEndsToday')
@@ -236,24 +223,14 @@ function NextStep({
                 .
               </>
             )}
-      </CountdownPanel>
+      </NextPanel>
     )
   }
-  const period = billingPeriod(billing)
-  if (!period || !billing.current_period_end) return null
+  if (!billing.current_period_end) return null
   const end = formatDate(billing.current_period_end)
   const ends = billing.cancel_at_period_end
   return (
-    <CountdownPanel
-      countdown={
-        <Countdown
-          value={period.days - period.left}
-          max={period.days}
-          left={period.left}
-          label={translate('billingPeriodElapsed')}
-          tone={ends ? 'muted' : 'brand'}
-        />
-      }
+    <NextPanel
       title={ends ? translate('endsOn', { end: end }) : translate('renewsOn', { end: end })}
       detail={
         ends ? translate('thenTheWorkspaceIsReadOnly') : translate('thePlanRenewsAutomatically')
@@ -267,17 +244,16 @@ function NextStep({
               {amount}.
             </>
           )}
-    </CountdownPanel>
+    </NextPanel>
   )
 }
 
 const PANEL_TONES = {
-  brand: 'bg-muted/40',
   muted: 'bg-muted/40',
   danger: 'bg-destructive-surface/60 [&_[data-slot=panel-icon]]:text-destructive',
 }
 
-/** The right-hand side of the hero: a tinted panel, under a hairline when it stacks. */
+/** What comes next: a quiet tinted block under the plan's name and price. */
 function PanelShell({
   tone,
   label,
@@ -291,32 +267,27 @@ function PanelShell({
     <section
       aria-label={label}
       data-slot="plan-next"
-      className={cn(
-        'flex items-center gap-4 border-t p-4 @lg:px-5 @3xl:border-t-0 @3xl:border-l [&_[data-slot=countdown]_svg]:size-20',
-        PANEL_TONES[tone],
-      )}
+      className={cn('rounded-lg px-3.5 py-3', PANEL_TONES[tone])}
     >
       {children}
     </section>
   )
 }
 
-function CountdownPanel({
-  countdown,
+/** The renewal, the end or the trial's end in plain text: when, why, and what is charged. */
+function NextPanel({
   title,
   detail,
   children,
 }: {
-  countdown: ReactNode
   title: string
   detail: string
   children: ReactNode
 }) {
   return (
-    <PanelShell tone="brand">
-      {countdown}
-      <div className="grid min-w-0 gap-1">
-        <p className="text-body font-semibold text-pretty">{title}</p>
+    <PanelShell tone="muted">
+      <div className="grid min-w-0 gap-0.5">
+        <p className="text-body font-medium text-pretty">{title}</p>
         <p className="text-body-sm text-muted-foreground tabular-nums">{detail}</p>
         {children && <p className="text-body-sm text-pretty text-muted-foreground">{children}</p>}
       </div>
@@ -394,7 +365,7 @@ function notesOf(billing: Billing): ReactNode[] | null {
 
 function Note({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <p className="flex items-start gap-2.5 border-t px-4 py-2.5 text-body-sm text-pretty text-muted-foreground @lg:px-5 [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
+    <p className="flex items-start gap-2.5 text-body-sm text-pretty text-muted-foreground [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
       {icon}
       <span>{children}</span>
     </p>

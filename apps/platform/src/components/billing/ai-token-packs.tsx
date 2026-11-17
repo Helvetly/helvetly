@@ -2,11 +2,11 @@
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Meter } from '@helvetly/ui/components/meter'
 import { cn } from '@helvetly/ui/lib/utils'
+import { Sparkles } from 'lucide-react'
 
+import { SettingsSection } from '@/components/settings/layout'
 import { type Billing, formatTokens, meterState } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
-
-import { BillingCard } from './billing-card'
 
 /**
  * The month's AI tokens for Heidi and the AI import, and how the allowance is made up, while tokens from packs bought
@@ -16,8 +16,9 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
   const item = billing.usage.find((u) => u.limit === 'ai_tokens_per_month')
   if (!item || billing.ai_tokens_bought <= 0) return null
   return (
-    <BillingCard
+    <SettingsSection
       id="ai-tokens"
+      icon={Sparkles}
       title={translate('aiTokens')}
       description={
         <span className="inline-flex items-center gap-1.5">
@@ -26,10 +27,8 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
         </span>
       }
     >
-      <div className="px-5 pt-4 pb-5">
-        <TokenUsage item={item} bought={billing.ai_tokens_bought} />
-      </div>
-    </BillingCard>
+      <TokenUsage item={item} bought={billing.ai_tokens_bought} />
+    </SettingsSection>
   )
 }
 

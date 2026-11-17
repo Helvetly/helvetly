@@ -144,23 +144,16 @@ const changePlanLink = (canvas: ReturnType<typeof within>, name = 'Change plan')
 export const Trial: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByRole('heading', { name: 'Business' })).toBeVisible()
     await expect(summary.getByText('Trial', { exact: true })).toBeVisible()
     await expect(summary.getByText(/^Trial ends on \d+ \w+ \d{4}$/)).toBeVisible()
     await expect(summary.getByText('Day 3 of 7')).toBeVisible()
-    await expect(summary.getByRole('progressbar', { name: 'Trial days used' })).toHaveAttribute(
-      'value',
-      '2',
-    )
     // The total with how it adds up, then what is charged after the trial.
     await expect(price(canvasElement)).toHaveTextContent(
       /CHF 99 per person × 2 people\s*CHF 198\s*\/ month/,
     )
     await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 198 is charged.')
-    await expect(canvasElement.querySelector('[data-slot=countdown]')).toHaveTextContent(
-      '5days left',
-    )
     // The plans are a page of their own: no tiles here, one way there.
     await expect(canvas.queryByRole('region', { name: 'Pro' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('radio', { name: 'Yearly' })).not.toBeInTheDocument()
@@ -171,17 +164,16 @@ export const Trial: Story = {
     const usagePanel = within(canvas.getByRole('region', { name: 'Usage' }))
     await expect(usagePanel.getAllByText('For the whole trial').length).toBeGreaterThan(0)
     await expect(usagePanel.queryByText(/This month since/)).toBeNull()
-    // Usage, closest to its limit first; signature requests are at 4 of 5 (80 %): orange, with a note.
+    // Signature requests are at 4 of 5 (80 %): orange, with a note.
     const signatures = canvas
       .getByText('Signature requests', { exact: true })
       .closest('[data-slot=usage-meter]')
-    await expect(canvasElement.querySelector('[data-slot=usage-meter]')).toBe(signatures)
     await expect(signatures).toHaveAttribute('data-state', 'near')
     await expect(within(signatures as HTMLElement).getByText('Almost at limit')).toBeVisible()
     // No member cap on a per-seat plan: the meter has no limit to reach.
     const members = canvas.getByText('Members').closest('[data-slot=usage-meter]')
     await expect(members).toHaveAttribute('data-state', 'ok')
-    await expect(members).toHaveTextContent('3of unlimited')
+    await expect(members).toHaveTextContent('3 · Unlimited')
   },
 }
 
@@ -193,17 +185,9 @@ export const ActiveMonthly: Story = {
   parameters: { msw: { handlers: handlers(basicMonthly) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByText('Renews on 1 Dec 2026')).toBeVisible()
     await expect(summary.getByText('Active', { exact: true })).toBeVisible()
-    // Time passing is no limit: the period bar stays calm.
-    await expect(
-      summary.getByRole('progressbar', { name: 'Billing period elapsed' }),
-    ).toBeInTheDocument()
-    await expect(canvasElement.querySelector('[data-slot=countdown]')).toHaveAttribute(
-      'data-tone',
-      'brand',
-    )
     await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 57.')
     await changePlanLink(summary, 'Upgrade to Pro')
     const payment = within(canvas.getByRole('region', { name: 'Payment method' }))
@@ -249,17 +233,11 @@ export const ActiveMonthlyMobile: Story = {
 export const Cancelling: Story = {
   parameters: { msw: { handlers: handlers(paid({ plan: 'pro', cancel_at_period_end: true })) } },
   play: async ({ canvasElement }) => {
-    const summary = within(
-      await within(canvasElement).findByRole('region', { name: 'Current plan' }),
-    )
+    const summary = within(await within(canvasElement).findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByText('Cancels', { exact: true })).toBeVisible()
     // Nothing more is charged: the plan ends with the period.
     await expect(summary.getByText('Ends on 1 Dec 2026')).toBeVisible()
     await expect(nextStep(canvasElement)).toHaveTextContent('Nothing more is charged.')
-    await expect(canvasElement.querySelector('[data-slot=countdown]')).toHaveAttribute(
-      'data-tone',
-      'muted',
-    )
     // No upgrade nudge on a plan that is ending: the plans page stays one click away.
     await expect(summary.queryByRole('link', { name: /^Upgrade/ })).not.toBeInTheDocument()
     await changePlanLink(summary)
@@ -286,9 +264,7 @@ export const WithDiscount: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const summary = within(
-      await within(canvasElement).findByRole('region', { name: 'Current plan' }),
-    )
+    const summary = within(await within(canvasElement).findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByText(/−20% for 3 months until 1 Feb 2027/)).toBeVisible()
     // The promotion code itself is never shown.
     await expect(summary.queryByText(/WELCOME20/)).not.toBeInTheDocument()
@@ -318,7 +294,7 @@ export const TrialFreeForever: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await canvas.findByRole('region', { name: 'Current plan' })
+    await canvas.findByRole('region', { name: 'Plan' })
     await expect(nextStep(canvasElement)).toHaveTextContent('Then free forever.')
     await expect(nextStep(canvasElement)).not.toHaveTextContent('LIFETIME-135F29')
   },
@@ -353,9 +329,9 @@ export const BusinessTopPlan: Story = {
   parameters: { msw: { handlers: handlers(business) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByText('Renews on 1 Dec 2026')).toBeVisible()
-    await expect(summary.getByRole('heading', { name: 'Business', level: 2 })).toBeVisible()
+    await expect(summary.getByRole('heading', { name: 'Business', level: 3 })).toBeVisible()
     await changePlanLink(summary)
   },
 }
@@ -400,7 +376,7 @@ export const NoPermission: Story = {
   parameters: { msw: { handlers: handlers({ ...pro, can_manage: false }) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 2 })).toBeVisible()
+    await expect(await canvas.findByRole('heading', { name: 'Pro', level: 3 })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Manage billing' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('region', { name: 'Payment method' })).not.toBeInTheDocument()
     await expect(
@@ -423,7 +399,7 @@ export const NoPlan: Story = {
     await expect(canvas.getByRole('region', { name: 'Read-only' })).toHaveTextContent(
       'Try Pro free for 7 days with up to 2 people; until then nothing can be changed.',
     )
-    // No limits without a plan, so no "0 of unlimited" tiles.
+    // No limits without a plan, so no "0 of unlimited" rows.
     await expect(canvas.queryByRole('heading', { name: 'Usage' })).not.toBeInTheDocument()
     await changePlanLink(canvas, 'Choose a plan')
   },
@@ -517,7 +493,7 @@ export const PendingDowngrade: Story = {
   parameters: { msw: { handlers: handlers(downgrading) } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const summary = within(await canvas.findByRole('region', { name: 'Current plan' }))
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByRole('heading', { name: 'Business' })).toBeVisible()
     await expect(summary.getByText('Changes to Pro monthly on 1 Dec 2026.')).toBeVisible()
   },

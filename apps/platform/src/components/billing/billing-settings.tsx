@@ -5,13 +5,13 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
-import { Download, Receipt } from 'lucide-react'
+import { CreditCard, Download, Receipt } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { SettingsPage } from '@/components/settings/layout'
+import { SettingsNotice, SettingsPage, SettingsSection } from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { errorMessage } from '@/lib/api'
 import {
@@ -25,15 +25,13 @@ import {
 import { translate } from '@/lib/i18n'
 
 import { AITokenPacks } from './ai-token-packs'
-import { BillingCard } from './billing-card'
 import { PaymentCard } from './card-brand'
 import { PlanSummary } from './plan-summary'
 import { UsageOverview } from './usage-overview'
 
 /**
- * Plan & billing: a full-width overview. The plan as a hero (its total, the ways to change it and a
- * countdown to what comes next), then usage as tiles closest to the limit first, then the card and
- * Helvetly's invoices side by side on a wide panel.
+ * Plan & billing, laid out like the account page: sections for the plan (its total, the ways to
+ * change it, what comes next), the usage as a compact list, the card and Helvetly's invoices.
  */
 export function BillingSettings() {
   const billing = useBilling()
@@ -69,11 +67,13 @@ export function BillingSettings() {
         ) : !data ? (
           <Loader label={translate('loadingBilling')} className="min-h-80" />
         ) : (
-          <div data-slot="billing-overview" className="@container grid gap-5">
+          <>
             {!data.enabled && (
-              <p className="rounded-lg bg-warning-surface px-4 py-3 text-body-sm text-pretty text-warning">
-                {translate('subscriptionBillingIsCurrentlyUnavailablePlanLimitsAreNot')}
-              </p>
+              <SettingsNotice>
+                <p className="rounded-lg bg-warning-surface px-4 py-3 text-body-sm text-pretty text-warning">
+                  {translate('subscriptionBillingIsCurrentlyUnavailablePlanLimitsAreNot')}
+                </p>
+              </SettingsNotice>
             )}
             <PlanSummary billing={data} onPortal={openPortal} portalPending={portal.isPending} />
             {/* Without a plan there are no limits to measure against ("0 of unlimited" misleads). */}
@@ -81,16 +81,16 @@ export function BillingSettings() {
             {/* Only while packs bought earlier still count this month. */}
             <AITokenPacks billing={data} />
             {payments && (
-              <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <>
                 <PaymentMethod
                   currency={data.currency}
                   onPortal={openPortal}
                   portalPending={portal.isPending}
                 />
                 <Invoices />
-              </div>
+              </>
             )}
-          </div>
+          </>
         )}
       </SettingsPage>
     </>
@@ -140,8 +140,9 @@ function PaymentMethod({
   const details = useBillingDetails(true)
   const card = details.data?.payment_method ?? null
   return (
-    <BillingCard
+    <SettingsSection
       id="payment-method"
+      icon={CreditCard}
       title={translate('paymentMethod')}
       description={translate('theCardStripeCharges')}
       action={
@@ -152,20 +153,20 @@ function PaymentMethod({
         )
       }
     >
-      <div className="grid flex-1 place-items-center px-5 py-5">
+      <div className="grid gap-3">
         {details.isPending ? (
           <Loader label={translate('loadingTheCard')} className="min-h-40" />
         ) : (
           <PaymentCard card={card} />
         )}
+        <p className="text-body-sm text-pretty text-muted-foreground">
+          {translate('billingChargeNotice', {
+            currency: currency.toUpperCase(),
+            taxNote: taxNoteLong(currency),
+          })}
+        </p>
       </div>
-      <p className="border-t px-5 py-3 text-body-sm text-pretty text-muted-foreground">
-        {translate('billingChargeNotice', {
-          currency: currency.toUpperCase(),
-          taxNote: taxNoteLong(currency),
-        })}
-      </p>
-    </BillingCard>
+    </SettingsSection>
   )
 }
 
@@ -182,23 +183,23 @@ function Invoices() {
   const details = useBillingDetails(true)
   const invoices = details.data?.invoices
   return (
-    <BillingCard
+    <SettingsSection
       id="billing-invoices"
+      icon={Receipt}
       title={translate('invoices')}
       description={translate('helvetlySInvoicesToThisWorkspace')}
     >
       {details.isPending ? (
         <Loader label={translate('loadingInvoices')} className="min-h-28" />
       ) : details.error ? (
-        <p role="alert" className="px-5 py-4 text-body-sm text-muted-foreground">
+        <p role="alert" className="text-body-sm text-muted-foreground">
           {translate('invoicesCouldnTBeLoaded')}
           {errorMessage(details.error)}
         </p>
       ) : !invoices || invoices.length === 0 ? (
-        <div className="grid justify-items-center gap-2 px-5 py-8 text-center">
-          <Receipt aria-hidden className="size-5 text-muted-foreground" />
+        <div className="grid gap-0.5">
           <p className="text-body font-medium">{translate('noInvoicesYet')}</p>
-          <p className="max-w-xs text-body-sm text-pretty text-muted-foreground">
+          <p className="max-w-[68ch] text-body-sm text-pretty text-muted-foreground">
             {translate('theFirstArrivesWhenTheTrialOrTheFirst')}
           </p>
         </div>
@@ -206,11 +207,11 @@ function Invoices() {
         <table className="w-full text-body">
           <thead className="text-left text-caption text-muted-foreground">
             <tr className="border-b">
-              <th className="py-2 pl-5 font-medium">{translate('date')}</th>
+              <th className="py-2 font-medium">{translate('date')}</th>
               <th className="hidden py-2 pl-4 font-medium @md:table-cell">{translate('number')}</th>
               <th className="py-2 pl-4 text-right font-medium">{translate('amount')}</th>
               <th className="py-2 pl-4 font-medium @sm:pl-6">{translate('status')}</th>
-              <th className="w-12 py-2 pr-3">
+              <th className="w-12 py-2">
                 <span className="sr-only">{translate('download')}</span>
               </th>
             </tr>
@@ -220,7 +221,7 @@ function Invoices() {
               const number = invoice.number || invoice.id
               return (
                 <tr key={invoice.id} className="border-b last:border-0">
-                  <td className="py-2.5 pl-5">
+                  <td className="py-2.5">
                     <span className="grid">
                       <span className="whitespace-nowrap">{formatDate(invoice.date)}</span>
                       {/* The number moves under the date on a narrow card. */}
@@ -252,7 +253,7 @@ function Invoices() {
                       {capitalize(invoice.status)}
                     </StatusBadge>
                   </td>
-                  <td className="py-2 pr-3 text-right">
+                  <td className="py-2 text-right">
                     {invoice.pdf && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -275,6 +276,6 @@ function Invoices() {
           </tbody>
         </table>
       )}
-    </BillingCard>
+    </SettingsSection>
   )
 }
