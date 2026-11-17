@@ -21,10 +21,10 @@ import { ClientSearch } from './client-search'
 // The printed-page parts the invoice and quote editors share.
 
 export const PARTY_LABEL =
-  'text-[12px] font-medium tracking-[0.04em] text-muted-foreground uppercase'
+  'text-caption font-medium tracking-[0.04em] text-muted-foreground uppercase'
 
 export const proseInput =
-  'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-[14px] leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+  'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
 
 /** Name, address lines, country and VAT number, set the same way for seller and client. */
 function PartyLines({
@@ -37,19 +37,19 @@ function PartyLines({
 }) {
   return (
     <>
-      <span className="pr-14 text-[16px] font-medium">{party.name}</span>
+      <span className="pr-14 text-title-sm font-medium">{party.name}</span>
       {addressLines(party).map((line) => (
-        <span key={line} className="text-[14px] leading-relaxed">
+        <span key={line} className="text-body leading-relaxed">
           {line}
         </span>
       ))}
       {party.country && (
-        <span className="text-[14px] leading-relaxed text-muted-foreground">
+        <span className="text-body leading-relaxed text-muted-foreground">
           {countryName(party.country)}
         </span>
       )}
       {party.vat_number && (
-        <span className="mt-0.5 font-mono text-[12.5px] text-muted-foreground">
+        <span className="mt-0.5 font-mono text-caption text-muted-foreground">
           {party.vat_number}
         </span>
       )}
@@ -74,7 +74,7 @@ export function SellerBlock({ settings, label }: { settings: InvoiceSettings; la
       {!settings.is_complete && (
         <Link
           href="/settings/invoices"
-          className="inline-flex w-fit items-center gap-1 text-[12.5px] text-link underline underline-offset-2 hover:no-underline"
+          className="inline-flex w-fit items-center gap-1 text-caption text-link underline underline-offset-2 hover:no-underline"
         >
           {translate('completeYourCompanyDetails')}
           <ArrowUpRight className="size-3" />
@@ -125,7 +125,7 @@ export function ClientBlock({
                 // Hidden from the name: it starts with what the button shows (the client), Change last.
                 <span
                   aria-hidden
-                  className="absolute top-3 right-3 text-[12px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                  className="absolute top-3 right-3 text-caption text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
                 >
                   {translate('change')}
                 </span>
@@ -137,7 +137,7 @@ export function ClientBlock({
             <button
               type="button"
               data-invalid={invalid || undefined}
-              className="flex h-[92px] w-full max-w-[320px] items-center justify-center gap-2 rounded-xl border border-dashed border-border text-[14px] text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground data-invalid:border-destructive/60 data-invalid:text-destructive"
+              className="flex h-[92px] w-full max-w-[320px] items-center justify-center gap-2 rounded-xl border border-dashed border-border text-body text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground data-invalid:border-destructive/60 data-invalid:text-destructive"
             >
               <Plus className="size-4" />
               {translate('chooseAClient3')}
@@ -164,7 +164,7 @@ export function ClientBlock({
           }}
         />
       )}
-      {invalid && <span className="text-[12px] text-destructive">{missing}</span>}
+      {invalid && <span className="text-caption text-destructive">{missing}</span>}
       {client?.is_draft && (
         <Callout tone="warning" icon={CircleAlert} className="max-w-sm rounded-lg px-3 py-2">
           <span>

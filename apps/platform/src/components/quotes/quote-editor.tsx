@@ -277,7 +277,7 @@ function Editor({
       >
         {/* As on an invoice: the options above and the internal note below stay put from md up, and only the
             page scrolls; on a phone everything scrolls together. */}
-        <div className="flex min-h-0 flex-1 flex-col max-md:overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col max-md:scroll-py-2 max-md:overflow-y-auto">
           <div className="shrink-0 border-b border-border/60 px-3 py-3 sm:px-6">
             <div className="mx-auto flex w-full max-w-[1040px] items-center gap-2 max-sm:-mx-3 max-sm:[scrollbar-width:none] max-sm:overflow-x-auto max-sm:px-3 max-sm:py-1 max-sm:*:shrink-0 sm:flex-wrap sm:justify-center">
               <div className="w-[104px]">
@@ -323,10 +323,10 @@ function Editor({
                   <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
                     <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
                     <div className="grid justify-items-end gap-1 text-right max-sm:justify-items-start max-sm:text-left">
-                      <h1 className="text-[28px] leading-none font-medium tracking-[-0.025em]">
+                      <h1 className="text-display leading-none font-medium tracking-[-0.025em]">
                         {translate('quote2')}
                       </h1>
-                      <span className="text-[13px] text-muted-foreground">
+                      <span className="text-body-sm text-muted-foreground">
                         {quote?.number ? quoteNumber(quote) : translate('noAssignedWhenSent')}
                       </span>
                     </div>
@@ -351,7 +351,7 @@ function Editor({
                         setPicking(false)
                       }}
                     />
-                    <dl className="grid w-full max-w-[300px] grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-[13.5px] md:col-span-2 @4xl:col-span-1">
+                    <dl className="grid w-full max-w-[300px] grid-cols-[92px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 self-start text-left text-body-sm md:col-span-2 @4xl:col-span-1">
                       <MetaLabel htmlFor="quote-issue_date" error={errors.issue_date}>
                         {translate('date')}
                       </MetaLabel>
@@ -399,7 +399,7 @@ function Editor({
                         />
                       </dd>
                       {metaError && (
-                        <p className="col-span-2 px-2 pt-1 text-[12px] text-destructive">
+                        <p className="col-span-2 px-2 pt-1 text-caption text-destructive">
                           {metaError}
                         </p>
                       )}
@@ -434,7 +434,7 @@ function Editor({
                     aria-label={translate('totals')}
                     aria-busy={preview.isFetching}
                     className={cn(
-                      'mt-6 ml-auto grid w-full gap-2 text-[14px] transition-opacity sm:w-[320px]',
+                      'mt-6 ml-auto grid w-full gap-2 text-body transition-opacity sm:w-[320px]',
                       preview.isFetching && 'opacity-70',
                     )}
                   >
@@ -453,9 +453,9 @@ function Editor({
                             value={values.discount_percent}
                             onChange={(event) => set('discount_percent', event.target.value)}
                             placeholder="0"
-                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-[13px] tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
                           />
-                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[12px] text-muted-foreground">
+                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-caption text-muted-foreground">
                             %
                           </span>
                         </span>
@@ -480,11 +480,11 @@ function Editor({
                         />
                       ))}
                     <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-foreground/80 pt-3">
-                      <dt className="text-[14px] font-medium">
+                      <dt className="text-body font-medium">
                         {translate('total2')}
                         {values.currency}
                       </dt>
-                      <dd className="text-[22px] font-medium tracking-[-0.02em] tabular-nums">
+                      <dd className="text-page font-medium tracking-[-0.02em] tabular-nums">
                         {totals ? formatAmount(totals.payable_total) : '—'}
                       </dd>
                     </div>
@@ -506,11 +506,11 @@ function Editor({
                       onChange={(event) => set('footer', event.target.value)}
                       placeholder={translate('printedAtTheBottomEGTermsOrWhat')}
                       rows={1}
-                      className={cn(proseInput, 'text-[13px] text-muted-foreground')}
+                      className={cn(proseInput, 'text-body-sm text-muted-foreground')}
                     />
                   </div>
                   {(errors.intro || errors.footer) && (
-                    <p className="mt-2 text-[12px] text-destructive">
+                    <p className="mt-2 text-caption text-destructive">
                       {errors.intro ?? errors.footer}
                     </p>
                   )}
@@ -523,7 +523,7 @@ function Editor({
             <section className="mx-auto grid w-full max-w-[1040px] gap-1.5 px-1">
               <label
                 htmlFor="quote-note"
-                className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground"
+                className="flex items-center gap-1.5 text-body-sm font-medium text-muted-foreground"
               >
                 <Lock className="size-3.5" />
                 {translate('internalNote2')}
@@ -536,7 +536,7 @@ function Editor({
                 onChange={(event) => set('note', event.target.value)}
                 placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
                 rows={1}
-                className="[field-sizing:content] max-h-32 w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-[14px] leading-relaxed shadow-xs outline-none placeholder:text-placeholder focus:border-ring focus:ring-2 focus:ring-ring/40"
+                className="[field-sizing:content] max-h-32 w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-body leading-relaxed shadow-xs outline-none placeholder:text-placeholder focus:border-ring focus:ring-2 focus:ring-ring/40"
               />
             </section>
           </div>
