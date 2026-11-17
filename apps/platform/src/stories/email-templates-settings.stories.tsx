@@ -39,6 +39,16 @@ export const Default: Story = {
     await expect(text).toHaveValue('Hi {client}')
     await userEvent.hover(body().getByRole('button', { name: '{due_date}' }))
     await expect(await body().findByText('Due date, e.g. 31.12.2026')).toBeVisible()
+    // The two pickers are one control of one height, like the other settings pages' choices.
+    const kinds = body().getByRole('group', { name: 'Document type' })
+    const languages = body().getByRole('group', { name: 'Language' })
+    await expect(within(languages).getByRole('radio', { name: 'Deutsch' })).toBeChecked()
+    await expect(languages.getBoundingClientRect().height).toBe(
+      kinds.getBoundingClientRect().height,
+    )
+    // The wording is its own section, divided from the picker by a hairline like every other one.
+    const wording = text.closest('section')
+    await expect(wording && getComputedStyle(wording).borderTopWidth).toBe('1px')
   },
 }
 export const DefaultDark = dark(Default)
@@ -48,12 +58,14 @@ export const DefaultPhone = phone(Default)
 export const Custom: Story = {
   play: async () => {
     const text = await message()
-    await userEvent.click(body().getByRole('tab', { name: 'FR, Français' }))
+    await userEvent.click(body().getByRole('radio', { name: 'Français' }))
     const french = await body().findByRole('textbox', { name: 'Message' })
     await userEvent.clear(french)
     await userEvent.type(french, 'Bonjour {client}')
     await userEvent.click(body().getByRole('button', { name: 'Save' }))
-    await expect(await body().findByRole('tab', { name: 'FR, Français, customised' })).toBeVisible()
+    await expect(
+      await body().findByRole('radio', { name: 'Français, customised' }),
+    ).toBeInTheDocument()
     await expect(await body().findByRole('button', { name: 'Reset to default' })).toBeVisible()
     await expect(text).toBeInTheDocument()
   },

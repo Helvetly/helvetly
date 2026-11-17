@@ -87,8 +87,8 @@ test('a variable chip explains itself in a tooltip', async () => {
 test('showsCustomDotPerLanguage, resetOnlyWhenCustom and plain-text encoding', async () => {
   const user = setup()
   const body = await message()
-  const french = screen.getByRole('tab', { name: 'FR, Français' })
-  expect(screen.queryByRole('tab', { name: /customised/ })).toBeNull()
+  const french = screen.getByRole('radio', { name: 'Français' })
+  expect(screen.queryByRole('radio', { name: /customised/ })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Reset to default' })).toBeNull()
 
   await user.click(french)
@@ -98,8 +98,8 @@ test('showsCustomDotPerLanguage, resetOnlyWhenCustom and plain-text encoding', a
   await user.type(frenchBody, '<b>Bonjour</b> & merci')
   await user.click(screen.getByRole('button', { name: 'Save' }))
 
-  expect(await screen.findByRole('tab', { name: 'FR, Français, customised' })).toBeVisible()
-  expect(screen.getAllByRole('tab', { name: /customised/ })).toHaveLength(1)
+  expect(await screen.findByRole('radio', { name: 'Français, customised' })).toBeInTheDocument()
+  expect(screen.getAllByRole('radio', { name: /customised/ })).toHaveLength(1)
   expect(sent.at(-1)).toMatchObject({
     url: expect.stringContaining('/email-templates/invoice/fr'),
     body: { body: '<b>Bonjour</b> & merci' },
@@ -108,7 +108,7 @@ test('showsCustomDotPerLanguage, resetOnlyWhenCustom and plain-text encoding', a
 
   await user.click(await screen.findByRole('button', { name: 'Reset to default' }))
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Reset to default' })).toBeNull())
-  expect(screen.queryByRole('tab', { name: /customised/ })).toBeNull()
+  expect(screen.queryByRole('radio', { name: /customised/ })).toBeNull()
   await waitFor(() =>
     expect(screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Message' }).value).toContain(
       '{number}',

@@ -161,7 +161,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       <FormField id="quote-send-message" label={translate('message')} error={errors.message}>
         <textarea
           {...describedBy('quote-send-message', errors.message)}
-          rows={4}
+          rows={8}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}

@@ -513,7 +513,7 @@ export function SendDialog({
       <FormField id="send-message" label={translate('message')} error={errors.message}>
         <textarea
           {...describedBy('send-message', errors.message)}
-          rows={4}
+          rows={8}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
