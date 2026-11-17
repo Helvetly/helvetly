@@ -110,7 +110,9 @@ export function SiteFooter({ lang }: { lang: Locale }) {
         </Container>
 
         <Container className="relative border-t border-white/10 py-10">
-          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-5">
+          {/* Wide screens: each column as wide as its longest link, spread over the row, so long words such as
+              "Datenverarbeitungsvereinbarung" stay whole; columns still shrink and wrap when the row is short. */}
+          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-[repeat(5,auto)] lg:justify-between">
             {FOOTER.map((group) => (
               <nav key={group.title} aria-label={group.title} className="flex flex-col gap-2">
                 <h2 className="text-body-sm font-medium text-white">{group.title}</h2>

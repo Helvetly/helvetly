@@ -2,6 +2,7 @@ import '@/app/site.css'
 import { type Locale, localizedAlternates } from '@helvetly/i18n'
 import { LanguageProvider } from '@helvetly/ui/components/language-provider'
 import { ThemeProvider } from '@helvetly/ui/components/theme-provider'
+import { TranslatorSafeDom } from '@helvetly/ui/components/translator-safe-dom'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
@@ -32,6 +33,7 @@ export function SiteShell({ lang, children }: { lang: Locale; children: ReactNod
     <html lang={lang} suppressHydrationWarning className={fontClassName}>
       {/* Browser extensions (Grammarly, ColorZilla…) add attributes to <body> before hydration; not our markup. */}
       <body className="min-h-svh" suppressHydrationWarning>
+        <TranslatorSafeDom />
         <ThemeProvider>
           <LanguageProvider language={lang}>
             <SiteHeader />
