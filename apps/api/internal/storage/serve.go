@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -29,11 +28,9 @@ type mediaLinker interface {
 // Serve answers a download of workspaceID's object at key ("" for a file of no workspace, such as a personal avatar),
 // saved as filename, once the caller has checked access: a 302 to a signed MEDIA_URL link, else to a presigned URL
 // or, with S3_PROXY_DOWNLOADS, the bytes through the API (range and conditional requests included) for a bucket the
-// browser cannot reach. With a download meter (MeterOf) a workspace's file is never presigned: its bytes go through
-// the media link or the API, counted. contentType "" falls back to the object's own, then to sniffing.
+// browser cannot reach. contentType "" falls back to the object's own, then to sniffing.
 func Serve(w http.ResponseWriter, r *http.Request, src Source, workspaceID, key, filename, contentType string) error {
 	w.Header().Set("Cache-Control", "private, no-store")
-	meter := MeterOf(src)
 	if m, ok := src.(mediaLinker); ok {
 		link, err := m.MediaLink(r.Context(), workspaceID, key, filename, contentType)
 		if err != nil {
@@ -44,7 +41,7 @@ func Serve(w http.ResponseWriter, r *http.Request, src Source, workspaceID, key,
 			return nil
 		}
 	}
-	if !src.ProxyDownloads() && (meter == nil || workspaceID == "") {
+	if !src.ProxyDownloads() {
 		link, err := src.PresignDownload(r.Context(), key, DownloadTTL, filename)
 		if err != nil {
 			return err
@@ -57,23 +54,8 @@ func Serve(w http.ResponseWriter, r *http.Request, src Source, workspaceID, key,
 		return err
 	}
 	defer obj.Close()
-	size, err := sizeOf(obj)
-	if err != nil {
-		return err
-	}
-	return Metered(w, r, meter, workspaceID, size, func(w http.ResponseWriter) { stream(w, r, obj, filename, contentType) })
-}
-
-// sizeOf: the object's length, the most a response of it can send; the reader is left at its start.
-func sizeOf(obj io.Seeker) (int64, error) {
-	n, err := obj.Seek(0, io.SeekEnd)
-	if err != nil {
-		return 0, fmt.Errorf("storage size: %w", err)
-	}
-	if _, err := obj.Seek(0, io.SeekStart); err != nil {
-		return 0, fmt.Errorf("storage size: %w", err)
-	}
-	return n, nil
+	stream(w, r, obj, filename, contentType)
+	return nil
 }
 
 // stream sends an opened object as an attachment, with range and conditional requests.

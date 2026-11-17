@@ -66,8 +66,6 @@ const TITLES: Record<string, string> = {
   ai_tokens_per_month: translate('monthlyAIAllowanceUsed'),
   automation_actions_per_month: translate('monthlyAutomationActionsUsed'),
   emails_per_month: translate('monthlyEmailAllowanceUsed'),
-  email_attachment_bytes_per_month: translate('monthlyAttachmentAllowanceUsed'),
-  download_bytes_per_month: translate('monthlyDownloadAllowanceUsed'),
 }
 
 export function UpgradePrompt() {

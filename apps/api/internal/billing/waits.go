@@ -15,7 +15,7 @@ import (
 
 // noteRefused remembers that need of a limit automatic actions count against did not fit the workspace's cap.
 func (s *Service) noteRefused(workspaceID string, l Limit, need int64) {
-	if l == AutomationActions || l == Emails || l == EmailAttachments {
+	if l == AutomationActions || l == Emails {
 		s.refused.Store(workspaceID+" "+string(l), need)
 	}
 }

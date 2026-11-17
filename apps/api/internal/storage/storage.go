@@ -54,7 +54,6 @@ type S3 struct {
 	lockMode minio.RetentionMode
 	proxy    bool
 	media    *Media
-	meter    Meter
 	now      func() time.Time
 }
 

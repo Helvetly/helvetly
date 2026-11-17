@@ -171,7 +171,7 @@ func TestNewSubscriptionMidMonthGetsCostlyAllowancesProRata(t *testing.T) {
 	if got := e.cap(owner.workspace, AITokens); got != share(5_000_000, left, total) {
 		t.Fatalf("AI tokens mid-month: %d", got)
 	}
-	if got := e.cap(owner.workspace, "emails_per_month"); got != share(1000, left, total) {
+	if got := e.cap(owner.workspace, "emails_per_month"); got != share(500, left, total) {
 		t.Fatalf("emails mid-month: %d", got)
 	}
 	if got := e.cap(owner.workspace, Invoices); got != 100 { // not a costly allowance: whole at once

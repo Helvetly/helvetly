@@ -67,9 +67,10 @@ are the reference.
   UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
   Storage counts each workspace object once in `stored_objects`: `ReserveObject` before every `files.Put` of a
   workspace's object (admitted for new growth, counted only for records the business keeps), the real size once
-  storage answers, released only after a confirmed delete, reconciled by a job. Downloads of a workspace's files go
-  through `storage.Serve`/`storage.Metered` (with billing on, never a presigned link); business email carries its
-  `Workspace` and counts through `mail.Metered`; sign-in, security and invitation email never does.
+  storage answers, released only after a confirmed delete, reconciled by a job. Downloads are not counted: they go
+  through `storage.Serve` (a `MEDIA_URL` link, a presigned URL or, with `S3_PROXY_DOWNLOADS`, the API). Business
+  email carries its `Workspace` and counts its recipients through `mail.Metered` (one message's attachments are
+  capped by `max_email_attachment_bytes`); sign-in, security and invitation email never does.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget; each call reserves its tokens and rate-card cost first, one call in flight

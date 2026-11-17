@@ -13,7 +13,7 @@ import (
 // reservation given back ends the wait, a change that leaves the cap as it was does not, and another limit's refusal
 // or another workspace's holds back nothing.
 func TestARefusedAutomationWaitsWhileItStillWouldNotFit(t *testing.T) {
-	email := []string{store.AutomationActions, store.EmailRecipients, store.EmailAttachmentBytes}
+	email := []string{store.AutomationActions, store.EmailRecipients}
 	for _, tc := range []struct {
 		name   string
 		refuse Limit

@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
-	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
 )
@@ -102,23 +101,21 @@ func (s *Service) UploadEmployeeFile(w http.ResponseWriter, r *http.Request, ses
 }
 
 // ServeHRFile streams an HR file through the API on every request, so the caller's permission check runs each time:
-// never a presigned or /api/media link that would outlive it. Downloads only, never cached by shared caches, and
-// counted against the workspace's download allowance like every other download.
+// never a presigned or /api/media link that would outlive it. Downloads only, never cached by shared caches.
 func (s *Service) ServeHRFile(w http.ResponseWriter, r *http.Request, workspaceID string, d store.Document) error {
 	obj, err := s.files.Open(r.Context(), d.ObjectKey)
 	if err != nil {
 		return err
 	}
 	defer obj.Close()
-	return storage.Metered(w, r, storage.MeterOf(s.files), workspaceID, d.Size, func(w http.ResponseWriter) {
-		h := w.Header()
-		h.Set("Content-Type", d.ContentType)
-		h.Set("Content-Disposition", contentDisposition("attachment", d.Name))
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-		h.Set("Cache-Control", "private, no-store")
-		http.ServeContent(w, r, "", d.CreatedAt, obj)
-	})
+	h := w.Header()
+	h.Set("Content-Type", d.ContentType)
+	h.Set("Content-Disposition", contentDisposition("attachment", d.Name))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	h.Set("Cache-Control", "private, no-store")
+	http.ServeContent(w, r, "", d.CreatedAt, obj)
+	return nil
 }
 
 // RemoveObject deletes a removed HR file's bytes after its row is gone; a failure leaves an orphan, logged.
