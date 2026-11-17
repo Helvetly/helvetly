@@ -814,6 +814,7 @@ export const NUMBER_FORMATS: NumberFormat[] = [
   '{YYYY}/{NNN}',
   '{NNN}/{YYYY}',
   'RE-{YYYY}-{NNN}',
+  '{YYYY}/{TYPE}/{NNN}',
 ]
 
 /** What {TYPE} prints, as the API does; without {TYPE} a credit note gets the "CN-" prefix. */
