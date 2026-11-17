@@ -116,3 +116,18 @@ func TestRONVATRoundsHalfAwayFromZero(t *testing.T) {
 		t.Error("a zero rate must be refused")
 	}
 }
+
+func TestCIUSRORefusesRONVATOverflow(t *testing.T) {
+	inv := fixture("invoice", invoicecalc.Exclusive, 0,
+		lineSpec{desc: "Consulting", qty: 1000, price: 200_000_000, cat: "S", rate: 810})
+	inv.Currency, inv.TaxCurrencyRate = "EUR", ptr("4.9771")
+	inv.Seller, inv.Buyer = roInvoice().Seller, roInvoice().Buyer
+	mustUBL(t, inv, "ro_cius")
+
+	inv.TaxCurrencyRate = ptr("999999999999.999999")
+
+	var ro *ROError
+	if out, err := UBL(inv, "ro_cius"); !errors.As(err, &ro) || len(out) != 0 {
+		t.Fatalf("overflow exported %d bytes without an error: %v", len(out), err)
+	}
+}

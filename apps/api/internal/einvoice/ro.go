@@ -96,5 +96,8 @@ func ronVAT(vat invoicecalc.Money, rate string) (invoicecalc.Money, error) {
 	if new(big.Int).Mul(new(big.Int).Abs(m), big.NewInt(2)).Cmp(cents.Denom()) >= 0 {
 		q.Add(q, big.NewInt(int64(cents.Sign())))
 	}
+	if !q.IsInt64() {
+		return 0, &ROError{[]string{"the converted RON VAT is outside the supported amount range: check the exchange rate"}}
+	}
 	return invoicecalc.Money(q.Int64()), nil
 }

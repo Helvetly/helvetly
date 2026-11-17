@@ -49,6 +49,19 @@ func xlsxOf(t *testing.T, rows [][]any) []byte {
 	return b.Bytes()
 }
 
+func TestXLSXDoesNotSilentlyTruncateRows(t *testing.T) {
+	rows := make([][]any, maxSheetRows+1)
+	for i := range rows {
+		rows[i] = []any{"Synthetic row"}
+	}
+	if _, err := xlsxSheets(xlsxOf(t, rows[:maxSheetRows])); err != nil {
+		t.Fatalf("exact row limit refused: %v", err)
+	}
+	if out, err := xlsxSheets(xlsxOf(t, rows)); err == nil || len(out) != 0 {
+		t.Fatalf("oversized sheet returned %d partial chunks without an error: %v", len(out), err)
+	}
+}
+
 func docxOf(t *testing.T, body string) []byte {
 	return zipOf(t, map[string][]byte{
 		"[Content_Types].xml": []byte(`<Types/>`),

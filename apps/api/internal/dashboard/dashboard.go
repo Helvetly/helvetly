@@ -109,7 +109,7 @@ func (s *Service) read(ctx context.Context, sess store.Session, currency string)
 			slices.Sort(out.Currencies)
 		}
 		if canInvoices {
-			invoices, err := q.InvoiceSummary(ctx, sess.Workspace.ID, currency, today, "")
+			invoices, err := q.InvoiceMetrics(ctx, sess.Workspace.ID, currency, today, "")
 			if err != nil {
 				return err
 			}
