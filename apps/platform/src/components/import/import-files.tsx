@@ -144,11 +144,24 @@ function fileStatus(file: ImportFile, records: number) {
   }
 }
 
-const ICONS = {
-  queued: <Clock className="text-muted-foreground" />,
-  extracting: <Loader2 className="animate-spin text-muted-foreground motion-reduce:animate-none" />,
-  done: <CheckCircle2 className="text-success-solid" />,
-  failed: <AlertCircle className="text-destructive" />,
+/** Each state its own tinted chip, so reading, waiting, done and failed never look alike. */
+const CHIPS = {
+  queued: {
+    icon: <Clock />,
+    chip: 'bg-muted text-muted-foreground',
+    text: 'text-muted-foreground',
+  },
+  extracting: {
+    icon: <Loader2 className="animate-spin motion-reduce:animate-none" />,
+    chip: 'bg-info-surface text-info',
+    text: 'text-info',
+  },
+  done: { icon: <CheckCircle2 />, chip: 'bg-success-surface text-success', text: 'text-success' },
+  failed: {
+    icon: <AlertCircle />,
+    chip: 'bg-destructive-surface text-destructive',
+    text: 'text-destructive',
+  },
 }
 
 /** One line per file the server is reading, or has read. */
@@ -164,17 +177,20 @@ export function FileProgress({
       {files.map((file) => (
         <li
           key={file.id}
-          className="flex items-start gap-2 px-3 py-2 text-[13px] [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.75]"
+          data-status={file.status}
+          className="flex items-start gap-3 px-3 py-2 text-[13px]"
         >
-          {ICONS[file.status]}
+          <span
+            className={cn(
+              'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
+              CHIPS[file.status].chip,
+            )}
+          >
+            {CHIPS[file.status].icon}
+          </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
             <span className="truncate">{file.name}</span>
-            <span
-              className={cn(
-                'text-[12px]',
-                file.status === 'failed' ? 'text-destructive' : 'text-muted-foreground',
-              )}
-            >
+            <span className={cn('text-[12px]', CHIPS[file.status].text)}>
               {file.document_type && file.document_type !== 'other' && (
                 <span className="font-medium text-foreground">
                   {DOCUMENT_TYPES[file.document_type]} ·{' '}

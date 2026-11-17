@@ -110,6 +110,10 @@ export type ImportKindConfig = {
   /** Records belong to an existing client: `client_id` (in `editable`) is picked with the client search, which also
    * sets `client_name`. */
   pickClient?: boolean
+  /** Date fields ("2026-11-05"), edited with the calendar. */
+  dates?: string[]
+  /** Money fields, each with the currency field of the same record that goes with it. */
+  amounts?: Record<string, string>
   /** Yes/no fields, edited with a checkbox and sent as booleans. */
   toggles?: string[]
   /** Help behind a (?) next to a field's label in the editor. */
@@ -172,6 +176,7 @@ export const IMPORT_KINDS = {
     },
     columns: ['type', 'name', 'sku', 'unit', 'unit_price', 'currency'],
     editable: ['type', 'name', 'description', 'sku', 'unit', 'unit_price', 'currency', 'vat_rate'],
+    amounts: { unit_price: 'currency' },
     listKey: ['products'],
     entityHref: (id) => `/products?id=${encodeURIComponent(id)}`,
   },
@@ -212,6 +217,8 @@ export const IMPORT_KINDS = {
       'end_date',
       'reference',
     ],
+    dates: ['start_date', 'end_date'],
+    amounts: { unit_price: 'currency' },
     pickClient: true,
     labelKey: 'title',
     listKey: ['engagements'],
@@ -256,6 +263,8 @@ export const IMPORT_KINDS = {
       'paid_amount',
       'paid_on',
     ],
+    dates: ['issue_date', 'due_date', 'paid_on'],
+    amounts: { total: 'currency', paid_amount: 'currency' },
     toggles: ['issued_elsewhere'],
     tips: {
       issued_elsewhere: translate('tickedTheInvoiceWasAlreadyIssuedInAnotherSystem'),
@@ -300,6 +309,8 @@ export const IMPORT_KINDS = {
       'vat_rate_2',
       'reverse_charge',
     ],
+    dates: ['document_date', 'due_date'],
+    amounts: { amount: 'currency', amount_2: 'currency' },
     toggles: ['reverse_charge'],
     listKey: ['expenses'],
     entityHref: (id) => `/expenses?id=${encodeURIComponent(id)}`,
@@ -337,6 +348,13 @@ export const IMPORT_KINDS = {
       'source_ref',
       'note',
     ],
+    dates: ['period_start', 'period_end', 'pay_date'],
+    amounts: {
+      gross: 'currency',
+      deductions: 'currency',
+      net: 'currency',
+      employer_costs: 'currency',
+    },
     listKey: ['payroll'],
     entityHref: (id) => `/employees/payroll?entry=${encodeURIComponent(id)}`,
   },

@@ -109,10 +109,10 @@ export const PickClient: Story = {
   },
   play: async () => {
     await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
-    await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await body().findByRole('table', { name: 'Records found' })
     await expect(body().getByText('1 line')).toBeVisible()
-    await expect(body().getByText(/Client: No client matches/)).toBeVisible()
+    await expect(body().getByRole('button', { name: /Client: No client matches/ })).toBeVisible()
     await expect(body().getByRole('checkbox', { name: 'Select RE-2025-017' })).not.toBeChecked()
 
     await userEvent.click(body().getByRole('button', { name: 'Edit RE-2025-017' }))
@@ -127,7 +127,7 @@ export const PickClient: Story = {
 
     await body().findByRole('table', { name: 'Records found' })
     await expect(patched).toEqual({ client_id: 'cli_1', client_name: 'Alpenglow Studio GmbH' })
-    await expect(body().queryByText(/Client: No client matches/)).toBeNull()
+    await expect(body().queryByRole('button', { name: /Client: No client matches/ })).toBeNull()
     await expect(body().getByRole('checkbox', { name: 'Select RE-2025-017' })).toBeChecked()
     await expect(body().getByRole('button', { name: 'Import 1' })).toBeEnabled()
   },
@@ -229,7 +229,7 @@ const conflictHandlers = (records: ImportRecord[], whyNot: Record<string, string
 /** Opens the unfinished batch, ticks every row and imports: the conflicts dialog appears. */
 const importAll = async (count: number) => {
   await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
-  await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+  await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
   await body().findByRole('table', { name: 'Records found' })
   await expect(body().getAllByText(/number already used/)).toHaveLength(count)
   await userEvent.click(body().getByRole('checkbox', { name: 'Select all' }))
@@ -398,7 +398,7 @@ export const IssuedElsewhereToggle: Story = {
   },
   play: async () => {
     await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
-    await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await body().findByRole('table', { name: 'Records found' })
     await expect(body().getByRole('columnheader', { name: 'Already issued' })).toBeVisible()
     await expect(body().queryByText('Already declared for VAT?')).not.toBeInTheDocument()
@@ -408,13 +408,14 @@ export const IssuedElsewhereToggle: Story = {
     await userEvent.click(toggle)
     await expect(toggle).toBeChecked()
     await userEvent.type(body().getByRole('textbox', { name: 'Already paid' }), '500.00')
-    await userEvent.type(body().getByRole('textbox', { name: 'Paid on' }), '2025-10-15')
+    await userEvent.click(body().getByRole('button', { name: 'Paid on: Choose a date' }))
+    await userEvent.click((await body().findAllByRole('gridcell'))[10]!.querySelector('button')!)
     await userEvent.click(body().getByRole('button', { name: 'Save' }))
     await body().findByRole('table', { name: 'Records found' })
     await expect(toggled).toEqual({
       issued_elsewhere: true,
       paid_amount: '500.00',
-      paid_on: '2025-10-15',
+      paid_on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     })
     // An invoice issued elsewhere counts in the VAT return: the note says how not to count it twice.
     await expect(await body().findByText('Already declared for VAT?')).toBeVisible()

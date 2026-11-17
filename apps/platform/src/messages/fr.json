@@ -4203,5 +4203,18 @@
   "emailTemplatesReset": "Rétablir le texte standard",
   "emailTemplatesSaved": "Modèle enregistré.",
   "emailTemplatesResetDone": "Modèle rétabli au texte standard.",
-  "emailTemplatesReadOnly": "Seules les personnes autorisées à modifier les paramètres de facture peuvent changer ces modèles."
+  "emailTemplatesReadOnly": "Seules les personnes autorisées à modifier les paramètres de facture peuvent changer ces modèles.",
+  "chooseADate": "Choisir une date",
+  "clearDate": "Effacer la date",
+  "importNeedsFix": "À corriger",
+  "importFixHint": "Cliquez pour corriger cette ligne.",
+  "importRowsNeedClient": "{count, plural, one {# ligne a besoin d'un client} other {# lignes ont besoin d'un client}}",
+  "importRowsNeedClientBody": "Aucun client existant ne correspond au nom du document. Choisissez un client pour toutes les lignes, ou corrigez-les une par une.",
+  "importChooseClientForAll": "Choisir un client pour toutes",
+  "importRowsNeedFix": "{count, plural, one {# ligne doit être corrigée} other {# lignes doivent être corrigées}}",
+  "importRowsNeedFixBody": "Elles restent décochées tant qu'elles ne sont pas corrigées. Survolez le badge d'une ligne pour voir le problème.",
+  "importFixFirst": "Corriger la première",
+  "importContinueShort": "Reprendre l'import",
+  "importMoreComing": "D'autres documents sont encore en cours de lecture. Leurs lignes apparaissent ici dès que chacun est terminé.",
+  "importDocumentRecords": "{count, plural, one {# enregistrement} other {# enregistrements}}"
 }

@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, History, X, Trash2 } from 'lucide-react'
+import { AlertCircle, Play, RotateCcw, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
@@ -40,8 +40,10 @@ import {
 
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
+import { EditRecordDrawer } from './import-edit-drawer'
 import { DropZone, FileProgress } from './import-files'
-import { EDIT_FORM_ID, EditRecord, GroupedReview, ReviewTable } from './import-review'
+import { IssueSummary } from './import-issues'
+import { GroupedReview, ReviewTable, rowName } from './import-review'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
@@ -150,26 +152,30 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
     body = (
       <div className="grid gap-4">
         {resume && !upload.isPending && (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted px-4 py-3 text-[13px]">
-            <History className="size-4 shrink-0 stroke-[1.75] text-muted-foreground" />
-            <p className="min-w-0 flex-1">
-              {translate('youHaveAnUnfinishedImportFrom')}
-              {formatDate(resume.created_at)}.
-            </p>
-            <Button size="sm" variant="outline" onClick={() => setFresh(true)}>
-              {translate('startANewOne')}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setBatchId(resume.id)
-                setFresh(true)
-              }}
-            >
-              {translate('continueTheImportFrom')}
-              {formatDate(resume.created_at)}
-            </Button>
-          </div>
+          <Callout
+            tone="info"
+            actions={
+              <>
+                <Button size="sm" variant="outline" onClick={() => setFresh(true)}>
+                  <RotateCcw />
+                  {translate('startANewOne')}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setBatchId(resume.id)
+                    setFresh(true)
+                  }}
+                >
+                  <Play />
+                  {translate('importContinueShort')}
+                </Button>
+              </>
+            }
+          >
+            {translate('youHaveAnUnfinishedImportFrom')}
+            {formatDate(resume.created_at)}.
+          </Callout>
         )}
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
@@ -202,51 +208,28 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
     ) : (
       <Loader className="min-h-52" />
     )
-  } else if (batch.data.status === 'extracting') {
-    body = (
-      <div className="grid gap-3">
-        <p className="text-[13px] text-muted-foreground">
-          {translate('readingYourFilesThisCanTakeAMinuteFor')}
-        </p>
-        <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
-      </div>
-    )
-    status = translate('readOfFiles', { filesDone: filesDone, length: batch.data.files.length })
-    actions = (
-      <Button variant="destructive-ghost" onClick={() => setConfirmDiscard(true)}>
-        <Trash2 />
-        {translate('discard2')}
-      </Button>
-    )
-  } else if (editingRecord) {
-    body = (
-      <EditRecord
-        key={editingRecord.id}
-        config={IMPORT_KINDS[editingRecord.kind]}
-        batchId={batch.data.id}
-        record={editingRecord}
-        onDone={(saved) => {
-          setEditing(null)
-          if (saved && isClean(saved))
-            setPicked((current) => current && new Set(current).add(saved.id))
-        }}
-      />
-    )
-    status = translate('editingARow')
-    actions = (
-      <>
-        <Button variant="ghost" onClick={() => setEditing(null)}>
-          {translate('cancel')}
-        </Button>
-        <Button type="submit" form={EDIT_FORM_ID}>
-          {translate('save2')}
-        </Button>
-      </>
-    )
   } else {
+    const reading = batch.data.status === 'extracting'
     body = (
       <div className="grid gap-4">
+        {reading && (
+          <p className="text-[13px] text-muted-foreground">
+            {translate('readingYourFilesThisCanTakeAMinuteFor')}{' '}
+            {records.length > 0 && translate('importMoreComing')}
+          </p>
+        )}
         <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
+        <IssueSummary
+          batchId={batch.data.id}
+          records={records}
+          onEdit={setEditing}
+          onFixed={(saved) =>
+            setPicked(
+              (current) =>
+                new Set([...(current ?? selected), ...saved.filter(isClean).map((r) => r.id)]),
+            )
+          }
+        />
         {open.some((record) => record.data.issued_elsewhere === true) && <DeclaredVatNote />}
         {config ? (
           <ReviewTable
@@ -259,6 +242,8 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           />
         ) : (
           <GroupedReview
+            files={batch.data.files}
+            reading={reading}
             records={records}
             selected={selected}
             results={results}
@@ -268,23 +253,24 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
         )}
       </div>
     )
-    status =
-      summary ??
-      (config || !records.length
-        ? translate('ofSelected', { length: chosen.length, value2: open.length })
-        : translate('importFoundSelected', {
-            summary: foundSummary(records),
-            count: chosen.length,
-          }))
+    status = reading
+      ? translate('readOfFiles', { filesDone: filesDone, length: batch.data.files.length })
+      : (summary ??
+        (config || !records.length
+          ? translate('ofSelected', { length: chosen.length, value2: open.length })
+          : translate('importFoundSelected', {
+              summary: foundSummary(records),
+              count: chosen.length,
+            })))
     error = commit.error ? errorMessage(commit.error) : null
     actions = (
       <>
         <Button
-          variant={open.length ? 'destructive-ghost' : 'outline'}
+          variant={open.length || reading ? 'destructive-ghost' : 'outline'}
           disabled={discard.isPending || commit.isPending}
-          onClick={() => (open.length ? setConfirmDiscard(true) : runDiscard())}
+          onClick={() => (open.length || reading ? setConfirmDiscard(true) : runDiscard())}
         >
-          {open.length ? (
+          {open.length || reading ? (
             <>
               <Trash2 />
               {translate('discard2')}
@@ -294,7 +280,10 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
           )}
         </Button>
         {open.length > 0 || !summary ? (
-          <Button disabled={!chosen.length || commit.isPending} onClick={() => runCommit(chosen)}>
+          <Button
+            disabled={reading || !chosen.length || commit.isPending}
+            onClick={() => runCommit(chosen)}
+          >
             {commit.isPending
               ? translate('importing')
               : translate('import3', { length: chosen.length })}
@@ -374,6 +363,25 @@ export function ImportDrawer({ kind, onClose }: { kind: ImportTarget; onClose: (
               )
             }
             onCancel={() => setConflicts([])}
+          />
+        )}
+
+        {editingRecord && (
+          <EditRecordDrawer
+            key={editingRecord.id}
+            config={IMPORT_KINDS[editingRecord.kind]}
+            batchId={batchId ?? ''}
+            record={editingRecord}
+            name={rowName(
+              IMPORT_KINDS[editingRecord.kind],
+              editingRecord,
+              records.indexOf(editingRecord),
+            )}
+            onDone={(saved) => {
+              setEditing(null)
+              if (saved && isClean(saved))
+                setPicked((current) => new Set([...(current ?? selected), saved.id]))
+            }}
           />
         )}
 

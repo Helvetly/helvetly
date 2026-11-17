@@ -4203,5 +4203,18 @@
   "emailTemplatesReset": "Auf Standard zurücksetzen",
   "emailTemplatesSaved": "Vorlage gespeichert.",
   "emailTemplatesResetDone": "Vorlage auf den Standardtext zurückgesetzt.",
-  "emailTemplatesReadOnly": "Nur wer die Rechnungseinstellungen bearbeiten darf, kann diese Vorlagen ändern."
+  "emailTemplatesReadOnly": "Nur wer die Rechnungseinstellungen bearbeiten darf, kann diese Vorlagen ändern.",
+  "chooseADate": "Datum wählen",
+  "clearDate": "Datum entfernen",
+  "importNeedsFix": "Zu korrigieren",
+  "importFixHint": "Klicken Sie, um diese Zeile zu korrigieren.",
+  "importRowsNeedClient": "{count, plural, one {# Zeile braucht einen Kunden} other {# Zeilen brauchen einen Kunden}}",
+  "importRowsNeedClientBody": "Kein vorhandener Kunde passt zum Namen auf dem Dokument. Wählen Sie einen Kunden für alle oder korrigieren Sie jede Zeile einzeln.",
+  "importChooseClientForAll": "Kunden für alle wählen",
+  "importRowsNeedFix": "{count, plural, one {# Zeile muss korrigiert werden} other {# Zeilen müssen korrigiert werden}}",
+  "importRowsNeedFixBody": "Sie bleiben abgewählt, bis sie korrigiert sind. Fahren Sie über das Symbol einer Zeile, um zu sehen, was nicht stimmt.",
+  "importFixFirst": "Erste korrigieren",
+  "importContinueShort": "Import fortsetzen",
+  "importMoreComing": "Weitere Dokumente werden noch gelesen. Ihre Zeilen erscheinen hier, sobald jedes fertig ist.",
+  "importDocumentRecords": "{count, plural, one {# Eintrag} other {# Einträge}}"
 }
