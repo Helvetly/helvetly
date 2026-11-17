@@ -17,7 +17,7 @@ import {
 
 type Method = { key: keyof PaymentMethods; label: string; tip: string; blocker: string | null }
 
-const METHOD_ICONS: Record<keyof PaymentMethods, LucideIcon> = {
+export const METHOD_ICONS: Record<keyof PaymentMethods, LucideIcon> = {
   qr_bill: QrCode,
   revolut: Smartphone,
 }
@@ -66,9 +66,9 @@ export function PaymentToggles({
 
   return (
     // Checkbox chips, not a segmented control: each method is on or off on its own, and both can be.
-    <fieldset className="flex flex-wrap items-center gap-1.5">
+    <fieldset className="flex items-center gap-1.5 sm:flex-wrap">
       <legend className="sr-only">{translate('paymentMethods')}</legend>
-      <span aria-hidden className="pr-0.5 text-caption text-muted-foreground">
+      <span aria-hidden className="pr-0.5 text-caption text-muted-foreground max-sm:hidden">
         {translate('payment')}
       </span>
       {methods.map((method) => {

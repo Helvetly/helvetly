@@ -125,8 +125,9 @@ export function EmployeesPage() {
         />
       ) : (
         <div className="flex flex-1 flex-col">
+          {/* On a phone the search has its own row and the two filters share the next. */}
           <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 md:px-5">
-            <label className="flex h-8 min-w-40 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
+            <label className="flex h-8 min-w-40 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground max-sm:basis-full">
               <Search className="size-4 shrink-0 stroke-[1.5]" />
               <input
                 type="search"
@@ -139,7 +140,7 @@ export function EmployeesPage() {
             </label>
             <NativeSelect
               aria-label={translate('employeeStatusLabel')}
-              wrapperClassName="w-36"
+              wrapperClassName="w-36 max-sm:w-auto max-sm:flex-1"
               className="h-8"
               value={params.status}
               onChange={(event) =>
@@ -158,7 +159,7 @@ export function EmployeesPage() {
             </NativeSelect>
             <NativeSelect
               aria-label={translate('employeeDepartment')}
-              wrapperClassName="w-44"
+              wrapperClassName="w-44 max-sm:w-auto max-sm:flex-1"
               className="h-8"
               disabled={departments.length === 0}
               value={params.department ?? ''}

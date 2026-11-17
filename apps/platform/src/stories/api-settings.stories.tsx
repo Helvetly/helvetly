@@ -41,7 +41,9 @@ export const Page: Story = {
     await canvas.findByText('Claude')
     const tabs = within(await canvas.findByRole('navigation', { name: 'Views' }))
     const labels = tabs.getAllByRole('button').map((tab) => tab.textContent)
-    await expect(labels.indexOf('API & MCP')).toBe(labels.indexOf('Account') + 1)
+    // Your own settings, then employment (when you may see it), then API & MCP.
+    const employment = labels.includes('Employment') ? 1 : 0
+    await expect(labels.indexOf('API & MCP')).toBe(labels.indexOf('Account') + 1 + employment)
     await expect(tabs.getByRole('button', { name: 'API & MCP' })).toHaveAttribute(
       'aria-current',
       'page',

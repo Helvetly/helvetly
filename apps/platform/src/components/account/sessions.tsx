@@ -56,7 +56,7 @@ export function Sessions() {
         />
       ) : (
         <div>
-          <ul className="divide-y">
+          <ul className="grid">
             {list.map((session) => {
               const Icon = ICONS[session.device]
               const label = translate('dynamicOn', { browser: session.browser, os: session.os })

@@ -157,7 +157,7 @@ export const CreateDraft: Story = {
     await userEvent.click(within(editor).getByRole('button', { name: 'Save draft' }))
     await seen(await within(editor).findByText('Choose who this quote is for.'))
 
-    await userEvent.click(within(editor).getByRole('button', { name: 'Client' }))
+    await userEvent.click(within(editor).getByRole('button', { name: 'Choose a client' }))
     await userEvent.click(await body.findByRole('option', { name: /Sophie Meier/ }))
     await userEvent.type(
       within(editor).getByRole('textbox', { name: 'Line 1 description' }),

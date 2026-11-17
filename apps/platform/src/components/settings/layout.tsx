@@ -273,7 +273,7 @@ export function SettingsRow({
   children?: ReactNode
 }) {
   return (
-    <li className="flex items-center gap-3 py-3.5">
+    <li className="flex items-center gap-3 py-2.5">
       <span
         data-slot="row-icon"
         className="flex size-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground [&_svg]:size-4"

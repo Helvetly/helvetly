@@ -18,14 +18,16 @@ import type { ReactNode } from 'react'
 import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
+import { useInvoiceSettings } from '@/lib/invoices'
 import { canReadPath, useScopes } from '@/lib/permissions'
 
 type Page = { label: string; href: string; icon: LucideIcon }
 
-/** The workspace first, then your own settings (the same in every workspace), then the rest of the workspace's. */
+/** The workspace first, then your own settings (the same in every workspace), employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
   { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
   { label: translate('account'), href: '/account', icon: UserRound },
+  { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
@@ -34,7 +36,6 @@ export const SETTINGS_PAGES: Page[] = [
   // The books in the order of a month-end: record, declare, post, close, audit.
   { label: translate('closing'), href: '/settings/periods', icon: CalendarCheck },
   { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
-  { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
@@ -57,7 +58,12 @@ export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   const guard = useLeaveGuard()
   const scopes = useScopes()
   // A page of an area the person cannot read is left out, as in the sidebar (employment also opens with payroll view).
-  const pages = SETTINGS_PAGES.filter((page) => canReadPath(scopes, page.href))
+  // A business not registered for VAT files no VAT return: the tab shows once the invoice settings say it is.
+  const notVatRegistered = useInvoiceSettings().data?.vat_registered === false
+  const pages = SETTINGS_PAGES.filter(
+    (page) =>
+      canReadPath(scopes, page.href) && !(notVatRegistered && page.href === '/settings/vat-return'),
+  )
   const current = settingsPageAt(usePathname() ?? '')
   return (
     <>
