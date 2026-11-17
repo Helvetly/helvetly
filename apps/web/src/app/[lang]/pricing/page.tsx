@@ -1,4 +1,3 @@
-import { localizedAlternates } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { FaqSection } from '@/components/faq'
@@ -8,6 +7,7 @@ import { PlanTable } from '@/components/plan-table'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { TRIAL } from '@/lib/plans'
 import { siteIn } from '@/lib/site'
 
@@ -16,11 +16,7 @@ type Props = { params: Promise<{ lang?: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  return {
-    alternates: localizedAlternates('/pricing', lang),
-    title: translate('pricing'),
-    description: translate('basicProAndBusinessComparedWhatEachPlanIncludes'),
-  }
+  return pageMetadata(lang, '/pricing', translate('pricing'), translate('metaPricingDescription'))
 }
 
 export default async function PricingPage({ params }: Props) {

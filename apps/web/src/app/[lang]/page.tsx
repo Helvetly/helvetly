@@ -11,6 +11,7 @@ import { OfferProvider } from '@/components/offer-provider'
 import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { SITE_URL } from '@/lib/metadata'
 import { YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 
 type Props = { params: Promise<{ lang?: string }> }
@@ -18,8 +19,35 @@ type Props = { params: Promise<{ lang?: string }> }
 export default async function HomePage({ params }: Props) {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: 'Helvetly',
+        url: SITE_URL,
+        logo: `${SITE_URL}/apple-icon.png`,
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'Helvetly',
+        url: `${SITE_URL}${localizedHref('/', lang)}`,
+        description: translate('metaHomeDescription'),
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        inLanguage: lang,
+      },
+    ],
+  }
   return (
     <main>
+      <script
+        type="application/ld+json"
+        // JSON.stringify output is safe in a script once "<" cannot close it.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replaceAll('<', '\\u003c'),
+        }}
+      />
       <Hero lang={lang} />
       <Standards lang={lang} />
       <Features lang={lang} />

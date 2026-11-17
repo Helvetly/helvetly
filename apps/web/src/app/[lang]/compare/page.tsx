@@ -1,4 +1,4 @@
-import { localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { localizedHref } from '@helvetly/i18n'
 import { Logo } from '@helvetly/ui/components/logo'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -10,6 +10,7 @@ import { Container } from '@/components/section'
 import { cn } from '@/lib/cn'
 import { compareIn } from '@/lib/compare'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { TONES } from '@/lib/tones'
 
 type Props = { params: Promise<{ lang?: string }> }
@@ -17,12 +18,12 @@ type Props = { params: Promise<{ lang?: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  return {
-    alternates: localizedAlternates('/compare', lang),
-
-    title: translate('helvetlyCompared'),
-    description: translate('honestSideBySideComparisonsOfHelvetlyWithOther'),
-  }
+  return pageMetadata(
+    lang,
+    '/compare',
+    { absolute: translate('metaCompareTitle') },
+    translate('metaCompareDescription'),
+  )
 }
 
 export default async function CompareIndexPage({ params }: Props) {

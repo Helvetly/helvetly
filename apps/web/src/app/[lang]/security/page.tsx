@@ -1,4 +1,4 @@
-import { localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { localizedHref } from '@helvetly/i18n'
 import {
   Fingerprint,
   FolderLock,
@@ -15,6 +15,7 @@ import { PageHero } from '@/components/page-hero'
 import { Container } from '@/components/section'
 import { cn } from '@/lib/cn'
 import { languageOf, translatorFor } from '@/lib/i18n'
+import { pageMetadata } from '@/lib/metadata'
 import { type Tone, TONES } from '@/lib/tones'
 
 type Props = { params: Promise<{ lang?: string }> }
@@ -22,12 +23,12 @@ type Props = { params: Promise<{ lang?: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  return {
-    alternates: localizedAlternates('/security', lang),
-
-    title: translate('securityAndPrivacy'),
-    description: translate('howHelvetlyProtectsYourCompanySRecordsPasswordlessSign'),
-  }
+  return pageMetadata(
+    lang,
+    '/security',
+    translate('securityAndPrivacy'),
+    translate('metaSecurityDescription'),
+  )
 }
 
 export default async function SecurityPage({ params }: Props) {

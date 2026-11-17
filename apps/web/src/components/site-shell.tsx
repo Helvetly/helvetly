@@ -1,5 +1,5 @@
 import '@/app/site.css'
-import { type Locale, localizedAlternates } from '@helvetly/i18n'
+import type { Locale } from '@helvetly/i18n'
 import { LanguageProvider } from '@helvetly/ui/components/language-provider'
 import { ThemeProvider } from '@helvetly/ui/components/theme-provider'
 import { TranslatorSafeDom } from '@helvetly/ui/components/translator-safe-dom'
@@ -12,18 +12,16 @@ import { RevealObserver } from '@/components/reveal-observer'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { translatorFor } from '@/lib/i18n'
+import { pageMetadata, SITE_URL, TITLE_TEMPLATE } from '@/lib/metadata'
 
+/** The home page's metadata, which every page without its own inherits, and the title template. */
 export function siteMetadata(lang: Locale): Metadata {
   const translate = translatorFor(lang)
+  const title = translate('metaHomeTitle')
   return {
-    alternates: localizedAlternates('/', lang),
-    metadataBase: new URL('https://www.helvetly.com'),
-    title: {
-      default: translate('helvetlyTheCalmBackOfficeForSwissCompanies'),
-      template: '%s · Helvetly',
-    },
-    description: translate('invoicesWithSwissQRBillsExpensesClientsESignatures'),
-    openGraph: { type: 'website', siteName: translate('helvetly') },
+    ...pageMetadata(lang, '/', { absolute: title }, translate('metaHomeDescription')),
+    metadataBase: new URL(SITE_URL),
+    title: { default: title, template: TITLE_TEMPLATE },
   }
 }
 

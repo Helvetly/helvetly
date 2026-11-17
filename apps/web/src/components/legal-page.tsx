@@ -1,4 +1,4 @@
-import { type Locale, localizedAlternates, localizedHref } from '@helvetly/i18n'
+import { type Locale, localizedHref } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { isValidElement, type ReactNode } from 'react'
@@ -16,6 +16,7 @@ import {
   readLegal,
   slugify,
 } from '@/lib/legal'
+import { pageMetadata } from '@/lib/metadata'
 
 function text(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -25,7 +26,13 @@ function text(node: ReactNode): string {
 }
 
 export function legalMetadata(slug: LegalSlug, lang: Locale): Metadata {
-  return { alternates: localizedAlternates(`/${slug}`, lang), title: legalTitlesIn(lang)[slug] }
+  const title = legalTitlesIn(lang)[slug]
+  return pageMetadata(
+    lang,
+    `/${slug}`,
+    title,
+    translatorFor(lang)('metaLegalDescription', { title }),
+  )
 }
 
 // Section headings get ids for the contents list; links between the files go to their pages.
