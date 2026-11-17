@@ -114,6 +114,32 @@ function useVisibleTabs(count: number, active: number, extra: boolean) {
 }
 
 /**
+ * A new page, or another tab, fades its content in. Only what is inside the panel's sections fades:
+ * the sections after the header are the white panel itself and stay opaque, so nothing flashes. Runs
+ * before paint, so the new content is never shown at full strength first.
+ */
+function useFadeIn(active: number) {
+  const header = useRef<HTMLElement>(null)
+  // The tab shown last; null before the first render.
+  const shown = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const element = header.current
+    const first = shown.current === null
+    shown.current = active
+    // jsdom has no Web Animations.
+    if (!element || !('animate' in element)) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    // On a tab change the tab row stays: only the content changes.
+    const parts = first ? [...element.children] : []
+    for (let section = element.nextElementSibling; section; section = section.nextElementSibling)
+      parts.push(...section.children)
+    for (const part of parts)
+      part.animate({ opacity: [0, 1] }, { duration: 160, easing: 'ease-out' })
+  }, [active])
+  return header
+}
+
+/**
  * The panel's top bar: saved views as tabs (with "+"), then the page's primary action,
  * and a "…" menu. A page with one view passes a single tab: no tab row and no visible title.
  */
@@ -164,6 +190,7 @@ export function PageHeader({
   const showTabs = title === undefined
   const canSave = showTabs && Boolean(onSelect) && savedViews
   const { row, ruler, visible } = useVisibleTabs(showTabs ? tabs.length : 0, active, canSave)
+  const header = useFadeIn(active)
   const hidden = showTabs ? tabs.map((_, index) => index).filter((i) => !visible.includes(i)) : []
   const hiddenCount = hidden.reduce((sum, index) => sum + (tabCounts?.[index] ?? 0), 0)
   // A person who cannot change this page's records gets no "New …" button.
@@ -193,6 +220,7 @@ export function PageHeader({
   return (
     // --tab is the page card's colour, so the active tab matches the card below.
     <header
+      ref={header}
       // From md the panel sits 8px below the window's top (the inset's margin), so the bar reads as 60px:
       // pb-2 centres the controls, tabs included, in it.
       // The after element keeps the panel's top corners rounded while the content scrolls under the

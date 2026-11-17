@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { PageHeader } from '@/components/shell/page-header'
+import { PageLoading } from '@/components/shell/page-loading'
 
 import { screenHandlers } from './screen-fixtures'
 
@@ -127,5 +128,57 @@ export const MoreMenuFitsItsLabels: Story = {
     expect(menu.scrollWidth).toBeLessThanOrEqual(menu.clientWidth)
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
+  },
+}
+
+// The signed-in layout's panel: the sections after the header are the white card.
+const PANEL = 'flex h-96 flex-col bg-background [&>header~*]:bg-card'
+
+function TabbedPanel() {
+  const [active, setActive] = useState(0)
+  return (
+    <SidebarProvider>
+      <div className={PANEL} style={{ width: 1100 }}>
+        <PageHeader tabs={TABS} active={active} onSelect={setActive} savedViews={false} />
+        <section data-testid="panel" className="flex flex-1 flex-col">
+          <p>{TABS[active]}</p>
+        </section>
+      </div>
+    </SidebarProvider>
+  )
+}
+
+/** Another tab fades the content in; the white panel itself never fades (no flash of the canvas). */
+export const TabChangeFadesContent: Story = {
+  render: () => <TabbedPanel />,
+  play: async ({ canvasElement }) => {
+    const nav = views(canvasElement)
+    const panel = within(canvasElement).getByTestId('panel')
+    // The first render fades in too; let it end.
+    await Promise.all(canvasElement.getAnimations({ subtree: true }).map((a) => a.finished))
+    await userEvent.click(within(nav).getByRole('button', { name: 'Unpaid' }))
+    const content = within(panel).getByText('Unpaid')
+    expect(content.getAnimations()).toHaveLength(1)
+    expect(panel.getAnimations()).toHaveLength(0)
+    expect(getComputedStyle(panel).opacity).toBe('1')
+    // The tab row stays as it is.
+    expect(nav.getAnimations()).toHaveLength(0)
+  },
+}
+
+/** While a page loads, the panel stays opaque and white; only the spinner inside it fades in. */
+export const LoadingKeepsThePanel: Story = {
+  render: () => (
+    <div className={PANEL} style={{ width: 1100 }}>
+      <PageLoading />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const loader = await within(canvasElement).findByRole('status')
+    const panel = loader.parentElement
+    expect(panel?.previousElementSibling?.tagName).toBe('HEADER')
+    if (!panel) throw new Error('The loader has no panel section')
+    expect(getComputedStyle(panel).opacity).toBe('1')
+    expect(getComputedStyle(panel).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
   },
 }
