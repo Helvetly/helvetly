@@ -30,6 +30,7 @@ const PAGES: Record<string, [HeidiPage, string]> = {
   documents: ['documents', translate('yourDocuments')],
   products: ['products', translate('yourProductsAndServices')],
   members: ['members', translate('yourTeam')],
+  books: ['settings', translate('yourBooks')],
   settings: ['settings', translate('yourSettings')],
   'settings/billing': ['billing', translate('yourPlanAndBilling')],
 }

@@ -423,8 +423,8 @@ function DeclaredVatNote() {
     <Callout role="note" tone="warning" title={translate('alreadyDeclaredForVAT')}>
       <p>
         {translate('invoicesIssuedElsewhereCountInHelvetlySVATReturn')}{' '}
-        <Link href="/settings/periods" className="underline underline-offset-2">
-          {translate('settingsClosing')}
+        <Link href="/books" className="underline underline-offset-2">
+          {translate('booksClosing')}
         </Link>{' '}
         {translate('firstInvoicesDatedInAClosedMonthAreNot')}
       </p>

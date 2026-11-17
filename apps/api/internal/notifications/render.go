@@ -178,14 +178,14 @@ func words(event string, d data) message {
 			href: "/settings/billing"}
 	case "period.closed":
 		return message{title: d.s("month") + " was closed", body: "Invoices, payments and expenses in it are now locked.",
-			href: "/settings/periods"}
+			href: "/books"}
 	case "period.reopened":
 		return message{title: d.s("month") + " was reopened", body: "Its invoices, payments and expenses can change again.",
-			href: "/settings/periods"}
+			href: "/books"}
 	case "vat.return_due":
 		return message{title: "VAT return " + d.s("period") + " is ready to file",
 			body: "The period ended on " + d.s("last") + ". Close its months, then export the return.",
-			href: "/settings/vat-return?" + url.Values{"period": {d.s("period")}}.Encode()}
+			href: "/books/vat-return?" + url.Values{"period": {d.s("period")}}.Encode()}
 	case "import.ready":
 		return message{title: "Your " + or(d.s("kind"), "file") + " import is ready to review",
 			body: fmt.Sprintf("%s records found in %s.", or(d.s("records"), "0"), plural(d.s("files"), "file")),

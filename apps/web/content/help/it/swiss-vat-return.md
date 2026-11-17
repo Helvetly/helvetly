@@ -11,7 +11,7 @@ Helvetly prepara le cifre del rendiconto IVA svizzero e il file da importare nel
 
 La preparazione dei rendiconti IVA richiede **Pro** o **Business**. L’IVA sulle fatture viene calcolata in ogni piano.
 
-1. Vai a **Settings → VAT return**.
+1. Vai a **Books → VAT return**.
 2. Nelle impostazioni IVA, scegli il metodo (**Effective method** o **Net tax rate method**), la durata del periodo e la base (**Agreed** o **Received consideration**), poi salva. Per le aliquote saldo, aggiungi le tue **Approved net tax rates**.
 3. Scegli **Period** e controlla le cifre e gli eventuali avvisi.
 4. Fai clic su **Export → ESTV file (XML)** per ottenere il file eCH-0217. Lo stesso menu offre **PDF summary** e **CSV**.

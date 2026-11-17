@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
+import { BooksHeader } from '@/components/books/books-tabs'
 import { NativeSelect } from '@/components/clients/fields'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { errorMessage } from '@/lib/api'
@@ -45,7 +46,6 @@ import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import { SettingsPage } from './layout'
-import { SettingsHeader } from './settings-tabs'
 
 const card = 'min-w-0 rounded-xl border border-border'
 const money = 'text-right whitespace-nowrap tabular-nums'
@@ -124,7 +124,7 @@ export function LedgerPage() {
   if (lock)
     return (
       <>
-        <SettingsHeader />
+        <BooksHeader />
         <SettingsPage title={translate('ledger')} description={DESCRIPTION}>
           <FeatureLockNotice
             lock={lock}
@@ -136,7 +136,7 @@ export function LedgerPage() {
 
   return (
     <>
-      <SettingsHeader />
+      <BooksHeader />
       <SettingsPage title={translate('ledger')} description={DESCRIPTION}>
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect

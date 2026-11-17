@@ -13,7 +13,7 @@ import { LedgerPage, rangeOf } from './ledger'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn<() => void>() }),
-  usePathname: () => '/settings/ledger',
+  usePathname: () => '/books/ledger',
 }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 

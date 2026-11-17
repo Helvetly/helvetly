@@ -36,7 +36,7 @@ func TestTheScreenReachesClassifierAndAnswer(t *testing.T) {
 		t.Fatalf("first pass verdict %d, want unsure", v)
 	}
 	tests := []struct{ path, want string }{
-		{"/settings/periods/", `screen /settings/periods, described in the guide sections "Close a month (month-end close, periods)"`},
+		{"/books/", `screen /books, described in the guide sections "Close a month (month-end close, periods)"`},
 		{"/", `screen /, described in the guide sections "Read the dashboard"`},
 		{"", ""},
 		// a well-formed path the guide does not list is ignored, not passed on: it is the caller's text

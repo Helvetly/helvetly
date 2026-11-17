@@ -24,4 +24,4 @@ Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der
   Arbeitsbereich. Wenn Sie ablehnen oder den Dialog schliessen, startet weder ein Upload noch eine
   KI-Verarbeitung; Entwurf und Dateien bleiben erhalten.
 - Für Importe wird die monatliche KI-Zulage verwendet.
-- Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Settings → Periods**.
+- Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Books → Closing**.

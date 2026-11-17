@@ -14,7 +14,7 @@ import { dueBy, resultOf, sectionsOf, VATReturnPage } from './vat-return'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn<() => void>() }),
-  usePathname: () => '/settings/vat-return',
+  usePathname: () => '/books/vat-return',
 }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 

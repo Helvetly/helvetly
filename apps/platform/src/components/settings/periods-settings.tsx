@@ -37,6 +37,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { BooksHeader } from '@/components/books/books-tabs'
 import { errorMessage } from '@/lib/api'
 import { booksApi, type ActivitySource, type MonthActivity, type Period } from '@/lib/books'
 import { translate } from '@/lib/i18n'
@@ -44,7 +45,6 @@ import { formatAmount, today } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 
 import { SettingsPage } from './layout'
-import { SettingsHeader } from './settings-tabs'
 
 export const PERIODS_KEY = ['books', 'periods'] as const
 export const ACTIVITY_KEY = ['books', 'activity'] as const
@@ -118,7 +118,7 @@ type State = 'closed' | 'open' | 'current'
 export function PeriodsSettings() {
   return (
     <>
-      <SettingsHeader />
+      <BooksHeader />
       <SettingsPage
         title={translate('monthEndClose')}
         description={translate('closeAMonthOnceItsBooksAreDoneNothing')}

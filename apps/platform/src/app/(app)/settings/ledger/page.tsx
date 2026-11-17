@@ -1,11 +1,6 @@
-import { PageTitle } from '@/components/page-title'
-import { LedgerPage } from '@/components/settings/ledger'
+import { RedirectTo } from '@/components/redirect-to'
 
+// The books moved out of settings: old links and bookmarks still land on the page.
 export default function Page() {
-  return (
-    <>
-      <PageTitle message="ledger" />
-      <LedgerPage />
-    </>
-  )
+  return <RedirectTo href="/books/ledger" />
 }

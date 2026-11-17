@@ -24,4 +24,4 @@ L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA de
   o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
   restano disponibili.
 - Le importazioni utilizzano la disponibilità IA mensile.
-- Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Settings → Periods**.
+- Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Books → Closing**.

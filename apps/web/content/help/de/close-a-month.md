@@ -9,7 +9,7 @@ updated: 2026-11-11
 
 Schliessen Sie einen Monat ab, sobald die Bücher fertig sind, damit sich darin nichts versehentlich ändert.
 
-1. Gehen Sie zu **Settings → Periods**.
+1. Gehen Sie zu **Books → Closing**.
 2. Klicken Sie neben einem Monat, dessen Bücher fertig sind, auf **Close month**.
 3. Um erneut Änderungen vorzunehmen, klicken Sie auf **Reopen**.
 

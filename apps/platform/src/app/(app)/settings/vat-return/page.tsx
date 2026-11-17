@@ -1,11 +1,6 @@
-import { PageTitle } from '@/components/page-title'
-import { VATReturnPage } from '@/components/settings/vat-return'
+import { RedirectTo } from '@/components/redirect-to'
 
+// The books moved out of settings: old links and bookmarks still land on the page.
 export default function Page() {
-  return (
-    <>
-      <PageTitle message="vatReturn" />
-      <VATReturnPage />
-    </>
-  )
+  return <RedirectTo href="/books/vat-return" />
 }

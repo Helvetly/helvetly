@@ -58,7 +58,7 @@ test('closed months reject financial writes and reopening restores the process',
   const blocked = await api.write(`/invoices/${text(draft.id)}/issue`)
   expect(blocked.status()).toBe(409)
   expect(object(object(await blocked.json()).error).code).toBe('period_closed')
-  await openPage(page, '/settings/periods', 'Accounting periods')
+  await openPage(page, '/books', 'Accounting periods')
   await expect(page.getByRole('listitem', { name: 'January 2025' })).toContainText('Closed')
   await api.save(`/periods/${month}/reopen`)
   expect((await api.save(`/invoices/${text(draft.id)}/issue`)).status).toBe('open')

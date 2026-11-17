@@ -11,7 +11,7 @@ Helvetly prépare les chiffres de votre décompte TVA suisse (MWST) et le fichie
 
 La préparation des décomptes TVA nécessite **Pro** ou **Business**. La TVA des factures est calculée dans chaque formule.
 
-1. Ouvrez **Settings → VAT return**.
+1. Ouvrez **Books → VAT return**.
 2. Dans les paramètres TVA, définissez la méthode (**Effective method** ou **Net tax rate method**), la durée de la période et la base (**Agreed** ou **Received consideration**), puis enregistrez. Avec les taux de la dette fiscale nette, ajoutez **Approved net tax rates**.
 3. Choisissez **Period** et vérifiez les chiffres ainsi que les éventuels avertissements.
 4. Cliquez sur **Export → ESTV file (XML)** pour obtenir le fichier eCH-0217. Le même menu propose **PDF summary** et **CSV**.

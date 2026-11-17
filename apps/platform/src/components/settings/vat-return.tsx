@@ -40,6 +40,7 @@ import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
+import { BooksHeader } from '@/components/books/books-tabs'
 import { NativeSelect } from '@/components/clients/fields'
 import { fixCount, FixDialog, FixLink, FixList } from '@/components/fix-list'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
@@ -61,7 +62,6 @@ import {
 
 import { HelpTip } from './help-tip'
 import { SettingsPage } from './layout'
-import { SettingsHeader } from './settings-tabs'
 import { UnitInput } from './unit-input'
 
 const SETTINGS_KEY = ['vat-return', 'settings'] as const
@@ -140,7 +140,7 @@ export function VATReturnPage() {
 
   return (
     <>
-      <SettingsHeader />
+      <BooksHeader />
       <SettingsPage
         title={translate('vatReturn')}
         description={translate('theFiguresOfTheESTVVATReturnMWSTAbrechnung')}
@@ -348,7 +348,7 @@ function ClosedBadge({ report }: { report: VATReturn }) {
         {translate('monthsClosed')}
       </StatusBadge>
       <HelpTip label={translate('aboutClosedMonths')}>
-        {translate('closeTheMonthsOfThePeriodUnderSettingsClosing')}
+        {translate('closeTheMonthsOfThePeriodUnderBooksClosing')}
       </HelpTip>
     </span>
   )

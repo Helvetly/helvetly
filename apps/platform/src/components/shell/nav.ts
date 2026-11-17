@@ -1,6 +1,7 @@
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
   Bell,
+  BookOpen,
   Building2,
   ClipboardCheck,
   FileText,
@@ -32,21 +33,34 @@ export type NavItem = {
   bell?: boolean
   /** The plan feature it needs; without it the item carries the plan's tag. */
   feature?: FeatureKey
+  /** An area of tabbed pages: the item links to the first one the person may read (`href` is the area's first). */
+  pages?: string[]
 }
 
 // Items without a page yet have no href: they look the same and say "coming soon".
 export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
   {
-    label: translate('work'),
     items: [
       { label: translate('dashboard'), icon: LayoutGrid, href: '/' },
+      { label: translate('documents'), icon: FileText, href: '/documents' },
+    ],
+  },
+  {
+    // From a client to the books: the order work is done in.
+    label: translate('sales'),
+    items: [
       { label: translate('clients'), icon: Building2, href: '/clients' },
-      { label: translate('invoices'), icon: ReceiptText, href: '/invoices' },
       { label: translate('quotes'), icon: ScrollText, href: '/quotes' },
+      { label: translate('engagements'), icon: ClipboardCheck, href: '/engagements' },
+      { label: translate('invoices'), icon: ReceiptText, href: '/invoices' },
       { label: translate('productsServices'), icon: Package, href: '/products' },
       { label: translate('expenses'), icon: Wallet, href: '/expenses', feature: 'expenses' },
-      { label: translate('engagements'), icon: ClipboardCheck, href: '/engagements' },
-      { label: translate('documents'), icon: FileText, href: '/documents' },
+      {
+        label: translate('books'),
+        icon: BookOpen,
+        href: '/books',
+        pages: ['/books', '/books/vat-return', '/books/ledger'],
+      },
     ],
   },
   {
@@ -78,11 +92,14 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
 export function visibleNav(scopes: readonly string[], billing?: Billing, loading = false) {
-  const allowed = ({ href, feature }: NavItem) =>
-    (!href || canReadPath(scopes, href)) &&
-    !(feature === 'employees' && employeesHidden(billing, loading))
+  const readable = (item: NavItem): NavItem[] => {
+    if (item.feature === 'employees' && employeesHidden(billing, loading)) return []
+    if (!item.href) return [item]
+    const href = (item.pages ?? [item.href]).find((page) => canReadPath(scopes, page))
+    return href ? [{ ...item, href }] : []
+  }
   return NAV.flatMap((group) => {
-    const items = group.items.filter(allowed)
+    const items = group.items.flatMap(readable)
     return items.length > 0 ? [{ ...group, items }] : []
   })
 }
