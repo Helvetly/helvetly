@@ -3468,7 +3468,7 @@
   "working": "Travailler…",
   "workspace": "Espace de travail",
   "workspaceName": "Nom de l’espace de travail",
-  "workspaceNameHelp": "Le nom que votre équipe voit dans le sélecteur d’espace de travail. Il peut différer de la dénomination sociale de votre entreprise.",
+  "workspaceNameHelp": "Le nom que votre équipe voit dans le sélecteur d’espace de travail et que vos clients voient dans leur portail. Il peut différer de la dénomination sociale de votre entreprise.",
   "workspaceOverviewCouldnTBeLoaded": "L’aperçu de l’espace de travail n’a pas pu être chargé : ",
   "workspaces": "Espaces de travail",
   "workspaceSaved": "Espace de travail enregistré.",

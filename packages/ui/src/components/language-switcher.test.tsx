@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { Flag } from './flag'
-import { LanguageSwitcher } from './language-switcher'
+import { LanguageDialogButton, LanguageSwitcher } from './language-switcher'
 
 test('shows language flags independently of Swiss regional formatting', async () => {
   const user = userEvent.setup()
@@ -35,4 +35,19 @@ test('omits unsupported country flags', () => {
   const { container } = render(<Flag region="unknown" />)
 
   expect(container).toBeEmptyDOMElement()
+})
+
+test('the footer language button opens a dialog with every language, the current one marked', async () => {
+  const user = userEvent.setup()
+  render(<LanguageDialogButton />)
+
+  await user.click(screen.getByRole('button', { name: /^Change language.*English/ }))
+
+  const dialog = screen.getByRole('dialog', { name: 'Change language' })
+  for (const name of ['Deutsch', 'English', 'Français', 'Italiano'])
+    expect(within(dialog).getByRole('button', { name })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'English' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 })

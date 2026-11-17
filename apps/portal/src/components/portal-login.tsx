@@ -1,7 +1,7 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
-import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
+import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,9 +33,6 @@ export function PortalLogin() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
       <div className="grid w-full max-w-[25rem] gap-5">
-        <div className="flex justify-end">
-          <LanguageSwitcher />
-        </div>
         {/* A card from sm up; a phone keeps the full width for the six code boxes. */}
         <div className="sm:rounded-2xl sm:bg-card sm:p-8 sm:shadow-elevation-1">
           {step ? (
@@ -78,6 +75,9 @@ export function PortalLogin() {
             {translate('privacyPolicy')}
           </a>
         </p>
+        <div className="-mt-3 flex justify-center">
+          <LanguageDialogButton />
+        </div>
       </div>
     </div>
   )

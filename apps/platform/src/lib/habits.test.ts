@@ -69,3 +69,47 @@ test('a habit for an option the form no longer offers is ignored', () => {
 test('empty values are not learned', () => {
   expect(learnValues({}, 'p', base, ['name'], null, now)).toEqual({})
 })
+
+test('an eager field follows a single pick; the usual majority still wins', () => {
+  const values = { is_company: true, country: 'CH' }
+  const once = learnValues(
+    {},
+    'client',
+    { is_company: false, country: 'DE' },
+    ['is_company', 'country'],
+    null,
+    now,
+  )
+  const started = withHabits(
+    values,
+    once,
+    'client',
+    ['is_company', 'country'],
+    { eager: ['is_company'] },
+    now,
+  )
+  expect(started).toEqual({ is_company: false, country: 'CH' })
+
+  let mostlyCompanies = once
+  for (const day of [1, 2, 3])
+    mostlyCompanies = learnValues(
+      mostlyCompanies,
+      'client',
+      { is_company: true },
+      ['is_company'],
+      null,
+      now + day,
+    )
+  const person = learnValues(
+    mostlyCompanies,
+    'client',
+    { is_company: false },
+    ['is_company'],
+    null,
+    now + 4,
+  )
+  expect(
+    withHabits(values, person, 'client', ['is_company'], { eager: ['is_company'] }, now + 5)
+      .is_company,
+  ).toBe(true)
+})

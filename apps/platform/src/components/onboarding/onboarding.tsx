@@ -650,7 +650,8 @@ function CompanyStep({
         >
           {text('name', 70)}
         </FormField>
-        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
+        {/* Street, number and apartment in one row, as in the client form; only the missing asterisk marks apt optional. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] gap-3">
           <FormField
             id="onboarding-street"
             label={translate('street')}
@@ -667,14 +668,10 @@ function CompanyStep({
           >
             {text('street_number', 16)}
           </FormField>
+          <FormField id="onboarding-apt" label={translate('aptSuite')} error={errors.apt}>
+            {text('apt', 50)}
+          </FormField>
         </div>
-        <FormField
-          id="onboarding-apt"
-          label={`${translate('aptSuite')} (${translate('optional').toLowerCase()})`}
-          error={errors.apt}
-        >
-          {text('apt', 50)}
-        </FormField>
         <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
           <FormField id="onboarding-zip" label="ZIP" error={errors.zip} required>
             {text('zip', 16)}

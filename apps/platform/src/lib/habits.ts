@@ -55,13 +55,18 @@ export function learn(habits: Habits, key: string, value: string, now = Date.now
 }
 
 /** The value picked most, recency-weighted, once it has been picked often enough; else null. */
-export function preferred(habits: Habits, key: string, now = Date.now()): string | null {
+export function preferred(
+  habits: Habits,
+  key: string,
+  now = Date.now(),
+  minScore = MIN_SCORE,
+): string | null {
   let best: { value: string; score: number } | null = null
   for (const [value, { s, at }] of Object.entries(habits[key] ?? {})) {
     const score = decay(s, at, now)
     if (!best || score > best.score) best = { value, score }
   }
-  return best && best.score >= MIN_SCORE ? best.value : null
+  return best && best.score >= minScore ? best.value : null
 }
 
 const keyOf = (form: string, field: string, scope?: string | null) =>
@@ -79,6 +84,8 @@ export function withHabits<T extends Record<string, unknown>>(
   options: {
     scope?: string | null
     fixed?: readonly (keyof T & string)[]
+    /** Fields that follow the latest leaning after a single pick (a two-way choice such as company or person). */
+    eager?: readonly (keyof T & string)[]
     allowed?: Partial<Record<keyof T & string, (value: string) => boolean>>
   } = {},
   now = Date.now(),
@@ -88,9 +95,11 @@ export function withHabits<T extends Record<string, unknown>>(
     if (options.fixed?.includes(field)) continue
     const current = values[field]
     if (typeof current !== 'string' && typeof current !== 'boolean') continue
+    const minScore = options.eager?.includes(field) ? 1 : MIN_SCORE
     const habit =
-      (options.scope ? preferred(habits, keyOf(form, field, options.scope), now) : null) ??
-      preferred(habits, keyOf(form, field), now)
+      (options.scope
+        ? preferred(habits, keyOf(form, field, options.scope), now, minScore)
+        : null) ?? preferred(habits, keyOf(form, field), now, minScore)
     if (habit === null || options.allowed?.[field]?.(habit) === false) continue
     if (typeof current === 'boolean') {
       if (habit === 'true' || habit === 'false') next[field] = habit === 'true'

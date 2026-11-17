@@ -75,6 +75,7 @@ export function ClientForm({
       ? valuesFromClient(client)
       : withHabits({ ...emptyValues(), name: prefillName ?? '' }, habits, 'client', CLIENT_HABITS, {
           allowed: CLIENT_HABIT_OPTIONS,
+          eager: ['is_company'],
         }),
   )
   const [values, setValues] = useState(initial)
