@@ -47,8 +47,9 @@ const LINES = [
   { text: translate('bookkeeping'), amount: 650 },
 ]
 
-const money = (amount: number, currency: string) =>
-  `${currency} ${amount.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+/** Amounts as they print: in the document's language, grouped the way the company's country writes them. */
+const money = (amount: number, currency: string, language: string, country: string) =>
+  `${currency} ${amount.toLocaleString(`${language}-${country}`, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 /** A gray bar where a value is still missing. */
 const Gap = ({ className }: { className?: string }) => (
@@ -60,7 +61,9 @@ const Gap = ({ className }: { className?: string }) => (
  * Always on white, like the PDF.
  */
 export function InvoicePreview({ values, logo }: { values: Values | null; logo: string | null }) {
-  const words = WORDS[values?.language ?? 'de']
+  const language = values?.language ?? 'de'
+  const countryCode = values?.country || 'CH'
+  const words = WORDS[language]
   const currency = values?.currency ?? 'CHF'
   const days = values?.default_terms_days ?? 30
   const net = LINES.reduce((sum, line) => sum + line.amount, 0)
@@ -109,18 +112,20 @@ export function InvoicePreview({ values, logo }: { values: Values | null; logo: 
         {LINES.map((line) => (
           <p key={line.text} className="flex justify-between gap-4">
             <span>{line.text}</span>
-            <span className="tabular-nums">{money(line.amount, currency)}</span>
+            <span className="tabular-nums">
+              {money(line.amount, currency, language, countryCode)}
+            </span>
           </p>
         ))}
         {values?.vat_registered && (
           <p className="flex justify-between gap-4 text-neutral-500">
             <span>{words.vat} 8.1%</span>
-            <span className="tabular-nums">{money(vat, currency)}</span>
+            <span className="tabular-nums">{money(vat, currency, language, countryCode)}</span>
           </p>
         )}
         <p className="mt-1 flex justify-between gap-4 border-t border-neutral-200 pt-2 font-semibold">
           <span>{words.total}</span>
-          <span className="tabular-nums">{money(net + vat, currency)}</span>
+          <span className="tabular-nums">{money(net + vat, currency, language, countryCode)}</span>
         </p>
       </div>
       <p className="mt-3 text-neutral-500">{words.terms(days)}</p>

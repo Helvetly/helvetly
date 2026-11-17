@@ -1,4 +1,5 @@
 'use client'
+import { locale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
@@ -69,6 +70,9 @@ import {
 } from './onboarding-model'
 import { TypedWelcomeTitle, WelcomeBenefits } from './welcome-intro'
 
+// The platform keeps one language per page load (a change reloads), so the module-level locale is current.
+const interfaceLanguage = locale
+
 type StepId = 'welcome' | 'company' | 'logo' | 'preferences' | 'done'
 type Errors = Partial<Record<string, string>>
 
@@ -128,7 +132,7 @@ export function WelcomePage({ session }: { session: Session }) {
   const savedProfile = useRef<string | null>(null)
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
-  const values = edited ?? (settings.data ? valuesFrom(settings.data) : null)
+  const values = edited ?? (settings.data ? valuesFrom(settings.data, interfaceLanguage) : null)
   const change = (patch: Partial<Values>) => {
     if (!values) return
     setEdited({ ...values, ...patch })
