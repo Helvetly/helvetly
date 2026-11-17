@@ -65,26 +65,51 @@ function setup() {
 }
 
 const dialog = () => screen.findByRole('dialog')
-const open = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
-  await user.click(await screen.findByRole('button', { name }))
-  return within(await dialog())
+const open = async (user: ReturnType<typeof userEvent.setup>, kind: string, language?: string) => {
+  await user.click(await screen.findByRole('button', { name: `Edit the ${kind} email` }))
+  const box = within(await dialog())
+  if (language) await user.click(box.getByRole('radio', { name: new RegExp(`^${language}`) }))
+  return box
 }
 // The dialog holds the page's only text fields.
 const field = (name: string) =>
   screen.getByRole<HTMLTextAreaElement>('textbox', { name: new RegExp(`^${name}`) })
 
-test('lists one row per document type, each with a button per language', async () => {
-  setup()
+test('lists one row per document type; the language is chosen in the dialog', async () => {
+  const user = setup()
   const list = await screen.findByRole('list', { name: 'Email templates' })
   expect(within(list).getAllByRole('listitem')).toHaveLength(4)
   for (const kind of ['Invoice', 'Credit note', 'Proforma', 'Quote'])
-    expect(within(list).getByRole('button', { name: new RegExp(`^${kind}`) })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Edit the Quote email in Italiano' })).toBeVisible()
+    expect(within(list).getByRole('button', { name: `Edit the ${kind} email` })).toBeVisible()
+  expect(within(list).queryByRole('radio')).toBeNull()
+  const box = await open(user, 'Quote')
+  expect(box.getByRole('heading', { name: 'Quote email' })).toBeVisible()
+  expect(box.getAllByRole('radio')).toHaveLength(4)
+})
+
+test('each language keeps its unsaved edits while another is shown, and Save sends every changed one', async () => {
+  const user = setup()
+  const box = await open(user, 'Invoice', 'Deutsch')
+  await user.clear(field('Subject'))
+  await user.type(field('Subject'), 'Rechnung')
+  await user.click(box.getByRole('radio', { name: 'English' }))
+  await user.clear(field('Subject'))
+  await user.type(field('Subject'), 'Invoice')
+  expect(box.getByRole('radio', { name: 'Deutsch, unsaved changes' })).toBeInTheDocument()
+  await user.click(box.getByRole('radio', { name: /^Deutsch/ }))
+  expect(field('Subject').value).toBe('Rechnung')
+  await user.click(box.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(sent.map((entry) => entry.url.split('/').slice(-2).join('/')).toSorted()).toEqual([
+    'invoice/de',
+    'invoice/en',
+  ])
+  expect(await screen.findByText('2 languages customised')).toBeVisible()
 })
 
 test('insertsVariableAtCursor: the chip goes where the cursor was, in the last focused field', async () => {
   const user = setup()
-  const box = await open(user, 'Edit the Invoice email in Deutsch')
+  const box = await open(user, 'Invoice')
   const body = field('Message')
   await user.clear(body)
   await user.type(body, 'Hi ')
@@ -101,14 +126,14 @@ test('insertsVariableAtCursor: the chip goes where the cursor was, in the last f
 
 test('a variable chip explains itself in a tooltip', async () => {
   const user = setup()
-  const box = await open(user, 'Edit the Invoice email in Deutsch')
+  const box = await open(user, 'Invoice')
   await user.hover(box.getByRole('button', { name: '{due_date}' }))
   expect((await screen.findAllByText('Due date, e.g. 31.12.2026')).length).toBeGreaterThan(0)
 })
 
 test('subject and message are required; nothing is sent while one is empty', async () => {
   const user = setup()
-  const box = await open(user, 'Edit the Invoice email in Deutsch')
+  const box = await open(user, 'Invoice')
   await user.clear(field('Subject'))
   await user.clear(field('Message'))
   await user.click(box.getByRole('button', { name: 'Save' }))
@@ -123,7 +148,7 @@ test('subject and message are required; nothing is sent while one is empty', asy
 test('saving marks the language customised, keeps plain text, and reset brings the standard back', async () => {
   const user = setup()
   expect(screen.queryByText(/customised/)).toBeNull()
-  let box = await open(user, 'Edit the Invoice email in Français')
+  let box = await open(user, 'Invoice', 'Français')
   expect(box.queryByRole('button', { name: 'Reset to default' })).toBeNull()
   await user.clear(field('Message'))
   await user.type(field('Message'), '<b>Bonjour</b> & merci')
@@ -135,18 +160,21 @@ test('saving marks the language customised, keeps plain text, and reset brings t
     body: { body: '<b>Bonjour</b> & merci' },
   })
 
-  box = await open(user, 'Edit the Invoice email in Français')
+  box = await open(user, 'Invoice', 'Français')
   expect(field('Message').value).toBe('<b>Bonjour</b> & merci')
+  expect(box.getByRole('radio', { name: 'Français, customised' })).toBeInTheDocument()
   await user.click(box.getByRole('button', { name: 'Reset to default' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  // The dialog stays on the language, now with the standard wording.
+  await waitFor(() => expect(field('Message').value).toContain('{number}'))
+  expect(box.queryByRole('button', { name: 'Reset to default' })).toBeNull()
+  expect(box.getByRole('radio', { name: 'Français' })).toBeInTheDocument()
+  await user.click(box.getByRole('button', { name: 'Cancel' }))
   await waitFor(() => expect(screen.queryByText(/customised/)).toBeNull())
-  box = await open(user, 'Edit the Invoice email in Français')
-  expect(field('Message').value).toContain('{number}')
 })
 
 test('cancel closes without sending', async () => {
   const user = setup()
-  const box = await open(user, 'Edit the Quote email in English')
+  const box = await open(user, 'Quote', 'English')
   await user.type(field('Subject'), '!')
   await user.click(box.getByRole('button', { name: 'Cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -169,7 +197,7 @@ test('serverFieldErrorShownUnderField', async () => {
     ),
   )
   const user = setup()
-  const box = await open(user, 'Edit the Invoice email in Deutsch')
+  const box = await open(user, 'Invoice', 'Deutsch')
   await user.clear(field('Subject'))
   await user.type(field('Subject'), 'x')
   await user.click(box.getByRole('button', { name: 'Save' }))
@@ -181,7 +209,7 @@ test('serverFieldErrorShownUnderField', async () => {
 test('is read-only without invoice-settings write', async () => {
   server.use(session('member', ['read:invoice-settings']))
   const user = setup()
-  const box = await open(user, 'Edit the Invoice email in Deutsch')
+  const box = await open(user, 'Invoice')
   await waitFor(() => expect(field('Message')).toBeDisabled())
   expect(field('Subject')).toBeDisabled()
   expect(box.queryByRole('button', { name: 'Save' })).toBeNull()

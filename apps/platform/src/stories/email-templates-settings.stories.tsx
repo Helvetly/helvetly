@@ -31,20 +31,25 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const body = () => within(document.body)
-const openTemplate = async (name = 'Edit the Invoice email in Deutsch') => {
-  await userEvent.click(await body().findByRole('button', { name }, { timeout: 8000 }))
-  return within(await body().findByRole('dialog'))
+const openTemplate = async (kind = 'Invoice', language?: string) => {
+  await userEvent.click(
+    await body().findByRole('button', { name: `Edit the ${kind} email` }, { timeout: 8000 }),
+  )
+  const box = within(await body().findByRole('dialog'))
+  if (language) await userEvent.click(box.getByRole('radio', { name: new RegExp(`^${language}`) }))
+  return box
 }
 const field = (box: ReturnType<typeof within>, name: string) =>
   box.getByRole('textbox', { name: new RegExp(`^${name}`) })
 
-/** One row per document type with a button per language; a button opens that email in a dialog, where a chip
- * puts its variable at the cursor and explains itself in a tooltip. */
+/** One row per document type; a row opens its email in a dialog, where the language is chosen and a chip puts
+ * its variable at the cursor and explains itself in a tooltip. */
 export const Default: Story = {
   play: async () => {
     const list = await body().findByRole('list', { name: 'Email templates' }, { timeout: 8000 })
     await expect(within(list).getAllByRole('listitem')).toHaveLength(4)
     const box = await openTemplate()
+    await expect(box.getAllByRole('radio')).toHaveLength(4)
     const text = field(box, 'Message')
     await expect(text).toHaveDisplayValue(/\{number\}/)
     await userEvent.clear(text)
@@ -71,16 +76,17 @@ export const Required: Story = {
   },
 }
 
-/** Saved wording marks its language and the row, and Reset to default appears in the dialog. */
+/** Saved wording marks its language in the dialog and the row, and Reset to default appears. */
 export const Custom: Story = {
   play: async () => {
-    let box = await openTemplate('Edit the Invoice email in Français')
+    let box = await openTemplate('Invoice', 'Français')
     await userEvent.clear(field(box, 'Message'))
     await userEvent.type(field(box, 'Message'), 'Bonjour {{client}')
     await userEvent.click(box.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(body().queryByRole('dialog')).toBeNull())
     await expect(await body().findByText('1 language customised')).toBeVisible()
-    box = await openTemplate('Edit the Invoice email in Français')
+    box = await openTemplate('Invoice', 'Français')
+    await expect(box.getByRole('radio', { name: 'Français, customised' })).toBeChecked()
     await expect(field(box, 'Message')).toHaveValue('Bonjour {client}')
     await expect(box.getByRole('button', { name: 'Reset to default' })).toBeVisible()
   },

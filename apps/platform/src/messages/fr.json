@@ -4259,8 +4259,11 @@
   "keepMyFormat": "Garder mon format",
   "numberSuggestionApplied": "Les nouvelles factures continuent à {next}.",
   "emailTemplatesCustomCount": "{count, plural, one {# langue personnalisée} other {# langues personnalisées}}",
-  "emailTemplatesEditIn": "Modifier l’e-mail « {kind} » en {language}",
-  "emailTemplatesDialogTitle": "E-mail « {kind} » · {language}",
+  "emailTemplatesDialogTitle": "E-mail « {kind} »",
   "emailTemplatesEnterSubject": "Saisissez un objet.",
-  "emailTemplatesEnterMessage": "Saisissez un message."
+  "emailTemplatesEnterMessage": "Saisissez un message.",
+  "emailTemplatesEdit": "Modifier l’e-mail « {kind} »",
+  "emailTemplatesLanguage": "Langue",
+  "emailTemplatesView": "Voir",
+  "emailTemplatesUnsaved": "modifications non enregistrées"
 }

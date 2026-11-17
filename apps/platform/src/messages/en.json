@@ -4259,8 +4259,11 @@
   "keepMyFormat": "Keep my format",
   "numberSuggestionApplied": "New invoices continue at {next}.",
   "emailTemplatesCustomCount": "{count, plural, one {# language customised} other {# languages customised}}",
-  "emailTemplatesEditIn": "Edit the {kind} email in {language}",
-  "emailTemplatesDialogTitle": "{kind} email · {language}",
+  "emailTemplatesDialogTitle": "{kind} email",
   "emailTemplatesEnterSubject": "Enter a subject.",
-  "emailTemplatesEnterMessage": "Enter a message."
+  "emailTemplatesEnterMessage": "Enter a message.",
+  "emailTemplatesEdit": "Edit the {kind} email",
+  "emailTemplatesLanguage": "Language",
+  "emailTemplatesView": "View",
+  "emailTemplatesUnsaved": "unsaved changes"
 }

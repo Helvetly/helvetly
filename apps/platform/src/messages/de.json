@@ -4259,8 +4259,11 @@
   "keepMyFormat": "Mein Format behalten",
   "numberSuggestionApplied": "Neue Rechnungen machen bei {next} weiter.",
   "emailTemplatesCustomCount": "{count, plural, one {# Sprache angepasst} other {# Sprachen angepasst}}",
-  "emailTemplatesEditIn": "E-Mail für {kind} auf {language} bearbeiten",
-  "emailTemplatesDialogTitle": "E-Mail für {kind} · {language}",
+  "emailTemplatesDialogTitle": "E-Mail für {kind}",
   "emailTemplatesEnterSubject": "Geben Sie einen Betreff ein.",
-  "emailTemplatesEnterMessage": "Geben Sie eine Nachricht ein."
+  "emailTemplatesEnterMessage": "Geben Sie eine Nachricht ein.",
+  "emailTemplatesEdit": "E-Mail für {kind} bearbeiten",
+  "emailTemplatesLanguage": "Sprache",
+  "emailTemplatesView": "Ansehen",
+  "emailTemplatesUnsaved": "ungespeicherte Änderungen"
 }
