@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 
 import { EngagementsPage } from '@/components/engagements/engagements-page'
 import type { Entry, Period } from '@/lib/engagements'
@@ -238,6 +238,25 @@ export const RowMenu: Story = {
   },
 }
 export const RowMenuDark = dark(RowMenu)
+
+/** Right-click outside the rows: the page's own actions, like every other list. */
+export const PageMenu: Story = {
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    fireEvent.contextMenu(body.getByRole('columnheader', { name: 'Period' }))
+    const menu = await body.findByRole('menu')
+    await expect(within(menu).getByText('Engagements')).toBeVisible()
+    await expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(['New engagement', 'Import', 'Export CSV', 'Select all', 'View', 'Refresh'])
+    await userEvent.click(body.getByRole('menuitem', { name: 'Select all' }))
+    await expect(await body.findByRole('toolbar', { name: 'Selected rows' })).toBeVisible()
+  },
+}
+export const PageMenuDark = dark(PageMenu)
 
 /** A member who may only read: rows still select and export, but nothing changes them. */
 export const ReadOnlyMember: Story = {
