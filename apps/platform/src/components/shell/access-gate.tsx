@@ -5,9 +5,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useEffect } from 'react'
 
-import { employeesHidden } from '@/components/billing/feature-lock'
+import { employeesHidden, useBillingStatus } from '@/components/billing/feature-lock'
 import { State } from '@/components/data/table-page'
-import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { canReadPath, labelOf, resourceForPath, useScopes } from '@/lib/permissions'
 
@@ -26,14 +25,14 @@ export function AccessGate({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? ''
   const router = useRouter()
   // Not on the plan and nothing kept to read: the module does not exist here, so its URLs lead home.
-  const billing = useBilling()
+  const { billing, loading } = useBillingStatus()
   const inModule = /^\/(employees|settings\/employment)(\/|$)/.test(pathname)
   // Billing still loading: show nothing yet, but do not redirect on a guess.
-  const redirect = inModule && !billing.isPending && employeesHidden(billing.data)
+  const redirect = inModule && !loading && employeesHidden(billing)
   useEffect(() => {
     if (redirect) router.replace('/')
   }, [redirect, router])
-  if (redirect || (inModule && billing.isPending)) return null
+  if (redirect || (inModule && loading)) return null
   const resource = resourceForPath(pathname)
   if (!resource || canReadPath(scopes, pathname)) return children
   const what = labelOf(resource).toLowerCase()

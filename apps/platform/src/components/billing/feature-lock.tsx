@@ -48,9 +48,18 @@ const seeLabel = (lock: NonNullable<FeatureLock>) =>
 export const employeesHidden = (billing: Billing | undefined, loading = false) =>
   loading || (Boolean(featureLock(billing, 'employees')) && !billing?.has_employees)
 
+/**
+ * Billing and whether its first answer is still to come. A refused read (a member without billing access) is not
+ * "loading", even though React Query flips an errored query back to pending on every refetch.
+ */
+export function useBillingStatus() {
+  const { data, isPending, errorUpdateCount } = useBilling()
+  return { billing: data, loading: isPending && errorUpdateCount === 0 }
+}
+
 export function useEmployeesHidden() {
-  const { data, isPending } = useBilling()
-  return employeesHidden(data, isPending)
+  const { billing, loading } = useBillingStatus()
+  return employeesHidden(billing, loading)
 }
 
 /** `featureLock` for the signed-in workspace. */

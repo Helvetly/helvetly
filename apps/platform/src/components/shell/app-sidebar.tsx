@@ -40,7 +40,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
-import { featureLock, PLANS_HREF, PlanTag, toastLocked } from '@/components/billing/feature-lock'
+import {
+  featureLock,
+  PLANS_HREF,
+  PlanTag,
+  toastLocked,
+  useBillingStatus,
+} from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpDialog } from '@/components/help/help-dialog'
@@ -51,7 +57,7 @@ import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
 import { api, setCsrfToken, type Session, type User } from '@/lib/api'
-import { type Billing, useBilling } from '@/lib/billing'
+import { type Billing } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
 import { effectiveScopes } from '@/lib/permissions'
@@ -112,7 +118,7 @@ export function AppSidebar({ session }: { session: Session }) {
   useShortcut('sidebar', toggleSidebar)
   useShortcut('notifications', () => router.push('/notifications'))
   const switchWorkspace = useSwitchWorkspace()
-  const { data: billing, isPending: billingPending } = useBilling()
+  const { billing, loading: billingPending } = useBillingStatus()
   // Until the list loads, the current workspace comes from the session.
   const workspaces: WorkspaceItem[] = useWorkspaces().data ?? [
     { ...session.workspace, role: session.role, current: true },
