@@ -139,9 +139,17 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
       java -Xmx1g -Djava.io.tmpdir=/tmp -jar /mustang/mustang.jar --disable-file-logging --no-notices \
         --action validate --source "$f" > "/output/$(basename "$f").xml" 2>&1 || true
     done'
+# Every finding fails, except two that are not EN 16931 violations:
+# - CII requires ApplicableHeaderTradeDelivery while all of its children are optional, so an invoice without delivery
+#   details must carry it empty; Factur-X keeps PEPPOL-EN16931-R008 a warning for exactly this.
+# - Mustang's own recalculation (type 10) takes VAT from the net; a VAT-inclusive invoice takes it from the gross, as
+#   issued and printed. The official Schematron above checks the totals.
 failed=0
 for report in "$report_dir"/*.xml; do
-  if ! grep -q '<summary status="valid"/>' "$report"; then
+  findings="$(grep -E '<(warning|error|notice)' "$report" |
+    grep -v 'ApplicableHeaderTradeDelivery\[[^]]*\]\[1\]" criterion="false">\[PEPPOL-EN16931-R008\]' |
+    grep -v '<warning type="10">Arithmetical issue:' || true)"
+  if [[ "$(grep -c '<summary status="valid"/>' "$report")" != 3 || -n "$findings" ]]; then
     printf '%s is not valid Factur-X:\n' "$(basename -- "$report" .xml)" >&2
     cat "$report" >&2
     failed=1
