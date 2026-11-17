@@ -42,6 +42,8 @@ type Employee struct {
 	Email             *string              `json:"email"`
 	Phone             *string              `json:"phone"`
 	Street            *string              `json:"street"`
+	StreetNumber      *string              `json:"street_number"`
+	Apt               *string              `json:"apt"`
 	PostalCode        *string              `json:"postal_code"`
 	City              *string              `json:"city"`
 	AddressCountry    *string              `json:"address_country"`
@@ -114,7 +116,7 @@ const employeeColumns = `e.id, e.member_user_id, coalesce(nullif(u.name, ''), u.
 	e.cross_border_note, e.bank_account_hint, e.tax_id_hint, e.legal_hold, e.legal_hold_reason, e.restricted,
 	e.erased_at, e.archived_at, e.created_at, e.updated_at, e.bank_account_sealed, e.tax_id_sealed, e.weekly_hours_milli,
 	e.notice_period, e.thirteenth_salary, e.withholding_tax, e.withholding_tax_canton, e.pension_insurer, e.accident_insurer,
-	e.sickness_insurer, e.free_transport, e.canteen_meals, e.social_security_number_hint, e.social_security_number_sealed`
+	e.sickness_insurer, e.free_transport, e.canteen_meals, e.social_security_number_hint, e.social_security_number_sealed, e.street_number, e.apt`
 
 const employeeFrom = ` FROM employees e LEFT JOIN users u ON u.id = e.member_user_id
 	LEFT JOIN workspace_members m ON m.workspace_id = e.workspace_id AND m.user_id = e.member_user_id`
@@ -129,7 +131,7 @@ func scanEmployee(row interface{ Scan(...any) error }, today string) (Employee, 
 		&e.TaxIDHint, &e.LegalHold, &e.LegalHoldReason, &e.Restricted, &e.ErasedAt, &e.ArchivedAt, &e.CreatedAt,
 		&e.UpdatedAt, &e.BankAccountSealed, &e.TaxIDSealed, &hours, &e.NoticePeriod, &e.ThirteenthSalary, &e.WithholdingTax,
 		&e.WithholdingTaxCanton, &e.PensionInsurer, &e.AccidentInsurer, &e.SicknessInsurer, &e.FreeTransport, &e.CanteenMeals,
-		&e.SocialSecurityHint, &e.SocialSecuritySealed)
+		&e.SocialSecurityHint, &e.SocialSecuritySealed, &e.StreetNumber, &e.Apt)
 	if hours != nil {
 		h := invoicecalc.Quantity(*hours)
 		e.WeeklyHours = &h
@@ -279,10 +281,11 @@ func (q Q) saveDetails(ctx context.Context, workspaceID string, e Employee) erro
 	}
 	_, err := q.db.Exec(ctx, `UPDATE employees SET weekly_hours_milli = $3, notice_period = $4, thirteenth_salary = $5,
 		withholding_tax = $6, withholding_tax_canton = $7, pension_insurer = $8, accident_insurer = $9, sickness_insurer = $10,
-		free_transport = $11, canteen_meals = $12, social_security_number_hint = $13, social_security_number_sealed = $14
+		free_transport = $11, canteen_meals = $12, social_security_number_hint = $13, social_security_number_sealed = $14,
+		street_number = $15, apt = $16
 		WHERE workspace_id = $1 AND id = $2`, workspaceID, e.ID, hours, e.NoticePeriod, e.ThirteenthSalary, e.WithholdingTax,
 		e.WithholdingTaxCanton, e.PensionInsurer, e.AccidentInsurer, e.SicknessInsurer, e.FreeTransport, e.CanteenMeals,
-		e.SocialSecurityHint, e.SocialSecuritySealed)
+		e.SocialSecurityHint, e.SocialSecuritySealed, e.StreetNumber, e.Apt)
 	return err
 }
 

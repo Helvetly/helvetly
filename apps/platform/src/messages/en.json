@@ -4164,5 +4164,17 @@
   "heicCantBeRead": "HEIC photos can't be read automatically. Export the photo as JPEG, or enter the details yourself.",
   "receiptReadFailed": "The receipt could not be read: {reason} Your entries are unchanged.",
   "billedBy": "Billed by",
-  "changeLogo": "Change logo"
+  "changeLogo": "Change logo",
+  "employeeLastNamePlaceholder": "Muster",
+  "employeeEmailPlaceholder": "anna.muster@example.ch",
+  "employeePositionPlaceholder": "E.g. Designer",
+  "employeeDepartmentPlaceholder": "E.g. Studio",
+  "employeeEmployingEntityPlaceholder": "E.g. Muster AG",
+  "employeeLocalityPlaceholder": "E.g. Winterthur",
+  "employeePlaceOfWorkPlaceholder": "E.g. Zürich office",
+  "employeeCrossBorderNotePlaceholder": "E.g. Lives in Germany, works three days in Zürich",
+  "employeePensionInsurerPlaceholder": "E.g. Swiss Life",
+  "employeeAccidentInsurerPlaceholder": "E.g. Suva",
+  "employeeSicknessInsurerPlaceholder": "E.g. Helsana",
+  "employeeTaxIdPlaceholder": "E.g. 123.456.789"
 }

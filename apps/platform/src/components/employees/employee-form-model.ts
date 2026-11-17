@@ -1,3 +1,11 @@
+import {
+  PHONE_ERROR,
+  phoneCountryOr,
+  phoneDraft,
+  toE164,
+  type CountryCode,
+} from '@helvetly/ui/lib/phone'
+
 import type { Country, Employee, EmployeeInput, EmploymentSettings } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
 
@@ -8,7 +16,11 @@ export type FormValues = {
   employee_number: string
   email: string
   phone: string
+  /** Where a number typed without + belongs. */
+  phone_country: CountryCode
   street: string
+  street_number: string
+  apt: string
   postal_code: string
   city: string
   address_country: string
@@ -49,8 +61,9 @@ const TEXT_KEYS = [
   'last_name',
   'employee_number',
   'email',
-  'phone',
   'street',
+  'street_number',
+  'apt',
   'postal_code',
   'city',
   'address_country',
@@ -96,7 +109,10 @@ export function newValues(settings: EmploymentSettings | undefined): FormValues 
     employee_number: '',
     email: '',
     phone: '',
+    phone_country: phoneCountryOr(settings?.country),
     street: '',
+    street_number: '',
+    apt: '',
     postal_code: '',
     city: '',
     address_country: '',
@@ -136,6 +152,9 @@ export function valuesFromEmployee(employee: Employee): FormValues {
   const values = newValues(undefined)
   for (const key of TEXT_KEYS) values[key] = employee[key] ?? ''
   for (const key of FLAG_KEYS) values[key] = employee[key]
+  const phone = phoneDraft(employee.phone, employee.address_country ?? employee.work_country)
+  values.phone = phone.phone
+  values.phone_country = phone.country
   return values
 }
 
@@ -161,6 +180,7 @@ export function validate(values: FormValues): FieldErrors {
     errors.employment_end = translate('employeeErrorFixedTermEnd')
   else if (values.employment_end && values.employment_end < values.employment_start)
     errors.employment_end = translate('employeeErrorEndBeforeStart')
+  if (values.phone.trim() && !toE164(values.phone, values.phone_country)) errors.phone = PHONE_ERROR
   const hours = values.weekly_hours.trim()
   if (hours) {
     const number = Number(hours.replace(',', '.'))
@@ -193,6 +213,8 @@ export function toInput(values: FormValues, before?: FormValues): EmployeeInput 
     const text = next[key].trim()
     input[key] = text === '' ? null : key === 'weekly_hours' ? text.replace(',', '.') : text
   }
+  if (!before || next.phone !== before.phone || next.phone_country !== before.phone_country)
+    input.phone = next.phone.trim() ? toE164(next.phone, next.phone_country) : null
   for (const key of FLAG_KEYS) if (!before || next[key] !== before[key]) input[key] = next[key]
   for (const key of SEALED_KEYS) if (next[key].trim()) input[key] = next[key].trim()
   return input

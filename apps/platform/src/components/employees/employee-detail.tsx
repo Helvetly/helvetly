@@ -398,7 +398,11 @@ const yesNo = (value: boolean) => translate(value ? 'employeeYes' : 'employeeNo'
 
 function EmploymentTab({ employee, hr }: { employee: Employee; hr: HrAccess }) {
   const countries = useCountries().data
-  const address = [employee.street, [employee.postal_code, employee.city].filter(Boolean).join(' ')]
+  const address = [
+    [employee.street, employee.street_number].filter(Boolean).join(' '),
+    employee.apt,
+    [employee.postal_code, employee.city].filter(Boolean).join(' '),
+  ]
     .filter(Boolean)
     .join(', ')
   return (

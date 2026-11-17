@@ -16,6 +16,7 @@ import (
 )
 
 var employeeKeys = []string{"member_user_id", "employee_number", "first_name", "last_name", "email", "phone", "street",
+	"street_number", "apt",
 	"postal_code", "city", "address_country", "position", "department", "employment_type", "working_time",
 	"employment_start", "employment_end", "employing_entity", "employer_country", "social_security_country",
 	"work_country", "work_region", "work_locality",
@@ -222,6 +223,10 @@ func (s *Service) apply(r *http.Request, q store.Q, sess store.Session, e *store
 			e.Phone = f.text(k, raw, 40, nil)
 		case "street":
 			e.Street = f.text(k, raw, 200, nil)
+		case "street_number":
+			e.StreetNumber = f.text(k, raw, 20, nil)
+		case "apt":
+			e.Apt = f.text(k, raw, 100, nil)
 		case "postal_code":
 			e.PostalCode = f.text(k, raw, 20, nil)
 		case "city":
@@ -494,6 +499,7 @@ func (s *Service) erase(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		// An erasure request restricts the record as well: what a retention duty keeps is blocked, not processed (ES LOPDGDD art. 32).
 		e.Restricted = true
 		e.MemberUserID, e.Email, e.Phone, e.Street, e.PostalCode, e.City, e.AddressCountry = nil, nil, nil, nil, nil, nil, nil
+		e.StreetNumber, e.Apt = nil, nil
 		e.PlaceOfWork, e.CrossBorderNote, e.WorkLocality = nil, nil, nil
 		e.BankAccountSealed, e.BankAccountHint, e.TaxIDSealed, e.TaxIDHint = nil, nil, nil, nil
 		e.SocialSecuritySealed, e.SocialSecurityHint = nil, nil

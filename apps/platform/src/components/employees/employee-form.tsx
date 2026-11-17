@@ -5,6 +5,7 @@ import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField, HelpTip } from '@helvetly/ui/components/form-field'
+import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { COUNTRIES } from '@helvetly/ui/lib/countries'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -45,9 +46,10 @@ const describe = (field: keyof FormValues, error: string | undefined) => ({
   'aria-describedby': error ? `${fieldId(field)}-error` : undefined,
 })
 
-type TextKey = {
-  [K in keyof FormValues]: FormValues[K] extends string ? K : never
-}[keyof FormValues]
+type TextKey = Exclude<
+  { [K in keyof FormValues]: FormValues[K] extends string ? K : never }[keyof FormValues],
+  'phone_country'
+>
 type FlagKey = {
   [K in keyof FormValues]: FormValues[K] extends boolean ? K : never
 }[keyof FormValues]
@@ -226,26 +228,82 @@ export function EmployeeForm({
                 {field(
                   'first_name',
                   translate('employeeFirstName'),
-                  text('first_name', { autoComplete: 'off' }),
+                  text('first_name', { autoComplete: 'off', placeholder: translate('anna') }),
                   { required: true },
                 )}
                 {field(
                   'last_name',
                   translate('employeeLastName'),
-                  text('last_name', { autoComplete: 'off' }),
+                  text('last_name', {
+                    autoComplete: 'off',
+                    placeholder: translate('employeeLastNamePlaceholder'),
+                  }),
                   { required: true },
                 )}
-                {field('email', translate('employeeEmail'), text('email', { type: 'email' }))}
-                {field('phone', translate('employeePhone'), text('phone', { type: 'tel' }))}
-                {field('street', translate('employeeStreet'), text('street'), {
-                  className: 'sm:col-span-2',
-                })}
-                {field('postal_code', translate('employeePostcode'), text('postal_code'))}
-                {field('city', translate('employeeCity'), text('city'))}
+                {field(
+                  'email',
+                  translate('employeeEmail'),
+                  text('email', {
+                    type: 'email',
+                    placeholder: translate('employeeEmailPlaceholder'),
+                  }),
+                )}
+                {field(
+                  'phone',
+                  translate('employeePhone'),
+                  <PhoneInput
+                    id={fieldId('phone')}
+                    value={values.phone}
+                    country={values.phone_country}
+                    invalid={Boolean(errors.phone)}
+                    aria-describedby={errors.phone ? `${fieldId('phone')}-error` : undefined}
+                    onChange={(phone) => set('phone', phone)}
+                    onCountryChange={(code) =>
+                      set('phone_country', code as FormValues['phone_country'])
+                    }
+                  />,
+                )}
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-4 sm:grid-cols-[minmax(0,1fr)_110px_110px]">
+                {field(
+                  'street',
+                  translate('employeeStreet'),
+                  text('street', {
+                    autoComplete: 'address-line1',
+                    placeholder: translate('bahnhofstrasse'),
+                  }),
+                )}
+                {field(
+                  'street_number',
+                  translate('number'),
+                  text('street_number', { placeholder: '12' }),
+                )}
+                {field(
+                  'apt',
+                  translate('aptSuite'),
+                  text('apt', {
+                    autoComplete: 'address-line2',
+                    placeholder: translate('message3rdFloor'),
+                  }),
+                  { className: 'col-span-2 sm:col-span-1' },
+                )}
+              </div>
+              <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-4 sm:grid-cols-[110px_minmax(0,1fr)_236px]">
+                {field(
+                  'postal_code',
+                  translate('employeePostcode'),
+                  text('postal_code', { autoComplete: 'postal-code', placeholder: '8001' }),
+                )}
+                {field(
+                  'city',
+                  translate('employeeCity'),
+                  text('city', { autoComplete: 'address-level2', placeholder: translate('zRich') }),
+                )}
                 {field(
                   'address_country',
                   translate('employeeAddressCountry'),
                   country('address_country', true),
+                  { className: 'col-span-2 sm:col-span-1' },
                 )}
               </div>
             </FormSection>
@@ -277,8 +335,16 @@ export function EmployeeForm({
                   text('employee_number', { placeholder: 'E-001' }),
                   { tip: translate('employeeNumberTip') },
                 )}
-                {field('position', translate('employeePosition'), text('position'))}
-                {field('department', translate('employeeDepartment'), text('department'))}
+                {field(
+                  'position',
+                  translate('employeePosition'),
+                  text('position', { placeholder: translate('employeePositionPlaceholder') }),
+                )}
+                {field(
+                  'department',
+                  translate('employeeDepartment'),
+                  text('department', { placeholder: translate('employeeDepartmentPlaceholder') }),
+                )}
                 {field(
                   'employment_start',
                   translate('employeeStart'),
@@ -330,7 +396,9 @@ export function EmployeeForm({
                 {field(
                   'employing_entity',
                   translate('employeeEmployingEntity'),
-                  text('employing_entity'),
+                  text('employing_entity', {
+                    placeholder: translate('employeeEmployingEntityPlaceholder'),
+                  }),
                   {
                     className: 'sm:col-span-2',
                     tip: translate('employeeEmployingEntityTip'),
@@ -384,12 +452,26 @@ export function EmployeeForm({
                     </NativeSelect>,
                   )}
                 {work?.locality &&
-                  field('work_locality', translate('employeeLocality'), text('work_locality'), {
-                    tip: translate('employeeLocalityTip'),
-                  })}
-                {field('place_of_work', translate('employeePlaceOfWork'), text('place_of_work'), {
-                  tip: translate('employeePlaceOfWorkTip'),
-                })}
+                  field(
+                    'work_locality',
+                    translate('employeeLocality'),
+                    text('work_locality', {
+                      placeholder: translate('employeeLocalityPlaceholder'),
+                    }),
+                    {
+                      tip: translate('employeeLocalityTip'),
+                    },
+                  )}
+                {field(
+                  'place_of_work',
+                  translate('employeePlaceOfWork'),
+                  text('place_of_work', {
+                    placeholder: translate('employeePlaceOfWorkPlaceholder'),
+                  }),
+                  {
+                    tip: translate('employeePlaceOfWorkTip'),
+                  },
+                )}
                 {field(
                   'residence_country',
                   translate('employeeResidenceCountry'),
@@ -413,6 +495,7 @@ export function EmployeeForm({
                   <textarea
                     {...describe('cross_border_note', errors.cross_border_note)}
                     rows={2}
+                    placeholder={translate('employeeCrossBorderNotePlaceholder')}
                     value={values.cross_border_note}
                     onChange={(event) => set('cross_border_note', event.target.value)}
                     className={cn(inputClass, 'h-auto min-h-16 resize-y py-2')}
@@ -457,7 +540,9 @@ export function EmployeeForm({
                   {field(
                     'pension_insurer',
                     translate('employeePensionInsurer'),
-                    text('pension_insurer'),
+                    text('pension_insurer', {
+                      placeholder: translate('employeePensionInsurerPlaceholder'),
+                    }),
                     {
                       tip: translate('employeePensionInsurerTip'),
                     },
@@ -465,13 +550,17 @@ export function EmployeeForm({
                   {field(
                     'accident_insurer',
                     translate('employeeAccidentInsurer'),
-                    text('accident_insurer'),
+                    text('accident_insurer', {
+                      placeholder: translate('employeeAccidentInsurerPlaceholder'),
+                    }),
                     { tip: translate('employeeAccidentInsurerTip') },
                   )}
                   {field(
                     'sickness_insurer',
                     translate('employeeSicknessInsurer'),
-                    text('sickness_insurer'),
+                    text('sickness_insurer', {
+                      placeholder: translate('employeeSicknessInsurerPlaceholder'),
+                    }),
                     { tip: translate('employeeSicknessInsurerTip') },
                   )}
                 </div>
@@ -500,13 +589,19 @@ export function EmployeeForm({
                 {field(
                   'bank_account',
                   translate('employeeBankAccount'),
-                  text('bank_account', { autoComplete: 'off' }),
+                  text('bank_account', {
+                    autoComplete: 'off',
+                    placeholder: translate('eGCH9300762011623852957'),
+                  }),
                   { hint: stored(employee?.bank_account_hint) },
                 )}
                 {field(
                   'tax_id',
                   translate('employeeTaxId'),
-                  text('tax_id', { autoComplete: 'off' }),
+                  text('tax_id', {
+                    autoComplete: 'off',
+                    placeholder: translate('employeeTaxIdPlaceholder'),
+                  }),
                   {
                     hint: stored(employee?.tax_id_hint),
                   },
