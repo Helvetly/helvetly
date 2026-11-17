@@ -13,6 +13,10 @@ const settings = sampleSettings()
 
 const meta = {
   title: 'Onboarding',
+  // The welcome keeps a confirmed name in this browser; every story starts as a first visit.
+  beforeEach: () => {
+    localStorage.clear()
+  },
   parameters: {
     layout: 'fullscreen',
     ownMain: true,
@@ -72,15 +76,8 @@ export const Welcome: Story = {
     await expect(brand).toHaveTextContent('Helvetly')
     await expect(getComputedStyle(brand as Element).fontStyle).toBe('italic')
     await expect(canvasElement.querySelector('.heidi-orb-halo')).toBeNull()
-    const cards = welcome.getAllByRole('listitem')
-    await expect(cards.length).toBeLessThanOrEqual(4)
-    for (const title of [
-      'Get paid',
-      'Clients & documents',
-      'Bring your data',
-      'Heidi, your assistant',
-    ])
-      expect(welcome.getByText(title)).toBeVisible()
+    // Only the two questions: no feature list competing with them.
+    await expect(welcome.queryAllByRole('listitem')).toHaveLength(0)
   },
 }
 

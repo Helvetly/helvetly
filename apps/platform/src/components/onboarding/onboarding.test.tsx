@@ -60,6 +60,9 @@ const session = (): Session => ({
   csrf_token: 't',
 })
 
+// The welcome keeps the confirmed name in this browser; each test starts without it.
+afterEach(() => localStorage.clear())
+
 const server = setupServer(
   http.get('/api/v1/session', () => HttpResponse.json(session())),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
@@ -764,5 +767,22 @@ describe('the welcome', () => {
       expect(screen.getByLabelText('Number of days')).toHaveValue('45')
       expect(screen.getByRole('heading', { name: 'Invoice defaults' })).toBeInTheDocument()
     })
+  })
+})
+
+describe('a reload on the welcome', () => {
+  test('keeps the name this person confirmed, while it is still the account name', async () => {
+    localStorage.setItem('helvetly.onboarding-name.usr_1', 'Anna Muster')
+    wrap(<Welcome />)
+    expect(await nameField()).toHaveValue('Anna Muster')
+    expect(
+      await screen.findByRole('heading', { name: 'Welcome to Helvetly, Anna Muster' }),
+    ).toBeInTheDocument()
+  })
+
+  test('starts empty when the kept name no longer matches the account', async () => {
+    localStorage.setItem('helvetly.onboarding-name.usr_1', 'Pete')
+    wrap(<Welcome />)
+    expect(await nameField()).toHaveValue('')
   })
 })

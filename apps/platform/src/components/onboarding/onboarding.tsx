@@ -68,7 +68,7 @@ import {
   vatSuffix,
   type Values,
 } from './onboarding-model'
-import { TypedWelcomeTitle, WelcomeBenefits } from './welcome-intro'
+import { TypedWelcomeTitle } from './welcome-intro'
 
 // The platform keeps one language per page load (a change reloads), so the module-level locale is current.
 const interfaceLanguage = locale
@@ -119,9 +119,14 @@ export function WelcomePage({ session }: { session: Session }) {
   const profile = useUpdateProfile()
   // The name is asked for, never guessed from the account (Google or the email address): the input
   // starts empty and the greeting only uses what the server answered to this person's own entry.
-  const [nameInput, setNameInput] = useState('')
+  // What this person typed and the server confirmed survives a reload (this browser only), while it still is the account's name.
+  const [restoredName] = useState(() => {
+    const kept = readKeptName(session.user.id)
+    return kept && kept === session.user.name ? kept : null
+  })
+  const [nameInput, setNameInput] = useState(restoredName ?? '')
   const [nameError, setNameError] = useState<string>()
-  const [confirmedName, setConfirmedName] = useState<string | null>(null)
+  const [confirmedName, setConfirmedName] = useState<string | null>(restoredName)
   // Manual and independent of the company: a name already chosen is the starting point, the sign-up
   // placeholder is not. Read once, so a refreshed session never resets what was typed.
   const [workspaceInput, setWorkspaceInput] = useState(() =>
@@ -129,7 +134,7 @@ export function WelcomePage({ session }: { session: Session }) {
   )
   const [workspaceError, setWorkspaceError] = useState<string>()
   // What the server already has from this step, so a retry after a half-saved attempt repeats only the missing write.
-  const savedProfile = useRef<string | null>(null)
+  const savedProfile = useRef<string | null>(restoredName)
   const [edited, setEdited] = useState<Values | null>(null)
   const [errors, setErrors] = useState<Errors>({})
   const values = edited ?? (settings.data ? valuesFrom(settings.data, interfaceLanguage) : null)
@@ -223,6 +228,7 @@ export function WelcomePage({ session }: { session: Session }) {
         const { data } = await profile.mutateAsync({ name })
         savedProfile.current = name
         setConfirmedName(data.name)
+        keepName(session.user.id, data.name)
       }
     } catch (error) {
       // Stays on this step with both inputs as typed.
@@ -595,9 +601,6 @@ function WelcomeStep({
           </Button>
         </Actions>
       </form>
-      <div className="mt-8">
-        <WelcomeBenefits />
-      </div>
     </div>
   )
 }
@@ -1170,4 +1173,23 @@ function NextStep({
       />
     </button>
   )
+}
+
+const keptNameKey = (userId: string) => `helvetly.onboarding-name.${userId}`
+
+/** The name this person confirmed on the welcome step, kept in this browser; null when storage is unavailable. */
+function readKeptName(userId: string): string | null {
+  try {
+    return localStorage.getItem(keptNameKey(userId))
+  } catch {
+    return null
+  }
+}
+
+function keepName(userId: string, name: string) {
+  try {
+    localStorage.setItem(keptNameKey(userId), name)
+  } catch {
+    // A private window: the name is saved on the account anyway, only the reload starts empty.
+  }
 }
