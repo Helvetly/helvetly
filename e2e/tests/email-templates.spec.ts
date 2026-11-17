@@ -110,7 +110,7 @@ test('a member without invoice-settings write sees the page read-only and the AP
   await api.save('/members/invitations', {
     email,
     role: 'member',
-    scopes: ['read:invoice-settings'],
+    scopes: ['read:workspace', 'read:invoice-settings'],
     send_email: false,
   })
   const context = await browser.newContext({ baseURL })
