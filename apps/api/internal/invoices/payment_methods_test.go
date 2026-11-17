@@ -134,7 +134,7 @@ func TestDraftReference(t *testing.T) {
 		{"IBAN: no reference (NON)", "CH9300762011623852957", "SCOR", nil},
 	} {
 		inv.Payment.IBAN, inv.Payment.ReferenceType = &tt.iban, tt.refType
-		got, err := draftReference(ctx, e.st.Q, b.workspace, inv)
+		got, err := draftReference(ctx, e.st.Q, b.workspace, "{YYYY}-{NNN}", inv)
 		if err != nil {
 			t.Fatal(err)
 		}

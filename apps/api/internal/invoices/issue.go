@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 
 	"helvetly.com/api/internal/auth"
@@ -178,7 +177,8 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	if err != nil {
 		return err
 	}
-	year, _ := strconv.Atoi(inv.IssueDate[:4])
+	// the counter's year also goes into the payment reference, so a yearless series never repeats a yearly one's
+	year := counterYear(set.NumberFormat, inv.IssueDate)
 	series, prefix := seriesOf(inv, credited)
 	var seq int64
 	var number string
@@ -317,11 +317,11 @@ func reference(iban, body string) (string, string) {
 // draftReference: the reference a draft's QR bill shows. SIX requires a QRR with a QR-IBAN, so it gets the
 // provisional one of the next number (what it becomes if issued next); with a normal IBAN a reference is
 // optional (type NON), so none is shown rather than one that may later belong to another invoice.
-func draftReference(ctx context.Context, q store.Q, workspaceID string, inv store.Invoice) (*string, error) {
+func draftReference(ctx context.Context, q store.Q, workspaceID, format string, inv store.Invoice) (*string, error) {
 	if inv.Payment.ReferenceType != "QRR" || inv.Payment.IBAN == nil {
 		return nil, nil
 	}
-	year, _ := strconv.Atoi(inv.IssueDate[:4])
+	year := counterYear(format, inv.IssueDate)
 	series, _ := Series(inv.Kind)
 	seq, err := q.PeekInvoiceSeq(ctx, workspaceID, series, year)
 	if err != nil {

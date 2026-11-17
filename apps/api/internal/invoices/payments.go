@@ -274,7 +274,7 @@ func (s *Service) draftPDF(ctx context.Context, sess store.Session, inv store.In
 		return nil, err
 	}
 	if inv.Payment.QRBill {
-		if inv.Payment.Reference, err = draftReference(ctx, s.db.Q, sess.Workspace.ID, inv); err != nil {
+		if inv.Payment.Reference, err = draftReference(ctx, s.db.Q, sess.Workspace.ID, set.NumberFormat, inv); err != nil {
 			return nil, err
 		}
 	}
