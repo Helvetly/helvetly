@@ -220,6 +220,7 @@ export function ServiceField({
       <PopoverContent align="start" className={popover}>
         <div className="flex h-8 items-center justify-between gap-2">
           <Segmented
+            size="sm"
             label={translate('service')}
             value={period ? 'period' : 'day'}
             options={[

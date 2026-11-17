@@ -865,6 +865,7 @@ function StatusViews({
   return (
     <div className="max-sm:order-last max-sm:w-full">
       <Segmented
+        size="sm"
         label={translate('status')}
         value={statusView(params.status)}
         options={STATUS_VIEWS.map((view) => ({

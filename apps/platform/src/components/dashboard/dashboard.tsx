@@ -317,6 +317,7 @@ function CashFlow() {
             </NativeSelect>
           )}
           <Segmented
+            size="sm"
             label={translate('period')}
             value={period}
             options={[...PERIODS]}

@@ -250,6 +250,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
     <div className="grid gap-10">
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Segmented
+          size="sm"
           label={translate('billingPeriod')}
           value={interval}
           options={[
