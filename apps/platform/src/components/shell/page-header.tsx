@@ -133,8 +133,9 @@ function useFadeIn(active: number) {
     const parts = first ? [...element.children] : []
     for (let section = element.nextElementSibling; section; section = section.nextElementSibling)
       parts.push(...section.children)
+    // From 0.4, not 0: a softer change, and content is never fully transparent (still "visible").
     for (const part of parts)
-      part.animate({ opacity: [0, 1] }, { duration: 160, easing: 'ease-out' })
+      part.animate({ opacity: [0.4, 1] }, { duration: 160, easing: 'ease-out' })
   }, [active])
   return header
 }
