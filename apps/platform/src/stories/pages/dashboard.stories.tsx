@@ -2,12 +2,13 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
 import { Dashboard } from '@/components/dashboard/dashboard'
 
+import { attentionHandlers } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const meta = {
   title: 'Pages/Dashboard',
   beforeEach: closeHeidi,
-  parameters: pageParameters('/'),
+  parameters: pageParameters('/', {}, attentionHandlers()),
   render: () => (
     <Frame>
       <Dashboard />

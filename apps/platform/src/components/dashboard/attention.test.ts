@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { MonthActivity } from '@/lib/books'
 
-import { monthsToClose } from './closing-reminder'
+import { monthsToClose } from './attention'
 
 const source = (recorded: number, drafts = 0) => ({ recorded, drafts, totals: [] })
 const month = (m: string, invoices = 0, drafts = 0): MonthActivity => ({

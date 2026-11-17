@@ -2027,7 +2027,6 @@
   "nothingMatches3": "Nichts stimmt mit „{term}“ überein.",
   "nothingMatches4": "Nichts stimmt überein.",
   "nothingMoreIsCharged": "Es wird nichts mehr berechnet.",
-  "nothingOpenEveryInvoiceIsPaid": "Nichts offen. Jede Rechnung ist bezahlt.",
   "nothingOpenEveryInvoiceIsSettled": "Nichts offen: Jede Rechnung ist beglichen.",
   "nothingOutForSignature": "Es liegt nichts zur Unterschrift vor",
   "nothingRecordedYet": "Noch nichts aufgezeichnet",
@@ -4206,8 +4205,6 @@
   "importContinueShort": "Import fortsetzen",
   "importMoreComing": "Weitere Dokumente werden noch gelesen. Ihre Zeilen erscheinen hier, sobald jedes fertig ist.",
   "importDocumentRecords": "{count, plural, one {# Eintrag} other {# Einträge}}",
-  "monthIsNotClosedYet": "{value1} ist noch nicht abgeschlossen. Schliessen Sie den Monat, damit sich die Zahlen nicht mehr ändern.",
-  "monthsAreNotClosedYet": "{length} Monate sind noch nicht abgeschlossen: {value1} bis {value2}. Schliessen Sie sie, damit sich die Zahlen nicht mehr ändern.",
   "closeTheMonth": "{length, plural, one {Monat schliessen} other {Monate schliessen}}",
   "bringYourData": "Bringen Sie Ihre Daten mit",
   "bringYourDataIntro": "Legen Sie Rechnungen, Spesen, Kundenlisten oder Preislisten in einem gängigen Format ab. Die KI von Heidi erkennt, um welches Dokument es sich handelt, und Sie prüfen und korrigieren alles, bevor es importiert wird.",
@@ -4223,5 +4220,12 @@
   "sales": "Verkauf",
   "books": "Buchhaltung",
   "yourBooks": "Ihre Buchhaltung",
-  "booksClosing": "Buchhaltung → Abschluss"
+  "booksClosing": "Buchhaltung → Abschluss",
+  "allDoneNothingNeedsYourAttention": "Alles erledigt. Nichts braucht Ihre Aufmerksamkeit.",
+  "vatReturnPeriod": "MWST-Abrechnung {period}",
+  "monthsAreReadyToClose": "{months} {length, plural, one {kann} other {können}} abgeschlossen werden",
+  "theVATReturnCouldnTBeChecked": "Die MWST-Abrechnung konnte nicht geprüft werden: ",
+  "retryVATReturn": "MWST-Abrechnung erneut versuchen",
+  "closingCouldnTBeChecked": "Abzuschliessende Monate konnten nicht geprüft werden: ",
+  "retryClosing": "Abschluss erneut versuchen"
 }
