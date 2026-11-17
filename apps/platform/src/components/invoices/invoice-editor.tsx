@@ -624,6 +624,8 @@ function Editor({
     // The server counts the lines it was sent: untouched rows are not among them.
     const key = target.line === undefined ? undefined : converted.keys[target.line]
     if (key) return focusCell(key, target.field)
+    // "Add at least one line": the empty first row is where the line goes.
+    if (target.field === 'add-line') return focusCell(values.lines[0]?.key ?? '', 'description')
     document.querySelector<HTMLElement>(`[data-field="${target.field}"]`)?.focus()
     document.getElementById(`invoice-${target.field}`)?.focus()
   }

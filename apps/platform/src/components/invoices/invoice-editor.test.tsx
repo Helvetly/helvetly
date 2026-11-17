@@ -237,6 +237,36 @@ test('issuing a draft for a draft client lists every reason with a way to fix it
   expect(push).not.toHaveBeenCalled()
 })
 
+test('"Show me" on a no-lines reason focuses the first line description', async () => {
+  server.use(
+    http.post('/api/v1/invoices/:id/issue', () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'cannot_issue',
+            message: 'This document cannot be issued yet.',
+            details: {
+              reasons: [{ code: 'no_lines', field: 'lines', message: 'Add at least one line.' }],
+            },
+          },
+        },
+        { status: 422 },
+      ),
+    ),
+  )
+  renderEditor()
+  await pick('Alpenglow')
+  await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }))
+  await userEvent.click(
+    within(await screen.findByRole('dialog', {}, { timeout: 3000 })).getByRole('button', {
+      name: 'Issue invoice',
+    }),
+  )
+  const alert = await screen.findByRole('alert', {}, { timeout: 3000 })
+  await userEvent.click(within(alert).getByRole('button', { name: /Show me/ }))
+  await waitFor(() => expect(screen.getByLabelText('Line 1 description')).toHaveFocus())
+})
+
 test('a client from the URL is preset, and issuing goes to the issued invoice', async () => {
   search = new URLSearchParams('client=cli_1')
   renderEditor()
