@@ -207,7 +207,7 @@ export function ReviewTable({
                           href={config.entityHref(record.entity_id)}
                           className="text-[12px] underline underline-offset-2"
                         >
-                          {translate('open')}
+                          {translate('openAction')}
                         </Link>
                       </span>
                     )}

@@ -1,5 +1,6 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
+
+import { locale, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -508,7 +509,9 @@ export function InvoicesPage() {
             ) : (
               <State
                 icon={<FilePlus2 />}
-                title={translate('noYet', { value1: kind.plural.toLowerCase() })}
+                title={translate('noYet', {
+                  value1: locale === 'de' ? kind.plural : kind.plural.toLowerCase(),
+                })}
                 text={
                   CREATABLE_KINDS.includes(params.kind)
                     ? translate('pickAClientAddAFewLinesAndIssue')
@@ -519,7 +522,7 @@ export function InvoicesPage() {
                   CREATABLE_KINDS.includes(params.kind) && (
                     <Button size="sm" onClick={() => openEditor(params.kind)}>
                       {translate('new2')}
-                      {kind.label.toLowerCase()}
+                      {locale === 'de' ? kind.label : kind.label.toLowerCase()}
                     </Button>
                   )
                 }

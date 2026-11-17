@@ -3,6 +3,7 @@
 // The payroll register, typed by hand from apps/api/internal/employees (payroll.go, bookings.go) and
 // internal/store/queries_payroll.go. Entries record pay computed elsewhere: saving one certifies nothing,
 // approving one is a person's confirmation, and neither means it was paid.
+import { languageTag } from '@helvetly/i18n'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
@@ -151,7 +152,7 @@ export function monthPeriod(month: string): { start: string; end: string } {
 
 /** "November 2026" */
 export const monthLabel = (month: string) =>
-  new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+  new Intl.DateTimeFormat(languageTag, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${month}-01T00:00:00Z`),
   )
 

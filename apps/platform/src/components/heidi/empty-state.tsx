@@ -12,7 +12,8 @@ import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 /** The welcome's staggered entrance; each part adds its delay and slide. */
-const enter = translate('animateInDuration700EaseOutFillModeBackwards')
+const enter =
+  'animate-in duration-700 ease-out fill-mode-backwards fade-in motion-reduce:animate-none'
 
 /** Milliseconds per typed letter, and the pause before the first one. */
 const TYPE_MS = 32
@@ -123,7 +124,7 @@ export function EmptyState({
         </div>
         <div className="grid gap-2">
           <h2
-            aria-label={`${hello}. What’s on your mind?`}
+            aria-label={`${hello}. ${translate('whatSOn')}${translate('yourMind')}`}
             className="text-page leading-[1.15] font-medium tracking-[-0.025em] text-balance @sm/heidi:text-display @sm/heidi:leading-[1.15]"
           >
             <span aria-hidden>
