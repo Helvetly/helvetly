@@ -118,12 +118,28 @@ async function keyboardFocus(element: HTMLElement) {
   await waitFor(() => expect(element.matches(':focus-visible')).toBe(true))
 }
 
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+
+/** The element's box once fonts are in and two frames in a row agree: the baseline a focus must not move. */
+async function settledBox(element: HTMLElement) {
+  await document.fonts.ready
+  let box = element.getBoundingClientRect()
+  await waitFor(async () => {
+    await frame()
+    const next = element.getBoundingClientRect()
+    const same = JSON.stringify(next.toJSON()) === JSON.stringify(box.toJSON())
+    box = next
+    expect(same).toBe(true)
+  })
+  return box
+}
+
 export const Motions: Story = {
   render: () => <Gallery />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const upload = canvas.getByRole('button', { name: 'Upload' })
-    const before = upload.getBoundingClientRect()
+    const before = await settledBox(upload)
     expect(getComputedStyle(icon(upload)).rotate).toBe('none')
     await keyboardFocus(upload)
     await waitFor(() => expect(getComputedStyle(icon(upload)).rotate).toBe('90deg'))
