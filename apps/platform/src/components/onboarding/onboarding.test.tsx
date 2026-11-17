@@ -758,6 +758,18 @@ describe('the welcome', () => {
       await waitFor(() => expect(termsSaved()).toBe(10))
     })
 
+    test('the number format starts as the workspace has it, shows this year’s example and is saved', async () => {
+      const user = userEvent.setup()
+      await toDefaults(user, { ...empty, number_format: 'YYYY/NNN' })
+      const year = new Date().getFullYear()
+      expect(screen.getByText(`Your next invoice: ${year}/001`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Number format/ }))
+      await user.click(await screen.findByRole('option', { name: new RegExp(`RE-${year}-001`) }))
+      expect(screen.getByText(`Your next invoice: RE-${year}-001`)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(saved.at(-1)?.number_format).toBe('RE-YYYY-NNN'))
+    })
+
     test.each([['0'], ['365'], ['45']])('custom %s days is saved as that number', async (text) => {
       const user = userEvent.setup({ delay: null })
       await toDefaults(user)

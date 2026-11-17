@@ -56,6 +56,7 @@ import {
   type FieldErrors,
   type SectionState,
 } from '@/components/section-form'
+import { NumberFormatCombobox } from '@/components/settings/number-format-combobox'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -65,7 +66,6 @@ import {
   INTERVALS,
   logoSrc,
   MISSING_LABELS,
-  NUMBER_FORMATS,
   parseDecimalInput,
   revolutLink,
   revolutUsername,
@@ -1205,25 +1205,10 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
               description={translate('numbersAreGivenWhenAnInvoiceIsIssuedWithout')}
             >
               <FormField id={inputId('number_format')} label={translate('numberFormat')} width="md">
-                <Combobox
+                <NumberFormatCombobox
                   id={inputId('number_format')}
                   value={values.number_format}
-                  options={NUMBER_FORMATS.map((format) => ({
-                    value: format,
-                    label: exampleNumber(format, year, 1),
-                    hint: format,
-                  }))}
-                  renderValue={(option) => (
-                    <span className="flex items-baseline gap-2">
-                      <span className="font-mono">{option.label}</span>
-                      <span className="text-muted-foreground">{option.hint}</span>
-                    </span>
-                  )}
-                  placeholder={translate('chooseAFormat')}
-                  onChange={(format) => {
-                    const picked = NUMBER_FORMATS.find((entry) => entry === format)
-                    if (picked) set('number_format', picked)
-                  }}
+                  onChange={(format) => set('number_format', format)}
                 />
               </FormField>
               <FormField

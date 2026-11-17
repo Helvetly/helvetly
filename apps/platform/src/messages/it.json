@@ -4216,5 +4216,6 @@
   "bringYourDataIntro": "Rilascia fatture, spese, elenchi di clienti o listini in un formato comune. L’IA di Heidi riconosce che cos’è ogni documento e tu controlli e correggi tutto prima dell’importazione.",
   "importedSummary": "Importato: {summary}.",
   "importMoreDocuments": "Importa altri documenti",
-  "importMoreDocumentsHint": "Aggiungi altre fatture, spese, clienti o listini da file."
+  "importMoreDocumentsHint": "Aggiungi altre fatture, spese, clienti o listini da file.",
+  "yourNextInvoiceNumber": "La tua prossima fattura: {number}"
 }

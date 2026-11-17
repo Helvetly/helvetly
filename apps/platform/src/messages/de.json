@@ -4216,5 +4216,6 @@
   "bringYourDataIntro": "Legen Sie Rechnungen, Spesen, Kundenlisten oder Preislisten in einem gängigen Format ab. Die KI von Heidi erkennt, um welches Dokument es sich handelt, und Sie prüfen und korrigieren alles, bevor es importiert wird.",
   "importedSummary": "Importiert: {summary}.",
   "importMoreDocuments": "Weitere Dokumente importieren",
-  "importMoreDocumentsHint": "Weitere Rechnungen, Spesen, Kunden oder Preislisten aus Dateien hinzufügen."
+  "importMoreDocumentsHint": "Weitere Rechnungen, Spesen, Kunden oder Preislisten aus Dateien hinzufügen.",
+  "yourNextInvoiceNumber": "Ihre nächste Rechnung: {number}"
 }

@@ -39,16 +39,19 @@ import {
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { HelpTip } from '@/components/settings/help-tip'
+import { NumberFormatCombobox } from '@/components/settings/number-format-combobox'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { useUpdateProfile } from '@/lib/account'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
 import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
+  exampleNumber,
   ibanInfo,
   logoSrc,
   MISSING_LABELS,
   useInvoiceSettings,
+  today,
   useSaveInvoiceSettings,
   type DocLanguage,
   type InvoiceSettings,
@@ -924,6 +927,7 @@ function PreferencesStep({
   onDone: () => void
 }) {
   const days = values?.default_terms_days ?? 30
+  const currentYear = Number(today().slice(0, 4))
   // A saved 10, 60 or any other number is shown as Custom with its value, never rewritten by showing it.
   const [customChosen, setCustomChosen] = useState(false)
   // What is typed in the days field while it is not (yet) a number that can be saved.
@@ -967,6 +971,20 @@ function PreferencesStep({
             options={CURRENCY_OPTIONS}
             placeholder={translate('chooseACurrency2')}
             onChange={(currency) => onChange({ currency })}
+          />
+        </FormField>
+        <FormField
+          id="onboarding-number-format"
+          label={translate('numberFormat')}
+          hint={translate('yourNextInvoiceNumber', {
+            number: exampleNumber(values?.number_format ?? 'YYYY-NNN', currentYear, 1),
+          })}
+          className="max-w-56"
+        >
+          <NumberFormatCombobox
+            id="onboarding-number-format"
+            value={values?.number_format ?? 'YYYY-NNN'}
+            onChange={(number_format) => onChange({ number_format })}
           />
         </FormField>
         <fieldset className="grid gap-1.5">

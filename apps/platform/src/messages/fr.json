@@ -4216,5 +4216,6 @@
   "bringYourDataIntro": "Déposez des factures, des notes de frais, des listes de clients ou de prix dans un format courant. L’IA de Heidi reconnaît chaque document, et vous vérifiez et corrigez tout avant l’import.",
   "importedSummary": "Importé : {summary}.",
   "importMoreDocuments": "Importer d’autres documents",
-  "importMoreDocumentsHint": "Ajoutez d’autres factures, notes de frais, clients ou listes de prix à partir de fichiers."
+  "importMoreDocumentsHint": "Ajoutez d’autres factures, notes de frais, clients ou listes de prix à partir de fichiers.",
+  "yourNextInvoiceNumber": "Votre prochaine facture : {number}"
 }

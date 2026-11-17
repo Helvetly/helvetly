@@ -5,6 +5,7 @@ import {
   ibanInfo,
   type DocLanguage,
   type InvoiceSettings,
+  type NumberFormat,
   type SettingsInput,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
@@ -24,6 +25,7 @@ export type Values = {
   language: DocLanguage
   currency: string
   default_terms_days: number
+  number_format: NumberFormat
 }
 
 /**
@@ -47,6 +49,7 @@ export function valuesFrom(settings: InvoiceSettings, interfaceLanguage?: DocLan
     language: settings.is_complete ? settings.language : (interfaceLanguage ?? settings.language),
     currency: settings.currency || 'CHF',
     default_terms_days: settings.default_terms_days,
+    number_format: settings.number_format,
   }
 }
 
@@ -93,6 +96,7 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
     language: values.language,
     currency: values.currency,
     default_terms_days: values.default_terms_days,
+    number_format: values.number_format,
   }
 }
 

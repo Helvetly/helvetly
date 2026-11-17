@@ -4216,5 +4216,6 @@
   "bringYourDataIntro": "Drop invoices, expenses, client lists or price lists in any common format. Heidi’s AI works out what each document is, and you check and correct everything before it is imported.",
   "importedSummary": "Imported: {summary}.",
   "importMoreDocuments": "Import more documents",
-  "importMoreDocumentsHint": "Add more invoices, expenses, clients or price lists from files."
+  "importMoreDocumentsHint": "Add more invoices, expenses, clients or price lists from files.",
+  "yourNextInvoiceNumber": "Your next invoice: {number}"
 }

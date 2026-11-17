@@ -700,3 +700,22 @@ export const ImportStepAbsent: Story = {
     await expect(canvasElement.querySelector('[data-testid="onboarding-step-import"]')).toBeNull()
   },
 }
+
+/** The invoice defaults offer the number format, with this year's next number under it. */
+export const NumberFormat: Story = {
+  play: async ({ canvasElement }) => {
+    await begin(canvasElement)
+    await next(canvasElement, 'company', /Continue/)
+    await next(canvasElement, 'logo', /^Continue/)
+    const prefs = within(await step(canvasElement, 'preferences'))
+    const year = new Date().getFullYear()
+    await expect(await prefs.findByText(`Your next invoice: ${year}-001`)).toBeVisible()
+    await userEvent.click(prefs.getByRole('button', { name: /Number format/ }))
+    await userEvent.click(
+      await within(document.body).findByRole('option', { name: new RegExp(`RE-${year}-001`) }),
+    )
+    await expect(prefs.getByText(`Your next invoice: RE-${year}-001`)).toBeVisible()
+  },
+}
+
+export const NumberFormatDark: Story = { ...NumberFormat, parameters: { dark: true } }
