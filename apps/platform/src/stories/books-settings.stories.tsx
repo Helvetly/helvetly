@@ -343,6 +343,8 @@ export const AuditLogEmpty: Story = {
   render: AuditLog.render,
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nothing recorded yet')).toBeVisible()
+    // No "Entries" band (and no rule above it) while there is nothing to list.
+    await expect(within(canvasElement).queryByRole('heading', { name: 'Entries' })).toBeNull()
   },
 }
 
