@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import {
   Sheet,
   SheetContent,
@@ -79,11 +80,7 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
               </Button>
             </div>
           </form>
-          {error && (
-            <p role="alert" className="text-[13px] text-destructive">
-              {errorMessage(error)}
-            </p>
-          )}
+          {error && <InlineError>{errorMessage(error)}</InlineError>}
           <section className="grid gap-2" aria-label={translate('sharedWith')}>
             <h3 className="text-sm font-medium">{translate('sharedWith')}</h3>
             {shares.data?.length === 0 && (

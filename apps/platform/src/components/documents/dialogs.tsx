@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Input } from '@helvetly/ui/components/input'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ChevronRight, HardDrive } from 'lucide-react'
@@ -77,7 +78,7 @@ export function NewFolderDialog({
               setError(null)
             }}
           />
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
+          {error && <InlineError>{error}</InlineError>}
           <DialogFooter className="mt-3">
             <Button type="button" variant="outline" className="cursor-pointer" onClick={onClose}>
               {translate('cancel')}

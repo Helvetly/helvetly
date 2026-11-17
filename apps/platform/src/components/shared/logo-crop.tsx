@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Slider } from '@helvetly/ui/components/slider'
 import type { CropArea } from '@helvetly/ui/lib/photo'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -396,9 +397,9 @@ export function LogoCropDialog({
           </span>
         )}
         {shown && (
-          <p role="alert" className="text-body-sm text-destructive">
+          <InlineError>
             {error && !problem ? `${translate('logoCouldNotBeUploaded')} ${error}` : shown}
-          </p>
+          </InlineError>
         )}
         <DialogFooter>
           <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>

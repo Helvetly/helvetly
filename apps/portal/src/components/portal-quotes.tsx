@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { FormField } from '@helvetly/ui/components/form-field'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Loader } from '@helvetly/ui/components/loader'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Textarea } from '@helvetly/ui/components/textarea'
@@ -146,11 +147,7 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
               onChange={(event) => setNote(event.target.value)}
             />
           </FormField>
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          {error && <InlineError>{error}</InlineError>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={decide.isPending}>
               {translate('cancel')}

@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { ApiError, errorMessage } from '@helvetly/ui/lib/http'
 import { PHOTO_TYPES, photoProblem, shrinkPhoto } from '@helvetly/ui/lib/photo'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -90,11 +91,7 @@ export function PortalPhoto() {
         <p className="text-body-sm text-pretty text-muted-foreground">
           {translate('shownInYourAccountMenuInsteadOfYourInitials')}
         </p>
-        {error && (
-          <p role="alert" className="text-body-sm text-destructive">
-            {error}
-          </p>
-        )}
+        {error && <InlineError>{error}</InlineError>}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button

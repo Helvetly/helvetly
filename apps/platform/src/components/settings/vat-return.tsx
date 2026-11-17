@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { FormField } from '@helvetly/ui/components/form-field'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import {
@@ -906,11 +907,7 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                   <Plus />
                   {translate('addARate')}
                 </Button>
-                {rateError && (
-                  <p role="alert" className="text-body-sm text-destructive">
-                    {rateError}
-                  </p>
-                )}
+                {rateError && <InlineError>{rateError}</InlineError>}
               </fieldset>
             )}
           </fieldset>

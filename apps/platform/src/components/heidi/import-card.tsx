@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { cn } from '@helvetly/ui/lib/utils'
 import { AlertTriangle, Check, CheckCircle2, Copy, Loader2, XCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -53,12 +54,7 @@ export function ImportCard({ batchId }: { batchId: string }) {
   const [results, setResults] = useState<ReadonlyMap<string, CommitResult>>(new Map())
   const [conflicts, setConflicts] = useState<Conflict[]>([])
 
-  if (batch.error)
-    return (
-      <p role="alert" className="mt-2 text-body-sm text-destructive">
-        {errorMessage(batch.error)}
-      </p>
-    )
+  if (batch.error) return <InlineError className="mt-2">{errorMessage(batch.error)}</InlineError>
   if (!batch.data)
     return (
       <Loader2 aria-label={translate('loadingTheImport')} className="mt-2 size-4 animate-spin" />
@@ -160,11 +156,7 @@ export function ImportCard({ batchId }: { batchId: string }) {
               </ul>
             </div>
           ))}
-          {commit.error && (
-            <p role="alert" className="text-destructive">
-              {errorMessage(commit.error)}
-            </p>
-          )}
+          {commit.error && <InlineError>{errorMessage(commit.error)}</InlineError>}
           <div className="flex flex-wrap items-center gap-2">
             {open.length > 0 && (
               <Button

@@ -2,6 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { PHOTO_TYPES, photoProblem } from '@helvetly/ui/lib/photo'
 import { Camera, ImageUp, LoaderCircle, Trash2 } from 'lucide-react'
@@ -114,11 +115,7 @@ export function ProfilePhoto({ user, name }: { user: User; name: string }) {
       <div className="grid min-w-0 flex-1 basis-48 gap-0.5">
         <span className="truncate text-title-sm font-medium text-foreground">{name}</span>
         <p className="text-body-sm text-pretty text-muted-foreground">{hint}</p>
-        {error && (
-          <p role="alert" className="text-body-sm text-destructive">
-            {error}
-          </p>
-        )}
+        {error && <InlineError>{error}</InlineError>}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={busy} onClick={choose}>

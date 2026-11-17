@@ -1,4 +1,5 @@
 'use client'
+import { FieldError } from '@helvetly/ui/components/inline-error'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -65,9 +66,7 @@ export function FormField({
         ),
       )}
       {error ? (
-        <p id={`${id}-error`} className="text-xs text-destructive">
-          {error}
-        </p>
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       ) : (
         hint && <p className="text-xs text-muted-foreground">{hint}</p>
       )}
