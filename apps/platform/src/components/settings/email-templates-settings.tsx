@@ -44,6 +44,14 @@ const KIND_LABELS: Record<EmailKind, string> = {
   quote: translate('emailTemplatesKindQuote'),
 }
 
+/** What each email is, under its name in the list. */
+const KIND_ABOUT: Record<EmailKind, string> = {
+  invoice: translate('emailTemplatesAboutInvoice'),
+  credit_note: translate('emailTemplatesAboutCreditNote'),
+  proforma: translate('emailTemplatesAboutProforma'),
+  quote: translate('emailTemplatesAboutQuote'),
+}
+
 const LANGUAGE_NAMES: Record<EmailLanguage, string> = {
   de: translate('deutsch'),
   fr: translate('franAis'),
@@ -112,8 +120,7 @@ export function EmailTemplatesSections() {
         <ul className="grid gap-1" aria-label={translate('emailTemplatesTitle')}>
           {EMAIL_KINDS.map((kind) => {
             const all = ofKind(kind)
-            const shown = all.find((entry) => entry.language === firstLanguage) ?? all[0]
-            if (!shown) return null
+            if (!all.length) return null
             const custom = all.filter((entry) => entry.custom).length
             return (
               <li key={kind}>
@@ -125,8 +132,8 @@ export function EmailTemplatesSections() {
                 >
                   <span className="grid min-w-0 flex-1 gap-0.5">
                     <span className="text-body font-medium">{KIND_LABELS[kind]}</span>
-                    <span className="truncate text-body-sm text-muted-foreground">
-                      {shown.subject}
+                    <span className="text-body-sm text-pretty text-muted-foreground">
+                      {KIND_ABOUT[kind]}
                     </span>
                     {custom > 0 && (
                       <span className="text-xs text-muted-foreground">

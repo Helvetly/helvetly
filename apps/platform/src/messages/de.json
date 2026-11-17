@@ -4265,5 +4265,9 @@
   "emailTemplatesEdit": "E-Mail für {kind} bearbeiten",
   "emailTemplatesLanguage": "Sprache",
   "emailTemplatesView": "Ansehen",
-  "emailTemplatesUnsaved": "ungespeicherte Änderungen"
+  "emailTemplatesUnsaved": "ungespeicherte Änderungen",
+  "emailTemplatesAboutInvoice": "Geht mit einer Rechnung, Teil- oder Vorauszahlungsrechnung an den Kunden, wenn Sie sie per E-Mail senden.",
+  "emailTemplatesAboutCreditNote": "Geht mit einer Gutschrift, die eine Rechnung mindert oder aufhebt.",
+  "emailTemplatesAboutProforma": "Geht mit einer Proforma-Rechnung: eine Vorankündigung des Betrags, keine Zahlungsaufforderung.",
+  "emailTemplatesAboutQuote": "Geht mit einer Offerte, damit der Kunde sie prüfen und annehmen kann."
 }

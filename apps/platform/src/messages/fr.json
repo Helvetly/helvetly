@@ -4265,5 +4265,9 @@
   "emailTemplatesEdit": "Modifier l’e-mail « {kind} »",
   "emailTemplatesLanguage": "Langue",
   "emailTemplatesView": "Voir",
-  "emailTemplatesUnsaved": "modifications non enregistrées"
+  "emailTemplatesUnsaved": "modifications non enregistrées",
+  "emailTemplatesAboutInvoice": "Envoyé avec une facture, une facture partielle ou d’acompte lorsque vous l’envoyez au client par e-mail.",
+  "emailTemplatesAboutCreditNote": "Envoyé avec une note de crédit qui réduit ou annule une facture.",
+  "emailTemplatesAboutProforma": "Envoyé avec une facture pro forma : une annonce du montant, pas une demande de paiement.",
+  "emailTemplatesAboutQuote": "Envoyé avec une offre, pour que le client puisse l’examiner et l’accepter."
 }

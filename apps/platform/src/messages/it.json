@@ -4265,5 +4265,9 @@
   "emailTemplatesEdit": "Modifica l’e-mail «{kind}»",
   "emailTemplatesLanguage": "Lingua",
   "emailTemplatesView": "Visualizza",
-  "emailTemplatesUnsaved": "modifiche non salvate"
+  "emailTemplatesUnsaved": "modifiche non salvate",
+  "emailTemplatesAboutInvoice": "Inviata con una fattura, una fattura parziale o di acconto quando la invii al cliente per e-mail.",
+  "emailTemplatesAboutCreditNote": "Inviata con una nota di credito che riduce o annulla una fattura.",
+  "emailTemplatesAboutProforma": "Inviata con una fattura pro forma: un preavviso dell’importo, non una richiesta di pagamento.",
+  "emailTemplatesAboutQuote": "Inviata con un’offerta, perché il cliente possa esaminarla e accettarla."
 }

@@ -4265,5 +4265,9 @@
   "emailTemplatesEdit": "Edit the {kind} email",
   "emailTemplatesLanguage": "Language",
   "emailTemplatesView": "View",
-  "emailTemplatesUnsaved": "unsaved changes"
+  "emailTemplatesUnsaved": "unsaved changes",
+  "emailTemplatesAboutInvoice": "Sent with an invoice, a partial or prepayment invoice when you email it to the client.",
+  "emailTemplatesAboutCreditNote": "Sent with a credit note that reduces or cancels an invoice.",
+  "emailTemplatesAboutProforma": "Sent with a pro forma invoice: an advance notice of the amount, not a demand for payment.",
+  "emailTemplatesAboutQuote": "Sent with a quote, so the client can review and accept it."
 }

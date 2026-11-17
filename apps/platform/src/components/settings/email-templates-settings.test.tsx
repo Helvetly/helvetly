@@ -82,6 +82,9 @@ test('lists one row per document type; the language is chosen in the dialog', as
   for (const kind of ['Invoice', 'Credit note', 'Proforma', 'Quote'])
     expect(within(list).getByRole('button', { name: `Edit the ${kind} email` })).toBeVisible()
   expect(within(list).queryByRole('radio')).toBeNull()
+  expect(
+    within(list).getByText('Sent with a quote, so the client can review and accept it.'),
+  ).toBeVisible()
   const box = await open(user, 'Quote')
   expect(box.getByRole('heading', { name: 'Quote email' })).toBeVisible()
   expect(box.getAllByRole('radio')).toHaveLength(4)
