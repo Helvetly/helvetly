@@ -26,7 +26,11 @@ export type Values = {
   default_terms_days: number
 }
 
-export function valuesFrom(settings: InvoiceSettings): Values {
+/**
+ * `interfaceLanguage`: until the company is set up, its documents start in the language the person uses
+ * Helvetly in (they pick another on the language step), so the preview speaks it too.
+ */
+export function valuesFrom(settings: InvoiceSettings, interfaceLanguage?: DocLanguage): Values {
   const { seller } = settings
   return {
     name: seller.name,
@@ -40,7 +44,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     vat_registered: settings.vat_registered,
     vat_number: seller.vat_number ?? '',
     iban: settings.iban ? formatIban(settings.iban) : '',
-    language: settings.language,
+    language: settings.is_complete ? settings.language : (interfaceLanguage ?? settings.language),
     currency: settings.currency || 'CHF',
     default_terms_days: settings.default_terms_days,
   }

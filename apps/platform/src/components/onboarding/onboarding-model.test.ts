@@ -86,3 +86,9 @@ test.each([
   const errors = validate({ ...valuesFrom(sampleSettings()), default_terms_days: days })
   expect('default_terms_days' in errors).toBe(!ok)
 })
+
+test('a company not set up yet starts in the interface language; a set-up one keeps its own', () => {
+  const fresh = { ...sampleSettings(), is_complete: false, language: 'de' as const }
+  expect(valuesFrom(fresh, 'en').language).toBe('en')
+  expect(valuesFrom({ ...fresh, is_complete: true }, 'en').language).toBe('de')
+})
