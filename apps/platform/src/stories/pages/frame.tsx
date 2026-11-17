@@ -57,10 +57,21 @@ type Story = StoryObj
 export const shows =
   (...texts: (string | RegExp)[]): Story['play'] =>
   async ({ canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body)
-    await expect(
-      await body.findByRole('main', { hidden: true }, { timeout: 8000 }),
-    ).toBeInTheDocument()
+    const document = canvasElement.ownerDocument
+    const body = within(document.body)
+    await body.findByRole('main', { hidden: true }, { timeout: 8000 }).catch(() => {
+      // What the page showed instead, so a hang in CI says where it stopped.
+      const root = document.getElementById('storybook-root')
+      throw new Error(
+        [
+          'No <main> after 8 s.',
+          `url: ${document.location.href}`,
+          `page age: ${Math.round(performance.now())} ms`,
+          `service worker: ${navigator.serviceWorker?.controller?.state ?? 'none'}`,
+          `root: ${(root?.innerHTML ?? 'missing').slice(0, 1500)}`,
+        ].join('\n'),
+      )
+    })
     // A list can render a phone card and a desktop row for the same record; one must be visible.
     await waitFor(
       () => {
