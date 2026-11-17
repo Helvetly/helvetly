@@ -154,6 +154,7 @@
   "validUntil2": "Valable jusqu’au {value1}",
   "vatNumber": "Numéro de TVA",
   "viewInvoices": "Afficher les factures",
+  "credited": "Créditée",
   "void": "Annulée",
   "waitingForApproval": "En attente d’approbation",
   "youAskedForTheseChangesOn": "Vous avez demandé ces modifications le ",

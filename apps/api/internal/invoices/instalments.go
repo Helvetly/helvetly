@@ -200,6 +200,8 @@ func allocate(inv *store.Invoice, today string) {
 		it := &items[i]
 		it.Effective, it.Paid, it.Open = effective[i], paid[i], effective[i]-paid[i]
 		switch {
+		case it.Effective == 0 && it.Amount > 0:
+			it.Status = "credited" // credit notes took all of it: nothing was or is owed
 		case it.Open == 0:
 			it.Status = "paid"
 		case it.DueDate < today:

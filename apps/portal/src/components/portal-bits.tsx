@@ -158,6 +158,9 @@ const STATUS: Record<string, [Tone, string]> = {
 
 export function InvoiceStatus({ invoice }: { invoice: PortalInvoice }) {
   if (invoice.is_overdue) return <StatusBadge tone="red">{translate('overdue')}</StatusBadge>
+  // The server marks a fully credited invoice void; one paid before it was credited (and refunded) was not cancelled.
+  if (invoice.status === 'void' && Number(invoice.amount_paid) > 0)
+    return <StatusBadge tone="gray">{translate('credited')}</StatusBadge>
   const [tone, label] = STATUS[invoice.status] ?? ['gray', invoice.status.replaceAll('_', ' ')]
   return <StatusBadge tone={tone}>{label}</StatusBadge>
 }

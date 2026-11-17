@@ -2,7 +2,7 @@
 // from a draft through invoicesApi.createPlan; this file reads and steers it.
 import { request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import type { Interval } from '@/lib/invoices'
+import { today, type Interval } from '@/lib/invoices'
 
 export type PlanStatus = 'active' | 'paused' | 'cancelled' | 'done'
 export type PlanItem = {
@@ -54,3 +54,8 @@ export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
 /** How many of the plan's partials are issued, for "2 of 6". */
 export const issuedCount = (plan: Pick<Plan, 'items'>) =>
   plan.items.filter((item) => item.status === 'issued').length
+
+/** An active plan with a partial whose issue day has come but which the server has not issued yet. */
+export const awaitingIssue = (plan: Pick<Plan, 'status' | 'items'>, now = today()) =>
+  plan.status === 'active' &&
+  plan.items.some((item) => item.status === 'scheduled' && item.issue_on <= now)

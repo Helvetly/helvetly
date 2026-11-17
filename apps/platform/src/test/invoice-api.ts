@@ -171,6 +171,7 @@ export const listItem = (invoice: Invoice): InvoiceListItem => ({
   total: invoice.total,
   rounding_amount: invoice.rounding_amount,
   payable_total: invoice.payable_total,
+  amount_paid: invoice.amount_paid,
   amount_due: invoice.amount_due,
   refund_due: invoice.refund_due,
   payment_methods: invoice.payment_methods,

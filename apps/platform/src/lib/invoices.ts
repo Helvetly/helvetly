@@ -232,7 +232,8 @@ export type Invoice = Totals & {
 }
 
 export type Interval = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly'
-export type InstalmentStatus = 'paid' | 'part_paid' | 'open' | 'overdue'
+/** credited: credit notes took the whole instalment (they take from the last one backwards). */
+export type InstalmentStatus = 'paid' | 'part_paid' | 'open' | 'overdue' | 'credited'
 export type InstalmentItem = {
   seq: number
   due_date: string
@@ -388,6 +389,7 @@ export type InvoiceListItem = Pick<
   | 'rounding_amount'
   | 'payable_total'
   | 'amount_due'
+  | 'amount_paid'
   | 'refund_due'
   | 'payment_methods'
   | 'sent_at'
@@ -542,6 +544,7 @@ export const INSTALMENT_STATUS_LABELS: Record<InstalmentStatus, string> = {
   part_paid: translate('partPaid'),
   open: translate('open'),
   overdue: translate('overdue3'),
+  credited: translate('creditedStatus'),
 }
 
 /** The official VATEX-EU codes (CEF code list); the API accepts no others. */
@@ -988,14 +991,20 @@ export type DisplayStatus =
   | 'overdue'
   | 'paid'
   | 'void'
+  | 'credited'
   | 'replaced'
   | 'credit_draft'
   | 'credit_applied'
 
-export function displayStatus(item: Pick<Invoice, 'kind' | 'status' | 'is_overdue'>) {
+export function displayStatus(
+  item: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'amount_paid'>,
+): DisplayStatus {
   if (item.kind === 'credit_note')
     return item.status === 'draft' ? 'credit_draft' : 'credit_applied'
   if (item.status === 'open' && item.is_overdue) return 'overdue'
+  // The server marks a fully credited invoice void; one that was paid first (then credited and refunded)
+  // was never cancelled unpaid, so it reads "Credited".
+  if (item.status === 'void' && isPositive(item.amount_paid)) return 'credited'
   return item.status
 }
 
@@ -1005,6 +1014,7 @@ export const STATUS_LABELS: Record<DisplayStatus, string> = {
   overdue: translate('overdue3'),
   paid: translate('paid'),
   void: translate('void2'),
+  credited: translate('creditedStatus'),
   replaced: translate('replaced'),
   credit_draft: translate('draft'),
   credit_applied: translate('applied'),

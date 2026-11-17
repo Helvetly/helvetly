@@ -29,6 +29,7 @@ import {
   memo,
   type ReactNode,
   useEffect,
+  useContext,
   useEffectEvent,
   useMemo,
   useState,
@@ -49,6 +50,11 @@ import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { Initials } from '@/components/initials'
+import {
+  RecordDrawersContext,
+  RecordReplaceContext,
+  type RecordRef,
+} from '@/components/record-link'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
@@ -293,6 +299,14 @@ export function InvoicesPage() {
     navigate(next)
   }
   const commands = useInvoiceCommands(openInvoice)
+  const openStacked = useContext(RecordDrawersContext)
+  // A record linked from the page's drawer (a plan's partial) takes its place; Back returns to the one before.
+  const showInPlace = useStableCallback((record: RecordRef) => {
+    if (record.kind !== 'invoice') return openStacked?.(record)
+    const next = composeQuery(query, null)
+    next.set('id', record.id)
+    setUrlQuery(listPath, next, true)
+  })
 
   // ?refund=1 (from "Issue and record refund now") opens the refund dialog once, then goes away.
   const refundFor = query.get('refund') === '1' ? openId : null
@@ -633,23 +647,24 @@ export function InvoicesPage() {
         </div>
       </PageContextMenu>
 
-      {openId && (
-        <InvoiceDetail
-          key={`detail:${openId}`}
-          id={openId}
-          canManage={canManage}
-          onClose={() => openInvoice(null)}
-          run={commands.run}
-          busy={commands.busy}
-        />
-      )}
-      {compose && (
-        <InvoiceEditorDrawer
-          compose={compose}
-          onClose={() => navigate(composeQuery(query, null))}
-          onCreated={(id) => navigate(composeQuery(query, { ...compose, id }))}
-        />
-      )}
+      <RecordReplaceContext.Provider value={showInPlace}>
+        {openId && (
+          <InvoiceDetail
+            id={openId}
+            canManage={canManage}
+            onClose={() => openInvoice(null)}
+            run={commands.run}
+            busy={commands.busy}
+          />
+        )}
+        {compose && (
+          <InvoiceEditorDrawer
+            compose={compose}
+            onClose={() => navigate(composeQuery(query, null))}
+            onCreated={(id) => navigate(composeQuery(query, { ...compose, id }))}
+          />
+        )}
+      </RecordReplaceContext.Provider>
       {commands.dialogs}
       {deleting && deleting.length > 0 && (
         <ConfirmDialog

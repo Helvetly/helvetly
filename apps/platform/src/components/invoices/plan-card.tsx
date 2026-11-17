@@ -10,7 +10,13 @@ import { toast } from 'sonner'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage, type ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { instalmentsApi, issuedCount, PLAN_STATUS_LABELS, type Plan } from '@/lib/instalments'
+import {
+  awaitingIssue,
+  instalmentsApi,
+  issuedCount,
+  PLAN_STATUS_LABELS,
+  type Plan,
+} from '@/lib/instalments'
 import { formatDay, INTERVALS, invoiceKeys } from '@/lib/invoices'
 
 export const planKeys = {
@@ -23,6 +29,9 @@ export const usePlan = (id: string) =>
   useQuery<Plan, ApiError>({
     queryKey: planKeys.detail(id),
     queryFn: async () => (await instalmentsApi.get(id)).data,
+    // The server's job issues a due partial moments after the plan is made: look again until it has.
+    refetchInterval: (query) =>
+      query.state.data && awaitingIssue(query.state.data) ? 5000 : false,
   })
 
 export const usePlans = (clientId?: string) =>
@@ -153,6 +162,7 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
             </span>
             {item.invoice_id ? (
               <RecordLink
+                inPlace
                 href={`/invoices?id=${encodeURIComponent(item.invoice_id)}`}
                 className="underline-offset-4 hover:underline"
               >

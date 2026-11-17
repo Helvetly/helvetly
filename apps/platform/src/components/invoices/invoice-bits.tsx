@@ -42,6 +42,7 @@ export const STATUS_TONES: Record<DisplayStatus, Tone> = {
   overdue: 'red',
   paid: 'green',
   void: 'gray',
+  credited: 'gray',
   replaced: 'gray',
   credit_draft: 'gray',
   credit_applied: 'amber',
@@ -50,7 +51,7 @@ export const STATUS_TONES: Record<DisplayStatus, Tone> = {
 export function InvoiceStatusBadge({
   invoice,
 }: {
-  invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue'>
+  invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'amount_paid'>
 }) {
   const status = displayStatus(invoice)
   return <StatusBadge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>
@@ -60,7 +61,7 @@ export function InvoiceStatusBadge({
 export function RowStatus({
   invoice,
 }: {
-  invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'refund_due'>
+  invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'refund_due' | 'amount_paid'>
 }) {
   return isPositive(invoice.refund_due) ? (
     <StatusBadge tone="amber">{translate('refundDue')}</StatusBadge>

@@ -104,3 +104,20 @@ export const DownloadLink: Story = {
     await expect(link).toHaveAttribute('href', '/api/v1/public/portal/invoices/inv_1/pdf')
   },
 }
+
+/** Paid, then fully credited and refunded: the server's void reads "Credited", never "Void". */
+export const CreditedAfterPaying: Story = {
+  parameters: withInvoices(() =>
+    HttpResponse.json({
+      data: [
+        { ...portalInvoices[3]!, id: 'inv_c', status: 'void', amount_paid: '1000.00' },
+        { ...portalInvoices[4]!, id: 'inv_v', status: 'void' },
+      ],
+    }),
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Credited')).toBeVisible()
+    await expect(canvas.getByText('Void')).toBeVisible()
+  },
+}

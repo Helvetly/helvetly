@@ -185,7 +185,7 @@ func TestCreditReducesFromLast(t *testing.T) {
 	if got := amounts(inv, func(it store.InstalmentItem) store.Money { return it.Effective }); !slices.Equal(got, []string{"360.35", "288.25", "0.00"}) {
 		t.Fatalf("effective %v", got)
 	}
-	if inv.Instalments.Items[2].Status != "paid" || inv.Instalments.Items[0].Status != "open" {
+	if inv.Instalments.Items[2].Status != "credited" || inv.Instalments.Items[1].Status != "open" || inv.Instalments.Items[0].Status != "open" {
 		t.Fatalf("statuses %+v", inv.Instalments.Items)
 	}
 }

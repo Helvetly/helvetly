@@ -24,6 +24,7 @@ export type PortalInvoice = {
   currency: string
   total: string
   amount_due: string
+  amount_paid: string
 }
 
 export type PortalEngagement = {

@@ -7051,7 +7051,9 @@
             "$ref": "#/components/schemas/Money"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": ["open", "part_paid", "overdue", "paid", "credited"],
+            "description": "credited: credit notes reduced the instalment to zero (they take from the last instalment backwards)."
           },
           "reference": {
             "type": ["string", "null"]
@@ -7158,6 +7160,9 @@
           "prepaid_total": {
             "$ref": "#/components/schemas/Money"
           },
+          "amount_paid": {
+            "$ref": "#/components/schemas/Money"
+          },
           "amount_due": {
             "$ref": "#/components/schemas/Money"
           },
@@ -7200,6 +7205,7 @@
           "rounding_amount",
           "payable_total",
           "prepaid_total",
+          "amount_paid",
           "amount_due",
           "refund_due",
           "payment_methods",
