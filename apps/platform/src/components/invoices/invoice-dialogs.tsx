@@ -26,6 +26,7 @@ import {
 } from '@/components/fix-list'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
+import { useInvoiceEmailDraft } from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
 import {
   documentName,
@@ -38,7 +39,6 @@ import {
   toCents,
   useAddPayment,
   useAddRefund,
-  useInvoiceSettings,
   useMarkPaid,
   useSendInvoice,
   type InvoiceListItem,
@@ -415,16 +415,18 @@ export function SendDialog({
   onClose: () => void
 }) {
   const client = useClient(invoice.client.id).data
-  const seller = useInvoiceSettings().data?.seller.name
+  const draft = useInvoiceEmailDraft(invoice.id)
   const fallback = client?.billing_email ?? client?.email ?? ''
+  // null = untouched: the draft shows through, and what the user typed is never replaced by it.
   const [to, setTo] = useState<string | null>(null)
   const [cc, setCc] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const send = useSendInvoice()
-  const defaultSubject = `${documentName(invoice)}${seller ? translate('from2', { seller: seller }) : ''}`
-  const recipients = to ?? fallback
+  const recipients = to ?? (draft.data?.to.join(', ') || fallback)
+  const shownSubject = subject ?? draft.data?.subject ?? ''
+  const shownMessage = message ?? draft.data?.message ?? ''
 
   const submit = () => {
     const list = emails(recipients)
@@ -437,9 +439,9 @@ export function SendDialog({
         input: {
           to: list,
           ...(emails(cc).length ? { cc: emails(cc) } : {}),
-          // Left alone, the server writes the subject in the invoice's language.
-          ...(subject?.trim() ? { subject: subject.trim() } : {}),
-          ...(message.trim() ? { message: message.trim() } : {}),
+          // Left empty (draft failed), the server writes both in the invoice's language.
+          ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
+          ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
         },
       },
       {
@@ -482,6 +484,7 @@ export function SendDialog({
           type="email"
           multiple
           value={recipients}
+          disabled={draft.isPending}
           onChange={(event) => setTo(event.target.value)}
           placeholder={translate('accountsClientCh')}
           className={fieldClass}
@@ -501,9 +504,9 @@ export function SendDialog({
       <FormField id="send-subject" label={translate('subject')} error={errors.subject}>
         <input
           {...describedBy('send-subject', errors.subject)}
-          value={subject ?? ''}
+          value={shownSubject}
+          disabled={draft.isPending}
           onChange={(event) => setSubject(event.target.value)}
-          placeholder={translate('inTheInvoiceSLanguage', { defaultSubject: defaultSubject })}
           className={fieldClass}
         />
       </FormField>
@@ -511,11 +514,9 @@ export function SendDialog({
         <textarea
           {...describedBy('send-message', errors.message)}
           rows={4}
-          value={message}
+          value={shownMessage}
+          disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder={translate('helloPleaseFindAttachedKindRegards', {
-            value1: documentName(invoice).toLowerCase(),
-          })}
           className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
         />
       </FormField>

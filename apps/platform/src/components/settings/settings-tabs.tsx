@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   CreditCard,
   Landmark,
+  Mail,
   PlugZap,
   ReceiptText,
   ScrollText,
@@ -29,6 +30,7 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
+  { label: translate('emails'), href: '/settings/emails', icon: Mail },
   { label: translate('vatReturn'), href: '/settings/vat-return', icon: Landmark },
   { label: translate('ledger'), href: '/settings/ledger', icon: BookOpen },
   // The books in the order of a month-end: record, declare, post, close, audit.
