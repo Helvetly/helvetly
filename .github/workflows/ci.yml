@@ -222,7 +222,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/3', '2/3', '3/3']
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5']
     steps:
       - *checkout
       - *pnpm
@@ -282,7 +282,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/3', '2/3', '3/3'] # screenshots and the focus audit of every story
+        shard: ['1/5', '2/5', '3/5', '4/5', '5/5'] # screenshots and the focus audit of every story
     steps:
       - *checkout
       - *pnpm
