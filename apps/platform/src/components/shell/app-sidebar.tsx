@@ -40,7 +40,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
-import { featureLock, PLANS_HREF, PlanTag, toastLocked } from '@/components/billing/feature-lock'
+import {
+  featureLock,
+  PLANS_HREF,
+  PlanTag,
+  toastLocked,
+  useBillingStatus,
+} from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpDialog } from '@/components/help/help-dialog'
@@ -51,7 +57,7 @@ import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
 import { api, setCsrfToken, type Session, type User } from '@/lib/api'
-import { type Billing, useBilling } from '@/lib/billing'
+import { type Billing } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
 import { effectiveScopes } from '@/lib/permissions'
@@ -112,7 +118,7 @@ export function AppSidebar({ session }: { session: Session }) {
   useShortcut('sidebar', toggleSidebar)
   useShortcut('notifications', () => router.push('/notifications'))
   const switchWorkspace = useSwitchWorkspace()
-  const billing = useBilling().data
+  const { billing, loading: billingPending } = useBillingStatus()
   // Until the list loads, the current workspace comes from the session.
   const workspaces: WorkspaceItem[] = useWorkspaces().data ?? [
     { ...session.workspace, role: session.role, current: true },
@@ -221,81 +227,86 @@ export function AppSidebar({ session }: { session: Session }) {
         {help && <HelpDialog open={help.open} onOpenChange={(open) => setHelp({ open })} />}
       </SidebarHeader>
       <SidebarContent className="gap-1 px-0 py-1">
-        {visibleNav(effectiveScopes(session.role, session.scopes), billing).map((group, index) => (
-          <SidebarGroup
-            key={group.label ?? index}
-            className={cn('py-1', group.bottom && 'mt-auto')}
-          >
-            {group.label && (
-              <SidebarGroupLabel className="h-8 px-2.5 text-[13px] font-normal text-[#a8a7aa] dark:text-muted-foreground">
-                {group.label}
-              </SidebarGroupLabel>
-            )}
-            <SidebarMenu className="gap-px">
-              {group.items.map(
-                ({ label, icon: Icon, href, isNew, heidi: opensHeidi, bell, feature }) => {
-                  const lock = feature ? featureLock(billing, feature) : null
-                  const tag = lock ? (
-                    <PlanTag lock={lock} className="group-data-[collapsible=icon]:hidden" />
-                  ) : (
-                    isNew && <NewTag />
-                  )
-                  return bell ? (
-                    <SidebarMenuItem key={label}>
-                      <NotificationsBell className={itemClass} onGo={() => setOpenMobile(false)} />
-                    </SidebarMenuItem>
-                  ) : (
-                    <SidebarMenuItem key={label}>
-                      <SidebarMenuButton
-                        asChild={Boolean(href)}
-                        tooltip={
-                          opensHeidi
-                            ? { children: <WithShortcut label={label} id="heidi" /> }
-                            : label
-                        }
-                        isActive={href ? isCurrent(current, href) : false}
-                        aria-expanded={opensHeidi ? Boolean(heidi?.open) : undefined}
-                        className={itemClass}
-                        onClick={
-                          href
-                            ? undefined
-                            : opensHeidi
-                              ? () => {
-                                  setOpenMobile(false)
-                                  if (lock) toastLocked(lock, () => router.push(PLANS_HREF))
-                                  else heidi?.setOpen(!heidi.open)
-                                }
-                              : () => toast(translate('isComingSoon', { label: label }))
-                        }
-                      >
-                        {href ? (
-                          <Link
-                            href={href}
-                            {...linkProps(href)}
-                            onClick={() => {
-                              setOpenMobile(false)
-                              linkProps(href).onClick()
-                            }}
-                          >
-                            <Icon />
-                            <span>{label}</span>
-                            {tag}
-                          </Link>
-                        ) : (
-                          <>
-                            <Icon />
-                            <span>{label}</span>
-                            {tag}
-                          </>
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                },
+        {visibleNav(effectiveScopes(session.role, session.scopes), billing, billingPending).map(
+          (group, index) => (
+            <SidebarGroup
+              key={group.label ?? index}
+              className={cn('py-1', group.bottom && 'mt-auto')}
+            >
+              {group.label && (
+                <SidebarGroupLabel className="h-8 px-2.5 text-[13px] font-normal text-[#a8a7aa] dark:text-muted-foreground">
+                  {group.label}
+                </SidebarGroupLabel>
               )}
-            </SidebarMenu>
-          </SidebarGroup>
-        ))}
+              <SidebarMenu className="gap-px">
+                {group.items.map(
+                  ({ label, icon: Icon, href, isNew, heidi: opensHeidi, bell, feature }) => {
+                    const lock = feature ? featureLock(billing, feature) : null
+                    const tag = lock ? (
+                      <PlanTag lock={lock} className="group-data-[collapsible=icon]:hidden" />
+                    ) : (
+                      isNew && <NewTag />
+                    )
+                    return bell ? (
+                      <SidebarMenuItem key={label}>
+                        <NotificationsBell
+                          className={itemClass}
+                          onGo={() => setOpenMobile(false)}
+                        />
+                      </SidebarMenuItem>
+                    ) : (
+                      <SidebarMenuItem key={label}>
+                        <SidebarMenuButton
+                          asChild={Boolean(href)}
+                          tooltip={
+                            opensHeidi
+                              ? { children: <WithShortcut label={label} id="heidi" /> }
+                              : label
+                          }
+                          isActive={href ? isCurrent(current, href) : false}
+                          aria-expanded={opensHeidi ? Boolean(heidi?.open) : undefined}
+                          className={itemClass}
+                          onClick={
+                            href
+                              ? undefined
+                              : opensHeidi
+                                ? () => {
+                                    setOpenMobile(false)
+                                    if (lock) toastLocked(lock, () => router.push(PLANS_HREF))
+                                    else heidi?.setOpen(!heidi.open)
+                                  }
+                                : () => toast(translate('isComingSoon', { label: label }))
+                          }
+                        >
+                          {href ? (
+                            <Link
+                              href={href}
+                              {...linkProps(href)}
+                              onClick={() => {
+                                setOpenMobile(false)
+                                linkProps(href).onClick()
+                              }}
+                            >
+                              <Icon />
+                              <span>{label}</span>
+                              {tag}
+                            </Link>
+                          ) : (
+                            <>
+                              <Icon />
+                              <span>{label}</span>
+                              {tag}
+                            </>
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  },
+                )}
+              </SidebarMenu>
+            </SidebarGroup>
+          ),
+        )}
       </SidebarContent>
       <SidebarFooter className="gap-2 px-2 pb-3">
         <SidebarPlanNotice

@@ -28,12 +28,12 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+import { useBillingStatus } from '@/components/billing/feature-lock'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { useOpenNotificationPrefs } from '@/components/notifications/prefs-drawer'
 import { useOpenHref } from '@/components/record-link'
 import { ShortcutKeys } from '@/components/shortcuts/shortcut-keys'
 import { nextTheme } from '@/components/shortcuts/theme-shortcut'
-import { useBilling } from '@/lib/billing'
 import { effectiveSearch, useClientSearch } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { can, useScopes } from '@/lib/permissions'
@@ -56,7 +56,7 @@ export function CommandPalette({
   const openPrefs = useOpenNotificationPrefs()
   const openHref = useOpenHref()
   const scopes = useScopes()
-  const billing = useBilling().data
+  const { billing, loading: billingPending } = useBillingStatus()
   const { theme, setTheme } = useTheme()
   const heidi = useHeidi()
   const [term, setTerm] = useState('')
@@ -112,7 +112,7 @@ export function CommandPalette({
             </>
           )}
           <CommandGroup heading={translate('goTo')}>
-            {visibleNav(scopes, billing)
+            {visibleNav(scopes, billing, billingPending)
               .flatMap((group) => group.items)
               .filter((item) => item.href)
               .map(({ label, icon: Icon, href }) => (

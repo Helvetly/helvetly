@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { settingsPageAt } from '@/components/settings/settings-tabs'
 import type { Session } from '@/lib/api'
 import { accountHandlers, resetAccountMock } from '@/mocks/account'
@@ -30,6 +31,7 @@ const server = setupServer(
   http.get('/api/v1/auth/config', () =>
     HttpResponse.json({ google: true, email: true, passkey: true, dev_codes: false }),
   ),
+  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
   http.get('/api/v1/account/passkeys', () => HttpResponse.json({ data: [] })),
   ...accountHandlers,
 )
@@ -132,6 +134,7 @@ test('the settings tabs mark this page and open another one', async () => {
   const tabs = await screen.findByRole('navigation', { name: 'Views' })
   // Owners and admins also get the audit log, once the session says who this is.
   await within(tabs).findByRole('button', { name: 'Audit log' })
+  await within(tabs).findByRole('button', { name: 'Employment' })
   const names = within(tabs)
     .getAllByRole('button')
     .map((tab) => tab.textContent)

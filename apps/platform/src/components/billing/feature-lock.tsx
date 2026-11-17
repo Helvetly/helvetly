@@ -42,12 +42,25 @@ const seeLabel = (lock: NonNullable<FeatureLock>) =>
 
 /**
  * Employees and payroll are not shown at all on a plan without them, unless the owner still has records to read and
- * export (a downgrade): then the pages stay, read-only.
+ * export (a downgrade): then the pages stay, read-only. While billing loads they are hidden too, so nothing flashes
+ * in and out; a member who cannot read billing (it errors) sees them as before, the API still guards them.
  */
-export const employeesHidden = (billing: Billing | undefined) =>
-  Boolean(featureLock(billing, 'employees')) && !billing?.has_employees
+export const employeesHidden = (billing: Billing | undefined, loading = false) =>
+  loading || (Boolean(featureLock(billing, 'employees')) && !billing?.has_employees)
 
-export const useEmployeesHidden = () => employeesHidden(useBilling().data)
+/**
+ * Billing and whether its first answer is still to come. A refused read (a member without billing access) is not
+ * "loading", even though React Query flips an errored query back to pending on every refetch.
+ */
+export function useBillingStatus() {
+  const { data, isPending, errorUpdateCount } = useBilling()
+  return { billing: data, loading: isPending && errorUpdateCount === 0 }
+}
+
+export function useEmployeesHidden() {
+  const { billing, loading } = useBillingStatus()
+  return employeesHidden(billing, loading)
+}
 
 /** `featureLock` for the signed-in workspace. */
 export const useFeatureLock = (feature: FeatureKey) => featureLock(useBilling().data, feature)

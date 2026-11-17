@@ -8,9 +8,14 @@ import { AccessEditor } from '@/components/members/access-editor'
 import type { PlanId } from '@/lib/billing'
 import { ADMIN_HR, EVERYTHING } from '@/lib/permissions'
 
-const billing = (plan: PlanId) =>
+const billing = (plan: PlanId, records = true) =>
   http.get('/api/v1/billing', () =>
-    HttpResponse.json({ data: billingFixture({ plan, locked: false, status: 'active' }) }),
+    HttpResponse.json({
+      data: {
+        ...billingFixture({ plan, locked: false, status: 'active' }),
+        has_employees: records,
+      },
+    }),
   )
 
 const meta = {
@@ -126,7 +131,7 @@ export const HRRowsForOwner: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const scopes = canvas.getByRole('status', { name: 'Scopes' })
-    const hr = within(canvas.getByRole('table', { name: 'Employees and payroll' }))
+    const hr = within(await canvas.findByRole('table', { name: 'Employees and payroll' }))
     await expect(hr.getByRole('radio', { name: 'Payroll: No access' })).toBeChecked()
     await userEvent.click(canvas.getByRole('radio', { name: 'Full access' }))
     await expect(hr.getByRole('radio', { name: 'Payroll: View' })).toBeChecked()
@@ -151,7 +156,7 @@ export const HRRowsLockedForAdmin: Story = {
   render: () => <Editor initial={['*:*', 'read:payroll']} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const table = canvas.getByRole('table', { name: 'Employees and payroll' })
+    const table = await canvas.findByRole('table', { name: 'Employees and payroll' })
     const hr = within(table)
     const radios = hr.getAllByRole('radio')
     await expect(radios.map((radio) => radio.matches(':disabled'))).toEqual(radios.map(() => true))
@@ -183,7 +188,7 @@ export const AdminHROnly: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('group', { name: 'Access' })).toBeNull()
     await expect(canvas.queryByRole('table', { name: 'Area' })).toBeNull()
-    await expect(canvas.getByText('Full access as admin; HR: view payroll')).toBeVisible()
+    await expect(await canvas.findByText('Full access as admin; HR: view payroll')).toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: 'Payroll: Edit' }))
     await userEvent.click(canvas.getByRole('radio', { name: 'Employees: View' }))
     await expect(canvas.getByRole('status', { name: 'Scopes' })).toHaveTextContent(
@@ -197,13 +202,28 @@ export const AdminHROnly: Story = {
   },
 }
 
+/** A plan without Employees and no employee records: the HR matrix is not offered at all. */
+export const HiddenWithoutEmployeesModule: Story = {
+  parameters: { msw: { handlers: [billing('pro', false)] } },
+  render: () => <Editor owner />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // the access presets are there, so the missing matrix is not just an editor that has not rendered
+    await expect(await canvas.findByRole('group', { name: 'Access' })).toBeVisible()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Custom' }))
+    await expect(await canvas.findByRole('table', { name: 'Area' })).toBeVisible()
+    await expect(canvas.queryByRole('table', { name: 'Employees and payroll' })).toBeNull()
+    await expect(canvas.queryByRole('radio', { name: /^Employees:/ })).toBeNull()
+  },
+}
+
 /** On a plan without Employees the HR rows are locked, with the plan tag used for every locked feature. */
 export const WithoutEmployeesModule: Story = {
   parameters: { msw: { handlers: [billing('pro')] } },
   render: () => <Editor owner />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const hr = within(canvas.getByRole('table', { name: 'Employees and payroll' }))
+    const hr = within(await canvas.findByRole('table', { name: 'Employees and payroll' }))
     await expect(await hr.findByText('Business')).toBeVisible()
     const radios = hr.getAllByRole('radio')
     await expect(radios.map((radio) => radio.matches(':disabled'))).toEqual(radios.map(() => true))
