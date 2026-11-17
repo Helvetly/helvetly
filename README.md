@@ -207,8 +207,8 @@ left of the UTC month. When a renewal fails, new AI work stops at once and the r
 after the paid period ended; then the workspace is read-only until the invoice is paid (Stripe's retries continue
 meanwhile). A second subscription of the same workspace is cancelled with its unused time credited.
 
-The trial is the offer's (`trial`): its plan's features for its days and seats, with small allowances for the whole
-trial. It needs a card, and a customer gets one: the person, their email and their card's fingerprint are kept as
+The trial is the offer's (`trial`): its plan's features and limits for its days and seats (the current offer has no
+overrides: a trial's monthly limits are one pool for the whole trial). It needs a card, and a customer gets one: the person, their email and their card's fingerprint are kept as
 digests in `trial_claims`, and a trial started again with a known card is ended at once. All trials together spend
 at most USD 20 a day on the AI model.
 

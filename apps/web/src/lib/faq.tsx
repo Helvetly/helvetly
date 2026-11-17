@@ -30,7 +30,7 @@ export type Question = {
  * `teaser` also puts it in the short list on the home or the pricing page.
  */
 export const faqIn = perLanguage((translate, language) => {
-  const { bytes, count, plansWith, tokens, value } = plansIn(language)
+  const { count, plansWith, tokens, value } = plansIn(language)
 
   const FAQ: Question[] = [
     {
@@ -97,13 +97,6 @@ export const faqIn = perLanguage((translate, language) => {
       a: translate('tryProForDaysWithUpToTeamMembers', {
         days: TRIAL.days,
         members: TRIAL.members,
-        invoices: TRIAL.invoices,
-        quotes: TRIAL.quotes,
-        expenses: TRIAL.expenses,
-        signatures: TRIAL.signatures,
-        value6: bytes(TRIAL.storageBytes),
-        value7: count(TRIAL.aiTokens),
-        automationActions: TRIAL.automationActions,
       }),
     },
     {

@@ -33,8 +33,8 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database, the one 00007 publishes.
-const currentOffer = "helvetly-v1"
+// currentOffer is the offer on sale in the seeded database, the one 00017 publishes (00007 published helvetly-v1).
+const currentOffer = "helvetly-v1.1"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]
@@ -138,7 +138,9 @@ func TestOfferValidation(t *testing.T) {
 			recordOf(o, "ai_cost_usd_micros").PerAdditionalPaidSeat[Business] = 1
 			o.UsagePolicy.Pooled = removed(o.UsagePolicy.Pooled, "ai_cost_usd_micros")
 		}, "ai_cost_usd_micros per paid seat on business"},
-		{"a trial whose AI cost cannot fund its tokens", func(o *Offer) { o.Trial.Overrides["ai_cost_usd_micros"] = 100 }, "trial.overrides.ai_cost_usd_micros"},
+		{"a trial whose AI cost cannot fund its tokens", func(o *Offer) {
+			o.Trial.Overrides["ai_tokens_per_month"], o.Trial.Overrides["ai_cost_usd_micros"] = 1_000_000, 100
+		}, "trial.overrides.ai_cost_usd_micros"},
 		{"markup in a label", func(o *Offer) { o.PublicPricing.ComparisonRows[0].LabelEN = "<b>Invoices</b>" }, "label_en must be plain text"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -138,18 +138,11 @@ export type Plan = {
   highlights: string[]
 }
 
-/** The trial: Pro features for a short time, with small allowances that neither reset nor grow with people. */
+/** The trial: Pro features and limits for a short time, for a small team (the offer's trial has no overrides). */
 export const TRIAL = {
   days: 7,
   plan: 'pro' satisfies PlanId,
   members: 2,
-  invoices: 10,
-  quotes: 10,
-  expenses: 20,
-  signatures: 2,
-  storageBytes: 100 * MB,
-  aiTokens: 250_000,
-  automationActions: 50,
 }
 export const TRIAL_DAYS = TRIAL.days
 

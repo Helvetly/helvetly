@@ -731,7 +731,7 @@ export const PlansNoPlan: Story = {
     const proCard = card(canvas, 'Pro')
     await expect(
       proCard.getByText(
-        "Pro free for 7 days, up to 2 people, card required. Trial allowances don't reset or grow with people. Then CHF 49 per person a month.",
+        'Pro free for 7 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 49 per person a month.',
       ),
     ).toBeVisible()
     await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()

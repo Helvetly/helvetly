@@ -3668,7 +3668,7 @@
   "keepPlan": "Keep {name}",
   "packTokensAddToThePlan": "Tokens from packs bought earlier add to your plan's allowance and are used once it runs out. Packs are no longer sold.",
   "startsOnDate": "Starts on {date}.",
-  "trialNote": "{plan} free for {trial_days} days, up to {trial_seats} people, card required. Trial allowances don't reset or grow with people. Then {value2} per person {per}.",
+  "trialNote": "{plan} free for {trial_days} days, up to {trial_seats} people, card required. Full {plan} limits, shared by the team. Then {value2} per person {per}.",
   "tryPlanFreeUntilThenNothingCanBeChanged": "Try {plan} free for {trial_days} days with up to {trial_seats} people; until then nothing can be changed.",
   "youStayOnPlan": "You stay on {name}. The scheduled change is cancelled.",
   "employeeTypePermanent": "Open-ended",
