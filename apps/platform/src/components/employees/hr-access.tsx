@@ -69,7 +69,7 @@ export function HrLockNotice({ hr }: { hr: HrAccess }) {
     <FeatureLockNotice
       lock={hr.lock}
       kept={hr.owner ? translate('employeePlanKeptOwner') : translate('employeePlanKeptMember')}
-      className="mx-4 mt-4 sm:mx-6"
+      className="mx-3 mt-3 md:mx-5"
     />
   )
 }

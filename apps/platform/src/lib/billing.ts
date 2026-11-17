@@ -132,6 +132,8 @@ export type Billing = {
   discount: Discount | null
   /** The earlier usage list; `entitlements` replaces it where the workspace has a plan. */
   usage: { limit: LimitKey; used: number; max: number | null }[]
+  /** The owner only: the workspace has employee records (read and export stay with the owner after a downgrade). */
+  has_employees?: boolean
   /** What the workspace may use now: every feature without billing, none without a plan. */
   features: string[]
   /** The offer the workspace's plan comes from; null without a plan. */

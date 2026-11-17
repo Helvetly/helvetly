@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
+import { featureLock, LockedArea } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ExpensesPage } from '@/components/expenses/expenses-page'
 import { Providers } from '@/components/providers'
@@ -207,3 +208,37 @@ export const PlanErrorToasts: Story = {
   },
 }
 export const PlanErrorToastsDark = dark(PlanErrorToasts)
+
+/** Content the plan lacks that must stay on screen: blurred and inert, the warning notice and the way to the plans on top. */
+export const LockedAreaBlurred: Story = {
+  render: () => {
+    const lock = featureLock(basic, 'expenses')
+    return (
+      <div className="p-4">
+        {lock && (
+          <LockedArea lock={lock} kept="Expenses you already have stay available to read.">
+            <div className="grid gap-3 pt-24">
+              <Button>New expense</Button>
+              <input aria-label="Supplier" className="h-9 rounded-md border px-3" />
+              <p className="text-body">Office rent, 1 200.00 CHF</p>
+            </div>
+          </LockedArea>
+        )}
+      </div>
+    )
+  },
+  play: async () => {
+    const screen = body()
+    const notice = await screen.findByText(/Your plan doesn’t include expenses; Pro does\./)
+    await expect(notice.closest('[data-slot=feature-lock-notice]')).toHaveAttribute(
+      'data-tone',
+      'warning',
+    )
+    await expect(screen.getByRole('link', { name: 'See Pro' })).toBeVisible()
+    // the content behind is inert: out of the tab order and the accessibility tree
+    await expect(screen.getByText('Office rent, 1 200.00 CHF').closest('[inert]')).not.toBeNull()
+    await expect(screen.queryByRole('button', { name: 'New expense' })).toBeNull()
+  },
+}
+export const LockedAreaBlurredDark = dark(LockedAreaBlurred)
+export const LockedAreaBlurredPhone = phone(LockedAreaBlurred)

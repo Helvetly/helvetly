@@ -156,6 +156,9 @@ export const OwnerAfterDowngrade: Story = {
         timeout: 8000,
       }),
     ).toBeVisible()
+    // in the page's content, in the warning tone, not a banner above it
+    const notice = body.getByText(/you can view and export it/).closest('[data-tone]')
+    await expect(notice).toHaveAttribute('data-tone', 'warning')
     await expect(body.getByRole('link', { name: /See Business/ })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
@@ -167,3 +170,22 @@ export const OwnerAfterDowngrade: Story = {
   },
 }
 export const OwnerAfterDowngradePhone = phone(OwnerAfterDowngrade)
+export const OwnerAfterDowngradeDark = dark(OwnerAfterDowngrade)
+
+/** A plan without the module and no employee records: no Employment tab, nothing about the module. */
+export const HiddenWithoutRecords: Story = {
+  parameters: hrPage('/settings/employment', {}, [billingOn('pro', false)]),
+  play: async () => {
+    const body = within(document.body)
+    // the other tabs are there, so the missing one is not just a header that has not rendered
+    // the sidebar is there, and loses Employees once billing says the plan lacks it
+    await expect(
+      await body.findByRole('link', { name: /^Clients/ }, { timeout: 8000 }),
+    ).toBeVisible()
+    await waitFor(() => expect(body.queryByRole('link', { name: /^Employees/ })).toBeNull(), {
+      timeout: 8000,
+    })
+    await expect(body.queryByRole('button', { name: /^Employment/ })).toBeNull()
+    await expect(body.queryByText(/Business does/)).toBeNull()
+  },
+}

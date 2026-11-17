@@ -112,7 +112,7 @@ export function CommandPalette({
             </>
           )}
           <CommandGroup heading={translate('goTo')}>
-            {visibleNav(scopes)
+            {visibleNav(scopes, billing)
               .flatMap((group) => group.items)
               .filter((item) => item.href)
               .map(({ label, icon: Icon, href }) => (

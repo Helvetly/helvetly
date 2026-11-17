@@ -221,7 +221,7 @@ export function AppSidebar({ session }: { session: Session }) {
         {help && <HelpDialog open={help.open} onOpenChange={(open) => setHelp({ open })} />}
       </SidebarHeader>
       <SidebarContent className="gap-1 px-0 py-1">
-        {visibleNav(effectiveScopes(session.role, session.scopes)).map((group, index) => (
+        {visibleNav(effectiveScopes(session.role, session.scopes), billing).map((group, index) => (
           <SidebarGroup
             key={group.label ?? index}
             className={cn('py-1', group.bottom && 'mt-auto')}

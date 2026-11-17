@@ -1,3 +1,4 @@
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { effectiveScopes } from '@/lib/permissions'
 
 import { visibleNav } from './nav'
@@ -38,4 +39,14 @@ test('Employees needs an HR scope, which a member\'s "*" never gives', () => {
 test('payroll view alone shows Employees: the list serves picking employees by name', () => {
   expect(labels(['read:payroll'])).toContain('Employees')
   expect(labels(['read:clients'])).not.toContain('Employees')
+})
+
+test('Employees is left out on a plan without it, kept for an owner with records', () => {
+  const owner = effectiveScopes('owner', undefined)
+  const pro = billingFixture({ plan: 'pro', locked: false })
+  const names = (billing: typeof pro) =>
+    visibleNav(owner, billing).flatMap((group) => group.items.map((item) => item.label))
+  expect(names(pro)).not.toContain('Employees')
+  expect(names({ ...pro, has_employees: true })).toContain('Employees')
+  expect(names(billingFixture({ plan: 'business', locked: false }))).toContain('Employees')
 })

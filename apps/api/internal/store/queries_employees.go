@@ -162,6 +162,14 @@ type EmployeeFilter struct {
 	Status, Department, Search string
 }
 
+// HasEmployees reports whether the workspace ever recorded an employee (archived ones included): HR data an owner
+// may still read and export after a downgrade.
+func (q Q) HasEmployees(ctx context.Context, workspaceID string) (bool, error) {
+	var has bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM employees WHERE workspace_id = $1)`, workspaceID).Scan(&has)
+	return has, err
+}
+
 func (q Q) ListEmployees(ctx context.Context, workspaceID string, f EmployeeFilter, today string, limit, offset int) ([]Employee, int, error) {
 	where := []string{"e.workspace_id = $1", "$2::date IS NOT NULL"} // $2, today, is used by the status filters
 	args := []any{workspaceID, today}
