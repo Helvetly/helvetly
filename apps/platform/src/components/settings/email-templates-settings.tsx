@@ -1,4 +1,5 @@
 'use client'
+import { locale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -11,10 +12,11 @@ import {
 import { FormField, HelpTip, describedBy } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
+import { Segmented } from '@helvetly/ui/components/segmented'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Mail, RotateCcw } from 'lucide-react'
+import { Mail, Pencil, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -40,6 +42,14 @@ const KIND_LABELS: Record<EmailKind, string> = {
   credit_note: translate('emailTemplatesKindCreditNote'),
   proforma: translate('emailTemplatesKindProforma'),
   quote: translate('emailTemplatesKindQuote'),
+}
+
+/** What each email is, under its name in the list. */
+const KIND_ABOUT: Record<EmailKind, string> = {
+  invoice: translate('emailTemplatesAboutInvoice'),
+  credit_note: translate('emailTemplatesAboutCreditNote'),
+  proforma: translate('emailTemplatesAboutProforma'),
+  quote: translate('emailTemplatesAboutQuote'),
 }
 
 const LANGUAGE_NAMES: Record<EmailLanguage, string> = {
@@ -73,13 +83,22 @@ function templateFieldErrors(error: unknown): Fields | null {
   return found
 }
 
-/** The emails to clients as a list, one row per document type with a button per language; a button opens that
- * template in a dialog. Each language shows the standard wording until it is customised. */
+/** The interface language when a template exists in it, so the dialog opens on the wording one reads. */
+const firstLanguage: EmailLanguage = EMAIL_LANGUAGES.find((code) => code === locale) ?? 'de'
+
+type Draft = { subject: string; body: string }
+
+/** The emails to clients as a list, one row per document type; a row opens its templates in a dialog, where the
+ * language is chosen. Each language shows the standard wording until it is customised. */
 export function EmailTemplatesSections() {
   const templates = useEmailTemplates()
   const writable = useCan('write:invoice-settings')
-  const [open, setOpen] = useState<EmailTemplate | null>(null)
+  const [open, setOpen] = useState<EmailKind | null>(null)
   const data = templates.data
+  const ofKind = (kind: EmailKind) =>
+    EMAIL_LANGUAGES.flatMap((language) =>
+      (data ?? []).filter((entry) => entry.kind === kind && entry.language === language),
+    )
   return (
     <SettingsSection
       id="email-templates"
@@ -100,63 +119,33 @@ export function EmailTemplatesSections() {
       ) : (
         <ul className="grid gap-1" aria-label={translate('emailTemplatesTitle')}>
           {EMAIL_KINDS.map((kind) => {
-            const ofKind = EMAIL_LANGUAGES.flatMap((language) =>
-              data.filter((entry) => entry.kind === kind && entry.language === language),
-            )
-            const first = ofKind[0]
-            if (!first) return null
-            const custom = ofKind.filter((entry) => entry.custom).length
+            const all = ofKind(kind)
+            if (!all.length) return null
+            const custom = all.filter((entry) => entry.custom).length
             return (
-              <li
-                key={kind}
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50"
-              >
+              <li key={kind}>
                 <button
                   type="button"
-                  className="grid min-w-0 flex-1 gap-0.5 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onClick={() => setOpen(first)}
+                  aria-label={translate('emailTemplatesEdit', { kind: KIND_LABELS[kind] })}
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  onClick={() => setOpen(kind)}
                 >
-                  <span className="text-body font-medium">{KIND_LABELS[kind]}</span>
-                  <span className="truncate text-body-sm text-muted-foreground">
-                    {first.subject}
-                  </span>
-                  {custom > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {translate('emailTemplatesCustomCount', { count: custom })}
+                  <span className="grid min-w-0 flex-1 gap-0.5">
+                    <span className="text-body font-medium">{KIND_LABELS[kind]}</span>
+                    <span className="text-body-sm text-pretty text-muted-foreground">
+                      {KIND_ABOUT[kind]}
                     </span>
-                  )}
+                    {custom > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {translate('emailTemplatesCustomCount', { count: custom })}
+                      </span>
+                    )}
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-body-sm text-muted-foreground">
+                    <Pencil aria-hidden className="size-3.5" />
+                    {writable ? translate('edit4') : translate('emailTemplatesView')}
+                  </span>
                 </button>
-                <div className="flex gap-1">
-                  {ofKind.map((template) => (
-                    <Tooltip key={template.language}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="relative w-10 font-mono uppercase"
-                          aria-label={translate('emailTemplatesEditIn', {
-                            kind: KIND_LABELS[kind],
-                            language: LANGUAGE_NAMES[template.language],
-                          })}
-                          onClick={() => setOpen(template)}
-                        >
-                          {template.language}
-                          {template.custom && (
-                            <span
-                              aria-hidden
-                              className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
-                            />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {LANGUAGE_NAMES[template.language]}
-                        {template.custom ? ` · ${translate('emailTemplatesCustom')}` : ''}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
               </li>
             )
           })}
@@ -164,8 +153,9 @@ export function EmailTemplatesSections() {
       )}
       {open && (
         <TemplateDialog
-          key={`${open.kind}-${open.language}`}
-          template={open}
+          key={open}
+          kind={open}
+          templates={ofKind(open)}
           writable={writable}
           onClose={() => setOpen(null)}
         />
@@ -174,24 +164,35 @@ export function EmailTemplatesSections() {
   )
 }
 
+const unchanged = (draft: Draft, template: EmailTemplate) =>
+  draft.subject === template.subject && draft.body === template.body
+
 function TemplateDialog({
-  template,
+  kind,
+  templates,
   writable,
   onClose,
 }: {
-  template: EmailTemplate
+  kind: EmailKind
+  templates: EmailTemplate[]
   writable: boolean
   onClose: () => void
 }) {
   const save = useSaveEmailTemplate()
   const reset = useResetEmailTemplate()
-  const [values, setValues] = useState({ subject: template.subject, body: template.body })
-  const [errors, setErrors] = useState<Fields>({})
+  const [language, setLanguage] = useState<EmailLanguage>(
+    templates.some((entry) => entry.language === firstLanguage)
+      ? firstLanguage
+      : (templates[0]?.language ?? 'de'),
+  )
+  // Every language keeps its own unsaved edits while another is shown; Save sends each changed one.
+  const [drafts, setDrafts] = useState<Partial<Record<EmailLanguage, Draft>>>({})
+  const [errors, setErrors] = useState<Partial<Record<EmailLanguage, Fields>>>({})
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const lastField = useRef<'subject' | 'body'>('body')
   const caret = useRef<number | null>(null)
-  const prefix = `email-template-${template.kind}-${template.language}`
+  const template = templates.find((entry) => entry.language === language)
   const busy = save.isPending || reset.isPending
 
   // The new text is in the field only after the render; the cursor goes after it then.
@@ -203,9 +204,17 @@ function TemplateDialog({
     caret.current = null
   })
 
+  if (!template) return null
+  const values = drafts[language] ?? { subject: template.subject, body: template.body }
+  const shownErrors = errors[language] ?? {}
+  const prefix = `email-template-${kind}-${language}`
+
   const set = (field: 'subject' | 'body', text: string) => {
-    setValues((current) => ({ ...current, [field]: text }))
-    setErrors((current) => ({ ...current, [field]: undefined }))
+    setDrafts((current) => ({ ...current, [language]: { ...values, [field]: text } }))
+    setErrors((current) => ({
+      ...current,
+      [language]: { ...current[language], [field]: undefined },
+    }))
   }
 
   const insert = (variable: string) => {
@@ -219,29 +228,58 @@ function TemplateDialog({
     set(field, text.slice(0, start) + token + text.slice(end))
   }
 
+  const changed = templates.flatMap((entry) => {
+    const draft = drafts[entry.language]
+    return draft && !unchanged(draft, entry) ? [{ entry, draft }] : []
+  })
+
   const submit = async () => {
-    const missing: Fields = {}
-    if (!values.subject.trim()) missing.subject = translate('emailTemplatesEnterSubject')
-    if (!values.body.trim()) missing.body = translate('emailTemplatesEnterMessage')
-    if (missing.subject || missing.body) {
+    const missing: Partial<Record<EmailLanguage, Fields>> = {}
+    for (const { entry, draft } of changed) {
+      const found: Fields = {}
+      if (!draft.subject.trim()) found.subject = translate('emailTemplatesEnterSubject')
+      if (!draft.body.trim()) found.body = translate('emailTemplatesEnterMessage')
+      if (found.subject || found.body) missing[entry.language] = found
+    }
+    const first = EMAIL_LANGUAGES.find((code) => missing[code])
+    if (first) {
       setErrors(missing)
-      ;(missing.subject ? subjectRef : bodyRef).current?.focus()
+      setLanguage(first)
       return
     }
-    try {
-      await save.mutateAsync({
-        kind: template.kind,
-        language: template.language,
-        subject: values.subject.trim(),
-        body: values.body,
-      })
-      toast.success(translate('emailTemplatesSaved'))
-      onClose()
-    } catch (error) {
-      const fields = templateFieldErrors(error)
-      if (fields) setErrors(fields)
-      else toast.error(errorMessage(error))
+    const results = await Promise.allSettled(
+      changed.map(({ entry, draft }) =>
+        save.mutateAsync({
+          kind,
+          language: entry.language,
+          subject: draft.subject.trim(),
+          body: draft.body,
+        }),
+      ),
+    )
+    const failed = changed.flatMap(({ entry }, index) => {
+      const result = results[index]
+      return result?.status === 'rejected'
+        ? [{ language: entry.language, error: result.reason }]
+        : []
+    })
+    // What was saved leaves the drafts; what failed stays, so nothing typed is lost.
+    setDrafts((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([code]) => failed.some((item) => item.language === code)),
+      ),
+    )
+    const refused = failed[0]
+    if (refused) {
+      const fields = templateFieldErrors(refused.error)
+      if (fields) {
+        setErrors({ [refused.language]: fields })
+        setLanguage(refused.language)
+      } else toast.error(errorMessage(refused.error))
+      return
     }
+    if (changed.length) toast.success(translate('emailTemplatesSaved'))
+    onClose()
   }
 
   return (
@@ -257,10 +295,7 @@ function TemplateDialog({
       >
         <DialogHeader>
           <DialogTitle>
-            {translate('emailTemplatesDialogTitle', {
-              kind: KIND_LABELS[template.kind],
-              language: LANGUAGE_NAMES[template.language],
-            })}
+            {translate('emailTemplatesDialogTitle', { kind: KIND_LABELS[kind] })}
           </DialogTitle>
           <DialogDescription className="inline-flex items-center gap-1.5">
             {writable
@@ -279,14 +314,44 @@ function TemplateDialog({
             void submit()
           }}
         >
+          <Segmented
+            label={translate('emailTemplatesLanguage')}
+            value={language}
+            options={templates.map((entry) => {
+              const edited = changed.some((item) => item.entry.language === entry.language)
+              const marked = entry.custom || edited
+              return {
+                value: entry.language,
+                // The dot says "customised" to the eye; the name says it to everyone else.
+                name: marked
+                  ? `${LANGUAGE_NAMES[entry.language]}, ${edited ? translate('emailTemplatesUnsaved') : translate('emailTemplatesCustom').toLowerCase()}`
+                  : undefined,
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    {LANGUAGE_NAMES[entry.language]}
+                    {marked && (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'size-1.5 rounded-full',
+                          edited ? 'bg-warning' : 'bg-primary',
+                        )}
+                      />
+                    )}
+                  </span>
+                ),
+              }
+            })}
+            onChange={setLanguage}
+          />
           <FormField
             id={`${prefix}-subject`}
             label={translate('emailTemplatesSubject')}
             required
-            error={errors.subject}
+            error={shownErrors.subject}
           >
             <Input
-              {...describedBy(`${prefix}-subject`, errors.subject)}
+              {...describedBy(`${prefix}-subject`, shownErrors.subject)}
               ref={subjectRef}
               required
               disabled={!writable}
@@ -299,10 +364,10 @@ function TemplateDialog({
             id={`${prefix}-body`}
             label={translate('emailTemplatesMessage')}
             required
-            error={errors.body}
+            error={shownErrors.body}
           >
             <Textarea
-              {...describedBy(`${prefix}-body`, errors.body)}
+              {...describedBy(`${prefix}-body`, shownErrors.body)}
               ref={bodyRef}
               required
               className="min-h-48"
@@ -346,10 +411,10 @@ function TemplateDialog({
                 disabled={busy}
                 onClick={() =>
                   reset
-                    .mutateAsync({ kind: template.kind, language: template.language })
+                    .mutateAsync({ kind, language })
                     .then(() => {
+                      setDrafts(({ [language]: _reset, ...rest }) => rest)
                       toast.success(translate('emailTemplatesResetDone'))
-                      onClose()
                     })
                     .catch((error: unknown) => void toast.error(errorMessage(error)))
                 }

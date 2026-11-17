@@ -4259,8 +4259,15 @@
   "keepMyFormat": "Mantieni il mio formato",
   "numberSuggestionApplied": "Le nuove fatture continuano da {next}.",
   "emailTemplatesCustomCount": "{count, plural, one {# lingua personalizzata} other {# lingue personalizzate}}",
-  "emailTemplatesEditIn": "Modifica l’e-mail «{kind}» in {language}",
-  "emailTemplatesDialogTitle": "E-mail «{kind}» · {language}",
+  "emailTemplatesDialogTitle": "E-mail «{kind}»",
   "emailTemplatesEnterSubject": "Inserisci un oggetto.",
-  "emailTemplatesEnterMessage": "Inserisci un messaggio."
+  "emailTemplatesEnterMessage": "Inserisci un messaggio.",
+  "emailTemplatesEdit": "Modifica l’e-mail «{kind}»",
+  "emailTemplatesLanguage": "Lingua",
+  "emailTemplatesView": "Visualizza",
+  "emailTemplatesUnsaved": "modifiche non salvate",
+  "emailTemplatesAboutInvoice": "Inviata con una fattura, una fattura parziale o di acconto quando la invii al cliente per e-mail.",
+  "emailTemplatesAboutCreditNote": "Inviata con una nota di credito che riduce o annulla una fattura.",
+  "emailTemplatesAboutProforma": "Inviata con una fattura pro forma: un preavviso dell’importo, non una richiesta di pagamento.",
+  "emailTemplatesAboutQuote": "Inviata con un’offerta, perché il cliente possa esaminarla e accettarla."
 }
