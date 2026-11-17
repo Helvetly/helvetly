@@ -82,32 +82,3 @@ func TestByHost(t *testing.T) {
 		})
 	}
 }
-
-// TestCountryCookie: pages hand the trusted CF-IPCountry to the browser; assets and unknown countries set nothing.
-func TestCountryCookie(t *testing.T) {
-	h := handler(true, fstest.MapFS{"index.html": {Data: []byte("home")}, "_next/static/app.js": {Data: []byte("js")}})
-	tests := []struct{ path, country, want string }{
-		{"/", "ch", "CH"},
-		{"/", "XX", ""},
-		{"/", "", ""},
-		{"/_next/static/app.js", "CH", ""},
-	}
-	for _, tt := range tests {
-		r := httptest.NewRequest("GET", tt.path, nil)
-		r.Header.Set("CF-IPCountry", tt.country)
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, r)
-		got := ""
-		for _, c := range rec.Result().Cookies() {
-			if c.Name == CountryCookie {
-				got = c.Value
-				if !c.Secure || c.HttpOnly {
-					t.Fatalf("%s %q: cookie %+v must be secure and readable by the page", tt.path, tt.country, c)
-				}
-			}
-		}
-		if got != tt.want {
-			t.Fatalf("%s %q: cookie %q, want %q", tt.path, tt.country, got, tt.want)
-		}
-	}
-}

@@ -10,12 +10,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
-
-	"helvetly.com/api/internal/auth"
 )
-
-// CountryCookie hands the trusted visitor country to the static pages, which choose their first language from it.
-const CountryCookie = "helvetly_country"
 
 //go:embed all:dist all:portal-dist
 var embedded embed.FS
@@ -74,9 +69,6 @@ func handler(secure bool, files fs.FS) http.Handler {
 			h.Set("Cache-Control", "public, max-age=31536000, immutable") // content-hashed
 		} else {
 			h.Set("Cache-Control", "no-cache") // pages name the current build's assets: revalidate after a deploy
-			if c := auth.Country(r); c != "" {
-				http.SetCookie(w, &http.Cookie{Name: CountryCookie, Value: c, Path: "/", Secure: secure, SameSite: http.SameSiteLaxMode})
-			}
 		}
 		fileServer.ServeHTTP(w, r)
 	})
