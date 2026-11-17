@@ -148,7 +148,7 @@ export const ReviewReceipts: Story = {
   play: async () => {
     const dialog = await body().findByRole('dialog', { name: 'Import expenses' })
     await waitFor(() => expect(dialog).toBeVisible())
-    await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     const table = await body().findByRole('table', { name: 'Records found' })
     await Promise.all(
       ['Supplier', 'Date', 'Amount', 'Currency', 'VAT rate'].map((header) =>
@@ -156,7 +156,9 @@ export const ReviewReceipts: Story = {
       ),
     )
 
-    await expect(body().getByText(/Swiss VAT is 8.1, 2.6 or 3.8 %/)).toBeVisible()
+    await expect(
+      body().getByRole('button', { name: /Swiss VAT is 8.1, 2.6 or 3.8 %/ }),
+    ).toBeVisible()
     await expect(
       body().getByText('Possible duplicate: Expense 9 · SBB (same date and total)'),
     ).toBeVisible()
@@ -169,7 +171,7 @@ export const ReviewReceipts: Story = {
     await userEvent.type(rate, '3.8')
     await userEvent.click(body().getByRole('button', { name: 'Save' }))
     await body().findByRole('table', { name: 'Records found' })
-    await expect(body().queryByText(/Swiss VAT is 8.1/)).toBeNull()
+    await expect(body().queryByRole('button', { name: /Swiss VAT is 8.1/ })).toBeNull()
     await expect(body().getByRole('checkbox', { name: 'Select Hotel Adler' })).toBeChecked()
 
     await userEvent.click(body().getByRole('button', { name: 'Import 2' }))

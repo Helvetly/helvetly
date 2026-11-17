@@ -144,11 +144,12 @@ export const Drawer: Story = {
   play: async () => {
     await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
     await expect(body().getByText('Import documents')).toBeVisible()
-    await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
-    await expect(await body().findByRole('region', { name: 'Clients' })).toBeVisible()
-    await expect(body().getByRole('region', { name: 'Invoices' })).toBeVisible()
-    await expect(body().getByRole('region', { name: 'Engagements' })).toBeVisible()
-    await expect(body().getAllByText(/Invoice you issued/)).toHaveLength(2)
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    // One section per document, its records beneath.
+    const first = await body().findByRole('region', { name: 'invoices.zip › 2025-IN-001.pdf' })
+    await expect(first).toBeVisible()
+    await expect(body().getByRole('region', { name: '2025-IN-004.pdf' })).toBeVisible()
+    await expect(body().getAllByText(/Invoice you issued/)).toHaveLength(4)
     await expect(body().getByText(/does not look like an invoice/)).toBeVisible()
     await expect(
       body().getByText(/Found 1 client, 2 invoices and 1 engagement · 3 selected/),
@@ -156,9 +157,9 @@ export const Drawer: Story = {
     await expect(body().getByRole('checkbox', { name: 'Select 2025/IN/004' })).not.toBeChecked()
 
     // Unticking every invoice keeps the clients and the engagement ticked.
-    const invoices = within(body().getByRole('region', { name: 'Invoices' }))
-    await userEvent.click(invoices.getByRole('checkbox', { name: 'Select all' }))
-    await userEvent.click(invoices.getByRole('checkbox', { name: 'Select all' }))
+    const [, invoices] = within(first).getAllByRole('table')
+    const selectAll = within(invoices!).getByRole('checkbox', { name: 'Select all' })
+    await userEvent.click(selectAll)
     await expect(body().getByRole('checkbox', { name: 'Select Melanie Vala' })).toBeChecked()
     await expect(body().getByText(/· 2 selected/)).toBeVisible()
 

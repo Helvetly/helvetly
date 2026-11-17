@@ -120,11 +120,13 @@ export const PickClientWhenUnmatched: Story = {
     await waitFor(() =>
       expect(body().getByRole('dialog', { name: 'Import engagements' })).toBeVisible(),
     )
-    await userEvent.click(await body().findByRole('button', { name: /^Continue the import from/ }))
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await body().findByRole('table', { name: 'Records found' })
     await expect(body().getByRole('checkbox', { name: 'Select Support retainer' })).toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Website care' })).not.toBeChecked()
-    await expect(body().getByText(/Client: No client matches this document/)).toBeVisible()
+    await expect(
+      body().getByRole('button', { name: /Client: No client matches this document/ }),
+    ).toBeVisible()
 
     await userEvent.click(body().getByRole('button', { name: 'Edit Website care' }))
     const picker = await body().findByRole('button', { name: 'Client' })
@@ -137,7 +139,7 @@ export const PickClientWhenUnmatched: Story = {
 
     await body().findByRole('table', { name: 'Records found' })
     await expect(patched).toEqual({ client_id: client.id, client_name: client.name })
-    await expect(body().queryByText(/No client matches/)).toBeNull()
+    await expect(body().queryByRole('button', { name: /No client matches/ })).toBeNull()
     await expect(body().getByRole('checkbox', { name: 'Select Website care' })).toBeChecked()
     await expect(body().getByRole('button', { name: 'Import 2' })).toBeEnabled()
   },
