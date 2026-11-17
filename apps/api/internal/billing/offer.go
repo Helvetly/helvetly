@@ -271,11 +271,17 @@ func (o Offer) validateTrial(fail func(string, ...any)) {
 	}
 }
 
-// validateAIFunding: on every plan the AI cost budget pays for the whole token pool at the sold model's worst mix,
-// for the first seat, for each further one and in the trial, so the cost guard never silently shrinks the pool.
+// validateAIFunding: on every plan each AI pool's cost budget (Heidi's, the automation pool's) pays for its whole
+// token pool at the sold model's worst mix, for the first seat, for each further one and in the trial, so the cost
+// guard never silently shrinks the pool.
 func (o Offer) validateAIFunding(fail func(string, ...any)) {
-	tokens, okT := o.record(string(AITokens))
-	cost, okC := o.record(string(AICost))
+	o.validatePoolFunding(AITokens, AICost, fail)
+	o.validatePoolFunding(AIAutomationTokens, AIAutomationCost, fail)
+}
+
+func (o Offer) validatePoolFunding(tokenKey, costKey Limit, fail func(string, ...any)) {
+	tokens, okT := o.record(string(tokenKey))
+	cost, okC := o.record(string(costKey))
 	if !okT || !okC {
 		return // reported as missing
 	}
@@ -290,10 +296,10 @@ func (o Offer) validateAIFunding(fail func(string, ...any)) {
 		if t.State != StateLimited || c.State != StateLimited || t.Value == nil || c.Value == nil {
 			continue // a state error is reported with the record
 		}
-		check("ai_cost_usd_micros on "+plan, *t.Value, *c.Value)
-		check("ai_cost_usd_micros per paid seat on "+plan, tokens.PerAdditionalPaidSeat[plan], cost.PerAdditionalPaidSeat[plan])
+		check(string(costKey)+" on "+plan, *t.Value, *c.Value)
+		check(string(costKey)+" per paid seat on "+plan, tokens.PerAdditionalPaidSeat[plan], cost.PerAdditionalPaidSeat[plan])
 	}
-	check("trial.overrides.ai_cost_usd_micros", o.Trial.Overrides[string(AITokens)], o.Trial.Overrides[string(AICost)])
+	check("trial.overrides."+string(costKey), o.Trial.Overrides[string(tokenKey)], o.Trial.Overrides[string(costKey)])
 }
 
 // validatePublic: the comparison names business features and customer allowances only, never an internal key or a

@@ -9,7 +9,7 @@ import { type Billing, formatTokens, meterState } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 /**
- * The month's AI tokens for Heidi and the AI import, and how the allowance is made up, while tokens from packs bought
+ * The month's AI tokens for Heidi (AI import and filing have their own), and how the allowance is made up, while tokens from packs bought
  * earlier still count this month. Packs are no longer sold, so nothing is offered here.
  */
 export function AITokenPacks({ billing }: { billing: Billing }) {
@@ -22,7 +22,7 @@ export function AITokenPacks({ billing }: { billing: Billing }) {
       title={translate('aiTokens')}
       description={
         <span className="inline-flex items-center gap-1.5">
-          {translate('usedByHeidiAndTheAIImport')}
+          {translate('usedByHeidi')}
           <HelpTip label={translate('aiTokens')}>{translate('packTokensAddToThePlan')}</HelpTip>
         </span>
       }

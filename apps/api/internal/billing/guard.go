@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 )
@@ -183,8 +184,8 @@ func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Sessio
 	return s.AllowResource(ctx, q, sess.Workspace.ID, string(Storage), add)
 }
 
-// AITokens is the workspace's monthly model token allowance (an aimodel.Allowance): its plan's plus the AI token
-// packs bought this quota month (UTC), none without a plan, and unlimited (-1) when billing is off.
+// AITokens is Heidi's monthly model token allowance (an aimodel.Allowance of aimodel.PoolHeidi): its plan's plus the
+// AI token packs bought this quota month (UTC), none without a plan, and unlimited (-1) when billing is off.
 func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
 	if err != nil || r.SelfHosted {
@@ -198,7 +199,7 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 		return monthly, err
 	}
 	if r.Trial {
-		return s.trialAI(ctx, q, workspaceID, monthly, false)
+		return s.trialAI(ctx, q, workspaceID, aimodel.PoolHeidi, monthly, false)
 	}
 	if r.Items[string(AITokens)].Source == SourcePaymentOverdue {
 		return 0, nil // packs bought before wait with the rest until the payment is made
@@ -207,11 +208,30 @@ func (s *Service) AITokens(ctx context.Context, q store.Q, workspaceID string) (
 	return monthly + bought, err
 }
 
-// AICost is the workspace's monthly model cost guard in micro-USD (an aimodel.Allowance): its offer's
+// AICost is Heidi's monthly model cost guard in micro-USD (an aimodel.Allowance of aimodel.PoolHeidi): its offer's
 // ai_cost_usd_micros, pooled by paid seats (the trial's, within the day's trial budget); none without a plan or while a
 // payment is overdue, unlimited (-1) when billing is off. AI token packs
 // add tokens, not cost: a pack's tokens are spent only while this budget lasts.
 func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
+	return s.poolAllowance(ctx, q, workspaceID, AICost, aimodel.PoolHeidi)
+}
+
+// AIAutomationTokens is the automation pool's monthly token allowance (an aimodel.Allowance of
+// aimodel.PoolAutomation, for AI import and automatic filing): its offer's ai_automation_tokens_per_month, pooled by
+// paid seats (the trial's), none without a plan or while a payment is overdue, unlimited (-1) when billing is off.
+// Heidi's allowance and token packs never count here.
+func (s *Service) AIAutomationTokens(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
+	return s.poolAllowance(ctx, q, workspaceID, AIAutomationTokens, aimodel.PoolAutomation)
+}
+
+// AIAutomationCost is the automation pool's monthly cost guard in micro-USD (an aimodel.Allowance of
+// aimodel.PoolAutomation), as AICost is Heidi's.
+func (s *Service) AIAutomationCost(ctx context.Context, q store.Q, workspaceID string) (int64, error) {
+	return s.poolAllowance(ctx, q, workspaceID, AIAutomationCost, aimodel.PoolAutomation)
+}
+
+// poolAllowance is limit's monthly value for pool, without token packs: the trial's within what the trial used.
+func (s *Service) poolAllowance(ctx context.Context, q store.Q, workspaceID string, limit Limit, pool string) (int64, error) {
 	r, err := s.Entitlements(ctx, q, workspaceID)
 	if err != nil || r.SelfHosted {
 		return Unlimited, err
@@ -219,11 +239,11 @@ func (s *Service) AICost(ctx context.Context, q store.Q, workspaceID string) (in
 	if r.Plan == "" {
 		return 0, nil
 	}
-	cost, err := r.Cap(AICost)
-	if err != nil || !r.Trial {
-		return cost, err
+	n, err := r.Cap(limit)
+	if err != nil || !r.Trial || n == Unlimited {
+		return n, err
 	}
-	return s.trialAI(ctx, q, workspaceID, cost, true)
+	return s.trialAI(ctx, q, workspaceID, pool, n, limit == AICost || limit == AIAutomationCost)
 }
 
 // AllowResource is injected into Store's canonical writes before requests and jobs start.

@@ -51,11 +51,11 @@ func TestCancelledRequestStillAccountsAStartedGeneration(t *testing.T) {
 	now := time.Date(2026, 11, 14, 10, 0, 0, 0, time.UTC)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	b := Budget{DB: db, Now: func() time.Time { return now }}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return now }}
 	if _, err := b.Generate(ctx, &cancellingProvider{cancel: cancel, tokens: 42}, ws, Request{Message: "hi"}, testCall); err != nil {
 		t.Fatalf("a generation that completed must not fail because the caller left: %v", err)
 	}
-	u, err := db.HeidiUsage(context.Background(), ws.ID, "2026-11")
+	u, err := db.HeidiUsage(context.Background(), ws.ID, PoolHeidi, "2026-11")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +68,11 @@ func TestCancelledRequestStartsNoGeneration(t *testing.T) {
 	db, ws := budgetWorkspace(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	p := &countingProvider{onCount: cancel}
-	_, err := Budget{DB: db, Now: time.Now}.Generate(ctx, p, ws, Request{Message: "hi"}, testCall)
+	_, err := Budget{DB: db, Pool: PoolHeidi, Now: time.Now}.Generate(ctx, p, ws, Request{Message: "hi"}, testCall)
 	if err == nil || p.answers != 0 {
 		t.Fatalf("err=%v answers=%d: a request cancelled before generation must not start one", err, p.answers)
 	}
-	u, _ := db.HeidiUsage(context.Background(), ws.ID, time.Now().In(ws.Location()).Format("2006-01"))
+	u, _ := db.HeidiUsage(context.Background(), ws.ID, PoolHeidi, time.Now().In(ws.Location()).Format("2006-01"))
 	if u.Uncertain || u.TokensUsed != 0 {
 		t.Fatalf("usage = %+v, want zero and certain", u)
 	}
@@ -127,7 +127,7 @@ func TestConcurrentCallsCannotOverspendTheAllowance(t *testing.T) {
 	}
 	defer wide.Close()
 	p := &gatedProvider{release: make(chan struct{})}
-	b := Budget{DB: wide, Now: time.Now, Allowance: func(context.Context, store.Q, string) (int64, error) { return 100, nil }}
+	b := Budget{DB: wide, Pool: PoolHeidi, Now: time.Now, Allowance: func(context.Context, store.Q, string) (int64, error) { return 100, nil }}
 	start := make(chan struct{})
 	errs := make(chan error, 10)
 	for range 10 {
@@ -154,7 +154,7 @@ func TestConcurrentCallsCannotOverspendTheAllowance(t *testing.T) {
 	if err := <-errs; err != nil {
 		t.Fatal(err)
 	}
-	usage, _ := wide.HeidiUsage(context.Background(), ws.ID, time.Now().In(ws.Location()).Format("2006-01"))
+	usage, _ := wide.HeidiUsage(context.Background(), ws.ID, PoolHeidi, time.Now().In(ws.Location()).Format("2006-01"))
 	if p.answers.Load() != 1 || usage.TokensUsed != 60 || usage.Uncertain {
 		t.Fatalf("answers=%d usage=%+v", p.answers.Load(), usage)
 	}

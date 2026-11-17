@@ -417,7 +417,7 @@ func TestTrialAllowancesLastAcrossTheMonth(t *testing.T) {
 	now := time.Now().UTC()
 	month := store.UsagePeriodStart(now)
 	e.trialing(owner.workspace, "fp_1", month.Add(-48*time.Hour)) // began in the previous month
-	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, cost_micros, updated_at) VALUES ($1, $2, 200000, 150000, now())`,
+	e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, cost_micros, updated_at) VALUES ($1, 'heidi', $2, 200000, 150000, now())`,
 		owner.workspace, month.AddDate(0, 0, -1).Format("2006-01"))
 	tokens, err := e.svc.AITokens(ctx, e.st.Q, owner.workspace)
 	if err != nil || tokens != 4_800_000 {
@@ -490,7 +490,7 @@ func TestTrialConvertsToBasicWithoutABonus(t *testing.T) {
 	e.join(owner.workspace, "member")
 	now := e.midMonth()
 	id := e.trialing(owner.workspace, "fp_1", now.Add(-time.Hour))
-	e.exec(`INSERT INTO heidi_usage (workspace_id, period, tokens_used, updated_at) VALUES ($1, $2, 100000, now())`,
+	e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, updated_at) VALUES ($1, 'heidi', $2, 100000, now())`,
 		owner.workspace, now.Format("2006-01"))
 	// The trial ends into Basic for both people.
 	e.stripe.set(id, map[string]any{"status": "active", "trial_end": nil, "items": items("price_bm", true, 2)})
@@ -520,8 +520,8 @@ func TestTrialAICostStaysWithinTheDailyTrialBudget(t *testing.T) {
 	e.trialing(other.workspace, "fp_2", time.Now().Add(-time.Hour))
 	spend := func(id string, micros int64) {
 		e.exec(`INSERT INTO ai_calls (id, workspace_id, period, kind, operation, step, status, rate_card, model, tier, region,
-				reserved_tokens, reserved_micros, cost_micros, created_at)
-			VALUES ($1, $2, to_char(now(), 'YYYY-MM'), 'heidi', 'op', 'step', 'settled', 'card', 'm', 't', 'r', 0, $3, $3, now())`,
+				reserved_tokens, reserved_micros, cost_micros, created_at, pool)
+			VALUES ($1, $2, to_char(now(), 'YYYY-MM'), 'heidi', 'op', 'step', 'settled', 'card', 'm', 't', 'r', 0, $3, $3, now(), 'heidi')`,
 			id, other.workspace, micros)
 	}
 	spend("call_1", TrialAIDailyCap-100_000)

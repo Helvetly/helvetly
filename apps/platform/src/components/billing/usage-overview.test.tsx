@@ -166,3 +166,24 @@ test('in a trial every allowance lasts the whole trial: no reset, no per-person 
   expect(screen.getByText('Quotes sent').closest('li')).toHaveTextContent('0 of 10')
   expect(screen.queryByText(/Resets|Per team member/)).toBeNull()
 })
+
+test('Heidi and AI import & filing are two allowances: one used up leaves the other open', () => {
+  render(
+    <UsageOverview
+      billing={billingFixture({
+        plan: 'pro',
+        status: 'active',
+        locked: false,
+        entitlements: entitlementsFixture('pro', {
+          used: { ai_tokens_per_month: 1000, ai_automation_tokens_per_month: 5_000_000 },
+        }),
+      })}
+    />,
+  )
+  const heidi = screen.getByText('Heidi AI tokens').closest('li')
+  const automation = screen.getByText('AI import & filing tokens').closest('li')
+  expect(heidi).toHaveAttribute('data-state', 'ok')
+  expect(heidi).toHaveTextContent("1'000 of 5'000'000")
+  expect(automation).toHaveAttribute('data-state', 'full')
+  expect(screen.getByRole('button', { name: /AI import & filing tokens/ })).toBeInTheDocument()
+})

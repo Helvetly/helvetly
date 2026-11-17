@@ -16,6 +16,7 @@ const basic: Record<LimitKey, number | null> = {
   signatures_per_month: 0,
   storage_bytes: GB / 2,
   ai_tokens_per_month: 0,
+  ai_automation_tokens_per_month: 0,
 }
 const pro: Record<LimitKey, number | null> = {
   members: null,
@@ -28,6 +29,7 @@ const pro: Record<LimitKey, number | null> = {
   signatures_per_month: 50,
   storage_bytes: 5 * GB,
   ai_tokens_per_month: 5_000_000,
+  ai_automation_tokens_per_month: 5_000_000,
 }
 const business: Record<LimitKey, number | null> = {
   members: null,
@@ -40,6 +42,7 @@ const business: Record<LimitKey, number | null> = {
   signatures_per_month: null,
   storage_bytes: 20 * GB,
   ai_tokens_per_month: 20_000_000,
+  ai_automation_tokens_per_month: 20_000_000,
 }
 const PRO_FEATURES: FeatureKey[] = [
   'api_access',
@@ -161,6 +164,12 @@ const ALLOWANCES: Allowance[] = [
   ['emails_per_month', 'period_counter', true, { basic: 100, pro: 500, business: 2000 }],
   [
     'ai_tokens_per_month',
+    'period_counter',
+    true,
+    { basic: 0, pro: 5_000_000, business: 20_000_000 },
+  ],
+  [
+    'ai_automation_tokens_per_month',
     'period_counter',
     true,
     { basic: 0, pro: 5_000_000, business: 20_000_000 },

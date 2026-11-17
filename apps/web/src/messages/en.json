@@ -817,7 +817,7 @@
   "revolutMeLinkAndQRThePayerEntersTheDisplayed": "revolut.me link and QR; the payer enters the displayed amount and reference. No bank sync or automatic payment confirmation.",
   "yourSwissBackOffice": "Your Swiss back office, ",
   "yourWorkspaceBecomesReadOnlyNothingIsDeletedYou": "Your workspace becomes read-only. Nothing is deleted, you can still read and download everything, and choosing a plan again unlocks it at once.",
-  "yourWorkspaceSharesTheAITokensContributedByEach": "Your workspace shares the AI tokens contributed by each paid team member. Heidi and the AI import require {value2}: Pro includes {value3} and Business {value4} tokens per paid team member a month, and Basic none. Requests, responses and conversation context use tokens, so there is no fixed number of documents or conversations.",
+  "yourWorkspaceSharesTheAITokensContributedByEach": "Your workspace shares the AI tokens each paid team member contributes. Heidi and AI import require {value2}. Heidi has her own monthly allowance: Pro includes {value3} and Business {value4} tokens per paid team member, and Basic none. AI import and automatic document filing have a separate allowance of the same size, so they never use Heidi’s tokens. Requests, responses and conversation context use tokens, so there is no fixed number of documents or conversations.",
   "priceUnavailable": "Price unavailable",
   "pricingIsTemporarilyUnavailable": "Pricing is temporarily unavailable.",
   "tryAgainInAMomentOrWriteTo": "Try again in a moment, or write to",

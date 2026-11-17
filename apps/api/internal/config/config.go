@@ -65,7 +65,8 @@ type Config struct {
 }
 
 // AI is the model behind Heidi and the AI import; opt-in. No key means Heidi's factual local commands only. The monthly
-// token allowance is a plan limit (ai_tokens_per_month), not a setting.
+// token allowances are plan limits (ai_tokens_per_month for Heidi, ai_automation_tokens_per_month for AI import and
+// filing), not settings.
 type AI struct {
 	OpenAIKey string
 	// OpenAIBaseURL is the OpenAI-compatible API root (OPENAI_BASE_URL), e.g. https://api.openai.com/v1.

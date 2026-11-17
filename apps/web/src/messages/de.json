@@ -812,7 +812,7 @@
   "revolutMeLinkAndQRThePayerEntersTheDisplayed": "revolut.me-Link und QR; Der Zahler gibt den angezeigten Betrag und die Referenz ein. Keine Banksynchronisierung oder automatische Zahlungsbestätigung.",
   "yourSwissBackOffice": "Ihr Schweizer Backoffice, ",
   "yourWorkspaceBecomesReadOnlyNothingIsDeletedYou": "Ihr Arbeitsbereich wird schreibgeschützt. Nichts wird gelöscht, Sie können weiterhin alles lesen und herunterladen, und wenn Sie einen Plan erneut auswählen, wird er sofort entsperrt.",
-  "yourWorkspaceSharesTheAITokensContributedByEach": "Ihr Arbeitsbereich teilt die KI-Tokens, die jedes bezahlte Teammitglied beisteuert. Heidi und der KI-Import erfordern {value2}: Pro enthält {value3} und Business {value4} Tokens pro bezahltem Teammitglied und Monat, Basic keine. Für Anfragen, Antworten und den Konversationskontext werden Token verwendet, sodass es keine feste Anzahl von Dokumenten oder Konversationen gibt.",
+  "yourWorkspaceSharesTheAITokensContributedByEach": "Ihr Arbeitsbereich teilt die KI-Tokens, die jedes bezahlte Teammitglied beisteuert. Heidi und der KI-Import erfordern {value2}. Heidi hat ein eigenes monatliches Kontingent: Pro enthält {value3} und Business {value4} Tokens pro bezahltem Teammitglied, Basic keine. KI-Import und automatische Dokumentablage haben ein separates Kontingent in gleicher Höhe und verbrauchen nie die Tokens von Heidi. Für Anfragen, Antworten und den Konversationskontext werden Tokens verwendet, sodass es keine feste Anzahl von Dokumenten oder Konversationen gibt.",
   "priceUnavailable": "Preis nicht verfügbar",
   "pricingIsTemporarilyUnavailable": "Die Preise sind vorübergehend nicht verfügbar.",
   "tryAgainInAMomentOrWriteTo": "Versuchen Sie es gleich noch einmal oder schreiben Sie an",

@@ -33,8 +33,9 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database, the one 00017 publishes (00007 published helvetly-v1).
-const currentOffer = "helvetly-v1.1"
+// currentOffer is the offer on sale in the seeded database, the one 00018 publishes (00007 published helvetly-v1,
+// 00017 helvetly-v1.1).
+const currentOffer = "helvetly-v1.2"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]
@@ -52,11 +53,11 @@ func TestSeededOffer(t *testing.T) {
 	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
 		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
-	if len(o.Records) != 66 || len(defs) != 66 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 10 {
+	if len(o.Records) != 68 || len(defs) != 68 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 10 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}
-	if len(o.UsagePolicy.Pooled) != 9 {
+	if len(o.UsagePolicy.Pooled) != 11 {
 		t.Fatalf("pooled: %v", o.UsagePolicy.Pooled)
 	}
 	// limit_plans holds exactly the document's values (the migration materialised them in SQL, Publish does in Go).

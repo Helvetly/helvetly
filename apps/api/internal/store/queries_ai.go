@@ -10,7 +10,7 @@ import (
 
 // AICall is one model provider call: what it reserved before it was made and, once settled, what it used.
 type AICall struct {
-	ID, WorkspaceID, Period                string
+	ID, WorkspaceID, Period, Pool          string
 	Kind, Operation, Step, Group           string
 	Status                                 string
 	RateCard, Model, Tier, Region          string
@@ -22,11 +22,11 @@ type AICall struct {
 	CreatedAt                              time.Time
 }
 
-// InsertAICall reserves the workspace's one call in flight; false when another call holds it.
+// InsertAICall reserves the one call in flight of the workspace's pool; false when another call holds it.
 func (q Q) InsertAICall(ctx context.Context, c AICall) (bool, error) {
-	tag, err := q.db.Exec(ctx, `INSERT INTO ai_calls(id,workspace_id,period,kind,operation,step,call_group,status,rate_card,model,tier,region,reserved_tokens,reserved_micros,created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (workspace_id) WHERE status = 'reserved' DO NOTHING`,
-		c.ID, c.WorkspaceID, c.Period, c.Kind, c.Operation, c.Step, c.Group, c.RateCard, c.Model, c.Tier, c.Region, c.ReservedTokens, c.ReservedMicros, c.CreatedAt)
+	tag, err := q.db.Exec(ctx, `INSERT INTO ai_calls(id,workspace_id,period,kind,operation,step,call_group,status,rate_card,model,tier,region,reserved_tokens,reserved_micros,created_at,pool)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (workspace_id, pool) WHERE status = 'reserved' DO NOTHING`,
+		c.ID, c.WorkspaceID, c.Period, c.Kind, c.Operation, c.Step, c.Group, c.RateCard, c.Model, c.Tier, c.Region, c.ReservedTokens, c.ReservedMicros, c.CreatedAt, c.Pool)
 	return err == nil && tag.RowsAffected() == 1, err
 }
 
@@ -41,10 +41,10 @@ func (q Q) SettleAICall(ctx context.Context, c AICall, now time.Time) error {
 	return err
 }
 
-// AICallInFlight is the workspace's reserved call, if any.
-func (q Q) AICallInFlight(ctx context.Context, workspace string) (AICall, bool, error) {
-	c := AICall{WorkspaceID: workspace, Status: "reserved"}
-	err := q.db.QueryRow(ctx, `SELECT id,period,created_at FROM ai_calls WHERE workspace_id=$1 AND status='reserved'`, workspace).Scan(&c.ID, &c.Period, &c.CreatedAt)
+// AICallInFlight is the reserved call of the workspace's pool, if any.
+func (q Q) AICallInFlight(ctx context.Context, workspace, pool string) (AICall, bool, error) {
+	c := AICall{WorkspaceID: workspace, Pool: pool, Status: "reserved"}
+	err := q.db.QueryRow(ctx, `SELECT id,period,created_at FROM ai_calls WHERE workspace_id=$1 AND pool=$2 AND status='reserved'`, workspace, pool).Scan(&c.ID, &c.Period, &c.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AICall{}, false, nil
 	}

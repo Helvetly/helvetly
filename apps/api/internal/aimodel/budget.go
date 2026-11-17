@@ -35,8 +35,9 @@ var (
 	ErrUnfunded = errors.New("model cost budget does not fund the token allowance")
 )
 
-// Allowance is a workspace's monthly allowance, read in the admission transaction: tokens (its plan's
-// ai_tokens_per_month) or their cost in micro-USD (ai_cost_usd_micros). A negative value is unlimited.
+// Allowance is a workspace's monthly allowance of one pool, read in the admission transaction: tokens (its plan's
+// ai_tokens_per_month for Heidi, ai_automation_tokens_per_month for automation) or their cost in micro-USD
+// (ai_cost_usd_micros, ai_automation_cost_usd_micros). A negative value is unlimited.
 type Allowance func(ctx context.Context, q store.Q, workspaceID string) (int64, error)
 
 const (
@@ -56,21 +57,33 @@ type Caps struct{ Call, Operation, Group int64 }
 var (
 	ImportCaps = Caps{Call: 50_000, Operation: 250_000, Group: 1_000_000}
 	HeidiCaps  = Caps{Call: 250_000, Operation: 250_000}
+	// FilingCaps: one uploaded document classified for filing, one call (and its one retry).
+	FilingCaps = Caps{Call: 50_000, Operation: 100_000}
 )
 
-// Call names a provider call for its caps and attempts: Kind is "import" or "heidi", Operation the file or turn, Step
-// the chunk or stage within it, Group the batch ("" none).
+// Pools are the separate monthly allowances: Heidi's chat, and the automation pool AI import and the automatic filing
+// of documents share. Each has its own usage, reservations, uncertain month and one call in flight.
+const (
+	PoolHeidi      = "heidi"
+	PoolAutomation = "automation"
+)
+
+// Call names a provider call for its caps and attempts: Kind is "heidi", "import" or "filing", Operation the turn,
+// file or document, Step the chunk or stage within it, Group the batch ("" none).
 type Call struct {
 	Kind, Operation, Step, Group string
 	MaxOutput                    int64
 	Caps                         Caps
 }
 
-// Budget is the workspace's monthly token allowance and its cost guard, shared by every model call (heidi_usage and
-// ai_calls). A nil Allowance is unlimited (billing off); a nil CostAllowance applies no monthly cost guard, the
-// per-call Caps still apply.
+// Budget is one pool's monthly token allowance and its cost guard (heidi_usage and ai_calls of Pool). A nil Allowance
+// is unlimited (billing off); a nil CostAllowance applies no monthly cost guard, the per-call Caps still apply.
+// Heidi uses PoolHeidi with billing's AITokens and AICost; AI import and filing use PoolAutomation with
+// AIAutomationTokens and AIAutomationCost.
 type Budget struct {
-	DB            *store.Store
+	DB *store.Store
+	// Pool is PoolHeidi or PoolAutomation; its Allowance and CostAllowance must be that pool's.
+	Pool          string
 	Allowance     Allowance
 	CostAllowance Allowance
 	// Gate, when set, refuses a call in its admission transaction (the workspace's consent): checked before every
@@ -84,7 +97,7 @@ type Budget struct {
 
 // Generate makes one provider call under the budget. Admission checks consent and what is left; the input is counted;
 // tokens (input + capped output) and their worst-case cost are reserved atomically as the workspace's one call in
-// flight; after the call the actual usage is settled and only the unused rest released, even when the caller's
+// flight of its pool; after the call the actual usage is settled and only the unused rest released, even when the caller's
 // context ends. An unknown outcome keeps both reservations and blocks the month (ErrUnaccounted); a usage report
 // without a cost breakdown settles the tokens and keeps the cost reserved for reconciliation.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
@@ -137,14 +150,14 @@ func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, re
 func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, card RateCard, call Call, input int64) (store.AICall, error) {
 	var row store.AICall
 	err := b.DB.Tx(ctx, func(q store.Q) error {
-		u, err := q.LockHeidiUsage(ctx, ws.ID, period, b.Now())
+		u, err := q.LockHeidiUsage(ctx, ws.ID, b.Pool, period, b.Now())
 		if err != nil {
 			return err
 		}
 		if u.Uncertain {
 			return ErrUncertain
 		}
-		if _, busy, err := q.AICallInFlight(ctx, ws.ID); err != nil || busy {
+		if _, busy, err := q.AICallInFlight(ctx, ws.ID, b.Pool); err != nil || busy {
 			return errors.Join(err, ErrUncertain)
 		}
 		if b.Gate != nil {
@@ -198,7 +211,7 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 		}
 		inputCost := card.Cost(input, 0, 0)
 		output := min(call.MaxOutput, tokensLeft-input, card.outputFor(costLeft-inputCost), card.outputFor(capLeft-inputCost))
-		row = store.AICall{ID: "aic_" + strings.ToLower(rand.Text()), WorkspaceID: ws.ID, Period: period, Kind: call.Kind,
+		row = store.AICall{ID: "aic_" + strings.ToLower(rand.Text()), WorkspaceID: ws.ID, Period: period, Pool: b.Pool, Kind: call.Kind,
 			Operation: call.Operation, Step: call.Step, Group: call.Group, RateCard: card.Version, Model: card.Model,
 			Tier: card.Tier, Region: card.Region, ReservedTokens: input + output, ReservedMicros: card.Cost(input, 0, output),
 			CreatedAt: b.Now()}
@@ -207,7 +220,7 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 		}
 		u.TokensReserved += row.ReservedTokens
 		u.CostReserved += row.ReservedMicros
-		return q.SaveHeidiUsage(ctx, ws.ID, period, u, b.Now())
+		return q.SaveHeidiUsage(ctx, ws.ID, b.Pool, period, u, b.Now())
 	})
 	return row, err
 }
@@ -229,7 +242,7 @@ func (b Budget) settle(ctx context.Context, card RateCard, row store.AICall, rep
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	return b.DB.Tx(cleanup, func(q store.Q) error {
-		u, err := q.LockHeidiUsage(cleanup, row.WorkspaceID, row.Period, b.Now())
+		u, err := q.LockHeidiUsage(cleanup, row.WorkspaceID, row.Pool, row.Period, b.Now())
 		if err != nil {
 			return err
 		}
@@ -262,19 +275,19 @@ func (b Budget) settle(ctx context.Context, card RateCard, row store.AICall, rep
 		if err := q.SettleAICall(cleanup, row, b.Now()); err != nil {
 			return err
 		}
-		return q.SaveHeidiUsage(cleanup, row.WorkspaceID, row.Period, u, b.Now())
+		return q.SaveHeidiUsage(cleanup, row.WorkspaceID, row.Pool, row.Period, u, b.Now())
 	})
 }
 
 // expireStale turns a call left reserved by a process that died into an unknown outcome: its reservation stays and
 // its month is blocked until an operator reconciles, never released as if nothing had been spent.
 func (b Budget) expireStale(ctx context.Context, workspaceID string) error {
-	c, ok, err := b.DB.AICallInFlight(ctx, workspaceID)
+	c, ok, err := b.DB.AICallInFlight(ctx, workspaceID, b.Pool)
 	if err != nil || !ok || b.Now().Sub(c.CreatedAt) < staleAfter {
 		return err
 	}
 	return b.DB.Tx(ctx, func(q store.Q) error {
-		u, err := q.LockHeidiUsage(ctx, workspaceID, c.Period, b.Now())
+		u, err := q.LockHeidiUsage(ctx, workspaceID, b.Pool, c.Period, b.Now())
 		if err != nil {
 			return err
 		}
@@ -285,6 +298,6 @@ func (b Budget) expireStale(ctx context.Context, workspaceID string) error {
 			return err
 		}
 		u.Uncertain = true
-		return q.SaveHeidiUsage(ctx, workspaceID, c.Period, u, b.Now())
+		return q.SaveHeidiUsage(ctx, workspaceID, b.Pool, c.Period, u, b.Now())
 	})
 }

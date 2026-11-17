@@ -56,7 +56,7 @@ test('thirteen business rows and ten allowances, per team member or per workspac
   expect(row('expenses_per_month')('basic')).toHaveTextContent('Not included')
   expect(row('storage_bytes')('pro')).toHaveTextContent('5 GB')
   expect(screen.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent('Per workspace')
-  expect(screen.getByRole('rowheader', { name: /^AI tokens/ })).toHaveTextContent('Monthly')
+  expect(screen.getByRole('rowheader', { name: /^Heidi AI tokens/ })).toHaveTextContent('Monthly')
   expect(screen.getByRole('rowheader', { name: /^Quotes sent/ })).toHaveTextContent('Monthly')
   // Whose allowance it is, and that storage is not monthly, is said once in the legend, not on every row.
   expect(screen.getByRole('rowheader', { name: /^Storage/ }).textContent).not.toMatch(

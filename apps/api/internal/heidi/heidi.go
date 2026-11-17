@@ -239,7 +239,7 @@ func (s *Service) suggestions(w http.ResponseWriter, r *http.Request, sess store
 }
 func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	period := store.UsagePeriod(s.now())
-	u, err := s.db.HeidiUsage(r.Context(), sess.Workspace.ID, period)
+	u, err := s.db.HeidiUsage(r.Context(), sess.Workspace.ID, aimodel.PoolHeidi, period)
 	if err != nil {
 		return err
 	}

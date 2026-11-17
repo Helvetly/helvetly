@@ -21,6 +21,7 @@ export type LimitKey =
   | 'signatures_per_month'
   | 'storage_bytes'
   | 'ai_tokens_per_month'
+  | 'ai_automation_tokens_per_month'
 
 /** A capability a plan switches on or off that the app gates (a record of kind access in the offer). */
 export type FeatureKey =
@@ -389,6 +390,7 @@ export const LIMIT_LABELS: Record<LimitKey, string> = {
   signatures_per_month: translate('signatureRequestsThisMonth'),
   storage_bytes: translate('storage'),
   ai_tokens_per_month: translate('aiTokensThisMonth'),
+  ai_automation_tokens_per_month: translate('aiAutomationTokensThisMonth'),
 }
 
 const limitNounMessages = {
@@ -402,6 +404,7 @@ const limitNounMessages = {
   signatures_per_month: 'limitNounSignaturesPerMonth',
   storage_bytes: 'limitNounStorageBytes',
   ai_tokens_per_month: 'limitNounAiTokensPerMonth',
+  ai_automation_tokens_per_month: 'limitNounAiAutomationTokensPerMonth',
 } as const
 
 export function limitNoun(key: LimitKey, count = 2): string {
@@ -427,6 +430,7 @@ export function comparisonLimitLabel(key: LimitKey): string {
     expenses_per_month: translate('expensesPerMonthLabel'),
     signatures_per_month: translate('signaturesPerMonthLabel'),
     ai_tokens_per_month: translate('aiTokensPerMonthLabel'),
+    ai_automation_tokens_per_month: translate('aiAutomationTokensPerMonthLabel'),
   }
   return monthly[key] ?? LIMIT_LABELS[key]
 }
@@ -449,6 +453,8 @@ const USAGE_LABELS: Record<string, string> = {
 /** What an allowance counts, where its name alone does not say: shown in a help tip next to the name. */
 const USAGE_HINTS: Record<string, string> = {
   automation_actions_per_month: translate('automationActionsHint'),
+  ai_tokens_per_month: translate('aiTokensHint'),
+  ai_automation_tokens_per_month: translate('aiAutomationTokensHint'),
 }
 export const usageHint = (key: string): string | undefined => USAGE_HINTS[key]
 
@@ -623,6 +629,7 @@ const HIGHLIGHT_ORDER: LimitKey[] = [
   'products',
   'expenses_per_month',
   'ai_tokens_per_month',
+  'ai_automation_tokens_per_month',
 ]
 const HIGHLIGHT_NOUNS: Record<LimitKey, string> = {
   members: 'members',
@@ -635,6 +642,7 @@ const HIGHLIGHT_NOUNS: Record<LimitKey, string> = {
   signatures_per_month: translate('signatureRequestsAMonth'),
   storage_bytes: 'storage',
   ai_tokens_per_month: translate('aiTokensAMonth'),
+  ai_automation_tokens_per_month: translate('aiAutomationTokensAMonth'),
 }
 
 /** A plan's main limits as short lines: "2 members", "50 clients", "30 invoices a month". */

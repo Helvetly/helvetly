@@ -158,7 +158,7 @@ export const UnknownModelUsage: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
     await canvas.findByRole('textbox', { name: 'Message Heidi' })
-    await expect(canvas.queryByText(/of this month’s AI tokens/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/of this month’s Heidi AI tokens/)).not.toBeInTheDocument()
   },
 }
 
@@ -184,7 +184,7 @@ export const TokenAllowanceWarning: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
-    const bar = await canvas.findByText(/You have used 78% of this month’s AI tokens\./)
+    const bar = await canvas.findByText(/You have used 78% of this month’s Heidi AI tokens\./)
     // The panel slides in from opacity 0.
     await waitFor(() => expect(bar).toBeVisible())
     await expect(within(bar).getByRole('link', { name: 'See plans' })).toHaveAttribute(

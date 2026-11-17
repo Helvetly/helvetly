@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"helvetly.com/api/internal/aimodel"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -64,7 +65,7 @@ func modelFixture(t *testing.T) (*Service, http.Handler, *testProvider, func() i
 	s.provider = p
 	grant(t, mux)
 	used := func() int64 {
-		u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, s.now().In(sess.Workspace.Location()).Format("2006-01"))
+		u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, aimodel.PoolHeidi, s.now().In(sess.Workspace.Location()).Format("2006-01"))
 		if err != nil || u.Uncertain {
 			t.Fatalf("usage=%+v err=%v", u, err)
 		}

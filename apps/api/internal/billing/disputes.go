@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/notifications"
 	"helvetly.com/api/internal/store"
 )
@@ -259,7 +260,7 @@ func (s *Service) revokePack(ctx context.Context, q store.Q, ws string, pack che
 		if err != nil {
 			return err
 		}
-		used, err := q.LockHeidiUsage(ctx, ws, period, now) // no AI spend in between
+		used, err := q.LockHeidiUsage(ctx, ws, aimodel.PoolHeidi, period, now) // packs add to Heidi's pool; no AI spend in between
 		if err != nil {
 			return err
 		}
