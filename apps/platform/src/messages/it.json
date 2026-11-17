@@ -3468,7 +3468,7 @@
   "working": "Lavorando...",
   "workspace": "Spazio di lavoro",
   "workspaceName": "Nome dell’area di lavoro",
-  "workspaceNameHelp": "Il nome che il tuo team vede nel commutatore dell’area di lavoro. Può differire dal nome legale della tua azienda.",
+  "workspaceNameHelp": "Il nome che il tuo team vede nel commutatore dell’area di lavoro e i tuoi clienti nel loro portale. Può differire dal nome legale della tua azienda.",
   "workspaceOverviewCouldnTBeLoaded": "Impossibile caricare la panoramica dell’area di lavoro: ",
   "workspaces": "Spazi di lavoro",
   "workspaceSaved": "Area di lavoro salvata.",

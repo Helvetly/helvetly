@@ -42,7 +42,10 @@ for (const app of [
       const title = app.area === 'platform' ? language.platform : language.portal
       await page.goto(`${app.origin}/login?next=%2Finvoices#details`)
       await page.getByRole('button', { name: 'Change language' }).click()
-      await page.getByRole('menuitem', { name: language.name, exact: true }).click()
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: language.name, exact: true })
+        .click()
 
       await expect(page).toHaveURL(
         `${app.origin}/login?next=%2Finvoices&lang=${language.code}#details`,

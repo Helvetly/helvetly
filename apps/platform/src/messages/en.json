@@ -3468,7 +3468,7 @@
   "working": "Working…",
   "workspace": "Workspace",
   "workspaceName": "Workspace name",
-  "workspaceNameHelp": "The name your team sees in the workspace switcher. It can differ from your company’s legal name.",
+  "workspaceNameHelp": "The name your team sees in the workspace switcher and your clients see in their portal. It can differ from your company’s legal name.",
   "workspaceOverviewCouldnTBeLoaded": "Workspace overview couldn’t be loaded: ",
   "workspaces": "Workspaces",
   "workspaceSaved": "Workspace saved.",

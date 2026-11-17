@@ -3468,7 +3468,7 @@
   "working": "Arbeiten…",
   "workspace": "Arbeitsbereich",
   "workspaceName": "Arbeitsbereichsname",
-  "workspaceNameHelp": "Der Name, den Ihr Team im Arbeitsbereichsumschalter sieht. Er kann vom offiziellen Namen Ihres Unternehmens abweichen.",
+  "workspaceNameHelp": "Der Name, den Ihr Team im Arbeitsbereichsumschalter und Ihre Kunden in ihrem Portal sehen. Er kann vom offiziellen Namen Ihres Unternehmens abweichen.",
   "workspaceOverviewCouldnTBeLoaded": "Arbeitsbereichsübersicht konnte nicht geladen werden: ",
   "workspaces": "Arbeitsbereiche",
   "workspaceSaved": "Arbeitsbereich gespeichert.",

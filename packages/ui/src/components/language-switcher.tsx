@@ -3,6 +3,14 @@
 import { browserLanguage, languageHref, locales, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@helvetly/ui/components/dialog'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -81,5 +89,54 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         <LanguageMenuItems />
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/**
+ * A quiet footer control: the current language's flag and name, opening a dialog with every language. For
+ * screens where the language is chosen once (sign-in), so it should not compete with the form.
+ */
+export function LanguageDialogButton() {
+  const current = useLanguage()
+  const translate = useTranslate()
+  if (Object.keys(locales).length < 2) return null
+  const currentName = locales[current as keyof typeof locales]?.name ?? current
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-muted-foreground">
+          {/* The name says what it does and keeps the visible language in it. */}
+          <span className="sr-only">{translate('changeLanguage')}: </span>
+          <Flag region={languageFlags[current] ?? ''} className="h-3 w-4 shrink-0 rounded-xs" />
+          {currentName}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{translate('changeLanguage')}</DialogTitle>
+          <DialogDescription className="sr-only">{translate('language')}</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(locales).map(([language, details]) => (
+            <Button
+              key={language}
+              lang={language}
+              variant="outline"
+              aria-pressed={language === current}
+              className="justify-start aria-pressed:border-brand-solid/45 aria-pressed:bg-brand-surface/40"
+              onClick={() => switchLanguage(language)}
+            >
+              <Flag
+                region={languageFlags[language] ?? ''}
+                className="h-3 w-4 shrink-0 rounded-xs"
+              />
+              <span className="flex-1 text-left">{details.name}</span>
+              {language === current && <Check aria-hidden />}
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
