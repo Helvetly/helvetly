@@ -5,7 +5,15 @@ import { setupServer } from 'msw/node'
 import { createElement, type ReactNode } from 'react'
 
 import { getCsrfToken, setCsrfToken } from './api'
-import { assignableRoles, canManage, useInvite, useSwitchWorkspace } from './members'
+import {
+  assignableRoles,
+  canManage,
+  matchesTeamFilter,
+  parseTeamFilter,
+  teamFilterToQuery,
+  useInvite,
+  useSwitchWorkspace,
+} from './members'
 
 const server = setupServer()
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
@@ -94,4 +102,37 @@ test('inviting posts email and role', async () => {
   await act(() => result.current.mutateAsync({ email: 'a@b.ch', role: 'member', send_email: true }))
   await waitFor(() => expect(result.current.data).toEqual(created))
   expect(body).toEqual({ email: 'a@b.ch', role: 'member', send_email: true })
+})
+
+test('the team filter round-trips through the URL and ignores unknown roles', () => {
+  const filter = parseTeamFilter(
+    new URLSearchParams('view=invited&q=anna&role=member&role=boss&role=owner'),
+  )
+  expect(filter).toEqual({ invited: true, search: 'anna', roles: ['owner', 'member'] })
+  expect(teamFilterToQuery(filter, new URLSearchParams('other=1')).toString()).toBe(
+    'other=1&view=invited&q=anna&role=owner&role=member',
+  )
+  expect(parseTeamFilter(new URLSearchParams())).toEqual({ invited: false, search: '', roles: [] })
+  expect(teamFilterToQuery({ invited: false, search: '', roles: [] }).toString()).toBe('')
+})
+
+test.each([
+  [{ search: '', roles: [] }, true],
+  [{ search: 'ANNA', roles: [] }, true],
+  [{ search: ' muster.ch ', roles: [] }, true],
+  [{ search: 'luca', roles: [] }, false],
+  [{ search: '', roles: ['admin', 'member'] }, true],
+  [{ search: '', roles: ['owner'] }, false],
+  [{ search: 'anna', roles: ['owner'] }, false],
+] as const)('a member with filter %j passes: %s', (filter, expected) => {
+  const row = { name: 'Anna Muster', email: 'anna@muster.ch', role: 'admin' as const }
+  expect(matchesTeamFilter(row, { invited: false, ...filter, roles: [...filter.roles] })).toBe(
+    expected,
+  )
+})
+
+test('an invitation is searched by its email alone', () => {
+  const filter = { invited: true, search: 'jonas', roles: [] }
+  expect(matchesTeamFilter({ email: 'jonas@muster.ch', role: 'member' }, filter)).toBe(true)
+  expect(matchesTeamFilter({ email: 'luca@muster.ch', role: 'member' }, filter)).toBe(false)
 })

@@ -13,6 +13,7 @@ import {
   quoteNumber,
   quotePdfUrl,
   quotesApi,
+  searchQuotes,
 } from './quotes'
 
 const server = setupServer(...handlers)
@@ -125,4 +126,25 @@ test('a valid-until before the date is refused per field', async () => {
     details: { fields: { valid_until: expect.any(String) } },
   })
   expect(sampleQuote().payable_total).toBe('2529.54')
+})
+
+test('search matches number, client and reference, ignoring case and spaces', () => {
+  const quotes = [
+    sampleQuote({ id: 'a', number: 'Q-2026-004', reference: 'PO 4711' }),
+    sampleQuote({ id: 'b', number: 'Q-2026-002', revision: 2 }),
+    sampleQuote({
+      id: 'c',
+      number: null,
+      client: { id: 'cli_9', number: 9, name: 'Keller Holzbau AG' },
+    }),
+  ]
+  const ids = (search: string) => searchQuotes(quotes, search).map((quote) => quote.id)
+  expect(ids('')).toEqual(['a', 'b', 'c'])
+  expect(ids('  ')).toEqual(['a', 'b', 'c'])
+  expect(ids('q-2026-004')).toEqual(['a'])
+  expect(ids('rev. 2')).toEqual(['b'])
+  expect(ids(' po 47 ')).toEqual(['a'])
+  expect(ids('holzbau')).toEqual(['c'])
+  expect(ids('draft')).toEqual(['c'])
+  expect(ids('nothing')).toEqual([])
 })
