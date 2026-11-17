@@ -20,7 +20,7 @@ import {
 import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { Check, Languages } from 'lucide-react'
+import { Check, Globe, Languages } from 'lucide-react'
 
 const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it: 'IT' }
 
@@ -105,10 +105,10 @@ export function LanguageDialogButton() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-muted-foreground">
+        <Button variant="outline" size="xs" className="rounded-full px-2.5 text-muted-foreground">
           {/* The name says what it does and keeps the visible language in it. */}
           <span className="sr-only">{translate('changeLanguage')}: </span>
-          <Flag region={languageFlags[current] ?? ''} className="h-3 w-4 shrink-0 rounded-xs" />
+          <Globe aria-hidden />
           {currentName}
         </Button>
       </DialogTrigger>
