@@ -30,7 +30,9 @@ export function ClientTypeBadge({ company }: { company: boolean }) {
 }
 
 /** "Bahnhofstrasse 1, Apt 3" / "8001 Zürich" — what there is of the address. */
-export function addressLines(client: Client): string[] {
+export function addressLines(
+  client: Pick<Client, 'street' | 'street_number' | 'apt' | 'country' | 'zip' | 'city'>,
+): string[] {
   const line1 = streetLine(client)
   const line2 = [client.zip, client.city].filter(Boolean).join(' ')
   return [line1, line2].filter(Boolean)

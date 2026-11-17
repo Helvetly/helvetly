@@ -353,7 +353,7 @@
   "bihor": "Bihor",
   "billedAfterDelivery": "wird nach der Lieferung in Rechnung gestellt",
   "billedMonthly": "Monatliche Abrechnung",
-  "billedTo": "In Rechnung gestellt",
+  "billedTo": "Empfänger",
   "billedUpfront": "wird im Voraus in Rechnung gestellt",
   "billedYearly": "Jährliche Abrechnung",
   "billing": "Abrechnung",
@@ -431,7 +431,7 @@
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Kette am Eingang #{broken_at} gebrochen",
   "chainVerified": "Kette verifiziert",
-  "change": "Änderung",
+  "change": "Ändern",
   "changeAccess": " Zugriff ändern…",
   "changeNothing": "Nichts ändern.",
   "changeNotificationSettings": "Benachrichtigungseinstellungen ändern",
@@ -4162,5 +4162,7 @@
   "nothingNewReadFromTheReceipt": "Dieser Quittung konnte nichts Neues entnommen werden. Ihre Eingaben bleiben unverändert.",
   "checkTheseFromTheReceipt": "Scheck aus der Quittung: {issues}",
   "heicCantBeRead": "HEIC-Fotos können nicht automatisch gelesen werden. Exportieren Sie das Foto als JPEG oder geben Sie die Details selbst ein.",
-  "receiptReadFailed": "Der Beleg konnte nicht gelesen werden: {reason} Ihre Eingaben bleiben unverändert."
+  "receiptReadFailed": "Der Beleg konnte nicht gelesen werden: {reason} Ihre Eingaben bleiben unverändert.",
+  "billedBy": "Absender",
+  "changeLogo": "Logo ändern"
 }
