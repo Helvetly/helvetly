@@ -4429,5 +4429,11 @@
   "contractUnlink": "Délier le document",
   "contractLinkDocument": "Lier un contrat des Documents",
   "contractSearchDocuments": "Rechercher des documents",
-  "contractNoDocuments": "Aucun document trouvé."
+  "contractNoDocuments": "Aucun document trouvé.",
+  "clientNumberShort": "N° client",
+  "clientNumberTip": "Imprimé sur la facture. Vide : le numéro du client dans Helvetly ; saisissez-en un autre, p. ex. celui sous lequel le client vous connaît, ou masquez-le.",
+  "clientNumberHide": "Ne pas imprimer de n° client",
+  "contractNumberShort": "N° de contrat",
+  "contractNumberTip": "Le contrat auquel la facture se réfère. Imprimé et transmis dans les e-factures ; liez le contrat des Documents pour l’ouvrir d’ici.",
+  "addField": "Ajouter un champ"
 }

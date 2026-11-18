@@ -30,11 +30,13 @@ import {
   Download,
   ExternalLink,
   Eye,
+  EyeOff,
   FileLock2,
   Landmark,
   type LucideIcon,
   Lock,
   LoaderCircle,
+  Plus,
   Trash2,
   X,
   ArrowLeft,
@@ -92,6 +94,7 @@ import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import type { Compose } from './compose'
+import { ContractField } from './contract-field'
 import { DateField, DueDateField, quietValue, ServiceField } from './date-fields'
 import {
   ClientBlock,
@@ -400,6 +403,8 @@ function Editor({
   const [picking, setPicking] = useState(!values.client_id && !invoice)
   const [clientError, setClientError] = useState(false)
   const [engagementId, setEngagementId] = useState('') // chosen before the draft exists
+  // The contract row shows once added, and stays while it holds a number or a document.
+  const [contractShown, setContractShown] = useState(false)
   const canLinkEngagement = useCan('write:engagements')
   const top = useRef<HTMLDivElement>(null)
 
@@ -945,6 +950,109 @@ function Editor({
                         </dd>
                       </>
                     )}
+                    {values.client_number_display !== '' && (
+                      <>
+                        <MetaLabel
+                          htmlFor="invoice-client_number"
+                          error={errors.client_number_display}
+                          tip={translate('clientNumberTip')}
+                        >
+                          {translate('clientNumberShort')}
+                        </MetaLabel>
+                        <dd className="flex min-w-0 items-center gap-0.5">
+                          <input
+                            id="invoice-client_number"
+                            value={values.client_number_display ?? ''}
+                            maxLength={40}
+                            onChange={(event) =>
+                              set('client_number_display', event.target.value || null)
+                            }
+                            placeholder={client ? String(client.number) : '—'}
+                            className={cn(quietValue, 'min-w-0 flex-1')}
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label={translate('clientNumberHide')}
+                                className="shrink-0 text-muted-foreground"
+                                onClick={() => set('client_number_display', '')}
+                              >
+                                <EyeOff />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{translate('clientNumberHide')}</TooltipContent>
+                          </Tooltip>
+                        </dd>
+                      </>
+                    )}
+                    {(contractShown || values.contract_reference || values.contract_document) && (
+                      <>
+                        <MetaLabel
+                          htmlFor="invoice-contract_reference"
+                          error={errors.contract_reference ?? errors.contract_document_id}
+                          tip={translate('contractNumberTip')}
+                        >
+                          {translate('contractNumberShort')}
+                        </MetaLabel>
+                        <dd>
+                          <ContractField
+                            id="invoice-contract_reference"
+                            value={values.contract_reference}
+                            document={values.contract_document}
+                            onChange={(value) => set('contract_reference', value)}
+                            onLink={(document) => set('contract_document', document)}
+                          />
+                        </dd>
+                      </>
+                    )}
+                    {(values.client_number_display === '' ||
+                      !(
+                        contractShown ||
+                        values.contract_reference ||
+                        values.contract_document
+                      )) && (
+                      <dd className="col-span-2 pt-0.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              className="-ml-2 gap-1 text-muted-foreground"
+                            >
+                              <Plus />
+                              {translate('addField')}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {!(
+                              contractShown ||
+                              values.contract_reference ||
+                              values.contract_document
+                            ) && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setContractShown(true)
+                                  requestAnimationFrame(() =>
+                                    document.getElementById('invoice-contract_reference')?.focus(),
+                                  )
+                                }}
+                              >
+                                {translate('contractNumberShort')}
+                              </DropdownMenuItem>
+                            )}
+                            {values.client_number_display === '' && (
+                              <DropdownMenuItem onSelect={() => set('client_number_display', null)}>
+                                {translate('clientNumberShort')}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </dd>
+                    )}
                     {needsRonRate(client?.country, values.currency) && (
                       <>
                         <MetaLabel
@@ -972,11 +1080,17 @@ function Editor({
                     {(errors.issue_date ||
                       errors.due_date ||
                       errors.reference ||
+                      errors.client_number_display ||
+                      errors.contract_reference ||
+                      errors.contract_document_id ||
                       errors.tax_currency_rate) && (
                       <p className="col-span-2 px-2 pt-1 text-caption text-destructive">
                         {errors.issue_date ??
                           errors.due_date ??
                           errors.reference ??
+                          errors.client_number_display ??
+                          errors.contract_reference ??
+                          errors.contract_document_id ??
                           errors.tax_currency_rate}
                       </p>
                     )}

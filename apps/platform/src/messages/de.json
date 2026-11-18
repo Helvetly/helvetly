@@ -4429,5 +4429,11 @@
   "contractUnlink": "Dokument trennen",
   "contractLinkDocument": "Vertrag aus Dokumenten verknüpfen",
   "contractSearchDocuments": "Dokumente durchsuchen",
-  "contractNoDocuments": "Keine Dokumente gefunden."
+  "contractNoDocuments": "Keine Dokumente gefunden.",
+  "clientNumberShort": "Kundennr.",
+  "clientNumberTip": "Wird auf die Rechnung gedruckt. Leer: die Kundennummer in Helvetly; geben Sie eine andere ein, z. B. die, unter der der Kunde Sie kennt, oder blenden Sie sie aus.",
+  "clientNumberHide": "Keine Kundennummer drucken",
+  "contractNumberShort": "Vertragsnr.",
+  "contractNumberTip": "Der Vertrag, auf den sich die Rechnung bezieht. Wird gedruckt und in E-Rechnungen übermittelt; verknüpfen Sie den Vertrag aus Dokumenten, um ihn von hier zu öffnen.",
+  "addField": "Feld hinzufügen"
 }

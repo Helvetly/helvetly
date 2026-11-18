@@ -4429,5 +4429,11 @@
   "contractUnlink": "Unlink the document",
   "contractLinkDocument": "Link a contract from Documents",
   "contractSearchDocuments": "Search documents",
-  "contractNoDocuments": "No documents found."
+  "contractNoDocuments": "No documents found.",
+  "clientNumberShort": "Client no.",
+  "clientNumberTip": "Printed on the invoice. Empty: the client’s number in Helvetly; type another, e.g. the one the client knows you under, or hide it.",
+  "clientNumberHide": "Do not print a client number",
+  "contractNumberShort": "Contract no.",
+  "contractNumberTip": "The contract this invoice refers to. Printed on the invoice and sent in e-invoices; link the contract from Documents to open it from here.",
+  "addField": "Add field"
 }
