@@ -4,6 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { AIApprovalProvider } from '@/components/ai/ai-approval'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 
 import { ExpenseForm } from './expense-form'
 
@@ -417,17 +418,19 @@ const usage = (granted: boolean) =>
     tokens_purchased: 0,
     tokens_remaining: 0,
     provider_available: true,
-    consent: { granted, changed_at: granted ? '2026-11-16T10:00:00Z' : null, changed_by: '' },
+    consent: aiConsent(granted),
   })
 
 function approvalApi(options: { granted: boolean; previews: (call: number) => Response }) {
   const state = { granted: options.granted, previews: 0, puts: 0 }
   const fetch = stubApi((url, _body) => {
     if (url.endsWith('/heidi/usage')) return usage(state.granted)
+    if (url.includes('/heidi/consent?'))
+      return json({ data: aiConsent(state.granted), notice: aiNotice })
     if (url.endsWith('/heidi/consent')) {
       state.puts += 1
       state.granted = true
-      return json({ data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'U' } })
+      return json({ data: aiConsent(true) })
     }
     state.previews += 1
     return options.previews(state.previews)

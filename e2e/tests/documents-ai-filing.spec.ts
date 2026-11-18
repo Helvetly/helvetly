@@ -9,7 +9,7 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
   page,
   api,
 }) => {
-  await expect(await api.write('/heidi/consent', { granted: true }, 'PUT')).toBeOK()
+  await api.approveAI()
   await openPage(page, '/documents', 'Documents')
   const name = `receipt-${randomUUID()}.txt`
   const uploaded = page.waitForResponse(

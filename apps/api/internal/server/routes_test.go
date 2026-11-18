@@ -55,6 +55,8 @@ func TestNewRoutesRegistered(t *testing.T) {
 		{"GET", "/api/v1/reports/key-figures"},
 		{"GET", "/api/v1/heidi/suggestions"},
 		{"GET", "/api/v1/heidi/usage"},
+
+		{"GET", "/api/v1/heidi/consent"},
 		{"GET", "/api/v1/heidi/conversations/c1"},
 		{"POST", "/api/v1/heidi/chat"},
 		{"POST", "/api/v1/heidi/chat/confirm"},

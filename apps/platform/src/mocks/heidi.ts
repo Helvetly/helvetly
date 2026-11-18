@@ -13,6 +13,7 @@ import type {
   HeidiSuggestion,
 } from '@/lib/heidi'
 
+import { aiConsent, aiNotice } from './ai-notice'
 import { clients, expenses, invoices } from './data'
 import {
   chosenEngagementAnswer,
@@ -423,6 +424,11 @@ export const heidiHandlers = [
           { error: { code: 'not_found', message: 'No such conversation.' } },
           { status: 404 },
         )
+  }),
+
+  http.get('/api/v1/heidi/consent', async () => {
+    await delay(150)
+    return HttpResponse.json({ data: aiConsent(false), notice: aiNotice })
   }),
 
   http.get('/api/v1/heidi/usage', async () => {

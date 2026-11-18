@@ -42,6 +42,20 @@ export class FinancialAPI {
     return object(object(await response.json()).data)
   }
 
+  /** Approves AI use for this person in this workspace, naming the notice version in force as the platform does. */
+  async approveAI() {
+    const notice = object((await this.consent()).notice)
+    await expect(
+      await this.write('/heidi/consent', { granted: true, version: notice.version }, 'PUT'),
+    ).toBeOK()
+  }
+
+  async consent() {
+    const response = await this.request.get('/api/v1/heidi/consent?lang=en')
+    await expect(response).toBeOK()
+    return object(await response.json())
+  }
+
   async read(path: string) {
     const response = await this.request.get(`/api/v1${path}`)
     await expect(response).toBeOK()

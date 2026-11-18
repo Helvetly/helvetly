@@ -123,3 +123,13 @@ func migratedTemplate(ctx context.Context, admin *pgxpool.Pool, u url.URL) (stri
 }
 
 func randomName(prefix string) string { return prefix + strings.ToLower(rand.Text()[:12]) }
+
+// OutdateAIConsent makes a person's AI approvals in a workspace name an earlier notice, as a deploy of a new notice
+// version does to every row written before it.
+func OutdateAIConsent(t *testing.T, raw *pgxpool.Pool, workspaceID, userID string) {
+	t.Helper()
+	if _, err := raw.Exec(context.Background(), `UPDATE workspace_ai_consents SET version = '2000-01-01'
+		WHERE workspace_id = $1 AND user_id = $2`, workspaceID, userID); err != nil {
+		t.Fatal(err)
+	}
+}

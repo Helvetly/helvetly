@@ -82,6 +82,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/heidi/conversations/{id}", s.conversation)
 	handle("POST /api/v1/heidi/chat", s.chat)
 	handle("POST /api/v1/heidi/chat/confirm", s.confirm)
+	handle("GET /api/v1/heidi/consent", s.consent)
 	handle("PUT /api/v1/heidi/consent", s.setConsent)
 }
 

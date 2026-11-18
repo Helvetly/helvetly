@@ -2,10 +2,13 @@ package imports
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/store/storetest"
 )
 
 // Uploading needs the uploader's own approval in this workspace: another member's, or their own in another
@@ -45,6 +48,10 @@ func TestQueuedReadingNeedsTheUploaderAsTheyAreNow(t *testing.T) {
 		"approval withdrawn": func(e *env) error {
 			return e.db.SetAIConsent(context.Background(), "ws_a", "usr_m", false, time.Now().Add(time.Second))
 		},
+		"approval of an earlier notice": func(e *env) error {
+			storetest.OutdateAIConsent(e.t, e.raw, "ws_a", "usr_m")
+			return nil
+		},
 		"no longer a member": func(e *env) error { return e.db.RemoveMember(context.Background(), "ws_a", "usr_m") },
 		"write access taken": func(e *env) error {
 			return e.db.SetMemberRole(context.Background(), "ws_a", "usr_m", "member", []string{"read:clients"})
@@ -79,4 +86,25 @@ func (e *env) extractedAny(batchID string) string {
 		e.t.Fatal(err)
 	}
 	return status
+}
+
+// A new notice deployed while a file is read stops the next chunk before it is counted or sent: the reading in flight
+// ends, and the file fails rather than being read on without a current approval.
+func TestNoticeChangedBetweenChunksStopsTheNextOne(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	e.model.replies = append(e.model.replies, func(r aimodel.Request) (aimodel.Reply, error) {
+		storetest.OutdateAIConsent(e.t, e.raw, "ws_a", "usr_a")
+		return aimodel.Fake{}.Answer(context.Background(), r)
+	})
+	var csv strings.Builder
+	csv.WriteString("name,email\n")
+	for range 2000 {
+		csv.WriteString("Acme Holding AG,office@acme.example\n")
+	}
+	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.csv": []byte(csv.String())}))
+	got := e.extracted(b.ID)
+	if e.model.calls.Load() != 1 || e.model.counted.Load() != 1 || got.Files[0].Status != "failed" {
+		t.Fatalf("answer=%d count=%d file=%+v, want one chunk read and the file failed", e.model.calls.Load(), e.model.counted.Load(), got.Files[0])
+	}
 }

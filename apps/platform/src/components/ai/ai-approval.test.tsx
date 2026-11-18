@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -7,10 +7,16 @@ import { setupServer } from 'msw/node'
 import type { HeidiConsent } from '@/lib/heidi'
 import { useSwitchWorkspace } from '@/lib/members'
 import { queryKeys } from '@/lib/queries'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 
 import { AIApprovalProvider, useAIApproval } from './ai-approval'
 
-const server = setupServer()
+// The notice the dialog shows, read when it opens.
+const server = setupServer(
+  http.get('/api/v1/heidi/consent', () =>
+    HttpResponse.json({ data: aiConsent(false), notice: aiNotice }),
+  ),
+)
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
@@ -36,14 +42,14 @@ function api(state: { consent: HeidiConsent; available?: boolean }) {
     ),
     http.put('/api/v1/heidi/consent', async ({ request }) => {
       puts.push(await request.json())
-      state.consent = { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' }
+      state.consent = aiConsent(true)
       return HttpResponse.json({ data: state.consent })
     }),
   )
   return puts
 }
 
-const notYet: HeidiConsent = { granted: false, changed_at: null, changed_by: '' }
+const notYet = aiConsent(false)
 
 /** Renders the provider with a button that runs one AI action through ensure() and records each answer. */
 function setup(workspace = 'ws_a') {
@@ -73,9 +79,7 @@ function setup(workspace = 'ws_a') {
 }
 
 test('a person who approved before is never asked', async () => {
-  const puts = api({
-    consent: { granted: true, changed_at: '2026-11-01T00:00:00Z', changed_by: 'Anna' },
-  })
+  const puts = api({ consent: aiConsent(true) })
   const { answers, act: run } = setup()
   await run()
   await waitFor(() => expect(answers).toEqual([true]))
@@ -98,7 +102,7 @@ test.each([
   const puts = api({ consent: notYet })
   const { answers, act: run } = setup()
   await run()
-  const dialog = await screen.findByRole('dialog', { name: 'Use AI in this workspace?' })
+  const dialog = await screen.findByRole('dialog', { name: aiNotice.title })
   expect(dialog).toBeVisible()
   // short phones: the dialog stays within the screen and scrolls, so its buttons stay reachable
   expect(dialog).toHaveClass('max-h-[calc(100svh-2rem)]', 'overflow-y-auto')
@@ -118,7 +122,7 @@ test('approving writes only the own approval, runs the action once, and is not a
   fireEvent.click(screen.getByRole('button', { name: 'Ask Heidi', hidden: true }))
   await userEvent.click(screen.getByRole('button', { name: 'Approve and continue' }))
   await waitFor(() => expect(answers.toSorted()).toEqual([false, true]))
-  expect(puts).toEqual([{ granted: true }])
+  expect(puts).toEqual([{ granted: true, version: aiNotice.version }])
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   await run()
   await waitFor(() => expect(answers).toHaveLength(3))
@@ -171,9 +175,7 @@ test('a late approval from the previous workspace neither answers a newer questi
     ),
     http.put('/api/v1/heidi/consent', async () => {
       await gate
-      return HttpResponse.json({
-        data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' },
-      })
+      return HttpResponse.json({ data: aiConsent(true) })
     }),
   )
   const { client, answers, act: run } = setup('ws_a')
@@ -260,8 +262,112 @@ test('switching workspace while the approval check is still loading drops the ac
   expect(puts).toEqual([])
 
   await userEvent.click(screen.getByRole('button', { name: 'Ask Heidi' })) // B has not approved: asked afresh
-  expect(await screen.findByRole('dialog', { name: 'Use AI in this workspace?' })).toBeVisible()
+  expect(await screen.findByRole('dialog', { name: aiNotice.title })).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: 'Not now' }))
   await waitFor(() => expect(answers).toEqual([false, false]))
+  expect(puts).toEqual([])
+})
+
+test('the dialog shows the notice from the API, with a default icon for a point it does not know', async () => {
+  server.use(
+    http.get('/api/v1/heidi/consent', () =>
+      HttpResponse.json({
+        data: notYet,
+        notice: {
+          ...aiNotice,
+          sections: [
+            { id: 'new', title: 'New section', points: [{ id: 'new', text: 'A new point' }] },
+          ],
+        },
+      }),
+    ),
+  )
+  api({ consent: notYet })
+  const { act: run } = setup()
+  await run()
+  const dialog = await screen.findByRole('dialog', { name: aiNotice.title })
+  expect(dialog).toHaveAccessibleDescription(aiNotice.lead)
+  const point = within(dialog).getByText('A new point').closest('li')
+  expect(point?.querySelector('svg.lucide-info')).not.toBeNull()
+})
+
+test('a notice that fails to load cannot be approved; trying again shows it', async () => {
+  let fail = true
+  server.use(
+    http.get('/api/v1/heidi/consent', () =>
+      fail
+        ? HttpResponse.json({ error: { code: 'internal', message: 'Down.' } }, { status: 500 })
+        : HttpResponse.json({ data: notYet, notice: aiNotice }),
+    ),
+  )
+  const puts = api({ consent: notYet })
+  const { act: run } = setup()
+  await run()
+  await screen.findByRole('dialog', { name: 'Couldn’t load the AI notice' })
+  expect(screen.getByRole('button', { name: 'Approve and continue' })).toBeDisabled()
+  fail = false
+  await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  await screen.findByRole('dialog', { name: aiNotice.title })
+  expect(screen.getByRole('button', { name: 'Approve and continue' })).toBeEnabled()
+  expect(puts).toEqual([])
+})
+
+test('a notice that changed while shown is shown again and approved only when the person approves it', async () => {
+  const old = { ...aiNotice, version: '2000-01-01', lead: 'The earlier notice.' }
+  let reads = 0
+  const puts: { granted: boolean; version: string }[] = []
+  server.use(
+    http.get('/api/v1/heidi/usage', () =>
+      HttpResponse.json({ ...empty, provider_available: true, consent: notYet }),
+    ),
+    // the tab read the notice before a new one was deployed
+    http.get('/api/v1/heidi/consent', () =>
+      HttpResponse.json({ data: notYet, notice: ++reads === 1 ? old : aiNotice }),
+    ),
+    http.put('/api/v1/heidi/consent', async ({ request }) => {
+      const body = (await request.json()) as { granted: boolean; version: string }
+      puts.push(body)
+      return body.version === aiNotice.version
+        ? HttpResponse.json({ data: aiConsent(true) })
+        : HttpResponse.json(
+            {
+              error: { code: 'ai_consent_version_changed', message: 'The AI notice has changed.' },
+            },
+            { status: 409 },
+          )
+    }),
+  )
+  const { answers, act: run } = setup()
+  await run()
+  const dialog = await screen.findByRole('dialog')
+  expect(dialog).toHaveAccessibleDescription('The earlier notice.')
+  await userEvent.click(screen.getByRole('button', { name: 'Approve and continue' }))
+  expect(await within(dialog).findByRole('status')).toHaveTextContent(
+    'This notice has changed since it was shown',
+  )
+  await waitFor(() => expect(dialog).toHaveAccessibleDescription(aiNotice.lead))
+  expect(answers).toEqual([]) // never approved on the person's behalf
+  expect(puts).toEqual([{ granted: true, version: '2000-01-01' }])
+  await userEvent.click(screen.getByRole('button', { name: 'Approve and continue' }))
+  await waitFor(() => expect(answers).toEqual([true]))
+  expect(puts).toEqual([
+    { granted: true, version: '2000-01-01' },
+    { granted: true, version: aiNotice.version },
+  ])
+})
+
+test('a refusal that invalidated a cached approval asks again', async () => {
+  const puts = api({ consent: notYet })
+  const { client, answers, act: run } = setup()
+  client.setQueryData(['heidi', 'usage'], {
+    ...empty,
+    provider_available: true,
+    consent: aiConsent(true),
+  })
+  await client.invalidateQueries({ queryKey: ['heidi', 'usage'], refetchType: 'none' })
+  await run()
+  expect(await screen.findByRole('dialog', { name: aiNotice.title })).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Not now' }))
+  await waitFor(() => expect(answers).toEqual([false]))
   expect(puts).toEqual([])
 })

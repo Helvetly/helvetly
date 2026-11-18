@@ -7,6 +7,7 @@ import { WelcomePage } from '@/components/onboarding/onboarding'
 import type { Session } from '@/lib/api'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { ImportBatch } from '@/lib/imports'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 import { storySession } from './screen-fixtures'
@@ -20,7 +21,7 @@ const usage = (available: boolean, granted = false): HeidiUsage => ({
   tokens_purchased: 0,
   tokens_remaining: null,
   provider_available: available,
-  consent: { granted, changed_at: granted ? '2026-11-16T10:00:00Z' : null, changed_by: '' },
+  consent: aiConsent(granted),
 })
 
 const meta = {
@@ -569,11 +570,10 @@ export const SaveErrorDark: Story = {
 /** With an AI model on the server, "Bring your data" sits before the last step and reuses the import drawer. */
 const aiHandlers = (granted: boolean, extra: ReturnType<typeof http.get>[] = []) => [
   http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage(true, granted))),
-  http.put('/api/v1/heidi/consent', () =>
-    HttpResponse.json({
-      data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' },
-    }),
+  http.get('/api/v1/heidi/consent', () =>
+    HttpResponse.json({ data: aiConsent(granted), notice: aiNotice }),
   ),
+  http.put('/api/v1/heidi/consent', () => HttpResponse.json({ data: aiConsent(true) })),
   http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
   ...extra,
   ...meta.parameters.msw.handlers,
@@ -629,11 +629,9 @@ export const ImportStepConsent: Story = {
     await userEvent.click(importing.getByRole('button', { name: 'Import documents' }))
     await chooseFile()
     await userEvent.click(body().getByRole('button', { name: 'Process with AI' }))
-    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    const ask = await body().findByRole('dialog', { name: aiNotice.title })
     await userEvent.click(within(ask).getByRole('button', { name: 'Not now' }))
-    await waitFor(() =>
-      expect(body().queryByRole('dialog', { name: 'Use AI in this workspace?' })).toBeNull(),
-    )
+    await waitFor(() => expect(body().queryByRole('dialog', { name: aiNotice.title })).toBeNull())
     await expect(body().getByText('clients.csv')).toBeVisible()
   },
 }
