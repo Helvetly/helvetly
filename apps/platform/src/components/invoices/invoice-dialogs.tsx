@@ -24,6 +24,7 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useInvoiceEmailDraft } from '@/lib/email-templates'
@@ -56,6 +57,7 @@ export function FormDialog({
   onClose,
   children,
   aside,
+  wide = false,
 }: {
   title: string
   description: ReactNode
@@ -65,10 +67,17 @@ export function FormDialog({
   onClose: () => void
   children: ReactNode
   aside?: ReactNode
+  /** Room for writing, e.g. an email's message. */
+  wide?: boolean
 }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[min(440px,calc(100vw-2rem))] max-w-none! gap-0 rounded-2xl p-0 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.25),0_4px_12px_rgb(0_0_0/0.06)]">
+      <DialogContent
+        className={cn(
+          wide ? 'w-[min(640px,calc(100vw-2rem))]' : 'w-[min(440px,calc(100vw-2rem))]',
+          'max-w-none! gap-0 rounded-2xl p-0 shadow-[0_24px_64px_-12px_rgb(0_0_0/0.25),0_4px_12px_rgb(0_0_0/0.06)]',
+        )}
+      >
         <form
           noValidate
           onSubmit={(event: FormEvent) => {
@@ -430,7 +439,11 @@ export function SendDialog({
 
   const submit = () => {
     const list = emails(recipients)
-    const found = recipientErrors(recipients, cc)
+    const found: Record<string, string> = {
+      ...recipientErrors(recipients, cc),
+      ...(shownSubject.trim() ? {} : { subject: translate('emailSubjectRequired') }),
+      ...(shownMessage.trim() ? {} : { message: translate('emailMessageRequired') }),
+    }
     setErrors(found)
     if (Object.keys(found).length) return
     send.mutate(
@@ -468,6 +481,7 @@ export function SendDialog({
         name: invoice.client.name,
       })}
       action="Send"
+      wide
       pending={send.isPending}
       onSubmit={submit}
       onClose={onClose}
@@ -501,23 +515,26 @@ export function SendDialog({
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-subject" label={translate('subject')} error={errors.subject}>
+      <FormField id="send-subject" label={translate('subject')} required error={errors.subject}>
         <input
           {...describedBy('send-subject', errors.subject)}
           value={shownSubject}
+          maxLength={200}
           disabled={draft.isPending}
           onChange={(event) => setSubject(event.target.value)}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-message" label={translate('message')} error={errors.message}>
-        <textarea
+      <FormField id="send-message" label={translate('message')} required error={errors.message}>
+        <TextareaBox
           {...describedBy('send-message', errors.message)}
-          rows={8}
+          rows={10}
+          maxLength={5000}
+          max={5000}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>

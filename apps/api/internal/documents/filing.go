@@ -17,6 +17,7 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 // AI filing: a file uploaded to Documents by someone who approved AI use in the workspace is tagged by the model and,
@@ -315,8 +316,8 @@ func readFiling(text string, mayMove bool, folders map[string]bool) (filing, err
 	}
 	var f filing
 	for _, t := range out.Tags {
-		if tag, problem := cleanTags([]string{t}); problem == "" && len(tag) == 1 && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag[0]) {
-			f.tags = append(f.tags, tag[0])
+		if tag := tags.Slug(t); tag != "" && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag) {
+			f.tags = append(f.tags, tag)
 		}
 	}
 	switch {
@@ -331,8 +332,29 @@ func readFiling(text string, mayMove bool, folders map[string]bool) (filing, err
 	return f, nil
 }
 
-// cleanTags: typed tags trimmed, lower-cased and without repeats, or the reason they can't be used.
+// cleanTags: typed tags trimmed, lower-cased and without repeats, each in the tags package's shape, or the reason
+// they can't be used.
 func cleanTags(raw []string) ([]string, string) {
+	out := []string{}
+	for _, t := range raw {
+		t = strings.ToLower(strings.TrimSpace(t))
+		switch {
+		case t == "":
+			continue
+		case !tags.Valid(t):
+			return nil, tags.Problem
+		case !slices.Contains(out, t):
+			out = append(out, t)
+		}
+	}
+	if len(out) > maxTags {
+		return nil, "Use at most 10 tags."
+	}
+	return out, ""
+}
+
+// restoredTags: the tags an undo puts back as they were, also ones from before the tags' shape (never new input).
+func restoredTags(raw []string) ([]string, string) {
 	out := []string{}
 	for _, t := range raw {
 		t = strings.ToLower(strings.Join(strings.Fields(t), " "))

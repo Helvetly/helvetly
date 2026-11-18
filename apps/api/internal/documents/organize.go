@@ -14,6 +14,7 @@ import (
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 // AI organize: on request, the model proposes a folder path and tags for up to organizeMax documents at once; nothing
@@ -286,8 +287,8 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder) ([
 			p.Folder = strings.Join(path, "/")
 		}
 		for _, t := range a.Tags {
-			if tag, problem := cleanTags([]string{t}); problem == "" && len(tag) == 1 && len(p.Tags) < filingAITags && !slices.Contains(p.Tags, tag[0]) {
-				p.Tags = append(p.Tags, tag[0])
+			if tag := tags.Slug(t); tag != "" && len(p.Tags) < filingAITags && !slices.Contains(p.Tags, tag) {
+				p.Tags = append(p.Tags, tag)
 			}
 		}
 		reason := []rune(strings.Join(strings.Fields(a.Reason), " "))
@@ -355,11 +356,11 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		if !ok {
 			return validationFailed(map[string]string{"items": "Use folder names of at most 60 characters, without control characters."})
 		}
-		tags, problem := cleanTags(it.Tags)
+		typed, problem := cleanTags(it.Tags)
 		if problem != "" {
 			return validationFailed(map[string]string{"items": problem})
 		}
-		paths[i], body.Items[i].Tags = path, tags
+		paths[i], body.Items[i].Tags = path, typed
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
 	moved, tagged := 0, 0
@@ -465,11 +466,11 @@ func (s *Service) organizeUndo(w http.ResponseWriter, r *http.Request, sess stor
 		return validationFailed(map[string]string{"previous": "Undo at most 150 documents at a time."})
 	}
 	for i, p := range body.Previous {
-		tags, problem := cleanTags(p.Tags)
+		restored, problem := restoredTags(p.Tags)
 		if problem != "" {
 			return validationFailed(map[string]string{"previous": problem})
 		}
-		body.Previous[i].Tags = tags
+		body.Previous[i].Tags = restored
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
 	restored, deleted := 0, 0

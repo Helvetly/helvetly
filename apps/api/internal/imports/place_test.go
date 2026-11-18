@@ -9,6 +9,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 func categoryDoc(t *testing.T, st *store.Store, sess store.Session, name string, folderID *string) string {
@@ -99,7 +100,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "a.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"expense", strings.ToLower(list[0].Name)}) {
+		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"expense", tags.Slug(list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})

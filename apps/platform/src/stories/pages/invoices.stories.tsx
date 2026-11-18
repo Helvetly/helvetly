@@ -7,6 +7,7 @@ import type { Invoice } from '@/lib/invoices'
 import { scheduledInvoice } from '@/mocks/data'
 
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
   title: 'Pages/Invoices',
@@ -139,3 +140,28 @@ export const FullyCreditedAfterPaying: Story = {
   },
 }
 export const FullyCreditedAfterPayingDark = dark(FullyCreditedAfterPaying)
+
+/** A new workspace: next to its first action the empty list offers Import, and a drop anywhere works too. */
+export const Empty: Story = {
+  parameters: emptyList('/invoices', '/api/v1/invoices'),
+  play: emptyOffersImport('No invoices yet'),
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** Files dropped anywhere on the page open its import with them chosen. */
+export const DropStartsImport: Story = {
+  parameters: emptyList('/invoices', '/api/v1/invoices'),
+  play: dropOpensImport(
+    'No invoices yet',
+    'Drop to import these invoices',
+    'invoices',
+    new File(['%PDF-1.4'], 'invoice-2025-118.pdf', { type: 'application/pdf' }),
+  ),
+}
+
+/** Whoever may only read has no drop target and no hint. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: readOnly('/invoices'),
+  play: noDropTarget('Sophie Meier', 'invoices'),
+}

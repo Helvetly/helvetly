@@ -25,14 +25,13 @@ import {
   Search,
   SearchX,
   Trash2,
-  Upload,
   Layers,
   ScanSearch,
   Clock,
   type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { type ComponentProps, memo, useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -53,17 +52,15 @@ import {
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { handOffImport } from '@/components/import/hand-off'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
-import { addFiles } from '@/components/import/import-files'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import {
   canManageExpenses,
   DEFAULT_PARAMS,
   expensesApi,
-  isHeic,
   exportIdsUrl,
   exportUrl,
   listParamsToQuery,
@@ -276,25 +273,8 @@ export function ExpensesPage() {
   // Receipts go through the AI import: read into drafts that are reviewed in its drawer, then land in "To review".
   const importDrawer = useImportDrawer()
   const importReceipts = importDrawer.open
-  const startWith = (dropped: File[]) => {
-    const heic = dropped.filter(isHeic)
-    if (heic.length)
-      toast.error(
-        translate('heicPhotosCanTBeReadByTheAI', {
-          value1: heic.map((file) => file.name).join(', '),
-        }),
-      )
-    const { files, note } = addFiles(
-      [],
-      dropped.filter((file) => !isHeic(file)),
-    )
-    if (note) toast.error(note)
-    if (!files.length) return
-    handOffImport('expenses', files)
-    importDrawer.open()
-  }
   // Dropping a file anywhere on the page reads it (not while a drawer is open).
-  const dropping = useFileDrop(canAdd && !formState && !openId && !importDrawer.isOpen, startWith)
+  const dropping = useImportDrop('expenses', canAdd && !formState && !openId)
 
   const exportLock = useFeatureLock('data_export')
   const selection = {
@@ -381,22 +361,7 @@ export function ExpensesPage() {
       />
       <SwissScopeNotice area="expenses" className="mx-4 mt-4 sm:mx-6" />
       {!empty && !noExpenses && <ExpenseKpis />}
-      {dropping && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[2px]"
-        >
-          <div className="grid justify-items-center gap-3 rounded-2xl border-2 border-dashed border-primary/40 bg-card px-12 py-10 text-center shadow-elevation-2">
-            <Upload className="size-6 stroke-[1.5]" />
-            <p className="text-[15px] font-medium">
-              {translate('dropToReadTheseReceiptsIntoDraftExpenses')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {translate('pdfPhotosOrSpreadsheetsUpTo25FilesOf')}
-            </p>
-          </div>
-        </div>
-      )}
+      {dropping && <DropOverlay title={translate('dropToReadTheseReceiptsIntoDraftExpenses')} />}
       <PageContextMenu
         title={translate('expenses')}
         primary={{ label: translate('newExpense'), onSelect: () => setForm({}) }}
@@ -490,25 +455,17 @@ export function ExpensesPage() {
                     {translate('recordWhatTheBusinessSpendsWithTheReceiptThe')}
                   </p>
                   {canAdd && (
-                    <div className="mt-5 flex flex-wrap justify-center gap-2">
-                      <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
-                        {translate('addExpense')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="cursor-pointer"
-                        onClick={importReceipts}
+                    <div className="mt-5">
+                      <EmptyImportActions
+                        importLabel={translate('importReceipts')}
+                        hint={translate('orDropAReceiptAnywhereOnThisPage')}
+                        onImport={importReceipts}
                       >
-                        <FileUp />
-                        {translate('importReceipts')}
-                      </Button>
+                        <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
+                          {translate('addExpense')}
+                        </Button>
+                      </EmptyImportActions>
                     </div>
-                  )}
-                  {canAdd && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      {translate('orDropAReceiptAnywhereOnThisPage')}
-                    </p>
                   )}
                 </div>
               </div>
@@ -862,48 +819,6 @@ function Filters({
       </PopoverContent>
     </Popover>
   )
-}
-
-/** Whether files are being dragged over the window; dropping them calls onFiles. */
-function useFileDrop(enabled: boolean, onFiles: (files: File[]) => void) {
-  const [over, setOver] = useState(false)
-  const drop = useEffectEvent(onFiles)
-  useEffect(() => {
-    if (!enabled) return
-    let depth = 0
-    const hasFiles = (event: DragEvent) =>
-      event.dataTransfer?.types.includes(translate('files')) ?? false
-    const enter = (event: DragEvent) => {
-      if (!hasFiles(event)) return
-      depth += 1
-      setOver(true)
-    }
-    const leave = (event: DragEvent) => {
-      if (hasFiles(event) && --depth <= 0) setOver(false)
-    }
-    const overEvent = (event: DragEvent) => {
-      if (hasFiles(event)) event.preventDefault()
-    }
-    const dropEvent = (event: DragEvent) => {
-      if (!hasFiles(event)) return
-      event.preventDefault()
-      depth = 0
-      setOver(false)
-      drop([...(event.dataTransfer?.files ?? [])])
-    }
-    window.addEventListener('dragenter', enter)
-    window.addEventListener('dragleave', leave)
-    window.addEventListener('dragover', overEvent)
-    window.addEventListener('drop', dropEvent)
-    return () => {
-      window.removeEventListener('dragenter', enter)
-      window.removeEventListener('dragleave', leave)
-      window.removeEventListener('dragover', overEvent)
-      window.removeEventListener('drop', dropEvent)
-      setOver(false)
-    }
-  }, [enabled])
-  return over
 }
 
 type RowProps = {

@@ -212,7 +212,7 @@ function PanelBody() {
     const element = root.current
     if (!element) return
     const over = (event: DragEvent) => {
-      if (!event.dataTransfer?.types.includes(translate('files'))) return
+      if (!event.dataTransfer?.types.includes('Files')) return
       event.preventDefault()
       setDragging(true)
     }

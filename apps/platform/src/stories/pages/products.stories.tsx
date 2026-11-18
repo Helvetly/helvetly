@@ -7,6 +7,7 @@ import type { Product } from '@/lib/products'
 
 import { products } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
   title: 'Pages/Products and services',
@@ -72,3 +73,28 @@ export const EditSku: Story = {
   },
 }
 export const EditSkuDark = dark(EditSku)
+
+/** A new workspace: next to its first action the empty list offers Import, and a drop anywhere works too. */
+export const Empty: Story = {
+  parameters: emptyList('/products', '/api/v1/products'),
+  play: emptyOffersImport('No products or services yet'),
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** Files dropped anywhere on the page open its import with them chosen. */
+export const DropStartsImport: Story = {
+  parameters: emptyList('/products', '/api/v1/products'),
+  play: dropOpensImport(
+    'No products or services yet',
+    'Drop to read these files into products and services',
+    'products',
+    new File(['name,price\nDesign hour,150'], 'price-list.csv', { type: 'text/csv' }),
+  ),
+}
+
+/** Whoever may only read has no drop target and no hint. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: readOnly('/products'),
+  play: noDropTarget('Workshop day', 'products'),
+}

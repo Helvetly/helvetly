@@ -50,7 +50,8 @@ const toDraft = (contact: Contact | undefined, clientCountry: string | null): Dr
 function check(draft: Draft): Errors {
   const errors: Errors = {}
   if (!draft.name.trim()) errors.name = translate('enterAName')
-  if (draft.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim()))
+  if (!draft.email.trim()) errors.email = translate('enterAnEmailAddress')
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim()))
     errors.email = translate('enterAValidEmailAddress')
   if (draft.phone.trim() && !toE164(draft.phone, draft.country)) errors.phone = PHONE_ERROR
   return errors
@@ -76,10 +77,18 @@ function ContactEditor({
   useEffect(() => nameInput.current?.focus(), [])
   const field = (key: 'name' | 'role' | 'email', label: string, type = 'text') => (
     <label className="grid gap-1 text-[12.5px] font-medium">
-      {label}
+      <span>
+        {label}
+        {key !== 'role' && (
+          <span aria-hidden className="ml-0.5 text-destructive">
+            *
+          </span>
+        )}
+      </span>
       <input
         type={type}
         value={draft[key]}
+        required={key !== 'role'}
         aria-invalid={errors[key] ? true : undefined}
         ref={key === 'name' ? nameInput : undefined}
         onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
@@ -201,7 +210,9 @@ export function ClientContacts({ client }: { client: Client }) {
                 <span className="flex items-center gap-2 truncate text-[13.5px]">
                   {contact.name}
                   {contact.is_primary && (
-                    <StatusBadge tone="green">{translate('primary')}</StatusBadge>
+                    <StatusBadge tone="green" size="sm">
+                      {translate('primary')}
+                    </StatusBadge>
                   )}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">

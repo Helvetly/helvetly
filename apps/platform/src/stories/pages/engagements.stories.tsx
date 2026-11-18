@@ -7,6 +7,7 @@ import type { Entry, Period } from '@/lib/engagements'
 
 import { sessionHandler } from '../screen-fixtures'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
   title: 'Pages/Engagements',
@@ -277,4 +278,29 @@ export const ReadOnlyMember: Story = {
     await expect(within(toolbar).getByRole('button', { name: 'Export CSV' })).toBeVisible()
     await expect(within(toolbar).queryByRole('button', { name: 'Delete' })).toBeNull()
   },
+}
+
+/** A new workspace: next to its first action the empty list offers Import, and a drop anywhere works too. */
+export const Empty: Story = {
+  parameters: emptyList('/engagements', '/api/v1/engagements'),
+  play: emptyOffersImport('No engagements yet'),
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** Files dropped anywhere on the page open its import with them chosen. */
+export const DropStartsImport: Story = {
+  parameters: emptyList('/engagements', '/api/v1/engagements'),
+  play: dropOpensImport(
+    'No engagements yet',
+    'Drop to read these files into engagements',
+    'engagements',
+    new File(['%PDF-1.4'], 'contract.pdf', { type: 'application/pdf' }),
+  ),
+}
+
+/** Whoever may only read has no drop target and no hint. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: readOnly('/engagements'),
+  play: noDropTarget('Bookkeeping support', 'engagements'),
 }

@@ -2,7 +2,6 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { cn } from '@helvetly/ui/lib/utils'
 import { MailX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -15,6 +14,7 @@ import {
   FormDialog,
   recipientErrors,
 } from '@/components/invoices/invoice-dialogs'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useQuoteEmailDraft } from '@/lib/email-templates'
@@ -71,7 +71,11 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
     })
 
   const submit = () => {
-    const found = recipientErrors(recipients, cc)
+    const found: Record<string, string> = {
+      ...recipientErrors(recipients, cc),
+      ...(shownSubject.trim() ? {} : { subject: translate('emailSubjectRequired') }),
+      ...(shownMessage.trim() ? {} : { message: translate('emailMessageRequired') }),
+    }
     setErrors(found)
     if (Object.keys(found).length) return
     const list = emails(recipients)
@@ -94,6 +98,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
 
   return (
     <FormDialog
+      wide
       title={quote.sent_at ? translate('sendAgain') : translate('sendQuote')}
       description={translate('forGoesOutWithItsPDFAttachedSendingGives', {
         name: name,
@@ -149,23 +154,36 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           className={fieldClass}
         />
       </FormField>
-      <FormField id="quote-send-subject" label={translate('subject')} error={errors.subject}>
+      <FormField
+        id="quote-send-subject"
+        label={translate('subject')}
+        required
+        error={errors.subject}
+      >
         <input
           {...describedBy('quote-send-subject', errors.subject)}
           value={shownSubject}
+          maxLength={200}
           disabled={draft.isPending}
           onChange={(event) => setSubject(event.target.value)}
           className={fieldClass}
         />
       </FormField>
-      <FormField id="quote-send-message" label={translate('message')} error={errors.message}>
-        <textarea
+      <FormField
+        id="quote-send-message"
+        label={translate('message')}
+        required
+        error={errors.message}
+      >
+        <TextareaBox
           {...describedBy('quote-send-message', errors.message)}
-          rows={8}
+          rows={10}
+          maxLength={5000}
+          max={5000}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>
@@ -232,7 +250,7 @@ export function QuoteDecisionDialog({
           placeholder={
             accept ? translate('confirmedByPhoneOnMonday') : translate('wentWithAnotherOffer')
           }
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>

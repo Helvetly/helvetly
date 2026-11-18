@@ -2935,7 +2935,6 @@
   "system2": " Système",
   "tag": "Balise : {tag}",
   "tags": "Balises",
-  "tagsHaveAtMostCharacters": "Les balises comportent au plus {MAX_TAG_LENGTH} caractères.",
   "takenFromTheClientChangesHereGoIntoThis": "Extrait du client. Les modifications ici sont enregistrées dans ce document uniquement, et non dans le dossier du client.",
   "takingShape": "prend forme.",
   "tax2026": "Impôt 2026",
@@ -4451,5 +4450,17 @@
   "paidWithInvoice": "Payé avec la facture",
   "paidSeparatelyNextStep": "Rien n'est facturé depuis ce mandat : vous saisissez le travail sur ce qui a été payé.",
   "enterAPriceAbove0": "Saisissez un prix supérieur à 0 ou choisissez « Payé séparément »",
-  "detailsSectionText": "Facultatif, pour vos dossiers et la facture."
+  "detailsSectionText": "Facultatif, pour vos dossiers et la facture.",
+  "emailSubjectRequired": "Saisissez un objet.",
+  "emailMessageRequired": "Écrivez un message.",
+  "aiWriteErrorUnavailable": "« Écrire avec l'IA » n'est pas encore disponible sur ce serveur.",
+  "aiWriteErrorNetwork": "Helvetly est injoignable. Vérifiez votre connexion et réessayez.",
+  "tagShape": "Les tags utilisent les lettres a–z, des chiffres et des traits d’union (ni au début ni à la fin), 32 caractères au plus.",
+  "hideEngagement": "Masquer la ligne du mandat",
+  "hideContractNumber": "Retirer le numéro de contrat",
+  "dropToImportTheseInvoices": "Déposez pour importer ces factures",
+  "dropToReadTheseFilesIntoEngagements": "Déposez pour lire ces fichiers comme mandats",
+  "dropToReadTheseFilesIntoNewClients": "Déposez pour lire ces fichiers comme nouveaux clients",
+  "dropToReadTheseFilesIntoProductsAndServices": "Déposez pour lire ces fichiers comme produits et services",
+  "orDropFilesAnywhereOnThisPage": "ou déposez des fichiers n’importe où sur cette page"
 }

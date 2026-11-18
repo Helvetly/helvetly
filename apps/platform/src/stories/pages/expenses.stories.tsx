@@ -7,6 +7,7 @@ import type { Session } from '@/lib/api'
 
 import { storySession } from '../screen-fixtures'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { dropOpensImport, emptyList, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
   title: 'Pages/Expenses',
@@ -124,4 +125,34 @@ export const ForeignBusinessPhone = phone(ForeignBusiness)
 export const ForeignBusinessWithoutInvoiceSettings: Story = {
   parameters: business('DE', { role: 'member', scopes: ['read:expenses'] }),
   play: shows('Swisscom (Schweiz) AG', SCOPE_NOTICE),
+}
+
+/** The empty list offers Import receipts and says a receipt can be dropped anywhere. */
+export const Empty: Story = {
+  parameters: emptyList('/expenses', '/api/v1/expenses'),
+  play: async () => {
+    const body = within(document.body)
+    await body.findByText('No expenses yet', {}, { timeout: 8000 })
+    await expect(body.getByText('or drop a receipt anywhere on this page')).toBeVisible()
+    await expect(body.getByRole('button', { name: 'Import receipts' })).toBeVisible()
+  },
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** A receipt dropped anywhere on the page opens the receipt import with it chosen. */
+export const DropStartsImport: Story = {
+  parameters: emptyList('/expenses', '/api/v1/expenses'),
+  play: dropOpensImport(
+    'No expenses yet',
+    'Drop to read these receipts into draft expenses',
+    'expenses',
+    new File(['%PDF-1.4'], 'receipt.pdf', { type: 'application/pdf' }),
+  ),
+}
+
+/** Whoever may only read has no drop target. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: readOnly('/expenses'),
+  play: noDropTarget('Swisscom (Schweiz) AG', 'expenses'),
 }

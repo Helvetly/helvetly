@@ -19,6 +19,7 @@ import (
 	"helvetly.com/api/internal/retention"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 	fileuploads "helvetly.com/api/internal/uploads"
 )
 
@@ -343,11 +344,11 @@ func categoryName(e store.Expense) string {
 	return e.Category.Name
 }
 
-// expenseTags: the tags plus "expense" and the lower-cased category name, at most 10 of up to 32 characters.
-func expenseTags(tags []string, category string) []string {
-	out := slices.Clone(tags)
-	for _, t := range []string{"expense", strings.ToLower(strings.Join(strings.Fields(category), " "))} {
-		if t != "" && utf8.RuneCountInString(t) <= 32 && len(out) < 10 && !slices.Contains(out, t) {
+// expenseTags: the tags plus "expense" and the category as a tag ("Büromaterial" → bueromaterial), at most 10.
+func expenseTags(have []string, category string) []string {
+	out := slices.Clone(have)
+	for _, t := range []string{"expense", tags.Slug(category)} {
+		if t != "" && len(out) < 10 && !slices.Contains(out, t) {
 			out = append(out, t)
 		}
 	}

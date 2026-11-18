@@ -39,6 +39,7 @@ export function InlineTextEditor({
   placeholder,
   mono = false,
   multiline = false,
+  maxLength,
   save,
   onDone,
 }: {
@@ -47,6 +48,8 @@ export function InlineTextEditor({
   placeholder?: string
   mono?: boolean
   multiline?: boolean
+  /** The API's limit: no more can be typed, and a multiline field counts what is left. */
+  maxLength?: number
   save: (text: string) => Promise<unknown>
   onDone: () => void
 }) {
@@ -93,6 +96,7 @@ export function InlineTextEditor({
     value: text,
     readOnly: pending,
     placeholder,
+    maxLength,
     onBlur: () => void commit(),
   }
 
@@ -110,7 +114,8 @@ export function InlineTextEditor({
             }
             if (event.key === 'Escape') close()
           }}
-          className="min-h-20 text-body-sm leading-relaxed"
+          // Grows with the text up to about ten lines, then scrolls: never a page-long box.
+          className="max-h-60 min-h-20 resize-none overflow-y-auto text-body-sm leading-relaxed"
         />
       ) : (
         <Input
@@ -125,6 +130,11 @@ export function InlineTextEditor({
           }}
           className={cn('h-8', mono && 'font-mono text-body-sm')}
         />
+      )}
+      {multiline && maxLength && (
+        <span aria-hidden className="text-right text-caption text-muted-foreground tabular-nums">
+          {text.length} / {maxLength}
+        </span>
       )}
       {error && (
         <span role="alert" className="text-xs text-destructive">

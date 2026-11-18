@@ -4,21 +4,20 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"strings"
 	"time"
 
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 const (
 	maxDocumentTags = 10 // as documents' own limits
-	maxTagRunes     = 32
 )
 
 // placeDocument files the source Document of a created record under folder path and adds tags, creating the folders.
 // Only a file at the top level, or one the generic AI filing put in its current folder, is moved: a folder the person
 // chose is never overridden. A missing or trashed Document is left alone.
-func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentID string, path, tags []string, now time.Time) error {
+func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentID string, path, add []string, now time.Time) error {
 	ws := sess.Workspace.ID
 	d, err := q.Document(ctx, ws, documentID)
 	if errors.Is(err, store.ErrNotFound) || (err == nil && d.DeletedAt != nil) {
@@ -57,11 +56,8 @@ func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentI
 		}
 	}
 	merged := slices.Clone(d.Tags)
-	for _, t := range tags {
-		t = strings.ToLower(strings.TrimSpace(t))
-		if r := []rune(t); len(r) > maxTagRunes {
-			t = string(r[:maxTagRunes])
-		}
+	for _, t := range add {
+		t = tags.Slug(t)
 		if t != "" && !slices.Contains(merged, t) && len(merged) < maxDocumentTags {
 			merged = append(merged, t)
 		}
