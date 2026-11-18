@@ -4453,5 +4453,7 @@
   "enterAPriceAbove0": "Saisissez un prix supérieur à 0 ou choisissez « Payé séparément »",
   "detailsSectionText": "Facultatif, pour vos dossiers et la facture.",
   "aiWriteErrorUnavailable": "« Écrire avec l'IA » n'est pas encore disponible sur ce serveur.",
-  "aiWriteErrorNetwork": "Helvetly est injoignable. Vérifiez votre connexion et réessayez."
+  "aiWriteErrorNetwork": "Helvetly est injoignable. Vérifiez votre connexion et réessayez.",
+  "hideEngagement": "Masquer la ligne du mandat",
+  "hideContractNumber": "Retirer le numéro de contrat"
 }

@@ -54,7 +54,7 @@ import { RecordLink } from '@/components/record-link'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
-import { linkInvoice } from '@/lib/engagements'
+import { linkInvoice, useInvoiceEngagement } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import {
   addDays,
@@ -404,8 +404,45 @@ function Editor({
   const [clientError, setClientError] = useState(false)
   const [engagementId, setEngagementId] = useState('') // chosen before the draft exists
   // The contract row shows once added, and stays while it holds a number or a document.
-  const [contractShown, setContractShown] = useState(false)
   const canLinkEngagement = useCan('write:engagements')
+  const [contractShown, setContractShown] = useState(false)
+  const [engagementShown, setEngagementShown] = useState(false)
+  const linkedEngagement = useInvoiceEngagement(canLinkEngagement ? draftId : null).data
+  // Optional rows: shown while they hold something or once added; the rest wait under "Add field".
+  const showEngagement =
+    canLinkEngagement && (engagementShown || Boolean(engagementId) || Boolean(linkedEngagement))
+  const showClientNumber = values.client_number_display !== ''
+  const showContract =
+    contractShown || Boolean(values.contract_reference) || Boolean(values.contract_document)
+  const hiddenFields = [
+    ...(canLinkEngagement && !showEngagement
+      ? [
+          {
+            id: 'invoice-engagement',
+            label: translate('engagement2'),
+            show: () => setEngagementShown(true),
+          },
+        ]
+      : []),
+    ...(!showClientNumber
+      ? [
+          {
+            id: 'invoice-client_number',
+            label: translate('clientNumberShort'),
+            show: () => set('client_number_display', null),
+          },
+        ]
+      : []),
+    ...(!showContract
+      ? [
+          {
+            id: 'invoice-contract_reference',
+            label: translate('contractNumberShort'),
+            show: () => setContractShown(true),
+          },
+        ]
+      : []),
+  ]
   const top = useRef<HTMLDivElement>(null)
 
   const save = useSaveInvoice()
@@ -930,7 +967,7 @@ function Editor({
                         className={quietValue}
                       />
                     </dd>
-                    {canLinkEngagement && (
+                    {showEngagement && (
                       <>
                         <MetaLabel
                           htmlFor="invoice-engagement"
@@ -939,18 +976,30 @@ function Editor({
                         >
                           {translate('engagement2')}
                         </MetaLabel>
-                        <dd>
-                          <EngagementLink
-                            id="invoice-engagement"
-                            clientId={values.client_id ?? ''}
-                            invoiceId={draftId}
-                            pending={engagementId}
-                            onPendingChange={setEngagementId}
-                          />
+                        <dd className="flex min-w-0 items-center gap-0.5">
+                          <span className="min-w-0 flex-1">
+                            <EngagementLink
+                              id="invoice-engagement"
+                              clientId={values.client_id ?? ''}
+                              invoiceId={draftId}
+                              pending={engagementId}
+                              onPendingChange={setEngagementId}
+                            />
+                          </span>
+                          {/* A linked engagement is removed with its own ×; hiding is for an empty row. */}
+                          {!linkedEngagement && (
+                            <HideField
+                              label={translate('hideEngagement')}
+                              onHide={() => {
+                                setEngagementId('')
+                                setEngagementShown(false)
+                              }}
+                            />
+                          )}
                         </dd>
                       </>
                     )}
-                    {values.client_number_display !== '' && (
+                    {showClientNumber && (
                       <>
                         <MetaLabel
                           htmlFor="invoice-client_number"
@@ -970,25 +1019,14 @@ function Editor({
                             placeholder={client ? String(client.number) : '—'}
                             className={cn(quietValue, 'min-w-0 flex-1')}
                           />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-xs"
-                                aria-label={translate('clientNumberHide')}
-                                className="shrink-0 text-muted-foreground"
-                                onClick={() => set('client_number_display', '')}
-                              >
-                                <EyeOff />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{translate('clientNumberHide')}</TooltipContent>
-                          </Tooltip>
+                          <HideField
+                            label={translate('clientNumberHide')}
+                            onHide={() => set('client_number_display', '')}
+                          />
                         </dd>
                       </>
                     )}
-                    {(contractShown || values.contract_reference || values.contract_document) && (
+                    {showContract && (
                       <>
                         <MetaLabel
                           htmlFor="invoice-contract_reference"
@@ -997,23 +1035,31 @@ function Editor({
                         >
                           {translate('contractNumberShort')}
                         </MetaLabel>
-                        <dd>
-                          <ContractField
-                            id="invoice-contract_reference"
-                            value={values.contract_reference}
-                            document={values.contract_document}
-                            onChange={(value) => set('contract_reference', value)}
-                            onLink={(document) => set('contract_document', document)}
+                        <dd className="flex min-w-0 items-center gap-0.5">
+                          <span className="min-w-0 flex-1">
+                            <ContractField
+                              id="invoice-contract_reference"
+                              value={values.contract_reference}
+                              document={values.contract_document}
+                              onChange={(value) => set('contract_reference', value)}
+                              onLink={(document) => set('contract_document', document)}
+                            />
+                          </span>
+                          <HideField
+                            label={translate('hideContractNumber')}
+                            onHide={() => {
+                              setValues((current) => ({
+                                ...current,
+                                contract_reference: '',
+                                contract_document: null,
+                              }))
+                              setContractShown(false)
+                            }}
                           />
                         </dd>
                       </>
                     )}
-                    {(values.client_number_display === '' ||
-                      !(
-                        contractShown ||
-                        values.contract_reference ||
-                        values.contract_document
-                      )) && (
+                    {hiddenFields.length > 0 && (
                       <dd className="col-span-2 pt-0.5">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1028,27 +1074,19 @@ function Editor({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            {!(
-                              contractShown ||
-                              values.contract_reference ||
-                              values.contract_document
-                            ) && (
+                            {hiddenFields.map((field) => (
                               <DropdownMenuItem
+                                key={field.id}
                                 onSelect={() => {
-                                  setContractShown(true)
+                                  field.show()
                                   requestAnimationFrame(() =>
-                                    document.getElementById('invoice-contract_reference')?.focus(),
+                                    document.getElementById(field.id)?.focus(),
                                   )
                                 }}
                               >
-                                {translate('contractNumberShort')}
+                                {field.label}
                               </DropdownMenuItem>
-                            )}
-                            {values.client_number_display === '' && (
-                              <DropdownMenuItem onSelect={() => set('client_number_display', null)}>
-                                {translate('clientNumberShort')}
-                              </DropdownMenuItem>
-                            )}
+                            ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </dd>
@@ -1552,5 +1590,26 @@ function PaymentRow({
         )}
       </span>
     </li>
+  )
+}
+
+/** Hides an optional row of the document's details; it comes back under "Add field". */
+function HideField({ label, onHide }: { label: string; onHide: () => void }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={label}
+          className="shrink-0 text-muted-foreground"
+          onClick={onHide}
+        >
+          <EyeOff />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
