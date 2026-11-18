@@ -39,6 +39,7 @@ const requests = fn()
 
 const handlers = (initial: ClientFile[]) => {
   let files = initial
+  let next = 0 // ids stay unique across packs
   return [
     sessionHandler(),
     http.get('/api/v1/clients/cli_1/files', () => HttpResponse.json({ data: files })),
@@ -49,10 +50,10 @@ const handlers = (initial: ClientFile[]) => {
       const added = form
         .getAll('files[]')
         .filter((entry) => entry instanceof File)
-        .map((file, index): ClientFile => {
+        .map((file): ClientFile => {
           uploaded(file.name)
           return {
-            id: `new_${index}`,
+            id: `new_${next++}`,
             name: file.name,
             size: file.size,
             content_type: file.type,
@@ -199,7 +200,7 @@ export const UploadInPacks: Story = {
   },
 }
 
-/** The same bytes twice, in different packs: refused before anything is sent, with the server's same-batch message. */
+/** The same bytes twice, in different packs: sent once, the copy dropped before anything is sent. */
 export const DuplicateAcrossPacks: Story = {
   parameters: { msw: { handlers: handlers([]) } },
   play: async () => {
@@ -210,15 +211,11 @@ export const DuplicateAcrossPacks: Story = {
     const first = picked[0]
     if (!first) throw new Error('No files')
     const copy = new File([first], 'Scan 1 copy.pdf', { type: 'application/pdf' })
+    uploaded.mockClear()
     await userEvent.upload(files.getByLabelText('Upload files'), [...picked, copy])
-    await expect(
-      await body.findByText(
-        'Scan 1 copy.pdf contains the same file as Scan 1.pdf.',
-        {},
-        { timeout: 10_000 },
-      ),
-    ).toBeInTheDocument()
-    await expect(requests).not.toHaveBeenCalled()
+    // The same bytes twice in one upload go once: the copy is dropped, the rest is sent.
+    await waitFor(() => expect(uploaded).toHaveBeenCalledTimes(picked.length), { timeout: 10_000 })
+    await expect(uploaded).not.toHaveBeenCalledWith('Scan 1 copy.pdf')
   },
 }
 
