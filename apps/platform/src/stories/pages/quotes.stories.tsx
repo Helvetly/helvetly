@@ -144,7 +144,7 @@ export const UrlRestore: Story = {
 
 export const Detail: Story = {
   parameters: quotes({ id: 'quo_sent' }),
-  play: shows('Valid until 27 Nov 2026'),
+  play: shows('27 Nov 2026'),
 }
 export const DetailDark = dark(Detail)
 export const DetailPhone = phone(Detail)
@@ -222,7 +222,8 @@ export const SendValidation: Story = {
       within(dialog).getByRole('button', { name: 'Mark as sent without email' }),
     )
     await toasted(canvasElement, /marked as sent/)
-    await seen(await body.findByText('Valid until 3 Dec 2026'))
+    const summary = await body.findByRole('region', { name: 'Summary' })
+    await seen(await within(summary).findByText('3 Dec 2026'))
   },
 }
 
@@ -309,7 +310,7 @@ export const CreateInvoiceTwice: Story = {
 export const ReadOnlyMember: Story = {
   parameters: quotes({ id: 'quo_sent' }, [sessionHandler({ role: 'member', scopes: ['read:*'] })]),
   play: async (context) => {
-    await shows('Valid until 27 Nov 2026')?.(context)
+    await shows('27 Nov 2026')?.(context)
     const body = page(context.canvasElement)
     await seen(body.getByRole('link', { name: 'Download PDF' }))
     await expect(body.queryByRole('button', { name: 'Accept' })).toBeNull()

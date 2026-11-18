@@ -18,7 +18,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
-  ArrowUpRight,
   Check,
   Download,
   Ellipsis,
@@ -37,6 +36,7 @@ import { toast } from 'sonner'
 
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
+import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -262,30 +262,30 @@ function Detail({
         </div>
 
         <div className="grid gap-5 px-6 pt-6">
-          <div className="grid gap-2">
-            <p className="flex flex-wrap items-baseline gap-x-1.5 text-body-sm text-muted-foreground">
-              {translate('quoteFor')}
-              <RecordLink
-                href={`/clients?id=${encodeURIComponent(quote.client.id)}`}
-                className="group inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2 hover:no-underline"
-              >
-                {quote.client.name}
-                <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </RecordLink>
-              <span className="text-caption tabular-nums">
-                {translate('client4')}
-                {quote.client.number}
-              </span>
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="flex items-baseline gap-2 text-display font-normal tabular-nums">
-                <span className="text-title-sm text-muted-foreground">{quote.currency}</span>
-                {formatAmount(quote.payable_total)}
-              </h2>
-              <QuoteStatusBadge status={quote.status} />
-            </div>
-            <p className="text-body-sm text-muted-foreground">{validity(quote)}</p>
-          </div>
+          <RecordHero
+            label={translate('quoteFor')}
+            client={quote.client}
+            currency={quote.currency}
+            amount={formatAmount(quote.payable_total)}
+            badge={<QuoteStatusBadge status={quote.status} />}
+          >
+            <HeroFact
+              label={translate('issueDate')}
+              note={
+                quote.status === 'draft' &&
+                (quote.number ? translate('revisedNotSentAgainYet') : translate('notSentYet'))
+              }
+            >
+              {formatDay(quote.issue_date)}
+            </HeroFact>
+            <HeroFact
+              label={translate('validUntilLabel')}
+              note={quote.status === 'expired' && translate('expired')}
+              urgent={quote.status === 'expired'}
+            >
+              {formatDay(quote.valid_until)}
+            </HeroFact>
+          </RecordHero>
 
           {quote.decided_at && (
             <Callout
@@ -514,18 +514,6 @@ function Detail({
 }
 
 /** "Valid until 3 Dec 2026", or what the draft or answer means for it. */
-function validity(quote: Quote) {
-  const until = formatDay(quote.valid_until)
-  if (quote.status === 'draft')
-    return translate('dated', {
-      value1: quote.number ? translate('revisedNotSentAgainYet') : translate('notSentYet'),
-      value2: formatDay(quote.issue_date),
-    })
-  if (quote.status === 'expired') return translate('expiredOn', { until: until })
-  if (quote.status === 'sent') return translate('validUntil2', { until: until })
-  return translate('datedValidUntil', { value1: formatDay(quote.issue_date), until: until })
-}
-
 function PrimaryButton({
   quote,
   command,

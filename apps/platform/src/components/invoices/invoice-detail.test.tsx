@@ -274,7 +274,7 @@ test('a debit note names the invoice it adds to', async () => {
     'href',
     '/invoices?id=inv_open',
   )
-  expect(screen.getByText(/adds to/)).toBeInTheDocument()
+  expect(screen.getByText('Adds to')).toBeInTheDocument()
 })
 
 test('a final invoice lists the prepayments it deducts', async () => {
