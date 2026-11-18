@@ -79,9 +79,9 @@ export const EditInPlace: Story = {
     await userEvent.click(await card.findByRole('button', { name: /retainer/ }))
     await userEvent.type(tags, 'Key account{Enter}{Enter}')
     await waitFor(() =>
-      expect(saved).toHaveBeenLastCalledWith({ tags: ['retainer', 'Key account'] }),
+      expect(saved).toHaveBeenLastCalledWith({ tags: ['retainer', 'Key-account'] }),
     )
-    await expect(await card.findByText('Key account')).toBeVisible()
+    await expect(await card.findByText('Key-account')).toBeVisible()
     await expect(card.queryByText('sss')).not.toBeInTheDocument()
 
     await userEvent.click(card.getByRole('button', { name: /Edit internal ID/ }))

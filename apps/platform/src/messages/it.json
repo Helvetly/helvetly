@@ -2935,7 +2935,6 @@
   "system2": " Sistema",
   "tag": "Etichetta: {tag}",
   "tags": "Tag",
-  "tagsHaveAtMostCharacters": "I tag hanno al massimo {MAX_TAG_LENGTH} caratteri.",
   "takenFromTheClientChangesHereGoIntoThis": "Preso dal cliente. Le modifiche qui vengono apportate solo a questo documento, non al record del cliente.",
   "takingShape": "prende forma.",
   "tax2026": "Imposta 2026",
@@ -4455,5 +4454,6 @@
   "emailSubjectRequired": "Inserisci un oggetto.",
   "emailMessageRequired": "Scrivi un messaggio.",
   "aiWriteErrorUnavailable": "«Scrivi con l'IA» non è ancora disponibile su questo server.",
-  "aiWriteErrorNetwork": "Helvetly non è raggiungibile. Controlla la connessione e riprova."
+  "aiWriteErrorNetwork": "Helvetly non è raggiungibile. Controlla la connessione e riprova.",
+  "tagShape": "I tag usano lettere a–z, cifre e trattini (non all’inizio o alla fine), fino a 32 caratteri."
 }

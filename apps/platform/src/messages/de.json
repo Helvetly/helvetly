@@ -2935,7 +2935,6 @@
   "system2": " System",
   "tag": "Schlagwort: {tag}",
   "tags": "Tags",
-  "tagsHaveAtMostCharacters": "Tags haben höchstens {MAX_TAG_LENGTH} Zeichen.",
   "takenFromTheClientChangesHereGoIntoThis": "Vom Client übernommen. Hier vorgenommene Änderungen gehen nur in dieses Dokument ein, nicht in die Akte des Kunden.",
   "takingShape": "nimmt Gestalt an.",
   "tax2026": "Steuer 2026",
@@ -4455,5 +4454,6 @@
   "emailSubjectRequired": "Geben Sie einen Betreff ein.",
   "emailMessageRequired": "Schreiben Sie eine Nachricht.",
   "aiWriteErrorUnavailable": "«Mit KI schreiben» ist auf diesem Server noch nicht verfügbar.",
-  "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+  "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+  "tagShape": "Tags bestehen aus Buchstaben a–z, Ziffern und Bindestrichen (nicht am Anfang oder Ende), bis 32 Zeichen."
 }

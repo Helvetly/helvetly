@@ -10,7 +10,7 @@ import { translate } from '@/lib/i18n'
 export { COUNTRY_OPTIONS } from '@helvetly/ui/lib/countries'
 export { Combobox, inputClass, type Option }
 
-import { addTag, CURRENCIES } from './client-form-model'
+import { addTag, CURRENCIES, typedTag } from './client-form-model'
 
 const COMMON_CURRENCIES = ['CHF', 'EUR', 'USD', 'GBP']
 /** Currencies by name with the code as hint: the usual four first, then all of them. */
@@ -136,7 +136,7 @@ export function TagsInput({
             const typed = event.target.value
             // A comma ends a tag, as in most tag inputs.
             if (typed.endsWith(',')) add(typed.slice(0, -1))
-            else setDraft(typed)
+            else setDraft(typedTag(typed))
           }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && draft.trim()) {
