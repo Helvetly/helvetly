@@ -4330,5 +4330,22 @@
   "importFixBeforeImport": "{count, plural, one {Vor dem Import # Sache korrigieren} other {Vor dem Import # Dinge korrigieren}}",
   "importFoundOnDocument": "Im Dokument gefunden",
   "importClientNotYours": "Dieser Kunde ist noch nicht in Ihren Kunden. Wählen Sie oben einen bestehenden oder legen Sie ihn mit den gefundenen Angaben an.",
-  "importClientVat": "MWST"
+  "importClientVat": "MWST",
+  "importOriginal": "Das Original",
+  "importNoPreview": "Keine Vorschau für diesen Dateityp.",
+  "importSectionLines": "Positionen",
+  "importSectionLinesText": "Was verkauft wurde, wie gedruckt: Mengen, Preise, Rabatte und MWST.",
+  "importNetTotal": "Netto",
+  "importTotalsWaitForLines": "Die Summen erscheinen, sobald die Rechnung Positionen und eine Währung hat.",
+  "importSectionPaymentsText": "Der auf der Rechnung gedruckte Gesamtbetrag und was der Kunde bereits bezahlt hat.",
+  "importTotalDiffers": "Die Positionen ergeben {lines}. Prüfen Sie die Positionen oder den gedruckten Gesamtbetrag.",
+  "importSectionInstalmentsText": "Der auf der Rechnung gedruckte Zahlungsplan. Markieren Sie bereits bezahlte Raten.",
+  "importInstalmentN": "Rate {n}",
+  "importPaid": "Bezahlt",
+  "importAddInstalment": "Rate hinzufügen",
+  "importServiceDate": "Leistungsdatum",
+  "importServiceDateEnd": "Ende der Leistungsperiode",
+  "importInvoiceDiscount": "Rechnungsrabatt (%)",
+  "importServiceDateTip": "Wann die Leistung erbracht oder geliefert wurde, oder der erste Tag einer Leistungsperiode. Leer lassen, wenn die Rechnung keines zeigt.",
+  "importInvoiceDiscountTip": "Ein Rabatt auf die ganze Rechnung in Prozent, wie gedruckt. Rabatte auf einzelne Positionen gehören in die Positionen."
 }

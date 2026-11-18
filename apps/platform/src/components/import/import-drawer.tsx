@@ -45,6 +45,7 @@ import { EditRecordDrawer } from './import-edit-drawer'
 import { DropZone, ImportSteps, ReadingProgress } from './import-files'
 import { IssueSummary } from './import-issues'
 import { FileReview, rowName } from './import-review'
+import { InvoiceRecordEditor } from './invoice-record-editor'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
@@ -382,7 +383,23 @@ export function ImportDrawer({
           />
         )}
 
-        {editingRecord && (
+        {editingRecord?.kind === 'invoices' && (
+          <InvoiceRecordEditor
+            key={editingRecord.id}
+            config={IMPORT_KINDS.invoices}
+            batchId={batchId ?? ''}
+            record={editingRecord}
+            fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
+            fileSrc={`/api/v1/imports/${encodeURIComponent(batchId ?? '')}/files/${encodeURIComponent(editingRecord.file_id)}/content`}
+            name={rowName(IMPORT_KINDS.invoices, editingRecord, records.indexOf(editingRecord))}
+            onDone={(saved) => {
+              setEditing(null)
+              if (saved && isClean(saved))
+                setPicked((current) => new Set([...(current ?? selected), saved.id]))
+            }}
+          />
+        )}
+        {editingRecord && editingRecord.kind !== 'invoices' && (
           <EditRecordDrawer
             key={editingRecord.id}
             config={IMPORT_KINDS[editingRecord.kind]}

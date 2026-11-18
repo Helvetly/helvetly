@@ -16,6 +16,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { ImportItem } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import type { ImportBatch, ImportFile, ImportRecord, ImportSummary } from '@/lib/imports'
+import { editorApi } from '@/test/invoice-api'
 
 import { sessionHandler } from './screen-fixtures'
 
@@ -623,6 +624,20 @@ const invoiceRecord = (id: string, over: Partial<ImportRecord> = {}) =>
       client_city: 'Zürich',
       client_country: 'CH',
       client_vat_number: 'CHE-123.456.789 MWST',
+      lines: [
+        {
+          description: 'Website care',
+          quantity: '10',
+          unit: 'hour',
+          unit_price: '120.00',
+          vat_category: 'S',
+          vat_rate: '8.1',
+        },
+      ],
+      instalments: [
+        { due_date: '2026-11-20', amount: '600.00', paid: true, paid_on: '2026-11-18' },
+        { due_date: '2026-12-05', amount: '600.00', paid: false },
+      ],
       issue_date: '2026-11-05',
       due_date: '2026-12-05',
       currency: 'CHF',
@@ -683,6 +698,7 @@ export const EditInvoiceDrawer: Story = {
         sessionHandler(),
         autoBatches,
         getBatch(() => ({ ...reading(), status: 'review' })),
+        ...editorApi([]),
       ],
     },
   },
@@ -711,6 +727,15 @@ export const EditInvoiceDrawer: Story = {
       within(editor).getByRole('region', { name: 'Found on the document' }),
     ).toBeVisible()
     await expect(within(editor).getByText(/Fix 1 thing before importing/)).toBeVisible()
+    // The invoice as the invoice editor shows one: its lines, totals from the server and its instalments.
+    const lines = within(editor).getByRole('region', { name: 'Lines' })
+    await expect(within(lines).getByDisplayValue('Website care')).toBeVisible()
+    await expect(await within(lines).findByText('Net')).toBeVisible()
+    const instalments = within(editor).getByRole('list', { name: 'Instalments' })
+    await expect(within(instalments).getAllByRole('listitem')).toHaveLength(2)
+    await expect(
+      within(instalments).getByRole('switch', { name: 'Instalment 1 · Paid' }),
+    ).toBeChecked()
     await userEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(body().queryByRole('dialog', { name: 'Edit record' })).toBeNull())
     await expect(body().getByRole('dialog', { name: 'Import documents' })).toBeVisible()

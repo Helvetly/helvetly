@@ -4330,5 +4330,22 @@
   "importFixBeforeImport": "{count, plural, one {Corrigez # point avant l’import} other {Corrigez # points avant l’import}}",
   "importFoundOnDocument": "Trouvé dans le document",
   "importClientNotYours": "Ce client ne figure pas encore dans vos clients. Choisissez-en un existant ci-dessus ou créez-le avec les informations trouvées.",
-  "importClientVat": "TVA"
+  "importClientVat": "TVA",
+  "importOriginal": "L’original",
+  "importNoPreview": "Pas d’aperçu pour ce type de fichier.",
+  "importSectionLines": "Lignes",
+  "importSectionLinesText": "Ce qui a été vendu, tel qu’imprimé : quantités, prix, remises et TVA.",
+  "importNetTotal": "Net",
+  "importTotalsWaitForLines": "Les totaux s’affichent dès que la facture a des lignes et une devise.",
+  "importSectionPaymentsText": "Le total imprimé sur la facture et ce que le client a déjà payé.",
+  "importTotalDiffers": "Les lignes donnent {lines}. Vérifiez les lignes ou le total imprimé.",
+  "importSectionInstalmentsText": "L’échéancier imprimé sur la facture. Cochez les échéances déjà payées.",
+  "importInstalmentN": "Échéance {n}",
+  "importPaid": "Payé",
+  "importAddInstalment": "Ajouter une échéance",
+  "importServiceDate": "Date de prestation",
+  "importServiceDateEnd": "Fin de la période de prestation",
+  "importInvoiceDiscount": "Remise sur la facture (%)",
+  "importServiceDateTip": "Quand le travail a été fait ou livré, ou le premier jour d’une période de prestation. Laissez vide si la facture n’en indique pas.",
+  "importInvoiceDiscountTip": "Une remise sur toute la facture, en pourcentage, telle qu’imprimée. Les remises par ligne vont dans les lignes."
 }
