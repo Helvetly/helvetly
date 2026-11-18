@@ -55,7 +55,7 @@ export function emptyValues(defaults: Defaults): FormValues {
     sku: '',
     gtin: '',
     unit: '',
-    price_basis: 'net',
+    price_basis: 'gross',
     unit_price: '',
     currency: defaults.currency,
     vat_category: defaults.vat_registered ? 'S' : 'O',

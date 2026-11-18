@@ -32,6 +32,7 @@ import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ClientSearch } from '@/components/invoices/client-search'
 import { ProductPicker } from '@/components/products/product-picker'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
 import {
@@ -398,31 +399,30 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     label={translate('description')}
                     error={errors.description}
                     tip={translate('internalNotesAlsoAddedUnderTheTitleOnInvoice')}
-                    hint={
-                      <AIWrite
-                        field="engagement_description"
-                        text={values.description}
-                        maxLength={1000}
-                        context={{
-                          title: values.title,
-                          client: clientName,
-                          quantity:
-                            values.quantity &&
-                            `${values.quantity} ${unit?.label ?? values.unit ?? ''}`,
-                          price: values.unit_price && `${values.currency} ${values.unit_price}`,
-                          repeats: values.recurrence,
-                        }}
-                        onApply={(text) => set('description', text)}
-                      />
-                    }
                   >
-                    <textarea
+                    <TextareaBox
                       {...describe('description')}
                       rows={3}
                       value={values.description}
                       onChange={(event) => set('description', event.target.value)}
                       placeholder={translate('weeklyGermanLessonsForTheSalesTeam')}
-                      className={cn(inputClass, 'h-auto min-h-20 resize-y py-2')}
+                      tools={
+                        <AIWrite
+                          field="engagement_description"
+                          text={values.description}
+                          maxLength={1000}
+                          context={{
+                            title: values.title,
+                            client: clientName,
+                            quantity:
+                              values.quantity &&
+                              `${values.quantity} ${unit?.label ?? values.unit ?? ''}`,
+                            price: values.unit_price && `${values.currency} ${values.unit_price}`,
+                            repeats: values.recurrence,
+                          }}
+                          onApply={(text) => set('description', text)}
+                        />
+                      }
                     />
                   </FormField>
                 ) : (

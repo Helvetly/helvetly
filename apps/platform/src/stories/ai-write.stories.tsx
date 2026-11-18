@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { AIWrite } from '@/components/ai/ai-write'
+import { TextareaBox } from '@/components/textarea-box'
 import type { AIWriteInput } from '@/lib/ai-write'
 
 import { sessionHandler } from './screen-fixtures'
@@ -35,23 +36,25 @@ const handlers = [
   }),
 ]
 
-/** A description field with Write with AI under it, as the product form has it. */
+/** A description field with Write with AI inside it, as the product form has it. */
 function Field({ initial }: { initial: string }) {
   const [text, setText] = useState(initial)
   return (
-    <div className="grid w-[480px] gap-1.5">
-      <textarea
+    <div className="w-[480px]">
+      <TextareaBox
         aria-label="Description"
         value={text}
         readOnly
-        className="min-h-20 rounded-md border p-2 text-sm"
-      />
-      <AIWrite
-        field="product_description"
-        text={text}
-        maxLength={1000}
-        context={{ name: 'Web design, hourly', price: 'CHF 120.00', unit: undefined }}
-        onApply={setText}
+        max={1000}
+        tools={
+          <AIWrite
+            field="product_description"
+            text={text}
+            maxLength={1000}
+            context={{ name: 'Web design, hourly', price: 'CHF 120.00', unit: undefined }}
+            onApply={setText}
+          />
+        }
       />
     </div>
   )

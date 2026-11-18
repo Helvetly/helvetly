@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormSection } from '@/components/form-section'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useHabits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
@@ -217,8 +218,15 @@ export function ProductForm({
                 label={translate('description')}
                 error={errors.description}
                 tip={translate('printedUnderTheNameOnTheInvoiceLine')}
-                hint={
-                  <span className="flex items-center justify-between gap-2">
+              >
+                <TextareaBox
+                  {...describe('description')}
+                  rows={3}
+                  value={values.description}
+                  onChange={(event) => set('description', event.target.value)}
+                  placeholder={translate('whatTheClientGetsEGDesignTwoRevision')}
+                  max={DESCRIPTION_MAX}
+                  tools={
                     <AIWrite
                       field="product_description"
                       text={values.description}
@@ -226,29 +234,19 @@ export function ProductForm({
                       context={{
                         name: values.name,
                         kind: values.type,
-                        unit: values.unit ?? undefined,
-                        price: values.unit_price && `${values.currency} ${values.unit_price}`,
+                        price:
+                          values.unit_price &&
+                          `${values.currency} ${values.unit_price} ${values.price_basis}`,
+                        unit: UNITS.find((unit) => unit.value === values.unit)?.label,
+                        vat: VAT_CATEGORIES.find((entry) => entry.value === values.vat_category)
+                          ?.label,
+                        vat_rate: standard ? `${values.vat_rate} %` : undefined,
+                        sku: values.sku,
+                        gtin: values.type === 'product' ? values.gtin : undefined,
                       }}
                       onApply={(text) => set('description', text)}
                     />
-                    <span
-                      className={cn(
-                        'tabular-nums',
-                        values.description.length > DESCRIPTION_MAX && 'text-destructive',
-                      )}
-                    >
-                      {values.description.length} / {DESCRIPTION_MAX}
-                    </span>
-                  </span>
-                }
-              >
-                <textarea
-                  {...describe('description')}
-                  rows={3}
-                  value={values.description}
-                  onChange={(event) => set('description', event.target.value)}
-                  placeholder={translate('whatTheClientGetsEGDesignTwoRevision')}
-                  className={cn(inputClass, 'h-auto min-h-20 resize-y py-2')}
+                  }
                 />
               </FormField>
             </FormSection>
@@ -257,63 +255,58 @@ export function ProductForm({
               title={translate('price2')}
               description={translate('whatYouChargeThePreviewShowsTheAmountsPer')}
             >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  field="unit_price"
-                  label={translate('unitPrice')}
-                  className="sm:col-span-2"
-                  error={errors.unit_price}
-                  required
-                  tip={translate('enterThePriceAsYouQuoteItNetWithout')}
-                >
-                  <div className="flex gap-1.5">
-                    <input
-                      {...describe('unit_price')}
-                      inputMode="decimal"
-                      value={values.unit_price}
-                      onChange={(event) => set('unit_price', event.target.value)}
-                      placeholder="0.00"
-                      className={cn(inputClass, 'min-w-0 text-right tabular-nums')}
-                    />
-                    <Segmented
-                      label={translate('priceBasis')}
-                      value={values.price_basis}
-                      options={[
-                        { value: 'net', label: translate('net2') },
-                        { value: 'gross', label: translate('gross') },
-                      ]}
-                      onChange={(basis) => set('price_basis', basis)}
-                    />
-                  </div>
-                </FormField>
-                <FormField
-                  field="currency"
-                  label={translate('currency')}
-                  error={errors.currency}
-                  required
-                >
+              <FormField
+                field="unit_price"
+                label={translate('unitPrice')}
+                error={errors.unit_price ?? errors.currency}
+                required
+                tip={translate('enterThePriceAsYouQuoteItNetWithout')}
+              >
+                <div className="flex items-stretch gap-2">
                   <Combobox
                     id={fieldId('currency')}
+                    label={translate('currency')}
                     value={values.currency}
                     options={CURRENCY_OPTIONS}
-                    renderValue={(option) => `${option.value} · ${option.label}`}
-                    placeholder={translate('chooseACurrency2')}
+                    renderValue={(option) => option.value}
+                    placeholder={translate('currency')}
                     invalid={Boolean(errors.currency)}
+                    className="w-24 shrink-0"
                     onChange={(code) => set('currency', code)}
                   />
-                </FormField>
-                <FormField
-                  field="vat_category"
-                  label={translate('vat')}
-                  error={errors.vat_category}
-                  required
-                  tip={translate('theEN16931CategoryTheInvoiceLineGetsStandard')}
-                >
+                  <input
+                    {...describe('unit_price')}
+                    inputMode="decimal"
+                    value={values.unit_price}
+                    onChange={(event) => set('unit_price', event.target.value)}
+                    placeholder="0.00"
+                    className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
+                  />
+                  <Segmented
+                    label={translate('priceBasis')}
+                    value={values.price_basis}
+                    options={[
+                      { value: 'net', label: translate('net2') },
+                      { value: 'gross', label: translate('gross') },
+                    ]}
+                    onChange={(basis) => set('price_basis', basis)}
+                  />
+                </div>
+              </FormField>
+              <FormField
+                field="vat_category"
+                label={translate('vat')}
+                error={errors.vat_category ?? errors.vat_rate}
+                required
+                tip={translate('theEN16931CategoryTheInvoiceLineGetsStandard')}
+              >
+                <div className="flex items-stretch gap-2">
                   <Combobox
                     id={fieldId('vat_category')}
                     value={values.vat_category}
                     options={CATEGORY_OPTIONS}
                     placeholder={translate('chooseAVATCategory')}
+                    className="min-w-0 flex-1 shrink"
                     onChange={(code) => {
                       const category = VAT_CATEGORIES.find((entry) => entry.value === code)?.value
                       if (!category) return
@@ -322,52 +315,38 @@ export function ProductForm({
                       else if (!standard) set('vat_rate', defaults.default_vat_rate)
                     }}
                   />
-                </FormField>
-                <FormField
-                  field="vat_rate"
-                  label={translate('vatRate')}
-                  error={errors.vat_rate}
-                  required={standard}
-                >
-                  <div className="flex gap-1.5">
-                    <div className="relative min-w-0 flex-1">
-                      <input
-                        {...describe('vat_rate')}
-                        inputMode="decimal"
-                        disabled={!standard}
-                        value={standard ? values.vat_rate : '0'}
-                        onChange={(event) => set('vat_rate', event.target.value)}
-                        placeholder="8.1"
-                        className={cn(
-                          inputClass,
-                          'pr-7 text-right tabular-nums disabled:opacity-60',
-                        )}
+                  {standard && (
+                    <>
+                      <div className="relative w-24 shrink-0">
+                        <input
+                          {...describe('vat_rate')}
+                          aria-label={translate('vatRate')}
+                          aria-describedby={
+                            errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
+                          }
+                          inputMode="decimal"
+                          value={values.vat_rate}
+                          onChange={(event) => set('vat_rate', event.target.value)}
+                          placeholder="8.1"
+                          className={cn(inputClass, 'pr-7 text-right tabular-nums')}
+                        />
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+                        >
+                          %
+                        </span>
+                      </div>
+                      <Segmented
+                        label={translate('vatRatePresets')}
+                        value={values.vat_rate}
+                        options={VAT_RATES.map((rate) => ({ value: rate, label: rate }))}
+                        onChange={(rate) => set('vat_rate', rate)}
                       />
-                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
-                        %
-                      </span>
-                    </div>
-                    {standard && (
-                      <span className="flex gap-1">
-                        {VAT_RATES.map((rate) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => set('vat_rate', rate)}
-                            className={cn(
-                              'h-9 cursor-pointer rounded-md px-2 text-[13px] tabular-nums ring-1 ring-border transition-colors ring-inset hover:bg-muted',
-                              values.vat_rate === rate &&
-                                'bg-muted text-foreground ring-foreground/20',
-                            )}
-                          >
-                            {rate}
-                          </button>
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                </FormField>
-              </div>
+                    </>
+                  )}
+                </div>
+              </FormField>
               <output
                 aria-label={translate('pricePerUnit')}
                 className="grid grid-cols-3 divide-x divide-border/70 rounded-lg ring-1 ring-border/70"

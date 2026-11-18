@@ -20,7 +20,7 @@ const QUICK: { action: Exclude<AIWriteAction, 'draft' | 'custom'>; label: () => 
 ]
 
 /**
- * Write with AI beside a description: Heidi drafts one from the rest of the form when the field is empty, or
+ * Write with AI inside a description (TextareaBox): Heidi drafts one from the rest of the form when the field is empty, or
  * improves, shortens or rewrites what is there. The text is shown first; nothing changes until Replace or Insert.
  */
 export function AIWrite({
@@ -88,7 +88,7 @@ export function AIWrite({
           type="button"
           variant="ghost"
           size="xs"
-          className={cn('-ml-1.5 gap-1 text-heidi hover:text-heidi', className)}
+          className={cn('gap-1 text-heidi hover:text-heidi', className)}
         >
           <HeidiSparkle />
           {translate('aiWriteButton')}

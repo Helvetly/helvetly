@@ -36,6 +36,7 @@ import { ExpenseCategoryField } from '@/components/expenses/expense-category-fie
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   expensesApi,
@@ -484,22 +485,16 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       field="note"
       label={translate('internalNote')}
       error={errors.note}
-      hint={
-        <span className="flex justify-between">
-          {translate('onlyYourTeamSeesThis')}
-          <span className={cn('tabular-nums', values.note.length > NOTE_MAX && 'text-destructive')}>
-            {values.note.length} / {NOTE_MAX}
-          </span>
-        </span>
-      }
+      hint={translate('onlyYourTeamSeesThis')}
     >
-      <textarea
+      <TextareaBox
         {...describe('note')}
         rows={2}
         value={values.note}
         onChange={(event) => set('note', event.target.value)}
         placeholder={translate('anythingYourTeamOrYourAccountantShouldKnow')}
-        className={cn(inputClass, 'h-auto min-h-16 resize-y py-2')}
+        max={NOTE_MAX}
+        className="min-h-14"
       />
     </FormField>
   )

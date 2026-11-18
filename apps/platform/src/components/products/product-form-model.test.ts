@@ -16,6 +16,7 @@ const defaults = { currency: 'CHF', vat_registered: true, default_vat_rate: '8.1
 const values = (change: Partial<FormValues>): FormValues => ({
   ...emptyValues(defaults),
   name: 'Consulting',
+  price_basis: 'net',
   unit_price: '150',
   ...change,
 })
@@ -107,4 +108,12 @@ test('a new item starts with the usual type and VAT category; the rate follows t
     vat_category: 'S',
     vat_rate: defaults.default_vat_rate,
   })
+})
+
+test('a new item is priced gross unless the person usually enters net', () => {
+  expect(emptyValues(defaults).price_basis).toBe('gross')
+  expect(newValues(defaults, {}).price_basis).toBe('gross')
+  const usual = { ...emptyValues(defaults), price_basis: 'net' as const }
+  const habits = [1, 2].reduce<Habits>((h) => learnValues(h, 'product', usual, PRODUCT_HABITS), {})
+  expect(newValues(defaults, habits).price_basis).toBe('net')
 })
