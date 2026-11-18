@@ -434,3 +434,15 @@ test('the RON rate is kept on a draft and sent, blank as null', () => {
   expect(toInput(values).input.tax_currency_rate).toBe('4.9771')
   expect(toInput({ ...values, tax_currency_rate: ' ' }).input.tax_currency_rate).toBeNull()
 })
+
+test('a price above what the API accepts is an error on its line, also for the preview', () => {
+  const values = {
+    ...emptyValues(settings),
+    lines: [
+      line({ key: 'a', description: 'Max', unit_price: "100'000'000" }),
+      line({ key: 'b', description: 'Over', unit_price: '100000000.01' }),
+    ],
+  }
+  expect(toInput(values).errors).toEqual({ 'b.unit_price': 'At most 100’000’000.00' })
+  expect(toInput(values, true).errors).toEqual({ 'b.unit_price': 'At most 100’000’000.00' })
+})

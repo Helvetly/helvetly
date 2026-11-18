@@ -40,6 +40,7 @@ import {
   VATEX_CODES,
   type VatMode,
 } from '@/lib/invoices'
+import { typedPercent } from '@/lib/percent'
 
 import {
   addPickedLine,
@@ -107,6 +108,7 @@ export function LinesEditor({
   vatMode,
   defaultRate,
   amounts,
+  amountsFailed = false,
   errors,
   onChange,
   currency,
@@ -116,6 +118,8 @@ export function LinesEditor({
   defaultRate: string
   /** From the preview, in row order; undefined while it loads. */
   amounts: string[] | undefined
+  /** The preview failed: a dash, not a spinner that never ends. */
+  amountsFailed?: boolean
   errors: EditorErrors
   onChange: (lines: EditorLine[]) => void
   /** For the catalogue's prices. */
@@ -149,16 +153,16 @@ export function LinesEditor({
   const withVat = vatMode !== 'none'
   const columns = cn(
     'grid items-start gap-x-1',
-    'grid-cols-[14px_minmax(180px,1fr)_72px_76px_112px_120px_28px]',
+    'grid-cols-[14px_minmax(180px,1fr)_72px_76px_136px_120px_28px]',
     showDiscount &&
       withVat &&
-      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_112px_64px_84px_120px_28px]',
+      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_136px_72px_84px_120px_28px]',
     showDiscount &&
       !withVat &&
-      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_112px_64px_120px_28px]',
+      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_136px_72px_120px_28px]',
     !showDiscount &&
       withVat &&
-      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_112px_84px_120px_28px]',
+      'grid-cols-[14px_minmax(180px,1fr)_72px_76px_136px_84px_120px_28px]',
   )
 
   const set = (index: number, change: Partial<EditorLine>) =>
@@ -441,17 +445,24 @@ export function LinesEditor({
               )}
             </span>
             {showDiscount && (
-              <span>
+              <span className="relative">
                 <input
                   {...describe(line, 'discount_percent')}
                   aria-label={translate('lineDiscountPercent', { value1: index + 1 })}
                   inputMode="decimal"
                   value={line.discount_percent}
-                  onChange={(event) => set(index, { discount_percent: event.target.value })}
+                  onChange={(event) =>
+                    set(index, {
+                      discount_percent: typedPercent(event.target.value, line.discount_percent),
+                    })
+                  }
                   onKeyDown={(event) => onKeyDown(event, index, 'discount_percent')}
-                  placeholder="0%"
-                  className={cn(cellInput, 'text-right')}
+                  placeholder="0"
+                  className={cn(cellInput, 'pr-6 text-right')}
                 />
+                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[14px] text-muted-foreground">
+                  %
+                </span>
               </span>
             )}
             {withVat && (
@@ -462,6 +473,8 @@ export function LinesEditor({
             <span className="flex h-8 items-center justify-end px-2 text-[14px] tabular-nums">
               {amounts?.[index] !== undefined ? (
                 formatAmount(amounts[index])
+              ) : amountsFailed ? (
+                <span className="text-muted-foreground">—</span>
               ) : (
                 <Loader className="min-h-0 w-auto" />
               )}

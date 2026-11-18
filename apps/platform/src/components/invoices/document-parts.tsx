@@ -223,15 +223,25 @@ export function TotalLine({
   label,
   value,
   muted,
+  failed,
 }: {
   label: string
   value: string | null
   muted?: boolean
+  /** The figure could not be loaded: a dash instead of a spinner. */
+  failed?: boolean
 }) {
   return (
     <div className={cn('flex justify-between gap-3', muted && 'text-muted-foreground')}>
       <dt>{label}</dt>
-      <dd className="tabular-nums">{value ?? <Loader className="inline-flex min-h-0 w-auto" />}</dd>
+      <dd className="tabular-nums">
+        {value ??
+          (failed ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <Loader className="inline-flex min-h-0 w-auto" />
+          ))}
+      </dd>
     </div>
   )
 }
