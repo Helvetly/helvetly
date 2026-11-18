@@ -80,6 +80,7 @@
   "addedToTheCatalogue": "{name} zum Katalog hinzugefügt.",
   "addExpense": "Kosten hinzufügen",
   "addFromCatalogue": " Aus Katalog hinzufügen",
+  "addToCatalogue": "Zum Katalog hinzufügen",
   "addInternalID": "Interne ID hinzufügen",
   "addItem": "Element hinzufügen",
   "addLine": " Zeile hinzufügen",
@@ -4367,6 +4368,7 @@
   "importCellSchedule": "Turnus",
   "importPaidByInstalments": "{paid} bezahlt mit {count} von {total} Raten, jede an ihrem Datum.",
   "importFoundNotYours": "Im Dokument gefunden, noch nicht in Ihren Kunden. Legen Sie ihn mit diesen Angaben an oder wählen Sie einen bestehenden Kunden.",
+<<<<<<< HEAD
   "alreadyInvoiced": "Bereits fakturiert",
   "alreadyInvoicedTip": "Eine Rechnung, die Sie für diesen Kunden schon erstellt haben. Sie zählt als Rechnung dieses Auftrags für den Zeitraum ihres Leistungsdatums, es wird keine zweite erstellt.",
   "chooseAnInvoice": "Rechnung wählen",
@@ -4379,4 +4381,30 @@
   "engagementLinkTip": "Zählt diese Rechnung als im Auftrag fakturiert, für den Zeitraum ihres Leistungsdatums.",
   "linkedToEngagement": "Mit {title} verknüpft.",
   "removedFromTheEngagement": "Vom Auftrag gelöst."
+=======
+  "organizeButton": "Mit KI ordnen",
+  "organizeTitle": "Mit KI ordnen",
+  "organizeLead": "Heidi schlägt für jedes Dokument einen Ordner und Tags vor. Nichts wird verschoben, bevor Sie zustimmen.",
+  "organizeStartTitle": "Ordnen Sie Ihre Dokumente",
+  "organizeStartText": "Heidi sieht sich zuerst unsortierte Dateien an und prüft, wo die anderen liegen, dann schlägt sie Ordner wie Rechnungen › 2025 und Tags wie Rechnung oder Vertrag vor. Sie prüfen jede Änderung.",
+  "organizeStart": "Ordnung vorschlagen",
+  "organizeLooking": "Heidi sieht sich Ihre Dokumente an…",
+  "organizeLookingShort": "Wird geprüft…",
+  "organizeToMove": "{count, plural, one {# zu verschieben} other {# zu verschieben}}",
+  "organizeInPlace": "{count, plural, one {# schon am richtigen Ort} other {# schon am richtigen Ort}}",
+  "organizeConsidered": "{count, plural, one {# Dokument geprüft} other {# Dokumente geprüft}}",
+  "organizeShowKept": "Bereits richtig abgelegte zeigen",
+  "organizeAllGood": "Alles liegt schon am richtigen Ort. Nichts zu ändern.",
+  "organizeProposals": "Vorgeschlagene Änderungen",
+  "organizeTo": "Wird verschoben nach",
+  "organizeProposed": "Vorgeschlagener Ordner und Tags",
+  "organizeTopLevel": "Oberste Ebene",
+  "organizeFolderFor": "Ordner für {name}",
+  "organizeNewFolder": "Neuer Ordner",
+  "organizeRemoveTag": "Tag {tag} entfernen",
+  "organizeSelected": "{count, plural, =0 {Nichts ausgewählt} one {# Änderung ausgewählt} other {# Änderungen ausgewählt}}",
+  "organizeApply": "{count, plural, =0 {Anwenden} one {# Änderung anwenden} other {# Änderungen anwenden}}",
+  "organizeApplied": "{count, plural, one {# Dokument geordnet} other {# Dokumente geordnet}}",
+  "organizeUndone": "An den alten Ort zurückgelegt"
+>>>>>>> origin/main
 }

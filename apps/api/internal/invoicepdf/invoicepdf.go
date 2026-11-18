@@ -38,11 +38,14 @@ type Document struct {
 	SelfBilled bool          // credit note against a self-billed invoice: printed like one
 }
 
-// Logo box on the first page, in mm; a logo is never drawn larger than its pixels at 96 dpi, so a small
-// image is not blown up into a blurry one.
+// Logo box on the first page, in mm: at most 18 mm high and, for a wordmark, up to 75 mm wide where the text beside
+// it leaves room (never less than the 45 mm the box always had). A logo is never drawn larger than its pixels at
+// 96 dpi, so a small image is not blown up into a blurry one.
 const (
-	logoMaxW, logoMaxH = 45.0, 18.0
-	mmPerPixel         = 25.4 / 96
+	logoMinW, logoMaxW, logoMaxH = 45.0, 75.0, 18.0
+	logoGap                      = 5.0 // between the logo and the header's title and details
+	letterheadGap                = 10.0
+	mmPerPixel                   = 25.4 / 96
 )
 
 // logoType: the fpdf image type of PNG or JPEG bytes, "" for anything else.
@@ -73,10 +76,37 @@ func CheckLogo(b []byte) (err error) {
 	return pdf.Error()
 }
 
-// logoSize fits w × h pixels into the logo box, keeping the aspect ratio.
-func logoSize(w, h float64) (float64, float64) {
-	scale := min(logoMaxW/(w*mmPerPixel), logoMaxH/(h*mmPerPixel), 1)
+// logoSize fits w × h pixels into the logo box, room mm wide within logoMinW – logoMaxW, keeping the aspect ratio.
+func logoSize(w, h, room float64) (float64, float64) {
+	maxW := min(max(room, logoMinW), logoMaxW)
+	scale := min(maxW/(w*mmPerPixel), logoMaxH/(h*mmPerPixel), 1)
 	return w * mmPerPixel * scale, h * mmPerPixel * scale
+}
+
+// logo draws the document's logo top left, at most room mm wide (logoSize), and returns its size; 0, 0 for none.
+func (r *renderer) logo(room float64) (float64, float64) {
+	if r.d.Logo == nil {
+		return 0, 0
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(r.d.Logo))
+	if err != nil {
+		return 0, 0
+	}
+	opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
+	r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
+	w, h := logoSize(float64(cfg.Width), float64(cfg.Height), room)
+	r.pdf.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
+	return w, h
+}
+
+// widest: the width of the longest of lines in the given font.
+func (r *renderer) widest(style string, size float64, lines ...string) float64 {
+	r.set(style, size)
+	w := 0.0
+	for _, s := range lines {
+		w = max(w, r.txt.Width(s))
+	}
+	return w
 }
 
 const (
@@ -302,16 +332,14 @@ func (r *renderer) invoicePages() {
 // header draws the logo (top left) and, top right, the title with the number and the document's label: value pairs;
 // it returns the y below the taller of the two.
 func (r *renderer) header(title string, meta [][2]string) float64 {
-	bottomY := 15.0
-	if r.d.Logo != nil {
-		if cfg, _, err := image.DecodeConfig(bytes.NewReader(r.d.Logo)); err == nil {
-			opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
-			r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
-			w, h := logoSize(float64(cfg.Width), float64(cfg.Height))
-			r.pdf.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
-			bottomY = 15 + h
-		}
+	lines := make([]string, len(meta))
+	for i, m := range meta {
+		lines[i] = m[0] + ": " + m[1]
 	}
+	// The title and details are right-aligned: the logo may reach as far as the longest of them leaves free.
+	text := max(r.widest("B", 14, title), r.widest("", 9.5, lines...))
+	_, h := r.logo(right - text - logoGap - left)
+	bottomY := 15 + h
 	r.set("B", 14)
 	r.cell(100, 15, right-100, 7, title, "R")
 	y := 23.0
@@ -385,21 +413,6 @@ func countryName(code, lang string) string {
 // letterhead draws the issuer's block (beside the logo when there is one) and the recipient in the envelope window.
 func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 	p := r.pdf
-	// seller block, beside the logo (top left) when there is one
-	sellerX, align := left, "L"
-	if r.d.Logo != nil {
-		if cfg, _, err := image.DecodeConfig(bytes.NewReader(r.d.Logo)); err == nil {
-			opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
-			p.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
-			w, h := logoSize(float64(cfg.Width), float64(cfg.Height))
-			p.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
-			sellerX, align = 90, "R"
-		}
-	}
-	r.set("B", 11)
-	r.cell(sellerX, 15, right-sellerX, 5, issuer.Name, align)
-	r.set("", 8.5)
-	y := 20.5
 	info := addressLines(issuer, "")[1:]
 	info[len(info)-1] = strings.TrimSpace(issuer.Zip + " " + issuer.City)
 	for _, s := range []*string{issuer.Email, phone} {
@@ -410,6 +423,16 @@ func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 	if v := r.vatNumber(issuer.VATNumber); v != "" {
 		info = append(info, v)
 	}
+	// seller block, right-aligned beside the logo (top left) when there is one, and clear of it
+	sellerX, align := left, "L"
+	text := max(r.widest("B", 11, issuer.Name), r.widest("", 8.5, info...))
+	if w, _ := r.logo(right - text - letterheadGap - left); w > 0 {
+		sellerX, align = max(90, left+w+letterheadGap), "R"
+	}
+	r.set("B", 11)
+	r.cell(sellerX, 15, right-sellerX, 5, issuer.Name, align)
+	r.set("", 8.5)
+	y := 20.5
 	for _, s := range info {
 		r.cell(sellerX, y, right-sellerX, 3.8, s, align)
 		y += 3.8

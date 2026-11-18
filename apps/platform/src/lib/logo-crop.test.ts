@@ -2,12 +2,14 @@ import {
   clampView,
   documentCanvas,
   documentDpi,
+  documentRatio,
   imageSize,
   isWholePicture,
   normalizeLogo,
   placeOnCanvas,
   workspaceCropTooSmall,
   renderDocumentLogo,
+  trimBox,
   sizeProblem,
   sniffFormat,
   svgSize,
@@ -53,25 +55,36 @@ test.each([
   expect(sizeProblem(width, height)).toBe(problem),
 )
 
-test('the document field is exactly 2.5 : 1, holds the picture at its resolution and stays within 270 × 108 – 1600 × 640 px', () => {
+test("the field has the picture's own shape between 1 : 1 and 5 : 1", () => {
+  expect(documentRatio({ width: 1000, height: 400 })).toBe(2.5)
+  expect(documentRatio({ width: 697, height: 143 })).toBeCloseTo(4.874, 3)
+  expect(documentRatio({ width: 300, height: 400 })).toBe(1)
+  expect(documentRatio({ width: 2000, height: 100 })).toBe(5)
+})
+
+test("the field holds the picture at its resolution, 108 – 640 px high, within the API's 64 – 4000 px", () => {
   expect(documentCanvas({ width: 1000, height: 400 })).toEqual({ width: 1000, height: 400 })
-  // A portrait picture needs the field as tall as it is.
-  expect(documentCanvas({ width: 300, height: 400 })).toEqual({ width: 1000, height: 400 })
-  // A wordmark wider than the field needs it wider.
-  expect(documentCanvas({ width: 1500, height: 100 })).toEqual({ width: 1500, height: 600 })
-  // Never beyond what a printed 45 × 18 mm needs, and never below its 150 dpi.
-  expect(documentCanvas({ width: 8000, height: 6000 })).toEqual({ width: 1600, height: 640 })
-  expect(documentCanvas({ width: 20, height: 10 })).toEqual({ width: 270, height: 108 })
+  // A wide wordmark keeps its shape: no strips above and below.
+  expect(documentCanvas({ width: 1394, height: 286 })).toEqual({ width: 1394, height: 286 })
+  // A portrait picture gets a square field, as tall as it is.
+  expect(documentCanvas({ width: 300, height: 400 })).toEqual({ width: 400, height: 400 })
+  // Wider than 5 : 1: the field is 5 : 1, as wide as the picture.
+  expect(documentCanvas({ width: 1500, height: 100 })).toEqual({ width: 1500, height: 300 })
+  // Never beyond 640 px high, and never below the 150 dpi of 18 mm.
+  expect(documentCanvas({ width: 8000, height: 6000 })).toEqual({ width: 853, height: 640 })
+  expect(documentCanvas({ width: 20, height: 10 })).toEqual({ width: 216, height: 108 })
   for (const [width, height] of [
     [333, 217],
     [1, 1],
     [3999, 17],
     [641, 1599],
+    [4000, 800],
+    [20, 4],
   ] as const) {
     const field = documentCanvas({ width, height })
-    expect(field.width / field.height).toBe(2.5)
-    expect(field.height).toBeGreaterThanOrEqual(108)
-    expect(field.width).toBeLessThanOrEqual(1600)
+    expect(field.width / field.height).toBeCloseTo(documentRatio({ width, height }), 2)
+    expect(Math.min(field.width, field.height)).toBeGreaterThanOrEqual(108)
+    expect(Math.max(field.width, field.height)).toBeLessThanOrEqual(3200)
     expect(field.height).toBeLessThanOrEqual(640)
   }
 })
@@ -114,14 +127,17 @@ test('zoom is limited to 1–4 and panning cannot lose the picture or open an em
   expect(placeOnCanvas(natural, { zoom: 3, x: -9, y: -9 }, field)).toMatchObject({ x: 0, y: -800 })
   const clamped = clampView(natural, { zoom: 9, x: 9, y: 9 })
   expect(clamped.zoom).toBe(4)
-  expect(clamped.x).toBeCloseTo(0.1, 10)
+  // In its square field, 3 × 4 field sides at zoom 4: it moves one side either way, one and a half up or down.
+  expect(clamped.x).toBeCloseTo(1, 10)
   expect(clamped.y).toBeCloseTo(1.5, 10)
 })
 
 test('only a picture of the field shape, shown whole, is sent as it was picked', () => {
   expect(isWholePicture({ width: 1000, height: 400 }, WHOLE_PICTURE)).toBe(true)
-  expect(isWholePicture({ width: 1004, height: 400 }, WHOLE_PICTURE)).toBe(true)
-  expect(isWholePicture({ width: 1100, height: 400 }, WHOLE_PICTURE)).toBe(false)
+  expect(isWholePicture({ width: 1100, height: 400 }, WHOLE_PICTURE)).toBe(true)
+  expect(isWholePicture({ width: 500, height: 500 }, WHOLE_PICTURE)).toBe(true)
+  expect(isWholePicture({ width: 1000, height: 200 }, WHOLE_PICTURE)).toBe(true)
+  expect(isWholePicture({ width: 1100, height: 200 }, WHOLE_PICTURE)).toBe(false)
   expect(isWholePicture({ width: 300, height: 400 }, WHOLE_PICTURE)).toBe(false)
   expect(isWholePicture({ width: 1000, height: 400 }, { zoom: 1.1, x: 0, y: 0 })).toBe(false)
   expect(isWholePicture({ width: 1000, height: 400 }, { zoom: 1, x: 0.01, y: 0 })).toBe(false)
@@ -154,15 +170,15 @@ describe('renderDocumentLogo', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
-  test('draws the whole picture, uniformly, on an unfilled 2.5 : 1 canvas and encodes PNG', async () => {
+  test('draws the whole picture, uniformly, on an unfilled canvas of the nearest shape and encodes PNG', async () => {
     const blob = await renderDocumentLogo(
       {} as CanvasImageSource,
       { width: 300, height: 400 },
       WHOLE_PICTURE,
     )
     expect(blob?.type).toBe('image/png')
-    // 1000 × 400, the 300 × 400 picture centred at its own size; no white fill, so transparency stays.
-    expect(draws).toEqual([[1000, 400, 350, 0, 300, 400]])
+    // 400 × 400, the 300 × 400 picture centred at its own size; no white fill, so transparency stays.
+    expect(draws).toEqual([[400, 400, 50, 0, 300, 400]])
     expect(fills).not.toHaveBeenCalled()
   })
 
@@ -290,12 +306,16 @@ describe('svgSize', () => {
 })
 
 test('a document logo needs 150 dpi at the size it occupies on the paper', () => {
-  // 45 mm across 1000 px is 564 dpi; 266 px is the least.
+  // 2.5 : 1 prints 45 × 18 mm: 1000 px across is 564 dpi; up to about 4 : 1 the 18 mm need 107 px.
   expect(documentDpi({ width: 1000, height: 400 }, WHOLE_PICTURE)).toBeCloseTo(564.4, 1)
-  expect(documentDpi({ width: 266, height: 106 }, WHOLE_PICTURE)).toBeGreaterThanOrEqual(150)
+  expect(documentDpi({ width: 266, height: 107 }, WHOLE_PICTURE)).toBeGreaterThanOrEqual(150)
   expect(documentDpi({ width: 260, height: 104 }, WHOLE_PICTURE)).toBeLessThan(150)
-  // A narrow wordmark occupies a thin strip of the field but keeps its own width: 270 × 27 is 152 dpi.
-  expect(documentDpi({ width: 270, height: 27 }, WHOLE_PICTURE)).toBeCloseTo(152.4, 1)
+  expect(documentDpi({ width: 107, height: 107 }, WHOLE_PICTURE)).toBeGreaterThanOrEqual(150)
+  // A 5 : 1 wordmark prints 75 mm wide, so it needs 443 px across.
+  expect(documentDpi({ width: 443, height: 89 }, WHOLE_PICTURE)).toBeGreaterThanOrEqual(150)
+  expect(documentDpi({ width: 440, height: 88 }, WHOLE_PICTURE)).toBeLessThan(150)
+  // Wider still, it keeps its width in a thin strip of the 5 : 1 field: 270 × 27 is 91 dpi.
+  expect(documentDpi({ width: 270, height: 27 }, WHOLE_PICTURE)).toBeCloseTo(91.4, 1)
   // Zooming in spreads the same pixels over more paper.
   expect(documentDpi({ width: 1000, height: 400 }, { zoom: 4, x: 0, y: 0 })).toBeCloseTo(141.1, 1)
 })
@@ -386,5 +406,116 @@ describe('workspaceCropTooSmall', () => {
     [40, 400],
   ])('refuses a %i × %i crop', (width, height) => {
     expect(workspaceCropTooSmall(area(width, height))).toBe(true)
+  })
+})
+
+/** A width × height picture of `fill`, with `paint` drawn over the pixels it covers. */
+const pixels = (
+  width: number,
+  height: number,
+  fill: number[],
+  paint: { x: number; y: number; width: number; height: number; color: number[] }[] = [],
+) => {
+  const data = new Uint8ClampedArray(width * height * 4)
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const spot = paint.findLast(
+        (p) => x >= p.x && x < p.x + p.width && y >= p.y && y < p.y + p.height,
+      )
+      data.set(spot?.color ?? fill, (y * width + x) * 4)
+    }
+  return { data, width, height }
+}
+const white = [255, 255, 255, 255]
+const clear = [0, 0, 0, 0]
+const ink = [20, 40, 160, 255]
+
+describe('trimBox', () => {
+  test("cuts an even white margin, as an SVG's background rectangle leaves", () => {
+    const picture = pixels(50, 20, white, [{ x: 6, y: 4, width: 30, height: 9, color: ink }])
+    expect(trimBox(picture)).toEqual({ x: 6, y: 4, width: 30, height: 9 })
+  })
+
+  test('cuts a transparent margin whatever colour its clear pixels carry', () => {
+    const picture = pixels(40, 30, clear, [
+      { x: 0, y: 0, width: 40, height: 3, color: [255, 0, 0, 5] },
+      { x: 10, y: 12, width: 5, height: 5, color: ink },
+    ])
+    expect(trimBox(picture)).toEqual({ x: 10, y: 12, width: 5, height: 5 })
+  })
+
+  test('a slightly uneven margin is still margin; a faint mark is not', () => {
+    const off = [245, 250, 255, 255]
+    const picture = pixels(30, 30, white, [
+      { x: 0, y: 0, width: 30, height: 5, color: off },
+      { x: 12, y: 10, width: 4, height: 4, color: [200, 200, 200, 255] },
+    ])
+    expect(trimBox(picture)).toEqual({ x: 12, y: 10, width: 4, height: 4 })
+  })
+
+  test.each([
+    [
+      'corners that differ',
+      pixels(20, 20, white, [{ x: 19, y: 19, width: 1, height: 1, color: ink }]),
+    ],
+    ['nothing but margin', pixels(20, 20, white)],
+    ['no margin at all', pixels(20, 20, ink)],
+  ])('keeps the whole picture with %s', (_, picture) =>
+    expect(trimBox(picture)).toEqual({ x: 0, y: 0, width: 20, height: 20 }),
+  )
+})
+
+describe('normalizeLogo with trim', () => {
+  let picture: ReturnType<typeof pixels>
+  const draws: number[][] = []
+  beforeEach(() => {
+    draws.length = 0
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi
+        .fn<() => Promise<unknown>>()
+        .mockImplementation(() =>
+          Promise.resolve({ width: picture.width, height: picture.height, close: () => undefined }),
+        ),
+    )
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (
+      this: HTMLCanvasElement,
+    ) {
+      return {
+        drawImage: (_: unknown, ...at: number[]) => draws.push([this.width, this.height, ...at]),
+        getImageData: () => picture,
+      } as unknown as CanvasRenderingContext2D
+    })
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done, type) =>
+      done(new Blob(['png'], { type })),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  test('a PNG without an even margin is handed back as it is', async () => {
+    picture = pixels(40, 10, ink)
+    const file = new File([png(40, 10)], 'a.png', { type: 'image/png' })
+    expect(await normalizeLogo(file, 'png', { width: 40, height: 10 }, true)).toEqual({
+      file,
+      vector: false,
+    })
+  })
+
+  test('a JPEG with a white margin becomes a PNG of the mark alone', async () => {
+    picture = pixels(60, 20, white, [{ x: 5, y: 3, width: 50, height: 10, color: ink }])
+    const file = new File([jpeg(60, 20)], 'logo.jpg', { type: 'image/jpeg' })
+    const made = await normalizeLogo(file, 'jpeg', { width: 60, height: 20 }, true)
+    expect(made.file).not.toBe(file)
+    expect(made.file.name).toBe('logo.png')
+    expect(draws.at(-1)).toEqual([50, 10, -5, -3, 60, 20])
+  })
+
+  test('a JPEG its EXIF turns is read with its sides swapped', async () => {
+    picture = pixels(20, 60, ink)
+    const file = new File([jpeg(60, 20)], 'logo.jpg', { type: 'image/jpeg' })
+    expect((await normalizeLogo(file, 'jpeg', { width: 60, height: 20 }, true)).file).toBe(file)
   })
 })

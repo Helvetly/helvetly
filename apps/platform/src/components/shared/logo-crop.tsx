@@ -26,6 +26,7 @@ import {
   DOCUMENT_MIN_DPI,
   DOCUMENT_MIN_ZOOM,
   documentDpi,
+  documentRatio,
   imageSize,
   isWholePicture,
   LOGO_MAX_SIDE,
@@ -45,8 +46,6 @@ import { DocumentLogoFrame } from './document-logo-frame'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
-// Shapes this far from the 2.5 : 1 field get a word on how they are placed.
-const ODD_RATIO = [1.4, 6] as const
 const ZOOM_STEP = 0.1
 
 /** Whether the bytes, not the claimed type, are a PNG: the server and the PDF library go by bytes too. */
@@ -90,12 +89,16 @@ type Picked = { file: File; url: string; origin: Origin }
 /** Where the picture comes from: as picked (PNG, JPEG), a static PNG made from a WebP or GIF, or one drawn from an SVG. */
 type Origin = 'file' | 'raster' | 'vector'
 
-/** The file to crop (a WebP, GIF or SVG already turned into a PNG) or why there is none. */
-export async function prepareLogo(file: File): Promise<{ problem: string } | Omit<Picked, 'url'>> {
+/** The file to crop (a WebP, GIF or SVG already turned into a PNG, a document logo trimmed) or why there is none. */
+export async function prepareLogo(
+  file: File,
+  kind: LogoKind = 'workspace',
+): Promise<{ problem: string } | Omit<Picked, 'url'>> {
   const found = await inspect(file)
   if ('problem' in found) return found
   try {
-    const made = await normalizeLogo(file, found.format, found.size)
+    // A document logo loses its even margin before the dialog shows it, so the preview stays the printed logo.
+    const made = await normalizeLogo(file, found.format, found.size, kind === 'document')
     const origin = made.vector ? 'vector' : made.file === file ? 'file' : 'raster'
     return { file: made.file, origin }
   } catch {
@@ -143,7 +146,7 @@ export function useLogoCrop({
   const pick = (file: File | undefined) => {
     if (!file) return
     const turn = (latest.current += 1)
-    void prepareLogo(file).then((prepared) => {
+    void prepareLogo(file, kind).then((prepared) => {
       if (turn !== latest.current) return
       setUploadError('')
       if ('problem' in prepared) setPickError(prepared.problem)
@@ -190,8 +193,8 @@ export function useLogoCrop({
 
 /**
  * Frames a picked logo before it is saved. The workspace's mark is a square: drag (or arrow keys) and zoom to choose it,
- * saved as a 512 px PNG that keeps its transparency. The document logo is saved in the PDF's wide 2.5 : 1 field: it
- * starts as the whole picture contained in it, zooming in only trims it, and it is never stretched. Cancelling sends nothing; a failed upload keeps
+ * saved as a 512 px PNG that keeps its transparency. The document logo is saved in a field of its own shape (1 : 1 to
+ * 5 : 1): it starts as the whole picture contained in it, zooming in only trims it, and it is never stretched. Cancelling sends nothing; a failed upload keeps
  * the dialog open so saving again retries it.
  */
 export function LogoCropDialog({
@@ -231,8 +234,8 @@ export function LogoCropDialog({
   const shown = problem || lowResolution || error
   const isDocument = kind === 'document'
   const ready = isDocument ? !!natural : !!area
-  const ratio = natural ? natural.width / natural.height : 1
-  const odd = isDocument && natural && (ratio < ODD_RATIO[0] || ratio > ODD_RATIO[1])
+  // Only a shape the field cannot take gets a word on how it is placed.
+  const odd = isDocument && natural && documentRatio(natural) !== natural.width / natural.height
 
   // The document logo starts from the file's header size (so nothing waits), and the picture itself corrects it once it
   // decodes: a JPEG turned by its EXIF orientation is decoded with the sides swapped, which the header does not say.
@@ -262,7 +265,7 @@ export function LogoCropDialog({
         setLowResolution(translate('logoRasterResolutionTooLow'))
         return
       }
-      // A PNG that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
+      // A PNG (untrimmed) that already has the field's shape, shown whole, is sent as picked: the same bytes, so a duplicate is found.
       // A JPEG never is, whatever its name or type says: its EXIF turn (the PDF library ignores it) is only applied by decoding and re-encoding it.
       if (
         isDocument &&
