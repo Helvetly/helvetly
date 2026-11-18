@@ -1,11 +1,11 @@
+/** Scrolled to the far end: nothing more lies past that edge. */
+const atEnd = (scroll: number, client: number, size: number) => scroll + client >= size - 1
+
 /**
  * The first ancestor whose overflow would cut off a focus ring of `ring` px around `element`
  * (`ring-3`), or null when the whole ring shows. `overflow-clip-margin` counts as room.
  * shortcut: only fixed boxes end the walk (absolute ones are treated as in flow); enough for drawers and dialogs.
  */
-/** Scrolled to the far end: nothing more lies past that edge. */
-const atEnd = (scroll: number, client: number, size: number) => scroll + client >= size - 1
-
 export function ringClipper(element: Element, ring = 3): Element | null {
   const box = element.getBoundingClientRect()
   for (let node = element.parentElement; node; node = node.parentElement) {
