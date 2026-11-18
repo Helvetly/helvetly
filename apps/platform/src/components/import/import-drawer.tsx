@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Play, RotateCcw, X, Trash2 } from 'lucide-react'
+import { AlertCircle, Loader2, Play, RotateCcw, Sparkles, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
@@ -42,9 +42,9 @@ import { CloseImportedMonths } from './close-imported-months'
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
 import { EditRecordDrawer } from './import-edit-drawer'
-import { DropZone, FileProgress, ImportSteps } from './import-files'
+import { DropZone, ImportSteps, ReadingProgress } from './import-files'
 import { IssueSummary } from './import-issues'
-import { GroupedReview, ReviewTable, rowName } from './import-review'
+import { FileReview, rowName } from './import-review'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
@@ -192,11 +192,13 @@ export function ImportDrawer({
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
         <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
-        <ImportSteps
-          suggests={
-            config ? translate('importSuggestions', { noun }) : translate('importStepReadText')
-          }
-        />
+        {files.length === 0 && (
+          <ImportSteps
+            suggests={
+              config ? translate('importSuggestions', { noun }) : translate('importStepReadText')
+            }
+          />
+        )}
       </div>
     )
     status = upload.isPending
@@ -212,6 +214,11 @@ export function ImportDrawer({
         disabled={!files.length || upload.isPending || Boolean(lock)}
         onClick={() => void read()}
       >
+        {upload.isPending ? (
+          <Loader2 className="animate-spin motion-reduce:animate-none" />
+        ) : (
+          <Sparkles />
+        )}
         {upload.isPending ? translate('uploading3') : translate('readFiles')}
       </Button>
     )
@@ -229,13 +236,10 @@ export function ImportDrawer({
       [...results.values()].every((r) => r.status === 'created' || r.status === 'skipped')
     body = (
       <div className="grid gap-4">
-        {reading && (
-          <p className="text-[13px] text-muted-foreground">
-            {translate('readingYourFilesThisCanTakeAMinuteFor')}{' '}
-            {records.length > 0 && translate('importMoreComing')}
-          </p>
+        {reading && <ReadingProgress done={filesDone ?? 0} total={batch.data.files.length} />}
+        {reading && records.length > 0 && (
+          <p className="text-caption text-muted-foreground">{translate('importMoreComing')}</p>
         )}
-        <FileProgress files={batch.data.files} recordsPerFile={recordsPerFile} />
         <IssueSummary
           batchId={batch.data.id}
           records={records}
@@ -253,26 +257,16 @@ export function ImportDrawer({
             created={records.filter((record) => results.get(record.id)?.status === 'created')}
           />
         )}
-        {config ? (
-          <ReviewTable
-            config={config}
-            records={records}
-            selected={selected}
-            results={results}
-            onSelect={setPicked}
-            onEdit={setEditing}
-          />
-        ) : (
-          <GroupedReview
-            files={batch.data.files}
-            reading={reading}
-            records={records}
-            selected={selected}
-            results={results}
-            onSelect={setPicked}
-            onEdit={setEditing}
-          />
-        )}
+        <FileReview
+          files={batch.data.files}
+          config={config}
+          reading={reading}
+          records={records}
+          selected={selected}
+          results={results}
+          onSelect={setPicked}
+          onEdit={setEditing}
+        />
       </div>
     )
     status = reading

@@ -107,13 +107,13 @@ async function opened(name = 'Import clients') {
   await waitFor(() => expect(dialog).toBeVisible())
 }
 
-/** Chooses one spreadsheet in the drop zone and presses "Read files". */
+/** Chooses one spreadsheet in the drop zone and presses "Process with AI". */
 async function chooseAndRead() {
   await opened()
   const input = await body().findByLabelText('Choose files to import')
   await userEvent.upload(input, new File(['name;email\nMuster AG;info@muster.ch'], 'clients.csv'))
   await expect(body().getByText('clients.csv')).toBeVisible()
-  await userEvent.click(body().getByRole('button', { name: 'Read files' }))
+  await userEvent.click(body().getByRole('button', { name: 'Process with AI' }))
 }
 
 /** Opens the unfinished batch the drawer offers. */
@@ -131,7 +131,7 @@ export const Empty: Story = {
     await expect(body().getByText(/nothing is created until you choose rows/)).toBeVisible()
     await expect(body().getByRole('list', { name: 'How the import works' })).toBeVisible()
     await expect(body().getByText(/Up to 25 files of 25 MB each/)).toBeVisible()
-    await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
+    await expect(body().getByRole('button', { name: 'Process with AI' })).toBeDisabled()
     await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()
   },
 }
@@ -559,7 +559,7 @@ export const NotInPlan: Story = {
       expect.stringMatching(/^\/settings\/billing\/plans/),
     )
     await expect(body().getByLabelText('Choose files to import')).toBeDisabled()
-    await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
+    await expect(body().getByRole('button', { name: 'Process with AI' })).toBeDisabled()
   },
 }
 

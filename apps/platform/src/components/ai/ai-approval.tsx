@@ -8,8 +8,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
+import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { isCancelledError, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Clock, Globe, GraduationCap, MessageSquare, Paperclip, ShieldOff } from 'lucide-react'
+import {
+  Clock,
+  Globe,
+  GraduationCap,
+  MessageSquare,
+  Paperclip,
+  ShieldOff,
+  Sparkles,
+} from 'lucide-react'
 import {
   createContext,
   useCallback,
@@ -48,13 +57,23 @@ export const useAIApproval = () => useContext(Context)
 export const isAIConsentRequired = (error: unknown) =>
   error instanceof ApiError && error.code === 'ai_consent_required'
 
-const POINTS = [
-  { icon: MessageSquare, key: 'aiApprovalSentMessages' },
-  { icon: Paperclip, key: 'aiApprovalSentFiles' },
-  { icon: ShieldOff, key: 'aiApprovalNotSent' },
-  { icon: GraduationCap, key: 'aiApprovalNoTraining' },
-  { icon: Clock, key: 'aiApprovalRetention' },
-  { icon: Globe, key: 'aiApprovalProcessedIn' },
+const SECTIONS = [
+  {
+    title: 'aiApprovalWhatIsSent',
+    points: [
+      { icon: MessageSquare, key: 'aiApprovalSentMessages' },
+      { icon: Paperclip, key: 'aiApprovalSentFiles' },
+    ],
+  },
+  {
+    title: 'aiApprovalWhatIsProtected',
+    points: [
+      { icon: ShieldOff, key: 'aiApprovalNotSent' },
+      { icon: GraduationCap, key: 'aiApprovalNoTraining' },
+      { icon: Clock, key: 'aiApprovalRetention' },
+      { icon: Globe, key: 'aiApprovalProcessedIn' },
+    ],
+  },
 ] as const
 
 /**
@@ -150,7 +169,7 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
         }}
       >
         <DialogContent
-          className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md"
+          className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg"
           // The dialog has no trigger: focus goes back to whatever asked, if it is still on the page.
           onCloseAutoFocus={(event) => {
             event.preventDefault()
@@ -159,26 +178,40 @@ export function AIApprovalProvider({ children }: { children: ReactNode }) {
             if (invoker?.isConnected) invoker.focus()
           }}
         >
-          <DialogHeader>
-            <DialogTitle>{translate('aiApprovalTitle')}</DialogTitle>
-            <DialogDescription>{translate('aiApprovalBody')}</DialogDescription>
+          <DialogHeader className="flex-row items-start gap-3 text-left">
+            <IconTile icon={Sparkles} variant="heidi" size="lg" />
+            <div className="grid gap-1">
+              <DialogTitle>{translate('aiApprovalTitle')}</DialogTitle>
+              <DialogDescription>{translate('aiApprovalLead')}</DialogDescription>
+            </div>
           </DialogHeader>
-          <ul className="grid gap-2.5 text-body-sm">
-            {POINTS.map(({ icon: Icon, key }) => (
-              <li key={key} className="flex items-start gap-2.5">
-                <Icon
-                  aria-hidden
-                  className="mt-px size-4 shrink-0 stroke-[1.75] text-muted-foreground"
-                />
-                <span>{translate(key)}</span>
-              </li>
-            ))}
-          </ul>
+          {SECTIONS.map((section) => (
+            <section
+              key={section.title}
+              aria-label={translate(section.title)}
+              className="grid gap-2"
+            >
+              <h3 className="text-caption font-medium tracking-wide text-muted-foreground uppercase">
+                {translate(section.title)}
+              </h3>
+              <ul className="grid gap-2.5 rounded-lg bg-muted/50 p-3 text-body-sm">
+                {section.points.map(({ icon: Icon, key }) => (
+                  <li key={key} className="flex items-start gap-2.5">
+                    <Icon
+                      aria-hidden
+                      className="mt-0.5 size-4 shrink-0 stroke-[1.75] text-muted-foreground"
+                    />
+                    <span className="text-pretty">{translate(key)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           <a
             href={siteUrl('/privacy#4-heidi-ai-import-and-openai')}
             target="_blank"
             rel="noreferrer"
-            className="w-fit text-caption underline underline-offset-2 hover:text-foreground"
+            className="w-fit text-caption text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             {translate('aiApprovalPrivacyLink')}
           </a>

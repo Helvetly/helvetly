@@ -4,13 +4,13 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, FileText, Pencil } from 'lucide-react'
+import { Check, Pencil } from 'lucide-react'
 import Link from 'next/link'
+import { Fragment } from 'react'
 
 import { translate } from '@/lib/i18n'
 import {
   displayValue,
-  DOCUMENT_TYPES,
   IMPORT_KINDS,
   isSettled,
   recordsByKind,
@@ -20,6 +20,7 @@ import {
   type ImportRecord,
 } from '@/lib/imports'
 
+import { FileProgress } from './import-files'
 import { IssueChip, issuesId } from './import-issues'
 
 export const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
@@ -27,12 +28,14 @@ export const rowName = (config: ImportKindConfig, record: ImportRecord, index: n
   translate('dynamicRow', { value1: index + 1 })
 
 /**
- * An `auto` import's records, one section per document (file) with its records beneath, so each
- * document's rows show up as soon as that file is read; one selection across them all.
+ * Every file of the import with what was read from it right inside its card, so each document's rows show up as
+ * soon as that file is read; one selection across them all. `config` names one kind (a kind's own import),
+ * otherwise each file's records are grouped by kind.
  */
-export function GroupedReview({
+export function FileReview({
   files,
   records,
+  config,
   selected,
   results,
   reading,
@@ -41,6 +44,7 @@ export function GroupedReview({
 }: {
   files: ImportFile[]
   records: ImportRecord[]
+  config?: ImportKindConfig | null
   selected: ReadonlySet<string>
   results: ReadonlyMap<string, CommitResult>
   /** More files are still being read: no records yet is not "nothing found". */
@@ -48,50 +52,50 @@ export function GroupedReview({
   onSelect: (selected: Set<string>) => void
   onEdit: (id: string) => void
 }) {
-  const documents = files
-    .map((file) => ({ file, records: records.filter((record) => record.file_id === file.id) }))
-    .filter((document) => document.records.length > 0)
-  if (!documents.length)
-    return reading ? null : (
-      <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
-        {translate('nothingToImportWasFoundInTheseFilesTry')}
-      </p>
+  const perFile = new Map<string, ImportRecord[]>()
+  for (const record of records)
+    perFile.set(record.file_id, [...(perFile.get(record.file_id) ?? []), record])
+  const counts = new Map([...perFile].map(([id, own]) => [id, own.length]))
+  const table = (kind: ImportKindConfig, group: ImportRecord[]) => {
+    const ids = new Set(group.map((record) => record.id))
+    return (
+      <ReviewTable
+        config={kind}
+        records={group}
+        selected={selected}
+        results={results}
+        // The table selects within itself; keep the other ticks.
+        onSelect={(next) =>
+          onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
+        }
+        onEdit={onEdit}
+      />
     )
+  }
   return (
-    <div className="grid gap-6">
-      {documents.map(({ file, records: own }) => (
-        <section key={file.id} aria-label={file.name} className="grid gap-2">
-          <h3 className="flex items-center gap-2 text-body-sm font-medium">
-            <FileText className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-            <span className="min-w-0 truncate">{file.name}</span>
-            {file.document_type && file.document_type !== 'other' && (
-              <Badge variant="secondary">{DOCUMENT_TYPES[file.document_type]}</Badge>
-            )}
-            <span className="font-normal text-muted-foreground">
-              {translate('importDocumentRecords', { count: own.length })}
-            </span>
-          </h3>
-          <div className="grid gap-3">
-            {recordsByKind(own).map(({ kind, records: group }) => {
-              const ids = new Set(group.map((record) => record.id))
-              return (
-                <ReviewTable
-                  key={kind}
-                  config={IMPORT_KINDS[kind]}
-                  records={group}
-                  selected={selected}
-                  results={results}
-                  // The table selects within its kind; keep the other ticks.
-                  onSelect={(next) =>
-                    onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
-                  }
-                  onEdit={onEdit}
-                />
-              )
-            })}
-          </div>
-        </section>
-      ))}
+    <div className="grid gap-3">
+      <FileProgress files={files} recordsPerFile={counts}>
+        {(file) => {
+          const own = perFile.get(file.id)
+          if (!own?.length) return null
+          return (
+            <section aria-label={file.name} className="grid gap-2">
+              {config
+                ? table(config, own)
+                : recordsByKind(own).map(({ kind, records: group }) => (
+                    <Fragment key={kind}>{table(IMPORT_KINDS[kind], group)}</Fragment>
+                  ))}
+            </section>
+          )
+        }}
+      </FileProgress>
+      {!reading && !records.length && (
+        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
+          {config
+            ? `${translate('no2')}${config.label.toLowerCase()}${translate('wereFoundInTheseFilesTryOtherFilesOr')}`
+            : translate('nothingToImportWasFoundInTheseFilesTry')}
+        </p>
+      )}
     </div>
   )
 }
