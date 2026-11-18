@@ -128,7 +128,7 @@
 5 text-px apps/platform/src/components/heidi/heidi-form.tsx
 7 text-px apps/platform/src/components/heidi/heidi-panel.tsx
 2 text-px apps/platform/src/components/heidi/markdown.tsx
-10 text-px apps/platform/src/components/help/feedback-form.tsx
+9 text-px apps/platform/src/components/help/feedback-form.tsx
 5 text-px apps/platform/src/components/help/help-dialog.tsx
 3 text-px apps/platform/src/components/import/import-conflicts.tsx
 3 text-px apps/platform/src/components/import/import-drawer.tsx
@@ -159,7 +159,7 @@
 4 text-px apps/platform/src/components/onboarding/invoice-preview.tsx
 6 text-px apps/platform/src/components/onboarding/onboarding.tsx
 11 text-px apps/platform/src/components/products/product-detail.tsx
-6 text-px apps/platform/src/components/products/product-form.tsx
+5 text-px apps/platform/src/components/products/product-form.tsx
 1 text-px apps/platform/src/components/products/product-picker.tsx
 12 text-px apps/platform/src/components/products/products-page.tsx
 1 text-px apps/platform/src/components/section-form.tsx
