@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import ReactGA from 'react-ga4'
 
-import { billingKeys, type Billing } from '@/lib/billing'
+import { billingKeys, useBilling, type Billing } from '@/lib/billing'
 import { queryKeys } from '@/lib/queries'
 
 import { Analytics, subscriptionPlan } from './analytics'
@@ -121,4 +121,28 @@ test.each([
   [{ enabled: true, status: 'canceled', plan: '' }, 'none'],
 ] as const)('plan of %o is %s', (billing, plan) => {
   expect(subscriptionPlan(billing as Billing | undefined)).toBe(plan)
+})
+
+function Gate() {
+  return <span>{useBilling().data?.plan}</span>
+}
+
+test('alongside the billing query PlanGate runs, its fetch still has a queryFn', async () => {
+  const error = vi.spyOn(console, 'error')
+  server.use(
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({ data: { enabled: true, status: 'active', plan: 'pro' } }),
+    ),
+  )
+  const { send, set, view, client } = renderWith('G-TEST123', { role: 'owner' })
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <Analytics />
+      <Gate />
+    </QueryClientProvider>,
+  )
+
+  await waitFor(() => expect(set).toHaveBeenCalledWith(expect.objectContaining({ plan: 'pro' })))
+  expect(send).toHaveBeenCalled()
+  expect(error).not.toHaveBeenCalledWith(expect.stringContaining('No queryFn'))
 })

@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type ReactGA from 'react-ga4'
 
-import { billingKeys, type Billing } from '@/lib/billing'
+import { billingKeys, fetchBilling, type Billing } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useAuthConfig, useLoadedSession } from '@/lib/queries'
 
@@ -61,7 +61,8 @@ export function Analytics() {
 
 /** The billing PlanGate has loaded; never fetches it. */
 function useLoadedBilling() {
-  return useQuery<Billing>({ queryKey: billingKeys.overview, enabled: false }).data
+  // The same queryFn as useBilling: an invalidation of ['billing'] may run it, and a query without one logs an error.
+  return useQuery({ queryKey: billingKeys.overview, queryFn: fetchBilling, enabled: false }).data
 }
 
 /** The plan for analytics; null when unknown or billing is off (a self-hosted installation). */
