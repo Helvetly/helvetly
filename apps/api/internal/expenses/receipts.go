@@ -190,6 +190,11 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 		}
 	}
 	for _, u := range uploads {
+		// counted before the write, so a full workspace sends no bytes to storage
+		if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, u.receipt.ObjectKey, u.receipt.Size, true, s.now()); err != nil {
+			cleanup()
+			return err
+		}
 		stored = append(stored, u.receipt.ObjectKey)
 		if err := s.put(r, u, u.receipt.ObjectKey); err != nil {
 			cleanup()
@@ -197,6 +202,10 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 		}
 		if u.linkOnly {
 			continue
+		}
+		if err := s.db.ReserveObject(r.Context(), sess.Workspace.ID, u.docKey(sess.Workspace.ID), u.receipt.Size, true, s.now()); err != nil {
+			cleanup()
+			return err
 		}
 		stored = append(stored, u.docKey(sess.Workspace.ID))
 		if err := s.put(r, u, u.docKey(sess.Workspace.ID)); err != nil {

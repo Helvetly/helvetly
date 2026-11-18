@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -215,5 +216,23 @@ func TestReceiptStillConflictsWithAnotherReceiptWhenDocumentExists(t *testing.T)
 	}
 	if r := e.upload(b, y.ID, "b.pdf", pdf); r.StatusCode != 409 {
 		t.Fatalf("receipt vs receipt: %d, want 409", r.StatusCode)
+	}
+}
+
+func TestFullWorkspaceSendsNoReceiptBytesToStorage(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	x := e.create(b, complete(e.categories(b)["6640"].ID))
+	e.st.SetAdmission(func(_ context.Context, _ store.Q, _, resource string, _ int64) error {
+		if resource == "storage_bytes" {
+			return errors.New("storage full")
+		}
+		return nil
+	})
+	if r := e.upload(b, x.ID, "train.pdf", pdf); r.StatusCode == 201 {
+		t.Fatalf("upload into a full workspace: %d", r.StatusCode)
+	}
+	if n := len(e.files.keys()); n != 0 {
+		t.Fatalf("%d objects written to a full workspace", n)
 	}
 }

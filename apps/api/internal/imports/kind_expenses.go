@@ -49,7 +49,7 @@ var expensesKind = Kind{
 		}
 		names := make([]string, len(list))
 		for i, c := range list {
-			names[i] = c.Name
+			names[i] = strings.Join(strings.Fields(c.Name), " ") // one line: a name never starts a new instruction
 		}
 		return "The categories for category: " + strings.Join(names, "; ") + ".", nil
 	},
