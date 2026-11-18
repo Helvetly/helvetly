@@ -37,11 +37,14 @@ func (q Q) QueueFiling(ctx context.Context, workspaceID, documentID, userID stri
 }
 
 // ClaimFilings takes up to n due filings, pushing each ahead by lease so concurrent instances skip it and a claim
-// whose instance died comes due again.
+// whose instance died comes due again. A workspace whose import is still reading files waits: filing and the import
+// share one AI pool with one call in flight per workspace, and the person is watching the import.
 func (q Q) ClaimFilings(ctx context.Context, now time.Time, lease time.Duration, n int) ([]FilingJob, error) {
 	rows, err := q.db.Query(ctx, `UPDATE document_filings SET attempts = attempts + 1, due_at = $2
-		WHERE document_id IN (SELECT document_id FROM document_filings WHERE status = 'queued' AND due_at <= $1
-			ORDER BY due_at LIMIT $3 FOR UPDATE SKIP LOCKED)
+		WHERE document_id IN (SELECT d.document_id FROM document_filings d WHERE d.status = 'queued' AND d.due_at <= $1
+			AND NOT EXISTS (SELECT 1 FROM import_files f WHERE f.workspace_id = d.workspace_id
+				AND f.status IN ('queued', 'extracting'))
+			ORDER BY d.due_at LIMIT $3 FOR UPDATE OF d SKIP LOCKED)
 		RETURNING document_id, workspace_id, user_id, may_move, attempts`, now, now.Add(lease), n)
 	if err != nil {
 		return nil, err
