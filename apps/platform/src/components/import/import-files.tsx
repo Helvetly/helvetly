@@ -287,21 +287,50 @@ const CHIPS = {
   },
 }
 
+/** A file's state chip, name, what is happening to it and its size, in one line. */
+export function FileLine({ file, records }: { file: ImportFile; records: number }) {
+  return (
+    <>
+      <span
+        className={cn(
+          'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
+          CHIPS[file.status].chip,
+        )}
+      >
+        {CHIPS[file.status].icon}
+      </span>
+      <span className="grid min-w-0 flex-1">
+        <span className="truncate font-medium">{file.name}</span>
+        <span className={cn('text-caption', CHIPS[file.status].text)}>
+          {file.document_type && file.document_type !== 'other' && (
+            <span className="font-medium text-foreground">
+              {DOCUMENT_TYPES[file.document_type]} ·{' '}
+            </span>
+          )}
+          {fileStatus(file, records)}
+          {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
+        </span>
+      </span>
+      <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
+        {formatFileSize(file.size)}
+      </span>
+    </>
+  )
+}
+
 /**
  * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath.
- * `header` heads the table (a select-all), `lead` holds a control per file id, before its name (its own select-all).
+ * `header` heads the table (a select-all).
  */
 export function FileProgress({
   files,
   recordsPerFile,
   header,
-  lead,
   children,
 }: {
   files: ImportFile[]
   recordsPerFile: Map<string, number>
   header?: ReactNode
-  lead?: ReadonlyMap<string, ReactNode>
   children?: (file: ImportFile) => ReactNode
 }) {
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set())
@@ -326,39 +355,10 @@ export function FileProgress({
         {files.map((file) => {
           const found = children?.(file)
           const open = Boolean(found) && !closed.has(file.id)
-          const head = (
-            <>
-              <span
-                className={cn(
-                  'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
-                  CHIPS[file.status].chip,
-                )}
-              >
-                {CHIPS[file.status].icon}
-              </span>
-              <span className="grid min-w-0 flex-1">
-                <span className="truncate font-medium">{file.name}</span>
-                <span className={cn('text-caption', CHIPS[file.status].text)}>
-                  {file.document_type && file.document_type !== 'other' && (
-                    <span className="font-medium text-foreground">
-                      {DOCUMENT_TYPES[file.document_type]} ·{' '}
-                    </span>
-                  )}
-                  {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
-                  {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
-                </span>
-              </span>
-              <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
-                {formatFileSize(file.size)}
-              </span>
-            </>
-          )
+          const head = <FileLine file={file} records={recordsPerFile.get(file.id) ?? 0} />
           return (
             <li key={file.id} data-status={file.status}>
               <div className="flex items-center gap-3 px-3 py-2 text-body-sm">
-                {lead && (
-                  <span className="grid w-4 shrink-0 place-items-center">{lead.get(file.id)}</span>
-                )}
                 {found ? (
                   <button
                     type="button"
