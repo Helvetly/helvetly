@@ -278,7 +278,7 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 		if err != nil {
 			return "", nil, err
 		}
-		req.Instructions = "You read files for Helvetly's import. " + k.Prompt + extra[k.Name] + rules
+		req.Instructions = "You read files for Helvetly's import. " + k.Prompt + extra[k.Name] + phoneRule + rules
 	}
 	if k.Name == Auto {
 		instructions, err := s.autoInstructions(ctx, ws, kinds)
