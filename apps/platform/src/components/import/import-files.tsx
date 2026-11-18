@@ -1,5 +1,7 @@
 'use client'
 import { Button, buttonVariants } from '@helvetly/ui/components/button'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
+import { Meter } from '@helvetly/ui/components/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatFileSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,12 +11,13 @@ import {
   Clock,
   FileText,
   ListChecks,
+  Plus,
   Loader2,
   Sparkles,
   Upload,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
@@ -50,7 +53,7 @@ export function addFiles(chosen: File[], picked: File[]): { files: File[]; note:
   return { files, note: notes.length ? notes.join(' ') : null }
 }
 
-/** Click or drop files; the chosen ones are listed under it until "Read files". */
+/** Click or drop files; the chosen ones are listed under it, and the zone shrinks to a bar. */
 export function DropZone({
   files,
   disabled,
@@ -68,87 +71,149 @@ export function DropZone({
     onChange(next.files)
   }
 
+  const picked = files.length > 0
+  const input = (
+    <input
+      type="file"
+      multiple
+      accept={IMPORT_ACCEPT}
+      aria-label={translate('chooseFilesToImport')}
+      disabled={disabled}
+      onDragEnter={() => setOver(true)}
+      onDragLeave={() => setOver(false)}
+      onDrop={() => setOver(false)}
+      onChange={(event) => {
+        const chosen = [...(event.target.files ?? [])]
+        event.target.value = ''
+        add(chosen)
+      }}
+      className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-default"
+    />
+  )
+
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {/* The input covers the zone, so clicking or dropping on it is the browser's own behaviour. */}
       <div
         data-over={over || undefined}
-        className="group relative flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-6 py-10 text-center transition-colors duration-150 not-has-disabled:hover:border-primary/40 not-has-disabled:hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-primary/60 data-over:bg-primary/5"
+        className={cn(
+          'group relative flex rounded-xl border border-dashed border-border bg-muted/40 transition-colors duration-150 not-has-disabled:hover:border-primary/40 not-has-disabled:hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-primary/60 data-over:bg-primary/5',
+          picked
+            ? 'items-center gap-3 px-4 py-3 text-left'
+            : 'flex-col items-center gap-3 px-6 py-10 text-center',
+        )}
       >
-        <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary transition-colors duration-150 group-data-over:text-primary">
-          <Upload className="size-5 stroke-[1.5]" />
+        <span
+          className={cn(
+            'grid shrink-0 place-items-center rounded-full bg-brand-surface text-brand',
+            picked ? 'size-9 [&_svg]:size-4' : 'size-12 [&_svg]:size-5',
+          )}
+        >
+          <Upload className="stroke-[1.5]" />
         </span>
-        <div className="grid gap-1">
-          <p className="text-title-sm font-medium">{translate('importDropTitle')}</p>
+        <div className={cn('grid gap-1', picked && 'min-w-0 flex-1 gap-0')}>
+          <p className={cn('font-medium', picked ? 'text-body-sm' : 'text-title-sm')}>
+            {picked ? translate('importDropMore') : translate('importDropTitle')}
+          </p>
           <p className="text-caption text-muted-foreground">
             {translate('importLimits', { count: MAX_IMPORT_FILES })}
           </p>
         </div>
         {/* Looks like a button; the input above it takes the click. */}
-        <span aria-hidden className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          {translate('chooseFiles')}
-        </span>
-        <ul
-          aria-label={translate('importFileTypes')}
-          className="flex flex-wrap justify-center gap-1.5"
+        <span
+          aria-hidden
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0')}
         >
-          {IMPORT_TYPE_CHIPS.map((type) => (
-            <li
-              key={type}
-              className="rounded-md border bg-background px-1.5 py-0.5 text-caption font-medium tracking-wide text-muted-foreground"
-            >
-              {type}
-            </li>
-          ))}
-        </ul>
-        <input
-          type="file"
-          multiple
-          accept={IMPORT_ACCEPT}
-          aria-label={translate('chooseFilesToImport')}
-          disabled={disabled}
-          onDragEnter={() => setOver(true)}
-          onDragLeave={() => setOver(false)}
-          onDrop={() => setOver(false)}
-          onChange={(event) => {
-            const picked = [...(event.target.files ?? [])]
-            event.target.value = ''
-            add(picked)
-          }}
-          className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-default"
-        />
+          {picked ? <Plus /> : null}
+          {picked ? translate('addFiles') : translate('chooseFiles')}
+        </span>
+        {!picked && (
+          <ul
+            aria-label={translate('importFileTypes')}
+            className="flex flex-wrap justify-center gap-1.5"
+          >
+            {IMPORT_TYPE_CHIPS.map((type) => (
+              <li
+                key={type}
+                className="rounded-md border bg-card px-1.5 py-0.5 text-caption font-medium tracking-wide text-muted-foreground"
+              >
+                {type}
+              </li>
+            ))}
+          </ul>
+        )}
+        {input}
       </div>
-      {files.length > 0 && (
-        <ul aria-label={translate('chosenFiles')} className="grid divide-y rounded-lg border">
-          {files.map((file) => (
-            <li
-              key={`${file.name}-${file.size}-${file.lastModified}`}
-              className="flex items-center gap-2 px-3 py-1.5 text-[13px]"
-            >
-              <FileText className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{file.name}</span>
-              <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">
-                {formatFileSize(file.size)}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="destructive-ghost"
-                    size="icon-xs"
-                    aria-label={translate('remove2', { name: file.name })}
-                    disabled={disabled}
-                    onClick={() => onChange(files.filter((entry) => entry !== file))}
-                  >
-                    <X />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{translate('remove7')}</TooltipContent>
-              </Tooltip>
-            </li>
-          ))}
-        </ul>
+      {picked && (
+        <section className="grid gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-body-sm font-medium">
+              {translate('importChosenSummary', {
+                count: files.length,
+                size: formatFileSize(files.reduce((sum, file) => sum + file.size, 0)),
+              })}
+            </p>
+            <Button variant="ghost" size="xs" disabled={disabled} onClick={() => onChange([])}>
+              {translate('removeAllFiles')}
+            </Button>
+          </div>
+          <ul aria-label={translate('chosenFiles')} className="grid gap-2 sm:grid-cols-2">
+            {files.map((file) => (
+              <li
+                key={`${file.name}-${file.size}-${file.lastModified}`}
+                className="flex items-center gap-3 rounded-lg border bg-card py-2 pr-2 pl-2.5"
+              >
+                <FileBadge name={file.name} />
+                <div className="grid min-w-0 flex-1">
+                  <span className="truncate text-body-sm">{file.name}</span>
+                  <span className="text-caption text-muted-foreground tabular-nums">
+                    {formatFileSize(file.size)}
+                  </span>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive-ghost"
+                      size="icon-xs"
+                      aria-label={translate('remove2', { name: file.name })}
+                      disabled={disabled}
+                      onClick={() => onChange(files.filter((entry) => entry !== file))}
+                    >
+                      <X />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{translate('remove7')}</TooltipContent>
+                </Tooltip>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
+  )
+}
+
+/** A file's extension on a tile tinted by its kind, so a mixed batch scans at a glance. */
+function FileBadge({ name }: { name: string }) {
+  const ext = name.includes('.') ? (name.split('.').pop() ?? '').toUpperCase().slice(0, 4) : ''
+  const tint =
+    ext === 'PDF'
+      ? 'bg-destructive-surface text-destructive'
+      : ['PNG', 'JPG', 'JPEG', 'WEBP'].includes(ext)
+        ? 'bg-info-surface text-info'
+        : ['XLSX', 'XLS', 'CSV'].includes(ext)
+          ? 'bg-success-surface text-success'
+          : 'bg-muted text-muted-foreground'
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'grid h-9 w-8 shrink-0 place-items-center rounded-md text-[10px] font-semibold tracking-wide',
+        tint,
+      )}
+    >
+      {ext || <FileText className="size-4 stroke-[1.5]" />}
+    </span>
   )
 }
 
@@ -186,7 +251,7 @@ function fileStatus(file: ImportFile, records: number) {
     case 'queued':
       return translate('waiting')
     case 'extracting':
-      return file.chunks_total
+      return file.chunks_total && file.chunks_total > 1
         ? translate('readingPartOf', {
             chunks_done: file.chunks_done,
             chunks_total: file.chunks_total,
@@ -222,47 +287,82 @@ const CHIPS = {
   },
 }
 
-/** One line per file the server is reading, or has read. */
+/** One card per file the server is reading, or has read; `children` adds what was found in it beneath. */
 export function FileProgress({
   files,
   recordsPerFile,
+  children,
 }: {
   files: ImportFile[]
   recordsPerFile: Map<string, number>
+  children?: (file: ImportFile) => ReactNode
 }) {
   return (
-    <ul aria-label={translate('files')} className="grid divide-y rounded-lg border">
-      {files.map((file) => (
-        <li
-          key={file.id}
-          data-status={file.status}
-          className="flex items-start gap-3 px-3 py-2 text-[13px]"
-        >
-          <span
-            className={cn(
-              'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
-              CHIPS[file.status].chip,
-            )}
+    <ul aria-label={translate('files')} className="grid gap-2">
+      {files.map((file) => {
+        const found = children?.(file)
+        return (
+          <li
+            key={file.id}
+            data-status={file.status}
+            className="grid overflow-hidden rounded-lg border bg-card"
           >
-            {CHIPS[file.status].icon}
-          </span>
-          <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="truncate">{file.name}</span>
-            <span className={cn('text-[12px]', CHIPS[file.status].text)}>
-              {file.document_type && file.document_type !== 'other' && (
-                <span className="font-medium text-foreground">
-                  {DOCUMENT_TYPES[file.document_type]} ·{' '}
+            <div className="flex items-center gap-3 px-3 py-2 text-body-sm">
+              <span
+                className={cn(
+                  'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
+                  CHIPS[file.status].chip,
+                )}
+              >
+                {CHIPS[file.status].icon}
+              </span>
+              <div className="grid min-w-0 flex-1">
+                <span className="truncate font-medium">{file.name}</span>
+                <span className={cn('text-caption', CHIPS[file.status].text)}>
+                  {file.document_type && file.document_type !== 'other' && (
+                    <span className="font-medium text-foreground">
+                      {DOCUMENT_TYPES[file.document_type]} ·{' '}
+                    </span>
+                  )}
+                  {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
+                  {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
                 </span>
-              )}
-              {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
-              {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
-            </span>
-          </div>
-          <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">
-            {formatFileSize(file.size)}
-          </span>
-        </li>
-      ))}
+              </div>
+              <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
+                {formatFileSize(file.size)}
+              </span>
+            </div>
+            {found && <div className="border-t bg-muted/20 p-2">{found}</div>}
+          </li>
+        )
+      })}
     </ul>
+  )
+}
+
+/** The import's progress while files are read: how many are done, on a bar. */
+export function ReadingProgress({ done, total }: { done: number; total: number }) {
+  return (
+    <div className="grid gap-2.5 rounded-xl border bg-heidi-soft/40 p-4">
+      <div className="flex items-center gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-heidi-soft">
+          <HeidiSparkle animated />
+        </span>
+        <div className="grid min-w-0 flex-1">
+          <p className="text-body-sm font-medium">
+            {translate('importReadingTitle', { done, total })}
+          </p>
+          <p className="text-caption text-pretty text-muted-foreground">
+            {translate('importReadingHint')}
+          </p>
+        </div>
+      </div>
+      <Meter
+        value={done}
+        max={total}
+        tone="brand"
+        label={translate('importReadingTitle', { done, total })}
+      />
+    </div>
   )
 }

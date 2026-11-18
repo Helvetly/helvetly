@@ -1,10 +1,10 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@helvetly/ui/components/hover-card'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { TriangleAlert, UserRound } from 'lucide-react'
+import { Pencil, TriangleAlert, UserRound } from 'lucide-react'
 import { useState } from 'react'
 
 import { ClientSearch } from '@/components/invoices/client-search'
@@ -27,7 +27,7 @@ const issueLines = (config: ImportKindConfig, record: ImportRecord) =>
     ([field, message]) => `${config.fields[field] ?? field}: ${message}`,
   )
 
-/** One calm badge per flagged row instead of red text; its tooltip lists what is wrong and a click opens the fix. */
+/** One calm badge per flagged row instead of red text; hovering lists what is wrong with a Fix button, and a click opens the fix. */
 export function IssueChip({
   id,
   config,
@@ -41,8 +41,9 @@ export function IssueChip({
 }) {
   const lines = issueLines(config, record)
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    // A hover card, not a tooltip, so it can hold the Fix button; the chip itself fixes too.
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
         <button
           id={id}
           type="button"
@@ -54,16 +55,28 @@ export function IssueChip({
           {translate('importNeedsFix')}
           {lines.length > 1 && <span className="tabular-nums">· {lines.length}</span>}
         </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <ul className="grid gap-0.5">
-          {lines.map((line) => (
-            <li key={line}>{line}</li>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="grid w-72 gap-3 p-3">
+        <p className="flex items-center gap-2 text-body-sm font-medium">
+          <span className="grid size-6 place-items-center rounded-full bg-warning-surface text-warning">
+            <TriangleAlert className="size-3.5" />
+          </span>
+          {translate('importNeedsFix')}
+        </p>
+        <ul className="grid gap-1.5">
+          {Object.entries(record.issues).map(([field, message]) => (
+            <li key={field} className="text-caption text-pretty">
+              <span className="font-medium">{config.fields[field] ?? field}</span>
+              <span className="text-muted-foreground">: {message}</span>
+            </li>
           ))}
         </ul>
-        <p className="mt-1 opacity-80">{translate('importFixHint')}</p>
-      </TooltipContent>
-    </Tooltip>
+        <Button size="sm" variant="outline" className="justify-self-start" onClick={onFix}>
+          <Pencil />
+          {translate('importFixRow')}
+        </Button>
+      </HoverCardContent>
+    </HoverCard>
   )
 }
 

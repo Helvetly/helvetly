@@ -954,7 +954,7 @@ describe('the import step', () => {
     const drawer = await screen.findByRole('dialog')
     const input = drawer.querySelector('input[type=file]') as HTMLInputElement
     await user.upload(input, new File(['a,b'], 'clients.csv', { type: 'text/csv' }))
-    await user.click(within(drawer).getByRole('button', { name: 'Read files' }))
+    await user.click(within(drawer).getByRole('button', { name: 'Process with AI' }))
     await user.click(await screen.findByRole('button', { name: 'Not now' }))
     expect(await within(drawer).findByText('clients.csv')).toBeInTheDocument()
     expect(uploads).toBe(0)

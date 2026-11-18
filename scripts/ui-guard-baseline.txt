@@ -131,8 +131,8 @@
 10 text-px apps/platform/src/components/help/feedback-form.tsx
 5 text-px apps/platform/src/components/help/help-dialog.tsx
 3 text-px apps/platform/src/components/import/import-conflicts.tsx
-4 text-px apps/platform/src/components/import/import-drawer.tsx
-5 text-px apps/platform/src/components/import/import-files.tsx
+3 text-px apps/platform/src/components/import/import-drawer.tsx
+1 text-px apps/platform/src/components/import/import-files.tsx
 5 text-px apps/platform/src/components/import/import-review.tsx
 1 text-px apps/platform/src/components/initials.tsx
 15 text-px apps/platform/src/components/invoices/client-invoices.tsx

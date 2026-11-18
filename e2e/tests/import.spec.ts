@@ -18,7 +18,7 @@ test('imports clients from a CSV: upload, review, fix nothing, commit once', asy
     mimeType: 'text/csv',
     buffer: Buffer.from(csv, 'utf8'),
   })
-  await drawer.getByRole('button', { name: 'Read files', exact: true }).click()
+  await drawer.getByRole('button', { name: 'Process with AI', exact: true }).click()
   const table = drawer.getByRole('table', { name: 'Records found' })
   await expect(table.getByText(first, { exact: true })).toBeVisible({ timeout: 30_000 })
   await expect(table.getByText(second, { exact: true })).toBeVisible()

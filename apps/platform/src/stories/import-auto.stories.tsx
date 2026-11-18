@@ -149,7 +149,8 @@ export const Drawer: Story = {
     const first = await body().findByRole('region', { name: 'invoices.zip › 2025-IN-001.pdf' })
     await expect(first).toBeVisible()
     await expect(body().getByRole('region', { name: '2025-IN-004.pdf' })).toBeVisible()
-    await expect(body().getAllByText(/Invoice you issued/)).toHaveLength(4)
+    // The file's card names its type once.
+    await expect(body().getAllByText(/Invoice you issued/)).toHaveLength(2)
     await expect(body().getByText(/does not look like an invoice/)).toBeVisible()
     await expect(
       body().getByText(/Found 1 client, 2 invoices and 1 engagement · 3 selected/),

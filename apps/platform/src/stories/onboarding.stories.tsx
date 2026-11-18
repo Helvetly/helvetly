@@ -628,7 +628,7 @@ export const ImportStepConsent: Story = {
     const importing = await toImportStep(canvasElement)
     await userEvent.click(importing.getByRole('button', { name: 'Import documents' }))
     await chooseFile()
-    await userEvent.click(body().getByRole('button', { name: 'Read files' }))
+    await userEvent.click(body().getByRole('button', { name: 'Process with AI' }))
     const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
     await userEvent.click(within(ask).getByRole('button', { name: 'Not now' }))
     await waitFor(() =>
@@ -683,7 +683,7 @@ export const ImportStepReview: Story = {
     const importing = await toImportStep(canvasElement)
     await userEvent.click(importing.getByRole('button', { name: 'Import documents' }))
     await chooseFile()
-    await userEvent.click(body().getByRole('button', { name: 'Read files' }))
+    await userEvent.click(body().getByRole('button', { name: 'Process with AI' }))
     const review = await body().findByRole('region', { name: 'clients.csv' })
     await expect(within(review).getByText('Muster AG')).toBeVisible()
   },
