@@ -33,6 +33,7 @@ import {
   EyeOff,
   FileLock2,
   Landmark,
+  Link2,
   type LucideIcon,
   Lock,
   LoaderCircle,
@@ -967,130 +968,6 @@ function Editor({
                         className={quietValue}
                       />
                     </dd>
-                    {showEngagement && (
-                      <>
-                        <MetaLabel
-                          htmlFor="invoice-engagement"
-                          error={undefined}
-                          tip={translate('engagementLinkTip')}
-                        >
-                          {translate('engagement2')}
-                        </MetaLabel>
-                        <dd className="flex min-w-0 items-center gap-0.5">
-                          <span className="min-w-0 flex-1">
-                            <EngagementLink
-                              id="invoice-engagement"
-                              clientId={values.client_id ?? ''}
-                              invoiceId={draftId}
-                              pending={engagementId}
-                              onPendingChange={setEngagementId}
-                            />
-                          </span>
-                          {/* A linked engagement is removed with its own ×; hiding is for an empty row. */}
-                          {!linkedEngagement && (
-                            <HideField
-                              label={translate('hideEngagement')}
-                              onHide={() => {
-                                setEngagementId('')
-                                setEngagementShown(false)
-                              }}
-                            />
-                          )}
-                        </dd>
-                      </>
-                    )}
-                    {showClientNumber && (
-                      <>
-                        <MetaLabel
-                          htmlFor="invoice-client_number"
-                          error={errors.client_number_display}
-                          tip={translate('clientNumberTip')}
-                        >
-                          {translate('clientNumberShort')}
-                        </MetaLabel>
-                        <dd className="flex min-w-0 items-center gap-0.5">
-                          <input
-                            id="invoice-client_number"
-                            value={values.client_number_display ?? ''}
-                            maxLength={40}
-                            onChange={(event) =>
-                              set('client_number_display', event.target.value || null)
-                            }
-                            placeholder={client ? String(client.number) : '—'}
-                            className={cn(quietValue, 'min-w-0 flex-1')}
-                          />
-                          <HideField
-                            label={translate('clientNumberHide')}
-                            onHide={() => set('client_number_display', '')}
-                          />
-                        </dd>
-                      </>
-                    )}
-                    {showContract && (
-                      <>
-                        <MetaLabel
-                          htmlFor="invoice-contract_reference"
-                          error={errors.contract_reference ?? errors.contract_document_id}
-                          tip={translate('contractNumberTip')}
-                        >
-                          {translate('contractNumberShort')}
-                        </MetaLabel>
-                        <dd className="flex min-w-0 items-center gap-0.5">
-                          <span className="min-w-0 flex-1">
-                            <ContractField
-                              id="invoice-contract_reference"
-                              value={values.contract_reference}
-                              document={values.contract_document}
-                              onChange={(value) => set('contract_reference', value)}
-                              onLink={(document) => set('contract_document', document)}
-                            />
-                          </span>
-                          <HideField
-                            label={translate('hideContractNumber')}
-                            onHide={() => {
-                              setValues((current) => ({
-                                ...current,
-                                contract_reference: '',
-                                contract_document: null,
-                              }))
-                              setContractShown(false)
-                            }}
-                          />
-                        </dd>
-                      </>
-                    )}
-                    {hiddenFields.length > 0 && (
-                      <dd className="col-span-2 pt-0.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="xs"
-                              className="-ml-2 gap-1 text-muted-foreground"
-                            >
-                              <Plus />
-                              {translate('addField')}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            {hiddenFields.map((field) => (
-                              <DropdownMenuItem
-                                key={field.id}
-                                onSelect={() => {
-                                  field.show()
-                                  requestAnimationFrame(() =>
-                                    document.getElementById(field.id)?.focus(),
-                                  )
-                                }}
-                              >
-                                {field.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </dd>
-                    )}
                     {needsRonRate(client?.country, values.currency) && (
                       <>
                         <MetaLabel
@@ -1118,17 +995,11 @@ function Editor({
                     {(errors.issue_date ||
                       errors.due_date ||
                       errors.reference ||
-                      errors.client_number_display ||
-                      errors.contract_reference ||
-                      errors.contract_document_id ||
                       errors.tax_currency_rate) && (
                       <p className="col-span-2 px-2 pt-1 text-caption text-destructive">
                         {errors.issue_date ??
                           errors.due_date ??
                           errors.reference ??
-                          errors.client_number_display ??
-                          errors.contract_reference ??
-                          errors.contract_document_id ??
                           errors.tax_currency_rate}
                       </p>
                     )}
@@ -1159,12 +1030,195 @@ function Editor({
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-start justify-between gap-8">
-                  <PaymentNote
-                    settings={settings}
-                    ibanValid={iban.valid}
-                    qrBill={totals?.payment.qr_bill ?? false}
-                    revolutUrl={totals?.payment.revolut_url ?? null}
-                  />
+                  <div className="grid w-full max-w-sm content-start gap-8">
+                    <PaymentNote
+                      settings={settings}
+                      ibanValid={iban.valid}
+                      qrBill={totals?.payment.qr_bill ?? false}
+                      revolutUrl={totals?.payment.revolut_url ?? null}
+                    />
+                    <div className="grid content-start gap-2.5 text-body-sm">
+                      <span className={PARTY_LABEL}>{translate('details')}</span>
+                      <dl className="grid w-full max-w-[320px] grid-cols-[112px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 text-left text-body-sm">
+                        {showEngagement && (
+                          <>
+                            <MetaLabel
+                              htmlFor="invoice-engagement"
+                              error={undefined}
+                              tip={translate('engagementLinkTip')}
+                            >
+                              {translate('engagement2')}
+                            </MetaLabel>
+                            <dd className="flex min-w-0 items-center gap-0.5">
+                              <span className="min-w-0 flex-1">
+                                <EngagementLink
+                                  id="invoice-engagement"
+                                  clientId={values.client_id ?? ''}
+                                  invoiceId={draftId}
+                                  pending={engagementId}
+                                  onPendingChange={setEngagementId}
+                                />
+                              </span>
+                              {/* A linked engagement is removed with its own ×; hiding is for an empty row. */}
+                              {!linkedEngagement && (
+                                <HideField
+                                  label={translate('hideEngagement')}
+                                  onHide={() => {
+                                    setEngagementId('')
+                                    setEngagementShown(false)
+                                  }}
+                                />
+                              )}
+                            </dd>
+                          </>
+                        )}
+                        {showClientNumber && (
+                          <>
+                            <MetaLabel
+                              htmlFor="invoice-client_number"
+                              error={errors.client_number_display}
+                              tip={translate('clientNumberTip')}
+                            >
+                              {translate('clientNumberShort')}
+                            </MetaLabel>
+                            <dd className="flex min-w-0 items-center gap-0.5">
+                              <input
+                                id="invoice-client_number"
+                                value={values.client_number_display ?? ''}
+                                maxLength={40}
+                                onChange={(event) =>
+                                  set('client_number_display', event.target.value || null)
+                                }
+                                placeholder={client ? String(client.number) : '—'}
+                                className={cn(
+                                  quietValue,
+                                  'min-w-0 flex-1',
+                                  // linked: the client's own number reads as the value, not as a hint
+                                  values.client_number_display === null &&
+                                    'placeholder:text-foreground',
+                                )}
+                              />
+                              {client &&
+                                (values.client_number_display === null ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Link
+                                        href={`/clients?id=${encodeURIComponent(client.id)}`}
+                                        aria-label={translate('clientNumberLinked', {
+                                          name: client.name,
+                                        })}
+                                        className="grid size-6 shrink-0 place-items-center rounded-md text-brand hover:bg-muted"
+                                      >
+                                        <Link2 className="size-3.5" />
+                                      </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {translate('clientNumberLinked', { name: client.name })}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        aria-label={translate('clientNumberUseClients')}
+                                        className="shrink-0 text-muted-foreground"
+                                        onClick={() => set('client_number_display', null)}
+                                      >
+                                        <Link2 />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {translate('clientNumberUseClients')}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              <HideField
+                                label={translate('clientNumberHide')}
+                                onHide={() => set('client_number_display', '')}
+                              />
+                            </dd>
+                          </>
+                        )}
+                        {showContract && (
+                          <>
+                            <MetaLabel
+                              htmlFor="invoice-contract_reference"
+                              error={errors.contract_reference ?? errors.contract_document_id}
+                              tip={translate('contractNumberTip')}
+                            >
+                              {translate('contractNumberShort')}
+                            </MetaLabel>
+                            <dd className="flex min-w-0 items-center gap-0.5">
+                              <span className="min-w-0 flex-1">
+                                <ContractField
+                                  id="invoice-contract_reference"
+                                  value={values.contract_reference}
+                                  document={values.contract_document}
+                                  onChange={(value) => set('contract_reference', value)}
+                                  onLink={(document) => set('contract_document', document)}
+                                />
+                              </span>
+                              <HideField
+                                label={translate('hideContractNumber')}
+                                onHide={() => {
+                                  setValues((current) => ({
+                                    ...current,
+                                    contract_reference: '',
+                                    contract_document: null,
+                                  }))
+                                  setContractShown(false)
+                                }}
+                              />
+                            </dd>
+                          </>
+                        )}
+                        {hiddenFields.length > 0 && (
+                          <dd className="col-span-2 pt-0.5">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="xs"
+                                  className="-ml-2 gap-1 text-muted-foreground"
+                                >
+                                  <Plus />
+                                  {translate('addField')}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                {hiddenFields.map((field) => (
+                                  <DropdownMenuItem
+                                    key={field.id}
+                                    onSelect={() => {
+                                      field.show()
+                                      requestAnimationFrame(() =>
+                                        document.getElementById(field.id)?.focus(),
+                                      )
+                                    }}
+                                  >
+                                    {field.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </dd>
+                        )}
+                        {(errors.client_number_display ||
+                          errors.contract_reference ||
+                          errors.contract_document_id) && (
+                          <p className="col-span-2 px-2 pt-1 text-caption text-destructive">
+                            {errors.client_number_display ??
+                              errors.contract_reference ??
+                              errors.contract_document_id}
+                          </p>
+                        )}
+                      </dl>
+                    </div>
+                  </div>
                   <dl
                     aria-busy={preview.isFetching}
                     className={cn(
