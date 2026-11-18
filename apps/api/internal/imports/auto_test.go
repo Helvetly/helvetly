@@ -11,9 +11,9 @@ import (
 )
 
 const autoInvoice = `{"document_type": "sales_invoice",
-	"clients": [{"name": "Melanie Vala", "is_company": false, "street": "Mugerenstrasse", "street_number": "50", "zip": "6330",
-		"city": "Cham", "country": "CH"}, {"name": "melanie vala"}],
-	"invoices": [{"client_name": "Melanie Vala", "number": "2025/IN/001", "issue_date": "2025-01-08", "due_date": "2025-01-31",
+	"clients": [{"name": "Anna Beispiel", "is_company": false, "street": "Musterweg", "street_number": "50", "zip": "6330",
+		"city": "Cham", "country": "CH"}, {"name": "anna beispiel"}],
+	"invoices": [{"client_name": "Anna Beispiel", "number": "2025/IN/001", "issue_date": "2025-01-08", "due_date": "2025-01-31",
 		"currency": "CHF", "price_basis": "net", "issued_elsewhere": true, "total": "828.00",
 		"lines": [{"description": "Lesson (online)", "quantity": "12", "unit": "hour", "unit_price": "69.00", "vat_category": "O"}]}],
 	"products": [], "engagements": [], "expenses": []}`

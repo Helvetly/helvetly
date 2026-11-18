@@ -56,7 +56,7 @@ function FormField({
 export function ClientForm({
   client,
   focus,
-  prefillName,
+  prefill,
   onClose,
   onSaved,
 }: {
@@ -64,8 +64,8 @@ export function ClientForm({
   client?: Client
   /** Scroll to and focus this section when the form opens. */
   focus?: 'address'
-  /** The name a new client starts with, e.g. the one an imported document gave. */
-  prefillName?: string
+  /** What a new client starts with, e.g. the details an imported document gave; they win over learned habits. */
+  prefill?: Partial<FormValues>
   onClose: () => void
   onSaved: (client: Client, created: boolean) => void
 }) {
@@ -73,10 +73,13 @@ export function ClientForm({
   const [initial] = useState(() =>
     client
       ? valuesFromClient(client)
-      : withHabits({ ...emptyValues(), name: prefillName ?? '' }, habits, 'client', CLIENT_HABITS, {
-          allowed: CLIENT_HABIT_OPTIONS,
-          eager: ['is_company'],
-        }),
+      : {
+          ...withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
+            allowed: CLIENT_HABIT_OPTIONS,
+            eager: ['is_company'],
+          }),
+          ...prefill,
+        },
   )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})
