@@ -66,6 +66,7 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
       id: 'imf_1',
       name: 'receipts.zip › migros.jpg',
       size: 310_000,
+      content_type: 'image/jpeg',
       status: 'done',
       error: null,
       chunks_done: 1,

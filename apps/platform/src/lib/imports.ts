@@ -11,6 +11,8 @@ export type ImportFile = {
   id: string
   name: string
   size: number
+  /** The MIME type the upload was stored with. */
+  content_type: string
   status: 'queued' | 'extracting' | 'done' | 'failed'
   error: string | null
   chunks_done: number
@@ -390,6 +392,7 @@ function isFile(value: unknown): value is ImportFile {
     isString(value.id) &&
     isString(value.name) &&
     typeof value.size === 'number' &&
+    isString(value.content_type) &&
     ['queued', 'extracting', 'done', 'failed'].includes(String(value.status)) &&
     isNullableString(value.error) &&
     typeof value.chunks_done === 'number' &&
@@ -525,6 +528,10 @@ export const importsApi = {
     ),
   discard: (id: string) => request<void>(path(id), { method: 'DELETE' }),
 }
+
+/** The file's bytes, inline (a ZIP entry's own), for viewing it beside its records. */
+export const importFileUrl = (batchId: string, fileId: string) =>
+  `/api/v1${path(batchId)}/files/${encodeURIComponent(fileId)}/content`
 
 export const importKeys = {
   list: (kind: ImportTarget) => ['imports', 'list', kind] as const,

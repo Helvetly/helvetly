@@ -3,11 +3,14 @@
 package imports
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -76,6 +79,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/imports", s.list)
 	handle("GET /api/v1/imports/{id}", s.get)
 	handle("DELETE /api/v1/imports/{id}", s.discard)
+	handle("GET /api/v1/imports/{id}/files/{file}/content", s.content)
 	handle("PATCH /api/v1/imports/{id}/records/{record_id}", s.edit)
 	handle("POST /api/v1/imports/{id}/commit", s.commit)
 	s.RegisterExpensePreview(mux)
@@ -190,6 +194,32 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session
 		return err
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": b})
+	return nil
+}
+
+// content streams one file of the batch inline, for viewing beside its records. It goes through the API rather than
+// storage.Serve: that one answers attachments, and a ZIP entry has no object of its own to redirect to.
+func (s *Service) content(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	b, _, err := s.batch(r.Context(), s.db.Q, sess, r.PathValue("id"), "read")
+	if err != nil {
+		return err
+	}
+	i := slices.IndexFunc(b.Files, func(f store.ImportFile) bool { return f.ID == r.PathValue("file") })
+	if i < 0 {
+		return store.ErrNotFound
+	}
+	f := b.Files[i]
+	data, err := s.read(r.Context(), f)
+	if err != nil {
+		return err
+	}
+	h := w.Header()
+	h.Set("Content-Type", f.ContentType)
+	h.Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": f.Name}))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	h.Set("Cache-Control", "private, no-store")
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 	return nil
 }
 

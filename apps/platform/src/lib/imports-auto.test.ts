@@ -43,6 +43,7 @@ test('accepts an auto batch with recognised files and refuses an unknown record 
         id: 'imf_1',
         name: 'a.pdf',
         size: 1,
+        content_type: 'application/pdf',
         status: 'done',
         error: null,
         chunks_done: 1,

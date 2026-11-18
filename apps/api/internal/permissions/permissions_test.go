@@ -160,6 +160,7 @@ var scopedInHandler = []string{
 	"POST /api/v1/imports",
 	"GET /api/v1/imports",
 	"GET /api/v1/imports/x",
+	"GET /api/v1/imports/x/files/x/content",
 	"DELETE /api/v1/imports/x",
 	"PATCH /api/v1/imports/x/records/x",
 	"POST /api/v1/imports/x/commit",
