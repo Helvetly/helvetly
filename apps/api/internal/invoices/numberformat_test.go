@@ -2,6 +2,7 @@ package invoices
 
 import (
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/store"
 )
@@ -68,6 +69,28 @@ func TestDocumentNumber(t *testing.T) {
 	} {
 		if got := documentNumber(tc.format, tc.prefix, tc.kind, "2026-03-05", tc.seq); got != tc.want {
 			t.Errorf("%q %s %d = %q, want %q", tc.format, tc.kind, tc.seq, got, tc.want)
+		}
+	}
+}
+
+func TestDraftNumber(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC)
+	selfBilled := store.Invoice{Kind: "self_billed"}
+	for _, tc := range []struct {
+		format   string
+		inv      store.Invoice
+		credited *store.Invoice
+		want     string
+	}{
+		{"{YYYY}/IN/{NNN}", store.Invoice{Kind: "invoice", IssueDate: "2026-01-13"}, nil, "2026/IN/-"},
+		{"{YYYY}-{NNN}", store.Invoice{Kind: "credit_note", IssueDate: "2026-01-13"}, nil, "CN-2026--"},
+		{"{TYPE}-{YY}{MM}-{N}", store.Invoice{Kind: "quote", IssueDate: "2026-01-13"}, nil, "Q-2601--"},
+		{"{YYYY}/{NNN}", store.Invoice{Kind: "invoice"}, nil, "2027/-"}, // no issue date yet: today's
+		{"{YYYY}-{NNN}", store.Invoice{Kind: "credit_note", IssueDate: "2026-01-13"}, &selfBilled, "SB-2026--"},
+	} {
+		if got := draftNumber(tc.format, tc.inv, tc.credited, now); got != tc.want {
+			t.Errorf("%q %s = %q, want %q", tc.format, tc.inv.Kind, got, tc.want)
 		}
 	}
 }
