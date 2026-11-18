@@ -23,7 +23,6 @@ import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   ArrowRightLeft,
-  ArrowUpRight,
   Check,
   Download,
   Ellipsis,
@@ -45,7 +44,7 @@ import { toast } from 'sonner'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { dropdownKit } from '@/components/data/menus'
-import { RecordLink } from '@/components/record-link'
+import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -91,12 +90,6 @@ import { PlanCard } from './plan-card'
 import { TransmissionsCard } from './transmissions-card'
 
 type Run = (command: InvoiceCommand, invoice: InvoiceListItem) => void
-
-/** How the header names the preceding invoice (BT-25). */
-const PRECEDING: Partial<Record<Invoice['kind'], string>> = {
-  debit_note: translate('addsTo'),
-  corrected: 'corrects',
-}
 
 /** One invoice, in a sheet from the right (full screen on phones). */
 export function InvoiceDetail({
@@ -357,79 +350,18 @@ function Detail({
         </div>
 
         <div className="grid gap-5 px-6 pt-6">
-          <div className="grid gap-2">
-            <p className="flex flex-wrap items-baseline gap-x-1.5 text-[13.5px] text-muted-foreground">
-              {credit ? translate('creditTo') : translate('billedTo')}
-              <RecordLink
-                href={`/clients?id=${encodeURIComponent(invoice.client.id)}`}
-                className="group inline-flex items-center gap-0.5 font-medium text-foreground underline underline-offset-2 hover:no-underline"
-              >
-                {invoice.client.name}
-                <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </RecordLink>
-              <span className="text-[12.5px] tabular-nums">
-                {translate('client4')}
-                {invoice.client.number}
-              </span>
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="flex items-baseline gap-2 text-[32px] leading-none font-normal tracking-[-0.025em] tabular-nums">
-                <span className="text-[15px] tracking-normal text-muted-foreground">
-                  {invoice.currency}
-                </span>
-                <span>
-                  {credit && '−'}
-                  {formatAmount(fromCents(payable))}
-                </span>
-              </h2>
-              {/* A draft says so in the header already. */}
-              {invoice.status !== 'draft' && <InvoiceStatusBadge invoice={invoice} />}
-            </div>
-            <p className="text-[13.5px] text-muted-foreground">
-              {invoice.status === 'open' && !credit ? (
-                <span className={cn(invoice.is_overdue && 'text-destructive')}>
-                  {dueLabel(invoice.due_date)} · {formatDay(invoice.due_date)}
-                </span>
-              ) : invoice.status === 'draft' ? (
-                translate('notIssuedYetDated', { value1: formatDay(invoice.issue_date) })
-              ) : (
-                translate('issued3', { value1: formatDay(invoice.issue_date) })
-              )}
-              {invoice.credited_invoice && (
-                <>
-                  {` · ${PRECEDING[invoice.kind] ?? 'credits'} `}
-                  <RecordLink
-                    href={`/invoices?id=${encodeURIComponent(invoice.credited_invoice.id)}`}
-                    className="text-foreground underline underline-offset-4 hover:no-underline"
-                  >
-                    {invoice.credited_invoice.number}
-                  </RecordLink>
-                </>
-              )}
-              {invoice.quote && (
-                <>
-                  {translate('fromQuote')}
-                  <RecordLink
-                    href={`/quotes?id=${encodeURIComponent(invoice.quote.id)}`}
-                    className="text-foreground underline underline-offset-4 hover:no-underline"
-                  >
-                    {invoice.quote.number}
-                  </RecordLink>
-                </>
-              )}
-              {invoice.deducted_on && (
-                <>
-                  {translate('deductedOn')}
-                  <RecordLink
-                    href={`/invoices?id=${encodeURIComponent(invoice.deducted_on.id)}`}
-                    className="text-foreground underline underline-offset-4 hover:no-underline"
-                  >
-                    {invoice.deducted_on.number}
-                  </RecordLink>
-                </>
-              )}
-            </p>
-          </div>
+          <InvoiceHero
+            invoice={invoice}
+            payable={payable}
+            credit={credit}
+            progress={
+              invoice.status !== 'draft' &&
+              !credit &&
+              !proforma && (
+                <PaymentProgress invoice={invoice} payable={payable} paidShare={paidShare} />
+              )
+            }
+          />
 
           {isPositive(invoice.refund_due) && (
             <Callout
@@ -448,76 +380,6 @@ function Detail({
                 {translate('theCustomerWasCreditedAfterPaying')}
               </span>
             </Callout>
-          )}
-
-          {invoice.status !== 'draft' && !credit && !proforma && (
-            <div className="grid gap-2">
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-[width] duration-500',
-                    isPositive(invoice.refund_due)
-                      ? 'bg-warning-solid'
-                      : invoice.status === 'void'
-                        ? 'bg-muted-foreground/40'
-                        : 'bg-success-solid',
-                  )}
-                  style={{ width: `${Math.min(100, paidShare)}%` }}
-                />
-              </div>
-              {/* Every movement under its own name, so a credit and a refund are never read as payments. */}
-              <dl className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
-                <div>
-                  <dt className="text-muted-foreground">{translate('total')}</dt>
-                  <dd className="text-title-sm tabular-nums">
-                    {formatMoney(fromCents(payable), invoice.currency)}
-                  </dd>
-                  {!isZero(invoice.amount_credited) && (
-                    <dd className="text-xs text-muted-foreground tabular-nums">
-                      {translate('netAfterCredits', {
-                        amount: formatMoney(
-                          fromCents(payable - toCents(invoice.amount_credited)),
-                          invoice.currency,
-                        ),
-                      })}
-                    </dd>
-                  )}
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">{translate('paid')}</dt>
-                  <dd className="text-title-sm tabular-nums">
-                    {formatMoney(invoice.amount_paid, invoice.currency)}
-                  </dd>
-                </div>
-                {!isZero(invoice.amount_credited) && (
-                  <div>
-                    <dt className="text-muted-foreground">{translate('creditedStatus')}</dt>
-                    <dd className="text-title-sm tabular-nums">
-                      {formatMoney(invoice.amount_credited, invoice.currency)}
-                    </dd>
-                  </div>
-                )}
-                {!isZero(invoice.amount_refunded) && (
-                  <div>
-                    <dt className="text-muted-foreground">{translate('refundedStatus')}</dt>
-                    <dd className="text-title-sm tabular-nums">
-                      {formatMoney(invoice.amount_refunded, invoice.currency)}
-                    </dd>
-                  </div>
-                )}
-                <div className="ml-auto text-right">
-                  <dt className="text-muted-foreground">
-                    {isPositive(invoice.refund_due) ? translate('owedBack') : translate('due')}
-                  </dt>
-                  <dd className="text-title-sm font-medium tabular-nums">
-                    {formatMoney(
-                      isPositive(invoice.refund_due) ? invoice.refund_due : invoice.amount_due,
-                      invoice.currency,
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </div>
           )}
 
           <Timeline invoice={invoice} />
@@ -1072,5 +934,156 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
         />
       )}
     </Panel>
+  )
+}
+
+/** How the summary names the invoice this one changes (BT-25). */
+const RELATION: Partial<Record<Invoice['kind'], string>> = {
+  debit_note: translate('relatedAddsTo'),
+  corrected: translate('relatedCorrects'),
+}
+
+/** The invoice at a glance: who pays, how much, its state, and its dates and linked records. */
+function InvoiceHero({
+  invoice,
+  payable,
+  credit,
+  progress,
+}: {
+  invoice: Invoice
+  payable: bigint
+  credit: boolean
+  progress?: ReactNode
+}) {
+  return (
+    <RecordHero
+      progress={progress}
+      label={credit ? translate('creditTo') : translate('billedTo')}
+      client={invoice.client}
+      currency={invoice.currency}
+      amount={`${credit ? '−' : ''}${formatAmount(fromCents(payable))}`}
+      // A draft says so in the header already.
+      badge={invoice.status !== 'draft' && <InvoiceStatusBadge invoice={invoice} />}
+    >
+      <HeroFact
+        label={translate('issueDate')}
+        note={invoice.status === 'draft' && translate('notIssuedYet')}
+      >
+        {formatDay(invoice.issue_date)}
+      </HeroFact>
+      {invoice.status === 'open' && !credit && (
+        <HeroFact
+          label={translate('dueDate')}
+          note={dueLabel(invoice.due_date)}
+          urgent={invoice.is_overdue}
+        >
+          {formatDay(invoice.due_date)}
+        </HeroFact>
+      )}
+      {invoice.credited_invoice && (
+        <HeroLink
+          label={RELATION[invoice.kind] ?? translate('relatedCredits')}
+          href={`/invoices?id=${encodeURIComponent(invoice.credited_invoice.id)}`}
+          number={invoice.credited_invoice.number}
+        />
+      )}
+      {invoice.quote && (
+        <HeroLink
+          label={translate('relatedQuote')}
+          href={`/quotes?id=${encodeURIComponent(invoice.quote.id)}`}
+          number={invoice.quote.number}
+        />
+      )}
+      {invoice.deducted_on && (
+        <HeroLink
+          label={translate('relatedDeductedOn')}
+          href={`/invoices?id=${encodeURIComponent(invoice.deducted_on.id)}`}
+          number={invoice.deducted_on.number}
+        />
+      )}
+    </RecordHero>
+  )
+}
+
+/** What is paid of the invoice and what is still due, under its amount. */
+function PaymentProgress({
+  invoice,
+  payable,
+  paidShare,
+}: {
+  invoice: Invoice
+  payable: bigint
+  paidShare: number
+}) {
+  return (
+    <div className="grid gap-2">
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            'h-full rounded-full transition-[width] duration-500',
+            isPositive(invoice.refund_due)
+              ? 'bg-warning-solid'
+              : invoice.status === 'void'
+                ? 'bg-muted-foreground/40'
+                : 'bg-success-solid',
+          )}
+          style={{ width: `${Math.min(100, paidShare)}%` }}
+        />
+      </div>
+      {/* Every movement under its own name, so a credit and a refund are never read as payments. */}
+      <dl className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
+        {!isZero(invoice.amount_credited) && (
+          <div>
+            <dt className="text-muted-foreground">{translate('total')}</dt>
+            <dd className="text-title-sm tabular-nums">
+              {formatMoney(fromCents(payable), invoice.currency)}
+            </dd>
+            {!isZero(invoice.amount_credited) && (
+              <dd className="text-xs text-muted-foreground tabular-nums">
+                {translate('netAfterCredits', {
+                  amount: formatMoney(
+                    fromCents(payable - toCents(invoice.amount_credited)),
+                    invoice.currency,
+                  ),
+                })}
+              </dd>
+            )}
+          </div>
+        )}
+        <div>
+          <dt className="text-muted-foreground">{translate('paid')}</dt>
+          <dd className="text-title-sm tabular-nums">
+            {formatMoney(invoice.amount_paid, invoice.currency)}
+          </dd>
+        </div>
+        {!isZero(invoice.amount_credited) && (
+          <div>
+            <dt className="text-muted-foreground">{translate('creditedStatus')}</dt>
+            <dd className="text-title-sm tabular-nums">
+              {formatMoney(invoice.amount_credited, invoice.currency)}
+            </dd>
+          </div>
+        )}
+        {!isZero(invoice.amount_refunded) && (
+          <div>
+            <dt className="text-muted-foreground">{translate('refundedStatus')}</dt>
+            <dd className="text-title-sm tabular-nums">
+              {formatMoney(invoice.amount_refunded, invoice.currency)}
+            </dd>
+          </div>
+        )}
+        <div className="ml-auto text-right">
+          <dt className="text-muted-foreground">
+            {isPositive(invoice.refund_due) ? translate('owedBack') : translate('due')}
+          </dt>
+          <dd className="text-title-sm font-medium tabular-nums">
+            {formatMoney(
+              isPositive(invoice.refund_due) ? invoice.refund_due : invoice.amount_due,
+              invoice.currency,
+            )}
+          </dd>
+        </div>
+      </dl>
+    </div>
   )
 }
