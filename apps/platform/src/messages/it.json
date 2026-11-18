@@ -4365,5 +4365,8 @@
   "importZoomIn": "Ingrandisci",
   "importNotInClients": "Non tra i tuoi clienti",
   "importOnlyNameFound": "Dal documento è stato letto solo il nome.",
-  "importPickAnother": "Scegli un cliente esistente"
+  "importPickAnother": "Scegli un cliente esistente",
+  "importCellEngagement": "Incarico",
+  "importCellPrice": "Prezzo",
+  "importCellSchedule": "Cadenza"
 }

@@ -3,6 +3,7 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, Pencil } from 'lucide-react'
 import Link from 'next/link'
@@ -190,8 +191,23 @@ export function ReviewTable({
         ...records.filter((record) => !fileOf.has(record.file_id)).map((record) => ({ record })),
       ]
     : records.map((record) => ({ record }))
-  // Document, the kind's columns, Notes and Edit: what a file's own row spans besides the checkbox.
-  const span = config.columns.length + (files ? 3 : 2)
+  const cells = config.cells
+  // The columns, Notes and Edit (and Document without cells): what a file's own row spans besides the checkbox.
+  const span = (cells?.length ?? config.columns.length + (files ? 1 : 0)) + 2
+  /** A field as people read it: a date as a date, money with its currency. */
+  const shown = (record: ImportRecord, field: string, money?: string) => {
+    const value = displayValue(record.data[field])
+    if (!value) return ''
+    if (money) {
+      const amount = Number(value)
+      return Number.isFinite(amount)
+        ? formatMoney(amount.toFixed(2), displayValue(record.data[money]))
+        : value
+    }
+    return config.dates?.includes(field) && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? formatDate(value)
+      : value
+  }
 
   if (!records.length && !files?.length)
     return (
@@ -220,16 +236,26 @@ export function ReviewTable({
                 }
               />
             </th>
-            {files && (
+            {cells?.map((cell) => (
+              <th
+                key={cell.main}
+                scope="col"
+                className={cn('px-2 py-2 font-medium', cell.align === 'end' && 'text-right')}
+              >
+                {cell.label}
+              </th>
+            ))}
+            {!cells && files && (
               <th scope="col" className="px-2 py-2 font-medium">
                 {translate('document')}
               </th>
             )}
-            {config.columns.map((field) => (
-              <th key={field} scope="col" className="px-2 py-2 font-medium">
-                {config.fields[field]}
-              </th>
-            ))}
+            {!cells &&
+              config.columns.map((field) => (
+                <th key={field} scope="col" className="px-2 py-2 font-medium">
+                  {config.fields[field]}
+                </th>
+              ))}
             <th scope="col" className="px-2 py-2 font-medium">
               {translate('notes')}
             </th>
@@ -277,7 +303,44 @@ export function ReviewTable({
                     />
                   )}
                 </td>
-                {files && (
+                {cells?.map((cell, at) => {
+                  const main = shown(record, cell.main, cell.money)
+                  const sub = (cell.sub ?? []).map((field) => shown(record, field)).filter(Boolean)
+                  return (
+                    <td
+                      key={cell.main}
+                      className={cn('max-w-64 px-2 py-2', cell.align === 'end' && 'text-right')}
+                    >
+                      <span
+                        className={cn(
+                          'block truncate text-body-sm font-medium',
+                          cell.money && 'tabular-nums',
+                          !main && 'font-normal text-muted-foreground',
+                          record.issues[cell.main] &&
+                            'underline decoration-warning decoration-dotted underline-offset-4',
+                        )}
+                      >
+                        {main || '—'}
+                      </span>
+                      <span
+                        className={cn(
+                          'flex items-center gap-1 text-caption text-muted-foreground',
+                          cell.align === 'end' && 'justify-end',
+                        )}
+                      >
+                        {at === 0 && source && (
+                          <>
+                            <FileIcon name={source.name} className="size-3" />
+                            <span className="max-w-40 truncate">{source.name}</span>
+                            {sub.length > 0 && <span aria-hidden>·</span>}
+                          </>
+                        )}
+                        <span className="truncate">{sub.join(' · ')}</span>
+                      </span>
+                    </td>
+                  )
+                })}
+                {!cells && files && (
                   <td className="max-w-44 px-2 py-2">
                     <span className="flex items-center gap-1.5 text-caption text-muted-foreground">
                       {source && <FileIcon name={source.name} className="size-3.5" />}
@@ -285,23 +348,24 @@ export function ReviewTable({
                     </span>
                   </td>
                 )}
-                {config.columns.map((field) => {
-                  const value = displayValue(record.data[field])
-                  return (
-                    <td key={field} className="max-w-48 px-2 py-2">
-                      <span
-                        className={cn(
-                          'block truncate',
-                          !value && 'text-muted-foreground',
-                          record.issues[field] &&
-                            'underline decoration-warning decoration-dotted underline-offset-4',
-                        )}
-                      >
-                        {value || '—'}
-                      </span>
-                    </td>
-                  )
-                })}
+                {!cells &&
+                  config.columns.map((field) => {
+                    const value = displayValue(record.data[field])
+                    return (
+                      <td key={field} className="max-w-48 px-2 py-2">
+                        <span
+                          className={cn(
+                            'block truncate',
+                            !value && 'text-muted-foreground',
+                            record.issues[field] &&
+                              'underline decoration-warning decoration-dotted underline-offset-4',
+                          )}
+                        >
+                          {value || '—'}
+                        </span>
+                      </td>
+                    )
+                  })}
                 <td className="min-w-44 px-2 py-2">
                   <div className="grid justify-items-start gap-1">
                     {created && record.entity_id && (
@@ -316,6 +380,15 @@ export function ReviewTable({
                       </span>
                     )}
                     {skipped && <Badge variant="outline">{translate('skipped2')}</Badge>}
+                    {!created &&
+                      !skipped &&
+                      config.badges
+                        ?.filter((field) => record.data[field] === true)
+                        .map((field) => (
+                          <Badge key={field} variant="secondary">
+                            {config.fields[field]}
+                          </Badge>
+                        ))}
                     {record.duplicate && !created && !skipped && (
                       <Badge variant="outline" className="h-auto text-left whitespace-normal">
                         {translate('possibleDuplicate')}

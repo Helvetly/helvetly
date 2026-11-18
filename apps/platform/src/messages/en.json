@@ -4365,5 +4365,8 @@
   "importZoomIn": "Zoom in",
   "importNotInClients": "Not in your clients",
   "importOnlyNameFound": "Only the name was read from the document.",
-  "importPickAnother": "Pick an existing client"
+  "importPickAnother": "Pick an existing client",
+  "importCellEngagement": "Engagement",
+  "importCellPrice": "Price",
+  "importCellSchedule": "Schedule"
 }
