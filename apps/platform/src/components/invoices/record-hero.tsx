@@ -41,7 +41,7 @@ export function RecordHero({
             href={`/clients?id=${encodeURIComponent(client.id)}`}
             className="group flex min-w-0 items-center gap-2.5 rounded-md text-body font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
-            <Initials name={client.name} className="size-8 text-[11px]" />
+            <Initials name={client.name} className="size-8 text-caption" />
             <span className="truncate underline-offset-2 group-hover:underline">{client.name}</span>
             <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
           </RecordLink>
@@ -50,10 +50,10 @@ export function RecordHero({
       </div>
       <p className="flex items-baseline gap-2 leading-none tabular-nums">
         <span className="text-body text-muted-foreground">{currency}</span>
-        <span className="text-[36px] font-normal tracking-[-0.025em]">{amount}</span>
+        <span className="text-display font-normal tracking-[-0.025em]">{amount}</span>
       </p>
       {progress}
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border/60 pt-4 text-[13.5px] sm:flex sm:flex-wrap sm:gap-x-10">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border/60 pt-4 text-body-sm sm:flex sm:flex-wrap sm:gap-x-10">
         {children}
       </dl>
     </section>
