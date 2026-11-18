@@ -56,15 +56,15 @@ export function OrganizeDrawer({
 }) {
   const queryClient = useQueryClient()
   const { ensure } = useAIApproval()
-  const folders = useFolders().data ?? []
-  const existing = useMemo(() => folderPaths(folders), [folders])
+  const folders = useFolders().data
+  const existing = useMemo(() => folderPaths(folders ?? []), [folders])
   const [rows, setRows] = useState<Row[] | null>(null)
   const [considered, setConsidered] = useState(0)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [showKept, setShowKept] = useState(false)
 
   const analyse = useMutation({
-    mutationFn: () => docsApi.organize(folderId ?? undefined),
+    mutationFn: async () => (await docsApi.organize(folderId ?? undefined)).data,
     onSuccess: (result) => {
       const next = result.proposals.map((proposal) => ({
         ...proposal,
@@ -76,14 +76,16 @@ export function OrganizeDrawer({
     },
   })
   const apply = useMutation({
-    mutationFn: (items: Row[]) =>
-      docsApi.organizeApply(
-        items.map((row) => ({
-          document_id: row.document_id,
-          folder: row.folderInput.trim().replace(/^\/+|\/+$/g, ''),
-          tags: row.tags,
-        })),
-      ),
+    mutationFn: async (items: Row[]) =>
+      (
+        await docsApi.organizeApply(
+          items.map((row) => ({
+            document_id: row.document_id,
+            folder: row.folderInput.trim().replace(/^\/+|\/+$/g, ''),
+            tags: row.tags,
+          })),
+        )
+      ).data,
     onSuccess: (result) => {
       refreshDocuments(queryClient)
       onClose()
@@ -135,6 +137,62 @@ export function OrganizeDrawer({
             : row,
         ),
     )
+
+  /** A row's proposed folder (editable) and tags (removable), with the reason. */
+  const proposed = (row: Row, isNew: boolean) => (
+    <div className="grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          {isNew ? (
+            <FolderPlus
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-heidi"
+            />
+          ) : (
+            <FolderInput
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+          )}
+          <input
+            aria-label={translate('organizeFolderFor', {
+              name: row.name,
+            })}
+            value={row.folderInput}
+            placeholder={translate('organizeTopLevel')}
+            onChange={(event) => setFolder(row.document_id, event.target.value)}
+            className={cn(inputClass, 'h-8 pl-8 text-body-sm')}
+          />
+        </div>
+        {isNew && (
+          <span className="shrink-0 rounded-full bg-heidi-soft px-2 py-0.5 text-caption font-medium text-heidi">
+            {translate('organizeNewFolder')}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {row.tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-0.5 rounded-full bg-muted py-0.5 pr-1 pl-2 text-caption"
+          >
+            {tag}
+            <button
+              type="button"
+              aria-label={translate('organizeRemoveTag', { tag })}
+              onClick={() => removeTag(row.document_id, tag)}
+              className="grid size-4 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              <X aria-hidden className="size-3" />
+            </button>
+          </span>
+        ))}
+        {row.reason && (
+          <span className="ml-1 text-caption text-pretty text-muted-foreground">{row.reason}</span>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <Sheet open onOpenChange={(next) => !next && onClose()}>
@@ -279,64 +337,7 @@ export function OrganizeDrawer({
                             <td className="px-0 py-2.5 text-muted-foreground">
                               <ArrowRight aria-hidden className="size-4" />
                             </td>
-                            <td className="min-w-80 px-2 py-2.5">
-                              <div className="grid gap-1.5">
-                                <div className="flex items-center gap-2">
-                                  <div className="relative min-w-0 flex-1">
-                                    {isNew ? (
-                                      <FolderPlus
-                                        aria-hidden
-                                        className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-heidi"
-                                      />
-                                    ) : (
-                                      <FolderInput
-                                        aria-hidden
-                                        className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                                      />
-                                    )}
-                                    <input
-                                      aria-label={translate('organizeFolderFor', {
-                                        name: row.name,
-                                      })}
-                                      value={row.folderInput}
-                                      placeholder={translate('organizeTopLevel')}
-                                      onChange={(event) =>
-                                        setFolder(row.document_id, event.target.value)
-                                      }
-                                      className={cn(inputClass, 'h-8 pl-8 text-body-sm')}
-                                    />
-                                  </div>
-                                  {isNew && (
-                                    <span className="shrink-0 rounded-full bg-heidi-soft px-2 py-0.5 text-caption font-medium text-heidi">
-                                      {translate('organizeNewFolder')}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1">
-                                  {row.tags.map((tag) => (
-                                    <span
-                                      key={tag}
-                                      className="inline-flex items-center gap-0.5 rounded-full bg-muted py-0.5 pr-1 pl-2 text-caption"
-                                    >
-                                      {tag}
-                                      <button
-                                        type="button"
-                                        aria-label={translate('organizeRemoveTag', { tag })}
-                                        onClick={() => removeTag(row.document_id, tag)}
-                                        className="grid size-4 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
-                                      >
-                                        <X aria-hidden className="size-3" />
-                                      </button>
-                                    </span>
-                                  ))}
-                                  {row.reason && (
-                                    <span className="ml-1 text-caption text-pretty text-muted-foreground">
-                                      {row.reason}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
+                            <td className="min-w-80 px-2 py-2.5">{proposed(row, isNew)}</td>
                           </tr>
                         )
                       })}
