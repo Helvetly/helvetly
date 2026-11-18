@@ -101,8 +101,8 @@ test('a GIF, an SVG and a WebP are saved as the same PNG logos the API already a
   expect(await save(workspace, vector, '/api/v1/workspace/logo')).toEqual(square)
   expect(await save(workspace, still, '/api/v1/workspace/logo')).toEqual(square)
 
-  // The document logo lives on the invoice settings page.
-  await openPage(page, '/settings/invoices', 'Invoices')
+  // The document logo lives on the company settings page.
+  await openPage(page, '/settings/company', 'Company')
   const document = page.getByRole('region', { name: 'Logo' }).locator('input[type=file]')
   // The document logo keeps the field's 2.5 : 1 shape within the 1600 × 640 cap, whatever the format.
   expect(await save(document, gif, '/api/v1/invoice-settings/logo')).toEqual({

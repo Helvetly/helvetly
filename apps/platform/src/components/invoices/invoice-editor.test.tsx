@@ -233,7 +233,7 @@ test('issuing a draft for a draft client lists every reason with a way to fix it
   ).toBeInTheDocument()
   expect(within(alert).getByRole('link', { name: /Company details/ })).toHaveAttribute(
     'href',
-    '/settings/invoices?focus=seller.zip#company',
+    '/settings/company?focus=seller.zip#company',
   )
   expect(within(alert).getAllByRole('listitem')).toHaveLength(2)
   expect(push).not.toHaveBeenCalled()

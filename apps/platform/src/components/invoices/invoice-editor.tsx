@@ -1369,7 +1369,7 @@ function PaymentNote({
         </ul>
       ) : (
         <Link
-          href="/settings/invoices"
+          href="/settings/company?focus=iban#bank"
           className="inline-flex items-center gap-1 text-link underline underline-offset-2 hover:no-underline"
         >
           {translate('addYourIBANToGetPaid')}

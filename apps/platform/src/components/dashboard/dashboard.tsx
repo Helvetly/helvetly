@@ -308,7 +308,7 @@ function NeedsAttention() {
           )}
           {legalForm && (
             <TaskRow
-              href="/settings/invoices?focus=seller.legal_form#company"
+              href="/settings/company?focus=seller.legal_form#company"
               icon={Building2}
               title={translate('addYourCompanysLegalForm')}
               detail={translate('legalFormMissingBody')}

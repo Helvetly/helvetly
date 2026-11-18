@@ -3394,7 +3394,6 @@
   "whatANewInvoiceStartsWithAClientS": "Womit eine neue Rechnung beginnt. Die eigene Währung, Sprache und Konditionen eines Kunden überzeugen.",
   "whatANewInvoiceStartsWithEachClientAnd": "Womit beginnt eine neue Rechnung? Jeder Kunde und jede Rechnung können dennoch unterschiedlich sein.",
   "whatDidYouDeliverEGWebsiteDesign": "Was haben Sie geliefert? z.B. Website-Design",
-  "whatEveryInvoiceSaysAboutYouCompanyVATBank": "Was jede Rechnung über Sie aussagt: Firma, Mehrwertsteuer, Bankkonto, Zahlungsarten, Nummerierung und Vorgaben. Jeder Abschnitt speichert für sich.",
   "whatFor": "Wozu",
   "whatHappenedAndWhatDidYouExpectInstead": "Was ist passiert und was haben Sie stattdessen erwartet?",
   "whatHappenedInThisWorkspaceThatConcernsYou": "Was in diesem Arbeitsbereich passiert ist, beschäftigt Sie.",
@@ -4290,5 +4289,8 @@
   "legalFormGroupAssociation": "Vereine und Stiftungen",
   "addYourCompanysLegalForm": "Rechtsform Ihrer Firma ergänzen",
   "legalFormMissingBody": "Helvetly braucht sie, um die passenden Berichte für Ihre Firma vorzubereiten.",
-  "addLegalForm": "Rechtsform ergänzen"
+  "addLegalForm": "Rechtsform ergänzen",
+  "companySettingsDescription": "Wer Ihr Unternehmen ist: Name, Rechtsform, Adresse, MWST und Bankkonto. Rechnungen, Offerten, Lohn, E-Rechnungen und das Kundenportal verwenden diese Angaben.",
+  "invoiceSettingsDescription": "Wie Rechnungen nummeriert, bezahlt, gemahnt und gedruckt werden.",
+  "shortcutSettings": "Einstellungen öffnen"
 }

@@ -331,17 +331,26 @@ Keywords: import, ai import, migrate, spreadsheet, csv, excel, bulk upload, brin
 5. You can also attach files in Heidi and pick "Import as". The import drawer then opens with those files.
    This needs AI to be allowed by an owner or admin, and it uses the monthly AI allowance. If your old system already declared VAT for imported invoices, close those months in **Books → Closing** first.
 
-## Set up invoice settings (company details, logo, IBAN, numbering)
+## Set up company details (name, legal form, address, VAT, logo, IBAN)
 
-Keywords: invoice settings, company details, seller, logo, IBAN, QR-IBAN, bank, numbering, number format, VAT registered, MWST, footer, defaults, payment terms, Revolut
+Keywords: company settings, company details, seller, legal form, Rechtsform, GmbH, AG, Einzelunternehmen, sole proprietor, address, UID, registration number, logo, IBAN, QR-IBAN, bank, VAT registered, MWST
+Pages: /settings/company
+
+1. Go to **Settings → Company** (⌘, or Ctrl+, opens Settings; Company is the tab after Workspace).
+2. Fill in **Logo** and **Company**: name, **Legal form** (from the forms of your country), business registration number, address, email and phone. Invoices, quotes, payroll, e-invoices and the client portal all use these details.
+3. Under **VAT**, turn on **Registered for VAT**, then add your UID with MWST, the default rate and whether prices are entered net or gross.
+4. Under **Bank account**, enter your **IBAN** and bank.
+5. When the checklist shows **Ready to issue invoices**, you're done. Only owners and admins can change these.
+
+## Set up invoice settings (numbering, payment methods, defaults, dunning)
+
+Keywords: invoice settings, numbering, number format, footer, defaults, payment terms, Revolut, QR bill, e-invoice address, instalments, dunning
 Pages: /settings/invoices
 
 1. Go to **Settings → Invoices**, or **Invoice settings** in the **Invoices** page menu.
-2. Fill in **Logo**, **Company** (name and address) and **VAT**. Under VAT, turn on **Registered for VAT**, then add your UID with MWST, the default rate and whether prices are entered net or gross.
-3. Under **Bank account**, enter your **IBAN** and bank. Under **Payment methods**, turn on **Swiss QR bill** and/or **Revolut**.
-4. Under **Numbering**, pick one of the formats usual in your company's country (for example 2026-001 in Switzerland or INV-0001 in the US), or choose **Custom format** and build your own from text and placeholders: {YYYY} or {YY} (year), {MM} (month), {DD} (day), {TYPE} (INV, CN, DN, PF or Q) and {NNN} (the running number, zero-padded to three digits; {N} without padding). The running number is required. With a year in the format it restarts every year; without one it never restarts. After importing invoices into a new workspace, the welcome offers to keep numbering like them.
-5. Set **Defaults** (currency, document language, payment terms), **Instalments**, **Dunning** and the **Footer**.
-6. When the checklist shows **Ready to issue invoices**, you're done.
+2. Under **Payment methods**, turn on **Swiss QR bill** and/or **Revolut**. Under **Electronic invoicing**, add the e-invoice address your provider registered.
+3. Under **Numbering**, pick one of the formats usual in your company's country (for example 2026-001 in Switzerland or INV-0001 in the US), or choose **Custom format** and build your own from text and placeholders: {YYYY} or {YY} (year), {MM} (month), {DD} (day), {TYPE} (INV, CN, DN, PF or Q) and {NNN} (the running number, zero-padded to three digits; {N} without padding). The running number is required. With a year in the format it restarts every year; without one it never restarts. After importing invoices into a new workspace, the welcome offers to keep numbering like them.
+4. Set **Defaults** (currency, document language, payment terms), **Instalments**, **Dunning** and the **Footer**.
    Only owners and admins can change these. Numbers are given at issue, without gaps, and restart every year when the format has a year. There is one number sequence, and credit notes get their own numbers.
 
 ## Change the email text for invoices and quotes (email templates)

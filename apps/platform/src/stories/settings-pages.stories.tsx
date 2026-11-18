@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { AccountSettings } from '@/components/account/account-settings'
-import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
+import { CompanySettingsPage, InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import { WorkspaceSettings } from '@/components/settings/workspace-settings'
 import { accountHandlers as accountMock, resetAccountMock } from '@/mocks/account'
 import { notificationHandlers } from '@/mocks/notifications'
@@ -138,14 +138,6 @@ const formGridAligned = async (canvasElement: HTMLElement) => {
   near(email.width, street.width)
   for (const xs of [number, apt, zip, city]) near(xs.width, zip.width)
   await expect(street.width).toBeGreaterThan(zip.width * 1.8)
-  // Number format is a select with the next numbers beside it, not a wall of cards.
-  const numbering = within(
-    canvasElement.querySelector<HTMLElement>('#section-numbering') ?? canvasElement,
-  )
-  await expect(numbering.queryAllByRole('radio')).toHaveLength(0)
-  await expect(numbering.getByRole('status', { name: 'Next numbers' })).toHaveTextContent(
-    /Invoice.*Credit note/,
-  )
 }
 
 /** The hairline under the page title runs the panel's full width, edge to edge; the title keeps the page padding. */
@@ -344,9 +336,10 @@ export const AccountTwoFactorSetupDark: Story = {
   parameters: { ...AccountTwoFactorSetup.parameters, dark: true },
 }
 
-export const Invoices: Story = {
+/** Settings → Company: who the business is, with what issuing still needs. */
+export const Company: Story = {
   parameters: {
-    nextjs: { navigation: { pathname: '/settings/invoices' } },
+    nextjs: { navigation: { pathname: '/settings/company' } },
     msw: {
       handlers: [
         http.get('/api/v1/invoice-settings', () =>
@@ -356,11 +349,13 @@ export const Invoices: Story = {
       ],
     },
   },
-  render: () => <InvoiceSettingsPage />,
+  render: () => <CompanySettingsPage />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByRole('region', { name: 'Company' })
-    await tabMarked(canvasElement, 'Invoices')
+    await tabMarked(canvasElement, 'Company')
+    // A Swiss seller picks among the Swiss legal forms.
+    await expect(canvas.getByLabelText(/^Legal form/)).toBeVisible()
     await sectionsAreBands(canvasElement)
     await formGridAligned(canvasElement)
     await headerRuled(canvasElement)
@@ -374,30 +369,51 @@ export const Invoices: Story = {
   },
 }
 
-/**
- * The page's notes: VAT's "while it is off" note and the dunning timeline span the whole card, the IBAN's kind reads as a
- * title (not a button) and the revolut.me link is tried from an icon button at the end of its input.
- */
-export const InvoicesNotes: Story = {
+/** Settings → Invoices: numbering, payments, reminders and print, with no company fields. */
+export const Invoices: Story = {
   parameters: {
     nextjs: { navigation: { pathname: '/settings/invoices' } },
     msw: {
       handlers: [
+        http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <InvoiceSettingsPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('region', { name: 'Numbering' })
+    await tabMarked(canvasElement, 'Invoices')
+    await sectionsAreBands(canvasElement)
+    await headerRuled(canvasElement)
+    await expect(canvas.queryByRole('region', { name: 'Company' })).toBeNull()
+    await expect(canvas.queryByRole('region', { name: 'Bank account' })).toBeNull()
+    // Number format is a select with the next numbers beside it, not a wall of cards.
+    const numbering = within(canvas.getByRole('region', { name: 'Numbering' }))
+    await expect(numbering.queryAllByRole('radio')).toHaveLength(0)
+    await expect(numbering.getByRole('status', { name: 'Next numbers' })).toHaveTextContent(
+      /Invoice.*Credit note/,
+    )
+  },
+}
+
+/** The company page's notes: VAT's "while it is off" note spans the whole card and the IBAN's kind reads as a title. */
+export const CompanyNotes: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/settings/company' } },
+    msw: {
+      handlers: [
         http.get('/api/v1/invoice-settings', () =>
           HttpResponse.json({
-            data: sampleSettings({
-              vat_registered: false,
-              default_vat_mode: 'none',
-              revolut_enabled: true,
-              revolut_username: 'anna-muster',
-            }),
+            data: sampleSettings({ vat_registered: false, default_vat_mode: 'none' }),
           }),
         ),
         ...screenHandlers,
       ],
     },
   },
-  render: () => <InvoiceSettingsPage />,
+  render: () => <CompanySettingsPage />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const vat = await canvas.findByRole('region', { name: 'VAT' })
@@ -407,7 +423,32 @@ export const InvoicesNotes: Story = {
     await expect(note.getBoundingClientRect().left).toBe(row?.getBoundingClientRect().left)
     await expect(note.getBoundingClientRect().width).toBe(row?.getBoundingClientRect().width)
 
-    const dunning = canvas.getByRole('region', { name: 'Dunning' })
+    const bank = canvas.getByRole('region', { name: 'Bank account' })
+    await expect(within(bank).getByText('Swiss IBAN')).toBeVisible()
+    await expect(within(bank).queryByRole('button', { name: /IBAN/ })).toBeNull()
+  },
+}
+
+/** The invoice page's notes: the dunning timeline spans the whole card and the revolut.me link is tried from an icon
+ * button at the end of its input. */
+export const InvoicesNotes: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/settings/invoices' } },
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoice-settings', () =>
+          HttpResponse.json({
+            data: sampleSettings({ revolut_enabled: true, revolut_username: 'anna-muster' }),
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <InvoiceSettingsPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const dunning = await canvas.findByRole('region', { name: 'Dunning' })
     const reminders = within(dunning).getByRole('list', { name: 'Reminders' })
     const dunningRow = within(dunning)
       .getByText('Send reminders automatically')
@@ -415,10 +456,6 @@ export const InvoicesNotes: Story = {
     await expect(reminders.getBoundingClientRect().left).toBe(
       dunningRow?.getBoundingClientRect().left,
     )
-
-    const bank = canvas.getByRole('region', { name: 'Bank account' })
-    await expect(within(bank).getByText('Swiss IBAN')).toBeVisible()
-    await expect(within(bank).queryByRole('button', { name: /IBAN/ })).toBeNull()
 
     const payment = canvas.getByRole('region', { name: 'Payment methods' })
     const test = within(payment).getByRole('link', { name: 'Test the link' })

@@ -249,7 +249,7 @@ test('downloads the ESTV file, or lists why it cannot be exported', async () => 
   expect(within(refused).getByRole('listitem')).toHaveTextContent('Add your Swiss UID.')
   expect(within(refused).getByRole('link', { name: /VAT settings/ })).toHaveAttribute(
     'href',
-    '/settings/invoices?focus=seller.vat_number#vat',
+    '/settings/company?focus=seller.vat_number#vat',
   )
   expect(toast.error).not.toHaveBeenCalled()
   expect(clicked).not.toHaveBeenCalled()

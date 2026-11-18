@@ -3394,7 +3394,6 @@
   "whatANewInvoiceStartsWithAClientS": "What a new invoice starts with. A client’s own currency, language and terms win over these.",
   "whatANewInvoiceStartsWithEachClientAnd": "What a new invoice starts with. Each client and invoice can still differ.",
   "whatDidYouDeliverEGWebsiteDesign": "What did you deliver? e.g. Website design",
-  "whatEveryInvoiceSaysAboutYouCompanyVATBank": "What every invoice says about you: company, VAT, bank account, payment methods, numbering and defaults. Each section saves on its own.",
   "whatFor": "What for",
   "whatHappenedAndWhatDidYouExpectInstead": "What happened, and what did you expect instead?",
   "whatHappenedInThisWorkspaceThatConcernsYou": "What happened in this workspace that concerns you.",
@@ -4290,5 +4289,8 @@
   "legalFormGroupAssociation": "Associations and foundations",
   "addYourCompanysLegalForm": "Add your company’s legal form",
   "legalFormMissingBody": "Helvetly needs it to prepare the reports that fit your type of company.",
-  "addLegalForm": "Add legal form"
+  "addLegalForm": "Add legal form",
+  "companySettingsDescription": "Who your business is: name, legal form, address, VAT and bank account. Invoices, quotes, payroll, e-invoices and the client portal all use it.",
+  "invoiceSettingsDescription": "How invoices are numbered, paid, reminded and printed.",
+  "shortcutSettings": "Open settings"
 }
