@@ -1,4 +1,4 @@
-import { getCsrfToken, setCsrfToken } from '@helvetly/ui/lib/http'
+import { getCsrfToken } from '@helvetly/ui/lib/http'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
