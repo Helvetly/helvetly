@@ -3488,7 +3488,6 @@
   "youDonTHaveAccessTo": "Vous n’avez pas accès à {what}",
   "youDonTHavePermissionTo": "Vous n’avez pas la permission de {value1}.",
   "youGetALinkToShareYourselfNoEmail": "Vous obtenez un lien pour vous partager ; aucun email n’est envoyé.",
-  "youHaveAnUnfinishedImportFrom": "Vous avez une importation inachevée depuis ",
   "youLeaveEveryWorkspaceAndThisAccountIsClosed": "Vous quittez chaque espace de travail et ce compte est fermé. Connectez-vous à nouveau avec ",
   "youLoseAccessUntilSomeoneInvitesYouAgain": "Vous perdez l’accès jusqu’à ce que quelqu’un vous invite à nouveau.{saving}",
   "yourAccountWorkspaceAndThePageYouAreOn": "Votre compte, votre espace de travail et la page sur laquelle vous vous trouvez sont inclus. Supprimez d’abord les informations privées des captures d’écran.",
@@ -4347,5 +4346,17 @@
   "importServiceDateEnd": "Fin de la période de prestation",
   "importInvoiceDiscount": "Remise sur la facture (%)",
   "importServiceDateTip": "Quand le travail a été fait ou livré, ou le premier jour d’une période de prestation. Laissez vide si la facture n’en indique pas.",
-  "importInvoiceDiscountTip": "Une remise sur toute la facture, en pourcentage, telle qu’imprimée. Les remises par ligne vont dans les lignes."
+  "importInvoiceDiscountTip": "Une remise sur toute la facture, en pourcentage, telle qu’imprimée. Les remises par ligne vont dans les lignes.",
+  "importFileType": "Type",
+  "importFileSize": "Taille",
+  "importKindPdf": "PDF",
+  "importKindImage": "Photo",
+  "importKindSheet": "Tableur",
+  "importKindWord": "Word",
+  "importKindZip": "ZIP",
+  "importKindText": "Texte",
+  "importInvoicesHereTitle": "Vous importez des factures ?",
+  "importInvoicesHereAction": "Importer des factures",
+  "importInvoicesHereText": "Ici, chaque prestation d’un document devient un mandat en cours. Pour garder chaque facture entière, avec ses lignes, paiements et échéances, importez-la comme facture.",
+  "importUnfinished": "Un import de {noun} inachevé du {date} : {count, plural, =0 {encore en lecture} one {# ligne à vérifier} other {# lignes à vérifier}}."
 }

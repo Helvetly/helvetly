@@ -4,7 +4,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, FileText, Pencil } from 'lucide-react'
+import { Check, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment } from 'react'
 
@@ -20,7 +20,7 @@ import {
   type ImportRecord,
 } from '@/lib/imports'
 
-import { FileLine, FileProgress } from './import-files'
+import { FileIcon, FileLine, FileProgress } from './import-files'
 import { IssueChip, issuesId } from './import-issues'
 
 export const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
@@ -280,7 +280,7 @@ export function ReviewTable({
                 {files && (
                   <td className="max-w-44 px-2 py-2">
                     <span className="flex items-center gap-1.5 text-caption text-muted-foreground">
-                      <FileText aria-hidden className="size-3.5 shrink-0" />
+                      {source && <FileIcon name={source.name} className="size-3.5" />}
                       <span className="truncate">{source?.name ?? '—'}</span>
                     </span>
                   </td>

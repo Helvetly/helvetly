@@ -165,3 +165,19 @@ func (k Kind) allowed(ctx context.Context, q store.Q, workspaceID string) error 
 	}
 	return q.RequireFeature(ctx, workspaceID, k.Feature)
 }
+
+// withClientDetails adds the billed party's details as the document prints them, so a client created from a
+// record starts with its address and numbers, not only a name.
+func withClientDetails(fields map[string]any) map[string]any {
+	fields["client_is_company"] = nullable("boolean", "true only when the party is a business: a company name or a legal "+
+		"form such as AG, GmbH, Sàrl, SA, Ltd or LLC, or a VAT/UID number of a company; false for a private person "+
+		"named by first and last name, even when an address is given")
+	fields["client_street"] = nullable("string", "The party's street, without the house number")
+	fields["client_street_number"] = nullable("string", "The party's house number")
+	fields["client_zip"] = nullable("string", "The party's postal code")
+	fields["client_city"] = nullable("string", "The party's town or city")
+	fields["client_country"] = nullable("string", "The party's country, ISO 3166-1 alpha-2, e.g. CH")
+	fields["client_registration_number"] = nullable("string", "The party's business registration number")
+	fields["client_phone"] = nullable("string", "The party's phone number")
+	return fields
+}

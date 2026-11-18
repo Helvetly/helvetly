@@ -186,12 +186,29 @@ export function ImportDrawer({
               </>
             }
           >
-            {translate('youHaveAnUnfinishedImportFrom')}
-            {formatDate(resume.created_at)}.
+            {translate('importUnfinished', {
+              noun,
+              date: formatDate(resume.created_at),
+              count: resume.pending,
+            })}
           </Callout>
         )}
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
+        {kind === 'engagements' && (
+          // Invoices dropped here would become one engagement per line; the invoice import keeps each whole.
+          <Callout
+            tone="info"
+            title={translate('importInvoicesHereTitle')}
+            actions={
+              <Button asChild variant="outline" size="sm">
+                <Link href="/invoices?import=1">{translate('importInvoicesHereAction')}</Link>
+              </Button>
+            }
+          >
+            {translate('importInvoicesHereText')}
+          </Callout>
+        )}
         <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
         {files.length === 0 && (
           <ImportSteps
