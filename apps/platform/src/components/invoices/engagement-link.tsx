@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import Link from 'next/link'
@@ -16,6 +17,8 @@ import {
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
+
+import { quietValue } from './date-fields'
 
 /**
  * The engagement an invoice is billed under. Choosing one attaches a saved draft at once; before the draft exists
@@ -58,7 +61,7 @@ export function EngagementLink({
 
   if (linked)
     return (
-      <span className="flex h-8 items-center justify-between gap-1 px-2 text-[13.5px]">
+      <span className={cn(quietValue, 'justify-between')}>
         <Link
           href={`/engagements?id=${encodeURIComponent(linked.id)}`}
           className="truncate underline underline-offset-2"
@@ -99,7 +102,7 @@ export function EngagementLink({
         if (invoiceId) link.mutate(next)
         else onPendingChange(next === pending ? '' : next)
       }}
-      className="h-8 border-transparent bg-transparent px-2 text-[13.5px] shadow-none hover:bg-muted/70"
+      className={cn(quietValue, 'border-transparent bg-transparent shadow-none')}
     />
   )
 }
