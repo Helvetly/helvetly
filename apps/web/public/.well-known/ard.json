@@ -1,0 +1,41 @@
+{
+  "entries": [
+    {
+      "identifier": "urn:air:helvetly.com:mcp:helvetly",
+      "displayName": "Helvetly",
+      "description": "Swiss business software over MCP: clients, quotes, invoices with the QR bill, payments, expenses, documents, engagements, products, the books, the VAT return and key figures of one workspace. Authenticate with a personal API token.",
+      "type": "application/mcp-server-card+json",
+      "representativeQueries": [
+        "Create and send a Swiss QR invoice",
+        "List my unpaid invoices and record a payment",
+        "Prepare the Swiss VAT return from my books",
+        "Add an expense or a client to my Swiss business"
+      ],
+      "data": {
+        "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+        "name": "com.helvetly/helvetly",
+        "title": "Helvetly",
+        "version": "1.0.0",
+        "description": "Helvetly's remote MCP server: the public API's operations as tools, run as the token's person with their permissions.",
+        "websiteUrl": "https://www.helvetly.com",
+        "repository": { "url": "https://github.com/Helvetly/helvetly", "source": "github" },
+        "remotes": [
+          {
+            "type": "streamable-http",
+            "url": "https://app.helvetly.com/api/mcp",
+            "supportedProtocolVersions": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"],
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {token}",
+                "isRequired": true,
+                "isSecret": true,
+                "description": "A personal API token (hvt_…) from Settings → API & MCP"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

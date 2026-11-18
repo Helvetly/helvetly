@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 8001",
-    "build": "next build && node ../../scripts/language-homes.mjs out && node ../../scripts/check-links.mjs out",
+    "build": "next build && node ../../scripts/language-homes.mjs out && node scripts/critical-css.mjs out && node ../../scripts/check-links.mjs out",
     "preview": "pnpm dlx serve@latest out -l 8001",
     "typecheck": "next typegen && tsc",
     "test": "vitest run"
@@ -19,7 +19,6 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-ga4": "3.0.1",
     "react-markdown": "catalog:",
     "remark-gfm": "catalog:"
   },
@@ -31,6 +30,7 @@
     "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "beasties": "0.5.5",
     "tailwindcss": "catalog:",
     "vitest": "catalog:"
   }

@@ -92,8 +92,10 @@ export function ProductWindow({ lang }: { lang: Locale }) {
     { icon: FileSignature, label: translate('signatures') },
   ]
   return (
+    // A picture of the app, not part of the page: inert keeps it out of focus and of the accessibility checks.
     <div
       aria-hidden
+      inert
       className="border-site-line overflow-hidden rounded-[20px] border bg-card shadow-[0_50px_140px_-40px_rgb(85_39_201/0.45),0_30px_80px_-40px_rgb(18_179_155/0.4)] select-none dark:shadow-[0_40px_120px_-30px_rgb(0_0_0/0.8)]"
     >
       {/* Browser chrome */}

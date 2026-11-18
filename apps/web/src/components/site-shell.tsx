@@ -11,6 +11,7 @@ import { Analytics } from '@/components/analytics'
 import { RevealObserver } from '@/components/reveal-observer'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { WebMcp } from '@/components/webmcp'
 import { translatorFor } from '@/lib/i18n'
 import { pageMetadata, SITE_URL, TITLE_TEMPLATE } from '@/lib/metadata'
 
@@ -39,6 +40,7 @@ export function SiteShell({ lang, children }: { lang: Locale; children: ReactNod
             <SiteFooter lang={lang} />
             <RevealObserver />
             <Analytics />
+            <WebMcp lang={lang} />
           </LanguageProvider>
         </ThemeProvider>
       </body>
