@@ -27,7 +27,7 @@ var invoicesKind = Kind{
 		"unit is one of hour, day, piece, month, km, flat. A discount is never a line: a discount on the whole invoice is " +
 		"discount_percent (\"15\"), one on a single line is that line's discount_percent; a discount stated only as an amount " +
 		"is the percentage of the subtotal it represents, rounded to two decimals. total is the grand total the document states. Guess nothing: " +
-		"a field the document does not carry is null. client_id is always null; the client_ fields are the billed party's details as printed (its address, VAT and registration numbers), used to create that client. issued_elsewhere is true when the document " +
+		"a field the document does not carry is null. client_id is always null; the client_ fields are the billed party's details, read from its address block (\"Billed to\", \"Rechnung an\", \"Facturé à\", \"Fatturato a\" or the address window): its name, street and house number, postal code, city, country, email, phone, VAT and registration numbers, and whether it is a company or a private person; they create that client. issued_elsewhere is true when the document " +
 		"is a finished invoice the seller issued, carrying its own invoice number; false for a quote, order, proforma or draft. " +
 		"paid_amount and paid_on only when the document states a payment already received (a document marked paid " +
 		"without an amount was paid in full: paid_amount is the total), else null; paid_on is null when no payment date " +

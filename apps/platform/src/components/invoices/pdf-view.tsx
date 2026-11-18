@@ -79,10 +79,13 @@ export function PdfView({
   className,
   onPages,
   overlay,
+  zoom = 1,
 }: {
   src: string
   title: string
   className?: string
+  /** 1 fits the pane; above it the pages grow past it and the pane scrolls both ways. */
+  zoom?: number
   /** Told the page count once the document is open. */
   onPages?: (count: number) => void
   /** Drawn over each page (1-based), in a box the page's size: position children in percentages. */
@@ -141,10 +144,11 @@ export function PdfView({
       role="document"
       aria-label={title}
       aria-busy={!state}
-      className={cn('overflow-y-auto bg-muted/50 dark:bg-background', className)}
+      className={cn('overflow-auto bg-muted/50 dark:bg-background', className)}
     >
       <div
         ref={frame}
+        style={zoom === 1 ? undefined : { width: `${zoom * 100}%`, maxWidth: 'none' }}
         className={cn(
           'mx-auto grid min-h-full w-full max-w-[860px] gap-6 px-6 py-8',
           // A problem sits in the middle of the pane; pages start at the top.

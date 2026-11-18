@@ -106,6 +106,18 @@ export type ImportSection = {
   fields: string[]
 }
 
+/**
+ * One column of the review table as two lines: the main value large, smaller details under it (joined with ·).
+ * `money` names the currency field that goes with the main value.
+ */
+export type ImportCell = {
+  label: string
+  main: string
+  sub?: string[]
+  money?: string
+  align?: 'end'
+}
+
 /** One kind of record an import can create: what the review table shows and what can be edited. */
 export type ImportKindConfig = {
   /** "Clients", also the option Heidi offers. */
@@ -135,6 +147,10 @@ export type ImportKindConfig = {
   labels?: Record<string, string>
   /** Fields a record cannot be imported without, given its current values: marked * in the editor. */
   required?: (values: Record<string, string>) => string[]
+  /** The review table's columns as two-line cells; without them, one plain column per `columns` field. */
+  cells?: ImportCell[]
+  /** Yes/no fields shown as a badge in the review's Notes when yes, e.g. Already issued. */
+  badges?: string[]
   /** The editor's sections in order; editable fields in none of them go in a last one. */
   sections?: ImportSection[]
   /** Query key prefix of the page's lists, refetched after a commit. */
@@ -219,6 +235,21 @@ export const IMPORT_KINDS = {
       reference: translate('reference'),
     },
     columns: ['client_name', 'title', 'quantity', 'unit', 'unit_price', 'recurrence', 'start_date'],
+    cells: [
+      { label: translate('importCellEngagement'), main: 'title', sub: ['client_name'] },
+      {
+        label: translate('importCellPrice'),
+        main: 'unit_price',
+        money: 'currency',
+        sub: ['quantity', 'unit'],
+        align: 'end',
+      },
+      {
+        label: translate('importCellSchedule'),
+        main: 'recurrence',
+        sub: ['start_date', 'end_date'],
+      },
+    ],
     editable: [
       'client_id',
       'title',
@@ -297,6 +328,18 @@ export const IMPORT_KINDS = {
       service_date: translate('importServiceDateTip'),
       discount_percent: translate('importInvoiceDiscountTip'),
     },
+    cells: [
+      { label: translate('importNounInvoice'), main: 'number', sub: ['issue_date', 'reference'] },
+      { label: translate('client'), main: 'client_name', sub: ['client_city'] },
+      {
+        label: translate('importTotalAmount'),
+        main: 'total',
+        money: 'currency',
+        sub: ['lines'],
+        align: 'end',
+      },
+    ],
+    badges: ['issued_elsewhere'],
     noun: translate('importNounInvoice'),
     labels: {
       number: translate('importInvoiceNumber'),

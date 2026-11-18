@@ -86,7 +86,7 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 		}
 		return store.Payment{Method: "other", Amount: amount, PaidOn: on, Note: &note}
 	}
-	instalments := paidInstalments(p, data["instalments"], fallback, payment)
+	instalments := paidInstalments(p, data["instalments"], fallback, today, payment)
 	out.schedule = importedSchedule(data["instalments"], inv)
 	var stated invoicecalc.Money
 	if hasAmount {
@@ -119,8 +119,9 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 }
 
 // paidInstalments: a payment per instalment of raw the document marks paid, dated as it states, else on the
-// instalment's due date, else on fallback.
-func paidInstalments(p *parser, raw json.RawMessage, fallback string, payment func(string, invoicecalc.Money, string) store.Payment) []store.Payment {
+// instalment's due date, else on fallback. An instalment of this invoice issued elsewhere whose due date is before
+// today counts as paid on that date: imported invoices are history, settled as their schedule said.
+func paidInstalments(p *parser, raw json.RawMessage, fallback, today string, payment func(string, invoicecalc.Money, string) store.Payment) []store.Payment {
 	var rows []importedInstalment
 	if len(raw) == 0 || isNull(raw) {
 		return nil
@@ -131,7 +132,8 @@ func paidInstalments(p *parser, raw json.RawMessage, fallback string, payment fu
 	}
 	var out []store.Payment
 	for i, row := range rows {
-		if !(row.Paid != nil && *row.Paid) && row.PaidOn == nil {
+		past := row.DueDate != nil && *row.DueDate != "" && *row.DueDate < today
+		if !(row.Paid != nil && *row.Paid) && row.PaidOn == nil && !past {
 			continue
 		}
 		key := fmt.Sprintf("instalments.%d", i)

@@ -28,6 +28,16 @@ describe('clientFromDocument', () => {
   it('drops a country that is not a two-letter code', () => {
     expect(clientFromDocument({ client_name: 'X', client_country: 'Switzerland' })).toEqual({
       name: 'X',
+      is_company: false,
     })
+  })
+
+  it.each([
+    ['Anna Beispiel', {}, false],
+    ['Muster AG', {}, true],
+    ['Alpenglow Studio GmbH', {}, true],
+    ['Max Muster', { client_vat_number: 'CHE-123.456.789 MWST' }, true],
+  ])('reads %s as a company: %s → %s when the model did not say', (name, extra, company) => {
+    expect(clientFromDocument({ client_name: name, ...extra }).is_company).toBe(company)
   })
 })

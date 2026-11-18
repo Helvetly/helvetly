@@ -450,8 +450,9 @@ export const IssuedElsewhereToggle: Story = {
   play: async () => {
     await waitFor(() => expect(body().getByRole('dialog')).toBeVisible())
     await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
-    await body().findByRole('table', { name: 'Records found' })
-    await expect(body().getByRole('columnheader', { name: 'Already issued' })).toBeVisible()
+    const table = await body().findByRole('table', { name: 'Records found' })
+    // Not issued yet: no Already issued badge in its row.
+    await expect(within(table).queryByText('Already issued')).toBeNull()
     await expect(body().queryByText('Already declared for VAT?')).not.toBeInTheDocument()
     await userEvent.click(body().getByRole('button', { name: 'Edit ALT-5' }))
     const toggle = await body().findByRole('switch', { name: 'Already issued' })
