@@ -58,6 +58,7 @@ import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { addFiles } from '@/components/import/import-files'
 import { PageHeader } from '@/components/shell/page-header'
+import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import {
   canManageExpenses,
   DEFAULT_PARAMS,
@@ -378,6 +379,7 @@ export function ExpensesPage() {
         kept={translate('expensesYouAlreadyHaveStayAvailableToRead')}
         className="mx-4 mt-4 sm:mx-6"
       />
+      <SwissScopeNotice area="expenses" className="mx-4 mt-4 sm:mx-6" />
       {!empty && !noExpenses && <ExpenseKpis />}
       {dropping && (
         <div

@@ -267,10 +267,10 @@ type sessionOut struct {
 		ID, Email, Name string
 		AvatarURL       string `json:"avatar_url"`
 	} `json:"user"`
-	Workspace struct{ ID, Name string } `json:"workspace"`
-	Role      string                    `json:"role"`
-	Onboarded bool                      `json:"onboarded"`
-	CSRF      string                    `json:"csrf_token"`
+	Workspace struct{ ID, Name, Country string } `json:"workspace"`
+	Role      string                             `json:"role"`
+	Onboarded bool                               `json:"onboarded"`
+	CSRF      string                             `json:"csrf_token"`
 	Analytics struct {
 		UserID      string `json:"user_id"`
 		WorkspaceID string `json:"workspace_id"`
@@ -404,6 +404,38 @@ func TestSessionAnalyticsPseudonyms(t *testing.T) {
 	}
 	if a.UserID == a.WorkspaceID {
 		t.Fatal("user and workspace pseudonyms collide")
+	}
+}
+
+// The business's country reaches every member, also one who cannot read the invoice settings it comes from.
+func TestSessionCountry(t *testing.T) {
+	e := newEnv(t)
+	b := e.emailSignIn("country@example.com")
+	ws := e.session(b).Workspace
+	for _, tc := range []struct{ name, settings, scopes, want string }{
+		{"no invoice settings", "", "", "CH"},
+		{"seller without a country", `{"seller": {"country": ""}}`, "", "CH"},
+		{"German seller", `{"seller": {"country": "DE"}}`, "", "DE"},
+		{"member without invoice settings", `{"seller": {"country": "FR"}}`, "{read:expenses,read:vat-return}", "FR"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.settings != "" {
+				if _, err := e.db.Exec(ctx, `INSERT INTO invoice_settings (workspace_id, settings, updated_at) VALUES ($1, $2, now())
+					ON CONFLICT (workspace_id) DO UPDATE SET settings = $2`, ws.ID, tc.settings); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.scopes != "" {
+				if _, err := e.db.Exec(ctx, `UPDATE workspace_members SET role = 'member', scopes = $2 WHERE workspace_id = $1`,
+					ws.ID, tc.scopes); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := e.session(b).Workspace.Country; got != tc.want {
+				t.Fatalf("country %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
