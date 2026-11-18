@@ -879,7 +879,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                 <FormField
                   id={inputId('legal_form')}
                   label={translate('legalForm')}
-                  width="lg"
+                  width="md"
                   error={shown.legal_form}
                   tip={translate('legalFormTip')}
                 >
