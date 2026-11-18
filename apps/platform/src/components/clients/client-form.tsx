@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
+import { Kbd } from '@helvetly/ui/components/kbd'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -671,9 +672,9 @@ export function ClientForm({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3 md:px-7">
-        <span className="hidden text-xs text-muted-foreground sm:block">
-          <kbd className="font-sans">⌘</kbd>
-          {translate('enterToSave')}
+        <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
+          <Kbd>⌘ Enter</Kbd>
+          {translate('toSave')}
         </span>
         <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
           {translate('cancel')}

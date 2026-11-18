@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { Kbd } from '@helvetly/ui/components/kbd'
 import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -522,9 +523,7 @@ export function LinesEditor({
         >
           <Plus className="size-4" />
           {translate('addLine')}
-          <kbd className="ml-1 rounded border border-border px-1 font-sans text-[11px] text-muted-foreground">
-            {translate('enter')}
-          </kbd>
+          <Kbd className="ml-1">{translate('enter')}</Kbd>
         </Button>
         <ProductPicker
           currency={currency}

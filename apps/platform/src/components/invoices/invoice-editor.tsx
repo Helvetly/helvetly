@@ -1437,9 +1437,7 @@ function Editor({
 function Hint({ keys, children }: { keys: string; children: ReactNode }) {
   return (
     <span className="flex items-center gap-1.5">
-      <kbd className="rounded border border-border bg-card px-1.5 py-px font-sans text-[11px]">
-        {keys}
-      </kbd>
+      <Kbd>{keys}</Kbd>
       {children}
     </span>
   )
