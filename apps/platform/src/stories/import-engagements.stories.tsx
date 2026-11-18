@@ -121,14 +121,10 @@ export const PickClientWhenUnmatched: Story = {
     await waitFor(() =>
       expect(body().getByRole('dialog', { name: 'Import engagements' })).toBeVisible(),
     )
-    // Invoices belong in the invoice import: the drawer says so before anything is read.
-    await expect(body().getByText('Importing invoices?')).toBeVisible()
-    await expect(body().getByRole('link', { name: 'Import invoices' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/invoices'),
-    )
     await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await body().findByRole('table', { name: 'Records found' })
+    // An engagements import says nothing about invoices.
+    await expect(body().queryByText('Importing invoices?')).toBeNull()
     await expect(body().getByRole('checkbox', { name: 'Select Support retainer' })).toBeChecked()
     await expect(body().getByRole('checkbox', { name: 'Select Website care' })).not.toBeChecked()
     await expect(
