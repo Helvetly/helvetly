@@ -54,9 +54,6 @@ export function ProductPicker({
   }, [term])
   const search = useProductSearch(debounced, currency, open)
   const items = search.data ?? []
-  const canWrite = useCan('write:products')
-  const role = useSession().data?.role
-  const canAdd = canWrite && canManageProducts(role)
   const [adding, setAdding] = useState(false)
 
   return (
@@ -90,22 +87,14 @@ export function ProductPicker({
                   : debounced
                     ? translate('nothingMatches4')
                     : translate('yourCatalogueIsEmpty')}
-                {canAdd && !search.isPending && (
-                  <div className="mt-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setOpen(false)
-                        setTerm('')
-                        setAdding(true)
-                      }}
-                    >
-                      <Plus />
-                      {translate('addToCatalogue')}
-                    </Button>
-                  </div>
+                {!search.isPending && (
+                  <AddToCatalogue
+                    onAdd={() => {
+                      setOpen(false)
+                      setTerm('')
+                      setAdding(true)
+                    }}
+                  />
                 )}
               </CommandEmpty>
               {items.length > 0 && (
@@ -166,6 +155,21 @@ export function ProductPicker({
         />
       )}
     </>
+  )
+}
+
+/** Offered only once the list is empty, so the picker reads the session only when it is needed. */
+function AddToCatalogue({ onAdd }: { onAdd: () => void }) {
+  const canWrite = useCan('write:products')
+  const role = useSession().data?.role
+  if (!canWrite || !canManageProducts(role)) return null
+  return (
+    <div className="mt-3">
+      <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+        <Plus />
+        {translate('addToCatalogue')}
+      </Button>
+    </div>
   )
 }
 
