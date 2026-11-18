@@ -4307,5 +4307,8 @@
   "importFieldsToFix": "{count, plural, one {# campo da correggere} other {# campi da correggere}}",
   "importFieldsToFixHint": "Correggi i campi evidenziati, poi salva: il record viene ricontrollato e selezionato per l’importazione.",
   "importRecordLooksGood": "Questo record sembra corretto. Modifica ciò che vuoi; il salvataggio lo ricontrolla.",
-  "importDocumentNames": "Sul documento:"
+  "importDocumentNames": "Sul documento:",
+  "selectAllRows": "Seleziona tutte le righe",
+  "selectAllRowsIn": "Seleziona tutte le righe di {name}",
+  "importSelectedOfAll": "{count} di {total} righe selezionate, in tutti i file"
 }

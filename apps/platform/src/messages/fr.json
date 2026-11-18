@@ -4307,5 +4307,8 @@
   "importFieldsToFix": "{count, plural, one {# champ à corriger} other {# champs à corriger}}",
   "importFieldsToFixHint": "Corrigez les champs signalés, puis enregistrez : l’enregistrement est vérifié à nouveau et coché pour l’import.",
   "importRecordLooksGood": "Cet enregistrement semble correct. Modifiez ce que vous voulez ; l’enregistrement le vérifie à nouveau.",
-  "importDocumentNames": "Sur le document :"
+  "importDocumentNames": "Sur le document :",
+  "selectAllRows": "Sélectionner toutes les lignes",
+  "selectAllRowsIn": "Sélectionner toutes les lignes de {name}",
+  "importSelectedOfAll": "{count} sur {total} lignes sélectionnées, dans tous les fichiers"
 }
