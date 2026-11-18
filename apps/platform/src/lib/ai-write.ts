@@ -1,4 +1,5 @@
-import { request } from '@/lib/api'
+import { ApiError, request } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 /** The form fields "Write with AI" serves (POST /api/v1/ai/write). */
 export type AIWriteField =
@@ -33,4 +34,15 @@ export async function aiWrite(input: AIWriteInput): Promise<string> {
     json: input,
   })
   return data.text
+}
+
+/** What went wrong, in words for the person writing: a missing route or a server error never shows raw. */
+export function aiWriteError(error: unknown): { message: string; retry: boolean } {
+  if (!(error instanceof ApiError))
+    return { message: translate('aiWriteErrorNetwork'), retry: true }
+  if (error.status === 404 || error.code === 'ai_unavailable')
+    return { message: translate('aiWriteErrorUnavailable'), retry: false }
+  if (error.code === 'quota_exceeded') return { message: error.message, retry: false }
+  if (error.status === 429 || error.status >= 500) return { message: error.message, retry: true }
+  return { message: error.message, retry: false }
 }
