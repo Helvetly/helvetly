@@ -3,7 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Building2, ChevronsUpDown, ScanSearch, UserPlus } from 'lucide-react'
+import { Building2, ChevronsUpDown, ScanSearch, Search, UserPlus, UserRound } from 'lucide-react'
 import { useState } from 'react'
 
 import { ClientForm } from '@/components/clients/client-form'
@@ -28,25 +28,56 @@ export function clientFromDocument(data: ImportRecord['data']): Partial<FormValu
     vat_number: text('vat_number'),
     registration_number: text('registration_number'),
     ...(/^[A-Z]{2}$/.test(country) && { country }),
-    ...(typeof data.client_is_company === 'boolean' && { is_company: data.client_is_company }),
+    is_company:
+      typeof data.client_is_company === 'boolean'
+        ? data.client_is_company
+        : looksLikeCompany(
+            displayValue(data.client_name),
+            text('vat_number'),
+            text('registration_number'),
+          ),
   }
   // Only what the document carried: an empty value would wipe a default (the country) for nothing.
   return Object.fromEntries(Object.entries(found).filter(([, value]) => value !== ''))
 }
 
-/** "Bahnhofstrasse 12, 8001 Zürich, CH", then the VAT number and email, each only when found. */
-const detailLines = (found: Partial<FormValues>) =>
-  [
+const LEGAL_FORM =
+  /\b(ag|gmbh|sàrl|sarl|sa|sagl|ltd|llc|inc|plc|kg|ohg|gbr|ug|bv|nv|srl|spa|sas|sp\. ?z ?o\.? ?o\.?|s\.a\.|e\.v\.|verein|stiftung|genossenschaft|holding|group|gruppe)\b/i
+
+/**
+ * Whether a party the model did not classify is a business: a legal form or a VAT/registration number says so; a
+ * plain first and last name is a person.
+ */
+export const looksLikeCompany = (name: string, vat: string, registration: string) =>
+  LEGAL_FORM.test(name) || vat !== '' || registration !== '' || name.trim().split(/\s+/).length > 3
+
+/** What the document says about the party, as labelled rows, each only when found. */
+const detailRows = (found: Partial<FormValues>): [string, string][] =>
+  (
     [
-      [found.street, found.street_number].filter(Boolean).join(' '),
-      [found.zip, found.city].filter(Boolean).join(' '),
-      found.country,
-    ]
-      .filter(Boolean)
-      .join(', '),
-    found.vat_number && `${translate('importClientVat')} ${found.vat_number}`,
-    found.email,
-  ].filter((line): line is string => Boolean(line))
+      [
+        translate('address'),
+        [
+          [found.street, found.street_number].filter(Boolean).join(' '),
+          [found.zip, found.city].filter(Boolean).join(' '),
+          found.country,
+        ]
+          .filter(Boolean)
+          .join(', '),
+      ],
+      [translate('importClientVat'), found.vat_number ?? ''],
+      [translate('email'), found.email ?? ''],
+    ] as [string, string][]
+  ).filter(([, value]) => value !== '')
+
+/** "MV" for Melanie Vala, "MA" for Muster AG. */
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
 
 /**
  * An imported record's client, chosen among the existing ones. When the document's client is not one of them,
@@ -72,7 +103,7 @@ export function ImportClientField({
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const documentName = clientName.trim()
-  const lines = detailLines(found)
+  const details = detailRows(found)
   return (
     <div className="grid gap-3 sm:col-span-2">
       <FormField id={id} label={translate('client')} error={error} required>
@@ -107,38 +138,62 @@ export function ImportClientField({
       {!clientId && documentName && (
         <section
           aria-label={translate('importFoundOnDocument')}
-          className="grid gap-3 rounded-lg border bg-muted/30 p-3"
+          className="overflow-hidden rounded-xl border bg-card"
         >
-          <p className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground">
-            <ScanSearch aria-hidden className="size-3.5" />
-            {translate('importFoundOnDocument')}
-          </p>
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-card text-muted-foreground ring-1 ring-border">
-              <Building2 aria-hidden className="size-4" />
+          <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
+            <p className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground">
+              <ScanSearch aria-hidden className="size-3.5" />
+              {translate('importFoundOnDocument')}
+            </p>
+            <span className="rounded-full bg-warning-surface px-2 py-0.5 text-caption font-medium text-warning ring-1 ring-warning-border ring-inset">
+              {translate('importNotInClients')}
             </span>
-            <div className="grid min-w-0 gap-0.5">
-              <p className="truncate text-body-sm font-medium">{documentName}</p>
-              {lines.map((line) => (
-                <p key={line} className="truncate text-caption text-muted-foreground">
-                  {line}
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            <span
+              aria-hidden
+              className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-surface text-body-sm font-semibold text-brand"
+            >
+              {initials(documentName)}
+            </span>
+            <div className="grid min-w-0 flex-1 gap-1.5">
+              <p className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-body font-semibold">{documentName}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground">
+                  {found.is_company === false ? (
+                    <UserRound aria-hidden className="size-3" />
+                  ) : (
+                    <Building2 aria-hidden className="size-3" />
+                  )}
+                  {found.is_company === false ? translate('person') : translate('company')}
+                </span>
+              </p>
+              {details.length > 0 ? (
+                <dl className="grid gap-x-4 gap-y-1 text-caption sm:grid-cols-[auto_minmax(0,1fr)]">
+                  {details.map(([label, value]) => (
+                    <div key={label} className="contents">
+                      <dt className="text-muted-foreground">{label}</dt>
+                      <dd className="truncate">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-caption text-muted-foreground">
+                  {translate('importOnlyNameFound')}
                 </p>
-              ))}
+              )}
             </div>
           </div>
-          <p className="text-caption text-pretty text-muted-foreground">
-            {translate('importClientNotYours')}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="justify-self-start"
-            onClick={() => setCreating(true)}
-          >
-            <UserPlus />
-            {translate('importCreateClient', { name: documentName })}
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2.5">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
+              <Search />
+              {translate('importPickAnother')}
+            </Button>
+            <Button type="button" size="sm" onClick={() => setCreating(true)}>
+              <UserPlus />
+              {translate('importCreateClient', { name: documentName })}
+            </Button>
+          </div>
         </section>
       )}
       {creating && (

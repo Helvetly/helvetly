@@ -377,14 +377,14 @@ export function LinesEditor({
                     aria-label={translate('lineUnit', { value1: index + 1 })}
                     className={cn(
                       cellInput,
-                      'flex items-center gap-1.5 text-left',
+                      'flex w-full items-center justify-between gap-1.5 text-left',
                       !line.unit && 'text-muted-foreground',
                     )}
                   >
                     <span className="whitespace-nowrap">
                       {UNITS.find((unit) => unit.value === line.unit)?.short ?? 'unit'}
                     </span>
-                    <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground/50" />
+                    <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -593,10 +593,10 @@ function VatPicker({
         <button
           type="button"
           aria-label={translate('lineVAT', { value1: index + 1, value2: vatLabel(line) })}
-          className={cn(cellInput, 'flex items-center gap-1.5 text-left')}
+          className={cn(cellInput, 'flex w-full items-center justify-between gap-1.5 text-left')}
         >
           <span className="whitespace-nowrap">{vatLabel(line)}</span>
-          <ChevronsUpDown className="size-3 shrink-0 text-muted-foreground/50" />
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent onCloseAutoFocus={keepFocus} align="end" className="min-w-64">

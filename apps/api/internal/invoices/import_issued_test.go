@@ -82,9 +82,12 @@ func TestImportIssuedElsewherePaymentDates(t *testing.T) {
 	}{
 		{"paid without a date: its due date", map[string]any{"number": "D-1", "paid_amount": "1081.00"}, []string{"1081.00@2025-10-31"}},
 		{"no due date stated: its issue date", map[string]any{"number": "D-2", "due_date": nil, "paid_amount": "100.00"}, []string{"100.00@2025-10-01"}},
-		{"paid instalments, each on its date", map[string]any{"number": "D-3", "instalments": []any{
+		{"paid instalments, each on its date; one past due on its due date", map[string]any{"number": "D-3", "instalments": []any{
 			inst("400.00", "2025-10-05", true, "2025-10-03"), inst("400.00", "2025-11-05", true, nil), inst("281.00", "2025-12-05", false, nil)}},
-			[]string{"400.00@2025-10-03", "400.00@2025-11-05"}},
+			[]string{"281.00@2025-12-05", "400.00@2025-10-03", "400.00@2025-11-05"}},
+		{"an instalment not yet due stays open", map[string]any{"number": "D-6", "instalments": []any{
+			inst("400.00", "2025-10-05", false, nil), inst("681.00", "2099-01-31", false, nil)}},
+			[]string{"400.00@2025-10-05"}},
 		{"instalments making up paid_amount", map[string]any{"number": "D-4", "paid_amount": "800.00", "paid_on": "2025-11-05", "instalments": []any{
 			inst("400.00", "2025-10-05", true, nil), inst("400.00", "2025-11-05", true, nil)}}, []string{"400.00@2025-10-05", "400.00@2025-11-05"}},
 		{"paid_amount differing from the instalments", map[string]any{"number": "D-5", "paid_amount": "1081.00", "paid_on": "2025-11-20", "instalments": []any{
@@ -112,8 +115,8 @@ func TestImportIssuedElsewherePaymentDates(t *testing.T) {
 	}
 }
 
-// Instalments that make up the total with their due dates become the invoice's own schedule (paid ones also stay
-// payments); any others only become payments, as before.
+// Instalments that make up the total with their due dates become the invoice's own schedule; paid ones, and the ones
+// already past due (imported invoices are history), also become payments on their dates.
 func TestImportIssuedElsewhereSchedule(t *testing.T) {
 	e := newEnv(t)
 	b, clientID := e.ready()
@@ -129,13 +132,13 @@ func TestImportIssuedElsewhereSchedule(t *testing.T) {
 		wantPayments int
 	}{
 		{"adds up: a schedule", []any{inst("540.50", "2025-10-31", true), inst("540.50", "2025-11-30", false)},
-			[]string{"540.50@2025-10-31", "540.50@2025-11-30"}, "monthly", 1},
-		{"quarterly, none paid", []any{inst("400.00", "2025-10-31", false), inst("400.00", "2026-01-31", false), inst("281.00", "2026-04-30", false)},
-			[]string{"400.00@2025-10-31", "400.00@2026-01-31", "281.00@2026-04-30"}, "quarterly", 0},
-		{"short of the total", []any{inst("400.00", "2025-10-31", true), inst("400.00", "2025-11-30", false)}, nil, "", 1},
-		{"a row without a due date", []any{inst("540.50", "2025-10-31", false), inst("540.50", nil, false)}, nil, "", 0},
-		{"dates out of order", []any{inst("540.50", "2025-11-30", false), inst("540.50", "2025-10-31", false)}, nil, "", 0},
-		{"one row", []any{inst("1081.00", "2025-10-31", false)}, nil, "", 0},
+			[]string{"540.50@2025-10-31", "540.50@2025-11-30"}, "monthly", 2},
+		{"quarterly, all past due: paid on their dates", []any{inst("400.00", "2025-10-31", false), inst("400.00", "2026-01-31", false), inst("281.00", "2026-04-30", false)},
+			[]string{"400.00@2025-10-31", "400.00@2026-01-31", "281.00@2026-04-30"}, "quarterly", 3},
+		{"short of the total", []any{inst("400.00", "2025-10-31", true), inst("400.00", "2025-11-30", false)}, nil, "", 2},
+		{"a row without a due date", []any{inst("540.50", "2025-10-31", false), inst("540.50", nil, false)}, nil, "", 1},
+		{"dates out of order", []any{inst("540.50", "2025-11-30", false), inst("540.50", "2025-10-31", false)}, nil, "", 2},
+		{"one row", []any{inst("1081.00", "2025-10-31", false)}, nil, "", 1},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -186,7 +189,8 @@ func TestImportIssuedElsewhereScheduleWithoutFeature(t *testing.T) {
 		t.Fatal(err)
 	}
 	inv, err := e.st.Invoice(context.Background(), b.workspace, id, "2026-01-01", false)
-	if err != nil || inv.Instalments != nil || inv.AmountPaid != 54050 {
+	// Both instalments are past due, so both count as paid on their dates.
+	if err != nil || inv.Instalments != nil || inv.AmountPaid != 108100 {
 		t.Fatalf("schedule %+v paid %v %v", inv.Instalments, inv.AmountPaid, err)
 	}
 }

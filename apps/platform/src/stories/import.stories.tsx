@@ -731,8 +731,9 @@ export const EditInvoiceDrawer: Story = {
     const lines = within(editor).getByRole('region', { name: 'Lines' })
     await expect(within(lines).getByDisplayValue('Website care')).toBeVisible()
     await expect(await within(lines).findByText('Net')).toBeVisible()
-    const instalments = within(editor).getByRole('list', { name: 'Instalments' })
-    await expect(within(instalments).getAllByRole('listitem')).toHaveLength(2)
+    const instalments = within(editor).getByRole('table', { name: 'Instalments' })
+    // A header row, two instalments and the total.
+    await expect(within(instalments).getAllByRole('row')).toHaveLength(4)
     await expect(
       within(instalments).getByRole('switch', { name: 'Instalment 1 · Paid' }),
     ).toBeChecked()

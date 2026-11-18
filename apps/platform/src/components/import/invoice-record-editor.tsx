@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { Switch } from '@helvetly/ui/components/switch'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { formatMoney } from '@helvetly/ui/lib/format'
+import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Banknote,
@@ -19,6 +19,8 @@ import {
   TriangleAlert,
   UserRound,
   X,
+  ZoomIn,
+  ZoomOut,
   type LucideIcon,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -40,6 +42,7 @@ import {
   type RecordChanges,
 } from '@/lib/imports'
 import {
+  today as todayDate,
   UNITS,
   useInvoicePreview,
   useInvoiceSettings,
@@ -128,14 +131,22 @@ export function importLinesOf(lines: EditorLine[]): Record<string, string | null
     }))
 }
 
-const instalmentsOf = (data: ImportRecord['data']): Instalment[] =>
-  rowsOf(data.instalments).map((row) => ({
-    key: instalmentKey(),
-    due_date: text(row, 'due_date'),
-    amount: text(row, 'amount'),
-    paid: row.paid === true,
-    paid_on: text(row, 'paid_on'),
-  }))
+/**
+ * The document's instalments. An instalment already past due is history: paid on its due date, as the import counts
+ * it too (unless the document says otherwise with a date of its own).
+ */
+export const instalmentsOf = (data: ImportRecord['data'], today: string): Instalment[] =>
+  rowsOf(data.instalments).map((row) => {
+    const due = text(row, 'due_date')
+    const past = due !== '' && due < today
+    return {
+      key: instalmentKey(),
+      due_date: due,
+      amount: text(row, 'amount'),
+      paid: row.paid === true || past,
+      paid_on: text(row, 'paid_on') || (past ? due : ''),
+    }
+  })
 
 const importInstalmentsOf = (rows: Instalment[]) =>
   rows
@@ -185,23 +196,60 @@ function Block({
   )
 }
 
-/** The uploaded original beside the editor: a PDF in the viewer, a photo as it is. */
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
+
+/** The uploaded original beside the editor: a PDF in the viewer, zoomed and scrolled at will; a photo as it is. */
 function Original({ src, name }: { src: string; name: string }) {
   const pdf = /\.pdf$/i.test(name)
   const image = /\.(png|jpe?g|webp)$/i.test(name)
+  const [zoom, setZoom] = useState(1)
+  const at = ZOOMS.indexOf(zoom)
+  const zoomButton = (label: string, icon: ReactNode, next: number | undefined) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={label}
+          disabled={next === undefined}
+          onClick={() => next !== undefined && setZoom(next)}
+        >
+          {icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
   return (
     <aside
       aria-label={translate('importOriginal')}
-      className="hidden min-h-0 flex-col border-r bg-muted/30 lg:flex"
+      className="hidden min-h-0 flex-col border-r bg-muted/50 lg:flex dark:bg-background"
     >
-      <p className="flex items-center gap-1.5 border-b px-4 py-2 text-caption font-medium text-muted-foreground">
-        <FileText aria-hidden className="size-3.5" />
-        <span className="truncate">{name}</span>
-      </p>
-      <div className="relative min-h-0 flex-1 overflow-auto p-4">
-        {pdf ? (
-          <PdfView src={src} title={name} />
-        ) : image ? (
+      <div className="flex shrink-0 items-center gap-2 border-b bg-card py-1.5 pr-2 pl-4">
+        <FileText aria-hidden className="size-3.5 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-caption font-medium text-muted-foreground">
+          {name}
+        </span>
+        {pdf && (
+          <div className="flex items-center gap-0.5">
+            {zoomButton(translate('importZoomOut'), <ZoomOut />, ZOOMS[at - 1])}
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="w-12 rounded-sm text-center text-caption text-muted-foreground tabular-nums hover:text-foreground"
+              aria-label={translate('importZoomFit')}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            {zoomButton(translate('importZoomIn'), <ZoomIn />, ZOOMS[at + 1])}
+          </div>
+        )}
+      </div>
+      {pdf ? (
+        <PdfView src={src} title={name} zoom={zoom} className="min-h-0 flex-1" />
+      ) : image ? (
+        <div className="relative min-h-0 flex-1">
           <Image
             src={src}
             alt={name}
@@ -210,10 +258,10 @@ function Original({ src, name }: { src: string; name: string }) {
             sizes="50vw"
             className="object-contain p-4"
           />
-        ) : (
-          <p className="text-caption text-muted-foreground">{translate('importNoPreview')}</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <p className="p-4 text-caption text-muted-foreground">{translate('importNoPreview')}</p>
+      )}
     </aside>
   )
 }
@@ -264,7 +312,7 @@ function InvoiceRecordForm({
   )
   const [mode, setMode] = useState<VatMode>(vatMode)
   const [lines, setLines] = useState(() => editorLinesOf(record.data, vatMode, defaultRate))
-  const [instalments, setInstalments] = useState(() => instalmentsOf(record.data))
+  const [instalments, setInstalments] = useState(() => instalmentsOf(record.data, todayDate()))
   const set = (field: string, value: string) =>
     setValues((current) => ({ ...current, [field]: value }))
   const issues = Object.entries(record.issues)
@@ -306,6 +354,11 @@ function InvoiceRecordForm({
     : undefined
   const stated = normalizeAmount(values.total ?? '')
   const mismatch = totals && stated !== null && Number(stated) !== Number(totals.payable_total)
+  // A printed total below the lines with no invoice discount read: the discount the model missed, in percent.
+  const suggested =
+    mismatch && !values.discount_percent?.trim() && Number(stated) < Number(totals.payable_total)
+      ? String(Math.round((1 - Number(stated) / Number(totals.payable_total)) * 10000) / 100)
+      : null
 
   const save = () => {
     if (patch.isPending) return
@@ -319,7 +372,7 @@ function InvoiceRecordForm({
     const nextInstalments = importInstalmentsOf(instalments)
     if (
       JSON.stringify(nextInstalments) !==
-      JSON.stringify(importInstalmentsOf(instalmentsOf(record.data)))
+      JSON.stringify(importInstalmentsOf(instalmentsOf(record.data, todayDate())))
     )
       changes.instalments = nextInstalments
     if (mode !== vatMode && mode !== 'none')
@@ -381,16 +434,18 @@ function InvoiceRecordForm({
             save()
           }}
         >
-          <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
+          <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-3 md:px-8">
             <div className="grid min-w-0 gap-1.5">
-              {/* Inner spans: the sheet's own title and description classes would override these sizes. */}
-              <SheetTitle>
-                <span className="text-caption font-medium tracking-wide text-muted-foreground uppercase">
-                  {translate('editRecord')}
-                </span>
-              </SheetTitle>
-              <p className="truncate text-title font-semibold">{name}</p>
-              <SheetDescription className="sr-only">{name}</SheetDescription>
+              <div className="flex min-w-0 items-baseline gap-2">
+                {/* Inner spans: the sheet's own title and description classes would override these sizes. */}
+                <SheetTitle className="shrink-0">
+                  <span className="text-caption font-medium text-muted-foreground">
+                    {translate('editRecord')}
+                  </span>
+                </SheetTitle>
+                <p className="truncate text-body font-semibold">{name}</p>
+                <SheetDescription className="sr-only">{name}</SheetDescription>
+              </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {config.noun && <HeaderBadge>{config.noun}</HeaderBadge>}
                 {fileName && (
@@ -437,7 +492,7 @@ function InvoiceRecordForm({
           >
             {fileSrc && fileName && <Original src={fileSrc} name={fileName} />}
             <div className="min-h-0 overflow-y-auto">
-              <div className="grid gap-3 px-5 pt-6 md:px-8">
+              <div className="grid gap-3 px-5 pt-6 pb-6 md:px-8">
                 {issues.length > 0 ? (
                   <Callout
                     tone="warning"
@@ -496,6 +551,15 @@ function InvoiceRecordForm({
                 title={translate('importNounInvoice')}
                 description={translate('importSectionInvoiceText')}
               >
+                <SwitchRow
+                  id={fieldId('issued_elsewhere')}
+                  label={labelOf('issued_elsewhere')}
+                  description={config.tips?.issued_elsewhere}
+                  checked={issued}
+                  onCheckedChange={(on) =>
+                    set('issued_elsewhere', on ? translate('yes') : translate('no4'))
+                  }
+                />
                 <div className="grid gap-4 sm:grid-cols-2">
                   {textField('number')}
                   {textField('reference')}
@@ -593,23 +657,29 @@ function InvoiceRecordForm({
                       onCurrency={(code) => set('currency', code)}
                     />,
                   )}
-                  {mismatch && (
-                    <Callout tone="warning" className="self-end">
-                      {translate('importTotalDiffers', {
-                        lines: formatMoney(totals.payable_total, currency),
-                      })}
-                    </Callout>
-                  )}
                 </div>
-                <SwitchRow
-                  id={fieldId('issued_elsewhere')}
-                  label={labelOf('issued_elsewhere')}
-                  description={config.tips?.issued_elsewhere}
-                  checked={issued}
-                  onCheckedChange={(on) =>
-                    set('issued_elsewhere', on ? translate('yes') : translate('no4'))
-                  }
-                />
+                {mismatch && (
+                  <Callout
+                    tone="warning"
+                    actions={
+                      suggested && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => set('discount_percent', suggested)}
+                        >
+                          {translate('importApplyDiscount', { percent: suggested })}
+                        </Button>
+                      )
+                    }
+                  >
+                    {translate('importTotalDiffers', {
+                      lines: formatMoney(totals.payable_total, currency),
+                    })}
+                    {suggested && ` ${translate('importDiscountExplains', { percent: suggested })}`}
+                  </Callout>
+                )}
                 <div className="grid gap-4 sm:grid-cols-2">
                   {field(
                     'paid_amount',
@@ -664,7 +734,7 @@ function Total({ label, value, strong }: { label: string; value: string; strong?
   )
 }
 
-/** The payment schedule printed on the invoice: one row per instalment, ticked when it was paid. */
+/** The payment schedule printed on the invoice, as a table: due date, amount, and whether and when it was paid. */
 function InstalmentRows({
   rows,
   currency,
@@ -678,67 +748,132 @@ function InstalmentRows({
 }) {
   const update = (index: number, change: Partial<Instalment>) =>
     onChange(rows.map((row, i) => (i === index ? { ...row, ...change } : row)))
+  const sum = rows.reduce((total, row) => total + Number(normalizeAmount(row.amount) ?? 0), 0)
+  const allPaid = rows.length > 0 && rows.every((row) => row.paid)
+  const lastPaid = rows
+    .map((row) => row.paid_on)
+    .toSorted()
+    .at(-1)
+  const removeButton = (row: Instalment, label: string) => (
+    <Button
+      type="button"
+      variant="destructive-ghost"
+      size="icon-xs"
+      aria-label={`${translate('remove7')}: ${label}`}
+      onClick={() => onChange(rows.filter((entry) => entry.key !== row.key))}
+    >
+      <X />
+    </Button>
+  )
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-3">
       {rows.length > 0 && (
-        <ul aria-label={translate('importInstalments')} className="grid divide-y rounded-lg border">
-          {rows.map((row, index) => {
-            const label = translate('importInstalmentN', { n: index + 1 })
-            return (
-              <li
-                key={row.key}
-                className="grid items-center gap-2 p-2 sm:grid-cols-[2rem_1fr_1fr_auto_1fr_auto]"
-              >
-                <span className="text-caption text-muted-foreground tabular-nums">
-                  {index + 1}.
-                </span>
-                <ImportDateField
-                  id={`instalment-${index}-due`}
-                  label={`${label} · ${translate('importDueDate')}`}
-                  value={row.due_date}
-                  onChange={(due_date) => update(index, { due_date })}
-                />
-                <input
-                  aria-label={`${label} · ${translate('amount')} (${currency})`}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={row.amount}
-                  onChange={(event) =>
-                    update(index, { amount: event.target.value.replace(/[^\d.,'’-]/g, '') })
-                  }
-                  className={cn(inputClass, 'text-right tabular-nums')}
-                />
-                <label className="flex items-center gap-2 text-caption">
-                  <Switch
-                    aria-label={`${label} · ${translate('importPaid')}`}
-                    checked={row.paid}
-                    onCheckedChange={(paid) => update(index, { paid })}
-                  />
+        <div className="overflow-x-auto rounded-lg border">
+          <table
+            aria-label={translate('importInstalments')}
+            className="w-full text-left text-body-sm"
+          >
+            <thead className="border-b bg-muted/40 text-caption text-muted-foreground">
+              <tr>
+                <th scope="col" className="w-10 px-3 py-2 font-medium">
+                  #
+                </th>
+                <th scope="col" className="px-2 py-2 font-medium">
+                  {translate('importDueDate')}
+                </th>
+                <th scope="col" className="px-2 py-2 text-right font-medium">
+                  {translate('amount')}
+                </th>
+                <th scope="col" className="px-2 py-2 font-medium">
                   {translate('importPaid')}
-                </label>
-                {row.paid ? (
-                  <ImportDateField
-                    id={`instalment-${index}-paid`}
-                    label={`${label} · ${translate('paidOn')}`}
-                    value={row.paid_on}
-                    onChange={(paid_on) => update(index, { paid_on })}
-                  />
-                ) : (
-                  <span />
-                )}
-                <Button
-                  type="button"
-                  variant="destructive-ghost"
-                  size="icon-xs"
-                  aria-label={`${translate('remove7')}: ${label}`}
-                  onClick={() => onChange(rows.filter((_, i) => i !== index))}
-                >
-                  <X />
-                </Button>
-              </li>
-            )
-          })}
-        </ul>
+                </th>
+                <th scope="col" className="w-10 px-2 py-2">
+                  <span className="sr-only">{translate('remove7')}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((row, index) => {
+                const label = translate('importInstalmentN', { n: index + 1 })
+                return (
+                  <tr key={row.key} className="align-middle">
+                    <td className="px-3 py-2 text-muted-foreground tabular-nums">{index + 1}</td>
+                    <td className="min-w-40 px-2 py-1.5">
+                      <ImportDateField
+                        id={`${row.key}-due`}
+                        label={`${label} · ${translate('importDueDate')}`}
+                        value={row.due_date}
+                        onChange={(due_date) => update(index, { due_date })}
+                      />
+                    </td>
+                    <td className="min-w-32 px-2 py-1.5">
+                      {/* The invoice's currency, fixed here: it is changed beside the total. */}
+                      <div className="relative">
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-y-px left-px grid w-14 place-items-center rounded-l-md border-r bg-muted/50 text-caption font-medium text-muted-foreground"
+                        >
+                          {currency || '—'}
+                        </span>
+                        <input
+                          aria-label={`${label} · ${translate('amount')} (${currency})`}
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          value={row.amount}
+                          onChange={(event) =>
+                            update(index, { amount: event.target.value.replace(/[^\d.,'’-]/g, '') })
+                          }
+                          className={cn(inputClass, 'pl-17 text-right tabular-nums')}
+                        />
+                      </div>
+                    </td>
+                    <td className="min-w-56 px-2 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          aria-label={`${label} · ${translate('importPaid')}`}
+                          checked={row.paid}
+                          onCheckedChange={(paid) =>
+                            update(index, {
+                              paid,
+                              paid_on: paid ? row.paid_on || row.due_date : '',
+                            })
+                          }
+                        />
+                        {row.paid ? (
+                          <div className="min-w-0 flex-1">
+                            <ImportDateField
+                              id={`${row.key}-paid`}
+                              label={`${label} · ${translate('paidOn')}`}
+                              value={row.paid_on}
+                              onChange={(paid_on) => update(index, { paid_on })}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-caption text-muted-foreground">
+                            {translate('importOpen')}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5">{removeButton(row, label)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot className="border-t bg-muted/20 text-caption text-muted-foreground">
+              <tr>
+                <td colSpan={2} className="px-3 py-2">
+                  {allPaid && lastPaid
+                    ? translate('importPaidInFull', { date: formatDate(lastPaid) })
+                    : translate('importInstalmentCount', { count: rows.length })}
+                </td>
+                <td className="px-2 py-2 text-right font-medium text-foreground tabular-nums">
+                  {formatMoney(String(sum.toFixed(2)), currency)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       )}
       {error && (
         <p role="alert" className="text-caption text-destructive">
