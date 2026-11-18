@@ -3397,7 +3397,7 @@
   "whatShouldBeSigned": "Cosa va firmato?",
   "whatShouldHappenWithIt": "Cosa dovrebbe succedere con esso?",
   "whatSOn": "A cosa ",
-  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Ciò che il cliente ha già pagato su una fattura emessa altrove. Lascialo vuoto quando non è stato pagato nulla.",
+  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Quanto il cliente ha già pagato su una fattura emessa altrove. Una fattura passata senza indicazione conta come pagata per intero alla scadenza; inserisci 0 se non è stata pagata.",
   "whatTheClientGetsEGDesignTwoRevision": "Cosa ottiene il cliente, ad es. progettazione, due cicli di revisione, consegna",
   "whatTheReceiptAddsUpToLineByLine": "Il totale della ricevuta, riga per riga.",
   "whatTheTokenMayReadAndChangeItNever": "Cosa può leggere e modificare il token. Non va mai oltre il tuo ruolo nello spazio di lavoro.",
@@ -4360,10 +4360,11 @@
   "importInstalmentCount": "{count, plural, one {# rata} other {# rate}}",
   "importZoomOut": "Riduci",
   "importZoomIn": "Ingrandisci",
-  "importNotInClients": "Non tra i tuoi clienti",
   "importOnlyNameFound": "Dal documento è stato letto solo il nome.",
   "importPickAnother": "Scegli un cliente esistente",
   "importCellEngagement": "Incarico",
   "importCellPrice": "Prezzo",
-  "importCellSchedule": "Cadenza"
+  "importCellSchedule": "Cadenza",
+  "importPaidByInstalments": "{paid} pagati con {count} rate su {total}, ognuna alla sua data.",
+  "importFoundNotYours": "Trovato nel documento, non ancora tra i tuoi clienti. Crealo con questi dati o scegli un cliente esistente."
 }

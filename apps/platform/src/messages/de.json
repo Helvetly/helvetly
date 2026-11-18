@@ -3397,7 +3397,7 @@
   "whatShouldBeSigned": "Was soll unterschrieben werden?",
   "whatShouldHappenWithIt": "Was soll damit passieren?",
   "whatSOn": "Was geht Ihnen ",
-  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Was der Kunde bereits auf einer anderswo ausgestellten Rechnung bezahlt hat. Lassen Sie es leer, wenn nichts bezahlt wurde.",
+  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Was der Kunde auf eine anderswo ausgestellte Rechnung bereits bezahlt hat. Eine vergangene Rechnung ohne Angabe gilt als am Fälligkeitstag vollständig bezahlt; geben Sie 0 ein, wenn sie nicht bezahlt wurde.",
   "whatTheClientGetsEGDesignTwoRevision": "Was der Kunde bekommt, z.B. Entwurf, zwei Überarbeitungsrunden, Übergabe",
   "whatTheReceiptAddsUpToLineByLine": "Was die Quittung ausmacht, Zeile für Zeile.",
   "whatTheTokenMayReadAndChangeItNever": "Was das Token lesen und ändern darf. Es geht nie über Ihre eigene Rolle im Arbeitsbereich hinaus.",
@@ -4360,10 +4360,11 @@
   "importInstalmentCount": "{count, plural, one {# Rate} other {# Raten}}",
   "importZoomOut": "Verkleinern",
   "importZoomIn": "Vergrössern",
-  "importNotInClients": "Nicht in Ihren Kunden",
   "importOnlyNameFound": "Aus dem Dokument wurde nur der Name gelesen.",
   "importPickAnother": "Bestehenden Kunden wählen",
   "importCellEngagement": "Auftrag",
   "importCellPrice": "Preis",
-  "importCellSchedule": "Turnus"
+  "importCellSchedule": "Turnus",
+  "importPaidByInstalments": "{paid} bezahlt mit {count} von {total} Raten, jede an ihrem Datum.",
+  "importFoundNotYours": "Im Dokument gefunden, noch nicht in Ihren Kunden. Legen Sie ihn mit diesen Angaben an oder wählen Sie einen bestehenden Kunden."
 }

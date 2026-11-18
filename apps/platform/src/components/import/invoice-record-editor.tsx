@@ -228,9 +228,14 @@ function Original({ src, name }: { src: string; name: string }) {
     >
       <div className="flex shrink-0 items-center gap-2 border-b bg-card py-1.5 pr-2 pl-4">
         <FileText aria-hidden className="size-3.5 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-caption font-medium text-muted-foreground">
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          className="min-w-0 flex-1 truncate text-caption font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
           {name}
-        </span>
+        </a>
         {pdf && (
           <div className="flex items-center gap-0.5">
             {zoomButton(translate('importZoomOut'), <ZoomOut />, ZOOMS[at - 1])}
@@ -307,9 +312,20 @@ function InvoiceRecordForm({
         : (settings.default_vat_mode ?? 'exclusive')
   const defaultRate = settings.default_vat_rate
   const patch = usePatchImportRecord(batchId)
-  const [values, setValues] = useState(() =>
-    Object.fromEntries(SCALARS.map((field) => [field, displayValue(record.data[field])])),
-  )
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const read: Record<string, string> = Object.fromEntries(
+      SCALARS.map((field) => [field, displayValue(record.data[field])]),
+    )
+    const due = read.due_date || read.issue_date
+    // History, as the import counts it: past due and nothing said about payment means paid in full on the due date.
+    return read.issued_elsewhere === translate('yes') &&
+      !read.paid_amount &&
+      !rowsOf(record.data.instalments).length &&
+      due &&
+      due < todayDate()
+      ? { ...read, paid_amount: read.total ?? '', paid_on: due }
+      : read
+  })
   const [mode, setMode] = useState<VatMode>(vatMode)
   const [lines, setLines] = useState(() => editorLinesOf(record.data, vatMode, defaultRate))
   const [instalments, setInstalments] = useState(() => instalmentsOf(record.data, todayDate()))
@@ -680,20 +696,37 @@ function InvoiceRecordForm({
                     {suggested && ` ${translate('importDiscountExplains', { percent: suggested })}`}
                   </Callout>
                 )}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {field(
-                    'paid_amount',
-                    <ImportAmountField
-                      id={fieldId('paid_amount')}
-                      value={values.paid_amount ?? ''}
-                      currency={currency}
-                      error={record.issues.paid_amount}
-                      onChange={(amount) => set('paid_amount', amount)}
-                      onCurrency={(code) => set('currency', code)}
-                    />,
-                  )}
-                  {dateField('paid_on')}
-                </div>
+                {instalments.length > 0 ? (
+                  <p className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-body-sm">
+                    <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                    {translate('importPaidByInstalments', {
+                      paid: formatMoney(
+                        instalments
+                          .filter((row) => row.paid)
+                          .reduce((sum, row) => sum + Number(normalizeAmount(row.amount) ?? 0), 0)
+                          .toFixed(2),
+                        currency,
+                      ),
+                      count: instalments.filter((row) => row.paid).length,
+                      total: instalments.length,
+                    })}
+                  </p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {field(
+                      'paid_amount',
+                      <ImportAmountField
+                        id={fieldId('paid_amount')}
+                        value={values.paid_amount ?? ''}
+                        currency={currency}
+                        error={record.issues.paid_amount}
+                        onChange={(amount) => set('paid_amount', amount)}
+                        onCurrency={(code) => set('currency', code)}
+                      />,
+                    )}
+                    {dateField('paid_on')}
+                  </div>
+                )}
               </Block>
 
               <Block
@@ -785,6 +818,9 @@ function InstalmentRows({
                   {translate('amount')}
                 </th>
                 <th scope="col" className="px-2 py-2 font-medium">
+                  {translate('paidOn')}
+                </th>
+                <th scope="col" className="w-14 px-2 py-2 font-medium">
                   {translate('importPaid')}
                 </th>
                 <th scope="col" className="w-10 px-2 py-2">
@@ -827,33 +863,28 @@ function InstalmentRows({
                         />
                       </div>
                     </td>
-                    <td className="min-w-56 px-2 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          aria-label={`${label} · ${translate('importPaid')}`}
-                          checked={row.paid}
-                          onCheckedChange={(paid) =>
-                            update(index, {
-                              paid,
-                              paid_on: paid ? row.paid_on || row.due_date : '',
-                            })
-                          }
+                    <td className="min-w-40 px-2 py-1.5">
+                      {row.paid ? (
+                        <ImportDateField
+                          id={`${row.key}-paid`}
+                          label={`${label} · ${translate('paidOn')}`}
+                          value={row.paid_on}
+                          onChange={(paid_on) => update(index, { paid_on })}
                         />
-                        {row.paid ? (
-                          <div className="min-w-0 flex-1">
-                            <ImportDateField
-                              id={`${row.key}-paid`}
-                              label={`${label} · ${translate('paidOn')}`}
-                              value={row.paid_on}
-                              onChange={(paid_on) => update(index, { paid_on })}
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-caption text-muted-foreground">
-                            {translate('importOpen')}
-                          </span>
-                        )}
-                      </div>
+                      ) : (
+                        <span className="px-3 text-caption text-muted-foreground">
+                          {translate('importOpen')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <Switch
+                        aria-label={`${label} · ${translate('importPaid')}`}
+                        checked={row.paid}
+                        onCheckedChange={(paid) =>
+                          update(index, { paid, paid_on: paid ? row.paid_on || row.due_date : '' })
+                        }
+                      />
                     </td>
                     <td className="px-2 py-1.5">{removeButton(row, label)}</td>
                   </tr>

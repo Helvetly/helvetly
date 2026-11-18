@@ -12,6 +12,7 @@ import { Fragment } from 'react'
 import { translate } from '@/lib/i18n'
 import {
   displayValue,
+  importFileUrl,
   IMPORT_KINDS,
   isSettled,
   recordsByKind,
@@ -34,6 +35,7 @@ export const rowName = (config: ImportKindConfig, record: ImportRecord, index: n
  * otherwise each file's records are grouped by kind.
  */
 export function FileReview({
+  batchId,
   files,
   records,
   config,
@@ -43,6 +45,7 @@ export function FileReview({
   onSelect,
   onEdit,
 }: {
+  batchId: string
   files: ImportFile[]
   records: ImportRecord[]
   config?: ImportKindConfig | null
@@ -94,6 +97,7 @@ export function FileReview({
         config={config}
         records={records}
         files={files}
+        batchId={batchId}
         selected={selected}
         results={results}
         onSelect={onSelect}
@@ -155,6 +159,7 @@ export function ReviewTable({
   onSelect,
   onEdit,
   files,
+  batchId,
   bare = false,
 }: {
   config: ImportKindConfig
@@ -164,6 +169,8 @@ export function ReviewTable({
    * and a Document column names where each record came from.
    */
   files?: ImportFile[]
+  /** The import the files belong to: their names open the uploaded file in a new tab. */
+  batchId?: string
   selected: ReadonlySet<string>
   results: ReadonlyMap<string, CommitResult>
   onSelect: (selected: Set<string>) => void
@@ -286,7 +293,7 @@ export function ReviewTable({
             return (
               <tr
                 key={record.id}
-                className={cn('align-top', (created || skipped) && 'text-muted-foreground')}
+                className={cn('align-middle', (created || skipped) && 'text-muted-foreground')}
               >
                 <td className="px-3 py-2">
                   {created ? (
@@ -331,7 +338,18 @@ export function ReviewTable({
                         {at === 0 && source && (
                           <>
                             <FileIcon name={source.name} className="size-3" />
-                            <span className="max-w-40 truncate">{source.name}</span>
+                            {batchId ? (
+                              <a
+                                href={importFileUrl(batchId, source.id)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="max-w-40 truncate underline-offset-2 hover:text-foreground hover:underline"
+                              >
+                                {source.name}
+                              </a>
+                            ) : (
+                              <span className="max-w-40 truncate">{source.name}</span>
+                            )}
                             {sub.length > 0 && <span aria-hidden>·</span>}
                           </>
                         )}
@@ -403,8 +421,8 @@ export function ReviewTable({
                         onFix={() => onEdit(record.id)}
                       />
                     )}
-                    {record.status === 'failed' && record.error && (
-                      <span className="text-[11.5px] text-destructive">
+                    {record.status === 'failed' && record.error && issues.length === 0 && (
+                      <span className="rounded-md bg-destructive-surface px-2 py-0.5 text-caption text-destructive">
                         {record.error}
                         {(result?.error?.code === 'limit_reached' ||
                           result?.error?.code === 'feature_not_in_plan') && (

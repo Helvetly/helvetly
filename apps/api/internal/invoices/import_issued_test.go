@@ -81,6 +81,8 @@ func TestImportIssuedElsewherePaymentDates(t *testing.T) {
 		want  []string // amount@paid_on per payment, oldest first
 	}{
 		{"paid without a date: its due date", map[string]any{"number": "D-1", "paid_amount": "1081.00"}, []string{"1081.00@2025-10-31"}},
+		{"nothing said, past due: paid in full on its due date", map[string]any{"number": "D-7"}, []string{"1081.00@2025-10-31"}},
+		{"stated unpaid (0): stays open", map[string]any{"number": "D-8", "paid_amount": "0"}, []string{}},
 		{"no due date stated: its issue date", map[string]any{"number": "D-2", "due_date": nil, "paid_amount": "100.00"}, []string{"100.00@2025-10-01"}},
 		{"paid instalments, each on its date; one past due on its due date", map[string]any{"number": "D-3", "instalments": []any{
 			inst("400.00", "2025-10-05", true, "2025-10-03"), inst("400.00", "2025-11-05", true, nil), inst("281.00", "2025-12-05", false, nil)}},
@@ -293,14 +295,15 @@ func TestOverwriteImport(t *testing.T) {
 		return c
 	}
 
-	id, err := importOnce(e, sess, clientID, importData(t, nil), &docID)
+	// Stated unpaid (0): an invoice past due is otherwise imported as paid, and a paid one cannot be replaced.
+	id, err := importOnce(e, sess, clientID, importData(t, map[string]any{"paid_amount": "0"}), &docID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c := conflict(importData(t, map[string]any{"issued_elsewhere": false})); c != nil {
 		t.Fatalf("a draft import never conflicts: %+v", c)
 	}
-	newer := importData(t, map[string]any{"issue_date": "2025-10-02", "lines": []any{map[string]any{"description": "Workshop",
+	newer := importData(t, map[string]any{"issue_date": "2025-10-02", "paid_amount": "0", "lines": []any{map[string]any{"description": "Workshop",
 		"quantity": "1", "unit_price": "200.00", "vat_category": "S", "vat_rate": "8.1"}}})
 	if c := conflict(newer); c == nil || c.ID != id || !c.CanOverwrite || c.Why != nil || c.Reason != "number already used" {
 		t.Fatalf("untouched import: %+v", c)
@@ -324,7 +327,7 @@ func TestOverwriteImport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reminded, err := importOnce(e, sess, clientID, importData(t, map[string]any{"number": "ALT-DUN"}), &docID)
+	reminded, err := importOnce(e, sess, clientID, importData(t, map[string]any{"paid_amount": "0", "number": "ALT-DUN"}), &docID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,12 +335,12 @@ func TestOverwriteImport(t *testing.T) {
 		SentAt: time.Now(), SentOn: "2025-11-15", Open: 1, Total: 1, Email: "a@b.ch"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	credited, err := importOnce(e, sess, clientID, importData(t, map[string]any{"number": "ALT-CN"}), &docID)
+	credited, err := importOnce(e, sess, clientID, importData(t, map[string]any{"paid_amount": "0", "number": "ALT-CN"}), &docID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	e.invoice(b, "POST", "/api/v1/invoices/"+credited+"/credit-note", map[string]any{}, http.StatusCreated)
-	closed, err := importOnce(e, sess, clientID, importData(t, map[string]any{"number": "ALT-OLD", "issue_date": "2025-08-01",
+	closed, err := importOnce(e, sess, clientID, importData(t, map[string]any{"paid_amount": "0", "number": "ALT-OLD", "issue_date": "2025-08-01",
 		"due_date": "2025-08-31"}), &docID)
 	if err != nil {
 		t.Fatal(err)

@@ -138,28 +138,19 @@ export function ImportClientField({
       {!clientId && documentName && (
         <section
           aria-label={translate('importFoundOnDocument')}
-          className="overflow-hidden rounded-xl border bg-card"
+          className="grid gap-3 rounded-xl border border-brand/20 bg-brand-surface/40 p-4"
         >
-          <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2">
-            <p className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground">
-              <ScanSearch aria-hidden className="size-3.5" />
-              {translate('importFoundOnDocument')}
-            </p>
-            <span className="rounded-full bg-warning-surface px-2 py-0.5 text-caption font-medium text-warning ring-1 ring-warning-border ring-inset">
-              {translate('importNotInClients')}
-            </span>
-          </div>
-          <div className="flex items-start gap-3 px-4 py-3">
+          <div className="flex items-start gap-3">
             <span
               aria-hidden
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-surface text-body-sm font-semibold text-brand"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-card text-body font-semibold text-brand shadow-xs ring-1 ring-brand/20"
             >
               {initials(documentName)}
             </span>
-            <div className="grid min-w-0 flex-1 gap-1.5">
-              <p className="flex flex-wrap items-center gap-2">
+            <div className="grid min-w-0 flex-1 gap-1">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="truncate text-body font-semibold">{documentName}</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-caption text-muted-foreground ring-1 ring-border">
                   {found.is_company === false ? (
                     <UserRound aria-hidden className="size-3" />
                   ) : (
@@ -168,8 +159,12 @@ export function ImportClientField({
                   {found.is_company === false ? translate('person') : translate('company')}
                 </span>
               </p>
+              <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
+                <ScanSearch aria-hidden className="size-3.5 shrink-0" />
+                {translate('importFoundNotYours')}
+              </p>
               {details.length > 0 ? (
-                <dl className="grid gap-x-4 gap-y-1 text-caption sm:grid-cols-[auto_minmax(0,1fr)]">
+                <dl className="mt-1 grid gap-x-4 gap-y-0.5 text-caption sm:grid-cols-[auto_minmax(0,1fr)]">
                   {details.map(([label, value]) => (
                     <div key={label} className="contents">
                       <dt className="text-muted-foreground">{label}</dt>
@@ -184,14 +179,14 @@ export function ImportClientField({
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-muted/20 px-4 py-2.5">
-            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
-              <Search />
-              {translate('importPickAnother')}
-            </Button>
+          <div className="flex flex-wrap items-center gap-2 sm:pl-14">
             <Button type="button" size="sm" onClick={() => setCreating(true)}>
               <UserPlus />
               {translate('importCreateClient', { name: documentName })}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+              <Search />
+              {translate('importPickAnother')}
             </Button>
           </div>
         </section>
