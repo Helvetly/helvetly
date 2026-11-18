@@ -4,6 +4,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
+  CommandCreateItem,
   CommandItem,
   CommandList,
 } from '@helvetly/ui/components/command'
@@ -67,12 +68,10 @@ export function ClientSearch({
           ))}
         </CommandGroup>
         {onCreate && (
-          <CommandGroup>
-            <CommandItem value="__new" onSelect={onCreate} className="text-muted-foreground">
-              <Plus />
-              {translate('newClient2')}
-            </CommandItem>
-          </CommandGroup>
+          <CommandCreateItem value="__new" onSelect={onCreate}>
+            <Plus />
+            {translate('newClient2')}
+          </CommandCreateItem>
         )}
       </CommandList>
     </Command>

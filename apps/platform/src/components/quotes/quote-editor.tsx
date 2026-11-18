@@ -334,7 +334,7 @@ function Editor({
                     </div>
                   </header>
 
-                  <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-3">
+                  <div className="mt-10 grid gap-8 md:grid-cols-2 @4xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)_minmax(0,1fr)]">
                     <SellerBlock settings={settings} label={translate('from')} />
                     <ClientBlock
                       label={translate('quoteFor')}
