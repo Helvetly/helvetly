@@ -179,12 +179,11 @@ export const billingKeys = {
   details: ['billing', 'details'],
 } as const
 
+export const fetchBilling = async () =>
+  (await request<{ data: Billing }>(withZone('/billing'))).data
+
 export function useBilling(refetchInterval: number | false = false) {
-  return useQuery({
-    queryKey: billingKeys.overview,
-    queryFn: async () => (await request<{ data: Billing }>(withZone('/billing'))).data,
-    refetchInterval,
-  })
+  return useQuery({ queryKey: billingKeys.overview, queryFn: fetchBilling, refetchInterval })
 }
 
 /** The offer on sale, as the public pricing page reads it: the business comparison and allowances for one person. */

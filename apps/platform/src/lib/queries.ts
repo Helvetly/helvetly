@@ -22,21 +22,22 @@ export function useAuthConfig() {
   return useQuery({ queryKey: queryKeys.authConfig, queryFn: api.authConfig, staleTime: Infinity })
 }
 
+/** Every read of the session goes through here: it also keeps the CSRF token and the workspace's time zone. */
+async function fetchSession() {
+  const session = await api.session()
+  setCsrfToken(session.csrf_token)
+  setWorkspaceTimezone(session.workspace.timezone)
+  return session
+}
+
 export function useSession() {
-  return useQuery({
-    queryKey: queryKeys.session,
-    queryFn: async () => {
-      const session = await api.session()
-      setCsrfToken(session.csrf_token)
-      setWorkspaceTimezone(session.workspace.timezone)
-      return session
-    },
-  })
+  return useQuery({ queryKey: queryKeys.session, queryFn: fetchSession })
 }
 
 /** The session once something else has loaded it; never fetches it (pages before sign-in have none). */
 export function useLoadedSession() {
-  return useQuery({ queryKey: queryKeys.session, queryFn: api.session, enabled: false }).data
+  // The same queryFn as useSession: the two share one query, and its options are whichever observer rendered last.
+  return useQuery({ queryKey: queryKeys.session, queryFn: fetchSession, enabled: false }).data
 }
 
 export function usePasskeys() {
