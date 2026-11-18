@@ -3,6 +3,7 @@ package invoices
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"testing"
@@ -108,6 +109,85 @@ func TestImportIssuedElsewherePaymentDates(t *testing.T) {
 				t.Fatalf("payments %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// Instalments that make up the total with their due dates become the invoice's own schedule (paid ones also stay
+// payments); any others only become payments, as before.
+func TestImportIssuedElsewhereSchedule(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	inst := func(amount string, due any, paid bool) map[string]any {
+		return map[string]any{"amount": amount, "due_date": due, "paid": paid}
+	}
+	tests := []struct {
+		name         string
+		instalments  []any
+		want         []string // amount@due_date per instalment; nil: no schedule
+		wantInterval string
+		wantPayments int
+	}{
+		{"adds up: a schedule", []any{inst("540.50", "2025-10-31", true), inst("540.50", "2025-11-30", false)},
+			[]string{"540.50@2025-10-31", "540.50@2025-11-30"}, "monthly", 1},
+		{"quarterly, none paid", []any{inst("400.00", "2025-10-31", false), inst("400.00", "2026-01-31", false), inst("281.00", "2026-04-30", false)},
+			[]string{"400.00@2025-10-31", "400.00@2026-01-31", "281.00@2026-04-30"}, "quarterly", 0},
+		{"short of the total", []any{inst("400.00", "2025-10-31", true), inst("400.00", "2025-11-30", false)}, nil, "", 1},
+		{"a row without a due date", []any{inst("540.50", "2025-10-31", false), inst("540.50", nil, false)}, nil, "", 0},
+		{"dates out of order", []any{inst("540.50", "2025-11-30", false), inst("540.50", "2025-10-31", false)}, nil, "", 0},
+		{"one row", []any{inst("1081.00", "2025-10-31", false)}, nil, "", 0},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := importData(t, map[string]any{"number": fmt.Sprintf("S-%d", i), "instalments": tt.instalments})
+			id, err := importOnce(e, sess, clientID, data, &docID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			inv, err := e.st.Invoice(context.Background(), b.workspace, id, "2026-01-01", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			if inv.Instalments != nil {
+				for _, it := range inv.Instalments.Items {
+					got = append(got, it.Amount.String()+"@"+it.DueDate)
+				}
+				if inv.Instalments.Interval != tt.wantInterval || inv.DueDate != inv.Instalments.Items[len(got)-1].DueDate {
+					t.Fatalf("interval %q due %s", inv.Instalments.Interval, inv.DueDate)
+				}
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("schedule %v, want %v", got, tt.want)
+			}
+			if payments, err := e.st.Payments(context.Background(), id); err != nil || len(payments) != tt.wantPayments {
+				t.Fatalf("payments %d %v, want %d", len(payments), err, tt.wantPayments)
+			}
+		})
+	}
+}
+
+// On a plan without instalments the schedule is left out and the import goes through as before.
+func TestImportIssuedElsewhereScheduleWithoutFeature(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	e.st.SetFeatureGate(func(_ context.Context, _ store.Q, _, feature string) error {
+		if feature == store.FeatureInvoiceInstalments {
+			return store.ErrFeatureDenied
+		}
+		return nil
+	})
+	data := importData(t, map[string]any{"instalments": []any{
+		map[string]any{"amount": "540.50", "due_date": "2025-10-31", "paid": true},
+		map[string]any{"amount": "540.50", "due_date": "2025-11-30", "paid": false}}})
+	id, err := importOnce(e, sess, clientID, data, &docID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := e.st.Invoice(context.Background(), b.workspace, id, "2026-01-01", false)
+	if err != nil || inv.Instalments != nil || inv.AmountPaid != 54050 {
+		t.Fatalf("schedule %+v paid %v %v", inv.Instalments, inv.AmountPaid, err)
 	}
 }
 

@@ -55,6 +55,7 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
       id: 'imf_1',
       name: 'offer-alpenglow.pdf',
       size: 81_000,
+      content_type: 'application/pdf',
       status: 'done',
       error: null,
       chunks_done: 1,

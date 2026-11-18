@@ -19,6 +19,7 @@ const file = (id: string, name: string, over: Partial<ImportFile> = {}): ImportF
   id,
   name,
   size: 60_000,
+  content_type: 'application/pdf',
   status: 'done',
   error: null,
   chunks_done: 1,

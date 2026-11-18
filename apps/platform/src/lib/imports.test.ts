@@ -42,6 +42,7 @@ const batch = (over: Partial<ImportBatch> = {}): ImportBatch => ({
       id: 'imf_1',
       name: 'clients.csv',
       size: 120,
+      content_type: 'text/plain',
       status: 'done',
       error: null,
       chunks_done: 1,

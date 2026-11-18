@@ -648,6 +648,7 @@ const reviewBatch: ImportBatch = {
       id: 'imf_1',
       name: 'clients.csv',
       size: 4800,
+      content_type: 'text/plain',
       status: 'done',
       error: null,
       chunks_done: 1,

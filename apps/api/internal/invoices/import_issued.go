@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/instalcalc"
 	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/store"
 )
@@ -33,6 +34,8 @@ type issuedElsewhere struct {
 	on     bool
 	number string
 	paid   []store.Payment // what was already paid, before the import: one per paid instalment, else one
+	// schedule is the document's instalments as the invoice's own schedule; nil when they do not make one.
+	schedule *store.InstalmentSchedule
 }
 
 // importedInstalment is one row of a payment schedule the document shows.
@@ -84,6 +87,7 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 		return store.Payment{Method: "other", Amount: amount, PaidOn: on, Note: &note}
 	}
 	instalments := paidInstalments(p, data["instalments"], fallback, payment)
+	out.schedule = importedSchedule(data["instalments"], inv)
 	var stated invoicecalc.Money
 	if hasAmount {
 		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
@@ -152,6 +156,53 @@ func paidInstalments(p *parser, raw json.RawMessage, fallback string, payment fu
 	return out
 }
 
+// importedSchedule: the document's instalments as a schedule, when they are 2 to 12 rows with increasing due dates
+// and amounts that make up the payable total; nil otherwise, never an error (they then only become payments).
+func importedSchedule(raw json.RawMessage, inv store.Invoice) *store.InstalmentSchedule {
+	var rows []importedInstalment
+	if !Receivable(inv.Kind) || len(raw) == 0 || json.Unmarshal(raw, &rows) != nil ||
+		len(rows) < instalcalc.MinCount || len(rows) > instalcalc.MaxCount {
+		return nil
+	}
+	p := newParser() // only to read the amounts: what it rejects drops the schedule
+	sched := &store.InstalmentSchedule{Items: make([]store.InstalmentItem, len(rows))}
+	var total invoicecalc.Money
+	for i, row := range rows {
+		n, ok := p.decimal("amount", row.Amount, parseMoney, "")
+		if !ok || n <= 0 || row.DueDate == nil {
+			return nil
+		}
+		if _, msg := date(*row.DueDate); msg != "" || (i > 0 && *row.DueDate <= sched.Items[i-1].DueDate) {
+			return nil
+		}
+		sched.Items[i] = store.InstalmentItem{Seq: i + 1, DueDate: *row.DueDate, Amount: invoicecalc.Money(n)}
+		total += invoicecalc.Money(n)
+	}
+	if total != inv.Payable() {
+		return nil
+	}
+	sched.Interval = intervalBetween(sched.Items[0].DueDate, sched.Items[1].DueDate)
+	return sched
+}
+
+// intervalBetween: the named interval closest to the gap between two due dates (the schedule's items keep the
+// document's own dates; the interval only describes them).
+func intervalBetween(a, b string) string {
+	from, _ := time.Parse(time.DateOnly, a)
+	to, _ := time.Parse(time.DateOnly, b)
+	switch days := to.Sub(from).Hours() / 24; {
+	case days <= 10:
+		return "weekly"
+	case days <= 21:
+		return "biweekly"
+	case days <= 60:
+		return "monthly"
+	case days <= 200:
+		return "quarterly"
+	}
+	return "yearly"
+}
+
 func sumPayments(ps []store.Payment) invoicecalc.Money {
 	var total invoicecalc.Money
 	for _, p := range ps {
@@ -187,6 +238,14 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	buyer := buyerOf(client)
 	inv.Number, inv.Seller, inv.Buyer, inv.SourceDocumentID = &in.number, &set.Seller.Party, &buyer, documentID
 	inv.Payment = store.InvoicePaymentInfo{IBAN: set.IBAN, ReferenceType: "NON"}
+	if in.schedule != nil { // kept only on a plan with instalments: without, the import stays as it was
+		if ok, err := q.FeatureAllowed(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
+			return err
+		} else if ok {
+			inv.Instalments = in.schedule
+			syncSchedule(&inv)
+		}
+	}
 	if err := saveDraft(ctx, q, sess, inv, now); err != nil {
 		return err
 	}

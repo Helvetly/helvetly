@@ -31,6 +31,7 @@ const file = (over: Partial<ImportFile> = {}): ImportFile => ({
   id: 'imf_1',
   name: 'clients.xlsx',
   size: 48_000,
+  content_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   status: 'done',
   error: null,
   chunks_done: 1,

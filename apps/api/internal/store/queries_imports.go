@@ -42,7 +42,7 @@ type ImportFile struct {
 	Position    int     `json:"-"`
 	Name        string  `json:"name"`
 	Size        int64   `json:"size"`
-	ContentType string  `json:"-"`
+	ContentType string  `json:"content_type"`
 	ObjectKey   *string `json:"-"`
 	EntryIndex  *int    `json:"-"`
 	DocumentID  *string `json:"-"`
@@ -99,15 +99,16 @@ func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (Imp
 		return b, err
 	}
 	b.WorkspaceID, b.UserID, b.Status = workspaceID, userID, "review"
-	rows, err := q.db.Query(ctx, `SELECT id, name, size, reused, status, error, chunks_done, chunks_total, document_type
-		FROM import_files WHERE batch_id=$1 ORDER BY position`, id)
+	rows, err := q.db.Query(ctx, `SELECT id, name, size, content_type, object_key, entry_index, reused, status, error, chunks_done,
+		chunks_total, document_type FROM import_files WHERE batch_id=$1 ORDER BY position`, id)
 	if err != nil {
 		return b, err
 	}
 	b.Files = []ImportFile{}
 	for rows.Next() {
 		var f ImportFile
-		if err := rows.Scan(&f.ID, &f.Name, &f.Size, &f.Reused, &f.Status, &f.Error, &f.ChunksDone, &f.ChunksTotal, &f.DocumentType); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.Size, &f.ContentType, &f.ObjectKey, &f.EntryIndex, &f.Reused, &f.Status, &f.Error,
+			&f.ChunksDone, &f.ChunksTotal, &f.DocumentType); err != nil {
 			rows.Close()
 			return b, err
 		}
