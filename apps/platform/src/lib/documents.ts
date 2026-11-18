@@ -483,7 +483,7 @@ export function uploadDocument(
   options: { folderId: string | null; onConflict?: OnConflict; clientId?: string },
   onProgress: (share: number) => void,
   signal?: AbortSignal,
-): Promise<DocFile> {
+): Promise<DocFile & { reused: boolean }> {
   // A proxy would refuse a bigger request with its own page, so the API's message is given here.
   if (file.size > DOCUMENT_MAX_BYTES)
     return Promise.reject(
@@ -506,7 +506,9 @@ export function uploadDocument(
     })
     xhr.addEventListener('load', () => {
       const body: unknown = xhr.response
-      if (xhr.status === 201 && isFileBody(body)) resolve(body.data)
+      // 200 + reused: the bytes were already in Documents, so the existing file answers.
+      if ((xhr.status === 201 || xhr.status === 200) && isFileBody(body))
+        resolve({ ...body.data, reused: xhr.status === 200 && hasReused(body) })
       else reject(errorFromBody(xhr.status, body))
     })
     xhr.addEventListener('error', () =>
@@ -519,6 +521,8 @@ export function uploadDocument(
     xhr.send(form)
   })
 }
+
+const hasReused = (body: object) => 'reused' in body && body.reused === true
 
 function isFileBody(body: unknown): body is { data: DocFile } {
   return (

@@ -214,7 +214,7 @@ test('booked expenses separate input tax and settlement and retain export eviden
   expect(await retained.text()).toContain('108.10')
 })
 
-test('uploaded bytes are deduplicated after rename and simultaneous retries', async ({
+test('uploaded bytes already in Documents reuse the one file after rename and simultaneous retries', async ({
   page,
   api,
 }) => {
@@ -231,16 +231,29 @@ test('uploaded bytes are deduplicated after rename and simultaneous retries', as
       headers: { 'X-CSRF-Token': api.csrf },
       multipart: { file: { name: `renamed-${name}`, mimeType: 'text/plain', buffer: bytes } },
     })
-  const duplicates = await Promise.all([attempt(), attempt()])
-  await Promise.all(
-    duplicates.map(async (response) => {
-      expect(response.status()).toBe(409)
-      expect(object(object(await response.json()).error).code).toBe('duplicate_file')
+  const reused = await Promise.all([attempt(), attempt()])
+  const ids = await Promise.all(
+    reused.map(async (response) => {
+      expect(response.status()).toBe(200)
+      const body = object(await response.json())
+      expect(body.reused).toBe(true)
+      expect(object(body.data).name).toBe(name)
+      return text(object(body.data).id)
     }),
   )
+  expect(new Set(ids).size).toBe(1)
   await page.reload()
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
   await expect(page.getByText(`renamed-${name}`, { exact: true })).toHaveCount(0)
+  // The browser path: the same bytes under another name give the calm note and no second file.
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({ name: `again-${name}`, mimeType: 'text/plain', buffer: bytes })
+  const tray = page.getByRole('region', { name: 'Uploads' })
+  await expect(tray).toContainText('Already in Documents')
+  await expect(tray.getByRole('link', { name: 'Show' })).toBeVisible()
+  await expect(page.getByText(`again-${name}`, { exact: true })).toHaveCount(0)
   const upload = (fileName: string, buffer: Buffer) =>
     api.request.post('/api/v1/documents', {
       headers: { 'X-CSRF-Token': api.csrf },
@@ -270,8 +283,24 @@ test('uploaded bytes are deduplicated after rename and simultaneous retries', as
       'files[]': { name: 'renamed-receipt.pdf', mimeType: 'application/pdf', buffer: pdf },
     },
   })
-  expect(receipt.status()).toBe(409)
-  expect(object(object(await receipt.json()).error).code).toBe('duplicate_file')
+  // Bytes already in Documents: the receipt is stored and the existing Document linked, no copy.
+  expect(receipt.status()).toBe(201)
+  const other = await api.save('/expenses', {
+    supplier_name: 'Second receipt holder',
+    document_date: today(),
+    category_id: text(object(categories[0]).id),
+    lines: [{ amount: '10', vat_rate: '0' }],
+    input_tax: 'none',
+  })
+  const again = await api.request.post(`/api/v1/expenses/${text(other.id)}/receipts`, {
+    headers: { 'X-CSRF-Token': api.csrf },
+    multipart: {
+      'files[]': { name: 'another-copy.pdf', mimeType: 'application/pdf', buffer: pdf },
+    },
+  })
+  // The same bytes as another expense's receipt stay refused.
+  expect(again.status()).toBe(409)
+  expect(object(object(await again.json()).error).code).toBe('duplicate_file')
   const client = await api.client()
   const linked = await api.request.post(`/api/v1/clients/${text(client.id)}/files`, {
     headers: { 'X-CSRF-Token': api.csrf },

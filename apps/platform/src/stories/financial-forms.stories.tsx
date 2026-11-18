@@ -261,3 +261,35 @@ export const ExpenseServerValidation: Story = {
     await expect(body.getByRole('textbox', { name: /Supplier VAT/ })).toHaveFocus()
   },
 }
+
+export const ExpenseCreateCategory: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        ...baseHandlers,
+        http.post('/api/v1/expense-categories', () =>
+          HttpResponse.json(
+            {
+              data: {
+                id: 'exc_new',
+                name: 'Software',
+                account_code: '6700',
+                is_archived: false,
+                expenses_count: 0,
+              },
+            },
+            { status: 201 },
+          ),
+        ),
+      ],
+    },
+  },
+  render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
+  play: async () => {
+    const body = within(document.body)
+    await userEvent.click(await body.findByRole('button', { name: 'New category' }))
+    await userEvent.type(await body.findByRole('textbox', { name: 'Category name' }), 'Software')
+    await userEvent.click(body.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(body.queryByRole('textbox', { name: 'Category name' })).toBeNull())
+  },
+}

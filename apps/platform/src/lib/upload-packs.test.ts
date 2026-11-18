@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { checkSameBatch, MAX_REQUEST_BYTES, packFiles } from './upload-packs'
+import { dropSameBytes, MAX_REQUEST_BYTES, packFiles } from './upload-packs'
 
 const MB = 1024 * 1024
 const sized = (name: string, size: number) =>
@@ -32,25 +32,16 @@ describe('packFiles', () => {
   })
 })
 
-describe('checkSameBatch', () => {
-  it('refuses identical bytes in different packs with the server message', async () => {
+describe('dropSameBytes', () => {
+  it('keeps the first of identical bytes, renamed or not, and drops the rest', async () => {
     const first = new File(['same'], 'first.pdf')
     const renamed = new File(['same'], 'renamed.pdf')
-    await expect(checkSameBatch([[first], [sized('x', 4)], [renamed]])).rejects.toMatchObject({
-      status: 409,
-      code: 'duplicate_file',
-      message: 'renamed.pdf contains the same file as first.pdf.',
-    })
+    const other = new File(['abcd'], 'other.pdf')
+    expect(await dropSameBytes([first, other, renamed, first])).toEqual([first, other])
   })
 
-  it('accepts equal sizes with different bytes', async () => {
-    await expect(
-      checkSameBatch([[new File(['abcd'], 'a.pdf')], [new File(['abce'], 'b.pdf')]]),
-    ).resolves.toBeUndefined()
-  })
-
-  it('leaves a single request to the server', async () => {
-    const same = new File(['same'], 'a.pdf')
-    await expect(checkSameBatch([[same, same]])).resolves.toBeUndefined()
+  it('keeps equal sizes with different bytes', async () => {
+    const files = [new File(['abcd'], 'a.pdf'), new File(['abce'], 'b.pdf')]
+    expect(await dropSameBytes(files)).toEqual(files)
   })
 })

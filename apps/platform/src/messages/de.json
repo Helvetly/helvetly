@@ -4366,5 +4366,14 @@
   "importCellPrice": "Preis",
   "importCellSchedule": "Turnus",
   "importPaidByInstalments": "{paid} bezahlt mit {count} von {total} Raten, jede an ihrem Datum.",
-  "importFoundNotYours": "Im Dokument gefunden, noch nicht in Ihren Kunden. Legen Sie ihn mit diesen Angaben an oder wählen Sie einen bestehenden Kunden."
+  "importFoundNotYours": "Im Dokument gefunden, noch nicht in Ihren Kunden. Legen Sie ihn mit diesen Angaben an oder wählen Sie einen bestehenden Kunden.",
+  "newCategory": "Neue Kategorie",
+  "accountCode": "Kontonummer",
+  "categoryName": "Name der Kategorie",
+  "otherOperatingCosts": "Übriger Betriebsaufwand",
+  "accountCodeTip": "Das Konto des Schweizer KMU-Kontenrahmens, auf das die Kategorie bucht. 6700 ist übriger Betriebsaufwand.",
+  "suggestedNewCategory": "Vorgeschlagene neue Kategorie: {name}",
+  "noCategoriesYet": "Noch keine Kategorien",
+  "alreadyInDocuments": "Bereits in Dokumente",
+  "showFile": "Anzeigen"
 }

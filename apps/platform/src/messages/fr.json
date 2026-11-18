@@ -4366,5 +4366,14 @@
   "importCellPrice": "Prix",
   "importCellSchedule": "Rythme",
   "importPaidByInstalments": "{paid} payés par {count} échéances sur {total}, chacune à sa date.",
-  "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant."
+  "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant.",
+  "newCategory": "Nouvelle catégorie",
+  "accountCode": "Numéro de compte",
+  "categoryName": "Nom de la catégorie",
+  "otherOperatingCosts": "Autres charges d'exploitation",
+  "accountCodeTip": "Le compte du plan comptable suisse des PME (KMU-Kontenrahmen) sur lequel la catégorie enregistre. 6700 correspond aux autres charges d'exploitation.",
+  "suggestedNewCategory": "Nouvelle catégorie suggérée : {name}",
+  "noCategoriesYet": "Aucune catégorie pour l'instant",
+  "alreadyInDocuments": "Déjà dans Documents",
+  "showFile": "Afficher"
 }

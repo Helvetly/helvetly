@@ -6,7 +6,7 @@ export type Upload = {
   file: File
   folderId: string | null
   folderName: string
-  status: 'queued' | 'uploading' | 'done' | 'failed' | 'conflict' | 'cancelled'
+  status: 'queued' | 'uploading' | 'done' | 'reused' | 'failed' | 'conflict' | 'cancelled'
   progress: number // 0–1
   onConflict: OnConflict
   error: string | null
@@ -18,7 +18,7 @@ export type QueueAction =
   | { type: 'add'; uploads: Upload[] }
   | { type: 'start'; id: string }
   | { type: 'progress'; id: string; progress: number }
-  | { type: 'done'; id: string; result: DocFile }
+  | { type: 'done'; id: string; result: DocFile; reused?: boolean }
   | { type: 'failed'; id: string; error: string }
   | { type: 'conflict'; id: string; suggestion: string }
   | { type: 'cancel'; id: string }
@@ -29,7 +29,7 @@ export type QueueAction =
 export const MAX_PARALLEL = 3
 
 const settled = (status: Upload['status']) =>
-  status === 'done' || status === 'failed' || status === 'cancelled'
+  status === 'done' || status === 'reused' || status === 'failed' || status === 'cancelled'
 
 export function queueReducer(state: Upload[], action: QueueAction): Upload[] {
   const patch = (id: string, change: Partial<Upload>) =>
@@ -42,7 +42,11 @@ export function queueReducer(state: Upload[], action: QueueAction): Upload[] {
     case 'progress':
       return patch(action.id, { progress: action.progress })
     case 'done':
-      return patch(action.id, { status: 'done', progress: 1, result: action.result })
+      return patch(action.id, {
+        status: action.reused ? 'reused' : 'done',
+        progress: 1,
+        result: action.result,
+      })
     case 'failed':
       return patch(action.id, { status: 'failed', error: action.error })
     case 'conflict':
@@ -84,6 +88,8 @@ export function nextToStart(state: Upload[]) {
 export type QueueSummary = {
   total: number
   done: number
+  /** Files whose bytes were already in Documents: nothing new stored, not a failure. */
+  reused: number
   failed: number
   conflicts: number
   active: number
@@ -99,10 +105,16 @@ export function summarize(state: Upload[]): QueueSummary {
   return {
     total: live.length,
     done: count('done'),
+    reused: count('reused'),
     failed: count('failed'),
     conflicts: count('conflict'),
     active: count('queued') + count('uploading'),
-    progress: bytes > 0 ? sent / bytes : live.length > 0 && count('done') === live.length ? 1 : 0,
+    progress:
+      bytes > 0
+        ? sent / bytes
+        : live.length > 0 && count('done') + count('reused') === live.length
+          ? 1
+          : 0,
   }
 }
 

@@ -4366,5 +4366,14 @@
   "importCellPrice": "Prezzo",
   "importCellSchedule": "Cadenza",
   "importPaidByInstalments": "{paid} pagati con {count} rate su {total}, ognuna alla sua data.",
-  "importFoundNotYours": "Trovato nel documento, non ancora tra i tuoi clienti. Crealo con questi dati o scegli un cliente esistente."
+  "importFoundNotYours": "Trovato nel documento, non ancora tra i tuoi clienti. Crealo con questi dati o scegli un cliente esistente.",
+  "newCategory": "Nuova categoria",
+  "accountCode": "Numero di conto",
+  "categoryName": "Nome della categoria",
+  "otherOperatingCosts": "Altri costi d'esercizio",
+  "accountCodeTip": "Il conto del piano dei conti delle PMI svizzere (KMU-Kontenrahmen) su cui registra la categoria. 6700 corrisponde ad altri costi d'esercizio.",
+  "suggestedNewCategory": "Nuova categoria suggerita: {name}",
+  "noCategoriesYet": "Nessuna categoria per ora",
+  "alreadyInDocuments": "Già in Documenti",
+  "showFile": "Mostra"
 }

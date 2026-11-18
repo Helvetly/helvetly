@@ -4366,5 +4366,14 @@
   "importCellPrice": "Price",
   "importCellSchedule": "Schedule",
   "importPaidByInstalments": "{paid} paid by {count} of {total} instalments, each on its date.",
-  "importFoundNotYours": "Found on the document, not in your clients yet. Create it with these details, or pick an existing client."
+  "importFoundNotYours": "Found on the document, not in your clients yet. Create it with these details, or pick an existing client.",
+  "newCategory": "New category",
+  "accountCode": "Account code",
+  "categoryName": "Category name",
+  "otherOperatingCosts": "Other operating costs",
+  "accountCodeTip": "The account of the Swiss SME chart of accounts (KMU-Kontenrahmen) the category books to. 6700 is other operating costs.",
+  "suggestedNewCategory": "Suggested new category: {name}",
+  "noCategoriesYet": "No categories yet",
+  "alreadyInDocuments": "Already in Documents",
+  "showFile": "Show"
 }

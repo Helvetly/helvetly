@@ -13,6 +13,7 @@ import { newUploads, type Upload } from '@/components/documents/upload-queue'
 import { UploadTray } from '@/components/documents/upload-tray'
 import { WizardSheet } from '@/components/wizard-sheet'
 import { ApiError } from '@/lib/api'
+import type { DocFile } from '@/lib/documents'
 
 const meta = { title: 'Shared flows/States' } satisfies Meta
 export default meta
@@ -144,6 +145,28 @@ export const BusyWizardCannotCloseOrNavigate: Story = {
   },
 }
 
+const existingDocument: DocFile = {
+  id: 'doc_1',
+  name: 'original.pdf',
+  folder_id: null,
+  folder: null,
+  size: 12,
+  content_type: 'application/pdf',
+  kind: 'pdf',
+  sha256: null,
+  tags: [],
+  ai_filing: null,
+  previewable: true,
+  links: [],
+  retained_until: null,
+  uploaded_by: null,
+  created_at: '2026-11-05T10:00:00Z',
+  updated_at: '2026-11-05T10:00:00Z',
+  deleted_at: null,
+  deleted_by: null,
+  purge_at: null,
+}
+
 function DuplicateUpload() {
   const [uploads, setUploads] = useState(() => {
     const initial = newUploads(
@@ -153,8 +176,9 @@ function DuplicateUpload() {
     )
     return initial.map((upload): Upload =>
       Object.assign(upload, {
-        status: 'failed' as const,
-        error: 'This file has already been uploaded as original.pdf.',
+        status: 'reused' as const,
+        progress: 1,
+        result: { ...existingDocument, name: 'original.pdf', folder_id: 'fld_1' },
       }),
     )
   })
@@ -168,14 +192,18 @@ function DuplicateUpload() {
   )
 }
 
+/** Bytes already in Documents are a calm note with a way to the existing file, not an error. */
 export const DuplicateFileFeedback: Story = {
   render: () => <DuplicateUpload />,
   play: async () => {
     const body = within(document.body)
-    await expect(body.getByRole('region', { name: 'Uploads' })).toHaveTextContent(
-      'This file has already been uploaded as original.pdf.',
+    const tray = body.getByRole('region', { name: 'Uploads' })
+    await expect(tray).toHaveTextContent('Already in Documents')
+    await expect(tray).not.toHaveTextContent('failed')
+    await expect(body.getByRole('link', { name: 'Show' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/documents\/?\?folder=fld_1$/),
     )
-    await expect(body.getByRole('region', { name: 'Uploads' })).toHaveTextContent('1 failed')
     await expect(body.queryByText('Upload complete', { exact: true })).not.toBeInTheDocument()
   },
 }
