@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -68,7 +69,12 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
-import { PlanTag, useFeatureLock, type FeatureLock } from '@/components/billing/feature-lock'
+import {
+  PlanTag,
+  toastLocked,
+  useFeatureLock,
+  type FeatureLock,
+} from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
@@ -126,6 +132,7 @@ import { FolderMark } from './folder-art'
 import { FolderTree } from './folder-tree'
 import { ItemsView } from './items-view'
 import { KIND_STYLE, KindIcon } from './kind'
+import { OrganizeDrawer } from './organize-drawer'
 import { sameTab, tabOfView, usePinnedTabs, type PinnedTab } from './pinned-tabs'
 import { Preview, type PreviewCommands } from './preview'
 import { RecentStrip } from './recent-strip'
@@ -218,6 +225,8 @@ const tabLabel = (tab: PinnedTab) =>
 export function DocumentsPage() {
   const templateLock = useFeatureLock('document_templates')
   const signLock = useFeatureLock('simple_signatures')
+  const aiLock = useFeatureLock('ai_import')
+  const [organizing, setOrganizing] = useState(false)
   const pathname = usePathname()
   const query = useSearchParams()
   const view = parseView(query)
@@ -865,19 +874,35 @@ export function DocumentsPage() {
         keepTab
         actions={
           canWrite && (
-            <CreateMenu
-              templateLock={templateLock}
-              signLock={signLock}
-              onTemplate={() => setEditing({ template: null, document: null })}
-              onSign={() => setSignFrom(null)}
-              onFolder={() => setNewFolderIn(current)}
-            />
+            <>
+              <Button
+                variant="outline"
+                onClick={() => (aiLock ? toastLocked(aiLock) : setOrganizing(true))}
+              >
+                <HeidiSparkle />
+                {translate('organizeButton')}
+                {aiLock && <PlanTag lock={aiLock} />}
+              </Button>
+              <CreateMenu
+                templateLock={templateLock}
+                signLock={signLock}
+                onTemplate={() => setEditing({ template: null, document: null })}
+                onSign={() => setSignFrom(null)}
+                onFolder={() => setNewFolderIn(current)}
+              />
+            </>
           )
         }
         primary={translate('upload2')}
         onPrimary={() => picker$.current?.click()}
         menu={pageItems(dropdownKit, true)}
       />
+      {organizing && (
+        <OrganizeDrawer
+          folderId={view.section === 'files' ? current : null}
+          onClose={() => setOrganizing(false)}
+        />
+      )}
       <div className="relative flex flex-1">
         <aside className="hidden w-[248px] shrink-0 border-r md:block">
           <div className="sticky top-[52px] h-[calc(100svh-68px)] overflow-y-auto">
