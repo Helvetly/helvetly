@@ -1,3 +1,4 @@
+import { getCsrfToken, setCsrfToken } from '@helvetly/ui/lib/http'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -5,7 +6,7 @@ import { setupServer } from 'msw/node'
 import ReactGA from 'react-ga4'
 
 import { billingKeys, useBilling, type Billing } from '@/lib/billing'
-import { queryKeys } from '@/lib/queries'
+import { queryKeys, useSession } from '@/lib/queries'
 
 import { Analytics, subscriptionPlan } from './analytics'
 
@@ -145,4 +146,35 @@ test('alongside the billing query PlanGate runs, its fetch still has a queryFn',
   await waitFor(() => expect(set).toHaveBeenCalledWith(expect.objectContaining({ plan: 'pro' })))
   expect(send).toHaveBeenCalled()
   expect(error).not.toHaveBeenCalledWith(expect.stringContaining('No queryFn'))
+})
+
+function SessionUser() {
+  return <span>{useSession().data?.role}</span>
+}
+
+test('alongside useSession, a later session refetch still keeps the CSRF token', async () => {
+  let token = 'first'
+  server.use(
+    http.get('/api/v1/session', () =>
+      HttpResponse.json({ role: 'owner', csrf_token: token, workspace: { id: 'w', name: 'W' } }),
+    ),
+  )
+  const { set, view, client } = renderWith('G-TEST123')
+  const tree = (n: number) => (
+    <QueryClientProvider client={client}>
+      <SessionUser />
+      <Analytics key={n} />
+    </QueryClientProvider>
+  )
+  view.rerender(tree(1))
+  await waitFor(() => expect(getCsrfToken()).toBe('first'))
+  await waitFor(() =>
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({ workspace_role: 'owner' })),
+  )
+
+  // Analytics renders last, then the session is read again (a workspace switch invalidates it).
+  token = 'second'
+  view.rerender(tree(2))
+  await client.invalidateQueries({ queryKey: queryKeys.session })
+  await waitFor(() => expect(getCsrfToken()).toBe('second'))
 })
