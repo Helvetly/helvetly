@@ -102,11 +102,10 @@ export function EngagementLink({
         if (invoiceId) link.mutate(next)
         else onPendingChange(next === pending ? '' : next)
       }}
-      // Quiet like the other meta values: no field box, the placeholder colour until something is chosen.
+      // Quiet like the other meta values: no field box. Muted, not placeholder grey: a button needs the contrast.
       className={cn(
         quietValue,
         'justify-start border-transparent bg-transparent shadow-none hover:border-transparent dark:border-transparent dark:bg-transparent [&>svg]:hidden',
-        !pending && '[&>span]:text-placeholder',
       )}
     />
   )
