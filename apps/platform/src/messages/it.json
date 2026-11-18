@@ -3488,7 +3488,6 @@
   "youDonTHaveAccessTo": "Non hai accesso a {what}",
   "youDonTHavePermissionTo": "Non hai il permesso di {value1}.",
   "youGetALinkToShareYourselfNoEmail": "Ottieni un link per condividere te stesso; non viene inviata alcuna email.",
-  "youHaveAnUnfinishedImportFrom": "Hai un’importazione incompiuta da ",
   "youLeaveEveryWorkspaceAndThisAccountIsClosed": "Lasci ogni spazio di lavoro e questo account viene chiuso. Accesso di nuovo con ",
   "youLoseAccessUntilSomeoneInvitesYouAgain": "Perderai l’accesso finché qualcuno non ti inviterà di nuovo.{saving}",
   "yourAccountWorkspaceAndThePageYouAreOn": "Il tuo account, l’area di lavoro e la pagina in cui ti trovi sono inclusi. Rimuovi prima le informazioni private dagli screenshot.",
@@ -4347,5 +4346,17 @@
   "importServiceDateEnd": "Fine del periodo di prestazione",
   "importInvoiceDiscount": "Sconto sulla fattura (%)",
   "importServiceDateTip": "Quando il lavoro è stato svolto o consegnato, o il primo giorno di un periodo di prestazione. Lascia vuoto se la fattura non lo indica.",
-  "importInvoiceDiscountTip": "Uno sconto su tutta la fattura, in percentuale, come stampato. Gli sconti sulle singole righe vanno nelle righe."
+  "importInvoiceDiscountTip": "Uno sconto su tutta la fattura, in percentuale, come stampato. Gli sconti sulle singole righe vanno nelle righe.",
+  "importFileType": "Tipo",
+  "importFileSize": "Dimensione",
+  "importKindPdf": "PDF",
+  "importKindImage": "Foto",
+  "importKindSheet": "Foglio di calcolo",
+  "importKindWord": "Word",
+  "importKindZip": "ZIP",
+  "importKindText": "Testo",
+  "importInvoicesHereTitle": "Importi fatture?",
+  "importInvoicesHereAction": "Importa fatture",
+  "importInvoicesHereText": "Qui ogni prestazione di un documento diventa un incarico in corso. Per mantenere intera ogni fattura, con righe, pagamenti e rate, importala come fattura.",
+  "importUnfinished": "Un’importazione di {noun} non finita del {date}: {count, plural, =0 {ancora in lettura} one {# riga da controllare} other {# righe da controllare}}."
 }

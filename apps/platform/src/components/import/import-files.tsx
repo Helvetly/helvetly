@@ -7,6 +7,11 @@ import { formatFileSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   AlertCircle,
+  File,
+  FileArchive,
+  FileImage,
+  FileSpreadsheet,
+  FileType,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -73,6 +78,22 @@ export function DropZone({
   }
 
   const picked = files.length > 0
+  const removeButton = (file: File) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="destructive-ghost"
+          size="icon-xs"
+          aria-label={translate('remove2', { name: file.name })}
+          disabled={disabled}
+          onClick={() => onChange(files.filter((entry) => entry !== file))}
+        >
+          <X />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{translate('remove7')}</TooltipContent>
+    </Tooltip>
+  )
   const input = (
     <input
       type="file"
@@ -146,75 +167,105 @@ export function DropZone({
         {input}
       </div>
       {picked && (
-        // One plain table: the files read best as rows, with the totals and Remove all in its head.
-        <section className="rounded-lg border bg-card">
-          <div className="flex items-center justify-between gap-2 rounded-t-lg border-b bg-muted/40 py-1.5 pr-1.5 pl-3">
-            <p className="text-caption font-medium text-muted-foreground">
-              {translate('importChosenSummary', {
-                count: files.length,
-                size: formatFileSize(files.reduce((sum, file) => sum + file.size, 0)),
-              })}
-            </p>
-            <Button variant="ghost" size="xs" disabled={disabled} onClick={() => onChange([])}>
-              {translate('removeAllFiles')}
-            </Button>
-          </div>
-          <ul aria-label={translate('chosenFiles')} className="divide-y">
-            {files.map((file) => (
-              <li
-                key={`${file.name}-${file.size}-${file.lastModified}`}
-                className="flex items-center gap-3 py-1.5 pr-1.5 pl-3 text-body-sm"
-              >
-                <FileBadge name={file.name} />
-                <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
-                  {formatFileSize(file.size)}
-                </span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="destructive-ghost"
-                      size="icon-xs"
-                      aria-label={translate('remove2', { name: file.name })}
-                      disabled={disabled}
-                      onClick={() => onChange(files.filter((entry) => entry !== file))}
-                    >
-                      <X />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{translate('remove7')}</TooltipContent>
-                </Tooltip>
-              </li>
-            ))}
-          </ul>
-        </section>
+        // The same table as the review's, so the files keep their place when reading starts.
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table aria-label={translate('chosenFiles')} className="w-full text-left text-body-sm">
+            <thead className="border-b bg-muted/40 text-caption text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  {translate('document')}
+                </th>
+                <th scope="col" className="px-2 py-2 font-medium">
+                  {translate('importFileType')}
+                </th>
+                <th scope="col" className="px-2 py-2 text-right font-medium">
+                  {translate('importFileSize')}
+                </th>
+                <th scope="col" className="w-24 px-2 py-1 text-right">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    disabled={disabled}
+                    onClick={() => onChange([])}
+                  >
+                    {translate('removeAllFiles')}
+                  </Button>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {files.map((file) => (
+                <tr key={`${file.name}-${file.size}-${file.lastModified}`}>
+                  <td className="max-w-0 px-3 py-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileIcon name={file.name} />
+                      <span className="truncate">{file.name}</span>
+                    </span>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap text-muted-foreground">
+                    {kindOf(file.name).label()}
+                  </td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap text-muted-foreground tabular-nums">
+                    {formatFileSize(file.size)}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <span className="flex justify-end">{removeButton(file)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
 }
 
-/** A file's extension on a tile tinted by its kind, so a mixed batch scans at a glance. */
-function FileBadge({ name }: { name: string }) {
-  const ext = name.includes('.') ? (name.split('.').pop() ?? '').toUpperCase().slice(0, 4) : ''
-  const tint =
-    ext === 'PDF'
-      ? 'bg-destructive-surface text-destructive'
-      : ['PNG', 'JPG', 'JPEG', 'WEBP'].includes(ext)
-        ? 'bg-info-surface text-info'
-        : ['XLSX', 'XLS', 'CSV'].includes(ext)
-          ? 'bg-success-surface text-success'
-          : 'bg-muted text-muted-foreground'
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        'grid h-7 w-9 shrink-0 place-items-center rounded-md text-[10px] font-semibold tracking-wide',
-        tint,
-      )}
-    >
-      {ext || <FileText className="size-4 stroke-[1.5]" />}
-    </span>
-  )
+/** The kinds of file an import takes, each with its icon, tint and name. */
+const FILE_KINDS = [
+  {
+    test: /\.pdf$/i,
+    icon: FileText,
+    tint: 'text-destructive',
+    label: () => translate('importKindPdf'),
+  },
+  {
+    test: /\.(png|jpe?g|webp)$/i,
+    icon: FileImage,
+    tint: 'text-info',
+    label: () => translate('importKindImage'),
+  },
+  {
+    test: /\.(xlsx|xls|csv)$/i,
+    icon: FileSpreadsheet,
+    tint: 'text-success',
+    label: () => translate('importKindSheet'),
+  },
+  {
+    test: /\.docx?$/i,
+    icon: FileType,
+    tint: 'text-info',
+    label: () => translate('importKindWord'),
+  },
+  {
+    test: /\.zip$/i,
+    icon: FileArchive,
+    tint: 'text-warning',
+    label: () => translate('importKindZip'),
+  },
+]
+
+const kindOf = (name: string) =>
+  FILE_KINDS.find((kind) => kind.test.test(name)) ?? {
+    icon: File,
+    tint: 'text-muted-foreground',
+    label: () => translate('importKindText'),
+  }
+
+/** A file's icon, tinted by its kind (PDF, photo, spreadsheet, Word, ZIP), so a mixed batch scans at a glance. */
+export function FileIcon({ name, className }: { name: string; className?: string }) {
+  const { icon: Icon, tint } = kindOf(name)
+  return <Icon aria-hidden className={cn('size-4 shrink-0 stroke-[1.75]', tint, className)} />
 }
 
 /** What happens after the drop, in three steps; `suggests` names what the AI looks for. */

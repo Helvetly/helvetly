@@ -36,7 +36,7 @@ var engagementsKind = Kind{
 		"Dates are YYYY-MM-DD; a one-off engagement needs end_date. billing is advance when invoiced at the start of a " +
 		"period, arrears when invoiced after the work. vat_rate is the percentage (\"8.1\"), never an amount. client_id " +
 		"is always null. Guess nothing: a field the document does not carry is null.",
-	Schema: record(map[string]any{
+	Schema: record(withClientDetails(map[string]any{
 		"client_id":          nullable("string", "Always null; chosen in review"),
 		"client_name":        nullable("string", "Customer's company or full name"),
 		"client_vat_number":  nullable("string", "Customer's VAT or UID number"),
@@ -57,7 +57,7 @@ var engagementsKind = Kind{
 		"start_date":         nullable("string", "First day, YYYY-MM-DD"),
 		"end_date":           nullable("string", "Last day, YYYY-MM-DD"),
 		"reference":          nullable("string", "Customer's PO or order number"),
-	}),
+	})),
 	Check: func(ctx context.Context, q store.Q, workspaceID string, data Data) (map[string]string, error) {
 		_, invalid, err := checkEngagement(ctx, q, workspaceID, data)
 		return invalid, err

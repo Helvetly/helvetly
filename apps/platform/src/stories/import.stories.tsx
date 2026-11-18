@@ -156,7 +156,7 @@ export const TooLarge: Story = {
       new File([new Uint8Array(25 * 1024 * 1024 + 1)], 'scan.pdf', { type: 'application/pdf' }),
     ])
     await expect(await body().findByText('scan.pdf is over 25 MB.')).toBeInTheDocument()
-    const chosen = body().getByRole('list', { name: 'Chosen files' })
+    const chosen = body().getByRole('table', { name: 'Chosen files' })
     await expect(within(chosen).getByText('clients.csv')).toBeVisible()
     await expect(within(chosen).queryByText('scan.pdf')).toBeNull()
     await expect(zone.getBoundingClientRect().top).toBe(top)

@@ -3488,7 +3488,6 @@
   "youDonTHaveAccessTo": "Sie haben keinen Zugriff auf {what}",
   "youDonTHavePermissionTo": "Sie haben keine Berechtigung für {value1}.",
   "youGetALinkToShareYourselfNoEmail": "Sie erhalten einen Link, um sich selbst zu teilen; Es wird keine E-Mail gesendet.",
-  "youHaveAnUnfinishedImportFrom": "Sie haben einen unvollendeten Import von ",
   "youLeaveEveryWorkspaceAndThisAccountIsClosed": "Sie verlassen jeden Arbeitsbereich und dieses Konto wird geschlossen. Melden Sie sich erneut an mit ",
   "youLoseAccessUntilSomeoneInvitesYouAgain": "Sie verlieren den Zugriff, bis Sie erneut jemand einlädt.{saving}",
   "yourAccountWorkspaceAndThePageYouAreOn": "Ihr Konto, Ihr Arbeitsbereich und die Seite, auf der Sie sich befinden, sind enthalten. Entfernen Sie zuerst private Informationen aus Screenshots.",
@@ -4347,5 +4346,17 @@
   "importServiceDateEnd": "Ende der Leistungsperiode",
   "importInvoiceDiscount": "Rechnungsrabatt (%)",
   "importServiceDateTip": "Wann die Leistung erbracht oder geliefert wurde, oder der erste Tag einer Leistungsperiode. Leer lassen, wenn die Rechnung keines zeigt.",
-  "importInvoiceDiscountTip": "Ein Rabatt auf die ganze Rechnung in Prozent, wie gedruckt. Rabatte auf einzelne Positionen gehören in die Positionen."
+  "importInvoiceDiscountTip": "Ein Rabatt auf die ganze Rechnung in Prozent, wie gedruckt. Rabatte auf einzelne Positionen gehören in die Positionen.",
+  "importFileType": "Typ",
+  "importFileSize": "Grösse",
+  "importKindPdf": "PDF",
+  "importKindImage": "Foto",
+  "importKindSheet": "Tabelle",
+  "importKindWord": "Word",
+  "importKindZip": "ZIP",
+  "importKindText": "Text",
+  "importInvoicesHereTitle": "Rechnungen importieren?",
+  "importInvoicesHereAction": "Rechnungen importieren",
+  "importInvoicesHereText": "Hier wird jede Leistung auf einem Dokument zu einem laufenden Auftrag. Damit jede Rechnung mit Positionen, Zahlungen und Raten ganz bleibt, importieren Sie sie als Rechnung.",
+  "importUnfinished": "Ein unvollständiger Import von {noun} vom {date}: {count, plural, =0 {wird noch gelesen} one {# Zeile zu prüfen} other {# Zeilen zu prüfen}}."
 }
