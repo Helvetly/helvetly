@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, Link2, Search, X } from 'lucide-react'
+import { Link2, Search, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { FileIcon } from '@/components/import/import-files'
@@ -142,7 +142,6 @@ export function ContractField({
                     <span className="shrink-0 text-caption text-muted-foreground">
                       {formatDate(file.updated_at)}
                     </span>
-                    {document?.id === file.id && <Check className="size-4 text-brand" />}
                   </button>
                 </li>
               ))}
