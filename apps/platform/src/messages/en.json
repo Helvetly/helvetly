@@ -4451,5 +4451,7 @@
   "paidWithInvoice": "Paid with invoice",
   "paidSeparatelyNextStep": "Nothing is invoiced from this engagement: you log the work against what was paid.",
   "enterAPriceAbove0": "Enter a price above 0, or choose Paid separately",
-  "detailsSectionText": "Optional, for your records and the invoice."
+  "detailsSectionText": "Optional, for your records and the invoice.",
+  "aiWriteErrorUnavailable": "Write with AI isn't available on this server yet.",
+  "aiWriteErrorNetwork": "Couldn't reach Helvetly. Check your connection and try again."
 }

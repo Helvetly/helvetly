@@ -1,6 +1,6 @@
-import { setCsrfToken } from '@/lib/api'
+import { ApiError, setCsrfToken } from '@/lib/api'
 
-import { aiWrite, type AIWriteInput } from './ai-write'
+import { aiWrite, aiWriteError, type AIWriteInput } from './ai-write'
 
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => {
@@ -23,4 +23,21 @@ test('posts the input and returns the written text', async () => {
   expect(init?.method).toBe('POST')
   expect(init?.headers).toMatchObject({ 'X-CSRF-Token': 'tok' })
   expect(JSON.parse(String(init?.body))).toEqual(input)
+})
+
+describe('aiWriteError', () => {
+  it('never shows a raw 404', () =>
+    expect(aiWriteError(new ApiError(404, 'not_found', 'Not found.'))).toEqual({
+      message: "Write with AI isn't available on this server yet.",
+      retry: false,
+    }))
+  it('offers a retry for busy and failed calls', () => {
+    expect(aiWriteError(new ApiError(503, 'ai_busy', 'Busy.')).retry).toBe(true)
+    expect(aiWriteError(new TypeError('fetch failed')).retry).toBe(true)
+  })
+  it('keeps the quota message without a retry', () =>
+    expect(aiWriteError(new ApiError(403, 'quota_exceeded', 'Used up.'))).toEqual({
+      message: 'Used up.',
+      retry: false,
+    }))
 })
