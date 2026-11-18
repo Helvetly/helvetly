@@ -4274,5 +4274,10 @@
   "emailTemplatesAboutInvoice": "Envoyé avec une facture, une facture partielle ou d’acompte lorsque vous l’envoyez au client par e-mail.",
   "emailTemplatesAboutCreditNote": "Envoyé avec une note de crédit qui réduit ou annule une facture.",
   "emailTemplatesAboutProforma": "Envoyé avec une facture pro forma : une annonce du montant, pas une demande de paiement.",
-  "emailTemplatesAboutQuote": "Envoyé avec une offre, pour que le client puisse l’examiner et l’accepter."
+  "emailTemplatesAboutQuote": "Envoyé avec une offre, pour que le client puisse l’examiner et l’accepter.",
+  "importCloseMonthsTitle": "Clôturer les mois importés ?",
+  "importCloseMonths": "{count, plural, one {Clôturer # mois} other {Clôturer # mois}}",
+  "importCloseMonthsBody": "Les factures importées couvrent {range}. La clôture verrouille ces mois pour que rien de daté dans ceux-ci ne change ; vous pouvez rouvrir un mois en indiquant un motif.",
+  "importInstalments": "Échéances",
+  "importPaidOnTip": "Laissé vide, le paiement compte à la date d’échéance (ou à celle de l’échéance partielle)."
 }

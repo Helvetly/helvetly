@@ -29,7 +29,11 @@ var invoicesKind = Kind{
 		"is the percentage of the subtotal it represents, rounded to two decimals. total is the grand total the document states. Guess nothing: " +
 		"a field the document does not carry is null. client_id is always null. issued_elsewhere is true when the document " +
 		"is a finished invoice the seller issued, carrying its own invoice number; false for a quote, order, proforma or draft. " +
-		"paid_amount and paid_on only when the document states a payment already received, else null.",
+		"paid_amount and paid_on only when the document states a payment already received (a document marked paid " +
+		"without an amount was paid in full: paid_amount is the total), else null; paid_on is null when no payment date " +
+		"is stated. instalments is the payment schedule the document shows, one row per instalment with its amount, due " +
+		"date and whether the document marks it paid (paid_on when stated); a document marked paid as a whole has every " +
+		"instalment paid. null without a schedule.",
 	Schema: record(map[string]any{
 		"client_id":         nullable("string", "Always null: the person picks the client"),
 		"client_name":       nullable("string", "The billed party's name"),
@@ -48,6 +52,13 @@ var invoicesKind = Kind{
 		"issued_elsewhere":  nullable("boolean", "true for a finished invoice the seller issued with its own number"),
 		"paid_amount":       nullable("string", "Amount the document says was already paid, e.g. 500.00"),
 		"paid_on":           nullable("string", "Date that amount was paid, YYYY-MM-DD"),
+		"instalments": map[string]any{"type": []string{"array", "null"}, "description": "The payment schedule, in order",
+			"items": record(map[string]any{
+				"amount":   nullable("string", "Amount of this instalment, e.g. 200.00"),
+				"due_date": nullable("string", "Due date of this instalment, YYYY-MM-DD"),
+				"paid":     nullable("boolean", "true when the document marks this instalment paid"),
+				"paid_on":  nullable("string", "Date this instalment was paid, YYYY-MM-DD"),
+			})},
 		"lines": map[string]any{"type": []string{"array", "null"}, "description": "The invoice lines, in order",
 			"items": record(map[string]any{
 				"description":      nullable("string", "What was sold"),

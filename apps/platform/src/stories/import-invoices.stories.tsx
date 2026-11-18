@@ -174,13 +174,22 @@ const HELVETLY_ISSUED =
   'It was issued in Helvetly and cannot be changed. Skip this row; to correct that invoice, issue a credit note.'
 
 let commits: { record_ids: string[]; resolutions: Record<string, string> }[] = []
+let closing: string[] = []
 
 /** The import API for a batch of conflicting records: the first commit reports conflicts, a commit with resolutions
  * overwrites (created, the existing invoice's id) or skips. */
 const conflictHandlers = (records: ImportRecord[], whyNot: Record<string, string>) => {
   let state = batch(records)
+  let closed: { month: string }[] = []
   return [
     sessionHandler(),
+    http.get('/api/v1/periods', () => HttpResponse.json({ data: closed })),
+    http.post<never, { month: string }>('/api/v1/periods', async ({ request }) => {
+      const { month } = await request.json()
+      closing.push(month)
+      closed = [...closed, { month }]
+      return HttpResponse.json({ data: { month } }, { status: 201 })
+    }),
     http.get('/api/v1/imports', () =>
       HttpResponse.json({
         data: [
@@ -277,6 +286,44 @@ export const ConflictsOverwriteOrSkip: Story = {
     })
     await expect(body().getByText('1 created, 1 skipped')).toBeVisible()
     await expect(body().getByText('Skipped')).toBeVisible()
+  },
+}
+
+/** Past invoices imported in full: the books offer to close their months, and close them once confirmed. */
+export const ClosePastMonths: Story = {
+  beforeEach: () => {
+    commits = []
+    closing = []
+  },
+  parameters: {
+    msw: {
+      handlers: conflictHandlers(
+        [
+          issued(1),
+          {
+            ...issued(2),
+            data: {
+              ...issued(2).data,
+              issue_date: '2025-12-03',
+              due_date: '2026-01-02',
+              paid_amount: '1081.00',
+            },
+          },
+        ],
+        {},
+      ),
+    },
+  },
+  play: async () => {
+    const dialog = within(await importAll(2))
+    await userEvent.click(dialog.getByRole('button', { name: 'Overwrite all' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Confirm' }))
+    // October 2025 to the payment's due date in January 2026, with no gap.
+    const offer = await body().findByRole('button', { name: 'Close 4 months' })
+    await expect(body().getByText(/October 2025 – January 2026/)).toBeVisible()
+    await userEvent.click(offer)
+    await waitFor(() => expect(closing).toEqual(['2025-10', '2025-11', '2025-12', '2026-01']))
+    await waitFor(() => expect(body().queryByRole('button', { name: 'Close 4 months' })).toBeNull())
   },
 }
 

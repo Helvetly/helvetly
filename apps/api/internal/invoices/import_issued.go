@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -31,11 +32,21 @@ var (
 type issuedElsewhere struct {
 	on     bool
 	number string
-	paid   *store.Payment // what was already paid, before the import
+	paid   []store.Payment // what was already paid, before the import: one per paid instalment, else one
 }
 
-// checkIssuedElsewhere reads issued_elsewhere, paid_amount and paid_on into invalid's messages: an invoice issued
-// elsewhere needs its own number and a past issue date; a payment needs both an amount up to the total and a past date.
+// importedInstalment is one row of a payment schedule the document shows.
+type importedInstalment struct {
+	Amount  json.RawMessage `json:"amount"`
+	DueDate *string         `json:"due_date"`
+	Paid    *bool           `json:"paid"`
+	PaidOn  *string         `json:"paid_on"`
+}
+
+// checkIssuedElsewhere reads issued_elsewhere, paid_amount, paid_on and instalments into invalid's messages: an
+// invoice issued elsewhere needs its own number and a past issue date. What was paid is one payment per paid
+// instalment when they make up paid_amount (or paid_amount is not given), else paid_amount once on paid_on. A payment without
+// its date was made on its instalment's due date, else the invoice's stated due date, else its issue date.
 func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, today string, invalid map[string]string) issuedElsewhere {
 	var out issuedElsewhere
 	if raw, ok := data["issued_elsewhere"]; ok && json.Unmarshal(raw, &out.on) != nil {
@@ -61,33 +72,92 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 	} else if inv.IssueDate > today {
 		invalid["issue_date"] = "The issue date cannot be in the future."
 	}
+	fallback := inv.IssueDate
+	if _, ok := data["due_date"]; ok && inv.DueDate != "" {
+		fallback = inv.DueDate
+	}
+	note := "Paid before the import"
+	payment := func(key string, amount invoicecalc.Money, on string) store.Payment {
+		if on > today {
+			p.fail(key, "The payment date cannot be in the future.")
+		}
+		return store.Payment{Method: "other", Amount: amount, PaidOn: on, Note: &note}
+	}
+	instalments := paidInstalments(p, data["instalments"], fallback, payment)
+	var stated invoicecalc.Money
+	if hasAmount {
+		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
+			stated = invoicecalc.Money(n)
+			if n <= 0 {
+				p.fail("paid_amount", "Enter an amount above 0, or clear it.")
+			}
+		}
+	}
 	switch {
-	case hasAmount && !hasOn:
-		invalid["paid_on"] = "Enter when it was paid."
+	case len(instalments) > 0 && (!hasAmount || stated == sumPayments(instalments)):
+		out.paid = instalments
 	case hasOn && !hasAmount:
 		invalid["paid_amount"] = "Enter how much was paid."
 	case hasAmount:
-		pay := store.Payment{Method: "other", PaidOn: p.required("paid_on", rawOn, 10, date, "Enter when it was paid.")}
-		note := "Paid before the import"
-		pay.Note = &note
-		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
-			pay.Amount = invoicecalc.Money(n)
-			switch {
-			case n <= 0:
-				p.fail("paid_amount", "Enter an amount above 0, or clear it.")
-			case pay.Amount > inv.Payable():
-				p.fail("paid_amount", "The paid amount exceeds the invoice's total ("+inv.Currency+" "+inv.Payable().String()+").")
-			}
+		on := fallback
+		if hasOn {
+			on = p.required("paid_on", rawOn, 10, date, "Enter when it was paid.")
 		}
-		if pay.PaidOn > today {
-			p.fail("paid_on", "The payment date cannot be in the future.")
-		}
-		out.paid = &pay
+		out.paid = []store.Payment{payment("paid_on", stated, on)}
+	}
+	if total := sumPayments(out.paid); total > inv.Payable() {
+		p.fail("paid_amount", "The paid amount exceeds the invoice's total ("+inv.Currency+" "+inv.Payable().String()+").")
 	}
 	for k, v := range p.invalid {
 		invalid[k] = v
 	}
 	return out
+}
+
+// paidInstalments: a payment per instalment of raw the document marks paid, dated as it states, else on the
+// instalment's due date, else on fallback.
+func paidInstalments(p *parser, raw json.RawMessage, fallback string, payment func(string, invoicecalc.Money, string) store.Payment) []store.Payment {
+	var rows []importedInstalment
+	if len(raw) == 0 || isNull(raw) {
+		return nil
+	}
+	if json.Unmarshal(raw, &rows) != nil {
+		p.fail("instalments", "The instalments could not be read.")
+		return nil
+	}
+	var out []store.Payment
+	for i, row := range rows {
+		if !(row.Paid != nil && *row.Paid) && row.PaidOn == nil {
+			continue
+		}
+		key := fmt.Sprintf("instalments.%d", i)
+		n, ok := p.decimal(key+".amount", row.Amount, parseMoney, "Enter the amount with at most two decimals.")
+		if !ok || n <= 0 {
+			p.fail(key+".amount", "Enter an amount above 0.")
+			continue
+		}
+		on := fallback
+		for _, d := range []*string{row.PaidOn, row.DueDate} {
+			if d != nil {
+				if _, msg := date(*d); msg != "" {
+					p.fail(key, msg)
+					break
+				}
+				on = *d
+				break
+			}
+		}
+		out = append(out, payment(key, invoicecalc.Money(n), on))
+	}
+	return out
+}
+
+func sumPayments(ps []store.Payment) invoicecalc.Money {
+	var total invoicecalc.Money
+	for _, p := range ps {
+		total += p.Amount
+	}
+	return total
 }
 
 // issueImported records a checked import as issued elsewhere, in q: the draft saved, then issued with its own number
@@ -101,8 +171,8 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	if err := checkOpen(ctx, q, sess.Workspace.ID, inv.IssueDate); err != nil {
 		return err
 	}
-	if in.paid != nil {
-		if err := checkOpen(ctx, q, sess.Workspace.ID, in.paid.PaidOn); err != nil {
+	for _, p := range in.paid {
+		if err := checkOpen(ctx, q, sess.Workspace.ID, p.PaidOn); err != nil {
 			return err
 		}
 	}
@@ -139,17 +209,18 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	if err := logEventAt(ctx, q, sess, now, event, inv.ID, payload); err != nil {
 		return err
 	}
-	if in.paid == nil {
+	for _, p := range in.paid {
+		p.ID, p.CreatedAt = auth.NewID("pay"), now
+		if err := q.CreatePayment(ctx, inv.ID, sess.User.ID, p); err != nil {
+			return err
+		}
+		if err := logEventAt(ctx, q, sess, now, "payment.added", inv.ID, map[string]any{"number": in.number, "payment_id": p.ID,
+			"amount": p.Amount, "paid_on": p.PaidOn, "method": p.Method}); err != nil {
+			return err
+		}
+	}
+	if len(in.paid) == 0 {
 		return nil
-	}
-	p := *in.paid
-	p.ID, p.CreatedAt = auth.NewID("pay"), now
-	if err := q.CreatePayment(ctx, inv.ID, sess.User.ID, p); err != nil {
-		return err
-	}
-	if err := logEventAt(ctx, q, sess, now, "payment.added", inv.ID, map[string]any{"number": in.number, "payment_id": p.ID,
-		"amount": p.Amount, "paid_on": p.PaidOn, "method": p.Method}); err != nil {
-		return err
 	}
 	return q.RefreshBalance(ctx, inv.ID, now)
 }

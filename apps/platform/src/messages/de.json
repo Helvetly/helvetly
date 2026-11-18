@@ -4274,5 +4274,10 @@
   "emailTemplatesAboutInvoice": "Geht mit einer Rechnung, Teil- oder Vorauszahlungsrechnung an den Kunden, wenn Sie sie per E-Mail senden.",
   "emailTemplatesAboutCreditNote": "Geht mit einer Gutschrift, die eine Rechnung mindert oder aufhebt.",
   "emailTemplatesAboutProforma": "Geht mit einer Proforma-Rechnung: eine Vorankündigung des Betrags, keine Zahlungsaufforderung.",
-  "emailTemplatesAboutQuote": "Geht mit einer Offerte, damit der Kunde sie prüfen und annehmen kann."
+  "emailTemplatesAboutQuote": "Geht mit einer Offerte, damit der Kunde sie prüfen und annehmen kann.",
+  "importCloseMonthsTitle": "Importierte Monate abschliessen?",
+  "importCloseMonths": "{count, plural, one {# Monat abschliessen} other {# Monate abschliessen}}",
+  "importCloseMonthsBody": "Die importierten Rechnungen betreffen {range}. Der Abschluss sperrt diese Monate, damit sich nichts mit diesem Datum ändert; mit Begründung lässt sich ein Monat wieder öffnen.",
+  "importInstalments": "Raten",
+  "importPaidOnTip": "Leer gelassen, gilt die Zahlung am Fälligkeitsdatum (bzw. dem der Rate)."
 }

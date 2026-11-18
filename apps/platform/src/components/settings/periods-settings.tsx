@@ -113,6 +113,34 @@ const count = (n: number, noun: string) => (n === 0 ? '' : `${n} ${noun}${n === 
 const totalsOf = (source: ActivitySource) =>
   source.totals.map((total) => `${total.currency} ${formatAmount(total.amount)}`).join(' · ')
 
+/** Closes months oldest first, one at a time: a refusal stops the rest, and what closed stays closed. */
+export function useCloseMonths() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (batch: string[]) =>
+      batch.reduce<Promise<unknown>>(
+        (previous, month) => previous.then(() => booksApi.close(month)),
+        Promise.resolve(),
+      ),
+    onSuccess: (_, batch) => {
+      toast.success(
+        batch.length === 1
+          ? translate('closed3', { value1: monthLabel(batch[0] ?? '') })
+          : translate('monthsClosedThrough', {
+              length: batch.length,
+              value2: monthLabel(batch.at(-1) ?? ''),
+            }),
+      )
+    },
+    onError: toastError,
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: PERIODS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ACTIVITY_KEY }),
+      ]),
+  })
+}
+
 type State = 'closed' | 'open' | 'current'
 
 export function PeriodsSettings() {
@@ -156,26 +184,8 @@ export function PeriodsCard() {
       queryClient.invalidateQueries({ queryKey: ACTIVITY_KEY }),
     ])
 
-  // Oldest first, one at a time: a refusal stops the rest, and what closed stays closed.
-  const close = useMutation({
-    mutationFn: (batch: string[]) =>
-      batch.reduce<Promise<unknown>>(
-        (previous, month) => previous.then(() => booksApi.close(month)),
-        Promise.resolve(),
-      ),
-    onSuccess: (_, batch) => {
-      toast.success(
-        batch.length === 1
-          ? translate('closed3', { value1: monthLabel(batch[0] ?? '') })
-          : translate('monthsClosedThrough', {
-              length: batch.length,
-              value2: monthLabel(batch.at(-1) ?? ''),
-            }),
-      )
-    },
-    onError: toastError,
-    onSettled: refresh,
-  })
+  const close = useCloseMonths()
+
   const reopen = useMutation({
     mutationFn: ({ month, reason }: { month: string; reason: string }) =>
       booksApi.reopen(month, reason),

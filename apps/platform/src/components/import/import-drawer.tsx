@@ -38,6 +38,7 @@ import {
   type Resolution,
 } from '@/lib/imports'
 
+import { CloseImportedMonths } from './close-imported-months'
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
 import { EditRecordDrawer } from './import-edit-drawer'
@@ -221,6 +222,10 @@ export function ImportDrawer({
     )
   } else {
     const reading = batch.data.status === 'extracting'
+    // Only an import that went through: nothing failed or waits on a conflict.
+    const allCreated =
+      results.size > 0 &&
+      [...results.values()].every((r) => r.status === 'created' || r.status === 'skipped')
     body = (
       <div className="grid gap-4">
         {reading && (
@@ -242,6 +247,11 @@ export function ImportDrawer({
           }
         />
         {open.some((record) => record.data.issued_elsewhere === true) && <DeclaredVatNote />}
+        {!reading && open.length === 0 && allCreated && (
+          <CloseImportedMonths
+            created={records.filter((record) => results.get(record.id)?.status === 'created')}
+          />
+        )}
         {config ? (
           <ReviewTable
             config={config}
