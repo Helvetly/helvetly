@@ -89,6 +89,8 @@ type renderer struct {
 	txt *pdffont.Text // Liberation Sans (SIX IG 2.3 §3.4), any other script from its fallbacks
 	l   labels
 	d   Document
+	// contact: the issuer's email and phone, one line in the footer of the invoice pages ("" prints none)
+	contact string
 }
 
 // Render returns the PDF; an error means the document could not be produced and must not be shipped.
@@ -148,6 +150,9 @@ func newRenderer(d Document, title string) (*renderer, *bool, error) {
 		if !*onQRPage { // the QR bill page has no page number
 			r.set("", 8)
 			pdf.SetTextColor(110, 110, 110)
+			if r.contact != "" {
+				r.cell(left, 280, contentW, 4, r.contact, "C")
+			}
 			r.cell(left, 284, contentW, 4, fmt.Sprintf(l.Page, pdf.PageNo()), "C")
 			pdf.SetTextColor(0, 0, 0)
 		}
@@ -263,7 +268,8 @@ func (r *renderer) invoicePages() {
 		meta = append(meta, [2]string{l.Reference, *inv.Reference})
 	}
 	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
-	y = r.parties(max(y+6, 45), issuer, recipient, phone) + 6
+	r.contact = contactLine(issuer.Email, phone)
+	y = r.parties(max(y+6, 45), issuer, recipient) + 6
 
 	var subtitles []string
 	if f := l.Preceding[inv.Kind]; f != "" && inv.CreditedInvoice != nil {
@@ -319,7 +325,7 @@ func (r *renderer) header(title string, meta [][2]string) float64 {
 
 // parties draws who bills (left) and who is billed (right, where a right-window envelope shows it) from y, each
 // under its bold heading; it returns the y below the longer column.
-func (r *renderer) parties(y float64, issuer, recipient store.Party, phone *string) float64 {
+func (r *renderer) parties(y float64, issuer, recipient store.Party) float64 {
 	const colW, rightX = 80.0, 110.0
 	column := func(x float64, heading string, p store.Party, extra []string) float64 {
 		r.set("B", 10.5)
@@ -346,11 +352,6 @@ func (r *renderer) parties(y float64, issuer, recipient store.Party, phone *stri
 		return cy
 	}
 	var info []string
-	for _, s := range []*string{issuer.Email, phone} {
-		if s != nil && *s != "" {
-			info = append(info, *s)
-		}
-	}
 	if v := r.vatNumber(issuer.VATNumber); v != "" {
 		info = append(info, v)
 	}
@@ -359,6 +360,17 @@ func (r *renderer) parties(y float64, issuer, recipient store.Party, phone *stri
 		buyerInfo = append(buyerInfo, v)
 	}
 	return max(column(left, r.l.BilledBy, issuer, info), column(rightX, r.l.BilledTo, recipient, buyerInfo))
+}
+
+// contactLine joins the issuer's email and phone for the footer: "info@muster.ch · +41 44 123 45 67".
+func contactLine(email, phone *string) string {
+	var parts []string
+	for _, s := range []*string{email, phone} {
+		if s != nil && strings.TrimSpace(*s) != "" {
+			parts = append(parts, strings.TrimSpace(*s))
+		}
+	}
+	return strings.Join(parts, " · ")
 }
 
 // countryName: the country's name in the document's language ("Schweiz", "Switzerland"), "" for an unknown code.
