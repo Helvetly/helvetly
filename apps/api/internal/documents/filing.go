@@ -106,6 +106,11 @@ func (s *Service) queueFiling(ctx context.Context, sess store.Session, id string
 	}
 }
 
+// QueueFiling queues a file stored by another entry point (an import) for filing, as an upload to the top level.
+func (s *Service) QueueFiling(ctx context.Context, sess store.Session, id string) {
+	s.queueFiling(ctx, sess, id, true)
+}
+
 // RunFiling files queued uploads every few seconds until ctx ends; the person who uploaded is waiting for it.
 func (s *Service) RunFiling(ctx context.Context) {
 	tick := time.NewTicker(3 * time.Second)
