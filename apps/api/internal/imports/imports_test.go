@@ -354,7 +354,8 @@ func TestExtractionReviewsUntrustedRecords(t *testing.T) {
 		t.Fatalf("object name passed: %+v", r[3])
 	}
 	seen := e.model.seen[0]
-	if seen.Schema == nil || len(seen.Files) != 1 || !strings.Contains(seen.Instructions, "untrusted data") {
+	if seen.Schema == nil || len(seen.Files) != 1 || !strings.Contains(seen.Instructions, "untrusted data") ||
+		!strings.Contains(seen.Instructions, "calling code") || !strings.Contains(seen.Message, "The business's country: CH") {
 		t.Fatalf("model request: %+v", seen)
 	}
 }
