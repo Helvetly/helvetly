@@ -376,14 +376,14 @@ function Details({
         </Callout>
       )}
       <Panel title={translate('details')} className="grid grid-cols-[minmax(0,1fr)]">
-        <dl className="grid text-[13.5px]">
+        <dl className="grid grid-cols-[minmax(0,1fr)] text-[13.5px]">
           {rows.map(([label, value]) => (
             <div
               key={label}
               className="flex min-h-10 items-center gap-3 border-t border-border/60 first:border-t-0"
             >
               <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
-              <dd className="min-w-0 flex-1 truncate">{value}</dd>
+              <dd className="min-w-0 flex-1 py-2 break-words">{value}</dd>
             </div>
           ))}
         </dl>

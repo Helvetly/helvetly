@@ -35,7 +35,7 @@ const file = (id: string, over: Partial<DocFile> = {}): DocFile => ({
   ...over,
 })
 
-const filed = (id: string): DocFile =>
+const filed = (id: string, over: Partial<DocFile> = {}): DocFile =>
   file(id, {
     folder_id: invoices.id,
     folder: invoices,
@@ -46,6 +46,7 @@ const filed = (id: string): DocFile =>
       created_folder: false,
       tags: ['invoice', 'acme'],
     },
+    ...over,
   })
 
 const meta = {
@@ -187,5 +188,38 @@ export const FiledToastWithUndo: Story = {
     await userEvent.click(body.getByRole('button', { name: 'Undo' }))
     await body.findByText('Files put back where uploaded.')
     await expect(undone.toSorted()).toEqual(['doc_0', 'doc_1'])
+  },
+}
+
+/** A long uploader's name wraps inside the details card instead of running past its edge. */
+export const LongUploaderName: Story = {
+  globals: { viewport: { value: 'laptop' } },
+  parameters: {
+    viewport: {
+      options: { laptop: { name: 'Laptop', styles: { width: '1280px', height: '900px' } } },
+    },
+    msw: {
+      handlers: [
+        http.get('/api/v1/documents/doc_a', () =>
+          HttpResponse.json({
+            data: filed('doc_a', {
+              uploaded_by: { ...storySession.user, name: 'Peteeeeeeeeeer Kraaaaaaaaaaaaaajewski' },
+            }),
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: TagsReadOnly.render,
+  play: async () => {
+    const body = within(document.body)
+    const value = await body.findByText(/Peteeeeeeeeeer Kraaaaaaaaaaaaaajewski/)
+    await expect(value).toBeVisible()
+    const list = value.closest('dl')
+    if (!list) throw new Error('Expected the details list')
+    await expect(value.getBoundingClientRect().right).toBeLessThanOrEqual(
+      list.getBoundingClientRect().right,
+    )
   },
 }
