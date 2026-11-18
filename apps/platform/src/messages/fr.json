@@ -4377,6 +4377,6 @@
   "noActiveEngagements": "Aucun engagement actif",
   "removeFromEngagement": "Détacher de l’engagement",
   "engagementLinkTip": "Compte cette facture comme facturée dans l’engagement, pour la période de sa date de prestation.",
-  "linkedTo": "Liée à {title}.",
+  "linkedToEngagement": "Liée à {title}.",
   "removedFromTheEngagement": "Détachée de l’engagement."
 }

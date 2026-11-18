@@ -90,6 +90,7 @@ func TestLinkInvoice(t *testing.T) {
 	if got.Data != nil {
 		t.Fatalf("unlinked invoice has %+v", got.Data)
 	}
+	e.fails(b, "GET", "/api/v1/invoices/inv_unknown/engagement", nil, 404, "not_found")
 
 	// the list filter the pickers use leaves out what belongs to an engagement
 	list, _, err := e.st.ListInvoices(context.Background(), b.workspace, "2026-11-16", store.InvoiceFilter{ClientID: cli, Unlinked: true}, 0, 0)

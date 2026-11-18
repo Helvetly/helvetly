@@ -4377,6 +4377,6 @@
   "noActiveEngagements": "No active engagements",
   "removeFromEngagement": "Remove from engagement",
   "engagementLinkTip": "Counts this invoice as billed under the engagement, for the period of its service date.",
-  "linkedTo": "Linked to {title}.",
+  "linkedToEngagement": "Linked to {title}.",
   "removedFromTheEngagement": "Removed from the engagement."
 }

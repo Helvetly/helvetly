@@ -304,15 +304,16 @@ func (s *Service) unlinkInvoice(w http.ResponseWriter, r *http.Request, sess sto
 	return nil
 }
 
-// engagementOfInvoice names the engagement an invoice is linked to, null when there is none.
+// engagementOfInvoice names the engagement an invoice is linked to, null when there is none; 404 for another
+// workspace's invoice.
 func (s *Service) engagementOfInvoice(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	id, title, err := s.db.EngagementOfInvoice(r.Context(), sess.Workspace.ID, r.PathValue("id"))
-	if errors.Is(err, store.ErrNotFound) {
-		auth.WriteJSON(w, http.StatusOK, data(nil))
-		return nil
-	}
 	if err != nil {
 		return err
+	}
+	if id == "" {
+		auth.WriteJSON(w, http.StatusOK, data(nil))
+		return nil
 	}
 	auth.WriteJSON(w, http.StatusOK, data(map[string]string{"id": id, "title": title}))
 	return nil

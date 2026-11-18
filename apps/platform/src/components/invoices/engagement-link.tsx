@@ -45,7 +45,7 @@ export function EngagementLink({
     mutationFn: (engagementId: string) => linkInvoice(engagementId, invoiceId ?? ''),
     onSuccess: (_, engagementId) => {
       const title = engagements.data?.find((e) => e.id === engagementId)?.title ?? ''
-      toast.success(translate('linkedTo', { title }))
+      toast.success(translate('linkedToEngagement', { title }))
       void refresh()
     },
     onError: (error) => toast.error(errorMessage(error)),

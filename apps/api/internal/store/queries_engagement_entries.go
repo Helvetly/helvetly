@@ -176,11 +176,14 @@ func (q Q) UnlinkPeriodInvoice(ctx context.Context, engagementID, invoiceID stri
 	return err == nil, err
 }
 
-// EngagementOfInvoice names the engagement an invoice is linked to; ErrNotFound when it is linked to none.
+// EngagementOfInvoice names the engagement an invoice of the workspace is linked to, empty when none; ErrNotFound
+// when the invoice is not one of the workspace's.
 func (q Q) EngagementOfInvoice(ctx context.Context, workspaceID, invoiceID string) (id, title string, err error) {
-	err = q.db.QueryRow(ctx, `SELECT e.id, e.title FROM engagement_invoices ei JOIN engagement_periods p ON p.id = ei.period_id
-		JOIN engagements e ON e.id = p.engagement_id WHERE ei.invoice_id = $1 AND e.workspace_id = $2 LIMIT 1`,
-		invoiceID, workspaceID).Scan(&id, &title)
+	err = q.db.QueryRow(ctx, `SELECT coalesce(e.id, ''), coalesce(e.title, '') FROM invoices i
+		LEFT JOIN engagement_invoices ei ON ei.invoice_id = i.id
+		LEFT JOIN engagement_periods p ON p.id = ei.period_id
+		LEFT JOIN engagements e ON e.id = p.engagement_id AND e.workspace_id = i.workspace_id
+		WHERE i.id = $1 AND i.workspace_id = $2 ORDER BY e.id NULLS LAST LIMIT 1`, invoiceID, workspaceID).Scan(&id, &title)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}

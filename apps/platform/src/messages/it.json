@@ -4377,6 +4377,6 @@
   "noActiveEngagements": "Nessun incarico attivo",
   "removeFromEngagement": "Rimuovi dall’incarico",
   "engagementLinkTip": "Conta questa fattura come fatturata nell’incarico, per il periodo della sua data di prestazione.",
-  "linkedTo": "Collegata a {title}.",
+  "linkedToEngagement": "Collegata a {title}.",
   "removedFromTheEngagement": "Rimossa dall’incarico."
 }

@@ -4377,6 +4377,6 @@
   "noActiveEngagements": "Keine aktiven Aufträge",
   "removeFromEngagement": "Vom Auftrag lösen",
   "engagementLinkTip": "Zählt diese Rechnung als im Auftrag fakturiert, für den Zeitraum ihres Leistungsdatums.",
-  "linkedTo": "Mit {title} verknüpft.",
+  "linkedToEngagement": "Mit {title} verknüpft.",
   "removedFromTheEngagement": "Vom Auftrag gelöst."
 }
