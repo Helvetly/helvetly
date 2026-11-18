@@ -5,7 +5,7 @@ import { PencilLine } from 'lucide-react'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
+import { CompanySettingsPage } from '@/components/settings/invoice-settings'
 import { GeneralCard } from '@/components/settings/workspace-settings'
 import { sampleSettings } from '@/test/invoice-api'
 
@@ -117,7 +117,7 @@ export const VatOff: Story = {
   },
   render: () => (
     <SidebarProvider>
-      <InvoiceSettingsPage />
+      <CompanySettingsPage />
     </SidebarProvider>
   ),
   play: async ({ canvasElement }) => {

@@ -3394,7 +3394,6 @@
   "whatANewInvoiceStartsWithAClientS": "Par quoi commence une nouvelle facture. La devise, la langue et les termes du client l’emportent.",
   "whatANewInvoiceStartsWithEachClientAnd": "Par quoi commence une nouvelle facture. Chaque client et chaque facture peuvent encore différer.",
   "whatDidYouDeliverEGWebsiteDesign": "Qu’avez-vous livré ? par ex. Conception de site Web",
-  "whatEveryInvoiceSaysAboutYouCompanyVATBank": "Ce que chaque facture dit sur vous : entreprise, TVA, compte bancaire, modes de paiement, numérotation et défauts. Chaque section enregistre seule.",
   "whatFor": "Pour quoi faire",
   "whatHappenedAndWhatDidYouExpectInstead": "Que s’est-il passé et à quoi vous attendiez-vous à la place ?",
   "whatHappenedInThisWorkspaceThatConcernsYou": "Que s’est-il passé dans cet espace de travail qui vous concerne.",
@@ -4290,5 +4289,8 @@
   "legalFormGroupAssociation": "Associations et fondations",
   "addYourCompanysLegalForm": "Indiquez la forme juridique de votre entreprise",
   "legalFormMissingBody": "Helvetly en a besoin pour préparer les rapports adaptés à votre entreprise.",
-  "addLegalForm": "Indiquer la forme juridique"
+  "addLegalForm": "Indiquer la forme juridique",
+  "companySettingsDescription": "Qui est votre entreprise : nom, forme juridique, adresse, TVA et compte bancaire. Factures, offres, salaires, e-factures et portail client les utilisent.",
+  "invoiceSettingsDescription": "Comment les factures sont numérotées, payées, relancées et imprimées.",
+  "shortcutSettings": "Ouvrir les réglages"
 }

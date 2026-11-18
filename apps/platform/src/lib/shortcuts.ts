@@ -18,6 +18,7 @@ export const SHORTCUTS = {
   heidi: { label: translate('shortcutLabel2'), group: 'General', keys: ['mod+j'] },
   help: { label: translate('shortcutLabel3'), group: 'General', keys: ['h'] },
   shortcuts: { label: translate('shortcutLabel4'), group: 'General', keys: ['?'] },
+  settings: { label: translate('shortcutSettings'), group: 'General', keys: ['mod+,'] },
   sidebar: { label: translate('shortcutLabel5'), group: 'Navigation', keys: ['mod+b'] },
   notifications: { label: translate('shortcutLabel6'), group: 'Navigation', keys: ['g n'] },
   theme: { label: translate('shortcutLabel7'), group: 'Appearance', keys: ['d'] },

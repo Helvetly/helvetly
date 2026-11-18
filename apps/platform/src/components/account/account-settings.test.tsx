@@ -140,6 +140,7 @@ test('the settings tabs mark this page and open another one', async () => {
     .map((tab) => tab.textContent)
   expect(names).toEqual([
     'Workspace',
+    'Company',
     'Account',
     'Employment',
     'API & MCP',

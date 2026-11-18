@@ -52,6 +52,7 @@ import { useHeidi } from '@/components/heidi/heidi-provider'
 import { HelpDialog } from '@/components/help/help-dialog'
 import { initialsOf } from '@/components/initials'
 import { NotificationsBell } from '@/components/notifications/notifications-bell'
+import { useSettingsHref } from '@/components/settings/settings-tabs'
 import { WorkspaceMark } from '@/components/shared/workspace-mark'
 import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys'
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
@@ -400,6 +401,8 @@ function UserMenu({
   onShortcuts: () => void
 }) {
   const router = useRouter()
+  const settingsHref = useSettingsHref()
+  useShortcut('settings', () => router.push(settingsHref))
   const queryClient = useQueryClient()
   const signOut = useMutation({
     mutationFn: api.signOut,
@@ -451,9 +454,12 @@ function UserMenu({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/account">
+              <Link href={settingsHref}>
                 <Settings />
                 {translate('settings2')}
+                <DropdownMenuShortcut>
+                  <ShortcutKeys id="settings" />
+                </DropdownMenuShortcut>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onHelp}>

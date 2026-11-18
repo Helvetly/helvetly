@@ -129,6 +129,8 @@ export type Party = {
   phone?: string | null
   electronic_address?: ElectronicAddress | null
   registration_number?: string | null
+  /** The seller's legal form as written locally: GmbH, Einzelunternehmen, LLC. */
+  legal_form?: string | null
   /** ISO 3166-2 subdivision, e.g. RO-CJ (RO e-Factura needs it for Romanian addresses). */
   region?: string | null
 }
@@ -906,20 +908,31 @@ export const MISSING_LABELS: Record<string, string> = {
   'seller.vat_number': translate('vatNumber'),
   iban: 'IBAN',
 }
-/** The invoice settings section each field is in, and the link's name; the rest is Company. */
+/** The settings section each field is in, and the link's name; the rest is Company. */
 const SETTINGS_SECTIONS: Record<string, [section: string, label: string]> = {
   'seller.vat_number': ['vat', translate('vatSettings')],
   iban: ['bank', translate('bankAccount')],
-  'seller.registration_number': ['einvoice', translate('eInvoiceSettings')],
+  'seller.registration_number': ['company', translate('companyDetails')],
   'seller.electronic_address': ['einvoice', translate('eInvoiceSettings')],
 }
+/** The sections on Settings → Invoices; the others (company, VAT, bank, logo) are on Settings → Company. */
+const INVOICE_PAGE_SECTIONS = new Set([
+  'einvoice',
+  'payment',
+  'numbering',
+  'defaults',
+  'instalments',
+  'dunning',
+  'footer',
+])
 
-/** The invoice settings opened on a field's section, the field in focus. */
+/** The settings page opened on a field's section, the field in focus. */
 export function settingsFix(field: string): { label: string; href: string } {
   const [section, label] = SETTINGS_SECTIONS[field] ?? ['company', translate('companyDetails')]
+  const page = INVOICE_PAGE_SECTIONS.has(section) ? '/settings/invoices' : '/settings/company'
   return {
     label,
-    href: `/settings/invoices${field ? `?focus=${encodeURIComponent(field)}` : ''}#${section}`,
+    href: `${page}${field ? `?focus=${encodeURIComponent(field)}` : ''}#${section}`,
   }
 }
 

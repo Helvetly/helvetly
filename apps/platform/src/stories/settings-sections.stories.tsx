@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
+import { CompanySettingsPage, InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import type { SettingsInput } from '@/lib/invoices'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
@@ -65,18 +65,24 @@ const region = async (canvas: HTMLElement, name: string) =>
 
 /** Edit → Save turns on → Saving… → Saved; another section's edit stays unsaved and is not sent. */
 export const SaveOneSection: Story = {
+  render: () => (
+    <SidebarProvider>
+      <CompanySettingsPage />
+      <Toaster />
+    </SidebarProvider>
+  ),
   play: async ({ canvasElement }) => {
     sent.length = 0
     const page = within(canvasElement)
     const iban = await page.findByLabelText(/^IBAN/)
     const bank = await region(canvasElement, 'Bank account')
-    const footer = await region(canvasElement, 'Footer')
+    const company = await region(canvasElement, 'Company')
     // Nothing to save yet: the section shows no Save bar.
     await expect(bank.queryByRole('button', { name: 'Save' })).toBeNull()
     await expect(page.getByText('Still needed:')).toBeVisible()
 
     await userEvent.type(iban, 'CH9300762011623852957')
-    await userEvent.type(footer.getByLabelText('Footer text'), 'Thank you.')
+    await userEvent.type(company.getByLabelText(/^Apt/), 'Suite 4')
     await expect(bank.getByText('Unsaved changes')).toBeVisible()
     // Unsaved is orange, text and dot; its bar stays inside the 44rem form, not out to the far column.
     const unsaved = bank.getByText('Unsaved changes')
@@ -108,12 +114,12 @@ export const SaveOneSection: Story = {
     const saved = await bank.findByText('Saved')
     await expect(getComputedStyle(saved).color).toBe(painted(saved, 'text-success', 'color'))
     await expect(lastSent()?.iban).toBe('CH93 0076 2011 6238 5295 7')
-    await expect(lastSent()?.footer).toBeNull() // the footer's edit was not part of this save
+    await expect(lastSent()?.seller?.apt).toBeNull() // the company's edit was not part of this save
     await expect(await within(document.body).findAllByText('Bank account saved.')).not.toHaveLength(
       0,
     ) // the toast
     await expect(page.getByText(/invoices can be issued/)).toBeVisible() // readiness follows the save
-    await expect(footer.getByText('Unsaved changes')).toBeVisible()
+    await expect(company.getByText('Unsaved changes')).toBeVisible()
     await waitFor(() => expect(bank.queryByText('Saved')).toBeNull(), { timeout: 3000 })
     await expect(bank.queryByRole('button', { name: 'Save' })).toBeNull()
   },
@@ -123,6 +129,12 @@ export const SaveOneSectionDark: Story = { ...SaveOneSection, parameters: { dark
 
 /** A refused save keeps the edits, marks the field and says so in a toast. */
 export const SaveRefused: Story = {
+  render: () => (
+    <SidebarProvider>
+      <CompanySettingsPage />
+      <Toaster />
+    </SidebarProvider>
+  ),
   parameters: {
     msw: {
       handlers: handlers(() =>

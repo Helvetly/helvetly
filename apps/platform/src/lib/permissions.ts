@@ -286,6 +286,7 @@ const ROUTES: [string, Resource][] = [
   ['/settings/workspace', 'workspace'],
   ['/settings/api', 'api'],
   ['/settings/billing', 'billing'],
+  ['/settings/company', 'invoice-settings'],
   ['/settings/invoices', 'invoice-settings'],
   ['/settings/emails', 'invoice-settings'],
   ['/settings/audit-log', 'audit-log'],

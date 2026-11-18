@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientContacts } from '@/components/clients/client-contacts'
-import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
+import { CompanySettingsPage } from '@/components/settings/invoice-settings'
 import type { ContactInput } from '@/lib/clients'
 import type { SettingsInput } from '@/lib/invoices'
 import { sampleSettings } from '@/test/invoice-api'
@@ -51,7 +51,7 @@ export const CompanyPhone: Story = {
   },
   render: () => (
     <SidebarProvider>
-      <InvoiceSettingsPage />
+      <CompanySettingsPage />
     </SidebarProvider>
   ),
   play: async ({ canvasElement }) => {

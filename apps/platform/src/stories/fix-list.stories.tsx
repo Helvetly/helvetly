@@ -87,7 +87,7 @@ export const OneIssue: Story = {
     await expect(dialog.getByText('One thing to fix before issuing')).toBeVisible()
     await expect(list.getByRole('link', { name: /Bank account/ })).toHaveAttribute(
       'href',
-      '/settings/invoices/?focus=iban#bank',
+      '/settings/company/?focus=iban#bank',
     )
   },
 }
@@ -99,9 +99,9 @@ export const ThreeIssues: Story = {
     await expect(dialog.getByText('3 things to fix before issuing')).toBeVisible()
     // Every row goes to its own section, so no two links read the same.
     await expect(list.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
-      '/settings/invoices/?focus=seller.zip#company',
-      '/settings/invoices/?focus=seller.vat_number#vat',
-      '/settings/invoices/?focus=iban#bank',
+      '/settings/company/?focus=seller.zip#company',
+      '/settings/company/?focus=seller.vat_number#vat',
+      '/settings/company/?focus=iban#bank',
     ])
     await expect(list.getByText('Your company details are missing: ZIP, City.')).toBeVisible()
     await expect(dialog.getByRole('link', { name: 'Open in editor' })).toBeVisible()
@@ -163,7 +163,7 @@ export const VATExportRefused: Story = {
     await expect(list.getAllByRole('listitem')).toHaveLength(2)
     await expect(list.getByRole('link', { name: /VAT settings/ })).toHaveAttribute(
       'href',
-      '/settings/invoices/?focus=seller.vat_number#vat',
+      '/settings/company/?focus=seller.vat_number#vat',
     )
   },
 }

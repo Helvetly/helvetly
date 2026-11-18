@@ -1250,7 +1250,7 @@ function DoneStep({
               variant="outline"
               size="sm"
               className="mt-2 w-fit"
-              onClick={() => onOpen('/settings/invoices')}
+              onClick={() => onOpen('/settings/company')}
             >
               {translate('finishInSettings')}
             </Button>

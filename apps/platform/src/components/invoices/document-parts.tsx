@@ -73,7 +73,7 @@ export function SellerBlock({ settings, label }: { settings: InvoiceSettings; la
       </div>
       {!settings.is_complete && (
         <Link
-          href="/settings/invoices"
+          href="/settings/company"
           className="inline-flex w-fit items-center gap-1 text-caption text-link underline underline-offset-2 hover:no-underline"
         >
           {translate('completeYourCompanyDetails')}

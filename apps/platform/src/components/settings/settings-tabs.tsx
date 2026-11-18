@@ -6,6 +6,7 @@ import {
   PlugZap,
   ReceiptText,
   ScrollText,
+  Store,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -20,9 +21,10 @@ import { canReadPath, useScopes } from '@/lib/permissions'
 
 export type Page = { label: string; href: string; icon: LucideIcon }
 
-/** The workspace first, then your own settings (the same in every workspace), employment, then the rest of the workspace's. */
+/** The workspace and its company first, then your own settings (the same in every workspace), employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
   { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
+  { label: translate('company'), href: '/settings/company', icon: Store },
   { label: translate('account'), href: '/account', icon: UserRound },
   { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
@@ -32,6 +34,12 @@ export const SETTINGS_PAGES: Page[] = [
 ]
 
 export const isManager = (role: string | undefined) => role === 'owner' || role === 'admin'
+
+/** Where "Settings" opens: the first settings page the person may read, the workspace's for an owner or admin. */
+export function useSettingsHref() {
+  const scopes = useScopes()
+  return SETTINGS_PAGES.find((page) => canReadPath(scopes, page.href))?.href ?? '/account'
+}
 
 /** The page of these tabs at this path: an exact match, else the closest parent (billing's plans). */
 export function settingsPageAt(pathname: string, pages = SETTINGS_PAGES): Page | undefined {
