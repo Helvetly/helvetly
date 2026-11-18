@@ -39,6 +39,8 @@ export type Session = {
   /** Finished or skipped the welcome (components/onboarding); false shows it. */
   onboarded: boolean
   csrf_token: string
+  /** Keyed hashes of the user's and workspace's ids for Google Analytics (optional only for older test fixtures). */
+  analytics?: { user_id: string; workspace_id: string }
 }
 export type SignedIn = { csrf_token: string; next: string }
 export type TwoFactorRequired = { two_factor_required: true; challenge_id: string }

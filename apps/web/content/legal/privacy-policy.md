@@ -55,7 +55,9 @@ which pages and channels bring visitors; it sets Google's `_ga` cookies (up to 2
 data to Google, which uses the IP address only to derive an approximate location and does not store it (legitimate interest, Art. 6(1)(f)). Blocking
 cookies or scripts in your browser turns it off. The documentation sets no cookies and uses no analytics,
 advertising or tracking. The platform (app.helvetly.com) uses Google Analytics 4 the same way, but sends only the
-address of each page without its query or fragment, never what you enter or the data in your workspace. The client
+address of each page without its query or fragment, never what you enter or the data in your workspace. When you are signed in, it adds a pseudonym of your account
+and of the workspace (a keyed hash Google cannot trace back to you) and your role, so visits from several devices
+count as one person. The client
 portal loads no analytics. Apart from Google's `_ga` cookies, the platform and the client portal set only cookies
 that are strictly necessary for signing in:
 
@@ -147,4 +149,4 @@ data at rest is encrypted and backed up regularly.
 
 ## 8. Changes
 
-We publish changes here with their date. Last change: 16 November 2026.
+We publish changes here with their date. Last change: 18 November 2026.

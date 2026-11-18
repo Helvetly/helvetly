@@ -63,7 +63,9 @@ utilise l’adresse IP uniquement pour déterminer une localisation approximativ
 désactive cette fonction. La documentation ne dépose aucun cookie et n’utilise ni analyse, ni
 publicité, ni suivi. La plateforme (app.helvetly.com) utilise Google Analytics 4 de la même manière,
 mais transmet uniquement l’adresse de chaque page sans ses paramètres ni son fragment, jamais ce que
-vous saisissez ni les données de l’espace. Le portail client ne charge aucun outil d’analyse.
+vous saisissez ni les données de l’espace. Une fois connecté, elle y ajoute un pseudonyme de votre compte et
+de l’espace (une empreinte à clé que Google ne peut pas relier à vous) ainsi que votre rôle, afin que les visites
+depuis plusieurs appareils comptent comme une seule personne. Le portail client ne charge aucun outil d’analyse.
 En dehors des cookies Google `_ga`, la plateforme et le portail ne déposent que les cookies
 strictement nécessaires à la connexion :
 
@@ -160,4 +162,4 @@ Lock) ; données au repos chiffrées et sauvegardées régulièrement.
 
 ## 8. Modifications
 
-Nous publions ici les modifications avec leur date. Dernière modification : 16 novembre 2026.
+Nous publions ici les modifications avec leur date. Dernière modification : 18 novembre 2026.

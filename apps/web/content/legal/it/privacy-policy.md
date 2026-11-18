@@ -58,7 +58,9 @@ solo per ricavare una posizione approssimativa e non lo conserva (legittimo inte
 Bloccare cookie o script nel browser disattiva questa funzione. La documentazione non imposta cookie
 e non usa analisi, pubblicità o tracciamento. La piattaforma (app.helvetly.com) usa Google Analytics 4
 allo stesso modo, ma invia solo l’indirizzo di ogni pagina senza query o frammento, mai ciò che
-inserisci o i dati dello spazio di lavoro. Il portale clienti non carica strumenti di analisi.
+inserisci o i dati dello spazio di lavoro. Dopo l’accesso aggiunge uno pseudonimo del tuo account e dello
+spazio di lavoro (un’impronta con chiave che Google non può ricondurre a te) e il tuo ruolo, così le visite da più
+dispositivi contano come una sola persona. Il portale clienti non carica strumenti di analisi.
 A parte i cookie Google `_ga`, piattaforma e portale impostano solo i cookie strettamente necessari
 per l’accesso:
 
@@ -154,4 +156,4 @@ backup regolari.
 
 ## 8. Modifiche
 
-Pubblichiamo qui le modifiche con la relativa data. Ultima modifica: 16 novembre 2026.
+Pubblichiamo qui le modifiche con la relativa data. Ultima modifica: 18 novembre 2026.
