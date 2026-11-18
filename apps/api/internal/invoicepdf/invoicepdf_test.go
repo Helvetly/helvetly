@@ -122,13 +122,17 @@ func TestLogo(t *testing.T) {
 	if CheckLogo([]byte("<svg/>")) == nil || CheckLogo(d.Logo) != nil {
 		t.Fatal("CheckLogo")
 	}
-	for _, tt := range []struct{ w, h, wantW, wantH float64 }{
-		{4000, 1000, 45, 11.25},                    // wide: limited by the width
-		{1000, 1000, 18, 18},                       // square: limited by the height
-		{64, 64, 64 * mmPerPixel, 64 * mmPerPixel}, // small: never upscaled past 96 dpi
+	for _, tt := range []struct{ w, h, room, wantW, wantH float64 }{
+		{1000, 400, 100, 45, 18},                        // 2.5 : 1, as every logo saved before: as it always was
+		{3000, 600, 100, 75, 15},                        // 5 : 1 wordmark: as wide as the box allows
+		{3000, 600, 60, 60, 12},                         // long details beside it: only as far as they leave free
+		{3000, 600, 10, 45, 9},                          // never narrower than the old box
+		{1600, 400, 100, 72, 18},                        // 4 : 1: limited by the height before the width
+		{1000, 1000, 100, 18, 18},                       // square: limited by the height
+		{64, 64, 100, 64 * mmPerPixel, 64 * mmPerPixel}, // small: never upscaled past 96 dpi
 	} {
-		if w, h := logoSize(tt.w, tt.h); math.Abs(w-tt.wantW) > 1e-9 || math.Abs(h-tt.wantH) > 1e-9 {
-			t.Errorf("logoSize(%v, %v) = %v × %v", tt.w, tt.h, w, h)
+		if w, h := logoSize(tt.w, tt.h, tt.room); math.Abs(w-tt.wantW) > 1e-9 || math.Abs(h-tt.wantH) > 1e-9 {
+			t.Errorf("logoSize(%v, %v, %v) = %v × %v", tt.w, tt.h, tt.room, w, h)
 		}
 	}
 }

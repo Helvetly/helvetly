@@ -40,7 +40,8 @@ type Document struct {
 const (
 	left, right, contentW = 20.0, 190.0, 170.0
 	bottom                = 272.0
-	logoMaxW, logoMaxH    = 45.0, 18.0
+	logoMaxW, logoMaxH    = 75.0, 18.0 // as invoicepdf: a wordmark may be wider than 45 mm
+	logoGap               = 10.0       // between the logo and the seller's block
 	mmPerPixel            = 25.4 / 96
 )
 
@@ -152,27 +153,36 @@ func address(p store.Party, sellerCountry string) []string {
 // header draws seller, client, title and details, and returns the y below them.
 func (r *renderer) header() float64 {
 	p, d := r.pdf, r.d
-	sellerX, align := left, "L"
-	if d.Logo != nil && logoType(d.Logo) != "" {
-		if cfg, _, err := image.DecodeConfig(bytes.NewReader(d.Logo)); err == nil {
-			opts := fpdf.ImageOptions{ImageType: logoType(d.Logo)}
-			p.RegisterImageOptionsReader("logo", opts, bytes.NewReader(d.Logo))
-			w, h := float64(cfg.Width)*mmPerPixel, float64(cfg.Height)*mmPerPixel
-			scale := min(logoMaxW/w, logoMaxH/h, 1)
-			p.ImageOptions("logo", left, 15, w*scale, h*scale, false, opts, 0, "")
-			sellerX, align = 90, "R"
-		}
-	}
-	r.set("B", 11)
-	r.cell(sellerX, 15, right-sellerX, 5, d.Seller.Name, align)
-	r.set("", 8.5)
-	y := 20.5
 	info := address(d.Seller, "")[1:]
 	info[len(info)-1] = strings.TrimSpace(d.Seller.Zip + " " + d.Seller.City)
 	info = slices.DeleteFunc(info, func(s string) bool { return s == "" })
 	if d.Seller.Email != nil {
 		info = append(info, *d.Seller.Email)
 	}
+	// seller block, right-aligned beside the logo (top left) when there is one, and clear of it: a wordmark may be
+	// up to logoMaxW wide where the seller's lines leave room, never less than the 45 mm the box always had
+	sellerX, align := left, "L"
+	if d.Logo != nil && logoType(d.Logo) != "" {
+		if cfg, _, err := image.DecodeConfig(bytes.NewReader(d.Logo)); err == nil {
+			r.set("B", 11)
+			text := r.txt.Width(d.Seller.Name)
+			r.set("", 8.5)
+			for _, s := range info {
+				text = max(text, r.txt.Width(s))
+			}
+			maxW := min(max(right-text-logoGap-left, 45), logoMaxW)
+			opts := fpdf.ImageOptions{ImageType: logoType(d.Logo)}
+			p.RegisterImageOptionsReader("logo", opts, bytes.NewReader(d.Logo))
+			w, h := float64(cfg.Width)*mmPerPixel, float64(cfg.Height)*mmPerPixel
+			scale := min(maxW/w, logoMaxH/h, 1)
+			p.ImageOptions("logo", left, 15, w*scale, h*scale, false, opts, 0, "")
+			sellerX, align = max(90, left+w*scale+logoGap), "R"
+		}
+	}
+	r.set("B", 11)
+	r.cell(sellerX, 15, right-sellerX, 5, d.Seller.Name, align)
+	r.set("", 8.5)
+	y := 20.5
 	for _, s := range info {
 		r.cell(sellerX, y, right-sellerX, 3.8, s, align)
 		y += 3.8
