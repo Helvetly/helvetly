@@ -849,7 +849,11 @@ function EinvoiceItems({
           <FileCode2 />
           <span className="grid">
             {translate('eInvoiceXML')}
-            {blocked && <span className="text-[12px] text-muted-foreground">{blocked}</span>}
+            {blocked && (
+              <span className="max-w-60 text-[12px] text-pretty text-muted-foreground">
+                {blocked}
+              </span>
+            )}
           </span>
           {lock && <PlanTag lock={lock} className="ml-1.5" />}
         </DropdownMenuSubTrigger>
