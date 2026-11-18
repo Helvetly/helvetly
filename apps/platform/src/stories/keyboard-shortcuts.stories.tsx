@@ -54,7 +54,8 @@ export const Dialog: Story = {
     ])
     await expect(shown.getByText('Go to Notifications')).toBeVisible()
     const mod = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
-    await expect(shown.getAllByText(mod).length).toBeGreaterThan(0)
+    // One keycap per step ("Ctrl K"), so the modifier is a word inside it.
+    await expect(shown.getAllByText(new RegExp(`(^|\\s)${mod}(\\s|$)`)).length).toBeGreaterThan(0)
     await expect(shown.getByText('then')).toBeVisible()
   },
 }
