@@ -786,3 +786,34 @@ export const EditInvoiceDrawer: Story = {
     await expect(body().getByRole('dialog', { name: 'Import documents' })).toBeVisible()
   },
 }
+
+/** The unfinished batch can be discarded right from the offer, after a yes: neither continued nor started over. */
+export const DiscardUnfinished: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/imports', () =>
+          HttpResponse.json({ data: discarded.length ? [] : [summary()] }),
+        ),
+        http.delete('/api/v1/imports/:id', ({ params }) => {
+          discarded.push(String(params.id))
+          return new HttpResponse(null, { status: 204 })
+        }),
+      ],
+    },
+  },
+  play: async () => {
+    discarded.length = 0
+    await opened()
+    await userEvent.click(await body().findByRole('button', { name: 'Discard' }))
+    const confirm = await body().findByRole('dialog', { name: 'Discard this import?' })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Discard' }))
+    await waitFor(() => expect(discarded).toEqual(['imp_story']))
+    await waitFor(() =>
+      expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull(),
+    )
+    await expect(body().getByRole('button', { name: 'Process with AI' })).toBeVisible()
+  },
+}
+const discarded: string[] = []
