@@ -9,14 +9,24 @@ import {
   CommandList,
 } from '@helvetly/ui/components/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Package, PackageSearch, Wrench } from 'lucide-react'
+import { Package, PackageSearch, Plus, Wrench } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { translate } from '@/lib/i18n'
-import { formatMoney, type VatMode } from '@/lib/invoices'
-import { lineFromProduct, useProductSearch, type PickedLine, type Product } from '@/lib/products'
+import { formatMoney, useInvoiceSettings, type VatMode } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
+import {
+  canManageProducts,
+  lineFromProduct,
+  useProductSearch,
+  type PickedLine,
+  type Product,
+} from '@/lib/products'
+import { useSession } from '@/lib/queries'
 
 import { unitShort } from './product-bits'
+import { ProductForm } from './product-form'
 
 /**
  * Picks a catalogue item and hands back the invoice line it becomes (docs/products-contract.md,
@@ -44,85 +54,147 @@ export function ProductPicker({
   }, [term])
   const search = useProductSearch(debounced, currency, open)
   const items = search.data ?? []
+  const [adding, setAdding] = useState(false)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (!next) setTerm('')
-      }}
-    >
-      <PopoverTrigger asChild>
-        {trigger ?? (
-          <Button type="button" variant="secondary" size="sm" className="w-fit">
-            <PackageSearch />
-            {translate('addFromCatalogue')}
-          </Button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
-        <Command shouldFilter={false} label={translate('productsAndServices')}>
-          <CommandInput
-            placeholder={translate('searchNameSKUOrGTIN')}
-            value={term}
-            onValueChange={setTerm}
-          />
-          <CommandList>
-            <CommandEmpty>
-              {search.isPending
-                ? translate('searching')
-                : debounced
-                  ? translate('nothingMatches4')
-                  : translate('yourCatalogueIsEmpty')}
-            </CommandEmpty>
-            {items.length > 0 && (
-              <CommandGroup
-                heading={debounced ? translate('matches') : translate('recentlyUpdated')}
-              >
-                {items.map((product) => {
-                  const line = lineFromProduct(product, vatMode)
-                  const unit = unitShort(product.unit)
-                  const foreign = product.currency !== currency
-                  return (
-                    <CommandItem
-                      key={product.id}
-                      value={product.id}
-                      onSelect={() => {
-                        onPick(line, product)
-                        setOpen(false)
-                        setTerm('')
-                      }}
-                      className="cursor-pointer items-start gap-2.5 py-2"
-                    >
-                      {product.type === 'product' ? (
-                        <Package className="mt-0.5 text-muted-foreground" />
-                      ) : (
-                        <Wrench className="mt-0.5 text-muted-foreground" />
-                      )}
-                      <span className="grid min-w-0 flex-1 leading-snug">
-                        <span className="break-words">{product.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {[product.sku, foreign && `in ${product.currency}`]
-                            .filter(Boolean)
-                            .join(' · ') ||
-                            (product.type === 'product'
-                              ? translate('product')
-                              : translate('service'))}
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setTerm('')
+        }}
+      >
+        <PopoverTrigger asChild>
+          {trigger ?? (
+            <Button type="button" variant="secondary" size="sm" className="w-fit">
+              <PackageSearch />
+              {translate('addFromCatalogue')}
+            </Button>
+          )}
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
+          <Command shouldFilter={false} label={translate('productsAndServices')}>
+            <CommandInput
+              placeholder={translate('searchNameSKUOrGTIN')}
+              value={term}
+              onValueChange={setTerm}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {search.isPending
+                  ? translate('searching')
+                  : debounced
+                    ? translate('nothingMatches4')
+                    : translate('yourCatalogueIsEmpty')}
+                {!search.isPending && (
+                  <AddToCatalogue
+                    onAdd={() => {
+                      setOpen(false)
+                      setTerm('')
+                      setAdding(true)
+                    }}
+                  />
+                )}
+              </CommandEmpty>
+              {items.length > 0 && (
+                <CommandGroup
+                  heading={debounced ? translate('matches') : translate('recentlyUpdated')}
+                >
+                  {items.map((product) => {
+                    const line = lineFromProduct(product, vatMode)
+                    const unit = unitShort(product.unit)
+                    const foreign = product.currency !== currency
+                    return (
+                      <CommandItem
+                        key={product.id}
+                        value={product.id}
+                        onSelect={() => {
+                          onPick(line, product)
+                          setOpen(false)
+                          setTerm('')
+                        }}
+                        className="cursor-pointer items-start gap-2.5 py-2"
+                      >
+                        {product.type === 'product' ? (
+                          <Package className="mt-0.5 text-muted-foreground" />
+                        ) : (
+                          <Wrench className="mt-0.5 text-muted-foreground" />
+                        )}
+                        <span className="grid min-w-0 flex-1 leading-snug">
+                          <span className="break-words">{product.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {[product.sku, foreign && `in ${product.currency}`]
+                              .filter(Boolean)
+                              .join(' · ') ||
+                              (product.type === 'product'
+                                ? translate('product')
+                                : translate('service'))}
+                          </span>
                         </span>
-                      </span>
-                      <span className="shrink-0 text-right text-[13px] whitespace-nowrap tabular-nums">
-                        {formatMoney(line.unit_price, product.currency)}
-                        {unit && <span className="text-muted-foreground"> / {unit}</span>}
-                      </span>
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                        <span className="shrink-0 text-right text-[13px] whitespace-nowrap tabular-nums">
+                          {formatMoney(line.unit_price, product.currency)}
+                          {unit && <span className="text-muted-foreground"> / {unit}</span>}
+                        </span>
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {adding && (
+        <NewProductSheet
+          onClose={() => setAdding(false)}
+          onSaved={(product) => {
+            setAdding(false)
+            onPick(lineFromProduct(product, vatMode), product)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+/** Offered only once the list is empty, so the picker reads the session only when it is needed. */
+function AddToCatalogue({ onAdd }: { onAdd: () => void }) {
+  const canWrite = useCan('write:products')
+  const role = useSession().data?.role
+  if (!canWrite || !canManageProducts(role)) return null
+  return (
+    <div className="mt-3">
+      <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+        <Plus />
+        {translate('addToCatalogue')}
+      </Button>
+    </div>
+  )
+}
+
+/** A second drawer over the invoice: the new item is saved to the catalogue and lands on the invoice. */
+function NewProductSheet({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void
+  onSaved: (product: Product) => void
+}) {
+  const settingsQuery = useInvoiceSettings()
+  const settings = settingsQuery.data
+  if (!settled(settingsQuery)) {
+    return <FormSheetLoading title={translate('newProductOrService')} onClose={onClose} />
+  }
+  return (
+    <ProductForm
+      defaults={{
+        currency: settings?.currency ?? 'CHF',
+        vat_registered: settings?.vat_registered ?? true,
+        default_vat_rate: settings?.default_vat_rate ?? '8.1',
+      }}
+      onClose={onClose}
+      onSaved={onSaved}
+    />
   )
 }
