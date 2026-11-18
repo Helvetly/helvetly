@@ -16,6 +16,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { ImportItem } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import type { ImportBatch, ImportFile, ImportRecord, ImportSummary } from '@/lib/imports'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 import { editorApi } from '@/test/invoice-api'
 
 import { sessionHandler } from './screen-fixtures'
@@ -354,16 +355,15 @@ const approvalHandlers = [
       tokens_purchased: 0,
       tokens_remaining: null,
       provider_available: true,
-      consent: approved
-        ? { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' }
-        : { granted: false, changed_at: null, changed_by: '' },
+      consent: aiConsent(approved),
     }),
+  ),
+  http.get('/api/v1/heidi/consent', () =>
+    HttpResponse.json({ data: aiConsent(approved), notice: aiNotice }),
   ),
   http.put('/api/v1/heidi/consent', () => {
     approved = true
-    return HttpResponse.json({
-      data: { granted: true, changed_at: '2026-11-16T10:00:00Z', changed_by: 'Anna' },
-    })
+    return HttpResponse.json({ data: aiConsent(true) })
   }),
   http.post('/api/v1/imports', () => {
     uploads++
@@ -389,11 +389,9 @@ export const ApprovalNotNow: Story = {
   ...withApproval,
   play: async () => {
     await chooseAndRead()
-    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    const ask = await body().findByRole('dialog', { name: aiNotice.title })
     await userEvent.click(within(ask).getByRole('button', { name: 'Not now' }))
-    await waitFor(() =>
-      expect(body().queryByRole('dialog', { name: 'Use AI in this workspace?' })).toBeNull(),
-    )
+    await waitFor(() => expect(body().queryByRole('dialog', { name: aiNotice.title })).toBeNull())
     await expect(body().getByText('clients.csv')).toBeVisible()
     await expect(uploads).toBe(0)
   },
@@ -404,7 +402,57 @@ export const ApprovalApprove: Story = {
   ...withApproval,
   play: async () => {
     await chooseAndRead()
-    const ask = await body().findByRole('dialog', { name: 'Use AI in this workspace?' })
+    const ask = await body().findByRole('dialog', { name: aiNotice.title })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Approve and continue' }))
+    await expect(await body().findByText('Reading part 2 of 5')).toBeVisible()
+    await expect(uploads).toBe(1)
+  },
+}
+
+let noticeReads = 0
+const earlierNotice = { ...aiNotice, version: '2000-01-01', lead: 'The earlier notice.' }
+
+/**
+ * A new notice deployed while the question was open: approving the earlier one is refused, the current notice is
+ * shown with a line that it changed, and only the person's second approval reads the files, once.
+ */
+export const ApprovalNoticeChanged: Story = {
+  ...withApproval,
+  beforeEach: () => {
+    uploads = 0
+    approved = false
+    noticeReads = 0
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/heidi/consent', () =>
+          HttpResponse.json({
+            data: aiConsent(false),
+            notice: ++noticeReads === 1 ? earlierNotice : aiNotice,
+          }),
+        ),
+        http.put('/api/v1/heidi/consent', async ({ request }) => {
+          const { version } = (await request.json()) as { version?: string }
+          if (version !== aiNotice.version)
+            return fail(409, 'ai_consent_version_changed', 'The AI notice has changed.')
+          approved = true
+          return HttpResponse.json({ data: aiConsent(true) })
+        }),
+        ...approvalHandlers,
+      ],
+    },
+  },
+  play: async () => {
+    await chooseAndRead()
+    const ask = await body().findByRole('dialog', { name: aiNotice.title })
+    await expect(ask).toHaveAccessibleDescription('The earlier notice.')
+    await userEvent.click(within(ask).getByRole('button', { name: 'Approve and continue' }))
+    await expect(await within(ask).findByRole('status')).toHaveTextContent(
+      'This notice has changed since it was shown',
+    )
+    await waitFor(() => expect(ask).toHaveAccessibleDescription(aiNotice.lead))
+    await expect(uploads).toBe(0)
     await userEvent.click(within(ask).getByRole('button', { name: 'Approve and continue' }))
     await expect(await body().findByText('Reading part 2 of 5')).toBeVisible()
     await expect(uploads).toBe(1)

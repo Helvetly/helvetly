@@ -1,0 +1,278 @@
+{
+  "version": "2026-11-18",
+  "sha256": "f17cfdd2b647a7502a1da30c9f62a4c24d7207770d19f3d9263f6685bd5b513b",
+  "texts": {
+    "en": {
+      "title": "Use AI in this workspace?",
+      "lead": "Helvetly’s AI features send what you give them to this server’s AI provider (OpenAI by default). You approve once, for yourself, in this workspace; other members and workspaces approve separately.",
+      "sections": [
+        {
+          "id": "sent",
+          "title": "What is sent",
+          "points": [
+            {
+              "id": "messages",
+              "text": "Your Heidi message and up to 20 earlier messages in that conversation, including any business figures shown there; content is also sent to check scope and count tokens"
+            },
+            {
+              "id": "files",
+              "text": "Files you attach to Heidi or select for AI import or receipt reading"
+            },
+            {
+              "id": "filing",
+              "text": "Files you upload to Documents, for automatic filing when your plan includes it: the file’s name and type, its text (or the file itself when it is a small PDF or image without readable text), the folder names when you upload without choosing a folder, and the tags in use"
+            },
+            {
+              "id": "name",
+              "text": "The company name you enter, if you ask for a workspace name suggestion during setup"
+            }
+          ]
+        },
+        {
+          "id": "protected",
+          "title": "What stays protected",
+          "points": [
+            {
+              "id": "hr",
+              "text": "Helvetly does not fetch Employees or Payroll records for AI requests and never files employee files automatically. What you paste or attach yourself is sent, so leave those details out."
+            },
+            {
+              "id": "training",
+              "text": "Helvetly sends requests with OpenAI’s response storage turned off. For OpenAI’s API, its terms say API data is not used to train models."
+            },
+            {
+              "id": "retention",
+              "text": "For OpenAI’s API, its terms allow retention for up to 30 days for abuse checks; Helvetly cannot delete what was already sent."
+            },
+            {
+              "id": "history",
+              "text": "Your Heidi conversations are kept by Helvetly, in this workspace."
+            },
+            {
+              "id": "provider",
+              "text": "Default provider: OpenAI (USA). Self-hosted servers may use a different provider and policy."
+            }
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "What you approve",
+          "points": [
+            {
+              "id": "scope",
+              "text": "Your own use of AI features in this workspace: Heidi, AI import, receipt reading, automatic filing and the name suggestion."
+            },
+            {
+              "id": "legal",
+              "text": "This approval does not replace your company’s own legal basis for processing personal data, or any data processing agreement it needs."
+            }
+          ]
+        }
+      ]
+    },
+    "de": {
+      "title": "KI in diesem Arbeitsbereich verwenden?",
+      "lead": "Die KI-Funktionen von Helvetly senden, was Sie ihnen geben, an den KI-Anbieter dieses Servers (standardmässig OpenAI). Sie stimmen einmal für sich selbst in diesem Workspace zu; andere Mitglieder und Workspaces stimmen separat zu.",
+      "sections": [
+        {
+          "id": "sent",
+          "title": "Was gesendet wird",
+          "points": [
+            {
+              "id": "messages",
+              "text": "Ihre Heidi-Nachricht und bis zu 20 frühere Nachrichten in dieser Konversation, einschliesslich aller dort angezeigten Geschäftszahlen; Es werden auch Inhalte gesendet, um den Umfang zu überprüfen und Token zu zählen"
+            },
+            {
+              "id": "files",
+              "text": "Dateien, die Sie an Heidi anhängen oder für den AI-Import oder das Lesen von Belegen auswählen"
+            },
+            {
+              "id": "filing",
+              "text": "Dateien, die Sie unter Dokumente hochladen, für die automatische Ablage, wenn Ihr Plan sie enthält: Name und Typ der Datei, ihr Text (oder die Datei selbst, wenn sie ein kleines PDF oder Bild ohne lesbaren Text ist), die Ordnernamen, wenn Sie ohne Ordner hochladen, und die verwendeten Tags"
+            },
+            {
+              "id": "name",
+              "text": "Der Firmenname, den Sie eingeben, wenn Sie bei der Einrichtung einen Namen für den Workspace vorschlagen lassen"
+            }
+          ]
+        },
+        {
+          "id": "protected",
+          "title": "Was geschützt bleibt",
+          "points": [
+            {
+              "id": "hr",
+              "text": "Helvetly ruft keine Mitarbeiter- oder Gehaltsabrechnungsdatensätze für KI-Anfragen ab und legt Mitarbeiterdateien nie automatisch ab. Was Sie selbst einfügen oder anhängen, wird gesendet; lassen Sie solche Angaben weg."
+            },
+            {
+              "id": "training",
+              "text": "Helvetly sendet Anfragen mit ausgeschalteter Antwortspeicherung bei OpenAI. Für die API von OpenAI heisst es in den Bedingungen, dass API-Daten nicht zum Trainieren von Modellen verwendet werden."
+            },
+            {
+              "id": "retention",
+              "text": "Für die API von OpenAI erlauben die Bedingungen eine Aufbewahrung von bis zu 30 Tagen für Missbrauchsprüfungen; Helvetly kann bereits Gesendetes nicht löschen."
+            },
+            {
+              "id": "history",
+              "text": "Ihre Heidi-Unterhaltungen bewahrt Helvetly in diesem Workspace auf."
+            },
+            {
+              "id": "provider",
+              "text": "Standardanbieter: OpenAI (USA). Selbst gehostete Server verwenden möglicherweise einen anderen Anbieter und eine andere Richtlinie."
+            }
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "Was Sie genehmigen",
+          "points": [
+            {
+              "id": "scope",
+              "text": "Ihre eigene Nutzung der KI-Funktionen in diesem Workspace: Heidi, KI-Import, Lesen von Belegen, automatische Ablage und Namensvorschlag."
+            },
+            {
+              "id": "legal",
+              "text": "Diese Genehmigung ersetzt weder die eigene Rechtsgrundlage Ihres Unternehmens für die Bearbeitung von Personendaten noch einen nötigen Auftragsverarbeitungsvertrag."
+            }
+          ]
+        }
+      ]
+    },
+    "fr": {
+      "title": "Utiliser l’IA dans cet espace de travail ?",
+      "lead": "Les fonctions d’IA de Helvetly envoient ce que vous leur donnez au fournisseur d’IA de ce serveur (OpenAI par défaut). Vous approuvez une fois, pour vous-même, dans cet espace de travail ; les autres membres et espaces approuvent séparément.",
+      "sections": [
+        {
+          "id": "sent",
+          "title": "Ce qui est envoyé",
+          "points": [
+            {
+              "id": "messages",
+              "text": "Votre message Heidi et jusqu’à 20 messages antérieurs dans cette conversation, y compris les chiffres commerciaux qui y sont affichés ; le contenu est également envoyé pour vérifier la portée et compter les jetons"
+            },
+            {
+              "id": "files",
+              "text": "Fichiers que vous joignez à Heidi ou que vous sélectionnez pour l’importation AI ou la lecture du reçu"
+            },
+            {
+              "id": "filing",
+              "text": "Les fichiers que vous téléversez dans Documents, pour le classement automatique si votre forfait l’inclut : nom et type du fichier, son texte (ou le fichier lui-même s’il s’agit d’un petit PDF ou d’une image sans texte lisible), les noms des dossiers si vous téléversez sans choisir de dossier, et les étiquettes utilisées"
+            },
+            {
+              "id": "name",
+              "text": "Le nom de l’entreprise que vous saisissez, si vous demandez une suggestion de nom d’espace de travail lors de la configuration"
+            }
+          ]
+        },
+        {
+          "id": "protected",
+          "title": "Ce qui reste protégé",
+          "points": [
+            {
+              "id": "hr",
+              "text": "Helvetly ne récupère pas les enregistrements d’employés ou de paie pour les demandes d’IA et ne classe jamais automatiquement les fichiers d’employés. Ce que vous collez ou joignez vous-même est envoyé ; laissez ces détails de côté."
+            },
+            {
+              "id": "training",
+              "text": "Helvetly envoie les requêtes avec le stockage des réponses désactivé chez OpenAI. Pour l’API d’OpenAI, ses conditions indiquent que les données de l’API ne sont pas utilisées pour entraîner des modèles."
+            },
+            {
+              "id": "retention",
+              "text": "Pour l’API d’OpenAI, ses conditions autorisent la conservation jusqu’à 30 jours pour les contrôles d’abus ; Helvetly ne peut pas supprimer ce qui a déjà été envoyé."
+            },
+            {
+              "id": "history",
+              "text": "Vos conversations avec Heidi sont conservées par Helvetly, dans cet espace de travail."
+            },
+            {
+              "id": "provider",
+              "text": "Fournisseur par défaut : OpenAI (USA). Les serveurs auto-hébergés peuvent utiliser un fournisseur et une politique différents."
+            }
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "Ce que vous approuvez",
+          "points": [
+            {
+              "id": "scope",
+              "text": "Votre propre utilisation des fonctions d’IA dans cet espace de travail : Heidi, importation IA, lecture des reçus, classement automatique et suggestion de nom."
+            },
+            {
+              "id": "legal",
+              "text": "Cette approbation ne remplace ni la base légale propre à votre entreprise pour traiter des données personnelles, ni un contrat de sous-traitance dont elle aurait besoin."
+            }
+          ]
+        }
+      ]
+    },
+    "it": {
+      "title": "Utilizzare l’intelligenza artificiale in questo spazio di lavoro?",
+      "lead": "Le funzioni di IA di Helvetly inviano ciò che dai loro al fornitore di IA di questo server (OpenAI per impostazione predefinita). Approvi una volta, per te, in questo workspace; altri membri e workspace approvano separatamente.",
+      "sections": [
+        {
+          "id": "sent",
+          "title": "Cosa viene inviato",
+          "points": [
+            {
+              "id": "messages",
+              "text": "Il tuo messaggio Heidi e fino a 20 messaggi precedenti in quella conversazione, inclusi eventuali dati aziendali mostrati lì; il contenuto viene inviato anche per verificare l’ambito e contare i token"
+            },
+            {
+              "id": "files",
+              "text": "File allegati a Heidi o selezionati per l’importazione AI o la lettura delle ricevute"
+            },
+            {
+              "id": "filing",
+              "text": "I file che carichi in Documenti, per l’archiviazione automatica se il tuo piano la include: nome e tipo del file, il suo testo (o il file stesso se è un piccolo PDF o un’immagine senza testo leggibile), i nomi delle cartelle se carichi senza scegliere una cartella e i tag in uso"
+            },
+            {
+              "id": "name",
+              "text": "Il nome dell’azienda che inserisci, se durante la configurazione chiedi un suggerimento per il nome del workspace"
+            }
+          ]
+        },
+        {
+          "id": "protected",
+          "title": "Cosa resta protetto",
+          "points": [
+            {
+              "id": "hr",
+              "text": "Helvetly non recupera i record dei dipendenti o delle buste paga per le richieste di IA e non archivia mai automaticamente i file dei dipendenti. Ciò che incolli o alleghi tu stesso viene inviato: lascia fuori questi dettagli."
+            },
+            {
+              "id": "training",
+              "text": "Helvetly invia le richieste con l’archiviazione delle risposte disattivata presso OpenAI. Per l’API di OpenAI, i suoi termini dicono che i dati API non vengono utilizzati per addestrare i modelli."
+            },
+            {
+              "id": "retention",
+              "text": "Per l’API di OpenAI, i suoi termini consentono la conservazione fino a 30 giorni per i controlli sugli abusi; Helvetly non può cancellare ciò che è già stato inviato."
+            },
+            {
+              "id": "history",
+              "text": "Le tue conversazioni con Heidi sono conservate da Helvetly, in questo workspace."
+            },
+            {
+              "id": "provider",
+              "text": "Provider predefinito: OpenAI (USA). I server self-hosted possono utilizzare un provider e una policy diversi."
+            }
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "Cosa approvi",
+          "points": [
+            {
+              "id": "scope",
+              "text": "Il tuo uso delle funzioni di IA in questo workspace: Heidi, importazione IA, lettura delle ricevute, archiviazione automatica e suggerimento del nome."
+            },
+            {
+              "id": "legal",
+              "text": "Questa approvazione non sostituisce la base giuridica della tua azienda per il trattamento dei dati personali né un eventuale accordo sul trattamento dei dati di cui abbia bisogno."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -14,6 +14,7 @@ import (
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/store/storetest"
 )
 
 // fakeNamer is the naming model: no network. reply answers each call; gate, when set, holds the call until closed.
@@ -457,5 +458,20 @@ func TestSuggestNeedsThePersonsOwnAIApproval(t *testing.T) {
 	}
 	if c, err := e.st.AIConsent(context.Background(), ws, owner.userID); err != nil || c.ChangedAt != nil {
 		t.Fatalf("the narrow consent was recorded as approval: %+v %v", c, err)
+	}
+}
+
+// An approval given for an earlier notice (one that did not yet say the company name is sent) does not count.
+func TestSuggestNeedsAnApprovalOfTheNoticeInForce(t *testing.T) {
+	e := newEnv(t)
+	namer := &fakeNamer{reply: good("Muster")}
+	e.svc.SetNamer(namer)
+	owner, ws := e.approvedOwner("My workspace", "owner")
+	storetest.OutdateAIConsent(t, e.raw, ws, owner.userID)
+	if code, body := e.do(owner, http.MethodPost, path, ask("Muster GmbH")); code != http.StatusForbidden || !strings.Contains(fmt.Sprint(body), "ai_consent_required") {
+		t.Fatalf("with an approval of an earlier notice: %d %v", code, body)
+	}
+	if _, _, found := e.suggestionRow(ws); found || namer.calls() != 0 {
+		t.Fatalf("the use was taken or the model asked: found=%v calls=%d", found, namer.calls())
 	}
 }

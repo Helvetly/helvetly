@@ -5,19 +5,28 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/store/storetest"
 )
 
-// recordingModel is the development model, keeping each request it was asked.
+// recordingModel is the development model, keeping each request it was asked and counting its input countings (which
+// send the content too).
 type recordingModel struct {
 	aimodel.Fake
-	mu   sync.Mutex
-	reqs []aimodel.Request
+	mu      sync.Mutex
+	reqs    []aimodel.Request
+	counted atomic.Int32
+}
+
+func (m *recordingModel) InputTokens(ctx context.Context, r aimodel.Request) (int64, error) {
+	m.counted.Add(1)
+	return m.Fake.InputTokens(ctx, r)
 }
 
 func (m *recordingModel) Answer(ctx context.Context, r aimodel.Request) (aimodel.Reply, error) {
@@ -194,18 +203,45 @@ func TestAIFilingNeverSendsHRFiles(t *testing.T) {
 	}
 }
 
-func TestAIFilingConsentWithdrawnBeforeTheCall(t *testing.T) {
-	e := newEnv(t)
-	b := e.workspace()
-	m := e.filer(nil)
-	e.approveAI(b)
-	up := e.uploaded(b, "invoice-acme.pdf", pdf)
-	if err := e.st.SetAIConsent(context.Background(), b.workspace, b.user, false, time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	e.fileDue()
-	if d := e.get(b, up.ID); len(m.asked()) != 0 || d.AIFiling.Status != "skipped" || d.FolderID != nil {
-		t.Fatalf("filed after approval was withdrawn: %d calls, %+v", len(m.asked()), d)
+// A queued filing is admitted for the uploader's approval as it is when the job runs: withdrawn, or given for an
+// earlier notice (a new one deployed since), it is skipped once, with nothing counted or sent and the file left where
+// it is. An upload made without a current approval is never queued.
+func TestAIFilingNeedsAnApprovalOfTheNoticeInForce(t *testing.T) {
+	for _, c := range []struct {
+		name          string
+		afterApproval func(e *env, b *browser)
+		beforeUpload  bool
+	}{
+		{"withdrawn after the upload", func(e *env, b *browser) {
+			if err := e.st.SetAIConsent(context.Background(), b.workspace, b.user, false, time.Now()); err != nil {
+				e.t.Fatal(err)
+			}
+		}, false},
+		{"a new notice after the upload", func(e *env, b *browser) { storetest.OutdateAIConsent(e.t, e.raw, b.workspace, b.user) }, false},
+		{"a new notice before the upload", func(e *env, b *browser) { storetest.OutdateAIConsent(e.t, e.raw, b.workspace, b.user) }, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := newEnv(t)
+			b := e.workspace()
+			m := e.filer(nil)
+			e.approveAI(b)
+			if c.beforeUpload {
+				c.afterApproval(e, b)
+			}
+			up := e.uploaded(b, "invoice-acme.pdf", pdf)
+			if !c.beforeUpload {
+				c.afterApproval(e, b)
+			}
+			e.fileDue()
+			e.fileDue() // a refused job is not retried
+			d := e.get(b, up.ID)
+			if len(m.asked()) != 0 || m.counted.Load() != 0 || d.FolderID != nil {
+				t.Fatalf("reached the model: %d calls, %d countings, %+v", len(m.asked()), m.counted.Load(), d)
+			}
+			if want := map[bool]string{false: "skipped", true: ""}[c.beforeUpload]; d.AIFiling == nil && want != "" || d.AIFiling != nil && d.AIFiling.Status != want {
+				t.Fatalf("filing %+v, want %q", d.AIFiling, want)
+			}
+		})
 	}
 }
 

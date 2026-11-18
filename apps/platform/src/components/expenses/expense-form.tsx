@@ -7,6 +7,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Calculator,
   CreditCard,
@@ -49,6 +50,7 @@ import {
   type Expense,
 } from '@/lib/expenses'
 import { preferred, useHabits } from '@/lib/habits'
+import { usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   formatMoney,
@@ -163,6 +165,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const [recognized, setRecognized] = useState<Recognized | null>(null)
   const reader = useRef<AbortController | null>(null)
   const { ensure } = useAIApproval()
+  const queryClient = useQueryClient()
   // The workspace a result belongs to: a switch while reading makes it stale.
   const workspaceId = session?.workspace.id
   const currentWorkspace = useRef(workspaceId)
@@ -225,8 +228,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       try {
         suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
       } catch (error) {
-        // The server still wanted approval (given elsewhere, withdrawn): ask once and retry once.
-        if (!isAIConsentRequired(error) || stale() || !(await ensure()) || stale()) throw error
+        // The server still wanted approval (withdrawn elsewhere, a new notice since): ask once and retry once.
+        if (!isAIConsentRequired(error) || stale()) throw error
+        await queryClient.invalidateQueries({ queryKey: usageKey })
+        if (!(await ensure()) || stale()) throw error
         suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
       }
       if (stale()) return

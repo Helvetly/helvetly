@@ -1,4 +1,6 @@
 // Heidi, typed by hand from docs/heidi-contract.md.
+import { locale } from '@helvetly/i18n'
+
 import { request, respond } from '@/lib/api'
 import { IMPORT_ACCEPT } from '@/lib/imports'
 import { STATUS_LABELS, type DisplayStatus } from '@/lib/invoices'
@@ -115,7 +117,27 @@ export type HeidiUsage = {
 /** The signed-in person's own approval, in this workspace, to send content to OpenAI; changed_at is null until they choose. */
 export const usageKey = ['heidi', 'usage'] as const
 
-export type HeidiConsent = { granted: boolean; changed_at: string | null; changed_by: string }
+/**
+ * `granted`: approved the notice in force (`current_version`); `version` is the notice the latest choice was made for
+ * ("" before notice versions or any choice).
+ */
+export type HeidiConsent = {
+  granted: boolean
+  version: string
+  current_version: string
+  changed_at: string | null
+  changed_by: string
+}
+
+/** The AI-use notice people approve, from the API in the page's language; point ids pick the icons. */
+export type AINotice = {
+  version: string
+  title: string
+  lead: string
+  sections: { id: string; title: string; points: { id: string; text: string }[] }[]
+}
+
+export const consentKey = ['heidi', 'consent', locale] as const
 
 export type HeidiSuggestion = { title: string; prompt: string }
 
@@ -368,8 +390,16 @@ export const heidiApi = {
   conversation: (id: string) =>
     request<{ data: HeidiMessage[] }>(`/heidi/conversations/${encodeURIComponent(id)}`),
   usage: () => request<HeidiUsage>('/heidi/usage'),
-  setConsent: (granted: boolean) =>
-    request<{ data: HeidiConsent }>('/heidi/consent', { method: 'PUT', json: { granted } }),
+  consent: () =>
+    request<{ data: HeidiConsent; notice: AINotice }>(
+      `/heidi/consent?${new URLSearchParams({ lang: locale })}`,
+    ),
+  /** Approving names the notice version that was shown; the server refuses any other (ai_consent_version_changed). */
+  setConsent: (granted: boolean, version: string) =>
+    request<{ data: HeidiConsent }>('/heidi/consent', {
+      method: 'PUT',
+      json: { granted, version },
+    }),
   /** The page's suggestions; `client` is the client open in its drawer, whose topics come first. */
   suggestions: (page: HeidiPage, client?: string) =>
     request<{ data: HeidiSuggestion[] }>(

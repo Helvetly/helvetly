@@ -4,7 +4,7 @@ test('imports clients from a CSV: upload, review, fix nothing, commit once', asy
   page,
   api,
 }) => {
-  await expect(await api.write('/heidi/consent', { granted: true }, 'PUT')).toBeOK()
+  await api.approveAI()
   const first = uniqueName('Import Alpha')
   const second = uniqueName('Import Beta')
   const csv = `name,email,city,country\n${first},alpha@example.test,Zürich,CH\n${second},beta@example.test,Bern,CH\n`

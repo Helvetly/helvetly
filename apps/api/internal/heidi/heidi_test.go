@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/store"
@@ -90,7 +92,14 @@ func (s *fakeStorage) Delete(ctx context.Context, key string) error {
 
 func fixture(t *testing.T) (*Service, *http.ServeMux, *store.Session, *fakeStorage) {
 	t.Helper()
-	db, _ := storetest.New(t)
+	s, mux, sess, files, _ := fixtureRaw(t)
+	return s, mux, sess, files
+}
+
+// fixtureRaw is fixture with the database's pool, to write what the API never does.
+func fixtureRaw(t *testing.T) (*Service, *http.ServeMux, *store.Session, *fakeStorage, *pgxpool.Pool) {
+	t.Helper()
+	db, raw := storetest.New(t)
 	now := time.Now().UTC()
 	sess := &store.Session{ID: "ses_heidi", CSRFToken: "csrf", User: store.User{ID: "usr_heidi", Email: "heidi@example.test", Name: "Heidi"}, Workspace: store.Workspace{ID: "ws_heidi", Name: "Workspace", Timezone: "Europe/Zurich"}, Role: "owner"}
 	for _, err := range []error{db.CreateUser(context.Background(), sess.User, now), db.CreateWorkspace(context.Background(), sess.Workspace, sess.Workspace.Timezone, now), db.AddMember(context.Background(), sess.Workspace.ID, sess.User.ID, "owner", now)} {
@@ -106,7 +115,7 @@ func fixture(t *testing.T) (*Service, *http.ServeMux, *store.Session, *fakeStora
 	s := New(db, testAuth{sess, api}, files, nil, Options{})
 	mux := http.NewServeMux()
 	s.Register(mux)
-	return s, mux, sess, files
+	return s, mux, sess, files, raw
 }
 
 func call(mux http.Handler, method, target, body, contentType string) *httptest.ResponseRecorder {

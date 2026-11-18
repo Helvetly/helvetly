@@ -12,6 +12,7 @@ import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
+import { aiConsent } from '@/mocks/ai-notice'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 import { Welcome } from './onboarding'
@@ -915,7 +916,7 @@ const available = () => {
   usage = {
     ...noAI(),
     provider_available: true,
-    consent: { granted: false, changed_at: null, changed_by: '' },
+    consent: aiConsent(false),
   }
 }
 const toImport = async (user: User) => {
