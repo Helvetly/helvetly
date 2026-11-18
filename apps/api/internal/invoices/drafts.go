@@ -375,7 +375,7 @@ func listParam(q url.Values, key string) []string {
 func parseFilter(q url.Values) (store.InvoiceFilter, error) {
 	f := store.InvoiceFilter{Search: q.Get("search"), Kind: q.Get("kind"), ClientID: q.Get("client_id"), Sort: q.Get("sort"),
 		Credited:   q.Get("credited_invoice_id"),
-		IssuedFrom: q.Get("issued_from"), IssuedTo: q.Get("issued_to"), IDs: listParam(q, "ids")}
+		IssuedFrom: q.Get("issued_from"), IssuedTo: q.Get("issued_to"), IDs: listParam(q, "ids"), Unlinked: q.Get("unlinked") == "1"}
 	for _, v := range listParam(q, "status") {
 		if !slices.Contains([]string{"draft", "open", "paid", "void", "replaced", "overdue", "refund_due"}, v) {
 			return f, badRequest("status must be draft, open, paid, void, replaced, overdue or refund_due.")

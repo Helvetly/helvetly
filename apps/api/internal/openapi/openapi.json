@@ -351,6 +351,16 @@
             }
           },
           {
+            "name": "unlinked",
+            "in": "query",
+            "required": false,
+            "description": "1 for only documents not linked to an engagement.",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,

@@ -2,8 +2,10 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"helvetly.com/api/internal/invoicecalc"
 )
 
@@ -135,6 +137,57 @@ func (q Q) LinkPeriodInvoice(ctx context.Context, periodID, invoiceID, kind stri
 	_, err := q.db.Exec(ctx, `INSERT INTO engagement_invoices (period_id, invoice_id, kind, created_at) VALUES ($1, $2, $3, now())
 		ON CONFLICT DO NOTHING`, periodID, invoiceID, kind)
 	return err
+}
+
+// LinkableInvoice is what linking an invoice to an engagement needs to know of it.
+type LinkableInvoice struct {
+	ClientID, Status       string
+	ServiceDate, IssueDate string
+	Linked                 bool
+}
+
+// LinkableInvoice reads and locks an invoice of the workspace for linking, so two engagements cannot both take it;
+// ErrNotFound when it is not one of its own.
+func (q Q) LinkableInvoice(ctx context.Context, workspaceID, id string) (LinkableInvoice, error) {
+	var v LinkableInvoice
+	err := q.db.QueryRow(ctx, `SELECT i.client_id, i.status, coalesce(to_char(i.service_date, `+dateFmt+`), ''), to_char(i.issue_date, `+dateFmt+`),
+		EXISTS (SELECT 1 FROM engagement_invoices ei WHERE ei.invoice_id = i.id)
+		FROM invoices i WHERE i.id = $1 AND i.workspace_id = $2 FOR UPDATE OF i`, id, workspaceID).
+		Scan(&v.ClientID, &v.Status, &v.ServiceDate, &v.IssueDate, &v.Linked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return v, ErrNotFound
+	}
+	return v, err
+}
+
+// UnlinkPeriodInvoice removes the invoice's link to the engagement's periods. It refuses (false) when entries sit on
+// the invoice: those links were made by invoicing the usage and belong to it. A missing link is ErrNotFound.
+func (q Q) UnlinkPeriodInvoice(ctx context.Context, engagementID, invoiceID string) (bool, error) {
+	var entries int
+	if err := q.db.QueryRow(ctx, `SELECT count(*) FROM engagement_entries WHERE engagement_id = $1 AND invoice_id = $2`,
+		engagementID, invoiceID).Scan(&entries); err != nil || entries > 0 {
+		return false, err
+	}
+	tag, err := q.db.Exec(ctx, `DELETE FROM engagement_invoices ei USING engagement_periods p
+		WHERE ei.period_id = p.id AND p.engagement_id = $1 AND ei.invoice_id = $2`, engagementID, invoiceID)
+	if err == nil && tag.RowsAffected() == 0 {
+		err = ErrNotFound
+	}
+	return err == nil, err
+}
+
+// EngagementOfInvoice names the engagement an invoice of the workspace is linked to, empty when none; ErrNotFound
+// when the invoice is not one of the workspace's.
+func (q Q) EngagementOfInvoice(ctx context.Context, workspaceID, invoiceID string) (id, title string, err error) {
+	err = q.db.QueryRow(ctx, `SELECT coalesce(e.id, ''), coalesce(e.title, '') FROM invoices i
+		LEFT JOIN engagement_invoices ei ON ei.invoice_id = i.id
+		LEFT JOIN engagement_periods p ON p.id = ei.period_id
+		LEFT JOIN engagements e ON e.id = p.engagement_id AND e.workspace_id = i.workspace_id
+		WHERE i.id = $1 AND i.workspace_id = $2 ORDER BY e.id NULLS LAST LIMIT 1`, invoiceID, workspaceID).Scan(&id, &title)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = ErrNotFound
+	}
+	return id, title, err
 }
 
 // PeriodInvoices lists the period's non-void invoices, oldest link first.

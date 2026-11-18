@@ -141,6 +141,9 @@ var prefixes = []struct{ path, resource string }{
 // also: routes that create in a second resource, as path.Match patterns per method.
 var also = []struct{ method, pattern, scope string }{
 	{http.MethodPost, "/api/v1/engagements/*/periods/*/invoice", "write:invoices"},
+	{http.MethodPost, "/api/v1/engagements/*/invoices", "write:invoices"},
+	{http.MethodDelete, "/api/v1/engagements/*/invoices/*", "write:invoices"},
+	{http.MethodGet, "/api/v1/invoices/*/engagement", "read:engagements"},
 }
 
 // instead: routes whose scopes replace their prefix's read/write scope, as path.Match patterns, for reads (GET, HEAD)

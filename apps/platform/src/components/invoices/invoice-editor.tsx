@@ -52,6 +52,7 @@ import { RecordLink } from '@/components/record-link'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
+import { linkInvoice } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import {
   addDays,
@@ -87,6 +88,7 @@ import {
   type IssueReason,
   type InvoiceSettings,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import type { Compose } from './compose'
@@ -115,6 +117,7 @@ import {
   type EditorErrors,
   type EditorValues,
 } from './editor-model'
+import { EngagementLink } from './engagement-link'
 import { InstalmentsSection } from './instalments-section'
 import { KIND_ICONS } from './invoice-bits'
 import { IssueBlockers } from './invoice-dialogs'
@@ -396,6 +399,8 @@ function Editor({
   const [pages, setPages] = useState<number | null>(null)
   const [picking, setPicking] = useState(!values.client_id && !invoice)
   const [clientError, setClientError] = useState(false)
+  const [engagementId, setEngagementId] = useState('') // chosen before the draft exists
+  const canLinkEngagement = useCan('write:engagements')
   const top = useRef<HTMLDivElement>(null)
 
   const save = useSaveInvoice()
@@ -464,6 +469,11 @@ function Editor({
       if (!draftId) {
         setDraftId(saved.id)
         onCreated(saved.id)
+        if (engagementId)
+          void linkInvoice(engagementId, saved.id).then(
+            () => setEngagementId(''),
+            (error) => toast.error(errorMessage(error)),
+          )
       }
       return saved
     } catch (error) {
@@ -915,6 +925,26 @@ function Editor({
                         className={quietValue}
                       />
                     </dd>
+                    {canLinkEngagement && (
+                      <>
+                        <MetaLabel
+                          htmlFor="invoice-engagement"
+                          error={undefined}
+                          tip={translate('engagementLinkTip')}
+                        >
+                          {translate('engagement2')}
+                        </MetaLabel>
+                        <dd>
+                          <EngagementLink
+                            id="invoice-engagement"
+                            clientId={values.client_id ?? ''}
+                            invoiceId={draftId}
+                            pending={engagementId}
+                            onPendingChange={setEngagementId}
+                          />
+                        </dd>
+                      </>
+                    )}
                     {needsRonRate(client?.country, values.currency) && (
                       <>
                         <MetaLabel

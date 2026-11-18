@@ -33,6 +33,7 @@ import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
 import {
   createEngagement,
+  linkInvoice,
   updateEngagement,
   type Engagement,
   type Recurrence,
@@ -46,6 +47,7 @@ import {
   VAT_RATES,
   type VatCategory,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { queryKeys } from '@/lib/queries'
 
 import {
@@ -66,6 +68,7 @@ import {
   type FormValues,
 } from './engagement-form-model'
 import { EngagementSummary } from './engagement-summary'
+import { InvoiceLinkField } from './invoice-link-field'
 
 const fieldId = (field: keyof FormValues) => `engagement-${field}`
 
@@ -171,6 +174,8 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   const [errors, setErrors] = useState<FieldErrors>({})
   const [discarding, setDiscarding] = useState(false)
   const [clientOpen, setClientOpen] = useState(false)
+  const [invoiceId, setInvoiceId] = useState('')
+  const canLinkInvoice = useCan('write:invoices')
   const [descriptionOpened, setDescriptionOpened] = useState(false)
   const [overageOpened, setOverageOpened] = useState(false)
   const form = useRef<HTMLFormElement>(null)
@@ -192,9 +197,15 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   const save = useMutation({
     mutationFn: async () => {
       const input = toInput(values)
-      return (
+      const saved = (
         engagement ? await updateEngagement(engagement.id, input) : await createEngagement(input)
       ).data
+      // The engagement exists now: a refused link is reported, it does not undo the save.
+      if (!engagement && invoiceId)
+        await linkInvoice(saved.id, invoiceId).catch((error: unknown) =>
+          toast.error(translate('invoiceNotLinked', { message: errorMessage(error) })),
+        )
+      return saved
     },
     onSuccess: (saved) => {
       if (!engagement)
@@ -261,6 +272,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   }, [])
 
   const pickClient = (client: Client) => {
+    if (client.id !== values.client_id) setInvoiceId('')
     setValues((v) => ({
       ...(engagement ? v : withClientHabits(v, initial, defaults, habits, client.id)),
       client_id: client.id,
@@ -361,6 +373,20 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     </PopoverContent>
                   </Popover>
                 </FormField>
+                {!engagement && values.client_id && canLinkInvoice && (
+                  <SharedField
+                    id="engagement-invoice"
+                    label={translate('alreadyInvoiced')}
+                    tip={translate('alreadyInvoicedTip')}
+                  >
+                    <InvoiceLinkField
+                      id="engagement-invoice"
+                      clientId={values.client_id}
+                      value={invoiceId}
+                      onChange={setInvoiceId}
+                    />
+                  </SharedField>
+                )}
                 <FormField field="title" label={translate('title')} error={errors.title} required>
                   <input
                     {...describe('title')}
