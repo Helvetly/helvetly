@@ -4451,5 +4451,7 @@
   "paidSeparatelyNextStep": "Aus diesem Auftrag wird nichts verrechnet: Sie erfassen die Arbeit gegen das Bezahlte.",
   "enterAPriceAbove0": "Geben Sie einen Preis über 0 ein oder wählen Sie «Separat bezahlt»",
   "detailsSectionText": "Optional, für Ihre Unterlagen und die Rechnung.",
+  "aiWriteErrorUnavailable": "«Mit KI schreiben» ist auf diesem Server noch nicht verfügbar.",
+  "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
   "tagShape": "Tags bestehen aus Buchstaben a–z, Ziffern und Bindestrichen (nicht am Anfang oder Ende), bis 32 Zeichen."
 }

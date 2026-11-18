@@ -108,3 +108,29 @@ export const ImproveWhatIsWritten: Story = {
     )
   },
 }
+
+/** A failed call reads as a notice, never a raw "Not found."; a busy model offers Try again. */
+export const Errors: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.post('/api/v1/ai/write', () =>
+          HttpResponse.json(
+            { error: { code: 'ai_busy', message: 'Another AI request is in progress.' } },
+            { status: 503 },
+          ),
+        ),
+      ],
+    },
+  },
+  render: () => <Field initial="" />,
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'Write with AI' }))
+    await userEvent.click(await body().findByRole('button', { name: 'Write a draft' }))
+    await expect(await body().findByRole('alert')).toHaveTextContent(
+      'Another AI request is in progress.',
+    )
+    await expect(body().getByRole('button', { name: 'Try again' })).toBeVisible()
+  },
+}

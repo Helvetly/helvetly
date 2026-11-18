@@ -34,18 +34,17 @@ export function WorkspaceMark({
       )}
     >
       {logo ? (
-        // A margin in proportion to the tile at every size, so no logo touches the tile's edge.
-        <span className="absolute inset-[12%]">
-          <Image
-            src={logo}
-            alt=""
-            fill
-            unoptimized
-            sizes="32px"
-            className="object-contain"
-            onError={() => setFailed(logo)}
-          />
-        </span>
+        // Its own size, centred by the tile: a margin in proportion at every size, and no parent height to depend on
+        // (a "fill" image in an absolutely placed box rendered 0 px high in the app).
+        <Image
+          src={logo}
+          alt=""
+          width={64}
+          height={64}
+          unoptimized
+          className="size-3/4 object-contain"
+          onError={() => setFailed(logo)}
+        />
       ) : (
         initialsOf(name).slice(0, 1) || '?'
       )}

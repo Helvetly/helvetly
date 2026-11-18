@@ -4451,5 +4451,7 @@
   "paidSeparatelyNextStep": "Da questo incarico non si fattura nulla: registri il lavoro rispetto a quanto pagato.",
   "enterAPriceAbove0": "Inserisci un prezzo superiore a 0 o scegli «Pagato a parte»",
   "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura.",
+  "aiWriteErrorUnavailable": "«Scrivi con l'IA» non è ancora disponibile su questo server.",
+  "aiWriteErrorNetwork": "Helvetly non è raggiungibile. Controlla la connessione e riprova.",
   "tagShape": "I tag usano lettere a–z, cifre e trattini (non all’inizio o alla fine), fino a 32 caratteri."
 }
