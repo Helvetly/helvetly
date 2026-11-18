@@ -42,7 +42,7 @@ import { CloseImportedMonths } from './close-imported-months'
 import { clearHandOff, peekHandOff } from './hand-off'
 import { ImportConflicts, type Conflict } from './import-conflicts'
 import { EditRecordDrawer } from './import-edit-drawer'
-import { DropZone, FileProgress } from './import-files'
+import { DropZone, FileProgress, ImportSteps } from './import-files'
 import { IssueSummary } from './import-issues'
 import { GroupedReview, ReviewTable, rowName } from './import-review'
 
@@ -192,10 +192,11 @@ export function ImportDrawer({
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
         <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
-        <p className="text-[12.5px] text-pretty text-muted-foreground">
-          {config ? translate('importSuggestions', { noun }) : translate('importAutoSuggestions')}{' '}
-          {translate('importReviewFirst')}
-        </p>
+        <ImportSteps
+          suggests={
+            config ? translate('importSuggestions', { noun }) : translate('importStepReadText')
+          }
+        />
       </div>
     )
     status = upload.isPending
