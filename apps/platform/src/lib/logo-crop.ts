@@ -1,8 +1,9 @@
 import type { CropArea } from '@helvetly/ui/lib/photo'
 
 // The two logos a workspace has. The workspace's own mark is a fixed square PNG that keeps its transparency; the
-// document logo is a PNG in the PDF's own 2.5 : 1 field (45 × 18 mm), the whole picture contained in it unless the
-// person zooms in, so the preview is the file is the printed logo. PNG, JPEG, WebP, GIF (its first frame) and SVG can be
+// document logo is a PNG whose field has the picture's own shape (between 1 : 1 and 5 : 1, at most 75 × 18 mm in the
+// PDF), with any even margin around the picture trimmed first, the whole picture contained in it unless the person
+// zooms in, so the preview is the file is the printed logo. PNG, JPEG, WebP, GIF (its first frame) and SVG can be
 // picked; the last three are first turned into a static PNG here (normalizeLogo), so the editor, the preview and the
 // saved file share one frozen picture. The API checks the bytes again (PNG or JPEG, at most 2 MiB, the short
 // side at least 64 px and the long side at most 4000 px), so this only makes a pick fit and says why when it cannot.
@@ -92,15 +93,20 @@ export function sizeProblem(width: number, height: number): LogoProblem | null {
   return null
 }
 
-/** The PDF's logo field is 45 × 18 mm (apps/api/internal/invoicepdf), and the saved file has exactly that shape. */
-export const DOCUMENT_LOGO_RATIO = 45 / 18
 export const DOCUMENT_MIN_ZOOM = 1
 export const DOCUMENT_MAX_ZOOM = 4
-// A newly rendered document logo is at most 1600 × 640 px (about 900 dpi in the field), and at least the 150 dpi
-// the field needs (45 mm → 266 px) in even pixels. Older and untouched PNGs may be bigger (up to LOGO_MAX_SIDE).
+// The narrowest and the widest field: a picture between them keeps its own shape, any other gets the nearest one.
+const DOCUMENT_MIN_RATIO = 1
+const DOCUMENT_MAX_RATIO = 5
+// The most the PDF prints the field at (apps/api/internal/invoicepdf logoMaxW, logoMaxH).
+const DOCUMENT_FIELD_MM = { width: 75, height: 18 }
+// A newly rendered document logo is at most 640 px high (3200 px wide at 5 : 1, about 900 dpi in the field), and at
+// least the 150 dpi its at most 18 mm need (107 px), so its short side is always above the API's 64 px. Older and
+// untouched PNGs may be bigger (up to LOGO_MAX_SIDE).
 const DOCUMENT_MAX_HEIGHT = 640
 const DOCUMENT_MIN_HEIGHT = 108
-const DOCUMENT_FIELD_MM = 45
+// How far (per channel, of 255) a margin's pixel may be from the corner's colour and still be trimmed.
+const TRIM_TOLERANCE = 16
 
 type Size = { width: number; height: number }
 /** How the picture sits in the field: `zoom` times the contained size, `x` and `y` the shift in field widths and heights. */
@@ -108,15 +114,22 @@ export type DocumentView = { zoom: number; x: number; y: number }
 export const WHOLE_PICTURE: DocumentView = { zoom: 1, x: 0, y: 0 }
 
 const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value))
-// An even height keeps the width an exact 2.5 × it.
-const evenHeight = (height: number) => 2 * Math.round(height / 2)
 
-/** The field the picture is saved in: just big enough for it at its own resolution, within 270 × 108 – 1600 × 640 px. */
-export function documentCanvas({ width, height }: Size): Size {
-  const h = evenHeight(
-    clamp(Math.max(height, width / DOCUMENT_LOGO_RATIO), DOCUMENT_MIN_HEIGHT, DOCUMENT_MAX_HEIGHT),
+/** The field's width : height for a picture: its own, kept between 1 : 1 and 5 : 1. */
+export const documentRatio = ({ width, height }: Size) =>
+  clamp(width / height, DOCUMENT_MIN_RATIO, DOCUMENT_MAX_RATIO)
+
+/** The field the picture is saved in: just big enough for it at its own resolution, 108 – 640 px high. */
+export function documentCanvas(natural: Size): Size {
+  const ratio = documentRatio(natural)
+  const height = Math.round(
+    clamp(
+      Math.max(natural.height, natural.width / ratio),
+      DOCUMENT_MIN_HEIGHT,
+      DOCUMENT_MAX_HEIGHT,
+    ),
   )
-  return { width: h * DOCUMENT_LOGO_RATIO, height: h }
+  return { width: Math.round(height * ratio), height }
 }
 
 /** Where the picture sits in a field of `canvas`, in its pixels: uniform scale, and never panned out of reach. */
@@ -138,7 +151,7 @@ export function placeOnCanvas(natural: Size, view: DocumentView, canvas: Size) {
 
 /** The view with its zoom and shift brought into range (the shift is the placement's, in field widths and heights). */
 export function clampView(natural: Size, view: DocumentView): DocumentView {
-  const field = { width: DOCUMENT_LOGO_RATIO, height: 1 }
+  const field = { width: documentRatio(natural), height: 1 }
   const placed = placeOnCanvas(natural, view, field)
   return {
     zoom: clamp(view.zoom, DOCUMENT_MIN_ZOOM, DOCUMENT_MAX_ZOOM),
@@ -149,15 +162,17 @@ export function clampView(natural: Size, view: DocumentView): DocumentView {
 
 /** Whether the picture is already the field's shape (within 1%) and shown whole, so it is sent as picked. */
 export const isWholePicture = (natural: Size, view: DocumentView) =>
-  Math.abs(natural.width / natural.height / DOCUMENT_LOGO_RATIO - 1) <= 0.01 &&
+  Math.abs(natural.width / natural.height / documentRatio(natural) - 1) <= 0.01 &&
   view.zoom <= DOCUMENT_MIN_ZOOM &&
   view.x === 0 &&
   view.y === 0
 
-/** The dots per inch the picture's own pixels print at, placed as `view` says in the 45 mm wide field. */
+/** The dots per inch the picture's own pixels print at, placed as `view` says in the field at its largest printed size. */
 export function documentDpi(natural: Size, view: DocumentView) {
-  const at = placeOnCanvas(natural, view, { width: DOCUMENT_LOGO_RATIO, height: 1 })
-  return (natural.width * 25.4) / ((at.width * DOCUMENT_FIELD_MM) / DOCUMENT_LOGO_RATIO)
+  const ratio = documentRatio(natural)
+  const at = placeOnCanvas(natural, view, { width: ratio, height: 1 })
+  const fieldHeightMm = Math.min(DOCUMENT_FIELD_MM.height, DOCUMENT_FIELD_MM.width / ratio)
+  return (natural.width * 25.4) / (at.width * fieldHeightMm)
 }
 
 /** Whether the part chosen (in the picture's own pixels) is too small for a workspace mark. */
@@ -201,7 +216,7 @@ export async function cropWorkspaceLogo(source: CanvasImageSource, area: CropAre
 }
 
 /**
- * The document logo: the picture placed in its 2.5 : 1 field exactly as the dialog shows it, as a PNG whose
+ * The document logo: the picture placed in its field exactly as the dialog shows it, as a PNG whose
  * transparency stays. The same view gives the same bytes in one browser. A result over 2 MiB is retried at a smaller
  * field; null when even that does not fit.
  */
@@ -213,9 +228,9 @@ export async function renderDocumentLogo(
 ): Promise<Blob | null> {
   const [share, ...smaller] = shares
   if (share === undefined) return null
-  const height = evenHeight(documentCanvas(natural).height * share)
+  const height = Math.round(documentCanvas(natural).height * share)
   if (height < DOCUMENT_MIN_HEIGHT) return null
-  const field = { width: height * DOCUMENT_LOGO_RATIO, height }
+  const field = { width: Math.round(height * documentRatio(natural)), height }
   const { canvas, context } = canvasOf(field.width, field.height)
   const at = placeOnCanvas(natural, view, field)
   context.drawImage(source, at.x, at.y, at.width, at.height)
@@ -247,48 +262,115 @@ export function svgSize(text: string): Size | null {
   return box.length === 4 && finitePositive(w, h) ? { width: w, height: h } : null
 }
 
-async function pngOf(source: CanvasImageSource, width: number, height: number, name: string) {
-  const { canvas, context } = canvasOf(width, height)
-  context.drawImage(source, 0, 0, width, height)
-  return new File([await encode(canvas, 'image/png')], name.replace(/\.[^./\\]*$/, '') + '.png', {
-    type: 'image/png',
-  })
-}
+type Box = { x: number; y: number; width: number; height: number }
 
 /**
- * A WebP, GIF or SVG as a static PNG (transparency kept); PNG and JPEG are returned as they are. A GIF or an animated
- * WebP gives its first frame, as createImageBitmap does for a Blob; an SVG is drawn once as an image (a context in
- * which scripts and external loads are off) at VECTOR_SIDE on its longest side. `vector` says the picture has no pixels
- * of its own, so no resolution is lacking. The caller has checked the header size against LOGO_MAX_PIXELS.
+ * The part of the pixels inside an even margin: the run of rows and columns at the edges that are all the corners'
+ * colour (or all transparent, when the corners are), within TRIM_TOLERANCE. The whole picture when its four corners
+ * differ or it is nothing but margin.
+ */
+export function trimBox({
+  data,
+  width,
+  height,
+}: Pick<ImageData, 'data' | 'width' | 'height'>): Box {
+  const whole = { x: 0, y: 0, width, height }
+  const value = (i: number) => data[i] ?? 0
+  const [r, g, b, a] = [value(0), value(1), value(2), value(3)]
+  const clear = a <= TRIM_TOLERANCE
+  const margin = (i: number) =>
+    clear
+      ? value(i + 3) <= TRIM_TOLERANCE
+      : Math.abs(value(i) - r) <= TRIM_TOLERANCE &&
+        Math.abs(value(i + 1) - g) <= TRIM_TOLERANCE &&
+        Math.abs(value(i + 2) - b) <= TRIM_TOLERANCE &&
+        Math.abs(value(i + 3) - a) <= TRIM_TOLERANCE
+  const at = (x: number, y: number) => (y * width + x) * 4
+  if (![at(width - 1, 0), at(0, height - 1), at(width - 1, height - 1)].every(margin)) return whole
+  let [top, bottom, left, right] = [height, -1, width, -1]
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+      if (!margin(at(x, y))) {
+        top = Math.min(top, y)
+        bottom = y
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+      }
+  return bottom < 0 ? whole : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 }
+}
+
+const pngFile = async (canvas: HTMLCanvasElement, name: string) =>
+  new File([await encode(canvas, 'image/png')], name.replace(/\.[^./\\]*$/, '') + '.png', {
+    type: 'image/png',
+  })
+
+/**
+ * A WebP, GIF or SVG as a static PNG (transparency kept); PNG and JPEG are returned as they are unless `trim` takes
+ * something off them. A GIF or an animated WebP gives its first frame, as createImageBitmap does for a Blob; an SVG is
+ * drawn once as an image (a context in which scripts and external loads are off) at VECTOR_SIDE on its longest side.
+ * `trim` (the document logo) cuts an even margin off (trimBox); an SVG's mark is drawn again at VECTOR_SIDE then.
+ * `vector` says the picture has no pixels of its own, so no resolution is lacking. The caller has checked the header
+ * size against LOGO_MAX_PIXELS.
  */
 export async function normalizeLogo(
   file: File,
   format: LogoFormat,
   size: Size,
+  trim = false,
 ): Promise<{ file: File; vector: boolean }> {
-  if (format === 'png' || format === 'jpeg') return { file, vector: false }
-  if (format !== 'svg') {
-    const bitmap = await createImageBitmap(file)
-    try {
-      // The header size was trusted to admit the pick; the decoder must agree before a second canvas is allocated.
-      const { width, height } = bitmap
-      if (sizeProblem(width, height) || width !== size.width || height !== size.height)
-        throw new Error('The logo is not the size its header says.')
-      return { file: await pngOf(bitmap, width, height, file.name), vector: false }
-    } finally {
-      bitmap.close()
+  const asPicked = format === 'png' || format === 'jpeg'
+  if (asPicked && !trim) return { file, vector: false }
+  const vector = format === 'svg'
+  const { source, width, height, done } = vector
+    ? await drawnSvg(file, size)
+    : await decoded(file, format, size)
+  try {
+    const { canvas, context } = canvasOf(width, height)
+    context.drawImage(source, 0, 0, width, height)
+    const box = trim
+      ? trimBox(context.getImageData(0, 0, width, height))
+      : { x: 0, y: 0, width, height }
+    if (box.width === width && box.height === height) {
+      return { file: asPicked ? file : await pngFile(canvas, file.name), vector }
     }
+    // shortcut: an SVG's mark is redrawn at most 4 × larger, enough unless its margin is over three quarters of it.
+    const scale = vector ? Math.min(VECTOR_SIDE / Math.max(box.width, box.height), 4) : 1
+    const cut = canvasOf(Math.round(box.width * scale), Math.round(box.height * scale))
+    cut.context.drawImage(source, -box.x * scale, -box.y * scale, width * scale, height * scale)
+    return { file: await pngFile(cut.canvas, file.name), vector }
+  } finally {
+    done()
   }
+}
+
+/** A raster pick decoded (its first frame), once the decoder agrees with the header size the pick was admitted by. */
+async function decoded(file: File, format: LogoFormat, size: Size) {
+  const bitmap = await createImageBitmap(file)
+  const { width, height } = bitmap
+  // A JPEG turned by its EXIF orientation decodes with its sides swapped.
+  const turned = format === 'jpeg' && width === size.height && height === size.width
+  if (sizeProblem(width, height) || (!turned && (width !== size.width || height !== size.height))) {
+    bitmap.close()
+    throw new Error('The logo is not the size its header says.')
+  }
+  return { source: bitmap, width, height, done: () => bitmap.close() }
+}
+
+/** An SVG as an image VECTOR_SIDE on its longest side. */
+async function drawnSvg(file: File, size: Size) {
   const scale = VECTOR_SIDE / Math.max(size.width, size.height)
   const width = Math.max(1, Math.round(size.width * scale))
   const height = Math.max(1, Math.round(size.height * scale))
   const url = URL.createObjectURL(new Blob([file], { type: 'image/svg+xml' }))
+  const done = () => URL.revokeObjectURL(url)
+  const image = new Image(width, height)
+  image.src = url
   try {
-    const image = new Image(width, height)
-    image.src = url
     await image.decode()
-    return { file: await pngOf(image, width, height, file.name), vector: true }
-  } finally {
-    URL.revokeObjectURL(url)
+  } catch (failure) {
+    done()
+    throw failure
   }
+  // The URL lives until the drawing is done: a trimmed mark is drawn again at another size.
+  return { source: image, width, height, done }
 }

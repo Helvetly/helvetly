@@ -188,7 +188,8 @@ describe('LogoCropDialog, document logo', () => {
     const left = () => parseFloat(img?.style.left ?? '')
     const start = left()
     expect(img?.style.height).toBe('100%')
-    expect(start).toBeCloseTo(35, 5)
+    // A portrait picture gets the square field: 75 % of it wide, centred.
+    expect(start).toBeCloseTo(12.5, 5)
     expect(screen.getByText(/wide area on documents/)).toBeInTheDocument()
 
     const group = screen.getByRole('button', { name: /arrow keys/ })
@@ -208,15 +209,16 @@ describe('LogoCropDialog, document logo', () => {
     open(png(600, 400))
     const img = await picture()
     const box = img?.parentElement
-    expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(60, 5)
+    // As the header says, 3 : 2 fills its own field.
+    expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(100, 5)
     if (img) {
       Object.defineProperty(img, 'naturalWidth', { value: 400 })
       Object.defineProperty(img, 'naturalHeight', { value: 600 })
       fireEvent.load(img)
     }
-    await waitFor(() => expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(26.667, 2))
+    await waitFor(() => expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(66.667, 2))
     expect(box?.style.height).toBe('100%')
-    expect(parseFloat(box?.style.left ?? '')).toBeCloseTo(36.667, 2)
+    expect(parseFloat(box?.style.left ?? '')).toBeCloseTo(16.667, 2)
   })
 
   test('an unreadable picture says so', async () => {
