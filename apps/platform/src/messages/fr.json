@@ -4368,7 +4368,6 @@
   "importCellSchedule": "Rythme",
   "importPaidByInstalments": "{paid} payés par {count} échéances sur {total}, chacune à sa date.",
   "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant.",
-<<<<<<< HEAD
   "alreadyInvoiced": "Déjà facturé",
   "alreadyInvoicedTip": "Une facture déjà établie pour ce client. Elle compte comme facture de cet engagement pour la période de sa date de prestation, aucune seconde n’est créée.",
   "chooseAnInvoice": "Choisir une facture",
@@ -4380,8 +4379,7 @@
   "removeFromEngagement": "Détacher de l’engagement",
   "engagementLinkTip": "Compte cette facture comme facturée dans l’engagement, pour la période de sa date de prestation.",
   "linkedToEngagement": "Liée à {title}.",
-  "removedFromTheEngagement": "Détachée de l’engagement."
-=======
+  "removedFromTheEngagement": "Détachée de l’engagement.",
   "organizeButton": "Ranger avec l’IA",
   "organizeTitle": "Ranger avec l’IA",
   "organizeLead": "Heidi propose un dossier et des tags pour chaque document. Rien ne bouge avant votre accord.",
@@ -4406,5 +4404,4 @@
   "organizeApply": "{count, plural, =0 {Appliquer} one {Appliquer # changement} other {Appliquer # changements}}",
   "organizeApplied": "{count, plural, one {# document rangé} other {# documents rangés}}",
   "organizeUndone": "Remis à leur place"
->>>>>>> origin/main
 }

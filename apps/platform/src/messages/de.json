@@ -4368,7 +4368,6 @@
   "importCellSchedule": "Turnus",
   "importPaidByInstalments": "{paid} bezahlt mit {count} von {total} Raten, jede an ihrem Datum.",
   "importFoundNotYours": "Im Dokument gefunden, noch nicht in Ihren Kunden. Legen Sie ihn mit diesen Angaben an oder wählen Sie einen bestehenden Kunden.",
-<<<<<<< HEAD
   "alreadyInvoiced": "Bereits fakturiert",
   "alreadyInvoicedTip": "Eine Rechnung, die Sie für diesen Kunden schon erstellt haben. Sie zählt als Rechnung dieses Auftrags für den Zeitraum ihres Leistungsdatums, es wird keine zweite erstellt.",
   "chooseAnInvoice": "Rechnung wählen",
@@ -4380,8 +4379,7 @@
   "removeFromEngagement": "Vom Auftrag lösen",
   "engagementLinkTip": "Zählt diese Rechnung als im Auftrag fakturiert, für den Zeitraum ihres Leistungsdatums.",
   "linkedToEngagement": "Mit {title} verknüpft.",
-  "removedFromTheEngagement": "Vom Auftrag gelöst."
-=======
+  "removedFromTheEngagement": "Vom Auftrag gelöst.",
   "organizeButton": "Mit KI ordnen",
   "organizeTitle": "Mit KI ordnen",
   "organizeLead": "Heidi schlägt für jedes Dokument einen Ordner und Tags vor. Nichts wird verschoben, bevor Sie zustimmen.",
@@ -4406,5 +4404,4 @@
   "organizeApply": "{count, plural, =0 {Anwenden} one {# Änderung anwenden} other {# Änderungen anwenden}}",
   "organizeApplied": "{count, plural, one {# Dokument geordnet} other {# Dokumente geordnet}}",
   "organizeUndone": "An den alten Ort zurückgelegt"
->>>>>>> origin/main
 }
