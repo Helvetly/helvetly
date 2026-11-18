@@ -887,17 +887,22 @@ func TestCheckout(t *testing.T) {
 		t.Fatalf("unknown plan: %d", code)
 	}
 	for range 2 {
-		code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year"})
+		code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Basic, "interval": "year", "language": "de"})
 		if code != http.StatusOK || body["url"] != "https://checkout.stripe.test/c" {
 			t.Fatalf("checkout: %d %v", code, body)
 		}
+	}
+	// The panel's language: on the new customer, again on the known one (it may have changed), and on the page.
+	if e.stripe.form("POST /v1/customers").Get("preferred_locales[0]") != "de" ||
+		e.stripe.form("POST /v1/customers/cus_1").Get("preferred_locales[0]") != "de" {
+		t.Fatalf("customer language not set: %v", e.stripe.calls)
 	}
 	f := e.stripe.form("POST /v1/checkout/sessions")
 	for k, want := range map[string]string{
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
 		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "",
 		"subscription_data[metadata][offer_id]": currentOffer,
-		"tax_id_collection[enabled]":            "true", "tax_id_collection[required]": "never",
+		"tax_id_collection[enabled]":            "true", "tax_id_collection[required]": "never", "locale": "de",
 		"name_collection[business][enabled]": "true", "name_collection[business][optional]": "false",
 		"billing_address_collection": "required", "success_url": "https://helvetly.example.com/activating",
 		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
@@ -1051,18 +1056,23 @@ func TestCheckoutExpiresTheCustomersOpenPlanCheckouts(t *testing.T) {
 func TestCustomerIdempotencyKeyCoversItsParameters(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
+	if code, _ := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month", "language": "xx"}); code != http.StatusOK {
 		t.Fatalf("checkout: %d", code)
+	}
+	if e.stripe.form("POST /v1/checkout/sessions").Has("locale") { // a language Helvetly does not offer is left to Stripe
+		t.Fatal("an unknown language reached Stripe")
 	}
 	f := e.stripe.form("POST /v1/customers")
 	if f.Get("metadata[user_id]") != owner.user {
 		t.Fatalf("user_id %q, want %q", f.Get("metadata[user_id]"), owner.user)
 	}
 	sent := url.Values{}
-	if f.Get("name") != "Anna" || f.Get("individual_name") != "Anna" || f.Get("business_name") != "Acme" {
+	// The workspace's name may still be the default and may change; Checkout asks for the business name.
+	if f.Get("name") != "Anna" || f.Get("individual_name") != "Anna" || f.Has("business_name") ||
+		f.Get("description") != "Helvetly "+owner.workspace {
 		t.Fatalf("customer %v", f)
 	}
-	for _, k := range []string{"email", "name", "business_name", "description", "metadata[workspace_id]", "metadata[user_id]", "individual_name"} {
+	for _, k := range []string{"email", "name", "description", "metadata[workspace_id]", "metadata[user_id]", "individual_name"} {
 		sent.Set(k, f.Get(k))
 	}
 	sum := sha256.Sum256([]byte(sent.Encode()))

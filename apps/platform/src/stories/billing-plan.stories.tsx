@@ -465,7 +465,11 @@ export const PlansTrialSwitch: Story = {
     )
     await userEvent.click(dialog.getByRole('button', { name: 'Switch plan' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'pro', interval: 'month' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({
+        plan: 'pro',
+        interval: 'month',
+        language: 'en',
+      }),
     )
   },
 }
@@ -524,7 +528,11 @@ export const PlansPendingDowngrade: Story = {
     // Keeping the current plan cancels the change at once, without a confirmation.
     await userEvent.click(businessCard.getByRole('button', { name: 'Keep Business' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'business', interval: 'month' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({
+        plan: 'business',
+        interval: 'month',
+        language: 'en',
+      }),
     )
     await expect(within(document.body).queryByRole('dialog')).toBeNull()
   },
@@ -551,7 +559,11 @@ export const PlansYearly: Story = {
     await waitFor(() => expect(dialog.getByText(/CHF 471 per person a year/)).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Upgrade' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'pro', interval: 'year' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({
+        plan: 'pro',
+        interval: 'year',
+        language: 'en',
+      }),
     )
   },
 }
@@ -572,7 +584,11 @@ export const PlansSwitchToYearly: Story = {
     await waitFor(() => expect(dialog.getByText('Switch to Basic yearly?')).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Switch plan' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'basic', interval: 'year' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({
+        plan: 'basic',
+        interval: 'year',
+        language: 'en',
+      }),
     )
   },
 }
@@ -713,7 +729,11 @@ export const PlansNoPlan: Story = {
     await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()
     await userEvent.click(proCard.getByRole('button', { name: 'Start 7-day free trial' }))
     await waitFor(() =>
-      expect(checkoutRequest).toHaveBeenCalledWith({ plan: 'pro', interval: 'month' }),
+      expect(checkoutRequest).toHaveBeenCalledWith({
+        plan: 'pro',
+        interval: 'month',
+        language: 'en',
+      }),
     )
   },
 }

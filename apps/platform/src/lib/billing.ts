@@ -1,5 +1,5 @@
 'use client'
-import { languageTag, numberLocale } from '@helvetly/i18n'
+import { languageTag, locale, numberLocale } from '@helvetly/i18n'
 // Plans, usage and Stripe billing, typed by hand from docs/billing-contract.md.
 import { meterTone } from '@helvetly/ui/components/meter'
 import { formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
@@ -234,7 +234,12 @@ export function useCheckout() {
     ApiError,
     { plan: PlanId; interval: Interval; promotion_code?: string }
   >({
-    mutationFn: (input) => request(withZone('/billing/checkout'), { method: 'POST', json: input }),
+    // The panel's language becomes Stripe's: the Checkout page and the customer's invoices and emails.
+    mutationFn: (input) =>
+      request(withZone('/billing/checkout'), {
+        method: 'POST',
+        json: { ...input, language: locale },
+      }),
   })
 }
 

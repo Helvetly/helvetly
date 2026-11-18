@@ -150,7 +150,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   )
   await userEvent.click(within(card('Pro')).getByRole('button', { name: /Start 7-day/ }))
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/c'))
-  expect(checkout).toEqual({ plan: 'pro', interval: 'year' })
+  expect(checkout).toEqual({ plan: 'pro', interval: 'year', language: 'en' })
 })
 
 test('the picker shows the workspace currency and what its prices include', () => {
@@ -188,7 +188,7 @@ test('while trialing, another plan says the trial ends and the plan is charged n
     ),
   ).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Upgrade' }))
-  await waitFor(() => expect(checkout).toEqual({ plan: 'pro', interval: 'month' }))
+  await waitFor(() => expect(checkout).toEqual({ plan: 'pro', interval: 'month', language: 'en' }))
 })
 
 test.each<[string, Partial<Billing>, 'basic' | 'pro' | 'business', 'month' | 'year', RegExp]>([
@@ -267,11 +267,18 @@ test('a valid promotion code discounts the plans it covers and goes with the che
   expect(card('Business')).toHaveTextContent('CHF 99')
   await userEvent.click(within(pro).getByRole('button', { name: 'Choose Pro' }))
   await waitFor(() =>
-    expect(checkout).toEqual({ plan: 'pro', interval: 'month', promotion_code: 'LAUNCH20' }),
+    expect(checkout).toEqual({
+      plan: 'pro',
+      interval: 'month',
+      promotion_code: 'LAUNCH20',
+      language: 'en',
+    }),
   )
   // Business is not covered: no code is sent.
   await userEvent.click(within(card('Business')).getByRole('button', { name: 'Choose Business' }))
-  await waitFor(() => expect(checkout).toEqual({ plan: 'business', interval: 'month' }))
+  await waitFor(() =>
+    expect(checkout).toEqual({ plan: 'business', interval: 'month', language: 'en' }),
+  )
 })
 
 test('the promotion chip can be changed and removed', async () => {
@@ -521,7 +528,9 @@ test('a scheduled downgrade marks its plan; the current plan can be kept, which 
   expect(business).toHaveTextContent('Cancels the scheduled change.')
   await userEvent.click(within(business).getByRole('button', { name: 'Keep Business' }))
   // No confirmation and no promotion code: it only cancels the change.
-  await waitFor(() => expect(checkout).toEqual({ plan: 'business', interval: 'month' }))
+  await waitFor(() =>
+    expect(checkout).toEqual({ plan: 'business', interval: 'month', language: 'en' }),
+  )
   await waitFor(() =>
     expect(toast.success).toHaveBeenCalledWith(
       'You stay on Business. The scheduled change is cancelled.',

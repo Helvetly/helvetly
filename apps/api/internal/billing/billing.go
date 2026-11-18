@@ -462,9 +462,13 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 		Plan          string `json:"plan"`
 		Interval      string `json:"interval"`
 		PromotionCode string `json:"promotion_code"`
+		Language      string `json:"language"`
 	}
 	if !s.auth.Decode(w, r, &in) {
 		return nil
+	}
+	if !slices.Contains(checkoutLanguages, in.Language) {
+		in.Language = "" // Stripe then picks by the browser
 	}
 	if planNames[in.Plan] == "" || !slices.Contains(intervals, in.Interval) {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "Choose the Basic, Pro or Business plan, monthly or yearly.",
@@ -520,7 +524,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 		}
 		known = b.CustomerID != ""
 		if !known {
-			if b.CustomerID, err = s.createCustomer(ctx, q, sess); err != nil {
+			if b.CustomerID, err = s.createCustomer(ctx, q, sess, in.Language); err != nil {
 				return err
 			}
 		}
@@ -532,13 +536,19 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	// a Checkout session writes nothing of ours, so Stripe is called after the lock is released
 	if checkout != nil {
+		if known && in.Language != "" { // the panel's language may have changed since the customer was created
+			if err := s.stripe.Call(ctx, http.MethodPost, "/v1/customers/"+url.PathEscape(checkout.CustomerID),
+				url.Values{"preferred_locales[0]": {in.Language}}, "", nil); err != nil {
+				s.log.WarnContext(ctx, "updating the customer's language failed", "workspace", ws, "error", err)
+			}
+		}
 		if known {
 			// Another tab's open Checkout could be paid too: one plan Checkout at a time (best effort).
 			if err := s.expireOpenCheckouts(ctx, checkout.CustomerID); err != nil {
 				s.log.WarnContext(ctx, "expiring open Checkout sessions failed", "workspace", ws, "error", err)
 			}
 		}
-		if next, err = s.checkoutSession(ctx, *checkout, co, trialDays, promoID); err != nil {
+		if next, err = s.checkoutSession(ctx, *checkout, co, trialDays, promoID, in.Language); err != nil {
 			return err
 		}
 	}
@@ -546,18 +556,24 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	return nil
 }
 
-func (s *Service) createCustomer(ctx context.Context, q store.Q, sess store.Session) (string, error) {
+// checkoutLanguages are the panel's languages, all of which Stripe's Checkout and invoices speak.
+var checkoutLanguages = []string{"de", "en", "fr", "it"}
+
+func (s *Service) createCustomer(ctx context.Context, q store.Q, sess store.Session, language string) (string, error) {
 	var c struct {
 		ID string `json:"id"`
 	}
-	// The customer is the person who pays (their name, email and user id), for the workspace (its name as the business,
-	// its id); without a name of theirs the workspace's stands in.
-	form := url.Values{"email": {sess.User.Email}, "name": {sess.Workspace.Name}, "business_name": {sess.Workspace.Name},
-		"description": {"Helvetly workspace " + sess.Workspace.Name}, "metadata[workspace_id]": {sess.Workspace.ID},
-		"metadata[user_id]": {sess.User.ID}}
+	// The customer is the person who pays (their name, email and user id), for the workspace (its id, which unlike its
+	// name never changes and is searchable in the Dashboard). The business name comes from Checkout, not from a workspace
+	// that may still be called "My workspace".
+	form := url.Values{"email": {sess.User.Email}, "description": {"Helvetly " + sess.Workspace.ID},
+		"metadata[workspace_id]": {sess.Workspace.ID}, "metadata[user_id]": {sess.User.ID}}
 	if n := strings.TrimSpace(sess.User.Name); n != "" && !strings.Contains(n, "@") {
 		form.Set("name", n)
 		form.Set("individual_name", n)
+	}
+	if language != "" {
+		form.Set("preferred_locales[0]", language)
 	}
 	// The key makes a retried request return the same customer instead of a second one; it covers the parameters, as
 	// Stripe refuses a key reused with others (a renamed workspace, another email).
@@ -637,7 +653,7 @@ func managedPayments(form url.Values) {
 // checkoutSession opens the Checkout for co: every seat at the full price (Checkout shows the quantity and the total
 // before the customer agrees), and the checkout and its offer in the subscription's metadata, which the webhook
 // settles against co (settleCheckout).
-func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store.BillingCheckout, trialDays int, promoID string) (string, error) {
+func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store.BillingCheckout, trialDays int, promoID, language string) (string, error) {
 	// Paid, the person waits on a page of its own until the subscription unlocks the workspace (platform /activating);
 	// Checkout runs only without a live plan, so leaving it goes back to the plan picker to choose again.
 	activating := s.publicURL + "/activating"
@@ -656,6 +672,9 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store
 		"tax_id_collection[enabled]":          {"true"}, "tax_id_collection[required]": {"never"},
 		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
 		"success_url": {activating}, "cancel_url": {canceled},
+	}
+	if language != "" {
+		form.Set("locale", language)
 	}
 	if s.cfg.AutomaticTax {
 		form.Set("automatic_tax[enabled]", "true")
