@@ -402,7 +402,11 @@ func officialFixtures() map[string]store.Invoice {
 	outsideDiscount.Seller.RegistrationNumber = ptr("HRB 12345")
 	public := simple() // to a German public body: its Leitweg-ID is the buyer reference (BT-10)
 	public.Reference = ptr("04011000-1234512345-06")
-	return map[string]store.Invoice{"simple": simple(), "mixed": mixed(), "final": final(), "credit": creditNote(),
+	contract := simple() // BT-12 beside the order reference
+	contract.ContractReference = ptr("C23-25-CP2302")
+	creditContract := creditNote()
+	creditContract.ContractReference = ptr("C23-25-CP2302")
+	return map[string]store.Invoice{"contract": contract, "credit-contract": creditContract, "simple": simple(), "mixed": mixed(), "final": final(), "credit": creditNote(),
 		"dated": dated(), "inclusive": inclusive(), "small-inclusive": smallInclusive(),
 		"outside": outside, "outside-discount": outsideDiscount, "leitweg": public}
 }

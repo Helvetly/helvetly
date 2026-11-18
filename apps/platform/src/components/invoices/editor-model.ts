@@ -69,6 +69,12 @@ export type EditorValues = {
   language: DocLanguage
   vat_mode: VatMode
   reference: string
+  /** null: the client's Helvetly number is printed; '': no client number; else this text instead. */
+  client_number_display: string | null
+  /** The contract the invoice refers to, printed and sent in e-invoices (BT-12). */
+  contract_reference: string
+  /** A contract in Documents linked to the invoice (never printed). */
+  contract_document: { id: string; name: string } | null
   /** RON per unit of the currency (RO e-Factura); used only while needsRonRate holds. */
   tax_currency_rate: string
   intro: string
@@ -137,6 +143,9 @@ export function emptyValues(
     language: settings.language,
     vat_mode: vatMode,
     reference: '',
+    client_number_display: null,
+    contract_reference: '',
+    contract_document: null,
     tax_currency_rate: '',
     intro: '',
     footer: settings.footer ?? '',
@@ -197,6 +206,9 @@ export function valuesFromInvoice(invoice: Invoice, defaultRate: string): Editor
     language: invoice.language,
     vat_mode: invoice.vat_mode,
     reference: invoice.reference ?? '',
+    client_number_display: invoice.client_number_display,
+    contract_reference: invoice.contract_reference ?? '',
+    contract_document: invoice.contract_document,
     tax_currency_rate: invoice.tax_currency_rate ?? '',
     intro: invoice.intro ?? '',
     footer: invoice.footer ?? '',
@@ -280,6 +292,9 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
       language: values.language,
       vat_mode: values.vat_mode,
       reference: orNull(values.reference),
+      client_number_display: values.client_number_display,
+      contract_reference: orNull(values.contract_reference),
+      contract_document_id: values.contract_document?.id ?? null,
       tax_currency_rate: orNull(values.tax_currency_rate),
       intro: orNull(values.intro),
       footer: orNull(values.footer),

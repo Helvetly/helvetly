@@ -7,7 +7,7 @@ import "helvetly.com/api/internal/store"
 type labels struct {
 	Titles                                                                                      map[string]string // by kind, plus "final" (an invoice with deducted prepayments) and "quote"
 	Preceding                                                                                   map[string]string // by kind: the line naming the preceding invoice
-	SelfBilling, NotVATInvoice, AmountDue                                                       string
+	SelfBilling, NotVATInvoice, AmountDue, ContractNumber                                       string
 	Number, IssueDate, ServiceDate, ServicePeriod, DueDate, ValidUntil, Reference, ClientNumber string
 	BilledBy, BilledTo                                                                          string // the two party columns
 	Pos, Description, Quantity, UnitPrice, Discount, VAT, Amount                                string
@@ -41,7 +41,7 @@ var languages = map[string]labels{
 			"corrected": "Ersetzt Rechnung %s"},
 		SelfBilling: "Gutschrift (Selbstfakturierung)", NotVATInvoice: "Keine MWST-Rechnung", AmountDue: "Restbetrag", Number: "Nummer",
 		IssueDate: "Datum", ServiceDate: "Leistungsdatum", ServicePeriod: "Leistungszeitraum", DueDate: "Zahlbar bis", ValidUntil: "Gültig bis",
-		Reference: "Ihre Referenz", ClientNumber: "Kundennummer", BilledBy: "Absender", BilledTo: "Empfänger",
+		Reference: "Ihre Referenz", ClientNumber: "Kundennummer", ContractNumber: "Vertragsnummer", BilledBy: "Absender", BilledTo: "Empfänger",
 		Pos: "Pos.", Description: "Beschreibung", Quantity: "Menge", UnitPrice: "Preis", Discount: "Rabatt", VAT: "MWST", Amount: "Betrag",
 		Subtotal: "Zwischentotal", DocDiscount: "Rabatt %s %%", NetTotal: "Total exkl. MWST", VATOn: "MWST %s %% auf %s",
 		Total: "Total inkl. MWST", TotalNoVAT: "Total", Rounding: "Rundung", Payable: "Zu bezahlen", Credited: "Gutgeschrieben",
@@ -69,7 +69,7 @@ var languages = map[string]labels{
 			"corrected": "Remplace la facture %s"},
 		SelfBilling: "Autofacturation", NotVATInvoice: "Ceci n'est pas une facture TVA", AmountDue: "Solde à payer", Number: "Numéro",
 		IssueDate: "Date", ServiceDate: "Date de prestation", ServicePeriod: "Période de prestation", DueDate: "Payable jusqu'au", ValidUntil: "Valable jusqu'au",
-		Reference: "Votre référence", ClientNumber: "N° client", BilledBy: "Émetteur", BilledTo: "Destinataire",
+		Reference: "Votre référence", ClientNumber: "N° client", ContractNumber: "N° de contrat", BilledBy: "Émetteur", BilledTo: "Destinataire",
 		Pos: "Pos.", Description: "Description", Quantity: "Quantité", UnitPrice: "Prix", Discount: "Rabais", VAT: "TVA", Amount: "Montant",
 		Subtotal: "Sous-total", DocDiscount: "Rabais %s %%", NetTotal: "Total hors TVA", VATOn: "TVA %s %% sur %s",
 		Total: "Total TVA incluse", TotalNoVAT: "Total", Rounding: "Arrondi", Payable: "Montant à payer", Credited: "Montant crédité",
@@ -97,7 +97,7 @@ var languages = map[string]labels{
 			"corrected": "Sostituisce la fattura %s"},
 		SelfBilling: "Autofatturazione", NotVATInvoice: "Non è una fattura IVA", AmountDue: "Saldo da pagare", Number: "Numero",
 		IssueDate: "Data", ServiceDate: "Data della prestazione", ServicePeriod: "Periodo della prestazione", DueDate: "Pagabile entro", ValidUntil: "Valida fino al",
-		Reference: "Vostro riferimento", ClientNumber: "N. cliente", BilledBy: "Mittente", BilledTo: "Destinatario",
+		Reference: "Vostro riferimento", ClientNumber: "N. cliente", ContractNumber: "N. contratto", BilledBy: "Mittente", BilledTo: "Destinatario",
 		Pos: "Pos.", Description: "Descrizione", Quantity: "Quantità", UnitPrice: "Prezzo", Discount: "Sconto", VAT: "IVA", Amount: "Importo",
 		Subtotal: "Subtotale", DocDiscount: "Sconto %s %%", NetTotal: "Totale IVA esclusa", VATOn: "IVA %s %% su %s",
 		Total: "Totale IVA inclusa", TotalNoVAT: "Totale", Rounding: "Arrotondamento", Payable: "Importo da pagare", Credited: "Importo accreditato",
@@ -125,7 +125,7 @@ var languages = map[string]labels{
 			"corrected": "Replaces invoice %s"},
 		SelfBilling: "Self-billing", NotVATInvoice: "Not a VAT invoice", AmountDue: "Amount due", Number: "Number",
 		IssueDate: "Date", ServiceDate: "Service date", ServicePeriod: "Service period", DueDate: "Due date", ValidUntil: "Valid until",
-		Reference: "Your reference", ClientNumber: "Client number", BilledBy: "Billed by", BilledTo: "Billed to",
+		Reference: "Your reference", ClientNumber: "Client number", ContractNumber: "Contract no.", BilledBy: "Billed by", BilledTo: "Billed to",
 		Pos: "Pos.", Description: "Description", Quantity: "Qty", UnitPrice: "Price", Discount: "Disc.", VAT: "VAT", Amount: "Amount",
 		Subtotal: "Subtotal", DocDiscount: "Discount %s %%", NetTotal: "Total excl. VAT", VATOn: "VAT %s %% on %s",
 		Total: "Total incl. VAT", TotalNoVAT: "Total", Rounding: "Rounding", Payable: "Amount payable", Credited: "Amount credited",

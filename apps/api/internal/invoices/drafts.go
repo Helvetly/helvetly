@@ -81,6 +81,9 @@ func (s *Service) draftFromInput(ctx context.Context, sess store.Session, body m
 	if err := applyInput(&inv, body, set); err != nil {
 		return inv, err
 	}
+	if err := resolveContractDocument(ctx, s.db.Q, sess.Workspace.ID, &inv, body); err != nil {
+		return inv, err
+	}
 	if err := s.resolvePrepayments(ctx, s.db.Q, sess, &inv, body); err != nil {
 		return inv, err
 	}
@@ -172,6 +175,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 				return err
 			}
 		}
+		if err := resolveContractDocument(ctx, q, sess.Workspace.ID, &inv, body); err != nil {
+			return err
+		}
 		if err := s.resolvePrepayments(ctx, q, sess, &inv, body); err != nil {
 			return err
 		}
@@ -184,6 +190,24 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return err
 	}
 	return s.respond(w, r, sess, http.StatusOK, id)
+}
+
+// resolveContractDocument names the document the input's contract_document_id links: a document of the workspace,
+// not in the trash and not an HR file; anything else is a field error that does not tell whether the id exists.
+func resolveContractDocument(ctx context.Context, q store.Q, workspaceID string, inv *store.Invoice,
+	body map[string]json.RawMessage) error {
+	if _, ok := body["contract_document_id"]; !ok || inv.ContractDocument == nil {
+		return nil
+	}
+	d, err := q.Document(ctx, workspaceID, inv.ContractDocument.ID)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && d.DeletedAt != nil) {
+		return validationFailed(map[string]string{"contract_document_id": "Choose a document of this workspace."})
+	}
+	if err != nil {
+		return err
+	}
+	inv.ContractDocument.Name = d.Name
+	return nil
 }
 
 // resolvePrepayments reads the prepayments the input picked (when it has prepayment_ids); an id that is not a

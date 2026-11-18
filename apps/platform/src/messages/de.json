@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Was aus dem Dokument gelesen wurde.",
   "importNumberTip": "Die auf der Rechnung gedruckte Nummer. Eine bereits ausgestellte Rechnung behält sie, deshalb ist sie dann Pflicht.",
   "importReferenceTip": "Die eigene Referenz oder Bestellnummer des Käufers, wenn die Rechnung eine zeigt. Optional.",
+  "importContractNumber": "Vertragsnummer",
+  "importContractNumberTip": "Die Vertrags- oder Vereinbarungsnummer, auf die sich die Rechnung bezieht, wie gedruckt. Optional.",
   "importInvoiceDateTip": "Der Tag, an dem die Rechnung ausgestellt wurde, wie gedruckt. Er bestimmt die MWST-Periode.",
   "importDueDateTip": "Der Tag, bis zu dem der Kunde zahlen muss, wie gedruckt. Mahnungen zählen ab diesem Tag.",
   "importTotalTip": "Der auf der Rechnung gedruckte Gesamtbetrag inklusive MWST. Ändern Sie die Währung, falls sie falsch gelesen wurde.",
@@ -4421,5 +4423,17 @@
   "aiWriteDraftHint": "Oder sagen Sie, was hinein soll…",
   "aiWriteEditHint": "Oder sagen Sie, was sich ändern soll…",
   "aiWriteSend": "Heidi fragen",
-  "aiWriteNote": "Sie sehen den Text zuerst; nichts ändert sich, bevor Sie ihn übernehmen."
+  "aiWriteNote": "Sie sehen den Text zuerst; nichts ändert sich, bevor Sie ihn übernehmen.",
+  "contractNumberPlaceholder": "Vertragsnr. hinzufügen",
+  "contractOpenDocument": "{name} öffnen",
+  "contractUnlink": "Dokument trennen",
+  "contractLinkDocument": "Vertrag aus Dokumenten verknüpfen",
+  "contractSearchDocuments": "Dokumente durchsuchen",
+  "contractNoDocuments": "Keine Dokumente gefunden.",
+  "clientNumberShort": "Kundennr.",
+  "clientNumberTip": "Wird auf die Rechnung gedruckt. Leer: die Kundennummer in Helvetly; geben Sie eine andere ein, z. B. die, unter der der Kunde Sie kennt, oder blenden Sie sie aus.",
+  "clientNumberHide": "Keine Kundennummer drucken",
+  "contractNumberShort": "Vertragsnr.",
+  "contractNumberTip": "Der Vertrag, auf den sich die Rechnung bezieht. Wird gedruckt und in E-Rechnungen übermittelt; verknüpfen Sie den Vertrag aus Dokumenten, um ihn von hier zu öffnen.",
+  "addField": "Feld hinzufügen"
 }

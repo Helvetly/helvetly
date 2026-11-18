@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Ce qui a été lu dans le document.",
   "importNumberTip": "Le numéro imprimé sur la facture. Une facture déjà émise le garde : il est alors obligatoire.",
   "importReferenceTip": "La référence ou le numéro de commande de l’acheteur, si la facture en indique un. Facultatif.",
+  "importContractNumber": "N° de contrat",
+  "importContractNumberTip": "Le numéro du contrat ou de l’accord auquel la facture se rapporte, tel qu’imprimé. Facultatif.",
   "importInvoiceDateTip": "Le jour où la facture a été émise, tel qu’imprimé. Il détermine la période de TVA.",
   "importDueDateTip": "Le jour avant lequel le client doit payer, tel qu’imprimé. Les rappels partent de cette date.",
   "importTotalTip": "Le total imprimé sur la facture, TVA comprise. Changez la devise si elle a été mal lue.",
@@ -4421,5 +4423,17 @@
   "aiWriteDraftHint": "Ou dites ce qu’il doit couvrir…",
   "aiWriteEditHint": "Ou dites quoi changer…",
   "aiWriteSend": "Demander à Heidi",
-  "aiWriteNote": "Vous voyez d’abord le texte ; rien ne change avant que vous l’utilisiez."
+  "aiWriteNote": "Vous voyez d’abord le texte ; rien ne change avant que vous l’utilisiez.",
+  "contractNumberPlaceholder": "Ajouter un n° de contrat",
+  "contractOpenDocument": "Ouvrir {name}",
+  "contractUnlink": "Délier le document",
+  "contractLinkDocument": "Lier un contrat des Documents",
+  "contractSearchDocuments": "Rechercher des documents",
+  "contractNoDocuments": "Aucun document trouvé.",
+  "clientNumberShort": "N° client",
+  "clientNumberTip": "Imprimé sur la facture. Vide : le numéro du client dans Helvetly ; saisissez-en un autre, p. ex. celui sous lequel le client vous connaît, ou masquez-le.",
+  "clientNumberHide": "Ne pas imprimer de n° client",
+  "contractNumberShort": "N° de contrat",
+  "contractNumberTip": "Le contrat auquel la facture se réfère. Imprimé et transmis dans les e-factures ; liez le contrat des Documents pour l’ouvrir d’ici.",
+  "addField": "Ajouter un champ"
 }

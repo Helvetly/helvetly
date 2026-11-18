@@ -29,6 +29,11 @@ func streams(t *testing.T, d Document) [][]byte {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return inflate(out)
+}
+
+// inflate returns the decompressed streams of a PDF in file order.
+func inflate(out []byte) [][]byte {
 	var all [][]byte
 	for _, m := range streamBody.FindAllSubmatch(out, -1) {
 		zr, err := zlib.NewReader(bytes.NewReader(m[1]))

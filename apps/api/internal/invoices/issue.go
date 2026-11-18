@@ -574,6 +574,7 @@ func (s *Service) duplicate(w http.ResponseWriter, r *http.Request, sess store.S
 	inv.Currency, inv.Language, inv.VATMode, inv.DiscountPercent = src.Currency, src.Language, src.VATMode, src.DiscountPercent
 	inv.ServiceDate, inv.ServiceDateEnd, inv.Reference, inv.Intro, inv.Footer, inv.Note = src.ServiceDate, src.ServiceDateEnd,
 		src.Reference, src.Intro, src.Footer, src.Note
+	inv.ClientNumberDisplay, inv.ContractReference, inv.ContractDocument = src.ClientNumberDisplay, src.ContractReference, src.ContractDocument
 	inv.Lines = copyLines(src.Lines)
 	inv.PaymentMethods = usableMethods(src.PaymentMethods, set, inv.Currency)
 	if src.Instalments != nil { // the schedule without its references
@@ -605,7 +606,8 @@ func creditDraft(src store.Invoice, lines []store.InvoiceLine, reason *string, t
 	inv := store.Invoice{ID: auth.NewID("inv"), Kind: "credit_note", Status: "draft", ClientID: src.ClientID, Client: src.Client,
 		CreditedInvoice: &store.InvoiceRef{ID: src.ID, Number: deref(src.Number)}, IssueDate: today, DueDate: today,
 		ServiceDate: src.ServiceDate, ServiceDateEnd: src.ServiceDateEnd, Currency: src.Currency, Language: src.Language,
-		VATMode: src.VATMode, Reference: src.Reference, Intro: reason, Footer: src.Footer, DiscountPercent: src.DiscountPercent,
+		VATMode: src.VATMode, Reference: src.Reference, ClientNumberDisplay: src.ClientNumberDisplay,
+		ContractReference: src.ContractReference, ContractDocument: src.ContractDocument, Intro: reason, Footer: src.Footer, DiscountPercent: src.DiscountPercent,
 		Lines: lines}
 	if lines == nil {
 		inv.Lines = copyLines(src.Lines)

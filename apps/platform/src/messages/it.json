@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Ciò che è stato letto dal documento.",
   "importNumberTip": "Il numero stampato sulla fattura. Una fattura già emessa lo mantiene, quindi è obbligatorio.",
   "importReferenceTip": "Il riferimento o numero d’ordine dell’acquirente, se la fattura ne riporta uno. Facoltativo.",
+  "importContractNumber": "N. contratto",
+  "importContractNumberTip": "Il numero del contratto o dell’accordo a cui si riferisce la fattura, come stampato. Facoltativo.",
   "importInvoiceDateTip": "Il giorno in cui la fattura è stata emessa, come stampato. Determina il periodo IVA.",
   "importDueDateTip": "Il giorno entro cui il cliente deve pagare, come stampato. I solleciti partono da questa data.",
   "importTotalTip": "Il totale stampato sulla fattura, IVA inclusa. Cambia la valuta se è stata letta male.",
@@ -4421,5 +4423,17 @@
   "aiWriteDraftHint": "Oppure di’ cosa deve includere…",
   "aiWriteEditHint": "Oppure di’ cosa cambiare…",
   "aiWriteSend": "Chiedi a Heidi",
-  "aiWriteNote": "Vedi prima il testo; nulla cambia finché non lo usi."
+  "aiWriteNote": "Vedi prima il testo; nulla cambia finché non lo usi.",
+  "contractNumberPlaceholder": "Aggiungi n. contratto",
+  "contractOpenDocument": "Apri {name}",
+  "contractUnlink": "Scollega il documento",
+  "contractLinkDocument": "Collega un contratto dai Documenti",
+  "contractSearchDocuments": "Cerca documenti",
+  "contractNoDocuments": "Nessun documento trovato.",
+  "clientNumberShort": "N. cliente",
+  "clientNumberTip": "Stampato sulla fattura. Vuoto: il numero del cliente in Helvetly; inseriscine un altro, p. es. quello con cui il cliente ti conosce, o nascondilo.",
+  "clientNumberHide": "Non stampare il n. cliente",
+  "contractNumberShort": "N. contratto",
+  "contractNumberTip": "Il contratto a cui si riferisce la fattura. Stampato e inviato nelle e-fatture; collega il contratto dai Documenti per aprirlo da qui.",
+  "addField": "Aggiungi campo"
 }

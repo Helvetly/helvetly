@@ -195,6 +195,12 @@ export type Invoice = Totals & {
   language: DocLanguage
   vat_mode: VatMode
   reference: string | null
+  /** The client number the PDF prints: null prints `client.number`, "" prints none, other text prints instead. */
+  client_number_display: string | null
+  /** The contract number (BT-12), printed as "Contract no." and sent in e-invoices. */
+  contract_reference: string | null
+  /** The workspace document the contract is in; never printed. Null when none is linked or it is gone. */
+  contract_document: { id: string; name: string } | null
   /** RON per unit of `currency` on the issue date, entered by the user; states the VAT in RON (RO e-Factura). */
   tax_currency_rate: string | null
   intro: string | null
@@ -367,6 +373,12 @@ export type InvoiceInput = Pick<
   | 'payment_methods'
 > & {
   tax_currency_rate?: string | null
+  /** At most 40 characters; null prints the client's own number, "" none. */
+  client_number_display?: string | null
+  /** At most 100 characters. */
+  contract_reference?: string | null
+  /** A document of the workspace (not in the trash, not an HR file); null removes the link. */
+  contract_document_id?: string | null
   lines: LineInput[]
   kind?: InvoiceKind
   prepayment_ids?: string[]

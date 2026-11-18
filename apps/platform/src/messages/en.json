@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "What was read from the document.",
   "importNumberTip": "The number printed on the invoice. An invoice already issued keeps it, so it is required then.",
   "importReferenceTip": "The buyer’s own reference or order number, when the invoice shows one. Optional.",
+  "importContractNumber": "Contract no.",
+  "importContractNumberTip": "The contract or agreement number the invoice refers to, as printed. Optional.",
   "importInvoiceDateTip": "The day the invoice was issued, as printed on it. It decides the VAT period it counts in.",
   "importDueDateTip": "The day the client has to pay by, as printed. Reminders count from it.",
   "importTotalTip": "The grand total printed on the invoice, VAT included. Change the currency if it was read wrong.",
@@ -4421,5 +4423,17 @@
   "aiWriteDraftHint": "Or say what it should cover…",
   "aiWriteEditHint": "Or say what to change…",
   "aiWriteSend": "Ask Heidi",
-  "aiWriteNote": "You see the text first; nothing changes until you use it."
+  "aiWriteNote": "You see the text first; nothing changes until you use it.",
+  "contractNumberPlaceholder": "Add contract no.",
+  "contractOpenDocument": "Open {name}",
+  "contractUnlink": "Unlink the document",
+  "contractLinkDocument": "Link a contract from Documents",
+  "contractSearchDocuments": "Search documents",
+  "contractNoDocuments": "No documents found.",
+  "clientNumberShort": "Client no.",
+  "clientNumberTip": "Printed on the invoice. Empty: the client’s number in Helvetly; type another, e.g. the one the client knows you under, or hide it.",
+  "clientNumberHide": "Do not print a client number",
+  "contractNumberShort": "Contract no.",
+  "contractNumberTip": "The contract this invoice refers to. Printed on the invoice and sent in e-invoices; link the contract from Documents to open it from here.",
+  "addField": "Add field"
 }

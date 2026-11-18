@@ -64,6 +64,7 @@ type ciiAgreement struct {
 	Seller         ciiParty   `xml:"ram:SellerTradeParty"`
 	Buyer          ciiParty   `xml:"ram:BuyerTradeParty"`
 	Order          *ciiDocRef `xml:"ram:BuyerOrderReferencedDocument"`
+	Contract       *ciiDocRef `xml:"ram:ContractReferencedDocument"` // BT-12
 }
 
 type ciiParty struct {
@@ -179,6 +180,9 @@ func cii(inv store.Invoice, facturX bool) ([]byte, error) {
 	}
 	if inv.Reference != nil {
 		c.Agreement.Order = &ciiDocRef{*inv.Reference}
+	}
+	if inv.ContractReference != nil {
+		c.Agreement.Contract = &ciiDocRef{*inv.ContractReference}
 	}
 	if !d.creditNote() && inv.Payment.IBAN != nil {
 		c.Settlement.Means = ciiMeans{"58", &ciiAccount{iban(inv.Payment.IBAN)}}
