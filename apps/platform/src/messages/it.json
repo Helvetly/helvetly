@@ -4456,6 +4456,8 @@
   "aiWriteErrorUnavailable": "«Scrivi con l'IA» non è ancora disponibile su questo server.",
   "aiWriteErrorNetwork": "Helvetly non è raggiungibile. Controlla la connessione e riprova.",
   "tagShape": "I tag usano lettere a–z, cifre e trattini (non all’inizio o alla fine), fino a 32 caratteri.",
+  "hideEngagement": "Nascondi la riga dell’incarico",
+  "hideContractNumber": "Rimuovi il numero di contratto",
   "dropToImportTheseInvoices": "Rilascia per importare queste fatture",
   "dropToReadTheseFilesIntoEngagements": "Rilascia per leggere questi file come incarichi",
   "dropToReadTheseFilesIntoNewClients": "Rilascia per leggere questi file come nuovi clienti",

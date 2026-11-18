@@ -4456,6 +4456,8 @@
   "aiWriteErrorUnavailable": "«Mit KI schreiben» ist auf diesem Server noch nicht verfügbar.",
   "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
   "tagShape": "Tags bestehen aus Buchstaben a–z, Ziffern und Bindestrichen (nicht am Anfang oder Ende), bis 32 Zeichen.",
+  "hideEngagement": "Auftragszeile ausblenden",
+  "hideContractNumber": "Vertragsnummer entfernen",
   "dropToImportTheseInvoices": "Ablegen, um diese Rechnungen zu importieren",
   "dropToReadTheseFilesIntoEngagements": "Ablegen, um diese Dateien als Aufträge einzulesen",
   "dropToReadTheseFilesIntoNewClients": "Ablegen, um diese Dateien als neue Kunden einzulesen",

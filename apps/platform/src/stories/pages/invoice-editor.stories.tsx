@@ -62,5 +62,27 @@ export const OptionalFields: Story = {
     await userEvent.click(page.getByRole('button', { name: 'Add field' }))
     await userEvent.click(await page.findByRole('menuitem', { name: 'Client no.' }))
     await expect(await page.findByRole('textbox', { name: /Client no\./ })).toBeVisible()
+
+    // The contract number hides again and waits in the menu, emptied.
+    await userEvent.click(page.getByRole('button', { name: 'Remove the contract number' }))
+    await expect(page.queryByRole('textbox', { name: /Contract no\./ })).toBeNull()
+    await userEvent.click(page.getByRole('button', { name: 'Add field' }))
+    await userEvent.click(await page.findByRole('menuitem', { name: 'Contract no.' }))
+    await expect(await page.findByRole('textbox', { name: /Contract no\./ })).toHaveValue('')
+  },
+}
+
+/** The engagement row is optional too: under Add field until chosen, and it hides again while empty. */
+export const EngagementIsOptional: Story = {
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    await expect(page.queryByText('Choose an engagement')).toBeNull()
+    await userEvent.click(page.getByRole('button', { name: 'Add field' }))
+    await userEvent.click(await page.findByRole('menuitem', { name: 'Engagement' }))
+    await expect(await page.findByRole('button', { name: 'Hide the engagement row' })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Hide the engagement row' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add field' }))
+    await expect(await page.findByRole('menuitem', { name: 'Engagement' })).toBeVisible()
   },
 }
