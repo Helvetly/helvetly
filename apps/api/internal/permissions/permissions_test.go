@@ -160,6 +160,7 @@ var scopedInHandler = []string{
 	"POST /api/v1/heidi/chat/confirm",
 	"GET /api/v1/heidi/consent", // any role, its own approval
 	"PUT /api/v1/heidi/consent", // any role, for itself
+	"POST /api/v1/ai/write",     // any member: writes nothing, its consent and Heidi's pool are checked in the handler
 	// imports: the scope follows the batch's kind (write:<kind>, plus write:documents to upload)
 	"POST /api/v1/imports",
 	"GET /api/v1/imports",

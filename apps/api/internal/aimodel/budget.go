@@ -61,6 +61,8 @@ var (
 	FilingCaps = Caps{Call: 50_000, Operation: 100_000}
 	// OrganizeCaps: one AI organize run over up to 150 documents, and its one shorter retry.
 	OrganizeCaps = Caps{Call: 120_000, Operation: 240_000}
+	// WriteCaps: one "Write with AI" text (up to 4000 characters), one call, counted in Heidi's pool.
+	WriteCaps = Caps{Call: 50_000, Operation: 50_000}
 )
 
 // Pools are the separate monthly allowances: Heidi's chat, and the automation pool AI import and the automatic filing
@@ -70,7 +72,7 @@ const (
 	PoolAutomation = "automation"
 )
 
-// Call names a provider call for its caps and attempts: Kind is "heidi", "import", "filing" or "organize", Operation the turn,
+// Call names a provider call for its caps and attempts: Kind is "heidi", "import", "filing", "organize" or "write", Operation the turn,
 // file or document, Step the chunk or stage within it, Group the batch ("" none).
 type Call struct {
 	Kind, Operation, Step, Group string

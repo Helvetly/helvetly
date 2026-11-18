@@ -8,6 +8,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
+import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormSection } from '@/components/form-section'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -216,7 +217,19 @@ export function ProductForm({
                 error={errors.description}
                 tip={translate('printedUnderTheNameOnTheInvoiceLine')}
                 hint={
-                  <span className="flex justify-end">
+                  <span className="flex items-center justify-between gap-2">
+                    <AIWrite
+                      field="product_description"
+                      text={values.description}
+                      maxLength={DESCRIPTION_MAX}
+                      context={{
+                        name: values.name,
+                        kind: values.type,
+                        unit: values.unit ?? undefined,
+                        price: values.unit_price && `${values.currency} ${values.unit_price}`,
+                      }}
+                      onApply={(text) => set('description', text)}
+                    />
                     <span
                       className={cn(
                         'tabular-nums',
