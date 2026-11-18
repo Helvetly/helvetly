@@ -1050,6 +1050,7 @@
   "emailInstalmentInvoicesWhenIssued": "Email instalment invoices when issued",
   "emailIsnTSetUpOnThisServerMark": "Email isn’t set up on this server. Mark the quote as sent, then send the PDF yourself.",
   "emailIsnTSetUpOnThisServerMark2": "Email isn’t set up on this server. Mark the quote as sent and send the PDF yourself.",
+  "emailIsnTSetUpOnThisServerMarkTheInvoice": "Email isn’t set up on this server. Mark the invoice as sent, then send the PDF yourself.",
   "emailItToTheClient": "Email it to the client",
   "emailNotSentCopyTheLink": "Email not sent: copy the link.",
   "emailRecipientsThisMonth": "Email recipients this month",

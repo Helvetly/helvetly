@@ -1050,6 +1050,7 @@
   "emailInstalmentInvoicesWhenIssued": "Envoyer les factures échelonnées par courrier électronique une fois émises",
   "emailIsnTSetUpOnThisServerMark": "La messagerie électronique n’est pas configurée sur ce serveur. Marquez le devis comme envoyé, puis envoyez vous-même le PDF.",
   "emailIsnTSetUpOnThisServerMark2": "La messagerie électronique n’est pas configurée sur ce serveur. Marquez l’offre de prix comme envoyée et envoyez vous-même le PDF.",
+  "emailIsnTSetUpOnThisServerMarkTheInvoice": "La messagerie électronique n’est pas configurée sur ce serveur. Marquez la facture comme envoyée, puis envoyez vous-même le PDF.",
   "emailItToTheClient": "Envoyez-le par e-mail au client",
   "emailNotSentCopyTheLink": "Email non envoyé : copiez le lien.",
   "emailRecipientsThisMonth": "Destinataires des e-mails ce mois-ci",

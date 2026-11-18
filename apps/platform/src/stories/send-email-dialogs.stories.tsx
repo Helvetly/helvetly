@@ -81,3 +81,49 @@ export const QuoteDraftFailed: Story = {
     await expect(dialog.getByRole('textbox', { name: /^Message/ })).toHaveValue('')
   },
 }
+
+/** Email is not set up: Send explains it, and Mark as sent without email records it sent (buttons wait meanwhile). */
+export const InvoiceMailDownMarkSent: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        noClient,
+        http.get('/api/v1/invoices/:id/email', () => HttpResponse.json({ data: draft })),
+        http.post<never, Record<string, unknown>>(
+          '/api/v1/invoices/:id/send',
+          async ({ request }) => {
+            sent.body = await request.json()
+            if (sent.body.email !== false)
+              return HttpResponse.json(
+                {
+                  error: {
+                    code: 'mail_unavailable',
+                    message: 'Email is not set up on this server.',
+                  },
+                },
+                { status: 503 },
+              )
+            await delay(400)
+            return HttpResponse.json({ data: sampleInvoice({ sent_at: '2026-11-18T10:00:00Z' }) })
+          },
+        ),
+      ],
+    },
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    sent.body = null
+    const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'))
+    await waitFor(() =>
+      expect(dialog.getByRole('textbox', { name: /^Subject/ })).toHaveValue(draft.subject),
+    )
+    await userEvent.click(dialog.getByRole('button', { name: 'Send' }))
+    await expect(
+      await dialog.findByText(/Mark the invoice as sent, then send the PDF yourself/),
+    ).toBeVisible()
+    const mark = dialog.getByRole('button', { name: 'Mark as sent without email' })
+    await userEvent.click(mark)
+    await waitFor(() => expect(mark).toBeDisabled())
+    await waitFor(() => expect(read()).toEqual({ email: false }))
+  },
+}

@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { CountedTextarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, MailX } from 'lucide-react'
 import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -45,6 +46,7 @@ import {
   type InvoiceListItem,
   type IssueReason,
   type PaymentMethod,
+  type SendInput,
 } from '@/lib/invoices'
 
 /** A small form dialog: title, a line of context, the fields, Cancel + the action. */
@@ -415,7 +417,7 @@ export function recipientErrors(to: string, cc: string): Record<string, string> 
   return found
 }
 
-/** Sends the issued document by email with its PDF attached. */
+/** Sends the issued document by email with its PDF attached, or only marks it sent to send it yourself. */
 export function SendDialog({
   invoice,
   onClose,
@@ -432,10 +434,29 @@ export function SendDialog({
   const [subject, setSubject] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [mailDown, setMailDown] = useState(false)
   const send = useSendInvoice()
   const recipients = to ?? (draft.data?.to.join(', ') || fallback)
   const shownSubject = subject ?? draft.data?.subject ?? ''
   const shownMessage = message ?? draft.data?.message ?? ''
+
+  const run = (input: SendInput, done: string) =>
+    send.mutate(
+      { id: invoice.id, input },
+      {
+        onSuccess: () => {
+          toast.success(done)
+          onClose()
+        },
+        onError: (error) => {
+          if (error instanceof ApiError && error.code === 'mail_unavailable')
+            return setMailDown(true)
+          const fromServer = fieldErrors(error)
+          if (Object.keys(fromServer).length) setErrors(fromServer)
+          else toast.error(errorMessage(error))
+        },
+      },
+    )
 
   const submit = () => {
     const list = emails(recipients)
@@ -446,32 +467,23 @@ export function SendDialog({
     }
     setErrors(found)
     if (Object.keys(found).length) return
-    send.mutate(
+    run(
       {
-        id: invoice.id,
-        input: {
-          to: list,
-          ...(emails(cc).length ? { cc: emails(cc) } : {}),
-          // Left empty (draft failed), the server writes both in the invoice's language.
-          ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
-          ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
-        },
+        to: list,
+        ...(emails(cc).length ? { cc: emails(cc) } : {}),
+        // Left empty (draft failed), the server writes both in the invoice's language.
+        ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
+        ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
       },
-      {
-        onSuccess: () => {
-          toast.success(
-            translate('sentTo', { value1: documentName(invoice), value2: list.join(', ') }),
-          )
-          onClose()
-        },
-        onError: (error) => {
-          const fromServer = fieldErrors(error)
-          if (Object.keys(fromServer).length) setErrors(fromServer)
-          else toast.error(errorMessage(error))
-        },
-      },
+      translate('sentTo', { value1: documentName(invoice), value2: list.join(', ') }),
     )
   }
+
+  const markSent = () =>
+    run(
+      { email: false },
+      translate('markedAsSentSendItsPDFYourself', { value1: documentName(invoice) }),
+    )
 
   return (
     <FormDialog
@@ -485,7 +497,23 @@ export function SendDialog({
       pending={send.isPending}
       onSubmit={submit}
       onClose={onClose}
+      aside={
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-muted-foreground"
+          disabled={send.isPending}
+          onClick={markSent}
+        >
+          {translate('markAsSentWithoutEmail')}
+        </Button>
+      }
     >
+      {mailDown && (
+        <Callout tone="warning" icon={MailX}>
+          {translate('emailIsnTSetUpOnThisServerMarkTheInvoice')}
+        </Callout>
+      )}
       <FormField
         id="send-to"
         label={translate('to3')}

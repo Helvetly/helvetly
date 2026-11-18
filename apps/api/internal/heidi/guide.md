@@ -132,13 +132,13 @@ Keywords: QR bill, QR-Rechnung, Einzahlungsschein, payment slip, QR-IBAN, QR ref
 
 ## Send an invoice by email
 
-Keywords: send, email invoice, mail, deliver, resend, send again, recipients, cc
+Keywords: send, email invoice, mail, deliver, resend, send again, recipients, cc, mark as sent, sent without email
 
 1. Open the issued invoice from **Invoices**.
 2. Click **Send**, or choose **Send by email** / **Send again** in the **…** menu.
 3. Check **To**, which defaults to the client's billing email. Optionally fill in **Cc**, **Subject** and **Message**, then send.
 4. The **Emails** tab of the invoice shows each email that went out, when and by whom.
-   You can add up to 10 addresses in To and up to 10 in Cc. You can also click **Download PDF** and send it yourself.
+   You can add up to 10 addresses in To and up to 10 in Cc. To send the PDF yourself, click **Download PDF**, then **Mark as sent without email** in the Send dialog: the invoice shows as sent, and no email goes out.
 
 ## Record a payment
 

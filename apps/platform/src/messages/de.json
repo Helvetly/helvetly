@@ -1050,6 +1050,7 @@
   "emailInstalmentInvoicesWhenIssued": "Ratenrechnungen bei Ausstellung per E-Mail versenden",
   "emailIsnTSetUpOnThisServerMark": "E-Mail ist auf diesem Server nicht eingerichtet. Markieren Sie das Preisangebot als gesendet und senden Sie dann selbst den PDF.",
   "emailIsnTSetUpOnThisServerMark2": "E-Mail ist auf diesem Server nicht eingerichtet. Markieren Sie das Preisangebot als gesendet und senden Sie die PDF selbst ab.",
+  "emailIsnTSetUpOnThisServerMarkTheInvoice": "E-Mail ist auf diesem Server nicht eingerichtet. Markieren Sie die Rechnung als gesendet und senden Sie das PDF dann selbst.",
   "emailItToTheClient": "Senden Sie es per E-Mail an den Kunden",
   "emailNotSentCopyTheLink": "E-Mail nicht gesendet: Kopieren Sie den Link.",
   "emailRecipientsThisMonth": "E-Mail-Empfänger in diesem Monat",

@@ -514,7 +514,14 @@ export type SettingsInput = Omit<
   'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url'
 >
 
-export type SendInput = { to?: string[]; cc?: string[]; subject?: string; message?: string }
+export type SendInput = {
+  to?: string[]
+  cc?: string[]
+  subject?: string
+  message?: string
+  /** false: only marks it sent (its PDF handed over another way), no email. */
+  email?: boolean
+}
 export type PaymentInput = {
   amount: Decimal
   paid_on: string
