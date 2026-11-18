@@ -24,11 +24,13 @@ export function ringClipper(element: Element, ring = 3): Element | null {
     )
       return null
     const room = ring - margin
+    // An edge the box can still scroll past is a scroll position, not a cut-off: focusing scrolls the ring in.
+    const end = (scroll: number, client: number, size: number) => scroll + client >= size - 1
     if (
-      box.left - room < clip.left ||
-      box.right + room > clip.right ||
-      box.top - room < clip.top ||
-      box.bottom + room > clip.bottom
+      (box.left - room < clip.left && node.scrollLeft <= 0) ||
+      (box.right + room > clip.right && end(node.scrollLeft, node.clientWidth, node.scrollWidth)) ||
+      (box.top - room < clip.top && node.scrollTop <= 0) ||
+      (box.bottom + room > clip.bottom && end(node.scrollTop, node.clientHeight, node.scrollHeight))
     )
       return node
     if (last) break
