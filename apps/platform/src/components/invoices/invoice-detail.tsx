@@ -65,6 +65,7 @@ import {
   isPositive,
   isReceivable,
   isZero,
+  repeatsAmount,
   kindInfo,
   PAYMENT_METHODS,
   pdfUrl,
@@ -568,16 +569,19 @@ function Detail({
                 </span>
                 <span className="grid min-w-0 flex-1 gap-0.5">
                   <span className="text-[14px] whitespace-pre-line">{line.description}</span>
-                  <span className="text-[12.5px] text-muted-foreground tabular-nums">
-                    {line.quantity}
-                    {line.unit && ` ${unitShort(line.unit)}`} ×{' '}
-                    {formatMoney(line.unit_price, invoice.currency)}
-                    {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
-                    {invoice.vat_mode !== 'none' &&
-                      translate('vat3', {
-                        value1: line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
-                      })}
-                  </span>
+                  {!repeatsAmount(line, invoice.vat_mode) && (
+                    <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                      {line.quantity}
+                      {line.unit && ` ${unitShort(line.unit)}`} ×{' '}
+                      {formatMoney(line.unit_price, invoice.currency)}
+                      {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
+                      {invoice.vat_mode !== 'none' &&
+                        translate('vat3', {
+                          value1:
+                            line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
+                        })}
+                    </span>
+                  )}
                 </span>
                 <Money value={line.amount} currency={invoice.currency} className="text-[14px]" />
               </li>
@@ -805,7 +809,7 @@ function Detail({
           title={translate('pdfOf', { value1: documentName(invoice) })}
           src={pdfUrl(invoice.id)}
           onPages={setPages}
-          className="overflow-visible rounded-xl"
+          className="overflow-visible bg-transparent dark:bg-transparent"
         />
       </TabsContent>
     </Tabs>

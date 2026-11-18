@@ -1017,6 +1017,13 @@ export function fromCents(cents: bigint): Decimal {
 }
 
 export const isZero = (value: Decimal) => /^-?0*\.?0*$/.test(value.trim())
+
+/** A line whose "1 × price" would only repeat its amount: one, no unit, no discount, no VAT to show. */
+export const repeatsAmount = (
+  line: { quantity: Decimal; unit?: string | null; discount_percent: Decimal },
+  vatMode: string,
+) =>
+  Number(line.quantity) === 1 && !line.unit && isZero(line.discount_percent) && vatMode === 'none'
 export const isPositive = (value: Decimal) => !isZero(value) && !value.trim().startsWith('-')
 
 /**
