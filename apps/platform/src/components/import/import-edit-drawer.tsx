@@ -48,7 +48,7 @@ export function normalizeAmount(typed: string): string | null {
 }
 
 /** A date picked from the calendar; a value the model could not read as a date shows as "Choose a date". */
-function ImportDateField({
+export function ImportDateField({
   id,
   label,
   value,
@@ -100,7 +100,7 @@ function ImportDateField({
  * An amount with its currency picker beside it (one currency per record: picking it beside any amount changes it
  * for all). Shown as money ("22’222.00") until focused; typed as plain digits.
  */
-function ImportAmountField({
+export function ImportAmountField({
   id,
   value,
   currency,
@@ -146,7 +146,13 @@ function ImportAmountField({
 }
 
 /** A small rounded label in the editor's header. */
-function HeaderBadge({ tone, children }: { tone?: 'warning' | 'success'; children: ReactNode }) {
+export function HeaderBadge({
+  tone,
+  children,
+}: {
+  tone?: 'warning' | 'success'
+  children: ReactNode
+}) {
   return (
     <span
       className={cn(

@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { ImportDrawer } from '@/components/import/import-drawer'
 import type { CommitResult, ImportBatch, ImportRecord } from '@/lib/imports'
+import { editorApi } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { emptyPage, sessionHandler } from './screen-fixtures'
@@ -70,6 +71,7 @@ export const PickClient: Story = {
     msw: {
       handlers: [
         sessionHandler(),
+        ...editorApi([]),
         http.get('/api/v1/imports', () =>
           HttpResponse.json({
             data: [
@@ -410,6 +412,7 @@ export const IssuedElsewhereToggle: Story = {
     msw: {
       handlers: [
         sessionHandler(),
+        ...editorApi([]),
         http.get('/api/v1/imports', () =>
           HttpResponse.json({
             data: [

@@ -292,6 +292,8 @@ export const IMPORT_KINDS = {
       issue_date: translate('importInvoiceDateTip'),
       due_date: translate('importDueDateTip'),
       total: translate('importTotalTip'),
+      service_date: translate('importServiceDateTip'),
+      discount_percent: translate('importInvoiceDiscountTip'),
     },
     noun: translate('importNounInvoice'),
     labels: {
@@ -300,6 +302,9 @@ export const IMPORT_KINDS = {
       issue_date: translate('importInvoiceDate'),
       due_date: translate('importDueDate'),
       total: translate('importTotalAmount'),
+      service_date: translate('importServiceDate'),
+      service_date_end: translate('importServiceDateEnd'),
+      discount_percent: translate('importInvoiceDiscount'),
     },
     required: (values) => [
       'client_id',
@@ -549,7 +554,11 @@ const isCommit = (value: unknown): value is { results: CommitResult[]; batch: Im
 
 const path = (id: string) => `/imports/${encodeURIComponent(id)}`
 
-export type RecordChanges = Record<string, string | boolean | null>
+/** A record field's new value: a scalar, or the rows of a list field (lines, instalments). */
+export type RecordChanges = Record<
+  string,
+  string | boolean | null | Record<string, string | boolean | null>[]
+>
 
 export type CommitInput = { recordIds: string[]; resolutions?: Record<string, Resolution> }
 

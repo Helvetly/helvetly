@@ -4330,5 +4330,22 @@
   "importFixBeforeImport": "{count, plural, one {Fix # thing before importing} other {Fix # things before importing}}",
   "importFoundOnDocument": "Found on the document",
   "importClientNotYours": "This client is not in your clients yet. Pick an existing one above, or create it with the details found.",
-  "importClientVat": "VAT"
+  "importClientVat": "VAT",
+  "importOriginal": "The original",
+  "importNoPreview": "No preview for this file type.",
+  "importSectionLines": "Lines",
+  "importSectionLinesText": "What was sold, as printed: quantities, prices, discounts and VAT.",
+  "importNetTotal": "Net",
+  "importTotalsWaitForLines": "The totals appear once the invoice has lines and a currency.",
+  "importSectionPaymentsText": "The total printed on the invoice and what the client already paid.",
+  "importTotalDiffers": "The lines add up to {lines}. Check the lines, or the total printed on the invoice.",
+  "importSectionInstalmentsText": "The payment schedule printed on the invoice. Tick the instalments already paid.",
+  "importInstalmentN": "Instalment {n}",
+  "importPaid": "Paid",
+  "importAddInstalment": "Add instalment",
+  "importServiceDate": "Service date",
+  "importServiceDateEnd": "Service period ends",
+  "importInvoiceDiscount": "Invoice discount (%)",
+  "importServiceDateTip": "When the work was done or delivered, or the first day of a service period. Leave empty when the invoice shows none.",
+  "importInvoiceDiscountTip": "A discount on the whole invoice, in percent, as printed. Discounts on single lines go in the lines."
 }

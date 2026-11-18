@@ -4330,5 +4330,22 @@
   "importFixBeforeImport": "{count, plural, one {Correggi # cosa prima dell’importazione} other {Correggi # cose prima dell’importazione}}",
   "importFoundOnDocument": "Trovato nel documento",
   "importClientNotYours": "Questo cliente non è ancora tra i tuoi clienti. Scegline uno esistente sopra o crealo con i dati trovati.",
-  "importClientVat": "IVA"
+  "importClientVat": "IVA",
+  "importOriginal": "L’originale",
+  "importNoPreview": "Nessuna anteprima per questo tipo di file.",
+  "importSectionLines": "Righe",
+  "importSectionLinesText": "Cosa è stato venduto, come stampato: quantità, prezzi, sconti e IVA.",
+  "importNetTotal": "Netto",
+  "importTotalsWaitForLines": "I totali compaiono quando la fattura ha righe e una valuta.",
+  "importSectionPaymentsText": "Il totale stampato sulla fattura e quanto il cliente ha già pagato.",
+  "importTotalDiffers": "Le righe danno {lines}. Controlla le righe o il totale stampato.",
+  "importSectionInstalmentsText": "Il piano di pagamento stampato sulla fattura. Spunta le rate già pagate.",
+  "importInstalmentN": "Rata {n}",
+  "importPaid": "Pagata",
+  "importAddInstalment": "Aggiungi rata",
+  "importServiceDate": "Data della prestazione",
+  "importServiceDateEnd": "Fine del periodo di prestazione",
+  "importInvoiceDiscount": "Sconto sulla fattura (%)",
+  "importServiceDateTip": "Quando il lavoro è stato svolto o consegnato, o il primo giorno di un periodo di prestazione. Lascia vuoto se la fattura non lo indica.",
+  "importInvoiceDiscountTip": "Uno sconto su tutta la fattura, in percentuale, come stampato. Gli sconti sulle singole righe vanno nelle righe."
 }
