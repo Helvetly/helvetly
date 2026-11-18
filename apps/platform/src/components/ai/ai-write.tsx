@@ -94,7 +94,11 @@ export function AIWrite({
           {translate('aiWriteButton')}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-[min(400px,calc(100vw-2rem))] gap-3 p-3">
+      <PopoverContent
+        align="start"
+        aria-label={translate('aiWriteButton')}
+        className="grid w-[min(400px,calc(100vw-2rem))] gap-3 p-3"
+      >
         {write.data !== undefined ? (
           <>
             <p className="text-caption font-medium text-muted-foreground">
