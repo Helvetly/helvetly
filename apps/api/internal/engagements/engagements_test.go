@@ -285,6 +285,7 @@ func TestCreateValidation(t *testing.T) {
 	e.fails(b, "POST", "/api/v1/engagements", input(c, map[string]any{"recurrence": "none"}), 422, "validation_failed", "end_date")
 	e.fails(b, "POST", "/api/v1/engagements", input(c, map[string]any{"end_date": "2026-10-01"}), 422, "validation_failed", "end_date")
 	e.fails(b, "POST", "/api/v1/engagements", input(other, nil), 422, "validation_failed", "client_id")
+	e.fails(b, "POST", "/api/v1/engagements", input(c, map[string]any{"unit_price": "0", "auto_invoice": true}), 422, "validation_failed", "auto_invoice")
 	e.fails(b, "POST", "/api/v1/engagements", input(c, map[string]any{"bogus": 1}), 400, "invalid_request")
 	e.fails(b, "GET", "/api/v1/engagements/eng_missing", nil, 404, "not_found")
 }

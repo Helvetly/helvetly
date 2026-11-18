@@ -77,6 +77,14 @@ export type Engagement = {
   updated_at: string
 }
 
+/** No price: the work was paid on an invoice made elsewhere, and the engagement only tracks it. */
+export const unpriced = (engagement: Pick<Engagement, 'unit_price'>) =>
+  Number(engagement.unit_price) === 0
+
+/** How the engagement is paid, as the form and the list name it. */
+export const billingOf = (engagement: Pick<Engagement, 'billing' | 'unit_price'>) =>
+  unpriced(engagement) ? 'paid' : engagement.billing
+
 export type EngagementInput = {
   client_id: string
   title: string

@@ -242,3 +242,27 @@ describe('habits', () => {
     })
   })
 })
+
+describe('paid separately', () => {
+  const paid = filled({
+    billing: 'paid',
+    unit_price: '',
+    auto_invoice: true,
+    overage_unit_price: 'x',
+  })
+  it('needs no price or VAT', () => expect(validate(paid)).toEqual({}))
+  it('refuses a zero price when invoicing here', () =>
+    expect(Object.keys(validate(filled({ unit_price: '0' })))).toEqual(['unit_price']))
+  it('is saved as advance without a price or drafts', () =>
+    expect(toInput(paid)).toMatchObject({
+      billing: 'advance',
+      unit_price: '0',
+      overage_unit_price: null,
+      auto_invoice: false,
+    }))
+  it('has no committed value and says nothing is invoiced', () => {
+    expect(committedTotal(paid)).toBeNull()
+    expect(nextSteps(paid)[0]).toMatch(/Nothing is invoiced/)
+    expect(summarySentence(paid, 'Muster AG')).toMatch(/Paid separately$/)
+  })
+})

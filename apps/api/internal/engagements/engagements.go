@@ -324,7 +324,8 @@ func attention(e store.Engagement, v EngagementView) []string {
 	if slices.ContainsFunc(v.periods, func(p PeriodSummary) bool { return p.Overage > 0 && p.UninvoicedQuantity > 0 }) {
 		out = append(out, "overage")
 	}
-	if slices.ContainsFunc(v.periods, func(p PeriodSummary) bool {
+	// Without a price the work was paid elsewhere: nothing here is to invoice.
+	if e.UnitPrice > 0 && slices.ContainsFunc(v.periods, func(p PeriodSummary) bool {
 		return (e.Billing == "advance" && p.State != "upcoming" && p.AdvanceInvoice == nil) ||
 			(p.State == "closed" && p.UninvoicedQuantity > 0)
 	}) {

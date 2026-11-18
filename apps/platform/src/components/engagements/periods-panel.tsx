@@ -23,6 +23,7 @@ import {
   reportUrl,
   type Engagement,
   type Period,
+  unpriced,
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { UNITS } from '@/lib/invoices'
@@ -86,8 +87,9 @@ export function PeriodsPanel({
   return (
     <ul className="divide-y divide-border/60">
       {periods.map((period) => {
-        const hasUsage = Number(period.uninvoiced_quantity) > 0
-        const upfront = canInvoice && engagement.billing === 'advance'
+        // Paid separately: nothing to invoice, and no price to show.
+        const hasUsage = !unpriced(engagement) && Number(period.uninvoiced_quantity) > 0
+        const upfront = canInvoice && engagement.billing === 'advance' && !unpriced(engagement)
         const upfrontOpen = upfront && period.advance_invoice === null
         const busy = invoice.isPending
         const primary = !canInvoice
@@ -105,7 +107,8 @@ export function PeriodsPanel({
                 }
               : null
         const facts = [
-          `${formatMoney(period.unit_price, engagement.currency)}${short ? ` / ${short}` : ''}`,
+          !unpriced(engagement) &&
+            `${formatMoney(period.unit_price, engagement.currency)}${short ? ` / ${short}` : ''}`,
           Number(period.invoiced_quantity) > 0 &&
             `${withUnit(period.invoiced_quantity, unit)} invoiced`,
           hasUsage && `${withUnit(period.uninvoiced_quantity, unit)} to invoice`,
