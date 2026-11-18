@@ -616,7 +616,6 @@
   "contactPerson": "Ansprechpartner",
   "contactPersons": "Ansprechpartner",
   "contacts": "Kontakte",
-  "containsTheSameFileAs": "{name} enthält dieselbe Datei wie {first}.",
   "continue": "Weiter",
   "continue2": "Weiter ",
   "continueTheImportFrom": "Setzen Sie den Import fort von ",
@@ -4435,5 +4434,14 @@
   "clientNumberHide": "Keine Kundennummer drucken",
   "contractNumberShort": "Vertragsnr.",
   "contractNumberTip": "Der Vertrag, auf den sich die Rechnung bezieht. Wird gedruckt und in E-Rechnungen übermittelt; verknüpfen Sie den Vertrag aus Dokumenten, um ihn von hier zu öffnen.",
-  "addField": "Feld hinzufügen"
+  "addField": "Feld hinzufügen",
+  "newCategory": "Neue Kategorie",
+  "accountCode": "Kontonummer",
+  "categoryName": "Name der Kategorie",
+  "otherOperatingCosts": "Übriger Betriebsaufwand",
+  "accountCodeTip": "Das Konto des Schweizer KMU-Kontenrahmens, auf das die Kategorie bucht. 6700 ist übriger Betriebsaufwand.",
+  "suggestedNewCategory": "Vorgeschlagene neue Kategorie: {name}",
+  "noCategoriesYet": "Noch keine Kategorien",
+  "alreadyInDocuments": "Bereits in Dokumente",
+  "showFile": "Anzeigen"
 }

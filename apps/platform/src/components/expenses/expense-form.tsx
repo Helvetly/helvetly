@@ -31,6 +31,7 @@ import {
   CURRENCY_OPTIONS,
   inputClass,
 } from '@/components/clients/fields'
+import { ExpenseCategoryField } from '@/components/expenses/expense-category-field'
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
@@ -380,11 +381,6 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     'aria-invalid': errors[field] ? true : undefined,
     'aria-describedby': errors[field] ? `${fieldId(field)}-error` : undefined,
   })
-  const categoryOptions = (categories.data ?? []).map((category) => ({
-    value: category.id,
-    label: category.name,
-    hint: category.account_code,
-  }))
   const title = expense
     ? translate('editExpense', { number: expense.number })
     : translate('newExpense')
@@ -712,22 +708,10 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                   required
                   tip={translate('eachCategoryBooksToAnAccountOfTheSwiss')}
                 >
-                  <Combobox
+                  <ExpenseCategoryField
                     id={fieldId('category_id')}
                     value={values.category_id}
-                    options={categoryOptions}
                     invalid={Boolean(errors.category_id)}
-                    placeholder={
-                      categories.isPending
-                        ? translate('loadingCategories')
-                        : translate('chooseACategory')
-                    }
-                    renderValue={(option) => (
-                      <span>
-                        {option.label}{' '}
-                        <span className="text-muted-foreground tabular-nums">{option.hint}</span>
-                      </span>
-                    )}
                     onChange={(id) => set('category_id', id)}
                   />
                 </FormField>

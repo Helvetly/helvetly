@@ -11,6 +11,7 @@ import { CircleCheck, FileText, ListChecks, TriangleAlert, X } from 'lucide-reac
 import { useState, type ReactNode } from 'react'
 
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
+import { ExpenseCategoryField } from '@/components/expenses/expense-category-field'
 import { FormSection } from '@/components/form-section'
 import { DateField } from '@/components/invoices/date-fields'
 import { errorMessage } from '@/lib/api'
@@ -300,6 +301,14 @@ export function EditRecordDrawer({
             error={error ?? record.issues[currencyField]}
             onChange={(amount) => set(field, amount)}
             onCurrency={(code) => set(currencyField, code)}
+          />
+        ) : field === 'category' && config.path === '/expenses' ? (
+          <ExpenseCategoryField
+            id={id}
+            by="name"
+            value={values[field] ?? ''}
+            invalid={Boolean(error)}
+            onChange={(category) => set(field, category)}
           />
         ) : (
           <input

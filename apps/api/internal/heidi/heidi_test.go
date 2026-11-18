@@ -233,8 +233,8 @@ func TestUploadedBytesAreDeduplicatedAndBatchAtomic(t *testing.T) {
 		t.Fatalf("upload: %d puts=%d %s", w.Code, files.puts, w.Body)
 	}
 	w = chat(t, mux, "retry", "Keep this attachment", pdf)
-	if w.Code != 409 || files.puts != 1 {
-		t.Fatalf("retry: %d puts=%d %s", w.Code, files.puts, w.Body)
+	if w.Code != 200 || files.puts != 1 || len(files.objects) != 1 { // the same bytes are the existing Document: nothing stored
+		t.Fatalf("retry: %d objects=%d puts=%d %s", w.Code, len(files.objects), files.puts, w.Body)
 	}
 	list, total, err := s.db.ListDocuments(context.Background(), "ws_heidi", store.DocumentFilter{Sort: "name"}, 50, 0)
 	if err != nil || total != 1 || list[0].SHA256 == nil {

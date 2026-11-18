@@ -2,6 +2,7 @@ package clients
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -187,9 +188,9 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 	// that are known duplicates; the check under the lock below decides, storing a file it finds new after all.
 	isStored := func(key string) bool { return slices.Contains(stored, key) }
 	for i, sum := range sums {
-		if _, err := s.db.DuplicateUpload(r.Context(), sess.Workspace.ID, sum); err == nil {
+		if d, err := s.db.DuplicateUpload(r.Context(), sess.Workspace.ID, sum); err == nil && d.Resource == "document" {
 			continue
-		} else if !errors.Is(err, store.ErrNotFound) {
+		} else if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
 		// counted before the write, so a full workspace sends no bytes to storage
@@ -222,8 +223,8 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 		for i, sum := range sums {
 			duplicate, err := q.DuplicateUpload(r.Context(), sess.Workspace.ID, sum)
 			if err == nil {
-				if duplicate.Resource != "document" {
-					return fileuploads.Duplicate(sess, duplicate)
+				if duplicate.Resource != "document" { // a receipt alone is no Documents duplicate: the file is new there
+					continue
 				}
 				if !permissions.Allows(sess.Role, sess.Scopes, "read:documents") {
 					if _, err := q.ClientFile(r.Context(), clientID, duplicate.ID); err != nil {
@@ -257,6 +258,9 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 		for i := range uploads {
 			if duplicate, ok := existing[i]; ok {
 				if err := q.AddDocumentLink(r.Context(), sess.Workspace.ID, duplicate.ID, "client", clientID, sess.User.ID, now); err != nil {
+					return err
+				}
+				if err := s.moveFromTop(r.Context(), q, sess, duplicate.ID, now); err != nil {
 					return err
 				}
 				f, err := q.ClientFile(r.Context(), clientID, duplicate.ID)
@@ -301,6 +305,26 @@ func readHead(h *multipart.FileHeader) ([]byte, error) {
 		return nil, fmt.Errorf("read upload: %w", err)
 	}
 	return head[:n], nil
+}
+
+// moveFromTop files a reused Document that sits at the top level into the Clients folder; one in a folder stays.
+func (s *Service) moveFromTop(ctx context.Context, q store.Q, sess store.Session, id string, now time.Time) error {
+	d, err := q.Document(ctx, sess.Workspace.ID, id)
+	if err != nil || d.FolderID != nil {
+		return err
+	}
+	folder, err := q.ClientsFolder(ctx, sess.Workspace.ID, sess.User.ID, now)
+	if err != nil {
+		return err
+	}
+	if err := q.LockContainer(ctx, sess.Workspace.ID, &folder); err != nil {
+		return err
+	}
+	name, err := q.FreeFileName(ctx, sess.Workspace.ID, &folder, d.Name)
+	if err != nil {
+		return err
+	}
+	return q.UpdateDocument(ctx, sess.Workspace.ID, id, name, &folder, now)
 }
 
 func (s *Service) put(r *http.Request, u *upload) error {

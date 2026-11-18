@@ -616,7 +616,6 @@
   "contactPerson": "Persona di contatto",
   "contactPersons": "Persone di contatto",
   "contacts": "Contatti",
-  "containsTheSameFileAs": "{name} contiene lo stesso file di {first}.",
   "continue": "Continua",
   "continue2": "Continua ",
   "continueTheImportFrom": "Continua l’importazione da ",
@@ -4435,5 +4434,14 @@
   "clientNumberHide": "Non stampare il n. cliente",
   "contractNumberShort": "N. contratto",
   "contractNumberTip": "Il contratto a cui si riferisce la fattura. Stampato e inviato nelle e-fatture; collega il contratto dai Documenti per aprirlo da qui.",
-  "addField": "Aggiungi campo"
+  "addField": "Aggiungi campo",
+  "newCategory": "Nuova categoria",
+  "accountCode": "Numero di conto",
+  "categoryName": "Nome della categoria",
+  "otherOperatingCosts": "Altri costi d'esercizio",
+  "accountCodeTip": "Il conto del piano dei conti delle PMI svizzere (KMU-Kontenrahmen) su cui registra la categoria. 6700 corrisponde ad altri costi d'esercizio.",
+  "suggestedNewCategory": "Nuova categoria suggerita: {name}",
+  "noCategoriesYet": "Nessuna categoria per ora",
+  "alreadyInDocuments": "Già in Documenti",
+  "showFile": "Mostra"
 }

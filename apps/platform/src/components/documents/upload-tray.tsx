@@ -8,11 +8,13 @@ import {
   Check,
   ChevronDown,
   CopyPlus,
+  Info,
   Loader2,
   RefreshCw,
   Replace,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 
 import { promptUpgrade } from '@/components/billing/upgrade-prompt'
@@ -49,7 +51,7 @@ export function useUploads() {
         controller.signal,
       )
         .then((result) => {
-          dispatch({ type: 'done', id: upload.id, result })
+          dispatch({ type: 'done', id: upload.id, result, reused: result.reused })
           refreshDocuments(queryClient)
         })
         .catch((error: unknown) => {
@@ -96,6 +98,7 @@ const STATUS_TEXT: Record<Upload['status'], string> = {
   queued: translate('waiting'),
   uploading: translate('uploading'),
   done: translate('uploaded2'),
+  reused: translate('alreadyInDocuments'),
   failed: translate('failed'),
   conflict: translate('nameTaken'),
   cancelled: translate('cancelled'),
@@ -123,10 +126,12 @@ export function UploadTray({
           })
         : sum.failed > 0
           ? translate('uploadedFailed', { done: sum.done, failed: sum.failed })
-          : translate('dynamicComplete', {
-              done: sum.done,
-              value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
-            })
+          : sum.done === 0 && sum.reused > 0
+            ? translate('alreadyInDocuments')
+            : translate('dynamicComplete', {
+                done: sum.done,
+                value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
+              })
 
   return (
     <section
@@ -247,7 +252,7 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
                       value1: formatSize(upload.file.size * upload.progress),
                       value2: formatSize(upload.file.size),
                     })
-                  : `${STATUS_TEXT[upload.status]} · ${upload.folderName}`}
+                  : `${STATUS_TEXT[upload.status]} · ${upload.status === 'reused' ? (upload.result?.folder?.name ?? translate('documents')) : upload.folderName}`}
           </p>
         </div>
         {upload.status === 'done' && (
@@ -255,6 +260,25 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
             aria-label={translate('uploaded2')}
             className="size-4 shrink-0 text-success-solid"
           />
+        )}
+        {upload.status === 'reused' && (
+          <>
+            <Info
+              aria-label={translate('alreadyInDocuments')}
+              className="size-4 shrink-0 text-muted-foreground"
+            />
+            <Button asChild variant="ghost" size="sm" className="cursor-pointer">
+              <Link
+                href={
+                  upload.result?.folder_id
+                    ? `/documents?folder=${encodeURIComponent(upload.result.folder_id)}`
+                    : '/documents'
+                }
+              >
+                {translate('showFile')}
+              </Link>
+            </Button>
+          </>
         )}
         {upload.status === 'failed' && (
           <TrayIcon label={translate('retry')} onClick={() => retry()}>

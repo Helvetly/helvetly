@@ -204,8 +204,9 @@ func TestExactStoredBytesConcurrentUploadAndFullQuotaDuplicate(t *testing.T) {
 	if counts[http.StatusCreated] != 1 || counts[http.StatusPaymentRequired] != 1 {
 		t.Fatalf("upload responses=%v", counts)
 	}
-	if code := upload("renamed.txt", winner); code != http.StatusConflict {
-		t.Fatalf("full quota must preserve hash duplicate409, got%d", code)
+	// a full quota still reuses the stored file: equal bytes add nothing
+	if code := upload("renamed.txt", winner); code != http.StatusOK {
+		t.Fatalf("full quota must reuse the stored duplicate with 200, got %d", code)
 	}
 	if got := e.stored(b.workspace); got != int64(len(first)) {
 		t.Fatalf("stored bytes %d, want %d", got, len(first))
@@ -218,7 +219,7 @@ func TestExactStoredBytesConcurrentUploadAndFullQuotaDuplicate(t *testing.T) {
 }
 
 // TestDuplicatesAddNoBytesAndCopiesDo: the same bytes again, under another name, in the same batch or through another
-// entry point (a client's files) are refused or linked and count nothing; a deliberate copy is its own object and
+// entry point (a client's files) reuse or link the stored document and count nothing; a deliberate copy is its own object and
 // counts; another workspace's identical file counts for that workspace only.
 func TestDuplicatesAddNoBytesAndCopiesDo(t *testing.T) {
 	e := newEnv(t, true)
@@ -268,8 +269,8 @@ func TestDuplicatesAddNoBytesAndCopiesDo(t *testing.T) {
 		t.Fatalf("first upload: %d %v", code, out)
 	}
 	doc := out["data"].(map[string]any)["id"].(string)
-	if code, _ := upload(b, "/api/v1/documents", body); code != http.StatusConflict {
-		t.Fatalf("the same bytes under another name: %d", code)
+	if code, out := upload(b, "/api/v1/documents", body); code != http.StatusOK || out["reused"] != true || out["data"].(map[string]any)["id"] != doc {
+		t.Fatalf("the same bytes under another name reuse the document: %d %v", code, out)
 	}
 	client := e.buyer(b.workspace)
 	if code, out := upload(b, "/api/v1/clients/"+client+"/files", body); code != http.StatusCreated {

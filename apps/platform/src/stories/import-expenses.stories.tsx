@@ -184,3 +184,64 @@ export const ReviewReceipts: Story = {
     await expect(body().getByRole('checkbox', { name: 'Select SBB' })).not.toBeChecked()
   },
 }
+
+const suggestedCategory = record('imr_cat', {
+  data: { ...clean.data, supplier_name: 'Apple Store', category: 'Software' },
+  issues: { category: '“Software” is a new category: create it or choose one of the list.' },
+})
+
+/** The model suggested a category the workspace lacks: the editor offers to create it, and the name stays. */
+export const SuggestedNewCategory: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/expense-categories', () =>
+          HttpResponse.json({
+            data: [
+              { id: 'exc_1', name: 'Travel', account_code: '6640', is_archived: false },
+              { id: 'exc_2', name: 'Telecom', account_code: '6510', is_archived: false },
+            ],
+          }),
+        ),
+        http.post<never, { name: string; account_code: string }>(
+          '/api/v1/expense-categories',
+          async ({ request }) => {
+            const input = await request.json()
+            return HttpResponse.json(
+              { data: { id: 'exc_3', ...input, is_archived: false } },
+              { status: 201 },
+            )
+          },
+        ),
+        http.get('/api/v1/imports', () =>
+          HttpResponse.json({
+            data: [
+              {
+                id: 'imp_receipts',
+                kind: 'expenses',
+                status: 'review',
+                created_at: '2026-11-08T09:30:00Z',
+                pending: 1,
+              },
+            ],
+          }),
+        ),
+        http.get('/api/v1/imports/:id', () =>
+          HttpResponse.json({ data: batch([suggestedCategory]) }),
+        ),
+      ],
+    },
+  },
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    await userEvent.click(await body().findByRole('button', { name: 'Edit Apple Store' }))
+    await expect(await body().findByText('Suggested new category: Software')).toBeVisible()
+    await userEvent.click(body().getAllByRole('button', { name: 'Create' })[0] as HTMLElement)
+    await expect(await body().findByRole('textbox', { name: 'Category name' })).toHaveValue(
+      'Software',
+    )
+    await userEvent.click(body().getAllByRole('button', { name: 'Create' })[1] as HTMLElement)
+    await waitFor(() => expect(body().queryByRole('textbox', { name: 'Category name' })).toBeNull())
+  },
+}

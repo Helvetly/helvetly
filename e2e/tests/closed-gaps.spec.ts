@@ -252,7 +252,7 @@ for (const [message, refusal] of [
   })
 }
 
-test('Heidi serves real local answers and rejects a cross-module duplicate before model use', async ({
+test('Heidi serves real local answers and uses the existing Document for an attachment already in Documents', async ({
   api,
 }) => {
   const id = randomUUID().replaceAll('-', '').slice(0, 24)
@@ -282,6 +282,11 @@ test('Heidi serves real local answers and rejects a cross-module duplicate befor
       'files[]': { ...file, name: 'renamed.pdf' },
     },
   })
-  expect(duplicate.status()).toBe(409)
-  expect(object(object(await duplicate.json()).error).code).toBe('duplicate_file')
+  // The bytes are already a Document: the attachment is read from it, not refused as a duplicate.
+  expect(duplicate.status()).not.toBe(409)
+  await expect(duplicate).toBeOK()
+  const listed = object(
+    await (await api.request.get('/api/v1/documents?search=source.pdf')).json(),
+  ).data
+  expect(Array.isArray(listed) ? listed.length : 0).toBe(1)
 })

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +37,22 @@ var expensesKind = Kind{
 		"no VAT has vat_rate null. document_date and due_date are YYYY-MM-DD. currency is the ISO 4217 code printed on " +
 		"the receipt; never convert amounts. supplier_country is the supplier's ISO 3166 alpha-2 code. reverse_charge is " +
 		"true only when the invoice says the recipient owes the VAT (reverse charge, Bezugsteuer). Guess nothing: a field " +
-		"the document does not carry is null.",
+		"the document does not carry is null. category is what the expense was for: pick from the listed categories.",
+	PlacesDocument: true,
+	Context: func(ctx context.Context, q store.Q, workspaceID string) (string, error) {
+		if err := q.SeedExpenseCategories(ctx, workspaceID, func() string { return auth.NewID("exc") }, time.Now().UTC()); err != nil {
+			return "", err
+		}
+		list, err := q.ExpenseCategories(ctx, workspaceID, false)
+		if err != nil {
+			return "", err
+		}
+		names := make([]string, len(list))
+		for i, c := range list {
+			names[i] = strings.Join(strings.Fields(c.Name), " ") // one line: a name never starts a new instruction
+		}
+		return "The categories for category: " + strings.Join(names, "; ") + ".", nil
+	},
 	Schema: record(map[string]any{
 		"supplier_name":       nullable("string", "Who was paid"),
 		"supplier_vat_number": nullable("string", "Supplier's VAT or UID number, e.g. CHE-123.456.789 MWST"),
@@ -51,6 +67,8 @@ var expensesKind = Kind{
 		"amount_2":            nullable("string", "Part including VAT at a second rate, when shown"),
 		"vat_rate_2":          nullable("string", "The second VAT rate in percent, e.g. 2.6"),
 		"reverse_charge":      nullable("boolean", "true when the recipient owes the VAT (reverse charge)"),
+		"category": nullable("string", "One of the listed categories, exactly as written; when none fits, a short new "+
+			"category name (Title Case, like the listed ones)"),
 	}),
 	Check: func(ctx context.Context, q store.Q, workspaceID string, data Data) (map[string]string, error) {
 		_, invalid, err := checkExpense(ctx, q, workspaceID, store.User{}, time.Now().UTC().Format(time.DateOnly), data)
@@ -98,6 +116,19 @@ var expensesKind = Kind{
 		// The link keeps the uploaded Document with its expense: a business record once the expense is booked.
 		if src.DocumentID != nil {
 			if err := q.AddDocumentLink(ctx, sess.Workspace.ID, *src.DocumentID, "expense", e.ID, sess.User.ID, now); err != nil {
+				return "", err
+			}
+			category, tags := "", []string{"expense"}
+			if e.CategoryID != nil {
+				c, err := q.ExpenseCategory(ctx, sess.Workspace.ID, *e.CategoryID)
+				if err != nil {
+					return "", err
+				}
+				category = c.Name
+				tags = append(tags, category)
+			}
+			path := store.ExpenseFolder(e.DocumentDate, sess.Workspace.Today(now), category)
+			if err := placeDocument(ctx, q, sess, *src.DocumentID, path, tags, now); err != nil {
 				return "", err
 			}
 		}
@@ -172,6 +203,17 @@ func checkExpense(ctx context.Context, q store.Q, workspaceID string, user store
 	for k, msg := range checked {
 		if field := recordField(k, pairs); invalid[field] == "" {
 			invalid[field] = msg
+		}
+	}
+	if name := rawText(data["category"]); name != "" && invalid["category"] == "" {
+		list, err := q.ExpenseCategories(ctx, workspaceID, false)
+		if err != nil {
+			return e, nil, err
+		}
+		if i := slices.IndexFunc(list, func(c store.ExpenseCategory) bool { return strings.EqualFold(c.Name, name) }); i >= 0 {
+			e.CategoryID = &list[i].ID
+		} else {
+			invalid["category"] = "“" + name + "” is a new category: create it or choose one of the list."
 		}
 	}
 	for i, l := range e.Lines {

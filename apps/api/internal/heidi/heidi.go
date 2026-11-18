@@ -44,6 +44,8 @@ type Options struct {
 	// CostAllowance is the plan's monthly model cost guard in micro-USD, shared with the import; nil applies none.
 	CostAllowance aimodel.Allowance
 	AllowStorage  func(context.Context, store.Q, store.Session, int64) error
+	// File queues a stored attachment for AI filing in Documents; nil files nothing.
+	File func(context.Context, store.Session, string)
 }
 type Service struct {
 	db            *store.Store
@@ -57,10 +59,11 @@ type Service struct {
 	limit         *auth.RateLimiter
 	keepAlive     time.Duration
 	allowStorage  func(context.Context, store.Q, store.Session, int64) error
+	file          func(context.Context, store.Session, string)
 }
 
 func New(db *store.Store, a Auth, files Storage, e Engagements, options Options) *Service {
-	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, costAllowance: options.CostAllowance, allowStorage: options.AllowStorage, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute), keepAlive: 25 * time.Second}
+	return &Service{db: db, auth: a, files: files, engagements: e, provider: options.Provider, allowance: options.Allowance, costAllowance: options.CostAllowance, allowStorage: options.AllowStorage, file: options.File, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(30, time.Minute), keepAlive: 25 * time.Second}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error

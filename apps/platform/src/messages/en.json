@@ -616,7 +616,6 @@
   "contactPerson": "Contact person",
   "contactPersons": "Contact persons",
   "contacts": "Contacts",
-  "containsTheSameFileAs": "{name} contains the same file as {first}.",
   "continue": "Continue",
   "continue2": "Continue ",
   "continueTheImportFrom": "Continue the import from ",
@@ -4435,5 +4434,14 @@
   "clientNumberHide": "Do not print a client number",
   "contractNumberShort": "Contract no.",
   "contractNumberTip": "The contract this invoice refers to. Printed on the invoice and sent in e-invoices; link the contract from Documents to open it from here.",
-  "addField": "Add field"
+  "addField": "Add field",
+  "newCategory": "New category",
+  "accountCode": "Account code",
+  "categoryName": "Category name",
+  "otherOperatingCosts": "Other operating costs",
+  "accountCodeTip": "The account of the Swiss SME chart of accounts (KMU-Kontenrahmen) the category books to. 6700 is other operating costs.",
+  "suggestedNewCategory": "Suggested new category: {name}",
+  "noCategoriesYet": "No categories yet",
+  "alreadyInDocuments": "Already in Documents",
+  "showFile": "Show"
 }

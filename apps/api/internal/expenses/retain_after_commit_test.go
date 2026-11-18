@@ -45,7 +45,7 @@ func TestReceiptsAreRetainedOnlyForACommittedBooking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range e.files.keys() {
+	for _, key := range e.files.receiptKeys() {
 		if e.files.isRetained(key) != (got.Status == "booked") {
 			t.Fatalf("expense %s, receipt %s retained %t", got.Status, key, e.files.isRetained(key))
 		}

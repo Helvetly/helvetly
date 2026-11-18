@@ -33,34 +33,23 @@ async function sha256(file: File) {
 }
 
 /**
- * The server refuses identical files within one request; across packs the browser checks before sending anything,
- * with the server's message. Only files that share a size can be identical, so only those are hashed.
+ * The files without later copies of the same bytes (a renamed copy counts): one upload is enough, so the second is
+ * dropped silently. Only files that share a size can be identical, so only those are hashed.
  */
-export async function checkSameBatch(packs: File[][]) {
-  if (packs.length < 2) return
-  const files = packs.flat()
+export async function dropSameBytes(files: File[]): Promise<File[]> {
   const sizes = new Map<number, number>()
   for (const file of files) sizes.set(file.size, (sizes.get(file.size) ?? 0) + 1)
-  const hashed = await Promise.all(
-    files
-      .filter((file) => (sizes.get(file.size) ?? 0) > 1)
-      .map(async (file) => [file, await sha256(file)] as const),
+  const sums = await Promise.all(
+    files.map(async (file) => ((sizes.get(file.size) ?? 0) > 1 ? await sha256(file) : null)),
   )
-  const seen = new Map<string, string>()
-  for (const [file, sum] of hashed) {
-    const first = seen.get(sum)
-    if (first !== undefined)
-      throw new ApiError(
-        409,
-        'duplicate_file',
-        translate('containsTheSameFileAs', { name: file.name, first: first }),
-        {
-          existing_name: first,
-          resource: 'upload',
-        },
-      )
-    seen.set(sum, file.name)
-  }
+  const seen = new Set<string>()
+  return files.filter((_, index) => {
+    const sum = sums[index]
+    if (sum === null || sum === undefined) return true
+    if (seen.has(sum)) return false
+    seen.add(sum)
+    return true
+  })
 }
 
 /** One multipart request of files[]; rejects with the server's reason in details.fields.files when it gives one. */
@@ -104,7 +93,7 @@ function postFiles<T>(
 
 /**
  * Uploads files to a files[] endpoint in packs of at most 95 MB, one after another, with one progress (0–1) over
- * all bytes. Size and same-batch duplicates are checked before the first request, so neither stores part of a batch.
+ * all bytes. A file over the size limit refuses the batch before the first request; identical files in it are sent once.
  */
 export async function uploadInPacks<T>(
   url: string,
@@ -119,9 +108,9 @@ export async function uploadInPacks<T>(
       'validation_failed',
       translate('isLargerThanMB', { name: big.name, value2: maxFileBytes / MB }),
     )
-  const packs = packFiles(files)
-  await checkSameBatch(packs)
-  const total = files.reduce((sum, file) => sum + file.size, 0)
+  const unique = await dropSameBytes(files)
+  const packs = packFiles(unique)
+  const total = unique.reduce((sum, file) => sum + file.size, 0)
   // One pack at a time: the next request starts only once the server has taken the one before.
   const sendFrom = async (index: number, sent: number): Promise<T[]> => {
     const pack = packs[index]

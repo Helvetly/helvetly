@@ -29,6 +29,7 @@ export type MissingField =
 type Person = { id: string; name: string }
 
 export type CategoryRef = { id: string; name: string; account_code: string }
+export type CategoryInput = { name: string; account_code: string }
 export type ExpenseCategory = CategoryRef & { is_archived: boolean; expenses_count: number }
 
 export type ExpenseLine = {
@@ -280,6 +281,8 @@ export const expensesApi = {
   deleteReceipt: (id: string, receiptId: string) =>
     request<void>(`${path(id)}/receipts/${encodeURIComponent(receiptId)}`, { method: 'DELETE' }),
   categories: () => request<{ data: ExpenseCategory[] }>('/expense-categories'),
+  createCategory: (input: CategoryInput) =>
+    request<{ data: ExpenseCategory }>('/expense-categories', { method: 'POST', json: input }),
 }
 
 // Downloads go through plain links so the browser sends the session cookie and saves the file.
@@ -336,6 +339,14 @@ export function useExpenseCategories() {
     queryKey: expenseKeys.categories,
     queryFn: async () => (await expensesApi.categories()).data,
     staleTime: 5 * 60_000,
+  })
+}
+
+export function useCreateExpenseCategory() {
+  const queryClient = useQueryClient()
+  return useMutation<ExpenseCategory, ApiError, CategoryInput>({
+    mutationFn: async (input) => (await expensesApi.createCategory(input)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: expenseKeys.categories }),
   })
 }
 

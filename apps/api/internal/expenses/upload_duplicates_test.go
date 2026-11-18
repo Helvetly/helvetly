@@ -32,7 +32,7 @@ func TestReceiptUploadChecksContentNotFilename(t *testing.T) {
 	if response := e.upload(b, x.ID, "renamed.pdf", pdf); response.StatusCode != 409 {
 		t.Fatalf("duplicate receipt: %d, want 409", response.StatusCode)
 	}
-	if e.files.count() != 1 {
+	if len(e.files.receiptKeys()) != 1 {
 		t.Fatalf("duplicate left %d objects", e.files.count())
 	}
 	second := e.create(b, complete(e.categories(b)["6640"].ID))
@@ -72,7 +72,7 @@ func TestConcurrentReceiptUploadsShareWorkspaceHashGuard(t *testing.T) {
 	for status := range statuses {
 		counts[status]++
 	}
-	if counts[201] != 1 || counts[409] != 1 || e.files.count() != 1 {
+	if counts[201] != 1 || counts[409] != 1 || len(e.files.receiptKeys()) != 1 {
 		t.Fatalf("concurrent receipts: %v objects=%d", counts, e.files.count())
 	}
 }
@@ -90,7 +90,7 @@ func TestReceiptHashCheckIncludesLegacyFiles(t *testing.T) {
 	if response := e.upload(b, x.ID, "renamed.pdf", pdf); response.StatusCode != 409 {
 		t.Fatalf("legacy duplicate: %d want409", response.StatusCode)
 	}
-	if e.files.count() != 1 {
+	if len(e.files.receiptKeys()) != 1 {
 		t.Fatalf("legacy upload duplicated: %d", e.files.count())
 	}
 }

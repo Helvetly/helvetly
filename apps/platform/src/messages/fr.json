@@ -616,7 +616,6 @@
   "contactPerson": "Personne à contacter",
   "contactPersons": "Personnes de contact",
   "contacts": "Contacts",
-  "containsTheSameFileAs": "{name} contient le même fichier que {first}.",
   "continue": "Continuer",
   "continue2": "Continuer ",
   "continueTheImportFrom": "Poursuivre l’import depuis ",
@@ -4435,5 +4434,14 @@
   "clientNumberHide": "Ne pas imprimer de n° client",
   "contractNumberShort": "N° de contrat",
   "contractNumberTip": "Le contrat auquel la facture se réfère. Imprimé et transmis dans les e-factures ; liez le contrat des Documents pour l’ouvrir d’ici.",
-  "addField": "Ajouter un champ"
+  "addField": "Ajouter un champ",
+  "newCategory": "Nouvelle catégorie",
+  "accountCode": "Numéro de compte",
+  "categoryName": "Nom de la catégorie",
+  "otherOperatingCosts": "Autres charges d'exploitation",
+  "accountCodeTip": "Le compte du plan comptable suisse des PME (KMU-Kontenrahmen) sur lequel la catégorie enregistre. 6700 correspond aux autres charges d'exploitation.",
+  "suggestedNewCategory": "Nouvelle catégorie suggérée : {name}",
+  "noCategoriesYet": "Aucune catégorie pour l'instant",
+  "alreadyInDocuments": "Déjà dans Documents",
+  "showFile": "Afficher"
 }

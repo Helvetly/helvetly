@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"path"
@@ -15,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
 )
@@ -25,6 +27,7 @@ type upload struct {
 	Header           *multipart.FileHeader
 	Name, Type, Hash string
 	ID, Key          string // set by putUploads
+	Reused           string // set by checkUploads: the live Document that already holds these bytes
 }
 
 // input is one chat message: its text, the conversation, and either attachments or the import its files went to.
@@ -140,11 +143,9 @@ func (s *Service) checkUploads(ctx context.Context, q store.Q, sess store.Sessio
 		return auth.Error(503, "storage_unavailable", "Attachment storage is unavailable.", nil)
 	}
 	sums, sizes := []string{}, []int64{}
-	var total int64
 	for _, f := range files {
 		sums = append(sums, f.Hash)
 		sizes = append(sizes, f.Header.Size)
-		total += f.Header.Size
 	}
 	if err := q.LockUploadHashes(ctx, sess.Workspace.ID, sums); err != nil {
 		return err
@@ -152,20 +153,27 @@ func (s *Service) checkUploads(ctx context.Context, q store.Q, sess store.Sessio
 	if err := uploads.Backfill(ctx, q, sess.Workspace.ID, sizes, s.files.Open); err != nil {
 		return err
 	}
-	for _, f := range files {
-		d, err := q.DuplicateUpload(ctx, sess.Workspace.ID, f.Hash)
-		if err == nil {
-			return uploads.Duplicate(sess, d)
-		}
-		if !errors.Is(err, store.ErrNotFound) {
+	var total int64
+	for i := range files {
+		files[i].Reused = ""
+		d, err := q.DuplicateUpload(ctx, sess.Workspace.ID, files[i].Hash)
+		switch {
+		case err == nil && d.Resource == "document": // the attachment is that Document: nothing new is stored
+			if !permissions.Allows(sess.Role, sess.Scopes, "read:documents") {
+				return uploads.Duplicate(sess, d)
+			}
+			files[i].Reused = d.ID
+			continue
+		case err != nil && !errors.Is(err, store.ErrNotFound):
 			return err
 		}
+		total += files[i].Header.Size
 	}
 	// Document copies lock the destination before storage admission; keep the same lock order.
 	if err := q.LockContainer(ctx, sess.Workspace.ID, nil); err != nil {
 		return err
 	}
-	if s.allowStorage != nil {
+	if s.allowStorage != nil && total > 0 { // reused Documents add no bytes
 		if err := s.allowStorage(ctx, q, sess, total); err != nil {
 			return err
 		}
@@ -177,6 +185,9 @@ func (s *Service) checkUploads(ctx context.Context, q store.Q, sess store.Sessio
 func (s *Service) putUploads(ctx context.Context, sess store.Session, files []upload, written *[]string) error {
 	for i := range files {
 		f := &files[i]
+		if f.Reused != "" { // already a Document: nothing is stored
+			continue
+		}
 		f.ID = auth.NewID("doc")
 		f.Key = sess.Workspace.ID + "/documents/" + f.ID
 		body, err := f.Header.Open()
@@ -205,6 +216,9 @@ func (s *Service) storeUploads(ctx context.Context, q store.Q, sess store.Sessio
 		return err
 	}
 	for _, f := range files {
+		if f.Reused != "" {
+			continue
+		}
 		name := f.Name
 		existing, err := q.FileNameTaken(ctx, sess.Workspace.ID, nil, name, "")
 		if err != nil {
@@ -299,6 +313,11 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			if err := s.checkUploads(r.Context(), q, sess, files); err != nil {
 				return err
 			}
+			for _, f := range files {
+				if f.Reused == "" && f.Key == "" { // its twin was trashed after the first look: nothing was stored for it
+					return auth.Error(409, "upload_changed", "This file changed while it was being saved. Send it again.", nil)
+				}
+			}
 			if err := q.LockHeidiConversation(r.Context(), sess.Workspace.ID, sess.User.ID, id, true, s.now()); err != nil {
 				return err
 			}
@@ -350,6 +369,22 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			}
 		}
 		return err
+	}
+	for _, f := range files { // a twin was stored meanwhile: this request's own object is not kept
+		if f.Reused != "" && f.Key != "" {
+			cleanup, cancel := uploads.CleanupContext(r.Context())
+			if e := s.files.Delete(cleanup, f.Key); e != nil {
+				slog.WarnContext(cleanup, "orphaned Heidi attachment", "key", f.Key, "error", e)
+			}
+			cancel()
+		}
+	}
+	if s.file != nil {
+		for _, f := range files {
+			if f.Reused == "" {
+				s.file(r.Context(), sess, f.ID) // after the commit: filing can never fail the upload
+			}
+		}
 	}
 	if len(files) > 0 {
 		result.Statuses = append(result.Statuses, "Saved documents")

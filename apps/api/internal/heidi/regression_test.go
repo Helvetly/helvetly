@@ -35,8 +35,8 @@ func TestConcurrentUploadsCreateOneCanonicalFile(t *testing.T) {
 	for status := range statuses {
 		got[status]++
 	}
-	// both may store their object before the locked check; the refused one is deleted, one canonical file stays
-	if got[200] != 1 || got[409] != 1 || len(files.objects) != 1 || files.puts-files.deletes != 1 {
+	// both may store their object before the locked check; the one that finds the other's Document deletes its own
+	if got[200] != 2 || len(files.objects) != 1 || files.puts-files.deletes != 1 {
 		t.Fatalf("statuses=%v objects=%d puts=%d deletes=%d", got, len(files.objects), files.puts, files.deletes)
 	}
 }
@@ -50,7 +50,7 @@ func TestLegacyDocumentHashAndTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := chat(t, mux, "legacy", "Keep attachment", pdf)
-	if w.Code != 409 || files.puts != 0 {
+	if w.Code != 200 || files.puts != 0 {
 		t.Fatalf("legacy: %d puts=%d %s", w.Code, files.puts, w.Body)
 	}
 	// A successful upload of different bytes with the same size commits the verified legacy hash.
@@ -102,8 +102,8 @@ func TestStorageAdmissionUsesNewByteCountAndDoesNotOverrideDuplicate(t *testing.
 	s.allowStorage = func(context.Context, store.Q, store.Session, int64) error {
 		return auth.Error(402, "limit_reached", "Storage is full.", nil)
 	}
-	if w := chat(t, mux, "same", "Keep attachment", pdf); w.Code != 409 {
-		t.Fatalf("duplicate must precede quota: %d %s", w.Code, w.Body)
+	if w := chat(t, mux, "same", "Keep attachment", pdf); w.Code != 200 {
+		t.Fatalf("a reused Document is not new storage: %d %s", w.Code, w.Body)
 	}
 	if w := chat(t, mux, "new", "Keep attachment", pdf+" changed"); w.Code != 402 || files.puts != 1 {
 		t.Fatalf("quota changed storage: %d puts=%d %s", w.Code, files.puts, w.Body)

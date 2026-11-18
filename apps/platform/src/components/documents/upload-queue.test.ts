@@ -60,6 +60,7 @@ describe('the upload queue', () => {
     expect(summarize(state)).toEqual({
       total: 2,
       done: 0,
+      reused: 0,
       failed: 1,
       conflicts: 0,
       active: 1,
@@ -69,6 +70,24 @@ describe('the upload queue', () => {
     state = queueReducer(state, { type: 'cancel', id: b ?? '' })
     expect(state[1]?.status).toBe('failed')
     expect(queueReducer(state, { type: 'clear' }).map((u) => u.id)).toEqual([a])
+  })
+
+  it('counts a file already in Documents as settled, not failed', () => {
+    let state = queueReducer([], {
+      type: 'add',
+      uploads: newUploads([file('a.pdf', 10)], null, 'Documents'),
+    })
+    const id = state[0]?.id ?? ''
+    state = queueReducer(state, { type: 'done', id, result: uploaded, reused: true })
+    expect(state[0]?.status).toBe('reused')
+    expect(summarize(state)).toMatchObject({
+      done: 0,
+      reused: 1,
+      failed: 0,
+      active: 0,
+      progress: 1,
+    })
+    expect(queueReducer(state, { type: 'clear' })).toEqual([])
   })
 
   it('resolves name clashes one by one or all at once', () => {

@@ -1,6 +1,7 @@
 package documents
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
 )
@@ -77,9 +79,30 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return err
 	}
 	// an unlocked look first spares storing a known duplicate; the check under the lock below decides
-	if duplicate, err := s.db.DuplicateUpload(r.Context(), sess.Workspace.ID, sum); err == nil {
-		return uploads.Duplicate(sess, duplicate)
-	} else if !errors.Is(err, store.ErrNotFound) {
+	if duplicate, err := s.db.DuplicateUpload(r.Context(), sess.Workspace.ID, sum); err == nil && duplicate.Resource == "document" {
+		var reused string
+		err := s.db.Tx(r.Context(), func(q store.Q) error {
+			if err := q.LockUploadHashes(r.Context(), sess.Workspace.ID, []string{sum}); err != nil {
+				return err
+			}
+			if clientID != "" {
+				if found, err := q.LockClient(r.Context(), sess.Workspace.ID, clientID); err != nil {
+					return err
+				} else if !found {
+					return validationFailed(map[string]string{"client_id": "This client doesn't exist."})
+				}
+			}
+			var err error
+			reused, err = s.reuse(q, r.Context(), sess, sum, folder, clientID)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+		if reused != "" {
+			return s.writeReused(w, r, sess, reused)
+		}
+	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
 	// counted before the write, so a full workspace sends no bytes to storage
@@ -91,6 +114,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.removeObjects(r.Context(), key)
 		return err
 	}
+	var reused string
 	err = s.db.Tx(r.Context(), func(q store.Q) error {
 		if err := q.LockUploadHashes(r.Context(), sess.Workspace.ID, []string{sum}); err != nil {
 			return err
@@ -107,11 +131,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := uploads.Backfill(r.Context(), q, sess.Workspace.ID, []int64{h.Size}, s.files.Open); err != nil {
 			return err
 		}
-		duplicate, err := q.DuplicateUpload(r.Context(), sess.Workspace.ID, sum)
-		if err == nil {
-			return uploads.Duplicate(sess, duplicate)
-		}
-		if !errors.Is(err, store.ErrNotFound) {
+		if reused, err = s.reuse(q, r.Context(), sess, sum, folder, clientID); err != nil || reused != "" {
 			return err
 		}
 		final, err := s.placeFile(q, r.Context(), sess, "", name, folder, mode)
@@ -132,8 +152,58 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.removeObjects(r.Context(), key)
 		return err
 	}
+	if reused != "" { // an equal file was stored meanwhile: the copy just written is not kept
+		s.removeObjects(r.Context(), key)
+		return s.writeReused(w, r, sess, reused)
+	}
 	s.queueFiling(r.Context(), sess, id, folder == nil)
 	return s.writeDocument(w, r, sess, http.StatusCreated, id)
+}
+
+// reuse is the upload's answer when the workspace already holds a live Document with these bytes: that Document
+// stays where it is (a top-level one moves into the folder the upload named) and is linked to the client sent. Run it
+// in a transaction holding the hash lock; "" means no Document has the bytes (a receipt alone is no Documents duplicate).
+func (s *Service) reuse(q store.Q, ctx context.Context, sess store.Session, sum string, folder *string, clientID string) (string, error) {
+	d, err := q.DuplicateUpload(ctx, sess.Workspace.ID, sum)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && d.Resource != "document") {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if !permissions.Allows(sess.Role, sess.Scopes, "read:documents") {
+		return "", uploads.Duplicate(sess, d)
+	}
+	doc, err := q.Document(ctx, sess.Workspace.ID, d.ID)
+	if err != nil {
+		return "", err
+	}
+	now := s.now()
+	if doc.FolderID == nil && folder != nil {
+		name, err := s.placeFile(q, ctx, sess, doc.ID, doc.Name, folder, "keep_both")
+		if err != nil {
+			return "", err
+		}
+		if err := q.UpdateDocument(ctx, sess.Workspace.ID, doc.ID, name, folder, now); err != nil {
+			return "", err
+		}
+	}
+	if clientID != "" {
+		if err := q.AddDocumentLink(ctx, sess.Workspace.ID, doc.ID, "client", clientID, sess.User.ID, now); err != nil {
+			return "", err
+		}
+	}
+	return doc.ID, nil
+}
+
+// writeReused answers 200 with the existing Document and "reused": true beside "data".
+func (s *Service) writeReused(w http.ResponseWriter, r *http.Request, sess store.Session, id string) error {
+	d, err := s.document(r.Context(), sess, id)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": d, "reused": true})
+	return nil
 }
 
 func formValue(form *multipart.Form, key string) string {
