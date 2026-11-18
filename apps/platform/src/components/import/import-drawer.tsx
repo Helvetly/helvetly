@@ -23,6 +23,7 @@ import {
   defaultSelection,
   foundSummary,
   IMPORT_KINDS,
+  importFileUrl,
   importProblem,
   readsWithAI,
   isClean,
@@ -262,6 +263,7 @@ export function ImportDrawer({
           />
         )}
         <FileReview
+          batchId={batch.data.id}
           files={batch.data.files}
           config={config}
           reading={reading}
@@ -393,7 +395,7 @@ export function ImportDrawer({
             batchId={batchId ?? ''}
             record={editingRecord}
             fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
-            fileSrc={`/api/v1/imports/${encodeURIComponent(batchId ?? '')}/files/${encodeURIComponent(editingRecord.file_id)}/content`}
+            fileSrc={importFileUrl(batchId ?? '', editingRecord.file_id)}
             name={rowName(IMPORT_KINDS.invoices, editingRecord, records.indexOf(editingRecord))}
             onDone={(saved) => {
               setEditing(null)

@@ -3397,7 +3397,7 @@
   "whatShouldBeSigned": "What should be signed?",
   "whatShouldHappenWithIt": "What should happen with it?",
   "whatSOn": "What’s on ",
-  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "What the client already paid on an invoice issued elsewhere. Leave it empty when nothing was paid.",
+  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "What the client already paid on an invoice issued elsewhere. A past invoice with nothing filled in counts as paid in full on its due date; enter 0 when it was not paid.",
   "whatTheClientGetsEGDesignTwoRevision": "What the client gets, e.g. design, two revision rounds, handover",
   "whatTheReceiptAddsUpToLineByLine": "What the receipt adds up to, line by line.",
   "whatTheTokenMayReadAndChangeItNever": "What the token may read and change. It never goes beyond your own role in the workspace.",
@@ -4360,10 +4360,11 @@
   "importInstalmentCount": "{count, plural, one {# instalment} other {# instalments}}",
   "importZoomOut": "Zoom out",
   "importZoomIn": "Zoom in",
-  "importNotInClients": "Not in your clients",
   "importOnlyNameFound": "Only the name was read from the document.",
   "importPickAnother": "Pick an existing client",
   "importCellEngagement": "Engagement",
   "importCellPrice": "Price",
-  "importCellSchedule": "Schedule"
+  "importCellSchedule": "Schedule",
+  "importPaidByInstalments": "{paid} paid by {count} of {total} instalments, each on its date.",
+  "importFoundNotYours": "Found on the document, not in your clients yet. Create it with these details, or pick an existing client."
 }

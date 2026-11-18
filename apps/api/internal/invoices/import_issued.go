@@ -92,8 +92,8 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 	if hasAmount {
 		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
 			stated = invoicecalc.Money(n)
-			if n <= 0 {
-				p.fail("paid_amount", "Enter an amount above 0, or clear it.")
+			if n < 0 {
+				p.fail("paid_amount", "Enter an amount of 0 or more.")
 			}
 		}
 	}
@@ -102,12 +102,18 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 		out.paid = instalments
 	case hasOn && !hasAmount:
 		invalid["paid_amount"] = "Enter how much was paid."
+	case hasAmount && stated == 0:
+		// Stated as not paid at all: it stays open.
 	case hasAmount:
 		on := fallback
 		if hasOn {
 			on = p.required("paid_on", rawOn, 10, date, "Enter when it was paid.")
 		}
 		out.paid = []store.Payment{payment("paid_on", stated, on)}
+	case len(instalments) == 0 && fallback < today && inv.Payable() > 0:
+		// History: an invoice issued elsewhere whose due date has passed, with nothing said about payment, was paid in
+		// full on its due date (else its issue date). A paid amount of 0 says otherwise.
+		out.paid = []store.Payment{payment("paid_on", inv.Payable(), fallback)}
 	}
 	if total := sumPayments(out.paid); total > inv.Payable() {
 		p.fail("paid_amount", "The paid amount exceeds the invoice's total ("+inv.Currency+" "+inv.Payable().String()+").")

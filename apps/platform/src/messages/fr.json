@@ -3397,7 +3397,7 @@
   "whatShouldBeSigned": "Que faut-il signer ?",
   "whatShouldHappenWithIt": "Que doit-il se passer avec cela ?",
   "whatSOn": "Qu’avez-vous ",
-  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Ce que le client a déjà payé sur une facture émise ailleurs. Laissez-le vide lorsque rien n’a été payé.",
+  "whatTheClientAlreadyPaidOnAnInvoiceIssued": "Ce que le client a déjà payé sur une facture émise ailleurs. Une facture passée sans indication compte comme payée en totalité à son échéance ; saisissez 0 si elle n’a pas été payée.",
   "whatTheClientGetsEGDesignTwoRevision": "Ce que le client obtient, par ex. conception, deux cycles de révision, remise",
   "whatTheReceiptAddsUpToLineByLine": "Ce que représente le reçu, ligne par ligne.",
   "whatTheTokenMayReadAndChangeItNever": "Ce que le jeton peut lire et modifier. Cela ne dépasse jamais votre propre rôle dans l’espace de travail.",
@@ -4360,10 +4360,11 @@
   "importInstalmentCount": "{count, plural, one {# échéance} other {# échéances}}",
   "importZoomOut": "Dézoomer",
   "importZoomIn": "Zoomer",
-  "importNotInClients": "Pas dans vos clients",
   "importOnlyNameFound": "Seul le nom a été lu dans le document.",
   "importPickAnother": "Choisir un client existant",
   "importCellEngagement": "Mandat",
   "importCellPrice": "Prix",
-  "importCellSchedule": "Rythme"
+  "importCellSchedule": "Rythme",
+  "importPaidByInstalments": "{paid} payés par {count} échéances sur {total}, chacune à sa date.",
+  "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant."
 }

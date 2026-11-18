@@ -9,8 +9,9 @@ import (
 )
 
 // issuedRecord: a model record of an invoice issued elsewhere for Kunde AG, 8 hours at the price.
+// issuedRecord: an invoice issued elsewhere, stated unpaid (0), so it stays open and can be replaced.
 func issuedRecord(number, price string) string {
-	return `{"client_name":"Kunde AG","number":"` + number + `","issue_date":"2025-10-01","currency":"CHF","issued_elsewhere":true,
+	return `{"client_name":"Kunde AG","number":"` + number + `","issue_date":"2025-10-01","currency":"CHF","issued_elsewhere":true,"paid_amount":"0",
 		"lines":[{"description":"Beratung","quantity":"8","unit_price":"` + price + `","vat_category":"S","vat_rate":"8.1"}]}`
 }
 

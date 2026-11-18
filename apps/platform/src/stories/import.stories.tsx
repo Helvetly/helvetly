@@ -758,18 +758,14 @@ export const EditInvoiceDrawer: Story = {
     const editor = await body().findByRole('dialog', { name: 'Edit record' })
     await expect(within(editor).getByRole('button', { name: /^Invoice date: / })).toBeVisible()
     await expect(within(editor).getByRole('button', { name: /^Due date: / })).toBeVisible()
-    await expect(
-      within(editor).getByRole('button', { name: 'Paid on: Choose a date' }),
-    ).toBeVisible()
-    // One currency per record, changeable beside each amount.
-    await expect(within(editor).getAllByRole('button', { name: /Currency.*CHF/ })).toHaveLength(2)
+    // One currency per record, changed beside the total (the instalments show it, fixed).
+    await expect(within(editor).getAllByRole('button', { name: /Currency.*CHF/ })).toHaveLength(1)
     // Amounts read as money until focused.
     await expect(within(editor).getByRole('textbox', { name: /Total amount/ })).toHaveValue(
       '1’200.00',
     )
-    await expect(within(editor).getByRole('textbox', { name: /Already paid/ })).toHaveValue(
-      '200.00',
-    )
+    // With instalments, what was paid is their sum, each on its date.
+    await expect(within(editor).getByText(/paid by 1 of 2 instalments/)).toBeVisible()
     // The document's client, not yet a client here, with what was found about it.
     await expect(
       within(editor).getByRole('region', { name: 'Found on the document' }),
