@@ -2,6 +2,7 @@
 import { languageTag } from '@helvetly/i18n'
 // AI-assisted import, typed by hand from docs/imports-contract.md.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Banknote, FileText, UserRound, type LucideIcon } from 'lucide-react'
 
 import { ApiError, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -95,6 +96,14 @@ export type CommitResult = {
   conflict: ImportConflict | null
 }
 
+/** A titled group of fields in the record editor, laid out like the client form's sections. */
+export type ImportSection = {
+  title: string
+  description: string
+  icon: LucideIcon
+  fields: string[]
+}
+
 /** One kind of record an import can create: what the review table shows and what can be edited. */
 export type ImportKindConfig = {
   /** "Clients", also the option Heidi offers. */
@@ -118,6 +127,14 @@ export type ImportKindConfig = {
   toggles?: string[]
   /** Help behind a (?) next to a field's label in the editor. */
   tips?: Record<string, string>
+  /** One record ("Invoice"), for the editor's header. */
+  noun?: string
+  /** Fuller labels for the editor, where the table's short ones would be unclear. */
+  labels?: Record<string, string>
+  /** Fields a record cannot be imported without, given its current values: marked * in the editor. */
+  required?: (values: Record<string, string>) => string[]
+  /** The editor's sections in order; editable fields in none of them go in a last one. */
+  sections?: ImportSection[]
   /** Query key prefix of the page's lists, refetched after a commit. */
   listKey: readonly string[]
   entityHref: (id: string) => string
@@ -270,7 +287,46 @@ export const IMPORT_KINDS = {
       issued_elsewhere: translate('tickedTheInvoiceWasAlreadyIssuedInAnotherSystem'),
       paid_amount: translate('whatTheClientAlreadyPaidOnAnInvoiceIssued'),
       paid_on: translate('importPaidOnTip'),
+      number: translate('importNumberTip'),
+      reference: translate('importReferenceTip'),
+      issue_date: translate('importInvoiceDateTip'),
+      due_date: translate('importDueDateTip'),
+      total: translate('importTotalTip'),
     },
+    noun: translate('importNounInvoice'),
+    labels: {
+      number: translate('importInvoiceNumber'),
+      reference: translate('importBuyerReference'),
+      issue_date: translate('importInvoiceDate'),
+      due_date: translate('importDueDate'),
+      total: translate('importTotalAmount'),
+    },
+    required: (values) => [
+      'client_id',
+      'currency',
+      'total',
+      ...(values.issued_elsewhere === translate('yes') ? ['number', 'issue_date'] : []),
+    ],
+    sections: [
+      {
+        title: translate('client'),
+        description: translate('importSectionClientText'),
+        icon: UserRound,
+        fields: ['client_id'],
+      },
+      {
+        title: translate('importNounInvoice'),
+        description: translate('importSectionInvoiceText'),
+        icon: FileText,
+        fields: ['number', 'reference', 'issue_date', 'due_date'],
+      },
+      {
+        title: translate('importSectionAmounts'),
+        description: translate('importSectionAmountsText'),
+        icon: Banknote,
+        fields: ['total', 'issued_elsewhere', 'paid_amount', 'paid_on'],
+      },
+    ],
     pickClient: true,
     listKey: ['invoices'],
     entityHref: (id) => `/invoices?id=${encodeURIComponent(id)}`,

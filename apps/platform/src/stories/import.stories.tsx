@@ -616,6 +616,12 @@ const invoiceRecord = (id: string, over: Partial<ImportRecord> = {}) =>
     data: {
       number: 'RE-1001',
       client_name: 'Muster AG',
+      client_street: 'Bahnhofstrasse',
+      client_street_number: '12',
+      client_zip: '8001',
+      client_city: 'Zürich',
+      client_country: 'CH',
+      client_vat_number: 'CHE-123.456.789 MWST',
       issue_date: '2026-11-05',
       due_date: '2026-12-05',
       currency: 'CHF',
@@ -685,16 +691,25 @@ export const EditInvoiceDrawer: Story = {
     await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await userEvent.click(await body().findByRole('button', { name: 'Edit RE-1001' }))
     const editor = await body().findByRole('dialog', { name: 'Edit record' })
-    await expect(within(editor).getByRole('button', { name: /^Date: / })).toBeVisible()
-    await expect(within(editor).getByRole('button', { name: /^Due: / })).toBeVisible()
+    await expect(within(editor).getByRole('button', { name: /^Invoice date: / })).toBeVisible()
+    await expect(within(editor).getByRole('button', { name: /^Due date: / })).toBeVisible()
     await expect(
       within(editor).getByRole('button', { name: 'Paid on: Choose a date' }),
     ).toBeVisible()
-    await expect(within(editor).getByRole('button', { name: /Currency.*CHF/ })).toBeVisible()
-    await expect(within(editor).getByRole('textbox', { name: 'Total' })).toHaveValue('1200.00')
-    await expect(within(editor).getByRole('textbox', { name: 'Already paid' })).toHaveValue(
+    // One currency per record, changeable beside each amount.
+    await expect(within(editor).getAllByRole('button', { name: /Currency.*CHF/ })).toHaveLength(2)
+    // Amounts read as money until focused.
+    await expect(within(editor).getByRole('textbox', { name: /Total amount/ })).toHaveValue(
+      '1’200.00',
+    )
+    await expect(within(editor).getByRole('textbox', { name: /Already paid/ })).toHaveValue(
       '200.00',
     )
+    // The document's client, not yet a client here, with what was found about it.
+    await expect(
+      within(editor).getByRole('region', { name: 'Found on the document' }),
+    ).toBeVisible()
+    await expect(within(editor).getByText(/Fix 1 thing before importing/)).toBeVisible()
     await userEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(body().queryByRole('dialog', { name: 'Edit record' })).toBeNull())
     await expect(body().getByRole('dialog', { name: 'Import documents' })).toBeVisible()

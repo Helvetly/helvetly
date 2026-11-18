@@ -388,6 +388,7 @@ export function ImportDrawer({
             config={IMPORT_KINDS[editingRecord.kind]}
             batchId={batchId ?? ''}
             record={editingRecord}
+            fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
             name={rowName(
               IMPORT_KINDS[editingRecord.kind],
               editingRecord,

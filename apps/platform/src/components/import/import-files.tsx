@@ -146,9 +146,10 @@ export function DropZone({
         {input}
       </div>
       {picked && (
-        <section className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-body-sm font-medium">
+        // One plain table: the files read best as rows, with the totals and Remove all in its head.
+        <section className="rounded-lg border bg-card">
+          <div className="flex items-center justify-between gap-2 rounded-t-lg border-b bg-muted/40 py-1.5 pr-1.5 pl-3">
+            <p className="text-caption font-medium text-muted-foreground">
               {translate('importChosenSummary', {
                 count: files.length,
                 size: formatFileSize(files.reduce((sum, file) => sum + file.size, 0)),
@@ -158,19 +159,17 @@ export function DropZone({
               {translate('removeAllFiles')}
             </Button>
           </div>
-          <ul aria-label={translate('chosenFiles')} className="grid gap-2 sm:grid-cols-2">
+          <ul aria-label={translate('chosenFiles')} className="divide-y">
             {files.map((file) => (
               <li
                 key={`${file.name}-${file.size}-${file.lastModified}`}
-                className="flex items-center gap-3 rounded-lg border bg-card py-2 pr-2 pl-2.5"
+                className="flex items-center gap-3 py-1.5 pr-1.5 pl-3 text-body-sm"
               >
                 <FileBadge name={file.name} />
-                <div className="grid min-w-0 flex-1">
-                  <span className="truncate text-body-sm">{file.name}</span>
-                  <span className="text-caption text-muted-foreground tabular-nums">
-                    {formatFileSize(file.size)}
-                  </span>
-                </div>
+                <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
+                  {formatFileSize(file.size)}
+                </span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -209,7 +208,7 @@ function FileBadge({ name }: { name: string }) {
     <span
       aria-hidden
       className={cn(
-        'grid h-9 w-8 shrink-0 place-items-center rounded-md text-[10px] font-semibold tracking-wide',
+        'grid h-7 w-9 shrink-0 place-items-center rounded-md text-[10px] font-semibold tracking-wide',
         tint,
       )}
     >
