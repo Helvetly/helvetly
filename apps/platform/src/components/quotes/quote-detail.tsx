@@ -40,7 +40,7 @@ import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { formatAmount, formatDay, formatMoney, isZero, UNITS } from '@/lib/invoices'
+import { formatAmount, formatDay, formatMoney, isZero, repeatsAmount, UNITS } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import {
   quoteCommands,
@@ -347,17 +347,20 @@ function Detail({
                 </span>
                 <span className="grid min-w-0 flex-1 gap-0.5">
                   <span className="text-body whitespace-pre-line">{line.description}</span>
-                  <span className="text-caption text-muted-foreground tabular-nums">
-                    {line.quantity}
-                    {line.unit &&
-                      ` ${UNITS.find((unit) => unit.value === line.unit)?.short ?? line.unit}`}{' '}
-                    × {formatMoney(line.unit_price, quote.currency)}
-                    {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
-                    {quote.vat_mode !== 'none' &&
-                      translate('vat3', {
-                        value1: line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
-                      })}
-                  </span>
+                  {!repeatsAmount(line, quote.vat_mode) && (
+                    <span className="text-caption text-muted-foreground tabular-nums">
+                      {line.quantity}
+                      {line.unit &&
+                        ` ${UNITS.find((unit) => unit.value === line.unit)?.short ?? line.unit}`}{' '}
+                      × {formatMoney(line.unit_price, quote.currency)}
+                      {!isZero(line.discount_percent) && ` · −${line.discount_percent}%`}
+                      {quote.vat_mode !== 'none' &&
+                        translate('vat3', {
+                          value1:
+                            line.vat_category === 'S' ? `${line.vat_rate}%` : line.vat_category,
+                        })}
+                    </span>
+                  )}
                 </span>
                 <Money value={line.amount} currency={quote.currency} className="text-body" />
               </li>
@@ -467,7 +470,7 @@ function Detail({
           title={translate('pdfOf2', { name: name })}
           src={quotePdfUrl(quote.id)}
           onPages={setPages}
-          className="overflow-visible rounded-xl"
+          className="overflow-visible bg-transparent dark:bg-transparent"
         />
       </TabsContent>
 
