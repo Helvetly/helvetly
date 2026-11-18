@@ -90,7 +90,7 @@ export function DropOverlay({ title }: { title: string }) {
     >
       <div className="grid justify-items-center gap-3 rounded-2xl border-2 border-dashed border-primary/40 bg-card px-12 py-10 text-center shadow-elevation-2">
         <Upload className="size-6 stroke-[1.5]" />
-        <p className="text-[15px] font-medium">{title}</p>
+        <p className="text-title-sm font-medium">{title}</p>
         <p className="text-xs text-muted-foreground">
           {translate('pdfPhotosOrSpreadsheetsUpTo25FilesOf')}
         </p>
