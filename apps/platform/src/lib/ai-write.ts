@@ -1,0 +1,36 @@
+import { request } from '@/lib/api'
+
+/** The form fields "Write with AI" serves (POST /api/v1/ai/write). */
+export type AIWriteField =
+  | 'product_description'
+  | 'engagement_description'
+  | 'invoice_intro'
+  | 'invoice_footer'
+  | 'quote_intro'
+
+export type AIWriteAction = 'draft' | 'improve' | 'shorten' | 'formal' | 'custom'
+
+export type AIWriteInput = {
+  field: AIWriteField
+  action: AIWriteAction
+  /** The field's current text; may be empty for a draft. */
+  text: string
+  /** Required for `custom`, at most 300 characters. */
+  instruction?: string
+  /** Defaults to the workspace's document language, else English. */
+  language?: 'de' | 'fr' | 'it' | 'en'
+  /** The field's limit, 1..4000 (default 1000); the answer never exceeds it. */
+  max_length?: number
+  /** Other form values (name, price, unit, client, period…): at most 20 keys, values up to 300 characters. */
+  context?: Record<string, string>
+}
+
+/** The written text. Refusals throw the API error: ai_consent_required, feature_not_in_plan, quota_exceeded,
+ *  ai_busy, ai_unavailable, ai_unreadable, rate_limited, validation_failed. */
+export async function aiWrite(input: AIWriteInput): Promise<string> {
+  const { data } = await request<{ data: { text: string } }>('/ai/write', {
+    method: 'POST',
+    json: input,
+  })
+  return data.text
+}

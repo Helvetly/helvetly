@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/aimodel"
+	"helvetly.com/api/internal/aiwrite"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/avatars"
 	"helvetly.com/api/internal/billing"
@@ -234,6 +235,9 @@ func run() error {
 			Now: func() time.Time { return time.Now().UTC() }}, imports.Text)
 		bg.Go(ctx, "documents AI filing", documentsSvc.RunFiling) // every few seconds: uploads to tag and file
 	}
+	// "Write with AI" is counted in Heidi's pool, never the automation pool; the fake model answers in development.
+	aiWriteSvc := aiwrite.New(db, authSvc, importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolHeidi,
+		Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, Now: func() time.Time { return time.Now().UTC() }})
 	emailTemplatesSvc := emailtemplate.New(db, authSvc)
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
@@ -273,6 +277,7 @@ func run() error {
 		workspacesSvc.Register(mux)
 		dashboardSvc.Register(mux)
 		heidiSvc.Register(mux)
+		aiWriteSvc.Register(mux)
 		emailTemplatesSvc.Register(mux)
 		feedbackSvc.Register(mux)
 		avatarsSvc.Register(mux)
