@@ -5,6 +5,7 @@ import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Dashboard, Session } from '@/lib/api'
 import type { Usage } from '@/lib/documents'
 import type { Summary } from '@/lib/invoices'
+import { legalFormsHandler } from '@/test/invoice-api'
 
 export const storySession: Session = {
   user: { id: 'usr_story', name: 'Anna Muster', email: 'anna@example.com', avatar_url: null },
@@ -59,6 +60,7 @@ export const unavailable = () =>
   )
 export const screenHandlers = [
   sessionHandler(),
+  legalFormsHandler,
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/billing', () => HttpResponse.json(billingFixture())),

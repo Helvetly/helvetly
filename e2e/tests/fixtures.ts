@@ -60,6 +60,7 @@ export class FinancialAPI {
           city: 'Zürich',
           country: 'CH',
           vat_number: 'CHE-109.322.551 MWST',
+          legal_form: 'gmbh',
         },
         iban: 'CH4431999123000889012',
       },

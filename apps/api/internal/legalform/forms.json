@@ -1,0 +1,342 @@
+{
+  "CH": [
+    {
+      "code": "sole",
+      "group": "sole",
+      "name": "Einzelunternehmen",
+      "names": {
+        "fr": "Entreprise individuelle",
+        "it": "Impresa individuale",
+        "en": "Sole proprietorship (Einzelunternehmen)"
+      }
+    },
+    {
+      "code": "kollg",
+      "group": "partnership",
+      "name": "Kollektivgesellschaft",
+      "names": {
+        "fr": "Société en nom collectif",
+        "it": "Società in nome collettivo",
+        "en": "General partnership (Kollektivgesellschaft)"
+      }
+    },
+    {
+      "code": "kg",
+      "group": "partnership",
+      "name": "Kommanditgesellschaft",
+      "names": {
+        "fr": "Société en commandite",
+        "it": "Società in accomandita",
+        "en": "Limited partnership (Kommanditgesellschaft)"
+      }
+    },
+    {
+      "code": "gmbh",
+      "group": "company",
+      "name": "GmbH",
+      "names": { "fr": "Sàrl", "it": "Sagl", "en": "GmbH / Sàrl (limited liability company)" },
+      "suffixes": ["GmbH", "Sàrl", "Sarl", "Sagl"]
+    },
+    {
+      "code": "ag",
+      "group": "company",
+      "name": "AG",
+      "names": { "fr": "SA", "it": "SA", "en": "AG / SA (company limited by shares)" },
+      "suffixes": ["AG", "SA"]
+    },
+    {
+      "code": "coop",
+      "group": "company",
+      "name": "Genossenschaft",
+      "names": {
+        "fr": "Société coopérative",
+        "it": "Società cooperativa",
+        "en": "Cooperative (Genossenschaft)"
+      },
+      "suffixes": ["Genossenschaft", "Société coopérative", "Società cooperativa"]
+    },
+    {
+      "code": "verein",
+      "group": "association",
+      "name": "Verein",
+      "names": { "fr": "Association", "it": "Associazione", "en": "Association (Verein)" }
+    },
+    {
+      "code": "stiftung",
+      "group": "association",
+      "name": "Stiftung",
+      "names": { "fr": "Fondation", "it": "Fondazione", "en": "Foundation (Stiftung)" },
+      "suffixes": ["Stiftung", "Fondation", "Fondazione"]
+    }
+  ],
+  "LI": [
+    {
+      "code": "sole",
+      "group": "sole",
+      "name": "Einzelunternehmen",
+      "names": { "en": "Sole proprietorship (Einzelunternehmen)" }
+    },
+    {
+      "code": "kollg",
+      "group": "partnership",
+      "name": "Kollektivgesellschaft",
+      "names": { "en": "General partnership (Kollektivgesellschaft)" }
+    },
+    { "code": "gmbh", "group": "company", "name": "GmbH", "suffixes": ["GmbH"] },
+    { "code": "ag", "group": "company", "name": "AG", "suffixes": ["AG"] },
+    {
+      "code": "anstalt",
+      "group": "company",
+      "name": "Anstalt",
+      "names": { "en": "Establishment (Anstalt)" },
+      "suffixes": ["Anstalt"]
+    },
+    {
+      "code": "stiftung",
+      "group": "association",
+      "name": "Stiftung",
+      "names": { "en": "Foundation (Stiftung)" },
+      "suffixes": ["Stiftung"]
+    }
+  ],
+  "DE": [
+    {
+      "code": "sole",
+      "group": "sole",
+      "name": "Einzelunternehmen",
+      "names": { "en": "Sole proprietorship (Einzelunternehmen)" },
+      "suffixes": ["e.K.", "e.Kfm.", "e.Kfr."]
+    },
+    {
+      "code": "freelance",
+      "group": "sole",
+      "name": "Freiberufler",
+      "names": { "en": "Freelancer (Freiberufler)" }
+    },
+    { "code": "gbr", "group": "partnership", "name": "GbR", "suffixes": ["GbR"] },
+    { "code": "ohg", "group": "partnership", "name": "OHG", "suffixes": ["OHG"] },
+    { "code": "kg", "group": "partnership", "name": "KG", "suffixes": ["KG"] },
+    {
+      "code": "gmbh_co_kg",
+      "group": "partnership",
+      "name": "GmbH & Co. KG",
+      "suffixes": ["GmbH & Co. KG"]
+    },
+    {
+      "code": "partg",
+      "group": "partnership",
+      "name": "PartG",
+      "names": { "en": "PartG (partnership of professionals)" },
+      "suffixes": ["PartG", "PartG mbB"]
+    },
+    { "code": "gmbh", "group": "company", "name": "GmbH", "suffixes": ["GmbH"] },
+    {
+      "code": "ug",
+      "group": "company",
+      "name": "UG (haftungsbeschränkt)",
+      "suffixes": ["UG", "UG (haftungsbeschränkt)"]
+    },
+    { "code": "ag", "group": "company", "name": "AG", "suffixes": ["AG"] },
+    {
+      "code": "eg",
+      "group": "company",
+      "name": "eG",
+      "names": { "en": "Cooperative (eG)" },
+      "suffixes": ["eG"]
+    },
+    {
+      "code": "ev",
+      "group": "association",
+      "name": "e.V.",
+      "names": { "en": "Registered association (e.V.)" },
+      "suffixes": ["e.V."]
+    }
+  ],
+  "AT": [
+    {
+      "code": "sole",
+      "group": "sole",
+      "name": "Einzelunternehmen",
+      "names": { "en": "Sole proprietorship (Einzelunternehmen)" },
+      "suffixes": ["e.U."]
+    },
+    { "code": "og", "group": "partnership", "name": "OG", "suffixes": ["OG"] },
+    { "code": "kg", "group": "partnership", "name": "KG", "suffixes": ["KG"] },
+    { "code": "gmbh", "group": "company", "name": "GmbH", "suffixes": ["GmbH"] },
+    {
+      "code": "flexco",
+      "group": "company",
+      "name": "FlexCo",
+      "names": { "en": "FlexCo (flexible company)" },
+      "suffixes": ["FlexCo", "FlexKapG"]
+    },
+    { "code": "ag", "group": "company", "name": "AG", "suffixes": ["AG"] },
+    {
+      "code": "verein",
+      "group": "association",
+      "name": "Verein",
+      "names": { "en": "Association (Verein)" }
+    }
+  ],
+  "PL": [
+    {
+      "code": "jdg",
+      "group": "sole",
+      "name": "Jednoosobowa działalność gospodarcza",
+      "names": { "en": "Sole proprietorship (JDG)" }
+    },
+    {
+      "code": "sc",
+      "group": "partnership",
+      "name": "Spółka cywilna (s.c.)",
+      "names": { "en": "Civil partnership (s.c.)" },
+      "suffixes": ["s.c."]
+    },
+    {
+      "code": "spj",
+      "group": "partnership",
+      "name": "Spółka jawna (sp.j.)",
+      "names": { "en": "General partnership (sp.j.)" },
+      "suffixes": ["sp.j.", "spółka jawna"]
+    },
+    {
+      "code": "spp",
+      "group": "partnership",
+      "name": "Spółka partnerska (sp.p.)",
+      "names": { "en": "Professional partnership (sp.p.)" },
+      "suffixes": ["sp.p.", "spółka partnerska"]
+    },
+    {
+      "code": "spk",
+      "group": "partnership",
+      "name": "Spółka komandytowa (sp.k.)",
+      "names": { "en": "Limited partnership (sp.k.)" },
+      "suffixes": ["sp.k.", "spółka komandytowa"]
+    },
+    {
+      "code": "ska",
+      "group": "partnership",
+      "name": "Spółka komandytowo-akcyjna (S.K.A.)",
+      "names": { "en": "Limited joint-stock partnership (S.K.A.)" },
+      "suffixes": ["S.K.A."]
+    },
+    {
+      "code": "spzoo",
+      "group": "company",
+      "name": "Spółka z o.o. (sp. z o.o.)",
+      "names": { "en": "Limited liability company (sp. z o.o.)" },
+      "suffixes": ["sp. z o.o.", "spółka z ograniczoną odpowiedzialnością"]
+    },
+    {
+      "code": "psa",
+      "group": "company",
+      "name": "Prosta spółka akcyjna (P.S.A.)",
+      "names": { "en": "Simple joint-stock company (P.S.A.)" },
+      "suffixes": ["P.S.A."]
+    },
+    {
+      "code": "sa",
+      "group": "company",
+      "name": "Spółka akcyjna (S.A.)",
+      "names": { "en": "Joint-stock company (S.A.)" },
+      "suffixes": ["S.A.", "spółka akcyjna"]
+    },
+    {
+      "code": "fundacja",
+      "group": "association",
+      "name": "Fundacja",
+      "names": { "en": "Foundation (fundacja)" },
+      "suffixes": ["fundacja"]
+    },
+    {
+      "code": "stowarzyszenie",
+      "group": "association",
+      "name": "Stowarzyszenie",
+      "names": { "en": "Association (stowarzyszenie)" },
+      "suffixes": ["stowarzyszenie"]
+    }
+  ],
+  "FR": [
+    {
+      "code": "ei",
+      "group": "sole",
+      "name": "Entreprise individuelle (EI)",
+      "names": { "en": "Sole proprietorship (EI, micro-entrepreneur)" },
+      "suffixes": ["EI"]
+    },
+    {
+      "code": "snc",
+      "group": "partnership",
+      "name": "SNC",
+      "names": { "en": "General partnership (SNC)" },
+      "suffixes": ["SNC"]
+    },
+    { "code": "eurl", "group": "company", "name": "EURL", "suffixes": ["EURL"] },
+    { "code": "sarl", "group": "company", "name": "SARL", "suffixes": ["SARL"] },
+    { "code": "sasu", "group": "company", "name": "SASU", "suffixes": ["SASU"] },
+    { "code": "sas", "group": "company", "name": "SAS", "suffixes": ["SAS"] },
+    { "code": "sa", "group": "company", "name": "SA", "suffixes": ["SA"] },
+    {
+      "code": "association",
+      "group": "association",
+      "name": "Association loi 1901",
+      "names": { "en": "Association (loi 1901)" }
+    }
+  ],
+  "IT": [
+    {
+      "code": "di",
+      "group": "sole",
+      "name": "Ditta individuale",
+      "names": { "en": "Sole proprietorship (ditta individuale)" }
+    },
+    {
+      "code": "snc",
+      "group": "partnership",
+      "name": "S.n.c.",
+      "names": { "en": "General partnership (S.n.c.)" },
+      "suffixes": ["s.n.c."]
+    },
+    {
+      "code": "sas",
+      "group": "partnership",
+      "name": "S.a.s.",
+      "names": { "en": "Limited partnership (S.a.s.)" },
+      "suffixes": ["s.a.s."]
+    },
+    { "code": "srl", "group": "company", "name": "S.r.l.", "suffixes": ["s.r.l.", "s.r.l.s."] },
+    { "code": "spa", "group": "company", "name": "S.p.A.", "suffixes": ["s.p.a."] },
+    {
+      "code": "associazione",
+      "group": "association",
+      "name": "Associazione",
+      "names": { "en": "Association (associazione)" }
+    }
+  ],
+  "RO": [
+    {
+      "code": "pfa",
+      "group": "sole",
+      "name": "PFA",
+      "names": { "en": "Authorised individual (PFA)" },
+      "suffixes": ["PFA"]
+    },
+    {
+      "code": "ii",
+      "group": "sole",
+      "name": "Întreprindere individuală (II)",
+      "names": { "en": "Individual enterprise (II)" },
+      "suffixes": ["II"]
+    },
+    { "code": "snc", "group": "partnership", "name": "SNC", "suffixes": ["SNC"] },
+    { "code": "scs", "group": "partnership", "name": "SCS", "suffixes": ["SCS"] },
+    { "code": "srl", "group": "company", "name": "SRL", "suffixes": ["SRL", "S.R.L."] },
+    { "code": "sa", "group": "company", "name": "SA", "suffixes": ["SA", "S.A."] },
+    {
+      "code": "asociatie",
+      "group": "association",
+      "name": "Asociație",
+      "names": { "en": "Association (asociație)" }
+    }
+  ]
+}

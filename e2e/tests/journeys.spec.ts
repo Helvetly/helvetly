@@ -42,6 +42,8 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await workspaceInput.fill('Journey Workspace')
   await page.getByRole('button', { name: 'Get started' }).click()
   await page.getByLabel(/^Company name/).fill('Journey AG')
+  // The legal form follows the name's ending; the server refuses to finish a Swiss company without one.
+  await expect(page.getByRole('button', { name: /^Legal form/ })).toContainText('AG / SA')
   await expect(page.getByRole('textbox', { name: /^Workspace name/ })).toHaveCount(0)
   await page.getByLabel(/^Street/).fill('Bahnhofstrasse')
   await page.getByLabel(/^Number/).fill('1')
@@ -58,6 +60,10 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   const saved = object(await (await page.request.get('/api/v1/session')).json())
   expect(object(saved.user).name).toBe('Journey Owner')
   expect(object(saved.workspace).name).toBe('Journey Workspace')
+  const company = object(
+    object(await (await page.request.get('/api/v1/invoice-settings')).json()).data,
+  )
+  expect(object(company.seller).legal_form).toBe('ag')
   await expect(page.getByRole('button', { name: 'New client', exact: true })).toBeVisible()
   const replay = await page.request.post('/api/v1/auth/email/verify', {
     data: { email, code, next: '/' },

@@ -33,6 +33,7 @@ export function Combobox({
   className,
   renderValue,
   contentClassName,
+  disabled,
 }: {
   id?: string
   value: string
@@ -46,6 +47,7 @@ export function Combobox({
   renderValue?: (option: Option) => ReactNode
   /** E.g. a width for lists whose labels are longer than the trigger. */
   contentClassName?: string
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const labelId = useId()
@@ -59,6 +61,7 @@ export function Combobox({
           id={id}
           type="button"
           variant="outline"
+          disabled={disabled}
           aria-invalid={invalid || undefined}
           aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
           // Styled as a field, not a button: same border, background and shadow as inputClass.

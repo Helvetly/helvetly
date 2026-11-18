@@ -41,6 +41,10 @@ func TestCompleteOnboardingNeedsTheCompanyDetails(t *testing.T) {
 		t.Fatalf("VAT-registered without a number: %v, marked %d", err, marked)
 	}
 	put(map[string]any{"vat_number": "CHE-116.281.710 MWST"}, nil)
+	if err := finish(); err == nil || marked != 0 {
+		t.Fatalf("a Swiss company without its legal form: %v, marked %d", err, marked)
+	}
+	put(map[string]any{"legal_form": "ag"}, nil)
 	if err := finish(); err != nil || marked != 1 { // no IBAN, no apartment
 		t.Fatalf("complete details: %v, marked %d", err, marked)
 	}
@@ -51,4 +55,56 @@ func TestCompleteOnboardingNeedsTheCompanyDetails(t *testing.T) {
 	}
 	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"seller": map[string]any{"apt": string(make([]byte, 51))}},
 		http.StatusUnprocessableEntity, "validation_failed", "seller.apt")
+}
+
+// The legal form is a code of the seller's country's list: another country's code is refused, a new country drops the
+// old one's form, and a country without a list needs none to finish the welcome.
+func TestSellerLegalForm(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	legalForm := func() *string {
+		t.Helper()
+		var got struct{ Data Settings }
+		e.do(b, "GET", "/api/v1/invoice-settings", nil, http.StatusOK, &got)
+		return got.Data.Seller.LegalForm
+	}
+	put := func(seller map[string]any) {
+		t.Helper()
+		e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"seller": seller}, http.StatusOK, nil)
+	}
+
+	put(map[string]any{"country": "CH", "legal_form": "gmbh"})
+	if f := legalForm(); f == nil || *f != "gmbh" {
+		t.Fatalf("saved form: %v", f)
+	}
+	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"seller": map[string]any{"legal_form": "spzoo"}},
+		http.StatusUnprocessableEntity, "validation_failed", "seller.legal_form")
+	put(map[string]any{"country": "PL", "legal_form": "spzoo"})
+	if f := legalForm(); f == nil || *f != "spzoo" {
+		t.Fatalf("a new country with its form: %v", f)
+	}
+	put(map[string]any{"country": "CH"})
+	if f := legalForm(); f != nil {
+		t.Fatalf("a new country keeps the old one's form: %v", *f)
+	}
+	put(map[string]any{"legal_form": "sole"})
+	put(map[string]any{"legal_form": nil})
+	if f := legalForm(); f != nil {
+		t.Fatalf("cleared form: %v", *f)
+	}
+
+	var forms struct {
+		Data map[string][]struct{ Code, Group string }
+	}
+	e.do(b, "GET", "/api/v1/invoice-settings/legal-forms", nil, http.StatusOK, &forms)
+	if len(forms.Data["CH"]) == 0 || forms.Data["CH"][0].Group == "" {
+		t.Fatalf("legal forms list: %+v", forms.Data["CH"])
+	}
+
+	marked := 0
+	put(map[string]any{"name": "Acme Inc", "street": "Main Street", "street_number": "1", "zip": "10001", "city": "New York", "country": "US"})
+	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"vat_registered": false, "default_vat_mode": "none"}, http.StatusOK, nil)
+	if err := e.svc.CompleteOnboarding(context.Background(), b.workspace, func(store.Q) error { marked++; return nil }); err != nil || marked != 1 {
+		t.Fatalf("a country without a list: %v, marked %d", err, marked)
+	}
 }

@@ -11,6 +11,7 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
 	"helvetly.com/api/internal/invoicecalc"
+	"helvetly.com/api/internal/legalform"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/swissqr"
 )
@@ -41,6 +42,7 @@ type Settings struct {
 
 type Seller struct {
 	store.Party
+	LegalForm *string `json:"legal_form"` // a code of legalform's list for the seller's country
 }
 
 func defaultSettings() Settings {
@@ -110,11 +112,20 @@ func (s *Service) CompleteOnboarding(ctx context.Context, workspaceID string, ma
 		if set.VATRegistered && (set.Seller.VATNumber == nil || strings.TrimSpace(*set.Seller.VATNumber) == "") {
 			p.fail("seller.vat_number", "This is required.")
 		}
+		if legalform.Listed(set.Seller.Country) && set.Seller.LegalForm == nil {
+			p.fail("seller.legal_form", "This is required.")
+		}
 		if err := p.err(); err != nil {
 			return err
 		}
 		return mark(q)
 	})
+}
+
+// getLegalForms lists every country's legal forms, for the company's form in the welcome and the settings.
+func (s *Service) getLegalForms(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	auth.WriteJSON(w, http.StatusOK, data(legalform.All()))
+	return nil
 }
 
 func (s *Service) getSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -129,7 +140,7 @@ func (s *Service) getSettings(w http.ResponseWriter, r *http.Request, sess store
 var settingsKeys = []string{"seller", "vat_registered", "default_vat_mode", "default_vat_rate", "iban", "bank_name", "currency",
 	"language", "default_terms_days", "number_format", "footer", "qr_bill_enabled", "revolut_enabled", "revolut_username", "instalments", "dunning", "logo_file_id", "logo_url", "is_complete", "missing_fields"}
 
-var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number"}
+var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number", "legal_form"}
 
 // putSettings: fields left out keep their value. Seller limits are the QR bill's (SPS 2.3, structured address).
 func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -192,6 +203,18 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 		if _, ok := seller["country"]; ok {
 			if msg := unsupportedSeller(sl.Country); msg != "" {
 				p.fail("seller.country", msg)
+			}
+		}
+		if v, ok := seller["legal_form"]; ok {
+			sl.LegalForm = p.text("seller.legal_form", v, 40, nil)
+		}
+		if sl.LegalForm != nil {
+			if _, ok := legalform.Lookup(sl.Country, *sl.LegalForm); !ok {
+				if _, sent := seller["legal_form"]; sent {
+					p.fail("seller.legal_form", "Choose one of the legal forms of the company's country.")
+				} else {
+					sl.LegalForm = nil // a new country drops the old country's form
+				}
 			}
 		}
 		if raw, ok := seller["electronic_address"]; ok {

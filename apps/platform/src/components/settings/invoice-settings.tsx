@@ -85,6 +85,7 @@ import {
   type VatMode,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
+import { legalFormOptions, suggestLegalForm, useLegalForms } from '@/lib/legal-forms'
 import { useCan } from '@/lib/permissions'
 
 import { DunningSteps, stepErrors, timingProblems, type StepDraft } from './dunning-steps'
@@ -106,6 +107,8 @@ type Values = {
   email: string
   phone: string
   phone_country: CountryCode
+  /** A code of the country's legal forms, '' when none is chosen. */
+  legal_form: string
   vat_registered: boolean
   vat_number: string
   registration_number: string
@@ -182,6 +185,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     email: seller.email ?? '',
     phone: phone.phone,
     phone_country: phone.country,
+    legal_form: seller.legal_form ?? '',
     vat_registered: settings.vat_registered,
     vat_number: seller.vat_number ?? '',
     registration_number: seller.registration_number ?? '',
@@ -240,6 +244,7 @@ export function toSettingsInput(values: Values): SettingsInput {
       // An invalid number goes as typed, for the API to refuse (the form shows the error first).
       phone: toE164(values.phone, values.phone_country) ?? orNull(values.phone),
       registration_number: orNull(values.registration_number),
+      legal_form: values.legal_form || null,
       electronic_address:
         values.electronic_scheme.trim() || values.electronic_id.trim()
           ? { scheme: values.electronic_scheme.trim(), id: values.electronic_id.trim() }
@@ -411,6 +416,7 @@ const SECTIONS: {
       'zip',
       'city',
       'country',
+      'legal_form',
       'email',
       'phone',
       'phone_country',
@@ -655,6 +661,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
   const canEdit = useCan('write:invoice-settings')
   const remindersLock = useFeatureLock('automations')
   const save = useSaveInvoiceSettings()
+  const legalForms = useLegalForms().data
   // The API has no flag to read up front: the first refused change locks the field.
   const [currencyLocked, setCurrencyLocked] = useState<string | null>(null)
   const form = useSectionForm({
@@ -679,6 +686,7 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
   )
   const [active, setActive] = useSectionInView()
   const iban = ibanInfo(values.iban)
+  const formOptions = legalFormOptions(legalForms, values.country)
 
   // What issuing needs, from what is saved: unsaved edits don't make invoices issuable yet.
   const missing = missingFrom(form.saved)
@@ -819,6 +827,27 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                 />
               </FormField>
               <FormField
+                id={inputId('legal_form')}
+                label={translate('legalForm')}
+                width="lg"
+                error={shown.legal_form}
+                tip={translate('legalFormTip')}
+              >
+                <Combobox
+                  id={inputId('legal_form')}
+                  value={values.legal_form}
+                  options={formOptions}
+                  disabled={formOptions.length === 0}
+                  invalid={Boolean(shown.legal_form)}
+                  placeholder={
+                    legalForms && formOptions.length === 0
+                      ? translate('noLegalFormsForThisCountryYet')
+                      : translate('chooseALegalForm')
+                  }
+                  onChange={(code) => set('legal_form', code)}
+                />
+              </FormField>
+              <FormField
                 id={inputId('street')}
                 label={translate('street')}
                 required
@@ -908,7 +937,11 @@ function SettingsForm({ settings }: { settings: InvoiceSettings }) {
                   invalid={Boolean(shown.country)}
                   placeholder={translate('chooseACountry2')}
 
-                  onChange={(code) => set('country', code)}
+                  onChange={(code) => {
+                    set('country', code)
+                    // Another country's forms differ: suggest from the name, or leave it to choose.
+                    set('legal_form', suggestLegalForm(legalForms, code, values.name) ?? '')
+                  }}
                 />
               </FormField>
               <>

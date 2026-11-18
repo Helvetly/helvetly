@@ -60,6 +60,12 @@ import {
   type NumberFormat,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
+import {
+  legalFormOptions,
+  suggestLegalForm,
+  useLegalForms,
+  type LegalForms,
+} from '@/lib/legal-forms'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
@@ -132,6 +138,7 @@ export function WelcomePage({ session }: { session: Session }) {
   const target = chosenTarget ?? safeNextPath(searchParams.get('next'))
 
   const settings = useInvoiceSettings()
+  const legalForms = useLegalForms().data
   const save = useSaveInvoiceSettings()
   const rename = useUpdateWorkspace()
   const profile = useUpdateProfile()
@@ -178,7 +185,7 @@ export function WelcomePage({ session }: { session: Session }) {
   /** Saves the values shown (or only what was edited, unless `always`); false when it couldn't. */
   const persist = async (always: boolean) => {
     if (!values || !settings.data || (!edited && !always)) return true
-    const problems: Errors = validate(values)
+    const problems: Errors = validate(values, legalForms)
     if (Object.keys(problems).length) {
       setErrors(problems)
       return false
@@ -348,6 +355,7 @@ export function WelcomePage({ session }: { session: Session }) {
                 <CompanyStep
                   heading={heading}
                   values={values}
+                  legalForms={legalForms}
                   errors={errors}
                   busy={busy}
                   onChange={change}
@@ -641,6 +649,7 @@ function WelcomeStep({
 function CompanyStep({
   heading,
   values,
+  legalForms,
   errors,
   busy,
   onChange,
@@ -649,6 +658,7 @@ function CompanyStep({
 }: {
   heading: HeadingRef
   values: Values | null
+  legalForms: LegalForms | undefined
   errors: Errors
   busy: boolean
   onChange: (patch: Partial<Values>) => void
@@ -656,6 +666,16 @@ function CompanyStep({
   onDone: () => void
 }) {
   const iban = values ? ibanInfo(values.iban) : { valid: false as const }
+  const formOptions = legalFormOptions(legalForms, values?.country ?? 'CH')
+  // The form follows the name's ending ("… GmbH") until the person picks another one.
+  const withName = (name: string): Partial<Values> => {
+    if (!values) return { name }
+    const before = suggestLegalForm(legalForms, values.country, values.name)
+    const following = !values.legal_form || values.legal_form === before
+    return following
+      ? { name, legal_form: suggestLegalForm(legalForms, values.country, name) ?? '' }
+      : { name }
+  }
   const text = (
     field: 'name' | 'street' | 'street_number' | 'apt' | 'zip' | 'city',
     maxLength: number,
@@ -667,7 +687,9 @@ function CompanyStep({
       autoComplete={field === 'apt' ? 'address-line2' : undefined}
       value={values?.[field] ?? ''}
       disabled={!values}
-      onChange={(event) => onChange({ [field]: event.target.value })}
+      onChange={(event) =>
+        onChange(field === 'name' ? withName(event.target.value) : { [field]: event.target.value })
+      }
     />
   )
   return (
@@ -689,6 +711,27 @@ function CompanyStep({
           required
         >
           {text('name', 70)}
+        </FormField>
+        <FormField
+          id="onboarding-legal_form"
+          label={translate('legalForm')}
+          error={errors.legal_form}
+          required={formOptions.length > 0}
+          tip={translate('legalFormTip')}
+        >
+          <Combobox
+            id="onboarding-legal_form"
+            value={values?.legal_form ?? ''}
+            options={formOptions}
+            disabled={!values || formOptions.length === 0}
+            placeholder={
+              legalForms && formOptions.length === 0
+                ? translate('noLegalFormsForThisCountryYet')
+                : translate('chooseALegalForm')
+            }
+            invalid={!!errors.legal_form}
+            onChange={(legal_form) => onChange({ legal_form })}
+          />
         </FormField>
         {/* Street, number and apartment in one row, as in the client form; only the missing asterisk marks apt optional. */}
         <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] gap-3">
@@ -732,7 +775,13 @@ function CompanyStep({
             options={COUNTRY_OPTIONS}
             placeholder={translate('chooseACountry2')}
             invalid={!!(errors.country ?? unsupportedSellerCountry(values?.country ?? ''))}
-            onChange={(country) => onChange({ country, ...presetFor(values, country) })}
+            onChange={(country) =>
+              onChange({
+                country,
+                legal_form: suggestLegalForm(legalForms, country, values?.name ?? '') ?? '',
+                ...presetFor(values, country),
+              })
+            }
           />
         </FormField>
         {values && <VatCard values={values} error={errors.vat_number} onChange={onChange} />}

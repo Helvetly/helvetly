@@ -6,7 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import type { SettingsInput } from '@/lib/invoices'
-import { sampleSettings } from '@/test/invoice-api'
+import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 const session = {
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
@@ -27,6 +27,7 @@ const handlers = (put: Parameters<typeof http.put>[1]) => [
     HttpResponse.json({ data: sampleSettings({ iban: null }) }),
   ),
   http.put('/api/v1/invoice-settings', put),
+  legalFormsHandler,
 ]
 
 const saving = async ({ request }: { request: Request }) => {
