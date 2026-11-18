@@ -1435,7 +1435,7 @@
   "importReadyToReview": "Import zur Überprüfung bereit",
   "importsAlreadyReadStayOpenForReview": "Bereits gelesene Importe bleiben zur Überprüfung geöffnet.",
   "importReviewFirst": "Sie überprüfen und beheben sie zuerst: Es wird nichts erstellt, bis Sie Zeilen auswählen und auf „Importieren“ klicken. Die Dateien werden in Dokumenten gespeichert.",
-  "importCreateClient": "Neuer Kunde „{name}“",
+  "importCreateClient": "Kunde „{name}“ anlegen",
   "importSuggestions": "Die KI von Heidi liest die Dateien und schlägt {noun} vor.",
   "importsYouStarted": "Von Ihnen gestartete Importe",
   "importYourClients": "Importieren Sie Ihre Kunden",
@@ -4303,5 +4303,9 @@
   "aiApprovalWhatIsProtected": "Was geschützt bleibt",
   "importReadingTitle": "Ihre Dateien werden gelesen: {done} von {total} fertig",
   "importFixRow": "Diese Zeile korrigieren",
-  "importReadingHint": "Lange Tabellen können eine Minute dauern. Sie können dies schliessen und später zurückkommen."
+  "importReadingHint": "Lange Tabellen können eine Minute dauern. Sie können dies schliessen und später zurückkommen.",
+  "importFieldsToFix": "{count, plural, one {# Feld zu korrigieren} other {# Felder zu korrigieren}}",
+  "importFieldsToFixHint": "Korrigieren Sie die markierten Felder und speichern Sie: Der Datensatz wird erneut geprüft und für den Import ausgewählt.",
+  "importRecordLooksGood": "Dieser Datensatz sieht gut aus. Ändern Sie, was Sie möchten; beim Speichern wird er erneut geprüft.",
+  "importDocumentNames": "Auf dem Dokument:"
 }

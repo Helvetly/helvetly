@@ -31,52 +31,58 @@ export function ImportClientField({
   const [creating, setCreating] = useState(false)
   const documentName = clientName.trim()
   return (
-    <FormField id={id} label={translate('client')} error={error} required className="sm:col-span-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            {...describedBy(id, error)}
-            className={cn(inputClass, 'flex items-center justify-between text-left')}
-          >
-            <span className={cn('truncate', !clientId && 'text-muted-foreground')}>
-              {clientId
-                ? clientName || translate('selectedClient')
-                : translate('chooseAClient2', {
-                    value1: clientName ? translate('document2', { clientName: clientName }) : '',
-                  })}
-            </span>
-            <ChevronsUpDown className="size-4 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
-          <ClientSearch
-            selectedId={clientId || null}
-            onSelect={(client) => {
-              onPick(client)
-              setOpen(false)
+    <div className="grid gap-2 sm:col-span-2">
+      <FormField id={id} label={translate('client')} error={error} required>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              {...describedBy(id, error)}
+              className={cn(inputClass, 'flex items-center justify-between text-left')}
+            >
+              <span className={cn('truncate', !clientId && 'text-muted-foreground')}>
+                {clientId
+                  ? clientName || translate('selectedClient')
+                  : translate('chooseAClient2', {
+                      value1: clientName ? translate('document2', { clientName: clientName }) : '',
+                    })}
+              </span>
+              <ChevronsUpDown className="size-4 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
+            <ClientSearch
+              selectedId={clientId || null}
+              onSelect={(client) => {
+                onPick(client)
+                setOpen(false)
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+        {creating && (
+          <ClientForm
+            prefillName={documentName}
+            onClose={() => setCreating(false)}
+            onSaved={(created) => {
+              setCreating(false)
+              onPick(created)
             }}
           />
-        </PopoverContent>
-      </Popover>
+        )}
+      </FormField>
       {!clientId && documentName && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-dashed bg-muted/40 px-3 py-2">
+          <p className="min-w-0 text-caption text-muted-foreground">
+            {translate('importDocumentNames')}{' '}
+            <span className="font-medium text-foreground">{documentName}</span>
+          </p>
           <Button type="button" size="sm" variant="outline" onClick={() => setCreating(true)}>
             <UserPlus />
             {translate('importCreateClient', { name: documentName })}
           </Button>
         </div>
       )}
-      {creating && (
-        <ClientForm
-          prefillName={documentName}
-          onClose={() => setCreating(false)}
-          onSaved={(created) => {
-            setCreating(false)
-            onPick(created)
-          }}
-        />
-      )}
-    </FormField>
+    </div>
   )
 }

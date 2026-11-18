@@ -1435,7 +1435,7 @@
   "importReadyToReview": "Importation prête à être révisée",
   "importsAlreadyReadStayOpenForReview": "Les importations déjà lues restent ouvertes à la révision.",
   "importReviewFirst": "Vous les vérifiez et les corrigez d’abord : rien n’est créé jusqu’à ce que vous choisissiez des lignes et appuyiez sur Importer. Les fichiers sont conservés dans Documents.",
-  "importCreateClient": "Nouveau client \"{name}\"",
+  "importCreateClient": "Créer le client « {name} »",
   "importSuggestions": "L’IA de Heidi lit les fichiers et suggère {noun}.",
   "importsYouStarted": "Importations que vous avez démarrées",
   "importYourClients": "Importez vos clients",
@@ -4303,5 +4303,9 @@
   "aiApprovalWhatIsProtected": "Ce qui reste protégé",
   "importReadingTitle": "Lecture de vos fichiers : {done} sur {total} terminés",
   "importFixRow": "Corriger cette ligne",
-  "importReadingHint": "Les longs tableurs peuvent prendre une minute. Vous pouvez fermer et revenir plus tard."
+  "importReadingHint": "Les longs tableurs peuvent prendre une minute. Vous pouvez fermer et revenir plus tard.",
+  "importFieldsToFix": "{count, plural, one {# champ à corriger} other {# champs à corriger}}",
+  "importFieldsToFixHint": "Corrigez les champs signalés, puis enregistrez : l’enregistrement est vérifié à nouveau et coché pour l’import.",
+  "importRecordLooksGood": "Cet enregistrement semble correct. Modifiez ce que vous voulez ; l’enregistrement le vérifie à nouveau.",
+  "importDocumentNames": "Sur le document :"
 }
