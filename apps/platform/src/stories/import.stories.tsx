@@ -129,6 +129,7 @@ export const Empty: Story = {
   play: async () => {
     await opened()
     await expect(body().getByText(/nothing is created until you choose rows/)).toBeVisible()
+    await expect(body().getByRole('list', { name: 'How the import works' })).toBeVisible()
     await expect(body().getByText(/Up to 25 files of 25 MB each/)).toBeVisible()
     await expect(body().getByRole('button', { name: 'Read files' })).toBeDisabled()
     await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()

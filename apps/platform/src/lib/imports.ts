@@ -124,7 +124,6 @@ export type ImportKindConfig = {
 }
 
 export const IMPORT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.csv,.txt,.xlsx,.docx,.zip'
-export const IMPORT_FILE_TYPES = translate('pdfPhotosPNGJPEGWEBPExcelXlsxWordDocx')
 export const MAX_IMPORT_FILES = 25
 export const MAX_IMPORT_FILE_BYTES = MAX_FILE_BYTES
 
