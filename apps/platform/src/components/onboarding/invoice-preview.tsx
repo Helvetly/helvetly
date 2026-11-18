@@ -4,17 +4,25 @@ import Image from 'next/image'
 import { COUNTRY_OPTIONS } from '@/components/clients/fields'
 import { streetLine } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import { ibanInfo, type DocLanguage } from '@/lib/invoices'
+import { ibanInfo, toCents, type DocLanguage, type InvoiceSettings } from '@/lib/invoices'
 
 import { vatNumber, type Values } from './onboarding-model'
 
 const WORDS: Record<
   DocLanguage,
-  { invoice: string; vat: string; total: string; terms: (days: number) => string; pay: string }
+  {
+    invoice: string
+    vat: string
+    vatIncluded: string
+    total: string
+    terms: (days: number) => string
+    pay: string
+  }
 > = {
   de: {
     invoice: 'Rechnung',
     vat: 'MWST',
+    vatIncluded: 'inkl. MWST',
     total: 'Total',
     terms: (days) => `Zahlbar innert ${days} Tagen`,
     pay: 'Zahlteil',
@@ -22,6 +30,7 @@ const WORDS: Record<
   fr: {
     invoice: 'Facture',
     vat: 'TVA',
+    vatIncluded: 'dont TVA',
     total: 'Total',
     terms: (days) => `Payable dans les ${days} jours`,
     pay: 'Section paiement',
@@ -29,6 +38,7 @@ const WORDS: Record<
   it: {
     invoice: 'Fattura',
     vat: 'IVA',
+    vatIncluded: 'di cui IVA',
     total: 'Totale',
     terms: (days) => `Pagabile entro ${days} giorni`,
     pay: 'Sezione pagamento',
@@ -36,6 +46,7 @@ const WORDS: Record<
   en: {
     invoice: 'Invoice',
     vat: 'VAT',
+    vatIncluded: 'incl. VAT',
     total: 'Total',
     terms: (days) => `Payable within ${days} days`,
     pay: 'Payment part',
@@ -46,6 +57,23 @@ const LINES = [
   { text: translate('consulting'), amount: 1800 },
   { text: translate('bookkeeping'), amount: 650 },
 ]
+
+/** The VAT settings the sample follows; the welcome never asks for them. */
+type PreviewVat = Pick<InvoiceSettings, 'default_vat_rate' | 'default_vat_mode'>
+
+/**
+ * The sample's VAT and total in cents, rounded like the API's calculator (half away from zero, rate in hundredths
+ * of a percent): gross prices contain their VAT, net prices get it added.
+ */
+function sampleTotals(registered: boolean, vat: PreviewVat | undefined) {
+  const base = BigInt(LINES.reduce((sum, line) => sum + line.amount, 0)) * 100n
+  if (!registered || !vat) return { rate: 0n, inclusive: false, vat: 0n, total: base }
+  const rate = toCents(vat.default_vat_rate)
+  const inclusive = vat.default_vat_mode === 'inclusive'
+  const divisor = inclusive ? 10_000n + rate : 10_000n
+  const amount = (2n * base * rate + divisor) / (2n * divisor)
+  return { rate, inclusive, vat: amount, total: inclusive ? base : base + amount }
+}
 
 /** Amounts as they print: in the document's language, grouped the way the company's country writes them. */
 const money = (amount: number, currency: string, language: string, country: string) =>
@@ -60,14 +88,23 @@ const Gap = ({ className }: { className?: string }) => (
  * The welcome's right half: the first page of an invoice that fills in as the company is typed.
  * Always on white, like the PDF.
  */
-export function InvoicePreview({ values, logo }: { values: Values | null; logo: string | null }) {
+export function InvoicePreview({
+  values,
+  logo,
+  vat,
+}: {
+  values: Values | null
+  logo: string | null
+  vat: PreviewVat | undefined
+}) {
   const language = values?.language ?? 'de'
   const countryCode = values?.country || 'CH'
   const words = WORDS[language]
   const currency = values?.currency ?? 'CHF'
   const days = values?.default_terms_days ?? 30
-  const net = LINES.reduce((sum, line) => sum + line.amount, 0)
-  const vat = values?.vat_registered ? Math.round(net * 8.1) / 100 : 0
+  const totals = sampleTotals(!!values?.vat_registered, vat)
+  const locale = `${language}-${countryCode}`
+  const rate = (Number(totals.rate) / 100).toLocaleString(locale, { maximumFractionDigits: 2 })
   const country = COUNTRY_OPTIONS.find((option) => option.value === values?.country)?.label
   const iban = values && ibanInfo(values.iban)
   const place = [values?.zip, values?.city].filter(Boolean).join(' ')
@@ -117,15 +154,21 @@ export function InvoicePreview({ values, logo }: { values: Values | null; logo: 
             </span>
           </p>
         ))}
-        {values?.vat_registered && (
+        {values?.vat_registered && vat && (
           <p className="flex justify-between gap-4 text-neutral-500">
-            <span>{words.vat} 8.1%</span>
-            <span className="tabular-nums">{money(vat, currency, language, countryCode)}</span>
+            <span>
+              {totals.inclusive ? words.vatIncluded : words.vat} {rate}%
+            </span>
+            <span className="tabular-nums">
+              {money(Number(totals.vat) / 100, currency, language, countryCode)}
+            </span>
           </p>
         )}
         <p className="mt-1 flex justify-between gap-4 border-t border-neutral-200 pt-2 font-semibold">
           <span>{words.total}</span>
-          <span className="tabular-nums">{money(net + vat, currency, language, countryCode)}</span>
+          <span className="tabular-nums">
+            {money(Number(totals.total) / 100, currency, language, countryCode)}
+          </span>
         </p>
       </div>
       <p className="mt-3 text-neutral-500">{words.terms(days)}</p>

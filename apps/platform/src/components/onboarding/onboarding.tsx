@@ -432,7 +432,7 @@ export function WelcomePage({ session }: { session: Session }) {
               {translate('whatYouFillInOnTheLeftIsWhat')}
             </p>
           </div>
-          <InvoicePreview values={values} logo={logo} />
+          <InvoicePreview values={values} logo={logo} vat={settings.data} />
         </aside>
       )}
     </div>
