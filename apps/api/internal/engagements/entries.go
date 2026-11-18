@@ -33,6 +33,9 @@ func (s *Service) registerEntries(mux *http.ServeMux) {
 	handle("PATCH /api/v1/engagements/{id}/entries/{entry_id}", s.updateEntry)
 	handle("DELETE /api/v1/engagements/{id}/entries/{entry_id}", s.deleteEntry)
 	handle("POST /api/v1/engagements/{id}/periods/{period_id}/invoice", s.invoicePeriod)
+	handle("POST /api/v1/engagements/{id}/invoices", s.linkInvoice)
+	handle("DELETE /api/v1/engagements/{id}/invoices/{invoice_id}", s.unlinkInvoice)
+	handle("GET /api/v1/invoices/{id}/engagement", s.engagementOfInvoice)
 }
 
 func (s *Service) listEntries(w http.ResponseWriter, r *http.Request, sess store.Session) error {

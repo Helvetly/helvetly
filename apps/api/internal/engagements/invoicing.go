@@ -3,6 +3,7 @@ package engagements
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strconv"
@@ -209,4 +210,110 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 func line(e store.Engagement, description string, qty invoicecalc.Quantity, price invoicecalc.Money) store.InvoiceLine {
 	return store.InvoiceLine{Description: strings.TrimSpace(description), Quantity: qty, Unit: e.Unit, UnitPrice: price,
 		VATCategory: e.VATCategory, VATRate: e.VATRate}
+}
+
+var (
+	errInvoiceLinked  = auth.Error(http.StatusConflict, "invoice_linked", "This invoice already belongs to an engagement.", nil)
+	errUnlinkInvoiced = auth.Error(http.StatusConflict, "invoice_covers_entries", "This invoice was made from entries: void it instead.", nil)
+)
+
+// linkInvoice attaches an invoice that already exists to the period of the engagement it falls in: the period of its
+// service date, else of its issue date. Like an invoice the period made itself, it stops an advance draft twin.
+func (s *Service) linkInvoice(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	var body map[string]json.RawMessage
+	if !s.auth.Decode(w, r, &body) {
+		return nil
+	}
+	for k := range body {
+		if k != "invoice_id" {
+			return badRequest("Unknown field " + strconv.Quote(k) + ".")
+		}
+	}
+	var invoiceID string
+	_ = json.Unmarshal(body["invoice_id"], &invoiceID)
+	ctx, ws := r.Context(), sess.Workspace.ID
+	var out Period
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		e, err := q.Engagement(ctx, ws, r.PathValue("id"), true)
+		if err != nil {
+			return err
+		}
+		inv, err := q.LinkableInvoice(ctx, ws, invoiceID)
+		if errors.Is(err, store.ErrNotFound) || err == nil && (inv.ClientID != e.ClientID || inv.Status == "void") {
+			return validationFailed(map[string]string{"invoice_id": "Choose an invoice of this engagement's client that is not void."})
+		}
+		if err != nil {
+			return err
+		}
+		if inv.Linked {
+			return errInvoiceLinked
+		}
+		v, err := s.view(ctx, q, e, s.today(sess.Workspace))
+		if err != nil {
+			return err
+		}
+		contains := func(d string) int {
+			return slices.IndexFunc(v.periods, func(p PeriodSummary) bool { return d != "" && p.StartsOn <= d && d <= p.EndsOn })
+		}
+		i := contains(inv.ServiceDate)
+		if i < 0 {
+			i = contains(inv.IssueDate)
+		}
+		if i < 0 {
+			return validationFailed(map[string]string{"invoice_id": "The invoice's service or issue date is outside every period of this engagement."})
+		}
+		p, kind := v.periods[i], "usage" // shortcut: usage entries are not linked to the invoice, upgrade when the UI must show what it covers
+		if e.Billing == "advance" && p.AdvanceInvoice == nil {
+			kind = "advance"
+		}
+		if err := q.LinkPeriodInvoice(ctx, p.ID, invoiceID, kind); err != nil {
+			return err
+		}
+		v, err = s.view(ctx, q, e, s.today(sess.Workspace))
+		if err != nil {
+			return err
+		}
+		out, err = periodView(ctx, q, v.periods[slices.IndexFunc(v.periods, func(x PeriodSummary) bool { return x.ID == p.ID })])
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusCreated, data(map[string]any{"invoice_id": invoiceID, "period": out}))
+	return nil
+}
+
+// unlinkInvoice undoes linkInvoice. An invoice that carries entries (made by invoicing a period's usage) stays linked.
+func (s *Service) unlinkInvoice(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	ctx := r.Context()
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		e, err := q.Engagement(ctx, sess.Workspace.ID, r.PathValue("id"), true)
+		if err != nil {
+			return err
+		}
+		ok, err := q.UnlinkPeriodInvoice(ctx, e.ID, r.PathValue("invoice_id"))
+		if err == nil && !ok {
+			err = errUnlinkInvoiced
+		}
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// engagementOfInvoice names the engagement an invoice is linked to, null when there is none.
+func (s *Service) engagementOfInvoice(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	id, title, err := s.db.EngagementOfInvoice(r.Context(), sess.Workspace.ID, r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
+		auth.WriteJSON(w, http.StatusOK, data(nil))
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]string{"id": id, "title": title}))
+	return nil
 }

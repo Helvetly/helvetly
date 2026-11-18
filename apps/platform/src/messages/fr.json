@@ -4366,5 +4366,17 @@
   "importCellPrice": "Prix",
   "importCellSchedule": "Rythme",
   "importPaidByInstalments": "{paid} payés par {count} échéances sur {total}, chacune à sa date.",
-  "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant."
+  "importFoundNotYours": "Trouvé dans le document, pas encore dans vos clients. Créez-le avec ces informations ou choisissez un client existant.",
+  "alreadyInvoiced": "Déjà facturé",
+  "alreadyInvoicedTip": "Une facture déjà établie pour ce client. Elle compte comme facture de cet engagement pour la période de sa date de prestation, aucune seconde n’est créée.",
+  "chooseAnInvoice": "Choisir une facture",
+  "noInvoicesToLink": "Aucune facture sans engagement",
+  "chooseAClientFirst": "Choisissez d’abord un client",
+  "invoiceNotLinked": "Créé, mais la facture n’a pas pu être liée : {message}",
+  "chooseAnEngagement": "Choisir un engagement",
+  "noActiveEngagements": "Aucun engagement actif",
+  "removeFromEngagement": "Détacher de l’engagement",
+  "engagementLinkTip": "Compte cette facture comme facturée dans l’engagement, pour la période de sa date de prestation.",
+  "linkedTo": "Liée à {title}.",
+  "removedFromTheEngagement": "Détachée de l’engagement."
 }

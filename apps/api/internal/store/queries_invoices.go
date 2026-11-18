@@ -757,6 +757,7 @@ type InvoiceFilter struct {
 	IssuedFrom string
 	IssuedTo   string
 	IDs        []string
+	Unlinked   bool   // not linked to any engagement
 	Sort       string // a key of InvoiceSorts, "-" prefixed for descending; "" for the default
 }
 
@@ -800,6 +801,9 @@ func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
 	}
 	if f.IssuedTo != "" {
 		conds = append(conds, "i.issue_date <= "+arg(f.IssuedTo)+"::date")
+	}
+	if f.Unlinked {
+		conds = append(conds, "NOT EXISTS (SELECT 1 FROM engagement_invoices ei WHERE ei.invoice_id = i.id)")
 	}
 	if len(f.IDs) > 0 {
 		conds = append(conds, "i.id = ANY("+arg(f.IDs)+")")

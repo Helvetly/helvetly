@@ -277,3 +277,46 @@ test("picking a client applies that client's habits to fields not changed yet", 
   expect(screen.getByRole('radio', { name: 'Recurring' })).toBeChecked()
   localStorage.clear()
 })
+
+test('an invoice picked under "Already invoiced" is linked after the engagement is created, and a refusal keeps the engagement', async () => {
+  const calls: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const url = String(input)
+      calls.push(`${init?.method ?? 'GET'} ${url}`)
+      if (url.includes('/clients/'))
+        return Response.json({ data: { id: 'cli_1', name: 'Muster AG' } })
+      if (url.endsWith('/engagements'))
+        return Response.json({ data: { id: 'eng_1', title: 'Lessons' } }, { status: 201 })
+      if (url.endsWith('/engagements/eng_1/invoices'))
+        return Response.json(
+          { error: { code: 'validation_failed', message: 'Outside every period.' } },
+          { status: 422 },
+        )
+      const invoice = {
+        id: 'inv_1',
+        number: '2026-001',
+        issue_date: '2026-11-02',
+        currency: 'CHF',
+        total: '120.00',
+      }
+      return Response.json({
+        data: url.includes('/invoices?') ? [invoice] : [],
+        meta: { page: 1, total: 1 },
+      })
+    }),
+  )
+  const onOpenChange = await renderForm()
+  await userEvent.click(await screen.findByRole('button', { name: /^Already invoiced/ }))
+  await userEvent.click(await screen.findByText('2026-001'))
+  await userEvent.type(screen.getByRole('textbox', { name: /Title/ }), 'Lessons')
+  await userEvent.type(screen.getByRole('textbox', { name: /Quantity/ }), '30')
+  await userEvent.type(screen.getByRole('textbox', { name: /Price per/ }), '120')
+  fireEvent.change(screen.getByLabelText(/^Ends/), { target: { value: '2027-03-31' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Create engagement' }))
+  await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  expect(calls.some((c) => c.startsWith('POST') && c.endsWith('/engagements/eng_1/invoices'))).toBe(
+    true,
+  )
+})

@@ -1,8 +1,10 @@
 // Engagements, typed by hand from docs/engagements-contract.md.
+import { useQuery } from '@tanstack/react-query'
+
 import { request } from '@/lib/api'
 import type { Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import type { Decimal, Unit, VatCategory } from '@/lib/invoices'
+import { invoicesApi, type Decimal, type Unit, type VatCategory } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
 
 export type InvoiceLink = {
@@ -211,6 +213,50 @@ export const invoicePeriod = (
     `${path(id)}/periods/${encodeURIComponent(periodId)}/invoice`,
     { method: 'POST', json: body },
   )
+
+/** Attaches an existing invoice to the period of the engagement its service (else issue) date falls in. */
+export const linkInvoice = (id: string, invoiceId: string) =>
+  request<{ data: { invoice_id: string; period: Period } }>(`${path(id)}/invoices`, {
+    method: 'POST',
+    json: { invoice_id: invoiceId },
+  })
+export const unlinkInvoice = (id: string, invoiceId: string) =>
+  request<void>(`${path(id)}/invoices/${encodeURIComponent(invoiceId)}`, { method: 'DELETE' })
+
+export type LinkedEngagement = { id: string; title: string }
+/** The engagement an invoice belongs to, null when none. */
+export function useInvoiceEngagement(invoiceId: string | null) {
+  return useQuery({
+    queryKey: [...queryKeys.engagements, 'of-invoice', invoiceId],
+    queryFn: async () =>
+      (await request<{ data: LinkedEngagement | null }>(`/invoices/${invoiceId}/engagement`)).data,
+    enabled: invoiceId !== null,
+  })
+}
+
+/** The client's engagements that still run, to attach an invoice to. */
+export function useClientEngagements(clientId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.engagements, 'of-client', clientId],
+    queryFn: async () => (await listEngagements({ client_id: clientId, page_size: 100 })).data,
+    enabled: clientId !== '',
+  })
+}
+
+/** The client's open or paid invoices that belong to no engagement yet, newest first. */
+export function useUnlinkedInvoices(clientId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.engagements, 'unlinked-invoices', clientId],
+    queryFn: async () => {
+      const query = new URLSearchParams({ client_id: clientId, unlinked: '1', kind: 'invoice' })
+      for (const status of ['draft', 'open', 'paid', 'overdue']) query.append('status', status)
+      query.set('page_size', '100')
+      query.set('sort', '-issue_date')
+      return (await invoicesApi.list(query)).data
+    },
+    enabled: clientId !== '',
+  })
+}
 
 /** A decimal string as integer thousandths, so comparisons are exact. */
 function milli(value: Decimal): number {
