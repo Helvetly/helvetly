@@ -4451,5 +4451,7 @@
   "paidWithInvoice": "Payé avec la facture",
   "paidSeparatelyNextStep": "Rien n'est facturé depuis ce mandat : vous saisissez le travail sur ce qui a été payé.",
   "enterAPriceAbove0": "Saisissez un prix supérieur à 0 ou choisissez « Payé séparément »",
-  "detailsSectionText": "Facultatif, pour vos dossiers et la facture."
+  "detailsSectionText": "Facultatif, pour vos dossiers et la facture.",
+  "emailSubjectRequired": "Saisissez un objet.",
+  "emailMessageRequired": "Écrivez un message."
 }

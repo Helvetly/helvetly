@@ -111,7 +111,7 @@ test('userEditsAreNotOverwrittenByRefetch', async () => {
 test.each([
   ['invoice', 'invoices/:id'],
   ['quote', 'quotes/:id'],
-] as const)('draftErrorFallsBackToEmptyFields (%s)', async (kind, route) => {
+] as const)('draftErrorLeavesTheFieldsToFill (%s)', async (kind, route) => {
   const posted = open(kind, [
     http.get(`/api/v1/${route}/email`, () =>
       HttpResponse.json({ error: { code: 'internal', message: 'No.' } }, { status: 500 }),
@@ -121,7 +121,14 @@ test.each([
   expect(field(/^Subject/)).toHaveValue('')
   expect(field(/^Message/)).toHaveValue('')
   await userEvent.type(field(/^To/), 'a@b.ch')
+  // Subject and message are required: nothing goes out empty.
+  await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+  expect(await screen.findByText('Enter a subject.')).toBeInTheDocument()
+  expect(screen.getByText('Write a message.')).toBeInTheDocument()
+  expect(posted.body).toBeNull()
+  await userEvent.type(field(/^Subject/), 'Your invoice')
+  await userEvent.type(field(/^Message/), 'Hello')
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
   await vi.waitFor(() => expect(posted.body).not.toBeNull())
-  expect(posted.body).toEqual({ to: ['a@b.ch'] })
+  expect(posted.body).toEqual({ to: ['a@b.ch'], subject: 'Your invoice', message: 'Hello' })
 })

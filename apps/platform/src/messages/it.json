@@ -4451,5 +4451,7 @@
   "paidWithInvoice": "Pagato con la fattura",
   "paidSeparatelyNextStep": "Da questo incarico non si fattura nulla: registri il lavoro rispetto a quanto pagato.",
   "enterAPriceAbove0": "Inserisci un prezzo superiore a 0 o scegli «Pagato a parte»",
-  "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura."
+  "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura.",
+  "emailSubjectRequired": "Inserisci un oggetto.",
+  "emailMessageRequired": "Scrivi un messaggio."
 }
