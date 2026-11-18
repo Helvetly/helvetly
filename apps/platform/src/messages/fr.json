@@ -4455,5 +4455,7 @@
   "emailMessageRequired": "Écrivez un message.",
   "aiWriteErrorUnavailable": "« Écrire avec l'IA » n'est pas encore disponible sur ce serveur.",
   "aiWriteErrorNetwork": "Helvetly est injoignable. Vérifiez votre connexion et réessayez.",
-  "tagShape": "Les tags utilisent les lettres a–z, des chiffres et des traits d’union (ni au début ni à la fin), 32 caractères au plus."
+  "tagShape": "Les tags utilisent les lettres a–z, des chiffres et des traits d’union (ni au début ni à la fin), 32 caractères au plus.",
+  "hideEngagement": "Masquer la ligne du mandat",
+  "hideContractNumber": "Retirer le numéro de contrat"
 }

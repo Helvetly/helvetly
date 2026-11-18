@@ -4455,5 +4455,7 @@
   "emailMessageRequired": "Write a message.",
   "aiWriteErrorUnavailable": "Write with AI isn't available on this server yet.",
   "aiWriteErrorNetwork": "Couldn't reach Helvetly. Check your connection and try again.",
-  "tagShape": "Tags use letters a–z, digits and hyphens (not first or last), up to 32 characters."
+  "tagShape": "Tags use letters a–z, digits and hyphens (not first or last), up to 32 characters.",
+  "hideEngagement": "Hide the engagement row",
+  "hideContractNumber": "Remove the contract number"
 }
