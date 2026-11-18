@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -9,8 +10,7 @@ import { useState } from 'react'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { inputClass } from '@/components/clients/fields'
-import { aiWrite, type AIWriteAction, type AIWriteField } from '@/lib/ai-write'
-import { errorMessage } from '@/lib/api'
+import { aiWrite, aiWriteError, type AIWriteAction, type AIWriteField } from '@/lib/ai-write'
 import { translate } from '@/lib/i18n'
 
 const QUICK: { action: Exclude<AIWriteAction, 'draft' | 'custom'>; label: () => string }[] = [
@@ -94,7 +94,11 @@ export function AIWrite({
           {translate('aiWriteButton')}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-[min(400px,calc(100vw-2rem))] gap-3 p-3">
+      <PopoverContent
+        align="start"
+        aria-label={translate('aiWriteButton')}
+        className="grid w-[min(400px,calc(100vw-2rem))] gap-3 p-3"
+      >
         {write.data !== undefined ? (
           <>
             <p className="text-caption font-medium text-muted-foreground">
@@ -194,9 +198,26 @@ export function AIWrite({
               </Button>
             </form>
             {write.error && (
-              <p role="alert" className="text-caption text-destructive">
-                {errorMessage(write.error)}
-              </p>
+              <Callout
+                role="alert"
+                tone="danger"
+                className="text-body-sm"
+                actions={
+                  aiWriteError(write.error).retry &&
+                  last && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => void run(last.action, last.instruction)}
+                    >
+                      {translate('tryAgain')}
+                    </Button>
+                  )
+                }
+              >
+                {aiWriteError(write.error).message}
+              </Callout>
             )}
             <p className="text-caption text-muted-foreground">{translate('aiWriteNote')}</p>
           </>

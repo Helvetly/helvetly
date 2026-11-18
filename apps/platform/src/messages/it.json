@@ -4453,5 +4453,7 @@
   "enterAPriceAbove0": "Inserisci un prezzo superiore a 0 o scegli «Pagato a parte»",
   "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura.",
   "emailSubjectRequired": "Inserisci un oggetto.",
-  "emailMessageRequired": "Scrivi un messaggio."
+  "emailMessageRequired": "Scrivi un messaggio.",
+  "aiWriteErrorUnavailable": "«Scrivi con l'IA» non è ancora disponibile su questo server.",
+  "aiWriteErrorNetwork": "Helvetly non è raggiungibile. Controlla la connessione e riprova."
 }

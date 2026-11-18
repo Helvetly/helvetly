@@ -4453,5 +4453,7 @@
   "enterAPriceAbove0": "Geben Sie einen Preis über 0 ein oder wählen Sie «Separat bezahlt»",
   "detailsSectionText": "Optional, für Ihre Unterlagen und die Rechnung.",
   "emailSubjectRequired": "Geben Sie einen Betreff ein.",
-  "emailMessageRequired": "Schreiben Sie eine Nachricht."
+  "emailMessageRequired": "Schreiben Sie eine Nachricht.",
+  "aiWriteErrorUnavailable": "«Mit KI schreiben» ist auf diesem Server noch nicht verfügbar.",
+  "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut."
 }

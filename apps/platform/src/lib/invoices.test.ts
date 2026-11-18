@@ -43,6 +43,7 @@ import {
   settingsFrom,
   toCents,
   usableMethods,
+  repeatsAmount,
 } from './invoices'
 
 test('reads the list state from the URL and ignores what it does not know', () => {
@@ -407,4 +408,15 @@ test('preset number formats follow the seller country; every preset is valid', (
     expect(numberFormatsFor(country)).toHaveLength(4)
     for (const format of numberFormatsFor(country)) expect(numberFormatError(format)).toBeNull()
   }
+})
+
+describe('repeatsAmount', () => {
+  const line = { quantity: '1.000', unit: null, discount_percent: '0' }
+  it('is true for one plain line without VAT', () => expect(repeatsAmount(line, 'none')).toBe(true))
+  it('is false when the meta row says more', () => {
+    expect(repeatsAmount({ ...line, quantity: '2' }, 'none')).toBe(false)
+    expect(repeatsAmount({ ...line, unit: 'hour' }, 'none')).toBe(false)
+    expect(repeatsAmount({ ...line, discount_percent: '10' }, 'none')).toBe(false)
+    expect(repeatsAmount(line, 'exclusive')).toBe(false)
+  })
 })
