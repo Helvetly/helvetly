@@ -46,6 +46,7 @@ import {
   useInvoiceSettings,
   type InvoiceSettings,
 } from '@/lib/invoices'
+import { typedPercent } from '@/lib/percent'
 import { useSession } from '@/lib/queries'
 import { quoteNumber, useSaveQuote, type Quote } from '@/lib/quotes'
 
@@ -216,6 +217,7 @@ function Editor({
   }, [previewJson])
   const preview = useInvoicePreview(previewing)
   const totals = preview.data
+  const previewFailed = preview.isError && !totals
 
   const set = <K extends keyof QuoteValues>(field: K, value: QuoteValues[K]) =>
     setValues((current) => ({ ...current, [field]: value }))
@@ -426,6 +428,7 @@ function Editor({
                       vatMode={values.vat_mode}
                       defaultRate={settings.default_vat_rate}
                       amounts={totals?.lines.map((line) => line.amount)}
+                      amountsFailed={previewFailed}
                       errors={errors}
                       onChange={(lines) => set('lines', lines)}
                       currency={values.currency}
@@ -441,6 +444,7 @@ function Editor({
                     )}
                   >
                     <TotalLine
+                      failed={previewFailed}
                       label={translate('subtotal')}
                       value={totals ? formatAmount(totals.subtotal) : null}
                     />
@@ -453,7 +457,12 @@ function Editor({
                             aria-invalid={errors.discount_percent ? true : undefined}
                             inputMode="decimal"
                             value={values.discount_percent}
-                            onChange={(event) => set('discount_percent', event.target.value)}
+                            onChange={(event) =>
+                              set(
+                                'discount_percent',
+                                typedPercent(event.target.value, values.discount_percent),
+                              )
+                            }
                             placeholder="0"
                             className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
                           />

@@ -237,6 +237,9 @@ type Converted = { input: Partial<InvoiceInput>; errors: EditorErrors; keys: str
  * line keys in the order they were sent (to map the server's `lines.N.field` errors back).
  * `forPreview` sends every line, blank ones too, so the amounts line up with the rows.
  */
+/** The largest unit price the API accepts (100'000'000.00). */
+const MAX_PRICE = 100_000_000
+
 export function toInput(values: EditorValues, forPreview = false): Converted {
   const errors: EditorErrors = {}
   const keys: string[] = []
@@ -251,6 +254,8 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
       errors[`${line.key}.quantity`] = translate('aNumberLike1Or25')
     if (price === null || price.startsWith('-'))
       errors[`${line.key}.unit_price`] = translate('aPriceLike12000')
+    // The API's limit: a larger price is refused, also by the totals preview.
+    else if (Number(price) > MAX_PRICE) errors[`${line.key}.unit_price`] = translate('priceAtMost')
     if (discount === null || discount.startsWith('-') || Number(discount) > 100)
       errors[`${line.key}.discount_percent`] = translate('from0To100')
     if (rate === null || Number(rate) > 100)

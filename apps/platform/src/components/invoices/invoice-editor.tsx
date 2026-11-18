@@ -90,6 +90,7 @@ import {
   type IssueReason,
   type InvoiceSettings,
 } from '@/lib/invoices'
+import { typedPercent } from '@/lib/percent'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
@@ -108,6 +109,7 @@ import {
   applyClient,
   changeVatMode,
   emptyValues,
+  isBlankLine,
   LANGUAGE_CHOICES,
   reasonTarget,
   serverErrors,
@@ -245,12 +247,15 @@ function InvoiceEditorLoader({
 function EditorBar({
   title,
   kind = 'invoice',
+  status,
   menu,
   actions,
   onClose,
 }: {
   title: string
   kind?: InvoiceKind
+  /** Before the menu, so the menu sits next to the document's actions. */
+  status?: ReactNode
   menu?: ReactNode
   actions?: ReactNode
   onClose: () => void
@@ -261,13 +266,19 @@ function EditorBar({
       <Icon className="ml-1 size-4 shrink-0 text-muted-foreground" />
       <h2 className="min-w-0 truncate text-body font-medium">{title}</h2>
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        {status}
         {menu && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={translate('more')}>
-                <Ellipsis />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label={translate('more')}>
+                    <Ellipsis />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{translate('more')}</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end" className="min-w-52">
               {menu}
             </DropdownMenuContent>
@@ -475,6 +486,10 @@ function Editor({
   const dirty = payload !== savedPayload
   const [initialPayload] = useState(payload)
   const errors = { ...fromServer, ...converted.errors }
+  // The PDF says nothing useful before it names who pays and for what.
+  const canPreview = Boolean(
+    draftId && values.client_id && values.lines.some((line) => !isBlankLine(line)),
+  )
 
   // Totals: the server's preview of what is on screen, a moment after typing stops.
   const forPreview = toInput(sendable, true)
@@ -489,6 +504,7 @@ function Editor({
   const preview = useInvoicePreview(previewInput)
   const totals = preview.data
   const amounts = totals?.lines.map((line) => line.amount)
+  const previewFailed = preview.isError && !totals
 
   const set = <K extends keyof EditorValues>(field: K, value: EditorValues[K]) =>
     setValues((current) => ({ ...current, [field]: value }))
@@ -603,7 +619,7 @@ function Editor({
   const saveShortcut = useEffectEvent((event: KeyboardEvent) => {
     if (!(event.metaKey || event.ctrlKey)) return
     // ⌘P shows our PDF instead of printing the editor page.
-    if (event.key === 'p' && draftId) {
+    if (event.key === 'p' && canPreview) {
       event.preventDefault()
       return setPreviewing(true)
     }
@@ -729,16 +745,16 @@ function Editor({
             <Trash2 /> {draftId ? translate('deleteDraft2') : translate('discard')}
           </DropdownMenuItem>
         }
+        status={<SaveIndicator state={saveState} onRetry={() => void persist().catch(() => {})} />}
         actions={
           <>
-            <SaveIndicator state={saveState} onRetry={() => void persist().catch(() => {})} />
             <Tooltip>
               <TooltipTrigger asChild>
                 {/* A span keeps the tooltip working while the button is disabled. */}
-                <span tabIndex={draftId ? undefined : 0}>
+                <span tabIndex={canPreview ? undefined : 0}>
                   <Button
                     variant="ghost"
-                    disabled={!draftId}
+                    disabled={!canPreview}
                     className="gap-1.5 text-muted-foreground"
                     onClick={() => setPreviewing(true)}
                   >
@@ -749,13 +765,13 @@ function Editor({
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                {draftId ? (
+                {canPreview ? (
                   <span className="flex items-center gap-2">
                     {translate('thePDFAsItWillPrint')}
                     <Kbd>{translate('p')}</Kbd>
                   </span>
                 ) : (
-                  translate('chooseAClientFirstThePDFShowsOnceThe')
+                  translate('previewNeedsClientAndLine')
                 )}
               </TooltipContent>
             </Tooltip>
@@ -1152,6 +1168,7 @@ function Editor({
                     vatMode={values.vat_mode}
                     defaultRate={settings.default_vat_rate}
                     amounts={amounts}
+                    amountsFailed={previewFailed}
                     errors={errors}
                     onChange={(lines) => set('lines', lines)}
                     currency={values.currency}
@@ -1173,6 +1190,7 @@ function Editor({
                     )}
                   >
                     <TotalLine
+                      failed={previewFailed}
                       label={translate('subtotal')}
                       value={totals ? formatAmount(totals.subtotal) : null}
                     />
@@ -1187,7 +1205,12 @@ function Editor({
                             inputMode="decimal"
                             disabled={credit}
                             value={values.discount_percent}
-                            onChange={(event) => set('discount_percent', event.target.value)}
+                            onChange={(event) =>
+                              set(
+                                'discount_percent',
+                                typedPercent(event.target.value, values.discount_percent),
+                              )
+                            }
                             placeholder="0"
                             className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
                           />
@@ -1248,6 +1271,7 @@ function Editor({
                       ))}
                     {prepaid && (
                       <TotalLine
+                        failed={previewFailed}
                         label={translate('amountDue2', { currency: values.currency })}
                         value={amountDue === null ? null : formatAmount(amountDue)}
                       />

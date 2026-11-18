@@ -16,14 +16,15 @@ export default meta
 type Story = StoryObj<typeof meta>
 const blank = () => newLine({ vat_mode: 'exclusive' }, '8.1')
 
-function Editor({ initial }: { initial: EditorLine[] }) {
+function Editor({ initial, failed = false }: { initial: EditorLine[]; failed?: boolean }) {
   const [lines, setLines] = useState(initial)
   return (
     <LinesEditor
       lines={lines}
       vatMode="exclusive"
       defaultRate="8.1"
-      amounts={lines.map(() => '0.00')}
+      amounts={failed ? undefined : lines.map(() => '0.00')}
+      amountsFailed={failed}
       errors={{}}
       onChange={setLines}
       currency="CHF"
@@ -93,5 +94,35 @@ export const ForeignPriceRequiresRepricing: Story = {
     await expect(price).toHaveAttribute('aria-invalid', 'true')
     await userEvent.type(price, '95')
     await expect(canvas.queryByText('Priced in EUR. Enter the CHF price.')).not.toBeInTheDocument()
+  },
+}
+
+/** A line discount takes only 0 to 100 with up to two decimals, and shows its % sign. */
+export const DiscountIsAPercent: Story = {
+  render: () => (
+    <Editor
+      initial={[{ ...blank(), description: 'Design', unit_price: '100', discount_percent: '5' }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const discount = canvas.getByLabelText('Line 1 discount percent')
+    await expect(discount.parentElement).toHaveTextContent('%')
+    await userEvent.clear(discount)
+    await userEvent.type(discount, 'ss12.345')
+    await expect(discount).toHaveValue('12.34')
+    await userEvent.clear(discount)
+    await userEvent.type(discount, '101')
+    await expect(discount).toHaveValue('10')
+  },
+}
+
+/** When the totals cannot be loaded, the amount shows a dash instead of spinning for ever. */
+export const AmountsFailed: Story = {
+  render: () => (
+    <Editor failed initial={[{ ...blank(), description: 'Design', unit_price: '100' }]} />
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('—')).toBeVisible()
   },
 }

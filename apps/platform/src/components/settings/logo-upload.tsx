@@ -221,7 +221,7 @@ export function LetterheadLogo({ url, canEdit }: { url: string | null; canEdit: 
           className="group relative -m-1.5 w-fit rounded-lg p-1.5 transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           {image}
-          <span className="absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded-md bg-card/95 px-1.5 py-0.5 text-[12px] text-muted-foreground opacity-0 shadow-xs transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="absolute right-1.5 bottom-1.5 flex items-center gap-1 rounded-md bg-card px-1.5 py-0.5 text-[12px] text-foreground/80 opacity-0 shadow-elevation-1 ring-1 ring-border transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
             {busy ? (
               <LoaderCircle className="size-3 animate-spin" />
             ) : (

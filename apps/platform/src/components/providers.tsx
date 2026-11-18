@@ -15,6 +15,7 @@ import { ApiError, setUnauthorizedHandler } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { toastForbidden } from '@/lib/permissions'
 import { loginHref } from '@/lib/safe'
+import { toastUnreachable } from '@/lib/unreachable'
 
 // A 4xx will answer the same on a retry; network errors and 5xx get two more tries.
 const retry = (count: number, error: Error) =>
@@ -27,14 +28,18 @@ export function Providers({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: { queries: { retry, staleTime: 30_000 } },
         // A refusal by the member's scopes is a toast, wherever it happens.
-        queryCache: new QueryCache({ onError: (error) => void toastForbidden(error) }),
+        // So is a server that does not answer, once the retries are spent.
+        queryCache: new QueryCache({
+          onError: (error) => void (toastForbidden(error) || toastUnreachable(error)),
+        }),
         // Any create that hits the plan's limit opens the one upgrade prompt.
         mutationCache: new MutationCache({
           onError: (error) =>
             void (
               promptUpgrade(error) ||
               toastPlanRequired(error, () => router.push('/settings/billing/plans')) ||
-              toastForbidden(error)
+              toastForbidden(error) ||
+              toastUnreachable(error)
             ),
         }),
       }),
