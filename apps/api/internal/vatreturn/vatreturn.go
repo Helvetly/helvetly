@@ -297,11 +297,12 @@ func monthsBetween(from, next string) int {
 
 func writeCSV(w http.ResponseWriter, rep Report) error {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="vat-return-`+rep.Period+`.csv"`)
+	// A spreadsheet carries no page around it: the name and a column say it is the Swiss return in CHF.
+	w.Header().Set("Content-Disposition", `attachment; filename="swiss-vat-return-`+rep.Period+`-`+rep.Currency+`.csv"`)
 	c := csv.NewWriter(w)
-	rows := [][]string{{"ziffer", "label_de", "label_en", "amount", "base", "rate", "tax", "sources"}}
+	rows := [][]string{{"ziffer", "label_de", "label_en", "amount", "base", "rate", "tax", "sources", "currency"}}
 	for _, l := range rep.Lines {
-		row := []string{l.Ziffer, l.LabelDE, l.LabelEN, l.Amount.String(), "", "", "", strconv.Itoa(l.Sources)}
+		row := []string{l.Ziffer, l.LabelDE, l.LabelEN, l.Amount.String(), "", "", "", strconv.Itoa(l.Sources), rep.Currency}
 		if l.Kind == "rate" {
 			row[3], row[4], row[5], row[6] = "", l.Base.String(), l.Rate.String(), l.Tax.String()
 		}

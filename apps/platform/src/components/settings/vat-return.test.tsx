@@ -112,7 +112,11 @@ function wrap(role: string, scopes = role === 'member' ? ['read:*'] : ['*:*']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
-  client.setQueryData(queryKeys.session, { role, scopes })
+  client.setQueryData(queryKeys.session, {
+    role,
+    scopes,
+    workspace: { id: 'wrk_test', name: 'Test AG', country: 'CH' },
+  })
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>

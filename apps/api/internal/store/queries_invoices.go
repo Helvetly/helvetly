@@ -244,6 +244,14 @@ func (q Q) InvoiceSettings(ctx context.Context, workspaceID string, v any) (bool
 	return true, json.Unmarshal(raw, v)
 }
 
+// SellerCountry: the business's country from its invoice settings; CH, the settings' own default, when none is saved.
+func (q Q) SellerCountry(ctx context.Context, workspaceID string) (string, error) {
+	var country string
+	err := q.db.QueryRow(ctx, `SELECT COALESCE(NULLIF((SELECT settings->'seller'->>'country' FROM invoice_settings
+		WHERE workspace_id = $1), ''), 'CH')`, workspaceID).Scan(&country)
+	return country, err
+}
+
 // LockInvoiceSettings serialises read-modify-write of one workspace's settings until the transaction ends.
 func (q Q) LockInvoiceSettings(ctx context.Context, workspaceID string) error {
 	_, err := q.db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "invoice-settings:"+workspaceID)

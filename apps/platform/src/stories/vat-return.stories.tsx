@@ -6,12 +6,16 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { VATReturnPage } from '@/components/settings/vat-return'
 import type { VATReturn, VATReturnLine, VATReturnSettings } from '@/lib/vat-return'
 
-const session = (role: string) => ({
+const session = (
+  role: string,
+  country = 'CH',
+  scopes = role === 'member' ? ['read:*'] : ['*:*'],
+) => ({
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
-  workspace: { id: 'wrk_story', name: 'Muster AG', timezone: 'Europe/Zurich' },
+  workspace: { id: 'wrk_story', name: 'Muster AG', timezone: 'Europe/Zurich', country },
   role,
   // a member here views the books but has no edit right on them
-  scopes: role === 'member' ? ['read:*'] : ['*:*'],
+  scopes,
   onboarded: true,
   csrf_token: 'storybook-only',
 })
@@ -165,8 +169,12 @@ const withResult = (input: string, payable: string, refund: string) => (data: VA
   ),
 })
 
-const handlers = (role: string, shape: (data: VATReturn) => VATReturn = (data) => data) => [
-  http.get('/api/v1/session', () => HttpResponse.json(session(role))),
+const handlers = (
+  role: string,
+  shape: (data: VATReturn) => VATReturn = (data) => data,
+  who = session(role),
+) => [
+  http.get('/api/v1/session', () => HttpResponse.json(who)),
   http.get('/api/v1/vat-return/settings', () =>
     HttpResponse.json({
       data: { method: 'effective', period: 'quarterly', basis: 'agreed', net_rates: [] },
@@ -271,6 +279,68 @@ export const Member: Story = {
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(menu.queryByRole('menu')).toBeNull())
   },
+}
+
+const SCOPE_NOTICE = /^Swiss VAT return in CHF/
+
+/** A Swiss business: the description says Swiss and CHF, and no extra notice sits above the figures. */
+export const SwissBusiness: Story = {
+  parameters: { msw: { handlers: handlers('owner') } },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement)
+    await page.findByRole('region', { name: CURRENT })
+    await expect(
+      page.getByText(/Swiss VAT return \(MWST-Abrechnung\) for the ESTV, in CHF/),
+    ).toBeVisible()
+    await expect(page.queryByText(SCOPE_NOTICE)).toBeNull()
+  },
+}
+
+/** A German business is told, above the settings and figures, that this is the Swiss return in CHF. */
+export const ForeignBusiness: Story = {
+  parameters: { msw: { handlers: handlers('owner', undefined, session('owner', 'DE')) } },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement)
+    const notice = (await page.findByText(SCOPE_NOTICE)).closest('[data-slot="callout"]')
+    await expect(notice).toHaveTextContent('Your business’s country is Germany')
+    await expect(notice).toHaveTextContent('Invoices and expenses not in CHF are left out.')
+    await expect(notice).toHaveTextContent('Choosing a country, language or EUR does not switch')
+    const current = await page.findByRole('region', { name: CURRENT })
+    const settle = page.getByRole('region', { name: 'How you settle VAT' })
+    for (const part of [settle, current])
+      expect(
+        notice && notice.compareDocumentPosition(part) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+  },
+}
+
+/** A member who reads the VAT return but not the invoice settings still gets the notice. */
+export const ForeignBusinessWithoutInvoiceSettings: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoice-settings', () =>
+          HttpResponse.json(
+            { error: { code: 'forbidden', message: 'No access' } },
+            { status: 403 },
+          ),
+        ),
+        ...handlers('member', undefined, session('member', 'DE', ['read:vat-return'])),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement)
+    await expect(await page.findByText(SCOPE_NOTICE)).toBeVisible()
+    await expect(
+      await page.findByText('View only: ask an owner or admin for edit access.'),
+    ).toBeVisible()
+  },
+}
+
+export const ForeignBusinessDark: Story = {
+  ...ForeignBusiness,
+  parameters: { ...ForeignBusiness.parameters, dark: true },
 }
 
 export const OwnerDark: Story = {

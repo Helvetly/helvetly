@@ -320,7 +320,8 @@ func TestSettingsAndFormats(t *testing.T) {
 	resp, raw = e.send(b, "GET", "/api/v1/vat-return?period=2026-Q3&format=csv", nil)
 	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/csv") ||
 		!strings.Contains(string(raw), "303,Normalsatz 8,1 %") && !strings.Contains(string(raw), `303,"Normalsatz 8,1 %`) ||
-		!strings.Contains(string(raw), ",1000.00,8.1,81.00,") {
+		!strings.Contains(string(raw), ",1000.00,8.1,81.00,") || !strings.HasPrefix(string(raw), "ziffer,label_de,label_en,amount,base,rate,tax,sources,currency\n") ||
+		!strings.Contains(string(raw), ",CHF\n") || !strings.Contains(resp.Header.Get("Content-Disposition"), `filename="swiss-vat-return-2026-Q3-CHF.csv"`) {
 		t.Errorf("csv: %d %s", resp.StatusCode, raw)
 	}
 	resp, raw = e.send(b, "GET", "/api/v1/vat-return?period=2026-Q3&format=pdf", nil)

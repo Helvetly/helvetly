@@ -44,6 +44,7 @@ import { BooksHeader } from '@/components/books/books-tabs'
 import { NativeSelect } from '@/components/clients/fields'
 import { fixCount, FixDialog, FixLink, FixList } from '@/components/fix-list'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
+import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { saveResponse } from '@/lib/invoice-download'
@@ -145,6 +146,7 @@ export function VATReturnPage() {
         title={translate('vatReturn')}
         description={translate('theFiguresOfTheESTVVATReturnMWSTAbrechnung')}
       >
+        <SwissScopeNotice area="vat-return" />
         {lock ? (
           <FeatureLockNotice lock={lock} kept={translate('vatOnYourInvoicesIsStillCalculatedIn')} />
         ) : settings.error ? (

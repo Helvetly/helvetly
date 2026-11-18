@@ -31,8 +31,17 @@ export type AuthConfig = {
 export type User = { id: string; email: string; name: string; avatar_url: string | null }
 export type Session = {
   user: User
-  /** `timezone`: the IANA name dates follow (optional only for older test fixtures). */
-  workspace: { id: string; name: string; timezone?: string; logo_url?: string | null }
+  /**
+   * `timezone`: the IANA name dates follow (optional only for older test fixtures). `country`: the business's
+   * country from the invoice settings' seller, CH when none is saved (missing from an older API).
+   */
+  workspace: {
+    id: string
+    name: string
+    timezone?: string
+    logo_url?: string | null
+    country?: string
+  }
   role: string
   /** What the person may use (`read:clients`, `*:*`); missing until the API sends it: everything. */
   scopes?: string[]

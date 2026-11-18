@@ -32,6 +32,7 @@ import {
 } from '@/components/clients/fields'
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   expensesApi,
@@ -969,6 +970,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               title={translate('inputTax')}
               description={translate('howMuchOfTheVATYouCanReclaim')}
             >
+              <SwissScopeNotice area="expenses" />
               <FormField
                 field="deductible_percent"
                 label={translate('reclaimableVAT')}

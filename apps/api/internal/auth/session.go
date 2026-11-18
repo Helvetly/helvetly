@@ -104,8 +104,14 @@ func (s *Service) SignedIn(next func(http.ResponseWriter, *http.Request, store.S
 	}
 }
 
-func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.Session) {
+func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	u := sess.User
+	// The business's country for every member, so Swiss-only modules can say so without reading invoice settings.
+	country, err := s.db.SellerCountry(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		s.WriteError(w, r, err)
+		return
+	}
 	// effective: owners and admins have every scope a "*" reaches, plus the HR areas they hold (permissions.EffectiveHR)
 	scopes := sess.Scopes
 	switch sess.Role {
@@ -121,7 +127,7 @@ func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.
 	WriteJSON(w, http.StatusOK, map[string]any{
 		"user": map[string]string{"id": u.ID, "email": u.Email, "name": u.Name, "avatar_url": u.AvatarURL},
 		"workspace": map[string]any{"id": sess.Workspace.ID, "name": sess.Workspace.Name, "timezone": sess.Workspace.Timezone,
-			"logo_url": store.WorkspaceLogoURL(sess.Workspace.ID, sess.Workspace.LogoFileID)},
+			"logo_url": store.WorkspaceLogoURL(sess.Workspace.ID, sess.Workspace.LogoFileID), "country": country},
 		"role":   sess.Role,
 		"scopes": scopes,
 		// false shows the welcome: only to the owner of a workspace that isn't set up yet.
