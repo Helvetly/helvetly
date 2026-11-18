@@ -79,8 +79,8 @@ export function DropZone({
           <Upload className="size-5 stroke-[1.5]" />
         </span>
         <div className="grid gap-1">
-          <p className="text-[15px] font-medium">{translate('importDropTitle')}</p>
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-title-sm font-medium">{translate('importDropTitle')}</p>
+          <p className="text-caption text-muted-foreground">
             {translate('importLimits', { count: MAX_IMPORT_FILES })}
           </p>
         </div>
@@ -95,7 +95,7 @@ export function DropZone({
           {IMPORT_TYPE_CHIPS.map((type) => (
             <li
               key={type}
-              className="rounded-md border bg-background px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-muted-foreground"
+              className="rounded-md border bg-background px-1.5 py-0.5 text-caption font-medium tracking-wide text-muted-foreground"
             >
               {type}
             </li>
@@ -167,14 +167,14 @@ export function ImportSteps({ suggests }: { suggests: string }) {
     <ol aria-label={translate('howImportWorks')} className="grid gap-3 sm:grid-cols-3">
       {steps.map((step, index) => (
         <li key={step.title} className="grid content-start gap-2 rounded-lg border p-3">
-          <span className="flex items-center gap-2 text-[13px] font-medium">
+          <span className="flex items-center gap-2 text-body-sm font-medium">
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground [&_svg]:size-3.5 [&_svg]:stroke-[1.75]">
               {step.icon}
             </span>
             <span className="sr-only">{index + 1}. </span>
             {step.title}
           </span>
-          <p className="text-[12.5px] text-pretty text-muted-foreground">{step.text}</p>
+          <p className="text-caption text-pretty text-muted-foreground">{step.text}</p>
         </li>
       ))}
     </ol>
