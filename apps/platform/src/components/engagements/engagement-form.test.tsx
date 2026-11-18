@@ -16,6 +16,7 @@ function stubApi(onEngagement: () => Response | Promise<Response>) {
     'fetch',
     vi.fn<typeof globalThis.fetch>(async (input) => {
       const url = String(input)
+      if (url.endsWith('/session')) return Response.json(session)
       if (url.includes('/engagements')) return onEngagement()
       if (url.includes('/clients/'))
         return Response.json({ data: { id: 'cli_1', name: 'Muster AG' } })
@@ -197,6 +198,13 @@ test('the side panel previews the list row with placeholders, then the real valu
 })
 
 const muster = { id: 'cli_1', name: 'Muster AG' } as const satisfies Partial<Client>
+const session: Session = {
+  user: { id: 'usr_1', email: 'a@b.ch', name: 'Anna', avatar_url: null },
+  workspace: { id: 'ws_1', name: 'Studio' },
+  role: 'owner',
+  onboarded: true,
+  csrf_token: 'csrf',
+}
 
 function renderNew(queryClient: QueryClient, clientId?: string) {
   render(
@@ -238,13 +246,6 @@ test('a new engagement waits for the workspace settings before taking its defaul
 })
 
 test("picking a client applies that client's habits to fields not changed yet", async () => {
-  const session: Session = {
-    user: { id: 'usr_1', email: 'a@b.ch', name: 'Anna', avatar_url: null },
-    workspace: { id: 'ws_1', name: 'Studio' },
-    role: 'owner',
-    onboarded: true,
-    csrf_token: 'csrf',
-  }
   const now = Date.now()
   localStorage.setItem(
     'helvetly.habits.usr_1.ws_1',

@@ -88,6 +88,7 @@ import {
   type IssueReason,
   type InvoiceSettings,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import type { Compose } from './compose'
@@ -399,6 +400,7 @@ function Editor({
   const [picking, setPicking] = useState(!values.client_id && !invoice)
   const [clientError, setClientError] = useState(false)
   const [engagementId, setEngagementId] = useState('') // chosen before the draft exists
+  const canLinkEngagement = useCan('write:engagements')
   const top = useRef<HTMLDivElement>(null)
 
   const save = useSaveInvoice()
@@ -923,22 +925,26 @@ function Editor({
                         className={quietValue}
                       />
                     </dd>
-                    <MetaLabel
-                      htmlFor="invoice-engagement"
-                      error={undefined}
-                      tip={translate('engagementLinkTip')}
-                    >
-                      {translate('engagement2')}
-                    </MetaLabel>
-                    <dd>
-                      <EngagementLink
-                        id="invoice-engagement"
-                        clientId={values.client_id ?? ''}
-                        invoiceId={draftId}
-                        pending={engagementId}
-                        onPendingChange={setEngagementId}
-                      />
-                    </dd>
+                    {canLinkEngagement && (
+                      <>
+                        <MetaLabel
+                          htmlFor="invoice-engagement"
+                          error={undefined}
+                          tip={translate('engagementLinkTip')}
+                        >
+                          {translate('engagement2')}
+                        </MetaLabel>
+                        <dd>
+                          <EngagementLink
+                            id="invoice-engagement"
+                            clientId={values.client_id ?? ''}
+                            invoiceId={draftId}
+                            pending={engagementId}
+                            onPendingChange={setEngagementId}
+                          />
+                        </dd>
+                      </>
+                    )}
                     {needsRonRate(client?.country, values.currency) && (
                       <>
                         <MetaLabel

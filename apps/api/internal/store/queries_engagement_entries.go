@@ -146,12 +146,13 @@ type LinkableInvoice struct {
 	Linked                 bool
 }
 
-// LinkableInvoice reads an invoice of the workspace for linking; ErrNotFound when it is not one of its own.
+// LinkableInvoice reads and locks an invoice of the workspace for linking, so two engagements cannot both take it;
+// ErrNotFound when it is not one of its own.
 func (q Q) LinkableInvoice(ctx context.Context, workspaceID, id string) (LinkableInvoice, error) {
 	var v LinkableInvoice
 	err := q.db.QueryRow(ctx, `SELECT i.client_id, i.status, coalesce(to_char(i.service_date, `+dateFmt+`), ''), to_char(i.issue_date, `+dateFmt+`),
 		EXISTS (SELECT 1 FROM engagement_invoices ei WHERE ei.invoice_id = i.id)
-		FROM invoices i WHERE i.id = $1 AND i.workspace_id = $2`, id, workspaceID).
+		FROM invoices i WHERE i.id = $1 AND i.workspace_id = $2 FOR UPDATE OF i`, id, workspaceID).
 		Scan(&v.ClientID, &v.Status, &v.ServiceDate, &v.IssueDate, &v.Linked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return v, ErrNotFound

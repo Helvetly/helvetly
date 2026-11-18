@@ -47,6 +47,7 @@ import {
   VAT_RATES,
   type VatCategory,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 import { queryKeys } from '@/lib/queries'
 
 import {
@@ -174,6 +175,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   const [discarding, setDiscarding] = useState(false)
   const [clientOpen, setClientOpen] = useState(false)
   const [invoiceId, setInvoiceId] = useState('')
+  const canLinkInvoice = useCan('write:invoices')
   const [descriptionOpened, setDescriptionOpened] = useState(false)
   const [overageOpened, setOverageOpened] = useState(false)
   const form = useRef<HTMLFormElement>(null)
@@ -371,7 +373,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     </PopoverContent>
                   </Popover>
                 </FormField>
-                {!engagement && values.client_id && (
+                {!engagement && values.client_id && canLinkInvoice && (
                   <SharedField
                     id="engagement-invoice"
                     label={translate('alreadyInvoiced')}
