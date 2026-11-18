@@ -5,6 +5,7 @@ import { ClientsPage } from '@/components/clients/clients-page'
 
 import { ringClipper } from '../focus-ring'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
   title: 'Pages/Clients',
@@ -126,4 +127,29 @@ export const DetailOpensInvoiceOnTop: Story = {
     )
     await expect(body.getAllByRole('dialog')).toHaveLength(1)
   },
+}
+
+/** A new workspace: next to its first action the empty list offers Import, and a drop anywhere works too. */
+export const Empty: Story = {
+  parameters: emptyList('/clients', '/api/v1/clients'),
+  play: emptyOffersImport('No clients yet'),
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** Files dropped anywhere on the page open its import with them chosen. */
+export const DropStartsImport: Story = {
+  parameters: emptyList('/clients', '/api/v1/clients'),
+  play: dropOpensImport(
+    'No clients yet',
+    'Drop to read these files into new clients',
+    'clients',
+    new File(['name,email\nKeller,info@keller.ch'], 'clients.csv', { type: 'text/csv' }),
+  ),
+}
+
+/** Whoever may only read has no drop target and no hint. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: readOnly('/clients'),
+  play: noDropTarget('Keller Holzbau AG', 'clients'),
 }

@@ -4455,5 +4455,10 @@
   "emailMessageRequired": "Écrivez un message.",
   "aiWriteErrorUnavailable": "« Écrire avec l'IA » n'est pas encore disponible sur ce serveur.",
   "aiWriteErrorNetwork": "Helvetly est injoignable. Vérifiez votre connexion et réessayez.",
-  "tagShape": "Les tags utilisent les lettres a–z, des chiffres et des traits d’union (ni au début ni à la fin), 32 caractères au plus."
+  "tagShape": "Les tags utilisent les lettres a–z, des chiffres et des traits d’union (ni au début ni à la fin), 32 caractères au plus.",
+  "dropToImportTheseInvoices": "Déposez pour importer ces factures",
+  "dropToReadTheseFilesIntoEngagements": "Déposez pour lire ces fichiers comme mandats",
+  "dropToReadTheseFilesIntoNewClients": "Déposez pour lire ces fichiers comme nouveaux clients",
+  "dropToReadTheseFilesIntoProductsAndServices": "Déposez pour lire ces fichiers comme produits et services",
+  "orDropFilesAnywhereOnThisPage": "ou déposez des fichiers n’importe où sur cette page"
 }

@@ -45,6 +45,7 @@ import {
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
 import { PageHeader } from '@/components/shell/page-header'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -454,6 +455,9 @@ export function EngagementsPage() {
   const access = { canWrite, canManage: role === 'owner' || role === 'admin' }
   const refresh = useRefreshEngagement()
   const exportLock = useFeatureLock('data_export')
+  const aiLock = useFeatureLock('ai_import')
+  const canImport = canWrite && !aiLock
+  const dropping = useImportDrop('engagements', canImport && !showForm && !editing && !openId)
   const act = useMutation({
     mutationFn: (run: () => Promise<unknown>) => run(),
     onSuccess: () => refresh(),
@@ -582,6 +586,7 @@ export function EngagementsPage() {
         }
       />
       {importDrawer.isOpen && <ImportDrawer kind="engagements" onClose={importDrawer.close} />}
+      {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoEngagements')} />}
       <KpiBand loading={!stats}>
         {stats && (
           <>
@@ -678,9 +683,19 @@ export function EngagementsPage() {
                 text={translate('agreeAQuantityOfWorkPerClientLogWhat')}
                 action={
                   canWrite && (
-                    <Button size="sm" className="cursor-pointer" onClick={() => setCreating(true)}>
-                      {translate('newEngagement2')}
-                    </Button>
+                    <EmptyImportActions
+                      importLabel={translate('import')}
+                      hint={translate('orDropFilesAnywhereOnThisPage')}
+                      onImport={canImport ? importDrawer.open : undefined}
+                    >
+                      <Button
+                        size="sm"
+                        className="cursor-pointer"
+                        onClick={() => setCreating(true)}
+                      >
+                        {translate('newEngagement2')}
+                      </Button>
+                    </EmptyImportActions>
                   )
                 }
               />

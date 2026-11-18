@@ -47,6 +47,7 @@ import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -368,6 +369,9 @@ export function ProductsPage() {
     })
   const archivedView = params.status === 'archived'
   const exportLock = useFeatureLock('data_export')
+  const aiLock = useFeatureLock('ai_import')
+  const canImport = canWrite && !aiLock
+  const dropping = useImportDrop('products', canImport && !formState && !openId)
   const selection = {
     count: selected.size,
     actions: bulkActions(canManage, archivedView, {
@@ -414,6 +418,7 @@ export function ProductsPage() {
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="products" onClose={importDrawer.close} />}
+      {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoProductsAndServices')} />}
       <PageContextMenu
         title={translate('productsServices')}
         primary={{ label: translate('newItem'), onSelect: () => setForm({}) }}
@@ -526,9 +531,15 @@ export function ProductsPage() {
                 text={translate('saveWhatYouSellOnceAndInvoiceLinesFill')}
                 action={
                   canWrite && (
-                    <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
-                      {translate('addProductOrService')}
-                    </Button>
+                    <EmptyImportActions
+                      importLabel={translate('import')}
+                      hint={translate('orDropFilesAnywhereOnThisPage')}
+                      onImport={canImport ? importDrawer.open : undefined}
+                    >
+                      <Button size="sm" className="cursor-pointer" onClick={() => setForm({})}>
+                        {translate('addProductOrService')}
+                      </Button>
+                    </EmptyImportActions>
                   )
                 }
               />

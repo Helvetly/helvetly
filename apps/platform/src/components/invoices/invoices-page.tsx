@@ -49,6 +49,7 @@ import {
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
 import {
   RecordDrawersContext,
@@ -390,6 +391,9 @@ export function InvoicesPage() {
   const active = INVOICE_KINDS.indexOf(kind)
   const selectTab = (index: number) => update({ kind: INVOICE_KINDS[index]?.kind })
   const exportLock = useFeatureLock('data_export')
+  const aiLock = useFeatureLock('ai_import')
+  const canImport = canWrite && !aiLock
+  const dropping = useImportDrop('invoices', canImport && !compose && !openId)
   const selection = {
     count: selected.size,
     actions: bulkActions(selectedDrafts.length, {
@@ -441,6 +445,7 @@ export function InvoicesPage() {
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="invoices" onClose={importDrawer.close} />}
+      {dropping && <DropOverlay title={translate('dropToImportTheseInvoices')} />}
       <PageContextMenu
         title={translate('invoices')}
         primary={{ label: translate('newInvoice'), onSelect: newInvoice }}
@@ -533,10 +538,19 @@ export function InvoicesPage() {
                 action={
                   canWrite &&
                   CREATABLE_KINDS.includes(params.kind) && (
-                    <Button size="sm" onClick={() => openEditor(params.kind)}>
-                      {translate('new2')}
-                      {locale === 'de' ? kind.label : kind.label.toLowerCase()}
-                    </Button>
+                    <EmptyImportActions
+                      importLabel={translate('import')}
+                      hint={translate('orDropFilesAnywhereOnThisPage')}
+                      // The import reads invoices; other kinds' tabs keep their own button only.
+                      onImport={
+                        canImport && params.kind === 'invoice' ? importDrawer.open : undefined
+                      }
+                    >
+                      <Button size="sm" onClick={() => openEditor(params.kind)}>
+                        {translate('new2')}
+                        {locale === 'de' ? kind.label : kind.label.toLowerCase()}
+                      </Button>
+                    </EmptyImportActions>
                   )
                 }
               />
