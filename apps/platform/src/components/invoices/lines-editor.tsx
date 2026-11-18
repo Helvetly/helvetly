@@ -460,7 +460,7 @@ export function LinesEditor({
                   placeholder="0"
                   className={cn(cellInput, 'pr-6 text-right')}
                 />
-                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[14px] text-muted-foreground">
+                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-muted-foreground">
                   %
                 </span>
               </span>
