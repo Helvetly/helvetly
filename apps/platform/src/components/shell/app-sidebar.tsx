@@ -9,6 +9,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { Kbd } from '@helvetly/ui/components/kbd'
 import {
   Sidebar,
   SidebarContent,
@@ -212,9 +213,7 @@ export function AppSidebar({ session }: { session: Session }) {
             >
               <Zap />
               <span>{translate('quickActions')}</span>
-              <kbd className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border border-[#d6d6d8] bg-transparent px-1 font-sans text-[10.5px] text-[#bdbdc0] group-data-[collapsible=icon]:hidden dark:border-border dark:text-muted-foreground">
-                /
-              </kbd>
+              <Kbd className="ml-auto group-data-[collapsible=icon]:hidden">/</Kbd>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

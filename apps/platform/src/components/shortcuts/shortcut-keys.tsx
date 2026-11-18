@@ -1,5 +1,5 @@
 'use client'
-import { Kbd, KbdGroup } from '@helvetly/ui/components/kbd'
+import { Kbd } from '@helvetly/ui/components/kbd'
 import { keyLabels, type Keys } from '@helvetly/ui/lib/shortcuts'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Fragment } from 'react'
@@ -13,17 +13,13 @@ const Word = ({ children }: { children: string }) => (
   </span>
 )
 
-/** One way to press a shortcut: keycaps per step, "then" between the steps of a sequence. */
+/** One way to press a shortcut: one keycap per step, "then" between the steps of a sequence. */
 function KeyCaps({ keys, apple }: { keys: Keys; apple: boolean }) {
   const combos = keys.split(' ')
   return keyLabels(keys, apple).map((step, index) => (
     <Fragment key={combos[index]}>
       {index > 0 && <Word>{translate('then2')}</Word>}
-      <KbdGroup>
-        {step.map((label) => (
-          <Kbd key={label}>{label}</Kbd>
-        ))}
-      </KbdGroup>
+      <Kbd>{step.join(' ')}</Kbd>
     </Fragment>
   ))
 }
