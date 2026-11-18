@@ -6,7 +6,7 @@ describe('clientFromDocument', () => {
   it('starts a new client with what the document carried, and only that', () => {
     expect(
       clientFromDocument({
-        client_name: 'Melanie Vala',
+        client_name: 'Anna Beispiel',
         client_street: 'Bahnhofstrasse',
         client_street_number: '12',
         client_zip: '8001',
@@ -15,7 +15,7 @@ describe('clientFromDocument', () => {
         client_is_company: false,
       }),
     ).toEqual({
-      name: 'Melanie Vala',
+      name: 'Anna Beispiel',
       street: 'Bahnhofstrasse',
       street_number: '12',
       zip: '8001',
