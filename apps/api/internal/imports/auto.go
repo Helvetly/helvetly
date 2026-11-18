@@ -110,7 +110,7 @@ func autoSchema(kinds []string) map[string]any {
 }
 
 // autoPrompt names the workspace (so "issued" and "received" can be told apart), the document types and each kind's rules.
-func autoPrompt(seller store.Party, workspaceName string, kinds []string) string {
+func autoPrompt(seller store.Party, workspaceName string, kinds []string, extra map[string]string) string {
 	var b strings.Builder
 	name := cmp.Or(strings.TrimSpace(seller.Name), workspaceName)
 	b.WriteString("You read business documents for Helvetly's import and decide what each one is. The workspace importing " +
@@ -133,7 +133,7 @@ func autoPrompt(seller store.Party, workspaceName string, kinds []string) string
 	}
 	b.WriteString("- other: nothing.\n\nRules per array:\n")
 	for _, kind := range kinds {
-		b.WriteString("- " + kind + ": " + Kinds[kind].Prompt + "\n")
+		b.WriteString("- " + kind + ": " + Kinds[kind].Prompt + extra[kind] + "\n")
 	}
 	return b.String()
 }
@@ -143,7 +143,11 @@ func (s *Service) autoInstructions(ctx context.Context, ws store.Workspace, kind
 	if err != nil {
 		return "", err
 	}
-	return autoPrompt(seller, ws.Name, kinds), nil
+	extra, err := s.kindContext(ctx, ws.ID, kinds)
+	if err != nil {
+		return "", err
+	}
+	return autoPrompt(seller, ws.Name, kinds, extra), nil
 }
 
 // linkedClient: the record's client is not in the workspace yet but a client record of the same batch has its name,

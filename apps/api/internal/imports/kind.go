@@ -51,6 +51,11 @@ type Kind struct {
 	// Parse (optional) reads the records from the file itself, without the AI model: no AI consent, budget or
 	// provider is involved and the file's content never leaves Helvetly. Its errors are failures shown to the person.
 	Parse func(name, contentType string, data []byte) ([]Data, error)
+	// Context (optional) is workspace-specific text added to the instructions, such as the expense categories to choose from.
+	Context func(ctx context.Context, q store.Q, workspaceID string) (string, error)
+	// PlacesDocument kinds file the source Document themselves when a record is created (see place.go), so the
+	// generic AI filing is not queued for their files.
+	PlacesDocument bool
 	// Private kinds keep their source files as HR files (outside Documents) and need no write:documents.
 	Private bool
 }

@@ -2,6 +2,7 @@ package expenses
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -96,9 +98,13 @@ func (s *Service) listReceipts(w http.ResponseWriter, r *http.Request, sess stor
 }
 
 type upload struct {
-	header  *multipart.FileHeader
-	receipt store.Receipt
+	header   *multipart.FileHeader
+	receipt  store.Receipt
+	docID    string // the linked copy in Documents
+	linkOnly bool   // a Document with these bytes existed: no copy is stored
 }
+
+func (u upload) docKey(workspaceID string) string { return workspaceID + "/documents/" + u.docID }
 
 func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	e, err := s.expense(r, sess)
@@ -153,7 +159,7 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 		}
 		sums[i] = sum
 		sizes[i] = h.Size
-		uploads[i] = upload{h, store.Receipt{ID: id, Name: name, Size: h.Size, ContentType: ct, CreatedAt: now,
+		uploads[i] = upload{header: h, docID: auth.NewID("doc"), receipt: store.Receipt{ID: id, Name: name, Size: h.Size, ContentType: ct, CreatedAt: now,
 			SHA256:     sum,
 			UploadedBy: &store.Uploader{ID: sess.User.ID, Name: sess.User.Name},
 			ObjectKey:  "workspaces/" + sess.Workspace.ID + "/expenses/" + e.ID + "/" + id + "/" + keyName(name)}}
@@ -171,22 +177,36 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 	}
 	// An unlocked look spares storing a known duplicate; the check under the lock decides. Objects are stored before
 	// the transaction, so no lock waits on the uploads, and locked (GeBüV) only once a booked expense's rows commit.
-	for _, sum := range sums {
-		if duplicate, err := s.db.DuplicateUpload(r.Context(), sess.Workspace.ID, sum); err == nil {
+	for i, sum := range sums { // another expense's receipt is a duplicate expense; a Document is reused instead
+		if duplicate, err := s.db.DuplicateReceipt(r.Context(), sess.Workspace.ID, sum); err == nil {
 			return fileuploads.Duplicate(sess, duplicate)
+		} else if !errors.Is(err, store.ErrNotFound) {
+			return err
+		}
+		if _, _, _, err := s.db.LiveDocumentBySum(r.Context(), sess.Workspace.ID, sum); err == nil {
+			uploads[i].linkOnly = true
 		} else if !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
 	}
 	for _, u := range uploads {
 		stored = append(stored, u.receipt.ObjectKey)
-		if err := s.put(r, u); err != nil {
+		if err := s.put(r, u, u.receipt.ObjectKey); err != nil {
+			cleanup()
+			return err
+		}
+		if u.linkOnly {
+			continue
+		}
+		stored = append(stored, u.docKey(sess.Workspace.ID))
+		if err := s.put(r, u, u.docKey(sess.Workspace.ID)); err != nil {
 			cleanup()
 			return err
 		}
 	}
 	list := make([]store.Receipt, len(uploads))
 	booked := false
+	var unusedKeys []string
 	err = s.db.Tx(r.Context(), func(q store.Q) error {
 		if err := q.LockUploadHashes(r.Context(), sess.Workspace.ID, sums); err != nil {
 			return err
@@ -195,7 +215,7 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 			return err
 		}
 		for _, sum := range sums {
-			duplicate, err := q.DuplicateUpload(r.Context(), sess.Workspace.ID, sum)
+			duplicate, err := q.DuplicateReceipt(r.Context(), sess.Workspace.ID, sum)
 			if err == nil {
 				return fileuploads.Duplicate(sess, duplicate)
 			}
@@ -224,6 +244,13 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 					return err
 				}
 			}
+			unused, err := s.fileCopy(r.Context(), q, sess, current, u)
+			if err != nil {
+				return err
+			}
+			if unused != "" && !u.linkOnly {
+				unusedKeys = append(unusedKeys, unused)
+			}
 			list[i] = u.receipt
 		}
 		return nil
@@ -232,6 +259,11 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 		cleanup()
 		return err
 	}
+	for _, key := range unusedKeys { // stored, then a Document with the bytes appeared: no duplicate in Documents
+		if err := s.files.Delete(r.Context(), key); err != nil {
+			s.log.WarnContext(r.Context(), "orphaned upload", "key", key, "error", err)
+		}
+	}
 	if booked {
 		for _, u := range uploads {
 			s.retain(r.Context(), u.receipt.ObjectKey)
@@ -239,6 +271,78 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 	}
 	auth.WriteJSON(w, http.StatusCreated, data(list))
 	return nil
+}
+
+// fileCopy keeps the receipt in Documents, linked to the expense. A live Document with the same bytes is reused (Documents
+// hold no duplicates): moved to Expenses/<year>/<category> only while no person has placed it. Otherwise the stored
+// copy becomes the Document. Returns the copy's key when it turned out unneeded.
+func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e store.Expense, u upload) (unused string, err error) {
+	ws, now := sess.Workspace.ID, s.now()
+	folder, err := q.FolderPath(ctx, ws, sess.User.ID, store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e)), now)
+	if err != nil {
+		return "", err
+	}
+	tags := func(id string, existing []string) error {
+		return q.SetDocumentTags(ctx, ws, id, expenseTags(existing, categoryName(e)), now)
+	}
+	id, at, unplaced, err := q.LiveDocumentBySum(ctx, ws, u.receipt.SHA256)
+	switch {
+	case err == nil:
+		if err := q.AddDocumentLink(ctx, ws, id, "expense", e.ID, sess.User.ID, now); err != nil {
+			return "", err
+		}
+		if unplaced && (at == nil || *at != folder) {
+			doc, err := q.Document(ctx, ws, id)
+			if err != nil {
+				return "", err
+			}
+			name, err := q.FreeFileName(ctx, ws, &folder, doc.Name)
+			if err != nil {
+				return "", err
+			}
+			if err := q.UpdateDocument(ctx, ws, id, name, &folder, now); err != nil {
+				return "", err
+			}
+			return u.docKey(ws), tags(id, doc.Tags)
+		}
+		return u.docKey(ws), nil
+	case !errors.Is(err, store.ErrNotFound):
+		return "", err
+	case u.linkOnly: // the Document was trashed meanwhile and no copy was stored: the receipt alone stands
+		return "", nil
+	}
+	name, err := q.FreeFileName(ctx, ws, &folder, u.receipt.Name)
+	if err != nil {
+		return "", err
+	}
+	sum := u.receipt.SHA256
+	// One timestamp for file and link marks this copy as made with the receipt (see ExpenseDocument.OwnCopy).
+	if err := q.CreateDocument(ctx, ws, sess.User.ID, store.Document{ID: u.docID, Name: name, FolderID: &folder,
+		Size: u.receipt.Size, ContentType: u.receipt.ContentType, SHA256: &sum, ObjectKey: u.docKey(ws), CreatedAt: now}); err != nil {
+		return "", err
+	}
+	if err := q.AddDocumentLink(ctx, ws, u.docID, "expense", e.ID, sess.User.ID, now); err != nil {
+		return "", err
+	}
+	return "", tags(u.docID, nil)
+}
+
+func categoryName(e store.Expense) string {
+	if e.CategoryID == nil || e.Category == nil {
+		return ""
+	}
+	return e.Category.Name
+}
+
+// expenseTags: the tags plus "expense" and the lower-cased category name, at most 10 of up to 32 characters.
+func expenseTags(tags []string, category string) []string {
+	out := slices.Clone(tags)
+	for _, t := range []string{"expense", strings.ToLower(strings.Join(strings.Fields(category), " "))} {
+		if t != "" && utf8.RuneCountInString(t) <= 32 && len(out) < 10 && !slices.Contains(out, t) {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func readHead(h *multipart.FileHeader) ([]byte, error) {
@@ -255,13 +359,13 @@ func readHead(h *multipart.FileHeader) ([]byte, error) {
 	return head[:n], nil
 }
 
-func (s *Service) put(r *http.Request, u upload) error {
+func (s *Service) put(r *http.Request, u upload, key string) error {
 	f, err := u.header.Open()
 	if err != nil {
 		return fmt.Errorf("open upload: %w", err)
 	}
 	defer f.Close()
-	return s.files.Put(r.Context(), u.receipt.ObjectKey, f, u.receipt.Size, u.receipt.ContentType, u.receipt.Name)
+	return s.files.Put(r.Context(), key, f, u.receipt.Size, u.receipt.ContentType, u.receipt.Name)
 }
 
 // downloadReceipt redirects to a short-lived link; ?inline=1 serves the bytes for the in-app preview (the stored
@@ -307,6 +411,25 @@ func (s *Service) deleteReceipt(w http.ResponseWriter, r *http.Request, sess sto
 		}
 		if err := q.DeleteReceipt(r.Context(), e.ID, f.ID); err != nil {
 			return err
+		}
+		// The linked copy in Documents goes to the Trash with it, so the same file can be uploaded again.
+		docs, err := q.ExpenseDocuments(r.Context(), sess.Workspace.ID, e.ID)
+		if err != nil {
+			return err
+		}
+		for _, d := range docs {
+			if d.SHA256 == nil || *d.SHA256 != f.SHA256 {
+				continue
+			}
+			if !d.OwnCopy { // a Document that was there before only loses its link
+				if err := q.RemoveDocumentLink(r.Context(), d.ID, "expense", e.ID); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, err := q.TrashDocument(r.Context(), sess.Workspace.ID, d.ID, sess.User.ID, s.today(sess.Workspace), s.now()); err != nil {
+				return err
+			}
 		}
 		return s.files.Delete(r.Context(), f.ObjectKey)
 	})

@@ -265,6 +265,13 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 		Schema: &aimodel.Schema{Name: "import_" + k.Name, JSON: map[string]any{"type": "object", "additionalProperties": false,
 			"required": []string{"records"}, "properties": map[string]any{"records": map[string]any{"type": "array", "items": k.Schema}}}},
 	}
+	if k.Name != Auto {
+		extra, err := s.kindContext(ctx, ws.ID, []string{k.Name})
+		if err != nil {
+			return "", nil, err
+		}
+		req.Instructions = "You read files for Helvetly's import. " + k.Prompt + extra[k.Name] + rules
+	}
 	if k.Name == Auto {
 		instructions, err := s.autoInstructions(ctx, ws, kinds)
 		if err != nil {
@@ -329,6 +336,21 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 		}
 	}
 	return docType, records, nil
+}
+
+// kindContext: each named kind's workspace-specific instruction text (" " first), for the kinds that have one.
+func (s *Service) kindContext(ctx context.Context, workspaceID string, names []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, name := range names {
+		if c := Kinds[name].Context; c != nil {
+			text, err := c(ctx, s.db.Q, workspaceID)
+			if err != nil {
+				return nil, err
+			}
+			out[name] = " " + text
+		}
+	}
+	return out, nil
 }
 
 func (p proposed) count() int {

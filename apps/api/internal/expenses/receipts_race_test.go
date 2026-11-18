@@ -13,10 +13,11 @@ type pausedReceiptStorage struct {
 	*fakeStorage
 	started chan struct{}
 	resume  chan struct{}
+	once    sync.Once
 }
 
 func (s *pausedReceiptStorage) Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error {
-	close(s.started)
+	s.once.Do(func() { close(s.started) })
 	select {
 	case <-s.resume:
 		return s.fakeStorage.Put(ctx, key, body, size, contentType, filename)
@@ -70,7 +71,7 @@ func TestReceiptUploadRechecksExpenseAfterStorage(t *testing.T) {
 				if response.StatusCode != http.StatusCreated {
 					t.Fatalf("upload after booking: status %d, want 201", response.StatusCode)
 				}
-				keys := e.files.keys()
+				keys := e.files.receiptKeys()
 				if len(keys) != 1 || !e.files.isRetained(keys[0]) {
 					t.Fatalf("receipt uploaded during booking must be retained: keys %v", keys)
 				}
@@ -87,7 +88,7 @@ func TestReceiptUploadRechecksExpenseAfterStorage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(receipts) != 0 || e.files.count() != 0 {
+			if len(receipts) != 0 || len(e.files.keys()) != 0 {
 				t.Errorf("refused upload left %d receipts and %d objects", len(receipts), e.files.count())
 			}
 		})

@@ -1059,7 +1059,7 @@
         "operationId": "upload_document",
         "tags": ["Documents"],
         "summary": "Upload a document",
-        "description": "Uploads one file (multipart field file; one per request) into a folder (folder_id, default top level), optionally linking it to a client (client_id). Allowed types: PDF; PNG, JPEG, WebP, GIF; XLSX, XLS, ODS, CSV; DOCX, DOC, ODT, RTF; PPTX, ODP; TXT, Markdown, XML, JSON; ZIP; the extension and the file's bytes must agree, else 422 validation_failed (fields.file). Larger than DOCUMENTS_MAX_UPLOAD_MB (default 100): 413 payload_too_large. Names are cut to 255 characters and lose path parts. Duplicate check: the SHA-256 of the actual bytes is compared inside the workspace with live documents (client files included) and receipts on non-deleted expenses; identical bytes answer 409 duplicate_file whatever the name, folder or on_conflict, with details {existing_id, existing_name, resource: document or receipt, expense_id?} (only when the caller may read that resource, else a generic message). Trashed documents and deleted expenses do not block; other workspaces never match. A same-named live file in the folder is a name conflict, resolved by on_conflict (fail: 409 name_taken with details {existing_id, suggestion}; keep_both; replace: the old file goes to the Trash, 409 retained if it is a business record); on_conflict applies only to different content. Repeating a successful upload answers 409 duplicate_file.",
+        "description": "Uploads one file (multipart field file; one per request) into a folder (folder_id, default top level), optionally linking it to a client (client_id). Allowed types: PDF; PNG, JPEG, WebP, GIF; XLSX, XLS, ODS, CSV; DOCX, DOC, ODT, RTF; PPTX, ODP; TXT, Markdown, XML, JSON; ZIP; the extension and the file's bytes must agree, else 422 validation_failed (fields.file). Larger than DOCUMENTS_MAX_UPLOAD_MB (default 100): 413 payload_too_large. Names are cut to 255 characters and lose path parts. Duplicate check: the SHA-256 of the actual bytes is compared inside the workspace with live Documents (client files included). Identical bytes are never stored twice: the existing Document is the answer, 200 with {data: that document, reused: true}, whatever the name or on_conflict. It stays where it is (a top-level one moves into folder_id when sent) and is linked to client_id when sent. Only a caller who may not read Documents gets 409 duplicate_file. Bytes held only by an expense receipt are not a Documents duplicate: the file is stored as new. A same-named live file in the folder is a name conflict, resolved by on_conflict (fail: 409 name_taken with details {existing_id, suggestion}; keep_both; replace: the old file goes to the Trash, 409 retained if it is a business record); on_conflict applies only to different content. Repeating a successful upload answers 200 with reused: true.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1071,6 +1071,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "An equal file already exists: that Document, with reused: true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -1809,7 +1819,7 @@
         "operationId": "upload_client_files",
         "tags": ["Clients"],
         "summary": "Upload files to a client",
-        "description": "Attaches 1 to 10 files (up to 20 MB each; PDF, PNG, JPEG, WebP, Excel, Word, CSV or text, checked from the bytes) sent as multipart/form-data in files[]. The SHA-256 of the bytes is compared workspace-wide: a file already in Documents is linked to the client instead of stored again (the original name, uploader and id are returned, so retrying is safe); a file that is already an expense receipt, or two identical files in one batch, are refused with 409 duplicate_file (details existing_id, existing_name, resource when you may see it). Nothing is stored when any file is refused. Other errors: 413 payload_too_large, 422 validation_failed on files (none, too many, too large, unsupported type), 404 unknown client. 201 returns the files in upload order.",
+        "description": "Attaches 1 to 10 files (up to 20 MB each; PDF, PNG, JPEG, WebP, Excel, Word, CSV or text, checked from the bytes) sent as multipart/form-data in files[]. The SHA-256 of the bytes is compared workspace-wide: a file already in Documents is linked to the client instead of stored again (the original name, uploader and id are returned, so retrying is safe); a top-level one moves into the Clients folder, and bytes held only by an expense receipt are stored as a new Document; two identical files in one batch are refused with 409 duplicate_file (details existing_id, existing_name, resource when you may see it). Nothing is stored when any file is refused. Other errors: 413 payload_too_large, 422 validation_failed on files (none, too many, too large, unsupported type), 404 unknown client. 201 returns the files in upload order.",
         "parameters": [
           {
             "name": "id",
@@ -5433,7 +5443,7 @@
         "operationId": "upload_expense_receipts",
         "tags": ["Expenses"],
         "summary": "Upload receipts to an expense",
-        "description": "Attaches 1 to 10 receipts (multipart field files[], each up to 20 MB; PDF, JPEG, PNG, WebP or HEIC/HEIF, checked by their bytes) to a draft or booked expense; a voided expense answers 409 invalid_state. Receipts added to a booked expense are retention-locked. All files are checked before any is stored: 422 validation_failed (fields.files) for a wrong type or size, 413 payload_too_large. Duplicate check: the SHA-256 of each file's actual bytes is compared inside the workspace with live Documents, client files and receipts on non-deleted expenses; identical bytes answer 409 duplicate_file whatever the name, with details {existing_id, existing_name, resource: document or receipt, expense_id?} (details are left out when the caller may not read that resource). The same bytes twice in one request answer 409 duplicate_file with details {existing_name, resource: upload}, before anything is stored, and nothing from the batch is kept. Trashed documents and deleted expenses do not block. Another workspace never matches. Retrying a request that succeeded answers 409 duplicate_file, so it is safe.",
+        "description": "Attaches 1 to 10 receipts (multipart field files[], each up to 20 MB; PDF, JPEG, PNG, WebP or HEIC/HEIF, checked by their bytes) to a draft or booked expense; a voided expense answers 409 invalid_state. Receipts added to a booked expense are retention-locked. All files are checked before any is stored: 422 validation_failed (fields.files) for a wrong type or size, 413 payload_too_large. Duplicate check: the SHA-256 of each file's actual bytes is compared inside the workspace. Bytes already in a live Document link that Document to the expense instead of storing a copy (201). Bytes already a receipt of another non-deleted expense answer 409 duplicate_file with details {existing_id, existing_name, resource: receipt, expense_id?} (details are left out when the caller may not read that resource). The same bytes twice in one request answer 409 duplicate_file with details {existing_name, resource: upload}, before anything is stored, and nothing from the batch is kept. Trashed documents and deleted expenses do not block. Another workspace never matches. Retrying a request that succeeded answers 409 duplicate_file (the receipt exists), so it is safe.",
         "parameters": [
           {
             "name": "id",

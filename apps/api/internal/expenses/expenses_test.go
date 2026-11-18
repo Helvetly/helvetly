@@ -456,15 +456,15 @@ func TestLifecycle(t *testing.T) {
 	if got.Data.Status != "booked" || !got.Data.IsComplete || got.Data.BookedBy == nil || got.Data.ReceiptsCount != 1 {
 		t.Fatalf("booked: %+v", got.Data)
 	}
-	for _, key := range e.files.keys() {
+	for _, key := range e.files.receiptKeys() {
 		if !e.files.isRetained(key) {
 			t.Fatalf("booked receipt %s not retained", key)
 		}
 	}
-	if resp := e.upload(member, draft.ID, "second.pdf", append(append([]byte{}, pdf...), []byte("second receipt")...)); resp.StatusCode != 201 || len(e.files.keys()) != 2 {
+	if resp := e.upload(member, draft.ID, "second.pdf", append(append([]byte{}, pdf...), []byte("second receipt")...)); resp.StatusCode != 201 || len(e.files.receiptKeys()) != 2 {
 		t.Fatalf("upload to booked: %d", resp.StatusCode)
 	}
-	for _, key := range e.files.keys() {
+	for _, key := range e.files.receiptKeys() {
 		if !e.files.isRetained(key) {
 			t.Fatalf("receipt added after booking %s not retained", key)
 		}
@@ -722,7 +722,7 @@ func TestReceiptsAndCategories(t *testing.T) {
 	if resp := e.upload(member, x.ID, "receipt.pdf", []byte("<html>not a pdf")); resp.StatusCode != 422 {
 		t.Fatalf("fake pdf: %d", resp.StatusCode)
 	}
-	if resp := e.upload(member, x.ID, "receipt.pdf", pdf); resp.StatusCode != 201 || e.files.count() != 1 {
+	if resp := e.upload(member, x.ID, "receipt.pdf", pdf); resp.StatusCode != 201 || len(e.files.receiptKeys()) != 1 {
 		t.Fatalf("upload: %d", resp.StatusCode)
 	}
 	var files struct{ Data []struct{ ID, Name string } }
@@ -753,7 +753,7 @@ func TestReceiptsAndCategories(t *testing.T) {
 		t.Fatalf("other workspace: %d", resp.StatusCode)
 	}
 	e.do(member, "DELETE", path, nil, 204, nil)
-	if e.files.count() != 0 {
+	if len(e.files.receiptKeys()) != 0 {
 		t.Fatal("object kept")
 	}
 

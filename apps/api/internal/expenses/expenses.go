@@ -245,6 +245,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			d.Currency = e.Base.Currency
 		}
 		before, paid := e.CategoryID, paymentOf(e)
+		oldCategory, oldPath := categoryName(e), store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e))
 		rf, err := applyInput(&e, body, d, s.today(sess.Workspace))
 		if err != nil {
 			return err
@@ -252,12 +253,58 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.checkRefs(r.Context(), q, sess, &e, before, rf); err != nil {
 			return err
 		}
-		return s.save(r.Context(), q, sess, e, paid)
+		if err := s.save(r.Context(), q, sess, e, paid); err != nil {
+			return err
+		}
+		return s.refile(r.Context(), q, sess, e, oldCategory, oldPath)
 	})
 	if err != nil {
 		return err
 	}
 	return s.get(w, r, sess)
+}
+
+// refile moves the expense's linked files that still sit in the folder its old category and date gave to the new
+// one, swapping the category tag; a file the user moved elsewhere stays.
+func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, e store.Expense, oldCategory string, oldPath []string) error {
+	newPath := store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e))
+	if slices.Equal(oldPath, newPath) {
+		return nil
+	}
+	from, err := q.ExistingFolderPath(ctx, sess.Workspace.ID, oldPath)
+	if err != nil || from == "" {
+		return err
+	}
+	docs, err := q.ExpenseDocuments(ctx, sess.Workspace.ID, e.ID)
+	if err != nil {
+		return err
+	}
+	var to *string
+	for _, d := range docs {
+		if d.FolderID == nil || *d.FolderID != from {
+			continue
+		}
+		if to == nil {
+			id, err := q.FolderPath(ctx, sess.Workspace.ID, sess.User.ID, newPath, s.now())
+			if err != nil {
+				return err
+			}
+			to = &id
+		}
+		name, err := q.FreeFileName(ctx, sess.Workspace.ID, to, d.Name)
+		if err != nil {
+			return err
+		}
+		if err := q.UpdateDocument(ctx, sess.Workspace.ID, d.ID, name, to, s.now()); err != nil {
+			return err
+		}
+		old := strings.ToLower(strings.Join(strings.Fields(oldCategory), " "))
+		kept := slices.DeleteFunc(slices.Clone(d.Tags), func(t string) bool { return old != "" && t == old })
+		if err := q.SetDocumentTags(ctx, sess.Workspace.ID, d.ID, expenseTags(kept, categoryName(e)), s.now()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Session) error {

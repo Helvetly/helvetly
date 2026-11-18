@@ -217,6 +217,7 @@ func run() error {
 	model := aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, cfg.AI.Model)
 	heidiSvc := heidi.New(db, authSvc, files, engagementsSvc, heidi.Options{
 		Provider: model, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
+		File: documentsSvc.QueueFiling,
 	})
 	importModel := model
 	if cfg.AI.FakeImportModel {

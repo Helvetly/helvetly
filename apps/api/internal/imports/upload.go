@@ -185,7 +185,7 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list
 	if err != nil {
 		return b, err
 	}
-	if s.file != nil && !kind.Private {
+	if s.file != nil && !kind.Private && !kind.PlacesDocument {
 		for _, u := range list {
 			s.file(ctx, sess, u.documentID) // a reused file is filed only if it never was (queued once)
 		}

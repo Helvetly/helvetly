@@ -70,6 +70,7 @@ var invoicesKind = Kind{
 				"vat_rate":         nullable("string", "VAT rate in percent, e.g. 8.1"),
 			})},
 	})),
+	PlacesDocument: true,
 	Check: func(ctx context.Context, q store.Q, workspaceID string, data Data) (map[string]string, error) {
 		_, invalid, err := importedInvoice(ctx, q, workspaceID, time.Now().UTC().Format(time.DateOnly), data)
 		return invalid, err
@@ -101,7 +102,13 @@ var invoicesKind = Kind{
 		if err != nil {
 			return "", err
 		}
-		return invoices.CreateImport(ctx, q, sess, clientID, data, doc)
+		id, err := invoices.CreateImport(ctx, q, sess, clientID, data, doc)
+		if err != nil || doc == nil {
+			return id, err
+		}
+		now := time.Now().UTC()
+		path := invoiceFolder(rawText(data["issue_date"]), sess.Workspace.Today(now))
+		return id, placeDocument(ctx, q, sess, *doc, path, []string{"invoice"}, now)
 	},
 	Conflict: func(ctx context.Context, q store.Q, workspaceID string, data Data) (*store.ImportConflict, error) {
 		return invoices.NumberConflict(ctx, q, workspaceID, data)
