@@ -39,15 +39,19 @@ export function AttentionBadges({ attention }: { attention: Engagement['attentio
   )
 }
 
-/** "Advance" or "Arrears", with a repeat mark when the engagement recurs. */
+/** "Advance", "Arrears" or "Paid separately", with a repeat mark when the engagement recurs. */
 export function BillingLabel({
   engagement,
 }: {
-  engagement: Pick<Engagement, 'billing' | 'recurrence'>
+  engagement: { billing: Engagement['billing'] | 'paid'; recurrence: Engagement['recurrence'] }
 }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      {engagement.billing === 'advance' ? translate('advance') : translate('arrears')}
+      {engagement.billing === 'paid'
+        ? translate('paidSeparately')
+        : engagement.billing === 'advance'
+          ? translate('advance')
+          : translate('arrears')}
       {engagement.recurrence !== 'none' && (
         <Repeat aria-label={translate('recurring')} className="size-3.5 text-muted-foreground" />
       )}

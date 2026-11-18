@@ -225,6 +225,9 @@ func applyFields(e *store.Engagement, body map[string]json.RawMessage, d store.W
 	if e.Rollover && (e.Billing != "advance" || e.Recurrence == "none") {
 		fail("rollover", "Rollover needs advance billing and a recurring schedule.")
 	}
+	if e.AutoInvoice && e.UnitPrice == 0 {
+		fail("auto_invoice", "Set a price to create invoice drafts automatically.")
+	}
 	return invalid
 }
 

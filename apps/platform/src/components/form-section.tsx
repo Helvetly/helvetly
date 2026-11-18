@@ -1,6 +1,7 @@
 'use client'
 
 import { HelpTip } from '@helvetly/ui/components/form-field'
+import { cn } from '@helvetly/ui/lib/utils'
 import { Check, type LucideIcon } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
@@ -69,7 +70,11 @@ export function FormChoiceCards<T extends string>({
 }) {
   const group = useId()
   return (
-    <div role="radiogroup" aria-label={label} className="grid gap-3 sm:grid-cols-2">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={cn('grid gap-3', options.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
+    >
       {options.map(({ value: option, title, text, icon: Icon }) => {
         const id = `${group}-${option}`
         return (
@@ -89,7 +94,7 @@ export function FormChoiceCards<T extends string>({
             />
             <span
               id={`${id}-title`}
-              className="flex items-center gap-1.5 text-[13.5px] font-medium"
+              className="flex items-center gap-1.5 pr-5 text-[13.5px] font-medium"
             >
               <Icon aria-hidden className="size-3.5 stroke-[1.75] text-muted-foreground" />
               {title}

@@ -1,4 +1,10 @@
-import type { Engagement, EngagementInput, Recurrence } from '@/lib/engagements'
+import {
+  billingOf,
+  unpriced,
+  type Engagement,
+  type EngagementInput,
+  type Recurrence,
+} from '@/lib/engagements'
 // The engagement form's state, checks, schedule presets and summary (docs/engagements-contract.md).
 import { withHabits, type Habits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
@@ -23,7 +29,8 @@ export type FormValues = {
   product_id: string
   unit: Unit | ''
   quantity: string
-  billing: Engagement['billing']
+  /** 'paid' = no price here: the work was paid on an invoice made elsewhere, the engagement only tracks it. */
+  billing: Engagement['billing'] | 'paid'
   price_basis: Engagement['price_basis']
   unit_price: string
   /** Empty means "same as the unit price". */
@@ -116,9 +123,9 @@ export function valuesFromEngagement(e: Engagement): FormValues {
     product_id: e.product_id ?? '',
     unit: e.unit ?? '',
     quantity: e.quantity,
-    billing: e.billing,
+    billing: billingOf(e),
     price_basis: e.price_basis,
-    unit_price: e.unit_price,
+    unit_price: unpriced(e) ? '' : e.unit_price,
     overage_unit_price: e.overage_unit_price ?? '',
     currency: e.currency,
     vat_category: e.vat_category,
@@ -212,16 +219,21 @@ export function validate(values: FormValues): FieldErrors {
       errors.end_date = translate('theEndCannotBeBeforeTheStart')
   } else if (!recurring) errors.end_date = translate('chooseWhenTheEngagementEnds')
   const price = priceCents(values.unit_price)
-  if (!values.unit_price.trim()) errors.unit_price = translate('enterAPrice')
-  else if (price === null || price > MAX_PRICE_CENTS)
-    errors.unit_price = translate('enterAPriceFrom0To100000000')
-  if (values.overage_unit_price.trim()) {
+  const priced = values.billing !== 'paid'
+  if (priced) {
+    if (!values.unit_price.trim()) errors.unit_price = translate('enterAPrice')
+    else if (price === null || price > MAX_PRICE_CENTS)
+      errors.unit_price = translate('enterAPriceFrom0To100000000')
+    // A zero price reads back as Paid separately (unpriced), so it is asked for that way.
+    else if (price === 0n) errors.unit_price = translate('enterAPriceAbove0')
+  }
+  if (priced && values.overage_unit_price.trim()) {
     const overage = priceCents(values.overage_unit_price)
     if (overage === null || overage > MAX_PRICE_CENTS)
       errors.overage_unit_price = translate('enterAPriceFrom0WithAtMostTwo')
   }
   if (!/^[A-Z]{3}$/.test(values.currency)) errors.currency = translate('chooseACurrency2')
-  if (values.vat_category === 'S') {
+  if (priced && values.vat_category === 'S') {
     const rate = parseDecimalInput(values.vat_rate, 2)
     if (rate === null || rate.startsWith('-') || Number(rate) > 100 || Number(rate) === 0)
       errors.vat_rate = translate('enterAVATRateAbove0UpTo100')
@@ -234,13 +246,14 @@ export function validate(values: FormValues): FieldErrors {
 
 /** Rollover applies to advance billing on a recurring schedule only. */
 export const canRollOver = (values: Pick<FormValues, 'billing' | 'recurrence'>) =>
-  values.billing === 'advance' && values.recurrence !== 'none'
+  values.billing !== 'arrears' && values.recurrence !== 'none'
 
 const orNull = (text: string) => text.trim() || null
 
 export function toInput(values: FormValues): EngagementInput {
   const recurring = values.recurrence !== 'none'
-  const overage = values.overage_unit_price.trim()
+  const paid = values.billing === 'paid'
+  const overage = paid ? '' : values.overage_unit_price.trim()
   return {
     client_id: values.client_id,
     title: values.title.trim(),
@@ -248,9 +261,10 @@ export function toInput(values: FormValues): EngagementInput {
     product_id: orNull(values.product_id),
     unit: values.unit || null,
     quantity: parseDecimalInput(values.quantity, 3) ?? values.quantity,
-    billing: values.billing,
+    // Paid elsewhere is stored as an advance engagement without a price (see unpriced).
+    billing: values.billing === 'paid' ? 'advance' : values.billing,
     price_basis: values.price_basis,
-    unit_price: parseDecimalInput(values.unit_price, 2, true) ?? values.unit_price,
+    unit_price: paid ? '0' : (parseDecimalInput(values.unit_price, 2, true) ?? values.unit_price),
     overage_unit_price: overage
       ? (parseDecimalInput(overage, 2, true) ?? values.overage_unit_price)
       : null,
@@ -268,7 +282,7 @@ export function toInput(values: FormValues): EngagementInput {
     document_id: orNull(values.document_id),
     // Rollover only exists for advance + recurring; elsewhere the server answers 422.
     rollover: values.rollover && canRollOver(values),
-    auto_invoice: values.auto_invoice,
+    auto_invoice: values.auto_invoice && !paid,
     invoice_detail: values.invoice_detail,
   }
 }
@@ -335,6 +349,7 @@ export function schedulePeriods(values: FormValues, limit: number): Period[] {
 
 /** What the engagement is worth in total; null while unknown (no end date on a recurring one). */
 export function committedTotal(values: FormValues) {
+  if (values.billing === 'paid') return null
   const total = periodTotal(values)
   if (total === null) return null
   if (values.recurrence === 'none') return total
@@ -369,7 +384,11 @@ export function summarySentence(values: FormValues, clientName: string): string 
     })
   }
   const billed =
-    values.billing === 'advance' ? translate('billedUpfront') : translate('billedAfterDelivery')
+    values.billing === 'paid'
+      ? translate('paidSeparately')
+      : values.billing === 'advance'
+        ? translate('billedUpfront')
+        : translate('billedAfterDelivery')
   return [who, when, billed].join(' · ')
 }
 
@@ -378,7 +397,8 @@ export function nextSteps(values: FormValues): string[] {
   const recurring = values.recurrence !== 'none'
   const period = recurring ? translate('eachPeriod') : translate('thePeriod')
   const steps: string[] = []
-  if (!values.auto_invoice)
+  if (values.billing === 'paid') steps.push(translate('paidSeparatelyNextStep'))
+  else if (!values.auto_invoice)
     steps.push(`No invoice is created automatically: you invoice ${period} yourself.`)
   else {
     steps.push(
@@ -414,7 +434,7 @@ const oneOf =
 
 const ENGAGEMENT_HABIT_OPTIONS = {
   unit: (unit: string) => UNITS.some((entry) => entry.value === unit),
-  billing: oneOf('advance', 'arrears'),
+  billing: oneOf('advance', 'arrears', 'paid'),
   price_basis: oneOf('net', 'gross'),
   vat_category: (code: string) => VAT_CATEGORIES.some((entry) => entry.value === code),
   recurrence: oneOf('none', 'weekly', 'monthly', 'quarterly', 'yearly'),

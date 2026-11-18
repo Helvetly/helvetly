@@ -4443,5 +4443,13 @@
   "suggestedNewCategory": "Nouvelle catégorie suggérée : {name}",
   "noCategoriesYet": "Aucune catégorie pour l'instant",
   "alreadyInDocuments": "Déjà dans Documents",
-  "showFile": "Afficher"
+  "showFile": "Afficher",
+  "invoicing": "Facturation",
+  "invoicingSectionText": "Comment ce travail est payé.",
+  "paidSeparately": "Payé séparément",
+  "paidSeparatelyText": "Déjà facturé ou payé. Seul le travail est suivi.",
+  "paidWithInvoice": "Payé avec la facture",
+  "paidSeparatelyNextStep": "Rien n'est facturé depuis ce mandat : vous saisissez le travail sur ce qui a été payé.",
+  "enterAPriceAbove0": "Saisissez un prix supérieur à 0 ou choisissez « Payé séparément »",
+  "detailsSectionText": "Facultatif, pour vos dossiers et la facture."
 }

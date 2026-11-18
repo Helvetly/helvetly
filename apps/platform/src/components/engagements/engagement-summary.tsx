@@ -164,24 +164,34 @@ export function EngagementSummary({
 
       <Block title={translate('keyFigures')} className="border-t pt-4">
         <dl className="grid gap-1.5 text-[13px]">
-          <Figure
-            label={recurring ? translate('perPeriod') : translate('committedValue')}
-            value={
-              <Soft filled={perPeriod !== null}>
-                {perPeriod === null ? `${values.currency} 0.00` : `${money(perPeriod)} ${basis}`}
-              </Soft>
-            }
-          />
-          {recurring && (
-            <Figure
-              label={translate('committedValue')}
-              value={committed === null ? 'Open-ended' : `${money(committed)} ${basis}`}
-            />
+          {values.billing === 'paid' ? (
+            <Figure label={translate('billing')} value={translate('paidSeparately')} />
+          ) : (
+            <>
+              <Figure
+                label={recurring ? translate('perPeriod') : translate('committedValue')}
+                value={
+                  <Soft filled={perPeriod !== null}>
+                    {perPeriod === null
+                      ? `${values.currency} 0.00`
+                      : `${money(perPeriod)} ${basis}`}
+                  </Soft>
+                }
+              />
+              {recurring && (
+                <Figure
+                  label={translate('committedValue')}
+                  value={committed === null ? 'Open-ended' : `${money(committed)} ${basis}`}
+                />
+              )}
+              <Figure
+                label={translate('vat')}
+                value={
+                  values.vat_category === 'S' ? `${values.vat_rate}%` : (category?.label ?? '')
+                }
+              />
+            </>
           )}
-          <Figure
-            label={translate('vat')}
-            value={values.vat_category === 'S' ? `${values.vat_rate}%` : (category?.label ?? '')}
-          />
         </dl>
       </Block>
 

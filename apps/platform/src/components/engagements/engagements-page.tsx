@@ -59,6 +59,7 @@ import {
   engagementListQuery,
   engagementQuery,
   putEngagementSettings,
+  billingOf,
   periodLabel,
   renewEngagement,
   resumeEngagement,
@@ -319,7 +320,7 @@ function EngagementRow({
           <RemainingCell engagement={engagement} />
         </td>
         <td className={listTable.td}>
-          <BillingLabel engagement={engagement} />
+          <BillingLabel engagement={{ ...engagement, billing: billingOf(engagement) }} />
         </td>
         <td className={listTable.td}>
           {engagement.attention.length ? (

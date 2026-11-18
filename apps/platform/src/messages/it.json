@@ -4443,5 +4443,13 @@
   "suggestedNewCategory": "Nuova categoria suggerita: {name}",
   "noCategoriesYet": "Nessuna categoria per ora",
   "alreadyInDocuments": "Già in Documenti",
-  "showFile": "Mostra"
+  "showFile": "Mostra",
+  "invoicing": "Fatturazione",
+  "invoicingSectionText": "Come viene pagato questo lavoro.",
+  "paidSeparately": "Pagato a parte",
+  "paidSeparatelyText": "Già fatturato o pagato. Si traccia solo il lavoro.",
+  "paidWithInvoice": "Pagato con la fattura",
+  "paidSeparatelyNextStep": "Da questo incarico non si fattura nulla: registri il lavoro rispetto a quanto pagato.",
+  "enterAPriceAbove0": "Inserisci un prezzo superiore a 0 o scegli «Pagato a parte»",
+  "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura."
 }

@@ -4443,5 +4443,13 @@
   "suggestedNewCategory": "Suggested new category: {name}",
   "noCategoriesYet": "No categories yet",
   "alreadyInDocuments": "Already in Documents",
-  "showFile": "Show"
+  "showFile": "Show",
+  "invoicing": "Invoicing",
+  "invoicingSectionText": "How this work is paid.",
+  "paidSeparately": "Paid separately",
+  "paidSeparatelyText": "Already invoiced or paid. Only track the work.",
+  "paidWithInvoice": "Paid with invoice",
+  "paidSeparatelyNextStep": "Nothing is invoiced from this engagement: you log the work against what was paid.",
+  "enterAPriceAbove0": "Enter a price above 0, or choose Paid separately",
+  "detailsSectionText": "Optional, for your records and the invoice."
 }

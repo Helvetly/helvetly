@@ -19,6 +19,7 @@ import {
   Hourglass,
   Plus,
   Receipt,
+  ReceiptText,
   Repeat,
   SlidersHorizontal,
 } from 'lucide-react'
@@ -120,6 +121,12 @@ const BILLING_CHOICES = [
     text: translate('invoiceWhatWasDeliveredAfterwards'),
     icon: Hourglass,
   },
+  {
+    value: 'paid',
+    title: translate('paidSeparately'),
+    text: translate('paidSeparatelyText'),
+    icon: ReceiptText,
+  },
 ] as const
 
 export function EngagementForm({
@@ -186,6 +193,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   const queryClient = useQueryClient()
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   const standard = values.vat_category === 'S'
+  const paid = values.billing === 'paid'
   const recurring = values.recurrence !== 'none'
   const showDescription =
     descriptionOpened || Boolean(values.description) || Boolean(errors.description)
@@ -375,20 +383,6 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     </PopoverContent>
                   </Popover>
                 </FormField>
-                {!engagement && values.client_id && canLinkInvoice && (
-                  <SharedField
-                    id="engagement-invoice"
-                    label={translate('alreadyInvoiced')}
-                    tip={translate('alreadyInvoicedTip')}
-                  >
-                    <InvoiceLinkField
-                      id="engagement-invoice"
-                      clientId={values.client_id}
-                      value={invoiceId}
-                      onChange={setInvoiceId}
-                    />
-                  </SharedField>
-                )}
                 <FormField field="title" label={translate('title')} error={errors.title} required>
                   <input
                     {...describe('title')}
@@ -570,8 +564,8 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
 
               <FormSection
                 icon={Receipt}
-                title={translate('priceVAT')}
-                description={translate('whenYouInvoiceAndWhatYouCharge')}
+                title={translate('invoicing')}
+                description={translate('invoicingSectionText')}
               >
                 <FormChoiceCards
                   label={translate('billing')}
@@ -579,141 +573,157 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                   options={[...BILLING_CHOICES]}
                   onChange={(billing) => set('billing', billing)}
                 />
-                <FormField
-                  field="unit_price"
-                  label={
-                    unit ? translate('pricePer', { short: unit.short }) : translate('unitPrice')
-                  }
-                  error={errors.unit_price ?? errors.currency}
-                  tip={translate('netVATIsAddedOnTopGrossVATIs')}
-                  required
-                >
-                  <div className="flex items-stretch gap-2">
-                    <Combobox
-                      id={fieldId('currency')}
-                      label={translate('currency')}
-                      value={values.currency}
-                      options={CURRENCY_OPTIONS}
-                      renderValue={(option) => option.value}
-                      placeholder={translate('currency')}
-                      invalid={Boolean(errors.currency)}
-                      className="w-24 shrink-0"
-                      onChange={(code) => set('currency', code)}
-                    />
-                    <input
-                      {...describe('unit_price')}
-                      inputMode="decimal"
-                      value={values.unit_price}
-                      onChange={(event) => set('unit_price', event.target.value)}
-                      placeholder="0.00"
-                      className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
-                    />
-                    <Segmented
-                      label={translate('priceBasis')}
-                      value={values.price_basis}
-                      options={[
-                        { value: 'net', label: translate('net2') },
-                        { value: 'gross', label: translate('gross') },
-                      ]}
-                      onChange={(basis) => set('price_basis', basis)}
-                    />
-                  </div>
-                </FormField>
-                {showOverage ? (
-                  <FormField
-                    field="overage_unit_price"
-                    label={translate('priceFor', { extra: extra })}
-                    error={errors.overage_unit_price}
-                    tip={translate('chargedForAnythingDeliveredBeyondTheCommittedQuantityLeave')}
-                  >
-                    <input
-                      {...describe('overage_unit_price')}
-                      inputMode="decimal"
-                      value={values.overage_unit_price}
-                      onChange={(event) => set('overage_unit_price', event.target.value)}
-                      placeholder={translate('sameAsTheRegularPrice')}
-                      className={cn(
-                        inputClass,
-                        'tabular-nums placeholder:text-placeholder sm:max-w-xs',
-                      )}
-                    />
-                  </FormField>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="-mt-1 w-fit cursor-pointer gap-1.5 px-2 text-muted-foreground"
-                    onClick={() => {
-                      pendingFocus.current = fieldId('overage_unit_price')
-                      setOverageOpened(true)
-                    }}
-                  >
-                    <Plus className="size-4" />
-                    {translate('differentPriceFor')}
-                    {extra}
-                  </Button>
-                )}
-
-                <FormField
-                  field="vat_category"
-                  label={translate('vat')}
-                  error={errors.vat_category ?? errors.vat_rate}
-                  required
-                >
-                  <div className="flex items-stretch gap-2">
-                    <Combobox
-                      id={fieldId('vat_category')}
-                      value={values.vat_category}
-                      options={CATEGORY_OPTIONS}
-                      placeholder={translate('chooseAVATCategory')}
-                      className="min-w-0 flex-1 shrink"
-                      onChange={(code) => {
-                        const category = VAT_CATEGORIES.find((c) => c.value === code)?.value
-                        if (!category) return
-                        set('vat_category', category satisfies VatCategory)
-                        if (category !== 'S') set('vat_rate', '0')
-                        else if (!standard) set('vat_rate', VAT_RATES[0])
-                      }}
-                    />
-                    {standard && (
-                      <>
-                        <div className="relative w-24 shrink-0">
-                          <input
-                            {...describe('vat_rate')}
-                            aria-label={translate('vatRate')}
-                            aria-describedby={
-                              errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
-                            }
-                            inputMode="decimal"
-                            value={values.vat_rate}
-                            onChange={(event) => set('vat_rate', event.target.value)}
-                            className={cn(inputClass, 'pr-7 text-right tabular-nums')}
-                          />
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
-                          >
-                            %
-                          </span>
-                        </div>
-                        <Segmented
-                          label={translate('vatRatePresets')}
-                          value={values.vat_rate}
-                          options={VAT_RATES.map((rate) => ({ value: rate, label: rate }))}
-                          onChange={(rate) => set('vat_rate', rate)}
+                {!engagement &&
+                  values.client_id &&
+                  canLinkInvoice &&
+                  values.billing !== 'arrears' && (
+                    <SharedField
+                      id="engagement-invoice"
+                      label={paid ? translate('paidWithInvoice') : translate('alreadyInvoiced')}
+                      tip={translate('alreadyInvoicedTip')}
+                    >
+                      <InvoiceLinkField
+                        id="engagement-invoice"
+                        clientId={values.client_id}
+                        value={invoiceId}
+                        onChange={setInvoiceId}
+                      />
+                    </SharedField>
+                  )}
+                {!paid && (
+                  <>
+                    <FormField
+                      field="unit_price"
+                      label={
+                        unit ? translate('pricePer', { short: unit.short }) : translate('unitPrice')
+                      }
+                      error={errors.unit_price ?? errors.currency}
+                      tip={translate('netVATIsAddedOnTopGrossVATIs')}
+                      required
+                    >
+                      <div className="flex items-stretch gap-2">
+                        <Combobox
+                          id={fieldId('currency')}
+                          label={translate('currency')}
+                          value={values.currency}
+                          options={CURRENCY_OPTIONS}
+                          renderValue={(option) => option.value}
+                          placeholder={translate('currency')}
+                          invalid={Boolean(errors.currency)}
+                          className="w-24 shrink-0"
+                          onChange={(code) => set('currency', code)}
                         />
-                      </>
+                        <input
+                          {...describe('unit_price')}
+                          inputMode="decimal"
+                          value={values.unit_price}
+                          onChange={(event) => set('unit_price', event.target.value)}
+                          placeholder="0.00"
+                          className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
+                        />
+                        <Segmented
+                          label={translate('priceBasis')}
+                          value={values.price_basis}
+                          options={[
+                            { value: 'net', label: translate('net2') },
+                            { value: 'gross', label: translate('gross') },
+                          ]}
+                          onChange={(basis) => set('price_basis', basis)}
+                        />
+                      </div>
+                    </FormField>
+                    {showOverage ? (
+                      <FormField
+                        field="overage_unit_price"
+                        label={translate('priceFor', { extra: extra })}
+                        error={errors.overage_unit_price}
+                        tip={translate(
+                          'chargedForAnythingDeliveredBeyondTheCommittedQuantityLeave',
+                        )}
+                      >
+                        <input
+                          {...describe('overage_unit_price')}
+                          inputMode="decimal"
+                          value={values.overage_unit_price}
+                          onChange={(event) => set('overage_unit_price', event.target.value)}
+                          placeholder={translate('sameAsTheRegularPrice')}
+                          className={cn(
+                            inputClass,
+                            'tabular-nums placeholder:text-placeholder sm:max-w-xs',
+                          )}
+                        />
+                      </FormField>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="-mt-1 w-fit cursor-pointer gap-1.5 px-2 text-muted-foreground"
+                        onClick={() => {
+                          pendingFocus.current = fieldId('overage_unit_price')
+                          setOverageOpened(true)
+                        }}
+                      >
+                        <Plus className="size-4" />
+                        {translate('differentPriceFor')}
+                        {extra}
+                      </Button>
                     )}
-                  </div>
-                </FormField>
-              </FormSection>
 
-              <FormSection
-                icon={SlidersHorizontal}
-                title={translate('detailsAutomation')}
-                description={translate('optionalNothingIsSentOrIssuedWithoutYou')}
-              >
+                    <FormField
+                      field="vat_category"
+                      label={translate('vat')}
+                      error={errors.vat_category ?? errors.vat_rate}
+                      required
+                    >
+                      <div className="flex items-stretch gap-2">
+                        <Combobox
+                          id={fieldId('vat_category')}
+                          value={values.vat_category}
+                          options={CATEGORY_OPTIONS}
+                          placeholder={translate('chooseAVATCategory')}
+                          className="min-w-0 flex-1 shrink"
+                          onChange={(code) => {
+                            const category = VAT_CATEGORIES.find((c) => c.value === code)?.value
+                            if (!category) return
+                            set('vat_category', category satisfies VatCategory)
+                            if (category !== 'S') set('vat_rate', '0')
+                            else if (!standard) set('vat_rate', VAT_RATES[0])
+                          }}
+                        />
+                        {standard && (
+                          <>
+                            <div className="relative w-24 shrink-0">
+                              <input
+                                {...describe('vat_rate')}
+                                aria-label={translate('vatRate')}
+                                aria-describedby={
+                                  errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
+                                }
+                                inputMode="decimal"
+                                value={values.vat_rate}
+                                onChange={(event) => set('vat_rate', event.target.value)}
+                                className={cn(inputClass, 'pr-7 text-right tabular-nums')}
+                              />
+                              <span
+                                aria-hidden
+                                className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+                              >
+                                %
+                              </span>
+                            </div>
+                            <Segmented
+                              label={translate('vatRatePresets')}
+                              value={values.vat_rate}
+                              options={VAT_RATES.map((rate) => ({ value: rate, label: rate }))}
+                              onChange={(rate) => set('vat_rate', rate)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </FormField>
+                  </>
+                )}
                 <div className="grid gap-2">
                   {canRollOver(values) && (
                     <SwitchRow
@@ -724,28 +734,38 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       onCheckedChange={(on) => set('rollover', on)}
                     />
                   )}
-                  <SwitchRow
-                    id="engagement-auto-invoice"
-                    label={translate('createInvoiceDraftsAutomatically')}
-                    description={translate('draftsOnlyYouIssueThemNothingIsSentOr')}
-                    checked={values.auto_invoice}
-                    onCheckedChange={(on) => set('auto_invoice', on)}
-                  />
+                  {!paid && (
+                    <SwitchRow
+                      id="engagement-auto-invoice"
+                      label={translate('createInvoiceDraftsAutomatically')}
+                      description={translate('draftsOnlyYouIssueThemNothingIsSentOr')}
+                      checked={values.auto_invoice}
+                      onCheckedChange={(on) => set('auto_invoice', on)}
+                    />
+                  )}
                 </div>
 
-                <div className="grid gap-1.5">
-                  <p className="text-[13px] font-medium">{translate('usageOnInvoices')}</p>
-                  <Segmented
-                    label={translate('usageInvoiceLines')}
-                    value={values.invoice_detail}
-                    options={[
-                      { value: 'summary', label: translate('oneSummaryLine') },
-                      { value: 'per_entry', label: translate('oneLinePerEntry') },
-                    ]}
-                    onChange={(detail) => set('invoice_detail', detail)}
-                  />
-                </div>
+                {!paid && (
+                  <div className="grid gap-1.5">
+                    <p className="text-[13px] font-medium">{translate('usageOnInvoices')}</p>
+                    <Segmented
+                      label={translate('usageInvoiceLines')}
+                      value={values.invoice_detail}
+                      options={[
+                        { value: 'summary', label: translate('oneSummaryLine') },
+                        { value: 'per_entry', label: translate('oneLinePerEntry') },
+                      ]}
+                      onChange={(detail) => set('invoice_detail', detail)}
+                    />
+                  </div>
+                )}
+              </FormSection>
 
+              <FormSection
+                icon={SlidersHorizontal}
+                title={translate('details')}
+                description={translate('detailsSectionText')}
+              >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     field="reference"
