@@ -15,6 +15,7 @@ import (
 
 	"codeberg.org/go-pdf/fpdf"
 
+	"helvetly.com/api/internal/invoicepdf"
 	"helvetly.com/api/internal/pdffont"
 	"helvetly.com/api/internal/store"
 )
@@ -172,7 +173,7 @@ func (r *renderer) header() float64 {
 			}
 			maxW := min(max(right-text-logoGap-left, 45), logoMaxW)
 			opts := fpdf.ImageOptions{ImageType: logoType(d.Logo)}
-			p.RegisterImageOptionsReader("logo", opts, bytes.NewReader(d.Logo))
+			p.RegisterImageOptionsReader("logo", opts, bytes.NewReader(invoicepdf.OnWhite(d.Logo)))
 			w, h := float64(cfg.Width)*mmPerPixel, float64(cfg.Height)*mmPerPixel
 			scale := min(maxW/w, logoMaxH/h, 1)
 			p.ImageOptions("logo", left, 15, w*scale, h*scale, false, opts, 0, "")

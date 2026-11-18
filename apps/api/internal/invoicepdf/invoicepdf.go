@@ -93,7 +93,7 @@ func (r *renderer) logo(room float64) (float64, float64) {
 		return 0, 0
 	}
 	opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
-	r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
+	r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(OnWhite(r.d.Logo)))
 	w, h := logoSize(float64(cfg.Width), float64(cfg.Height), room)
 	r.pdf.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
 	return w, h
