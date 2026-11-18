@@ -102,16 +102,17 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   the workspace name must be typed to confirm). Deleting a workspace cancels its subscription at
   once. Export your data first: after deletion nobody can reach the workspace any more.
 - Within 30 days the owner who deleted a workspace can restore it from their account, with its
-  members; its subscription stays cancelled. On deletion we also store an archive copy (a ZIP of
-  all records and files), kept with the archive for the retention period.
-- A deleted workspace's records stay stored but unreachable. Keeping your business records for the
+  members; its subscription stays cancelled. Shortly after the deletion we also store an archive
+  copy (a ZIP of all records and files, as they are when it is made).
+- A deleted workspace's records and its archive copy stay stored but unreachable; they are not yet
+  erased automatically. Keeping your business records for the
   period the law requires (in Switzerland 10 years, OR Art. 958f, GeBüV) is your obligation; export
   them before you delete. What happens to stored records after deletion is described in the
   [data processing agreement](dpa.md), section 9.
 - Deleting your personal account requires handing over or deleting the workspaces you are the last
-  owner of first. Your sign-in methods, sessions and memberships are then removed and your profile
-  anonymised; the workspaces' business records, including what you wrote in them (such as Heidi
-  conversations and feedback you sent), stay with the workspace without your name or address.
+  owner of first. Your sign-in methods, sessions, memberships and Heidi conversations are then
+  removed and your profile anonymised; the workspaces' business records, including those you
+  created, stay with the workspace without your name or address.
 - Customers in the EU may switch to another provider under the EU Data Act: the export in section 5
   gives all records and files in common formats, free of charge.
 - We may suspend or end access with immediate effect for a serious breach of these terms, in
@@ -143,9 +144,12 @@ You must not:
 
 - **Heidi**, the assistant, answers questions about Helvetly and your business. **AI import** reads
   uploaded files and proposes records for you to review.
-- For answers that need an AI model and for AI import, Helvetly sends the content concerned to the
-  AI provider (OpenAI, USA) only after your own approval for this workspace. Approval covers all
-  AI tools there, applies only to you and does not carry over to another workspace. Helvetly does not fetch Employees or Payroll records for AI requests. Do not include those details in messages or files.
+- For answers that need an AI model, for AI import, receipt reading and the automatic filing of
+  documents you upload, Helvetly sends the content concerned to the AI provider (OpenAI, USA) only
+  after your own approval for this workspace. Approval covers all AI tools there, applies only to
+  you and does not carry over to another workspace; when the AI notice changes you approve the new
+  version once, and you can withdraw your approval at any time. What is sent is described in the
+  [privacy policy](privacy-policy.md#4-heidi-ai-import-and-openai). Helvetly does not fetch Employees or Payroll records for AI requests. Do not include those details in messages or files.
 - AI answers and extracted records can be **wrong or incomplete**. Check them before you rely on
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.
@@ -215,4 +219,4 @@ date means you accept the change.
 - If any provision is invalid, the rest remains in force and the invalid one is replaced by what
   comes closest to its purpose.
 
-Last change: 16 November 2026.
+Last change: 18 November 2026.

@@ -117,18 +117,18 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   résilie immédiatement son abonnement. Exportez d’abord vos données : après suppression,
   l’espace devient inaccessible à tous.
 - Dans les 30 jours, le propriétaire qui a supprimé un espace peut le restaurer depuis son compte, avec
-  ses membres ; son abonnement reste résilié. À la suppression, nous conservons en outre une copie
-  d’archive (un ZIP de tous les enregistrements et fichiers), gardée avec les archives pendant la
-  durée de conservation.
-- Les données d’un espace supprimé restent stockées, mais inaccessibles. La conservation de vos
+  ses membres ; son abonnement reste résilié. Peu après la suppression, nous conservons en outre
+  une copie d’archive (un ZIP de tous les enregistrements et fichiers, tels qu’ils sont au moment où
+  elle est créée).
+- Les données d’un espace supprimé et sa copie d’archive restent stockées, mais inaccessibles ;
+  elles ne sont pas encore effacées automatiquement. La conservation de vos
   pièces de gestion pendant la durée légale (en Suisse, 10 ans, art. 958f CO, Olico) vous incombe ;
   exportez-les avant la suppression. Le sort des données conservées après suppression est décrit
   dans l’[accord de traitement des données](dpa.md), section 9.
 - La suppression de votre compte personnel exige d’abord de transférer ou supprimer les espaces
-  dont vous êtes le dernier propriétaire. Vos méthodes de connexion, sessions et appartenances
-  sont ensuite retirées et votre profil anonymisé ; les données de gestion des espaces, y compris
-  ce que vous y avez écrit (conversations avec Heidi ou retours envoyés, par exemple), y restent
-  sans vos nom et adresse.
+  dont vous êtes le dernier propriétaire. Vos méthodes de connexion, sessions, appartenances et
+  conversations avec Heidi sont ensuite retirées et votre profil anonymisé ; les données de gestion
+  des espaces, y compris celles que vous avez créées, y restent sans vos nom et adresse.
 - Les clients de l’UE peuvent changer de fournisseur conformément au règlement européen sur les
   données (Data Act) : l’export de la section 5 fournit gratuitement toutes les données et tous
   les fichiers dans des formats courants.
@@ -162,10 +162,13 @@ Vous ne devez pas :
 
 - **Heidi**, l’assistante, répond aux questions sur Helvetly et votre activité. **L’import par IA**
   lit les fichiers importés et propose des enregistrements à vérifier.
-- Pour les réponses qui nécessitent un modèle d’IA et pour l’import par IA, Helvetly transmet le
-  contenu concerné au fournisseur d’IA (OpenAI, États-Unis) uniquement après votre propre approbation
-  pour cet espace. Celle-ci couvre toutes les fonctions d’IA de cet espace, uniquement pour vous,
-  et ne vaut pas dans un autre espace. Helvetly ne récupère pas les données d’Employees ou de Payroll pour les requêtes d’IA. N’incluez pas ces informations dans les messages ou fichiers.
+- Pour les réponses qui nécessitent un modèle d’IA, pour l’import par IA, la lecture des
+  justificatifs et le classement automatique des documents téléversés, Helvetly transmet le contenu
+  concerné au fournisseur d’IA (OpenAI, États-Unis) uniquement après votre propre approbation pour
+  cet espace. Celle-ci couvre toutes les fonctions d’IA de cet espace, uniquement pour vous, et ne
+  vaut pas dans un autre espace ; lorsque l’information sur l’IA change, vous approuvez une fois la
+  nouvelle version, et vous pouvez retirer votre approbation à tout moment. Les données transmises
+  sont décrites dans la [politique de confidentialité](privacy-policy.md). Helvetly ne récupère pas les données d’Employees ou de Payroll pour les requêtes d’IA. N’incluez pas ces informations dans les messages ou fichiers.
 - Les réponses et les données extraites peuvent être **erronées ou incomplètes**. Vérifiez-les
   avant de vous y fier ; l’import par IA ne crée rien avant examen et confirmation par une
   personne. Les réponses de Heidi ne constituent aucun conseil juridique, fiscal ou financier.
@@ -240,4 +243,4 @@ date ; continuer à utiliser Helvetly après celle-ci vaut acceptation de la mod
 - Si une disposition est invalide, les autres restent en vigueur ; la disposition invalide est
   remplacée par celle qui se rapproche le plus de son objectif.
 
-Dernière modification : 16 novembre 2026.
+Dernière modification : 18 novembre 2026.

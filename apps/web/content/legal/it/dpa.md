@@ -59,8 +59,13 @@ rimane responsabile.
 
 Ogni membro deve approvare il proprio utilizzo dell’IA in ogni spazio di lavoro prima che vengano
 inviati contenuti al fornitore IA, anche per il conteggio dei token. L’approvazione copre tutte le
-funzioni IA di quello spazio e non può essere data per conto di un altro membro. La cronologia delle
-approvazioni viene conservata.
+funzioni IA di quello spazio e non può essere data per conto di un altro membro. Ogni approvazione
+registra la versione dell’informativa sull’IA per cui è stata data; quando l’informativa cambia, le
+approvazioni precedenti non valgono più e ogni membro approva una volta la nuova versione. Un membro
+può revocare la propria approvazione in qualsiasi momento. La cronologia delle approvazioni viene
+conservata. Con l’approvazione, un file che un membro carica in Documents viene inviato anche in
+background al fornitore IA per l’archiviazione automatica (tag e cartella), come descritto
+nell’informativa sulla privacy.
 
 ## 7. Trasferimenti all’estero
 
@@ -82,16 +87,17 @@ dei dati e nelle notifiche alle autorità, ove necessario.
 Durante il contratto, il Cliente può esportare tutti i dati in qualsiasi momento (Settings →
 Workspace → Export all data). Quando uno spazio di lavoro viene eliminato, nessuno può più
 accedervi, ma record e file restano memorizzati; la piattaforma non li cancella ancora
-automaticamente. Conservare i documenti aziendali per il periodo richiesto dalla legge (in Svizzera
-10 anni, art. 958f CO, Olc) è un obbligo del Cliente in qualità di titolare del trattamento.
-Helvetly conserva in archivio i dati dello spazio di lavoro eliminato fino alla fine del periodo di
-conservazione e poi li cancella; su richiesta del Cliente li cancella prima, ove consentito dalla
-legge. I backup vengono cancellati secondo la normale rotazione. Entro 30 giorni il titolare che ha
-eliminato lo spazio di lavoro può ripristinarlo, con i suoi membri. All’eliminazione Helvetly
-conserva inoltre una copia d’archivio, uno ZIP di tutti i record e file dello spazio, che tiene con
-l’archivio per il periodo di conservazione e poi cancella. I dati dei dipendenti e dei salari fanno
-parte dello spazio di lavoro: l’esportazione del titolare li include in una cartella separata e, in
-caso di eliminazione, vengono trattati come gli altri dati.
+automaticamente e non è ancora stato fissato un termine di cancellazione. Conservare i documenti
+aziendali per il periodo richiesto dalla legge (in Svizzera 10 anni, art. 958f CO, Olc) è un obbligo
+del Cliente in qualità di titolare del trattamento. Su richiesta del Cliente, Helvetly cancella prima
+i dati di uno spazio di lavoro eliminato, ove consentito dalla legge. Entro 30 giorni il titolare che
+ha eliminato lo spazio di lavoro può ripristinarlo, con quelli dei suoi membri il cui account esiste
+ancora. Poco dopo l’eliminazione un processo in background conserva inoltre una copia d’archivio: uno
+ZIP dei record e dei file dello spazio con una nota su chi l’ha eliminato, quando, e sui suoi membri,
+che rispecchia lo spazio com’è nel momento in cui il processo viene eseguito; è memorizzata come i
+dati dello spazio. I dati dei dipendenti e dei salari fanno parte dello spazio di lavoro:
+l’esportazione del titolare e la copia d’archivio li includono in una cartella separata e, in caso di
+eliminazione, vengono trattati come gli altri dati.
 
 ## 10. Violazioni dei dati
 
@@ -133,8 +139,12 @@ restano impregiudicate le sue disposizioni imperative.
   o amministrazione; l’accesso ai sistemi di produzione è limitato a chi gestisce il servizio.
 - **Fornitore IA:** vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
   esplicitamente allegati (Heidi), i file selezionati (importazione IA e lettura delle ricevute),
-  oppure il nome dell’azienda (suggerimento del nome dello spazio); le richieste chiedono
-  al fornitore di non conservare i dati (`store: false`); budget mensile di token applicato sul server.
+  il nome dell’azienda (suggerimento del nome dello spazio), oppure nome, tipo e inizio del testo di
+  un file caricato o il file stesso fino a 4 MiB, con i nomi delle cartelle e i tag in uso
+  (archiviazione automatica), lo stesso contenuto anche per il conteggio dei token; solo dopo
+  l’approvazione del membro stesso; le richieste chiedono al fornitore di non conservarli come stato
+  applicativo memorizzato (`store: false`), il che non sostituisce la conservazione propria del
+  fornitore secondo le sue condizioni; budget mensile di token applicato sul server.
 - **Dati dei dipendenti e dei salari:** accesso separato per membro a Employees e Payroll, concesso
   solo dal titolare; coordinate bancarie, identificativi fiscali e numeri di assicurazione sociale
   sigillati con AES-256-GCM e ogni accesso registrato; non recuperati per le richieste IA; non disponibili tramite MCP o token API; approvazione facoltativa dei salari da parte di una seconda persona; le registrazioni salariali
