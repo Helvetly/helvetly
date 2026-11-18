@@ -4,7 +4,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, Pencil } from 'lucide-react'
+import { Check, FileText, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment } from 'react'
 
@@ -20,7 +20,7 @@ import {
   type ImportRecord,
 } from '@/lib/imports'
 
-import { FileProgress } from './import-files'
+import { FileLine, FileProgress } from './import-files'
 import { IssueChip, issuesId } from './import-issues'
 
 export const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
@@ -61,22 +61,6 @@ export function FileReview({
     const ticked = group.filter((record) => selected.has(record.id)).length
     return ticked === 0 ? false : ticked === group.length ? true : 'indeterminate'
   }
-  const leads = new Map(
-    files.map((file) => {
-      const own = (perFile.get(file.id) ?? []).filter((record) => !isSettled(record))
-      return [
-        file.id,
-        own.length > 0 && (
-          <Checkbox
-            key={file.id}
-            aria-label={translate('selectAllRowsIn', { name: file.name })}
-            checked={tickState(own)}
-            onCheckedChange={(on) => tick(own, on === true)}
-          />
-        ),
-      ]
-    }),
-  )
   /** Ticks or unticks `group`, keeping every other tick. */
   const tick = (group: ImportRecord[], on: boolean) => {
     const next = new Set(selected)
@@ -103,6 +87,18 @@ export function FileReview({
       />
     )
   }
+  if (config)
+    return (
+      <ReviewTable
+        config={config}
+        records={records}
+        files={files}
+        selected={selected}
+        results={results}
+        onSelect={onSelect}
+        onEdit={onEdit}
+      />
+    )
   return (
     <div className="grid gap-3">
       <FileProgress
@@ -127,27 +123,22 @@ export function FileReview({
             </>
           )
         }
-        lead={leads}
       >
         {(file) => {
           const own = perFile.get(file.id)
           if (!own?.length) return null
           return (
             <section aria-label={file.name} className="grid divide-y">
-              {config
-                ? table(config, own)
-                : recordsByKind(own).map(({ kind, records: group }) => (
-                    <Fragment key={kind}>{table(IMPORT_KINDS[kind], group)}</Fragment>
-                  ))}
+              {recordsByKind(own).map(({ kind, records: group }) => (
+                <Fragment key={kind}>{table(IMPORT_KINDS[kind], group)}</Fragment>
+              ))}
             </section>
           )
         }}
       </FileProgress>
       {!reading && !records.length && (
         <p className="rounded-lg border border-dashed px-4 py-8 text-center text-body-sm text-muted-foreground">
-          {config
-            ? `${translate('no2')}${config.label.toLowerCase()}${translate('wereFoundInTheseFilesTryOtherFilesOr')}`
-            : translate('nothingToImportWasFoundInTheseFilesTry')}
+          {translate('nothingToImportWasFoundInTheseFilesTry')}
         </p>
       )}
     </div>
@@ -162,10 +153,16 @@ export function ReviewTable({
   results,
   onSelect,
   onEdit,
+  files,
   bare = false,
 }: {
   config: ImportKindConfig
   records: ImportRecord[]
+  /**
+   * The import's files, in order: each shows as one row (reading, waiting, failed) until its records replace it,
+   * and a Document column names where each record came from.
+   */
+  files?: ImportFile[]
   selected: ReadonlySet<string>
   results: ReadonlyMap<string, CommitResult>
   onSelect: (selected: Set<string>) => void
@@ -182,7 +179,21 @@ export function ReviewTable({
     onSelect(next)
   }
 
-  if (!records.length)
+  const fileOf = new Map(files?.map((file) => [file.id, file]))
+  type Row = { record: ImportRecord } | { file: ImportFile }
+  const rows: Row[] = files
+    ? [
+        ...files.flatMap((file): Row[] => {
+          const own = records.filter((record) => record.file_id === file.id)
+          return own.length ? own.map((record) => ({ record })) : [{ file }]
+        }),
+        ...records.filter((record) => !fileOf.has(record.file_id)).map((record) => ({ record })),
+      ]
+    : records.map((record) => ({ record }))
+  // Document, the kind's columns, Notes and Edit: what a file's own row spans besides the checkbox.
+  const span = config.columns.length + (files ? 3 : 2)
+
+  if (!records.length && !files?.length)
     return (
       <p className="rounded-lg border border-dashed px-4 py-8 text-center text-[13px] text-muted-foreground">
         {translate('no2')}
@@ -209,6 +220,11 @@ export function ReviewTable({
                 }
               />
             </th>
+            {files && (
+              <th scope="col" className="px-2 py-2 font-medium">
+                {translate('document')}
+              </th>
+            )}
             {config.columns.map((field) => (
               <th key={field} scope="col" className="px-2 py-2 font-medium">
                 {config.fields[field]}
@@ -223,8 +239,20 @@ export function ReviewTable({
           </tr>
         </thead>
         <tbody className="divide-y">
-          {records.map((record, index) => {
-            const name = rowName(config, record, index)
+          {rows.map((row) => {
+            if ('file' in row)
+              return (
+                <tr key={row.file.id} data-status={row.file.status}>
+                  <td colSpan={span + 1} className="px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <FileLine file={row.file} records={0} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            const { record } = row
+            const name = rowName(config, record, records.indexOf(record))
+            const source = fileOf.get(record.file_id)
             const created = record.status === 'created'
             const skipped = record.status === 'skipped'
             const issues = Object.keys(record.issues)
@@ -249,6 +277,14 @@ export function ReviewTable({
                     />
                   )}
                 </td>
+                {files && (
+                  <td className="max-w-44 px-2 py-2">
+                    <span className="flex items-center gap-1.5 text-caption text-muted-foreground">
+                      <FileText aria-hidden className="size-3.5 shrink-0" />
+                      <span className="truncate">{source?.name ?? '—'}</span>
+                    </span>
+                  </td>
+                )}
                 {config.columns.map((field) => {
                   const value = displayValue(record.data[field])
                   return (
