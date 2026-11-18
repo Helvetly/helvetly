@@ -4274,5 +4274,10 @@
   "emailTemplatesAboutInvoice": "Inviata con una fattura, una fattura parziale o di acconto quando la invii al cliente per e-mail.",
   "emailTemplatesAboutCreditNote": "Inviata con una nota di credito che riduce o annulla una fattura.",
   "emailTemplatesAboutProforma": "Inviata con una fattura pro forma: un preavviso dell’importo, non una richiesta di pagamento.",
-  "emailTemplatesAboutQuote": "Inviata con un’offerta, perché il cliente possa esaminarla e accettarla."
+  "emailTemplatesAboutQuote": "Inviata con un’offerta, perché il cliente possa esaminarla e accettarla.",
+  "importCloseMonthsTitle": "Chiudere i mesi importati?",
+  "importCloseMonths": "{count, plural, one {Chiudi # mese} other {Chiudi # mesi}}",
+  "importCloseMonthsBody": "Le fatture importate riguardano {range}. La chiusura blocca questi mesi affinché nulla datato in essi cambi; puoi riaprire un mese indicandone il motivo.",
+  "importInstalments": "Rate",
+  "importPaidOnTip": "Se vuoto, il pagamento vale alla data di scadenza (o a quella della rata)."
 }

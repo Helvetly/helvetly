@@ -241,6 +241,7 @@ export const IMPORT_KINDS = {
       issued_elsewhere: translate('alreadyIssued'),
       paid_amount: translate('alreadyPaid'),
       paid_on: translate('paidOn'),
+      instalments: translate('importInstalments'),
     },
     columns: [
       'number',
@@ -269,6 +270,7 @@ export const IMPORT_KINDS = {
     tips: {
       issued_elsewhere: translate('tickedTheInvoiceWasAlreadyIssuedInAnotherSystem'),
       paid_amount: translate('whatTheClientAlreadyPaidOnAnInvoiceIssued'),
+      paid_on: translate('importPaidOnTip'),
     },
     pickClient: true,
     listKey: ['invoices'],

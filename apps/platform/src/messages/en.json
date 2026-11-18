@@ -4274,5 +4274,10 @@
   "emailTemplatesAboutInvoice": "Sent with an invoice, a partial or prepayment invoice when you email it to the client.",
   "emailTemplatesAboutCreditNote": "Sent with a credit note that reduces or cancels an invoice.",
   "emailTemplatesAboutProforma": "Sent with a pro forma invoice: an advance notice of the amount, not a demand for payment.",
-  "emailTemplatesAboutQuote": "Sent with a quote, so the client can review and accept it."
+  "emailTemplatesAboutQuote": "Sent with a quote, so the client can review and accept it.",
+  "importCloseMonthsTitle": "Close the imported months?",
+  "importCloseMonths": "{count, plural, one {Close # month} other {Close # months}}",
+  "importCloseMonthsBody": "The imported invoices fill {range}. Closing locks these months so nothing dated in them changes; you can reopen a month with a reason.",
+  "importInstalments": "Instalments",
+  "importPaidOnTip": "Left empty, the payment counts on the due date (or the instalment's due date)."
 }

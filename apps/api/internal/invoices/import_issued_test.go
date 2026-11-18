@@ -64,6 +64,53 @@ func errCode(err error) string {
 	return code
 }
 
+// A payment the document states without a date counts on the instalment's due date, else the invoice's due date, and
+// a paid instalment is a payment of its own, so the books see each on its day.
+func TestImportIssuedElsewherePaymentDates(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	ctx := context.Background()
+	inst := func(amount, due string, paid bool, on any) map[string]any {
+		return map[string]any{"amount": amount, "due_date": due, "paid": paid, "paid_on": on}
+	}
+	tests := []struct {
+		name  string
+		extra map[string]any
+		want  []string // amount@paid_on per payment, oldest first
+	}{
+		{"paid without a date: its due date", map[string]any{"number": "D-1", "paid_amount": "1081.00"}, []string{"1081.00@2025-10-31"}},
+		{"no due date stated: its issue date", map[string]any{"number": "D-2", "due_date": nil, "paid_amount": "100.00"}, []string{"100.00@2025-10-01"}},
+		{"paid instalments, each on its date", map[string]any{"number": "D-3", "instalments": []any{
+			inst("400.00", "2025-10-05", true, "2025-10-03"), inst("400.00", "2025-11-05", true, nil), inst("281.00", "2025-12-05", false, nil)}},
+			[]string{"400.00@2025-10-03", "400.00@2025-11-05"}},
+		{"instalments making up paid_amount", map[string]any{"number": "D-4", "paid_amount": "800.00", "paid_on": "2025-11-05", "instalments": []any{
+			inst("400.00", "2025-10-05", true, nil), inst("400.00", "2025-11-05", true, nil)}}, []string{"400.00@2025-10-05", "400.00@2025-11-05"}},
+		{"paid_amount differing from the instalments", map[string]any{"number": "D-5", "paid_amount": "1081.00", "paid_on": "2025-11-20", "instalments": []any{
+			inst("400.00", "2025-10-05", true, nil)}}, []string{"1081.00@2025-11-20"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := importOnce(e, sess, clientID, importData(t, tt.extra), &docID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			payments, err := e.st.Payments(ctx, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := []string{}
+			for _, p := range payments {
+				got = append(got, p.Amount.String()+"@"+p.PaidOn)
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("payments %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestImportIssuedElsewhere(t *testing.T) {
 	e := newEnv(t)
 	b, clientID := e.ready()
