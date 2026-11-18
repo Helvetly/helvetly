@@ -8,6 +8,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronRight,
   Clock,
   FileText,
   ListChecks,
@@ -287,27 +288,47 @@ const CHIPS = {
   },
 }
 
-/** One card per file the server is reading, or has read; `children` adds what was found in it beneath. */
+/**
+ * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath.
+ * `header` heads the table (a select-all), `lead` holds a control per file id, before its name (its own select-all).
+ */
 export function FileProgress({
   files,
   recordsPerFile,
+  header,
+  lead,
   children,
 }: {
   files: ImportFile[]
   recordsPerFile: Map<string, number>
+  header?: ReactNode
+  lead?: ReadonlyMap<string, ReactNode>
   children?: (file: ImportFile) => ReactNode
 }) {
+  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set())
+  const toggle = (id: string) =>
+    setClosed((current) => {
+      const next = new Set(current)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
   return (
-    <ul aria-label={translate('files')} className="grid gap-2">
-      {files.map((file) => {
-        const found = children?.(file)
-        return (
-          <li
-            key={file.id}
-            data-status={file.status}
-            className="grid overflow-hidden rounded-lg border bg-card"
-          >
-            <div className="flex items-center gap-3 px-3 py-2 text-body-sm">
+    <div className="rounded-lg border bg-card">
+      {header && (
+        <div className="flex items-center gap-3 rounded-t-lg border-b bg-muted/40 px-3 py-2 text-caption text-muted-foreground">
+          {header}
+        </div>
+      )}
+      <ul
+        aria-label={translate('files')}
+        // No overflow clip on the frame (focus rings show); the last open row rounds itself.
+        className="divide-y [&>li:last-child>[id]]:rounded-b-lg"
+      >
+        {files.map((file) => {
+          const found = children?.(file)
+          const open = Boolean(found) && !closed.has(file.id)
+          const head = (
+            <>
               <span
                 className={cn(
                   'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-4 [&_svg]:stroke-[1.75]',
@@ -316,7 +337,7 @@ export function FileProgress({
               >
                 {CHIPS[file.status].icon}
               </span>
-              <div className="grid min-w-0 flex-1">
+              <span className="grid min-w-0 flex-1">
                 <span className="truncate font-medium">{file.name}</span>
                 <span className={cn('text-caption', CHIPS[file.status].text)}>
                   {file.document_type && file.document_type !== 'other' && (
@@ -327,16 +348,53 @@ export function FileProgress({
                   {fileStatus(file, recordsPerFile.get(file.id) ?? 0)}
                   {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
                 </span>
-              </div>
+              </span>
               <span className="shrink-0 text-caption text-muted-foreground tabular-nums">
                 {formatFileSize(file.size)}
               </span>
-            </div>
-            {found && <div className="border-t bg-muted/20 p-2">{found}</div>}
-          </li>
-        )
-      })}
-    </ul>
+            </>
+          )
+          return (
+            <li key={file.id} data-status={file.status}>
+              <div className="flex items-center gap-3 px-3 py-2 text-body-sm">
+                {lead && (
+                  <span className="grid w-4 shrink-0 place-items-center">{lead.get(file.id)}</span>
+                )}
+                {found ? (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={`${file.id}-rows`}
+                    onClick={() => toggle(file.id)}
+                    className="-my-2 flex min-w-0 flex-1 items-center gap-3 py-2 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+                  >
+                    <ChevronRight
+                      aria-hidden
+                      className={cn(
+                        'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                        open && 'rotate-90',
+                      )}
+                    />
+                    {head}
+                  </button>
+                ) : (
+                  <>
+                    {/* Where a file with rows has its chevron, so names line up. */}
+                    <span aria-hidden className="size-4 shrink-0" />
+                    {head}
+                  </>
+                )}
+              </div>
+              {found && (
+                <div id={`${file.id}-rows`} hidden={!open} className="border-t bg-muted/20 pl-7">
+                  {found}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

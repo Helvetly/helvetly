@@ -4307,5 +4307,8 @@
   "importFieldsToFix": "{count, plural, one {# Feld zu korrigieren} other {# Felder zu korrigieren}}",
   "importFieldsToFixHint": "Korrigieren Sie die markierten Felder und speichern Sie: Der Datensatz wird erneut geprüft und für den Import ausgewählt.",
   "importRecordLooksGood": "Dieser Datensatz sieht gut aus. Ändern Sie, was Sie möchten; beim Speichern wird er erneut geprüft.",
-  "importDocumentNames": "Auf dem Dokument:"
+  "importDocumentNames": "Auf dem Dokument:",
+  "selectAllRows": "Alle Zeilen auswählen",
+  "selectAllRowsIn": "Alle Zeilen in {name} auswählen",
+  "importSelectedOfAll": "{count} von {total} Zeilen ausgewählt, in allen Dateien"
 }

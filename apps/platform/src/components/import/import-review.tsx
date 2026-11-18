@@ -56,6 +56,36 @@ export function FileReview({
   for (const record of records)
     perFile.set(record.file_id, [...(perFile.get(record.file_id) ?? []), record])
   const counts = new Map([...perFile].map(([id, own]) => [id, own.length]))
+  const open = records.filter((record) => !isSettled(record))
+  const tickState = (group: ImportRecord[]) => {
+    const ticked = group.filter((record) => selected.has(record.id)).length
+    return ticked === 0 ? false : ticked === group.length ? true : 'indeterminate'
+  }
+  const leads = new Map(
+    files.map((file) => {
+      const own = (perFile.get(file.id) ?? []).filter((record) => !isSettled(record))
+      return [
+        file.id,
+        own.length > 0 && (
+          <Checkbox
+            key={file.id}
+            aria-label={translate('selectAllRowsIn', { name: file.name })}
+            checked={tickState(own)}
+            onCheckedChange={(on) => tick(own, on === true)}
+          />
+        ),
+      ]
+    }),
+  )
+  /** Ticks or unticks `group`, keeping every other tick. */
+  const tick = (group: ImportRecord[], on: boolean) => {
+    const next = new Set(selected)
+    for (const record of group) {
+      if (on) next.add(record.id)
+      else next.delete(record.id)
+    }
+    onSelect(next)
+  }
   const table = (kind: ImportKindConfig, group: ImportRecord[]) => {
     const ids = new Set(group.map((record) => record.id))
     return (
@@ -69,17 +99,41 @@ export function FileReview({
           onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
         }
         onEdit={onEdit}
+        bare
       />
     )
   }
   return (
     <div className="grid gap-3">
-      <FileProgress files={files} recordsPerFile={counts}>
+      <FileProgress
+        files={files}
+        recordsPerFile={counts}
+        header={
+          open.length > 0 && (
+            <>
+              <span className="grid w-4 shrink-0 place-items-center">
+                <Checkbox
+                  aria-label={translate('selectAllRows')}
+                  checked={tickState(open)}
+                  onCheckedChange={(on) => tick(open, on === true)}
+                />
+              </span>
+              <span>
+                {translate('importSelectedOfAll', {
+                  count: open.filter((record) => selected.has(record.id)).length,
+                  total: open.length,
+                })}
+              </span>
+            </>
+          )
+        }
+        lead={leads}
+      >
         {(file) => {
           const own = perFile.get(file.id)
           if (!own?.length) return null
           return (
-            <section aria-label={file.name} className="grid gap-2">
+            <section aria-label={file.name} className="grid divide-y">
               {config
                 ? table(config, own)
                 : recordsByKind(own).map(({ kind, records: group }) => (
@@ -108,6 +162,7 @@ export function ReviewTable({
   results,
   onSelect,
   onEdit,
+  bare = false,
 }: {
   config: ImportKindConfig
   records: ImportRecord[]
@@ -115,6 +170,8 @@ export function ReviewTable({
   results: ReadonlyMap<string, CommitResult>
   onSelect: (selected: Set<string>) => void
   onEdit: (id: string) => void
+  /** Inside a file's card: no frame of its own, only the card's. */
+  bare?: boolean
 }) {
   const open = records.filter((record) => !isSettled(record))
   const ticked = open.filter((record) => selected.has(record.id)).length
@@ -135,12 +192,12 @@ export function ReviewTable({
     )
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className={cn('overflow-x-auto', !bare && 'rounded-lg border')}>
       <table
         aria-label={translate('recordsFound')}
         className="w-full min-w-[640px] text-left text-[13px]"
       >
-        <thead className="border-b bg-muted/40 text-[12px] text-muted-foreground">
+        <thead className={cn('border-b text-[12px] text-muted-foreground', !bare && 'bg-muted/40')}>
           <tr>
             <th scope="col" className="w-10 px-3 py-2">
               <Checkbox

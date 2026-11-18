@@ -167,6 +167,11 @@ export const Drawer: Story = {
     await userEvent.click(body().getByRole('button', { name: 'Import 2' }))
     await waitFor(() => expect(committed).toEqual(['imr_client', 'imr_engagement']))
     await expect(await body().findByText('2 created')).toBeVisible()
+
+    // One tick at the top selects the rows still open in every file.
+    await userEvent.click(body().getByRole('checkbox', { name: 'Select all rows' }))
+    await expect(body().getByRole('checkbox', { name: 'Select 2025/IN/004' })).toBeChecked()
+    await expect(body().getByText('2 of 2 rows selected, in all files')).toBeVisible()
   },
 }
 
