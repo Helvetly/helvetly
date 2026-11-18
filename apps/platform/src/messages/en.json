@@ -4423,5 +4423,11 @@
   "aiWriteDraftHint": "Or say what it should cover…",
   "aiWriteEditHint": "Or say what to change…",
   "aiWriteSend": "Ask Heidi",
-  "aiWriteNote": "You see the text first; nothing changes until you use it."
+  "aiWriteNote": "You see the text first; nothing changes until you use it.",
+  "contractNumberPlaceholder": "Add contract no.",
+  "contractOpenDocument": "Open {name}",
+  "contractUnlink": "Unlink the document",
+  "contractLinkDocument": "Link a contract from Documents",
+  "contractSearchDocuments": "Search documents",
+  "contractNoDocuments": "No documents found."
 }

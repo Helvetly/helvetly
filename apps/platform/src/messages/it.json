@@ -4423,5 +4423,11 @@
   "aiWriteDraftHint": "Oppure di’ cosa deve includere…",
   "aiWriteEditHint": "Oppure di’ cosa cambiare…",
   "aiWriteSend": "Chiedi a Heidi",
-  "aiWriteNote": "Vedi prima il testo; nulla cambia finché non lo usi."
+  "aiWriteNote": "Vedi prima il testo; nulla cambia finché non lo usi.",
+  "contractNumberPlaceholder": "Aggiungi n. contratto",
+  "contractOpenDocument": "Apri {name}",
+  "contractUnlink": "Scollega il documento",
+  "contractLinkDocument": "Collega un contratto dai Documenti",
+  "contractSearchDocuments": "Cerca documenti",
+  "contractNoDocuments": "Nessun documento trovato."
 }
