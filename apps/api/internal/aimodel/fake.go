@@ -41,6 +41,10 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		b, _ := json.Marshal(map[string]string{"name": string(name[:min(len(name), 40)])})
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 	}
+	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["proposals"] != nil {
+		b, _ := json.Marshal(fakeOrganize(r.Message))
+		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
+	}
 	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["new_folder"] != nil {
 		b, _ := json.Marshal(fakeFiling(r.Message))
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
@@ -145,4 +149,27 @@ func recordProperties(schema map[string]any, key string) map[string][]string {
 		}
 	}
 	return out
+}
+
+// fakeOrganize organizes by the file name: each document (a JSON line with id and name) goes into a folder named after
+// the name's first word of three letters or more, plural, tagged with that word.
+func fakeOrganize(message string) map[string]any {
+	proposals := []map[string]any{}
+	for line := range strings.Lines(message) {
+		var doc struct{ ID, Name, Folder string }
+		if json.Unmarshal([]byte(line), &doc) != nil || doc.ID == "" {
+			continue
+		}
+		base := strings.ToLower(strings.TrimSuffix(doc.Name, path.Ext(doc.Name)))
+		words := strings.FieldsFunc(base, func(r rune) bool { return !unicode.IsLetter(r) })
+		i := slices.IndexFunc(words, func(w string) bool { return len([]rune(w)) >= 3 })
+		if i < 0 {
+			continue
+		}
+		word := []rune(words[i])
+		folder := strings.ToUpper(string(word[:1])) + string(word[1:]) + "s"
+		proposals = append(proposals, map[string]any{"document_id": doc.ID, "folder": folder, "tags": []string{words[i]},
+			"reason": "The name says it is a " + words[i] + ".", "change": folder != doc.Folder})
+	}
+	return map[string]any{"proposals": proposals}
 }
