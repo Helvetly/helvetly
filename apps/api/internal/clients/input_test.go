@@ -75,18 +75,23 @@ func TestTags(t *testing.T) {
 		name, in string
 		want     []string // nil: invalid
 	}{
-		{"trimmed and kept as typed", `[" VIP ", "Zürich"]`, []string{"VIP", "Zürich"}},
+		{"trimmed and kept as typed", `[" VIP ", "q4-2026"]`, []string{"VIP", "q4-2026"}},
+		{"letters outside a-z", `["Zürich"]`, nil},
+		{"symbols", `["dobry-====="]`, nil},
+		{"hyphen at the start", `["-vip"]`, nil},
+		{"hyphen at the end", `["vip-"]`, nil},
+		{"space inside", `["big client"]`, nil},
 		{"null clears", `null`, []string{}},
 		{"empty list", `[]`, []string{}},
 		{"duplicate ignoring case", `["VIP", "vip"]`, nil},
 		{"blank tag", `["VIP", "  "]`, nil},
-		{"31 characters", `["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`, nil},
-		{"30 characters", `["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`, []string{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+		{"33 characters", `["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`, nil},
+		{"32 characters", `["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]`, []string{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
 		{"eleven tags", `["1","2","3","4","5","6","7","8","9","10","11"]`, nil},
 		{"not a list", `"VIP"`, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, msg := tags(json.RawMessage(tc.in))
+			got, msg := clientTags(json.RawMessage(tc.in))
 			if tc.want == nil {
 				if msg == "" {
 					t.Fatalf("accepted as %v", got)

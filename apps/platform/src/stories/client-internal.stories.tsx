@@ -79,9 +79,9 @@ export const EditInPlace: Story = {
     await userEvent.click(await card.findByRole('button', { name: /retainer/ }))
     await userEvent.type(tags, 'Key account{Enter}{Enter}')
     await waitFor(() =>
-      expect(saved).toHaveBeenLastCalledWith({ tags: ['retainer', 'Key account'] }),
+      expect(saved).toHaveBeenLastCalledWith({ tags: ['retainer', 'Key-account'] }),
     )
-    await expect(await card.findByText('Key account')).toBeVisible()
+    await expect(await card.findByText('Key-account')).toBeVisible()
     await expect(card.queryByText('sss')).not.toBeInTheDocument()
 
     await userEvent.click(card.getByRole('button', { name: /Edit internal ID/ }))
@@ -137,5 +137,24 @@ export const ReadOnly: Story = {
     await waitFor(() =>
       expect(card.queryByRole('button', { name: /Edit/ })).not.toBeInTheDocument(),
     )
+  },
+}
+
+/** Adding a note: the label stays on the first line, the field takes 1000 characters and grows only so far. */
+export const AddNote: Story = {
+  parameters: { msw: { handlers: handlers(sampleClient({ note: null })) } },
+  render: detail,
+  play: async () => {
+    const card = await internalCard()
+    await userEvent.click(await card.findByRole('button', { name: 'Add note' }))
+    const note = card.getByRole('textbox', { name: 'Note' })
+    const label = card.getByText('Note', { selector: 'span' })
+    const top = label.getBoundingClientRect().top
+    await expect(note).toHaveAttribute('maxlength', '1000')
+    await userEvent.type(note, 'line{Enter}'.repeat(30))
+    // The label did not move down with the taller field, and the field stopped growing.
+    await expect(Math.abs(label.getBoundingClientRect().top - top)).toBeLessThan(1)
+    await expect(note.getBoundingClientRect().height).toBeLessThanOrEqual(240)
+    await expect(card.getByText('150 / 1000')).toBeVisible()
   },
 }

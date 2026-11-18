@@ -15,6 +15,7 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/eaddress"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 // A field parser normalises one JSON value from ClientInput: value nil means NULL, a message means invalid.
@@ -43,7 +44,7 @@ var clientFields = map[string]fieldParser{
 	"payment_terms_days":  paymentTerms,
 	"internal_id":         text(100, nil),
 	"note":                text(1000, nil),
-	"tags":                tags,
+	"tags":                clientTags,
 	"dunning_enabled":     boolean,
 	"region":              text(6, region),
 	"einvoice_format":     einvoiceFormat,
@@ -219,8 +220,8 @@ func paymentTerms(raw json.RawMessage) (any, string) {
 	return v, ""
 }
 
-// tags: null clears them; each is trimmed, 1–30 characters, and appears once ignoring case.
-func tags(raw json.RawMessage) (any, string) {
+// clientTags: null clears them; each is trimmed, in the tags package's shape, and appears once ignoring case.
+func clientTags(raw json.RawMessage) (any, string) {
 	list := []string{}
 	if isNull(raw) {
 		return list, ""
@@ -235,8 +236,8 @@ func tags(raw json.RawMessage) (any, string) {
 	seen := map[string]bool{}
 	for _, t := range in {
 		t = strings.TrimSpace(t)
-		if n := utf8.RuneCountInString(t); n < 1 || n > 30 {
-			return nil, "Each tag needs 1 to 30 characters."
+		if !tags.Valid(t) {
+			return nil, tags.Problem
 		}
 		if seen[strings.ToLower(t)] {
 			return nil, fmt.Sprintf("The tag %q appears twice.", t)

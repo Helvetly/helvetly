@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
+import { emailTemplateHandlers } from '@/mocks/email-templates'
 import { quoteHandlers, resetQuotesMock } from '@/mocks/quotes'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
@@ -11,7 +12,7 @@ import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from '
 
 /** The quotes page with the stateful quote fake behind it; `handlers` answer first. */
 const quotes = (query: Record<string, string> = {}, handlers: RequestHandler[] = []) =>
-  pageParameters('/quotes', query, [...handlers, ...quoteHandlers])
+  pageParameters('/quotes', query, [...handlers, ...quoteHandlers, ...emailTemplateHandlers])
 
 const meta = {
   title: 'Pages/Quotes',

@@ -5,6 +5,7 @@ import { FormField as SharedField } from '@helvetly/ui/components/form-field'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
+import { CountedTextarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
@@ -218,33 +219,24 @@ export function ProductForm({
                 error={errors.description}
                 tip={translate('printedUnderTheNameOnTheInvoiceLine')}
                 hint={
-                  <span className="flex items-center justify-between gap-2">
-                    <AIWrite
-                      field="product_description"
-                      text={values.description}
-                      maxLength={DESCRIPTION_MAX}
-                      context={{
-                        name: values.name,
-                        kind: values.type,
-                        unit: values.unit ?? undefined,
-                        price: values.unit_price && `${values.currency} ${values.unit_price}`,
-                      }}
-                      onApply={(text) => set('description', text)}
-                    />
-                    <span
-                      className={cn(
-                        'tabular-nums',
-                        values.description.length > DESCRIPTION_MAX && 'text-destructive',
-                      )}
-                    >
-                      {values.description.length} / {DESCRIPTION_MAX}
-                    </span>
-                  </span>
+                  <AIWrite
+                    field="product_description"
+                    text={values.description}
+                    maxLength={DESCRIPTION_MAX}
+                    context={{
+                      name: values.name,
+                      kind: values.type,
+                      unit: values.unit ?? undefined,
+                      price: values.unit_price && `${values.currency} ${values.unit_price}`,
+                    }}
+                    onApply={(text) => set('description', text)}
+                  />
                 }
               >
-                <textarea
+                <CountedTextarea
                   {...describe('description')}
                   rows={3}
+                  maxLength={DESCRIPTION_MAX}
                   value={values.description}
                   onChange={(event) => set('description', event.target.value)}
                   placeholder={translate('whatTheClientGetsEGDesignTwoRevision')}

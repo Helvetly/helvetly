@@ -49,7 +49,7 @@ test('Backspace removes the last tag; leaving the field saves what was typed too
   const { input } = editor(save)
   await userEvent.type(input, '{Backspace}late payer')
   await userEvent.click(screen.getByRole('button', { name: 'Elsewhere' }))
-  expect(save).toHaveBeenCalledExactlyOnceWith(['vip', 'late payer'])
+  expect(save).toHaveBeenCalledExactlyOnceWith(['vip', 'late-payer'])
 })
 
 test('Escape and unchanged tags close without saving', async () => {

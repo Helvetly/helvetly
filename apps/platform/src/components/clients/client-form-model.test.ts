@@ -1,5 +1,6 @@
 import {
   addTag,
+  typedTag,
   CURRENCIES,
   draftHint,
   formatUid,
@@ -100,10 +101,14 @@ test('formats a Swiss UID as it is typed and checks its digit', () => {
 })
 
 test('tags are trimmed, unique ignoring case, at most 30 characters and 10 per client', () => {
-  expect(addTag(['VIP'], '  Retail   partner ')).toEqual({ tags: ['VIP', 'Retail partner'] })
+  expect(addTag(['VIP'], '  Retail   partner ')).toEqual({ tags: ['VIP', 'Retail-partner'] })
+  expect(addTag([], 'dobry-=====')).toEqual({ tags: ['dobry'] })
+  expect(addTag([], '-q4-2026-')).toEqual({ tags: ['q4-2026'] })
+  expect(addTag([], 'Zürich')).toEqual({ tags: ['Zrich'] })
+  expect(addTag([], '===')).toEqual({ tags: [] })
   expect(addTag(['VIP'], 'vip')).toEqual({ tags: ['VIP'] })
   expect(addTag(['VIP'], '   ')).toEqual({ tags: ['VIP'] })
-  expect(addTag([], 'x'.repeat(31)).error).toMatch(/30 characters/)
+  expect(addTag([], 'x'.repeat(40))).toEqual({ tags: ['x'.repeat(32)] })
   const ten = Array.from({ length: 10 }, (_, i) => `t${i}`)
   expect(addTag(ten, 'more')).toEqual({ tags: ten, error: 'A client has at most 10 tags.' })
 })
@@ -154,4 +159,12 @@ test('e-invoice settings: a Leitweg-ID is checked and sent upper-cased; the form
     einvoice_format: 'none',
     leitweg_id: null,
   })
+})
+
+test('a tag field types only the tag shape', () => {
+  expect(typedTag('dobry-=====')).toBe('dobry-')
+  expect(typedTag('big client')).toBe('big-client')
+  expect(typedTag('-a')).toBe('a')
+  expect(typedTag('a--b')).toBe('a-b')
+  expect(typedTag('Q4/2026')).toBe('Q42026')
 })

@@ -14,4 +14,33 @@ function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
   )
 }
 
-export { Textarea }
+/**
+ * A textarea that counts what is typed against its limit, in its own bottom-right corner (red once over), so the
+ * person sees the room left where they write. `maxLength` is the limit; the field still refuses more.
+ */
+function CountedTextarea({
+  className,
+  maxLength,
+  value,
+  ...props
+}: Omit<React.ComponentProps<'textarea'>, 'value' | 'maxLength'> & {
+  value: string
+  maxLength: number
+}) {
+  return (
+    <div data-slot="counted-textarea" className="relative">
+      <textarea value={value} maxLength={maxLength} className={cn(className, 'pb-7')} {...props} />
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute right-3 bottom-2 text-caption text-muted-foreground tabular-nums',
+          value.length >= maxLength && 'text-destructive',
+        )}
+      >
+        {value.length} / {maxLength}
+      </span>
+    </div>
+  )
+}
+
+export { CountedTextarea, Textarea }

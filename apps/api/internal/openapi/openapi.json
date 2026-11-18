@@ -6727,7 +6727,8 @@
             "items": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 30
+              "maxLength": 32,
+              "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$"
             },
             "maxItems": 10
           },
@@ -11192,7 +11193,7 @@
               "type": "string"
             },
             "maxItems": 10,
-            "description": "Replaces the tags: trimmed, lower-cased, at most 32 characters each."
+            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters."
           }
         },
         "examples": [

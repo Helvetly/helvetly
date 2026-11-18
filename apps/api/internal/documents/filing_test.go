@@ -322,14 +322,17 @@ func TestDocumentTags(t *testing.T) {
 	a := e.uploaded(b, "a.pdf", pdf)
 	e.uploaded(b, "b.pdf", pdf+"b")
 	var out one[store.Document]
-	e.do(b, "PATCH", "/api/v1/documents/"+a.ID, map[string]any{"tags": []string{" Tax  2026 ", "tax 2026", "bank"}}, 200, &out)
-	if !slices.Equal(out.Data.Tags, []string{"tax 2026", "bank"}) {
+	e.do(b, "PATCH", "/api/v1/documents/"+a.ID, map[string]any{"tags": []string{" Tax-2026 ", "tax-2026", "bank"}}, 200, &out)
+	if !slices.Equal(out.Data.Tags, []string{"tax-2026", "bank"}) {
 		t.Fatalf("tags %v", out.Data.Tags)
 	}
 	if got := names(e.list(b, "tag=bank").Data); !slices.Equal(got, []string{"a.pdf"}) {
 		t.Fatalf("tag filter: %v", got)
 	}
 	e.fails(b, "PATCH", "/api/v1/documents/"+a.ID, map[string]any{"tags": []string{strings.Repeat("x", 33)}}, 422, "validation_failed")
+	for _, bad := range []string{"dobry-=====", "-a", "a-", "tax 2026", "büro"} {
+		e.fails(b, "PATCH", "/api/v1/documents/"+a.ID, map[string]any{"tags": []string{bad}}, 422, "validation_failed")
+	}
 	e.fails(b, "PATCH", "/api/v1/documents/"+a.ID, map[string]any{"tags": "bank"}, 422, "validation_failed")
 }
 

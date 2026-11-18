@@ -394,17 +394,25 @@ export function isValidUid(value: string): boolean {
 // Tags
 
 export const MAX_TAGS = 10
-export const MAX_TAG_LENGTH = 30
+export const MAX_TAG_LENGTH = 32
 
 /** Adds a tag the way the server keeps them: trimmed, ≤30 chars, unique ignoring case, ≤10. */
+/** A tag's shape everywhere (as the API's internal/tags): a–z, A–Z, 0–9 and hyphens, not at its start or end. */
+const TAG_SHAPE = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/
+
+/** What a tag field shows while typing: a space becomes a hyphen, anything else outside the shape is not typed. */
+export const typedTag = (typed: string) =>
+  typed
+    .replace(/\s+/g, '-')
+    .replace(/[^A-Za-z0-9-]/g, '')
+    .replace(/^-+/, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, MAX_TAG_LENGTH)
+
 export function addTag(tags: string[], input: string): { tags: string[]; error?: string } {
-  const tag = input.trim().replace(/\s+/g, ' ')
+  const tag = typedTag(input.trim()).replace(/-+$/, '')
   if (!tag) return { tags }
-  if (tag.length > MAX_TAG_LENGTH)
-    return {
-      tags,
-      error: translate('tagsHaveAtMostCharacters', { MAX_TAG_LENGTH: MAX_TAG_LENGTH }),
-    }
+  if (!TAG_SHAPE.test(tag)) return { tags, error: translate('tagShape') }
   if (tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) return { tags }
   if (tags.length >= MAX_TAGS)
     return { tags, error: translate('aClientHasAtMostTags', { MAX_TAGS: MAX_TAGS }) }
