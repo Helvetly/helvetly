@@ -10,7 +10,7 @@
     "test:visual": "bash e2e/visual/run.sh",
     "test:storybook": "for shard in 1 2 3; do pnpm --filter @helvetly/platform exec vitest run --config vitest.storybook.config.ts --shard=$shard/3 || exit 1; done && pnpm --filter @helvetly/portal exec vitest run --config vitest.storybook.config.ts",
     "test:e2e": "pnpm --filter @helvetly/e2e e2e",
-    "test:tooling": "for t in scripts/*.test.sh; do bash \"$t\" || exit 1; done; node --test scripts/*.test.mjs",
+    "test:tooling": "for t in scripts/*.test.sh; do bash \"$t\" || exit 1; done; node --test scripts/*.test.mjs apps/web/scripts/*.test.mjs",
     "test:einvoice": "bash scripts/validate-einvoice.sh",
     "test:xsd": "pnpm --filter @helvetly/api test:xsd",
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",

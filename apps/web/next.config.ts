@@ -11,6 +11,10 @@ const config: NextConfig = {
   transpilePackages: ['@helvetly/ui', '@helvetly/i18n'],
   // Two root layouts ((default) and [lang]) leave no single layout for unmatched URLs.
   experimental: { globalNotFound: true },
+  // Next's own polyfills (Array.prototype.at, Object.hasOwn…) are for browsers older than the ones it supports.
+  turbopack: {
+    resolveAlias: { '../build/polyfills/polyfill-module': './src/no-polyfills.ts' },
+  },
 }
 
 export default config
