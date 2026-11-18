@@ -24,6 +24,7 @@ import {
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
+import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
@@ -402,6 +403,23 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     label={translate('description')}
                     error={errors.description}
                     tip={translate('internalNotesAlsoAddedUnderTheTitleOnInvoice')}
+                    hint={
+                      <AIWrite
+                        field="engagement_description"
+                        text={values.description}
+                        maxLength={1000}
+                        context={{
+                          title: values.title,
+                          client: clientName,
+                          quantity:
+                            values.quantity &&
+                            `${values.quantity} ${unit?.label ?? values.unit ?? ''}`,
+                          price: values.unit_price && `${values.currency} ${values.unit_price}`,
+                          repeats: values.recurrence,
+                        }}
+                        onApply={(text) => set('description', text)}
+                      />
+                    }
                   >
                     <textarea
                       {...describe('description')}
