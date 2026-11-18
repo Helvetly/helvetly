@@ -349,6 +349,42 @@ export const docsApi = {
   usage: () => request<{ data: Usage }>('/documents/usage'),
   emptyTrash: () =>
     request<{ data: { updated: number } }>('/documents/trash/empty', { method: 'POST' }),
+  /** Asks the AI where the workspace's documents (or one folder's subtree) belong; nothing changes yet. */
+  organize: (folderId?: string) =>
+    request<{ data: { proposals: OrganizeProposal[]; considered: number } }>(
+      '/documents/organize',
+      {
+        method: 'POST',
+        json: folderId ? { folder_id: folderId } : {},
+      },
+    ),
+  /** Moves and tags the approved documents, making missing folders; keep the undo to reverse it. */
+  organizeApply: (items: OrganizeItem[]) =>
+    request<{ data: { moved: number; tagged: number; undo: OrganizeUndo } }>(
+      '/documents/organize/apply',
+      { method: 'POST', json: { items } },
+    ),
+  organizeUndo: (undo: OrganizeUndo) =>
+    request<{ data: { restored: number; deleted_folders: number } }>('/documents/organize/undo', {
+      method: 'POST',
+      json: undo,
+    }),
+}
+
+/** One AI organize row; folder paths are "Parent/Child", "" the top level. */
+export type OrganizeProposal = {
+  document_id: string
+  name: string
+  from_folder: string | null
+  folder: string
+  tags: string[]
+  reason: string
+  change: boolean
+}
+export type OrganizeItem = Pick<OrganizeProposal, 'document_id' | 'folder' | 'tags'>
+export type OrganizeUndo = {
+  previous: { document_id: string; folder_id: string | null; tags: string[] }[]
+  created_folders: string[]
 }
 
 /** The tags in use on the files in view, most used first, for suggestions. */

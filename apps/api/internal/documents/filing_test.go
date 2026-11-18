@@ -179,6 +179,40 @@ func TestAIFiling(t *testing.T) {
 	}
 }
 
+// While an import of the workspace is still reading files, filing waits: both use the automation pool, which runs
+// one call at a time per workspace, and the person is watching the import. It files once the import has read them.
+func TestAIFilingWaitsForAReadingImport(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	m := e.filer(nil)
+	e.approveAI(b)
+	ctx := context.Background()
+	now := time.Now()
+	if _, err := e.raw.Exec(ctx, `INSERT INTO import_batches (id, workspace_id, user_id, kind, created_at)
+		VALUES ('imp_1', $1, $2, 'clients', $3)`, b.workspace, b.user, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.raw.Exec(ctx, `INSERT INTO import_files (id, batch_id, workspace_id, "position", name, size,
+		content_type, status, created_at, updated_at) VALUES ('imf_1', 'imp_1', $1, 0, 'clients.csv', 10,
+		'text/plain', 'extracting', $2, $2)`, b.workspace, now); err != nil {
+		t.Fatal(err)
+	}
+	up := e.uploaded(b, "invoice-acme.pdf", pdf)
+
+	e.fileDue()
+	if d := e.get(b, up.ID); len(m.asked()) != 0 || d.AIFiling == nil || d.AIFiling.Status != "queued" {
+		t.Fatalf("filed while the import was reading: %d calls, %+v", len(m.asked()), d.AIFiling)
+	}
+
+	if _, err := e.raw.Exec(ctx, `UPDATE import_files SET status = 'done' WHERE id = 'imf_1'`); err != nil {
+		t.Fatal(err)
+	}
+	e.fileDue()
+	if d := e.get(b, up.ID); len(m.asked()) != 1 || d.AIFiling == nil || d.AIFiling.Status != "filed" {
+		t.Fatalf("after the import: %d calls, %+v", len(m.asked()), d.AIFiling)
+	}
+}
+
 func TestAIFilingNeverSendsHRFiles(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()

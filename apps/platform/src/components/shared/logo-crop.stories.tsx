@@ -178,7 +178,7 @@ const renderLoaded: Story['render'] = (_args, { loaded }) => {
 
 const frame = (body: HTMLElement) => within(body).findByRole('button', { name: /arrow keys/ })
 
-/** A portrait photo starts whole and centred in the wide field; arrows move it, Fit puts it back. */
+/** A portrait photo starts whole and centred in a square field; arrows move it, Fit puts it back. */
 export const Portrait: Story = {
   loaders: [pictureLoader(600, 800)],
   render: renderLoaded,
@@ -195,12 +195,109 @@ export const Portrait: Story = {
     await expect(placed?.style.left).toBe(start)
     await expect(
       field.getBoundingClientRect().width / field.getBoundingClientRect().height,
-    ).toBeCloseTo(2.5, 1)
+    ).toBeCloseTo(1, 1)
   },
 }
 
 /** A wide, low wordmark fills the field's width. */
 export const Wordmark: Story = { loaders: [pictureLoader(1500, 300)], render: renderLoaded }
+
+/** The colour at pixel (x, y) of a picture. */
+async function pixelAt(blob: Blob, x: number, y: number) {
+  const bitmap = await createImageBitmap(blob)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('no canvas')
+  context.drawImage(bitmap, 0, 0)
+  return [...context.getImageData(x, y, 1, 1).data]
+}
+
+/** A synthetic 700 × 140 SVG: a white background rectangle, and inside its margin a 4.8 : 1 dark mark with a red dot. */
+const marginedSvg = () =>
+  svg(
+    `<rect width="700" height="140" fill="#ffffff"/>
+     <rect x="100" y="20" width="480" height="100" fill="#1f2937"/>
+     <circle cx="150" cy="70" r="30" fill="#c0392b"/>`,
+    'width="700" height="140"',
+  )
+const documentLoader = (make: () => File) => async () => {
+  const result = await prepareLogo(make(), 'document')
+  if ('problem' in result) throw new Error(result.problem)
+  return result
+}
+
+/**
+ * A wide SVG with a white background and an inner margin: the margin is trimmed before the dialog shows it, so the mark
+ * fills a field of its own 4.8 : 1 shape, zoom and drag still work, and the saved PNG is that same mark, edge to edge.
+ */
+export const WideSvgTrimmed: Story = {
+  loaders: [documentLoader(marginedSvg)],
+  render: (_args, { loaded }) => {
+    const { file, origin } = loaded
+    if (!(file instanceof File) || origin !== 'vector')
+      throw new Error('the loader did not provide the SVG')
+    return <Dialog file={file} origin={origin} onSave={saved} />
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const field = await frame(canvasElement.ownerDocument.body)
+    const placed = field.querySelector('img')?.parentElement
+    const width = () => parseFloat(placed?.style.width ?? '')
+    await waitFor(() => expect(width()).toBeCloseTo(100, 1))
+    await expect(parseFloat(placed?.style.height ?? '')).toBeCloseTo(100, 1)
+    const box = field.getBoundingClientRect()
+    await expect(box.width / box.height).toBeCloseTo(4.8, 1)
+    await expect(body.queryByText(/wide area on documents/)).toBeNull()
+
+    field.focus()
+    await userEvent.keyboard('+')
+    await expect(width()).toBeGreaterThan(100)
+    const zoomed = placed?.style.left
+    await userEvent.keyboard('{ArrowRight}')
+    await expect(placed?.style.left).not.toBe(zoomed)
+    await userEvent.click(body.getByRole('button', { name: /whole picture/i }))
+    await expect(width()).toBeCloseTo(100, 1)
+
+    saved.mockClear()
+    await userEvent.click(body.getByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(saved).toHaveBeenCalled())
+    const logo = saved.mock.calls[0]?.[0]
+    if (!logo) throw new Error('nothing saved')
+    const bitmap = await createImageBitmap(logo)
+    await expect(bitmap.width / bitmap.height).toBeCloseTo(4.8, 1)
+    // No white strip and no margin: the dark mark reaches the corner, and the red dot is where the editor shows it.
+    const [r = 0, g = 0, b = 0, a = 0] = await pixelAt(logo, 4, 4)
+    await expect(r < 60 && g < 60 && b < 80 && a === 255).toBe(true)
+    const [red = 0, green = 0] = await pixelAt(
+      logo,
+      Math.round(bitmap.width * (50 / 480)),
+      bitmap.height >> 1,
+    )
+    await expect(red > 150 && green < 90).toBe(true)
+  },
+}
+
+/** A square logo gets a square field, already its shape: saved as picked. */
+export const SquareDocumentLogo: Story = {
+  loaders: [pictureLoader(400, 400)],
+  render: renderLoaded,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const field = await frame(canvasElement.ownerDocument.body)
+    const box = field.getBoundingClientRect()
+    await expect(box.width / box.height).toBeCloseTo(1, 1)
+    await expect(body.getByRole('button', { name: /whole picture/i })).toBeDisabled()
+    saved.mockClear()
+    await userEvent.click(body.getByRole('button', { name: 'Use this logo' }))
+    await waitFor(() => expect(saved).toHaveBeenCalled())
+    const logo = saved.mock.calls[0]?.[0]
+    if (!logo) throw new Error('nothing saved')
+    const bitmap = await createImageBitmap(logo)
+    await expect([bitmap.width, bitmap.height]).toEqual([400, 400])
+  },
+}
 
 /** Already 2.5 : 1: saved as picked, nothing to fit. */
 export const ExactRatio: Story = {
@@ -224,7 +321,7 @@ const keepsTheDiscRound: Story['play'] = async ({ canvasElement }) => {
   await waitFor(() => expect(saved).toHaveBeenCalled())
   const logo = saved.mock.calls[0]?.[0]
   if (!logo) throw new Error('nothing saved')
-  // Turned by the browser to 400 × 600 and fitted whole into the 2.5 : 1 field, the disc is still round.
+  // Turned by the browser to 400 × 600 and fitted whole into its square field, the disc is still round.
   const size = await discSize(logo)
   await expect(size.width / size.height).toBeGreaterThan(0.95)
   await expect(size.width / size.height).toBeLessThan(1.05)

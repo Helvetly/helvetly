@@ -37,11 +37,14 @@ func (q Q) QueueFiling(ctx context.Context, workspaceID, documentID, userID stri
 }
 
 // ClaimFilings takes up to n due filings, pushing each ahead by lease so concurrent instances skip it and a claim
-// whose instance died comes due again.
+// whose instance died comes due again. A workspace whose import is still reading files waits: filing and the import
+// share one AI pool with one call in flight per workspace, and the person is watching the import.
 func (q Q) ClaimFilings(ctx context.Context, now time.Time, lease time.Duration, n int) ([]FilingJob, error) {
 	rows, err := q.db.Query(ctx, `UPDATE document_filings SET attempts = attempts + 1, due_at = $2
-		WHERE document_id IN (SELECT document_id FROM document_filings WHERE status = 'queued' AND due_at <= $1
-			ORDER BY due_at LIMIT $3 FOR UPDATE SKIP LOCKED)
+		WHERE document_id IN (SELECT d.document_id FROM document_filings d WHERE d.status = 'queued' AND d.due_at <= $1
+			AND NOT EXISTS (SELECT 1 FROM import_files f WHERE f.workspace_id = d.workspace_id
+				AND f.status IN ('queued', 'extracting'))
+			ORDER BY d.due_at LIMIT $3 FOR UPDATE OF d SKIP LOCKED)
 		RETURNING document_id, workspace_id, user_id, may_move, attempts`, now, now.Add(lease), n)
 	if err != nil {
 		return nil, err
@@ -107,5 +110,34 @@ func (q Q) DeleteEmptyFiledFolder(ctx context.Context, workspaceID, id string) (
 		AND NOT EXISTS (SELECT 1 FROM documents WHERE folder_id = f.id)
 		AND NOT EXISTS (SELECT 1 FROM document_folders c WHERE c.parent_id = f.id)
 		AND EXISTS (SELECT 1 FROM document_filings ff WHERE ff.folder_id = f.id AND ff.created_folder)`, workspaceID, id)
+	return tag.RowsAffected() > 0, err
+}
+
+// OrganizeDocuments: up to limit live files for AI organizing, within folderIDs when not nil; files without a folder or
+// tags first, oldest first.
+func (q Q) OrganizeDocuments(ctx context.Context, workspaceID string, folderIDs []string, limit int) ([]Document, error) {
+	rows, err := q.db.Query(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND NOT d.hr_private
+		AND ($2::text[] IS NULL OR d.folder_id = ANY($2))
+		ORDER BY (d.folder_id IS NULL OR cardinality(d.tags) = 0) DESC, d.created_at, d.id LIMIT $3`, workspaceID, folderIDs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	docs := []Document{}
+	for rows.Next() {
+		d, err := scanDocument(rows)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, d)
+	}
+	return docs, rows.Err()
+}
+
+// DeleteEmptyFolder deletes a live folder once nothing is in it, not even in the Trash; false when something is.
+func (q Q) DeleteEmptyFolder(ctx context.Context, workspaceID, id string) (bool, error) {
+	tag, err := q.db.Exec(ctx, `DELETE FROM document_folders f WHERE f.workspace_id = $1 AND f.id = $2 AND f.deleted_at IS NULL
+		AND NOT EXISTS (SELECT 1 FROM documents WHERE folder_id = f.id)
+		AND NOT EXISTS (SELECT 1 FROM document_folders c WHERE c.parent_id = f.id)`, workspaceID, id)
 	return tag.RowsAffected() > 0, err
 }

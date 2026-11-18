@@ -28,7 +28,7 @@ var clientsKind = Kind{
 		"is_company":          nullable("boolean", "true for a company, false for a private person"),
 		"email":               nullable("string", "Email address"),
 		"billing_email":       nullable("string", "Email address for invoices, when different"),
-		"phone":               nullable("string", "Phone number with country code when shown"),
+		"phone":               nullable("string", "Phone number in international format, e.g. +41 78 123 45 67"),
 		"website":             nullable("string", "Website"),
 		"street":              nullable("string", "Street name without the number"),
 		"street_number":       nullable("string", "House number"),
