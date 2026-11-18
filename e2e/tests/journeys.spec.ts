@@ -108,8 +108,9 @@ test('catalogue creates a priced item through the actual form', async ({ page, a
   const rows = object(await response.json()).data
   expect(Array.isArray(rows) ? rows.length : -1).toBe(1)
   if (!Array.isArray(rows)) throw new Error('Expected catalogue rows')
-  expect(object(rows[0]).unit_price_net).toBe('100.00')
-  expect(object(rows[0]).unit_price_gross).toBe('108.10')
+  // A new item's price is gross by default: 100 incl. 8.1 % VAT.
+  expect(object(rows[0]).unit_price_net).toBe('92.51')
+  expect(object(rows[0]).unit_price_gross).toBe('100.00')
 })
 
 test('issued invoice, payment, credit and refund agree with the browser and historical PDF', async ({
