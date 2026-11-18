@@ -102,7 +102,12 @@ export function EngagementLink({
         if (invoiceId) link.mutate(next)
         else onPendingChange(next === pending ? '' : next)
       }}
-      className={cn(quietValue, 'border-transparent bg-transparent shadow-none')}
+      // Quiet like the other meta values: no field box, the placeholder colour until something is chosen.
+      className={cn(
+        quietValue,
+        'justify-start border-transparent bg-transparent shadow-none hover:border-transparent dark:border-transparent dark:bg-transparent [&>svg]:hidden',
+        !pending && '[&>span]:text-placeholder',
+      )}
     />
   )
 }
