@@ -65,6 +65,31 @@ type InvoiceClient struct {
 	Name   string `json:"name"`
 }
 
+// DocumentRef names a document of the workspace (Documents).
+type DocumentRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// contractDocumentName: the linked document's name; NULL while it is missing or HR-only.
+const contractDocumentName = `(SELECT cd.name FROM documents cd WHERE cd.id = %[1]s.contract_document_id
+	AND cd.workspace_id = %[1]s.workspace_id AND NOT cd.hr_private)`
+
+// DocumentRefOf: the link when the document resolved.
+func DocumentRefOf(id, name *string) *DocumentRef {
+	if id == nil || name == nil {
+		return nil
+	}
+	return &DocumentRef{ID: *id, Name: *name}
+}
+
+func docRefID(d *DocumentRef) *string {
+	if d == nil {
+		return nil
+	}
+	return &d.ID
+}
+
 type InvoiceRef struct {
 	ID     string `json:"id"`
 	Number string `json:"number"`
@@ -142,6 +167,11 @@ type Invoice struct {
 	// original is the Document SourceDocumentID (served as its PDF; never sent, exported or delivered by Helvetly).
 	Origin           string  `json:"origin"`
 	SourceDocumentID *string `json:"source_document_id"`
+
+	// ClientNumberDisplay: nil prints Client.Number, "" prints no client number, other text prints instead.
+	ClientNumberDisplay *string      `json:"client_number_display"`
+	ContractReference   *string      `json:"contract_reference"` // BT-12
+	ContractDocument    *DocumentRef `json:"contract_document"`  // a document of the workspace, never printed
 }
 
 // IssuedElsewhere: an invoice an import brought in as issued by another system.
@@ -300,7 +330,8 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	` + refundDue + `, i.iban,
 	COALESCE(i.reference_type, 'NON'), i.payment_reference, i.qr_bill, i.revolut_url, i.pay_qr_bill, i.pay_revolut, i.seller, i.buyer, i.issued_at, i.sent_at, i.created_at,
 	i.updated_at, i.pdf_key, i.prepaid_total, di.id, di.number, i.reminders_enabled, i.instalment_interval, pl.id, COALESCE(i.plan_seq, 0), pl.count,
-	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id`
+	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id, i.client_number_display, i.contract_reference,
+	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i")
 
 // invoicePlanJoin: the plan that issued the document, or the live plan the draft is the source of.
 const invoicePlanJoin = ` LEFT JOIN instalment_plans pl ON pl.id = COALESCE(i.plan_id, (SELECT sp.id FROM instalment_plans sp
@@ -308,7 +339,7 @@ const invoicePlanJoin = ` LEFT JOIN instalment_plans pl ON pl.id = COALESCE(i.pl
 
 func scanInvoice(row pgx.Row) (Invoice, error) {
 	var i Invoice
-	var creditedID, creditedNumber, deductedID, deductedNumber, interval, planID *string
+	var creditedID, creditedNumber, deductedID, deductedNumber, interval, planID, contractDocID, contractDocName *string
 	var planSeq int
 	var planCount *int
 	err := row.Scan(&i.ID, &i.Kind, &i.Number, &i.Status, &i.IsOverdue, &i.ClientID, &i.Client.Number, &i.Client.Name,
@@ -318,8 +349,9 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&i.Payment.ReferenceType, &i.Payment.Reference, &i.Payment.QRBill, &i.Payment.RevolutURL, &i.PaymentMethods.QRBill,
 		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.CreatedAt,
 		&i.UpdatedAt, &i.PDFKey, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.RemindersEnabled, &interval, &planID, &planSeq, &planCount,
-		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID)
+		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName)
 	i.Client.ID = i.ClientID
+	i.ContractDocument = DocumentRefOf(contractDocID, contractDocName)
 	i.PayableTotal = i.Payable()
 	if creditedID != nil {
 		i.CreditedInvoice = &InvoiceRef{ID: *creditedID, Number: str(creditedNumber)}
@@ -494,19 +526,20 @@ func (q Q) saveDraft(ctx context.Context, workspaceID string, inv Invoice, now t
 	tag, err := q.db.Exec(ctx, `INSERT INTO invoices (id, workspace_id, kind, status, client_id, credited_invoice_id, issue_date, due_date,
 			service_date, service_date_end, currency, language, vat_mode, reference, intro, footer, note, discount_percent, subtotal,
 			discount_amount, net_total, vat_total, total, rounding_amount, vat_breakdown, pay_qr_bill, pay_revolut, prepaid_total, created_at, updated_at,
-			tax_currency_rate)
+			tax_currency_rate, client_number_display, contract_reference, contract_document_id)
 		VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
-			$26, $27, $28, $25, $25, $29::text::numeric)
+			$26, $27, $28, $25, $25, $29::text::numeric, $30, $31, $32)
 		ON CONFLICT (id) DO UPDATE SET client_id = $4, issue_date = $6, due_date = $7, service_date = $8, service_date_end = $9,
 			currency = $10, language = $11, vat_mode = $12, reference = $13, intro = $14, footer = $15, note = $16,
 			discount_percent = $17, subtotal = $18, discount_amount = $19, net_total = $20, vat_total = $21, total = $22,
 			rounding_amount = $23, vat_breakdown = $24, pay_qr_bill = $26, pay_revolut = $27, prepaid_total = $28, updated_at = $25,
-			tax_currency_rate = $29::text::numeric
+			tax_currency_rate = $29::text::numeric, client_number_display = $30, contract_reference = $31, contract_document_id = $32
 		WHERE invoices.status = 'draft' AND invoices.workspace_id = $2`,
 		inv.ID, workspaceID, inv.Kind, inv.ClientID, refID(inv.CreditedInvoice), inv.IssueDate, inv.DueDate, inv.ServiceDate,
 		inv.ServiceDateEnd, inv.Currency, inv.Language, inv.VATMode, inv.Reference, inv.Intro, inv.Footer, inv.Note, inv.DiscountPercent,
 		inv.Subtotal, inv.DiscountAmount, inv.NetTotal, inv.VATTotal, inv.Total, inv.RoundingAmount, breakdown, now,
-		inv.PaymentMethods.QRBill, inv.PaymentMethods.Revolut, inv.PrepaidTotal, inv.TaxCurrencyRate)
+		inv.PaymentMethods.QRBill, inv.PaymentMethods.Revolut, inv.PrepaidTotal, inv.TaxCurrencyRate, inv.ClientNumberDisplay,
+		inv.ContractReference, docRefID(inv.ContractDocument))
 	if err != nil {
 		return err
 	}

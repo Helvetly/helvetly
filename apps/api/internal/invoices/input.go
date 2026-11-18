@@ -133,10 +133,19 @@ func object(raw json.RawMessage, what string, allowed ...string) (map[string]jso
 	return m, nil
 }
 
+// keepBlank: text, except that a blank string stays "" (a deliberate "none") instead of becoming null.
+func (p *parser) keepBlank(key string, raw json.RawMessage, max int) *string {
+	v := p.text(key, raw, max, nil)
+	if _, failed := p.invalid[key]; v == nil && !failed && !isNull(raw) {
+		return new(string)
+	}
+	return v
+}
+
 // ---- invoice input ----
 
 var invoiceKeys = []string{"client_id", "kind", "prepayment_ids", "issue_date", "due_date", "service_date", "service_date_end", "currency", "language",
-	"vat_mode", "reference", "tax_currency_rate", "intro", "footer", "note", "discount_percent", "lines", "payment_methods", "reminders_enabled", "instalments"}
+	"vat_mode", "reference", "client_number_display", "contract_reference", "contract_document_id", "tax_currency_rate", "intro", "footer", "note", "discount_percent", "lines", "payment_methods", "reminders_enabled", "instalments"}
 
 var lineKeys = []string{"description", "quantity", "unit", "unit_price", "discount_percent", "vat_category", "vat_rate",
 	"vat_exemption_code", "vat_exemption_reason"}
@@ -213,6 +222,15 @@ func checkInput(inv *store.Invoice, body map[string]json.RawMessage, set Setting
 			inv.VATMode = p.required(k, raw, 10, oneOf(invoicecalc.Exclusive, invoicecalc.Inclusive, invoicecalc.None), "Choose a VAT mode.")
 		case "reference":
 			inv.Reference = p.text(k, raw, 100, nil)
+		case "client_number_display":
+			inv.ClientNumberDisplay = p.keepBlank(k, raw, 40)
+		case "contract_reference":
+			inv.ContractReference = p.text(k, raw, 100, nil)
+		case "contract_document_id": // resolved against the workspace's documents by resolveContractDocument
+			inv.ContractDocument = nil
+			if id := p.text(k, raw, 100, nil); id != nil {
+				inv.ContractDocument = &store.DocumentRef{ID: *id}
+			}
 		case "tax_currency_rate":
 			inv.TaxCurrencyRate = p.text(k, raw, 19, fxRate)
 		case "intro":

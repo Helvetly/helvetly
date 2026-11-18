@@ -92,7 +92,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 const defaultValidDays = 30
 
 // inputKeys: the invoice fields a quote takes and its own valid_until.
-var inputKeys = []string{"client_id", "issue_date", "valid_until", "currency", "language", "vat_mode", "reference", "intro",
+var inputKeys = []string{"client_id", "issue_date", "valid_until", "currency", "language", "vat_mode", "reference", "client_number_display",
+	"contract_reference", "contract_document_id", "intro",
 	"footer", "note", "discount_percent", "lines"}
 
 func data(v any) map[string]any { return map[string]any{"data": v} }
@@ -139,7 +140,8 @@ func asInvoice(t store.Quote) store.Invoice {
 	}
 	return store.Invoice{ID: t.ID, Kind: "quote", Status: "draft", Number: number, ClientID: t.ClientID, Client: t.Client,
 		IssueDate: t.IssueDate, DueDate: t.ValidUntil, Currency: t.Currency, Language: t.Language, VATMode: t.VATMode,
-		Reference: t.Reference, Intro: t.Intro, Footer: t.Footer, Note: t.Note, DiscountPercent: t.DiscountPercent,
+		Reference: t.Reference, ClientNumberDisplay: t.ClientNumberDisplay, ContractReference: t.ContractReference,
+		ContractDocument: t.ContractDocument, Intro: t.Intro, Footer: t.Footer, Note: t.Note, DiscountPercent: t.DiscountPercent,
 		Lines: t.Lines, Subtotal: t.Subtotal, DiscountAmount: t.DiscountAmount, NetTotal: t.NetTotal,
 		VATBreakdown: t.VATBreakdown, VATTotal: t.VATTotal, Total: t.Total, RoundingAmount: t.RoundingAmount}
 }
@@ -148,6 +150,7 @@ func asInvoice(t store.Quote) store.Invoice {
 func fromInvoice(t *store.Quote, inv store.Invoice) {
 	t.ClientID, t.Client, t.IssueDate, t.ValidUntil = inv.ClientID, inv.Client, inv.IssueDate, inv.DueDate
 	t.Currency, t.Language, t.VATMode, t.Reference = inv.Currency, inv.Language, inv.VATMode, inv.Reference
+	t.ClientNumberDisplay, t.ContractReference, t.ContractDocument = inv.ClientNumberDisplay, inv.ContractReference, inv.ContractDocument
 	t.Intro, t.Footer, t.Note, t.DiscountPercent, t.Lines = inv.Intro, inv.Footer, inv.Note, inv.DiscountPercent, inv.Lines
 	t.Subtotal, t.DiscountAmount, t.NetTotal, t.VATBreakdown = inv.Subtotal, inv.DiscountAmount, inv.NetTotal, inv.VATBreakdown
 	t.VATTotal, t.Total, t.RoundingAmount, t.PayableTotal = inv.VATTotal, inv.Total, inv.RoundingAmount, inv.Payable()

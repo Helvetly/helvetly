@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Ciò che è stato letto dal documento.",
   "importNumberTip": "Il numero stampato sulla fattura. Una fattura già emessa lo mantiene, quindi è obbligatorio.",
   "importReferenceTip": "Il riferimento o numero d’ordine dell’acquirente, se la fattura ne riporta uno. Facoltativo.",
+  "importContractNumber": "N. contratto",
+  "importContractNumberTip": "Il numero del contratto o dell’accordo a cui si riferisce la fattura, come stampato. Facoltativo.",
   "importInvoiceDateTip": "Il giorno in cui la fattura è stata emessa, come stampato. Determina il periodo IVA.",
   "importDueDateTip": "Il giorno entro cui il cliente deve pagare, come stampato. I solleciti partono da questa data.",
   "importTotalTip": "Il totale stampato sulla fattura, IVA inclusa. Cambia la valuta se è stata letta male.",

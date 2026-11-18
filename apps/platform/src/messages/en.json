@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "What was read from the document.",
   "importNumberTip": "The number printed on the invoice. An invoice already issued keeps it, so it is required then.",
   "importReferenceTip": "The buyer’s own reference or order number, when the invoice shows one. Optional.",
+  "importContractNumber": "Contract no.",
+  "importContractNumberTip": "The contract or agreement number the invoice refers to, as printed. Optional.",
   "importInvoiceDateTip": "The day the invoice was issued, as printed on it. It decides the VAT period it counts in.",
   "importDueDateTip": "The day the client has to pay by, as printed. Reminders count from it.",
   "importTotalTip": "The grand total printed on the invoice, VAT included. Change the currency if it was read wrong.",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +74,8 @@ func TestInvoicesKindCheck(t *testing.T) {
 		{"stated total wrong", `{"total": "999.00"}`, []string{"total"}},
 		{"stated total not a number", `{"total": "about 1000"}`, []string{"total"}},
 		{"no total stated", `{"total": null}`, nil},
+		{"contract number", `{"contract_reference": "C23-25-CP2302"}`, nil},
+		{"contract number too long", `{"contract_reference": "` + strings.Repeat("C", 101) + `"}`, []string{"contract_reference"}},
 		{"gross prices", `{"price_basis": "gross", "total": "1000.00"}`, nil},
 		{"unknown price basis", `{"price_basis": "both"}`, []string{"price_basis"}},
 		{"unknown currency", `{"currency": "XYZ"}`, []string{"currency"}},
@@ -162,6 +165,25 @@ func TestInvoicesKindCreate(t *testing.T) {
 	}
 	if _, err := st.Invoice(ctx, "wsp_b", id, "2026-01-01", false); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("another workspace reads the draft: %v", err)
+	}
+}
+
+func TestInvoicesKindKeepsContractReference(t *testing.T) {
+	st, sess, _ := invoiceStore(t)
+	ctx := context.Background()
+	id, err := invoicesKind.Create(ctx, st.Q, sess, invoiceData(t, `{"contract_reference": " C23-25-CP2302 "}`), Source{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := st.Invoice(ctx, "wsp_a", id, "2026-01-01", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inv.ContractReference == nil || *inv.ContractReference != "C23-25-CP2302" || inv.ClientNumberDisplay != nil {
+		t.Errorf("contract %v, client number %v", inv.ContractReference, inv.ClientNumberDisplay)
+	}
+	if !strings.Contains(invoicesKind.Prompt, "contract_reference") || invoicesKind.Schema == nil {
+		t.Error("the prompt does not ask for the contract number")
 	}
 }
 

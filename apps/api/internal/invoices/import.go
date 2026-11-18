@@ -14,7 +14,7 @@ import (
 )
 
 // importedKeys: the record fields an AI import passes on to POST /invoices' rules unchanged.
-var importedKeys = []string{"issue_date", "due_date", "service_date", "service_date_end", "currency", "reference", "discount_percent"}
+var importedKeys = []string{"issue_date", "due_date", "service_date", "service_date_end", "currency", "reference", "contract_reference", "discount_percent"}
 
 // importedLineKeys: the line fields an import reads; anything else the model returned is dropped.
 var importedLineKeys = []string{"description", "quantity", "unit", "unit_price", "discount_percent", "vat_category", "vat_rate"}

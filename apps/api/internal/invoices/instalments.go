@@ -466,7 +466,8 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 func planPartial(src store.Invoice, plan store.Plan, item store.PlanItem, today string, set Settings) store.Invoice {
 	inv := store.Invoice{ID: auth.NewID("inv"), Kind: "partial", Status: "draft", ClientID: src.ClientID, Client: src.Client,
 		IssueDate: today, DueDate: item.DueDate, Currency: src.Currency, Language: src.Language, VATMode: invoicecalc.Exclusive,
-		Reference: src.Reference, Footer: src.Footer, PaymentMethods: usableMethods(src.PaymentMethods, set, src.Currency),
+		Reference: src.Reference, ClientNumberDisplay: src.ClientNumberDisplay, ContractReference: src.ContractReference,
+		ContractDocument: src.ContractDocument, Footer: src.Footer, PaymentMethods: usableMethods(src.PaymentMethods, set, src.Currency),
 		RemindersEnabled: plan.RemindersEnabled, Lines: []store.InvoiceLine{}, Payments: []store.Payment{}}
 	if src.VATMode == invoicecalc.None {
 		inv.VATMode = invoicecalc.None

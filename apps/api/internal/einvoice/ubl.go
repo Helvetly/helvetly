@@ -44,6 +44,7 @@ type ublDoc struct {
 	InvoicePeriod      *ublPeriod       `xml:"cac:InvoicePeriod"`
 	OrderReference     *ublID           `xml:"cac:OrderReference"`
 	BillingReference   *ublBillingRef   `xml:"cac:BillingReference"`
+	ContractReference  *ublID           `xml:"cac:ContractDocumentReference"` // BT-12
 	Supplier           ublParty         `xml:"cac:AccountingSupplierParty>cac:Party"`
 	Customer           ublParty         `xml:"cac:AccountingCustomerParty>cac:Party"`
 	Delivery           *ublDelivery     `xml:"cac:Delivery"`
@@ -209,6 +210,9 @@ func UBL(inv store.Invoice, profile string) ([]byte, error) {
 	}
 	if inv.Reference != nil {
 		u.OrderReference = &ublID{*inv.Reference}
+	}
+	if inv.ContractReference != nil {
+		u.ContractReference = &ublID{*inv.ContractReference}
 	}
 	if d.creditNote() {
 		u.XMLName.Local, u.Xmlns, u.CreditNoteTypeCode = "CreditNote", "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2", d.typeCode

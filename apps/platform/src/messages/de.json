@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Was aus dem Dokument gelesen wurde.",
   "importNumberTip": "Die auf der Rechnung gedruckte Nummer. Eine bereits ausgestellte Rechnung behält sie, deshalb ist sie dann Pflicht.",
   "importReferenceTip": "Die eigene Referenz oder Bestellnummer des Käufers, wenn die Rechnung eine zeigt. Optional.",
+  "importContractNumber": "Vertragsnummer",
+  "importContractNumberTip": "Die Vertrags- oder Vereinbarungsnummer, auf die sich die Rechnung bezieht, wie gedruckt. Optional.",
   "importInvoiceDateTip": "Der Tag, an dem die Rechnung ausgestellt wurde, wie gedruckt. Er bestimmt die MWST-Periode.",
   "importDueDateTip": "Der Tag, bis zu dem der Kunde zahlen muss, wie gedruckt. Mahnungen zählen ab diesem Tag.",
   "importTotalTip": "Der auf der Rechnung gedruckte Gesamtbetrag inklusive MWST. Ändern Sie die Währung, falls sie falsch gelesen wurde.",

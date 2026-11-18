@@ -31,6 +31,11 @@ export type Quote = Totals & {
   language: DocLanguage
   vat_mode: VatMode
   reference: string | null
+  /** As on an invoice: null prints `client.number`, "" prints none, other text prints instead. */
+  client_number_display: string | null
+  contract_reference: string | null
+  /** The workspace document the contract is in; never printed. */
+  contract_document: { id: string; name: string } | null
   intro: string | null
   footer: string | null
   /** Internal, never printed or shown in the portal. */
@@ -60,7 +65,12 @@ export type QuoteInput = Pick<
   | 'footer'
   | 'note'
   | 'discount_percent'
-> & { lines: LineInput[] }
+> & {
+  lines: LineInput[]
+  client_number_display?: string | null
+  contract_reference?: string | null
+  contract_document_id?: string | null
+}
 
 export type QuoteSendInput = {
   to?: string[]

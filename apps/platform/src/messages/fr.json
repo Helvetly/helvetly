@@ -4319,6 +4319,8 @@
   "importSectionDetailsText": "Ce qui a été lu dans le document.",
   "importNumberTip": "Le numéro imprimé sur la facture. Une facture déjà émise le garde : il est alors obligatoire.",
   "importReferenceTip": "La référence ou le numéro de commande de l’acheteur, si la facture en indique un. Facultatif.",
+  "importContractNumber": "N° de contrat",
+  "importContractNumberTip": "Le numéro du contrat ou de l’accord auquel la facture se rapporte, tel qu’imprimé. Facultatif.",
   "importInvoiceDateTip": "Le jour où la facture a été émise, tel qu’imprimé. Il détermine la période de TVA.",
   "importDueDateTip": "Le jour avant lequel le client doit payer, tel qu’imprimé. Les rappels partent de cette date.",
   "importTotalTip": "Le total imprimé sur la facture, TVA comprise. Changez la devise si elle a été mal lue.",

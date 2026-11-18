@@ -373,3 +373,21 @@ func TestOverwriteImport(t *testing.T) {
 		t.Fatalf("overwrite with another number: %v", err)
 	}
 }
+
+// An invoice issued elsewhere keeps the contract number it states (BT-12).
+func TestImportIssuedElsewhereKeepsContractReference(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	id, err := importOnce(e, sess, clientID, importData(t, map[string]any{"number": "C-1", "contract_reference": "C23-25-CP2302"}), &docID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := e.st.Invoice(context.Background(), b.workspace, id, "2026-01-01", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inv.Status == "draft" || inv.ContractReference == nil || *inv.ContractReference != "C23-25-CP2302" {
+		t.Fatalf("status %s, contract %v", inv.Status, inv.ContractReference)
+	}
+}
