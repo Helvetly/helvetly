@@ -41,6 +41,8 @@ type Options struct {
 	// CostAllowance is the automation pool's monthly model cost guard in micro-USD (AIAutomationCost); nil applies none.
 	CostAllowance aimodel.Allowance
 	AllowStorage  func(context.Context, store.Q, store.Session, int64) error
+	// File queues a stored file for AI filing (folder and tags) in Documents; nil files nothing.
+	File func(context.Context, store.Session, string)
 }
 
 type Service struct {
@@ -50,13 +52,14 @@ type Service struct {
 	provider     aimodel.Provider
 	budget       aimodel.Budget
 	allowStorage func(context.Context, store.Q, store.Session, int64) error
+	file         func(context.Context, store.Session, string)
 	log          *slog.Logger
 	now          func() time.Time
 	limit        *auth.RateLimiter
 }
 
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger, o Options) *Service {
-	s := &Service{db: db, auth: a, files: files, provider: o.Provider, allowStorage: o.AllowStorage, log: log,
+	s := &Service{db: db, auth: a, files: files, provider: o.Provider, allowStorage: o.AllowStorage, file: o.File, log: log,
 		now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(20, time.Minute)}
 	s.budget = aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation, Allowance: o.Allowance, CostAllowance: o.CostAllowance, Now: func() time.Time { return s.now() }}
 	return s

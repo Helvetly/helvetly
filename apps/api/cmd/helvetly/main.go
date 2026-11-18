@@ -224,6 +224,7 @@ func run() error {
 	}
 	importsSvc := imports.New(db, authSvc, files, slog.Default(), imports.Options{
 		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
+		File: documentsSvc.QueueFiling,
 	})
 	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
 	if importModel != nil {

@@ -119,6 +119,8 @@ type env struct {
 	sess     *store.Session
 	current  *store.Session
 	sessions map[string]*store.Session
+	filedMu  sync.Mutex
+	filed    []string // documents queued for AI filing
 }
 
 func newEnv(t *testing.T) *env {
@@ -132,7 +134,11 @@ func newEnv(t *testing.T) *env {
 	e := &env{t: t, db: db, files: &fakeStorage{objects: map[string][]byte{}}, model: &scripted{}, raw: raw, sessions: map[string]*store.Session{}}
 	e.sess = e.person("ws_a", "usr_a", "owner", nil)
 	e.current = e.sess
-	e.s = New(db, testAuth{&e.current, api}, e.files, slog.New(slog.NewTextHandler(io.Discard, nil)), Options{Provider: e.model})
+	e.s = New(db, testAuth{&e.current, api}, e.files, slog.New(slog.NewTextHandler(io.Discard, nil)), Options{Provider: e.model, File: func(_ context.Context, _ store.Session, id string) {
+		e.filedMu.Lock()
+		defer e.filedMu.Unlock()
+		e.filed = append(e.filed, id)
+	}})
 	e.mux = http.NewServeMux()
 	e.s.Register(e.mux)
 	return e
