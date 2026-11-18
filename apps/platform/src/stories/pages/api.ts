@@ -17,7 +17,13 @@ import { dashboard, sampleActivity } from '@/mocks/data'
 import { employeesHandlers } from '@/mocks/employees'
 import { heidiHandlers } from '@/mocks/heidi'
 import { notificationHandlers } from '@/mocks/notifications'
-import { listItem, sampleInvoice, sampleSettings, sampleSummary } from '@/test/invoice-api'
+import {
+  legalFormsHandler,
+  listItem,
+  sampleInvoice,
+  sampleSettings,
+  sampleSummary,
+} from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { screenHandlers } from '../screen-fixtures'
@@ -574,6 +580,7 @@ export const shellHandlers = [
     return HttpResponse.json(page(match))
   }),
   http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+  legalFormsHandler,
   http.get('/api/v1/invoices/summary', () => HttpResponse.json({ data: sampleSummary })),
   // The draft's lines add up to the canned 2'900.00 net, so the server's totals match them.
   http.post('/api/v1/invoices/preview', () => HttpResponse.json({ data: draftInvoice })),

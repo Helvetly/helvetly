@@ -5,7 +5,8 @@ import { useFeatureLock } from '@/components/billing/feature-lock'
 import { ACTIVITY_KEY, PERIODS_KEY, endedMonths } from '@/components/settings/periods-settings'
 import { dueBy } from '@/components/settings/vat-return'
 import { booksApi, type MonthActivity } from '@/lib/books'
-import { today, useInvoiceSettings } from '@/lib/invoices'
+import { today, useInvoiceSettings, type InvoiceSettings } from '@/lib/invoices'
+import { useLegalForms, type LegalForms } from '@/lib/legal-forms'
 import { useCan } from '@/lib/permissions'
 import { endedPeriods, vatReturnApi } from '@/lib/vat-return'
 
@@ -85,4 +86,18 @@ export function useVatReturnDue(): Source<{ period: string; due: string }> {
     error,
     retry: () => void (settings.error ? settings.refetch() : report.refetch()),
   }
+}
+
+/** A company whose country has a list of legal forms but chose none: workspaces from before the welcome asked. */
+export const legalFormMissing = (
+  settings: { seller: Pick<InvoiceSettings['seller'], 'country' | 'legal_form'> } | undefined,
+  forms: LegalForms | undefined,
+) => Boolean(settings && !settings.seller.legal_form && forms?.[settings.seller.country]?.length)
+
+/** Whether to ask this person, who can change the invoice settings, for the company's legal form. */
+export function useLegalFormMissing(): boolean {
+  const canEdit = useCan('write:invoice-settings')
+  const settings = useInvoiceSettings().data
+  const forms = useLegalForms()
+  return canEdit && legalFormMissing(settings, forms.data)
 }

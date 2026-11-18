@@ -4279,5 +4279,16 @@
   "importCloseMonths": "{count, plural, one {Chiudi # mese} other {Chiudi # mesi}}",
   "importCloseMonthsBody": "Le fatture importate riguardano {range}. La chiusura blocca questi mesi affinché nulla datato in essi cambi; puoi riaprire un mese indicandone il motivo.",
   "importInstalments": "Rate",
-  "importPaidOnTip": "Se vuoto, il pagamento vale alla data di scadenza (o a quella della rata)."
+  "importPaidOnTip": "Se vuoto, il pagamento vale alla data di scadenza (o a quella della rata).",
+  "legalForm": "Forma giuridica",
+  "chooseALegalForm": "Scegli una forma giuridica",
+  "noLegalFormsForThisCountryYet": "Nessun elenco per questo paese",
+  "legalFormTip": "Helvetly prepara in base a essa i rapporti per la sua impresa, come il dossier fiscale annuale.",
+  "legalFormGroupSole": "Impresa individuale",
+  "legalFormGroupPartnership": "Società di persone",
+  "legalFormGroupCompany": "Società di capitali",
+  "legalFormGroupAssociation": "Associazioni e fondazioni",
+  "addYourCompanysLegalForm": "Indichi la forma giuridica della sua impresa",
+  "legalFormMissingBody": "Helvetly ne ha bisogno per preparare i rapporti adatti alla sua impresa.",
+  "addLegalForm": "Indica la forma giuridica"
 }

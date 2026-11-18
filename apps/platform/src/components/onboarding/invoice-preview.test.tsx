@@ -11,6 +11,7 @@ const values: Values = {
   zip: '8045',
   city: 'Zurich',
   country: 'CH',
+  legal_form: '',
   vat_registered: false,
   vat_number: '',
   iban: '',

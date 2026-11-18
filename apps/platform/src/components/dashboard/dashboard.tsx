@@ -21,6 +21,7 @@ import { formatDate, formatWhole } from '@helvetly/ui/lib/format'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
+  Building2,
   CalendarDays,
   ChevronDown,
   Landmark,
@@ -34,7 +35,11 @@ import { useState, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
 import { NativeSelect } from '@/components/clients/fields'
-import { useMonthsToClose, useVatReturnDue } from '@/components/dashboard/attention'
+import {
+  useLegalFormMissing,
+  useMonthsToClose,
+  useVatReturnDue,
+} from '@/components/dashboard/attention'
 import { EngagementsCard } from '@/components/engagements/engagements-card'
 import { Initials } from '@/components/initials'
 import { Money, RowStatus } from '@/components/invoices/invoice-bits'
@@ -215,17 +220,21 @@ const list = new Intl.ListFormat(languageTag, { type: 'conjunction' })
 const monthName = new Intl.DateTimeFormat(languageTag, { month: 'long', timeZone: 'UTC' })
 const monthLabel = (month: string) => monthName.format(new Date(`${month}-01T00:00:00Z`))
 
-/** The workspace's to-do list, most important first: the VAT return, months to close, open invoices. */
+/**
+ * The workspace's to-do list, most important first: the VAT return, months to close, the company's missing legal form,
+ * open invoices.
+ */
 function NeedsAttention() {
   const canReadInvoices = useCan('read:invoices')
   const vat = useVatReturnDue()
   const closing = useMonthsToClose()
+  const legalForm = useLegalFormMissing()
   const invoices = useQuery({ ...invoiceListQuery(ATTENTION), enabled: canReadInvoices })
   const rows = (invoices.data?.data ?? []).slice(0, 8)
   const months = closing.value ?? []
   const pending =
     vat.pending || closing.pending || (canReadInvoices && !invoices.data && !invoices.error)
-  const empty = !vat.value && months.length === 0 && rows.length === 0
+  const empty = !vat.value && months.length === 0 && !legalForm && rows.length === 0
 
   return (
     <Section
@@ -295,6 +304,14 @@ function NeedsAttention() {
                 length: months.length,
               })}
               detail={translate('closeTheMonth', { length: months.length })}
+            />
+          )}
+          {legalForm && (
+            <TaskRow
+              href="/settings/invoices?focus=seller.legal_form#company"
+              icon={Building2}
+              title={translate('addYourCompanysLegalForm')}
+              detail={translate('legalFormMissingBody')}
             />
           )}
           {rows.map((row) => (

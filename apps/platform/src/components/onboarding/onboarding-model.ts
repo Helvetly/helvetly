@@ -9,6 +9,7 @@ import {
   type SettingsInput,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
+import type { LegalForms } from '@/lib/legal-forms'
 
 /** What the welcome asks for: the seller settings that make invoices issuable, and the defaults. */
 export type Values = {
@@ -19,6 +20,8 @@ export type Values = {
   zip: string
   city: string
   country: string
+  /** A code of the country's legal forms; '' until chosen, and for a country without a list. */
+  legal_form: string
   vat_registered: boolean
   vat_number: string
   iban: string
@@ -43,6 +46,7 @@ export function valuesFrom(settings: InvoiceSettings, interfaceLanguage?: DocLan
     city: seller.city,
     // Helvetly is for Swiss companies first.
     country: seller.country || 'CH',
+    legal_form: seller.legal_form ?? '',
     vat_registered: settings.vat_registered,
     vat_number: seller.vat_number ?? '',
     iban: settings.iban ? formatIban(settings.iban) : '',
@@ -87,6 +91,7 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
       zip: values.zip.trim(),
       city: values.city.trim(),
       country: values.country,
+      legal_form: values.legal_form || null,
       vat_number: values.vat_registered ? vatNumber(values) : null,
     },
     vat_registered: values.vat_registered,
@@ -103,11 +108,19 @@ export function toSettingsInput(settings: InvoiceSettings, values: Values): Sett
 /** The company's name and address (not the apartment) are required, and the server refuses to finish without them. */
 const REQUIRED = ['name', 'street', 'street_number', 'zip', 'city', 'country'] as const
 
-/** What can be checked here: the required company details and the formats; the server checks them again. */
-export function validate(values: Values): Partial<Record<keyof Values, string>> {
+/**
+ * What can be checked here: the required company details and the formats; the server checks them again. The legal
+ * form is required where the country has a list (`forms`, unknown until loaded).
+ */
+export function validate(
+  values: Values,
+  forms?: LegalForms,
+): Partial<Record<keyof Values, string>> {
   const errors: Partial<Record<keyof Values, string>> = {}
   for (const field of REQUIRED)
     if (!values[field].trim()) errors[field] = translate('thisIsRequired')
+  if (forms?.[values.country]?.length && !values.legal_form)
+    errors.legal_form = translate('thisIsRequired')
   const vat = values.vat_number.trim()
   if (values.vat_registered && !vat) errors.vat_number = translate('thisIsRequired')
   // The server checks every number starting with CH as a Swiss UID.

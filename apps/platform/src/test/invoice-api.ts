@@ -12,6 +12,7 @@ import {
   type InvoiceSettings,
   type Summary,
 } from '@/lib/invoices'
+import type { LegalForms } from '@/lib/legal-forms'
 
 export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSettings => ({
   seller: {
@@ -25,6 +26,7 @@ export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSe
     vat_number: 'CHE-109.322.551 MWST',
     email: null,
     phone: null,
+    legal_form: 'gmbh',
   },
   vat_registered: true,
   default_vat_mode: 'exclusive',
@@ -79,6 +81,37 @@ const totals = {
   rounding_amount: '0.00',
   payable_total: '3134.90',
 }
+
+/** A few countries' forms in the API's shape (apps/api/internal/legalform/forms.json); US has no list. */
+export const sampleLegalForms: LegalForms = {
+  CH: [
+    {
+      code: 'sole',
+      group: 'sole',
+      name: 'Einzelunternehmen',
+      names: { en: 'Sole proprietorship (Einzelunternehmen)' },
+    },
+    {
+      code: 'gmbh',
+      group: 'company',
+      name: 'GmbH',
+      names: { fr: 'Sàrl', en: 'GmbH / Sàrl (limited liability company)' },
+      suffixes: ['GmbH', 'Sàrl'],
+    },
+    {
+      code: 'ag',
+      group: 'company',
+      name: 'AG',
+      names: { fr: 'SA', en: 'AG / SA (company limited by shares)' },
+      suffixes: ['AG', 'SA'],
+    },
+  ],
+  DE: [{ code: 'gmbh', group: 'company', name: 'GmbH', suffixes: ['GmbH'] }],
+}
+
+export const legalFormsHandler = http.get('/api/v1/invoice-settings/legal-forms', () =>
+  HttpResponse.json({ data: sampleLegalForms }),
+)
 
 export const sampleInvoice = (change: Partial<Invoice> = {}): Invoice => ({
   id: 'inv_1',

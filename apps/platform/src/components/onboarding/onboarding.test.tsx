@@ -12,7 +12,7 @@ import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
-import { sampleSettings } from '@/test/invoice-api'
+import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 import { Welcome } from './onboarding'
 import { OnboardingRedirect, welcomeHref } from './onboarding-redirect'
@@ -109,6 +109,7 @@ const server = setupServer(
     saved.push(input)
     return HttpResponse.json({ data: { ...empty, ...input, missing_fields: ['iban'] } })
   }),
+  legalFormsHandler,
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
@@ -283,6 +284,7 @@ const toDefaults = async (user: User, settings = empty) => {
   await user.click(screen.getByRole('button', { name: 'Skip' }))
   await screen.findByRole('heading', { name: 'Invoice defaults' }, { timeout: 5000 })
 }
+const legalForm = () => screen.getByRole('button', { name: /^Legal form/ })
 const termsSaved = () => saved.at(-1)?.default_terms_days
 
 const workspaceField = () => screen.getByRole('textbox', { name: /Workspace name/ })
@@ -784,6 +786,40 @@ describe('the welcome', () => {
       expect(screen.getByText('Your next invoice: INV-0001')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Number format/ }))
       expect(await screen.findByRole('option', { name: /^00001/ })).toBeInTheDocument()
+    })
+
+    test('the legal form follows the name until chosen, is required, and waits for a country with a list', async () => {
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await start(user)
+      await fillCompany(user, 'Muster Treuhand')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(legalForm()).toHaveAttribute('aria-invalid', 'true'))
+      expect(saved).toHaveLength(0)
+
+      const name = screen.getByLabelText(/Company name/)
+      await user.type(name, ' AG')
+      expect(legalForm()).toHaveTextContent('AG / SA')
+      await user.click(legalForm())
+      await user.click(await screen.findByRole('option', { name: /Sole proprietorship \(/ }))
+      await user.type(name, 'X')
+      expect(legalForm()).toHaveTextContent('Sole proprietorship')
+
+      await user.click(screen.getByRole('button', { name: /^Country/ }))
+      await user.click(await screen.findByRole('option', { name: /United States/ }))
+      expect(legalForm()).toBeDisabled()
+      expect(legalForm()).toHaveTextContent('No list for this country yet')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(saved.at(-1)?.seller.legal_form).toBeNull())
+    })
+
+    test('a Swiss company saves its legal form', async () => {
+      const user = userEvent.setup()
+      wrap(<Welcome />)
+      await start(user)
+      await fillCompany(user, 'Muster GmbH')
+      await user.click(screen.getByRole('button', { name: /Continue/ }))
+      await waitFor(() => expect(saved.at(-1)?.seller.legal_form).toBe('gmbh'))
     })
 
     test('a custom number format is built from placeholders, checked and saved', async () => {

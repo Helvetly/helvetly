@@ -4279,5 +4279,16 @@
   "importCloseMonths": "{count, plural, one {# Monat abschliessen} other {# Monate abschliessen}}",
   "importCloseMonthsBody": "Die importierten Rechnungen betreffen {range}. Der Abschluss sperrt diese Monate, damit sich nichts mit diesem Datum ändert; mit Begründung lässt sich ein Monat wieder öffnen.",
   "importInstalments": "Raten",
-  "importPaidOnTip": "Leer gelassen, gilt die Zahlung am Fälligkeitsdatum (bzw. dem der Rate)."
+  "importPaidOnTip": "Leer gelassen, gilt die Zahlung am Fälligkeitsdatum (bzw. dem der Rate).",
+  "legalForm": "Rechtsform",
+  "chooseALegalForm": "Rechtsform wählen",
+  "noLegalFormsForThisCountryYet": "Für dieses Land noch keine Liste",
+  "legalFormTip": "Danach richtet Helvetly die Berichte für Ihre Firma aus, etwa das Steuerdossier fürs Jahr.",
+  "legalFormGroupSole": "Einzelunternehmen",
+  "legalFormGroupPartnership": "Personengesellschaften",
+  "legalFormGroupCompany": "Kapitalgesellschaften",
+  "legalFormGroupAssociation": "Vereine und Stiftungen",
+  "addYourCompanysLegalForm": "Rechtsform Ihrer Firma ergänzen",
+  "legalFormMissingBody": "Helvetly braucht sie, um die passenden Berichte für Ihre Firma vorzubereiten.",
+  "addLegalForm": "Rechtsform ergänzen"
 }

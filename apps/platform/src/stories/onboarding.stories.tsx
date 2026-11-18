@@ -7,7 +7,7 @@ import { WelcomePage } from '@/components/onboarding/onboarding'
 import type { Session } from '@/lib/api'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { ImportBatch } from '@/lib/imports'
-import { sampleSettings } from '@/test/invoice-api'
+import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 import { storySession } from './screen-fixtures'
 
@@ -44,6 +44,7 @@ const meta = {
         http.post('/api/v1/session/onboarded', () => new HttpResponse(null, { status: 204 })),
         http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: settings })),
         http.put('/api/v1/invoice-settings', () => HttpResponse.json({ data: settings })),
+        legalFormsHandler,
       ],
     },
   },

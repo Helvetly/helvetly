@@ -4279,5 +4279,16 @@
   "importCloseMonths": "{count, plural, one {Close # month} other {Close # months}}",
   "importCloseMonthsBody": "The imported invoices fill {range}. Closing locks these months so nothing dated in them changes; you can reopen a month with a reason.",
   "importInstalments": "Instalments",
-  "importPaidOnTip": "Left empty, the payment counts on the due date (or the instalment's due date)."
+  "importPaidOnTip": "Left empty, the payment counts on the due date (or the instalment's due date).",
+  "legalForm": "Legal form",
+  "chooseALegalForm": "Choose a legal form",
+  "noLegalFormsForThisCountryYet": "No list for this country yet",
+  "legalFormTip": "Helvetly prepares reports for your type of company from it, such as the annual tax dossier.",
+  "legalFormGroupSole": "Sole proprietorship",
+  "legalFormGroupPartnership": "Partnerships",
+  "legalFormGroupCompany": "Companies",
+  "legalFormGroupAssociation": "Associations and foundations",
+  "addYourCompanysLegalForm": "Add your company’s legal form",
+  "legalFormMissingBody": "Helvetly needs it to prepare the reports that fit your type of company.",
+  "addLegalForm": "Add legal form"
 }
