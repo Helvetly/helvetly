@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"net"
 	"net/http"
@@ -124,7 +127,16 @@ func (s *Service) getSession(w http.ResponseWriter, _ *http.Request, sess store.
 		// false shows the welcome: only to the owner of a workspace that isn't set up yet.
 		"onboarded":  sess.Workspace.Onboarded || sess.Role != "owner",
 		"csrf_token": sess.CSRFToken,
+		// Pseudonyms for the platform's Google Analytics: Google never gets our ids, and they cannot be reversed.
+		"analytics": map[string]string{"user_id": s.analyticsID("user", u.ID), "workspace_id": s.analyticsID("workspace", sess.Workspace.ID)},
 	})
+}
+
+// analyticsID: a stable keyed hash of an id, the same for every session of it and unlinkable without SECRET_KEY.
+func (s *Service) analyticsID(kind, id string) string {
+	mac := hmac.New(sha256.New, s.cfg.SecretKey)
+	mac.Write([]byte("analytics-" + kind + ":" + id))
+	return hex.EncodeToString(mac.Sum(nil)[:12])
 }
 
 // finishOnboarding: the workspace's welcome was finished (its company step cannot be skipped: the stored company

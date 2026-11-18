@@ -34,6 +34,11 @@ export function useSession() {
   })
 }
 
+/** The session once something else has loaded it; never fetches it (pages before sign-in have none). */
+export function useLoadedSession() {
+  return useQuery({ queryKey: queryKeys.session, queryFn: api.session, enabled: false }).data
+}
+
 export function usePasskeys() {
   return useQuery({
     queryKey: queryKeys.passkeys,

@@ -271,6 +271,10 @@ type sessionOut struct {
 	Role      string                    `json:"role"`
 	Onboarded bool                      `json:"onboarded"`
 	CSRF      string                    `json:"csrf_token"`
+	Analytics struct {
+		UserID      string `json:"user_id"`
+		WorkspaceID string `json:"workspace_id"`
+	} `json:"analytics"`
 }
 
 // session reads GET /session and remembers the CSRF token.
@@ -377,6 +381,30 @@ func TestSessionAndCSRF(t *testing.T) {
 	// Sessions end after SESSION_TTL.
 	e.clock.add(time.Hour + time.Second)
 	e.do(other, "GET", "/api/v1/session", nil, 401, nil)
+}
+
+func TestSessionAnalyticsPseudonyms(t *testing.T) {
+	e := newEnv(t)
+	first := e.session(e.emailSignIn("ga@example.com"))
+	e.clock.add(time.Minute) // past the code's resend cooldown
+	again := e.session(e.emailSignIn("ga@example.com"))
+	other := e.session(e.emailSignIn("ga-other@example.com"))
+
+	a := first.Analytics
+	if a.UserID != again.Analytics.UserID || a.WorkspaceID != again.Analytics.WorkspaceID {
+		t.Fatalf("not stable across sessions: %+v, %+v", a, again.Analytics)
+	}
+	if a.UserID == other.Analytics.UserID || a.WorkspaceID == other.Analytics.WorkspaceID {
+		t.Fatalf("two people share a pseudonym: %+v, %+v", a, other.Analytics)
+	}
+	for _, v := range []string{a.UserID, a.WorkspaceID} {
+		if len(v) != 24 || v == first.User.ID || v == first.Workspace.ID || strings.Contains(v, "_") {
+			t.Fatalf("not an opaque 24-hex pseudonym: %q", v)
+		}
+	}
+	if a.UserID == a.WorkspaceID {
+		t.Fatal("user and workspace pseudonyms collide")
+	}
 }
 
 func TestSafeNext(t *testing.T) {

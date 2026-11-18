@@ -4,6 +4,8 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import ReactGA from 'react-ga4'
 
+import { queryKeys } from '@/lib/queries'
+
 import { Analytics } from './analytics'
 
 const nav = vi.hoisted(() => ({ pathname: '/invoices' }))
@@ -18,7 +20,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function renderWith(id: string) {
+function renderWith(id: string, session?: unknown) {
   server.use(
     http.get('/api/v1/auth/config', () =>
       HttpResponse.json({ ...config, google_analytics_id: id }),
@@ -26,14 +28,17 @@ function renderWith(id: string) {
   )
   const initialize = vi.spyOn(ReactGA, 'initialize').mockImplementation(() => {})
   const send = vi.spyOn(ReactGA, 'send').mockImplementation(() => {})
-  vi.spyOn(ReactGA, 'set').mockImplementation(() => {})
+  const set = vi.spyOn(ReactGA, 'set').mockImplementation(() => {})
   const client = new QueryClient()
+  if (session) {
+    client.setQueryData(queryKeys.session, session)
+  }
   const view = render(
     <QueryClientProvider client={client}>
       <Analytics />
     </QueryClientProvider>,
   )
-  return { initialize, send, view, client }
+  return { initialize, send, set, view, client }
 }
 
 test('sends nothing when the server has no measurement id', async () => {
@@ -67,4 +72,29 @@ test('sends a page view of the path alone, again on navigation', async () => {
   await waitFor(() =>
     expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ page: '/clients' })),
   )
+})
+
+test('signed in, events carry the pseudonyms and role, set before the page view', async () => {
+  nav.pathname = '/invoices'
+  const { send, set } = renderWith('G-TEST123', {
+    role: 'admin',
+    analytics: { user_id: 'a1b2c3', workspace_id: 'd4e5f6' },
+  })
+
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+  expect(set).toHaveBeenCalledWith({
+    user_id: 'a1b2c3',
+    workspace_id: 'd4e5f6',
+    workspace_role: 'admin',
+  })
+  const [firstSet] = set.mock.invocationCallOrder
+  const [firstSend] = send.mock.invocationCallOrder
+  expect(firstSet).toBeLessThan(firstSend ?? 0)
+})
+
+test('signed out, never fetches the session and sends no pseudonyms', async () => {
+  const { send, set } = renderWith('G-TEST123')
+
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+  expect(set).toHaveBeenCalledWith({ user_id: null, workspace_id: null, workspace_role: null })
 })
