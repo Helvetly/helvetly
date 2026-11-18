@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { defaultLocale } from '@helvetly/i18n'
@@ -7,7 +7,11 @@ import { describe, expect, it } from 'vitest'
 import { readCollection } from '@/lib/content'
 import { llmsTxt } from '@/lib/llms'
 
-const repo = join(process.cwd().replace(/\/apps\/web$/, ''))
+// apps/web, wherever the tests run (apps/web or the repository root), as lib/content.ts finds it.
+const web = existsSync(join(process.cwd(), 'apps/web'))
+  ? join(process.cwd(), 'apps/web')
+  : process.cwd()
+const repo = join(web, '../..')
 
 describe('llms.txt', () => {
   const text = llmsTxt()
@@ -27,7 +31,7 @@ describe('llms.txt', () => {
 })
 
 describe('the ARD manifest', () => {
-  const manifest = readFileSync(join(process.cwd(), 'public/.well-known/ard.json'), 'utf8')
+  const manifest = readFileSync(join(web, 'public/.well-known/ard.json'), 'utf8')
 
   it('names the protocol versions the MCP server speaks', () => {
     const go = readFileSync(join(repo, 'apps/api/internal/mcp/mcp.go'), 'utf8')
