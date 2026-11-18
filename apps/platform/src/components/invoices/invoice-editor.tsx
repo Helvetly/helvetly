@@ -1042,11 +1042,7 @@ function Editor({
                       <dl className="grid w-full max-w-[320px] grid-cols-[112px_minmax(0,1fr)] content-start items-center gap-x-2 gap-y-0.5 text-left text-body-sm">
                         {showEngagement && (
                           <>
-                            <MetaLabel
-                              htmlFor="invoice-engagement"
-                              error={undefined}
-                              tip={translate('engagementLinkTip')}
-                            >
+                            <MetaLabel htmlFor="invoice-engagement" error={undefined}>
                               {translate('engagement2')}
                             </MetaLabel>
                             <dd className="flex min-w-0 items-center gap-0.5">
@@ -1077,7 +1073,6 @@ function Editor({
                             <MetaLabel
                               htmlFor="invoice-client_number"
                               error={errors.client_number_display}
-                              tip={translate('clientNumberTip')}
                             >
                               {translate('clientNumberShort')}
                             </MetaLabel>
@@ -1147,7 +1142,6 @@ function Editor({
                             <MetaLabel
                               htmlFor="invoice-contract_reference"
                               error={errors.contract_reference ?? errors.contract_document_id}
-                              tip={translate('contractNumberTip')}
                             >
                               {translate('contractNumberShort')}
                             </MetaLabel>
