@@ -226,6 +226,15 @@ test('uploaded bytes already in Documents reuse the one file after rename and si
     .first()
     .setInputFiles({ name, mimeType: 'text/plain', buffer: bytes })
   await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
+  // The row shows while the bytes are still on their way: wait for the stored file before retrying.
+  await expect
+    .poll(async () => {
+      const listed = object(
+        await (await api.request.get(`/api/v1/documents?search=${name}`)).json(),
+      ).data
+      return Array.isArray(listed) ? listed.length : 0
+    })
+    .toBe(1)
   const attempt = () =>
     api.request.post('/api/v1/documents', {
       headers: { 'X-CSRF-Token': api.csrf },
