@@ -518,6 +518,10 @@ func Title(inv store.Invoice) string { return invoicepdf.TitleFor(inv) }
 func (s *Service) document(inv store.Invoice, set Settings, draft bool, preceding *store.Invoice) invoicepdf.Document {
 	d := invoicepdf.Document{Invoice: inv, Seller: set.Seller.Party, Phone: set.Seller.Phone, BankName: set.BankName, Draft: draft,
 		Created: s.now(), Refund: refunds(inv, preceding), SelfBilled: preceding != nil && preceding.Kind == "self_billed"}
+	if draft && inv.Number == nil {
+		number := draftNumber(set.NumberFormat, inv, preceding, s.now())
+		d.Invoice.Number = &number
+	}
 	if inv.Seller != nil {
 		d.Seller = *inv.Seller
 	}
