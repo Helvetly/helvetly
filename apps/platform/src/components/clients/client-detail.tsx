@@ -67,6 +67,7 @@ function Row({
   editor,
   editing = false,
   onEdit,
+  top = false,
 }: {
   icon: LucideIcon
   label: string
@@ -84,6 +85,8 @@ function Row({
   onEdit?: () => void
   /** The tooltip of a value that opens `editor`; defaults to "Edit <label>". */
   editLabel?: string
+  /** A tall editor (a note): the icon and label stay on the first line instead of moving to its middle. */
+  top?: boolean
 }) {
   const add = (
     <button
@@ -96,9 +99,16 @@ function Row({
   )
   return (
     // min-h-11: an open editor's input and its focus ring keep clear of the separators.
-    <div className="group/row flex min-h-11 items-center gap-3 border-t border-border/60 first:border-t-0">
-      <Icon className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-      <span className="w-28 shrink-0 text-[13.5px] text-muted-foreground">{label}</span>
+    <div
+      className={cn(
+        'group/row flex min-h-11 gap-3 border-t border-border/60 first:border-t-0',
+        top ? 'items-start' : 'items-center',
+      )}
+    >
+      <Icon className={cn('size-4 shrink-0 stroke-[1.5] text-muted-foreground', top && 'mt-3.5')} />
+      <span className={cn('w-28 shrink-0 text-[13.5px] text-muted-foreground', top && 'mt-3')}>
+        {label}
+      </span>
       {/* Only a value truncates: the inline input's focus ring must not be clipped by overflow. */}
       <span className={cn('min-w-0 flex-1 text-[14px]', value && !onEdit && 'truncate')}>
         {editor && editing ? (
@@ -210,6 +220,7 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
     <InlineTextEditor
       label={translate('note')}
       multiline
+      maxLength={1000}
       initial={note ?? ''}
       placeholder={translate('onlyYourTeamSeesThis')}
       save={save}
@@ -227,6 +238,7 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
         editing={editing}
         onEdit={onEdit}
         editor={editor}
+        top={editing}
       />
     )
   const text = (
