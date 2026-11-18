@@ -153,6 +153,36 @@ function CommandItem({
   )
 }
 
+/**
+ * The list's "New …" action: below a separator, centred, quieter than the options above it. One look for every
+ * picker that can create what it lists (a client, an engagement…).
+ */
+function CommandCreateItem({
+  className,
+  children,
+  value = '__create',
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+  return (
+    <>
+      <CommandSeparator className="my-1" />
+      <CommandPrimitive.Group className="p-1">
+        <CommandPrimitive.Item
+          data-slot="command-create-item"
+          value={value}
+          className={cn(
+            "flex cursor-pointer items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-sm font-medium text-muted-foreground outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </CommandPrimitive.Item>
+      </CommandPrimitive.Group>
+    </>
+  )
+}
+
 function CommandShortcut({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
@@ -174,6 +204,7 @@ export {
   CommandEmpty,
   CommandGroup,
   CommandItem,
+  CommandCreateItem,
   CommandShortcut,
   CommandSeparator,
 }
