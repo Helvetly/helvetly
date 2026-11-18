@@ -1059,10 +1059,12 @@ func TestCustomerIdempotencyKeyCoversItsParameters(t *testing.T) {
 		t.Fatalf("user_id %q, want %q", f.Get("metadata[user_id]"), owner.user)
 	}
 	sent := url.Values{}
-	if f.Get("name") != "Anna" || f.Get("individual_name") != "Anna" || f.Get("business_name") != "Acme" {
+	// The workspace's name may still be the default and may change; Checkout asks for the business name.
+	if f.Get("name") != "Anna" || f.Get("individual_name") != "Anna" || f.Has("business_name") ||
+		f.Get("description") != "Helvetly "+owner.workspace {
 		t.Fatalf("customer %v", f)
 	}
-	for _, k := range []string{"email", "name", "business_name", "description", "metadata[workspace_id]", "metadata[user_id]", "individual_name"} {
+	for _, k := range []string{"email", "name", "description", "metadata[workspace_id]", "metadata[user_id]", "individual_name"} {
 		sent.Set(k, f.Get(k))
 	}
 	sum := sha256.Sum256([]byte(sent.Encode()))

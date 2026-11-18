@@ -550,11 +550,11 @@ func (s *Service) createCustomer(ctx context.Context, q store.Q, sess store.Sess
 	var c struct {
 		ID string `json:"id"`
 	}
-	// The customer is the person who pays (their name, email and user id), for the workspace (its name as the business,
-	// its id); without a name of theirs the workspace's stands in.
-	form := url.Values{"email": {sess.User.Email}, "name": {sess.Workspace.Name}, "business_name": {sess.Workspace.Name},
-		"description": {"Helvetly workspace " + sess.Workspace.Name}, "metadata[workspace_id]": {sess.Workspace.ID},
-		"metadata[user_id]": {sess.User.ID}}
+	// The customer is the person who pays (their name, email and user id), for the workspace (its id, which unlike its
+	// name never changes and is searchable in the Dashboard). The business name comes from Checkout, not from a workspace
+	// that may still be called "My workspace".
+	form := url.Values{"email": {sess.User.Email}, "description": {"Helvetly " + sess.Workspace.ID},
+		"metadata[workspace_id]": {sess.Workspace.ID}, "metadata[user_id]": {sess.User.ID}}
 	if n := strings.TrimSpace(sess.User.Name); n != "" && !strings.Contains(n, "@") {
 		form.Set("name", n)
 		form.Set("individual_name", n)
