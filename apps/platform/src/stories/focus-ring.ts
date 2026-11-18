@@ -3,6 +3,9 @@
  * (`ring-3`), or null when the whole ring shows. `overflow-clip-margin` counts as room.
  * shortcut: only fixed boxes end the walk (absolute ones are treated as in flow); enough for drawers and dialogs.
  */
+/** Scrolled to the far end: nothing more lies past that edge. */
+const atEnd = (scroll: number, client: number, size: number) => scroll + client >= size - 1
+
 export function ringClipper(element: Element, ring = 3): Element | null {
   const box = element.getBoundingClientRect()
   for (let node = element.parentElement; node; node = node.parentElement) {
@@ -25,12 +28,13 @@ export function ringClipper(element: Element, ring = 3): Element | null {
       return null
     const room = ring - margin
     // An edge the box can still scroll past is a scroll position, not a cut-off: focusing scrolls the ring in.
-    const end = (scroll: number, client: number, size: number) => scroll + client >= size - 1
     if (
       (box.left - room < clip.left && node.scrollLeft <= 0) ||
-      (box.right + room > clip.right && end(node.scrollLeft, node.clientWidth, node.scrollWidth)) ||
+      (box.right + room > clip.right &&
+        atEnd(node.scrollLeft, node.clientWidth, node.scrollWidth)) ||
       (box.top - room < clip.top && node.scrollTop <= 0) ||
-      (box.bottom + room > clip.bottom && end(node.scrollTop, node.clientHeight, node.scrollHeight))
+      (box.bottom + room > clip.bottom &&
+        atEnd(node.scrollTop, node.clientHeight, node.scrollHeight))
     )
       return node
     if (last) break
