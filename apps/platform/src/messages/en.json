@@ -4355,8 +4355,5 @@
   "importKindWord": "Word",
   "importKindZip": "ZIP",
   "importKindText": "Text",
-  "importInvoicesHereTitle": "Importing invoices?",
-  "importInvoicesHereAction": "Import invoices",
-  "importInvoicesHereText": "Here every service on a document becomes an ongoing engagement. To keep each invoice whole, with its lines, payments and instalments, import it as an invoice.",
   "importUnfinished": "An unfinished import of {noun} from {date}: {count, plural, =0 {still being read} one {# row to review} other {# rows to review}}."
 }

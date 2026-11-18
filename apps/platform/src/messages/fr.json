@@ -4355,8 +4355,5 @@
   "importKindWord": "Word",
   "importKindZip": "ZIP",
   "importKindText": "Texte",
-  "importInvoicesHereTitle": "Vous importez des factures ?",
-  "importInvoicesHereAction": "Importer des factures",
-  "importInvoicesHereText": "Ici, chaque prestation d’un document devient un mandat en cours. Pour garder chaque facture entière, avec ses lignes, paiements et échéances, importez-la comme facture.",
   "importUnfinished": "Un import de {noun} inachevé du {date} : {count, plural, =0 {encore en lecture} one {# ligne à vérifier} other {# lignes à vérifier}}."
 }

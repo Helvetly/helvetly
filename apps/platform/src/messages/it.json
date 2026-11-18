@@ -4355,8 +4355,5 @@
   "importKindWord": "Word",
   "importKindZip": "ZIP",
   "importKindText": "Testo",
-  "importInvoicesHereTitle": "Importi fatture?",
-  "importInvoicesHereAction": "Importa fatture",
-  "importInvoicesHereText": "Qui ogni prestazione di un documento diventa un incarico in corso. Per mantenere intera ogni fattura, con righe, pagamenti e rate, importala come fattura.",
   "importUnfinished": "Un’importazione di {noun} non finita del {date}: {count, plural, =0 {ancora in lettura} one {# riga da controllare} other {# righe da controllare}}."
 }

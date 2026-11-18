@@ -4355,8 +4355,5 @@
   "importKindWord": "Word",
   "importKindZip": "ZIP",
   "importKindText": "Text",
-  "importInvoicesHereTitle": "Rechnungen importieren?",
-  "importInvoicesHereAction": "Rechnungen importieren",
-  "importInvoicesHereText": "Hier wird jede Leistung auf einem Dokument zu einem laufenden Auftrag. Damit jede Rechnung mit Positionen, Zahlungen und Raten ganz bleibt, importieren Sie sie als Rechnung.",
   "importUnfinished": "Ein unvollständiger Import von {noun} vom {date}: {count, plural, =0 {wird noch gelesen} one {# Zeile zu prüfen} other {# Zeilen zu prüfen}}."
 }
