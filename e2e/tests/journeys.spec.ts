@@ -346,15 +346,15 @@ test('client files over 95 MB go in requests under Cloudflare’s 100 MB, with o
   if (!Array.isArray(listed)) throw new Error('Expected client files')
   expect(listed).toHaveLength(5)
 
-  // The same bytes in two packs are refused before anything is sent, as within one request.
+  // The same bytes twice in one batch, even in two packs, are sent once: the copy is dropped before anything is sent.
   const fresh = await scans('again')
   const copy = testInfo.outputPath('again-copy.txt')
   await copyFile(fresh[0] ?? '', copy)
   await picker.setInputFiles([...fresh, copy])
-  await expect(
-    page.getByText('again-copy.txt contains the same file as again-0.txt.'),
-  ).toBeVisible()
-  expect(bodies).toHaveLength(2)
+  await expect.poll(() => bodies.length, { timeout: 120_000 }).toBe(4)
+  const again = object(await (await api.request.get(endpoint)).json()).data
+  if (!Array.isArray(again)) throw new Error('Expected client files')
+  expect(again).toHaveLength(10)
 
   // The API refuses one request over 95 MB, though every file is under 20 MB.
   const form = new FormData()
