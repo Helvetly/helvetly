@@ -112,16 +112,17 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   uno spazio annulla subito il relativo abbonamento. Esporta prima i dati: dopo l’eliminazione
   nessuno può più accedere allo spazio.
 - Entro 30 giorni il titolare che ha eliminato uno spazio può ripristinarlo dal proprio account, con
-  i suoi membri; il suo abbonamento resta annullato. All’eliminazione conserviamo inoltre una copia
-  d’archivio (uno ZIP di tutti i record e file), tenuta con l’archivio per il periodo di conservazione.
-- I dati di uno spazio eliminato restano memorizzati ma inaccessibili. Conservare i documenti
+  i suoi membri; il suo abbonamento resta annullato. Poco dopo l’eliminazione conserviamo inoltre
+  una copia d’archivio (uno ZIP di tutti i record e file, come sono nel momento in cui viene creata).
+- I dati di uno spazio eliminato e la sua copia d’archivio restano memorizzati ma inaccessibili; non
+  vengono ancora cancellati automaticamente. Conservare i documenti
   aziendali per il periodo richiesto dalla legge (in Svizzera 10 anni, art. 958f CO, Olc) è un tuo
   obbligo; esportali prima di eliminare lo spazio. Il trattamento successivo dei dati memorizzati
   è descritto nell’[accordo sul trattamento dei dati](dpa.md), sezione 9.
 - Prima di eliminare il tuo account personale devi trasferire la titolarità o eliminare gli spazi
-  di cui sei l’ultimo titolare. Metodi di accesso, sessioni e appartenenze vengono poi rimossi e il
-  profilo anonimizzato; i dati aziendali degli spazi, compreso ciò che vi hai scritto (come
-  conversazioni con Heidi e feedback inviati), restano nello spazio senza il tuo nome o indirizzo.
+  di cui sei l’ultimo titolare. Metodi di accesso, sessioni, appartenenze e conversazioni con Heidi
+  vengono poi rimossi e il profilo anonimizzato; i dati aziendali degli spazi, compresi quelli che
+  hai creato, restano nello spazio senza il tuo nome o indirizzo.
 - I clienti nell’UE possono passare a un altro fornitore ai sensi del Data Act dell’UE:
   l’esportazione della sezione 5 fornisce gratuitamente record e file in formati comuni.
 - Possiamo sospendere o terminare l’accesso con effetto immediato in caso di grave violazione
@@ -154,10 +155,12 @@ Non devi:
 
 - **Heidi**, l’assistente, risponde a domande su Helvetly e sulla tua attività. L’**importazione IA**
   legge i file caricati e propone record che verifichi.
-- Per le risposte che richiedono un modello IA e per l’importazione IA, Helvetly invia i contenuti
-  interessati al fornitore IA (OpenAI, USA) solo dopo la tua approvazione per questo spazio.
-  L’approvazione copre tutte le funzioni IA di quello spazio, vale solo per te e non si trasferisce
-  ad altri spazi. Helvetly non recupera i dati di Employees o Payroll per le richieste IA. Non includere questi dettagli nei messaggi o nei file.
+- Per le risposte che richiedono un modello IA, per l’importazione IA, la lettura delle ricevute e
+  l’archiviazione automatica dei documenti caricati, Helvetly invia i contenuti interessati al
+  fornitore IA (OpenAI, USA) solo dopo la tua approvazione per questo spazio. L’approvazione copre
+  tutte le funzioni IA di quello spazio, vale solo per te e non si trasferisce ad altri spazi; quando
+  l’informativa sull’IA cambia approvi una volta la nuova versione e puoi revocare l’approvazione in
+  qualsiasi momento. Cosa viene inviato è descritto nell’[informativa sulla privacy](privacy-policy.md). Helvetly non recupera i dati di Employees o Payroll per le richieste IA. Non includere questi dettagli nei messaggi o nei file.
 - Risposte IA e dati estratti possono essere **errati o incompleti**. Verificali prima di farvi
   affidamento; l’importazione IA non crea nulla finché una persona non ha esaminato e confermato
   i record. Nulla di ciò che dice Heidi costituisce consulenza legale, fiscale o finanziaria.
@@ -233,4 +236,4 @@ data; continuare a usare Helvetly dopo tale data significa accettare la modifica
 - Se una disposizione è invalida, le altre restano in vigore e quella invalida è sostituita da
   una che si avvicini il più possibile al suo scopo.
 
-Ultima modifica: 16 novembre 2026.
+Ultima modifica: 18 novembre 2026.

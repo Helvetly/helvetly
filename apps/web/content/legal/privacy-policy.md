@@ -76,28 +76,46 @@ tab's session storage.
 
 You approve AI use once for yourself in each workspace. Your approval covers all AI tools in that
 workspace; it does not approve another member or carry over to another workspace. Declining or
-closing the approval dialog starts no AI action.
+closing the approval dialog starts no AI action. Helvetly records which version of this notice you
+approved: when the notice changes, earlier approvals stop counting, and each member approves the
+new version once before their content is sent again. You can withdraw your approval at any time;
+from then on nothing you send or upload in that workspace goes to OpenAI.
 
 Heidi answers many questions from your workspace's records without any outside service. For other
-questions, and for **AI import** (reading uploaded files and proposing records), Helvetly uses
-OpenAI's API (OpenAI, USA) only after your own approval for this workspace. AI import is available
-on the plans that include it.
+questions, for **AI import** (reading uploaded files and proposing records), for receipt reading,
+for the workspace-name suggestion and for **automatic filing** of documents you upload, Helvetly
+uses OpenAI's API (OpenAI, USA) only after your own approval for this workspace. AI import, receipt
+reading and automatic filing are available on the plans that include AI import.
 
 What is sent:
 
 - Heidi sends the message you write, up to 20 earlier messages of that conversation (which can
   contain figures Heidi showed you) and files you attach to that message. A short check of whether
-  the message is about Helvetly or your business, and a count of the tokens the request will use,
-  are sent to OpenAI as well.
-- AI import and receipt reading send the content of the files you choose, part by part.
+  the message is about Helvetly or your business is sent to OpenAI as well.
+- AI import sends the content of the files you choose, part by part; receipt reading sends the
+  receipt you choose.
 - The workspace-name suggestion sends only the company name you enter.
+- **Automatic filing:** after you upload a file to Documents, Helvetly sends in the background the
+  file's name and type, the start of its text (up to about 6,000 bytes) or, when it has no readable
+  text, the PDF or image itself (up to 4 MiB; a larger file only by its name), together with the
+  names of up to 200 of the workspace's folders and up to 50 tags in use. The model suggests tags
+  and a folder; you can undo the result.
+- Before each request, the same content is also sent to OpenAI's token-counting endpoint, to check
+  it against the workspace's AI allowance.
 
-Helvetly does not fetch Employees or Payroll records for AI requests. Do not include employee or
-payroll data in messages or files you send for AI processing.
+Helvetly does not fetch Employees or Payroll records, or the files kept with an employee, for AI
+requests, and payroll imports are read without AI. If you paste such data into a message, attach
+it, or upload it to Documents instead of the employee's record, it is sent like any other content,
+so please do not.
 
-We ask OpenAI not to store requests and responses (`store: false`). According to OpenAI's API terms,
-API data is not used to train models and may be kept for up to 30 days to detect abuse. Heidi is labelled as an AI assistant; its answers and imported
-records can be wrong and are suggestions for you to check.
+We ask OpenAI not to keep requests and responses as stored application state (`store: false`). This
+is separate from OpenAI's own retention: under OpenAI's API terms, API data may be kept for up to 30
+days to detect abuse, and it is not used to train models unless the API customer opts in to share
+data with OpenAI. Helvetly keeps its own data separately: Heidi conversations are stored in Helvetly,
+without a fixed deletion period yet, until you delete your account (in a deleted workspace they stay
+stored with its other records); imported files, records and filed documents stay in the workspace
+like any other data. Heidi is labelled as an AI assistant; its answers, imported records and filing
+suggestions can be wrong and are suggestions for you to check.
 
 ## 5. Recipients and transfers abroad
 
@@ -124,17 +142,21 @@ you can do yourself:
   in Settings → Workspace → Export all data, including employee and payroll data in a separate
   folder.
 - **Delete your account:** Account settings → Delete account. Your sign-in methods, sessions and
-  memberships are deleted and your profile anonymised. What you wrote in a workspace (for example
-  Heidi conversations or records you created) belongs to that workspace and stays there without your
-  name or address; ask the workspace's owner, or us, if you want it removed.
+  memberships are deleted, your Heidi conversations are deleted and your profile anonymised. Records
+  you created in a workspace belong to that workspace and stay there without your name or address;
+  ask the workspace's owner, or us, if you want them removed.
 
-The owner who deleted a workspace can restore it within 30 days. On deletion we also store an archive copy
-(a ZIP of all its records and files), kept with the archive for the retention period below.
+The owner who deleted a workspace can restore it within 30 days. Shortly after the deletion a
+background job also stores an archive copy: a ZIP of the workspace's records and files, including
+employee and payroll data, with a note of who deleted it, when, and its members. It shows the
+workspace as it is when the job runs.
 
-A deleted workspace can no longer be reached by anyone, but its records stay stored: records that
-accounting law requires to be kept (invoices, receipts, the audit log: 10 years, OR Art. 958f and
-GeBüV) are kept for that period, and only for that purpose, and then erased. Write to
-[support@helvetly.com](mailto:support@helvetly.com) for anything else; we may
+A deleted workspace can no longer be reached by anyone, but its records, files and the archive copy
+stay stored; Helvetly does not yet erase them automatically, and no period for erasing them has been
+set yet. Records that accounting law requires to be kept (invoices, receipts, the audit log: 10
+years, OR Art. 958f and GeBüV) are kept at least for that period. Write to
+[support@helvetly.com](mailto:support@helvetly.com) to have data erased earlier where the law
+allows, or for anything else; we may
 ask you to confirm your identity first. You may complain to the Federal Data Protection and
 Information Commissioner (FDPIC, www.edoeb.admin.ch) or, in the EU, to your national data protection
 authority.

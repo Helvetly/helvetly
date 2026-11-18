@@ -79,29 +79,50 @@ incolli solo nell’archiviazione di sessione della scheda del browser.
 
 Approvi una sola volta il tuo utilizzo dell’IA in ogni spazio di lavoro. L’approvazione copre tutte
 le funzioni IA di quello spazio; non vale per altri membri né in altri spazi. Se rifiuti o chiudi la
-finestra di approvazione, non viene avviata alcuna azione IA.
+finestra di approvazione, non viene avviata alcuna azione IA. Helvetly registra la versione di questa
+informativa che hai approvato: quando l’informativa cambia, le approvazioni precedenti non valgono
+più e ogni membro approva una volta la nuova versione prima che i suoi contenuti vengano di nuovo
+inviati. Puoi revocare l’approvazione in qualsiasi momento; da allora nulla di ciò che invii o
+carichi in quello spazio viene trasmesso a OpenAI.
 
 Heidi risponde a molte domande usando i dati dello spazio di lavoro senza servizi esterni. Per altre
-domande e per l’**importazione IA**, che legge file caricati e propone record, Helvetly usa l’API di
-OpenAI (OpenAI, USA) solo dopo la tua approvazione per questo spazio. L’importazione IA è
-disponibile nei piani che la includono.
+domande, per l’**importazione IA**, che legge file caricati e propone record, per la lettura delle
+ricevute, per il suggerimento del nome dello spazio e per l’**archiviazione automatica** dei
+documenti che carichi, Helvetly usa l’API di OpenAI (OpenAI, USA) solo dopo la tua approvazione per
+questo spazio. L’importazione IA, la lettura delle ricevute e l’archiviazione automatica sono
+disponibili nei piani che includono l’importazione IA.
 
 Cosa viene inviato:
 
 - Heidi invia il messaggio che scrivi, fino a 20 messaggi precedenti della conversazione (che possono
-  contenere cifre mostrate da Heidi) e i file allegati a quel messaggio. Vengono inviati a OpenAI anche
-  un breve controllo per stabilire se il messaggio riguarda Helvetly o l’attività e il conteggio dei
-  token che la richiesta utilizzerà.
-- L’importazione IA e la lettura delle ricevute inviano il contenuto dei file selezionati, una parte alla volta.
+  contenere cifre mostrate da Heidi) e i file allegati a quel messaggio. Viene inviato a OpenAI anche
+  un breve controllo per stabilire se il messaggio riguarda Helvetly o l’attività.
+- L’importazione IA invia il contenuto dei file selezionati, una parte alla volta; la lettura delle
+  ricevute invia la ricevuta selezionata.
 - Il suggerimento del nome dello spazio invia solo il nome dell’azienda inserito.
+- **Archiviazione automatica:** dopo che carichi un file in Documents, Helvetly invia in background
+  il nome e il tipo del file, l’inizio del suo testo (fino a circa 6000 byte) oppure, se non ha
+  testo leggibile, il PDF o l’immagine stessi (fino a 4 MiB; un file più grande solo con il suo
+  nome), insieme ai nomi di al massimo 200 cartelle dello spazio e di al massimo 50 tag in uso. Il
+  modello propone tag e una cartella; puoi annullare il risultato.
+- Prima di ogni richiesta lo stesso contenuto viene inviato anche al servizio di conteggio dei token
+  di OpenAI, per verificarlo rispetto al budget IA dello spazio.
 
-Helvetly non recupera i dati di Employees o Payroll per le richieste IA. Non includere dati dei
-dipendenti o dei salari nei messaggi o nei file inviati per l’elaborazione tramite IA.
+Helvetly non recupera i dati di Employees o Payroll, né i file conservati con un dipendente, per le
+richieste IA, e le importazioni dei salari vengono lette senza IA. Se incolli tali dati in un
+messaggio, li alleghi o li carichi in Documents invece che nella scheda del dipendente, vengono
+inviati come qualsiasi altro contenuto: ti chiediamo di non farlo.
 
-Chiediamo a OpenAI di non conservare richieste e risposte (`store: false`). Secondo le condizioni API
-di OpenAI, i dati API non vengono usati per addestrare i modelli e possono essere conservati fino a
-30 giorni per rilevare abusi. Heidi è indicata come assistente IA; le sue risposte e i record importati
-possono essere errati e sono suggerimenti da verificare.
+Chiediamo a OpenAI di non conservare richieste e risposte come stato applicativo memorizzato
+(`store: false`). Ciò è distinto dalla conservazione propria di OpenAI: secondo le condizioni API di
+OpenAI, i dati API possono essere conservati fino a 30 giorni per rilevare abusi e non vengono usati
+per addestrare i modelli, a meno che il cliente dell’API acconsenta a condividerli con OpenAI.
+Helvetly conserva i propri dati separatamente: le conversazioni con Heidi sono memorizzate in
+Helvetly, per ora senza un termine di cancellazione fissato, fino all’eliminazione del tuo account
+(in uno spazio eliminato restano memorizzate con gli altri dati); file importati, record e documenti
+archiviati restano nello spazio come qualsiasi altro dato. Heidi è indicata come assistente IA; le sue
+risposte, i record importati e le proposte di archiviazione possono essere errati e sono
+suggerimenti da verificare.
 
 ## 5. Destinatari e trasferimenti all’estero
 
@@ -128,19 +149,23 @@ La maggior parte delle operazioni è disponibile direttamente:
 - **Dati dello spazio di lavoro:** il titolare scarica tutto ciò che lo spazio contiene (record e
   file) in uno ZIP in Settings → Workspace → Export all data, compresi dati dei dipendenti e dei
   salari in una cartella separata.
-- **Eliminare l’account:** Account settings → Delete account. Metodi di accesso, sessioni e
-  appartenenze vengono eliminati e il profilo anonimizzato. Ciò che hai scritto in uno spazio di
-  lavoro (ad esempio conversazioni con Heidi o record creati) appartiene allo spazio e resta senza
-  il tuo nome o indirizzo; chiedi al titolare dello spazio o a noi se vuoi che venga rimosso.
+- **Eliminare l’account:** Account settings → Delete account. Metodi di accesso, sessioni,
+  appartenenze e conversazioni con Heidi vengono eliminati e il profilo anonimizzato. I record che
+  hai creato in uno spazio di lavoro appartengono allo spazio e restano senza il tuo nome o
+  indirizzo; chiedi al titolare dello spazio o a noi se vuoi che vengano rimossi.
 
-Il titolare che ha eliminato uno spazio di lavoro può ripristinarlo entro 30 giorni.
-All’eliminazione conserviamo inoltre una copia d’archivio (uno ZIP di tutti i suoi record e file),
-tenuta con l’archivio per il periodo di conservazione indicato di seguito.
+Il titolare che ha eliminato uno spazio di lavoro può ripristinarlo entro 30 giorni. Poco dopo
+l’eliminazione un processo in background conserva inoltre una copia d’archivio: uno ZIP dei record e
+dei file dello spazio, compresi i dati dei dipendenti e dei salari, con una nota su chi l’ha
+eliminato, quando, e sui suoi membri. Rispecchia lo spazio com’è nel momento in cui il processo viene
+eseguito.
 
-Nessuno può più accedere a uno spazio di lavoro eliminato, ma i suoi dati restano memorizzati: quelli
-che la normativa contabile impone di conservare (fatture, ricevute, registro di audit: 10 anni,
-art. 958f CO e Olc) vengono mantenuti per quel periodo e solo a tale scopo, poi cancellati.
-Scrivi a [support@helvetly.com](mailto:support@helvetly.com) per qualsiasi altra richiesta; potremmo
+Nessuno può più accedere a uno spazio di lavoro eliminato, ma i suoi dati, i file e la copia
+d’archivio restano memorizzati; Helvetly non li cancella ancora automaticamente e non è ancora stato
+fissato un termine di cancellazione. I dati che la normativa contabile impone di conservare (fatture,
+ricevute, registro di audit: 10 anni, art. 958f CO e Olc) vengono mantenuti almeno per quel periodo.
+Scrivi a [support@helvetly.com](mailto:support@helvetly.com) per far cancellare i dati prima, ove la
+legge lo consente, o per qualsiasi altra richiesta; potremmo
 prima chiederti di confermare l’identità. Puoi presentare un reclamo a noi, all’Incaricato federale
 della protezione dei dati e della trasparenza (IFPDT, www.edoeb.admin.ch) oppure, nell’UE, alla tua
 autorità locale di protezione dei dati.

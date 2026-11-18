@@ -56,7 +56,11 @@ each subprocessor to obligations equivalent to this agreement and remains respon
 
 Each member must approve their own AI use in each workspace before content is sent to the AI
 provider, including for token counting. Approval covers all AI tools in that workspace and cannot be
-given on another member's behalf. The approval history is kept.
+given on another member's behalf. Each approval records the version of the AI notice it was given
+for; when the notice changes, earlier approvals stop counting and each member approves the new
+version once. A member can withdraw their approval at any time. The approval history is kept. With
+approval, a file a member uploads to Documents is also sent to the AI provider in the background for
+automatic filing (tags and folder), as described in the privacy policy.
 
 ## 7. Transfers abroad
 
@@ -77,15 +81,16 @@ needed.
 
 During the contract the Customer can export all of its data at any time (Settings → Workspace →
 Export all data). When a workspace is deleted, nobody can reach it any more, but its records and
-files stay stored; the platform does not yet erase them automatically. Keeping business records for
-the period the law requires (in Switzerland 10 years, OR Art. 958f, GeBüV) is the Customer's
-obligation as controller. Helvetly keeps a deleted workspace's records as an archive until the end
-of that retention period and then erases them; on the Customer's request it erases them earlier
-where the law allows. Backups are erased in their normal rotation. Within 30 days the owner who
-deleted the workspace can restore it, with its members. On deletion Helvetly also stores an archive
-copy, a ZIP of all records and files of the workspace, which it keeps with the archive for the
-retention period and then erases. Employee and payroll data are part of the workspace: the owner's
-export includes them in a separate folder, and on deletion they are treated like its other records.
+files stay stored; the platform does not yet erase them automatically, and no period for erasing
+them has been set yet. Keeping business records for the period the law requires (in Switzerland 10
+years, OR Art. 958f, GeBüV) is the Customer's obligation as controller. On the Customer's request
+Helvetly erases a deleted workspace's data earlier where the law allows. Within 30 days the owner who
+deleted the workspace can restore it, with those of its members whose accounts still exist. Shortly
+after the deletion a background job also stores an archive copy: a ZIP of the workspace's records
+and files with a note of who deleted it, when, and its members, showing the workspace as it is when
+the job runs; it is stored like the workspace's records. Employee and payroll data are part of the
+workspace: the owner's export and the archive copy include them in a separate folder, and on
+deletion they are treated like its other records.
 
 ## 10. Data breaches
 
@@ -124,9 +129,12 @@ provisions remain unaffected.
 - **Staff access:** the platform has no support or administrator access to workspaces; access to
   production systems is limited to the people who operate the service.
 - **AI provider:** only the current message, up to 20 earlier turns and explicitly attached files
-  (Heidi), the selected files (AI import and receipt reading), or the company name (workspace-name
-  suggestion) are sent; requests ask the provider not to store data (`store: false`); a monthly token
-  budget is enforced on the server.
+  (Heidi), the selected files (AI import and receipt reading), the company name (workspace-name
+  suggestion), or an uploaded file's name, type and start of its text or the file itself up to
+  4 MiB, with folder names and tags in use (automatic filing) are sent, the same content also for
+  token counting; only after the member's own approval; requests ask the provider not to keep them
+  as stored application state (`store: false`), which does not replace the provider's own retention
+  under its terms; a monthly token budget is enforced on the server.
 - **Employee and payroll data:** separate per-member access to Employees and Payroll, granted only
   by the owner; bank details, tax identifiers and social-security numbers sealed with AES-256-GCM
   and every access to them logged; not fetched for AI requests; unavailable through MCP or API tokens; optional

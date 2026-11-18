@@ -60,7 +60,12 @@ de son intervention.
 Chaque membre doit approuver sa propre utilisation de l’IA dans chaque espace de travail avant toute
 transmission de contenu au fournisseur d’IA, y compris pour le décompte des tokens. L’approbation
 couvre toutes les fonctions d’IA de cet espace et ne peut pas être donnée au nom d’un autre membre.
-L’historique des approbations est conservé.
+Chaque approbation enregistre la version de l’information sur l’IA pour laquelle elle a été donnée ;
+lorsque cette information change, les approbations antérieures cessent de compter et chaque membre
+approuve une fois la nouvelle version. Un membre peut retirer son approbation à tout moment.
+L’historique des approbations est conservé. Avec l’approbation, un fichier qu’un membre téléverse
+dans Documents est aussi transmis en arrière-plan au fournisseur d’IA pour le classement automatique
+(étiquettes et dossier), comme décrit dans la politique de confidentialité.
 
 ## 7. Transferts à l’étranger
 
@@ -82,17 +87,18 @@ export du compte. Helvetly l’assiste également, si nécessaire, pour les anal
 
 Pendant le contrat, le Client peut exporter toutes ses données à tout moment (Settings → Workspace →
 Export all data). Lorsqu’un espace est supprimé, plus personne ne peut y accéder, mais ses données
-et fichiers restent stockés ; la plateforme ne les efface pas encore automatiquement. La
-conservation des pièces de gestion pendant la durée légale (en Suisse, 10 ans, art. 958f CO, Olico)
-incombe au Client en tant que responsable du traitement. Helvetly conserve les données d’un espace
-supprimé comme archives jusqu’à la fin de cette durée, puis les efface ; sur demande du Client, il
-les efface plus tôt si la loi le permet. Les sauvegardes sont effacées selon leur cycle normal. Dans
-les 30 jours, le propriétaire qui a supprimé l’espace peut le restaurer, avec ses membres. À la
-suppression, Helvetly conserve en outre une copie d’archive, un ZIP de tous les enregistrements et
-fichiers de l’espace, qu’il garde avec les archives pendant la durée de conservation, puis efface.
-Les données des employés et des salaires font partie de l’espace : l’export du propriétaire les
-inclut dans un dossier distinct ; à la suppression, elles sont traitées comme les autres données de
-l’espace.
+et fichiers restent stockés ; la plateforme ne les efface pas encore automatiquement et aucune
+durée d’effacement n’a encore été fixée. La conservation des pièces de gestion pendant la durée
+légale (en Suisse, 10 ans, art. 958f CO, Olico) incombe au Client en tant que responsable du
+traitement. Sur demande du Client, Helvetly efface plus tôt les données d’un espace supprimé si la
+loi le permet. Dans les 30 jours, le propriétaire qui a supprimé l’espace peut le restaurer, avec
+ceux de ses membres dont le compte existe encore. Peu après la suppression, une tâche en
+arrière-plan conserve en outre une copie d’archive : un ZIP des enregistrements et fichiers de
+l’espace, avec une note indiquant qui l’a supprimé, quand, et ses membres, qui reflète l’espace tel
+qu’il est au moment où la tâche s’exécute ; elle est stockée comme les données de l’espace. Les
+données des employés et des salaires font partie de l’espace : l’export du propriétaire et la copie
+d’archive les incluent dans un dossier distinct ; à la suppression, elles sont traitées comme les
+autres données de l’espace.
 
 ## 10. Violations de données
 
@@ -134,8 +140,13 @@ ses dispositions impératives demeurent réservées.
   accès aux systèmes de production limité aux personnes exploitant le service.
 - **Fournisseur d’IA :** seuls le message actuel, jusqu’à 20 échanges précédents et les fichiers
   explicitement joints (Heidi), les fichiers sélectionnés (import par IA et lecture des justificatifs),
-  ou le nom d’entreprise (suggestion de nom d’espace) sont transmis ; les requêtes demandent au fournisseur de ne pas
-  conserver les données (`store: false`) ; budget mensuel de tokens imposé côté serveur.
+  le nom d’entreprise (suggestion de nom d’espace), ou le nom, le type et le début du texte d’un
+  fichier téléversé ou le fichier lui-même jusqu’à 4 Mio, avec les noms de dossiers et les
+  étiquettes utilisées (classement automatique) sont transmis, le même contenu aussi pour le
+  décompte des tokens ; uniquement après l’approbation propre du membre ; les requêtes demandent au
+  fournisseur de ne pas les conserver comme état applicatif stocké (`store: false`), ce qui ne
+  remplace pas la conservation propre du fournisseur selon ses conditions ; budget mensuel de
+  tokens imposé côté serveur.
 - **Données des employés et des salaires :** droits individuels distincts pour Employees et Payroll,
   accordés uniquement par le propriétaire ; coordonnées bancaires, identifiants fiscaux et numéros
   de sécurité sociale scellés par AES-256-GCM, chaque accès étant journalisé ; non récupérés pour les requêtes d’IA ; indisponibles via MCP ou les jetons d’API ; approbation facultative de la paie par une seconde
