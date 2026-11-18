@@ -13,11 +13,21 @@ export const TONES = {
 export type Tone = keyof typeof TONES
 
 /** A small tinted label with tinted text: "Paid", "Sent", "Overdue". */
-export function StatusBadge({ tone = 'gray', children }: { tone?: Tone; children: ReactNode }) {
+export function StatusBadge({
+  tone = 'gray',
+  size = 'md',
+  children,
+}: {
+  tone?: Tone
+  /** sm: beside a name in a list row, where the full size outweighs the text it marks. */
+  size?: 'sm' | 'md'
+  children: ReactNode
+}) {
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center rounded-[4px] px-1.5 text-[13px] whitespace-nowrap',
+        'inline-flex items-center rounded-[4px] whitespace-nowrap',
+        size === 'sm' ? 'h-5 px-1.5 text-caption font-medium' : 'h-6 px-1.5 text-[13px]',
         TONES[tone],
       )}
     >

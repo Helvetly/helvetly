@@ -110,7 +110,11 @@ export const ContactPhone: Story = {
     const page = within(canvasElement)
     await userEvent.click(page.getByRole('button', { name: /add contact/i }))
     await expect(page.getByRole('button', { name: 'Phone country DE +49' })).toBeVisible()
-    await userEvent.type(page.getByLabelText('Name'), 'Lena Huber')
+    await userEvent.type(page.getByLabelText(/^Name/), 'Lena Huber')
+    // Name and email are required; an empty email is refused first.
+    await userEvent.click(page.getByRole('button', { name: 'Add contact' }))
+    await expect(await page.findByText('Enter an email address.')).toBeVisible()
+    await userEvent.type(page.getByLabelText(/^Email/), 'lena@example.de')
     const phone = page.getByLabelText('Phone')
     await userEvent.type(phone, '12')
     await userEvent.click(page.getByRole('button', { name: 'Add contact' }))
