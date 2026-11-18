@@ -142,10 +142,10 @@ test('the settings tabs mark this page and open another one', async () => {
     'Workspace',
     'Company',
     'Account',
+    'Invoices',
     'Employment',
     'API & MCP',
     'Billing',
-    'Invoices',
     'Audit log',
   ])
   expect(within(tabs).getByRole('button', { name: 'Account' })).toHaveAttribute(

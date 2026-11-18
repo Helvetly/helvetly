@@ -21,15 +21,15 @@ import { canReadPath, useScopes } from '@/lib/permissions'
 
 export type Page = { label: string; href: string; icon: LucideIcon }
 
-/** The workspace and its company first, then your own settings (the same in every workspace), employment, then the rest of the workspace's. */
+/** The workspace and its company first, then your own settings (the same in every workspace), invoices, employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
   { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
   { label: translate('company'), href: '/settings/company', icon: Store },
   { label: translate('account'), href: '/account', icon: UserRound },
+  { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
   { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
-  { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
   { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
 ]
 

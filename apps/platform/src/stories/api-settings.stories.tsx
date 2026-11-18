@@ -41,9 +41,12 @@ export const Page: Story = {
     await canvas.findByText('Claude')
     const tabs = within(await canvas.findByRole('navigation', { name: 'Views' }))
     const labels = tabs.getAllByRole('button').map((tab) => tab.textContent)
-    // Your own settings, then employment (when you may see it), then API & MCP.
-    const employment = labels.includes('Employment') ? 1 : 0
-    await expect(labels.indexOf('API & MCP')).toBe(labels.indexOf('Account') + 1 + employment)
+    // Your own settings, invoices, employment (when you may see it), then API & MCP; on a phone some tabs go under
+    // "More", and the ones shown keep that order.
+    const order = ['Account', 'Invoices', 'Employment', 'API & MCP']
+    const shown = labels.filter((label) => label !== null && order.includes(label))
+    await expect(shown).toEqual(order.filter((label) => shown.includes(label)))
+    await expect(shown).toContain('API & MCP')
     await expect(tabs.getByRole('button', { name: 'API & MCP' })).toHaveAttribute(
       'aria-current',
       'page',
