@@ -76,7 +76,8 @@ export function ImportDrawer({
   const [editing, setEditing] = useState<string | null>(null)
   const [results, setResults] = useState<ReadonlyMap<string, CommitResult>>(new Map())
   const [summary, setSummary] = useState<string | null>(null)
-  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  // The batch whose discard waits for a yes: the open one, or the unfinished one offered to continue.
+  const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   useEffect(clearHandOff, [])
 
@@ -126,8 +127,8 @@ export function ImportDrawer({
     upload.reset()
     commit.reset()
   }
-  const runDiscard = () => {
-    if (batchId) discard.mutate(batchId, { onSuccess: reset })
+  const runDiscard = (id: string | null = batchId) => {
+    if (id) discard.mutate(id, { onSuccess: reset })
   }
   const runCommit = (recordIds: string[], resolutions?: Record<string, Resolution>) =>
     commit.mutate(
@@ -170,6 +171,15 @@ export function ImportDrawer({
             tone="info"
             actions={
               <>
+                <Button
+                  size="sm"
+                  variant="destructive-ghost"
+                  disabled={discard.isPending}
+                  onClick={() => setConfirmDiscard(resume.id)}
+                >
+                  <Trash2 />
+                  {translate('discard2')}
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => setFresh(true)}>
                   <RotateCcw />
                   {translate('startANewOne')}
@@ -290,7 +300,7 @@ export function ImportDrawer({
         <Button
           variant={open.length || reading ? 'destructive-ghost' : 'outline'}
           disabled={discard.isPending || commit.isPending}
-          onClick={() => (open.length || reading ? setConfirmDiscard(true) : runDiscard())}
+          onClick={() => (open.length || reading ? setConfirmDiscard(batchId) : runDiscard())}
         >
           {open.length || reading ? (
             <>
@@ -424,7 +434,7 @@ export function ImportDrawer({
           />
         )}
 
-        {confirmDiscard && (
+        {confirmDiscard !== null && (
           <ConfirmDialog
             tone="destructive"
             title={translate('discardThisImport')}
@@ -435,8 +445,8 @@ export function ImportDrawer({
             confirmLabel={translate('discard')}
             cancelLabel={translate('keep')}
             onDecide={(approved) => {
-              setConfirmDiscard(false)
-              if (approved) runDiscard()
+              setConfirmDiscard(null)
+              if (approved) runDiscard(confirmDiscard)
             }}
           />
         )}
