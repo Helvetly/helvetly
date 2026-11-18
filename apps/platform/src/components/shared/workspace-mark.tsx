@@ -34,15 +34,18 @@ export function WorkspaceMark({
       )}
     >
       {logo ? (
-        <Image
-          src={logo}
-          alt=""
-          fill
-          unoptimized
-          sizes="32px"
-          className="object-contain"
-          onError={() => setFailed(logo)}
-        />
+        // A margin in proportion to the tile at every size, so no logo touches the tile's edge.
+        <span className="absolute inset-[12%]">
+          <Image
+            src={logo}
+            alt=""
+            fill
+            unoptimized
+            sizes="32px"
+            className="object-contain"
+            onError={() => setFailed(logo)}
+          />
+        </span>
       ) : (
         initialsOf(name).slice(0, 1) || '?'
       )}
