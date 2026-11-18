@@ -1435,7 +1435,7 @@
   "importReadyToReview": "Import ready to review",
   "importsAlreadyReadStayOpenForReview": "Imports already read stay open for review.",
   "importReviewFirst": "You check and fix them first: nothing is created until you choose rows and press Import. The files are kept in Documents.",
-  "importCreateClient": "New client \"{name}\"",
+  "importCreateClient": "Create client \"{name}\"",
   "importSuggestions": "Heidi’s AI reads the files and suggests {noun}.",
   "importsYouStarted": "Imports you started",
   "importYourClients": "Import your clients",
@@ -4303,5 +4303,9 @@
   "aiApprovalWhatIsProtected": "What stays protected",
   "importReadingTitle": "Reading your files: {done} of {total} done",
   "importFixRow": "Fix this row",
-  "importReadingHint": "Long spreadsheets can take a minute. You can close this and come back later."
+  "importReadingHint": "Long spreadsheets can take a minute. You can close this and come back later.",
+  "importFieldsToFix": "{count, plural, one {# field to fix} other {# fields to fix}}",
+  "importFieldsToFixHint": "Fix the highlighted fields, then save: the record is checked again and ticked for import.",
+  "importRecordLooksGood": "This record looks good. Change anything you like; saving checks it again.",
+  "importDocumentNames": "On the document:"
 }

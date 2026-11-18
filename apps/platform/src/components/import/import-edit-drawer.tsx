@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
@@ -39,24 +40,27 @@ function ImportDateField({
   onChange: (date: string) => void
 }) {
   return (
-    <div className="flex items-center gap-1">
-      <div className="min-w-0 flex-1">
-        <DateField
-          id={id}
-          label={label}
-          value={CIVIL_DATE.test(value) ? value : ''}
-          invalid={Boolean(error)}
-          onChange={onChange}
-          className="h-9 border border-input bg-card px-3 text-sm shadow-xs data-invalid:border-destructive"
-        />
-      </div>
+    // The clear button sits inside the field, so dated and other fields keep one width.
+    <div className="relative">
+      <DateField
+        id={id}
+        label={label}
+        value={CIVIL_DATE.test(value) ? value : ''}
+        invalid={Boolean(error)}
+        onChange={onChange}
+        className={cn(
+          'h-9 w-full border border-input bg-card px-3 text-sm shadow-xs data-invalid:border-destructive',
+          value && 'pr-9',
+        )}
+      />
       {value && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
+              className="absolute top-1/2 right-1.5 -translate-y-1/2"
               aria-label={`${translate('clearDate')}: ${label}`}
               onClick={() => onChange('')}
             >
@@ -69,6 +73,9 @@ function ImportDateField({
     </div>
   )
 }
+
+/** Keeps what an amount can hold (digits, separators, a sign), so letters never reach the record. */
+export const amountInput = (typed: string) => typed.replace(/[^\d.,'’\s-]/g, '')
 
 /** An amount with its currency beside it: a picker where the record's currency is edited, its code otherwise. */
 function ImportAmountField({
@@ -108,7 +115,7 @@ function ImportAmountField({
         {...describedBy(id, error)}
         inputMode="decimal"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(amountInput(event.target.value))}
         className={cn(inputClass, 'tabular-nums')}
       />
     </div>
@@ -143,6 +150,7 @@ export function EditRecordDrawer({
   )
   const set = (field: string, value: string) =>
     setValues((current) => ({ ...current, [field]: value }))
+  const issues = Object.keys(record.issues).length
   const toggles = config.toggles ?? []
   const dates = config.dates ?? []
   const amounts = config.amounts ?? {}
@@ -200,6 +208,19 @@ export function EditRecordDrawer({
           </header>
 
           <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-5 sm:grid-cols-2">
+            {issues > 0 ? (
+              <Callout
+                tone="warning"
+                title={translate('importFieldsToFix', { count: issues })}
+                className="sm:col-span-2"
+              >
+                {translate('importFieldsToFixHint')}
+              </Callout>
+            ) : (
+              <Callout tone="success" className="sm:col-span-2">
+                {translate('importRecordLooksGood')}
+              </Callout>
+            )}
             {config.editable.map((field) => {
               const id = `import-${record.id}-${field}`
               const error = record.issues[field]
