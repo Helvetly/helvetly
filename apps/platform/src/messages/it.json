@@ -2935,7 +2935,6 @@
   "system2": " Sistema",
   "tag": "Etichetta: {tag}",
   "tags": "Tag",
-  "tagsHaveAtMostCharacters": "I tag hanno al massimo {MAX_TAG_LENGTH} caratteri.",
   "takenFromTheClientChangesHereGoIntoThis": "Preso dal cliente. Le modifiche qui vengono apportate solo a questo documento, non al record del cliente.",
   "takingShape": "prende forma.",
   "tax2026": "Imposta 2026",
@@ -4451,5 +4450,6 @@
   "paidWithInvoice": "Pagato con la fattura",
   "paidSeparatelyNextStep": "Da questo incarico non si fattura nulla: registri il lavoro rispetto a quanto pagato.",
   "enterAPriceAbove0": "Inserisci un prezzo superiore a 0 o scegli «Pagato a parte»",
-  "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura."
+  "detailsSectionText": "Facoltativo, per i tuoi archivi e la fattura.",
+  "tagShape": "I tag usano lettere a–z, cifre e trattini (non all’inizio o alla fine), fino a 32 caratteri."
 }

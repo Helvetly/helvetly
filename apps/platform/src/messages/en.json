@@ -2935,7 +2935,6 @@
   "system2": " System",
   "tag": "Tag: {tag}",
   "tags": "Tags",
-  "tagsHaveAtMostCharacters": "Tags have at most {MAX_TAG_LENGTH} characters.",
   "takenFromTheClientChangesHereGoIntoThis": "Taken from the client. Changes here go into this document only, not into the client’s record.",
   "takingShape": "taking shape.",
   "tax2026": "Tax 2026",
@@ -4451,5 +4450,6 @@
   "paidWithInvoice": "Paid with invoice",
   "paidSeparatelyNextStep": "Nothing is invoiced from this engagement: you log the work against what was paid.",
   "enterAPriceAbove0": "Enter a price above 0, or choose Paid separately",
-  "detailsSectionText": "Optional, for your records and the invoice."
+  "detailsSectionText": "Optional, for your records and the invoice.",
+  "tagShape": "Tags use letters a–z, digits and hyphens (not first or last), up to 32 characters."
 }

@@ -252,11 +252,11 @@ func TestCreate(t *testing.T) {
 
 	c := e.create(b, map[string]any{"name": "  Anna Muster ", "email": " Anna@Example.CH ", "phone": "+41 44 123 45 67",
 		"preferred_name": "   ", "website": "anna.ch", "vat_number": "che123456788mwst", "language": "DE", "currency": "chf",
-		"payment_terms_days": 10, "tags": []string{"VIP", " Zürich "}, "country": "ch"})
+		"payment_terms_days": 10, "tags": []string{"VIP", " Zuerich "}, "country": "ch"})
 	if !strings.HasPrefix(c.ID, "cli_") || c.Number != 1 || c.Name != "Anna Muster" || *c.Email != "anna@example.ch" ||
 		*c.Phone != "+41441234567" || c.PreferredName != nil || *c.Website != "https://anna.ch" ||
 		*c.VATNumber != "CHE-123.456.788 MWST" || *c.Language != "de" || *c.Currency != "CHF" || *c.PaymentTermsDays != 10 ||
-		!slices.Equal(c.Tags, []string{"VIP", "Zürich"}) || *c.Country != "CH" || c.IsCompany || !c.IsActive ||
+		!slices.Equal(c.Tags, []string{"VIP", "Zuerich"}) || *c.Country != "CH" || c.IsCompany || !c.IsActive ||
 		!c.IsDraft || !slices.Equal(c.MissingFields, []string{"street", "street_number", "zip", "city"}) ||
 		len(c.Contacts) != 0 || c.FilesCount != 0 || c.CreatedAt.IsZero() {
 		t.Fatalf("created: %+v", c)
@@ -582,16 +582,16 @@ func TestExport(t *testing.T) {
 func TestTagsAndCountries(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
-	e.create(b, map[string]any{"name": "One", "tags": []string{"VIP", "Zürich"}, "country": "CH"})
+	e.create(b, map[string]any{"name": "One", "tags": []string{"VIP", "Zuerich"}, "country": "CH"})
 	e.create(b, map[string]any{"name": "Two", "tags": []string{"vip"}, "country": "DE"})
-	e.create(b, map[string]any{"name": "Three", "tags": []string{"Zürich", "B2B", "vip"}, "country": "AT"})
+	e.create(b, map[string]any{"name": "Three", "tags": []string{"Zuerich", "B2B", "vip"}, "country": "AT"})
 	gone := e.create(b, map[string]any{"name": "Gone", "tags": []string{"Gone"}})
 	e.do(b, "DELETE", "/api/v1/clients/"+gone.ID, nil, 204, nil)
 	e.create(e.workspace(), map[string]any{"name": "Elsewhere", "tags": []string{"VIP"}})
 
 	var tags struct{ Data []store.TagCount }
 	e.do(b, "GET", "/api/v1/clients/tags", nil, 200, &tags)
-	want := []store.TagCount{{Name: "VIP", Count: 3}, {Name: "Zürich", Count: 2}, {Name: "B2B", Count: 1}}
+	want := []store.TagCount{{Name: "VIP", Count: 3}, {Name: "Zuerich", Count: 2}, {Name: "B2B", Count: 1}}
 	if !slices.Equal(tags.Data, want) {
 		t.Fatalf("tags: %+v", tags.Data)
 	}
@@ -601,8 +601,8 @@ func TestTagsAndCountries(t *testing.T) {
 		want  []int64
 	}{
 		{"tag=vip&sort=number", []int64{1, 2, 3}},
-		{"tag=VIP&tag=zürich&sort=number", []int64{1, 3}},
-		{"tag=" + url.QueryEscape("ZÜRICH") + "&tag=b2b", []int64{3}},
+		{"tag=VIP&tag=zuerich&sort=number", []int64{1, 3}},
+		{"tag=" + url.QueryEscape("ZUERICH") + "&tag=b2b", []int64{3}},
 		{"tag=nothing", []int64{}},
 		{"country=CH&country=at&sort=number", []int64{1, 3}},
 		{"country=DE,AT&sort=number", []int64{2, 3}},
