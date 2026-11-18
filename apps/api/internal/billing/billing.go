@@ -624,11 +624,11 @@ func (s *Service) newCheckout(ctx context.Context, q store.Q, sess store.Session
 		Currency: cur, PriceID: target.ID, Seats: seats, Trial: withTrial, CreatedBy: sess.User.ID}, trial.Days, nil
 }
 
-// managedPayments turns a Checkout Session into a Managed Payments one: Stripe then collects the name, address and
-// tax itself and refuses the parameters for doing that ourselves, so they go.
+// managedPayments turns a Checkout Session into a Managed Payments one: Stripe then collects the address, tax ID and
+// tax itself and refuses the parameters for doing that ourselves, so they go. The business name collection stays.
 func managedPayments(form url.Values) {
-	for _, k := range []string{"automatic_tax[enabled]", "tax_id_collection[enabled]", "customer_update[name]",
-		"customer_update[address]", "invoice_creation[enabled]"} {
+	for _, k := range []string{"automatic_tax[enabled]", "tax_id_collection[enabled]", "tax_id_collection[required]",
+		"customer_update[name]", "customer_update[address]", "invoice_creation[enabled]"} {
 		form.Del(k)
 	}
 	form.Set("managed_payments[enabled]", "true")
@@ -648,8 +648,12 @@ func (s *Service) checkoutSession(ctx context.Context, b store.Billing, co store
 		"subscription_data[metadata][workspace_id]": {co.WorkspaceID}, "subscription_data[metadata][plan]": {co.Plan},
 		"subscription_data[metadata][interval]":    {co.Interval},
 		"subscription_data[metadata][checkout_id]": {co.ID}, "subscription_data[metadata][offer_id]": {co.OfferID},
-		"payment_method_collection":  {"always"},
-		"billing_address_collection": {"required"}, "tax_id_collection[enabled]": {"true"},
+		"payment_method_collection": {"always"},
+		// The company name is asked for on its own and the VAT number stays optional: a Swiss business below the VAT
+		// threshold has none, and the "purchasing as a business" box of tax ID collection alone would demand one.
+		"billing_address_collection": {"required"}, "name_collection[business][enabled]": {"true"},
+		"name_collection[business][optional]": {"false"},
+		"tax_id_collection[enabled]":          {"true"}, "tax_id_collection[required]": {"never"},
 		"customer_update[name]": {"auto"}, "customer_update[address]": {"auto"},
 		"success_url": {activating}, "cancel_url": {canceled},
 	}

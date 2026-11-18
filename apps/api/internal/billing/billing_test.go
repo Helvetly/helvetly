@@ -897,7 +897,9 @@ func TestCheckout(t *testing.T) {
 		"mode": "subscription", "customer": "cus_1", "line_items[0][price]": "price_by", "automatic_tax[enabled]": "true",
 		"subscription_data[metadata][workspace_id]": owner.workspace, "subscription_data[trial_period_days]": "",
 		"subscription_data[metadata][offer_id]": currentOffer,
-		"tax_id_collection[enabled]":            "true", "success_url": "https://helvetly.example.com/activating",
+		"tax_id_collection[enabled]":            "true", "tax_id_collection[required]": "never",
+		"name_collection[business][enabled]": "true", "name_collection[business][optional]": "false",
+		"billing_address_collection": "required", "success_url": "https://helvetly.example.com/activating",
 		"cancel_url": "https://helvetly.example.com/choose-plan?checkout=canceled",
 	} {
 		if f.Get(k) != want {
