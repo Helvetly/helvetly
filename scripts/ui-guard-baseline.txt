@@ -121,7 +121,7 @@
 18 text-px apps/platform/src/components/expenses/expense-detail.tsx
 7 text-px apps/platform/src/components/expenses/expense-form.tsx
 7 text-px apps/platform/src/components/expenses/expense-receipts.tsx
-13 text-px apps/platform/src/components/expenses/expenses-page.tsx
+12 text-px apps/platform/src/components/expenses/expenses-page.tsx
 5 text-px apps/platform/src/components/fix-list.tsx
 4 text-px apps/platform/src/components/form-section.tsx
 4 text-px apps/platform/src/components/heidi/composer.tsx

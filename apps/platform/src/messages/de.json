@@ -4457,5 +4457,10 @@
   "aiWriteErrorNetwork": "Helvetly ist nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
   "tagShape": "Tags bestehen aus Buchstaben a–z, Ziffern und Bindestrichen (nicht am Anfang oder Ende), bis 32 Zeichen.",
   "hideEngagement": "Auftragszeile ausblenden",
-  "hideContractNumber": "Vertragsnummer entfernen"
+  "hideContractNumber": "Vertragsnummer entfernen",
+  "dropToImportTheseInvoices": "Ablegen, um diese Rechnungen zu importieren",
+  "dropToReadTheseFilesIntoEngagements": "Ablegen, um diese Dateien als Aufträge einzulesen",
+  "dropToReadTheseFilesIntoNewClients": "Ablegen, um diese Dateien als neue Kunden einzulesen",
+  "dropToReadTheseFilesIntoProductsAndServices": "Ablegen, um diese Dateien als Produkte und Dienstleistungen einzulesen",
+  "orDropFilesAnywhereOnThisPage": "oder legen Sie Dateien irgendwo auf dieser Seite ab"
 }

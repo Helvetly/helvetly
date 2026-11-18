@@ -4457,5 +4457,10 @@
   "aiWriteErrorNetwork": "Couldn't reach Helvetly. Check your connection and try again.",
   "tagShape": "Tags use letters a–z, digits and hyphens (not first or last), up to 32 characters.",
   "hideEngagement": "Hide the engagement row",
-  "hideContractNumber": "Remove the contract number"
+  "hideContractNumber": "Remove the contract number",
+  "dropToImportTheseInvoices": "Drop to import these invoices",
+  "dropToReadTheseFilesIntoEngagements": "Drop to read these files into engagements",
+  "dropToReadTheseFilesIntoNewClients": "Drop to read these files into new clients",
+  "dropToReadTheseFilesIntoProductsAndServices": "Drop to read these files into products and services",
+  "orDropFilesAnywhereOnThisPage": "or drop files anywhere on this page"
 }

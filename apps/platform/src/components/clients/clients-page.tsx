@@ -51,6 +51,7 @@ import { DetailsPopover } from '@/components/data/row-details'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
@@ -348,6 +349,9 @@ export function ClientsPage() {
     update({ sort: field, desc: params.sort === field ? !params.desc : field === 'created_at' })
 
   const exportLock = useFeatureLock('data_export')
+  const aiLock = useFeatureLock('ai_import')
+  const canImport = canWrite && !aiLock
+  const dropping = useImportDrop('clients', canImport && !formState && !openId)
   const selection = {
     count: selected.size,
     actions: bulkActions(canDelete, {
@@ -392,6 +396,7 @@ export function ClientsPage() {
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="clients" onClose={importDrawer.close} />}
+      {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoNewClients')} />}
       <PageContextMenu
         title={translate('clients')}
         primary={{ label: translate('newClient'), onSelect: () => setForm({}) }}
@@ -489,9 +494,15 @@ export function ClientsPage() {
                 text={translate('addThePeopleAndCompaniesYouWorkForThe')}
                 action={
                   canWrite && (
-                    <Button size="sm" onClick={() => setForm({})}>
-                      {translate('addYourFirstClient')}
-                    </Button>
+                    <EmptyImportActions
+                      importLabel={translate('import')}
+                      hint={translate('orDropFilesAnywhereOnThisPage')}
+                      onImport={canImport ? importDrawer.open : undefined}
+                    >
+                      <Button size="sm" onClick={() => setForm({})}>
+                        {translate('addYourFirstClient')}
+                      </Button>
+                    </EmptyImportActions>
                   )
                 }
               />
