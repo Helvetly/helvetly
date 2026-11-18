@@ -106,7 +106,7 @@ func (s *Service) ApplyQuote(ctx context.Context, q store.Q, workspaceID string,
 			return err
 		}
 	}
-	return nil
+	return resolveContractDocument(ctx, q, workspaceID, inv, body)
 }
 
 // QuoteNumber: Q-{YYYY}-{NNN}, or the workspace's format when it prints the type, so quotes follow it too. Quotes

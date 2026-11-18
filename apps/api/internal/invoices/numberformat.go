@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"helvetly.com/api/internal/store"
 )
@@ -63,7 +64,8 @@ func counterYear(format, date string) int {
 	return year
 }
 
-// formatNumber fills the format for a document of the kind issued on date (YYYY-MM-DD) with the sequence seq.
+// formatNumber fills the format for a document of the kind issued on date (YYYY-MM-DD) with the sequence seq; a
+// negative seq prints "-", the place of a number a draft does not have yet.
 func formatNumber(format, kind, date string, seq int64) string {
 	return formatToken.ReplaceAllStringFunc(format, func(t string) string {
 		switch t {
@@ -78,6 +80,9 @@ func formatNumber(format, kind, date string, seq int64) string {
 		case "{TYPE}":
 			return typeLetters[kind]
 		}
+		if seq < 0 {
+			return "-"
+		}
 		return fmt.Sprintf("%0*d", len(t)-2, seq)
 	})
 }
@@ -88,6 +93,16 @@ func documentNumber(format, prefix, kind, date string, seq int64) string {
 		prefix = ""
 	}
 	return prefix + formatNumber(format, kind, date, seq)
+}
+
+// draftNumber: the number a draft will get, with "-" for the running number it gets only when issued.
+func draftNumber(format string, inv store.Invoice, credited *store.Invoice, now time.Time) string {
+	_, prefix := seriesOf(inv, credited)
+	date := inv.IssueDate
+	if len(date) < len(time.DateOnly) {
+		date = now.Format(time.DateOnly)
+	}
+	return documentNumber(format, prefix, inv.Kind, date, -1)
 }
 
 // NumberSuggestion: the format the imported numbers follow, and the last sequence of its latest year.

@@ -133,8 +133,12 @@ func RenderReminder(d Document, n Notice) ([]byte, error) {
 	pdf, cur := r.pdf, inv.Currency
 	pdf.AddPage()
 	r.letterhead(d.Seller, d.Buyer, d.Phone)
-	r.details([][2]string{{w.Date, swissDate(n.SentOn)}, {w.Invoice, number(inv)}, {w.InvoiceDate, swissDate(inv.IssueDate)},
-		{w.DueDate, swissDate(inv.DueDate)}, {r.l.ClientNumber, fmt.Sprint(inv.Client.Number)}})
+	details := [][2]string{{w.Date, swissDate(n.SentOn)}, {w.Invoice, number(inv)}, {w.InvoiceDate, swissDate(inv.IssueDate)},
+		{w.DueDate, swissDate(inv.DueDate)}}
+	if no, ok := clientNumber(inv); ok {
+		details = append(details, [2]string{r.l.ClientNumber, no})
+	}
+	r.details(details)
 
 	y := 95.0
 	r.set("B", 16)

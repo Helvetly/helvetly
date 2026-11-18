@@ -104,6 +104,9 @@ func TestRequired(t *testing.T) {
 		{"PUT", "/api/v1/email-templates/quote/fr", []string{"write:invoice-settings"}},
 		{"GET", "/api/v1/transmission-channels", []string{"read:invoice-settings"}},
 		{"GET", "/api/v1/engagement-settings", []string{"read:engagements"}},
+		{"POST", "/api/v1/engagements/eng_1/invoices", []string{"write:engagements", "write:invoices"}},
+		{"DELETE", "/api/v1/engagements/eng_1/invoices/inv_1", []string{"write:engagements", "write:invoices"}},
+		{"GET", "/api/v1/invoices/inv_1/engagement", []string{"read:invoices", "read:engagements"}},
 		{"PATCH", "/api/v1/workspace", []string{"write:workspace"}},
 		{"GET", "/api/v1/ledger/export", []string{"read:ledger"}},
 		{"PUT", "/api/v1/ledger/settings", []string{"write:ledger"}},
@@ -157,6 +160,7 @@ var scopedInHandler = []string{
 	"POST /api/v1/heidi/chat/confirm",
 	"GET /api/v1/heidi/consent", // any role, its own approval
 	"PUT /api/v1/heidi/consent", // any role, for itself
+	"POST /api/v1/ai/write",     // any member: writes nothing, its consent and Heidi's pool are checked in the handler
 	// imports: the scope follows the batch's kind (write:<kind>, plus write:documents to upload)
 	"POST /api/v1/imports",
 	"GET /api/v1/imports",

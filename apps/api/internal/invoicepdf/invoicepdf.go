@@ -93,7 +93,7 @@ func (r *renderer) logo(room float64) (float64, float64) {
 		return 0, 0
 	}
 	opts := fpdf.ImageOptions{ImageType: logoType(r.d.Logo)}
-	r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(r.d.Logo))
+	r.pdf.RegisterImageOptionsReader("logo", opts, bytes.NewReader(OnWhite(r.d.Logo)))
 	w, h := logoSize(float64(cfg.Width), float64(cfg.Height), room)
 	r.pdf.ImageOptions("logo", left, 15, w, h, false, opts, 0, "")
 	return w, h
@@ -293,9 +293,14 @@ func (r *renderer) invoicePages() {
 	if inv.Kind == "quote" { // a quote carries its valid-until date in DueDate
 		meta = append(meta, [2]string{l.ValidUntil, swissDate(inv.DueDate)})
 	}
-	meta = append(meta, [2]string{l.ClientNumber, fmt.Sprint(inv.Client.Number)})
+	if n, ok := clientNumber(inv); ok {
+		meta = append(meta, [2]string{l.ClientNumber, n})
+	}
 	if inv.Reference != nil {
 		meta = append(meta, [2]string{l.Reference, *inv.Reference})
+	}
+	if inv.ContractReference != nil {
+		meta = append(meta, [2]string{l.ContractNumber, *inv.ContractReference})
 	}
 	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
 	r.contact = contactLine(issuer.Email, phone)
@@ -456,6 +461,14 @@ func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 }
 
 // details writes the document's label/value pairs to the right of the address.
+// clientNumber: the client number as printed (the one the person chose, else the client's own); false for none.
+func clientNumber(inv store.Invoice) (string, bool) {
+	if inv.ClientNumberDisplay != nil {
+		return *inv.ClientNumberDisplay, *inv.ClientNumberDisplay != ""
+	}
+	return fmt.Sprint(inv.Client.Number), true
+}
+
 func (r *renderer) details(meta [][2]string) {
 	y := 52.0
 	for _, m := range meta {

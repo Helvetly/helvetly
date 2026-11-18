@@ -68,6 +68,7 @@ const SCALARS = [
   'client_name',
   'number',
   'reference',
+  'contract_reference',
   'issue_date',
   'due_date',
   'service_date',
@@ -579,6 +580,7 @@ function InvoiceRecordForm({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {textField('number')}
                   {textField('reference')}
+                  {textField('contract_reference')}
                   {dateField('issue_date')}
                   {dateField('due_date')}
                   {dateField('service_date')}

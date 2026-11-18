@@ -45,6 +45,7 @@ var gated = map[string]Feature{
 	"POST /api/v1/heidi/chat":         store.FeatureHeidi,
 	"POST /api/v1/heidi/chat/confirm": store.FeatureHeidi,
 	"GET /api/v1/heidi/suggestions":   store.FeatureHeidi,
+	"POST /api/v1/ai/write":           store.FeatureHeidi,
 
 	"POST /api/v1/templates":                store.FeatureDocumentTemplates,
 	"PUT /api/v1/templates/{id}":            store.FeatureDocumentTemplates,

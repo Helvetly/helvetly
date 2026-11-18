@@ -307,6 +307,7 @@ func (s *Service) toInvoice(w http.ResponseWriter, r *http.Request, sess store.S
 			if t.Reference != nil {
 				inv.Reference = t.Reference
 			}
+			inv.ClientNumberDisplay, inv.ContractReference, inv.ContractDocument = t.ClientNumberDisplay, t.ContractReference, t.ContractDocument
 			inv.Lines = slices.Clone(t.Lines)
 		})
 		if err != nil {

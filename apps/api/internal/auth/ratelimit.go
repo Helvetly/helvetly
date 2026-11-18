@@ -128,3 +128,6 @@ func NewRateLimiter(max int, window time.Duration) *RateLimiter {
 
 // Allow counts a hit from the request's client address; false when it is over the limit.
 func (l *RateLimiter) Allow(r *http.Request) bool { return l.l.allow(clientIP(r)) }
+
+// AllowKey counts a hit for key (a person, say) instead of the client address; false when it is over the limit.
+func (l *RateLimiter) AllowKey(key string) bool { return l.l.allow(key) }

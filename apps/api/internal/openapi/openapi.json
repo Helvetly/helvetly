@@ -351,6 +351,16 @@
             }
           },
           {
+            "name": "unlinked",
+            "in": "query",
+            "required": false,
+            "description": "1 for only documents not linked to an engagement.",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -7323,6 +7333,27 @@
           "reference": {
             "type": ["string", "null"]
           },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "description": "The client number the PDF prints: null prints the client's own number, \"\" prints none."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "description": "The contract number (BT-12), printed as Contract no. and sent in e-invoices."
+          },
+          "contract_document": {
+            "type": ["object", "null"],
+            "description": "The document of the workspace the contract is in; never printed. Null when none is linked or it is gone.",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
           "tax_currency_rate": {
             "type": ["string", "null"]
           },
@@ -7616,6 +7647,21 @@
           "reference": {
             "type": ["string", "null"],
             "maxLength": 100
+          },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "maxLength": 40,
+            "description": "The client number to print: null prints the client's own number, \"\" prints none, other text prints instead."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "The contract number (BT-12)."
+          },
+          "contract_document_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "A document of the workspace the contract is in (not in the trash, not an HR file); null removes the link."
           },
           "intro": {
             "type": ["string", "null"],
@@ -9218,6 +9264,21 @@
             "type": ["string", "null"],
             "maxLength": 100
           },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "maxLength": 40,
+            "description": "The client number to print: null prints the client's own number, \"\" prints none, other text prints instead."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "The contract number (BT-12)."
+          },
+          "contract_document_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "A document of the workspace the contract is in (not in the trash, not an HR file); null removes the link."
+          },
           "intro": {
             "type": ["string", "null"],
             "maxLength": 1000
@@ -9328,6 +9389,21 @@
           "reference": {
             "type": ["string", "null"],
             "maxLength": 100
+          },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "maxLength": 40,
+            "description": "The client number to print: null prints the client's own number, \"\" prints none, other text prints instead."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "The contract number (BT-12)."
+          },
+          "contract_document_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "A document of the workspace the contract is in (not in the trash, not an HR file); null removes the link."
           },
           "intro": {
             "type": ["string", "null"],
@@ -11765,6 +11841,27 @@
           "reference": {
             "type": ["string", "null"]
           },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "description": "The client number the PDF prints: null prints the client's own number, \"\" prints none."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "description": "The contract number (BT-12), printed as Contract no. and sent in e-invoices."
+          },
+          "contract_document": {
+            "type": ["object", "null"],
+            "description": "The document of the workspace the contract is in; never printed. Null when none is linked or it is gone.",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
           "intro": {
             "type": ["string", "null"]
           },
@@ -11858,6 +11955,9 @@
           "language",
           "vat_mode",
           "reference",
+          "client_number_display",
+          "contract_reference",
+          "contract_document",
           "intro",
           "footer",
           "note",
@@ -12123,6 +12223,21 @@
           "reference": {
             "type": ["string", "null"],
             "maxLength": 100
+          },
+          "client_number_display": {
+            "type": ["string", "null"],
+            "maxLength": 40,
+            "description": "The client number to print: null prints the client's own number, \"\" prints none, other text prints instead."
+          },
+          "contract_reference": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "The contract number (BT-12)."
+          },
+          "contract_document_id": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "A document of the workspace the contract is in (not in the trash, not an HR file); null removes the link."
           },
           "intro": {
             "type": ["string", "null"],
