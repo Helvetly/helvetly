@@ -123,7 +123,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
-import type { Template } from '@/lib/templates'
+import { useTemplates, type Template } from '@/lib/templates'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { useAIFilingToast } from './ai-filing'
@@ -227,6 +227,8 @@ const tabLabel = (tab: PinnedTab) =>
 export function DocumentsPage() {
   const templateLock = useFeatureLock('document_templates')
   const signLock = useFeatureLock('simple_signatures')
+  // Only to tell whether "Document from template…" has anything to offer.
+  const templates = useTemplates(!templateLock)
   const aiLock = useFeatureLock('ai_import')
   const [organizing, setOrganizing] = useState(false)
   // Documents being read by "Extract with AI": the import drawer is open on them.
@@ -894,8 +896,11 @@ export function DocumentsPage() {
         }}
         savedViews={false}
         keepTab
+        // Upload, Create, Organize and "…" act on files: the Templates, Signatures and Trash views
+        // have their own controls under the tabs instead.
         actions={
-          canWrite && (
+          canWrite &&
+          listing && (
             <>
               <Button
                 variant="outline"
@@ -908,16 +913,17 @@ export function DocumentsPage() {
               <CreateMenu
                 templateLock={templateLock}
                 signLock={signLock}
-                onTemplate={() => setEditing({ template: null, document: null })}
+                noTemplates={templates.data?.length === 0}
+                onFromTemplate={() => setFilling(null)}
                 onSign={() => setSignFrom(null)}
                 onFolder={() => setNewFolderIn(current)}
               />
             </>
           )
         }
-        primary={translate('upload2')}
+        primary={listing ? translate('upload2') : undefined}
         onPrimary={() => picker$.current?.click()}
-        menu={pageItems(dropdownKit, true)}
+        menu={listing && pageItems(dropdownKit, true)}
       />
       {organizing && (
         <OrganizeDrawer
@@ -992,13 +998,6 @@ export function DocumentsPage() {
             )}
             {view.section === 'templates' && (
               <div className="flex gap-1.5">
-                <Button
-                  variant="outline"
-                  className="cursor-pointer"
-                  onClick={() => setFilling(null)}
-                >
-                  {translate('useATemplate')}
-                </Button>
                 {templateLock && <PlanTag lock={templateLock} className="self-center" />}
                 <Button
                   className="cursor-pointer gap-1.5"
@@ -1007,6 +1006,19 @@ export function DocumentsPage() {
                 >
                   <Plus className="size-4" />
                   {translate('newTemplate')}
+                </Button>
+              </div>
+            )}
+            {view.section === 'signatures' && canWrite && (
+              <div className="flex gap-1.5">
+                {signLock && <PlanTag lock={signLock} className="self-center" />}
+                <Button
+                  className="cursor-pointer gap-1.5"
+                  disabled={Boolean(signLock)}
+                  onClick={() => setSignFrom(null)}
+                >
+                  <Plus className="size-4" />
+                  {translate('pdfForSignature3')}
                 </Button>
               </div>
             )}
@@ -1034,7 +1046,6 @@ export function DocumentsPage() {
 
           {view.section === 'templates' ? (
             <TemplatesView
-              onUse={setFilling}
               onEdit={(template) => setEditing({ template, document: null })}
               onCreate={() => setEditing({ template: null, document: null })}
             />
@@ -1840,17 +1851,22 @@ function LoadingTree() {
   return <Loader label={translate('loadingFolders')} className="min-h-32" />
 }
 
-/** "Create" next to Upload: a template, a PDF for signature, or a folder. */
+/**
+ * "Create" next to Upload: a document from a template, a PDF for signature, or a folder. Templates
+ * themselves are made in the Templates view; with none yet, the first item says so instead.
+ */
 function CreateMenu({
   templateLock,
   signLock,
-  onTemplate,
+  noTemplates,
+  onFromTemplate,
   onSign,
   onFolder,
 }: {
   templateLock: FeatureLock
   signLock: FeatureLock
-  onTemplate: () => void
+  noTemplates: boolean
+  onFromTemplate: () => void
   onSign: () => void
   onFolder: () => void
 }) {
@@ -1864,15 +1880,17 @@ function CreateMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-60">
         <DropdownMenuItem
-          disabled={Boolean(templateLock)}
-          onSelect={onTemplate}
+          disabled={Boolean(templateLock) || noTemplates}
+          onSelect={onFromTemplate}
           className="items-start py-2"
         >
           <LayoutTemplate className="mt-0.5" />
           <span className="grid gap-0.5">
-            <span>{translate('template')}</span>
+            <span>{translate('documentFromTemplate')}</span>
             <span className="text-[12px] text-muted-foreground">
-              {translate('aContractOrLetterFilledFromAClient')}
+              {noTemplates && !templateLock
+                ? translate('noTemplatesYetCreateOneInTemplates')
+                : translate('aContractOrLetterFilledFromAClient')}
             </span>
           </span>
           {templateLock && <PlanTag lock={templateLock} />}

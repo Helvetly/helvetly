@@ -27,13 +27,14 @@ import {
   type Template,
 } from '@/lib/templates'
 
-/** The Templates section of Documents: PDFs filled from a client's details, optionally signed. */
+/**
+ * The Templates section of Documents: PDFs filled from a client's details, optionally signed.
+ * Here a template is only edited; a document is made from one through Documents → Create.
+ */
 export function TemplatesView({
-  onUse,
   onEdit,
   onCreate,
 }: {
-  onUse: (template: Template) => void
   onEdit: (template: Template) => void
   onCreate: () => void
 }) {
@@ -73,7 +74,7 @@ export function TemplatesView({
           <li key={template.id} className="group/row relative">
             <button
               type="button"
-              onClick={() => onUse(template)}
+              onClick={() => onEdit(template)}
               className="grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 rounded-xl px-3 py-3 pr-14 text-left transition-colors hover:bg-foreground/[0.035] md:grid-cols-[minmax(0,1fr)_170px_150px]"
             >
               <span className="flex min-w-0 items-center gap-3">
@@ -114,10 +115,6 @@ export function TemplatesView({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-48">
-                <DropdownMenuItem onSelect={() => onUse(template)}>
-                  <LayoutTemplate />
-                  {translate('useForAClient')}
-                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onEdit(template)}>
                   <Pencil />
                   {translate('editTemplate')}
