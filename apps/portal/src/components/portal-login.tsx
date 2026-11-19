@@ -10,8 +10,17 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { translate } from '@/lib/i18n'
-import { getPortalSession, portalKeys, startPortalSignIn, verifyPortalCode } from '@/lib/portal'
+import {
+  getPortalScope,
+  getPortalSession,
+  portalKeys,
+  startPortalSignIn,
+  verifyPortalCode,
+} from '@/lib/portal'
+import { scoped } from '@/lib/scope'
 import { siteUrl } from '@/lib/site'
+
+import { WorkspaceMark } from './workspace-mark'
 
 /** The staff sign-in's email and code steps, against the portal's own endpoints. */
 export function PortalLogin() {
@@ -24,11 +33,15 @@ export function PortalLogin() {
     queryFn: getPortalSession,
     retry: false,
   })
+  // Under a workspace's own address (/w/<slug>/), its name and logo instead of Helvetly's.
+  const scope = useQuery({ queryKey: portalKeys.scope, queryFn: getPortalScope, retry: false })
+  const brand = scope.data
   const signedIn = Boolean(session.data)
   useEffect(() => {
-    if (signedIn) router.replace('/')
+    if (signedIn) router.replace(scoped('/'))
   }, [signedIn, router])
-  if (session.isPending || signedIn) return <div className="min-h-svh bg-background" aria-busy />
+  if (session.isPending || scope.isPending || signedIn)
+    return <div className="min-h-svh bg-background" aria-busy />
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
@@ -43,19 +56,29 @@ export function PortalLogin() {
               resend={() => startPortalSignIn(step.email)}
               onDone={() => {
                 queryClient.clear()
-                router.replace('/')
+                router.replace(scoped('/'))
               }}
               onBack={() => setStep(null)}
             />
           ) : (
             <div className="grid gap-6">
               <div className="grid justify-items-center gap-2 text-center">
-                <Logo className="mb-3 size-11" />
+                {brand ? (
+                  <WorkspaceMark
+                    name={brand.name}
+                    logoUrl={brand.logo_url}
+                    className="mb-3 size-11 text-body"
+                  />
+                ) : (
+                  <Logo className="mb-3 size-11" />
+                )}
                 <h1 className="text-xl font-semibold tracking-tight">
-                  {translate('clientPortal')}
+                  {brand?.name ?? translate('clientPortal')}
                 </h1>
                 <p className="text-sm text-balance text-muted-foreground">
-                  {translate('yourInvoicesWorkAndDocumentsFromYourSupplierIn')}
+                  {brand
+                    ? translate('workspacePortalIntro')
+                    : translate('yourInvoicesWorkAndDocumentsFromYourSupplierIn')}
                 </p>
               </div>
               <EmailAddressForm

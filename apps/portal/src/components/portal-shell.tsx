@@ -23,14 +23,17 @@ import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
 import {
+  getPortalScope,
   getPortalSession,
   portalKeys,
   signOutPortal,
   switchPortalClient,
   type PortalSession,
 } from '@/lib/portal'
+import { scoped, unscoped } from '@/lib/scope'
 
-import { initialsOf, LoginAvatar } from './portal-bits'
+import { LoginAvatar } from './portal-bits'
+import { WorkspaceMark } from './workspace-mark'
 
 const NAV = [
   { href: '/', label: translate('overview'), icon: House },
@@ -112,7 +115,7 @@ function AccountMenu({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile">
+          <Link href={scoped('/profile')}>
             <UserRound />
             {translate('profile2')}
           </Link>
@@ -140,7 +143,7 @@ function PortalNav({ pathname }: { pathname: string }) {
           return (
             <li key={href}>
               <Link
-                href={href}
+                href={scoped(href)}
                 aria-current={active ? 'page' : undefined}
                 // Not cn(): tailwind-merge would drop the type-scale size for the colour.
                 className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-caption font-medium outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:h-8 md:flex-row md:gap-1.5 md:rounded-full md:px-3 md:py-0 md:text-body-sm md:hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)] ${active ? 'text-foreground md:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)]' : 'text-muted-foreground'}`}
@@ -162,7 +165,7 @@ function PortalNav({ pathname }: { pathname: string }) {
 /** Gate and frame of every portal page: no session goes to the portal's own sign-in. */
 export function PortalShell({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const pathname = (usePathname() ?? '').replace(/\/$/, '') || '/'
+  const pathname = unscoped(usePathname() ?? '').replace(/\/$/, '') || '/'
   const queryClient = useQueryClient()
   const { data: session, isPending } = useQuery({
     queryKey: portalKeys.session,
@@ -170,8 +173,14 @@ export function PortalShell({ children }: { children: ReactNode }) {
     retry: false,
   })
 
+  const { data: scope } = useQuery({
+    queryKey: portalKeys.scope,
+    queryFn: getPortalScope,
+    retry: false,
+  })
+
   useEffect(() => {
-    if (session === null) router.replace('/login')
+    if (session === null) router.replace(scoped('/login'))
   }, [session, router])
 
   if (isPending || !session) return null
@@ -183,7 +192,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       // Not clear(): on '/' nothing re-renders the shell, which would keep the old client. Resetting
       // drops the old answers and refetches what is on screen.
       void queryClient.resetQueries()
-      router.replace('/')
+      router.replace(scoped('/'))
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -192,7 +201,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
     try {
       await signOutPortal()
       queryClient.clear()
-      router.replace('/login')
+      router.replace(scoped('/login'))
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -205,12 +214,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 border-b bg-card">
           <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4 md:gap-6">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span
-                aria-hidden
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-surface text-caption font-semibold text-brand"
-              >
-                {initialsOf(session.workspace.name)}
-              </span>
+              <WorkspaceMark name={session.workspace.name} logoUrl={scope?.logo_url} />
               <span className="grid min-w-0 leading-tight">
                 <span className="truncate text-body font-medium">{session.workspace.name}</span>
                 <span className="truncate text-caption text-muted-foreground">

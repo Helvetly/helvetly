@@ -3,6 +3,17 @@ import { translate } from '@helvetly/ui/lib/i18n'
 // served from the same origin as the API, so relative URLs are enough and cookies are first-party.
 export const API_PREFIX = '/api/v1'
 
+// The client portal under a workspace's address (/w/<slug>) calls the API under the same prefix, so the server knows
+// the scope of every call, downloads and images included; '' everywhere else.
+let apiBase = ''
+
+export function setApiBase(prefix: string) {
+  apiBase = prefix
+}
+
+/** The URL of an API path, for links and images that can't go through `request`. */
+export const apiUrl = (path: string) => apiBase + API_PREFIX + path
+
 /** What POST …/email/start (staff or portal) answers: seconds until a resend, and the code's lifetime. */
 export type EmailCodeSent = { resend_in: number; expires_in: number }
 
@@ -57,7 +68,7 @@ async function send(
   if (json !== undefined) headers['Content-Type'] = 'application/json'
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken
   try {
-    return await fetch(API_PREFIX + path, {
+    return await fetch(apiUrl(path), {
       method,
       headers,
       body: form ?? (json === undefined ? undefined : JSON.stringify(json)),

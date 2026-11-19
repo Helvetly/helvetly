@@ -35,17 +35,26 @@ type Config struct {
 	CookieSecure bool
 }
 
-type Service struct {
-	db    *store.Store
-	auth  Auth
-	files Storage
-	cfg   Config
-	log   *slog.Logger
-	now   func() time.Time
+// URLs is where a workspace's clients sign in (internal/portalscope).
+type URLs interface {
+	URLFor(slug string) string
 }
 
-func New(db *store.Store, a Auth, files Storage, cfg Config, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, files: files, cfg: cfg, log: log, now: func() time.Time { return time.Now().UTC() }}
+type Service struct {
+	db     *store.Store
+	scopes URLs
+	// publicLimit caps the unauthenticated scope lookups per client address.
+	publicLimit *auth.RateLimiter
+	auth        Auth
+	files       Storage
+	cfg         Config
+	log         *slog.Logger
+	now         func() time.Time
+}
+
+func New(db *store.Store, a Auth, files Storage, scopes URLs, cfg Config, log *slog.Logger) *Service {
+	return &Service{db: db, auth: a, files: files, scopes: scopes, cfg: cfg, log: log, now: func() time.Time { return time.Now().UTC() },
+		publicLimit: auth.NewRateLimiter(120, time.Minute)}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
@@ -53,6 +62,8 @@ type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/public/portal/auth/start", s.start)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/verify", s.verify)
+	mux.HandleFunc("GET /api/v1/public/portal/scope", s.getScope)
+	mux.HandleFunc("GET /api/v1/public/portal/scope/logo", s.getScopeLogo)
 	handle := func(pattern string, h handler) {
 		mux.HandleFunc(pattern, s.signedIn(h))
 	}

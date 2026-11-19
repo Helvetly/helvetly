@@ -7,6 +7,7 @@ import type {
   PortalEngagement,
   PortalInvoice,
   PortalProfile,
+  PortalScope,
   PortalSession,
 } from '@/lib/portal'
 import type { PortalQuote } from '@/lib/quotes'
@@ -205,7 +206,25 @@ const unauthenticated = () =>
 const csrfOk = (request: Request) =>
   request.headers.get('X-CSRF-Token') === portalSession.csrf_token
 
+/** A workspace's own portal address (/w/acme/), as GET /scope answers it. */
+export const portalScope: PortalScope = {
+  name: 'Müller Treuhand AG',
+  slug: 'mueller-treuhand',
+  logo_url: null,
+  url: 'https://portal.helvetly.com/w/mueller-treuhand/',
+}
+
+/** The shared portal (no /w/<slug>/): GET /scope is 404. */
+const unscopedPortal = http.get(`${P}/scope`, () =>
+  HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 }),
+)
+
+/** A page under a workspace's own address. */
+export const scopedPortal = (scope: PortalScope = portalScope) =>
+  http.get(`${P}/scope`, () => HttpResponse.json(scope))
+
 export const portalHandlers = [
+  unscopedPortal,
   http.post(`${P}/auth/start`, () =>
     HttpResponse.json({ resend_in: 30, expires_in: 600 }, { status: 202 }),
   ),

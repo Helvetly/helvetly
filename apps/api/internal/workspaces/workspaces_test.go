@@ -21,6 +21,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -69,6 +70,7 @@ func newEnv(t *testing.T) *env {
 	a.Register(mux)
 	files := &fakeStorage{objects: map[string][]byte{}}
 	svc := New(st, a, fb, files, discard)
+	svc.SetPortal(portalscope.New("https://portal.example.com", st.Q))
 	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)

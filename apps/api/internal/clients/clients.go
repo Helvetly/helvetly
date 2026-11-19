@@ -41,10 +41,10 @@ type Service struct {
 	log   *slog.Logger
 	now   func() time.Time
 
-	mail      Mailer // nil: no portal invitations
-	portalURL string
-	register  Register // nil: no UID register checks
-	site      siteResolver
+	mail       Mailer // nil: no portal invitations
+	portalURLs PortalURLs
+	register   Register // nil: no UID register checks
+	site       siteResolver
 }
 
 // siteResolver finds the URL a typed website answers on (sitecheck.Checker; a stub in tests).

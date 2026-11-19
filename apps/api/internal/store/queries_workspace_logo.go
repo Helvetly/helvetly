@@ -38,3 +38,8 @@ func WorkspaceLogoURL(workspaceID string, id *string) *string {
 	u := "/api/v1/workspaces/" + workspaceID + "/logo?v=" + *id
 	return &u
 }
+
+// WorkspaceLogoKey is where a workspace's logo object is stored.
+func WorkspaceLogoKey(workspaceID, id string) string {
+	return "workspaces/" + workspaceID + "/workspace-logo/" + id
+}

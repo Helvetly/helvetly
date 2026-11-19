@@ -234,9 +234,10 @@ test('staff turns the portal on for a person with only an email: that email sign
   })
   await card.getByRole('switch', { name: 'Client portal' }).click()
   await expect(card.getByText(email)).toBeVisible()
-  await expect(card.getByRole('link', { name: /localhost:8009/ })).toHaveAttribute(
+  // The workspace's own portal address, where its clients sign in.
+  await expect(card.getByRole('link', { name: /localhost:8009\/w\// })).toHaveAttribute(
     'href',
-    `${portalURL}/`,
+    new RegExp(`^${portalURL}/w/[a-z0-9-]+/$`),
   )
   expect((await api.read(`/clients/${clientId}`)).portal_enabled).toBe(true)
 

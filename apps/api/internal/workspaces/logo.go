@@ -26,9 +26,7 @@ var logoRules = imagecheck.Rules{MinSide: 64, MaxSide: 1024, Square: true}
 
 var errLogoAdminOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner or admin can change the workspace logo.", nil)
 
-func logoKey(workspaceID, id string) string {
-	return "workspaces/" + workspaceID + "/workspace-logo/" + id
-}
+func logoKey(workspaceID, id string) string { return store.WorkspaceLogoKey(workspaceID, id) }
 
 func invalidFile(msg string) error {
 	return auth.Error(http.StatusUnprocessableEntity, "validation_failed", "Check the highlighted fields.",

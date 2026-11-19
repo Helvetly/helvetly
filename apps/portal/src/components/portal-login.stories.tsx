@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalHandlers } from '@/mocks/portal'
+import { portalHandlers, portalScope, scopedPortal } from '@/mocks/portal'
 
 import { PortalLogin } from './portal-login'
 
@@ -154,5 +154,47 @@ export const CodeStepPhone: Story = {
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
+  },
+}
+
+/** Under a workspace's own address (/w/<slug>/): its name and mark, not Helvetly's. */
+export const WorkspaceBranding: Story = {
+  parameters: { msw: { handlers: [signedOut, scopedPortal(), ...portalHandlers] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('heading', { name: 'Müller Treuhand AG' })).toBeVisible()
+    await expect(canvas.getByText('MT')).toBeVisible()
+    await expect(canvas.queryByRole('heading', { name: 'Client portal' })).toBeNull()
+    await expect(canvas.getByLabelText('Email')).toBeVisible()
+  },
+}
+
+const logo =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="12" fill="#3b6e8f"/><path d="M16 44V20l16 14 16-14v24" stroke="#fff" stroke-width="5" fill="none"/></svg>',
+  )
+
+export const WorkspaceLogo: Story = {
+  parameters: {
+    msw: {
+      handlers: [signedOut, scopedPortal({ ...portalScope, logo_url: logo }), ...portalHandlers],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('heading', { name: 'Müller Treuhand AG' })).toBeVisible()
+    await waitFor(() =>
+      expect(canvasElement.querySelector(`img[src^="data:image/svg"]`)).not.toBeNull(),
+    )
+  },
+}
+
+export const WorkspaceBrandingPhone: Story = {
+  parameters: { ...WorkspaceBranding.parameters, ...phone },
+  globals: { viewport: { value: 'phone' } },
+  play: async (context) => {
+    await WorkspaceBranding.play?.(context)
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
   },
 }

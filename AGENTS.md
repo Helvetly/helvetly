@@ -52,6 +52,15 @@ are the reference.
 - **Auth** (`internal/auth`): passwordless (Google OIDC, email code, passkeys), sessions bound to one workspace,
   `SignedIn` wraps signed-in routes and requires `X-CSRF-Token` on non-GET requests; personal API tokens
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
+- **Portal scope** (`internal/portalscope`): the one place that decides whose client portal a request is for. Every
+  workspace has a slug (`portal_slugs`: its current one, plus every earlier one, which 301-redirects pages to the current
+  and is never given to another workspace; reserved words refused; changes audited). Its portal is
+  `PORTAL_URL/w/<slug>/`: the resolver strips the prefix and puts the workspace in the request context, so the same
+  static portal serves it and its API calls go to `/w/<slug>/api/…`; an unknown slug is the portal's 404. Under a scope,
+  sign-in looks only at that workspace's clients (the same answer whether or not the address exists) and the session
+  (`portal_sessions.scoped`, its own cookie per workspace) is valid only there; plain `/login` keeps the cross-workspace
+  search. Links in email come from `CanonicalURL`. Phase 2 (verified custom domains) resolves the Host in the same
+  resolver and returns the domain from `CanonicalURL`; callers stay as they are.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Workspace deletion** is soft: `workspaces.deleted_at`, members, sessions and open invitations end, and a

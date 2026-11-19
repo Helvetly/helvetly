@@ -179,5 +179,8 @@
   "dynamicMonth": "month",
   "dynamicWeek": "week",
   "dynamicOn": " on {value1}",
-  "dynamicOn2": "{verb} on {value2}"
+  "dynamicOn2": "{verb} on {value2}",
+  "workspacePortalIntro": "Your invoices, work and documents in one place. Sign in with the email address we have on file.",
+  "portalAddressNotFound": "This portal address doesn’t exist",
+  "portalAddressNotFoundHint": "Check the link in your supplier’s email, or ask them for their current portal address."
 }

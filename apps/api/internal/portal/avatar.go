@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
@@ -27,7 +28,14 @@ func avatarKey(workspaceID, id string) string {
 }
 
 // avatarURL changes with the bytes, so a new photo is never shown from a cache.
-func avatarURL(sum string) string { return avatarPath + "?v=" + sum[:12] }
+// avatarURL is the photo's address under the request's scope, so the image request carries the scope's session.
+func avatarURL(r *http.Request, sum string) string {
+	prefix := ""
+	if scope, ok := portalscope.FromContext(r.Context()); ok {
+		prefix = portalscope.Prefix(scope.Slug)
+	}
+	return prefix + avatarPath + "?v=" + sum[:12]
+}
 
 func (s *Service) getAvatar(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	a, err := s.db.Q.PortalAvatar(r.Context(), sess.ClientID, sess.Email)
@@ -85,7 +93,7 @@ func (s *Service) putAvatar(w http.ResponseWriter, r *http.Request, sess store.P
 		return err
 	}
 	s.removeObject(ctx, old)
-	auth.WriteJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL(sum)})
+	auth.WriteJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL(r, sum)})
 	return nil
 }
 
@@ -121,13 +129,13 @@ func (s *Service) removeObject(ctx context.Context, key string) {
 }
 
 // sessionAvatarURL is the login's photo for /session, "" when it has none (as a staff user's avatar_url).
-func (s *Service) sessionAvatarURL(ctx context.Context, sess store.PortalSession) (string, error) {
-	a, err := s.db.Q.PortalAvatar(ctx, sess.ClientID, sess.Email)
+func (s *Service) sessionAvatarURL(r *http.Request, sess store.PortalSession) (string, error) {
+	a, err := s.db.Q.PortalAvatar(r.Context(), sess.ClientID, sess.Email)
 	if errors.Is(err, store.ErrNotFound) {
 		return "", nil
 	}
 	if err != nil {
 		return "", err
 	}
-	return avatarURL(a.SHA256), nil
+	return avatarURL(r, a.SHA256), nil
 }

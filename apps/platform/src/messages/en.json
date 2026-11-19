@@ -4493,5 +4493,17 @@
   "contractDocumentOfClient": "This client’s documents",
   "contractDocumentOther": "Other documents",
   "descriptionKeptLong": "Saved before the {max}-character limit: it is kept as it is. To change it, shorten it to {max} characters.",
-  "periodsInTotal": "{count, plural, one {# period} other {# periods}} in total"
+  "periodsInTotal": "{count, plural, one {# period} other {# periods}} in total",
+  "portalAddress": "Client portal address",
+  "portalAddressHelp": "Your clients sign in here and see your name and logo. Earlier addresses keep working: they lead to the current one.",
+  "copyPortalAddress": "Copy portal address",
+  "portalAddressCopied": "Portal address copied",
+  "portalAddressSaved": "Portal address saved",
+  "portalSlug": "Address",
+  "portalSlugHint": "Lowercase letters, digits and hyphens, 3 to 32 characters.",
+  "portalSlugAvailable": "Available",
+  "portalSlugInvalid": "Use 3 to 32 lowercase letters, digits and hyphens, not at the start or end.",
+  "portalSlugReserved": "This address is reserved. Choose another one.",
+  "portalSlugTaken": "Another workspace uses this address. Choose another one.",
+  "auditPortalAddressChanged": "Portal address changed"
 }

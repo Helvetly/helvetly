@@ -1,0 +1,128 @@
+package workspaces
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+
+	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/portalscope"
+	"helvetly.com/api/internal/store"
+)
+
+// PortalAddresses is what the portal address settings use of internal/portalscope.
+type PortalAddresses interface {
+	Slug(ctx context.Context, ws store.Workspace) (string, error)
+	URLFor(slug string) string
+}
+
+// SetPortal turns on the client portal's address settings (/api/v1/workspace/portal).
+func (s *Service) SetPortal(p PortalAddresses) { s.portal = p }
+
+func (s *Service) registerPortal(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/workspace/portal", s.auth.SignedIn(s.getPortal))
+	mux.HandleFunc("GET /api/v1/workspace/portal/availability", s.auth.SignedIn(s.portalAvailability))
+	mux.HandleFunc("PUT /api/v1/workspace/portal", s.auth.SignedIn(s.putPortal))
+}
+
+var errPortalAdminOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner or admin can change the portal address.", nil)
+
+func (s *Service) writePortal(w http.ResponseWriter, slug string) {
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"slug": slug, "url": s.portal.URLFor(slug)}})
+}
+
+// getPortal is where the workspace's clients sign in: its slug and the whole address.
+func (s *Service) getPortal(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	slug, err := s.portal.Slug(r.Context(), sess.Workspace)
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	s.writePortal(w, slug)
+}
+
+// slugProblem is why the workspace cannot take slug: "invalid", "reserved", "taken" or "".
+func (s *Service) slugProblem(ctx context.Context, workspaceID, slug string) (string, error) {
+	if p := portalscope.Problem(slug); p != "" {
+		return p, nil
+	}
+	owner, err := s.db.PortalSlugOwner(ctx, slug)
+	if err != nil || owner == "" || owner == workspaceID {
+		return "", err
+	}
+	return "taken", nil
+}
+
+// portalAvailability answers the slug editor as it types: {available, problem}.
+func (s *Service) portalAvailability(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	problem, err := s.slugProblem(r.Context(), sess.Workspace.ID, strings.ToLower(strings.TrimSpace(r.URL.Query().Get("slug"))))
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	var p *string
+	if problem != "" {
+		p = &problem
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"available": problem == "", "problem": p}})
+}
+
+var slugMessages = map[string]string{
+	"invalid":  "Use 3 to 32 lowercase letters, digits and hyphens, not at the start or end.",
+	"reserved": "This address is reserved. Choose another one.",
+	"taken":    "Another workspace uses this address. Choose another one.",
+}
+
+// putPortal changes the slug (owner or admin). The previous one keeps redirecting to it, and the change goes into
+// the audit log.
+func (s *Service) putPortal(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	if sess.Role != "owner" && sess.Role != "admin" {
+		s.auth.WriteError(w, r, errPortalAdminOnly)
+		return
+	}
+	var in struct {
+		Slug string `json:"slug"`
+	}
+	if !s.auth.Decode(w, r, &in) {
+		return
+	}
+	slug := strings.ToLower(strings.TrimSpace(in.Slug))
+	previous, err := s.portal.Slug(r.Context(), sess.Workspace)
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	if slug == previous {
+		s.writePortal(w, slug)
+		return
+	}
+	problem, err := s.slugProblem(r.Context(), sess.Workspace.ID, slug)
+	if err == nil && problem == "" {
+		err = s.db.Tx(r.Context(), func(q store.Q) error {
+			if err := q.SetPortalSlug(r.Context(), sess.Workspace.ID, slug, s.now()); err != nil {
+				return err
+			}
+			payload, _ := json.Marshal(map[string]string{"from": previous, "to": slug})
+			actor := sess.User.ID
+			return q.LogEvent(r.Context(), store.FinancialEvent{WorkspaceID: sess.Workspace.ID, Kind: "workspace.portal_address_changed",
+				SubjectType: "workspace", SubjectID: sess.Workspace.ID, ActorID: &actor, At: s.now(), Payload: payload})
+		})
+		if errors.Is(err, store.ErrPortalSlugTaken) {
+			problem, err = "taken", nil
+		}
+	}
+	if err == nil && problem != "" {
+		status := http.StatusUnprocessableEntity
+		if problem == "taken" {
+			status = http.StatusConflict
+		}
+		err = auth.Error(status, "slug_"+problem, slugMessages[problem], map[string]any{"fields": map[string]string{"slug": problem}})
+	}
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	s.writePortal(w, slug)
+}

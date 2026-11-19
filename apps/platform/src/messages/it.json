@@ -4493,5 +4493,17 @@
   "contractDocumentOfClient": "Documenti di questo cliente",
   "contractDocumentOther": "Altri documenti",
   "descriptionKeptLong": "Salvata prima del limite di {max} caratteri: resta così com’è. Per modificarla, accorciala a {max} caratteri.",
-  "periodsInTotal": "{count, plural, one {# periodo} other {# periodi}} in tutto"
+  "periodsInTotal": "{count, plural, one {# periodo} other {# periodi}} in tutto",
+  "portalAddress": "Indirizzo del portale clienti",
+  "portalAddressHelp": "Qui i tuoi clienti accedono e vedono il tuo nome e il tuo logo. Gli indirizzi precedenti continuano a funzionare e portano a quello attuale.",
+  "copyPortalAddress": "Copia l’indirizzo del portale",
+  "portalAddressCopied": "Indirizzo del portale copiato",
+  "portalAddressSaved": "Indirizzo del portale salvato",
+  "portalSlug": "Indirizzo",
+  "portalSlugHint": "Lettere minuscole, cifre e trattini, da 3 a 32 caratteri.",
+  "portalSlugAvailable": "Disponibile",
+  "portalSlugInvalid": "Usa da 3 a 32 lettere minuscole, cifre e trattini, non all’inizio o alla fine.",
+  "portalSlugReserved": "Questo indirizzo è riservato. Scegline un altro.",
+  "portalSlugTaken": "Un altro spazio di lavoro usa questo indirizzo. Scegline un altro.",
+  "auditPortalAddressChanged": "Indirizzo del portale modificato"
 }

@@ -15,7 +15,7 @@ func TestPortalSignInPurgesExpiredSessions(t *testing.T) {
 		VALUES ('pse_old', 'h_old', 'c', 'ana@acme.ch', 'cli_1', 'wsp_a', $1, $2, $1),
 		       ('pse_live', 'h_live', 'c', 'ana@acme.ch', 'cli_1', 'wsp_a', $1, $3, $1)`, t0, t0.Add(time.Hour), t0.Add(48*time.Hour))
 	now := t0.Add(2 * time.Hour)
-	if err := s.CreatePortalSession(ctx, "pse_new", "h_new", "c", "ana@acme.ch", "cli_1", "wsp_a", now, now.Add(time.Hour)); err != nil {
+	if err := s.CreatePortalSession(ctx, "pse_new", "h_new", "c", "ana@acme.ch", "cli_1", "wsp_a", false, now, now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.Q.PortalSessionByToken(ctx, "h_live", now); err != nil {

@@ -17,6 +17,7 @@ import (
 	"helvetly.com/api/internal/auth"
 
 	"helvetly.com/api/internal/config"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -63,9 +64,13 @@ func newEnv(t *testing.T) *env {
 	fa := &fakeAuth{Service: a}
 	mux := http.NewServeMux()
 	files := &fakeFiles{objects: map[string][]byte{}}
-	New(st, fa, files, Config{SessionTTL: time.Hour, CookieSecure: true}, discard).Register(mux)
-	srv := httptest.NewServer(mux)
+	// The real resolver in front, as in main: /w/<slug>/api/… reaches the mux scoped.
+	var front http.Handler
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { front.ServeHTTP(w, r) }))
 	t.Cleanup(srv.Close)
+	scopes := portalscope.New(srv.URL, st.Q)
+	New(st, fa, files, scopes, Config{SessionTTL: time.Hour, CookieSecure: true}, discard).Register(mux)
+	front = scopes.Handler(mux)
 	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st}
 	e.exec = func(sql string, args ...any) {
 		t.Helper()
@@ -93,12 +98,18 @@ func (e *env) client(id, workspace, name, email, billing string) {
 
 func (e *env) do(method, path string, body any, cookie *http.Cookie, csrf string) (*http.Response, map[string]any) {
 	e.t.Helper()
+	return e.doAt("", method, path, body, cookie, csrf)
+}
+
+// doAt calls the portal API under prefix ("" unscoped, "/w/<slug>" scoped), as the portal's pages do.
+func (e *env) doAt(prefix, method, path string, body any, cookie *http.Cookie, csrf string) (*http.Response, map[string]any) {
+	e.t.Helper()
 	var rd io.Reader
 	if body != nil {
 		b, _ := json.Marshal(body)
 		rd = bytes.NewReader(b)
 	}
-	req, _ := http.NewRequest(method, e.srv.URL+"/api/v1/public/portal"+path, rd)
+	req, _ := http.NewRequest(method, e.srv.URL+prefix+"/api/v1/public/portal"+path, rd)
 	req.Header.Set("Content-Type", "application/json")
 	if cookie != nil {
 		req.AddCookie(cookie)
@@ -259,7 +270,7 @@ func TestStartSameAnswerWithOrWithoutAccess(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	a.Register(mux)
-	New(e.store, a, e.files, Config{SessionTTL: time.Hour}, discard).Register(mux)
+	New(e.store, a, e.files, portalscope.New("", e.store.Q), Config{SessionTTL: time.Hour}, discard).Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	post := func(email string) (int, string) {

@@ -179,5 +179,8 @@
   "dynamicMonth": "mois",
   "dynamicWeek": "semaine",
   "dynamicOn": " le {value1}",
-  "dynamicOn2": "{verb} le {value2}"
+  "dynamicOn2": "{verb} le {value2}",
+  "workspacePortalIntro": "Vos factures, travaux et documents en un seul endroit. Connectez-vous avec l’adresse e-mail que nous avons dans notre dossier.",
+  "portalAddressNotFound": "Cette adresse de portail n’existe pas",
+  "portalAddressNotFoundHint": "Vérifiez le lien dans l’e-mail de votre fournisseur ou demandez-lui l’adresse actuelle de son portail."
 }

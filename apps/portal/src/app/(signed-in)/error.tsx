@@ -5,6 +5,7 @@ import { House } from 'lucide-react'
 import Link from 'next/link'
 
 import { translate } from '@/lib/i18n'
+import { scoped } from '@/lib/scope'
 
 /** A crashed portal page inside the portal's frame, with its own way home. */
 export default function PageError({ reset }: { error: PageError; reset: () => void }) {
@@ -13,7 +14,7 @@ export default function PageError({ reset }: { error: PageError; reset: () => vo
       reset={reset}
       home={
         <Button asChild variant="outline">
-          <Link href="/">
+          <Link href={scoped('/')}>
             <House />
             {translate('goToOverview')}
           </Link>
