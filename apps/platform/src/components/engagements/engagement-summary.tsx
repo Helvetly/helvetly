@@ -18,9 +18,9 @@ import {
   type FormValues,
 } from './engagement-form-model'
 
-/** A value that is still missing is shown as soft placeholder text. */
+/** A value that is still missing is shown muted (still readable: muted is the faintest text that passes contrast). */
 function Soft({ filled, children }: { filled: boolean; children: ReactNode }) {
-  return filled ? children : <span className="text-muted-foreground/60">{children}</span>
+  return filled ? children : <span className="text-muted-foreground">{children}</span>
 }
 
 function Figure({ label, value }: { label: string; value: ReactNode }) {
@@ -114,9 +114,7 @@ function ListPreview({ values, clientName }: { values: FormValues; clientName: s
           {upcoming ? translate('scheduled') : translate('active')}
         </StatusBadge>
       </div>
-      <div className={cn(!hasQuantity && 'opacity-60')}>
-        <ProgressBar period={period} unit={unit?.value ?? null} />
-      </div>
+      <ProgressBar period={period} unit={unit?.value ?? null} />
       <div className="flex flex-wrap gap-1">
         <StatusBadge tone="blue">
           <BillingLabel engagement={values} />

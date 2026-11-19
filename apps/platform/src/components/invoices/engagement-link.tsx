@@ -3,11 +3,13 @@ import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { Combobox } from '@/components/clients/fields'
+import { EngagementForm } from '@/components/engagements/engagement-form'
 import { errorMessage } from '@/lib/api'
 import {
   linkInvoice,
@@ -22,7 +24,8 @@ import { quietValue } from './date-fields'
 
 /**
  * The engagement an invoice is billed under. Choosing one attaches a saved draft at once; before the draft exists
- * the choice waits in `pending` for the editor to link after its first save.
+ * the choice waits in `pending` for the editor to link after its first save. A new engagement is created in place
+ * and linked the same way.
  */
 export function EngagementLink({
   id,
@@ -38,13 +41,14 @@ export function EngagementLink({
   onPendingChange: (engagementId: string) => void
 }) {
   const queryClient = useQueryClient()
+  const [creating, setCreating] = useState(false)
   const linked = useInvoiceEngagement(invoiceId).data
   const engagements = useClientEngagements(clientId)
   const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.engagements })
   const link = useMutation({
-    mutationFn: (engagementId: string) => linkInvoice(engagementId, invoiceId ?? ''),
-    onSuccess: (_, engagementId) => {
-      const title = engagements.data?.find((e) => e.id === engagementId)?.title ?? ''
+    mutationFn: (engagement: { id: string; title: string }) =>
+      linkInvoice(engagement.id, invoiceId ?? ''),
+    onSuccess: (_, { title }) => {
       toast.success(translate('linkedToEngagement', { title }))
       void refresh()
     },
@@ -87,26 +91,70 @@ export function EngagementLink({
     )
 
   const options = (engagements.data ?? []).map((e) => ({ value: e.id, label: e.title }))
+  const choose = (engagement: { id: string; title: string }) => {
+    if (invoiceId) link.mutate(engagement)
+    else onPendingChange(engagement.id === pending ? '' : engagement.id)
+  }
+  const none = clientId !== '' && options.length === 0 && !engagements.isPending
   return (
-    <Combobox
-      id={id}
-      value={pending}
-      options={options}
-      disabled={!clientId || options.length === 0 || link.isPending}
-      placeholder={
-        clientId && options.length === 0 && !engagements.isPending
-          ? translate('noActiveEngagements')
-          : translate('chooseAnEngagement')
-      }
-      onChange={(next) => {
-        if (invoiceId) link.mutate(next)
-        else onPendingChange(next === pending ? '' : next)
-      }}
-      // Quiet like the other meta values: no field box. Muted, not placeholder grey: a button needs the contrast.
-      className={cn(
-        quietValue,
-        'justify-start border-transparent bg-transparent shadow-none hover:border-transparent dark:border-transparent dark:bg-transparent [&>svg]:hidden',
+    <div className="flex min-w-0 items-center gap-0.5">
+      {none ? (
+        <Button
+          id={id}
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="-ml-2 gap-1 text-muted-foreground"
+          onClick={() => setCreating(true)}
+        >
+          <Plus />
+          {translate('newEngagement2')}
+        </Button>
+      ) : (
+        <>
+          <Combobox
+            id={id}
+            value={pending}
+            options={options}
+            disabled={!clientId || options.length === 0 || link.isPending}
+            placeholder={translate('chooseAnEngagement')}
+            onChange={(next) =>
+              choose({ id: next, title: options.find((o) => o.value === next)?.label ?? '' })
+            }
+            // Quiet like the other meta values: no field box. Muted, not placeholder grey: a button needs the contrast.
+            className={cn(
+              quietValue,
+              'min-w-0 flex-1 justify-start border-transparent bg-transparent shadow-none hover:border-transparent dark:border-transparent dark:bg-transparent [&>svg]:hidden',
+            )}
+          />
+          {clientId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={translate('newEngagement2')}
+                  className="shrink-0 text-muted-foreground"
+                  onClick={() => setCreating(true)}
+                >
+                  <Plus />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{translate('newEngagement2')}</TooltipContent>
+            </Tooltip>
+          )}
+        </>
       )}
-    />
+      <EngagementForm
+        open={creating}
+        onOpenChange={setCreating}
+        clientId={clientId}
+        onSaved={(engagement) => {
+          void refresh()
+          choose({ id: engagement.id, title: engagement.title })
+        }}
+      />
+    </div>
   )
 }

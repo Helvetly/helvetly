@@ -1,3 +1,6 @@
+/** Scrolled to the far end: nothing more lies past that edge. */
+const atEnd = (scroll: number, client: number, size: number) => scroll + client >= size - 1
+
 /**
  * The first ancestor whose overflow would cut off a focus ring of `ring` px around `element`
  * (`ring-3`), or null when the whole ring shows. `overflow-clip-margin` counts as room.
@@ -24,11 +27,14 @@ export function ringClipper(element: Element, ring = 3): Element | null {
     )
       return null
     const room = ring - margin
+    // An edge the box can still scroll past is a scroll position, not a cut-off: focusing scrolls the ring in.
     if (
-      box.left - room < clip.left ||
-      box.right + room > clip.right ||
-      box.top - room < clip.top ||
-      box.bottom + room > clip.bottom
+      (box.left - room < clip.left && node.scrollLeft <= 0) ||
+      (box.right + room > clip.right &&
+        atEnd(node.scrollLeft, node.clientWidth, node.scrollWidth)) ||
+      (box.top - room < clip.top && node.scrollTop <= 0) ||
+      (box.bottom + room > clip.bottom &&
+        atEnd(node.scrollTop, node.clientHeight, node.scrollHeight))
     )
       return node
     if (last) break

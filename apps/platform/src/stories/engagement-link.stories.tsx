@@ -57,17 +57,21 @@ export const EditorNoClient: Story = {
   },
 }
 
-/** A client without active engagements: off, with a muted hint. */
+/** A client without engagements: a new one is created in place instead of a dead picker. */
 export const EditorNoCandidates: Story = {
   parameters: {
     msw: { handlers: [http.get('/api/v1/engagements', () => page([])), notLinked] },
   },
   render: () => <EditorRow clientId="cli_1" invoiceId="inv_1" />,
   play: async ({ canvasElement }) => {
-    const field = await within(canvasElement).findByRole('button', {
-      name: /No active engagements/,
-    })
-    await expect(field).toBeDisabled()
+    const create = await within(canvasElement).findByRole('button', { name: 'New engagement' })
+    await expect(create).toBeEnabled()
+    await userEvent.click(create)
+    await expect(
+      await within(document.body).findByRole('dialog', { name: /New engagement/ }),
+    ).toBeVisible()
+    // the accessibility check reads colours, so let the drawer finish fading in
+    await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
   },
 }
 

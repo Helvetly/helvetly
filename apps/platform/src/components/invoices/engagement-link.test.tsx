@@ -71,17 +71,19 @@ test('without a client the control is off', async () => {
   expect(screen.getByRole('button')).toBeDisabled()
 })
 
-test('a client without engagements gets a muted, disabled control', async () => {
+test('a client without engagements is offered a new one instead of a dead picker', async () => {
   stubApi({ engagements: [] })
   renderLink()
-  const field = await screen.findByRole('button', { name: /No active engagements/ })
-  expect(field).toBeDisabled()
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: /Choose an engagement/ })).toBeNull(),
+  )
+  expect(screen.getByRole('button', { name: 'New engagement' })).toBeEnabled()
 })
 
 test('picking attaches a saved draft at once', async () => {
   const calls = stubApi({ engagements: [{ id: 'eng_1', title: 'German lessons' }] })
   renderLink()
-  await userEvent.click(await screen.findByRole('button'))
+  await userEvent.click(await screen.findByRole('button', { name: /Choose an engagement/ }))
   await userEvent.click(await screen.findByText('German lessons'))
   await waitFor(() =>
     expect(
@@ -94,7 +96,7 @@ test('picking attaches a saved draft at once', async () => {
 test('before the draft exists the choice waits in the editor', async () => {
   const calls = stubApi({ engagements: [{ id: 'eng_1', title: 'German lessons' }] })
   const onPendingChange = renderLink({ invoiceId: null })
-  await userEvent.click(await screen.findByRole('button'))
+  await userEvent.click(await screen.findByRole('button', { name: /Choose an engagement/ }))
   await userEvent.click(await screen.findByText('German lessons'))
   expect(onPendingChange).toHaveBeenCalledWith('eng_1')
   expect(calls.some((c) => c.method === 'POST')).toBe(false)
@@ -104,7 +106,7 @@ test('a refused link is reported', async () => {
   const error = vi.spyOn(toast, 'error')
   stubApi({ engagements: [{ id: 'eng_1', title: 'German lessons' }], linkStatus: 422 })
   renderLink()
-  await userEvent.click(await screen.findByRole('button'))
+  await userEvent.click(await screen.findByRole('button', { name: /Choose an engagement/ }))
   await userEvent.click(await screen.findByText('German lessons'))
   await waitFor(() => expect(error).toHaveBeenCalled())
 })
