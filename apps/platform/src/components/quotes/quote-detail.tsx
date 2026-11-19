@@ -443,7 +443,7 @@ function Detail({
         </p>
       </TabsContent>
 
-      <TabsContent value="pdf" className="grid content-start gap-3 p-4 sm:p-5">
+      <TabsContent value="pdf" className="flex min-h-0 flex-col gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-body-sm text-muted-foreground">
             {quote.status === 'draft'
@@ -470,7 +470,7 @@ function Detail({
           title={translate('pdfOf2', { name: name })}
           src={quotePdfUrl(quote.id)}
           onPages={setPages}
-          className="overflow-visible bg-transparent dark:bg-transparent"
+          className="min-h-[420px] flex-1 basis-0 rounded-lg"
         />
       </TabsContent>
 

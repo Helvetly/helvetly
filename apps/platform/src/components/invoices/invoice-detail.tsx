@@ -647,7 +647,7 @@ function Detail({
         </Panel>
       </TabsContent>
 
-      <TabsContent value="pdf" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
+      <TabsContent value="pdf" className="flex min-h-0 flex-col gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-[13px] text-muted-foreground">
             {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : translate('loading')}
@@ -665,13 +665,13 @@ function Detail({
             </a>
           </Button>
         </div>
-        {/* The drawer scrolls the pages; the viewer itself grows with them. */}
+        {/* The viewer fills the rest of the drawer and scrolls its own pages. */}
         <PdfView
           key={invoice.updated_at}
           title={translate('pdfOf', { value1: documentName(invoice) })}
           src={pdfUrl(invoice.id)}
           onPages={setPages}
-          className="overflow-visible bg-transparent dark:bg-transparent"
+          className="min-h-[420px] flex-1 basis-0 rounded-lg"
         />
       </TabsContent>
     </Tabs>
