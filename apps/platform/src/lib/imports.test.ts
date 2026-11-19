@@ -1,8 +1,10 @@
 import { ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 import {
   commitSummary,
   defaultSelection,
+  fileErrorText,
   importKindByLabel,
   importProblem,
   importsApi,
@@ -110,6 +112,22 @@ test('reopens the newest batch that is still being read or has pending records',
     ])?.id,
   ).toBe('reading')
   expect(resumable([{ ...base, id: 'done', status: 'review', pending: 0 }])).toBeNull()
+})
+
+test('offers only the unfinished batch of the same client scope', () => {
+  const base = {
+    kind: 'invoices' as const,
+    created_at: '2026-11-09T10:00:00Z',
+    status: 'review' as const,
+  }
+  const batches = [
+    { ...base, id: 'other', client_id: 'cli_2', pending: 1 },
+    { ...base, id: 'mine', client_id: 'cli_1', pending: 1 },
+    { ...base, id: 'any', client_id: null, pending: 1 },
+  ]
+  expect(resumable(batches, 'cli_1')?.id).toBe('mine')
+  expect(resumable(batches)?.id).toBe('any')
+  expect(resumable(batches.slice(0, 2))).toBeNull()
 })
 
 const ok: CommitResult = {
@@ -225,4 +243,15 @@ test('explains errors for novices', () => {
     '25 MB',
   )
   expect(importProblem(new ApiError(500, 'http_500', 'Request failed (500).')).kind).toBe('retry')
+})
+
+describe('fileErrorText', () => {
+  it('words a known reason in the reader’s language and passes others as sent', () => {
+    expect(
+      fileErrorText(
+        "The AI couldn't read this file, even after a second try. Upload it again to try again.",
+      ),
+    ).toBe(translate('importAiNoAnswer'))
+    expect(fileErrorText('The uploaded file is missing.')).toBe('The uploaded file is missing.')
+  })
 })

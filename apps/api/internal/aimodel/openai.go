@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type openAI struct {
@@ -27,7 +26,7 @@ func NewOpenAI(key, baseURL, model string) Provider {
 	if key == "" {
 		return nil
 	}
-	return &openAI{key: key, card: Cards[model], url: baseURL + "/responses", client: &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	return &openAI{key: key, card: Cards[model], url: baseURL + "/responses", client: &http.Client{Timeout: MaxAnswerTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 }
 
 type inputPart struct {

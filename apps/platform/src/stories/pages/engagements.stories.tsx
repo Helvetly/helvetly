@@ -308,6 +308,7 @@ const entry = (id: string, periodId: string, date: string, quantity: string, not
     date,
     quantity,
     note,
+    client_performance: null,
     performed_by: anna,
     invoice:
       periodId === 'epr_0'
@@ -464,9 +465,17 @@ export const RowMenuLogDelivery: Story = {
     await expect(within(dialog).getByText(/German lessons/)).toBeVisible()
     await expect(within(dialog).getByRole('button', { name: 'Log' })).toBeDisabled()
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1,5')
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4{Enter}')
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4')
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: 'Client performance' }),
+      'Well prepared{Enter}',
+    )
     await waitFor(() => expect(body.queryByRole('dialog', { name: 'Log delivery' })).toBeNull())
-    await expect(logged).toMatchObject({ quantity: '1.5', note: 'Lesson 4' })
+    await expect(logged).toMatchObject({
+      quantity: '1.5',
+      note: 'Lesson 4',
+      client_performance: 'Well prepared',
+    })
     // The undo toast names what was logged (it is still fading in).
     await expect(await body.findByText(/Logged 1\.5/)).toBeInTheDocument()
   },

@@ -477,3 +477,93 @@ export const IssuedElsewhereToggle: Story = {
     )
   },
 }
+
+// ---- an import for one client, started from the client's drawer ----
+
+let sentClient: FormDataEntryValue | null = null
+const scoped: ImportBatch = {
+  ...batch([
+    {
+      ...unmatched,
+      data: { ...unmatched.data, client_id: 'cli_1', client_name: 'Alpenglow Studio GmbH' },
+      issues: {},
+    },
+  ]),
+  client_id: 'cli_1',
+  client_name: 'Alpenglow Studio GmbH',
+}
+
+/** Every invoice is the client's: the upload names it, no other client's batch is offered, and the editor keeps it. */
+export const ForOneClient: Story = {
+  beforeEach: () => {
+    sentClient = null
+  },
+  render: () => (
+    <ImportDrawer
+      kind="invoices"
+      client={{ id: 'cli_1', name: 'Alpenglow Studio GmbH' }}
+      onClose={() => {}}
+    />
+  ),
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        ...editorApi([]),
+        // An unfinished import for any client is not this client's to continue.
+        http.get('/api/v1/imports', () =>
+          HttpResponse.json({
+            data: [
+              {
+                id: 'imp_any',
+                kind: 'invoices',
+                client_id: null,
+                status: 'review',
+                created_at: '2026-11-08T09:30:00Z',
+                pending: 2,
+              },
+            ],
+          }),
+        ),
+        http.post('/api/v1/imports', async ({ request }) => {
+          sentClient = (await request.formData()).get('client_id')
+          return HttpResponse.json({ data: scoped }, { status: 201 })
+        }),
+        http.get('/api/v1/imports/:id', () => HttpResponse.json({ data: scoped })),
+      ],
+    },
+  },
+  play: async () => {
+    const dialog = await body().findByRole('dialog', {
+      name: 'Import invoices for Alpenglow Studio GmbH',
+    })
+    await waitFor(() => expect(dialog).toBeVisible())
+    await expect(
+      body().getByText(
+        'Importing invoices for Alpenglow Studio GmbH: every invoice read is assigned to this client.',
+      ),
+    ).toBeVisible()
+    await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()
+
+    const input = await body().findByLabelText('Choose files to import')
+    await userEvent.upload(
+      input,
+      new File(['%PDF-1.7'], 'RE-2025-017.pdf', { type: 'application/pdf' }),
+    )
+    await userEvent.click(body().getByRole('button', { name: 'Process with AI' }))
+    await body().findByRole('table', { name: 'Records found' })
+    await expect(sentClient).toBe('cli_1')
+    await expect(body().queryByRole('button', { name: /Client: No client matches/ })).toBeNull()
+
+    await userEvent.click(body().getByRole('button', { name: 'Edit RE-2025-017' }))
+    const picker = await body().findByRole('button', { name: 'Client' })
+    await expect(picker).toBeDisabled()
+    await expect(picker).toHaveTextContent('Alpenglow Studio GmbH')
+    await expect(
+      body().getByText('This import is for one client, so every invoice stays theirs.'),
+    ).toBeVisible()
+    await userEvent.click(body().getByRole('button', { name: 'Cancel' }))
+    await body().findByRole('table', { name: 'Records found' })
+    await waitFor(() => expect(body().queryByRole('button', { name: 'Client' })).toBeNull())
+  },
+}

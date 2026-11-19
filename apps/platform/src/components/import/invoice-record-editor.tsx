@@ -286,6 +286,8 @@ type EditorProps = {
   fileName?: string
   /** Where the uploaded original is read from. */
   fileSrc?: string
+  /** The import is for one client: the invoice stays that client's. */
+  clientLocked?: boolean
   onDone: (record: ImportRecord | null) => void
 }
 
@@ -302,6 +304,7 @@ function InvoiceRecordForm({
   name,
   fileName,
   fileSrc,
+  clientLocked,
   onDone,
   settings,
 }: EditorProps & { settings: InvoiceSettings }) {
@@ -554,6 +557,7 @@ function InvoiceRecordForm({
                   clientName={values.client_name ?? ''}
                   found={clientFromDocument(record.data)}
                   error={record.issues.client_id}
+                  locked={clientLocked}
                   onPick={(client) =>
                     setValues((current) => ({
                       ...current,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -22,11 +23,12 @@ func realDrafts(e *env) {
 type entryOut struct {
 	Data struct {
 		Entry struct {
-			ID          string `json:"id"`
-			PeriodID    string `json:"period_id"`
-			Date        string `json:"date"`
-			Quantity    string `json:"quantity"`
-			PerformedBy *struct {
+			ID                string  `json:"id"`
+			PeriodID          string  `json:"period_id"`
+			Date              string  `json:"date"`
+			Quantity          string  `json:"quantity"`
+			ClientPerformance *string `json:"client_performance"`
+			PerformedBy       *struct {
 				Name string `json:"name"`
 			} `json:"performed_by"`
 			Invoice *struct {
@@ -78,7 +80,10 @@ func TestEntryCreateValidation(t *testing.T) {
 	eng := e.create(b, input(e.client(b), nil))
 	path := "/api/v1/engagements/" + eng.ID + "/entries"
 	var out entryOut
-	e.do(b, "POST", path, map[string]any{"quantity": "2.5", "note": "Lesson"}, http.StatusCreated, &out)
+	e.do(b, "POST", path, map[string]any{"quantity": "2.5", "note": "Lesson", "client_performance": "Prepared well"}, http.StatusCreated, &out)
+	if out.Data.Entry.ClientPerformance == nil || *out.Data.Entry.ClientPerformance != "Prepared well" {
+		t.Fatalf("client_performance: %v", out.Data.Entry.ClientPerformance)
+	}
 	if out.Data.Entry.Date != "2026-11-16" || out.Data.Entry.Quantity != "2.5" || out.Data.Entry.PerformedBy == nil ||
 		out.Data.Period.Used != "2.5" || out.Data.Period.Remaining != "27.5" {
 		t.Fatalf("%+v", out.Data)
@@ -88,6 +93,7 @@ func TestEntryCreateValidation(t *testing.T) {
 	e.fails(b, "POST", path, map[string]any{"quantity": "0"}, 422, "validation_failed", "quantity")
 	e.fails(b, "POST", path, map[string]any{}, 422, "validation_failed", "quantity")
 	e.fails(b, "POST", path, map[string]any{"quantity": "1", "performed_by": "usr_nobody"}, 422, "validation_failed", "performed_by")
+	e.fails(b, "POST", path, map[string]any{"quantity": "1", "client_performance": strings.Repeat("x", 501)}, 422, "validation_failed", "client_performance")
 	e.fails(b, "POST", path, map[string]any{"quantity": "1", "x": 1}, 400, "invalid_request")
 	e.fails(b, "POST", "/api/v1/engagements/eng_missing/entries", map[string]any{"quantity": "1"}, 404, "not_found")
 }

@@ -46,7 +46,8 @@ func (q Q) SettleAICall(ctx context.Context, c AICall, now time.Time) error {
 // AICallInFlight is the reserved call of the workspace's pool, if any.
 func (q Q) AICallInFlight(ctx context.Context, workspace, pool string) (AICall, bool, error) {
 	c := AICall{WorkspaceID: workspace, Pool: pool, Status: "reserved"}
-	err := q.db.QueryRow(ctx, `SELECT id,period,created_at FROM ai_calls WHERE workspace_id=$1 AND pool=$2 AND status='reserved'`, workspace, pool).Scan(&c.ID, &c.Period, &c.CreatedAt)
+	err := q.db.QueryRow(ctx, `SELECT id,period,created_at,reserved_tokens,reserved_micros FROM ai_calls WHERE workspace_id=$1 AND pool=$2 AND status='reserved'`, workspace, pool).
+		Scan(&c.ID, &c.Period, &c.CreatedAt, &c.ReservedTokens, &c.ReservedMicros)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AICall{}, false, nil
 	}
@@ -62,4 +63,30 @@ func (q Q) AICallSpend(ctx context.Context, workspace, operation, step, group st
 		count(*) FILTER (WHERE operation=$2 AND step=$3)
 		FROM ai_calls WHERE workspace_id=$1 AND (operation=$2 OR ($4<>'' AND call_group=$4))`, workspace, operation, step, group).Scan(&opMicros, &groupMicros, &stepCalls)
 	return opMicros, groupMicros, stepCalls, err
+}
+
+// SettleUncertainAICalls charges every call left "uncertain" (by releases that blocked a month on an unknown outcome)
+// its whole reservation, as aimodel now settles one, and unblocks the months; idempotent. It returns the calls settled.
+func (q Q) SettleUncertainAICalls(ctx context.Context, now time.Time) ([]AICall, error) {
+	rows, err := q.db.Query(ctx, `WITH c AS (
+			UPDATE ai_calls SET status='settled', total_tokens=reserved_tokens, cost_micros=reserved_micros, settled_at=$1,
+				failure='unknown_usage:'||coalesce(nullif(failure,''),'unknown')
+			WHERE status='uncertain' RETURNING id,workspace_id,pool,period,reserved_tokens,reserved_micros,failure),
+		s AS (SELECT workspace_id,pool,period,sum(reserved_tokens)::bigint t,sum(reserved_micros)::bigint m FROM c GROUP BY 1,2,3),
+		h AS (UPDATE heidi_usage h SET tokens_used=h.tokens_used+s.t, tokens_reserved=greatest(h.tokens_reserved-s.t,0),
+				cost_micros=h.cost_micros+s.m, cost_reserved_micros=greatest(h.cost_reserved_micros-s.m,0), updated_at=$1
+			FROM s WHERE h.workspace_id=s.workspace_id AND h.pool=s.pool AND h.period=s.period)
+		SELECT id,workspace_id,pool,period,reserved_tokens,reserved_micros,failure FROM c`, now)
+	if err != nil {
+		return nil, err
+	}
+	calls, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (AICall, error) {
+		var c AICall
+		return c, r.Scan(&c.ID, &c.WorkspaceID, &c.Pool, &c.Period, &c.ReservedTokens, &c.ReservedMicros, &c.Failure)
+	})
+	if err != nil {
+		return nil, err
+	}
+	_, err = q.db.Exec(ctx, `UPDATE heidi_usage SET uncertain=false, updated_at=$1 WHERE uncertain`, now)
+	return calls, err
 }

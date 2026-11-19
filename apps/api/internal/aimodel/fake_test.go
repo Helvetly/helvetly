@@ -58,3 +58,29 @@ func TestFakeSuggestsAWorkspaceName(t *testing.T) {
 		t.Fatalf("reply %+v %v", reply, err)
 	}
 }
+
+func TestFakeReadsAnAttachedInvoice(t *testing.T) {
+	line := map[string]any{"type": "object", "properties": map[string]any{"description": map[string]any{"type": []string{"string", "null"}}}}
+	invoice := map[string]any{"type": "object", "properties": map[string]any{"number": map[string]any{"type": []string{"string", "null"}},
+		"lines": map[string]any{"type": []string{"array", "null"}, "items": line}}}
+	schema := map[string]any{"type": "object", "properties": map[string]any{"records": map[string]any{"type": "array", "items": invoice}}}
+	for _, tc := range []struct {
+		name  string
+		files []File
+		want  int
+	}{
+		{"a PDF is one invoice", []File{{Name: "RE-7.pdf", ContentType: "application/pdf"}}, 1},
+		{"text without rows is none", nil, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reply, err := Fake{}.Answer(context.Background(), Request{Message: "File name: RE-7.pdf\n\nThe file is attached.", Files: tc.files, Schema: &Schema{Name: "t", JSON: schema}})
+			var out struct{ Records []map[string]any }
+			if err != nil || json.Unmarshal([]byte(reply.Text), &out) != nil || len(out.Records) != tc.want {
+				t.Fatalf("%s %v", reply.Text, err)
+			}
+			if tc.want == 1 && out.Records[0]["number"] != "RE-7" {
+				t.Fatalf("number: %v", out.Records[0])
+			}
+		})
+	}
+}

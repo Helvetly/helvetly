@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	jobLease        = 5 * time.Minute // a claimed file is left to its job this long; renewed per chunk
+	// jobLease: a claimed file is left to its job this long, renewed per chunk; longer than one Generate
+	// (aimodel.MaxAnswerTimeout, counts and retries included).
+	jobLease        = 5 * time.Minute
 	jobBatch        = 5
 	maxAttempts     = 4
 	maxOutputTokens = 16_000
@@ -58,6 +60,9 @@ func (s *Service) Tick(ctx context.Context) error {
 }
 
 const triesUsed = "The file could not be read after several tries. Upload it again later."
+
+// aiNoAnswer: a part's model call failed twice (aimodel's maxAttempts); the platform translates this exact text.
+const aiNoAnswer = "The AI couldn't read this file, even after a second try. Upload it again to try again."
 
 // failure ends a file for good with a reason for the person; any other error is retried with backoff.
 type failure struct{ reason string }
@@ -277,9 +282,19 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	if err != nil {
 		return "", nil, fmt.Errorf("load business country: %w", err)
 	}
+	scope := ""
+	if f.ClientID != nil {
+		client, err := s.db.Client(ctx, ws.ID, *f.ClientID)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return "", nil, fmt.Errorf("load import client: %w", err)
+		}
+		if err == nil { // the person chose the client: the model reads the invoices, not whom they bill
+			scope = "\nEvery invoice in this file is billed to the business's client " + strconv.Quote(client.Name) + "."
+		}
+	}
 	req := aimodel.Request{
 		Instructions: "You read files for Helvetly's import. " + k.Prompt + phoneRule + rules,
-		Message:      "File name: " + f.Name + "\nThe business's country: " + country + "\n\n",
+		Message:      "File name: " + f.Name + "\nThe business's country: " + country + scope + "\n\n",
 		Schema: &aimodel.Schema{Name: "import_" + k.Name, JSON: map[string]any{"type": "object", "additionalProperties": false,
 			"required": []string{"records"}, "properties": map[string]any{"records": map[string]any{"type": "array", "items": k.Schema}}}},
 	}
@@ -304,15 +319,14 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	} else {
 		req.Message += c.text
 	}
-	call := aimodel.Call{Kind: "import", Operation: f.ID, Step: strconv.Itoa(i), Group: f.BatchID, MaxOutput: maxOutputTokens, Caps: aimodel.ImportCaps}
+	call := aimodel.Call{Kind: "import", Operation: f.ID, Step: strconv.Itoa(i), Group: f.BatchID, MaxOutput: maxOutputTokens, Caps: aimodel.ImportCaps,
+		Timeout: aimodel.MaxAnswerTimeout}
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.uploaderGate(ctx, q, workspaceID, user, k)
 	}
 	reply, err := budget.Generate(ctx, s.provider, ws, req, call)
 	switch {
-	case errors.Is(err, aimodel.ErrUnaccounted):
-		return "", nil, failure{"The AI model's answer was lost and its usage is unknown, so it is not asked again. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrQuota):
 		return "", nil, failure{"This workspace has used its monthly AI import and filing allowance. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrTooLarge):
@@ -320,10 +334,10 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	case errors.Is(err, aimodel.ErrCap):
 		return "", nil, failure{"This file is larger than one AI import may read, whatever is left of the monthly allowance. Split it into smaller files and upload them again."}
 	case errors.Is(err, aimodel.ErrAttempts):
-		return "", nil, failure{"The AI model failed twice on this part of the file, so it is not asked again. Upload the file again later."}
+		return "", nil, failure{aiNoAnswer}
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return "", nil, failure{"AI import is paused while the service's AI budget is being updated. Nothing more was sent to the AI model."}
-	case err != nil: // usage still being settled by another call, or a provider failure with known usage: retried
+	case err != nil: // another call in flight, or a provider failure (charged at most its reservation): retried
 		return "", nil, err
 	}
 	var out map[string]json.RawMessage
@@ -398,6 +412,9 @@ func (s *Service) add(ctx context.Context, q store.Q, f store.ImportFile, all pr
 			data := clean(k, raw)
 			if len(data) == 0 {
 				continue
+			}
+			if err := scopeToClient(ctx, q, f.WorkspaceID, f.ClientID, kind, data); err != nil {
+				return err
 			}
 			r := store.ImportRecord{ID: auth.NewID("imr"), Kind: kind, Data: data}
 			name := strings.ToLower(rawText(data[k.labelField()]))

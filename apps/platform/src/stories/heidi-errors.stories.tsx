@@ -111,7 +111,7 @@ export const Misconfigured = failsWith(
   /AI is not configured correctly\. Check the model settings\./,
 )
 
-/** An earlier call's usage is still unknown: no jargon, local commands still work. */
+/** Another Heidi call is still in flight: no jargon, local commands still work. */
 export const UsageBeingChecked = failsWith(
   'heidi_usage_uncertain',
   /Heidi is still finishing an earlier request.*local commands still work\./,

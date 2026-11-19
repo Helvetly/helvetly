@@ -131,7 +131,9 @@ func (q Q) DeleteHeidiConfirmation(ctx context.Context, workspace, user, convers
 type HeidiUsage struct {
 	TokensUsed, TokensReserved int64
 	CostMicros, CostReserved   int64
-	Uncertain                  bool
+	// Uncertain was set by earlier releases on an unknown outcome; such months are settled at startup
+	// (aimodel.SettleUncertain) and nothing sets it any more.
+	Uncertain bool
 }
 
 const heidiUsageColumns = `tokens_used,tokens_reserved,cost_micros,cost_reserved_micros,uncertain`

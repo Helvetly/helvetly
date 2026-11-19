@@ -124,6 +124,7 @@ export type Entry = {
   date: string
   quantity: Decimal
   note: string | null
+  client_performance: string | null
   performed_by: { id: string; name: string } | null
   invoice: InvoiceLink | null
   created_at: string
@@ -134,6 +135,7 @@ export type EntryInput = {
   date?: string
   quantity: Decimal
   note?: string | null
+  client_performance?: string | null
   performed_by?: string | null
 }
 

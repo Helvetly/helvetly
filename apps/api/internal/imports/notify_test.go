@@ -19,7 +19,7 @@ func TestBatchDoneNotifiesTheUploaderOnce(t *testing.T) {
 	}{
 		{"records", answer(`{"records":[{"name":"Acme AG"},{"name":"Beta GmbH"}]}`), "import.ready", `"records": 2`},
 		{"nothing found", answer(`{"records":[]}`), "import.failed", "No records were found"},
-		{"unreadable", func(aimodel.Request) (aimodel.Reply, error) { return aimodel.Reply{}, context.DeadlineExceeded }, "import.failed", "not asked again"},
+		{"unreadable", answer("not JSON"), "import.failed", "could not be read"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := newEnv(t)

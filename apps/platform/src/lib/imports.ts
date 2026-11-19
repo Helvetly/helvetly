@@ -63,6 +63,9 @@ export const readsWithAI = (kind: ImportTarget) => kind !== 'payroll'
 export type ImportBatch = {
   id: string
   kind: ImportTarget
+  /** An invoice import for one client: every invoice it reads is that client's. */
+  client_id?: string | null
+  client_name?: string | null
   status: 'extracting' | 'review'
   created_at: string
   files: ImportFile[]
@@ -72,6 +75,7 @@ export type ImportBatch = {
 export type ImportSummary = {
   id: string
   kind: ImportTarget
+  client_id?: string | null
   status: 'extracting' | 'review'
   created_at: string
   pending: number
@@ -559,6 +563,8 @@ export function isImportBatch(value: unknown): value is ImportBatch {
     isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
+    isOptionalText(value.client_id) &&
+    isOptionalText(value.client_name) &&
     Array.isArray(value.files) &&
     value.files.every(isFile) &&
     Array.isArray(value.records) &&
@@ -573,9 +579,12 @@ function isSummary(value: unknown): value is ImportSummary {
     isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
+    isOptionalText(value.client_id) &&
     typeof value.pending === 'number'
   )
 }
+
+const isOptionalText = (value: unknown) => value == null || isString(value)
 
 function isConflict(value: unknown): value is ImportConflict {
   return (
@@ -625,9 +634,10 @@ export type RecordChanges = Record<
 export type CommitInput = { recordIds: string[]; resolutions?: Record<string, Resolution> }
 
 export const importsApi = {
-  upload: async (kind: ImportTarget, files: File[]) => {
+  upload: async (kind: ImportTarget, files: File[], clientId?: string) => {
     const form = new FormData()
     form.append('kind', kind)
+    if (clientId) form.append('client_id', clientId)
     for (const file of files) form.append('files[]', file)
     return dataOf(await request<unknown>('/imports', { method: 'POST', form }), isImportBatch)
   },
@@ -684,10 +694,10 @@ export function useImportBatch(id: string | null) {
   })
 }
 
-export function useUploadImport(kind: ImportTarget) {
+export function useUploadImport(kind: ImportTarget, clientId?: string) {
   const queryClient = useQueryClient()
   return useMutation<ImportBatch, ApiError, File[]>({
-    mutationFn: (files) => importsApi.upload(kind, files),
+    mutationFn: (files) => importsApi.upload(kind, files, clientId),
     onSuccess: (batch) => {
       queryClient.setQueryData(importKeys.batch(batch.id), batch)
       void queryClient.invalidateQueries({ queryKey: importKeys.list(kind) })
@@ -749,8 +759,13 @@ export const defaultSelection = (records: ImportRecord[]) =>
   new Set(records.filter(isClean).map((record) => record.id))
 
 /** The newest batch worth reopening: still being read, or with records not created yet. */
-export const resumable = (batches: ImportSummary[]) =>
-  batches.find((batch) => batch.pending > 0 || batch.status === 'extracting') ?? null
+/** The unfinished batch to offer: of the same client when the import is for one, else of none. */
+export const resumable = (batches: ImportSummary[], clientId: string | null = null) =>
+  batches.find(
+    (batch) =>
+      (batch.client_id ?? null) === clientId &&
+      (batch.pending > 0 || batch.status === 'extracting'),
+  ) ?? null
 
 /** The records of an `auto` import by kind, in the order the review shows them (and a commit creates them). */
 export function recordsByKind(records: ImportRecord[]) {
@@ -880,4 +895,15 @@ export function importProblem(error: unknown): ImportProblem {
         message: message || translate('somethingWentWrongTryAgain'),
       }
   }
+}
+
+/** The API's English reasons for a failed file that this app words in the reader's language; others as sent. */
+const FILE_ERRORS: Record<string, () => string> = {
+  "The AI couldn't read this file, even after a second try. Upload it again to try again.": () =>
+    translate('importAiNoAnswer'),
+}
+
+/** Why a file failed, in the reader's language when the app knows the reason. */
+export function fileErrorText(error: string): string {
+  return FILE_ERRORS[error]?.() ?? error
 }

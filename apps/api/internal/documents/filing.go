@@ -26,7 +26,9 @@ import (
 // reach it: they are not uploaded here and are not documents to store.Document.
 
 const (
-	filingLease     = 2 * time.Minute // a claimed filing comes due again this long after an instance died with it
+	// filingLease: a claimed filing comes due again this long after an instance died with it; longer than one
+	// Generate (aimodel.MaxAnswerTimeout, counts and retries included).
+	filingLease     = 4 * time.Minute
 	filingBatch     = 5
 	filingTries     = 6
 	filingMaxOutput = 300
@@ -169,13 +171,13 @@ func (s *Service) file(ctx context.Context, j store.FilingJob) {
 	}
 }
 
-// retryable: another model call of the workspace is in flight, the provider failed with known usage, or a database or
-// storage error; never a refusal, a used allowance or an outcome that must not be asked again.
+// retryable: another model call of the workspace is in flight, the provider failed (charged at most its reservation;
+// aimodel's attempts per step stop a second retry), or a database or storage error; never a refusal or a used allowance.
 func retryable(err error) bool {
 	if errors.Is(err, aimodel.ErrUncertain) {
 		return true
 	}
-	for _, final := range []error{errSkip, aimodel.ErrUnaccounted, aimodel.ErrQuota, aimodel.ErrTooLarge, aimodel.ErrCap,
+	for _, final := range []error{errSkip, aimodel.ErrQuota, aimodel.ErrTooLarge, aimodel.ErrCap,
 		aimodel.ErrAttempts, aimodel.ErrUnfunded, store.ErrFeatureDenied, store.ErrNotFound} {
 		if errors.Is(err, final) {
 			return false
@@ -221,7 +223,8 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, j.UserID)
 	}
-	call := aimodel.Call{Kind: "filing", Operation: doc.ID, Step: "file", MaxOutput: filingMaxOutput, Caps: aimodel.FilingCaps}
+	call := aimodel.Call{Kind: "filing", Operation: doc.ID, Step: "file", MaxOutput: filingMaxOutput, Caps: aimodel.FilingCaps,
+		Timeout: aimodel.MaxAnswerTimeout}
 	reply, err := budget.Generate(ctx, s.filer, ws, req, call)
 	if len(req.Files) > 0 && (errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge)) {
 		// too large to read whole: its name may still say enough

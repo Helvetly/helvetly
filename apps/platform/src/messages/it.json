@@ -661,6 +661,7 @@
   "correctedInvoice": "Fattura corretta",
   "corrections": "Correzioni",
   "correctsInvoice": "Corregge la fattura",
+  "importAiNoAnswer": "L'IA non è riuscita a leggere questo file, nemmeno al secondo tentativo. Caricalo di nuovo per riprovare.",
   "couldNotBeRead": "Impossibile leggere",
   "couldNotChangeTheDailyDigest": "Impossibile modificare il riepilogo giornaliero.",
   "couldNotCopySelectTheTextAndCopyIt": "Impossibile copiare. Seleziona il testo e copialo invece.",
@@ -2161,6 +2162,9 @@
   "optionalEGHowTheClientAnsweredTheClient": "Opzionale, ad es. come ha risposto il cliente. Il cliente lo vede anche nel portale.",
   "optionalNothingIsSentOrIssuedWithoutYou": "Facoltativo. Niente viene inviato o emesso senza di te.",
   "optionalShownOnPerEntryInvoiceLines": "· facoltativo, mostrato nelle righe della fattura per partita",
+  "clientPerformance": "Prestazione del cliente",
+  "optionalInternalNeverOnInvoices": "· facoltativo, solo interno, mai sulle fatture",
+  "howDidTheClientDo": "Com’è andato il cliente?",
   "options": "{label} opzioni",
   "or": "o ",
   "or2": "o",
@@ -4545,8 +4549,13 @@
   "heidiErrorUnavailable": "Heidi non è riuscita a rispondere ora. Non è stato modificato nulla. Riprova tra un momento.",
   "heidiErrorBusy": "Heidi è occupata in questo momento. Riprova tra un minuto.",
   "heidiErrorMisconfigured": "L'IA non è configurata correttamente. Controlla le impostazioni del modello.",
-  "heidiErrorUsageUncertain": "Heidi sta ancora completando una richiesta precedente, oppure l'uso dell'IA di questo mese è in verifica. Non è stato modificato nulla. Riprova tra qualche minuto; i comandi locali funzionano comunque.",
+  "heidiErrorUsageUncertain": "Heidi sta ancora completando una richiesta precedente. Non è stato modificato nulla. Riprova tra un momento; i comandi locali funzionano comunque.",
   "heidiErrorPaused": "Le risposte IA di Heidi sono in pausa per ora. I comandi locali funzionano comunque.",
   "aiErrorBusy": "L'IA è occupata in questo momento. Riprova tra un minuto.",
-  "aiWriteErrorFailed": "L'IA non è riuscita a scrivere questo testo ora. Non è stato modificato nulla. Riprova tra un momento."
+  "aiWriteErrorFailed": "L'IA non è riuscita a scrivere questo testo ora. Non è stato modificato nulla. Riprova tra un momento.",
+  "importInvoices": "Importa fatture",
+  "importInvoicesForClient": "Importa fatture per {client}",
+  "importingInvoicesForClient": "Importazione di fatture per {client}: ogni fattura letta è assegnata a questo cliente.",
+  "importClientLocked": "Questa importazione riguarda un solo cliente: ogni fattura resta sua.",
+  "moreWaysToAddInvoices": "Altri modi per aggiungere fatture"
 }

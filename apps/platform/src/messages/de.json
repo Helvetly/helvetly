@@ -661,6 +661,7 @@
   "correctedInvoice": "Rechnung korrigiert",
   "corrections": "Korrekturen",
   "correctsInvoice": "Korrigiert die Rechnung",
+  "importAiNoAnswer": "Die KI konnte diese Datei auch beim zweiten Versuch nicht lesen. Laden Sie sie erneut hoch, um es noch einmal zu versuchen.",
   "couldNotBeRead": "Konnte nicht gelesen werden",
   "couldNotChangeTheDailyDigest": "Die tägliche Zusammenfassung konnte nicht geändert werden.",
   "couldNotCopySelectTheTextAndCopyIt": "Kopieren nicht möglich. Markieren Sie den Text und kopieren Sie ihn stattdessen.",
@@ -2161,6 +2162,9 @@
   "optionalEGHowTheClientAnsweredTheClient": "Optional, z.B. wie der Kunde geantwortet hat. Der Kunde sieht es auch im Portal.",
   "optionalNothingIsSentOrIssuedWithoutYou": "Optional. Ohne Sie wird nichts versendet oder ausgestellt.",
   "optionalShownOnPerEntryInvoiceLines": "· optional, wird in einzelnen Rechnungszeilen angezeigt",
+  "clientPerformance": "Leistung des Kunden",
+  "optionalInternalNeverOnInvoices": "· optional, nur intern, nie auf Rechnungen",
+  "howDidTheClientDo": "Wie hat der Kunde mitgearbeitet?",
   "options": "{label} Optionen",
   "or": "oder ",
   "or2": "oder",
@@ -4545,8 +4549,13 @@
   "heidiErrorUnavailable": "Heidi konnte gerade nicht antworten. Es wurde nichts geändert. Versuchen Sie es gleich noch einmal.",
   "heidiErrorBusy": "Heidi ist gerade ausgelastet. Versuchen Sie es in einer Minute erneut.",
   "heidiErrorMisconfigured": "Die KI ist nicht richtig eingerichtet. Prüfen Sie die Modelleinstellungen.",
-  "heidiErrorUsageUncertain": "Heidi schliesst noch eine frühere Anfrage ab, oder die KI-Nutzung dieses Monats wird geprüft. Es wurde nichts geändert. Versuchen Sie es in ein paar Minuten erneut; lokale Befehle funktionieren weiterhin.",
+  "heidiErrorUsageUncertain": "Heidi schliesst noch eine frühere Anfrage ab. Es wurde nichts geändert. Versuchen Sie es gleich noch einmal; lokale Befehle funktionieren weiterhin.",
   "heidiErrorPaused": "Heidis KI-Antworten sind vorübergehend pausiert. Lokale Befehle funktionieren weiterhin.",
   "aiErrorBusy": "Die KI ist gerade ausgelastet. Versuchen Sie es in einer Minute erneut.",
-  "aiWriteErrorFailed": "Die KI konnte das gerade nicht schreiben. Es wurde nichts geändert. Versuchen Sie es gleich noch einmal."
+  "aiWriteErrorFailed": "Die KI konnte das gerade nicht schreiben. Es wurde nichts geändert. Versuchen Sie es gleich noch einmal.",
+  "importInvoices": "Rechnungen importieren",
+  "importInvoicesForClient": "Rechnungen für {client} importieren",
+  "importingInvoicesForClient": "Rechnungen für {client} importieren: Jede gelesene Rechnung wird diesem Kunden zugeordnet.",
+  "importClientLocked": "Dieser Import gilt für einen Kunden, jede Rechnung bleibt bei ihm.",
+  "moreWaysToAddInvoices": "Weitere Wege, Rechnungen hinzuzufügen"
 }

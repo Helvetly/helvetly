@@ -27,28 +27,22 @@ func poolBudget(db *store.Store, pool string) (Budget, Call) {
 }
 
 // TestPoolsAreSeparate: Heidi's calls never spend the automation pool (AI import, filing) and the other way round; a
-// pool used up or blocked as uncertain stops its own calls only.
+// pool used up stops its own calls only.
 func TestPoolsAreSeparate(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		pool      string // the pool used up or blocked before the calls ("" none)
-		uncertain bool
-		want      map[string]error
+		name string
+		pool string // the pool used up before the calls ("" none)
+		want map[string]error
 	}{
-		{"both open", "", false, map[string]error{PoolHeidi: nil, PoolAutomation: nil}},
-		{"Heidi's allowance used", PoolHeidi, false, map[string]error{PoolHeidi: ErrQuota, PoolAutomation: nil}},
-		{"the automation allowance used", PoolAutomation, false, map[string]error{PoolHeidi: nil, PoolAutomation: ErrQuota}},
-		{"Heidi's month uncertain", PoolHeidi, true, map[string]error{PoolHeidi: ErrUncertain, PoolAutomation: nil}},
-		{"the automation month uncertain", PoolAutomation, true, map[string]error{PoolHeidi: nil, PoolAutomation: ErrUncertain}},
+		{"both open", "", map[string]error{PoolHeidi: nil, PoolAutomation: nil}},
+		{"Heidi's allowance used", PoolHeidi, map[string]error{PoolHeidi: ErrQuota, PoolAutomation: nil}},
+		{"the automation allowance used", PoolAutomation, map[string]error{PoolHeidi: nil, PoolAutomation: ErrQuota}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db, _, ws := reserveDB(t)
 			ctx := context.Background()
 			if tc.pool != "" {
-				preset := store.HeidiUsage{TokensUsed: 10_000, Uncertain: tc.uncertain}
-				if tc.uncertain {
-					preset.TokensUsed = 0
-				}
+				preset := store.HeidiUsage{TokensUsed: 10_000}
 				if err := db.Tx(ctx, func(q store.Q) error {
 					if _, err := q.LockHeidiUsage(ctx, ws.ID, tc.pool, "2026-11", nov); err != nil {
 						return err

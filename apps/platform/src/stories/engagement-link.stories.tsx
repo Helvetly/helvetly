@@ -6,6 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { InvoiceLinkField } from '@/components/engagements/invoice-link-field'
 import { EngagementLink } from '@/components/invoices/engagement-link'
+import { sampleSettings } from '@/test/invoice-api'
 
 import { emptyPage } from './screen-fixtures'
 
@@ -60,16 +61,23 @@ export const EditorNoClient: Story = {
 /** A client without engagements: a new one is created in place instead of a dead picker. */
 export const EditorNoCandidates: Story = {
   parameters: {
-    msw: { handlers: [http.get('/api/v1/engagements', () => page([])), notLinked] },
+    msw: {
+      handlers: [
+        http.get('/api/v1/engagements', () => page([])),
+        notLinked,
+        http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+      ],
+    },
   },
   render: () => <EditorRow clientId="cli_1" invoiceId="inv_1" />,
   play: async ({ canvasElement }) => {
     const create = await within(canvasElement).findByRole('button', { name: 'New engagement' })
     await expect(create).toBeEnabled()
     await userEvent.click(create)
-    await expect(
-      await within(document.body).findByRole('dialog', { name: /New engagement/ }),
-    ).toBeVisible()
+    // The loading frame is a dialog of the same name that the form's sheet replaces: wait for the form's field.
+    const body = within(document.body)
+    await expect(await body.findByRole('textbox', { name: /^Title/ })).toBeVisible()
+    await expect(body.getByRole('dialog', { name: /New engagement/ })).toBeVisible()
     // the accessibility check reads colours, so let the drawer finish fading in
     await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
   },
@@ -220,5 +228,7 @@ export const FormPicking: Story = {
     await userEvent.click(await openable(canvasElement, /Choose an invoice/))
     await userEvent.click(await within(document.body).findByText('2026-014'))
     await expect(within(canvasElement).getByRole('button')).toHaveTextContent('2026-014')
+    // The accessibility check runs next: let the picker finish closing, not catch it fading out.
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
   },
 }
