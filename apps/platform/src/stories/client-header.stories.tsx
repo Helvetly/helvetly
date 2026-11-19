@@ -13,6 +13,7 @@ const close = fn()
 
 const handlers = (client: Client, request: ChangeRequest | null = null) => [
   sessionHandler(),
+  http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: client })),
   http.get('/api/v1/clients/cli_1/change-request', () => HttpResponse.json({ data: request })),
   http.get('/api/v1/clients/cli_1/self-billing-agreements', () => HttpResponse.json({ data: [] })),
@@ -171,8 +172,29 @@ export const Phone: Story = {
     // Every toolbar control stays on the screen; Document keeps its name for readers.
     await expect(top.getByRole('button', { name: 'More actions' })).toBeVisible()
     await expect(top.getByRole('button', { name: 'Document' })).toBeVisible()
+    await expect(top.getByRole('button', { name: 'More ways to add invoices' })).toBeVisible()
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
+  },
+}
+
+/** New invoice is a split button: its menu imports invoices for this client, in a drawer over this one. */
+export const ImportInvoices: Story = {
+  play: async () => {
+    const top = await header()
+    await expect(top.getByRole('link', { name: 'New invoice' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('cli_1'),
+    )
+    await userEvent.click(top.getByRole('button', { name: 'More ways to add invoices' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Import invoices' }))
+    const drawer = await body.findByRole('dialog', {
+      name: 'Import invoices for Alpenglow Studio GmbH',
+    })
+    await waitFor(() => expect(drawer).toBeVisible())
+    await expect(
+      within(drawer).getByText(/every invoice read is assigned to this client/),
+    ).toBeVisible()
   },
 }

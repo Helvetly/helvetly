@@ -65,6 +65,13 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		rows = nil
 	}
 	records := []map[string]any{}
+	if _, invoices := props["lines"]; invoices && len(r.Files) > 0 {
+		// An attached invoice (a PDF or photo) is read as one fixed invoice, numbered after the file.
+		records = append(records, map[string]any{"number": strings.TrimSuffix(r.Files[0].Name, path.Ext(r.Files[0].Name)),
+			"client_name": "Development Buyer AG", "issue_date": "2026-01-15", "currency": "CHF", "price_basis": "net",
+			"lines": []map[string]any{{"description": "Development model service", "quantity": "1", "unit": "hour",
+				"unit_price": "100.00", "vat_category": "S", "vat_rate": "8.1"}}})
+	}
 	if len(rows) > 1 {
 		header := rows[0]
 		for _, row := range rows[1:] {

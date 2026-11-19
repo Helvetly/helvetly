@@ -176,6 +176,9 @@ func (s *Service) edit(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			merged[key] = v
 		}
 		rec.Data, rec.Status, rec.Error = clean(k, merged), "pending", nil
+		if err := scopeToClient(ctx, q, sess.Workspace.ID, b.ClientID, k.Name, rec.Data); err != nil {
+			return err
+		}
 		if err := review(ctx, q, k, sess.Workspace.ID, b.ID, &rec); err != nil {
 			return err
 		}

@@ -277,9 +277,19 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	if err != nil {
 		return "", nil, fmt.Errorf("load business country: %w", err)
 	}
+	scope := ""
+	if f.ClientID != nil {
+		client, err := s.db.Client(ctx, ws.ID, *f.ClientID)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return "", nil, fmt.Errorf("load import client: %w", err)
+		}
+		if err == nil { // the person chose the client: the model reads the invoices, not whom they bill
+			scope = "\nEvery invoice in this file is billed to the business's client " + strconv.Quote(client.Name) + "."
+		}
+	}
 	req := aimodel.Request{
 		Instructions: "You read files for Helvetly's import. " + k.Prompt + phoneRule + rules,
-		Message:      "File name: " + f.Name + "\nThe business's country: " + country + "\n\n",
+		Message:      "File name: " + f.Name + "\nThe business's country: " + country + scope + "\n\n",
 		Schema: &aimodel.Schema{Name: "import_" + k.Name, JSON: map[string]any{"type": "object", "additionalProperties": false,
 			"required": []string{"records"}, "properties": map[string]any{"records": map[string]any{"type": "array", "items": k.Schema}}}},
 	}
@@ -398,6 +408,9 @@ func (s *Service) add(ctx context.Context, q store.Q, f store.ImportFile, all pr
 			data := clean(k, raw)
 			if len(data) == 0 {
 				continue
+			}
+			if err := scopeToClient(ctx, q, f.WorkspaceID, f.ClientID, kind, data); err != nil {
+				return err
 			}
 			r := store.ImportRecord{ID: auth.NewID("imr"), Kind: kind, Data: data}
 			name := strings.ToLower(rawText(data[k.labelField()]))

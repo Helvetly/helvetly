@@ -17,19 +17,23 @@ type ImportDuplicate struct {
 }
 
 type ImportBatch struct {
-	ID          string         `json:"id"`
-	WorkspaceID string         `json:"-"`
-	UserID      string         `json:"-"`
-	Kind        string         `json:"kind"`
-	Status      string         `json:"status"`
-	CreatedAt   time.Time      `json:"created_at"`
-	Files       []ImportFile   `json:"files"`
-	Records     []ImportRecord `json:"records"`
+	ID          string `json:"id"`
+	WorkspaceID string `json:"-"`
+	UserID      string `json:"-"`
+	Kind        string `json:"kind"`
+	// ClientID scopes an invoice import to one client: every invoice it reads is that client's.
+	ClientID   *string        `json:"client_id"`
+	ClientName *string        `json:"client_name"`
+	Status     string         `json:"status"`
+	CreatedAt  time.Time      `json:"created_at"`
+	Files      []ImportFile   `json:"files"`
+	Records    []ImportRecord `json:"records"`
 }
 
 type ImportBatchSummary struct {
 	ID        string    `json:"id"`
 	Kind      string    `json:"kind"`
+	ClientID  *string   `json:"client_id"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	Pending   int       `json:"pending"`
@@ -53,6 +57,7 @@ type ImportFile struct {
 	ChunksTotal *int    `json:"chunks_total"`
 	Attempts    int     `json:"-"`
 	Kind        string  `json:"-"` // the batch's, for the job
+	ClientID    *string `json:"-"` // the batch's, for the job
 	// DocumentType is what the model recognised the file as, in an auto batch ("sales_invoice", "contract", …).
 	DocumentType *string `json:"document_type"`
 }
@@ -74,8 +79,8 @@ type ImportRecord struct {
 
 // CreateImportBatch inserts the batch and its files (positions as given).
 func (q Q) CreateImportBatch(ctx context.Context, b ImportBatch, files []ImportFile, now time.Time) error {
-	if _, err := q.db.Exec(ctx, `INSERT INTO import_batches (id, workspace_id, user_id, kind, created_at) VALUES ($1,$2,$3,$4,$5)`,
-		b.ID, b.WorkspaceID, b.UserID, b.Kind, now); err != nil {
+	if _, err := q.db.Exec(ctx, `INSERT INTO import_batches (id, workspace_id, user_id, kind, client_id, created_at) VALUES ($1,$2,$3,$4,$5,$6)`,
+		b.ID, b.WorkspaceID, b.UserID, b.Kind, b.ClientID, now); err != nil {
 		return err
 	}
 	for _, f := range files {
@@ -93,8 +98,10 @@ func (q Q) CreateImportBatch(ctx context.Context, b ImportBatch, files []ImportF
 // ImportBatch: the person's batch with its files and records; ErrNotFound for anyone else's.
 func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (ImportBatch, error) {
 	var b ImportBatch
-	err := q.db.QueryRow(ctx, `SELECT id, kind, created_at FROM import_batches WHERE workspace_id=$1 AND user_id=$2 AND id=$3`,
-		workspaceID, userID, id).Scan(&b.ID, &b.Kind, &b.CreatedAt)
+	err := q.db.QueryRow(ctx, `SELECT b.id, b.kind, b.client_id, c.name, b.created_at
+		FROM import_batches b LEFT JOIN clients c ON c.id = b.client_id
+		WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.id=$3`,
+		workspaceID, userID, id).Scan(&b.ID, &b.Kind, &b.ClientID, &b.ClientName, &b.CreatedAt)
 	if err != nil {
 		return b, err
 	}
@@ -145,7 +152,7 @@ func (q Q) importRecords(ctx context.Context, where string, args ...any) ([]Impo
 
 // ImportBatches: the person's ten newest batches of a kind, with how many records still wait.
 func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string) ([]ImportBatchSummary, error) {
-	rows, err := q.db.Query(ctx, `SELECT b.id, b.kind, b.created_at,
+	rows, err := q.db.Query(ctx, `SELECT b.id, b.kind, b.client_id, b.created_at,
 			EXISTS (SELECT 1 FROM import_files f WHERE f.batch_id=b.id AND f.status IN ('queued','extracting')),
 			(SELECT count(*) FROM import_records r WHERE r.batch_id=b.id AND r.status NOT IN ('created','skipped'))
 		FROM import_batches b WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.kind=$3 ORDER BY b.created_at DESC, b.id DESC LIMIT 10`,
@@ -158,7 +165,7 @@ func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string) 
 	for rows.Next() {
 		var s ImportBatchSummary
 		var extracting bool
-		if err := rows.Scan(&s.ID, &s.Kind, &s.CreatedAt, &extracting, &s.Pending); err != nil {
+		if err := rows.Scan(&s.ID, &s.Kind, &s.ClientID, &s.CreatedAt, &extracting, &s.Pending); err != nil {
 			return nil, err
 		}
 		s.Status = "review"
@@ -272,7 +279,7 @@ func (q Q) ClaimImportFiles(ctx context.Context, now time.Time, lease time.Durat
 				OR (status='extracting' AND claimed_until<$1)
 			ORDER BY created_at, position LIMIT $3 FOR UPDATE SKIP LOCKED)
 		RETURNING f.id, f.batch_id, f.workspace_id, f.position, f.name, f.size, f.content_type, f.object_key, f.entry_index,
-			f.chunks_done, f.attempts, b.kind`, now, now.Add(lease), n)
+			f.chunks_done, f.attempts, b.kind, b.client_id`, now, now.Add(lease), n)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +288,7 @@ func (q Q) ClaimImportFiles(ctx context.Context, now time.Time, lease time.Durat
 	for rows.Next() {
 		var f ImportFile
 		if err := rows.Scan(&f.ID, &f.BatchID, &f.WorkspaceID, &f.Position, &f.Name, &f.Size, &f.ContentType, &f.ObjectKey,
-			&f.EntryIndex, &f.ChunksDone, &f.Attempts, &f.Kind); err != nil {
+			&f.EntryIndex, &f.ChunksDone, &f.Attempts, &f.Kind, &f.ClientID); err != nil {
 			return nil, err
 		}
 		list = append(list, f)

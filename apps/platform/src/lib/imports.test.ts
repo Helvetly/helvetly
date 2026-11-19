@@ -112,6 +112,22 @@ test('reopens the newest batch that is still being read or has pending records',
   expect(resumable([{ ...base, id: 'done', status: 'review', pending: 0 }])).toBeNull()
 })
 
+test('offers only the unfinished batch of the same client scope', () => {
+  const base = {
+    kind: 'invoices' as const,
+    created_at: '2026-11-09T10:00:00Z',
+    status: 'review' as const,
+  }
+  const batches = [
+    { ...base, id: 'other', client_id: 'cli_2', pending: 1 },
+    { ...base, id: 'mine', client_id: 'cli_1', pending: 1 },
+    { ...base, id: 'any', client_id: null, pending: 1 },
+  ]
+  expect(resumable(batches, 'cli_1')?.id).toBe('mine')
+  expect(resumable(batches)?.id).toBe('any')
+  expect(resumable(batches.slice(0, 2))).toBeNull()
+})
+
 const ok: CommitResult = {
   id: 'a',
   status: 'created',
