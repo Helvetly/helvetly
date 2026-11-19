@@ -71,9 +71,9 @@ func TestHandler(t *testing.T) {
 		{"api on another host (the dev proxy)", "GET", "localhost:3333", "/w/acme/api/v1/public/portal/scope", 418, "", seen{"/api/v1/public/portal/scope", "wsp_a", true}},
 		{"scoped page", "GET", "portal.example.com", "/w/acme/invoices/", 418, "", seen{"/invoices/", "wsp_a", true}},
 		{"scoped api", "POST", "PORTAL.example.com", "/w/beta/api/v1/public/portal/auth/start", 418, "", seen{"/api/v1/public/portal/auth/start", "wsp_b", true}},
-		{"retired slug page redirects", "GET", "portal.example.com", "/w/acme-old/invoices/?x=1", 301, "/w/acme/invoices/?x=1", seen{}},
+		{"retired slug page redirects", "GET", "portal.example.com", "/w/acme-old/invoices/?x=1", 302, "/w/acme/invoices/?x=1", seen{}},
 		{"retired slug api still answers", "GET", "portal.example.com", "/w/acme-old/api/v1/public/portal/session", 418, "", seen{"/api/v1/public/portal/session", "wsp_a", true}},
-		{"upper case redirects", "GET", "portal.example.com", "/w/ACME/", 301, "/w/acme/", seen{}},
+		{"upper case redirects", "GET", "portal.example.com", "/w/ACME/", 302, "/w/acme/", seen{}},
 		{"no trailing slash", "GET", "portal.example.com", "/w/acme", 301, "/w/acme/", seen{}},
 		{"unknown slug page: the 404 page", "GET", "portal.example.com", "/w/nobody/login/", 418, "", seen{"/w/nobody/login/", "", false}},
 		{"unknown slug api", "GET", "portal.example.com", "/w/nobody/api/v1/public/portal/scope", 404, "", seen{}},
@@ -86,6 +86,10 @@ func TestHandler(t *testing.T) {
 			h.ServeHTTP(rec, req)
 			if rec.Code != tc.status || rec.Header().Get("Location") != tc.location || got != tc.next {
 				t.Fatalf("%d %q %+v, want %d %q %+v", rec.Code, rec.Header().Get("Location"), got, tc.status, tc.location, tc.next)
+			}
+			// Only the trailing-slash redirect may be cached: a retired slug can come back.
+			if noStore := rec.Header().Get("Cache-Control") == "no-store"; tc.status == 302 != noStore {
+				t.Fatalf("Cache-Control %q on %d", rec.Header().Get("Cache-Control"), rec.Code)
 			}
 			if tc.status == 404 && !strings.Contains(rec.Body.String(), `"not_found"`) {
 				t.Fatalf("body %q", rec.Body.String())
@@ -111,6 +115,7 @@ func TestFromName(t *testing.T) {
 	for name, want := range map[string]string{
 		"Müller & Söhne AG":             "mueller-soehne-ag",
 		"Café Zürich":                   "cafe-zuerich",
+		"ÄPFEL Über ÉCOLE":              "aepfel-ueber-ecole", // as the migration's backfill spells it (00027)
 		"Ö":                             "portal-oe",
 		"!!":                            "portal",
 		strings.Repeat("abcdefghij", 5): "abcdefghijabcdefghijabcdefgh",
@@ -140,4 +145,52 @@ func TestSlugGivesOneFromTheName(t *testing.T) {
 	if u, _ := r.CanonicalURL(ctx, store.Workspace{ID: "wsp_d"}); u != "https://portal.example.com/w/studio/" {
 		t.Errorf("CanonicalURL = %q", u)
 	}
+}
+
+// TestRetiredSlugTakenBack: acme → acme-ag → acme again. The redirects of both moves are not cacheable, so a browser
+// that followed the first never loops on the way back.
+func TestRetiredSlugTakenBack(t *testing.T) {
+	f := newFake()
+	h := New("https://portal.example.com", f).Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("GET", "https://portal.example.com"+path, nil))
+		return rec
+	}
+	f.owner["acme-ag"], f.current["wsp_a"] = "wsp_a", "acme-ag"
+	if rec := get("/w/acme/"); rec.Code != 302 || rec.Header().Get("Location") != "/w/acme-ag/" || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("to acme-ag: %d %v", rec.Code, rec.Header())
+	}
+	f.current["wsp_a"] = "acme"
+	if rec := get("/w/acme/"); rec.Code != 200 {
+		t.Fatalf("acme again: %d %v", rec.Code, rec.Header())
+	}
+	if rec := get("/w/acme-ag/"); rec.Code != 302 || rec.Header().Get("Location") != "/w/acme/" || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("back from acme-ag: %d %v", rec.Code, rec.Header())
+	}
+}
+
+// TestLookupsAreRateLimited: past the per-address limit a slug is not even looked up.
+func TestLookupsAreRateLimited(t *testing.T) {
+	f := &countingStore{fakeStore: newFake()}
+	h := New("https://portal.example.com", f).Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	var last int
+	for range lookupsPerMinute + 1 {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("GET", "https://portal.example.com/w/probe-x/api/v1/public/portal/scope", nil))
+		last = rec.Code
+	}
+	if last != http.StatusTooManyRequests || f.lookups != lookupsPerMinute {
+		t.Fatalf("last %d after %d lookups", last, f.lookups)
+	}
+}
+
+type countingStore struct {
+	*fakeStore
+	lookups int
+}
+
+func (c *countingStore) PortalScopeBySlug(ctx context.Context, slug string) (store.PortalScope, error) {
+	c.lookups++
+	return c.fakeStore.PortalScopeBySlug(ctx, slug)
 }

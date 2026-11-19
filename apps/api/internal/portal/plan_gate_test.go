@@ -80,3 +80,29 @@ func TestPortalListsOnlyWorkspacesWithPortal(t *testing.T) {
 		t.Fatalf("session must survive a refused switch: %d", res.StatusCode)
 	}
 }
+
+// The public scope endpoint names a workspace only while its portal is open: on a plan without the portal, or with no
+// client that has it on, it answers like an unknown address.
+func TestScopeOnlyForAnOpenPortal(t *testing.T) {
+	e := scopedEnv(t)
+	billingtest.Wire(t, e.store)
+	billingtest.On(t, e.store, "wsp_a", billing.Business)
+	e.exec(`UPDATE workspaces SET logo_file_id = 'logo1' WHERE id = 'wsp_a'`)
+	e.files.objects[store.WorkspaceLogoKey("wsp_a", "logo1")] = []byte("png")
+	status := func(path string) int {
+		res, _ := e.doAt("/w/studio", "GET", path, nil, nil, "")
+		return res.StatusCode
+	}
+	if status("/scope") != 200 {
+		t.Fatal("open portal")
+	}
+	billingtest.On(t, e.store, "wsp_a", billing.Basic)
+	if s, l := status("/scope"), status("/scope/logo"); s != 404 || l != 404 {
+		t.Fatalf("plan without the portal: %d %d", s, l)
+	}
+	billingtest.On(t, e.store, "wsp_a", billing.Business)
+	e.exec(`UPDATE clients SET portal_enabled = false WHERE workspace_id = 'wsp_a'`)
+	if s, l := status("/scope"), status("/scope/logo"); s != 404 || l != 404 {
+		t.Fatalf("no client with the portal: %d %d", s, l)
+	}
+}

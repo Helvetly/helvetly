@@ -26,10 +26,14 @@ DECLARE
         'help', 'support', 'status', 'docs', 'media', 'mail', 'settings', 'helvetly'];
 BEGIN
     FOR w IN SELECT id, name FROM workspaces ORDER BY created_at, id LOOP
+        -- Umlauts and accents are spelled out before lower(), whose idea of upper case depends on the database's
+        -- locale (in "C" it leaves Ä alone).
         base := rtrim(left(btrim(regexp_replace(
-            translate(
-                replace(replace(replace(replace(lower(w.name), 'ä', 'ae'), 'ö', 'oe'), 'ü', 'ue'), 'ß', 'ss'),
-                'àáâãåèéêëìíîïòóôõùúûýÿçñ', 'aaaaaeeeeiiiiooooouuuyycn'),
+            lower(translate(
+                replace(replace(replace(replace(replace(replace(replace(w.name,
+                    'ä', 'ae'), 'ö', 'oe'), 'ü', 'ue'), 'Ä', 'ae'), 'Ö', 'oe'), 'Ü', 'ue'), 'ß', 'ss'),
+                'àáâãåèéêëìíîïòóôõùúûýÿçñÀÁÂÃÅÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÝÇÑ',
+                'aaaaaeeeeiiiiooooouuuyycnaaaaaeeeeiiiiooooouuuycn')),
             '[^a-z0-9]+', '-', 'g'), '-'), 28), '-');
         IF char_length(base) < 3 THEN
             base := 'portal-' || base;

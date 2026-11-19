@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/tags"
 )
@@ -32,7 +33,12 @@ type Resolver struct {
 	base string // PORTAL_URL, an origin
 	host string
 	db   Store
+	// limit caps the slug lookups per client address: every /w/<x>/… request is one, so probing for slugs is bounded.
+	limit *auth.RateLimiter
 }
+
+// lookupsPerMinute leaves a portal page's own requests (page, prefetches, API calls) well inside it.
+const lookupsPerMinute = 600
 
 // New resolves scopes for portalURL's host; a bad portalURL (refused by config) scopes nothing.
 func New(portalURL string, db Store) *Resolver {
@@ -40,7 +46,7 @@ func New(portalURL string, db Store) *Resolver {
 	if err != nil {
 		u = &url.URL{}
 	}
-	return &Resolver{base: strings.TrimRight(portalURL, "/"), host: u.Host, db: db}
+	return &Resolver{base: strings.TrimRight(portalURL, "/"), host: u.Host, db: db, limit: auth.NewRateLimiter(lookupsPerMinute, time.Minute)}
 }
 
 type ctxKey struct{}
@@ -59,8 +65,8 @@ func WithScope(ctx context.Context, s store.PortalScope) context.Context {
 // Prefix is the path a scope's pages and API calls start with.
 func Prefix(slug string) string { return "/w/" + slug }
 
-// Handler resolves /w/<slug>/…: an unknown slug answers 404, a page under a retired slug redirects (301) to the
-// current one, and a known one goes on to next without the prefix, its scope in the context. Pages are scoped on the
+// Handler resolves /w/<slug>/…: an unknown slug answers 404, a page under a retired slug redirects (302, never
+// cached: a workspace may take a retired slug back, and a cached redirect would then loop) to the current one, and a known one goes on to next without the prefix, its scope in the context. Pages are scoped on the
 // portal's host only (any other serves the platform); API calls on any host, since the portal's development server
 // proxies them from its own. Every other request goes on unchanged.
 func (r *Resolver) Handler(next http.Handler) http.Handler {
@@ -70,6 +76,13 @@ func (r *Resolver) Handler(next http.Handler) http.Handler {
 		api := strings.HasPrefix(rest, "/api/")
 		if !strings.HasPrefix(req.URL.Path, "/w/") || asked == "" || !api && (r.host == "" || !strings.EqualFold(req.Host, r.host)) {
 			next.ServeHTTP(w, req)
+			return
+		}
+		if !r.limit.Allow(req) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":{"code":"rate_limited","message":"Too many requests: try again in a minute."}}` + "\n"))
 			return
 		}
 		scope, err := r.db.PortalScopeBySlug(req.Context(), strings.ToLower(asked))
@@ -86,13 +99,15 @@ func (r *Resolver) Handler(next http.Handler) http.Handler {
 			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		redirect := !ok // /w/<slug> → /w/<slug>/
-		if asked != scope.Slug && !api && (req.Method == http.MethodGet || req.Method == http.MethodHead) {
-			redirect = true
-		}
-		if redirect && !api {
+		page := !api && (req.Method == http.MethodGet || req.Method == http.MethodHead)
+		if !api && (asked != scope.Slug && page || !ok) {
 			target := url.URL{Path: Prefix(scope.Slug) + rest, RawQuery: req.URL.RawQuery}
-			http.Redirect(w, req, target.String(), http.StatusMovedPermanently)
+			status := http.StatusMovedPermanently // only /w/<slug> → /w/<slug>/, which never changes
+			if asked != scope.Slug {
+				status = http.StatusFound
+				w.Header().Set("Cache-Control", "no-store")
+			}
+			http.Redirect(w, req, target.String(), status)
 			return
 		}
 		inner := req.Clone(WithScope(req.Context(), scope))

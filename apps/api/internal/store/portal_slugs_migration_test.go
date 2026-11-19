@@ -18,7 +18,8 @@ func TestPortalSlugsMigration(t *testing.T) {
 		('ws_2', 'Müller  Söhne AG', now() - interval '4 days', NULL),
 		('ws_3', 'API', now() - interval '3 days', NULL),
 		('ws_4', 'Ö', now() - interval '2 days', NULL),
-		('ws_5', 'Gone GmbH', now() - interval '1 day', now())`); err != nil {
+		('ws_5', 'Gone GmbH', now() - interval '1 day', now()),
+		('ws_6', 'ÄPFEL Über ÉCOLE', now() - interval '12 hours', NULL)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := p.UpTo(ctx, 27); err != nil {
@@ -26,7 +27,7 @@ func TestPortalSlugsMigration(t *testing.T) {
 	}
 	q := Q{db: pool}
 	for ws, want := range map[string]string{"ws_1": "mueller-soehne-ag", "ws_2": "mueller-soehne-ag-2", "ws_3": "api-2",
-		"ws_4": "portal-oe", "ws_5": "gone-gmbh"} {
+		"ws_4": "portal-oe", "ws_5": "gone-gmbh", "ws_6": "aepfel-ueber-ecole"} {
 		if got, err := q.CurrentPortalSlug(ctx, ws); err != nil || got != want {
 			t.Errorf("%s: %q %v, want %q", ws, got, err, want)
 		}

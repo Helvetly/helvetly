@@ -69,3 +69,11 @@ func (q Q) SetPortalSlug(ctx context.Context, workspaceID, slug string, now time
 	}
 	return err
 }
+
+// HasPortalClients: the workspace has a live client with the portal on.
+func (q Q) HasPortalClients(ctx context.Context, workspaceID string) (bool, error) {
+	var ok bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM clients WHERE workspace_id = $1 AND portal_enabled AND deleted_at IS NULL)`,
+		workspaceID).Scan(&ok)
+	return ok, err
+}
