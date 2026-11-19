@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { Session } from '@/lib/api'
@@ -25,7 +25,8 @@ function stubApi(onEngagement: () => Response | Promise<Response>) {
   )
 }
 
-async function renderForm() {
+/** `priced`: switch from the default "Paid separately" to Advance, so the price fields show. */
+async function renderForm({ priced = true } = {}) {
   const onOpenChange = vi.fn<(open: boolean) => void>()
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -35,6 +36,7 @@ async function renderForm() {
     </QueryClientProvider>,
   )
   await screen.findByRole('textbox', { name: /Title/ })
+  if (priced) await userEvent.click(screen.getByRole('radio', { name: 'Advance' }))
   return onOpenChange
 }
 
@@ -51,7 +53,7 @@ test('closing a dirty form asks before discarding', async () => {
 
 test('a clean form closes without asking', async () => {
   stubApi(() => Response.json({}))
-  const onOpenChange = await renderForm()
+  const onOpenChange = await renderForm({ priced: false })
 
   await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
   expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -138,10 +140,18 @@ test('the description and a different overage price stay behind their buttons', 
   expect(screen.queryByRole('textbox', { name: /Description/ })).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: /Add description/ }))
   expect(await screen.findByRole('textbox', { name: /Description/ })).toHaveFocus()
+  // The API's limit, counted as on the product form.
+  expect(screen.getByText('0 / 2000')).toBeInTheDocument()
 
   expect(screen.queryByRole('textbox', { name: /Price for extra/ })).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: /Different price for extra hours/ }))
-  expect(await screen.findByRole('textbox', { name: /Price for extra hours/ })).toHaveFocus()
+  const overage = await screen.findByRole('textbox', { name: /Price for extra hours/ })
+  expect(overage).toHaveFocus()
+  // It follows the regular price: the currency and Net/Gross show around it, without pickers of its own.
+  const box = overage.parentElement!
+  expect(box.textContent).toMatch(/^CHF\s*Net$/)
+  await userEvent.click(screen.getByRole('radio', { name: 'Gross' }))
+  expect(box.textContent).toMatch(/^CHF\s*Gross$/)
 })
 
 test('schedule and billing are radio cards; recurring asks "Every"', async () => {
@@ -242,6 +252,7 @@ test('a new engagement waits for the workspace settings before taking its defaul
   settings.resolve(
     Response.json({ data: { currency: 'EUR', vat_registered: false, default_vat_rate: '8.1' } }),
   )
+  await userEvent.click(await screen.findByRole('radio', { name: 'Advance' }))
   expect(await screen.findByRole('button', { name: /Currency.*EUR/ })).toBeVisible()
 })
 
@@ -270,7 +281,10 @@ test("picking a client applies that client's habits to fields not changed yet", 
   renderNew(queryClient)
 
   await userEvent.click(await screen.findByRole('radio', { name: 'Recurring' }))
-  expect(screen.getByRole('radio', { name: 'Advance' })).toBeChecked()
+  // A new engagement starts as "Paid separately", the first choice, until the client's habit says otherwise.
+  const billing = within(screen.getByRole('radiogroup', { name: 'Billing' })).getAllByRole('radio')
+  expect(billing.map((r) => r.getAttribute('value'))).toEqual(['paid', 'advance', 'arrears'])
+  expect(screen.getByRole('radio', { name: 'Paid separately' })).toBeChecked()
   await userEvent.click(screen.getByText('Choose a client'))
   await userEvent.click(await screen.findByRole('option', { name: /Muster AG/ }))
 

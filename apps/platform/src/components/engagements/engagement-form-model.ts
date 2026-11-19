@@ -72,6 +72,8 @@ export const FIELD_ORDER: (keyof FormValues)[] = [
 export const PRESET_MONTHS = [1, 3, 6, 12] as const
 const MAX_QUANTITY_MILLI = 1_000_000_000n
 const MAX_PRICE_CENTS = 10_000_000_000n
+/** As the API's limit (engagements/input.go), counted after trimming. */
+export const DESCRIPTION_MAX = 2000
 
 /** What a new engagement starts with: the workspace's currency and VAT defaults. */
 export type Defaults = { currency: string; vat_registered: boolean; default_vat_rate: string }
@@ -95,7 +97,8 @@ export function emptyValues(
     product_id: '',
     unit: 'hour',
     quantity: '',
-    billing: 'advance',
+    // Most engagements track work already paid; pricing one is the deliberate step.
+    billing: 'paid',
     price_basis: 'net',
     unit_price: '',
     overage_unit_price: '',
@@ -238,7 +241,7 @@ export function validate(values: FormValues): FieldErrors {
     if (rate === null || rate.startsWith('-') || Number(rate) > 100 || Number(rate) === 0)
       errors.vat_rate = translate('enterAVATRateAbove0UpTo100')
   }
-  if (values.description.trim().length > 2000)
+  if (values.description.trim().length > DESCRIPTION_MAX)
     errors.description = translate('useAtMost2000Characters')
   if (values.reference.trim().length > 100) errors.reference = translate('useAtMost100Characters')
   return errors

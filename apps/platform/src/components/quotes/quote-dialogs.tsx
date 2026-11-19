@@ -241,11 +241,12 @@ export function QuoteDecisionDialog({
         error={error}
         tip={translate('optionalEGHowTheClientAnsweredTheClient')}
       >
-        <textarea
+        <TextareaBox
           {...describedBy('quote-decision-note', error)}
           rows={3}
           value={note}
           maxLength={1000}
+          max={1000}
           onChange={(event) => setNote(event.target.value)}
           placeholder={
             accept ? translate('confirmedByPhoneOnMonday') : translate('wentWithAnotherOffer')

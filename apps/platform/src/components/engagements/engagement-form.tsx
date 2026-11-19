@@ -61,6 +61,7 @@ import {
   newValues,
   FALLBACK_DEFAULTS,
   canRollOver,
+  DESCRIPTION_MAX,
   FIELD_ORDER,
   RECURRENCE_OPTIONS,
   serverFieldErrors,
@@ -112,6 +113,12 @@ const SCHEDULE_CHOICES = [
 
 const BILLING_CHOICES = [
   {
+    value: 'paid',
+    title: translate('paidSeparately'),
+    text: translate('paidSeparatelyText'),
+    icon: ReceiptText,
+  },
+  {
     value: 'advance',
     title: translate('advance'),
     text: translate('invoiceTheWholePeriodUpfront'),
@@ -122,12 +129,6 @@ const BILLING_CHOICES = [
     title: translate('arrears'),
     text: translate('invoiceWhatWasDeliveredAfterwards'),
     icon: Hourglass,
-  },
-  {
-    value: 'paid',
-    title: translate('paidSeparately'),
-    text: translate('paidSeparatelyText'),
-    icon: ReceiptText,
   },
 ] as const
 
@@ -407,6 +408,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                       value={values.description}
                       onChange={(event) => set('description', event.target.value)}
                       placeholder={translate('weeklyGermanLessonsForTheSalesTeam')}
+                      max={DESCRIPTION_MAX}
                       tools={
                         <AIWrite
                           field="engagement_description"
@@ -642,17 +644,34 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                           'chargedForAnythingDeliveredBeyondTheCommittedQuantityLeave',
                         )}
                       >
-                        <input
-                          {...describe('overage_unit_price')}
-                          inputMode="decimal"
-                          value={values.overage_unit_price}
-                          onChange={(event) => set('overage_unit_price', event.target.value)}
-                          placeholder={translate('sameAsTheRegularPrice')}
-                          className={cn(
-                            inputClass,
-                            'tabular-nums placeholder:text-placeholder sm:max-w-xs',
-                          )}
-                        />
+                        {/* Follows the regular price's currency and basis, so both show as fixed adornments. */}
+                        <div className="relative sm:max-w-xs">
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                          >
+                            {values.currency}
+                          </span>
+                          <input
+                            {...describe('overage_unit_price')}
+                            inputMode="decimal"
+                            value={values.overage_unit_price}
+                            onChange={(event) => set('overage_unit_price', event.target.value)}
+                            placeholder={translate('sameAsTheRegularPrice')}
+                            className={cn(
+                              inputClass,
+                              'pr-16 pl-13 tabular-nums placeholder:text-placeholder',
+                            )}
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+                          >
+                            {values.price_basis === 'gross'
+                              ? translate('gross')
+                              : translate('net2')}
+                          </span>
+                        </div>
                       </FormField>
                     ) : (
                       <Button

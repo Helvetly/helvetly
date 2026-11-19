@@ -25,6 +25,7 @@ const filled = (over: Partial<FormValues> = {}): FormValues => ({
   ...emptyValues(undefined, 'cli_1', 'Muster AG'),
   title: 'German lessons',
   quantity: '30',
+  billing: 'advance',
   unit_price: '90',
   start_date: '2026-11-01',
   end_date: '2027-01-31',
