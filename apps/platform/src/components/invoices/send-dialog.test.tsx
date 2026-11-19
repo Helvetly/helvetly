@@ -132,3 +132,29 @@ test.each([
   await vi.waitFor(() => expect(posted.body).not.toBeNull())
   expect(posted.body).toEqual({ to: ['a@b.ch'], subject: 'Your invoice', message: 'Hello' })
 })
+
+test('marksTheInvoiceSentWithoutEmail', async () => {
+  const posted = open('invoice')
+  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent without email' }))
+  await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
+})
+
+test('mailDownOffersMarkingSent', async () => {
+  const posted = open('invoice', [
+    http.post<never, Record<string, unknown>>('/api/v1/invoices/:id/send', async ({ request }) => {
+      const body = await request.clone().json()
+      if (body.email === false) return undefined
+      return HttpResponse.json(
+        { error: { code: 'mail_unavailable', message: 'Email is not set up on this server.' } },
+        { status: 503 },
+      )
+    }),
+  ])
+  await vi.waitFor(() => expect(field(/^To/)).toHaveValue(fakeDraft.to.join(', ')))
+  await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+  expect(
+    await screen.findByText(/Mark the invoice as sent, then send the PDF yourself/),
+  ).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent without email' }))
+  await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
+})

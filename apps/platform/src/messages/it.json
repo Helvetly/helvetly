@@ -1046,6 +1046,7 @@
   "emailInstalmentInvoicesWhenIssued": "Invia via email le fatture rateali al momento dell’emissione",
   "emailIsnTSetUpOnThisServerMark": "L’e-mail non è configurata su questo server. Contrassegna il preventivo come inviato, quindi invia tu stesso il PDF.",
   "emailIsnTSetUpOnThisServerMark2": "L’e-mail non è configurata su questo server. Contrassegna il preventivo come inviato e invia tu stesso il PDF.",
+  "emailIsnTSetUpOnThisServerMarkTheInvoice": "L’e-mail non è configurata su questo server. Contrassegna la fattura come inviata, quindi invia tu stesso il PDF.",
   "emailItToTheClient": "Invialo via email al cliente",
   "emailNotSentCopyTheLink": "Email non inviata: copiare il collegamento.",
   "emailRecipientsThisMonth": "Destinatari email questo mese",

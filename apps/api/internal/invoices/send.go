@@ -28,6 +28,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		Cc      []string        `json:"cc"`
 		Subject json.RawMessage `json:"subject"`
 		Message json.RawMessage `json:"message"`
+		Email   *bool           `json:"email"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -42,6 +43,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	if inv.IssuedElsewhere() {
 		return ErrIssuedElsewhere
+	}
+	if body.Email != nil && !*body.Email {
+		return s.markSent(w, r, sess, inv)
 	}
 	if s.mail == nil {
 		return auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up on this server.", nil)
@@ -112,6 +116,20 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		return err
 	}
 	return s.respond(w, r, sess, http.StatusOK, id)
+}
+
+// markSent records an issued invoice as sent without an email (its PDF handed over another way): no delivery, since
+// deliveries are emails that went out. An invoice sent already keeps its first date, so a repeat changes nothing.
+func (s *Service) markSent(w http.ResponseWriter, r *http.Request, sess store.Session, inv store.Invoice) error {
+	if inv.Status == "void" || inv.Status == "replaced" {
+		return invalidState("A voided or replaced invoice cannot be marked as sent.")
+	}
+	if inv.SentAt == nil {
+		if err := s.db.MarkSent(r.Context(), inv.ID, s.now()); err != nil {
+			return fmt.Errorf("mark invoice %s sent: %w", inv.ID, err)
+		}
+	}
+	return s.respond(w, r, sess, http.StatusOK, inv.ID)
 }
 
 // addresses validates and lowercases a recipient list (at most maxRecipients, each once).
