@@ -384,7 +384,7 @@ func abandon(t *testing.T, db *store.Store, ws store.Workspace, at time.Time) {
 		if err != nil {
 			return err
 		}
-		c := store.AICall{ID: "aic_dead", WorkspaceID: ws.ID, Period: store.UsagePeriod(at), Pool: PoolAutomation, Kind: "import",
+		c := store.AICall{ID: "aic_dead_" + ws.ID, WorkspaceID: ws.ID, Period: store.UsagePeriod(at), Pool: PoolAutomation, Kind: "import",
 			Operation: "dead", Step: "0", RateCard: luna.Version, Model: luna.Model, Tier: luna.Tier, Region: luna.Region,
 			ReservedTokens: faultInput + 100, ReservedMicros: luna.Cost(faultInput, 0, 100), CreatedAt: at}
 		if ok, err := q.InsertAICall(ctx, c); err != nil || !ok {
@@ -651,5 +651,67 @@ func TestAnUnfundedPoolIsReported(t *testing.T) {
 	}
 	if !strings.Contains(log.String(), "AI pool refusing calls") || !strings.Contains(log.String(), "reason=unfunded") {
 		t.Fatalf("log = %s", log)
+	}
+}
+
+// failOn makes the database refuse every statement of kind (INSERT, UPDATE) on ai_calls for rows matching when.
+func failOn(t *testing.T, raw *pgxpool.Pool, kind, when string) {
+	t.Helper()
+	_, err := raw.Exec(context.Background(), `CREATE FUNCTION refuse_ai_calls() RETURNS trigger LANGUAGE plpgsql AS
+		$$ BEGIN RAISE EXCEPTION 'injected database failure'; END $$;
+		CREATE TRIGGER refuse_ai_calls BEFORE `+kind+` ON ai_calls FOR EACH ROW WHEN (`+when+`) EXECUTE FUNCTION refuse_ai_calls()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A database error while reserving is an error, never ErrUncertain: callers wait on ErrUncertain without spending a
+// try, so a lasting database failure would keep them waiting forever.
+func TestADatabaseErrorIsNotABusyPool(t *testing.T) {
+	_, raw, ws, _, b := faultDB(t, nov)
+	failOn(t, raw, "INSERT", "true")
+	_, err := b.Generate(context.Background(), newFakeOpenAI(t, modeOK).provider(""), ws, Request{}, faultCall)
+	if err == nil || errors.Is(err, ErrUncertain) || !strings.Contains(err.Error(), "injected database failure") {
+		t.Fatalf("err = %v, want the database error and not ErrUncertain", err)
+	}
+}
+
+// A stale call the sweep cannot settle is logged and skipped: every other workspace's pool is still freed.
+func TestExpireStaleSkipsACallItCannotSettle(t *testing.T) {
+	db, raw, ws, c, b := faultDB(t, nov)
+	other := store.Workspace{ID: "ws_other", Name: "Other", Timezone: "Europe/Zurich"}
+	if err := db.CreateWorkspace(context.Background(), other, other.Timezone, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	abandon(t, db, ws, nov)
+	abandon(t, db, other, nov.Add(time.Second))
+	failOn(t, raw, "UPDATE", "OLD.id = 'aic_dead_ws_reserve'")
+	c.add(staleAfter + time.Second)
+	if err := ExpireStale(context.Background(), db, c.Now()); err == nil || !strings.Contains(err.Error(), "aic_dead_ws_reserve") {
+		t.Fatalf("err = %v, want the poisoned call named", err)
+	}
+	if rows := callRows(t, raw, other); len(rows) != 1 || rows[0].Status != "settled" || rows[0].Failure != "unknown_usage:stale" {
+		t.Fatalf("the other workspace's call = %+v, want it settled by the sweep", rows)
+	}
+	f := newFakeOpenAI(t, modeOK)
+	assertAdmitted(t, b, c, other, f, false)
+	assertInvariants(t, raw, other, f)
+}
+
+// A breakdown the card cannot price is charged by its larger count, the total or input + output, at the highest rate.
+func TestAnInconsistentBreakdownIsChargedItsLargerCount(t *testing.T) {
+	db, _, ws := reserveDB(t)
+	total := int64(50)
+	p := &scripted{input: 100, reply: func(Request) (Reply, error) {
+		return Reply{Text: "ok", Tokens: &total, Usage: &Usage{Input: 100, Output: 30, Model: luna.Model, Tier: "priority"}}, nil
+	}}
+	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
+	call := testCall
+	call.MaxOutput = 1000
+	if _, err := b.Generate(context.Background(), p, ws, Request{}, call); err != nil {
+		t.Fatal(err)
+	}
+	if u := usageOf(t, db, ws, "2026-11"); u.CostMicros != luna.WorstCost(130) || u.CostReserved != 0 {
+		t.Fatalf("usage = %+v, want %d micro-USD for 130 tokens", u, luna.WorstCost(130))
 	}
 }

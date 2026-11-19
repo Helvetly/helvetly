@@ -78,9 +78,7 @@ func (s *Service) process(ctx context.Context, f store.ImportFile) {
 		err = s.extract(ctx, f)
 	}
 	if errors.Is(err, aimodel.ErrUncertain) {
-		if err := s.db.DeferImportFile(ctx, f.ID, f.Attempts, s.now().Add(poolWait), s.now()); err != nil {
-			s.log.ErrorContext(ctx, "defer import file", "file", f.ID, "error", err)
-		}
+		s.deferFile(ctx, f)
 		return
 	}
 	status, reason, retry := "done", (*string)(nil), (*time.Time)(nil)
@@ -106,6 +104,18 @@ func (s *Service) process(ctx context.Context, f store.ImportFile) {
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "record import file", "file", f.ID, "error", err)
+	}
+}
+
+// deferFile queues f again after poolWait without spending its try. A file no longer claimed (its batch cancelled or
+// deleted, or the claim lapsed to another worker) is left as it is.
+func (s *Service) deferFile(ctx context.Context, f store.ImportFile) {
+	err := s.db.DeferImportFile(ctx, f.ID, f.Attempts, s.now().Add(poolWait), s.now())
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		s.log.InfoContext(ctx, "import file no longer claimed, not deferred", "file", f.ID)
+	case err != nil:
+		s.log.ErrorContext(ctx, "defer import file", "file", f.ID, "error", err)
 	}
 }
 
