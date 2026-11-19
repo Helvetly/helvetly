@@ -280,7 +280,7 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
 
         {writable && (
           <Panel title={translate('logDelivery')}>
-            <QuickLog engagementId={engagement.id} unit={unit} current={current} />
+            <QuickLog engagement={engagement} current={current} />
           </Panel>
         )}
 

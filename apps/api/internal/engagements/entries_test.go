@@ -98,6 +98,37 @@ func TestEntryCreateValidation(t *testing.T) {
 	e.fails(b, "POST", "/api/v1/engagements/eng_missing/entries", map[string]any{"quantity": "1"}, 404, "not_found")
 }
 
+// The date's refusal names the day to pick, so the form can show it under the field.
+func TestEntryDateMessages(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	client := e.client(b)
+	open := e.create(b, input(client, nil))
+	ended := e.create(b, input(client, map[string]any{"end_date": "2026-11-10"}))
+	for _, tc := range []struct {
+		name, engagement, date, want string
+	}{
+		{"before the start", open.ID, "2026-10-31", "Pick a date from 1 Nov 2026 (the engagement's start)."},
+		{"in the future", open.ID, "2026-11-17", "Pick a date up to today (16 Nov 2026)."},
+		{"after the end", ended.ID, "2026-11-12", "Pick a date up to 10 Nov 2026 (the engagement's end)."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out struct {
+				Error struct {
+					Details struct {
+						Fields map[string]string `json:"fields"`
+					} `json:"details"`
+				} `json:"error"`
+			}
+			e.do(b, "POST", "/api/v1/engagements/"+tc.engagement+"/entries",
+				map[string]any{"quantity": "1", "date": tc.date}, http.StatusUnprocessableEntity, &out)
+			if got := out.Error.Details.Fields["date"]; got != tc.want {
+				t.Fatalf("date: %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestEntryLogEditDelete(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
