@@ -678,7 +678,10 @@ func (r *renderer) closing(y float64) {
 	var notes []string
 	switch inv.VATMode {
 	case invoicecalc.None:
-		notes = append(notes, l.NotRegistered)
+		// Only a German small business must say why it charges no VAT (§ 19 UStG); elsewhere no note is required.
+		if r.d.Seller.Country == "DE" {
+			notes = append(notes, l.SmallBusinessDE)
+		}
 	case invoicecalc.Inclusive:
 		notes = append(notes, l.InclusiveNote)
 	}
@@ -703,7 +706,7 @@ func (r *renderer) closing(y float64) {
 		block = append(block, r.wrap(n, contentW)...)
 	}
 	if receivable[inv.Kind] {
-		block = append(block, "", fmt.Sprintf(l.PayBy, swissDate(inv.DueDate)))
+		block = append(block, "") // the due date stands in the header
 		if inv.Payment.IBAN != nil {
 			bank := l.BankDetails + ": IBAN " + swissqr.FormatIBAN(*inv.Payment.IBAN)
 			if r.d.BankName != nil {

@@ -20,6 +20,8 @@ import {
 import { useState } from 'react'
 import { expect, userEvent, within } from 'storybook/test'
 
+import { DropOverlay } from '@/components/import/page-drop'
+
 const meta = {
   title: 'Design system/Components',
   parameters: { layout: 'padded' },
@@ -145,5 +147,23 @@ export const SegmentedControl: Story = {
     await expect(within(first).getByRole('radio', { name: 'This quarter' })).toBeChecked()
     // Same label, separate groups: the second control keeps its own choice.
     await expect(within(second).getByRole('radio', { name: 'This month' })).toBeChecked()
+  },
+}
+
+/** Every drop zone: a thin dashed brand edge on a light brand tint, the label in plain text. */
+export const DropZone: Story = {
+  render: () => (
+    // A transform makes the overlay's fixed position relative to this frame instead of the page.
+    <div className="relative h-72 max-w-xl transform-gpu overflow-hidden rounded-xl bg-muted">
+      <DropOverlay title="Drop to import these invoices" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const overlay = canvasElement.querySelector('[data-slot="drop-overlay"] > div')
+    if (!(overlay instanceof HTMLElement)) throw new Error('Expected the drop overlay')
+    await expect(within(overlay).getByText('Drop to import these invoices')).toBeVisible()
+    const style = getComputedStyle(overlay)
+    await expect(style.borderTopWidth).toBe('1px')
+    await expect(style.borderTopStyle).toBe('dashed')
   },
 }

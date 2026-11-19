@@ -88,8 +88,8 @@ export function DropOverlay({ title }: { title: string }) {
       data-slot="drop-overlay"
       className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[2px]"
     >
-      <div className="grid justify-items-center gap-3 rounded-2xl border-2 border-dashed border-primary/40 bg-card px-12 py-10 text-center shadow-elevation-2">
-        <Upload className="size-6 stroke-[1.5]" />
+      <div className="grid justify-items-center gap-3 drop-zone bg-card px-12 py-10 text-center shadow-elevation-2">
+        <Upload className="size-6 stroke-[1.5] text-brand" />
         <p className="text-title-sm font-medium">{title}</p>
         <p className="text-xs text-muted-foreground">
           {translate('pdfPhotosOrSpreadsheetsUpTo25FilesOf')}

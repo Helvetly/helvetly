@@ -43,6 +43,7 @@ type Service struct {
 
 	mail      Mailer // nil: no portal invitations
 	portalURL string
+	register  Register // nil: no UID register checks
 	site      siteResolver
 }
 
@@ -148,6 +149,7 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	s.verifyUID(r.Context(), sess.Workspace.ID, &c)
 	auth.WriteJSON(w, http.StatusCreated, data(c))
 	return nil
 }
@@ -203,6 +205,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	s.verifyUID(r.Context(), sess.Workspace.ID, &after)
 	// The portal turned on, or its address changed while on: the address gets the link.
 	if after.PortalEnabled && PortalLogin(after) != "" && (!before.PortalEnabled || PortalLogin(before) != PortalLogin(after)) {
 		s.invitePortal(r.Context(), sess, after)

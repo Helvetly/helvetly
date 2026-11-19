@@ -20,6 +20,7 @@ import { ApiError } from '@/lib/api'
 import { EINVOICE_FORMATS, useSaveClient, type Client } from '@/lib/clients'
 import { useHabits, withHabits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
+import type { RegisterCompany } from '@/lib/uid-register'
 
 import {
   draftHint,
@@ -42,6 +43,8 @@ import {
 } from './client-form-model'
 import { invitationText, portalLogin, PortalStatus } from './client-portal'
 import { Combobox, COUNTRY_OPTIONS, CURRENCY_OPTIONS, inputClass, TagsInput } from './fields'
+import { RegisterCheckHint, RegisterNameInput } from './uid-register-fields'
+import { registerApplies, registerFill, replacedFields, uidToCheck } from './uid-register-model'
 
 const LANGUAGE_CHOICES = LANGUAGE_OPTIONS.map(({ code, name }) => ({ value: code, label: name }))
 
@@ -90,6 +93,10 @@ export function ClientForm({
   const [countryTouched, setCountryTouched] = useState(
     client ? Boolean(client.country) : initial.country !== emptyValues().country,
   )
+  // The last company picked from the UID register: what it replaced, for undo.
+  const [filled, setFilled] = useState<{ before: Partial<FormValues>; replaced: string[] } | null>(
+    null,
+  )
   const [customTerms, setCustomTerms] = useState(
     () => !TERM_PRESETS.includes(initial.payment_terms_days),
   )
@@ -106,6 +113,24 @@ export function ClientForm({
       setErrors((current) =>
         Object.fromEntries(Object.entries(current).filter(([key]) => key !== field)),
       )
+  }
+
+  const pickCompany = (company: RegisterCompany) => {
+    const fill = registerFill(values, company)
+    const before = Object.fromEntries(
+      Object.keys(fill).map((field) => [field, values[field as keyof FormValues]]),
+    )
+    setValues((current) => ({ ...current, ...fill }))
+    setErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([field]) => !(field in fill))),
+    )
+    setFilled({ before, replaced: replacedFields(values, fill) })
+  }
+  const undoFill = () => {
+    if (!filled) return
+    setValues((current) => ({ ...current, ...filled.before }))
+    setFilled(null)
+    document.getElementById(fieldId('name'))?.focus()
   }
 
   const focusFirstError = (found: FieldErrors) => {
@@ -217,14 +242,34 @@ export function ClientForm({
               label={company ? translate('companyName') : translate('fullName')}
               error={errors.name}
               required
+              hint={
+                filled && (
+                  <output>
+                    {filled.replaced.length
+                      ? translate('filledFromUIDRegisterReplaced', {
+                          fields: filled.replaced.join(', '),
+                        })
+                      : translate('filledFromUIDRegister')}{' '}
+                    <button
+                      type="button"
+                      onClick={undoFill}
+                      className="font-medium text-foreground underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
+                    >
+                      {translate('undo')}
+                    </button>
+                  </output>
+                )
+              }
             >
-              <input
+              <RegisterNameInput
                 {...describe('name')}
                 required
+                lookup={registerApplies(values)}
                 value={values.name}
                 autoComplete={company ? 'organization' : 'name'}
                 placeholder={company ? translate('musterAG') : translate('annaMuster')}
-                onChange={(event) => set('name', event.target.value)}
+                onChange={(name) => set('name', name)}
+                onPick={pickCompany}
                 className={inputClass}
               />
             </FormField>
@@ -410,6 +455,7 @@ export function ClientForm({
             label={translate('vatUIDNumber')}
             error={errors.vat_number}
             tip={translate('swissUIDLikeCHE123456789MWSTOr')}
+            hint={uidToCheck(values.vat_number) && <RegisterCheckHint vat={values.vat_number} />}
           >
             <input
               {...describe('vat_number')}
@@ -705,6 +751,10 @@ export function ClientForm({
           )
           element?.scrollIntoView({ block: 'center' })
           element?.focus()
+        }}
+        // Escape in an open suggestion list closes the list, not the drawer.
+        onEscapeKeyDown={(event) => {
+          if (document.activeElement?.closest('[data-suggesting]')) event.preventDefault()
         }}
         showCloseButton={false}
         className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"

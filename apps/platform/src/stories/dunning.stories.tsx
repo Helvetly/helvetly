@@ -296,15 +296,17 @@ export const InvoiceCard: Story = {
     },
   },
   render: () => (
-    <div className="max-w-md">
-      <DunningCard invoice={invoice} canManage />
-    </div>
+    <TooltipProvider>
+      <div className="max-w-md">
+        <DunningCard invoice={invoice} canManage />
+      </div>
+    </TooltipProvider>
   ),
   play: async ({ canvasElement }) => {
     state = fresh()
     const page = within(canvasElement)
     await expect(await page.findByText('Zahlungserinnerung goes out on 15 Dec 2026.')).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'Send Zahlungserinnerung now' }))
+    await userEvent.click(page.getByRole('button', { name: 'Send reminder' }))
     await expect(await page.findByText('Letzte Mahnung goes out on 29 Dec 2026.')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Pause' }))
     await expect(
@@ -312,7 +314,7 @@ export const InvoiceCard: Story = {
     ).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Resume' }))
     // The buttons stay disabled (pointer-events: none) until the resume request settles.
-    const sendFinal = await page.findByRole('button', { name: 'Send Letzte Mahnung now' })
+    const sendFinal = await page.findByRole('button', { name: 'Send final reminder' })
     await waitFor(() => expect(sendFinal).toBeEnabled())
     await userEvent.click(sendFinal)
     await expect(await page.findByText('All reminders were sent.')).toBeVisible()
@@ -323,6 +325,8 @@ export const InvoiceCard: Story = {
         .map((link) => link.textContent),
     ).toEqual(['Zahlungserinnerung', 'Letzte Mahnung'])
     await expect(within(sent).getByText('interest CHF 2.05')).toBeVisible()
+    await expect(within(sent).getAllByText('To ap@kunde.ch · by Anna Muster')).toHaveLength(2)
+    await expect(sent.querySelectorAll('time[datetime="2026-11-09T09:00:00Z"]')).toHaveLength(2)
     await expect(page.queryByRole('button')).not.toBeInTheDocument()
   },
 }
@@ -330,4 +334,51 @@ export const InvoiceCard: Story = {
 export const InvoiceCardDark: Story = {
   ...InvoiceCard,
   parameters: { ...InvoiceCard.parameters, dark: true },
+}
+
+/** Dunning is off for this invoice: Pause has nothing to stop, so it is disabled and its tooltip says why; one sent by the hourly job reads "automatically". */
+export const InvoiceCardDunningOff: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoices/:id/dunning', () =>
+          HttpResponse.json({
+            data: {
+              ...fresh(),
+              enabled: false,
+              next: { level: 2, levels: 2, title: 'Letzte Mahnung', due_on: '2026-12-29' },
+              notices: [
+                {
+                  level: 1,
+                  levels: 2,
+                  title: 'Zahlungserinnerung',
+                  sent_at: '2026-11-09T09:00:00Z',
+                  sent_on: '2026-11-09',
+                  open_amount: '1081.00',
+                  fee: '0.00',
+                  interest: '0.00',
+                  total: '1081.00',
+                  interest_rate: '0',
+                  interest_from: null,
+                  email: 'ap@kunde.ch',
+                  sent_by: null,
+                },
+              ],
+            } satisfies Dunning,
+          }),
+        ),
+      ],
+    },
+  },
+  render: InvoiceCard.render,
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const pause = await page.findByRole('button', { name: 'Pause' })
+    await expect(pause).toBeDisabled()
+    await userEvent.hover(pause.parentElement ?? pause)
+    await expect(await body.findByRole('tooltip')).toHaveTextContent('nothing to pause')
+    await expect(page.getByRole('button', { name: 'Send final reminder' })).toBeEnabled()
+    await expect(page.getByText('To ap@kunde.ch · automatically')).toBeVisible()
+  },
 }

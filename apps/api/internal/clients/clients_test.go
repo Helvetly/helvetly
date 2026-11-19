@@ -82,6 +82,12 @@ type env struct {
 
 func newEnv(t *testing.T) *env {
 	t.Helper()
+	return newEnvWith(t, nil)
+}
+
+// newEnvWith is newEnv with a UID register (nil: none).
+func newEnvWith(t *testing.T, register Register) *env {
+	t.Helper()
 	t.Parallel()
 	st, _ := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -94,6 +100,9 @@ func newEnv(t *testing.T) *env {
 	mux := http.NewServeMux()
 	a.Register(mux)
 	svc := New(st, a, files, discard)
+	if register != nil {
+		svc.SetRegister(register)
+	}
 	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)

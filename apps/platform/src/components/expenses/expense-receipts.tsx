@@ -45,7 +45,7 @@ export function ReceiptDrop({
     <div
       data-over={over || undefined}
       className={cn(
-        'relative grid justify-items-center gap-1 rounded-xl border border-dashed border-border px-4 text-center text-[13px] text-muted-foreground transition-colors duration-150 hover:border-foreground/25 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-primary/50 data-over:bg-muted/50',
+        'relative grid justify-items-center gap-1 rounded-xl border border-dashed border-border px-4 text-center text-[13px] text-muted-foreground transition-colors duration-150 hover:border-foreground/25 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-brand-solid/45 data-over:bg-brand-surface/70',
         compact ? 'py-5' : 'py-8',
       )}
     >

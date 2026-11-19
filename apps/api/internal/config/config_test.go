@@ -137,13 +137,17 @@ func TestLoad(t *testing.T) {
 		{"KSeF API", map[string]string{"AUTH_DEV_SIGNIN": "true", "KSEF_API_URL": "https://api-test.ksef.mf.gov.pl/v2"}, "",
 			func(c Config) bool { return c.KSeFAPI == "https://api-test.ksef.mf.gov.pl/v2" }},
 		{"KSeF API over plain HTTP", map[string]string{"AUTH_DEV_SIGNIN": "true", "KSEF_API_URL": "http://api-test.ksef.mf.gov.pl/v2"}, "KSEF_API_URL", nil},
+		{"UID register on by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "",
+			func(c Config) bool { return c.UIDRegisterURL == "https://www.uid-wse.admin.ch/V5.0/PublicServices.svc" }},
+		{"UID register off", map[string]string{"AUTH_DEV_SIGNIN": "true", "UID_REGISTER_URL": "off"}, "", func(c Config) bool { return c.UIDRegisterURL == "" }},
+		{"UID register over plain HTTP", map[string]string{"AUTH_DEV_SIGNIN": "true", "UID_REGISTER_URL": "http://www.uid-wse.admin.ch/V5.0/PublicServices.svc"}, "UID_REGISTER_URL", nil},
 		{"bad values", map[string]string{"AUTH_DEV_SIGNIN": "yes please", "SMTP_TLS": "ssl", "SMTP_PORT": "0", "SESSION_TTL": "a week",
 			"MAIL_FROM": "not an address"}, "AUTH_DEV_SIGNIN", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"

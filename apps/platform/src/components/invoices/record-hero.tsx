@@ -8,7 +8,7 @@ import { translate } from '@/lib/i18n'
 
 /**
  * A document at a glance (invoice, quote): who it is for, linked to the client (so its number need not be
- * repeated), the amount with its state, then its dates and linked records as labelled facts in one row.
+ * repeated), the amount with its state, and beside it its dates and linked records as labelled facts.
  */
 export function RecordHero({
   label,
@@ -32,28 +32,33 @@ export function RecordHero({
   return (
     <section
       aria-label={translate('documentSummary')}
-      className="grid gap-5 rounded-xl bg-card p-5 shadow-elevation-1"
+      className="grid gap-4 rounded-xl bg-card p-5 shadow-elevation-soft sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-6"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="grid min-w-0 gap-1.5">
-          <span className="text-caption text-muted-foreground">{label}</span>
-          <RecordLink
-            href={`/clients?id=${encodeURIComponent(client.id)}`}
-            className="group flex min-w-0 items-center gap-2.5 rounded-md text-body font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <Initials name={client.name} className="size-8 text-caption" />
-            <span className="truncate underline-offset-2 group-hover:underline">{client.name}</span>
-            <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-          </RecordLink>
+      <div className="grid min-w-0 content-start gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="grid min-w-0 gap-1.5">
+            <span className="text-caption text-muted-foreground">{label}</span>
+            <RecordLink
+              href={`/clients?id=${encodeURIComponent(client.id)}`}
+              className="group flex min-w-0 items-center gap-2.5 rounded-md text-body font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <Initials name={client.name} className="size-8 text-caption" />
+              <span className="truncate underline-offset-2 group-hover:underline">
+                {client.name}
+              </span>
+              <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+            </RecordLink>
+          </div>
+          {badge}
         </div>
-        {badge}
+        <p className="flex items-baseline gap-2 leading-none tabular-nums">
+          <span className="text-body text-muted-foreground">{currency}</span>
+          <span className="text-display font-normal tracking-[-0.025em]">{amount}</span>
+        </p>
+        {progress}
       </div>
-      <p className="flex items-baseline gap-2 leading-none tabular-nums">
-        <span className="text-body text-muted-foreground">{currency}</span>
-        <span className="text-display font-normal tracking-[-0.025em]">{amount}</span>
-      </p>
-      {progress}
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-border/60 pt-4 text-body-sm sm:flex sm:flex-wrap sm:gap-x-10">
+      {/* Phones: one row under the amount. Wider: a column of its own beside it, so the facts balance the amount. */}
+      <dl className="grid grid-cols-2 content-start gap-x-6 gap-y-3 border-t border-border/60 pt-4 text-body-sm sm:min-w-36 sm:grid-cols-1 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
         {children}
       </dl>
     </section>

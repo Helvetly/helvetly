@@ -73,6 +73,10 @@ export type Client = {
   portal_invited_at?: string | null
   /** The client's first portal sign-in; null before it. */
   portal_signed_in_at?: string | null
+  /** The UID under which the Swiss UID register lists the client as active (missing from an older API). */
+  verified_uid?: string | null
+  /** When the register last confirmed it. */
+  uid_verified_at?: string | null
   contacts: Contact[]
   billing_email: string | null
   is_draft: boolean

@@ -140,11 +140,16 @@ export function PdfView({
   }, [])
 
   return (
-    <div
+    <section
       role="document"
       aria-label={title}
       aria-busy={!state}
-      className={cn('overflow-auto bg-muted/50 dark:bg-background', className)}
+      // Its own scroller: reachable by keyboard, and the wheel never carries over to the drawer around it.
+      tabIndex={0}
+      className={cn(
+        'overflow-auto overscroll-contain bg-muted/50 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset dark:bg-background',
+        className,
+      )}
     >
       <div
         ref={frame}
@@ -172,7 +177,7 @@ export function PdfView({
           <Sheet />
         )}
       </div>
-    </div>
+    </section>
   )
 }
 

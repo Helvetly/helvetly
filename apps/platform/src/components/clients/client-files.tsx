@@ -224,10 +224,10 @@ export function ClientFiles({ clientId }: { clientId: string }) {
       {over && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-xl border-2 border-dashed border-primary/40 bg-card/90 text-body"
+          className="pointer-events-none absolute inset-0 z-10 grid place-items-center drop-zone bg-card text-body"
         >
           <span className="flex items-center gap-2 font-medium">
-            <Upload className="size-4" />
+            <Upload className="size-4 text-brand" />
             {translate('dropToUploadToThisClient')}
           </span>
         </div>
