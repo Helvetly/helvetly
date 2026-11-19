@@ -223,7 +223,7 @@ func (r *Resolver) URLOf(ctx context.Context, s store.PortalScope) (string, erro
 
 // originAPI are the paths any host may reach: the health checks, and the origin's certificate question.
 func originAPI(path string) bool {
-	return path == "/api/health" || path == "/api/ready" || path == "/api/v1/public/portal/domain-check"
+	return path == "/api/health" || path == "/api/ready"
 }
 
 // byDomain serves a request for a host that is not the installation's own: an active domain's portal (its pages and

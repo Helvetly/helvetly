@@ -62,18 +62,24 @@ are the reference.
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there; plain `/login` keeps the cross-workspace
   search. Links in email come from `CanonicalURL`.
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
-  `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host (`workspace_domains`: one per workspace and hostname
-  among rows not removed). No CDN API: the workspace adds a CNAME to the target and the TXT record
-  `_helvetly-verify.<host>` (an HMAC of workspace and host under `SECRET_KEY`), the job checks both through DNS, then
-  `https://<host>/api/health`, which makes the origin's Caddy get the certificate on demand after asking
-  `domain-check` (200 only once the TXT record proved ownership). Pending domains are checked with backoff, the rest
-  daily; one pending or failed for 14 days is released, and a workspace with the TXT record takes over a name another
-  holds without proof; a plan without the feature turns it off, a deleted workspace keeps it for 30 days.
+  `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
+  through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not
+  removed). The workspace adds a CNAME to the target and the TXT record Cloudflare names (`_cf-custom-hostname.<host>`);
+  the row is stored first (it reserves the name), then the custom hostname is made (`context.WithoutCancel`, deleted
+  again when the row cannot be stored). Active only when Cloudflare reports the hostname and its certificate active
+  and the app found the TXT record itself once (`verified_at`): Cloudflare activates on the CNAME alone. Checks go by
+  id (`Get`, or `Refresh` while on the way), never a zone listing; a duplicate on create is adopted only when it is
+  the domain's own or no other row ever held it, else made afresh, and "taken" only when the zone does not have it.
+  Due domains are claimed with `FOR UPDATE SKIP LOCKED` and checked by a small pool; the client spaces calls (two a
+  second) and pauses on 429. One pending or failed for 14 days is released (its hostname deleted), not a proven one
+  the plan turned off; a workspace with the take-over TXT record `_helvetly-verify.<host>` (an HMAC of workspace and
+  host under `SECRET_KEY`) takes over a name another holds without proof; a deleted workspace keeps it for 30 days. A
+  daily cleanup deletes the zone's hostnames of names the app had that no domain holds.
   `portalscope` resolves an active domain's Host first (cache of 15 s, at most 10 000 hosts, uncached lookups rate
   limited per client address, `Forget` on change, the plan checked): pages at the root, only
   `/api/v1/public/portal/…` and the health checks as API, never the platform. Any other foreign host (not ours, not
-  loopback) gets 404 for everything but the health checks and `domain-check`. `/w/<slug>/` pages 302 to the active
-  domain, and `CanonicalURL` returns it. Cookies stay host-only and named per workspace.
+  loopback) gets 404 for everything but the health checks. `/w/<slug>/` pages 302 to the active domain, and
+  `CanonicalURL` returns it. Cookies stay host-only and named per workspace.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Workspace deletion** is soft: `workspaces.deleted_at`, members, sessions and open invitations end, and a
@@ -220,7 +226,7 @@ artifact. A step added to `check` goes into a CI job too. Rules:
   `PUBLIC_URL` (platform origin: Google redirect, passkey RP ID), `PORTAL_URL` (the portal's origin, another host), `DOCS_URL` (the docs' origin, whose API playground gets CORS on the public catalogue, bearer only; default `http://localhost:8003` next to a local `PUBLIC_URL`, else off), `MEDIA_URL` (optional origin on another host than both; when set, downloads redirect to signed `/api/media/{token}` links there, ahead of presigning and `S3_PROXY_DOWNLOADS`; https unless local), `SECRET_KEY` (base64, 32 bytes;
   empty only with `AUTH_DEV_SIGNIN`), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (both or neither),
   `SMTP_*` and `MAIL_FROM` (email sign-in needs `SMTP_HOST` or `AUTH_DEV_SIGNIN`), `SESSION_TTL`,
-  `COOKIE_SECURE`, `TRUSTED_PROXY_CIDRS` (CIDRs of reverse proxies whose `X-Forwarded-For` is believed; empty = the TCP peer; `cloudflare` adds Cloudflare's edge ranges, and `CF-IPCountry` is believed only from them, for the billing currency), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`/`S3_SECRET_KEY` (required), `S3_ADDRESSING` (path or virtual), `S3_OBJECT_LOCK_DAYS`/`S3_OBJECT_LOCK_MODE` (0 = protection off; > 0 requires a bucket with Object Lock or the API refuses to start), `S3_PROXY_DOWNLOADS` (default false: downloads redirect to presigned S3 URLs; true streams them through the API, for a bucket the browser cannot reach, such as localhost behind `pnpm dev:tunnel`, which sets it), `KSEF_API_URL` (https, optional; empty = no KSeF API). `OPENAI_MODEL` (a model with a rate card in `aimodel.Cards`) and `CUSTOM_DOMAIN_TARGET` (custom portal domains: a hostname reaching the binary without a CDN proxy; empty = off; `HELVETLY_E2E_FAKE_DOMAINS` only in E2E). `OPENAI_FALLBACK_MODEL` (optional, empty = none; another model with a rate card, asked once when `OPENAI_MODEL` stays overloaded or rate limited after its retries, reserved and priced at its own card). With `STRIPE_SECRET_KEY`: `STRIPE_WEBHOOK_SECRET` (one `whsec_…`, or the new and old separated by commas only while rotating the secret; the endpoint's API version does not matter, since handlers read objects again). `AUTH_DEV_SIGNIN` is never set in production. On a public (non-localhost) host the API refuses a plain-http
+  `COOKIE_SECURE`, `TRUSTED_PROXY_CIDRS` (CIDRs of reverse proxies whose `X-Forwarded-For` is believed; empty = the TCP peer; `cloudflare` adds Cloudflare's edge ranges, and `CF-IPCountry` is believed only from them, for the billing currency), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`/`S3_SECRET_KEY` (required), `S3_ADDRESSING` (path or virtual), `S3_OBJECT_LOCK_DAYS`/`S3_OBJECT_LOCK_MODE` (0 = protection off; > 0 requires a bucket with Object Lock or the API refuses to start), `S3_PROXY_DOWNLOADS` (default false: downloads redirect to presigned S3 URLs; true streams them through the API, for a bucket the browser cannot reach, such as localhost behind `pnpm dev:tunnel`, which sets it), `KSEF_API_URL` (https, optional; empty = no KSeF API). `OPENAI_MODEL` (a model with a rate card in `aimodel.Cards`) and `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ZONE_ID`/`CUSTOM_DOMAIN_TARGET` (custom portal domains through Cloudflare for SaaS: all three or none; the target is the zone's proxied fallback origin, normally `PORTAL_URL`'s host; `CLOUDFLARE_API_URL` and `HELVETLY_E2E_FAKE_DOMAINS` only for tests). `OPENAI_FALLBACK_MODEL` (optional, empty = none; another model with a rate card, asked once when `OPENAI_MODEL` stays overloaded or rate limited after its retries, reserved and priced at its own card). With `STRIPE_SECRET_KEY`: `STRIPE_WEBHOOK_SECRET` (one `whsec_…`, or the new and old separated by commas only while rotating the secret; the endpoint's API version does not matter, since handlers read objects again). `AUTH_DEV_SIGNIN` is never set in production. On a public (non-localhost) host the API refuses a plain-http
   `PUBLIC_URL`/`PORTAL_URL` and `COOKIE_SECURE=false`; database dials time out after 10 s unless the URL sets
   `connect_timeout`.
 
