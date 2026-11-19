@@ -50,9 +50,14 @@ test('a template built on an uploaded PDF is filled for a client and filed in Do
   })
   expect(object(template.document).id).toBe(sourceDoc.id)
 
-  // Filled in the browser: Documents → Templates → the template, for the client.
-  await page.goto('/documents?view=templates')
-  await page.getByRole('button', { name: new RegExp(`^${name}`) }).click()
+  // Filled in the browser: Documents → Create → Document from template…, the template, the client.
+  await page.goto('/documents')
+  await page.getByRole('button', { name: 'Create', exact: true }).click()
+  await page.getByRole('menuitem', { name: /^Document from template…/ }).click()
+  await page
+    .getByRole('dialog', { name: 'New document from a template' })
+    .getByRole('button', { name: new RegExp(`^${name}`) })
+    .click()
   await page.getByRole('searchbox', { name: 'Search clients' }).fill(text(client.name))
   await page
     .getByRole('button', { name: new RegExp(`^${text(client.name)}`) })

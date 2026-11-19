@@ -41,12 +41,97 @@ export const FolderStaysInAllFiles: Story = {
   },
 }
 
+/** Templates are only listed and edited here: New template is the one action, the page's are gone. */
 export const Templates: Story = {
   parameters: pageParameters('/documents', { view: 'templates' }),
-  play: shows('Power of attorney'),
+  play: async (context) => {
+    await shows('Power of attorney')?.(context)
+    const body = within(context.canvasElement.ownerDocument.body)
+    await expect(body.getByRole('button', { name: 'New template' })).toBeVisible()
+    for (const name of ['Upload', 'Create', 'Organize with AI', 'Use a template…'])
+      expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
+    await expect(body.queryByRole('button', { name: 'More' })).toBeNull()
+  },
 }
 export const TemplatesDark = dark(Templates)
 export const TemplatesPhone = phone(Templates)
+
+/** A row opens the template to edit, never the fill flow. */
+export const TemplateRowEdits: Story = {
+  parameters: pageParameters('/documents', { view: 'templates' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole('button', { name: /^Power of attorney/ }, { timeout: 8000 }),
+    )
+    await expect(
+      await body.findByRole('dialog', { name: 'Power of attorney' }, { timeout: 8000 }),
+    ).toBeVisible()
+  },
+}
+
+/** Signatures, like Templates and Trash, drops the page's file actions for its own one. */
+export const Signatures: Story = {
+  parameters: pageParameters('/documents', { view: 'signatures' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(
+      await body.findByRole('button', { name: 'PDF for signature' }, { timeout: 8000 }),
+    ).toBeVisible()
+    for (const name of ['Upload', 'Create', 'Organize with AI'])
+      expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
+  },
+}
+
+const noTemplates = http.get('/api/v1/templates', () => HttpResponse.json({ data: [] }))
+
+/** No templates yet: the empty state offers New template, still without the page's actions. */
+export const TemplatesEmpty: Story = {
+  parameters: pageParameters('/documents', { view: 'templates' }, [noTemplates]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await waitFor(() => expect(body.getByText('No templates yet')).toBeVisible(), { timeout: 8000 })
+    await expect(body.getAllByRole('button', { name: 'New template' }).length).toBeGreaterThan(0)
+    for (const name of ['Upload', 'Create', 'Organize with AI'])
+      expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
+  },
+}
+
+/** Create → Document from template… opens the fill flow: pick a template, then a client. */
+export const CreateFromTemplate: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    // In <main>, where the other stories expect it gone from Templates, Signatures and Trash.
+    const main = within(await body.findByRole('main', {}, { timeout: 8000 }))
+    await userEvent.click(await main.findByRole('button', { name: 'Create' }, { timeout: 8000 }))
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.queryByText('Template…')).toBeNull()
+    await expect(menu.getByText('PDF for signature…')).toBeVisible()
+    await expect(menu.getByText('New folder')).toBeVisible()
+    const item = menu.getByRole('menuitem', { name: /^Document from template…/ })
+    await expect(item).toHaveTextContent('A contract or letter filled from a client')
+    await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'))
+    await userEvent.click(item)
+    const drawer = within(await body.findByRole('dialog', { name: 'New document from a template' }))
+    await expect(await drawer.findByText('Power of attorney')).toBeVisible()
+  },
+}
+
+/** With no template yet the item is disabled and says where to make one, never an empty picker. */
+export const CreateFromTemplateNone: Story = {
+  parameters: pageParameters('/documents', {}, [noTemplates]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Create' }, { timeout: 8000 }))
+    const menu = within(await body.findByRole('menu'))
+    const item = menu.getByRole('menuitem', { name: /^Document from template…/ })
+    await waitFor(() => expect(item).toHaveAttribute('data-disabled'))
+    await expect(item).toHaveTextContent(
+      'No templates yet. Create one in Templates → New template.',
+    )
+    await userEvent.keyboard('{Escape}')
+  },
+}
 
 const noFolders = http.get('/api/v1/documents/folders', () => HttpResponse.json({ data: [] }))
 let created: unknown = null

@@ -11,6 +11,7 @@ const screens: [App, string][] = [
   ['platform', 'pages-clients--detail'],
   ['platform', 'pages-invoice-editor--draft-with-lines'],
   ['platform', 'pages-documents--folders-and-files'],
+  ['platform', 'pages-documents--templates'],
   ['platform', 'books-settings--periods-overview'],
   ['platform', 'books-ledger--trial-balance'],
   ['platform', 'books-ledger--loaded'],
