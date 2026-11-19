@@ -8,8 +8,8 @@ import en from '../messages/en.json'
 import { isLegalSlug, LEGAL, readLegal, slugify } from './legal'
 
 // Every public language besides English, and the ones that must translate everything (German predates the legal texts).
-const TRANSLATED = ['de', 'fr', 'it'] as const satisfies readonly Locale[]
-const COMPLETE = ['fr', 'it'] as const satisfies readonly Locale[]
+const TRANSLATED = ['de', 'fr', 'it', 'nl', 'cs', 'sv'] as const satisfies readonly Locale[]
+const COMPLETE = ['fr', 'it', 'nl', 'cs', 'sv'] as const satisfies readonly Locale[]
 
 const messages = (file: string) => join(import.meta.dirname, '../messages', file)
 const content = join(import.meta.dirname, '../../content')

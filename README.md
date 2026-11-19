@@ -65,12 +65,15 @@ The public website, signed-in application and client portal support English (`en
 German (`de-CH`), French (`fr-CH`) and Italian (`it-CH`). The applications' enabled languages are listed
 in `browserLocales` in `packages/i18n/src/locales.json`; enable another language there only after
 translating both applications.
+The public website additionally supports Dutch (`nl-NL`), Czech (`cs-CZ`) and Swedish (`sv-SE`),
+including help, guides and legal texts. These languages are public-only; platform and portal language
+selection falls back to an existing preference, a supported browser language or English.
 The shared `packages/i18n` runtime provides typed keys, ICU messages, interpolation and English fallback.
 User data, API identifiers and the language of issued financial documents remain separate from interface language.
 
 To enable another language, add it to `packages/i18n/src/locales.json`, add its JSON catalogs next to
 `en.json`, and import them into each `src/lib/i18n.ts` (`createMessages({ en, de, fr, it })` in platform and portal,
-`createTranslators({ en, de, fr, it })` on the website).
+`createTranslators` with all public catalogs on the website). Public-only languages stay out of `browserLocales`.
 Translate complete messages; ICU plural rules are available for counts.
 Marketing and documentation keep English at the existing URLs; other languages use prefixes such as `/de/`.
 The website is one static export and one `next dev` server for every configured language: English pages live in

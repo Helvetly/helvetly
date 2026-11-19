@@ -91,9 +91,6 @@ import {
 } from './onboarding-model'
 import { TypedWelcomeTitle } from './welcome-intro'
 
-// The platform keeps one language per page load (a change reloads), so the module-level locale is current.
-const interfaceLanguage = locale
-
 type Errors = Partial<Record<string, string>>
 
 const LANGUAGES: { value: DocLanguage; label: string }[] = [
@@ -102,6 +99,9 @@ const LANGUAGES: { value: DocLanguage; label: string }[] = [
   { value: 'it', label: translate('italiano') },
   { value: 'en', label: translate('english') },
 ]
+
+// Public-site locales do not extend the languages supported by financial documents.
+const interfaceLanguage = LANGUAGES.find(({ value }) => value === locale)?.value
 
 /** What sign-up calls a new workspace (apps/api/internal/auth/signin.go). */
 const DEFAULT_WORKSPACE_NAME = 'My workspace'

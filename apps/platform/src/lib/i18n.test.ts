@@ -9,10 +9,19 @@ afterEach(() => {
 })
 
 describe('platform languages', () => {
-  it('offers the same languages as the public website', () => {
-    expect(configuration.browserLocales.toSorted()).toEqual(
-      Object.keys(configuration.locales).toSorted(),
-    )
+  it('offers only the application languages', () => {
+    expect(configuration.browserLocales).toEqual(['de', 'en', 'fr', 'it'])
+  })
+
+  it.each(['nl', 'cs', 'sv'])('keeps public-only %s out of the application', async (language) => {
+    vi.stubEnv('NEXT_PUBLIC_I18N_MODE', 'browser')
+    window.history.replaceState(null, '', `/clients?lang=${language}`)
+    localStorage.setItem('helvetly.language', language)
+    vi.resetModules()
+    const { translate } = await import('./i18n')
+    const { locales } = await import('@helvetly/i18n')
+    expect(translate('settings')).toBe('Settings')
+    expect(Object.keys(locales)).toEqual(configuration.browserLocales)
   })
 
   it.each([

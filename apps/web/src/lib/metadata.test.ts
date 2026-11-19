@@ -12,7 +12,7 @@ describe('pageMetadata', () => {
       description: 'Beschreibung',
       url: '/de/pricing',
       locale: 'de_CH',
-      alternateLocale: ['en_GB', 'fr_CH', 'it_CH'],
+      alternateLocale: ['en_GB', 'fr_CH', 'it_CH', 'nl_NL', 'cs_CZ', 'sv_SE'],
       images: [{ url: '/og.png', width: 1200, height: 630 }],
     })
     expect(meta.twitter).toMatchObject({ card: 'summary_large_image', title: 'Preise · Helvetly' })
