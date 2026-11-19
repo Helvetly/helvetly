@@ -13,7 +13,7 @@
 1 hex apps/platform/src/components/invoices/plan-card.tsx
 1 hex apps/platform/src/components/onboarding/logo-card.tsx
 3 hex apps/platform/src/components/products/product-detail.tsx
-11 hex apps/platform/src/components/shell/app-sidebar.tsx
+9 hex apps/platform/src/components/shell/app-sidebar.tsx
 1 hex apps/platform/src/components/signatures/ink.ts
 3 hex apps/platform/src/components/signatures/request-drawer.tsx
 3 hex apps/platform/src/components/signatures/signing-page.tsx
@@ -33,7 +33,6 @@
 1 palette apps/platform/src/components/invoices/invoices-page.tsx
 2 palette apps/platform/src/components/invoices/pdf-view.tsx
 13 palette apps/platform/src/components/onboarding/invoice-preview.tsx
-3 palette apps/platform/src/components/shell/app-sidebar.tsx
 2 palette apps/platform/src/components/signatures/request-drawer.tsx
 1 pulse apps/platform/src/components/heidi/message.tsx
 1 pulse apps/platform/src/components/signatures/signing-page.tsx
@@ -79,7 +78,6 @@
 1 shadow apps/platform/src/components/initials.tsx
 1 shadow apps/platform/src/components/invoices/invoice-dialogs.tsx
 1 shadow apps/platform/src/components/onboarding/invoice-preview.tsx
-2 shadow apps/platform/src/components/shell/app-sidebar.tsx
 1 shadow apps/platform/src/components/shell/mobile-tab-bar.tsx
 1 shadow apps/portal/src/components/portal-bits.tsx
 2 shadow packages/ui/src/components/button.tsx
@@ -164,7 +162,7 @@
 12 text-px apps/platform/src/components/products/products-page.tsx
 1 text-px apps/platform/src/components/section-form.tsx
 1 text-px apps/platform/src/components/settings/logo-upload.tsx
-12 text-px apps/platform/src/components/shell/app-sidebar.tsx
+11 text-px apps/platform/src/components/shell/app-sidebar.tsx
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
 5 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
