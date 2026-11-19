@@ -156,3 +156,14 @@ export const CodeStepPhone: Story = {
     )
   },
 }
+
+/** A supplier's own sign-in: its mark and name above the form, Helvetly's logo gone. */
+export const Branded: Story = {
+  args: { workspace: { name: 'Muster Beratung und Treuhand AG' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Muster Beratung und Treuhand AG')).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Client portal' })).toBeVisible()
+    await expect(canvas.getByText('MB')).toBeVisible()
+  },
+}

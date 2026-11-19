@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { FormField } from '@helvetly/ui/components/form-field'
+import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Loader } from '@helvetly/ui/components/loader'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
@@ -34,7 +35,14 @@ import {
   type QuoteDecision,
 } from '@/lib/quotes'
 
-import { cardClass, DownloadLink, EmptyState, PageHeader, RetryAlert } from './portal-bits'
+import {
+  cardClass,
+  DownloadLink,
+  EmptyState,
+  PageHeader,
+  RetryAlert,
+  rowClass,
+} from './portal-bits'
 
 const STATUS: Record<PortalQuote['status'], [Tone, string]> = {
   sent: ['blue', translate('awaitingYourAnswer')],
@@ -181,33 +189,30 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
 
 function QuoteRow({ quote, onAsk }: { quote: PortalQuote; onAsk: (asking: Asking) => void }) {
   return (
-    <li className="grid gap-2.5 px-3 py-3 sm:px-4">
-      <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground max-sm:hidden">
-          <FilePenLine className="size-[18px]" aria-hidden />
-        </span>
+    <li className="grid gap-3 py-3.5">
+      <div className={cn(rowClass, 'py-0')}>
+        <IconTile icon={FilePenLine} variant="row" size="lg" className="max-sm:hidden" />
         <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-body font-medium">{quoteName(quote)}</span>
-            <span className="max-sm:hidden">
-              <QuoteStatus quote={quote} />
-            </span>
-          </span>
+          <span className="truncate text-body font-medium">{quoteName(quote)}</span>
           <span className="truncate text-body-sm text-muted-foreground">{stateText(quote)}</span>
         </span>
-        <span className="shrink-0 text-right text-body font-medium tabular-nums">
+        {/* A column of its own, so badges and amounts line up from row to row. */}
+        <span className="w-36 shrink-0 max-sm:hidden">
+          <QuoteStatus quote={quote} />
+        </span>
+        <span className="shrink-0 text-right text-body font-medium tabular-nums sm:min-w-32">
           {formatMoney(quote.total, quote.currency)}
         </span>
         <QuotePdfLink quote={quote} />
       </div>
       {quote.decision_note && (
-        <p className="text-body-sm break-words text-muted-foreground sm:pl-12">
+        <p className="px-4 text-body-sm break-words text-muted-foreground sm:pr-6 sm:pl-20">
           {translate('yourNote')}
           {quote.decision_note}”
         </p>
       )}
       {isAwaiting(quote) && (
-        <div className="flex gap-2 sm:pl-12">
+        <div className="flex gap-2 px-4 sm:pr-6 sm:pl-20">
           <Button
             aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
             onClick={() => onAsk({ quote, decision: 'accept' })}
@@ -237,7 +242,7 @@ export function PortalQuotes() {
     if (query.isPending) return <Loader label={translate('loadingQuotes')} className="min-h-72" />
     if (query.error)
       return (
-        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
           <RetryAlert what={translate('yourQuotes')} onRetry={() => void query.refetch()} />
         </div>
       )
@@ -259,7 +264,7 @@ export function PortalQuotes() {
   }
 
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('quotes')}>
         {translate('everyQuoteSentToYouEachWithItsPDF')}
       </PageHeader>

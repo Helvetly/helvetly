@@ -61,7 +61,7 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
   const quantity = Number(engagement.quantity)
   const share = period && quantity > 0 ? Number(period.used) / quantity : 0
   return (
-    <li className={cn(cardClass, 'grid content-start gap-4 p-4 sm:p-5')}>
+    <li className={cn(cardClass, 'grid content-start gap-5 p-4 sm:p-6')}>
       <div className="grid gap-0.5">
         <h2 className="text-title-sm font-medium">{engagement.name}</h2>
         <p className="text-body-sm text-muted-foreground">{commitment(engagement)}</p>
@@ -114,14 +114,14 @@ export function PortalEngagements() {
   const query = useQuery({ queryKey: portalKeys.engagements, queryFn: listPortalEngagements })
   const today = civilToday()
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('engagements')}>
         {translate('theWorkAgreedWithYouAndHowMuchOf')}
       </PageHeader>
       {query.isPending ? (
         <Loader className="min-h-52" />
       ) : query.error ? (
-        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
           <RetryAlert what={translate('yourEngagements')} onRetry={() => void query.refetch()} />
         </div>
       ) : query.data.length === 0 ? (
@@ -131,7 +131,7 @@ export function PortalEngagements() {
           </EmptyState>
         </div>
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           {query.data.map((engagement) => (
             <EngagementCard key={engagement.id} engagement={engagement} today={today} />
           ))}

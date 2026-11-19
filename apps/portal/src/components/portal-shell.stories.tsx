@@ -117,3 +117,38 @@ export const DocumentsPhoneDark = dark(DocumentsPhone)
 
 export const ProfilePhone = onPhone(page(<PortalProfile />), 'Tax IDs')
 export const ProfilePhoneDark = dark(ProfilePhone)
+
+const longWorkspace = 'John Doe Consulting und Treuhand GmbH with a long registered name'
+
+/** Tablet width, long supplier name: it is cut short beside the tabs, and its tooltip has all of it. */
+export const LongWorkspaceName: Story = {
+  render: page(<PortalOverview />),
+  globals: { viewport: { value: 'tablet' } },
+  parameters: {
+    ...meta.parameters,
+    viewport: {
+      options: { tablet: { name: 'Tablet', styles: { width: '820px', height: '900px' } } },
+    },
+    msw: {
+      handlers: [
+        http.get(`${P}/session`, () =>
+          HttpResponse.json({ ...portalSession, workspace: { name: longWorkspace } }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const name = await canvas.findByText(longWorkspace)
+    const nav = canvas.getByRole('navigation', { name: 'Portal' })
+    await waitFor(() =>
+      expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
+        nav.getBoundingClientRect().left,
+      ),
+    )
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+    await userEvent.hover(name)
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(longWorkspace)
+  },
+}
