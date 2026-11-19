@@ -24,6 +24,7 @@ type Settings struct {
 	DefaultVATRate   invoicecalc.Percent `json:"default_vat_rate"`
 	IBAN             *string             `json:"iban"`
 	BankName         *string             `json:"bank_name"`
+	BIC              *string             `json:"bic"`
 	Currency         string              `json:"currency"`
 	Language         string              `json:"language"`
 	DefaultTermsDays int                 `json:"default_terms_days"`
@@ -137,7 +138,10 @@ func (s *Service) getSettings(w http.ResponseWriter, r *http.Request, sess store
 	return nil
 }
 
-var settingsKeys = []string{"seller", "vat_registered", "default_vat_mode", "default_vat_rate", "iban", "bank_name", "currency",
+// bicPattern: ISO 9362, bank, country, location and optionally a branch.
+var bicPattern = regexp.MustCompile(`^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$`)
+
+var settingsKeys = []string{"seller", "vat_registered", "default_vat_mode", "default_vat_rate", "iban", "bank_name", "bic", "currency",
 	"language", "default_terms_days", "number_format", "footer", "qr_bill_enabled", "revolut_enabled", "revolut_username", "instalments", "dunning", "logo_file_id", "logo_url", "is_complete", "missing_fields"}
 
 var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number", "legal_form"}
@@ -250,6 +254,13 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 				})
 			case "bank_name":
 				set.BankName = p.text(k, v, 100, nil)
+			case "bic":
+				set.BIC = p.text(k, v, 14, func(v string) (string, string) {
+					if bic := strings.ToUpper(strings.ReplaceAll(v, " ", "")); bicPattern.MatchString(bic) {
+						return bic, ""
+					}
+					return "", "Enter a BIC of 8 or 11 characters, such as UBSWCHZH80A."
+				})
 			case "currency":
 				set.Currency = p.required(k, v, 3, twoDecimalCurrency, "Choose a currency.")
 			case "language":

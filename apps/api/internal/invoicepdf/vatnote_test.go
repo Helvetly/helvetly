@@ -23,7 +23,7 @@ func TestVATNoteAndPaymentBlock(t *testing.T) {
 		{"german small business", noVAT("de", "DE"), []string{"Gemäß § 19 UStG wird keine Umsatzsteuer berechnet."}, nil},
 		{"german small business, english", noVAT("en", "DE"), []string{"No VAT is charged under § 19 UStG (small business)."}, nil},
 		{"registered, exempt line keeps its note", sample("en", 3), []string{"Exempt from VAT (Art. 21 Swiss VAT Act).", "Payment reference: 00 00000 00000 00000 02026 00000"}, []string{"Payable by 05.12.2026."}},
-		{"bank details stay", sample("de", 1), []string{"Zahlbar bis: 05.12.2026", "Bankverbindung: IBAN CH44 3199 9123 0008 8901 2, Zürcher Kantonalbank"}, []string{"Zahlbar bis 05.12.2026."}},
+		{"bank details stay", sample("de", 1), []string{"Zahlbar bis: 05.12.2026", "Bankverbindung: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2"}, []string{"Zahlbar bis 05.12.2026."}},
 	} {
 		text := pageText(t, tt.doc)
 		for _, s := range tt.want {

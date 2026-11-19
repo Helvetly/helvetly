@@ -81,6 +81,7 @@ const settings = {
   default_vat_rate: '8.1',
   iban: null,
   bank_name: null,
+  bic: null,
   currency: 'CHF',
   language: 'de',
   default_terms_days: 30,

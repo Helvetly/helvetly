@@ -33,6 +33,7 @@ export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSe
   default_vat_rate: '8.1',
   iban: 'CH93 0076 2011 6238 5295 7',
   bank_name: null,
+  bic: null,
   currency: 'CHF',
   language: 'de',
   default_terms_days: 30,

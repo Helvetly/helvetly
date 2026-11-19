@@ -8,6 +8,7 @@ import (
 )
 
 func TestOptionalClientAndContractNumbers(t *testing.T) {
+	const bank = "Bankverbindung: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2"
 	tests := []struct {
 		name               string
 		display, contract  *string
@@ -19,7 +20,7 @@ func TestOptionalClientAndContractNumbers(t *testing.T) {
 		{"blank prints no client number", ptr(""), nil, nil, nil, []string{"Kundennummer"}, []string{"Kundennummer"}},
 		{"own text replaces the number", ptr("K-0815"), nil,
 			[]string{"Kundennummer: K-0815"}, []string{"Kundennummer", "K-0815"}, []string{"Kundennummer: 7"}, nil},
-		{"contract number after the reference", nil, ptr("C23-25-CP2302"),
+		{"contract number with the payment details", nil, ptr("C23-25-CP2302"),
 			[]string{"Ihre Referenz: PO-4711", "Vertragsnummer: C23-25-CP2302"}, nil, nil, []string{"Vertragsnummer"}},
 	}
 	for _, tt := range tests {
@@ -47,16 +48,30 @@ func TestOptionalClientAndContractNumbers(t *testing.T) {
 			invoice := pageText(t, d)
 			check("invoice", invoice, tt.invoice, tt.notInvoice)
 			check("reminder", bytes.Join(inflate(out), nil), tt.reminder, tt.notRem)
-			if tt.contract != nil && bytes.Index(invoice, unicodePDFLiteral("Vertragsnummer")) < bytes.Index(invoice, unicodePDFLiteral("Ihre Referenz")) {
-				t.Error("the contract number comes before the reference")
+			// the numbers stand in the payment details at the bottom, above the bank details, not in the header
+			at := func(s string) int { return bytes.Index(invoice, unicodePDFLiteral(s)) }
+			for _, line := range tt.invoice {
+				if line != "Ihre Referenz: PO-4711" && (at(line) < at("Ihre Referenz: PO-4711") || at(line) > at(bank)) {
+					t.Errorf("%q is not printed with the payment details", line)
+				}
 			}
 		})
 	}
-	for lang, label := range map[string]string{"de": "Vertragsnummer", "fr": "N° de contrat", "it": "N. contratto", "en": "Contract no."} {
+	for lang, want := range map[string][]string{
+		"de": {"Kundennummer: 7", "Vertragsnummer: C-1", "Bankverbindung: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2, BIC ZKBKCHZZ80A"},
+		"fr": {"N° client: 7", "N° de contrat: C-1", "Coordonnées bancaires: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2, BIC ZKBKCHZZ80A"},
+		"it": {"N. cliente: 7", "N. contratto: C-1", "Coordinate bancarie: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2, BIC ZKBKCHZZ80A"},
+		"en": {"Client number: 7", "Contract no.: C-1", "Bank details: Zürcher Kantonalbank, IBAN CH44 3199 9123 0008 8901 2, BIC ZKBKCHZZ80A"},
+	} {
 		d := sample(lang, 1)
-		d.Invoice.ContractReference = ptr("C-1")
-		if !shows(pageText(t, d), label+": C-1") {
-			t.Errorf("%s: %q not printed", lang, label)
+		d.Invoice.ContractReference, d.BIC = ptr("C-1"), ptr("ZKBKCHZZ80A")
+		text := pageText(t, d)
+		for i, s := range want {
+			if !shows(text, s) {
+				t.Errorf("%s: %q not printed", lang, s)
+			} else if i > 0 && bytes.Index(text, unicodePDFLiteral(s)) < bytes.Index(text, unicodePDFLiteral(want[i-1])) {
+				t.Errorf("%s: %q before %q", lang, s, want[i-1])
+			}
 		}
 	}
 }
