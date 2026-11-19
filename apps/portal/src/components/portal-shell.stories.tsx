@@ -56,7 +56,7 @@ const page = (children: ReactNode) => () => <PortalShell>{children}</PortalShell
 const longWorkspace = 'John Doe Consulting und Treuhand GmbH with a long registered name'
 const longEmail = 'anna.mueller-bernasconi.accounting@muster-beratung-treuhand.ch'
 
-/** Desktop: the client's name and email by its avatar on one button that opens the account menu. */
+/** Desktop: the client's name by its avatar on one pill that opens the account menu; the email is in the menu. */
 export const Desktop: Story = {
   render: page(<PortalOverview />),
   parameters: {
@@ -86,18 +86,20 @@ export const Desktop: Story = {
       'page',
     )
     const account = canvas.getByRole('button', { name: /^Account menu/ })
-    // Long name and email are cut short on the button, whole in their titles.
-    const email = within(account).getByText(longEmail)
-    await expect(email).toBeVisible()
-    await expect(email).toHaveAttribute('title', longEmail)
-    await expect(email.scrollWidth).toBeGreaterThan(email.clientWidth)
-    await expect(within(account).getByText(longClient)).toHaveAttribute('title', longClient)
-    await expect(account.getBoundingClientRect().width).toBeLessThanOrEqual(256)
+    // A long name is cut short on the button, whole in its title; no email on the button.
+    const name = within(account).getByText(longClient)
+    await expect(name).toBeVisible()
+    await expect(name).toHaveAttribute('title', longClient)
+    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+    await expect(account).not.toHaveTextContent(longEmail)
+    await expect(account.getBoundingClientRect().width).toBeLessThanOrEqual(240)
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+    const atRest = getComputedStyle(account).boxShadow
 
     await userEvent.click(account)
     const menu = await within(document.body).findByRole('menu')
     await waitFor(() => expect(within(menu).getByText('Switch client')).toBeVisible())
+    await expect(within(menu).getByText(longEmail)).toBeVisible()
     await expect(within(menu).getByRole('menuitemradio', { name: /Keller AG/ })).toHaveTextContent(
       'Beispiel Treuhand AG',
     )
@@ -108,7 +110,9 @@ export const Desktop: Story = {
     await expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeVisible()
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
+    // Opened with the mouse: focus comes back to the button without the keyboard ring.
     await expect(account).toHaveFocus()
+    await expect(getComputedStyle(account).boxShadow).toBe(atRest)
     // The header at rest for the visual baseline.
     account.blur()
   },
@@ -216,11 +220,46 @@ export const OverviewPhone: Story = {
   play: async ({ canvasElement }) => {
     await fitsThePhone(canvasElement, longDocument)
     const account = within(canvasElement).getByRole('button', { name: /^Account menu/ })
-    await expect(within(account).getByText(portalSession.email)).not.toBeVisible()
+    await expect(within(account).getByText(longClient)).not.toBeVisible()
     await expect(account.getBoundingClientRect().width).toBe(40)
   },
 }
 export const OverviewPhoneDark = dark(OverviewPhone)
+
+/** A phone with long supplier and client names: the supplier's name is cut by the width, the avatar stays round. */
+export const LongNamesPhone: Story = {
+  render: page(<PortalOverview />),
+  globals: { viewport: { value: 'phone' } },
+  parameters: {
+    ...meta.parameters,
+    msw: {
+      handlers: [
+        http.get(`${P}/session`, () =>
+          HttpResponse.json({
+            ...portalSession,
+            workspace: { name: longWorkspace },
+            client: { id: 'cli_1', name: longClient },
+          }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await fitsThePhone(canvasElement, 'Needs your attention')
+    const name = within(canvasElement).getByText(longWorkspace)
+    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+    const account = within(canvasElement).getByRole('button', { name: /^Account menu/ })
+    await expect(account.getBoundingClientRect().width).toBe(40)
+    await expect(name.getBoundingClientRect().right).toBeLessThan(
+      account.getBoundingClientRect().left,
+    )
+  },
+}
+export const LongNamesPhoneDark: Story = {
+  ...LongNamesPhone,
+  parameters: { ...LongNamesPhone.parameters, dark: true },
+}
 
 export const InvoicesPhone: Story = {
   ...onPhone(page(<PortalInvoices />), 'Pay with the Swiss QR bill in each PDF.'),
@@ -242,7 +281,7 @@ export const DocumentsPhoneDark = dark(DocumentsPhone)
 export const ProfilePhone = onPhone(page(<PortalProfile />), 'Tax IDs')
 export const ProfilePhoneDark = dark(ProfilePhone)
 
-/** Tablet width, long supplier name: it is cut short beside the tabs, and its tooltip has all of it. */
+/** Tablet width, long supplier name: shown once, cut by the width beside the tabs, and its tooltip has all of it. */
 export const LongWorkspaceName: Story = {
   render: page(<PortalOverview />),
   globals: { viewport: { value: 'tablet' } },
@@ -262,9 +301,12 @@ export const LongWorkspaceName: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // The first 16 characters and an ellipsis; the whole name for screen readers and in the tooltip.
-    const name = await canvas.findByText('John Doe Consult…')
-    await expect(canvas.getByText(longWorkspace)).toHaveClass('sr-only')
+    // Once, never a second copy beside it; the ellipsis comes from the width.
+    const name = await canvas.findByText(longWorkspace)
+    await expect(
+      canvasElement.querySelector('header')?.textContent?.split(longWorkspace),
+    ).toHaveLength(2)
+    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
     const nav = canvas.getByRole('navigation', { name: 'Portal' })
     await expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
       nav.getBoundingClientRect().left,
@@ -316,8 +358,8 @@ export const WideScreen: Story = {
 export const WideScreenDark = dark(WideScreen)
 
 /**
- * Scrolled: the page passes under a glass header (translucent, blurred, saturated), which shows its hairline
- * and soft shadow only now; at the top it lies flat on the page.
+ * The header is a bar of its own: the card surface and a hairline at the top of the page, and a soft shadow once
+ * the page passes under it.
  */
 export const ScrolledHeader: Story = {
   render: page(<PortalOverview />),
@@ -327,16 +369,15 @@ export const ScrolledHeader: Story = {
     await canvas.findByText('Needs your attention')
     const header = canvasElement.querySelector('header')
     await expect(header).not.toHaveAttribute('data-scrolled')
-    const glass = header?.previousElementSibling ?? header
-    await expect(getComputedStyle(glass ?? document.body).backdropFilter).toMatch(/blur/)
+    const style = getComputedStyle(header ?? document.body)
+    await expect(style.backgroundColor).not.toBe(getComputedStyle(document.body).backgroundColor)
+    await expect(style.borderBottomWidth).toBe('1px')
     // Well short of the end of the page, so every renderer stops at the same place.
     window.scrollTo(0, 120)
     await waitFor(() => expect(header).toHaveAttribute('data-scrolled'))
     await expect(getComputedStyle(header ?? document.body).boxShadow).not.toBe('none')
     // The content goes under the header, which stays at the top.
     await expect(header?.getBoundingClientRect().top).toBe(0)
-    await expect(glass?.getBoundingClientRect().top).toBe(0)
-    await expect(glass?.getBoundingClientRect().height).toBe(header?.getBoundingClientRect().height)
   },
 }
 export const ScrolledHeaderDark: Story = {

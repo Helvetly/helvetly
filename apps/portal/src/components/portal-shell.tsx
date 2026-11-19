@@ -17,16 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { errorMessage } from '@helvetly/ui/lib/http'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ChevronsUpDown,
-  FilePenLine,
-  FileText,
-  FolderOpen,
-  Gauge,
-  House,
-  LogOut,
-  UserRound,
-} from 'lucide-react'
+import { FilePenLine, FileText, FolderOpen, Gauge, House, LogOut, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -50,7 +41,6 @@ import {
   type PortalSession,
 } from '@/lib/portal'
 import { scoped, unscoped } from '@/lib/scope'
-import { shorten } from '@/lib/text'
 
 import { LoginAvatar, WorkspaceMark } from './portal-bits'
 
@@ -85,17 +75,21 @@ function AccountMenu({
   triggerRef: RefObject<HTMLButtonElement | null>
 }) {
   const translateUi = useTranslate()
+  // Radix gives focus back to the button when the menu closes; after a mouse that focus must not draw the
+  // keyboard ring, so the button is focused again without it. The keyboard still gets the ring.
+  const openedByPointer = useRef(false)
   return (
     <DropdownMenu>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            {/* One button, like the platform's sidebar user card: the avatar alone on narrow screens, with
-                the name and email beside it and the chevrons from lg up. */}
+            {/* The avatar alone on narrow screens; from lg up a pill with the client's name beside it. */}
             <Button
               ref={triggerRef}
               variant="ghost"
-              className="h-10 min-w-10 justify-center gap-2.5 rounded-full p-0 lg:h-12 lg:max-w-64 lg:justify-start lg:rounded-xl lg:pr-2 lg:pl-1.5"
+              onPointerDown={() => (openedByPointer.current = true)}
+              onKeyDown={() => (openedByPointer.current = false)}
+              className="h-10 min-w-10 gap-2 rounded-full p-0 lg:max-w-60 lg:justify-start lg:pr-4 lg:pl-1"
             >
               <span className="sr-only">
                 {translate('accountMenu')}, {session.client.name}
@@ -103,27 +97,11 @@ function AccountMenu({
               <LoginAvatar name={session.client.name} src={session.avatar_url} />
               <span
                 aria-hidden
-                className="hidden min-w-0 flex-1 gap-0.5 text-left leading-tight lg:grid"
+                className="hidden truncate text-body font-medium text-foreground lg:block"
+                title={session.client.name}
               >
-                <span
-                  className="truncate text-body font-medium text-foreground"
-                  title={session.client.name}
-                >
-                  {session.client.name}
-                </span>
-                {session.email && (
-                  <span
-                    className="truncate text-xs font-normal text-muted-foreground"
-                    title={session.email}
-                  >
-                    {session.email}
-                  </span>
-                )}
+                {session.client.name}
               </span>
-              <ChevronsUpDown
-                aria-hidden
-                className="hidden size-4 shrink-0 stroke-[1.75] text-foreground/60 lg:block"
-              />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
@@ -133,6 +111,11 @@ function AccountMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={6}
+        onCloseAutoFocus={(event) => {
+          if (!openedByPointer.current) return
+          event.preventDefault()
+          triggerRef.current?.focus({ focusVisible: false })
+        }}
         className="w-72 max-w-[calc(100vw-2rem)] rounded-xl p-1.5 shadow-elevation-2 [&_[role=menuitem]]:h-9 [&_[role=menuitemradio]]:min-h-9"
       >
         <DropdownMenuLabel className="flex items-center gap-2.5 px-2 py-2 font-normal">
@@ -231,30 +214,26 @@ function PortalNav({ pathname }: { pathname: string }) {
   )
 }
 
-/** Characters of the supplier's name the header shows; the tooltip has all of it. */
-const BRAND_CHARS = 16
-
-/** The supplier's mark and name, cut after 16 characters; the whole name is in its tooltip and accessible name. */
+/** The supplier's mark and name, the name cut by the width it gets; only a cut name repeats in a tooltip. */
 function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
-  const short = shorten(name, BRAND_CHARS)
-  const label = (
-    <span className="truncate text-body font-semibold">
-      <span aria-hidden>{short}</span>
-      <span className="sr-only">{name}</span>
-    </span>
-  )
+  const [cut, setCut] = useState(false)
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <WorkspaceMark name={name} logoUrl={logoUrl} />
       <span className="grid min-w-0 leading-tight">
-        {short === name ? (
-          label
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>{label}</TooltipTrigger>
-            <TooltipContent>{name}</TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="truncate text-body font-semibold"
+              onPointerEnter={({ currentTarget }) =>
+                setCut(currentTarget.scrollWidth > currentTarget.clientWidth)
+              }
+            >
+              {name}
+            </span>
+          </TooltipTrigger>
+          {cut && <TooltipContent>{name}</TooltipContent>}
+        </Tooltip>
         <span className="truncate text-caption text-muted-foreground">
           {translate('clientPortal')}
         </span>
@@ -264,8 +243,8 @@ function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
 }
 
 /**
- * Marks the header scrolled while the page is scrolled away from the top, so its hairline and shadow show only
- * once content passes under it. Set on the node, not in state: a scroll must not re-render the page.
+ * Marks the header scrolled while the page is scrolled away from the top, so its shadow shows only once content
+ * passes under it. Set on the node, not in state: a scroll must not re-render the page.
  */
 function markScrolled(header: HTMLElement | null) {
   if (!header) return
@@ -328,17 +307,9 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
   return (
     <SessionContext.Provider value={session}>
       <div className="min-h-svh bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-        {/* Glass: the page shows blurred through the header. A sticky layer of its own under the header (its
-            height, 4rem and the 1px border): a backdrop-filter on the header would trap the fixed bottom tab bar
-            inside it, and one inside the header's stacking context sees nothing behind it. Without blur
-            support, a solid background. */}
-        <div
-          aria-hidden
-          className="sticky top-0 z-30 -mb-[calc(4rem+1px)] h-[calc(4rem+1px)] bg-background supports-[backdrop-filter]:bg-background/75 supports-[backdrop-filter]:backdrop-blur-md supports-[backdrop-filter]:backdrop-saturate-150"
-        />
         <header
           ref={markScrolled}
-          className="sticky top-0 z-30 border-b border-transparent transition-[border-color,box-shadow] duration-150 ease-out data-scrolled:border-border data-scrolled:shadow-(--sticky-shadow)"
+          className="sticky top-0 z-30 border-b bg-card transition-shadow duration-150 ease-out data-scrolled:shadow-(--sticky-shadow)"
         >
           {/* Full width: the brand sits at the far left, the tabs and account menu at the far right. */}
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
