@@ -33,7 +33,7 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database, the one 00031 publishes (00007 published helvetly-v1,
+// currentOffer is the offer on sale in the seeded database, the one 00032 publishes (00007 published helvetly-v1,
 // 00017 helvetly-v1.1, 00018 helvetly-v1.2).
 const currentOffer = "helvetly-v1.3"
 

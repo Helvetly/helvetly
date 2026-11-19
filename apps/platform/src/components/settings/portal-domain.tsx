@@ -5,6 +5,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { formatDate } from '@helvetly/ui/lib/format'
 import { Copy, Link2, RefreshCw } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -45,12 +46,29 @@ const STAGES: Record<DomainStage, { tone: Tone; label: string }> = {
   problem: { tone: 'red', label: translate('domainStageProblem') },
 }
 
-const PROBLEMS: Record<DomainProblem, string> = {
-  dns: translate('domainProblemDns'),
-  certificate: translate('domainProblemCertificate'),
-  blocked: translate('domainProblemBlocked'),
-  taken: translate('domainProblemTaken'),
-  timeout: translate('domainProblemTimeout'),
+const problemText = (problem: DomainProblem, releasesAt: string | null) =>
+  ({
+    dns: translate('domainProblemDns'),
+    verification: translate('domainProblemVerification'),
+    certificate: translate('domainProblemCertificate'),
+    plan: translate('domainProblemPlan', { date: releasesAt ? formatDate(releasesAt) : '' }),
+  })[problem]
+
+/** What each record is for, in plain words. */
+const RECORD_WHY: Record<string, string> = {
+  CNAME: translate('dnsRecordCnameWhy'),
+  TXT: translate('dnsRecordTxtWhy'),
+}
+
+/** The TXT record a 409 names when another workspace holds the domain unproven (error.details.verify). */
+export function proofOf(failure: unknown): DomainRecord | undefined {
+  if (!(failure instanceof ApiError) || failure.code !== 'domain_taken') return undefined
+  const v = failure.details.verify
+  if (typeof v !== 'object' || v === null) return undefined
+  const { type, name, value } = v as Record<string, unknown>
+  return typeof type === 'string' && typeof name === 'string' && typeof value === 'string'
+    ? { type, name, value }
+    : undefined
 }
 
 /** The API's refusals of a domain, in words; others keep the API's message. */
@@ -60,6 +78,7 @@ const REFUSALS: Record<string, string> = {
   domain_reserved: translate('domainReserved'),
   domain_taken: translate('domainTaken'),
   domain_exists: translate('domainExists'),
+  domain_unavailable: translate('domainUnavailable'),
 }
 
 const title = (
@@ -91,6 +110,7 @@ function AddDomain() {
   const add = useAddPortalDomain()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string>()
+  const [proof, setProof] = useState<DomainRecord>()
   if (lock)
     return (
       <ActionRow title={translate('customDomain')} description={translate('customDomainIntro')}>
@@ -114,10 +134,17 @@ function AddDomain() {
           return
         }
         setError(undefined)
+        setProof(undefined)
         add.mutate(hostname, {
           onSuccess: () => toast(translate('customDomainAdded')),
           onError: (failure) => {
-            const refusal = failure instanceof ApiError ? REFUSALS[failure.code] : undefined
+            const verify = proofOf(failure)
+            const refusal = verify
+              ? translate('domainTakenUnproven')
+              : failure instanceof ApiError
+                ? REFUSALS[failure.code]
+                : undefined
+            setProof(verify)
             if (refusal) setError(refusal)
             else toastError(failure)
           },
@@ -149,6 +176,11 @@ function AddDomain() {
           />
         </FormField>
       </FieldGrid>
+      {proof && (
+        <ul className="grid max-w-[var(--settings-form,44rem)] gap-2">
+          <RecordRow record={proof} />
+        </ul>
+      )}
       <div>
         <Button type="submit" size="sm" disabled={add.isPending || value.trim() === ''}>
           {translate('addCustomDomain')}
@@ -199,13 +231,18 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
       </div>
       {domain.problem && (
         <div role="alert" className="grid gap-0.5 text-body-sm">
-          <p className="text-destructive">{PROBLEMS[domain.problem]}</p>
+          <p className="text-destructive">{problemText(domain.problem, domain.releases_at)}</p>
           {domain.detail && <p className="text-muted-foreground">{domain.detail}</p>}
         </div>
       )}
       <p className="text-body-sm text-pretty text-muted-foreground">
         {translate(active ? 'customDomainKeepRecords' : 'customDomainRecords')}
       </p>
+      {domain.releases_at && domain.problem !== 'plan' && (
+        <p className="text-body-sm text-muted-foreground">
+          {translate('domainReleasesAt', { date: formatDate(domain.releases_at) })}
+        </p>
+      )}
       <ul className="grid gap-2">
         {domain.records.map((record) => (
           <RecordRow key={`${record.type} ${record.name}`} record={record} />
@@ -244,6 +281,11 @@ function RecordRow({ record }: { record: DomainRecord }) {
       <Field label={translate('dnsRecordValue')}>
         <Copyable value={record.value} label={translate('copyDnsValue')} />
       </Field>
+      {RECORD_WHY[record.type] && (
+        <p className="text-caption text-muted-foreground @md:col-span-3">
+          {RECORD_WHY[record.type]}
+        </p>
+      )}
     </li>
   )
 }

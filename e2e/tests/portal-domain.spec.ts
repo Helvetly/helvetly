@@ -4,12 +4,12 @@ import type { APIRequestContext } from '@playwright/test'
 
 import { expect, object, test, text, uniqueName } from './fixtures'
 
-// The Go API itself (e2e/scripts/e2e-server.mjs): requests carry a customer's Host as Cloudflare and Caddy pass it,
+// The Go API itself (e2e/scripts/e2e-server.mjs): requests carry a customer's Host as Caddy passes it,
 // which the next dev servers in front of it would not.
 const apiOrigin = 'http://127.0.0.1:3338'
 const portalHost = 'localhost:8009'
 
-test('a workspace adds its own portal domain, Cloudflare makes it active and that host serves its portal', async ({
+test('a workspace adds its own portal domain, its DNS checks pass, it becomes active and that host serves its portal', async ({
   api,
   playwright,
 }) => {
@@ -25,7 +25,7 @@ test('a workspace adds its own portal domain, Cloudflare makes it active and tha
   const slug = text(object(await api.read('/workspace/portal')).slug)
   const host = `portal.e2e-${randomUUID().slice(0, 8)}.ch`
 
-  // Added: pending, with the CNAME to the portal's own host and Cloudflare's TXT record.
+  // Added: pending, with the CNAME to the target and the TXT record that proves the domain is the workspace's.
   const added = object(
     (
       await api.save(
@@ -38,8 +38,12 @@ test('a workspace adds its own portal domain, Cloudflare makes it active and tha
   expect(added.hostname).toBe(host)
   expect(added.stage).toBe('dns')
   expect(added.records).toEqual([
-    { type: 'CNAME', name: host, value: 'portal.helvetly.com' },
-    { type: 'TXT', name: `_cf-custom-hostname.${host}`, value: expect.any(String) },
+    { type: 'CNAME', name: host, value: 'domains.helvetly.com' },
+    {
+      type: 'TXT',
+      name: `_helvetly-verify.${host}`,
+      value: expect.stringMatching(/^helvetly-[0-9a-f]{32}$/),
+    },
   ])
 
   const on = async (h: string): Promise<APIRequestContext> =>
@@ -51,11 +55,13 @@ test('a workspace adds its own portal domain, Cloudflare makes it active and tha
   const domain = await on(host)
   const portal = await on(portalHost)
   try {
-    // Not served while pending, but the origin may ask for its certificate.
+    // Not served while pending, and no certificate before the TXT record proves the domain is the workspace's.
+    const certifiable = async () =>
+      (await portal.get(`/api/v1/public/portal/domain-check?domain=${host}`)).status()
     expect((await domain.get('/api/v1/public/portal/scope')).status()).toBe(404)
-    await expect(await portal.get(`/api/v1/public/portal/domain-check?domain=${host}`)).toBeOK()
+    expect(await certifiable()).toBe(404)
 
-    // "Re-check" (at most every 10 s): Cloudflare has seen the CNAME and issued the certificate.
+    // "Re-check" (at most every 10 s): the records are found (HELVETLY_E2E_FAKE_DOMAINS) and HTTPS answers.
     await expect
       .poll(
         async () => {
@@ -67,6 +73,7 @@ test('a workspace adds its own portal domain, Cloudflare makes it active and tha
         { timeout: 30_000, intervals: [2_000] },
       )
       .toBe('active')
+    expect(await certifiable()).toBe(200)
 
     // The host is the workspace's portal: its scope at the root, the address it names is the domain.
     const scope = object(await (await domain.get('/api/v1/public/portal/scope')).json())

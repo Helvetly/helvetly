@@ -330,7 +330,7 @@ const everyEvent = () => {
     event,
     category: categoryFor(event),
     email: i % 3 === 0,
-    in_app: i % 5 !== 4,
+    in_app: event !== 'signature.declined', // by name: a new event elsewhere does not reshuffle the groups
     email_available: !event.startsWith('signature.'),
   }))
 }

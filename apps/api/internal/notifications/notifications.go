@@ -44,6 +44,7 @@ var Events = []event{
 	{"portal.document_viewed", "clients", true, false},
 	{"portal.domain_active", "clients", true, false},
 	{"portal.domain_failed", "clients", true, true},
+	{"portal.domain_released", "clients", true, true},
 	{"signature.viewed", "documents", false, false},
 	{"signature.signed", "documents", false, false},
 	{"signature.completed", "documents", false, false},

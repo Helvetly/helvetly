@@ -149,25 +149,26 @@ Production needs at least `DATABASE_URL`, `PUBLIC_URL`, `PORTAL_URL` (another ho
 ### Custom portal domains
 
 Optional, on the Business plan: a workspace serves its client portal on its own host (`portal.firma.ch`) instead of
-`PORTAL_URL/w/<slug>/`. It needs a Cloudflare zone with Cloudflare for SaaS and the three settings
-`CLOUDFLARE_API_TOKEN` (Zone · SSL and Certificates · Edit on that zone only), `CLOUDFLARE_ZONE_ID` and
-`CUSTOM_DOMAIN_TARGET`, a proxied hostname on the zone that is its custom-hostname fallback origin and reaches this
-binary; normally `PORTAL_URL`'s host, so customers point their CNAME at the portal's own address
-(`portal.firma.ch CNAME portal.helvetly.com`). The workspace adds one CNAME to the target in its settings' instructions; Helvetly creates the custom hostname,
-follows it until Cloudflare has verified it and issued the certificate, checks it daily, and deletes it when the
-domain is removed. Your proxy must send requests for any other host from Cloudflare to the binary with the `Host`
-header unchanged; for on-demand origin certificates, `GET /api/v1/public/portal/domain-check?domain=<host>` answers
-200 only for a workspace's domain. On such a host only the portal and its API are served, never the platform, and
-with custom domains on, pages of an unknown host are 404. A domain that breaks (CNAME removed, certificate lost) or a
-plan without the feature falls back to `/w/<slug>/` at once; the owners are told, and the job removes a domain whose
-plan lost it.
+`PORTAL_URL/w/<slug>/`. Set `CUSTOM_DOMAIN_TARGET` to a hostname that reaches the binary directly through your proxy,
+with no CDN proxy in front of it (for example `domains.helvetly.com`, DNS only). The workspace's settings show two
+records: `portal.firma.ch CNAME <target>` and a TXT record `_helvetly-verify.portal.firma.ch` whose value proves the
+domain is theirs (a dangling CNAME proves nothing). Helvetly checks both through DNS itself, then requests
+`https://portal.firma.ch/api/health`; your proxy gets the certificate on that first request with on-demand TLS, asking
+`GET /api/v1/public/portal/domain-check?domain=<host>` first, which answers 200 only for a domain whose ownership is
+proven. In Caddy: `on_demand_tls { ask http://<app>/api/v1/public/portal/domain-check }` and a catch-all `https://`
+site with `tls { on_demand }` that proxies to the binary with the `Host` header unchanged.
 
-Scale: Cloudflare for SaaS includes 100 custom hostnames on the Free, Pro and Business zone plans, charges USD 0.10 a
-month for each further one, and allows at most 50 000 (more only on Enterprise). Cloudflare's API allows 1200 calls per
-five minutes per user, shared with Terraform and the dashboard: Helvetly makes at most two a second. Pending domains
-are asked about one by one with backoff (1 minute doubling to an hour, 50 per minute at most); active domains are
-checked together once a day from the zone's hostname list, 1000 a page (50 calls for 50 000 domains). After a 429 the
-checks wait five minutes.
+On such a host only the portal and its API are served. With custom domains on, any host that is neither the
+installation's nor an active domain gets 404 for everything but the health checks and `domain-check`. Pending domains
+are checked with backoff (1 minute doubling to an hour), active ones daily. A domain that breaks (CNAME removed, HTTPS
+failing) falls back to `/w/<slug>/` at once and the owners are told; a plan without the feature turns it off until the
+plan has it again. A domain that is pending or failed for 14 days is released, and a workspace that proves it owns a
+name another workspace holds without proof takes it over. A deleted workspace keeps its domain for the 30 days it may
+be restored.
+
+Scale: nothing is paid per domain. Certificates come from Let's Encrypt (about 300 new ones per three hours per
+account; renewals of 50 000 domains are roughly 800 a day) and live in your proxy's storage, which several proxies
+must share. The job checks at most 100 domains a minute.
 
 ### Releases
 

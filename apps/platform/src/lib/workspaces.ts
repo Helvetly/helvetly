@@ -120,8 +120,8 @@ export function useSetPortalSlug() {
 
 /** Where a custom domain is on its way: its DNS record, its certificate, live, or a problem to fix. */
 export type DomainStage = 'dns' | 'certificate' | 'active' | 'problem'
-export type DomainProblem = 'dns' | 'certificate' | 'blocked' | 'taken' | 'timeout'
-/** A record the customer adds at their DNS provider. */
+export type DomainProblem = 'dns' | 'verification' | 'certificate' | 'plan'
+/** A record the customer adds at their DNS provider: the CNAME to Helvetly and the TXT proving ownership. */
 export type DomainRecord = { type: string; name: string; value: string }
 export type PortalDomain = {
   hostname: string
@@ -129,13 +129,17 @@ export type PortalDomain = {
   stage: DomainStage
   /** Why it is not working; null without a problem. */
   problem: DomainProblem | null
-  /** Cloudflare's own words on the problem (English), shown under it; null without. */
+  /** What the check saw (English), shown under the problem; null without. */
   detail: string | null
   records: DomainRecord[]
+  /** When the TXT record proved the domain is the workspace's; null until then. */
+  verified_at: string | null
   last_checked_at: string | null
+  /** When a domain that is not active is released; null for an active one. */
+  releases_at: string | null
   created_at: string
 }
-/** The portal's custom domain; `enabled` is false when this server has no Cloudflare settings. */
+/** The portal's custom domain; `enabled` is false when this server has no CUSTOM_DOMAIN_TARGET. */
 export type PortalDomainSettings = { enabled: boolean; target: string; domain: PortalDomain | null }
 
 const domainKey = [...portalKey, 'domain'] as const
