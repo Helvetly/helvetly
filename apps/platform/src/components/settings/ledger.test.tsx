@@ -9,7 +9,7 @@ import { ledgerExportUrl } from '@/lib/ledger'
 import { queryKeys } from '@/lib/queries'
 import { handlers } from '@/mocks/handlers'
 
-import { LedgerPage, rangeOf } from './ledger'
+import { groupByClass, LedgerPage, rangeOf, sumAmounts, validateAccounts } from './ledger'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn<() => void>() }),
@@ -40,6 +40,56 @@ function wrap(role: string, timezone?: string) {
     </QueryClientProvider>,
   )
 }
+
+const row = (account: string) => ({
+  account,
+  name: account,
+  currency: 'CHF',
+  opening: '0',
+  debit: '0',
+  credit: '0',
+  closing: '0',
+})
+
+test('groupByClass puts balances under their Swiss SME account class, in chart order', () => {
+  const groups = groupByClass(['3200', '1100', '1020', '6500'].map(row))
+  expect(groups.map((g) => [g.key, g.name, g.rows.map((r) => r.account)])).toEqual([
+    ['1', 'Assets', ['1020', '1100']],
+    ['3', 'Operating revenue', ['3200']],
+    ['6', 'Other operating expenses', ['6500']],
+  ])
+})
+
+test.each([
+  [['0.10', '0.20'], '0.30'],
+  [['1081.00', '-1081.00'], '0.00'],
+  [['111111.00', '2222.00'], '113333.00'],
+  [[], '0.00'],
+])('sumAmounts(%j) is %s', (values, sum) => expect(sumAmounts(values)).toBe(sum))
+
+test('validateAccounts flags every code that is not 3 to 10 digits, banks keyed as the API keys them', () => {
+  const good = {
+    receivables: '1100',
+    revenue: '3200',
+    output_vat: '2200',
+    rounding: '3800',
+    payables: '2000',
+    member_payable: '2210',
+    input_vat_material: '1170',
+    input_vat_other: '1171',
+    bank: { bank_transfer: '1020', cash: '1000' },
+  }
+  expect(validateAccounts(good)).toEqual({})
+  const bad = validateAccounts({
+    ...good,
+    revenue: '32',
+    rounding: '38a0',
+    bank: { ...good.bank, cash: '' },
+  })
+  expect(Object.keys(bad).toSorted()).toEqual(['bank.cash', 'revenue', 'rounding'])
+  expect(bad.revenue).toBe('Enter an account code of 3 to 10 digits.')
+  expect(validateAccounts({ ...good, revenue: '12345678901' }).revenue).toBeDefined()
+})
 
 test('rangeOf covers a year, a quarter and a month', () => {
   expect(rangeOf(2026, 'year')).toEqual({ from: '2026-01-01', to: '2026-12-31' })
