@@ -9991,6 +9991,11 @@
             "type": ["string", "null"],
             "maxLength": 500
           },
+          "client_performance": {
+            "type": ["string", "null"],
+            "maxLength": 500,
+            "description": "Internal note on how the client did; never on invoices or in the portal."
+          },
           "performed_by": {
             "type": ["string", "null"],
             "description": "A member's user id. Default on create: the caller."
@@ -10353,6 +10358,9 @@
           "note": {
             "type": ["string", "null"]
           },
+          "client_performance": {
+            "type": ["string", "null"]
+          },
           "performed_by": {
             "anyOf": [
               {
@@ -10394,6 +10402,7 @@
           "date",
           "quantity",
           "note",
+          "client_performance",
           "performed_by",
           "invoice",
           "created_at",

@@ -73,7 +73,7 @@ export function useRefreshEngagement() {
   }
 }
 
-/** Date, quantity, note, who: Enter logs it and puts the cursor back on quantity. */
+/** Date, quantity, note, client performance, who: Enter logs it and puts the cursor back on quantity. */
 export function QuickLog({
   engagementId,
   unit,
@@ -91,6 +91,7 @@ export function QuickLog({
   const [date, setDate] = useState(today)
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
+  const [performance, setPerformance] = useState('')
   const [by, setBy] = useState('')
   const quantityRef = useRef<HTMLInputElement>(null)
 
@@ -106,11 +107,13 @@ export function QuickLog({
         date,
         quantity,
         note: note.trim() || null,
+        client_performance: performance.trim() || null,
         ...(by ? { performed_by: by } : {}),
       }),
     onSuccess: ({ data }) => {
       setQuantity('')
       setNote('')
+      setPerformance('')
       refresh()
       if (onLogged) onLogged()
       else quantityRef.current?.focus()
@@ -218,6 +221,22 @@ export function QuickLog({
           onChange={(event) => setNote(event.target.value)}
         />
       </div>
+      <div className="grid gap-1.5">
+        <label htmlFor={`${id}-performance`} className={label}>
+          {translate('clientPerformance')}{' '}
+          <span className="font-normal text-placeholder">
+            {translate('optionalInternalNeverOnInvoices')}
+          </span>
+        </label>
+        <Input
+          id={`${id}-performance`}
+          aria-label={translate('clientPerformance')}
+          placeholder={translate('howDidTheClientDo')}
+          maxLength={500}
+          value={performance}
+          onChange={(event) => setPerformance(event.target.value)}
+        />
+      </div>
       <div className="flex min-h-8 items-center gap-3">
         {over > 0 ? (
           <output className="flex min-w-0 items-center gap-1.5 text-body-sm text-warning">
@@ -264,6 +283,7 @@ function EntryRow({
     date: entry.date,
     quantity: entry.quantity,
     note: entry.note ?? '',
+    client_performance: entry.client_performance ?? '',
   })
   const [confirming, setConfirming] = useState(false)
 
@@ -284,7 +304,12 @@ function EntryRow({
     onError: (error: unknown) => toast.error(friendlyError(error)),
   })
   const commit = () =>
-    save.mutate({ date: draft.date, quantity: draft.quantity, note: draft.note.trim() || null })
+    save.mutate({
+      date: draft.date,
+      quantity: draft.quantity,
+      note: draft.note.trim() || null,
+      client_performance: draft.client_performance.trim() || null,
+    })
 
   if (editing)
     return (
@@ -339,6 +364,14 @@ function EntryRow({
               </Button>
             </Tip>
           </div>
+          <Input
+            aria-label={translate('clientPerformance')}
+            placeholder={translate('howDidTheClientDo')}
+            className="col-span-full"
+            maxLength={500}
+            value={draft.client_performance}
+            onChange={(e) => setDraft({ ...draft, client_performance: e.target.value })}
+          />
         </form>
       </li>
     )
@@ -364,6 +397,12 @@ function EntryRow({
         <p className={cn('line-clamp-2 text-body', !entry.note && 'text-muted-foreground')}>
           {entry.note || translate('noNote')}
         </p>
+        {entry.client_performance && (
+          <p className="line-clamp-2 text-body-sm text-muted-foreground">
+            <span className="font-medium">{translate('clientPerformance')}:</span>{' '}
+            {entry.client_performance}
+          </p>
+        )}
         {(entry.performed_by || entry.invoice) && (
           <p className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
             {entry.performed_by && <span className="truncate">{entry.performed_by.name}</span>}

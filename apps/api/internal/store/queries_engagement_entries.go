@@ -18,18 +18,19 @@ type UserRef struct {
 }
 
 type EngagementEntry struct {
-	ID          string               `json:"id"`
-	PeriodID    string               `json:"period_id"`
-	Date        string               `json:"date"`
-	Quantity    invoicecalc.Quantity `json:"quantity"`
-	Note        *string              `json:"note"`
-	PerformedBy *UserRef             `json:"performed_by"`
-	Invoice     *EngagementInvoice   `json:"invoice"`
-	CreatedAt   time.Time            `json:"created_at"`
-	CreatedBy   *UserRef             `json:"created_by"`
+	ID                string               `json:"id"`
+	PeriodID          string               `json:"period_id"`
+	Date              string               `json:"date"`
+	Quantity          invoicecalc.Quantity `json:"quantity"`
+	Note              *string              `json:"note"`
+	ClientPerformance *string              `json:"client_performance"`
+	PerformedBy       *UserRef             `json:"performed_by"`
+	Invoice           *EngagementInvoice   `json:"invoice"`
+	CreatedAt         time.Time            `json:"created_at"`
+	CreatedBy         *UserRef             `json:"created_by"`
 }
 
-const entryColumns = `en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note,
+const entryColumns = `en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance,
 	pu.id, pu.name, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name`
 
 const entryFrom = ` FROM engagement_entries en
@@ -41,7 +42,7 @@ const entryFrom = ` FROM engagement_entries en
 func scanEntry(row interface{ Scan(...any) error }) (EngagementEntry, error) {
 	var e EngagementEntry
 	var pID, pName, cID, cName, invID, invNumber, invStatus, invKind *string
-	err := row.Scan(&e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &pID, &pName, &invID, &invNumber, &invStatus, &invKind,
+	err := row.Scan(&e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &pID, &pName, &invID, &invNumber, &invStatus, &invKind,
 		&e.CreatedAt, &cID, &cName)
 	if err != nil {
 		return e, err
@@ -67,9 +68,9 @@ func userID(u *UserRef) *string {
 
 // CreateEntry inserts e (uninvoiced) into the engagement; CreatedAt is set on the stored row.
 func (q Q) CreateEntry(ctx context.Context, engagementID string, e EngagementEntry, now time.Time) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, note, performed_by,
-		created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		e.ID, engagementID, e.PeriodID, e.Date, e.Quantity, e.Note, userID(e.PerformedBy), userID(e.CreatedBy), now)
+	_, err := q.db.Exec(ctx, `INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, note, client_performance,
+		performed_by, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		e.ID, engagementID, e.PeriodID, e.Date, e.Quantity, e.Note, e.ClientPerformance, userID(e.PerformedBy), userID(e.CreatedBy), now)
 	return err
 }
 
@@ -85,8 +86,8 @@ func (q Q) Entry(ctx context.Context, engagementID, id string, forUpdate bool) (
 
 // SaveEntry writes the editable fields of an entry.
 func (q Q) SaveEntry(ctx context.Context, e EngagementEntry) error {
-	tag, err := q.db.Exec(ctx, `UPDATE engagement_entries SET period_id = $2, date = $3, quantity = $4, note = $5, performed_by = $6
-		WHERE id = $1`, e.ID, e.PeriodID, e.Date, e.Quantity, e.Note, userID(e.PerformedBy))
+	tag, err := q.db.Exec(ctx, `UPDATE engagement_entries SET period_id = $2, date = $3, quantity = $4, note = $5, performed_by = $6,
+		client_performance = $7 WHERE id = $1`, e.ID, e.PeriodID, e.Date, e.Quantity, e.Note, userID(e.PerformedBy), e.ClientPerformance)
 	if err != nil {
 		return err
 	}
