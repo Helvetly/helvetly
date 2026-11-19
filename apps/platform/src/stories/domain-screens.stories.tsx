@@ -661,6 +661,7 @@ const previewCommands: PreviewCommands = {
   unlink: fn(),
   openFolder: fn(),
   sign: fn(),
+  extract: fn(),
 }
 export const DocumentsPreviewReadOnly: Story = {
   parameters: {

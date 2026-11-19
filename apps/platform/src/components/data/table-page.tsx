@@ -326,6 +326,8 @@ export type BulkAction = {
   destructive?: boolean
   /** Changes records: hidden from a member without write on the page's resource. */
   write?: boolean
+  /** Why the action cannot run now: shown in its tooltip, the button stays focusable. */
+  disabled?: string
 }
 
 /** The floating dark bar while rows are selected: the count, then the actions as icon buttons. */
@@ -360,7 +362,7 @@ export function BulkBar({
         </span>
         {actions
           .filter((action) => writable || !action.write)
-          .map(({ label, icon, onClick, destructive }) => (
+          .map(({ label, icon, onClick, destructive, disabled }) => (
             <span key={label} className="contents">
               <Divider />
               <Tooltip>
@@ -368,13 +370,20 @@ export function BulkBar({
                   <button
                     type="button"
                     aria-label={label}
-                    className={cn(bulkIcon, destructive && bulkDestructive)}
-                    onClick={onClick}
+                    aria-disabled={Boolean(disabled)}
+                    className={cn(
+                      bulkIcon,
+                      destructive && bulkDestructive,
+                      disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
+                    )}
+                    onClick={disabled ? undefined : onClick}
                   >
                     {icon}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>{label}</TooltipContent>
+                <TooltipContent className="max-w-64 text-pretty">
+                  {disabled ? `${label}: ${disabled}` : label}
+                </TooltipContent>
               </Tooltip>
             </span>
           ))}

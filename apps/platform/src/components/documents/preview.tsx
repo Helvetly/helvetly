@@ -68,6 +68,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
+import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
 import { KindIcon, KIND_STYLE } from './kind'
 
@@ -82,6 +83,8 @@ export type PreviewCommands = {
   openFolder: (folder: string | null) => void
   /** Starts a contract for signature from this PDF. */
   sign: (file: DocFile) => void
+  /** Reads the file with AI into the import drawer's review. */
+  extract: (file: DocFile) => void
 }
 
 const LINK_ICONS = {
@@ -107,6 +110,7 @@ export function Preview({
 }) {
   const canWrite = useCan('write:documents')
   const signLock = useFeatureLock('simple_signatures')
+  const aiLock = useFeatureLock('ai_import')
   const query = useDoc(id)
   const file = query.data ?? siblings.find((sibling) => sibling.id === id)
   const index = siblings.findIndex((sibling) => sibling.id === id)
@@ -173,6 +177,12 @@ export function Preview({
             <ChevronRight />
           </HeaderButton>
           <span className="mx-1 h-5 w-px bg-border" />
+          {canWrite && file && !trashed && (
+            <ExtractButton
+              reason={aiLock?.hint ?? extractBlock([file], 0)}
+              onClick={() => commands.extract(file)}
+            />
+          )}
           {file && (
             <Button asChild variant="outline" className="cursor-pointer gap-1.5">
               <a href={localizedHref(downloadUrl(file.id))}>
@@ -254,6 +264,30 @@ export function Preview({
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/** "Extract with AI": stays focusable when it cannot run, so its tooltip can say why. */
+function ExtractButton({ reason, onClick }: { reason: string | null; onClick: () => void }) {
+  const label = translate('extractWithAI')
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          aria-disabled={Boolean(reason)}
+          className={cn('cursor-pointer', reason && 'cursor-not-allowed opacity-50')}
+          onClick={reason ? undefined : onClick}
+        >
+          <Sparkles />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-pretty">
+        {reason ? `${label}: ${reason}` : translate('extractWithAIHint')}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

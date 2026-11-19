@@ -66,6 +66,7 @@ const commands: PreviewCommands = {
   unlink: fn(),
   openFolder: fn(),
   sign: fn(),
+  extract: fn(),
 }
 
 /** What the tags panel sent: PATCH bodies and DELETE …/filing calls, by story. */

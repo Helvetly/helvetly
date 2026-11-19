@@ -4549,5 +4549,12 @@
   "importInvoicesForClient": "Import invoices for {client}",
   "importingInvoicesForClient": "Importing invoices for {client}: every invoice read is assigned to this client.",
   "importClientLocked": "This import is for one client, so every invoice stays theirs.",
-  "moreWaysToAddInvoices": "More ways to add invoices"
+  "moreWaysToAddInvoices": "More ways to add invoices",
+  "extractWithAI": "Extract with AI",
+  "importStarting": "Starting…",
+  "extractFoldersBlocked": "Choose files, not folders.",
+  "extractUnsupported": "The AI reads PDF, PNG, JPEG, WEBP, Excel (.xlsx), Word (.docx), CSV and ZIP files.",
+  "extractTooMany": "Choose at most {max} files.",
+  "extractTooLarge": "Each file can be at most 25 MB.",
+  "extractWithAIHint": "Read with AI and review what it finds. Nothing is saved until you import it."
 }

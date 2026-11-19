@@ -641,6 +641,15 @@ export const importsApi = {
     for (const file of files) form.append('files[]', file)
     return dataOf(await request<unknown>('/imports', { method: 'POST', form }), isImportBatch)
   },
+  /** An `auto` import of files already in Documents: nothing is uploaded or stored again. */
+  fromDocuments: async (documentIds: string[]) =>
+    dataOf(
+      await request<unknown>('/imports/documents', {
+        method: 'POST',
+        json: { document_ids: documentIds },
+      }),
+      isImportBatch,
+    ),
   list: async (kind: ImportTarget) =>
     dataOf(await request<unknown>(`/imports?${new URLSearchParams({ kind })}`), isSummaries),
   get: async (id: string) => dataOf(await request<unknown>(path(id)), isImportBatch),
@@ -701,6 +710,17 @@ export function useUploadImport(kind: ImportTarget, clientId?: string) {
     onSuccess: (batch) => {
       queryClient.setQueryData(importKeys.batch(batch.id), batch)
       void queryClient.invalidateQueries({ queryKey: importKeys.list(kind) })
+    },
+  })
+}
+
+export function useImportDocuments() {
+  const queryClient = useQueryClient()
+  return useMutation<ImportBatch, ApiError, string[]>({
+    mutationFn: importsApi.fromDocuments,
+    onSuccess: (batch) => {
+      queryClient.setQueryData(importKeys.batch(batch.id), batch)
+      void queryClient.invalidateQueries({ queryKey: importKeys.list('auto') })
     },
   })
 }

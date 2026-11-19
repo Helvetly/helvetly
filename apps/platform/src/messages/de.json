@@ -4549,5 +4549,12 @@
   "importInvoicesForClient": "Rechnungen für {client} importieren",
   "importingInvoicesForClient": "Rechnungen für {client} importieren: Jede gelesene Rechnung wird diesem Kunden zugeordnet.",
   "importClientLocked": "Dieser Import gilt für einen Kunden, jede Rechnung bleibt bei ihm.",
-  "moreWaysToAddInvoices": "Weitere Wege, Rechnungen hinzuzufügen"
+  "moreWaysToAddInvoices": "Weitere Wege, Rechnungen hinzuzufügen",
+  "extractWithAI": "Mit KI auslesen",
+  "importStarting": "Wird gestartet…",
+  "extractFoldersBlocked": "Wählen Sie Dateien, keine Ordner.",
+  "extractUnsupported": "Die KI liest PDF, PNG, JPEG, WEBP, Excel (.xlsx), Word (.docx), CSV und ZIP.",
+  "extractTooMany": "Wählen Sie höchstens {max} Dateien.",
+  "extractTooLarge": "Jede Datei darf höchstens 25 MB gross sein.",
+  "extractWithAIHint": "Mit KI lesen und prüfen, was sie findet. Gespeichert wird erst beim Import."
 }

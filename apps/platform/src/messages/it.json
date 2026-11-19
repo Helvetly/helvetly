@@ -4549,5 +4549,12 @@
   "importInvoicesForClient": "Importa fatture per {client}",
   "importingInvoicesForClient": "Importazione di fatture per {client}: ogni fattura letta è assegnata a questo cliente.",
   "importClientLocked": "Questa importazione riguarda un solo cliente: ogni fattura resta sua.",
-  "moreWaysToAddInvoices": "Altri modi per aggiungere fatture"
+  "moreWaysToAddInvoices": "Altri modi per aggiungere fatture",
+  "extractWithAI": "Estrai con l’IA",
+  "importStarting": "Avvio…",
+  "extractFoldersBlocked": "Scegli file, non cartelle.",
+  "extractUnsupported": "L’IA legge file PDF, PNG, JPEG, WEBP, Excel (.xlsx), Word (.docx), CSV e ZIP.",
+  "extractTooMany": "Scegli al massimo {max} file.",
+  "extractTooLarge": "Ogni file può essere al massimo di 25 MB.",
+  "extractWithAIHint": "Leggi con l’IA e controlla cosa trova. Nulla viene salvato prima dell’importazione."
 }
