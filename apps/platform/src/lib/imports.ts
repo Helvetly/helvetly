@@ -774,6 +774,27 @@ export const isSettled = (record: ImportRecord) =>
 export const isClean = (record: ImportRecord) =>
   !isSettled(record) && !record.duplicate && Object.keys(record.issues).length === 0
 
+/** Matches a record already in Helvetly (not one of the same import), and is not created by this import. */
+export const isExisting = (record: ImportRecord) =>
+  Boolean(record.duplicate?.id) && record.status !== 'created'
+
+const MATCH_REASONS: ReadonlyMap<string, Parameters<typeof translate>[0]> = new Map([
+  ['same name', 'importReasonSameName'],
+  ['same VAT number', 'importReasonSameVat'],
+  ['same email', 'importReasonSameEmail'],
+  ['same SKU', 'importReasonSameSku'],
+  ['same document number', 'importReasonSameNumber'],
+  ['same date and total', 'importReasonSameDateTotal'],
+  ['number already used', 'importReasonNumberUsed'],
+  ['same name in this import', 'importReasonSameNameInImport'],
+] as const)
+
+/** Why the API matched a record (its English rule), in the reader's language; an unknown rule as sent. */
+export const matchReason = (reason: string) => {
+  const key = MATCH_REASONS.get(reason)
+  return key ? translate(key) : reason
+}
+
 /** Rows ticked when the review opens: clean ones; duplicates and rows with issues wait for a look. */
 export const defaultSelection = (records: ImportRecord[]) =>
   new Set(records.filter(isClean).map((record) => record.id))

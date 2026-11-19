@@ -299,7 +299,7 @@ export function ImportSteps({ suggests }: { suggests: string }) {
   )
 }
 
-function fileStatus(file: ImportFile, records: number) {
+function fileStatus(file: ImportFile, records: number, existing: number) {
   switch (file.status) {
     case 'queued':
       return translate('waiting')
@@ -311,10 +311,9 @@ function fileStatus(file: ImportFile, records: number) {
           })
         : translate('reading')
     case 'done':
-      return translate('dynamicFound', {
-        records: records,
-        value2: records === 1 ? 'record' : 'records',
-      })
+      return existing > 0 && existing === records
+        ? translate('importAllExisting', { count: records })
+        : translate('importRecordsFound', { count: records })
     case 'failed':
       return file.error ? fileErrorText(file.error) : translate('couldNotBeRead')
   }
@@ -340,8 +339,19 @@ const CHIPS = {
   },
 }
 
-/** A file's state chip, name, what is happening to it and its size, in one line. */
-export function FileLine({ file, records }: { file: ImportFile; records: number }) {
+/**
+ * A file's state chip, name, what is happening to it and its size, in one line. `existing` of its `records` are
+ * already in Helvetly; when all are, the line says so.
+ */
+export function FileLine({
+  file,
+  records,
+  existing = 0,
+}: {
+  file: ImportFile
+  records: number
+  existing?: number
+}) {
   return (
     <>
       <span
@@ -360,7 +370,7 @@ export function FileLine({ file, records }: { file: ImportFile; records: number 
               {DOCUMENT_TYPES[file.document_type]} ·{' '}
             </span>
           )}
-          {fileStatus(file, records)}
+          {fileStatus(file, records, existing)}
           {file.reused && translate('alreadyInDocumentsNotStoredAgain')}
         </span>
       </span>
@@ -372,23 +382,26 @@ export function FileLine({ file, records }: { file: ImportFile; records: number 
 }
 
 /**
- * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath.
- * `header` heads the table (a select-all).
+ * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath; a file
+ * whose rows are all already in Helvetly (`existingPerFile`) starts closed. `header` heads the table (a select-all).
  */
 export function FileProgress({
   files,
   recordsPerFile,
+  existingPerFile,
   header,
   children,
 }: {
   files: ImportFile[]
   recordsPerFile: Map<string, number>
+  existingPerFile?: Map<string, number>
   header?: ReactNode
   children?: (file: ImportFile) => ReactNode
 }) {
-  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set())
+  // The files opened or closed against how they start.
+  const [flipped, setFlipped] = useState<ReadonlySet<string>>(new Set())
   const toggle = (id: string) =>
-    setClosed((current) => {
+    setFlipped((current) => {
       const next = new Set(current)
       if (!next.delete(id)) next.add(id)
       return next
@@ -407,8 +420,11 @@ export function FileProgress({
       >
         {files.map((file) => {
           const found = children?.(file)
-          const open = Boolean(found) && !closed.has(file.id)
-          const head = <FileLine file={file} records={recordsPerFile.get(file.id) ?? 0} />
+          const records = recordsPerFile.get(file.id) ?? 0
+          const existing = existingPerFile?.get(file.id) ?? 0
+          const allExisting = records > 0 && existing === records
+          const open = Boolean(found) && allExisting === flipped.has(file.id)
+          const head = <FileLine file={file} records={records} existing={existing} />
           return (
             <li key={file.id} data-status={file.status}>
               <div className="flex items-center gap-3 px-3 py-2 text-body-sm">

@@ -5,6 +5,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/store"
@@ -80,16 +81,74 @@ func TestAutoImportRecognisesLinksAndCommitsInOrder(t *testing.T) {
 		t.Fatalf("invoice %+v not for the new client %s: %v", inv, *res[0].EntityID, err)
 	}
 
-	// The same invoice again: the client exists (left out), the number is taken (a conflict to resolve).
+	// The same invoice again: the same two records, each matched to what the first import created. The client is
+	// settled (linked, not created again); the number is taken (a conflict to resolve).
 	e.model.replies = append(e.model.replies, answer(autoInvoice))
 	w = e.upload(Auto, map[string][]byte{"again.txt": []byte("Invoice 2025/IN/001, scanned again")})
 	again := e.extracted(decode[store.ImportBatch](t, w).ID)
-	if len(again.Records) != 1 || again.Records[0].Kind != "invoices" || again.Records[0].Duplicate == nil {
-		t.Fatalf("second import: %+v", again.Records)
+	clients, invoices = autoRecords(again, "clients"), autoRecords(again, "invoices")
+	if len(again.Records) != 2 || len(clients) != 1 || len(invoices) != 1 {
+		t.Fatalf("second import shows other records than the first: %+v", again.Records)
 	}
-	w = e.do("POST", "/api/v1/imports/"+again.ID+"/commit", map[string]any{"record_ids": []string{again.Records[0].ID}})
-	if res := decode[struct{ Results []commitResult }](t, w).Results; len(res) != 1 || res[0].Status != "conflict" {
-		t.Fatalf("taken number: %s", w.Body)
+	if c := clients[0]; c.Status != "skipped" || c.Duplicate == nil || c.Duplicate.ID != *res[0].EntityID {
+		t.Fatalf("client not matched to the existing one: %+v", c)
+	}
+	if i := invoices[0]; i.Status != "pending" || i.Duplicate == nil || i.Duplicate.ID != *res[1].EntityID {
+		t.Fatalf("invoice not matched to the existing one: %+v", i)
+	}
+	w = e.do("POST", "/api/v1/imports/"+again.ID+"/commit", map[string]any{"record_ids": []string{invoices[0].ID, clients[0].ID}})
+	got := decode[struct{ Results []commitResult }](t, w).Results
+	if len(got) != 2 || got[0].Status != "skipped" || got[1].Status != "conflict" {
+		t.Fatalf("matched client stays out, taken number conflicts: %s", w.Body)
+	}
+}
+
+// TestAutoImportMatchesExistingClients: a file's client that already exists in the workspace (by name, VAT number
+// or email) is kept as a settled record matched to it; one of another workspace never matches.
+func TestAutoImportMatchesExistingClients(t *testing.T) {
+	for _, tc := range []struct {
+		name, ws string
+		fields   map[string]any
+		reason   string
+	}{
+		{"same name", "ws_a", map[string]any{"name": "ANNA BEISPIEL"}, "same name"},
+		{"same VAT number", "ws_a", map[string]any{"name": "Beispiel Consulting", "vat_number": "CHE-116.281.710"}, "same VAT number"},
+		{"same email", "ws_a", map[string]any{"name": "A. Beispiel", "email": "Anna@Example.ch"}, "same email"},
+		{"another workspace's client", "ws_b", map[string]any{"name": "Anna Beispiel"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			e.consent("ws_a", "usr_a")
+			e.person("ws_b", "usr_b", "owner", nil)
+			if err := e.db.CreateClient(context.Background(), tc.ws, "cli_known", tc.fields, time.Now()); err != nil {
+				t.Fatal(err)
+			}
+			e.model.replies = append(e.model.replies, answer(`{"document_type": "sales_invoice",
+				"clients": [{"name": "Anna Beispiel", "vat_number": "CHE-116.281.710", "email": "anna@example.ch"}],
+				"invoices": [{"client_name": "Anna Beispiel", "number": "2025/IN/009", "issue_date": "2025-01-08",
+					"currency": "CHF", "price_basis": "net", "total": "69.00",
+					"lines": [{"description": "Lesson", "quantity": "1", "unit": "hour", "unit_price": "69.00", "vat_category": "O"}]}],
+				"products": [], "engagements": [], "expenses": []}`))
+			w := e.upload(Auto, map[string][]byte{"invoice.txt": []byte("Invoice 2025/IN/009")})
+			b := e.extracted(decode[store.ImportBatch](t, w).ID)
+			clients := autoRecords(b, "clients")
+			if len(clients) != 1 || len(autoRecords(b, "invoices")) != 1 {
+				t.Fatalf("records: %+v", b.Records)
+			}
+			c := clients[0]
+			if tc.reason == "" {
+				if c.Status != "pending" || c.Duplicate != nil {
+					t.Fatalf("matched across workspaces: %+v", c)
+				}
+				return
+			}
+			if c.Status != "skipped" || c.Duplicate == nil || c.Duplicate.ID != "cli_known" || c.Duplicate.Reason != tc.reason {
+				t.Fatalf("client %+v, want skipped and matched to cli_known (%s)", c, tc.reason)
+			}
+			if inv := autoRecords(b, "invoices")[0]; len(inv.Issues) != 0 {
+				t.Fatalf("the invoice links to the existing client: %v", inv.Issues)
+			}
+		})
 	}
 }
 
