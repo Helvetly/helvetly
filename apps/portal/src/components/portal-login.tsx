@@ -1,10 +1,11 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
+import { InlineError } from '@helvetly/ui/components/inline-error'
 import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -14,12 +15,15 @@ import {
   getPortalScope,
   getPortalSession,
   portalKeys,
+  redeemPortalTicket,
   startPortalSignIn,
   verifyPortalCode,
+  type PortalAccount,
 } from '@/lib/portal'
 import { scoped } from '@/lib/scope'
 import { siteUrl } from '@/lib/site'
 
+import { PortalAccountChooser } from './portal-account-chooser'
 import { WorkspaceMark } from './portal-bits'
 
 /**
@@ -30,6 +34,23 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
   const router = useRouter()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<{ email: string; sent: EmailCodeSent } | null>(null)
+  const [accounts, setAccounts] = useState<PortalAccount[] | null>(null)
+  // The shared portal's account choice lands here with a one-time ticket in the fragment: spend it at once.
+  const ticket = useMutation({
+    mutationFn: redeemPortalTicket,
+    onSuccess: () => {
+      queryClient.clear()
+      router.replace(scoped('/'))
+    },
+  })
+  const redeem = ticket.mutate
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.hash.slice(1)).get('ticket')
+    if (!value) return
+    // Off the address first: a ticket is never left in history or reused by a reload.
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    redeem(value)
+  }, [redeem])
   // A client already signed in has nothing to do here.
   const session = useQuery({
     queryKey: portalKeys.session,
@@ -45,7 +66,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
   useEffect(() => {
     if (signedIn) router.replace(scoped('/'))
   }, [signedIn, router])
-  if (session.isPending || scope.isPending || signedIn)
+  if (session.isPending || scope.isPending || signedIn || ticket.isPending || ticket.isSuccess)
     return <div className="min-h-svh bg-background" aria-busy />
 
   return (
@@ -53,13 +74,19 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
       <div className="grid w-full max-w-[27rem] gap-5">
         {/* A card from sm up; a phone keeps the full width for the six code boxes. */}
         <div className="sm:rounded-2xl sm:bg-card sm:p-10 sm:shadow-elevation-soft">
-          {step ? (
+          {step && accounts ? (
+            <PortalAccountChooser email={step.email} accounts={accounts} />
+          ) : step ? (
             <EmailCodeForm
               email={step.email}
               sent={step.sent}
               verify={(code) => verifyPortalCode(step.email, code)}
               resend={() => startPortalSignIn(step.email)}
-              onDone={() => {
+              onDone={(result) => {
+                if (result.accounts) {
+                  setAccounts(result.accounts)
+                  return
+                }
                 queryClient.clear()
                 router.replace(scoped('/'))
               }}
@@ -67,6 +94,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
             />
           ) : (
             <div className="grid gap-7">
+              {ticket.isError && <InlineError>{translate('thatSignInHasExpired')}</InlineError>}
               <div className="grid justify-items-center gap-2 text-center">
                 <span className="mb-3">
                   {workspace ? (

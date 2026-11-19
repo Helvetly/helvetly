@@ -19,6 +19,7 @@
   "answerQuotes": "Answer quotes",
   "apartment": "Apartment",
   "aptSuite": "Apt / suite",
+  "asClient": "as {client}",
   "awaitingYourAnswer": "Awaiting your answer",
   "bahnhofstrasse": "Bahnhofstrasse",
   "billingEmail": "Billing email",
@@ -30,6 +31,7 @@
   "che123456789MWST": "CHE-123.456.789 MWST",
   "chooseACountry": "Choose a country",
   "chooseAllToSeeEveryInvoice": "Choose “All” to see every invoice.",
+  "chooseAnAccount": "Choose an account",
   "city": "City",
   "clientPortal": "Client portal",
   "company": "Company",
@@ -212,7 +214,9 @@
   "dynamicWeek": "week",
   "dynamicOn": " on {value1}",
   "dynamicOn2": "{verb} on {value2}",
+  "emailIsAClientOfSeveralSuppliers": "{email} has more than one account. Which one would you like to open?",
   "portalAddressNotFound": "This portal address doesn’t exist",
   "portalAddressNotFoundHint": "Check the link in your supplier’s email, or ask them for their current portal address.",
+  "thatSignInHasExpired": "That sign-in has expired. Enter your email to get a new code.",
   "zRich": "Zürich"
 }

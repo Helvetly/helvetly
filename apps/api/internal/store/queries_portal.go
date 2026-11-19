@@ -10,6 +10,7 @@ import (
 type PortalAccess struct {
 	ClientID, ClientName       string
 	WorkspaceID, WorkspaceName string
+	WorkspaceLogoFileID        *string
 }
 
 // PortalSession is a live client-portal session with the address it signed in with, its client and workspace.
@@ -28,7 +29,7 @@ const portalLogin = `lower(coalesce(nullif(c.email, ''), nullif(c.billing_email,
 // PortalAccessByEmail: the live clients with the portal on whose portal address is this one (any case), only in
 // workspaceID unless it is "".
 func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) ([]PortalAccess, error) {
-	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name FROM clients c
+	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name, w.logo_file_id FROM clients c
 		JOIN workspaces w ON w.id = c.workspace_id
 		WHERE `+portalLogin+` = lower($1) AND c.portal_enabled AND c.deleted_at IS NULL AND w.deleted_at IS NULL
 			AND ($2 = '' OR w.id = $2)
@@ -40,7 +41,7 @@ func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) (
 	var out []PortalAccess
 	for rows.Next() {
 		var a PortalAccess
-		if err := rows.Scan(&a.ClientID, &a.ClientName, &a.WorkspaceID, &a.WorkspaceName); err != nil {
+		if err := rows.Scan(&a.ClientID, &a.ClientName, &a.WorkspaceID, &a.WorkspaceName, &a.WorkspaceLogoFileID); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -136,4 +137,48 @@ func (q Q) DeletePortalAvatar(ctx context.Context, clientID, email string) (stri
 	err := q.db.QueryRow(ctx, `DELETE FROM portal_avatars WHERE client_id = $1 AND email = lower($2) RETURNING object_key`,
 		clientID, email).Scan(&key)
 	return key, err
+}
+
+// PortalChoice is a verified address that has yet to choose which client to sign in as (portal_sign_in_choices).
+type PortalChoice struct {
+	ID, CSRFToken, Email string
+}
+
+// CreatePortalChoice stores a choice; expired ones go first, as with sessions.
+func (q Q) CreatePortalChoice(ctx context.Context, id, tokenHash, csrf, email string, now, expires time.Time) error {
+	if _, err := q.db.Exec(ctx, `DELETE FROM portal_sign_in_choices WHERE expires_at < $1`, now); err != nil {
+		return err
+	}
+	_, err := q.db.Exec(ctx, `INSERT INTO portal_sign_in_choices (id, token_hash, csrf_token, email, created_at, expires_at)
+		VALUES ($1, $2, $3, lower($4), $5, $6)`, id, tokenHash, csrf, email, now, expires)
+	return err
+}
+
+// PortalChoiceByToken is the open choice of a cookie; ErrNotFound once chosen or expired.
+func (q Q) PortalChoiceByToken(ctx context.Context, tokenHash string, now time.Time) (PortalChoice, error) {
+	var c PortalChoice
+	err := q.db.QueryRow(ctx, `SELECT id, csrf_token, email FROM portal_sign_in_choices
+		WHERE token_hash = $1 AND expires_at > $2`, tokenHash, now).Scan(&c.ID, &c.CSRFToken, &c.Email)
+	return c, err
+}
+
+// ChoosePortalClient turns an open choice into a ticket for one client, once: false when it was chosen or expired.
+func (q Q) ChoosePortalClient(ctx context.Context, id, ticketHash, clientID, workspaceID string, now, expires time.Time) (bool, error) {
+	tag, err := q.db.Exec(ctx, `UPDATE portal_sign_in_choices
+		SET token_hash = NULL, ticket_hash = $2, client_id = $3, workspace_id = $4, expires_at = $6
+		WHERE id = $1 AND token_hash IS NOT NULL AND expires_at > $5`, id, ticketHash, clientID, workspaceID, now, expires)
+	return tag.RowsAffected() == 1, err
+}
+
+// PortalTicket is what a redeemed ticket was for.
+type PortalTicket struct {
+	Email, ClientID, WorkspaceID string
+}
+
+// RedeemPortalTicket deletes a live ticket and returns it; ErrNotFound for an unknown, used or expired one.
+func (q Q) RedeemPortalTicket(ctx context.Context, ticketHash string, now time.Time) (PortalTicket, error) {
+	var t PortalTicket
+	err := q.db.QueryRow(ctx, `DELETE FROM portal_sign_in_choices WHERE ticket_hash = $1 AND expires_at > $2
+		RETURNING email, client_id, workspace_id`, ticketHash, now).Scan(&t.Email, &t.ClientID, &t.WorkspaceID)
+	return t, err
 }

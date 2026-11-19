@@ -3,6 +3,7 @@ package portal
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -137,9 +138,24 @@ func sessionCookie_(res *http.Response) *http.Cookie {
 	return nil
 }
 
+// signIn opens an unscoped session for email in its first client. An address with several clients is offered a
+// choice on the shared portal instead; its session is then the one the account menu's switch opens there, made
+// directly here (the choice itself is TestChooser's).
 func (e *env) signIn(email string) (*http.Cookie, string) {
 	e.t.Helper()
 	res, out := e.do("POST", "/auth/verify", map[string]string{"email": email, "code": "123456"}, nil, "")
+	if res.StatusCode == 200 && out["accounts"] != nil {
+		first := out["accounts"].([]any)[0].(map[string]any)["client_id"].(string)
+		var workspace string
+		if err := e.raw.QueryRow(context.Background(), `SELECT workspace_id FROM clients WHERE id = $1`, first).Scan(&workspace); err != nil {
+			e.t.Fatal(err)
+		}
+		token, csrf := rand.Text(), rand.Text()
+		if err := e.store.Q.CreatePortalSession(context.Background(), auth.NewID("pse"), hashToken(token), csrf, email, first, workspace, false, time.Now(), time.Now().Add(time.Hour)); err != nil {
+			e.t.Fatal(err)
+		}
+		return &http.Cookie{Name: sessionCookie, Value: token}, csrf
+	}
 	c := sessionCookie_(res)
 	if res.StatusCode != 201 || c == nil {
 		e.t.Fatalf("verify: %d %v", res.StatusCode, out)
@@ -176,15 +192,15 @@ func TestVerifyNoAccess403(t *testing.T) {
 	}
 }
 
-func TestVerifyCookieAndFirstClient(t *testing.T) {
+func TestVerifyCookieOfTheOnlyClient(t *testing.T) {
 	e := newEnv(t)
-	res, _ := e.do("POST", "/auth/verify", map[string]string{"email": "Ana@Acme.ch", "code": "123456"}, nil, "")
+	res, _ := e.do("POST", "/auth/verify", map[string]string{"email": "Bob@Beta.ch", "code": "123456"}, nil, "")
 	c := sessionCookie_(res)
-	if c == nil || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode {
-		t.Fatalf("cookie: %+v", c)
+	if res.StatusCode != 201 || c == nil || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("cookie: %d %+v", res.StatusCode, c)
 	}
 	_, out := e.do("GET", "/session", nil, c, "")
-	if out["client"].(map[string]any)["id"] != "cli_1" || len(out["clients"].([]any)) != 2 {
+	if out["client"].(map[string]any)["id"] != "cli_3" || len(out["clients"].([]any)) != 1 {
 		t.Fatalf("session: %v", out)
 	}
 }
