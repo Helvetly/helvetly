@@ -285,6 +285,12 @@ export const clientsApi = {
       json: { ids, action },
     }),
   tags: () => request<{ data: { name: string; count: number }[] }>('/clients/tags'),
+  /** The URL a typed website really answers on (https preferred, redirects followed); 422 when unreachable. */
+  checkWebsite: (website: string) =>
+    request<{ data: { website: string } }>('/clients/website-check', {
+      method: 'POST',
+      json: { website },
+    }),
   addContact: (id: string, input: Partial<ContactInput>) =>
     request<{ data: Contact }>(`${path(id)}/contacts`, { method: 'POST', json: input }),
   updateContact: (id: string, contactId: string, input: Partial<ContactInput>) =>

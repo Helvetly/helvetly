@@ -33,8 +33,8 @@ import { EditableValue, InlineAdd, InlineTextEditor } from '@/components/inline-
 import { ClientInvoices } from '@/components/invoices/client-invoices'
 import { ClientQuotes } from '@/components/quotes/client-quotes'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
-import { errorMessage } from '@/lib/api'
-import { useClient, useSaveClient, type Client, type ClientInput } from '@/lib/clients'
+import { ApiError, errorMessage } from '@/lib/api'
+import { clientsApi, useClient, useSaveClient, type Client, type ClientInput } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
@@ -259,6 +259,13 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
   )
 }
 
+/** A rejected field's own message ("Enter the number in international format…") instead of the generic one. */
+function fieldError(failure: unknown): unknown {
+  const fields = failure instanceof ApiError ? failure.details.fields : undefined
+  const first = fields && typeof fields === 'object' ? Object.values(fields)[0] : undefined
+  return typeof first === 'string' ? new Error(first) : failure
+}
+
 const languageName = (code: string | null) =>
   code ? (LANGUAGE_OPTIONS.find((option) => option.code === code)?.name ?? code) : null
 const currencyName = (code: string | null) =>
@@ -332,13 +339,19 @@ function Detail({
   const canWrite = useCan('write:clients')
   /** One field saved from the page; null without the right to change clients (the link opens the form). */
   const inline = (
-    toInput: (text: string) => Partial<ClientInput>,
-    options: { placeholder?: string; mono?: boolean } = {},
+    toInput: (text: string) => Partial<ClientInput> | Promise<Partial<ClientInput>>,
+    options: { placeholder?: string; mono?: boolean; pendingHint?: string } = {},
   ) =>
     canWrite
       ? {
           ...options,
-          save: (text: string) => saveClient.mutateAsync({ id: client.id, input: toInput(text) }),
+          save: async (text: string) => {
+            try {
+              return await saveClient.mutateAsync({ id: client.id, input: await toInput(text) })
+            } catch (failure) {
+              throw fieldError(failure)
+            }
+          },
         }
       : undefined
   const save = (input: Partial<ClientInput>) => saveClient.mutateAsync({ id: client.id, input })
@@ -437,6 +450,9 @@ function Detail({
             label={translate('email')}
             copy={client.email}
             onAdd={edit}
+            inline={inline((text) => ({ email: text }), {
+              placeholder: translate('helloExampleCh'),
+            })}
             value={
               client.email && (
                 <a
@@ -453,6 +469,7 @@ function Detail({
             label={translate('phone')}
             copy={client.phone && displayPhone(client.phone)}
             onAdd={edit}
+            inline={inline((text) => ({ phone: text }), { placeholder: '+41 44 123 45 67' })}
             value={
               client.phone && (
                 <a
@@ -468,6 +485,11 @@ function Detail({
             icon={Globe}
             label={translate('website')}
             onAdd={edit}
+            // The API checks the site answers and gives the address it really answers on (https, redirects followed).
+            inline={inline(
+              async (text) => ({ website: (await clientsApi.checkWebsite(text)).data.website }),
+              { placeholder: 'example.ch', pendingHint: translate('checkingTheSite') },
+            )}
             value={
               client.website && (
                 <a
