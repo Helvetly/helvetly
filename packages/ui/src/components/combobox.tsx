@@ -6,14 +6,15 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandCreateItem,
   CommandList,
   CommandShortcut,
 } from '@helvetly/ui/components/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, ChevronsUpDown } from 'lucide-react'
-import { useId, useState, type ReactNode } from 'react'
+import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 
 export const inputClass =
   'h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30'
@@ -34,6 +35,8 @@ export function Combobox({
   renderValue,
   contentClassName,
   disabled,
+  onCreate,
+  createLabel,
 }: {
   id?: string
   value: string
@@ -48,13 +51,31 @@ export function Combobox({
   /** E.g. a width for lists whose labels are longer than the trigger. */
   contentClassName?: string
   disabled?: boolean
+  /**
+   * Adds an option the list lacks: the list's last row, always in view, opens the caller's add flow with what was
+   * typed, or '' (the row then says `createLabel`; with a term that matches no option it says Add "term").
+   */
+  onCreate?: (term: string) => void
+  createLabel?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  // The add flow takes focus next; the closing list must not hand it back to the trigger.
+  const creating = useRef(false)
+  const term = search.trim()
+  const named =
+    term !== '' && !options.some((option) => option.label.toLowerCase() === term.toLowerCase())
   const labelId = useId()
   const valueId = useId()
   const selected = options.find((option) => option.value === value)
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        setSearch('')
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           size="lg"
@@ -87,9 +108,18 @@ export function Combobox({
           'w-max max-w-[min(32rem,var(--radix-popover-content-available-width))] min-w-[max(16rem,var(--radix-popover-trigger-width))] p-0',
           contentClassName,
         )}
+        onCloseAutoFocus={(event) => {
+          if (!creating.current) return
+          creating.current = false
+          event.preventDefault()
+        }}
       >
         <Command>
-          <CommandInput placeholder={translate('search')} />
+          <CommandInput
+            placeholder={translate('search')}
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList>
             <CommandEmpty>{translate('nothingFound')}</CommandEmpty>
             {[...new Set(options.map((option) => option.group))].map((group) => (
@@ -118,6 +148,22 @@ export function Combobox({
                   ))}
               </CommandGroup>
             ))}
+            {onCreate && (
+              <CommandCreateItem
+                className="justify-start"
+                onSelect={() => {
+                  creating.current = true
+                  setOpen(false)
+                  setSearch('')
+                  onCreate(named ? term : '')
+                }}
+              >
+                <Plus />
+                <span className="truncate">
+                  {named ? translate('addNamed', { name: term }) : createLabel}
+                </span>
+              </CommandCreateItem>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

@@ -1,5 +1,14 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import {
+  Command,
+  CommandCreateItem,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from '@helvetly/ui/components/command'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Meter } from '@helvetly/ui/components/meter'
@@ -12,6 +21,7 @@ import {
   CircleCheck,
   FileText,
   Info,
+  Plus,
   Inbox,
   Settings,
   Sparkles,
@@ -166,4 +176,44 @@ export const DropZone: Story = {
     await expect(style.borderTopWidth).toBe('1px')
     await expect(style.borderTopStyle).toBe('dashed')
   },
+}
+
+const CATEGORIES = [
+  ['Travel', '6640'],
+  ['Software', '6570'],
+  ['Office supplies', '6500'],
+  ['Telephone', '6510'],
+  ['Advertising', '6600'],
+  ['Training', '5810'],
+  ['Insurance', '6300'],
+  ['Rent', '6000'],
+  ['Repairs', '6100'],
+  ['Vehicles', '6200'],
+]
+
+/** A picker's list as it opens: the add row stays at the end, in view, while the options scroll above it. */
+export const PickerWithAddRow: Story = {
+  render: () => (
+    <div className="w-72 rounded-lg border bg-popover shadow-md">
+      <Command>
+        <CommandInput placeholder="Search" />
+        <CommandList>
+          <CommandGroup>
+            {CATEGORIES.map(([name, account]) => (
+              <CommandItem key={name} value={name}>
+                <span className="flex-1">{name}</span>
+                <CommandShortcut className="tracking-normal tabular-nums">
+                  {account}
+                </CommandShortcut>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandCreateItem className="justify-start">
+            <Plus />
+            Add category
+          </CommandCreateItem>
+        </CommandList>
+      </Command>
+    </div>
+  ),
 }

@@ -47,10 +47,13 @@ function setup(role: string, categories: unknown[], by: 'id' | 'name' = 'id', va
   return { posts, onChange }
 }
 
-test('an admin creates a category and it is selected by id', async () => {
+test("an admin adds what was typed from the list's last row and it is selected by id", async () => {
   const { posts, onChange } = setup('admin', [travel])
-  await userEvent.click(await screen.findByRole('button', { name: 'New category' }))
-  await userEvent.type(screen.getByRole('textbox', { name: 'Category name' }), 'Software')
+  await userEvent.click(await screen.findByRole('button', { name: /Choose a category/ }))
+  expect(screen.getByRole('option', { name: 'Add category' })).toBeVisible()
+  await userEvent.type(screen.getByRole('combobox'), 'Software{Enter}')
+  const name = await screen.findByRole('textbox', { name: 'Category name' })
+  expect(name).toHaveValue('Software')
   const code = screen.getByRole('textbox', { name: /Account code/ })
   expect(code).toHaveValue('6700')
   await userEvent.clear(code)
@@ -61,16 +64,32 @@ test('an admin creates a category and it is selected by id', async () => {
   expect(posts).toEqual([{ name: 'Software', account_code: '6570' }])
 })
 
-test('a member sees no create action', async () => {
-  setup('member', [travel])
-  await screen.findByText('Choose a category')
-  expect(screen.queryByRole('button', { name: 'New category' })).toBeNull()
+test('the add row reads Add "term" only for a term no category matches, and arrows reach it', async () => {
+  setup('owner', [travel])
+  await userEvent.click(await screen.findByRole('button', { name: /Choose a category/ }))
+  const search = screen.getByRole('combobox')
+  await userEvent.type(search, 'travel')
+  expect(screen.getByRole('option', { name: 'Add category' })).toBeVisible()
+  await userEvent.keyboard('{ArrowDown}{Enter}')
+  expect(await screen.findByRole('textbox', { name: 'Category name' })).toHaveValue('')
 })
 
-test('an empty list disables the picker but an owner can still create', async () => {
+test('a member gets no add row', async () => {
+  setup('member', [travel])
+  await userEvent.click(await screen.findByRole('button', { name: /Choose a category/ }))
+  expect(screen.getByRole('option', { name: /Travel/ })).toBeVisible()
+  expect(screen.queryByRole('option', { name: 'Add category' })).toBeNull()
+})
+
+test('an empty list stays open for an owner, to add the first category, and disabled for a member', async () => {
   setup('owner', [])
+  await userEvent.click(await screen.findByRole('button', { name: /No categories yet/ }))
+  expect(screen.getByRole('option', { name: 'Add category' })).toBeVisible()
+})
+
+test('an empty list disables the picker for a member', async () => {
+  setup('member', [])
   expect(await screen.findByRole('button', { name: /No categories yet/ })).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'New category' })).toBeEnabled()
 })
 
 test('a name no category carries is offered as a new category, keeping the name', async () => {

@@ -139,12 +139,15 @@ export function EngagementForm({
   onOpenChange,
   engagement,
   clientId,
+  title,
   onSaved,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   engagement?: Engagement
   clientId?: string
+  /** A new engagement's title, e.g. what was typed into a picker. */
+  title?: string
   onSaved?: (engagement: Engagement) => void
 }) {
   // Mounted only while open, so every opening starts from fresh values.
@@ -154,6 +157,7 @@ export function EngagementForm({
       onClose={() => onOpenChange(false)}
       engagement={engagement}
       clientId={clientId}
+      title={title}
       onSaved={onSaved}
     />
   )
@@ -163,6 +167,7 @@ type FormSheetProps = {
   onClose: () => void
   engagement?: Engagement
   clientId?: string
+  title?: string
   onSaved?: (engagement: Engagement) => void
 }
 
@@ -173,7 +178,13 @@ function FormSheet(props: FormSheetProps) {
   return <FormSheetBody {...props} />
 }
 
-function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProps) {
+function FormSheetBody({
+  onClose,
+  engagement,
+  clientId,
+  title: newTitle,
+  onSaved,
+}: FormSheetProps) {
   const settings = useInvoiceSettings().data
   const defaults = {
     currency: settings?.currency ?? FALLBACK_DEFAULTS.currency,
@@ -182,7 +193,9 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
   }
   const { habits, remember } = useHabits()
   const [initial] = useState(() =>
-    engagement ? valuesFromEngagement(engagement) : newValues(defaults, habits, clientId),
+    engagement
+      ? valuesFromEngagement(engagement)
+      : { ...newValues(defaults, habits, clientId), ...(newTitle ? { title: newTitle } : {}) },
   )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})

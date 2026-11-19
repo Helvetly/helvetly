@@ -1,4 +1,5 @@
 {
+  "addNamed": "Add “{name}”",
   "about": "About {label}",
   "aCodeWasJustSentWaitAFewSeconds": "A code was just sent. Wait a few seconds before asking for another.",
   "cannotReachHelvetlyCheckYourConnection": "Cannot reach Helvetly. Check your connection.",
