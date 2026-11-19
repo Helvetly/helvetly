@@ -315,7 +315,7 @@ test("run cancellation targets the closed pull request's own commit", () => {
   assert.match(cancel, /timeout-minutes/)
 })
 
-test('the Storybook MSW workers never unregister themselves and match the installed msw', () => {
+test('the Storybook MSW workers never unregister themselves, never hold an event open, and match the installed msw', () => {
   const require = createRequire(import.meta.url)
   for (const app of ['platform', 'portal']) {
     const worker = readFileSync(
@@ -325,6 +325,14 @@ test('the Storybook MSW workers never unregister themselves and match the instal
     // `msw init` restores self-unregistration, which made a random story file lose its mocks.
     assert.doesNotMatch(worker, /registration\.unregister\(\)/, app)
     assert.match(worker, /Helvetly: no self-unregistration/, app)
+    // It also restores replies that wait on a MessagePort the msw client never answers; Chrome kills a worker whose
+    // event stays open 5 minutes, which failed a random story mid-run.
+    assert.doesNotMatch(
+      worker,
+      /await sendToClient\(client, \{\s+type: '(CLIENT_CLOSED|KEEPALIVE_RESPONSE|INTEGRITY_CHECK_RESPONSE|MOCKING_ENABLED)'/,
+      app,
+    )
+    assert.match(worker, /case 'UNANSWERED'/, app)
     const msw = require(
       require.resolve('msw/package.json', {
         paths: [fileURLToPath(new URL(`../apps/${app}`, import.meta.url))],
