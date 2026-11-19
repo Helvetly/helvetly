@@ -123,7 +123,7 @@ export function RegisterNameInput({
           {status && (
             <output className="block px-2 py-1.5 text-xs text-muted-foreground">{status}</output>
           )}
-          <p className="px-2 pt-1 pb-0.5 text-[11px] text-muted-foreground/80">
+          <p className="px-2 pt-1 pb-0.5 text-caption text-muted-foreground">
             {translate('fromTheSwissUIDRegister')}
           </p>
         </div>
@@ -169,7 +169,7 @@ export function UidVerifiedBadge({
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="inline-flex cursor-default rounded-[4px] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex cursor-default rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <StatusBadge tone="green">
             <BadgeCheck className="mr-1 size-3.5" />
