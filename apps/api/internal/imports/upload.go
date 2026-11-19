@@ -46,7 +46,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	defer func() { _ = r.MultipartForm.RemoveAll() }()
 	form := r.MultipartForm
 	for k, v := range form.Value {
-		if k != "kind" || len(v) != 1 {
+		if (k != "kind" && k != "client_id") || len(v) != 1 {
 			return invalid("Send one kind and the files in files[].")
 		}
 	}
@@ -72,6 +72,10 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err := kind.allowed(r.Context(), s.db.Q, sess.Workspace.ID); err != nil {
 		return err
 	}
+	clientID, err := s.batchClient(r.Context(), sess, kind, form.Value["client_id"])
+	if err != nil {
+		return err
+	}
 	headers := form.File["files[]"]
 	if len(headers) == 0 || len(headers) > maxFiles {
 		return invalid(fmt.Sprintf("Choose 1 to %d files.", maxFiles))
@@ -91,12 +95,30 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		list = append(list, u)
 	}
-	b, err := s.store(r.Context(), sess, kind, list)
+	b, err := s.store(r.Context(), sess, kind, clientID, list)
 	if err != nil {
 		return err
 	}
 	auth.WriteJSON(w, http.StatusCreated, map[string]any{"data": b})
 	return nil
+}
+
+// batchClient: the live client of the workspace an invoice import is for, or nil for an import of any client.
+func (s *Service) batchClient(ctx context.Context, sess store.Session, kind Kind, value []string) (*string, error) {
+	if len(value) == 0 {
+		return nil, nil
+	}
+	if kind.Name != invoicesKind.Name {
+		return nil, invalid("Only an invoice import can be for one client.")
+	}
+	c, err := s.db.Client(ctx, sess.Workspace.ID, value[0])
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, invalid("Choose a client of this workspace.")
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c.ID, nil
 }
 
 // readUpload reads and checks one multipart file. An unreadable file refuses the whole upload with its reason.
@@ -141,7 +163,7 @@ func unsupportedFile(err error) error {
 // store keeps every upload as a Document (reusing the stored object when the bytes are already in the workspace) and
 // records the batch. Objects are put between two transactions, so no lock waits on storage; the second transaction
 // repeats the duplicate check under the same locks, which covers simultaneous uploads from any entry point.
-func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list []upload) (b store.ImportBatch, err error) {
+func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, clientID *string, list []upload) (b store.ImportBatch, err error) {
 	if err = s.db.Tx(ctx, func(q store.Q) error { return s.admit(ctx, q, sess, list, kind.Private) }); err != nil {
 		return b, err
 	}
@@ -168,7 +190,7 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, list
 			return b, err
 		}
 	}
-	batch := store.ImportBatch{ID: auth.NewID("imp"), WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID, Kind: kind.Name}
+	batch := store.ImportBatch{ID: auth.NewID("imp"), WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID, Kind: kind.Name, ClientID: clientID}
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := s.admit(ctx, q, sess, list, kind.Private); err != nil {
 			return err

@@ -4514,5 +4514,10 @@
   "heidiErrorUsageUncertain": "Heidi sta ancora completando una richiesta precedente, oppure l'uso dell'IA di questo mese è in verifica. Non è stato modificato nulla. Riprova tra qualche minuto; i comandi locali funzionano comunque.",
   "heidiErrorPaused": "Le risposte IA di Heidi sono in pausa per ora. I comandi locali funzionano comunque.",
   "aiErrorBusy": "L'IA è occupata in questo momento. Riprova tra un minuto.",
-  "aiWriteErrorFailed": "L'IA non è riuscita a scrivere questo testo ora. Non è stato modificato nulla. Riprova tra un momento."
+  "aiWriteErrorFailed": "L'IA non è riuscita a scrivere questo testo ora. Non è stato modificato nulla. Riprova tra un momento.",
+  "importInvoices": "Importa fatture",
+  "importInvoicesForClient": "Importa fatture per {client}",
+  "importingInvoicesForClient": "Importazione di fatture per {client}: ogni fattura letta è assegnata a questo cliente.",
+  "importClientLocked": "Questa importazione riguarda un solo cliente: ogni fattura resta sua.",
+  "moreWaysToAddInvoices": "Altri modi per aggiungere fatture"
 }

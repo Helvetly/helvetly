@@ -3,7 +3,15 @@ import { Button } from '@helvetly/ui/components/button'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Building2, ChevronsUpDown, ScanSearch, Search, UserPlus, UserRound } from 'lucide-react'
+import {
+  Building2,
+  ChevronsUpDown,
+  Lock,
+  ScanSearch,
+  Search,
+  UserPlus,
+  UserRound,
+} from 'lucide-react'
 import { useState } from 'react'
 
 import { ClientForm } from '@/components/clients/client-form'
@@ -89,6 +97,7 @@ export function ImportClientField({
   clientName,
   found,
   error,
+  locked = false,
   onPick,
 }: {
   id: string
@@ -98,6 +107,8 @@ export function ImportClientField({
   /** The billed party as the document describes it. */
   found: Partial<FormValues>
   error?: string
+  /** Fixed by an import for one client: shown, not changed. */
+  locked?: boolean
   onPick: (client: Client) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -106,11 +117,18 @@ export function ImportClientField({
   const details = detailRows(found)
   return (
     <div className="grid gap-3 sm:col-span-2">
-      <FormField id={id} label={translate('client')} error={error} required>
-        <Popover open={open} onOpenChange={setOpen}>
+      <FormField
+        id={id}
+        label={translate('client')}
+        hint={locked ? translate('importClientLocked') : undefined}
+        error={error}
+        required
+      >
+        <Popover open={open && !locked} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
+              disabled={locked}
               {...describedBy(id, error)}
               className={cn(inputClass, 'flex items-center justify-between text-left')}
             >
@@ -121,7 +139,11 @@ export function ImportClientField({
                       value1: clientName ? translate('document2', { clientName: clientName }) : '',
                     })}
               </span>
-              <ChevronsUpDown className="size-4 text-muted-foreground" />
+              {locked ? (
+                <Lock aria-hidden className="size-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronsUpDown className="size-4 text-muted-foreground" />
+              )}
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">

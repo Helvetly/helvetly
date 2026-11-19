@@ -2,6 +2,8 @@ package imports
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"helvetly.com/api/internal/invoices"
@@ -127,6 +129,24 @@ var invoicesKind = Kind{
 		}
 		return invoices.OverwriteImport(ctx, q, sess, id, clientID, data, doc)
 	},
+}
+
+// scopeToClient: an invoice of a batch for one client is that client's, whatever the document or an edit says. A
+// client deleted since leaves the record to the review, which asks for one.
+func scopeToClient(ctx context.Context, q store.Q, workspaceID string, clientID *string, kind string, data Data) error {
+	if clientID == nil || kind != invoicesKind.Name {
+		return nil
+	}
+	c, err := q.Client(ctx, workspaceID, *clientID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	data["client_id"], _ = json.Marshal(c.ID)
+	data["client_name"], _ = json.Marshal(c.Name)
+	return nil
 }
 
 // original is the Document an invoice issued elsewhere keeps as its original: the upload's, or for a ZIP entry one

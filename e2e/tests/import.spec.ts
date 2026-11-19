@@ -73,3 +73,40 @@ test('a CSV dropped anywhere on the clients page opens its import with the file,
   if (!Array.isArray(rows)) throw new Error('Expected clients')
   expect(rows.map((row) => object(row).name)).toEqual([name])
 })
+
+test("a PDF imported from a client's drawer becomes that client's invoice", async ({
+  page,
+  api,
+}) => {
+  await api.approveAI()
+  await api.settings()
+  const client = await api.client()
+  const name = String(client.name)
+  const number = uniqueName('RE-E2E').replaceAll(' ', '-')
+
+  await page.goto(`/clients?id=${String(client.id)}`)
+  const header = page.getByRole('banner').filter({ hasText: name })
+  await header.getByRole('button', { name: 'More ways to add invoices' }).click()
+  await page.getByRole('menuitem', { name: 'Import invoices' }).click()
+  const drawer = page.getByRole('dialog', { name: `Import invoices for ${name}` })
+  await expect(drawer.getByText(/every invoice read is assigned to this client/)).toBeVisible()
+  await drawer.getByLabel('Choose files to import').setInputFiles({
+    name: `${number}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
+  })
+  await drawer.getByRole('button', { name: 'Process with AI', exact: true }).click()
+  const table = drawer.getByRole('table', { name: 'Records found' })
+  await expect(table.getByText(number)).toBeVisible({ timeout: 30_000 })
+  await drawer.getByRole('button', { name: /^Import 1/ }).click()
+  await expect(drawer.getByText('1 created', { exact: false })).toBeVisible()
+
+  const batches = object(await (await api.request.get('/api/v1/imports?kind=invoices')).json()).data
+  if (!Array.isArray(batches)) throw new Error('Expected import batches')
+  const batch = await api.read(`/imports/${String(object(batches[0]).id)}`)
+  expect(batch.client_id).toBe(client.id)
+  const records = batch.records
+  if (!Array.isArray(records)) throw new Error('Expected records')
+  const invoice = await api.read(`/invoices/${String(object(records[0]).entity_id)}`)
+  expect(invoice.client_id).toBe(client.id)
+})

@@ -13,6 +13,7 @@ import { displayPhone } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Building2,
+  ChevronDown,
   Ellipsis,
   FilePlus2,
   Globe,
@@ -28,6 +29,8 @@ import {
 } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
 
+import { dropdownKit } from '@/components/data/menus'
+import { ImportItem } from '@/components/import/import-button'
 import { initialsOf } from '@/components/initials'
 import { newInvoiceHref } from '@/components/invoices/compose'
 import { RecordPageButton } from '@/components/record-link'
@@ -124,6 +127,7 @@ export function ClientHeader({
   onToggle,
   onDelete,
   onFillTemplate,
+  onImportInvoices,
   tabs,
 }: {
   client: Client
@@ -133,6 +137,8 @@ export function ClientHeader({
   onToggle: () => void
   onDelete: () => void
   onFillTemplate: () => void
+  /** Opens the invoice import for this client; without it (no right to write invoices) no menu. */
+  onImportInvoices?: () => void
   tabs: ReactNode
 }) {
   const facts = headerFacts(client)
@@ -180,12 +186,34 @@ export function ClientHeader({
               <span className="max-sm:sr-only">{translate('document')}</span>
             </Button>
           </Tip>
-          <Button asChild>
-            <a href={localizedHref(newInvoiceHref(client.id))}>
-              <FilePlus2 className="size-3.5" />
-              {translate('newInvoice2')}
-            </a>
-          </Button>
+          <div className="flex items-center">
+            <Button asChild className={cn(onImportInvoices && 'rounded-r-none')}>
+              <a href={localizedHref(newInvoiceHref(client.id))}>
+                <FilePlus2 className="size-3.5" />
+                {translate('newInvoice2')}
+              </a>
+            </Button>
+            {onImportInvoices && (
+              <DropdownMenu>
+                <Tip label={translate('moreWaysToAddInvoices')}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      aria-label={translate('moreWaysToAddInvoices')}
+                      className="rounded-l-none border-l border-primary-foreground/20"
+                    >
+                      <ChevronDown aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </Tip>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  <ImportItem Item={dropdownKit.Item} onSelect={onImportInvoices}>
+                    {translate('importInvoices')}
+                  </ImportItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
           <RecordPageButton />
           <Tip label={translate('close')}>
             <Button

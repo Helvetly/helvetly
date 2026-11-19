@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ClientEngagements } from '@/components/clients/client-engagements'
+import { ImportDrawer } from '@/components/import/import-drawer'
 import { EditableValue, InlineAdd, InlineTextEditor } from '@/components/inline-add'
 import { ClientInvoices } from '@/components/invoices/client-invoices'
 import { ClientQuotes } from '@/components/quotes/client-quotes'
@@ -358,6 +359,8 @@ function Detail({
   const filled = 5 - client.missing_fields.length
   const [filling, setFilling] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const canImportInvoices = useCan('write:invoices')
 
   return (
     <Tabs defaultValue="overview" className="min-h-full gap-0">
@@ -369,6 +372,7 @@ function Detail({
         onToggle={() => onCommand('toggle', client)}
         onDelete={() => onCommand('delete', client)}
         onFillTemplate={() => setFilling(true)}
+        onImportInvoices={canImportInvoices ? () => setImporting(true) : undefined}
         tabs={
           <>
             {/* Scrolls sideways on phones; the padding gives the focus rings room inside the scroller. */}
@@ -682,6 +686,13 @@ function Detail({
       </TabsContent>
       {filling && (
         <FillTemplateDrawer template={null} client={client} onClose={() => setFilling(false)} />
+      )}
+      {importing && (
+        <ImportDrawer
+          kind="invoices"
+          client={{ id: client.id, name: client.name }}
+          onClose={() => setImporting(false)}
+        />
       )}
     </Tabs>
   )

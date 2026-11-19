@@ -54,10 +54,13 @@ import { InvoiceRecordEditor } from './invoice-record-editor'
  */
 export function ImportDrawer({
   kind,
+  client,
   onClose,
   onCreated,
 }: {
   kind: ImportTarget
+  /** An invoice import for this client: every invoice read is assigned to it. */
+  client?: { id: string; name: string }
   onClose: () => void
   /** After a commit that created records: what the batch has created so far. */
   onCreated?: (summary: string) => void
@@ -83,7 +86,7 @@ export function ImportDrawer({
 
   const list = useImportBatches(kind)
   const batch = useImportBatch(batchId)
-  const upload = useUploadImport(kind)
+  const upload = useUploadImport(kind, client?.id)
   const commit = useCommitImport(kind, batchId ?? '')
   const discard = useDiscardImport(kind)
 
@@ -91,8 +94,9 @@ export function ImportDrawer({
   const open = records.filter((record) => !isSettled(record))
   const selected = picked ?? defaultSelection(records)
   const chosen = open.filter((record) => selected.has(record.id)).map((record) => record.id)
-  const resume = !fresh && batchId === null ? resumable(list.data ?? []) : null
+  const resume = !fresh && batchId === null ? resumable(list.data ?? [], client?.id ?? null) : null
   const editingRecord = records.find((record) => record.id === editing)
+  const clientName = client?.name ?? batch.data?.client_name ?? null
 
   const queryClient = useQueryClient()
   const { ensure } = useAIApproval()
@@ -337,12 +341,18 @@ export function ImportDrawer({
         <header className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
           <div className="grid min-w-0 gap-0.5">
             <SheetTitle className="truncate text-lg font-semibold">
-              {config ? translate('importKind', { noun }) : translate('importDocuments')}
+              {clientName
+                ? translate('importInvoicesForClient', { client: clientName })
+                : config
+                  ? translate('importKind', { noun })
+                  : translate('importDocuments')}
             </SheetTitle>
             <SheetDescription className="text-[13px] text-pretty text-muted-foreground">
-              {config
-                ? translate('fromSpreadsheetsPDFsPhotosOrWordFilesReadBy')
-                : translate('importAutoDescription')}
+              {clientName
+                ? translate('importingInvoicesForClient', { client: clientName })
+                : config
+                  ? translate('fromSpreadsheetsPDFsPhotosOrWordFilesReadBy')
+                  : translate('importAutoDescription')}
             </SheetDescription>
           </div>
           <Tooltip>
@@ -406,6 +416,7 @@ export function ImportDrawer({
             record={editingRecord}
             fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
             fileSrc={importFileUrl(batchId ?? '', editingRecord.file_id)}
+            clientLocked={Boolean(batch.data?.client_id)}
             name={rowName(IMPORT_KINDS.invoices, editingRecord, records.indexOf(editingRecord))}
             onDone={(saved) => {
               setEditing(null)
