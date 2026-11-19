@@ -2290,6 +2290,7 @@
   "peppolBIS": "Peppol BIS",
   "peppolBIS30": "Peppol BIS 3.0",
   "per1": "{baseCurrency} pour 1 {currency}",
+  "percentFrom0To100": "Un nombre de 0 à 100, avec au plus deux décimales.",
   "performedBy": "Interprété par",
   "period": "Période",
   "period2": "Période :",

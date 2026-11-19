@@ -239,6 +239,12 @@ func TestValidation(t *testing.T) {
 		{map[string]any{"name": "A", "unit_price": "1", "type": "product", "gtin": "1234567"}, 422, "validation_failed", []string{"gtin"}},
 		{map[string]any{"name": "A", "unit_price": "1", "gtin": "96385074"}, 422, "validation_failed", []string{"gtin"}}, // a service
 		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "0"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "150"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "100.01"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "-1"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "kkk2.6"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "12,5"}, 422, "validation_failed", []string{"vat_rate"}},
+		{map[string]any{"name": "A", "unit_price": "1", "vat_rate": "8.123"}, 422, "validation_failed", []string{"vat_rate"}},
 		{map[string]any{"name": "A", "unit_price": "1", "vat_category": "Z", "vat_rate": "8.1"}, 422, "validation_failed", []string{"vat_rate"}},
 		{map[string]any{"name": "A", "unit_price": "1", "unit": "litre", "currency": "XXX", "type": "thing"}, 422, "validation_failed",
 			[]string{"unit", "currency", "type"}},

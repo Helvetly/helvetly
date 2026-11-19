@@ -44,6 +44,7 @@ import { BooksHeader } from '@/components/books/books-tabs'
 import { NativeSelect } from '@/components/clients/fields'
 import { fixCount, FixDialog, FixLink, FixList } from '@/components/fix-list'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
+import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -63,7 +64,6 @@ import {
 
 import { HelpTip } from './help-tip'
 import { SettingsPage } from './layout'
-import { UnitInput } from './unit-input'
 
 const SETTINGS_KEY = ['vat-return', 'settings'] as const
 const reportKey = (period: string) => ['vat-return', 'report', period] as const
@@ -871,12 +871,10 @@ function SettleDrawer({ settings, onClose }: { settings: VATReturnSettings; onCl
                       />
                     </FormField>
                     <FormField id={`net-rate-${index}`} label={translate('rate2')}>
-                      <UnitInput
+                      <PercentInput
                         id={`net-rate-${index}`}
-                        unit="%"
-                        inputMode="decimal"
                         value={rate.rate}
-                        onChange={(event) => setRate(rate.key, { rate: event.target.value })}
+                        onValueChange={(value) => setRate(rate.key, { rate: value })}
                       />
                     </FormField>
                     <Button

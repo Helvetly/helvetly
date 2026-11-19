@@ -58,6 +58,7 @@ import {
   type SectionState,
 } from '@/components/section-form'
 import { NumberFormatField } from '@/components/settings/number-format-field'
+import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -1163,13 +1164,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                             }}
                           />
                           {customRate && (
-                            <UnitInput
+                            <PercentInput
                               {...describe('default_vat_rate')}
                               aria-label={translate('otherRate')}
-                              unit="%"
-                              inputMode="decimal"
                               value={values.default_vat_rate}
-                              onChange={(e) => set('default_vat_rate', e.target.value)}
+                              onValueChange={(value) => set('default_vat_rate', value)}
                               placeholder="7.7"
                               className="w-28"
                             />
@@ -1593,12 +1592,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                       error={shown.dunning_interest_rate}
                       tip={translate('message5AYearIsTheStatutoryRateAHigher')}
                     >
-                      <UnitInput
+                      <PercentInput
                         {...describe('dunning_interest_rate')}
                         unit={translate('aYear3')}
-                        inputMode="decimal"
                         value={values.dunning_interest_rate}
-                        onChange={(e) => set('dunning_interest_rate', e.target.value)}
+                        onValueChange={(value) => set('dunning_interest_rate', value)}
                       />
                     </FormField>
                     <FormField

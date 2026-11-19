@@ -97,7 +97,7 @@ export const ForeignPriceRequiresRepricing: Story = {
   },
 }
 
-/** A line discount takes only 0 to 100 with up to two decimals, and shows its % sign. */
+/** A line discount takes only 0 to 100 with up to two decimals (more becomes 100), and shows its % sign. */
 export const DiscountIsAPercent: Story = {
   render: () => (
     <Editor
@@ -113,7 +113,7 @@ export const DiscountIsAPercent: Story = {
     await expect(discount).toHaveValue('12.34')
     await userEvent.clear(discount)
     await userEvent.type(discount, '101')
-    await expect(discount).toHaveValue('10')
+    await expect(discount).toHaveValue('100')
   },
 }
 

@@ -34,6 +34,7 @@ import {
 } from '@/components/invoices/editor-model'
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
+import { PercentInput } from '@/components/shared/percent-input'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
@@ -46,7 +47,6 @@ import {
   useInvoiceSettings,
   type InvoiceSettings,
 } from '@/lib/invoices'
-import { typedPercent } from '@/lib/percent'
 import { useSession } from '@/lib/queries'
 import { quoteNumber, useSaveQuote, type Quote } from '@/lib/quotes'
 
@@ -451,25 +451,16 @@ function Editor({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="flex items-center gap-2 text-muted-foreground">
                         <label htmlFor="quote-discount_percent">{translate('discount2')}</label>
-                        <span className="relative">
-                          <input
-                            id="quote-discount_percent"
-                            aria-invalid={errors.discount_percent ? true : undefined}
-                            inputMode="decimal"
-                            value={values.discount_percent}
-                            onChange={(event) =>
-                              set(
-                                'discount_percent',
-                                typedPercent(event.target.value, values.discount_percent),
-                              )
-                            }
-                            placeholder="0"
-                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
-                          />
-                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-caption text-muted-foreground">
-                            %
-                          </span>
-                        </span>
+                        <PercentInput
+                          id="quote-discount_percent"
+                          aria-invalid={errors.discount_percent ? true : undefined}
+                          value={values.discount_percent}
+                          onValueChange={(value) => set('discount_percent', value)}
+                          placeholder="0"
+                          compact
+                          className="inline-block"
+                          inputClassName="h-7 w-14 rounded-md bg-muted/60 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                        />
                       </dt>
                       <dd className="tabular-nums">
                         {totals && !isZero(totals.discount_amount) ? (

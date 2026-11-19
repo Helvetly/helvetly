@@ -30,6 +30,7 @@ import { inputClass } from '@/components/clients/fields'
 import { isBlankLine, newLine, type EditorLine } from '@/components/invoices/editor-model'
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { PdfView } from '@/components/invoices/pdf-view'
+import { PercentInput } from '@/components/shared/percent-input'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -53,7 +54,6 @@ import {
   type VatCategory,
   type VatMode,
 } from '@/lib/invoices'
-import { typedPercent } from '@/lib/percent'
 
 import { clientFromDocument, ImportClientField } from './import-client-field'
 import {
@@ -622,27 +622,13 @@ function InvoiceRecordForm({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {field(
                     'discount_percent',
-                    <span className="relative block">
-                      <input
-                        {...describedBy(
-                          fieldId('discount_percent'),
-                          record.issues.discount_percent,
-                        )}
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={values.discount_percent ?? ''}
-                        onChange={(event) =>
-                          set(
-                            'discount_percent',
-                            typedPercent(event.target.value, values.discount_percent ?? ''),
-                          )
-                        }
-                        className={cn(inputClass, 'pr-7 text-right tabular-nums')}
-                      />
-                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-body-sm text-muted-foreground">
-                        %
-                      </span>
-                    </span>,
+                    <PercentInput
+                      {...describedBy(fieldId('discount_percent'), record.issues.discount_percent)}
+                      placeholder="0"
+                      value={values.discount_percent ?? ''}
+                      onValueChange={(value) => set('discount_percent', value)}
+                      inputClassName={cn(inputClass, 'text-right tabular-nums')}
+                    />,
                   )}
                   <dl className="grid content-start gap-1 rounded-lg bg-muted/40 p-3 text-body-sm">
                     {totals ? (
