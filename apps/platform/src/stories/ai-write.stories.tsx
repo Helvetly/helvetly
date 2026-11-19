@@ -137,3 +137,25 @@ export const Errors: Story = {
     await expect(body().getByRole('button', { name: 'Try again' })).toBeVisible()
   },
 }
+
+/** The box resizes, not the textarea, so the grip sits in the box's bottom-right corner below the tools row. */
+export const ResizeFromTheCorner: Story = {
+  parameters: { msw: { handlers } },
+  render: () => <Field initial="web design per hour, 2 revisions" />,
+  play: async () => {
+    const textarea = body().getByRole('textbox', { name: 'Description' })
+    const box = textarea.closest<HTMLElement>('[data-slot="textarea-box"]')
+    if (!box) throw new Error('TextareaBox wrapper not found')
+    await expect(getComputedStyle(box).resize).toBe('vertical')
+    await expect(getComputedStyle(textarea).resize).toBe('none')
+    const before = textarea.getBoundingClientRect().height
+    box.style.height = `${box.getBoundingClientRect().height + 100}px`
+    await waitFor(() =>
+      expect(textarea.getBoundingClientRect().height).toBeCloseTo(before + 100, 0),
+    )
+    const count = body()
+      .getByText(/ \/ 1000$/)
+      .getBoundingClientRect()
+    await expect(box.getBoundingClientRect().right - count.right).toBeGreaterThanOrEqual(16)
+  },
+}
