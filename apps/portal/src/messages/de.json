@@ -6,7 +6,6 @@
   "acceptQuote": "Preisangebot annehmen {value1}",
   "acceptQuote2": "Preisangebot annehmen",
   "acceptQuoteFor": "Preisangebot {name} für {value2} annehmen?",
-  "account": "Konto",
   "accountMenu": "Kontomenü",
   "address": "Adresse",
   "agreedWorkSuchAsAMonthlySupportRetainerShows": "Vereinbarte Arbeiten, wie zum Beispiel eine monatliche Unterhaltszahlung, werden hier angezeigt.",
@@ -180,7 +179,6 @@
   "dynamicWeek": "Woche",
   "dynamicOn": " am {value1}",
   "dynamicOn2": "{verb} am {value2}",
-  "workspacePortalIntro": "Ihre Rechnungen, Arbeiten und Dokumente an einem Ort. Melden Sie sich mit der E-Mail-Adresse an, die wir hinterlegt haben.",
   "portalAddressNotFound": "Diese Portaladresse gibt es nicht",
   "portalAddressNotFoundHint": "Prüfen Sie den Link in der E-Mail Ihres Lieferanten oder fragen Sie ihn nach der aktuellen Portaladresse."
 }

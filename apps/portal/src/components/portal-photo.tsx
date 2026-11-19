@@ -68,7 +68,7 @@ export function PortalPhoto() {
   return (
     <section
       aria-labelledby="portal-photo-title"
-      className={cn(cardClass, 'flex flex-wrap items-center gap-4 p-4 sm:p-5')}
+      className={cn(cardClass, 'flex flex-wrap items-center gap-4 p-4 sm:p-6')}
     >
       <input
         ref={input}

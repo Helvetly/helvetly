@@ -11,7 +11,7 @@ describe('legal', () => {
   })
 
   it.each(
-    (['fr', 'it'] as const).flatMap((language) =>
+    (['fr', 'it', 'nl', 'cs', 'sv'] as const).flatMap((language) =>
       Object.keys(LEGAL)
         .filter(isLegalSlug)
         .map((slug) => [language, slug] as const),

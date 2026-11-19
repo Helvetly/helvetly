@@ -18,6 +18,7 @@ import {
   FileTile,
   PageHeader,
   RetryAlert,
+  rowClass,
 } from './portal-bits'
 
 /** Above this many documents a search box helps. */
@@ -32,7 +33,7 @@ export function PortalDocuments() {
     if (query.isPending) return <Loader className={cn(cardClass, 'min-h-28')} />
     if (query.error)
       return (
-        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
           <RetryAlert what={translate('yourDocuments')} onRetry={() => void query.refetch()} />
         </div>
       )
@@ -73,7 +74,7 @@ export function PortalDocuments() {
         ) : (
           <ul className={cn(cardClass, 'grid divide-y overflow-hidden')}>
             {shown.map((doc) => (
-              <li key={doc.id} className="flex items-center gap-3 px-3 py-3 sm:px-4">
+              <li key={doc.id} className={rowClass}>
                 <FileTile contentType={doc.content_type} />
                 <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
                   <span className="truncate text-body font-medium">{doc.name}</span>
@@ -96,7 +97,7 @@ export function PortalDocuments() {
   }
 
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('documents')}>
         {translate('filesSharedWithYouDownloadAnyOfThemAt')}
       </PageHeader>

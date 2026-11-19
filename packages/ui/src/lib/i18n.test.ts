@@ -1,10 +1,13 @@
 import { createTranslator, localeDetails } from '@helvetly/i18n'
 import { describe, expect, it } from 'vitest'
 
+import cs from '../messages/cs.json'
 import de from '../messages/de.json'
 import en from '../messages/en.json'
 import fr from '../messages/fr.json'
 import itCatalog from '../messages/it.json'
+import nl from '../messages/nl.json'
+import sv from '../messages/sv.json'
 import { translatorFor } from './i18n'
 
 const parameters = (value: string) =>
@@ -14,6 +17,9 @@ describe.each([
   ['de', de],
   ['fr', fr],
   ['it', itCatalog],
+  ['nl', nl],
+  ['cs', cs],
+  ['sv', sv],
 ] as const)('%s shared controls catalog', (language, catalog) => {
   it('covers every English message with valid ICU and the same values', () => {
     const translated = new Map<string, string>(Object.entries(catalog))

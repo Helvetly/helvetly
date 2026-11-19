@@ -1,4 +1,6 @@
 'use client'
+import { Callout } from '@helvetly/ui/components/callout'
+import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
@@ -19,6 +21,7 @@ import {
   PageHeader,
   PdfLink,
   RetryAlert,
+  rowClass,
 } from './portal-bits'
 
 const FILTERS = {
@@ -32,13 +35,15 @@ const isFilter = (value: string): value is Filter => value in FILTERS
 
 /** One line per currency, never broken inside an amount. */
 const money = (sums: [string, string][]) =>
-  sums.length === 0
-    ? '—'
-    : sums.map(([c, total]) => (
-        <span key={c} className="block whitespace-nowrap">
-          {formatMoney(total, c)}
-        </span>
-      ))
+  sums.length === 0 ? (
+    <span className="font-normal text-muted-foreground">—</span>
+  ) : (
+    sums.map(([c, total]) => (
+      <span key={c} className="block whitespace-nowrap">
+        {formatMoney(total, c)}
+      </span>
+    ))
+  )
 
 function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string }) {
   const open = invoices.filter(isOpen)
@@ -59,13 +64,11 @@ function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string
       )}
     >
       {stats.map(([label, value, alert]) => (
-        <div key={label} className="grid min-w-0 content-start gap-0.5 px-4 py-3 sm:px-5 sm:py-4">
+        <div key={label} className="grid min-w-0 content-start gap-1 px-4 py-4 sm:px-6 sm:py-5">
           <dt className="text-body-sm text-muted-foreground">{label}</dt>
           <dd
-            className={cn(
-              'text-base font-semibold tracking-tight tabular-nums sm:text-lg',
-              alert && 'text-destructive',
-            )}
+            // Not cn(): tailwind-merge would drop the type-scale size for the colour.
+            className={`text-title font-semibold tracking-tight tabular-nums sm:text-page ${alert ? 'text-destructive' : ''}`}
           >
             {value}
           </dd>
@@ -78,17 +81,10 @@ function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string
 function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string }) {
   const open = isOpen(invoice)
   return (
-    <li className="flex items-center gap-3 px-3 py-3 sm:px-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground max-sm:hidden">
-        <FileText className="size-[18px]" aria-hidden />
-      </span>
+    <li className={rowClass}>
+      <IconTile icon={FileText} variant="row" size="lg" className="max-sm:hidden" />
       <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-body font-medium">{invoice.number}</span>
-          <span className="max-sm:hidden">
-            <InvoiceStatus invoice={invoice} />
-          </span>
-        </span>
+        <span className="truncate text-body font-medium">{invoice.number}</span>
         <span
           // Not cn(): tailwind-merge would drop the type-scale size for the colour.
           className={`truncate text-body-sm ${invoice.is_overdue ? 'text-destructive' : 'text-muted-foreground'}`}
@@ -107,7 +103,11 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
           )}
         </span>
       </span>
-      <span className="grid shrink-0 text-right leading-tight tabular-nums">
+      {/* A column of its own, so badges and amounts line up from row to row. */}
+      <span className="w-24 shrink-0 max-sm:hidden">
+        <InvoiceStatus invoice={invoice} />
+      </span>
+      <span className="grid shrink-0 text-right leading-tight tabular-nums sm:min-w-32">
         <span className="text-body font-medium">
           {formatMoney(invoice.total, invoice.currency)}
         </span>
@@ -132,7 +132,7 @@ export function PortalInvoices() {
     if (query.isPending) return <Loader label={translate('loadingInvoices')} className="min-h-72" />
     if (query.error)
       return (
-        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
           <RetryAlert what={translate('yourInvoices')} onRetry={() => void query.refetch()} />
         </div>
       )
@@ -151,14 +151,14 @@ export function PortalInvoices() {
         <Tabs
           value={filter}
           onValueChange={(value) => isFilter(value) && setFilter(value)}
-          className="gap-3"
+          className="gap-4"
         >
           <TabsList
             aria-label={translate('show')}
-            className="max-w-full overflow-x-auto bg-card shadow-elevation-1"
+            className="h-9 max-w-full overflow-x-auto bg-card shadow-elevation-1"
           >
             {Object.entries(FILTERS).map(([key, { label, test }]) => (
-              <TabsTrigger key={key} value={key} className="px-2.5">
+              <TabsTrigger key={key} value={key} className="px-3">
                 {label}
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {query.data.filter(test).length}
@@ -166,7 +166,7 @@ export function PortalInvoices() {
               </TabsTrigger>
             ))}
           </TabsList>
-          <TabsContent value={filter} className="grid gap-3">
+          <TabsContent value={filter} className="grid gap-4">
             {shown.length === 0 ? (
               <div className={cardClass}>
                 <EmptyState
@@ -183,10 +183,9 @@ export function PortalInvoices() {
                 ))}
               </ul>
             )}
-            <p className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-              <QrCode className="size-4 shrink-0" aria-hidden />
+            <Callout tone="neutral" icon={QrCode} className="bg-transparent">
               {translate('payWithTheSwissQRBillInEachPDF')}
-            </p>
+            </Callout>
           </TabsContent>
         </Tabs>
       </>
@@ -194,7 +193,7 @@ export function PortalInvoices() {
   }
 
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('invoices')}>
         {translate('everyInvoiceIssuedToYouEachWithItsPDF')}
       </PageHeader>

@@ -20,10 +20,13 @@ import {
 import { scoped } from '@/lib/scope'
 import { siteUrl } from '@/lib/site'
 
-import { WorkspaceMark } from './workspace-mark'
+import { WorkspaceMark } from './portal-bits'
 
-/** The staff sign-in's email and code steps, against the portal's own endpoints. */
-export function PortalLogin() {
+/**
+ * The staff sign-in's email and code steps, against the portal's own endpoints. With `workspace` the
+ * page carries that supplier's mark and name instead of Helvetly's.
+ */
+export function PortalLogin(props: { workspace?: { name: string; logoUrl?: string } }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<{ email: string; sent: EmailCodeSent } | null>(null)
@@ -33,9 +36,11 @@ export function PortalLogin() {
     queryFn: getPortalSession,
     retry: false,
   })
-  // Under a workspace's own address (/w/<slug>/), its name and logo instead of Helvetly's.
+  // Under a workspace's own address (/w/<slug>/), that workspace's mark and name.
   const scope = useQuery({ queryKey: portalKeys.scope, queryFn: getPortalScope, retry: false })
-  const brand = scope.data
+  const workspace =
+    props.workspace ??
+    (scope.data ? { name: scope.data.name, logoUrl: scope.data.logo_url ?? undefined } : undefined)
   const signedIn = Boolean(session.data)
   useEffect(() => {
     if (signedIn) router.replace(scoped('/'))
@@ -45,9 +50,9 @@ export function PortalLogin() {
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
-      <div className="grid w-full max-w-[25rem] gap-5">
+      <div className="grid w-full max-w-[27rem] gap-5">
         {/* A card from sm up; a phone keeps the full width for the six code boxes. */}
-        <div className="sm:rounded-2xl sm:bg-card sm:p-8 sm:shadow-elevation-1">
+        <div className="sm:rounded-2xl sm:bg-card sm:p-10 sm:shadow-elevation-soft">
           {step ? (
             <EmailCodeForm
               email={step.email}
@@ -61,24 +66,23 @@ export function PortalLogin() {
               onBack={() => setStep(null)}
             />
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-7">
               <div className="grid justify-items-center gap-2 text-center">
-                {brand ? (
-                  <WorkspaceMark
-                    name={brand.name}
-                    logoUrl={brand.logo_url}
-                    className="mb-3 size-11 text-body"
-                  />
-                ) : (
-                  <Logo className="mb-3 size-11" />
+                <span className="mb-3">
+                  {workspace ? (
+                    <WorkspaceMark name={workspace.name} logoUrl={workspace.logoUrl} large />
+                  ) : (
+                    <Logo className="size-12" />
+                  )}
+                </span>
+                {workspace && (
+                  <p className="text-body-sm font-medium text-muted-foreground">{workspace.name}</p>
                 )}
-                <h1 className="text-xl font-semibold tracking-tight">
-                  {brand?.name ?? translate('clientPortal')}
+                <h1 className="text-page font-semibold tracking-tight">
+                  {translate('clientPortal')}
                 </h1>
-                <p className="text-sm text-balance text-muted-foreground">
-                  {brand
-                    ? translate('workspacePortalIntro')
-                    : translate('yourInvoicesWorkAndDocumentsFromYourSupplierIn')}
+                <p className="text-body text-balance text-muted-foreground">
+                  {translate('yourInvoicesWorkAndDocumentsFromYourSupplierIn')}
                 </p>
               </div>
               <EmailAddressForm
@@ -94,7 +98,10 @@ export function PortalLogin() {
           {translate('noPasswordWeEmailYouAOneTimeCode')}
         </p>
         <p className="text-center text-body-sm text-muted-foreground">
-          <a href={localizedHref(siteUrl('/privacy'))} className="underline">
+          <a
+            href={localizedHref(siteUrl('/privacy'))}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
             {translate('privacyPolicy')}
           </a>
         </p>

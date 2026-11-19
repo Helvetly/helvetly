@@ -12,6 +12,7 @@ const screens: [App, string][] = [
   ['platform', 'pages-documents--folders-and-files'],
   ['platform', 'books-settings--periods-overview'],
   ['portal', 'pages-portal--overview'],
+  ['portal', 'pages-portal--invoices'],
   ['portal', 'pages-portal--profile'],
 ]
 const components: [App, string][] = [

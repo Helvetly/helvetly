@@ -32,8 +32,7 @@ import {
 } from '@/lib/portal'
 import { scoped, unscoped } from '@/lib/scope'
 
-import { LoginAvatar } from './portal-bits'
-import { WorkspaceMark } from './workspace-mark'
+import { LoginAvatar, WorkspaceMark } from './portal-bits'
 
 const NAV = [
   { href: '/', label: translate('overview'), icon: House },
@@ -66,16 +65,15 @@ function AccountMenu({
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-10 min-w-0 gap-2 rounded-full pr-1 pl-1 lg:pl-3">
-              <span className="sr-only">{translate('accountMenu')}</span>
-              <span className="max-w-44 truncate font-normal max-lg:hidden">
-                {session.client.name}
+            <Button variant="ghost" className="size-10 rounded-full p-0">
+              <span className="sr-only">
+                {translate('accountMenu')}, {session.client.name}
               </span>
               <LoginAvatar name={session.client.name} src={session.avatar_url} />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>{translate('account')}</TooltipContent>
+        <TooltipContent>{session.client.name}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent
         align="end"
@@ -130,27 +128,31 @@ function AccountMenu({
   )
 }
 
-/** Pill tabs in the header from `md` up; below, a fixed bottom tab bar with icons and labels. */
+/** Underlined tabs in the header from `md` up; below, a fixed bottom tab bar with icons and labels. */
 function PortalNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label={translate('portal')}
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:border-0 md:bg-transparent md:pb-0"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:min-w-0 md:overflow-x-auto md:border-0 md:bg-transparent md:pb-0"
     >
-      <ul className="grid grid-cols-5 md:flex md:gap-1">
+      <ul className="grid grid-cols-5 md:flex md:h-16 md:gap-1">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === href : pathname.startsWith(href)
           return (
-            <li key={href}>
+            <li key={href} className="md:flex">
               <Link
                 href={scoped(href)}
                 aria-current={active ? 'page' : undefined}
                 // Not cn(): tailwind-merge would drop the type-scale size for the colour.
-                className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-caption font-medium outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:h-8 md:flex-row md:gap-1.5 md:rounded-full md:px-3 md:py-0 md:text-body-sm md:hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)] ${active ? 'text-foreground md:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)]' : 'text-muted-foreground'}`}
+                // Transparent top and bottom borders keep the label centred above the underline.
+                className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-caption font-medium outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:flex-row md:gap-2 md:border-y-2 md:border-transparent md:px-3 md:py-0 md:text-body ${active ? 'text-foreground md:border-b-brand' : 'text-muted-foreground md:hover:border-b-border'}`}
               >
                 <Icon
                   aria-hidden
-                  className={cn('size-5 stroke-[1.75] md:size-4', active && 'text-brand')}
+                  className={cn(
+                    'size-5 stroke-[1.75] md:size-4 md:max-lg:hidden',
+                    active && 'text-brand',
+                  )}
                 />
                 {label}
               </Link>
@@ -162,8 +164,31 @@ function PortalNav({ pathname }: { pathname: string }) {
   )
 }
 
-/** Gate and frame of every portal page: no session goes to the portal's own sign-in. */
-export function PortalShell({ children }: { children: ReactNode }) {
+/** The supplier's mark and name; a long name is cut short with the whole of it in a tooltip. */
+function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 md:max-w-44 lg:max-w-64 xl:max-w-80">
+      <WorkspaceMark name={name} logoUrl={logoUrl} />
+      <span className="grid min-w-0 leading-tight">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="truncate text-body font-semibold">{name}</span>
+          </TooltipTrigger>
+          <TooltipContent>{name}</TooltipContent>
+        </Tooltip>
+        <span className="truncate text-caption text-muted-foreground">
+          {translate('clientPortal')}
+        </span>
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Gate and frame of every portal page: no session goes to the portal's own sign-in. `logoUrl` is the
+ * supplier's logo when the portal knows it (initials otherwise).
+ */
+export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUrl?: string }) {
   const router = useRouter()
   const pathname = unscoped(usePathname() ?? '').replace(/\/$/, '') || '/'
   const queryClient = useQueryClient()
@@ -212,16 +237,11 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <div className="min-h-svh bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         {/* No backdrop-filter here: it would trap the fixed bottom bar inside the header. */}
         <header className="sticky top-0 z-30 border-b bg-card">
-          <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4 md:gap-6">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <WorkspaceMark name={session.workspace.name} logoUrl={scope?.logo_url} />
-              <span className="grid min-w-0 leading-tight">
-                <span className="truncate text-body font-medium">{session.workspace.name}</span>
-                <span className="truncate text-caption text-muted-foreground">
-                  {translate('clientPortal')}
-                </span>
-              </span>
-            </div>
+          <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-6 lg:gap-10 lg:px-8">
+            <WorkspaceBrand
+              name={session.workspace.name}
+              logoUrl={logoUrl ?? scope?.logo_url ?? undefined}
+            />
             <PortalNav pathname={pathname} />
             <div className="ml-auto shrink-0">
               <AccountMenu
@@ -232,7 +252,9 @@ export function PortalShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-5xl px-4 pt-5 pb-8 sm:pt-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 pt-6 pb-10 sm:px-6 sm:pt-10 sm:pb-16 lg:px-8">
+          {children}
+        </main>
       </div>
     </SessionContext.Provider>
   )

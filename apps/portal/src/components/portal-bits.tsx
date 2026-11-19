@@ -3,6 +3,7 @@ import { localizedHref } from '@helvetly/i18n'
 // Small pieces every portal screen shares: page header, card, section states, file and invoice bits.
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Button } from '@helvetly/ui/components/button'
+import { EmptyState as SharedEmptyState } from '@helvetly/ui/components/empty-state'
 import { StatusBadge, TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -21,6 +22,8 @@ import { translate } from '@/lib/i18n'
 import { portalInvoicePdfUrl, type PortalInvoice } from '@/lib/portal'
 
 export const cardClass = 'rounded-xl bg-card shadow-elevation-1'
+/** A list row inside a card: the same side padding as a card's `p-4 sm:p-6`. */
+export const rowClass = 'flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6'
 
 export const initialsOf = (name: string) =>
   name
@@ -29,6 +32,33 @@ export const initialsOf = (name: string) =>
     .slice(0, 2)
     .map((word) => word[0]?.toUpperCase())
     .join('')
+
+/** The supplier's mark: its logo when it has one (and it loads), else its initials on the brand tile. */
+export function WorkspaceMark({
+  name,
+  logoUrl,
+  large = false,
+}: {
+  name: string
+  logoUrl?: string
+  large?: boolean
+}) {
+  const radius = large ? 'rounded-xl' : 'rounded-lg'
+  return (
+    // A tile, not a face: square corners on every layer and no avatar ring.
+    <Avatar aria-hidden className={cn('after:hidden', radius, large ? 'size-12' : 'size-9')}>
+      {logoUrl && (
+        <AvatarImage src={logoUrl} alt="" className={cn('bg-card object-contain', radius)} />
+      )}
+      <AvatarFallback
+        // Not cn(): tailwind-merge would drop the type-scale size for the colour.
+        className={`${radius} ${large ? 'text-title' : 'text-body-sm'} bg-brand-surface font-semibold text-brand`}
+      >
+        {initialsOf(name)}
+      </AvatarFallback>
+    </Avatar>
+  )
+}
 
 /** The signed-in login: its photo, else the client's initials. Decorative: the name is always next to it. */
 export function LoginAvatar({
@@ -54,9 +84,15 @@ export function LoginAvatar({
 
 export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <header className="grid gap-1">
-      <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
-      {children && <p className="text-sm text-pretty text-muted-foreground">{children}</p>}
+    <header className="grid gap-1.5">
+      <h1 className="text-page font-semibold tracking-tight text-balance sm:text-display">
+        {title}
+      </h1>
+      {children && (
+        <p className="max-w-2xl text-body text-pretty text-muted-foreground sm:text-title-sm">
+          {children}
+        </p>
+      )}
     </header>
   )
 }
@@ -97,27 +133,17 @@ export function RetryAlert({ what, onRetry }: { what: string; onRetry: () => voi
   )
 }
 
-/** A calm centred message with an icon tile, for a list with nothing in it. */
+/** A calm centred message with the brand tile, for a list with nothing in it. */
 export function EmptyState({
-  icon: Icon,
+  icon,
   title,
   children,
-  tone = 'gray',
 }: {
   icon: LucideIcon
   title: string
   children?: ReactNode
-  tone?: Tone
 }) {
-  return (
-    <div className="grid justify-items-center gap-2 px-4 py-10 text-center">
-      <span className={cn('mb-1 flex size-10 items-center justify-center rounded-xl', TONES[tone])}>
-        <Icon className="size-5" aria-hidden />
-      </span>
-      <p className="font-medium">{title}</p>
-      {children && <p className="max-w-sm text-sm text-pretty text-muted-foreground">{children}</p>}
-    </div>
-  )
+  return <SharedEmptyState icon={icon} title={title} description={children} className="py-14" />
 }
 
 const FILE_KINDS: { test: RegExp; icon: LucideIcon; tone: Tone; label: string }[] = [
@@ -180,10 +206,15 @@ export function DownloadLink({
       <TooltipTrigger asChild>
         <Button
           asChild
-          variant="ghost"
+          variant="outline"
           className={cn('shrink-0', text ? 'max-sm:w-8 max-sm:px-0' : 'w-8 px-0')}
         >
-          <a href={localizedHref(href)} aria-label={label}>
+          <a
+            href={localizedHref(href)}
+            aria-label={label}
+            // A download never leaves the page, so a clicked link would keep its focus and tooltip.
+            onPointerUp={(event) => event.currentTarget.blur()}
+          >
             <Download /> {text && <span className="max-sm:hidden">{text}</span>}
           </a>
         </Button>

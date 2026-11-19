@@ -1,12 +1,15 @@
 import { createTranslators, defaultLocale, isLocale, type Locale } from '@helvetly/i18n'
 import { notFound } from 'next/navigation'
 
+import cs from '../messages/cs.json'
 import de from '../messages/de.json'
 import en from '../messages/en.json'
 import fr from '../messages/fr.json'
 import it from '../messages/it.json'
+import nl from '../messages/nl.json'
+import sv from '../messages/sv.json'
 
-export const translatorFor = createTranslators({ en, de, fr, it })
+export const translatorFor = createTranslators({ en, de, fr, it, nl, cs, sv })
 export type Translate = ReturnType<typeof translatorFor>
 export type MessageKey = Parameters<Translate>[0]
 

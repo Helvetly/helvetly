@@ -61,7 +61,7 @@ test('a client opens its supplier’s own portal address, signs in there and see
     const portal = await context.newPage()
     await portal.goto(path)
     await expect(portal).toHaveURL(at(`${path}login/`))
-    await expect(portal.getByRole('heading', { name })).toBeVisible()
+    await expect(portal.getByText(name, { exact: true })).toBeVisible()
     await portal.getByLabel('Email', { exact: true }).fill(email)
     await portal.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()

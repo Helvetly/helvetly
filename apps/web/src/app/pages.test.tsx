@@ -11,10 +11,13 @@ import { plansIn } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
 import { siteIn } from '@/lib/site'
 
+import cs from '../messages/cs.json'
 import de from '../messages/de.json'
 import en from '../messages/en.json'
 import fr from '../messages/fr.json'
 import italian from '../messages/it.json'
+import nl from '../messages/nl.json'
+import sv from '../messages/sv.json'
 import ComparePage from './[lang]/compare/[slug]/page'
 import CompareIndexPage from './[lang]/compare/page'
 import FaqPage from './[lang]/faq/page'
@@ -41,7 +44,7 @@ function serve({ offer = true, trace = '' } = {}) {
 
 afterEach(() => vi.unstubAllGlobals())
 
-it.each(Object.entries({ en, de, fr, it: italian }))(
+it.each(Object.entries({ en, de, fr, it: italian, nl, cs, sv }))(
   '%s marketing percentages have no preceding whitespace',
   (_, catalog) => {
     expect(Object.entries(catalog).filter(([, message]) => /\s+%/u.test(message))).toEqual([])
@@ -98,7 +101,7 @@ describe('home page in German', () => {
   })
 })
 
-describe.each(['fr', 'it'] as const)('home page in %s', (language) => {
+describe.each(['fr', 'it', 'nl', 'cs', 'sv'] as const)('home page in %s', (language) => {
   beforeEach(() => serve())
 
   it('is worded in the language, links to its pages and hands the language to sign-in', async () => {
@@ -156,30 +159,36 @@ describe('pricing page', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
-  describe.each(['en', 'de', 'fr', 'it'] as const)('%s annual pricing formatting', (language) => {
-    it.each([
-      ['home', HomePage],
-      ['pricing', PricingPage],
-    ] as const)('bolds only annual amounts and keeps percentages joined on %s', async (_, Page) => {
-      const { container } = render(
-        <LanguageProvider language={language}>
-          {await Page({ params: Promise.resolve({ lang: language }) })}
-        </LanguageProvider>,
+  describe.each(['en', 'de', 'fr', 'it', 'nl', 'cs', 'sv'] as const)(
+    '%s annual pricing formatting',
+    (language) => {
+      it.each([
+        ['home', HomePage],
+        ['pricing', PricingPage],
+      ] as const)(
+        'bolds only annual amounts and keeps percentages joined on %s',
+        async (_, Page) => {
+          const { container } = render(
+            <LanguageProvider language={language}>
+              {await Page({ params: Promise.resolve({ lang: language }) })}
+            </LanguageProvider>,
+          )
+          await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
+          expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
+          expect(container.textContent).toContain('20%')
+          for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 951'].entries()) {
+            const card = screen.getAllByRole('article')[index]!
+            const annual = within(card).getByText(
+              (_text, element) =>
+                element?.tagName === 'P' && (element.textContent ?? '').includes(amount),
+            )
+            expect(annual.querySelector('strong')?.textContent).toBe(amount)
+            expect(annual.textContent).not.toBe(amount)
+          }
+        },
       )
-      await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
-      expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
-      expect(container.textContent).toContain('20%')
-      for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 951'].entries()) {
-        const card = screen.getAllByRole('article')[index]!
-        const annual = within(card).getByText(
-          (_text, element) =>
-            element?.tagName === 'P' && (element.textContent ?? '').includes(amount),
-        )
-        expect(annual.querySelector('strong')?.textContent).toBe(amount)
-        expect(annual.textContent).not.toBe(amount)
-      }
-    })
-  })
+    },
+  )
 
   it('shows the same figures in the visitor’s currency', async () => {
     inZone('Europe/Berlin')

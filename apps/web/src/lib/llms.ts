@@ -21,7 +21,7 @@ export function llmsTxt(): string {
       'employees, and Heidi, an AI assistant that knows your books. Hosted in Switzerland, passwordless sign-in.',
     '',
     'Prices are per person and month, tax included, in CHF, EUR or USD; every new workspace starts with a free ' +
-      '7-day Pro trial. The site is also in German, French and Italian (/de, /fr, /it).',
+      '7-day Pro trial. The site is also in German, French, Italian, Dutch, Czech and Swedish (/de, /fr, /it, /nl, /cs, /sv).',
     '',
     '## Product',
     '',
