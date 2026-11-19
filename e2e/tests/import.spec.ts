@@ -198,3 +198,39 @@ test('a PDF imported twice shows the same records the second time, each matched 
   ).data
   expect(Array.isArray(clients) && clients.length).toBe(1)
 })
+
+test('an unfinished invoice import is offered on Invoices only, never on Engagements', async ({
+  page,
+  api,
+}) => {
+  await api.approveAI()
+  await api.settings()
+  const number = uniqueName('IN-CTX').replaceAll(' ', '-')
+  await page.goto('/invoices?import=1')
+  const invoices = page.getByRole('dialog', { name: 'Import invoices' })
+  await invoices.getByLabel('Choose files to import').setInputFiles({
+    name: `${number}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
+  })
+  await invoices.getByRole('button', { name: 'Process with AI', exact: true }).click()
+  await expect(invoices.getByRole('table', { name: 'Records found' })).toBeVisible({
+    timeout: 30_000,
+  })
+  // Closed without importing: the batch stays, unfinished.
+  await invoices.getByRole('button', { name: 'Close' }).click()
+  await expect(invoices).toBeHidden()
+
+  const listed = page.waitForResponse((r) => r.url().includes('/api/v1/imports?kind=engagements'))
+  await page.goto('/engagements?import=1')
+  const engagements = page.getByRole('dialog', { name: 'Import engagements' })
+  await expect(engagements).toBeVisible()
+  expect(object(await (await listed).json()).data).toEqual([])
+  await expect(engagements.getByRole('button', { name: 'Process with AI' })).toBeVisible()
+  await expect(engagements.getByText(/An unfinished import/)).toHaveCount(0)
+
+  await page.goto('/invoices?import=1')
+  await expect(invoices.getByText(/An unfinished import of invoices/)).toBeVisible()
+  await invoices.getByRole('button', { name: 'Continue import' }).click()
+  await expect(invoices.getByText(`${number}.pdf`).first()).toBeVisible()
+})

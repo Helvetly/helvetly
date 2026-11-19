@@ -382,30 +382,39 @@ export function FileLine({
 }
 
 /**
- * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath; a file
- * whose rows are all already in Helvetly (`existingPerFile`) starts closed. `header` heads the table (a select-all).
+ * The import's files as one table: a row per file (state, name, size), its rows read from it opening beneath. One
+ * file is open at a time: `first` (the one with problems), else the first whose rows are not all already in Helvetly
+ * (`existingPerFile`). `header` heads the table (a select-all).
  */
 export function FileProgress({
   files,
   recordsPerFile,
   existingPerFile,
   header,
+  first,
   children,
 }: {
   files: ImportFile[]
   recordsPerFile: Map<string, number>
   existingPerFile?: Map<string, number>
   header?: ReactNode
+  /** The file to open first, when it has rows. */
+  first?: string
   children?: (file: ImportFile) => ReactNode
 }) {
-  // The files opened or closed against how they start.
-  const [flipped, setFlipped] = useState<ReadonlySet<string>>(new Set())
-  const toggle = (id: string) =>
-    setFlipped((current) => {
-      const next = new Set(current)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
+  // The file the person opened, or null once they closed it; undefined until they choose.
+  const [chosen, setChosen] = useState<string | null>()
+  const found = new Map(files.map((file) => [file.id, children?.(file)]))
+  const allExisting = (id: string) => {
+    const records = recordsPerFile.get(id) ?? 0
+    return records > 0 && existingPerFile?.get(id) === records
+  }
+  const openId =
+    chosen !== undefined
+      ? chosen
+      : first && found.get(first)
+        ? first
+        : (files.find((file) => found.get(file.id) && !allExisting(file.id))?.id ?? null)
   return (
     <div className="rounded-lg border bg-card">
       {header && (
@@ -419,21 +428,20 @@ export function FileProgress({
         className="divide-y [&>li:last-child>[id]]:rounded-b-lg"
       >
         {files.map((file) => {
-          const found = children?.(file)
+          const rows = found.get(file.id)
           const records = recordsPerFile.get(file.id) ?? 0
           const existing = existingPerFile?.get(file.id) ?? 0
-          const allExisting = records > 0 && existing === records
-          const open = Boolean(found) && allExisting === flipped.has(file.id)
+          const open = Boolean(rows) && openId === file.id
           const head = <FileLine file={file} records={records} existing={existing} />
           return (
             <li key={file.id} data-status={file.status}>
               <div className="flex items-center gap-3 px-3 py-2 text-body-sm">
-                {found ? (
+                {rows ? (
                   <button
                     type="button"
                     aria-expanded={open}
                     aria-controls={`${file.id}-rows`}
-                    onClick={() => toggle(file.id)}
+                    onClick={() => setChosen(open ? null : file.id)}
                     className="-my-2 flex min-w-0 flex-1 items-center gap-3 py-2 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
                   >
                     <ChevronRight
@@ -453,9 +461,9 @@ export function FileProgress({
                   </>
                 )}
               </div>
-              {found && (
-                <div id={`${file.id}-rows`} hidden={!open} className="border-t bg-muted/20 pl-7">
-                  {found}
+              {rows && (
+                <div id={`${file.id}-rows`} hidden={!open} className="border-t bg-muted/20">
+                  {rows}
                 </div>
               )}
             </li>
