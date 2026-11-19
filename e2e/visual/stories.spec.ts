@@ -10,6 +10,7 @@ const screens: [App, string][] = [
   ['platform', 'pages-clients--detail'],
   ['platform', 'pages-invoice-editor--draft-with-lines'],
   ['platform', 'pages-documents--folders-and-files'],
+  ['platform', 'books-settings--periods-overview'],
   ['portal', 'pages-portal--overview'],
   ['portal', 'pages-portal--profile'],
 ]
