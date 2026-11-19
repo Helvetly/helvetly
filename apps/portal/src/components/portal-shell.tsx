@@ -41,6 +41,7 @@ import {
   type PortalSession,
 } from '@/lib/portal'
 import { scoped, unscoped } from '@/lib/scope'
+import { shorten } from '@/lib/text'
 
 import { LoginAvatar, WorkspaceMark } from './portal-bits'
 
@@ -214,26 +215,28 @@ function PortalNav({ pathname }: { pathname: string }) {
   )
 }
 
-/** The supplier's mark and name, the name cut by the width it gets; only a cut name repeats in a tooltip. */
+const BRAND_CHARS = 16
+
+/** The supplier's mark and name, cut after 16 characters; the whole name is in its tooltip and accessible name. */
 function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
-  const [cut, setCut] = useState(false)
+  const short = shorten(name, BRAND_CHARS)
+  const label = (
+    <span className="truncate text-body font-semibold" aria-label={name}>
+      {short}
+    </span>
+  )
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <WorkspaceMark name={name} logoUrl={logoUrl} />
       <span className="grid min-w-0 leading-tight">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="truncate text-body font-semibold"
-              onPointerEnter={({ currentTarget }) =>
-                setCut(currentTarget.scrollWidth > currentTarget.clientWidth)
-              }
-            >
-              {name}
-            </span>
-          </TooltipTrigger>
-          {cut && <TooltipContent>{name}</TooltipContent>}
-        </Tooltip>
+        {short === name ? (
+          label
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>{label}</TooltipTrigger>
+            <TooltipContent>{name}</TooltipContent>
+          </Tooltip>
+        )}
         <span className="truncate text-caption text-muted-foreground">
           {translate('clientPortal')}
         </span>
