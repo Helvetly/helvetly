@@ -1,0 +1,283 @@
+'use client'
+import { Button } from '@helvetly/ui/components/button'
+import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { Input } from '@helvetly/ui/components/input'
+import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { Copy, Link2, RefreshCw } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
+
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { toastError } from '@/components/billing/upgrade-prompt'
+import { ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
+import {
+  useAddPortalDomain,
+  useCheckPortalDomain,
+  usePortalDomain,
+  useRemovePortalDomain,
+  type DomainProblem,
+  type DomainRecord,
+  type DomainStage,
+  type PortalDomain,
+} from '@/lib/workspaces'
+
+import { HelpTip } from './help-tip'
+import { ActionRow, FieldGrid, SettingsSection } from './layout'
+
+/** What someone types or pastes ("https://Portal.Firma.ch/login") as the bare host the API expects. */
+export function domainOf(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
+    .replace(/[/?#].*$/, '')
+    .replace(/:\d+$/, '')
+    .replace(/\.$/, '')
+}
+
+const STAGES: Record<DomainStage, { tone: Tone; label: string }> = {
+  dns: { tone: 'amber', label: translate('domainStageDns') },
+  certificate: { tone: 'blue', label: translate('domainStageCertificate') },
+  active: { tone: 'green', label: translate('domainStageActive') },
+  problem: { tone: 'red', label: translate('domainStageProblem') },
+}
+
+const PROBLEMS: Record<DomainProblem, string> = {
+  dns: translate('domainProblemDns'),
+  certificate: translate('domainProblemCertificate'),
+  blocked: translate('domainProblemBlocked'),
+  taken: translate('domainProblemTaken'),
+  timeout: translate('domainProblemTimeout'),
+}
+
+/** The API's refusals of a domain, in words; others keep the API's message. */
+const REFUSALS: Record<string, string> = {
+  domain_invalid: translate('domainInvalid'),
+  domain_apex: translate('domainApex'),
+  domain_reserved: translate('domainReserved'),
+  domain_taken: translate('domainTaken'),
+  domain_exists: translate('domainExists'),
+}
+
+const title = (
+  <span className="inline-flex items-center gap-1.5">
+    {translate('customDomain')}
+    <HelpTip label={translate('customDomain')}>{translate('customDomainHelp')}</HelpTip>
+  </span>
+)
+
+/** The client portal at the workspace's own domain: add it, the DNS records to create, its status. */
+export function PortalDomainSection({ canEdit }: { canEdit: boolean }) {
+  const settings = usePortalDomain().data
+  if (!settings?.enabled) return null
+  return (
+    <SettingsSection id="portal-domain" icon={Link2} title={title}>
+      {settings.domain ? (
+        <DomainStatus domain={settings.domain} canEdit={canEdit} />
+      ) : canEdit ? (
+        <AddDomain />
+      ) : (
+        <p className="text-body-sm text-muted-foreground">{translate('customDomainNone')}</p>
+      )}
+    </SettingsSection>
+  )
+}
+
+function AddDomain() {
+  const lock = useFeatureLock('custom_portal_domain')
+  const add = useAddPortalDomain()
+  const [value, setValue] = useState('')
+  const [error, setError] = useState<string>()
+  if (lock)
+    return (
+      <ActionRow title={translate('customDomain')} description={translate('customDomainIntro')}>
+        <span className="flex items-center gap-2">
+          <PlanTag lock={lock} />
+          <Button size="sm" variant="outline" disabled>
+            {translate('addCustomDomain')}
+          </Button>
+        </span>
+      </ActionRow>
+    )
+  return (
+    <form
+      noValidate
+      className="grid gap-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const hostname = domainOf(value)
+        if (!hostname.includes('.')) {
+          setError(translate('domainInvalid'))
+          return
+        }
+        setError(undefined)
+        add.mutate(hostname, {
+          onSuccess: () => toast(translate('customDomainAdded')),
+          onError: (failure) => {
+            const refusal = failure instanceof ApiError ? REFUSALS[failure.code] : undefined
+            if (refusal) setError(refusal)
+            else toastError(failure)
+          },
+        })
+      }}
+    >
+      <p className="max-w-[68ch] text-body-sm text-pretty text-muted-foreground">
+        {translate('customDomainIntro')}
+      </p>
+      <FieldGrid>
+        <FormField
+          id="portal-domain-input"
+          required
+          label={translate('customDomainField')}
+          width="md"
+          error={error}
+          hint={error ? undefined : translate('customDomainHint')}
+        >
+          <Input
+            {...describedBy('portal-domain-input', error)}
+            placeholder="portal.yourcompany.com"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            inputMode="url"
+            maxLength={253}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </FormField>
+      </FieldGrid>
+      <div>
+        <Button type="submit" size="sm" disabled={add.isPending || value.trim() === ''}>
+          {translate('addCustomDomain')}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: boolean }) {
+  const check = useCheckPortalDomain()
+  const remove = useRemovePortalDomain()
+  const [confirming, setConfirming] = useState(false)
+  const stage = STAGES[domain.stage]
+  const active = domain.stage === 'active'
+  return (
+    <div className="grid max-w-[var(--settings-form,44rem)] gap-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {active ? (
+          <a
+            href={`https://${domain.hostname}/`}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 truncate text-body font-medium underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"
+          >
+            {domain.hostname}
+          </a>
+        ) : (
+          <span className="min-w-0 truncate text-body font-medium">{domain.hostname}</span>
+        )}
+        <StatusBadge tone={stage.tone}>{stage.label}</StatusBadge>
+        {canEdit && (
+          <span className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={check.isPending}
+              onClick={() => check.mutate(undefined, { onError: toastError })}
+            >
+              <RefreshCw className={check.isPending ? 'animate-spin' : undefined} />
+              {translate('recheckDomain')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
+              {translate('removeDomain')}
+            </Button>
+          </span>
+        )}
+      </div>
+      {domain.problem && (
+        <div role="alert" className="grid gap-0.5 text-body-sm">
+          <p className="text-destructive">{PROBLEMS[domain.problem]}</p>
+          {domain.detail && <p className="text-muted-foreground">{domain.detail}</p>}
+        </div>
+      )}
+      <p className="text-body-sm text-pretty text-muted-foreground">
+        {translate(active ? 'customDomainKeepRecords' : 'customDomainRecords')}
+      </p>
+      <ul className="grid gap-2">
+        {domain.records.map((record) => (
+          <RecordRow key={`${record.type} ${record.name}`} record={record} />
+        ))}
+      </ul>
+      {confirming && (
+        <ConfirmDialog
+          tone="destructive"
+          title={translate('removeDomainTitle', { domain: domain.hostname })}
+          body={translate('removeDomainBody')}
+          confirmLabel={translate('removeDomainConfirm')}
+          onDecide={(approved) => {
+            setConfirming(false)
+            if (approved)
+              remove.mutate(undefined, {
+                onSuccess: () => toast(translate('customDomainRemoved')),
+                onError: toastError,
+              })
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/** One DNS record as the provider's form asks for it: type, name and value, each copied with one click. */
+function RecordRow({ record }: { record: DomainRecord }) {
+  return (
+    <li className="grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-body-sm @md:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1.4fr)] @md:items-center @md:gap-3">
+      <Field label={translate('dnsRecordType')}>
+        <span className="font-mono">{record.type}</span>
+      </Field>
+      <Field label={translate('dnsRecordName')}>
+        <Copyable value={record.name} label={translate('copyDnsName')} />
+      </Field>
+      <Field label={translate('dnsRecordValue')}>
+        <Copyable value={record.value} label={translate('copyDnsValue')} />
+      </Field>
+    </li>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="grid min-w-0 gap-0.5">
+      <span className="text-caption text-muted-foreground">{label}</span>
+      {children}
+    </span>
+  )
+}
+
+function Copyable({ value, label }: { value: string; label: string }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1">
+      <span className="min-w-0 font-mono break-all">{value}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`${label}: ${value}`}
+            className="shrink-0 text-muted-foreground"
+            onClick={() =>
+              void navigator.clipboard.writeText(value).then(() => toast(translate('dnsCopied')))
+            }
+          >
+            <Copy />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </span>
+  )
+}

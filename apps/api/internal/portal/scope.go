@@ -40,14 +40,19 @@ func (s *Service) getScope(w http.ResponseWriter, r *http.Request) {
 	}
 	var logo *string
 	if scope.LogoFileID != nil {
-		u := portalscope.Prefix(scope.Slug) + "/api/v1/public/portal/scope/logo?v=" + *scope.LogoFileID
+		u := portalscope.PathPrefix(scope) + "/api/v1/public/portal/scope/logo?v=" + *scope.LogoFileID
 		logo = &u
+	}
+	address, err := s.scopes.URLOf(r.Context(), scope)
+	if err != nil {
+		s.fail(w, r, err)
+		return
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{
 		"name":     scope.Name,
 		"slug":     scope.Slug,
 		"logo_url": logo,
-		"url":      s.scopes.URLFor(scope.Slug),
+		"url":      address,
 	})
 }
 

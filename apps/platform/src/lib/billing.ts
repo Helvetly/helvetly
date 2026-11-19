@@ -37,6 +37,7 @@ export type FeatureKey =
   | 'data_export'
   | 'automations'
   | 'client_portal'
+  | 'custom_portal_domain'
   | 'einvoice_xml'
   | 'employees'
 
@@ -345,6 +346,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   data_export: translate('dataExports'),
   automations: translate('automations'),
   client_portal: translate('theClientPortal'),
+  custom_portal_domain: translate('aCustomPortalDomain'),
   einvoice_xml: translate('eInvoiceXML2'),
   employees: translate('planEmployees'),
 }

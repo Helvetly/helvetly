@@ -208,6 +208,7 @@ var ExportExcluded = map[string]string{
 	"object_retention":         "storage protection state of the workspace's objects, not business data",
 	"object_versions":          "storage version ids of objects, not business data",
 	"portal_slugs":             "routing: the workspace's portal addresses (shown in its settings), not business data",
+	"workspace_domains":        "routing: the workspace's own portal domain and its Cloudflare status (shown in its settings), not business data",
 	"stored_objects":           "storage accounting: the bytes each object counts, not business data",
 	"limits":                   "global plan configuration, not workspace data",
 	"limit_plans":              "global plan configuration, not workspace data",

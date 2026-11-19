@@ -1,5 +1,6 @@
 // A workspace's own portal lives under /w/<slug>/ on the portal's host (the API's internal/portalscope): the same
-// static pages, with the scope read from the address. Pages, links and API calls stay under the prefix.
+// static pages, with the scope read from the address. Pages, links and API calls stay under the prefix. On the
+// workspace's own domain (portal.firma.ch) the host is the scope: no prefix, and the API answers for that workspace.
 import { setApiBase } from '@helvetly/ui/lib/http'
 
 const SCOPED = /^\/w\/([a-z0-9-]+)(?=\/|$)/

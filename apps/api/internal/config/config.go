@@ -65,7 +65,21 @@ type Config struct {
 	// GoogleAnalyticsID: the GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID, G-...); empty = off,
 	// so an installation sends nothing to Google unless its operator sets it.
 	GoogleAnalyticsID string
+	// CustomDomains: workspaces' own portal hosts through Cloudflare for SaaS; off when its settings are empty.
+	CustomDomains CustomDomains
 }
+
+// CustomDomains are the Cloudflare custom hostnames a workspace's portal may be served on (portal.firma.ch): the
+// zone they are added to and the CNAME target its customers point at. The token is never logged.
+type CustomDomains struct {
+	APIToken string // CLOUDFLARE_API_TOKEN: SSL and Certificates edit on the zone only
+	ZoneID   string // CLOUDFLARE_ZONE_ID
+	Target   string // CUSTOM_DOMAIN_TARGET, a hostname such as portal.helvetly.com
+	APIURL   string // CLOUDFLARE_API_URL: https://api.cloudflare.com/client/v4, or a fake in tests
+}
+
+// Enabled reports whether workspaces may add their own portal domain.
+func (c CustomDomains) Enabled() bool { return c.APIToken != "" }
 
 // AI is the model behind Heidi and the AI import; opt-in. No key means Heidi's factual local commands only. The monthly
 // token allowances are plan limits (ai_tokens_per_month for Heidi, ai_automation_tokens_per_month for AI import and
@@ -151,6 +165,11 @@ func (c Config) GoogleSignIn() bool { return c.GoogleClientID != "" }
 
 // gaID is a GA4 measurement id (GOOGLE_ANALYTICS_ID).
 var gaID = regexp.MustCompile(`^G-[A-Z0-9]{4,20}$`)
+
+var (
+	zoneID     = regexp.MustCompile(`^[0-9a-f]{32}$`)
+	targetHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
+)
 
 func Load() (Config, error) {
 	var errs []error
@@ -411,6 +430,25 @@ func Load() (Config, error) {
 			p = netip.PrefixFrom(addr.Unmap(), addr.Unmap().BitLen())
 		}
 		c.TrustedProxies = append(c.TrustedProxies, p.Masked())
+	}
+
+	c.CustomDomains = CustomDomains{APIToken: env("CLOUDFLARE_API_TOKEN", ""), ZoneID: env("CLOUDFLARE_ZONE_ID", ""),
+		Target: strings.ToLower(strings.TrimSuffix(env("CUSTOM_DOMAIN_TARGET", ""), ".")),
+		APIURL: strings.TrimSuffix(env("CLOUDFLARE_API_URL", "https://api.cloudflare.com/client/v4"), "/")}
+	if cd := c.CustomDomains; cd.APIToken != "" || cd.ZoneID != "" || cd.Target != "" {
+		switch {
+		case cd.APIToken == "" || cd.ZoneID == "" || cd.Target == "":
+			fail("CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID and CUSTOM_DOMAIN_TARGET are all needed for custom portal domains, or none")
+		case strings.ContainsAny(cd.APIToken, " \t\r\n"):
+			fail("CLOUDFLARE_API_TOKEN must not contain whitespace")
+		case !zoneID.MatchString(cd.ZoneID):
+			fail("CLOUDFLARE_ZONE_ID must be the zone's 32-character id, got %q", cd.ZoneID)
+		case !targetHost.MatchString(cd.Target):
+			fail("CUSTOM_DOMAIN_TARGET must be a hostname such as portal.helvetly.com, got %q", cd.Target)
+		}
+		if u, err := url.Parse(cd.APIURL); err != nil || u.Host == "" || (u.Scheme != "https" && (u.Scheme != "http" || !localHost(u.Hostname()))) {
+			fail("CLOUDFLARE_API_URL must be an https URL such as https://api.cloudflare.com/client/v4 (http only on a local host), got %q", cd.APIURL)
+		}
 	}
 
 	if c.KSeFAPI = env("KSEF_API_URL", ""); c.KSeFAPI != "" {

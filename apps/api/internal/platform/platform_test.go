@@ -63,13 +63,15 @@ func TestByHost(t *testing.T) {
 	app := func(name string) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(name)) })
 	}
-	h := byHost("https://portal.example.com", app("platform"), app("portal"))
+	onDomain := func(r *http.Request) bool { return r.Host == "portal.firma.ch" }
+	h := byHost("https://portal.example.com", onDomain, app("platform"), app("portal"))
 	for _, tt := range []struct{ host, want string }{
 		{"portal.example.com", "portal"},
 		{"Portal.Example.com", "portal"},
 		{"app.example.com", "platform"},
 		{"media.example.com", "platform"}, // any other host, e.g. MEDIA_URL: its /api/media/ never reaches here
 		{"portal.example.com:8443", "platform"},
+		{"portal.firma.ch", "portal"}, // a workspace's own domain (portalscope resolved it)
 	} {
 		t.Run(tt.host, func(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)

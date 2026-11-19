@@ -112,6 +112,8 @@ export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
   'einvoice.delivered': { label: translate('eInvoiceDelivered'), hint: MANAGERS },
   'client.change_requested': { label: translate('clientChangeRequest'), hint: MANAGERS },
   'portal.first_sign_in': { label: translate('firstPortalSignIn'), hint: MANAGERS },
+  'portal.domain_active': { label: translate('portalDomainActive'), hint: MANAGERS },
+  'portal.domain_failed': { label: translate('portalDomainFailed'), hint: MANAGERS },
   'portal.document_viewed': {
     label: translate('sharedDocumentOpened'),
     hint: translate('documentsYouShared'),

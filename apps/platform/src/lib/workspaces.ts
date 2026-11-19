@@ -118,6 +118,86 @@ export function useSetPortalSlug() {
   })
 }
 
+/** Where a custom domain is on its way: its DNS record, its certificate, live, or a problem to fix. */
+export type DomainStage = 'dns' | 'certificate' | 'active' | 'problem'
+export type DomainProblem = 'dns' | 'certificate' | 'blocked' | 'taken' | 'timeout'
+/** A record the customer adds at their DNS provider. */
+export type DomainRecord = { type: string; name: string; value: string }
+export type PortalDomain = {
+  hostname: string
+  status: 'pending' | 'active' | 'failed'
+  stage: DomainStage
+  /** Why it is not working; null without a problem. */
+  problem: DomainProblem | null
+  /** Cloudflare's own words on the problem (English), shown under it; null without. */
+  detail: string | null
+  records: DomainRecord[]
+  last_checked_at: string | null
+  created_at: string
+}
+/** The portal's custom domain; `enabled` is false when this server has no Cloudflare settings. */
+export type PortalDomainSettings = { enabled: boolean; target: string; domain: PortalDomain | null }
+
+const domainKey = [...portalKey, 'domain'] as const
+const DOMAIN_PATH = '/workspace/portal/domain'
+/** While DNS or the certificate is on its way, the page checks again by itself. */
+const POLL_MS = 15_000
+
+export function usePortalDomain() {
+  return useQuery({
+    queryKey: domainKey,
+    queryFn: async () => (await request<{ data: PortalDomainSettings }>(DOMAIN_PATH)).data,
+    refetchInterval: (query) => {
+      const stage = query.state.data?.domain?.stage
+      return stage === 'dns' || stage === 'certificate' ? POLL_MS : false
+    },
+  })
+}
+
+/** Add, check and remove change the domain; the address the clients use may change with it. */
+function useDomainMutation<T>(mutationFn: (input: T) => Promise<PortalDomainSettings>) {
+  const queryClient = useQueryClient()
+  return useMutation<PortalDomainSettings, ApiError, T>({
+    mutationFn,
+    onSuccess: (data) => {
+      queryClient.setQueryData(domainKey, data)
+      void queryClient.invalidateQueries({ queryKey: portalKey, exact: true })
+    },
+  })
+}
+
+export const useAddPortalDomain = () =>
+  useDomainMutation(
+    async (hostname: string) =>
+      (
+        await request<{ data: PortalDomainSettings }>(DOMAIN_PATH, {
+          method: 'PUT',
+          json: { hostname },
+        })
+      ).data,
+  )
+
+export const useCheckPortalDomain = () =>
+  useDomainMutation(
+    async () =>
+      (await request<{ data: PortalDomainSettings }>(`${DOMAIN_PATH}/check`, { method: 'POST' }))
+        .data,
+  )
+
+export function useRemovePortalDomain() {
+  const queryClient = useQueryClient()
+  return useMutation<void, ApiError, void>({
+    mutationFn: () => request<void>(DOMAIN_PATH, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.setQueryData<PortalDomainSettings>(
+        domainKey,
+        (old) => old && { ...old, domain: null },
+      )
+      void queryClient.invalidateQueries({ queryKey: portalKey, exact: true })
+    },
+  })
+}
+
 function useDebounced(value: string, ms = 300) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {

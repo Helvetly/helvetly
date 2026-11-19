@@ -32,7 +32,7 @@ func avatarKey(workspaceID, id string) string {
 func avatarURL(r *http.Request, sum string) string {
 	prefix := ""
 	if scope, ok := portalscope.FromContext(r.Context()); ok {
-		prefix = portalscope.Prefix(scope.Slug)
+		prefix = portalscope.PathPrefix(scope)
 	}
 	return prefix + avatarPath + "?v=" + sum[:12]
 }

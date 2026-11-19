@@ -39,6 +39,7 @@ var featureNames = map[Feature]string{
 	store.FeatureClientPortal:         "the client portal",
 	store.FeatureEInvoiceXML:          "e-invoice XML",
 	store.FeatureEmployees:            "the Employees module",
+	store.FeatureCustomPortalDomain:   "the client portal on your own domain",
 }
 
 func featureName(f Feature) string {

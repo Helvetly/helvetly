@@ -21,6 +21,7 @@ import (
 	"helvetly.com/api/internal/books"
 	"helvetly.com/api/internal/clients"
 	"helvetly.com/api/internal/config"
+	"helvetly.com/api/internal/customdomains"
 	"helvetly.com/api/internal/dashboard"
 	"helvetly.com/api/internal/dataexport"
 	"helvetly.com/api/internal/delivery"
@@ -219,6 +220,14 @@ func run() error {
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
 	workspacesSvc.SetPortal(portalScopes)
+	var cloudflare customdomains.Cloudflare // nil: no custom domains (CLOUDFLARE_* unset)
+	ownHosts := []string{cfg.PublicURL, cfg.PortalURL, cfg.MediaURL, cfg.APIURL, cfg.DocsURL}
+	if cfg.CustomDomains.Enabled() {
+		cloudflare = customdomains.NewCloudflare(cfg.CustomDomains.APIURL, cfg.CustomDomains.ZoneID, cfg.CustomDomains.APIToken)
+		portalScopes.EnableDomains(ownHosts...)
+	}
+	customDomainsSvc := customdomains.New(db, authSvc, cloudflare, cfg.CustomDomains.Target, ownHosts, portalScopes, slog.Default())
+	bg.Go(ctx, "custom domains", customDomainsSvc.Run) // every minute: pending domains with backoff, the others daily
 	// The one-time workspace-name suggestion is pinned to the cheapest model, whatever model Heidi is set to.
 	var nameModel aimodel.Provider = aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, aimodel.DefaultModel, "")
 	if cfg.AI.FakeImportModel {
@@ -292,6 +301,7 @@ func run() error {
 		templatesSvc.Register(mux)
 		billingSvc.Register(mux)
 		workspacesSvc.Register(mux)
+		customDomainsSvc.Register(mux)
 		dashboardSvc.Register(mux)
 		heidiSvc.Register(mux)
 		aiWriteSvc.Register(mux)
@@ -302,9 +312,9 @@ func run() error {
 		notificationsSvc.Register(mux)
 	}
 
-	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://")), api))) // scopes, then plan limits, before the handlers
-	mcpSvc.SetAPI(guarded)                                                                                                                                  // tool calls pass the same guards as REST
-	guarded = portalScopes.Handler(guarded)                                                                                                                 // /w/<slug>/… on the portal's host: resolved and unprefixed first
+	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://"), portalscope.OnDomain), api))) // scopes, then plan limits, before the handlers
+	mcpSvc.SetAPI(guarded)                                                                                                                                                        // tool calls pass the same guards as REST
+	guarded = portalScopes.Handler(guarded)                                                                                                                                       // /w/<slug>/… on the portal's host: resolved and unprefixed first
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           auth.ForwardedFor(cfg.TrustedProxies, openapi.CORS(cfg.DocsURL, guarded)), // the client address first; the docs playground's CORS before the guards
