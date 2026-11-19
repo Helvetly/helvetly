@@ -104,7 +104,46 @@ type Budget struct {
 // flight of its pool; after the call the actual usage is settled and only the unused rest released, even when the caller's
 // context ends. An unknown outcome keeps both reservations and blocks the month (ErrUnaccounted); a usage report
 // without a cost breakdown settles the tokens and keeps the cost reserved for reconciliation.
+//
+// A failure that cost nothing (the provider refused before generating: a rate limit, or the input count) is tried
+// again up to len(retryDelays) times after growing pauses, each retry its own step and reservation; a failure whose
+// usage is unknown never is.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
+	step := call.Step
+	for i := 0; ; i++ {
+		reply, err := b.generate(ctx, p, ws, req, call)
+		if err == nil || i == len(retryDelays) || !retryable(err) {
+			return reply, err
+		}
+		select {
+		case <-ctx.Done():
+			return reply, err
+		case <-time.After(retryDelays[i]):
+		}
+		call.Step = fmt.Sprintf("%s/retry%d", step, i+1)
+	}
+}
+
+// retryDelays are the pauses before each retry of a failure that cost nothing.
+var retryDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second}
+
+// errCount marks a failed input count: nothing was reserved or generated.
+var errCount = errors.New("the provider could not count the input tokens")
+
+func retryable(err error) bool {
+	if errors.Is(err, ErrUnaccounted) {
+		return false
+	}
+	switch FailureKind(err) {
+	case FailRateLimited:
+		return true
+	case FailServer, FailTimeout, FailNetwork, FailInvalid:
+		return errors.Is(err, errCount)
+	}
+	return false
+}
+
+func (b Budget) generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
 	card := p.Card()
 	period := store.UsagePeriod(b.Now())
 	if err := b.expireStale(ctx, ws.ID); err != nil {
@@ -115,7 +154,10 @@ func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, re
 	}
 	inputTokens, err := p.InputTokens(ctx, req)
 	if err != nil || inputTokens < 0 {
-		return Reply{}, errors.Join(ErrProvider, errors.New("the provider could not count the input tokens"))
+		if ctx.Err() == nil {
+			logFailure(ctx, store.AICall{WorkspaceID: ws.ID, Kind: call.Kind, Step: call.Step + "/count", Model: card.Model}, 0, err)
+		}
+		return Reply{}, errors.Join(ErrProvider, errCount, err)
 	}
 	if inputTokens > MaxInputTokens {
 		return Reply{}, ErrCap
@@ -133,8 +175,16 @@ func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, re
 	}
 	// A started generation is billed whether or not the caller stays: cancelling it would lose its usage and block
 	// the workspace's model calls until an operator reconciles. The provider's own timeout bounds it.
+	started := time.Now()
 	reply, providerErr := p.Answer(context.WithoutCancel(ctx), req)
 	known := reply.Tokens != nil && *reply.Tokens >= 0 && *reply.Tokens <= maxCallTokens
+	if providerErr != nil {
+		logFailure(ctx, reserved, time.Since(started), providerErr)
+		reserved.Failure = "error"
+		if pe, ok := errors.AsType[*ProviderError](providerErr); ok {
+			reserved.Failure = pe.failure()
+		}
+	}
 	if err := b.settle(ctx, card, reserved, reply, known); err != nil {
 		return Reply{}, fmt.Errorf("record model usage: %w", err)
 	}
@@ -142,11 +192,29 @@ func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, re
 	case providerErr != nil && !known:
 		return Reply{}, errors.Join(ErrProvider, ErrUnaccounted, providerErr)
 	case providerErr != nil:
-		return Reply{}, errors.Join(ErrProvider, providerErr)
+		// The reply's text stays for a caller that can use a cut-short answer (FailIncomplete).
+		return reply, errors.Join(ErrProvider, providerErr)
 	case !known:
 		return Reply{}, ErrUnaccounted
 	}
 	return reply, nil
+}
+
+// logFailure records a failed provider call once, with what explains it and never the prompt, answer or key.
+func logFailure(ctx context.Context, c store.AICall, took time.Duration, err error) {
+	attrs := []any{"call", c.ID, "workspace", c.WorkspaceID, "kind", c.Kind, "step", c.Step, "model", c.Model,
+		"duration_ms", took.Milliseconds()}
+	if pe, ok := errors.AsType[*ProviderError](err); ok {
+		attrs = append(attrs, "reason", pe.Kind, "http_status", pe.HTTPStatus, "error_type", pe.Type, "error_code", pe.Code,
+			"error_message", pe.Message, "response_status", pe.Status, "incomplete_reason", pe.Reason,
+			"request_id", pe.RequestID, "response_id", pe.ResponseID)
+		if pe.Err != nil {
+			attrs = append(attrs, "error", pe.Err.Error())
+		}
+	} else if err != nil {
+		attrs = append(attrs, "error", err.Error())
+	}
+	slog.WarnContext(ctx, "model call failed", attrs...)
 }
 
 // admit checks, in one transaction, everything a call needs. With input < 0 it only checks (before the input is sent
@@ -295,7 +363,7 @@ func (b Budget) expireStale(ctx context.Context, workspaceID string) error {
 		if err != nil {
 			return err
 		}
-		c.Status = "uncertain"
+		c.Status, c.Failure = "uncertain", "stale"
 		if err := q.SettleAICall(ctx, c, b.Now()); errors.Is(err, store.ErrNotFound) {
 			return nil // settled meanwhile
 		} else if err != nil {

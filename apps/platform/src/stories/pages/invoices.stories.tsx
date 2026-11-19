@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { InvoicesPage } from '@/components/invoices/invoices-page'
-import type { Invoice } from '@/lib/invoices'
+import { today, type Invoice } from '@/lib/invoices'
 import { scheduledInvoice } from '@/mocks/data'
 
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
@@ -95,17 +95,21 @@ export const DetailPdf: Story = {
 }
 export const DetailPdfDark = dark(DetailPdf)
 
-/** Record a payment: paying the whole rest today is a visible button next to the main action. */
+/** Record a payment opens on the whole amount due, today, by bank transfer: one click pays it in full, so no second button. */
 export const RecordPayment: Story = {
   parameters: Detail.parameters,
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     const sheet = await body.findByRole('dialog')
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Record payment' }))
-    const dialog = await body.findByRole('dialog', { name: 'Record a payment' })
-    const markPaid = within(dialog).getByRole('button', { name: 'Mark fully paid today' })
-    expect(markPaid).toHaveAttribute('data-variant', 'outline')
-    expect(markPaid.querySelector('svg')).not.toBeNull()
+    const dialog = within(await body.findByRole('dialog', { name: 'Record a payment' }))
+    await expect(dialog.getByRole('textbox', { name: /^Amount/ })).toHaveValue(
+      scheduledInvoice.amount_due,
+    )
+    await expect(dialog.getByLabelText(/^Paid on/)).toHaveValue(today())
+    await expect(dialog.getByRole('radio', { name: 'Bank transfer' })).toBeChecked()
+    await expect(dialog.queryByRole('button', { name: /fully paid/i })).toBeNull()
+    await expect(dialog.getByRole('button', { name: 'Record payment' })).toBeEnabled()
   },
 }
 export const RecordPaymentDark = dark(RecordPayment)

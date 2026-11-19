@@ -75,6 +75,6 @@ export const Documents = screen('/documents', <PortalDocuments />, 'Contract.pdf
 export const DocumentsDark = dark(Documents)
 export const DocumentsPhone = phone(Documents)
 
-export const Profile = screen('/profile', <PortalProfile />, 'Billing email')
+export const Profile = screen('/profile', <PortalProfile />, 'Invoices go to')
 export const ProfileDark = dark(Profile)
 export const ProfilePhone = phone(Profile)

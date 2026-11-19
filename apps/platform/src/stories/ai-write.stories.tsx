@@ -132,7 +132,7 @@ export const Errors: Story = {
     await userEvent.click(await body().findByRole('button', { name: 'Write with AI' }))
     await userEvent.click(await body().findByRole('button', { name: 'Write a draft' }))
     await expect(await body().findByRole('alert')).toHaveTextContent(
-      'Another AI request is in progress.',
+      'The AI is busy right now. Try again in a minute.',
     )
     await expect(body().getByRole('button', { name: 'Try again' })).toBeVisible()
   },

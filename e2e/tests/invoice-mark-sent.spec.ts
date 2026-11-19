@@ -13,7 +13,7 @@ test('an issued invoice is marked as sent without email: sent_at set, no email d
   await page.goto(`/invoices?id=${id}`)
   await page.getByRole('button', { name: 'Send', exact: true }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Send by email' })
-  await dialog.getByRole('button', { name: 'Mark as sent without email' }).click()
+  await dialog.getByRole('button', { name: 'Mark as sent' }).click()
   await expect(page.getByText(`${text(invoice.number)} marked as sent.`)).toBeVisible()
   await expect(dialog).toBeHidden()
 

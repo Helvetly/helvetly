@@ -2,9 +2,10 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Combobox, inputClass } from '@helvetly/ui/components/combobox'
-import { FormField } from '@helvetly/ui/components/form-field'
+import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
+import { formatUid, isEmail, isValidUid, isWebsite } from '@helvetly/ui/lib/client-fields'
 import { COUNTRY_OPTIONS } from '@helvetly/ui/lib/countries'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { ApiError, errorMessage } from '@helvetly/ui/lib/http'
@@ -18,8 +19,17 @@ import {
 } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, CircleX, Clock, Landmark, Mail, MapPin, type LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import {
+  Building2,
+  CircleX,
+  Clock,
+  Landmark,
+  Mail,
+  MapPin,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
@@ -34,31 +44,42 @@ import { cardClass, PageHeader, RetryAlert } from './portal-bits'
 import { PortalPhoto } from './portal-photo'
 
 type Key = keyof ProfileFields
-const FIELDS: { key: Key; label: string; wide?: boolean }[] = [
-  { key: 'name', label: translate('name'), wide: true },
-  { key: 'billing_email', label: translate('billingEmail') },
-  { key: 'phone', label: translate('phone') },
-  { key: 'street', label: translate('street') },
-  { key: 'street_number', label: translate('number') },
-  { key: 'apt', label: translate('apartment') },
-  { key: 'zip', label: 'ZIP' },
-  { key: 'city', label: translate('city') },
-  { key: 'country', label: translate('country') },
-  { key: 'vat_number', label: translate('vatNumber') },
-  { key: 'registration_number', label: translate('registrationNumber') },
-]
-const GROUPS: { title: string; icon: LucideIcon; keys: Key[] }[] = [
-  { title: translate('company'), icon: Building2, keys: ['name'] },
-  { title: translate('contact'), icon: Mail, keys: ['billing_email', 'phone'] },
-  {
-    title: translate('address'),
-    icon: MapPin,
-    keys: ['street', 'street_number', 'apt', 'zip', 'city', 'country'],
-  },
-  { title: translate('taxIDs'), icon: Landmark, keys: ['vat_number', 'registration_number'] },
-]
-const labelOf = (key: string) => FIELDS.find((f) => f.key === key)?.label ?? key
+type Values = Record<Key, string>
+
+const LABELS: Record<Key, string> = {
+  name: translate('name'),
+  preferred_name: translate('contactPerson'),
+  billing_email: translate('invoicesGoTo'),
+  phone: translate('phone'),
+  website: translate('website'),
+  street: translate('street'),
+  street_number: translate('number'),
+  apt: translate('aptSuite'),
+  zip: 'ZIP',
+  city: translate('city'),
+  country: translate('country'),
+  vat_number: translate('vatUIDNumber'),
+  registration_number: translate('businessRegistrationNumber'),
+}
+const KEYS = Object.keys(LABELS) as Key[]
+const labelOf = (key: string) => LABELS[key as Key] ?? key
 const text = (value: string | null | undefined) => value ?? ''
+
+/** The platform client form's rules (client-form-model), for the fields a client changed. */
+function validate(values: Values, changed: Key[], company: boolean): Partial<Record<Key, string>> {
+  const errors: Partial<Record<Key, string>> = {}
+  const has = (key: Key) => changed.includes(key) && values[key].trim() !== ''
+  if (changed.includes('name') && !values.name.trim())
+    errors.name = company ? translate('enterTheCompanyName') : translate('enterTheFullName')
+  if (has('billing_email') && !isEmail(values.billing_email.trim()))
+    errors.billing_email = translate('enterAValidEmailAddress')
+  if (has('website') && !isWebsite(values.website.trim()))
+    errors.website = translate('enterAWebsiteEGExampleCh')
+  // The server checks every number starting with CH as a Swiss UID.
+  if (has('vat_number') && /^CH/i.test(values.vat_number.trim()) && !isValidUid(values.vat_number))
+    errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
+  return errors
+}
 
 /** 422 `details.fields` as { field: message }; the server's code (e.g. "invalid") becomes a sentence. */
 function fieldErrors(error: unknown): Record<string, string> {
@@ -76,10 +97,33 @@ function fieldErrors(error: unknown): Record<string, string> {
 const recent = (decidedAt: string | null) =>
   decidedAt !== null && Date.now() - Date.parse(decidedAt) < 30 * 86_400_000
 
+/** A titled card of fields, its icon tile as in the platform's forms. */
+function Section({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string
+  icon: LucideIcon
+  children: ReactNode
+}) {
+  return (
+    <fieldset className={cn(cardClass, 'grid min-w-0 gap-5 p-4 sm:p-6')}>
+      <legend className="float-left flex items-center gap-2 text-title-sm font-medium">
+        <span className="flex size-7 items-center justify-center rounded-lg bg-section-icon-surface text-section-icon">
+          <Icon className="size-4" aria-hidden />
+        </span>
+        {title}
+      </legend>
+      {children}
+    </fieldset>
+  )
+}
+
 export function PortalProfile() {
   const queryClient = useQueryClient()
   const query = useQuery({ queryKey: portalKeys.profile, queryFn: getPortalProfile })
-  const [draft, setDraft] = useState<Partial<Record<Key, string>>>({})
+  const [draft, setDraft] = useState<Partial<Values>>({})
   // The phone as typed, in its picked country; null until edited.
   const [phone, setPhone] = useState<{ phone: string; country: CountryCode } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -121,6 +165,7 @@ export function PortalProfile() {
     )
 
   const { profile, pending, last_decision: decision } = query.data
+  const company = profile.is_company
   const rejected = !pending && decision?.status === 'rejected' && recent(decision.decided_at)
   const phoneField = phone ?? phoneDraft(profile.phone, profile.country)
   // E.164 once valid, so an untouched or re-typed number isn't a change; else as typed.
@@ -128,54 +173,63 @@ export function PortalProfile() {
     ? phone.phone.trim() && (toE164(phone.phone, phone.country) ?? phone.phone)
     : text(profile.phone)
   const value = (key: Key) => (key === 'phone' ? typedPhone : (draft[key] ?? text(profile[key])))
-  const changed = FIELDS.filter(({ key }) => value(key) !== text(profile[key]))
+  const values = Object.fromEntries(KEYS.map((key) => [key, value(key)])) as Values
+  const changed = KEYS.filter((key) => values[key] !== text(profile[key]))
   const set = (key: Key, next: string) => {
     setDraft((d) => ({ ...d, [key]: next }))
     setErrors(({ [key]: _cleared, ...rest }) => rest)
   }
   const send = () => {
-    if (phone?.phone.trim() && !toE164(phone.phone, phone.country))
-      return setErrors((current) => ({ ...current, phone: PHONE_ERROR }))
+    const found: Record<string, string> = validate(values, changed, company)
+    if (phone?.phone.trim() && !toE164(phone.phone, phone.country)) found.phone = PHONE_ERROR
+    const first = KEYS.find((key) => found[key])
+    if (first) {
+      setErrors(found)
+      return document.getElementById(`portal-${first}`)?.focus()
+    }
     submit.mutate(
       Object.fromEntries(
-        changed.map(({ key }) => [key, value(key).trim() || null]),
+        changed.map((key) => [key, values[key].trim() || null]),
       ) as Partial<ProfileFields>,
     )
   }
 
-  const field = (key: Key) =>
-    key === 'country' ? (
-      <Combobox
-        id={`portal-${key}`}
-        value={value(key)}
-        options={COUNTRY_OPTIONS}
-        invalid={Boolean(errors[key])}
-        placeholder={translate('chooseACountry')}
-        onChange={(code) => set(key, code)}
-      />
-    ) : key === 'phone' ? (
-      <PhoneInput
-        id="portal-phone"
-        value={phoneField.phone}
-        country={phoneField.country}
-        invalid={Boolean(errors.phone)}
-        aria-describedby={errors.phone ? 'portal-phone-error' : undefined}
-        onChange={(next) => {
-          setPhone({ ...phoneField, phone: next })
-          setErrors(({ phone: _cleared, ...rest }) => rest)
-        }}
-        onCountryChange={(code) => setPhone({ ...phoneField, country: phoneCountryOr(code) })}
-      />
-    ) : (
+  /** A text field with the platform client form's label, placeholder and help. */
+  const field = (
+    key: Key,
+    props: {
+      label?: string
+      placeholder?: string
+      tip?: string
+      required?: boolean
+      autoComplete?: string
+      type?: 'email' | 'url'
+      className?: string
+      inputClassName?: string
+      format?: (typed: string) => string
+    } = {},
+  ) => (
+    <FormField
+      id={`portal-${key}`}
+      label={props.label ?? LABELS[key]}
+      error={errors[key]}
+      required={props.required}
+      tip={props.tip}
+      className={props.className}
+    >
       <input
-        id={`portal-${key}`}
-        value={value(key)}
-        onChange={(event) => set(key, event.target.value)}
-        aria-invalid={Boolean(errors[key])}
-        aria-describedby={errors[key] ? `portal-${key}-error` : undefined}
-        className={inputClass}
+        {...describedBy(`portal-${key}`, errors[key])}
+        type={props.type ?? 'text'}
+        inputMode={props.type}
+        required={props.required}
+        autoComplete={props.autoComplete}
+        placeholder={props.placeholder}
+        value={values[key]}
+        onChange={(event) => set(key, (props.format ?? String)(event.target.value))}
+        className={cn(inputClass, props.inputClassName)}
       />
-    )
+    </FormField>
+  )
 
   return (
     <div className="grid gap-6 sm:gap-8">
@@ -229,36 +283,132 @@ export function PortalProfile() {
         </section>
       )}
       <form
+        noValidate
         className="grid gap-4"
         onSubmit={(event) => {
           event.preventDefault()
           send()
         }}
       >
-        {GROUPS.map(({ title, icon: Icon, keys }) => (
-          <fieldset key={title} className={cn(cardClass, 'grid gap-4 p-4 sm:p-6')}>
-            <legend className="float-left flex items-center gap-2 text-title-sm font-medium">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-section-icon-surface text-section-icon">
-                <Icon className="size-4" aria-hidden />
-              </span>
-              {title}
-            </legend>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {FIELDS.filter((f) => keys.includes(f.key)).map(({ key, label, wide }) => (
-                <FormField
-                  key={key}
-                  id={`portal-${key}`}
-                  label={label}
-                  error={errors[key]}
-                  className={wide ? 'col-span-2 sm:col-span-4' : 'col-span-2'}
-                >
-                  {field(key)}
-                </FormField>
-              ))}
-            </div>
-          </fieldset>
-        ))}
-        <div className="flex flex-wrap items-center gap-3">
+        <Section
+          title={company ? translate('company') : translate('name')}
+          icon={company ? Building2 : UserRound}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('name', {
+              label: company ? translate('companyName') : translate('fullName'),
+              placeholder: company ? translate('musterAG') : translate('annaMuster'),
+              autoComplete: company ? 'organization' : 'name',
+              required: true,
+            })}
+            {field('website', { type: 'url', placeholder: 'example.ch' })}
+          </div>
+        </Section>
+        <Section title={translate('contact')} icon={Mail}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('preferred_name', {
+              label: company ? translate('contactPerson') : translate('preferredName'),
+              placeholder: company ? translate('annaMuster') : translate('anna'),
+            })}
+            <FormField
+              id="portal-email"
+              label={translate('signInEmail')}
+              tip={translate('signInEmailTip')}
+            >
+              <input
+                id="portal-email"
+                type="email"
+                readOnly
+                value={text(profile.email)}
+                className={cn(inputClass, 'bg-muted/60 text-muted-foreground dark:bg-muted/60')}
+              />
+            </FormField>
+            {field('billing_email', {
+              type: 'email',
+              tip: translate('leaveEmptyToSendInvoicesToTheMainEmail'),
+              placeholder: text(profile.email) || translate('accountsExampleCh'),
+            })}
+            <FormField id="portal-phone" label={LABELS.phone} error={errors.phone}>
+              <PhoneInput
+                id="portal-phone"
+                value={phoneField.phone}
+                country={phoneField.country}
+                invalid={Boolean(errors.phone)}
+                aria-describedby={errors.phone ? 'portal-phone-error' : undefined}
+                onChange={(next) => {
+                  setPhone({ ...phoneField, phone: next })
+                  setErrors(({ phone: _cleared, ...rest }) => rest)
+                }}
+                onCountryChange={(code) =>
+                  setPhone({ ...phoneField, country: phoneCountryOr(code) })
+                }
+              />
+            </FormField>
+          </div>
+        </Section>
+        <Section title={translate('address')} icon={MapPin}>
+          {/* The platform's address rows: street wide, number and apartment narrow; then ZIP narrow, city, country. */}
+          <div
+            data-testid="address-line-1"
+            className="grid grid-cols-[minmax(0,1fr)_96px] gap-4 sm:grid-cols-[minmax(0,1fr)_110px_110px]"
+          >
+            {field('street', {
+              placeholder: translate('bahnhofstrasse'),
+              autoComplete: 'address-line1',
+            })}
+            {field('street_number', { placeholder: '12' })}
+            {field('apt', {
+              placeholder: translate('message3rdFloor'),
+              autoComplete: 'address-line2',
+              className: 'col-span-2 sm:col-span-1',
+            })}
+          </div>
+          <div
+            data-testid="address-line-2"
+            className="grid grid-cols-[110px_minmax(0,1fr)] gap-4 sm:grid-cols-[110px_minmax(0,1fr)_236px]"
+          >
+            {field('zip', { placeholder: '8001', autoComplete: 'postal-code' })}
+            {field('city', { placeholder: translate('zRich'), autoComplete: 'address-level2' })}
+            <FormField
+              id="portal-country"
+              label={LABELS.country}
+              error={errors.country}
+              className="col-span-2 sm:col-span-1"
+            >
+              <Combobox
+                id="portal-country"
+                value={values.country}
+                options={COUNTRY_OPTIONS}
+                invalid={Boolean(errors.country)}
+                placeholder={translate('chooseACountry')}
+                onChange={(code) => set('country', code)}
+              />
+            </FormField>
+          </div>
+        </Section>
+        <Section title={translate('taxIDs')} icon={Landmark}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field('vat_number', {
+              tip: translate('swissUIDLikeCHE123456789MWSTOr'),
+              placeholder: translate('che123456789MWST'),
+              format: formatUid,
+              inputClassName: 'font-mono text-body-sm',
+            })}
+            {field('registration_number', {
+              tip: translate('theLegalRegistrationNumberSeparatelyFromVATUsedFor'),
+              placeholder: translate('che123456789'),
+            })}
+          </div>
+        </Section>
+        {/* With a change typed, it stays in reach while scrolling (above the phone's bottom tab bar). */}
+        <div
+          className={cn(
+            cardClass,
+            'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6',
+            changed.length > 0 &&
+              'sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 md:bottom-4',
+          )}
+        >
           <Button type="submit" disabled={changed.length === 0 || submit.isPending}>
             {translate('requestChange')}
           </Button>

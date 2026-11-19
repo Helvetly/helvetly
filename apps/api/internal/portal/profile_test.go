@@ -22,8 +22,28 @@ func TestProfileRequestReplacesPending(t *testing.T) {
 		t.Fatalf("fields replaced: %v", f)
 	}
 	_, got := e.do("GET", "/profile", nil, c, "")
-	if got["pending"].(map[string]any)["id"] != out["id"] || got["profile"].(map[string]any)["name"] != "Acme AG" {
+	profile := got["profile"].(map[string]any)
+	if got["pending"].(map[string]any)["id"] != out["id"] || profile["name"] != "Acme AG" {
 		t.Fatalf("profile: %v", got)
+	}
+	// Shown read-only next to the fields a client may ask to change.
+	if _, isBool := profile["is_company"].(bool); profile["email"] != "ana@acme.ch" || !isBool {
+		t.Fatalf("read-only fields: %v", profile)
+	}
+}
+
+func TestProfileRequestContactAndWebsite(t *testing.T) {
+	e := newEnv(t)
+	c, csrf := e.signIn("ana@acme.ch")
+	res, out := e.do("POST", "/profile/requests", map[string]any{"preferred_name": "Anna Muster", "website": "acme.ch"}, c, csrf)
+	if res.StatusCode != 201 {
+		t.Fatalf("got %d %v", res.StatusCode, out)
+	}
+	if f := out["fields"].(map[string]any); f["preferred_name"] != "Anna Muster" || f["website"] != "https://acme.ch" {
+		t.Fatalf("fields: %v", f)
+	}
+	if res, out := e.do("POST", "/profile/requests", map[string]any{"email": "eve@evil.test"}, c, csrf); res.StatusCode != 400 {
+		t.Fatalf("sign-in email: %d %v", res.StatusCode, out)
 	}
 }
 

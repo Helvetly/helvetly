@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
@@ -100,8 +101,33 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 	}
 	budget.Calling = func() { progress(answerLabel(files)) }
-	call.Step, call.MaxOutput = "answer", 4096
+	call.Step, call.MaxOutput = "answer", answerOutput
 	reply, err := budget.Generate(ctx, s.provider, sess.Workspace, request, call)
+	if cut, ok := errors.AsType[*aimodel.ProviderError](err); ok && cut.Kind == aimodel.FailIncomplete &&
+		cut.Reason == "max_output_tokens" && strings.TrimSpace(reply.Text) != "" && reply.Tokens != nil {
+		// Its usage is settled; a long answer cut short is still worth reading, marked as such.
+		return turn{Text: strings.TrimRight(reply.Text, " \n") + "\n\n" + cutShort[language(message)], Tokens: spent + *reply.Tokens, Model: true}, nil
+	}
+	return answerOf(sess, reply, spent, err)
+}
+
+// answerOutput is the answer's output budget: reasoning models count their reasoning in it, so a long answer needs
+// room beyond its text. HeidiCaps and what is left of the allowance cap it further when they are smaller.
+const answerOutput = 16_384
+
+// cutShort ends an answer the model stopped at its output budget.
+var cutShort = map[string]string{
+	"en": "_This answer was cut short. Ask for the rest or a shorter answer._",
+	"de": "_Diese Antwort wurde gekürzt. Fragen Sie nach dem Rest oder nach einer kürzeren Antwort._",
+	"fr": "_Cette réponse a été interrompue. Demandez la suite ou une réponse plus courte._",
+	"it": "_Questa risposta è stata interrotta. Chiedi il resto o una risposta più breve._",
+	"pl": "_Ta odpowiedź została ucięta. Poproś o resztę lub o krótszą odpowiedź._",
+}
+
+// answerOf turns the model's reply into the turn, or its failure into a short answer for the person asking: the code
+// says the cause, the frontend words it in the person's language. Only owners and admins, who can fix it, hear that the
+// AI is set up wrong.
+func answerOf(sess store.Session, reply ProviderReply, spent int64, err error) (turn, error) {
 	switch {
 	case errors.Is(err, aimodel.ErrQuota):
 		return turn{}, auth.Error(403, "quota_exceeded", "This workspace has reached its monthly model token allowance.", nil)
@@ -110,13 +136,15 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 	case errors.Is(err, aimodel.ErrCap):
 		return turn{}, auth.Error(413, "heidi_input_too_large", "This conversation and its attachments are larger than one Heidi answer may read, whatever is left of the monthly allowance. Start a new conversation or attach fewer or smaller files.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):
-		return turn{}, auth.Error(503, "heidi_provider_unavailable", "Heidi's model answers are paused while the service's AI budget is being updated. Local commands remain available.", nil)
+		return turn{}, auth.Error(503, "heidi_paused", "Heidi's model answers are paused while the service's AI budget is being updated. Local commands remain available.", nil)
+	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain):
+		return turn{}, auth.Error(503, "heidi_usage_uncertain", "Heidi is still finishing an earlier request, or this month's AI use is being checked. Nothing was changed. Try again in a few minutes; local commands still work.", nil)
+	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
+		return turn{}, auth.Error(503, "heidi_busy", "Heidi is busy right now. Try again in a minute.", nil)
+	case aimodel.FailureKind(err) == aimodel.FailConfig && (sess.Role == "owner" || sess.Role == "admin"):
+		return turn{}, auth.Error(503, "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
-		return turn{}, auth.Error(503, "heidi_provider_unavailable", "OpenAI could not complete the request. No business operation was performed. Check model configuration or try later; unknown usage must be reconciled before another model call.", nil)
-	case errors.Is(err, aimodel.ErrUncertain):
-		return turn{}, auth.Error(503, "heidi_usage_uncertain", "An OpenAI request is in progress or its usage needs reconciliation. Local commands remain available.", nil)
-	case errors.Is(err, aimodel.ErrUnaccounted):
-		return turn{}, auth.Error(503, "heidi_usage_uncertain", "OpenAI returned no usable token accounting. Further model calls are blocked until usage is reconciled.", nil)
+		return turn{}, auth.Error(503, "heidi_provider_unavailable", "Heidi couldn't answer right now. Nothing was changed. Try again in a moment.", nil)
 	case err != nil:
 		return turn{}, err
 	}

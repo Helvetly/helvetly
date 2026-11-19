@@ -27,7 +27,7 @@ export type AIWriteInput = {
 }
 
 /** The written text. Refusals throw the API error: ai_consent_required, feature_not_in_plan, quota_exceeded,
- *  ai_busy, ai_unavailable, ai_unreadable, rate_limited, validation_failed. */
+ *  ai_busy, ai_failed, ai_unavailable, ai_unreadable, rate_limited, validation_failed. */
 export async function aiWrite(input: AIWriteInput): Promise<string> {
   const { data } = await request<{ data: { text: string } }>('/ai/write', {
     method: 'POST',
@@ -43,6 +43,8 @@ export function aiWriteError(error: unknown): { message: string; retry: boolean 
   if (error.status === 404 || error.code === 'ai_unavailable')
     return { message: translate('aiWriteErrorUnavailable'), retry: false }
   if (error.code === 'quota_exceeded') return { message: error.message, retry: false }
+  if (error.code === 'ai_busy') return { message: translate('aiErrorBusy'), retry: true }
+  if (error.code === 'ai_failed') return { message: translate('aiWriteErrorFailed'), retry: true }
   if (error.status === 429 || error.status >= 500) return { message: error.message, retry: true }
   return { message: error.message, retry: false }
 }

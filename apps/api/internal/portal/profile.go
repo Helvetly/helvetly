@@ -12,10 +12,6 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// profileFields are the only fields a client may ask to change (docs/portal-contract.md).
-var profileFields = []string{"name", "billing_email", "phone", "street", "street_number", "apt", "zip", "city", "country",
-	"vat_number", "registration_number"}
-
 func (s *Service) registerProfile(handle func(string, handler)) {
 	handle("GET /api/v1/public/portal/profile", s.getProfile)
 	handle("POST /api/v1/public/portal/profile/requests", s.requestChange)
@@ -49,8 +45,9 @@ func (s *Service) getProfile(w http.ResponseWriter, r *http.Request, sess store.
 	if err := json.Unmarshal(raw, &all); err != nil {
 		return fmt.Errorf("decode client: %w", err)
 	}
-	profile := map[string]any{}
-	for _, k := range profileFields {
+	// email and is_company are shown, not requested: the supplier alone changes them.
+	profile := map[string]any{"email": all["email"], "is_company": all["is_company"]}
+	for _, k := range clients.ProfileFields {
 		profile[k] = all[k]
 	}
 	var pending *requestView

@@ -31,8 +31,10 @@ import { countryName } from './client-form-model'
 
 const LABELS: Record<string, string> = {
   name: translate('name'),
+  preferred_name: translate('contactPerson'),
   billing_email: translate('billingEmail'),
   phone: translate('phone'),
+  website: translate('website'),
   vat_number: translate('vatNumber'),
   registration_number: translate('registrationNo'),
 }

@@ -123,7 +123,7 @@ var scopeSchema = &aimodel.Schema{Name: "heidi_scope", JSON: map[string]any{
 }}
 
 // classifierOutput caps the classifier's answer; reasoning models count their reasoning in it too.
-const classifierOutput = 256
+const classifierOutput = 1024
 
 // classify asks the model whether the message is in scope. ok is false on any error or unreadable answer: the turn
 // then goes to the main call, whose instructions carry the same policy (fail open, see the contract). tokens are the

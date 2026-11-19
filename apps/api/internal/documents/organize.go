@@ -241,8 +241,10 @@ func organizeError(err error) error {
 		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "AI organizing is paused while the service's AI budget is being updated.", nil)
 	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace, or its usage is being reconciled. Try again in a moment.", nil)
+	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
+		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
-		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "The AI model could not be reached. Try again later.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_failed", "The AI couldn't organize the documents right now. Nothing was changed. Try again in a moment.", nil)
 	}
 	return err
 }

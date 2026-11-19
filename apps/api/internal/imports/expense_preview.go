@@ -248,8 +248,10 @@ func previewError(err error) error {
 		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "Reading receipts is paused while the service's AI budget is being updated.", nil)
 	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace, or its usage is being reconciled. Try again in a moment.", nil)
+	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
+		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
-		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "The AI model could not read the receipt. Try again later or enter the details yourself.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_failed", "The AI couldn't read the receipt right now. Try again in a moment or enter the details yourself.", nil)
 	}
 	return err // an auth error of the gate, or an unexpected one
 }

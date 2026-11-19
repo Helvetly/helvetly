@@ -400,12 +400,12 @@ func (st *stream) status(label string) error {
 
 // fail ends a started stream with an error frame: an answered error's message, a generic one (logged) otherwise.
 func (st *stream) fail(ctx context.Context, err error) {
-	_, _, message, ok := auth.Describe(err)
+	_, code, message, ok := auth.Describe(err)
 	if !ok {
 		slog.ErrorContext(ctx, "heidi turn failed", "error", err)
-		message = "Something went wrong: try again."
+		code, message = "internal_error", "Something went wrong: try again."
 	}
-	_ = st.send(map[string]string{"type": "error", "message": message})
+	_ = st.send(map[string]string{"type": "error", "code": code, "message": message})
 }
 
 func (t turn) generatedBy() string {
