@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -203,4 +204,46 @@ func TestChooseLandsOnTheActiveDomain(t *testing.T) {
 	if url, _ := out["url"].(string); !strings.HasPrefix(url, "http://portal.other.ch/login/#ticket=") {
 		t.Fatalf("url: %v", out)
 	}
+}
+
+// TestChoiceRespectsPortalOff: a workspace that turned its whole portal off is not offered, cannot be chosen, and a
+// ticket made before it went off opens no session.
+func TestChoiceRespectsPortalOff(t *testing.T) {
+	off := func(e *env) {
+		if err := e.store.SetPortalOff(context.Background(), "wsp_b", true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Run("not offered", func(t *testing.T) {
+		e := scopedEnv(t)
+		off(e)
+		_, _, accounts := e.offer()
+		for _, a := range accounts {
+			if a.(map[string]any)["client_id"] == "cli_9" {
+				t.Fatalf("offered while off: %v", accounts)
+			}
+		}
+		if len(accounts) != 2 {
+			t.Fatalf("accounts: %v", accounts)
+		}
+	})
+	t.Run("off between the offer and the choice", func(t *testing.T) {
+		e := scopedEnv(t)
+		c, csrf, _ := e.offer()
+		off(e)
+		if res, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf); res.StatusCode != 404 {
+			t.Fatalf("choose: %d %v", res.StatusCode, out)
+		}
+	})
+	t.Run("off between the choice and the ticket", func(t *testing.T) {
+		e := scopedEnv(t)
+		c, csrf, _ := e.offer()
+		_, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
+		ticket := ticketOf(t, out["url"].(string))
+		off(e)
+		res, _ := e.doAt("/w/other", "POST", "/auth/ticket", map[string]string{"ticket": ticket}, nil, "")
+		if res.StatusCode != 403 || scopedCookie(res) != nil {
+			t.Fatalf("redeem: %d", res.StatusCode)
+		}
+	})
 }

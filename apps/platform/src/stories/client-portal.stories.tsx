@@ -33,7 +33,8 @@ const john = (change: Partial<Client> = {}) =>
     ...change,
   })
 
-const handlers = (client: Client) => {
+/** `portalOn` false: the workspace turned its whole portal off. */
+const handlers = (client: Client, portalOn = true) => {
   let current = client
   return [
     sessionHandler(),
@@ -46,7 +47,7 @@ const handlers = (client: Client) => {
       }),
     ),
     http.get('/api/v1/workspace/portal', () =>
-      HttpResponse.json({ data: { slug: 'mueller-treuhand', url: PORTAL } }),
+      HttpResponse.json({ data: { slug: 'mueller-treuhand', url: PORTAL, enabled: portalOn } }),
     ),
     http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: current })),
     http.patch<never, Partial<ClientInput>>('/api/v1/clients/cli_1', async ({ request }) => {
@@ -121,6 +122,22 @@ export const OnWithoutAnEmail: Story = {
     )
     await expect(card.queryByText('Signs in with')).toBeNull()
     await expect(card.queryByText('Invitation')).toBeNull()
+  },
+}
+
+/** The whole workspace's portal is off: the client's switch stays on, but the card says nobody gets in and why. */
+export const WorkspacePortalOff: Story = {
+  parameters: { msw: { handlers: handlers(john({ portal_enabled: true }), false) } },
+  render: detail,
+  play: async () => {
+    const card = await portalCard()
+    await visible(await card.findByText(/The client portal is off for the whole workspace/))
+    await expect(card.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/workspace\/?#portal-address$/),
+    )
+    await expect(card.getByRole('switch', { name: 'Client portal' })).toBeChecked()
+    await expect(card.getByRole('button', { name: 'Send invitation' })).toBeDisabled()
   },
 }
 

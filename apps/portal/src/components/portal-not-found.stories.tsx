@@ -23,3 +23,16 @@ export const UnknownWorkspace: Story = {
 }
 
 export const UnknownWorkspaceDark: Story = { ...UnknownWorkspace, parameters: { dark: true } }
+
+/** A workspace that turned its whole portal off: a calm page that names nobody, and no sign-in form. */
+export const PortalTurnedOff: Story = {
+  args: { closed: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(canvas.getByText(/turned their client portal off/)).toBeVisible()
+    await expect(canvas.queryByLabelText('Email')).toBeNull()
+  },
+}

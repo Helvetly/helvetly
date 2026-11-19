@@ -219,5 +219,7 @@
   "thatSignInHasExpired": "That sign-in has expired. Enter your email to get a new code.",
   "useAnotherEmail": "Use another email",
   "yourAddressHasSeveralAccounts": "Your address has more than one account. Which one would you like to open?",
-  "zRich": "Zürich"
+  "zRich": "Zürich",
+  "portalUnavailable": "The client portal is not available",
+  "portalUnavailableHint": "Your supplier has turned their client portal off for now. Ask them if you need your invoices or documents."
 }

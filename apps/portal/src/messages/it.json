@@ -219,5 +219,7 @@
   "thatSignInHasExpired": "Questo accesso è scaduto. Inserisci la tua email per ricevere un nuovo codice.",
   "useAnotherEmail": "Usa un'altra email",
   "yourAddressHasSeveralAccounts": "Il tuo indirizzo ha più di un account. Quale vuoi aprire?",
-  "zRich": "Zurigo"
+  "zRich": "Zurigo",
+  "portalUnavailable": "Il portale clienti non è disponibile",
+  "portalUnavailableHint": "Il tuo fornitore ha disattivato il suo portale clienti per ora. Chiedigli direttamente fatture o documenti."
 }
