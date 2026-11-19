@@ -25,13 +25,42 @@ type RateCard struct {
 // regional is OpenAI's +10% for regional processing: base rate × 1.1, in micro-USD per million tokens.
 func regional(usdPerMillion float64) int64 { return int64(usdPerMillion*1.1*1e6 + 0.5) }
 
-// Cards are the models a deployment may choose (OPENAI_MODEL), at Standard tier, from OpenAI's price list verified
-// 2026-11-15. Sol and Astra are priced only so an operator's explicit choice is costed; the sold token pools are
-// funded for Luna, and Budget refuses calls whose card cannot fund the pool (ErrUnfunded).
+// Cards are the models a deployment may choose (OPENAI_MODEL, OPENAI_FALLBACK_MODEL): OpenAI's Standard text models
+// from its price list (verified 2026-11-19; gpt-6-luna, gpt-6.1-sol and gpt-6-astra unchanged since 2026-11-15), at
+// short-context rates (≤272K input tokens, far above any call here). A model without a cached-input price is cached
+// at its input price. The 10% regional uplift is applied to every card, also to models released before 5 March 2026
+// that OpenAI does not uplift: an older model is overpriced by 10%, never underpriced. The sold token pools are funded
+// for gpt-6-luna; Budget refuses calls whose card cannot fund the pool (ErrUnfunded).
 var Cards = map[string]RateCard{
-	"gpt-6-luna":  {Version: "openai-2026-11-15", Model: "gpt-6-luna", Tier: "default", Region: "regional", Input: regional(0.10), Cached: regional(0.01), Output: regional(0.50)},
-	"gpt-6.1-sol": {Version: "openai-2026-11-15", Model: "gpt-6.1-sol", Tier: "default", Region: "regional", Input: regional(2), Cached: regional(0.10), Output: regional(10)},
-	"gpt-6-astra": {Version: "openai-2026-11-15", Model: "gpt-6-astra", Tier: "default", Region: "regional", Input: regional(10), Cached: regional(1), Output: regional(50)},
+	"gpt-6.2-astra": {Version: "openai-2026-11-19", Model: "gpt-6.2-astra", Tier: "default", Region: "regional", Input: regional(8.00), Cached: regional(0.40), Output: regional(40.00)},
+	"gpt-6.2-sol":   {Version: "openai-2026-11-19", Model: "gpt-6.2-sol", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.10), Output: regional(10.00)},
+	"gpt-6-astra":   {Version: "openai-2026-11-15", Model: "gpt-6-astra", Tier: "default", Region: "regional", Input: regional(10.00), Cached: regional(1.00), Output: regional(50.00)},
+	"gpt-6.1-sol":   {Version: "openai-2026-11-15", Model: "gpt-6.1-sol", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.10), Output: regional(10.00)},
+	"gpt-6.1-terra": {Version: "openai-2026-11-19", Model: "gpt-6.1-terra", Tier: "default", Region: "regional", Input: regional(1.00), Cached: regional(0.05), Output: regional(5.00)},
+	"gpt-6-luna":    {Version: "openai-2026-11-15", Model: "gpt-6-luna", Tier: "default", Region: "regional", Input: regional(0.10), Cached: regional(0.01), Output: regional(0.50)},
+	"gpt-6-sol":     {Version: "openai-2026-11-19", Model: "gpt-6-sol", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.20), Output: regional(10.00)},
+	"gpt-5.6-sol":   {Version: "openai-2026-11-19", Model: "gpt-5.6-sol", Tier: "default", Region: "regional", Input: regional(4.00), Cached: regional(0.40), Output: regional(20.00)},
+	"gpt-5.6-terra": {Version: "openai-2026-11-19", Model: "gpt-5.6-terra", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.20), Output: regional(12.00)},
+	"gpt-5.6-luna":  {Version: "openai-2026-11-19", Model: "gpt-5.6-luna", Tier: "default", Region: "regional", Input: regional(0.20), Cached: regional(0.02), Output: regional(1.20)},
+	"gpt-5.5":       {Version: "openai-2026-11-19", Model: "gpt-5.5", Tier: "default", Region: "regional", Input: regional(5.00), Cached: regional(0.50), Output: regional(30.00)},
+	"gpt-5.5-pro":   {Version: "openai-2026-11-19", Model: "gpt-5.5-pro", Tier: "default", Region: "regional", Input: regional(30.00), Cached: regional(30.00), Output: regional(180.00)},
+	"gpt-5.4":       {Version: "openai-2026-11-19", Model: "gpt-5.4", Tier: "default", Region: "regional", Input: regional(2.50), Cached: regional(0.25), Output: regional(15.00)},
+	"gpt-5.4-pro":   {Version: "openai-2026-11-19", Model: "gpt-5.4-pro", Tier: "default", Region: "regional", Input: regional(30.00), Cached: regional(30.00), Output: regional(180.00)},
+	"gpt-5.4-mini":  {Version: "openai-2026-11-19", Model: "gpt-5.4-mini", Tier: "default", Region: "regional", Input: regional(0.75), Cached: regional(0.075), Output: regional(4.50)},
+	"gpt-5.4-nano":  {Version: "openai-2026-11-19", Model: "gpt-5.4-nano", Tier: "default", Region: "regional", Input: regional(0.20), Cached: regional(0.02), Output: regional(1.25)},
+	"gpt-5.2":       {Version: "openai-2026-11-19", Model: "gpt-5.2", Tier: "default", Region: "regional", Input: regional(1.75), Cached: regional(0.175), Output: regional(14.00)},
+	"gpt-5.2-pro":   {Version: "openai-2026-11-19", Model: "gpt-5.2-pro", Tier: "default", Region: "regional", Input: regional(21.00), Cached: regional(21.00), Output: regional(168.00)},
+	"gpt-5.1":       {Version: "openai-2026-11-19", Model: "gpt-5.1", Tier: "default", Region: "regional", Input: regional(1.25), Cached: regional(0.125), Output: regional(10.00)},
+	"gpt-5":         {Version: "openai-2026-11-19", Model: "gpt-5", Tier: "default", Region: "regional", Input: regional(1.25), Cached: regional(0.125), Output: regional(10.00)},
+	"gpt-5-mini":    {Version: "openai-2026-11-19", Model: "gpt-5-mini", Tier: "default", Region: "regional", Input: regional(0.25), Cached: regional(0.025), Output: regional(2.00)},
+	"gpt-5-nano":    {Version: "openai-2026-11-19", Model: "gpt-5-nano", Tier: "default", Region: "regional", Input: regional(0.05), Cached: regional(0.005), Output: regional(0.40)},
+	"gpt-5-pro":     {Version: "openai-2026-11-19", Model: "gpt-5-pro", Tier: "default", Region: "regional", Input: regional(15.00), Cached: regional(15.00), Output: regional(120.00)},
+	"gpt-4.1":       {Version: "openai-2026-11-19", Model: "gpt-4.1", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.50), Output: regional(8.00)},
+	"gpt-4.1-mini":  {Version: "openai-2026-11-19", Model: "gpt-4.1-mini", Tier: "default", Region: "regional", Input: regional(0.40), Cached: regional(0.10), Output: regional(1.60)},
+	"gpt-4o":        {Version: "openai-2026-11-19", Model: "gpt-4o", Tier: "default", Region: "regional", Input: regional(2.50), Cached: regional(1.25), Output: regional(10.00)},
+	"gpt-4o-mini":   {Version: "openai-2026-11-19", Model: "gpt-4o-mini", Tier: "default", Region: "regional", Input: regional(0.15), Cached: regional(0.075), Output: regional(0.60)},
+	"o3-pro":        {Version: "openai-2026-11-19", Model: "o3-pro", Tier: "default", Region: "regional", Input: regional(20.00), Cached: regional(20.00), Output: regional(80.00)},
+	"o3":            {Version: "openai-2026-11-19", Model: "o3", Tier: "default", Region: "regional", Input: regional(2.00), Cached: regional(0.50), Output: regional(8.00)},
 }
 
 // Cost is the micro-USD price of uncached input, cached input and output tokens, rounded up.

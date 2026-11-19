@@ -107,7 +107,7 @@ func TestLoad(t *testing.T) {
 		{"fallback model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-6.1-sol"}, "",
 			func(c Config) bool { return c.AI.Model == "gpt-6-luna" && c.AI.FallbackModel == "gpt-6.1-sol" }},
 		{"no fallback model", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.AI.FallbackModel == "" }},
-		{"fallback model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-6-sol"}, "OPENAI_FALLBACK_MODEL", nil},
+		{"fallback model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-4-turbo"}, "OPENAI_FALLBACK_MODEL", nil},
 		{"fallback model same as the model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "gpt-6.1-sol", "OPENAI_FALLBACK_MODEL": "gpt-6.1-sol"}, "OPENAI_FALLBACK_MODEL", nil},
 		{"feedback email", map[string]string{"AUTH_DEV_SIGNIN": "true", "FEEDBACK_EMAIL": "team@helvetly.test"}, "", func(c Config) bool {
 			return c.FeedbackEmail == "team@helvetly.test"
