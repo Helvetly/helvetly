@@ -26,8 +26,18 @@ func TestParseProfile(t *testing.T) {
 	if got, err := ParseProfile(raw(`" Bern "`)); err != nil || got["city"] != "Bern" {
 		t.Fatalf("got %v, %v", got, err)
 	}
+	for _, tc := range []struct{ field, in, want string }{
+		{"preferred_name", `" Anna Muster "`, "Anna Muster"},
+		{"website", `"example.ch"`, "https://example.ch"},
+	} {
+		got, err := ParseProfile(map[string]json.RawMessage{tc.field: json.RawMessage(tc.in)})
+		if err != nil || got[tc.field] != tc.want {
+			t.Errorf("%s: got %v, %v", tc.field, got, err)
+		}
+	}
 	for name, body := range map[string]map[string]json.RawMessage{
 		"unknown": {"note": json.RawMessage(`"x"`)}, "empty": {}, "invalid": {"billing_email": json.RawMessage(`"nope"`)}, "null name": {"name": json.RawMessage(`null`)},
+		"sign-in email": {"email": json.RawMessage(`"new@acme.ch"`)}, "bad website": {"website": json.RawMessage(`"not a site"`)},
 	} {
 		if _, err := ParseProfile(body); err == nil {
 			t.Errorf("%s: no error", name)

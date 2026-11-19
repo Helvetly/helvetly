@@ -303,7 +303,7 @@ export function PortalOverview() {
         <div className="grid min-w-0 gap-5 sm:gap-6 lg:flex-1">
           <section
             aria-labelledby="overview-due"
-            className={cn(cardClass, 'grid gap-5 p-5 shadow-elevation-soft sm:p-8')}
+            className={cn(cardClass, 'grid gap-5 p-5 sm:p-8')}
           >
             <h2
               id="overview-due"
