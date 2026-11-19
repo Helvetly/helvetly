@@ -54,6 +54,7 @@ type Story = StoryObj<typeof meta>
 const page = (children: ReactNode) => () => <PortalShell>{children}</PortalShell>
 
 const longWorkspace = 'John Doe Consulting und Treuhand GmbH with a long registered name'
+const shortWorkspace = 'John Doe Consult…'
 const longEmail = 'anna.mueller-bernasconi.accounting@muster-beratung-treuhand.ch'
 
 /** Desktop: the client's name by its avatar on one pill that opens the account menu; the email is in the menu. */
@@ -247,8 +248,8 @@ export const LongNamesPhone: Story = {
   },
   play: async ({ canvasElement }) => {
     await fitsThePhone(canvasElement, 'Needs your attention')
-    const name = within(canvasElement).getByText(longWorkspace)
-    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+    const name = within(canvasElement).getByLabelText(longWorkspace)
+    await expect(name).toHaveTextContent(shortWorkspace)
     const account = within(canvasElement).getByRole('button', { name: /^Account menu/ })
     await expect(account.getBoundingClientRect().width).toBe(40)
     await expect(name.getBoundingClientRect().right).toBeLessThan(
@@ -301,12 +302,12 @@ export const LongWorkspaceName: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Once, never a second copy beside it; the ellipsis comes from the width.
-    const name = await canvas.findByText(longWorkspace)
+    // Once, cut after 16 characters with an ellipsis; the whole name is its accessible name and tooltip.
+    const name = await canvas.findByLabelText(longWorkspace)
+    await expect(name).toHaveTextContent(shortWorkspace)
     await expect(
-      canvasElement.querySelector('header')?.textContent?.split(longWorkspace),
+      canvasElement.querySelector('header')?.textContent?.split(shortWorkspace),
     ).toHaveLength(2)
-    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
     const nav = canvas.getByRole('navigation', { name: 'Portal' })
     await expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
       nav.getBoundingClientRect().left,
