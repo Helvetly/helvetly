@@ -488,14 +488,14 @@ func (r *renderer) columns() []column {
 		hasDiscount = hasDiscount || ln.DiscountPercent > 0
 	}
 	cols := []column{{"pos", l.Pos, 10, "L"}, {"desc", l.Description, 0, "L"}, {"qty", l.Quantity, 24, "R"},
-		{"price", l.UnitPrice, 24, "R"}}
+		{"price", l.UnitPrice + " " + inv.Currency, 24, "R"}}
 	if hasDiscount {
 		cols = append(cols, column{"discount", l.Discount, 15, "R"})
 	}
 	if inv.VATMode != invoicecalc.None {
 		cols = append(cols, column{"vat", l.VAT, 15, "R"})
 	}
-	cols = append(cols, column{"amount", l.Amount, 26, "R"})
+	cols = append(cols, column{"amount", l.Amount + " " + inv.Currency, 26, "R"})
 	rest := contentW
 	for _, c := range cols {
 		rest -= c.w
@@ -700,29 +700,39 @@ func (r *renderer) closing(y float64) {
 	for _, n := range notes {
 		block = append(block, r.wrap(n, contentW)...)
 	}
-	// payment details, as the editor groups them: the client and contract numbers, then the bank and reference
-	var details []string
+	y = r.block(y, block)
+	// the editor's groups as labelled blocks: client and contract numbers, then the bank and reference
+	var contract, payment [][2]string
 	if n, ok := clientNumber(inv); ok {
-		details = append(details, l.ClientNumber+": "+n)
+		contract = append(contract, [2]string{l.ClientNumber, n})
 	}
-	if inv.ContractReference != nil {
-		details = append(details, l.ContractNumber+": "+*inv.ContractReference)
+	if inv.ContractReference != nil && *inv.ContractReference != "" {
+		contract = append(contract, [2]string{l.ContractNumber, *inv.ContractReference})
 	}
 	if receivable[inv.Kind] {
+		if r.d.BankName != nil && *r.d.BankName != "" {
+			payment = append(payment, [2]string{l.BankName, *r.d.BankName})
+		}
+		if r.d.BIC != nil && *r.d.BIC != "" {
+			payment = append(payment, [2]string{l.BIC, *r.d.BIC})
+		}
 		if inv.Payment.IBAN != nil {
-			details = append(details, l.BankDetails+": "+bankDetails(*inv.Payment.IBAN, r.d.BankName, r.d.BIC))
+			payment = append(payment, [2]string{"IBAN", swissqr.FormatIBAN(*inv.Payment.IBAN)})
 		}
 		if ref := paymentReference(inv.Payment.ReferenceType, inv.Payment.Reference); ref != "" {
-			details = append(details, l.PaymentReference+": "+ref)
+			payment = append(payment, [2]string{l.PaymentReference, ref})
 		}
 	}
-	if len(details) > 0 {
-		block = append(append(block, ""), details...)
+	r.set("", 9)
+	labelW := 0.0 // one value column for both blocks
+	for _, p := range append(append([][2]string{}, contract...), payment...) {
+		labelW = max(labelW, r.txt.Width(p[0]+":"))
 	}
+	y = r.pairs(y, l.ContractDetails, contract, labelW+4)
+	y = r.pairs(y, l.PaymentDetails, payment, labelW+4)
 	if inv.Kind == "credit_note" && r.d.Refund {
-		block = append(block, "", l.Refunded)
+		y = r.block(y, []string{"", l.Refunded})
 	}
-	y = r.block(y, block)
 	if inv.Payment.RevolutURL != nil {
 		y = r.revolut(y+4, *inv.Payment.RevolutURL)
 	}
@@ -732,16 +742,28 @@ func (r *renderer) closing(y float64) {
 	}
 }
 
-// bankDetails: "UBS Switzerland AG, IBAN CH93 0076 …, BIC UBSWCHZH80A", each part only when known.
-func bankDetails(iban string, name, bic *string) string {
-	parts := []string{"IBAN " + swissqr.FormatIBAN(iban)}
-	if name != nil && *name != "" {
-		parts = append([]string{*name}, parts...)
+// pairs writes a bold heading and its rows (grey label, black value at labelW), kept together on one page;
+// nothing without rows. It returns the y below them.
+func (r *renderer) pairs(y float64, heading string, rows [][2]string, labelW float64) float64 {
+	const h = 4.4
+	if len(rows) == 0 {
+		return y
 	}
-	if bic != nil && *bic != "" {
-		parts = append(parts, "BIC "+*bic)
+	if y += 4; y+float64(len(rows)+1)*h > bottom {
+		y = r.newPage()
 	}
-	return strings.Join(parts, ", ")
+	r.set("B", 9)
+	r.cell(left, y, contentW, h, heading+":", "L")
+	y += h
+	r.set("", 9)
+	for _, p := range rows {
+		r.pdf.SetTextColor(110, 110, 110)
+		r.cell(left, y, labelW, h, p[0]+":", "L")
+		r.pdf.SetTextColor(0, 0, 0)
+		r.cell(left+labelW, y, contentW-labelW, h, p[1], "L")
+		y += h
+	}
+	return y
 }
 
 // paymentReference: the reference as printed, in blocks; "" without one.

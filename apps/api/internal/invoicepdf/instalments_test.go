@@ -57,8 +57,9 @@ func TestQRPerInstalmentAmountsAndReferences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := len(pageObject.FindAll(out, -1)); got != 4 {
-				t.Fatalf("%d pages, want 1 invoice page + 3 QR pages", got)
+			// the bank block, kept with its heading, starts the invoice's second page
+			if got := len(pageObject.FindAll(out, -1)); got != 5 {
+				t.Fatalf("%d pages, want 2 invoice pages + 3 QR pages", got)
 			}
 		})
 	}
