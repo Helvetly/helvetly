@@ -221,7 +221,12 @@ export const ReviewWithIssues: Story = {
       body().getByRole('button', { name: /Email: Enter a valid email address./ }),
     ).toBeVisible()
     await expect(body().getByText('1 row needs a fix')).toBeVisible()
-    await expect(body().getByText('Possible duplicate: Gamma SA (same name)')).toBeVisible()
+    await expect(body().getByText('Already in Helvetly: Gamma SA')).toBeVisible()
+    await expect(body().getByText('same name · tick to import anyway')).toBeVisible()
+    await expect(body().getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('cli_7'),
+    )
     await expect(body().getByText(/already in Documents/)).toBeVisible()
     await expect(body().getByRole('button', { name: 'Import 1' })).toBeEnabled()
     await userEvent.click(body().getByRole('checkbox', { name: 'Select all' }))

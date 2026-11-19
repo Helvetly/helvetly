@@ -65,12 +65,21 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		rows = nil
 	}
 	records := []map[string]any{}
+	invoice := func(issued bool) map[string]any {
+		return map[string]any{"number": strings.TrimSuffix(r.Files[0].Name, path.Ext(r.Files[0].Name)),
+			"client_name": "Development Buyer AG", "issue_date": "2026-01-15", "currency": "CHF", "price_basis": "net",
+			"issued_elsewhere": issued, "lines": []map[string]any{{"description": "Development model service", "quantity": "1",
+				"unit": "hour", "unit_price": "100.00", "vat_category": "S", "vat_rate": "8.1"}}}
+	}
 	if _, invoices := props["lines"]; invoices && len(r.Files) > 0 {
 		// An attached invoice (a PDF or photo) is read as one fixed invoice, numbered after the file.
-		records = append(records, map[string]any{"number": strings.TrimSuffix(r.Files[0].Name, path.Ext(r.Files[0].Name)),
-			"client_name": "Development Buyer AG", "issue_date": "2026-01-15", "currency": "CHF", "price_basis": "net",
-			"lines": []map[string]any{{"description": "Development model service", "quantity": "1", "unit": "hour",
-				"unit_price": "100.00", "vat_category": "S", "vat_rate": "8.1"}}})
+		records = append(records, invoice(false))
+	}
+	if _, offered := recordProperties(r.Schema.JSON, "invoices")["lines"]; key == "clients" && offered && len(r.Files) > 0 {
+		// An import that works the type out reads an attached file as an invoice the workspace issued, and its client.
+		b, _ := json.Marshal(map[string]any{"document_type": "sales_invoice", "invoices": []map[string]any{invoice(true)},
+			"clients": []map[string]any{{"name": "Development Buyer AG", "is_company": true, "city": "Zürich", "country": "CH"}}})
+		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 	}
 	if len(rows) > 1 {
 		header := rows[0]

@@ -150,3 +150,51 @@ test('a CSV kept in Documents is read with AI from its row and imported, with no
   expect(rows.map((row) => object(row).name)).toEqual([name])
   expect(await count()).toEqual(before)
 })
+
+test('a PDF imported twice shows the same records the second time, each matched to what Helvetly has', async ({
+  page,
+  api,
+}) => {
+  await api.approveAI()
+  await api.settings()
+  const number = uniqueName('IN-E2E').replaceAll(' ', '-')
+  const pdf = {
+    name: `${number}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
+  }
+  const importOnce = async () => {
+    await page.goto('/documents?import=1')
+    const drawer = page.getByRole('dialog', { name: 'Import documents' })
+    await drawer.getByLabel('Choose files to import').setInputFiles(pdf)
+    await drawer.getByRole('button', { name: 'Process with AI', exact: true }).click()
+    await expect(drawer.getByRole('button', { name: new RegExp(`^${number}\\.pdf`) })).toHaveText(
+      /Invoice you issued · (2 records found|All 2 records already in Helvetly)/,
+      { timeout: 30_000 },
+    )
+    return drawer
+  }
+
+  const first = await importOnce()
+  await expect(first.getByRole('heading', { name: /^Clients\s*1$/ })).toBeVisible()
+  await expect(first.getByRole('heading', { name: /^Invoices\s*1$/ })).toBeVisible()
+  await first.getByRole('button', { name: /^Import 2/ }).click()
+  await expect(first.getByText('2 created', { exact: false })).toBeVisible()
+
+  const again = await importOnce()
+  const file = again.getByRole('button', { name: new RegExp(`^${number}\\.pdf`) })
+  await expect(file).toContainText('All 2 records already in Helvetly')
+  await expect(file).toContainText('already in Documents, not stored again')
+  await expect(file).toHaveAttribute('aria-expanded', 'false')
+  await expect(again.getByRole('button', { name: /^Import 0/ })).toBeDisabled()
+  await file.click()
+  await expect(again.getByText('Matches Development Buyer AG in Helvetly')).toBeVisible()
+  await expect(again.getByText(`Already in Helvetly: ${number}`, { exact: false })).toBeVisible()
+  await expect(again.getByRole('checkbox', { name: `Select ${number}` })).not.toBeChecked()
+
+  // Nothing was created twice: one client, one invoice with that number.
+  const clients = object(
+    await (await api.request.get('/api/v1/clients?search=Development%20Buyer')).json(),
+  ).data
+  expect(Array.isArray(clients) && clients.length).toBe(1)
+})

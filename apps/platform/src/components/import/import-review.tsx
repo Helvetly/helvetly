@@ -5,25 +5,48 @@ import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, Pencil } from 'lucide-react'
+import {
+  Banknote,
+  Check,
+  FileText,
+  Handshake,
+  Link2,
+  Package,
+  Pencil,
+  Receipt,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
-import { Fragment } from 'react'
 
 import { translate } from '@/lib/i18n'
 import {
   displayValue,
   importFileUrl,
   IMPORT_KINDS,
+  isExisting,
   isSettled,
+  matchReason,
   recordsByKind,
   type CommitResult,
   type ImportFile,
+  type ImportKind,
   type ImportKindConfig,
   type ImportRecord,
 } from '@/lib/imports'
 
 import { FileIcon, FileLine, FileProgress } from './import-files'
 import { IssueChip, issuesId } from './import-issues'
+
+/** Each kind's mark in a file's group header. */
+const KIND_ICONS: Record<ImportKind, LucideIcon> = {
+  clients: UsersRound,
+  products: Package,
+  invoices: FileText,
+  engagements: Handshake,
+  expenses: Receipt,
+  payroll: Banknote,
+}
 
 export const rowName = (config: ImportKindConfig, record: ImportRecord, index: number) =>
   displayValue(record.data[config.labelKey ?? 'name']) ||
@@ -60,6 +83,7 @@ export function FileReview({
   for (const record of records)
     perFile.set(record.file_id, [...(perFile.get(record.file_id) ?? []), record])
   const counts = new Map([...perFile].map(([id, own]) => [id, own.length]))
+  const existing = new Map([...perFile].map(([id, own]) => [id, own.filter(isExisting).length]))
   const open = records.filter((record) => !isSettled(record))
   const tickState = (group: ImportRecord[]) => {
     const ticked = group.filter((record) => selected.has(record.id)).length
@@ -87,7 +111,6 @@ export function FileReview({
           onSelect(new Set([...[...selected].filter((id) => !ids.has(id)), ...next]))
         }
         onEdit={onEdit}
-        bare
       />
     )
   }
@@ -109,6 +132,7 @@ export function FileReview({
       <FileProgress
         files={files}
         recordsPerFile={counts}
+        existingPerFile={existing}
         header={
           open.length > 0 && (
             <>
@@ -133,10 +157,27 @@ export function FileReview({
           const own = perFile.get(file.id)
           if (!own?.length) return null
           return (
-            <section aria-label={file.name} className="grid divide-y">
-              {recordsByKind(own).map(({ kind, records: group }) => (
-                <Fragment key={kind}>{table(IMPORT_KINDS[kind], group)}</Fragment>
-              ))}
+            <section aria-label={file.name} className="grid gap-4 p-3">
+              {recordsByKind(own).map(({ kind, records: group }) => {
+                const Icon = KIND_ICONS[kind]
+                const heading = `${file.id}-${kind}`
+                return (
+                  // One kind's rows (and their ticks) under a small header: icon, name, count.
+                  <fieldset key={kind} aria-labelledby={heading} className="grid min-w-0 gap-1.5">
+                    <h3
+                      id={heading}
+                      className="flex items-center gap-1.5 text-caption font-medium text-foreground"
+                    >
+                      <Icon aria-hidden className="size-3.5 stroke-[1.75] text-muted-foreground" />
+                      {IMPORT_KINDS[kind].label}
+                      <span className="rounded-full bg-muted px-1.5 text-muted-foreground tabular-nums">
+                        {group.length}
+                      </span>
+                    </h3>
+                    {table(IMPORT_KINDS[kind], group)}
+                  </fieldset>
+                )
+              })}
             </section>
           )
         }}
@@ -160,7 +201,6 @@ export function ReviewTable({
   onEdit,
   files,
   batchId,
-  bare = false,
 }: {
   config: ImportKindConfig
   records: ImportRecord[]
@@ -175,8 +215,6 @@ export function ReviewTable({
   results: ReadonlyMap<string, CommitResult>
   onSelect: (selected: Set<string>) => void
   onEdit: (id: string) => void
-  /** Inside a file's card: no frame of its own, only the card's. */
-  bare?: boolean
 }) {
   const open = records.filter((record) => !isSettled(record))
   const ticked = open.filter((record) => selected.has(record.id)).length
@@ -226,12 +264,13 @@ export function ReviewTable({
     )
 
   return (
-    <div className={cn('overflow-x-auto', !bare && 'rounded-lg border')}>
+    <div className="overflow-x-auto rounded-lg border bg-card">
       <table
         aria-label={translate('recordsFound')}
         className="w-full min-w-[640px] text-left text-[13px]"
       >
-        <thead className={cn('border-b text-[12px] text-muted-foreground', !bare && 'bg-muted/40')}>
+        {/* Headers read as headers: small caps on a muted row, the values below in the foreground. */}
+        <thead className="border-b bg-muted/50 text-caption font-medium tracking-wide text-muted-foreground uppercase">
           <tr>
             <th scope="col" className="w-10 px-3 py-2">
               <Checkbox
@@ -288,6 +327,8 @@ export function ReviewTable({
             const source = fileOf.get(record.file_id)
             const created = record.status === 'created'
             const skipped = record.status === 'skipped'
+            // A client or product the import found in Helvetly: what refers to it links to the existing one.
+            const linked = skipped && (record.kind === 'clients' || record.kind === 'products')
             const issues = Object.keys(record.issues)
             const result = results.get(record.id)
             return (
@@ -397,7 +438,7 @@ export function ReviewTable({
                         </Link>
                       </span>
                     )}
-                    {skipped && <Badge variant="outline">{translate('skipped2')}</Badge>}
+                    {skipped && !linked && <Badge variant="outline">{translate('skipped2')}</Badge>}
                     {!created &&
                       !skipped &&
                       config.badges
@@ -407,10 +448,18 @@ export function ReviewTable({
                             {config.fields[field]}
                           </Badge>
                         ))}
-                    {record.duplicate && !created && !skipped && (
+                    {record.duplicate && isExisting(record) && (
+                      <Existing
+                        config={config}
+                        duplicate={record.duplicate}
+                        linked={linked}
+                        hint={!skipped && !selected.has(record.id)}
+                      />
+                    )}
+                    {record.duplicate && !record.duplicate.id && !created && !skipped && (
                       <Badge variant="outline" className="h-auto text-left whitespace-normal">
                         {translate('possibleDuplicate')}
-                        {record.duplicate.label} ({record.duplicate.reason})
+                        {record.duplicate.label} ({matchReason(record.duplicate.reason)})
                       </Badge>
                     )}
                     {issues.length > 0 && !created && !skipped && (
@@ -463,5 +512,42 @@ export function ReviewTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+/**
+ * The record Helvetly already has, which opens: `linked` (a client or product the import refers to, not created
+ * again), else already there; `hint` says ticking it imports it anyway.
+ */
+function Existing({
+  config,
+  duplicate,
+  linked,
+  hint,
+}: {
+  config: ImportKindConfig
+  duplicate: NonNullable<ImportRecord['duplicate']>
+  linked: boolean
+  hint: boolean
+}) {
+  const why = [matchReason(duplicate.reason)]
+  if (linked) why.push(translate('importLinkedNotCreated'))
+  else if (hint) why.push(translate('importTickAnyway'))
+  return (
+    <span className="grid justify-items-start gap-0.5">
+      <span className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="secondary" className="h-auto text-left whitespace-normal">
+          {linked && <Link2 aria-hidden />}
+          {translate(linked ? 'importMatches' : 'importAlreadyIn', { label: duplicate.label })}
+        </Badge>
+        <Link
+          href={config.entityHref(duplicate.id)}
+          className="text-caption underline underline-offset-2"
+        >
+          {translate('openAction')}
+        </Link>
+      </span>
+      <span className="text-caption text-muted-foreground">{why.join(' · ')}</span>
+    </span>
   )
 }

@@ -3624,7 +3624,6 @@
   "dynamicFiles3": "fichiers",
   "dynamicFile": "fichier",
   "dynamicChosen": "{length} {value2} choisi",
-  "dynamicFound": "{records} {value2} trouvé",
   "dynamicRow": "ligne {value1}",
   "dynamicIn": "en {days} {value2}",
   "dynamicLate": "{value1} {value2} en retard",
@@ -4612,5 +4611,19 @@
   "extractUnsupported": "L’IA lit les fichiers PDF, PNG, JPEG, WEBP, Excel (.xlsx), Word (.docx), CSV et ZIP.",
   "extractTooMany": "Choisissez au plus {max} fichiers.",
   "extractTooLarge": "Chaque fichier peut faire au plus 25 Mo.",
-  "extractWithAIHint": "Lire avec l’IA et vérifier ce qu’elle trouve. Rien n’est enregistré avant l’import."
+  "extractWithAIHint": "Lire avec l’IA et vérifier ce qu’elle trouve. Rien n’est enregistré avant l’import.",
+  "importRecordsFound": "{count, plural, one {# enregistrement trouvé} other {# enregistrements trouvés}}",
+  "importAllExisting": "{count, plural, one {Déjà dans Helvetly} other {Les # enregistrements sont déjà dans Helvetly}}",
+  "importAlreadyIn": "Déjà dans Helvetly : {label}",
+  "importMatches": "Correspond à {label} dans Helvetly",
+  "importLinkedNotCreated": "lié, pas créé à nouveau",
+  "importTickAnyway": "cochez pour importer quand même",
+  "importReasonSameName": "même nom",
+  "importReasonSameVat": "même numéro de TVA",
+  "importReasonSameEmail": "même e-mail",
+  "importReasonSameSku": "même référence",
+  "importReasonSameNumber": "même numéro de document",
+  "importReasonSameDateTotal": "même date et même total",
+  "importReasonNumberUsed": "numéro déjà utilisé",
+  "importReasonSameNameInImport": "même nom dans cet import"
 }
