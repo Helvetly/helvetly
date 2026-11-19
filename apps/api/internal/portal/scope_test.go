@@ -19,8 +19,7 @@ func scopedEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	e.client("cli_9", "wsp_b", "Acme of Other", "ana@acme.ch", "")
-	e.exec(`INSERT INTO portal_slugs (slug, workspace_id, created_at, retired_at) VALUES ('studio', 'wsp_a', now(), NULL),
-		('other', 'wsp_b', now(), NULL), ('studio-old', 'wsp_a', now(), now())`)
+	e.exec(`INSERT INTO portal_slugs (slug, workspace_id, created_at, retired_at) VALUES ('other', 'wsp_b', now(), NULL), ('studio-old', 'wsp_a', now(), now())`)
 	return e
 }
 
@@ -61,7 +60,6 @@ func TestScopedStartIsEnumerationSafe(t *testing.T) {
 		{"client of another workspace only", "/w/other", "bob@beta.ch", false},
 		{"client of this workspace", "/w/other", "ana@acme.ch", true},
 		{"client here, by billing address", "/w/studio", "ANA@acme.ch", true},
-		{"unscoped keeps today's search", "", "bob@beta.ch", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := e.auth.sent
@@ -100,10 +98,15 @@ func TestScopedSignInReachesOnlyThatWorkspace(t *testing.T) {
 	if res, _ := e.doAt("/w/studio", "POST", "/session/client", map[string]string{"client_id": "cli_9"}, c, csrf); res.StatusCode != 404 {
 		t.Fatalf("switched to another workspace's client: %d", res.StatusCode)
 	}
-	// The same client unscoped still sees both workspaces, as before scopes.
-	u, _ := e.signIn("ana@acme.ch")
-	if _, out := e.do("GET", "/session", nil, u, ""); len(out["clients"].([]any)) != 3 {
-		t.Fatalf("unscoped clients %v", out["clients"])
+	// The shared portal signs nobody in.
+	for path, body := range map[string]map[string]string{
+		"/auth/start":  {"email": "ana@acme.ch"},
+		"/auth/verify": {"email": "ana@acme.ch", "code": "123456"},
+	} {
+		res, out := e.doAt("", "POST", path, body, nil, "")
+		if res.StatusCode != 404 || out["error"].(map[string]any)["code"] != "portal_link_required" || scopedCookie(res) != nil {
+			t.Fatalf("unscoped %s: %d %v", path, res.StatusCode, out)
+		}
 	}
 }
 
@@ -112,7 +115,12 @@ func TestScopedSignInReachesOnlyThatWorkspace(t *testing.T) {
 func TestSessionValidOnlyInItsScope(t *testing.T) {
 	e := scopedEnv(t)
 	a, _ := e.signInAt("/w/studio", "ana@acme.ch")
-	u, _ := e.signIn("ana@acme.ch")
+	// A session opened on the shared portal before it stopped signing anyone in.
+	token := "unscoped-token"
+	if err := e.store.Q.CreatePortalSession(context.Background(), "pse_u", hashToken(token), "csrf", "ana@acme.ch", "cli_1", "wsp_a", false, time.Now(), time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	u := &http.Cookie{Name: sessionCookie, Value: token}
 	rename := func(c *http.Cookie, name string) *http.Cookie { return &http.Cookie{Name: name, Value: c.Value} }
 	for _, tc := range []struct {
 		name, prefix string
@@ -125,7 +133,7 @@ func TestSessionValidOnlyInItsScope(t *testing.T) {
 		{"another scope, its cookie name", "/w/other", rename(a, sessionCookie+"_wsp_b"), 401},
 		{"unscoped", "", rename(a, sessionCookie), 401},
 		{"unscoped session under a scope", "/w/studio", rename(u, sessionCookie+"_wsp_a"), 401},
-		{"unscoped session unscoped", "", u, 200},
+		{"unscoped session unscoped", "", u, 401},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, path := range []string{"/session", "/invoices"} {

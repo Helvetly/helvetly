@@ -29,6 +29,8 @@ var (
 	errNoAccess        = auth.Error(http.StatusForbidden, "no_portal_access", "This address has no access to a client portal.", nil)
 	errCSRF            = auth.Error(http.StatusForbidden, "csrf_failed", "Missing or invalid X-CSRF-Token header.", nil)
 	errTooMany         = auth.Error(http.StatusTooManyRequests, "rate_limited", "Too many requests: try again in a minute.", nil)
+	// The shared portal signs nobody in: a client signs in at their supplier's own portal address.
+	errUseSupplierLink = auth.Error(http.StatusNotFound, "portal_link_required", "Sign in through your supplier's portal link.", nil)
 )
 
 func hashToken(v string) string {
@@ -91,6 +93,10 @@ func (s *Service) start(w http.ResponseWriter, r *http.Request) {
 	if !s.auth.Decode(w, r, &in) {
 		return
 	}
+	if scopeWorkspace(r) == "" {
+		s.fail(w, r, errUseSupplierLink)
+		return
+	}
 	email := strings.TrimSpace(in.Email)
 	if _, err := mail.ParseAddress(email); err != nil {
 		s.fail(w, r, auth.Error(http.StatusBadRequest, "invalid_email", "Enter a valid email address.", nil))
@@ -116,6 +122,10 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 	if !s.auth.Decode(w, r, &in) {
 		return
 	}
+	if scopeWorkspace(r) == "" {
+		s.fail(w, r, errUseSupplierLink)
+		return
+	}
 	email, err := s.auth.ConsumeEmailCode(r.Context(), in.Email, in.Code)
 	if err != nil {
 		s.fail(w, r, err)
@@ -125,12 +135,7 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 	if err == nil && len(access) == 0 {
 		err = errNoAccess
 	}
-	switch {
-	case err != nil:
-	// The shared portal asks an address with several clients which one first; a scope has fixed the workspace.
-	case len(access) > 1 && scopeWorkspace(r) == "":
-		err = s.offerChoice(w, r, email, access)
-	default:
+	if err == nil {
 		err = s.open(w, r, email, access[0], "")
 	}
 	if err != nil {
@@ -142,7 +147,9 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 func (s *Service) signedIn(h handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(cookieName(r))
-		if err != nil {
+		// Only a workspace's own address has sessions; one opened on the shared portal before it stopped signing in
+		// is not read.
+		if err != nil || scopeWorkspace(r) == "" {
 			s.fail(w, r, errUnauthenticated)
 			return
 		}

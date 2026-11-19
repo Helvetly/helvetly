@@ -3,7 +3,6 @@ package portal
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -52,6 +51,7 @@ type env struct {
 	}
 	files *fakeFiles
 	store *store.Store
+	mail  *fakeMail
 }
 
 func newEnv(t *testing.T) *env {
@@ -71,9 +71,13 @@ func newEnv(t *testing.T) *env {
 	t.Cleanup(srv.Close)
 	scopes := portalscope.New(srv.URL, st.Q)
 	scopes.EnableDomains() // the test server's own host stays the portal's; workspace_domains rows add others
-	New(st, fa, files, scopes, Config{SessionTTL: time.Hour, CookieSecure: true, PortalURL: srv.URL}, discard).Register(mux)
+	svc := New(st, fa, files, scopes, Config{SessionTTL: time.Hour, CookieSecure: true}, discard)
+	mails := &fakeMail{}
+	svc.SetMailer(mails)
+	svc.async = func(f func()) { f() } // the links email before the answer, so a test sees it
+	svc.Register(mux)
 	front = scopes.Handler(mux)
-	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st}
+	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st, mail: mails}
 	e.exec = func(sql string, args ...any) {
 		t.Helper()
 		if _, err := raw.Exec(context.Background(), sql, args...); err != nil {
@@ -88,6 +92,8 @@ func newEnv(t *testing.T) *env {
 	e.client("cli_1", "wsp_a", "Acme AG", "ana@acme.ch", "")
 	e.client("cli_2", "wsp_a", "Beta AG", "", "ANA@acme.ch")
 	e.client("cli_3", "wsp_a", "Gamma AG", "bob@beta.ch", "")
+	// Clients sign in only at their supplier's own address, so tests call the API there unless they say otherwise.
+	e.exec(`INSERT INTO portal_slugs (slug, workspace_id, created_at, retired_at) VALUES ('studio', 'wsp_a', now(), NULL)`)
 	e.exec(`INSERT INTO client_contacts (id, client_id, workspace_id, name, email, created_at, updated_at) VALUES ('con_1','cli_1','wsp_a','Cleo','cleo@acme.ch',now(),now())`)
 	return e
 }
@@ -100,7 +106,7 @@ func (e *env) client(id, workspace, name, email, billing string) {
 
 func (e *env) do(method, path string, body any, cookie *http.Cookie, csrf string) (*http.Response, map[string]any) {
 	e.t.Helper()
-	return e.doAt("", method, path, body, cookie, csrf)
+	return e.doAt("/w/studio", method, path, body, cookie, csrf)
 }
 
 // doAt calls the portal API under prefix ("" unscoped, "/w/<slug>" scoped), as the portal's pages do.
@@ -131,7 +137,7 @@ func (e *env) doAt(prefix, method, path string, body any, cookie *http.Cookie, c
 
 func sessionCookie_(res *http.Response) *http.Cookie {
 	for _, c := range res.Cookies() {
-		if c.Name == sessionCookie {
+		if c.Name == sessionCookie+"_wsp_a" {
 			return c
 		}
 	}
@@ -144,18 +150,6 @@ func sessionCookie_(res *http.Response) *http.Cookie {
 func (e *env) signIn(email string) (*http.Cookie, string) {
 	e.t.Helper()
 	res, out := e.do("POST", "/auth/verify", map[string]string{"email": email, "code": "123456"}, nil, "")
-	if res.StatusCode == 200 && out["accounts"] != nil {
-		first := out["accounts"].([]any)[0].(map[string]any)["client_id"].(string)
-		var workspace string
-		if err := e.raw.QueryRow(context.Background(), `SELECT workspace_id FROM clients WHERE id = $1`, first).Scan(&workspace); err != nil {
-			e.t.Fatal(err)
-		}
-		token, csrf := rand.Text(), rand.Text()
-		if err := e.store.Q.CreatePortalSession(context.Background(), auth.NewID("pse"), hashToken(token), csrf, email, first, workspace, false, time.Now(), time.Now().Add(time.Hour)); err != nil {
-			e.t.Fatal(err)
-		}
-		return &http.Cookie{Name: sessionCookie, Value: token}, csrf
-	}
 	c := sessionCookie_(res)
 	if res.StatusCode != 201 || c == nil {
 		e.t.Fatalf("verify: %d %v", res.StatusCode, out)
@@ -287,11 +281,12 @@ func TestStartSameAnswerWithOrWithoutAccess(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	a.Register(mux)
-	New(e.store, a, e.files, portalscope.New("", e.store.Q), Config{SessionTTL: time.Hour}, discard).Register(mux)
-	srv := httptest.NewServer(mux)
+	scopes := portalscope.New("", e.store.Q)
+	New(e.store, a, e.files, scopes, Config{SessionTTL: time.Hour}, discard).Register(mux)
+	srv := httptest.NewServer(scopes.Handler(mux))
 	t.Cleanup(srv.Close)
 	post := func(email string) (int, string) {
-		res, err := http.Post(srv.URL+"/api/v1/public/portal/auth/start", "application/json", strings.NewReader(`{"email":"`+email+`"}`))
+		res, err := http.Post(srv.URL+"/w/studio/api/v1/public/portal/auth/start", "application/json", strings.NewReader(`{"email":"`+email+`"}`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -397,13 +392,13 @@ func TestClientLoginStaysInItsWorkspace(t *testing.T) {
 	if res, _ := e.do("POST", "/session/client", map[string]string{"client_id": "cli_b"}, c, csrf); res.StatusCode != 404 {
 		t.Fatalf("switch to a client with the portal off: %d", res.StatusCode)
 	}
+	// On, it is still another workspace's: a session lists and switches to its own workspace's clients only.
 	e.exec(`UPDATE clients SET portal_enabled = true WHERE id = 'cli_b'`)
-	res, sw := e.do("POST", "/session/client", map[string]string{"client_id": "cli_b"}, c, csrf)
-	if res.StatusCode != 201 {
-		t.Fatalf("switch: %d %v", res.StatusCode, sw)
+	if res, _ := e.do("POST", "/session/client", map[string]string{"client_id": "cli_b"}, c, csrf); res.StatusCode != 404 {
+		t.Fatalf("switch to another workspace's client: %d", res.StatusCode)
 	}
-	_, out = e.do("GET", "/session", nil, sessionCookie_(res), "")
-	if out["client"].(map[string]any)["id"] != "cli_b" || out["workspace"].(map[string]any)["name"] != "Other" {
-		t.Fatalf("session: %v", out)
+	_, out = e.do("GET", "/session", nil, c, "")
+	if clients := out["clients"].([]any); len(clients) != 1 || clients[0].(map[string]any)["id"] != "cli_3" {
+		t.Fatalf("clients with the other on: %v", clients)
 	}
 }

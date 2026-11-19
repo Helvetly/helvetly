@@ -31,7 +31,7 @@ func TestPortalOffForWholeWorkspace(t *testing.T) {
 		status              int
 		code                string
 	}{
-		{"unscoped", "", "bob@beta.ch", 403, "no_portal_access"},
+		{"unscoped", "", "bob@beta.ch", 404, "portal_link_required"},
 		{"scoped", "/w/studio", "bob@beta.ch", 403, "no_portal_access"},
 		{"another workspace still open", "/w/other", "ana@acme.ch", 201, ""},
 	} {
@@ -43,7 +43,7 @@ func TestPortalOffForWholeWorkspace(t *testing.T) {
 		})
 	}
 	// Ana is a client of both: off in Studio, she is listed only in Other.
-	res, out := e.do("POST", "/auth/verify", map[string]string{"email": "ana@acme.ch", "code": "123456"}, nil, "")
+	res, out := e.doAt("/w/other", "POST", "/auth/verify", map[string]string{"email": "ana@acme.ch", "code": "123456"}, nil, "")
 	if res.StatusCode != 201 {
 		t.Fatalf("ana: %d %v", res.StatusCode, out)
 	}

@@ -2,9 +2,18 @@ import { randomUUID } from 'node:crypto'
 
 import type { BrowserContext } from '@playwright/test'
 
-import { expect, object, signIn, test, text, today, type FinancialAPI } from './fixtures'
-
-const portalURL = 'http://localhost:8009' // e2e/scripts/e2e-server.mjs
+import {
+  expect,
+  object,
+  portalAt,
+  portalPath,
+  portalURL,
+  signIn,
+  test,
+  text,
+  today,
+  type FinancialAPI,
+} from './fixtures'
 
 const line = {
   description: 'Website relaunch',
@@ -33,9 +42,9 @@ async function sentQuote(api: FinancialAPI) {
   return { client, email, quote }
 }
 
-async function signInToPortal(context: BrowserContext, email: string) {
+async function signInToPortal(context: BrowserContext, path: string, email: string) {
   const portal = await context.newPage()
-  await portal.goto('/login')
+  await portal.goto(`${path}login`)
   await portal.getByLabel('Email', { exact: true }).fill(email)
   await portal.getByRole('button', { name: 'Continue', exact: true }).click()
   await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()
@@ -43,7 +52,7 @@ async function signInToPortal(context: BrowserContext, email: string) {
     `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
   )
   await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
-  await expect(portal).toHaveURL(`${portalURL}/`)
+  await expect(portal).toHaveURL(portalAt(path))
   return portal
 }
 
@@ -53,15 +62,16 @@ test('a quote is sent, accepted by the client in the portal and becomes one invo
   page,
 }) => {
   const { email, quote } = await sentQuote(api)
+  const w = await portalPath(api.request)
   const number = text(quote.number)
 
   // The client: its own browser, the portal's Quotes page, accept with a note.
   const context = await browser.newContext({ baseURL: portalURL })
   try {
-    const portal = await signInToPortal(context, email)
+    const portal = await signInToPortal(context, w, email)
     await portal.getByRole('link', { name: 'Quotes' }).first().click()
     await expect(portal.getByText(number)).toBeVisible()
-    const pdf = await context.request.get(`/api/v1/public/portal/quotes/${text(quote.id)}/pdf`)
+    const pdf = await context.request.get(`${w}api/v1/public/portal/quotes/${text(quote.id)}/pdf`)
     await expect(pdf).toBeOK()
     expect((await pdf.body()).subarray(0, 4).toString()).toBe('%PDF')
     await portal.getByRole('button', { name: `Accept quote ${number}` }).click()
@@ -115,6 +125,7 @@ test('quotes stay inside their workspace and with their client', async ({
   baseURL,
 }) => {
   const { quote } = await sentQuote(api)
+  const w = await portalPath(api.request)
   const id = text(quote.id)
 
   // Another workspace's owner sees nothing and can change nothing.
@@ -144,19 +155,21 @@ test('quotes stay inside their workspace and with their client', async ({
     { email: strangerEmail, portal_enabled: true },
     'PATCH',
   )
-  const portal = await playwright.request.newContext({ baseURL })
+  const portal = await playwright.request.newContext({ baseURL: portalURL })
   try {
-    await portal.post('/api/v1/public/portal/auth/start', { data: { email: strangerEmail } })
+    await portal.post(`${w}api/v1/public/portal/auth/start`, { data: { email: strangerEmail } })
     const dev = await portal.get(
       `/api/v1/auth/email/dev-code?email=${encodeURIComponent(strangerEmail)}`,
     )
-    const verified = await portal.post('/api/v1/public/portal/auth/verify', {
+    const verified = await portal.post(`${w}api/v1/public/portal/auth/verify`, {
       data: { email: strangerEmail, code: text(object(await dev.json()).code) },
     })
     expect(verified.status()).toBe(201)
     const csrf = text(object(await verified.json()).csrf_token)
-    expect(object(await (await portal.get('/api/v1/public/portal/quotes')).json()).data).toEqual([])
-    const answer = await portal.post(`/api/v1/public/portal/quotes/${id}/accept`, {
+    expect(object(await (await portal.get(`${w}api/v1/public/portal/quotes`)).json()).data).toEqual(
+      [],
+    )
+    const answer = await portal.post(`${w}api/v1/public/portal/quotes/${id}/accept`, {
       data: {},
       headers: { 'X-CSRF-Token': csrf },
     })

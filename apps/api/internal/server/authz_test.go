@@ -639,9 +639,16 @@ func TestPortalAndStaffSessionsDoNotCross(t *testing.T) {
 	token, csrf := rand.Text(), rand.Text()
 	sum := sha256.Sum256([]byte(token))
 	if err := st.CreatePortalSession(ctx, auth.NewID("pse"), hex.EncodeToString(sum[:]), csrf, "alpha-secret@example.com",
-		s.ids["clients"], a.workspace, false, now, now.Add(time.Hour)); err != nil {
+		s.ids["clients"], a.workspace, true, now, now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
+	// Portal sessions live at a workspace's own address only.
+	if _, err := pool.Exec(ctx, `INSERT INTO portal_slugs (slug, workspace_id, created_at) VALUES ('alpha-authz', $1, now())`, a.workspace); err != nil {
+		t.Fatal(err)
+	}
+	portalCookie := "helvetly_portal_session_" + a.workspace
+	// The scope resolver in front, as in main: /w/<slug>/api/… reaches the handlers scoped.
+	h = portalscope.New("https://portal.example.com", st.Q).Handler(h)
 	send := func(cookie, value, method, path string) int {
 		req := httptest.NewRequest(method, path, strings.NewReader(`{}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -651,7 +658,7 @@ func TestPortalAndStaffSessionsDoNotCross(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		return rec.Code
 	}
-	if code := send("helvetly_portal_session", token, "GET", "/api/v1/public/portal/invoices"); code != 200 {
+	if code := send(portalCookie, token, "GET", "/w/alpha-authz/api/v1/public/portal/invoices"); code != 200 {
 		t.Fatalf("the portal session itself does not work: %d", code)
 	}
 	for _, route := range registeredRoutes(t) {
@@ -660,7 +667,7 @@ func TestPortalAndStaffSessionsDoNotCross(t *testing.T) {
 			continue
 		}
 		path, _ := s.fill(pattern)
-		for _, cookie := range []string{"helvetly_portal_session", "helvetly_session"} {
+		for _, cookie := range []string{portalCookie, "helvetly_portal_session", "helvetly_session"} {
 			if code := send(cookie, token, method, path); code < 400 {
 				t.Errorf("portal session as %s opened %s: %d", cookie, route, code)
 			}

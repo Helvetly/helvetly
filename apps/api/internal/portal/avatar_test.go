@@ -46,7 +46,7 @@ func (e *env) upload(c *http.Cookie, csrf string, body []byte) (*http.Response, 
 	part, _ := mw.CreateFormFile("file", "photo.png")
 	_, _ = part.Write(body)
 	_ = mw.Close()
-	req, _ := http.NewRequest("PUT", e.srv.URL+avatarPath, &buf)
+	req, _ := http.NewRequest("PUT", e.srv.URL+"/w/studio"+avatarPath, &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req.Header.Set("X-CSRF-Token", csrf)
 	req.AddCookie(c)
@@ -92,7 +92,7 @@ func TestAvatarLifecycle(t *testing.T) {
 	first := encode(t, "png", 64, 64, 10)
 	res, out := e.upload(c, csrf, first)
 	url, _ := out["avatar_url"].(string)
-	if res.StatusCode != 200 || !strings.HasPrefix(url, avatarPath+"?v=") || e.avatarObjects() != 1 {
+	if res.StatusCode != 200 || !strings.HasPrefix(url, "/w/studio"+avatarPath+"?v=") || e.avatarObjects() != 1 {
 		t.Fatalf("upload: %d %v (%d objects)", res.StatusCode, out, e.avatarObjects())
 	}
 	if got := e.sessionAvatar(c); got != url {
@@ -144,7 +144,7 @@ func TestAvatarRejects(t *testing.T) {
 		status int
 	}{
 		{"no CSRF token", "", c, encode(t, "png", 64, 64, 1), 403},
-		{"signed out", csrf, &http.Cookie{Name: sessionCookie, Value: "nope"}, encode(t, "png", 64, 64, 1), 401},
+		{"signed out", csrf, &http.Cookie{Name: sessionCookie + "_wsp_a", Value: "nope"}, encode(t, "png", 64, 64, 1), 401},
 		{"not an image", csrf, c, []byte("%PDF-1.7 not a photo"), 422},
 		{"over 1 MB", csrf, c, bytes.Repeat([]byte{0x89}, uploads.MaxPhotoSize+1), 422},
 	} {
