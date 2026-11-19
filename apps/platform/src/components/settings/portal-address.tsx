@@ -159,6 +159,7 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
                     autoComplete="off"
                     autoCapitalize="none"
                     spellCheck={false}
+                    className="pl-0" // the slug follows the address without a gap
                     maxLength={32}
                     value={form.values.slug}
                     onChange={(event) => form.set('slug', event.target.value)}
