@@ -66,7 +66,7 @@ func TestRender(t *testing.T) {
 		{"fr", func() Document { return sample("fr", 3) }, 2},
 		{"it", func() Document { return sample("it", 3) }, 2},
 		{"en without QR bill", func() Document { d := sample("en", 3); d.Bill = nil; return d }, 1},
-		{"long invoice breaks pages", func() Document { return sample("de", 80) }, 5},
+		{"long invoice breaks pages", func() Document { return sample("de", 80) }, 6},
 		{"draft", func() Document { d := sample("de", 2); d.Draft = true; return d }, 2},
 		{"credit note, no VAT", func() Document {
 			d := sample("de", 2)

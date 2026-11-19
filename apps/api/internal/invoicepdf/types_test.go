@@ -144,7 +144,7 @@ func TestSelfBilledMention(t *testing.T) {
 		if !shows(text, "Société Romande SA") || !shows(text, "Muster Beratung GmbH") || !partiesInOrder(streams(t, d)[0], "Société Romande SA", "Muster Beratung GmbH") {
 			t.Errorf("%s: parties not swapped", lang)
 		}
-		if shows(text, "rechnung@muster.ch") || shows(text, "Bankverbindung: IBAN CH44 3199 9123 0008 8901 2") {
+		if shows(text, "rechnung@muster.ch") || shows(text, "Bank- und Zahlungsangaben:") || shows(text, "CH44 3199 9123 0008 8901 2") {
 			t.Errorf("%s: seller contact or payment terms printed on a self-billed invoice", lang)
 		}
 	}
@@ -197,4 +197,23 @@ func partiesInOrder(page []byte, first, second string) bool {
 	}
 	a, b := at(first), at(second)
 	return a >= 0 && b >= 0 && a < b
+}
+
+func TestLineColumnsNameTheCurrency(t *testing.T) {
+	for lang, want := range map[string][2]string{"de": {"Preis CHF", "Betrag CHF"}, "fr": {"Prix CHF", "Montant CHF"},
+		"it": {"Prezzo CHF", "Importo CHF"}, "en": {"Price CHF", "Amount CHF"}} {
+		for _, kind := range []string{"invoice", "quote"} {
+			d := sample(lang, 1)
+			d.Invoice.Kind = kind
+			text := pageText(t, d)
+			if !shows(text, want[0]) || !shows(text, want[1]) || !shows(text, "150.00") || shows(text, "CHF 150.00") {
+				t.Errorf("%s %s: want headers %q, %q and bare line amounts", lang, kind, want[0], want[1])
+			}
+		}
+		d := sample(lang, 1)
+		d.Invoice.Currency = "EUR"
+		if text := pageText(t, d); !shows(text, want[0][:len(want[0])-3]+"EUR") {
+			t.Errorf("%s: headers ignore the invoice currency", lang)
+		}
+	}
 }
