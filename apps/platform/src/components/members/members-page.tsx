@@ -14,7 +14,6 @@ import {
   LogOut,
   Mail,
   RefreshCw,
-  Search,
   SearchX,
   Trash2,
   UserX,
@@ -26,6 +25,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { listTable } from '@/components/data/list-table'
+import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -162,20 +162,15 @@ export function MembersPage() {
       />
       <div className="flex flex-1 flex-col">
         <TeamSummary members={members.data?.length ?? 0} pending={invitations.data?.length ?? 0} />
-        <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
+        <ListToolbar>
           <RoleFilter roles={filter.roles} onChange={(roles) => update({ roles })} />
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-            <Search className="size-4 shrink-0 stroke-[1.5]" />
-            <input
-              type="search"
-              aria-label={translate('searchMembers')}
-              placeholder={translate('searchNameOrEmail')}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
-            />
-          </label>
-        </div>
+          <ListSearch
+            label={translate('searchMembers')}
+            placeholder={translate('searchNameOrEmail')}
+            value={search}
+            onChange={setSearch}
+          />
+        </ListToolbar>
         {error ? (
           <LoadProblem
             error={error}
@@ -330,7 +325,7 @@ function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
+          <ToolbarText>{translate('filters')}</ToolbarText>
           {roles.length > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
               {roles.length}

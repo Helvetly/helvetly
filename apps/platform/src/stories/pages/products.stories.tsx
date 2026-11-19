@@ -27,6 +27,28 @@ export const List: Story = { play: shows('Workshop day') }
 export const ListDark = dark(List)
 export const ListPhone = phone(List)
 
+/** Every control in the toolbar sits on the bar's middle, and the search text fills its field's height. */
+export const ToolbarCentred: Story = {
+  play: async (context) => {
+    await shows('Workshop day')?.(context)
+    const search = within(context.canvasElement).getByRole('searchbox')
+    const field = search.closest('label')
+    const bar = field?.parentElement
+    if (!field || !bar) throw new Error('The search field is not in a toolbar.')
+    const top = bar.getBoundingClientRect().top + bar.clientTop
+    const middle = (control: Element) => {
+      const box = control.getBoundingClientRect()
+      return box.top - top + box.height / 2
+    }
+    const offsets = [...bar.children].map((control) =>
+      Math.abs(middle(control) - bar.clientHeight / 2),
+    )
+    await expect(Math.max(...offsets)).toBeLessThanOrEqual(0.5)
+    await expect(search.getBoundingClientRect().height).toBe(field.getBoundingClientRect().height)
+  },
+}
+export const ToolbarCentredPhone = phone(ToolbarCentred)
+
 const saved = fn()
 const first = products.find((entry) => entry.id === 'prd_1')
 if (!first) throw new Error('The sample products lack prd_1.')

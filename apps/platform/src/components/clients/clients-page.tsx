@@ -24,7 +24,6 @@ import {
   Phone,
   Power,
   PowerOff,
-  Search,
   SearchX,
   SlidersHorizontal,
   Trash2,
@@ -39,6 +38,7 @@ import { toast } from 'sonner'
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { listTable, Pager } from '@/components/data/list-table'
+import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
   PageContextMenu,
@@ -409,25 +409,20 @@ export function ClientsPage() {
         onRefresh={() => void list.refetch()}
       >
         <div className="relative flex flex-1 flex-col">
-          <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-1 gap-y-2 border-b px-2 py-2 md:px-3">
+          <ListToolbar className="flex-wrap gap-y-2 py-2">
             <StatusViews params={params} onChange={update} />
             <Filters params={params} onChange={update} />
-            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-              <Search className="size-4 shrink-0 stroke-[1.5]" />
-              <input
-                type="search"
-                aria-label={translate('searchClients')}
-                placeholder={translate('searchNameEmailCityVATOrNumber')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
-              />
-            </label>
+            <ListSearch
+              label={translate('searchClients')}
+              placeholder={translate('searchNameEmailCityVATOrNumber')}
+              value={search}
+              onChange={setSearch}
+            />
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-[15px] font-normal">
                   <SlidersHorizontal className="stroke-[1.5]" />
-                  <span className="max-sm:sr-only">{translate('customize')}</span>
+                  <ToolbarText className="max-sm:sr-only">{translate('customize')}</ToolbarText>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 gap-1 p-2">
@@ -448,7 +443,7 @@ export function ClientsPage() {
                 ))}
               </PopoverContent>
             </Popover>
-          </div>
+          </ListToolbar>
           <ActiveFilters params={params} onChange={update} />
 
           {list.error ? (
@@ -911,7 +906,7 @@ function Filters({
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
           <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
+          <ToolbarText>{translate('filters')}</ToolbarText>
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}
