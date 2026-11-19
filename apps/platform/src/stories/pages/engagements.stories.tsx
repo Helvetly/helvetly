@@ -271,7 +271,7 @@ export const RowMenu: Story = {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent?.trim()),
-    ).toEqual(['Open details', 'Edit', 'Renew', 'Cancel engagement', 'Delete'])
+    ).toEqual(['Open details', 'Log delivery', 'Edit', 'Renew', 'Cancel engagement', 'Delete'])
     await userEvent.keyboard('{Escape}')
     // The open menu hides the rest of the page from the accessibility tree until it has closed.
     await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
@@ -286,6 +286,36 @@ export const RowMenu: Story = {
   },
 }
 export const RowMenuDark = dark(RowMenu)
+
+let logged: unknown
+/** "Log delivery" from a row's menu: the detail's quick form in a dialog, which closes once the entry is saved. */
+export const RowMenuLogDelivery: Story = {
+  parameters: pageParameters('/engagements', {}, [
+    http.post('/api/v1/engagements/:id/entries', async ({ request }) => {
+      logged = await request.json()
+      return HttpResponse.json({
+        data: { entry: { id: 'ent_new', quantity: '1.5' }, period: null },
+      })
+    }),
+  ]),
+  play: async (context) => {
+    logged = undefined
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for German lessons' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Log delivery' }))
+    const dialog = await body.findByRole('dialog', { name: 'Log delivery' })
+    await expect(within(dialog).getByText(/German lessons/)).toBeVisible()
+    await expect(within(dialog).getByRole('button', { name: 'Log' })).toBeDisabled()
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1,5')
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4{Enter}')
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Log delivery' })).toBeNull())
+    await expect(logged).toMatchObject({ quantity: '1.5', note: 'Lesson 4' })
+    // The undo toast names what was logged (it is still fading in).
+    await expect(await body.findByText(/Logged 1\.5/)).toBeInTheDocument()
+  },
+}
+export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
 
 /** Right-click outside the rows: the page's own actions, like every other list. */
 export const PageMenu: Story = {
