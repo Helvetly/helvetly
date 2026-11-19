@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -38,14 +39,13 @@ func TestUnknownUsageIsChargedItsReservation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db, raw, ws := reserveDB(t)
-			answers := 0
+			var answers atomic.Int32 // the handler runs on the server's goroutines
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if strings.HasSuffix(r.URL.Path, "/input_tokens") {
 					_, _ = fmt.Fprint(w, `{"object":"response.input_tokens","input_tokens":100}`)
 					return
 				}
-				answers++
-				if answers == 1 {
+				if answers.Add(1) == 1 {
 					tc.answer(w, r)
 					return
 				}
@@ -60,8 +60,8 @@ func TestUnknownUsageIsChargedItsReservation(t *testing.T) {
 			call := Call{Kind: "import", Operation: "file", Step: "0", MaxOutput: 100, Caps: ImportCaps}
 
 			_, err := b.Generate(context.Background(), p, ws, Request{Message: "read"}, call)
-			if !errors.Is(err, ErrUnaccounted) || !errors.Is(err, ErrProvider) || answers != 1 {
-				t.Fatalf("err = %v after %d answers, want one unaccounted provider failure", err, answers)
+			if !errors.Is(err, ErrUnaccounted) || !errors.Is(err, ErrProvider) || answers.Load() != 1 {
+				t.Fatalf("err = %v after %d answers, want one unaccounted provider failure", err, answers.Load())
 			}
 			reserved := automationUsage(t, db, ws)
 			want := store.HeidiUsage{TokensUsed: 200, CostMicros: luna.Cost(100, 0, 100)}
@@ -88,8 +88,8 @@ func TestUnknownUsageIsChargedItsReservation(t *testing.T) {
 			if got.TokensUsed != 320 || got.CostMicros != want.CostMicros+luna.Cost(100, 0, 20) || got.TokensReserved != 0 || got.CostReserved != 0 {
 				t.Fatalf("usage after the retry = %+v", got)
 			}
-			if _, err := b.Generate(context.Background(), p, ws, Request{Message: "read"}, call); !errors.Is(err, ErrAttempts) || answers != 2 {
-				t.Fatalf("third try: %v after %d answers, want ErrAttempts", err, answers)
+			if _, err := b.Generate(context.Background(), p, ws, Request{Message: "read"}, call); !errors.Is(err, ErrAttempts) || answers.Load() != 2 {
+				t.Fatalf("third try: %v after %d answers, want ErrAttempts", err, answers.Load())
 			}
 		})
 	}
