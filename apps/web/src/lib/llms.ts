@@ -1,5 +1,6 @@
 import { defaultLocale } from '@helvetly/i18n'
 
+import { compareIn } from '@/lib/compare'
 import { readCollection } from '@/lib/content'
 import { SITE_URL } from '@/lib/metadata'
 import { PLATFORM_URL } from '@/lib/site'
@@ -18,7 +19,7 @@ export function llmsTxt(): string {
     '',
     '> Business software for small Swiss companies: clients, quotes and invoices with the Swiss QR bill and e-invoice ' +
       'XML, payment reminders, expenses, documents, e-signatures, a client portal, the books and VAT return, ' +
-      'employees, and Heidi, an AI assistant that knows your books. Hosted in Switzerland, passwordless sign-in.',
+      'employees, and Heidi, an AI assistant that knows your books. Hosted in the EU (Frankfurt), passwordless sign-in.',
     '',
     'Prices are per person and month, tax included, in CHF, EUR or USD; every new workspace starts with a free ' +
       '7-day Pro trial. The site is also in German, French, Italian, Dutch, Czech and Swedish (/de, /fr, /it, /nl, /cs, /sv).',
@@ -38,6 +39,12 @@ export function llmsTxt(): string {
     ),
     link('Questions', '/faq', 'frequent questions about plans, data and switching'),
     `- [Start the free trial](${PLATFORM_URL}/login): sign-in by email code, Google or passkey creates the account`,
+    '',
+    '## Comparisons',
+    '',
+    ...compareIn(defaultLocale).COMPETITORS.map((c) =>
+      link(`Helvetly vs ${c.name}`, `/compare/${c.slug}`, c.summary),
+    ),
     '',
     '## Guides',
     '',

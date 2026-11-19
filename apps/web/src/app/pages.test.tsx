@@ -73,6 +73,20 @@ describe('home page', () => {
     expect(screen.getByRole('tab', { name: 'Log work' }).getAttribute('aria-selected')).toBe('true')
     expect(await screen.findByText(/Logged · 34.5 of 40 h used/)).toBeTruthy()
   })
+
+  it('answers what Helvetly is and states every plan as a structured offer', async () => {
+    const { container } = render(await HomePage(english))
+    expect(screen.getByRole('heading', { level: 2, name: 'What is Helvetly?' })).toBeTruthy()
+    const data = JSON.parse(
+      container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
+    )
+    const app = data['@graph'].find(
+      (node: { '@type': string }) => node['@type'] === 'SoftwareApplication',
+    )
+    expect(
+      app.offers.map((offer: { name: string; price: number }) => [offer.name, offer.price]),
+    ).toEqual(plansIn('en').PLANS.map((plan) => [plan.name, plan.monthly]))
+  })
 })
 
 describe('home page in German', () => {

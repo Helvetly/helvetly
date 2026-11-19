@@ -758,6 +758,8 @@
   "whatHappensIfIStopPaying": "Vad händer om jag slutar betala?",
   "whatHappensWhenIReachALimit": "Vad händer när jag når en gräns?",
   "whatHelvetlyDoesToKeepYourFinancialRecordsCorrect": "Det här gör Helvetly för att hålla dina ekonomiska uppgifter korrekta, privata och under din kontroll.",
+  "whatIsHelvetly": "Vad är Helvetly?",
+  "whatIsHelvetlyAnswer": "Helvetly är en webbaserad administrationsprogramvara för frilansare och småföretag i Schweiz. Kunder, offerter, fakturor med schweizisk QR-faktura, betalningspåminnelser, utlägg, dokument, e-signaturer, bokföringen och momsdeklarationen finns i en app, med Heidi, en AI-assistent som svarar utifrån dina egna uppgifter.",
   "whatKindOfSignaturesAndEInvoicesAreThese": "Vilken typ av signaturer och e-fakturor är det?",
   "whatPeopleAskBeforeTheyMoveTheirBooksTo": "Det här undrar folk innan de flyttar sin bokföring till Helvetly.",
   "whichInvoicesAreOverdue": "Vilka fakturor har förfallit?",
