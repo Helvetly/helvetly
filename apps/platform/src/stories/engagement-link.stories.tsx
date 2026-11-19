@@ -75,6 +75,25 @@ export const EditorNoCandidates: Story = {
   },
 }
 
+/** The picker's last row adds an engagement named after what was typed; Enter reaches it. */
+export const EditorAddFromPicker: Story = {
+  parameters: { msw: { handlers: [list, notLinked] } },
+  render: () => <EditorRow clientId="cli_1" invoiceId="inv_1" />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await openable(canvasElement, /Choose an engagement/))
+    const body = within(document.body)
+    await expect(await body.findByRole('option', { name: 'New engagement' })).toBeVisible()
+    await userEvent.keyboard('Spanish lessons')
+    await expect(body.getByRole('option', { name: 'Add “Spanish lessons”' })).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    // The drawer shows a loading frame first, then the form: wait for the form's field.
+    await waitFor(async () =>
+      expect(await body.findByRole('textbox', { name: /^Title/ })).toHaveValue('Spanish lessons'),
+    )
+    await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
+  },
+}
+
 /** Picking attaches the saved draft and says so. */
 export const EditorPicking: Story = {
   parameters: {

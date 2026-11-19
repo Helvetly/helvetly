@@ -62,6 +62,12 @@ func TestCheckCreate(t *testing.T) {
 		{name: "a gross receipt", body: `{"supplier_name":"Migros","lines":[{"amount":"108.10","vat_rate":"8.1"}]}`, total: "108.10"},
 		{name: "per-field messages", body: `{"currency":"XYZ","document_date":"2025-13-01","lines":[{"amount":"-1"}]}`,
 			invalid: []string{"currency", "document_date", "lines.0.amount"}},
+		{name: "letters in an amount", body: `{"lines":[{"amount":"22ssss"}]}`, invalid: []string{"lines.0.amount"}},
+		{name: "a third decimal in an amount", body: `{"lines":[{"amount":"1.234"}]}`, invalid: []string{"lines.0.amount"}},
+		{name: "a VAT rate above 100", body: `{"lines":[{"amount":"10","vat_rate":"150"}]}`, invalid: []string{"lines.0.vat_rate"}},
+		{name: "letters in a VAT rate", body: `{"lines":[{"amount":"10","vat_rate":"8.1x"}]}`, invalid: []string{"lines.0.vat_rate"}},
+		{name: "a negative VAT rate", body: `{"lines":[{"amount":"10","vat_rate":"-1"}]}`, invalid: []string{"lines.0.vat_rate"}},
+		{name: "a VAT rate of 100", body: `{"lines":[{"amount":"200","vat_rate":"100"}]}`, total: "200.00"},
 		{name: "the total limit", body: `{"lines":[` + strings.Repeat(`{"amount":"100000000"},`, 10) + `{"amount":"1"}]}`, invalid: []string{"lines"}},
 		{name: "an unknown field is malformed", body: `{"status":"booked"}`, badRequest: true},
 	}

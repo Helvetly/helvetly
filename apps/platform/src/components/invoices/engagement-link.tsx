@@ -42,6 +42,11 @@ export function EngagementLink({
 }) {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const create = (title: string) => {
+    setNewTitle(title)
+    setCreating(true)
+  }
   const linked = useInvoiceEngagement(invoiceId).data
   const engagements = useClientEngagements(clientId)
   const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.engagements })
@@ -105,7 +110,7 @@ export function EngagementLink({
           variant="ghost"
           size="xs"
           className="-ml-2 gap-1 text-muted-foreground"
-          onClick={() => setCreating(true)}
+          onClick={() => create('')}
         >
           <Plus />
           {translate('newEngagement2')}
@@ -118,6 +123,8 @@ export function EngagementLink({
             options={options}
             disabled={!clientId || options.length === 0 || link.isPending}
             placeholder={translate('chooseAnEngagement')}
+            onCreate={clientId ? create : undefined}
+            createLabel={translate('newEngagement2')}
             onChange={(next) =>
               choose({ id: next, title: options.find((o) => o.value === next)?.label ?? '' })
             }
@@ -127,28 +134,12 @@ export function EngagementLink({
               'min-w-0 flex-1 justify-start border-transparent bg-transparent shadow-none hover:border-transparent dark:border-transparent dark:bg-transparent [&>svg]:hidden',
             )}
           />
-          {clientId && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={translate('newEngagement2')}
-                  className="shrink-0 text-muted-foreground"
-                  onClick={() => setCreating(true)}
-                >
-                  <Plus />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{translate('newEngagement2')}</TooltipContent>
-            </Tooltip>
-          )}
         </>
       )}
       <EngagementForm
         open={creating}
         onOpenChange={setCreating}
+        title={newTitle}
         clientId={clientId}
         onSaved={(engagement) => {
           void refresh()

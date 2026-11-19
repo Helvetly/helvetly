@@ -1,4 +1,5 @@
 {
+  "addNamed": "Ajouter « {name} »",
   "about": "À propos de {label}",
   "aCodeWasJustSentWaitAFewSeconds": "Un code vient d’être envoyé. Patientez quelques secondes avant d’en demander un autre.",
   "cannotReachHelvetlyCheckYourConnection": "Impossible de joindre Helvetly. Vérifiez votre connexion.",

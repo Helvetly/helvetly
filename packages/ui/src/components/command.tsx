@@ -83,7 +83,8 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        'no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none',
+        // The sticky create row covers the list's end, so keyboard scrolling stops above it.
+        'no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none has-data-[slot=command-create-item]:scroll-pb-14',
         className,
       )}
       {...props}
@@ -161,15 +162,18 @@ function CommandCreateItem({
   className,
   children,
   value = '__create',
+  forceMount = true,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Item>) {
+  // Sticky at the list's end and never filtered out: adding stays one row away whatever is typed or scrolled.
   return (
-    <>
-      <CommandSeparator className="my-1" />
-      <CommandPrimitive.Group className="p-1">
+    // A border, not a CommandSeparator: a listbox may hold only options and groups.
+    <div className="sticky bottom-0 z-10 border-t bg-popover">
+      <CommandPrimitive.Group className="p-1" forceMount={forceMount}>
         <CommandPrimitive.Item
           data-slot="command-create-item"
           value={value}
+          forceMount={forceMount}
           className={cn(
             "flex cursor-pointer items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-sm font-medium text-muted-foreground outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
             className,
@@ -179,7 +183,7 @@ function CommandCreateItem({
           {children}
         </CommandPrimitive.Item>
       </CommandPrimitive.Group>
-    </>
+    </div>
   )
 }
 

@@ -376,9 +376,39 @@ export const ExpenseCreateCategory: Story = {
   render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
   play: async () => {
     const body = within(document.body)
-    await userEvent.click(await body.findByRole('button', { name: 'New category' }))
-    await userEvent.type(await body.findByRole('textbox', { name: 'Category name' }), 'Software')
+    await userEvent.click(await body.findByRole('button', { name: /^Category/ }))
+    await expect(await body.findByRole('option', { name: 'Add category' })).toBeVisible()
+    await userEvent.keyboard('Software')
+    await expect(body.getByRole('option', { name: 'Add “Software”' })).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    await expect(await body.findByRole('textbox', { name: 'Category name' })).toHaveValue(
+      'Software',
+    )
     await userEvent.click(body.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(body.queryByRole('textbox', { name: 'Category name' })).toBeNull())
+  },
+}
+
+/** A line's amount takes only a number, with the form's currency inside; its VAT rate only 0 to 100. */
+export const ExpenseAmountFields: Story = {
+  render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
+  play: async () => {
+    const body = within(document.body)
+    const amount = await body.findByRole('textbox', { name: 'Line 1 amount' })
+    await expect(amount.parentElement).toHaveTextContent('CHF')
+    await expect(amount).toHaveClass('text-right')
+    await userEvent.type(amount, '22ssss')
+    await expect(amount).toHaveValue('22')
+    await expect(body.getByText('A number of 0 or more, with at most two decimals.')).toBeVisible()
+    const rate = body.getByRole('combobox', { name: 'Line 1 VAT rate' })
+    await userEvent.clear(rate)
+    await userEvent.type(rate, '150')
+    await expect(rate).toHaveValue('100')
+    await userEvent.clear(rate)
+    await userEvent.type(rate, '8.1x')
+    await expect(rate).toHaveValue('8.1')
+    await userEvent.click(body.getByRole('button', { name: /^Currency/ }))
+    await userEvent.click(await body.findByRole('option', { name: /EUR/ }))
+    await waitFor(() => expect(amount.parentElement).toHaveTextContent('EUR'))
   },
 }

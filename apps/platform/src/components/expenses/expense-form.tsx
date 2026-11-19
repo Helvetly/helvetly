@@ -35,6 +35,7 @@ import {
 import { ExpenseCategoryField } from '@/components/expenses/expense-category-field'
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { AmountInput } from '@/components/shared/amount-input'
 import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { TextareaBox } from '@/components/textarea-box'
@@ -791,7 +792,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               }
             >
               <div className="grid gap-2">
-                <div className="grid grid-cols-[minmax(0,1fr)_120px_92px_32px] gap-2 text-[13px] font-medium max-sm:grid-cols-[minmax(0,1fr)_110px_84px_32px]">
+                <div className="grid grid-cols-[minmax(0,1fr)_136px_92px_32px] gap-2 text-[13px] font-medium max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]">
                   <span>{translate('item')}</span>
                   <span>
                     {translate('amount')}
@@ -804,7 +805,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </div>
                 {values.lines.map((line, index) => (
                   <div key={line.key} className="grid gap-1">
-                    <div className="grid grid-cols-[minmax(0,1fr)_120px_92px_32px] items-center gap-2 max-sm:grid-cols-[minmax(0,1fr)_110px_84px_32px]">
+                    <div className="grid grid-cols-[minmax(0,1fr)_136px_92px_32px] items-center gap-2 max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]">
                       <input
                         aria-label={translate('lineDescription', { value1: index + 1 })}
                         value={line.description}
@@ -814,14 +815,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                         }
                         className={inputClass}
                       />
-                      <input
+                      <AmountInput
                         {...describe(`lines.${index}.amount`)}
                         aria-label={translate('lineAmount', { value1: index + 1 })}
-                        inputMode="decimal"
+                        currency={values.currency}
                         value={line.amount}
-                        onChange={(event) => setLine(index, { amount: event.target.value })}
+                        onValueChange={(amount) => setLine(index, { amount })}
                         placeholder="0.00"
-                        className={cn(inputClass, 'text-right tabular-nums')}
                       />
                       <PercentInput
                         {...describe(`lines.${index}.vat_rate`)}
