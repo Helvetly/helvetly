@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/json"
+	"fmt"
 	"hash/crc32"
 	"strings"
 	"testing"
@@ -106,9 +107,12 @@ func TestSniffUsesBytesOnly(t *testing.T) {
 }
 
 func TestZipEntriesLimits(t *testing.T) {
-	many := map[string][]byte{}
-	for i := range maxEntries + 1 {
-		many[strings.Repeat("a", i+1)+".csv"] = []byte("x")
+	csvs := func(n int) map[string][]byte {
+		out := map[string][]byte{}
+		for i := range n {
+			out[fmt.Sprintf("bill-%03d.csv", i)] = []byte("x")
+		}
+		return out
 	}
 	inner := zipOf(t, map[string][]byte{"x.csv": []byte("x")}, zip.Deflate)
 	for _, tc := range []struct {
@@ -130,7 +134,12 @@ func TestZipEntriesLimits(t *testing.T) {
 				t.Fatalf("entries: %v", got)
 			}
 		}},
-		{name: "too many entries", data: zipOf(t, many, zip.Store), refused: "at most 50 files"},
+		{name: "250 entries", data: zipOf(t, csvs(250), zip.Deflate), check: func(t *testing.T, list []entry) {
+			if len(list) != 250 {
+				t.Fatalf("%d entries, want 250", len(list))
+			}
+		}},
+		{name: "251 entries", data: zipOf(t, csvs(251), zip.Store), refused: "at most 250 files"},
 		{name: "compression bomb", data: zipOf(t, map[string][]byte{"a.csv": bytes.Repeat([]byte("a"), 2<<20)}, zip.Deflate), refused: "suspiciously"},
 		{name: "entry over 10 MB", data: zipOf(t, map[string][]byte{"a.csv": bytes.Repeat([]byte("ab"), 6<<20)}, zip.Store), refused: "more than 10 MB"},
 		{name: "only junk", data: zipOf(t, map[string][]byte{"__MACOSX/x": []byte("x")}, zip.Deflate), refused: "no files"},
@@ -154,10 +163,10 @@ func TestZipEntriesLimits(t *testing.T) {
 
 func TestZipTotalCountsActualBytes(t *testing.T) {
 	files := map[string][]byte{}
-	for i := range 7 {
+	for i := range 13 {
 		files[strings.Repeat("b", i+1)+".csv"] = bytes.Repeat([]byte{byte('a' + i), 'x'}, 4<<20+1) // 8 MB each, stored
 	}
-	if _, err := zipEntries("big.zip", zipOf(t, files, zip.Store)); err == nil || !strings.Contains(err.Error(), "50 MB") {
+	if _, err := zipEntries("big.zip", zipOf(t, files, zip.Store)); err == nil || !strings.Contains(err.Error(), "100 MB") {
 		t.Fatalf("total: %v", err)
 	}
 }

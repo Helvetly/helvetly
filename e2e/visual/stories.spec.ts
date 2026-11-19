@@ -12,9 +12,14 @@ const screens: [App, string][] = [
   ['platform', 'pages-invoice-editor--draft-with-lines'],
   ['platform', 'pages-documents--folders-and-files'],
   ['platform', 'books-settings--periods-overview'],
+  ['platform', 'books-ledger--trial-balance'],
+  ['platform', 'books-ledger--loaded'],
+  ['platform', 'books-ledger--save-invalid'],
   ['portal', 'pages-portal--overview'],
   ['portal', 'pages-portal--invoices'],
   ['portal', 'pages-portal--profile'],
+  ['portal', 'portal-shell--desktop'],
+  ['portal', 'portal-shell--scrolled-header'],
 ]
 const components: [App, string][] = [
   ['platform', 'design-system-controls--button-variants'],

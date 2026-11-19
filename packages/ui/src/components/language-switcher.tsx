@@ -15,6 +15,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { Flag } from '@helvetly/ui/components/flag'
@@ -32,7 +37,7 @@ function switchLanguage(language: string) {
   )
 }
 
-export function LanguageMenuItems() {
+function LanguageMenuItems() {
   const current = useLanguage()
   const translate = useTranslate()
   if (Object.keys(locales).length < 2) return null
@@ -48,6 +53,40 @@ export function LanguageMenuItems() {
         </DropdownMenuItem>
       ))}
     </>
+  )
+}
+
+/**
+ * One "Language" row inside an account menu, the current language's flag and name at its right, opening a
+ * submenu with every language: a menu keeps its own length however many languages there are.
+ */
+export function LanguageSubmenu() {
+  const current = useLanguage()
+  const translate = useTranslate()
+  const language = useCurrentLanguage()
+  if (Object.keys(locales).length < 2) return null
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Languages aria-hidden />
+        <span className="flex-1">{translate('language')}</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Flag region={language.region} className="h-3 w-4 shrink-0 rounded-xs" />
+          {language.name}
+        </span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-44 rounded-xl p-1.5 shadow-elevation-2">
+        <DropdownMenuRadioGroup value={current} onValueChange={switchLanguage}>
+          {Object.entries(locales).map(([code, details]) => (
+            <DropdownMenuRadioItem key={code} value={code} lang={code} className="min-h-9">
+              <Flag region={languageFlags[code] ?? ''} className="h-3 w-4 shrink-0 rounded-xs" />
+              {details.name}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
 

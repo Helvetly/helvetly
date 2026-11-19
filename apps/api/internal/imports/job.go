@@ -230,22 +230,32 @@ func (s *Service) read(ctx context.Context, f store.ImportFile) ([]byte, error) 
 	if err != nil {
 		return nil, fmt.Errorf("open import upload: %w", err)
 	}
+	defer func() { _ = obj.Close() }()
+	if f.EntryIndex != nil {
+		// A ZIP of up to 250 files is read entry by entry: with ranged reads only its directory and one entry are
+		// fetched each time, never the whole archive again.
+		zipFile, ok := obj.(io.ReaderAt)
+		if !ok {
+			return nil, failure{"The uploaded ZIP can't be read."}
+		}
+		size, err := obj.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, fmt.Errorf("size import upload: %w", err)
+		}
+		if size > maxFileBytes {
+			return nil, failure{"The uploaded ZIP is larger than 25 MB."}
+		}
+		entry, err := entryBytes(zipFile, size, *f.EntryIndex)
+		if err != nil {
+			return nil, failure{err.Error()}
+		}
+		return entry, nil
+	}
 	data, err := io.ReadAll(io.LimitReader(obj, maxFileBytes+1))
-	closeErr := obj.Close()
 	if err != nil {
 		return nil, fmt.Errorf("read import upload: %w", err)
 	}
-	if closeErr != nil {
-		return nil, closeErr
-	}
-	if f.EntryIndex == nil {
-		return data, nil
-	}
-	entry, err := entryBytes(data, *f.EntryIndex)
-	if err != nil {
-		return nil, failure{err.Error()}
-	}
-	return entry, nil
+	return data, nil
 }
 
 // phoneRule: Swiss lists usually write numbers nationally (078 123 45 67), which the E.164 check refuses.

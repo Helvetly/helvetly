@@ -128,3 +128,15 @@ test('after switching client on the overview, the shell shows the new client', a
     expect(screen.getByRole('button', { name: /^Account menu/ }).textContent).toContain('Other AG'),
   )
 })
+
+test('the header shows its hairline only while the page is scrolled', async () => {
+  show()
+  const header = (await screen.findByRole('navigation', { name: 'Portal' })).closest('header')
+  expect(header?.hasAttribute('data-scrolled')).toBe(false)
+  window.scrollY = 120
+  fireEvent.scroll(window)
+  expect(header?.hasAttribute('data-scrolled')).toBe(true)
+  window.scrollY = 0
+  fireEvent.scroll(window)
+  expect(header?.hasAttribute('data-scrolled')).toBe(false)
+})

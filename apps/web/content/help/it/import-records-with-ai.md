@@ -24,4 +24,5 @@ L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA de
   o chiudi la finestra, non parte alcun caricamento o trattamento tramite IA e la bozza e i file
   restano disponibili.
 - Le importazioni utilizzano la disponibilità IA mensile.
+- Un’importazione accetta fino a 25 file da 25 MB ciascuno. Uno ZIP viene aperto di un livello e può contenere fino a 250 file; un’importazione legge al massimo 250 file in tutto.
 - Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Books → Closing**.
