@@ -173,6 +173,7 @@ function results(checks) {
         einvoice: checks.backend,
         vitest: checks.frontend,
         coverage: checks.frontend,
+        storybook: checks.frontend,
         visual: checks.frontend,
         e2e: checks.e2e,
       }).map(([job, selected]) => [job, { result: selected ? 'success' : 'skipped' }]),
@@ -223,16 +224,19 @@ test('workflow keeps event transitions, shards, permissions and expensive jobs b
   assert.equal(workflow.match(/^\s+- \*go-cache-restore\n\s+- \*go-cache$/gm)?.length, 3)
   assert.match(workflow, /permissions:\n  contents: read/)
   assert.doesNotMatch(workflow, /pull_request_target|continue-on-error|paths-ignore:/)
-  for (const job of ['static', 'go', 'einvoice', 'vitest', 'visual', 'e2e']) {
+  for (const job of ['static', 'go', 'einvoice', 'vitest', 'storybook', 'e2e']) {
     const section = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  [a-z]+:\n/)[0]
     assert.match(section ?? '', /needs: \[changes, quick\]/, job)
     assert.match(section ?? '', /!github.event.pull_request.draft/, job)
   }
   assert.match(workflow, /coverage:\n[\s\S]*?needs: \[changes, quick, vitest\]/)
+  // The visual shards test the Storybooks the storybook job built once, and are skipped on drafts with it.
+  assert.match(workflow, /\n  visual:\n[^]*?needs: \[changes, quick, storybook\]/)
   assert.match(workflow, /required:\n[\s\S]*?if: \$\{\{ always\(\) \}\}/)
   assert.equal(workflow.match(/shard: \['1\/2', '2\/2'\]/g)?.length, 1)
   assert.equal(workflow.match(/shard: \['1\/3', '2\/3', '3\/3'\]/g)?.length, 1)
-  assert.equal(workflow.match(/shard: \['1\/5', '2\/5', '3\/5', '4\/5', '5\/5'\]/g)?.length, 2)
+  assert.equal(workflow.match(/shard: \['1\/5', '2\/5', '3\/5', '4\/5', '5\/5'\]/g)?.length, 1)
+  assert.equal(workflow.match(/shard: \['1\/8', [^\]]*'8\/8'\]/g)?.length, 1)
   const api = JSON.parse(readFileSync(new URL('../apps/api/package.json', import.meta.url), 'utf8'))
   assert.ok(
     workflow.includes(`run: ${api.scripts['test:xsd']}`),

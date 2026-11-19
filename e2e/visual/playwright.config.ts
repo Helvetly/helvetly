@@ -7,8 +7,9 @@ export default defineConfig({
   testDir: '.',
   snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   outputDir: './test-results',
-  // Large upload stories need memory headroom in the same Docker VM as the test services.
-  workers: 2,
+  // Large upload stories need memory headroom in the same Docker VM as the test services; a CI runner has
+  // four cores and the suite to itself.
+  workers: process.env.CI ? 4 : 2,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
