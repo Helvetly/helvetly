@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { defaultLocale } from '@helvetly/i18n'
 import { describe, expect, it } from 'vitest'
 
+import { compareIn } from '@/lib/compare'
 import { readCollection } from '@/lib/content'
 import { llmsTxt } from '@/lib/llms'
 
@@ -27,6 +28,11 @@ describe('llms.txt', () => {
     for (const collection of ['guides', 'help'] as const)
       for (const article of readCollection(collection, defaultLocale))
         expect(text).toContain(`/${collection}/${article.slug})`)
+  })
+
+  it('lists every comparison', () => {
+    for (const { slug } of compareIn(defaultLocale).COMPETITORS)
+      expect(text).toContain(`/compare/${slug})`)
   })
 })
 
