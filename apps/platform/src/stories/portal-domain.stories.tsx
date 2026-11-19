@@ -47,14 +47,15 @@ export const AddDomain: Story = {
       await canvas.findByText('portal.firma.ch', { selector: '.text-body' }),
     ).toBeVisible()
     await expect(canvas.getByText('Waiting for DNS')).toBeVisible()
-    await expect(canvas.getByText('portal.helvetly.com')).toBeVisible()
+    await expect(canvas.getByText('domains.helvetly.com')).toBeVisible()
+    await expect(canvas.getByText('_helvetly-verify.portal.firma.ch')).toBeVisible()
     await expect(
-      await page().findByText('Domain added. Now add the DNS record.'),
+      await page().findByText('Domain added. Now add the two DNS records.'),
     ).toBeInTheDocument()
   },
 }
 
-/** Waiting for DNS: the CNAME and TXT records, each part copied with one click. */
+/** Waiting for DNS: the CNAME and the TXT record, each explained and copied with one click, and the release date. */
 export const WaitingForDns: Story = {
   beforeEach: () => resetPortalDomain(portalDomain()),
   play: async ({ canvasElement }) => {
@@ -62,17 +63,54 @@ export const WaitingForDns: Story = {
     await expect(await canvas.findByText('Waiting for DNS')).toBeVisible()
     await expect(canvas.getByText('CNAME')).toBeVisible()
     await expect(canvas.getByText('TXT')).toBeVisible()
+    await expect(canvas.getByText('Points your domain at Helvetly.')).toBeVisible()
+    await expect(canvas.getByText(/Proves the domain is yours/)).toBeVisible()
+    await expect(
+      canvas.getByText(/Finish the setup by .*, or the domain is released\./),
+    ).toBeVisible()
     const write = fn(async (_text: string) => {})
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: write },
       configurable: true,
     })
-    const copy = canvas.getByRole('button', { name: 'Copy value: portal.helvetly.com' })
+    const copy = canvas.getByRole('button', { name: 'Copy value: domains.helvetly.com' })
     await userEvent.hover(copy)
     await expect(await page().findByRole('tooltip')).toHaveTextContent('Copy value')
     await userEvent.click(copy)
-    await expect(write).toHaveBeenCalledWith('portal.helvetly.com')
+    await expect(write).toHaveBeenCalledWith('domains.helvetly.com')
+    await userEvent.click(
+      canvas.getByRole('button', {
+        name: 'Copy value: helvetly-3f9a1c7e5b2d48a6c0e1f7a9b3d5c2e8',
+      }),
+    )
+    await expect(write).toHaveBeenCalledWith('helvetly-3f9a1c7e5b2d48a6c0e1f7a9b3d5c2e8')
     await expect(await page().findByText('Copied')).toBeInTheDocument()
+  },
+}
+
+/** The CNAME is there, the TXT record that proves ownership is not. */
+export const VerificationMissing: Story = {
+  beforeEach: () => resetPortalDomain(portalDomain(undefined, 'dns', 'verification')),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveTextContent(
+      'The TXT record that proves this domain is yours is missing.',
+    )
+    await expect(alert).toHaveTextContent(
+      'No TXT record _helvetly-verify.portal.mueller-treuhand.ch',
+    )
+    await expect(canvas.getByText('Waiting for DNS')).toBeVisible()
+  },
+}
+
+/** DNS and ownership are right; the domain does not answer over HTTPS yet. */
+export const Certificate: Story = {
+  beforeEach: () => resetPortalDomain(portalDomain(undefined, 'certificate')),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Issuing certificate')).toBeVisible()
+    await expect(canvas.getByRole('alert')).toHaveTextContent('does not answer over HTTPS yet')
   },
 }
 
@@ -104,7 +142,7 @@ export const Active: Story = {
   },
 }
 
-/** A broken domain says why. */
+/** A domain that broke (the CNAME is gone) says why. */
 export const Problem: Story = {
   beforeEach: () => resetPortalDomain(portalDomain(undefined, 'problem')),
   play: async ({ canvasElement }) => {
@@ -112,7 +150,20 @@ export const Problem: Story = {
     await expect(await canvas.findByText('Problem')).toBeVisible()
     const alert = canvas.getByRole('alert')
     await expect(alert).toHaveTextContent('The DNS record is missing or points elsewhere.')
-    await expect(alert).toHaveTextContent('custom hostname does not CNAME to this zone.')
+    await expect(alert).toHaveTextContent(
+      'No CNAME record from portal.mueller-treuhand.ch to domains.helvetly.com',
+    )
+  },
+}
+
+/** After a downgrade the domain is off until an upgrade, and says when it is released. */
+export const PlanLost: Story = {
+  beforeEach: () => resetPortalDomain(portalDomain(undefined, 'problem', 'plan')),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveTextContent(/no longer includes your own domain.*released on/)
+    await expect(canvas.queryByText(/Finish the setup by/)).toBeNull()
   },
 }
 
@@ -165,10 +216,29 @@ export const Refused: Story = {
     await userEvent.type(input, 'portal.acme.ch')
     await userEvent.click(canvas.getByRole('button', { name: 'Add domain' }))
     await expect(await canvas.findByText('Another workspace uses this domain.')).toBeVisible()
+    await userEvent.clear(input)
+    await userEvent.type(input, 'portal.down.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Add domain' }))
+    await expect(await canvas.findByText(/DNS did not answer/)).toBeVisible()
   },
 }
 
-/** Without Cloudflare settings on the server the section is not there. */
+/** Another workspace added the domain without proving it: the TXT record that would prove it is ours to add. */
+export const TakenUnproven: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByLabelText(/^Domain/)
+    await userEvent.type(input, 'portal.claimed.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Add domain' }))
+    await expect(await canvas.findByText(/without proving it owns it/)).toBeVisible()
+    await expect(canvas.getByText('_helvetly-verify.portal.claimed.ch')).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: 'Copy value: helvetly-0a1b2c3d4e5f60718293a4b5c6d7e8f9' }),
+    ).toBeVisible()
+  },
+}
+
+/** Without CUSTOM_DOMAIN_TARGET on the server the section is not there. */
 export const Disabled: Story = {
   beforeEach: () => resetPortalDomain(null, false),
   play: async ({ canvasElement }) => {

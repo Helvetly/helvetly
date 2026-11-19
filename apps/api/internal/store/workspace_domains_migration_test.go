@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 // TestWorkspaceDomainsMigration: 00032 gives every published offer custom_portal_domain (Business only), publishes
@@ -36,6 +37,33 @@ func TestWorkspaceDomainsMigration(t *testing.T) {
 		t.Fatal("left after Down")
 	}
 	if _, err := p.UpTo(ctx, 32); err != nil {
+		t.Fatalf("Up again: %v", err)
+	}
+}
+
+// TestWorkspaceDomainsDNSMigration: 00033 drops Cloudflare's columns and dates every row's status; Down restores them.
+func TestWorkspaceDomainsDNSMigration(t *testing.T) {
+	ctx := context.Background()
+	p, pool := migrationProvider(t)
+	if _, err := p.UpTo(ctx, 32); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO workspaces (id, name, created_at) VALUES ('ws_d', 'D', now());
+		INSERT INTO workspace_domains (id, workspace_id, hostname, cf_hostname_id, status, next_check_at, created_by, created_at, updated_at)
+		VALUES ('dom_1', 'ws_d', 'portal.d.ch', 'cf_1', 'pending', now(), 'usr', now(), '2026-11-01')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 33); err != nil {
+		t.Fatal(err)
+	}
+	var since time.Time
+	if err := pool.QueryRow(ctx, `SELECT status_since FROM workspace_domains WHERE id = 'dom_1'`).Scan(&since); err != nil || since.Format(time.DateOnly) != "2026-11-01" {
+		t.Fatalf("status_since %v: %v", since, err)
+	}
+	if _, err := p.DownTo(ctx, 32); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 33); err != nil {
 		t.Fatalf("Up again: %v", err)
 	}
 }

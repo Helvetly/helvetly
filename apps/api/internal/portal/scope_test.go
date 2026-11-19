@@ -210,10 +210,10 @@ func TestCustomDomains(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.exec(`INSERT INTO portal_slugs (slug, workspace_id, created_at) VALUES ('third', 'wsp_c', now())`)
-	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at) VALUES
-		('dom_a', 'wsp_a', 'portal.studio.ch', 'active', now(), 'usr', now(), now()),
-		('dom_b', 'wsp_b', 'portal.other.ch', 'active', now(), 'usr', now(), now()),
-		('dom_c', 'wsp_c', 'pending.third.ch', 'pending', now(), 'usr', now(), now())`)
+	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at, status_since) VALUES
+		('dom_a', 'wsp_a', 'portal.studio.ch', 'active', now(), 'usr', now(), now(), now()),
+		('dom_b', 'wsp_b', 'portal.other.ch', 'active', now(), 'usr', now(), now(), now()),
+		('dom_c', 'wsp_c', 'pending.third.ch', 'pending', now(), 'usr', now(), now(), now())`)
 	e.exec(`UPDATE workspaces SET logo_file_id = 'logo1' WHERE id = 'wsp_a'`) // before the first request: the resolver caches
 	const api = "/api/v1/public/portal"
 	res, out := e.onHost("portal.studio.ch", "POST", api+"/auth/verify", nil, `{"email":"ana@acme.ch","code":"123456"}`)

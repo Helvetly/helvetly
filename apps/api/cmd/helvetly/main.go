@@ -220,13 +220,16 @@ func run() error {
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
 	workspacesSvc.SetPortal(portalScopes)
-	var cloudflare customdomains.Cloudflare // nil: no custom domains (CLOUDFLARE_* unset)
+	var domainChecker customdomains.Checker // nil: no custom domains (CUSTOM_DOMAIN_TARGET unset)
 	ownHosts := []string{cfg.PublicURL, cfg.PortalURL, cfg.MediaURL, cfg.APIURL, cfg.DocsURL}
 	if cfg.CustomDomains.Enabled() {
-		cloudflare = customdomains.NewCloudflare(cfg.CustomDomains.APIURL, cfg.CustomDomains.ZoneID, cfg.CustomDomains.APIToken)
+		domainChecker = customdomains.NewChecker()
+		if cfg.CustomDomains.Fake {
+			domainChecker = customdomains.Trusting{}
+		}
 		portalScopes.EnableDomains(ownHosts...)
 	}
-	customDomainsSvc := customdomains.New(db, authSvc, cloudflare, cfg.CustomDomains.Target, ownHosts, portalScopes, slog.Default())
+	customDomainsSvc := customdomains.New(db, authSvc, domainChecker, cfg.CustomDomains.Target, ownHosts, cfg.SecretKey, portalScopes, slog.Default())
 	bg.Go(ctx, "custom domains", customDomainsSvc.Run) // every minute: pending domains with backoff, the others daily
 	// The one-time workspace-name suggestion is pinned to the cheapest model, whatever model Heidi is set to.
 	var nameModel aimodel.Provider = aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, aimodel.DefaultModel, "")

@@ -7,9 +7,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -30,128 +31,49 @@ import (
 	"helvetly.com/api/internal/store/storetest"
 )
 
-const zone = "0123456789abcdef0123456789abcdef"
+const target = "domains.example.com"
 
-// fakeCloudflare is the custom hostnames API of one zone: Set changes what Cloudflare says of a hostname.
-type fakeCloudflare struct {
-	mu        sync.Mutex
-	hosts     map[string]map[string]any // id → result
-	elsewhere map[string]bool           // hostnames another account has
-	down      bool
-	limited   bool     // answer 429
-	calls     []string // method and path of every call
-	srv       *httptest.Server
+// fakeWorld is the internet as the checker sees it: which hosts point at the target, which TXT records exist, which
+// hosts answer over HTTPS.
+type fakeWorld struct {
+	mu      sync.Mutex
+	points  map[string]bool
+	txt     map[string]string
+	serves  map[string]bool
+	dnsDown bool
 }
 
-func newFakeCloudflare(t *testing.T) *fakeCloudflare {
-	f := &fakeCloudflare{hosts: map[string]map[string]any{}, elsewhere: map[string]bool{}}
-	f.srv = httptest.NewServer(http.HandlerFunc(f.serve))
-	t.Cleanup(f.srv.Close)
-	return f
-}
-
-func answer(w http.ResponseWriter, status int, result any, errs ...map[string]any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if errs == nil {
-		errs = []map[string]any{}
-	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"success": status < 300, "errors": errs, "result": result})
-}
-
-func (f *fakeCloudflare) serve(w http.ResponseWriter, r *http.Request) {
+func (f *fakeWorld) PointsAt(_ context.Context, host, to string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, r.Method+" "+r.URL.RequestURI())
-	base := "/zones/" + zone + "/custom_hostnames"
-	switch {
-	case f.limited:
-		w.Header().Set("Retry-After", "300")
-		answer(w, http.StatusTooManyRequests, nil, map[string]any{"code": 10000, "message": "rate limited"})
-	case r.Method == http.MethodGet && r.URL.Path == base:
-		if r.URL.Query().Get("per_page") != "1000" || r.URL.Query().Get("page") != "1" {
-			answer(w, http.StatusOK, []any{}) // every host fits the first page here
-			return
-		}
-		list := []any{}
-		for _, h := range f.hosts {
-			list = append(list, h)
-		}
-		answer(w, http.StatusOK, list)
-	case r.Header.Get("Authorization") != "Bearer cf-token":
-		answer(w, http.StatusForbidden, nil, map[string]any{"code": 9109, "message": "Invalid access token"})
-	case f.down:
-		answer(w, http.StatusInternalServerError, nil, map[string]any{"code": 1000, "message": "internal"})
-	case r.Method == http.MethodPost && r.URL.Path == base:
-		var in struct {
-			Hostname string `json:"hostname"`
-			SSL      struct{ Method, Type string }
-		}
-		_ = json.NewDecoder(r.Body).Decode(&in)
-		if in.SSL.Method != "http" || in.SSL.Type != "dv" {
-			answer(w, http.StatusBadRequest, nil, map[string]any{"code": 1400, "message": "bad ssl"})
-			return
-		}
-		if f.elsewhere[in.Hostname] {
-			answer(w, http.StatusConflict, nil, map[string]any{"code": 1406, "message": "Duplicate custom hostname found."})
-			return
-		}
-		id := "cf_" + strings.ReplaceAll(in.Hostname, ".", "_") + fmt.Sprint(len(f.calls))
-		f.hosts[id] = map[string]any{"id": id, "hostname": in.Hostname, "status": "pending",
-			"ssl":                    map[string]any{"status": "initializing", "validation_records": []any{}},
-			"ownership_verification": map[string]any{"type": "txt", "name": "_cf-custom-hostname." + in.Hostname, "value": "token-" + id},
-			"verification_errors":    []string{"custom hostname does not CNAME to this zone."}}
-		answer(w, http.StatusOK, f.hosts[id])
-	case strings.HasPrefix(r.URL.Path, base+"/"):
-		id := strings.TrimPrefix(r.URL.Path, base+"/")
-		h, ok := f.hosts[id]
-		if !ok {
-			answer(w, http.StatusNotFound, nil, map[string]any{"code": 1436, "message": "not found"})
-			return
-		}
-		if r.Method == http.MethodDelete {
-			delete(f.hosts, id)
-			answer(w, http.StatusOK, map[string]any{"id": id})
-			return
-		}
-		answer(w, http.StatusOK, h)
-	default:
-		answer(w, http.StatusNotFound, nil)
+	if f.dnsDown {
+		return false, errors.New("dns timeout")
 	}
+	return to == target && f.points[host], nil
 }
 
-// set makes Cloudflare say status and sslStatus of hostname.
-func (f *fakeCloudflare) set(hostname, status, sslStatus string) {
+func (f *fakeWorld) HasTXT(_ context.Context, name, value string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, h := range f.hosts {
-		if h["hostname"] == hostname {
-			h["status"] = status
-			h["ssl"] = map[string]any{"status": sslStatus}
-			if status == "active" {
-				h["verification_errors"] = []string{}
-			}
-		}
+	if f.dnsDown {
+		return false, errors.New("dns timeout")
 	}
+	return f.txt[name] == value, nil
 }
 
-// asked counts the calls whose "METHOD /path?query" starts with prefix, after resetting nothing.
-func (f *fakeCloudflare) asked(prefix string) int {
+func (f *fakeWorld) Serves(_ context.Context, host string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	n := 0
-	for _, c := range f.calls {
-		if strings.HasPrefix(c, prefix) {
-			n++
-		}
+	if !f.serves[host] {
+		return errors.New("tls: no certificate yet")
 	}
-	return n
+	return nil
 }
 
-func (f *fakeCloudflare) count() int {
+func (f *fakeWorld) set(fn func(*fakeWorld)) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return len(f.hosts)
+	fn(f)
 }
 
 type env struct {
@@ -159,9 +81,10 @@ type env struct {
 	st     *store.Store
 	raw    *pgxpool.Pool
 	srv    *httptest.Server
-	cf     *fakeCloudflare
+	world  *fakeWorld
 	svc    *Service
 	scopes *portalscope.Resolver
+	clock  time.Time
 }
 
 func newEnv(t *testing.T) *env {
@@ -174,16 +97,17 @@ func newEnv(t *testing.T) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cf := newFakeCloudflare(t)
+	world := &fakeWorld{points: map[string]bool{}, txt: map[string]string{}, serves: map[string]bool{}}
 	scopes := portalscope.New("https://portal.example.com", st.Q)
 	scopes.EnableDomains("https://app.example.com")
-	svc := New(st, a, NewCloudflare(cf.srv.URL, zone, "cf-token"), "portal.example.com",
-		[]string{"https://app.example.com", "https://portal.example.com"}, scopes, discard)
+	svc := New(st, a, world, target, []string{"https://app.example.com", "https://portal.example.com"}, bytes.Repeat([]byte{9}, 32), scopes, discard)
+	e := &env{t: t, st: st, raw: raw, world: world, svc: svc, scopes: scopes, clock: time.Now().UTC()}
+	svc.now = func() time.Time { return e.clock }
 	mux := http.NewServeMux()
 	svc.Register(mux)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, raw: raw, srv: srv, cf: cf, svc: svc, scopes: scopes}
+	e.srv = httptest.NewServer(mux)
+	t.Cleanup(e.srv.Close)
+	return e
 }
 
 type browser struct {
@@ -236,25 +160,42 @@ func (e *env) do(b *browser, method, path string, body any) (int, map[string]any
 	return res.StatusCode, out
 }
 
+func (e *env) add(b *browser, host string) map[string]any {
+	e.t.Helper()
+	status, out := e.do(b, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": host})
+	if status != 201 {
+		e.t.Fatalf("add %s: %d %v", host, status, out)
+	}
+	return domainOf(out)
+}
+
 func domainOf(out map[string]any) map[string]any {
 	data, _ := out["data"].(map[string]any)
 	d, _ := data["domain"].(map[string]any)
 	return d
 }
 
-func errorCode(out map[string]any) string {
+func errorOf(out map[string]any) (string, map[string]any) {
 	e, _ := out["error"].(map[string]any)
 	c, _ := e["code"].(string)
-	return c
+	d, _ := e["details"].(map[string]any)
+	return c, d
 }
 
-// due makes every domain's next check due and runs the job once.
+// tick makes every domain's next check due and runs the job once.
 func (e *env) tick() {
 	e.t.Helper()
-	if _, err := e.raw.Exec(context.Background(), `UPDATE workspace_domains SET next_check_at = now() - interval '1 second'`); err != nil {
+	if _, err := e.raw.Exec(context.Background(), `UPDATE workspace_domains SET next_check_at = $1`, e.clock.Add(-time.Second)); err != nil {
 		e.t.Fatal(err)
 	}
 	e.svc.Tick(context.Background())
+}
+
+func (e *env) row(ws string) (status, problem string) {
+	e.t.Helper()
+	_ = e.raw.QueryRow(context.Background(), `SELECT status, problem FROM workspace_domains WHERE workspace_id = $1 ORDER BY created_at DESC, status <> 'removed' DESC LIMIT 1`, ws).
+		Scan(&status, &problem)
+	return
 }
 
 func (e *env) notified(ws, event string) int {
@@ -265,6 +206,23 @@ func (e *env) notified(ws, event string) int {
 	return n
 }
 
+// prove gives host both records of workspace ws.
+func (e *env) prove(ws, host string) {
+	e.world.set(func(w *fakeWorld) {
+		w.points[host] = true
+		w.txt[TXTPrefix+host] = e.svc.Token(ws, host)
+	})
+}
+
+func (e *env) certifiable(host string) int {
+	e.t.Helper()
+	res, err := http.Get(e.srv.URL + "/api/v1/public/portal/domain-check?domain=" + url.QueryEscape(host))
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	res.Body.Close()
+	return res.StatusCode
+}
 func TestNormalise(t *testing.T) {
 	own := []string{"app.helvetly.example", "portal.example.com", "portal.example.com"}
 	for _, tt := range []struct{ in, want, problem string }{
@@ -302,159 +260,169 @@ func TestNormalise(t *testing.T) {
 	}
 }
 
-func TestCloudflareClient(t *testing.T) {
-	t.Parallel()
-	f := newFakeCloudflare(t)
-	ctx := context.Background()
-	c := NewCloudflare(f.srv.URL+"/", zone, "cf-token")
-	h, err := c.Create(ctx, "portal.firma.ch")
-	if err != nil || h.ID == "" || h.Status != "pending" || len(h.Records) != 1 || h.Records[0].Type != "TXT" ||
-		h.Records[0].Name != "_cf-custom-hostname.portal.firma.ch" || len(h.Errors) != 1 {
-		t.Fatalf("create: %+v %v", h, err)
-	}
-	f.set("portal.firma.ch", "active", "active")
-	if got, err := c.Get(ctx, h.ID); err != nil || got.Status != "active" || got.SSL != "active" {
-		t.Fatalf("get: %+v %v", got, err)
-	}
-	if err := c.Delete(ctx, h.ID); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.Delete(ctx, h.ID); err != nil {
-		t.Fatalf("deleting a deleted hostname: %v", err)
-	}
-	if _, err := c.Get(ctx, h.ID); err != ErrNotFound {
-		t.Fatalf("get a deleted hostname: %v", err)
-	}
-	f.elsewhere["taken.firma.ch"] = true
-	if _, err := c.Create(ctx, "taken.firma.ch"); err != ErrDuplicate {
-		t.Fatalf("duplicate: %v", err)
-	}
-	f.down = true
-	if _, err := c.Create(ctx, "down.firma.ch"); err == nil || !strings.Contains(err.Error(), "HTTP 500") || strings.Contains(err.Error(), "cf-token") {
-		t.Fatalf("cloudflare down: %v", err)
-	}
-	if _, err := NewCloudflare(f.srv.URL, zone, "wrong").Get(ctx, "x"); err == nil || strings.Contains(err.Error(), "wrong") {
-		t.Fatalf("bad token: %v", err)
-	}
+// fakeResolver answers like DNS: cnames and addrs per name, txt per name; anything else does not exist.
+type fakeResolver struct {
+	cnames map[string]string
+	addrs  map[string][]string
+	txt    map[string][]string
+	fail   bool
 }
 
-func TestClassify(t *testing.T) {
-	for _, tt := range []struct{ status, ssl, want, problem string }{
-		{"pending", "initializing", store.DomainPending, ""},
-		{"active", "pending_validation", store.DomainPending, ""},
-		{"active", "active", store.DomainActive, ""},
-		{"moved", "active", store.DomainFailed, ProblemDNS},
-		{"blocked", "", store.DomainFailed, ProblemBlocked},
-		{"pending", "validation_timed_out", store.DomainFailed, ProblemCertificate},
-		{"active", "expired", store.DomainFailed, ProblemCertificate},
-	} {
-		if got, problem := classify(Hostname{Status: tt.status, SSL: tt.ssl}); got != tt.want || problem != tt.problem {
-			t.Errorf("classify(%s, %s) = %s %s, want %s %s", tt.status, tt.ssl, got, problem, tt.want, tt.problem)
+var errNXDomain = &net.DNSError{Err: "no such host", IsNotFound: true}
+
+func (f fakeResolver) LookupCNAME(_ context.Context, host string) (string, error) {
+	if f.fail {
+		return "", &net.DNSError{Err: "timeout", IsTimeout: true}
+	}
+	if c, ok := f.cnames[host]; ok {
+		return c, nil
+	}
+	if _, ok := f.addrs[host]; ok {
+		return host + ".", nil
+	}
+	return "", errNXDomain
+}
+
+func (f fakeResolver) LookupHost(_ context.Context, host string) ([]string, error) {
+	if a, ok := f.addrs[host]; ok {
+		return a, nil
+	}
+	return nil, errNXDomain
+}
+
+func (f fakeResolver) LookupTXT(_ context.Context, name string) ([]string, error) {
+	if t, ok := f.txt[name]; ok {
+		return t, nil
+	}
+	return nil, errNXDomain
+}
+
+func TestNetChecker(t *testing.T) {
+	ctx := context.Background()
+	c := netChecker{dns: fakeResolver{
+		cnames: map[string]string{"portal.firma.ch": "Domains.Example.com.", "portal.elsewhere.ch": "other.example.net."},
+		addrs: map[string][]string{"domains.example.com": {"203.0.113.7", "2001:db8::7"}, "portal.flat.ch": {"203.0.113.7"},
+			"portal.wrongip.ch": {"198.51.100.1"}, "other.example.net": {"198.51.100.2"}},
+		txt: map[string][]string{TXTPrefix + "portal.firma.ch": {"v=spf1", "helvetly-abc"}},
+	}}
+	for host, want := range map[string]bool{"portal.firma.ch": true, "portal.flat.ch": true, "portal.wrongip.ch": false,
+		"portal.elsewhere.ch": false, "portal.nowhere.ch": false} {
+		if got, err := c.PointsAt(ctx, host, target); got != want || err != nil {
+			t.Errorf("PointsAt(%s) = %v %v, want %v", host, got, err, want)
 		}
 	}
+	if ok, err := c.HasTXT(ctx, TXTPrefix+"portal.firma.ch", "helvetly-abc"); !ok || err != nil {
+		t.Fatalf("txt present: %v %v", ok, err)
+	}
+	if ok, err := c.HasTXT(ctx, TXTPrefix+"portal.firma.ch", "helvetly-other"); ok || err != nil {
+		t.Fatalf("other txt: %v %v", ok, err)
+	}
+	if ok, err := c.HasTXT(ctx, TXTPrefix+"portal.none.ch", "x"); ok || err != nil {
+		t.Fatalf("no txt: %v %v", ok, err)
+	}
+	if _, err := (netChecker{dns: fakeResolver{fail: true}}).PointsAt(ctx, "portal.firma.ch", target); err == nil {
+		t.Fatal("a DNS timeout is no answer")
+	}
 }
 
-func TestAddCheckRemove(t *testing.T) {
+func TestLifecycle(t *testing.T) {
 	e := newEnv(t)
 	owner, ws := e.workspace(billing.Business, "owner")
 	ctx := context.Background()
+	const host = "portal.firma.ch"
 
-	if status, out := e.do(owner, "GET", "/api/v1/workspace/portal/domain", nil); status != 200 || domainOf(out) != nil ||
-		out["data"].(map[string]any)["enabled"] != true || out["data"].(map[string]any)["target"] != "portal.example.com" {
-		t.Fatalf("no domain yet: %d %v", status, out)
-	}
-	status, out := e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "https://Portal.Firma.ch/"})
-	d := domainOf(out)
-	if status != 201 || d["hostname"] != "portal.firma.ch" || d["status"] != "pending" || d["stage"] != "dns" || d["detail"] == nil {
-		t.Fatalf("add: %d %v", status, out)
-	}
+	d := e.add(owner, "https://Portal.Firma.ch/")
 	records, _ := d["records"].([]any)
-	first, _ := records[0].(map[string]any)
-	if len(records) != 2 || first["type"] != "CNAME" || first["name"] != "portal.firma.ch" || first["value"] != "portal.example.com" {
-		t.Fatalf("records: %v", records)
+	cname, _ := records[0].(map[string]any)
+	txt, _ := records[1].(map[string]any)
+	if d["hostname"] != host || d["stage"] != "dns" || d["releases_at"] == nil || len(records) != 2 ||
+		cname["type"] != "CNAME" || cname["value"] != target || txt["type"] != "TXT" || txt["name"] != TXTPrefix+host || txt["value"] != e.svc.Token(ws, host) {
+		t.Fatalf("added: %v", d)
 	}
-	if status, out := e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "other.firma.ch"}); status != 409 || errorCode(out) != "domain_exists" {
-		t.Fatalf("second domain: %d %v", status, out)
-	}
-	if host, _ := e.scopes.ActiveDomain(ctx, ws); host != "" {
-		t.Fatalf("pending domain resolves: %q", host)
+	if e.certifiable(host) != 404 {
+		t.Fatal("certificate for an unproven domain")
 	}
 
-	// Waiting for the certificate, then active: the resolver serves it and the owners hear of it.
-	e.cf.set("portal.firma.ch", "active", "pending_validation")
+	// The CNAME alone (a dangling one, say) proves nothing: no certificate, not active.
+	e.world.set(func(w *fakeWorld) { w.points[host] = true; w.serves[host] = true })
 	e.tick()
-	if _, out := e.do(owner, "GET", "/api/v1/workspace/portal/domain", nil); domainOf(out)["stage"] != "certificate" {
+	if status, problem := e.row(ws); status != "pending" || problem != ProblemVerification || e.certifiable(host) != 404 {
+		t.Fatalf("cname only: %s %s", status, problem)
+	}
+	// With the TXT record: proven, certifiable; waiting for the certificate until HTTPS answers.
+	e.world.set(func(w *fakeWorld) { w.serves[host] = false })
+	e.prove(ws, host)
+	e.tick()
+	if _, out := e.do(owner, "GET", "/api/v1/workspace/portal/domain", nil); domainOf(out)["stage"] != "certificate" || domainOf(out)["verified_at"] == nil {
 		t.Fatalf("certificate stage: %v", out)
 	}
-	e.cf.set("portal.firma.ch", "active", "active")
-	e.tick()
-	if _, out := e.do(owner, "GET", "/api/v1/workspace/portal/domain", nil); domainOf(out)["status"] != "active" || domainOf(out)["detail"] != nil {
-		t.Fatalf("active: %v", out)
+	if e.certifiable(host) != 200 || e.certifiable("PORTAL.FIRMA.CH") != 200 {
+		t.Fatal("proven domain not certifiable")
 	}
-	if u, err := e.scopes.CanonicalURL(ctx, store.Workspace{ID: ws, Name: "Firma"}); err != nil || u != "https://portal.firma.ch/" {
-		t.Fatalf("canonical: %q %v", u, err)
+	e.world.set(func(w *fakeWorld) { w.serves[host] = true })
+	e.clock = e.clock.Add(time.Minute) // past the re-check gap
+	if status, out := e.do(owner, "POST", "/api/v1/workspace/portal/domain/check", nil); status != 200 || domainOf(out)["status"] != "active" || domainOf(out)["releases_at"] != nil {
+		t.Fatalf("re-check: %d %v", status, out)
+	}
+	if u, _ := e.scopes.CanonicalURL(ctx, store.Workspace{ID: ws, Name: "Firma"}); u != "https://"+host+"/" {
+		t.Fatalf("canonical: %q", u)
 	}
 	if e.notified(ws, "portal.domain_active") != 1 {
 		t.Fatal("no notice of the active domain")
 	}
-	var next time.Time
-	_ = e.raw.QueryRow(ctx, `SELECT next_check_at FROM workspace_domains WHERE workspace_id = $1`, ws).Scan(&next)
-	if time.Until(next) < 23*time.Hour {
-		t.Fatalf("active domain checked again at %v, want daily", next)
-	}
 
-	// The CNAME is gone: the domain fails, the portal falls back to its slug, the owners are told.
-	e.cf.set("portal.firma.ch", "moved", "active")
+	// The TXT record may go once proven; the CNAME may not: then the domain fails, falls back and the owners hear.
+	e.world.set(func(w *fakeWorld) { delete(w.txt, TXTPrefix+host) })
 	e.tick()
-	if _, out := e.do(owner, "GET", "/api/v1/workspace/portal/domain", nil); domainOf(out)["stage"] != "problem" || domainOf(out)["problem"] != "dns" {
-		t.Fatalf("broken: %v", out)
+	if status, _ := e.row(ws); status != "active" {
+		t.Fatalf("after the TXT record went: %s", status)
+	}
+	e.world.set(func(w *fakeWorld) { w.points[host] = false })
+	e.tick()
+	if status, problem := e.row(ws); status != "failed" || problem != ProblemDNS || e.notified(ws, "portal.domain_failed") != 1 {
+		t.Fatalf("broken: %s %s", status, problem)
 	}
 	if u, _ := e.scopes.CanonicalURL(ctx, store.Workspace{ID: ws, Name: "Firma"}); !strings.HasPrefix(u, "https://portal.example.com/w/") {
 		t.Fatalf("canonical after the domain broke: %q", u)
 	}
-	if e.notified(ws, "portal.domain_failed") != 1 {
-		t.Fatal("no notice of the broken domain")
+	e.world.set(func(w *fakeWorld) { w.points[host] = true })
+	e.tick()
+	if status, _ := e.row(ws); status != "active" {
+		t.Fatalf("fixed: %s", status)
 	}
-	// Fixed again: "Re-check" makes it active at once.
-	e.cf.set("portal.firma.ch", "active", "active")
-	if _, err := e.raw.Exec(ctx, `UPDATE workspace_domains SET last_checked_at = now() - interval '1 minute'`); err != nil {
-		t.Fatal(err)
-	}
-	if status, out := e.do(owner, "POST", "/api/v1/workspace/portal/domain/check", nil); status != 200 || domainOf(out)["status"] != "active" {
-		t.Fatalf("re-check: %d %v", status, out)
+
+	// The DNS not answering changes nothing.
+	e.world.set(func(w *fakeWorld) { w.dnsDown = true })
+	e.tick()
+	e.world.set(func(w *fakeWorld) { w.dnsDown = false })
+	if status, _ := e.row(ws); status != "active" {
+		t.Fatalf("dns down: %s", status)
 	}
 
 	if status, _ := e.do(owner, "DELETE", "/api/v1/workspace/portal/domain", nil); status != 204 {
 		t.Fatalf("remove: %d", status)
 	}
-	if e.cf.count() != 0 {
-		t.Fatal("the cloudflare hostname stayed")
-	}
-	if host, _ := e.scopes.ActiveDomain(ctx, ws); host != "" {
-		t.Fatalf("removed domain resolves: %q", host)
+	if host, _ := e.scopes.ActiveDomain(ctx, ws); host != "" || e.certifiable("portal.firma.ch") != 404 {
+		t.Fatalf("removed domain still resolves or certifies: %q", host)
 	}
 	var events int
 	_ = e.raw.QueryRow(ctx, `SELECT count(*) FROM financial_events WHERE workspace_id = $1 AND kind LIKE 'workspace.portal_domain_%'`, ws).Scan(&events)
 	if events != 2 {
 		t.Fatalf("%d audit events, want added and removed", events)
 	}
-	// The hostname is free again, for this workspace or another.
-	if status, out := e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.firma.ch"}); status != 201 {
-		t.Fatalf("add again: %d %v", status, out)
-	}
+	e.add(owner, host) // free again
 }
 
 func TestAddRefused(t *testing.T) {
 	e := newEnv(t)
-	owner, _ := e.workspace(billing.Business, "owner")
+	owner, ws := e.workspace(billing.Business, "owner")
 	admin, _ := e.workspace(billing.Business, "admin")
 	member, _ := e.workspace(billing.Business, "member")
 	pro, _ := e.workspace(billing.Pro, "owner")
 	other, _ := e.workspace(billing.Business, "owner")
-	if status, out := e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.firma.ch"}); status != 201 {
-		t.Fatalf("add: %d %v", status, out)
-	}
-	e.cf.elsewhere["cloudflare.taken.ch"] = true
+	e.add(owner, "portal.firma.ch")
+	e.prove(ws, "portal.firma.ch")
+	e.tick() // proven: no longer anyone else's to claim
 	for _, tt := range []struct {
 		name   string
 		who    *browser
@@ -466,32 +434,58 @@ func TestAddRefused(t *testing.T) {
 		{"plan without the feature", pro, "portal.pro.ch", 403, "feature_not_in_plan"},
 		{"apex", admin, "firma.ch", 422, "domain_apex"},
 		{"ours", admin, "x.helvetly.com", 422, "domain_reserved"},
-		{"ip", admin, "10.1.2.3", 422, "domain_reserved"},
+		{"the target", admin, target, 422, "domain_reserved"},
 		{"under the portal's domain", admin, "acme.example.com", 422, "domain_reserved"},
+		{"ip", admin, "10.1.2.3", 422, "domain_reserved"},
 		{"garbage", admin, "not a domain", 422, "domain_invalid"},
-		{"another workspace's", other, "PORTAL.firma.ch", 409, "domain_taken"},
-		{"another cloudflare account's", other, "cloudflare.taken.ch", 409, "domain_taken"},
+		{"a proven domain of another workspace", other, "PORTAL.firma.ch", 409, "domain_taken"},
+		{"a second domain", owner, "other.firma.ch", 409, "domain_exists"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			status, out := e.do(tt.who, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": tt.host})
-			if status != tt.status || errorCode(out) != tt.code {
-				t.Fatalf("%d %s, want %d %s: %v", status, errorCode(out), tt.status, tt.code, out)
+			code, details := errorOf(out)
+			if status != tt.status || code != tt.code || details["verify"] != nil {
+				t.Fatalf("%d %s, want %d %s: %v", status, code, tt.status, tt.code, out)
 			}
 		})
 	}
-	// Refused by Cloudflare: nothing is kept, so the workspace may add another.
-	if status, out := e.do(other, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.other.ch"}); status != 201 {
-		t.Fatalf("after a refusal: %d %v", status, out)
+	// Even with the claimant's TXT record in place, a proven domain is not taken over.
+	_, otherWS := e.workspace(billing.Business, "owner")
+	e.world.set(func(w *fakeWorld) { w.txt[TXTPrefix+"portal.firma.ch"] = e.svc.Token(otherWS, "portal.firma.ch") })
+	if status, _ := e.do(other, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.firma.ch"}); status != 409 {
+		t.Fatalf("proven domain taken over: %d", status)
 	}
-	e.cf.down = true
-	admin2, _ := e.workspace(billing.Business, "owner")
-	if status, out := e.do(admin2, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.down.ch"}); status != 502 || errorCode(out) != "domain_unavailable" {
-		t.Fatalf("cloudflare down: %d %v", status, out)
+}
+
+// TestTakeOver: a name held without proof goes to the workspace that proves it owns it; the holder is told.
+func TestTakeOver(t *testing.T) {
+	e := newEnv(t)
+	squatter, sq := e.workspace(billing.Business, "owner")
+	owner, ws := e.workspace(billing.Business, "owner")
+	const host = "portal.real.ch"
+	e.add(squatter, host)
+	e.world.set(func(w *fakeWorld) { w.points[host] = true }) // the real owner's CNAME: still no proof for the squatter
+	e.tick()
+
+	status, out := e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": host})
+	code, details := errorOf(out)
+	verify, _ := details["verify"].(map[string]any)
+	if status != 409 || code != "domain_taken" || verify["name"] != TXTPrefix+host || verify["value"] != e.svc.Token(ws, host) {
+		t.Fatalf("claim without proof: %d %v", status, out)
 	}
-	e.cf.down = false
-	if status, _ := e.do(admin2, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.down.ch"}); status != 201 {
-		t.Fatal("the hostname stayed taken after cloudflare failed")
+	e.prove(ws, host)
+	if d := e.add(owner, host); d["hostname"] != host {
+		t.Fatalf("claim: %v", d)
 	}
+	if status, _ := e.row(sq); status != "removed" || e.notified(sq, "portal.domain_released") != 1 {
+		t.Fatalf("squatter after the claim: %s", status)
+	}
+	var data string
+	_ = e.raw.QueryRow(context.Background(), `SELECT data::text FROM notifications WHERE workspace_id = $1 AND event = 'portal.domain_released'`, sq).Scan(&data)
+	if !strings.Contains(data, `"claimed"`) {
+		t.Fatalf("release reason: %s", data)
+	}
+	_ = squatter
 }
 
 func TestRaceForOneHostname(t *testing.T) {
@@ -521,64 +515,41 @@ func TestRaceForOneHostname(t *testing.T) {
 			t.Fatalf("status %d", s)
 		}
 	}
-	if won != 1 || e.cf.count() != 1 {
-		t.Fatalf("%d workspaces got the hostname, cloudflare has %d", won, e.cf.count())
+	var rows int
+	_ = e.raw.QueryRow(context.Background(), `SELECT count(*) FROM workspace_domains WHERE hostname = 'portal.race.ch' AND status <> 'removed'`).Scan(&rows)
+	if won != 1 || rows != 1 {
+		t.Fatalf("%d workspaces got the hostname, %d rows", won, rows)
 	}
 }
 
 func TestJob(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	add := func(plan, host string) string {
-		b, ws := e.workspace(plan, "owner")
-		if status, out := e.do(b, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": host}); status != 201 {
-			t.Fatalf("add %s: %d %v", host, status, out)
-		}
-		return ws
-	}
-	statusOf := func(ws string) (status, problem string, checks int) {
-		_ = e.raw.QueryRow(ctx, `SELECT status, problem, checks FROM workspace_domains WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 1`, ws).
-			Scan(&status, &problem, &checks)
-		return
-	}
 
-	// Pending, not due yet: the job leaves it alone; due: backoff grows.
-	slow := add(billing.Business, "portal.slow.ch")
-	e.svc.Tick(ctx)
-	if _, _, checks := statusOf(slow); checks != 1 {
-		t.Fatalf("checked before it was due: %d", checks)
-	}
+	// Pending: backoff grows; after 14 days unfinished it is released and the owners hear.
+	b, slow := e.workspace(billing.Business, "owner")
+	e.add(b, "portal.slow.ch")
+	e.tick()
 	e.tick()
 	var wait time.Duration
 	_ = e.raw.QueryRow(ctx, `SELECT extract(epoch FROM next_check_at - last_checked_at)::bigint * interval '1 second' FROM workspace_domains WHERE workspace_id = $1`, slow).Scan(&wait)
 	if wait != 4*time.Minute {
 		t.Fatalf("backoff after 2 checks: %v", wait)
 	}
-	// A week without the CNAME: it fails.
-	if _, err := e.raw.Exec(ctx, `UPDATE workspace_domains SET created_at = now() - interval '8 days' WHERE workspace_id = $1`, slow); err != nil {
-		t.Fatal(err)
-	}
+	e.clock = e.clock.Add(releaseAfter)
 	e.tick()
-	if status, problem, _ := statusOf(slow); status != "failed" || problem != "timeout" {
-		t.Fatalf("timeout: %s %s", status, problem)
+	if status, _ := e.row(slow); status != "removed" || e.notified(slow, "portal.domain_released") != 1 {
+		t.Fatalf("after 14 days pending: %s", status)
 	}
 
-	// Cloudflare lost the hostname: it is added again.
-	lost := add(billing.Business, "portal.lost.ch")
-	e.cf.mu.Lock()
-	clear(e.cf.hosts)
-	e.cf.mu.Unlock()
+	// The plan loses the feature: off at once (not served, no certificate), back with the plan.
+	b, down := e.workspace(billing.Business, "owner")
+	e.add(b, "portal.down.ch")
+	e.prove(down, "portal.down.ch")
+	e.world.set(func(w *fakeWorld) { w.serves["portal.down.ch"] = true })
 	e.tick()
-	if status, _, _ := statusOf(lost); status != "pending" || e.cf.count() != 2 { // lost's again, slow's again
-		t.Fatalf("lost: %s, cloudflare has %d", status, e.cf.count())
-	}
-
-	// The plan lost the feature: the domain stops resolving at once and the job removes it.
-	down := add(billing.Business, "portal.down.ch")
-	e.cf.set("portal.down.ch", "active", "active")
-	e.tick()
-	if host, _ := e.scopes.ActiveDomain(ctx, down); host != "portal.down.ch" {
-		t.Fatalf("active before the downgrade: %q", host)
+	if status, _ := e.row(down); status != "active" {
+		t.Fatalf("before the downgrade: %s", status)
 	}
 	billingtest.On(t, e.st, down, billing.Pro)
 	e.scopes.Forget()
@@ -586,88 +557,32 @@ func TestJob(t *testing.T) {
 		t.Fatalf("resolves after the downgrade: %q", host)
 	}
 	e.tick()
-	if status, _, _ := statusOf(down); status != "removed" {
-		t.Fatalf("after the downgrade: %s", status)
+	if status, problem := e.row(down); status != "failed" || problem != ProblemPlan || e.certifiable("portal.down.ch") != 404 {
+		t.Fatalf("after the downgrade: %s %s", status, problem)
 	}
-
-	// Cloudflare down: the domain stays as it was and is tried again soon.
-	flaky := add(billing.Business, "portal.flaky.ch")
-	e.cf.down = true
+	billingtest.On(t, e.st, down, billing.Business)
 	e.tick()
-	e.cf.down = false
-	if status, _, _ := statusOf(flaky); status != "pending" {
-		t.Fatalf("cloudflare down: %s", status)
+	if status, _ := e.row(down); status != "active" {
+		t.Fatalf("after the upgrade: %s", status)
 	}
 
-	// A deleted workspace's domain goes.
-	gone := add(billing.Business, "portal.gone.ch")
-	if _, err := e.raw.Exec(ctx, `UPDATE workspaces SET deleted_at = now() WHERE id = $1`, gone); err != nil {
+	// A deleted workspace keeps its domain while it may be restored, then it goes.
+	b, gone := e.workspace(billing.Business, "owner")
+	e.add(b, "portal.gone.ch")
+	if _, err := e.raw.Exec(ctx, `UPDATE workspaces SET deleted_at = $2 WHERE id = $1`, gone, e.clock); err != nil {
+		t.Fatal(err)
+	}
+	e.clock = e.clock.Add(restoreFor - time.Hour)
+	if _, err := e.raw.Exec(ctx, `UPDATE workspace_domains SET status_since = $2 WHERE workspace_id <> $1`, gone, e.clock); err != nil {
 		t.Fatal(err)
 	}
 	e.tick()
-	if status, _, _ := statusOf(gone); status != "removed" {
-		t.Fatalf("deleted workspace: %s", status)
+	if status, _ := e.row(gone); status != "pending" {
+		t.Fatalf("deleted workspace within 30 days: %s", status)
 	}
-}
-
-func TestDomainCheck(t *testing.T) {
-	e := newEnv(t)
-	owner, _ := e.workspace(billing.Business, "owner")
-	e.do(owner, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": "portal.firma.ch"})
-	for host, want := range map[string]int{"portal.firma.ch": 200, "PORTAL.FIRMA.CH": 200, "other.firma.ch": 404, "app.example.com": 404, "": 404} {
-		res, err := http.Get(e.srv.URL + "/api/v1/public/portal/domain-check?domain=" + url.QueryEscape(host))
-		if err != nil {
-			t.Fatal(err)
-		}
-		res.Body.Close()
-		if res.StatusCode != want {
-			t.Errorf("domain-check %q: %d, want %d", host, res.StatusCode, want)
-		}
-	}
-}
-
-// TestSweep: active domains are checked from one listing of the zone, however many there are; a 429 pauses the job.
-func TestSweep(t *testing.T) {
-	e := newEnv(t)
-	ctx := context.Background()
-	var wss []string
-	for i := range 3 {
-		b, ws := e.workspace(billing.Business, "owner")
-		host := fmt.Sprintf("portal.sweep%d.ch", i)
-		if status, _ := e.do(b, "PUT", "/api/v1/workspace/portal/domain", map[string]string{"hostname": host}); status != 201 {
-			t.Fatal("add")
-		}
-		e.cf.set(host, "active", "active")
-		wss = append(wss, ws)
-	}
-	e.tick() // pending → active, one by one
-	list := "GET /zones/" + zone + "/custom_hostnames?page="
-	gets, lists := e.cf.asked("GET /zones/"+zone+"/custom_hostnames/"), e.cf.asked(list)
-	e.cf.set("portal.sweep1.ch", "moved", "active")
-	e.tick() // all three due: one listing, no single reads
-	if got := e.cf.asked("GET /zones/" + zone + "/custom_hostnames/"); got != gets {
-		t.Fatalf("%d single reads for active domains", got-gets)
-	}
-	if got := e.cf.asked(list); got != lists+1 {
-		t.Fatalf("%d listings, want 1", got-lists)
-	}
-	var status string
-	_ = e.raw.QueryRow(ctx, `SELECT status FROM workspace_domains WHERE workspace_id = $1`, wss[1]).Scan(&status)
-	if status != "failed" || e.notified(wss[1], "portal.domain_failed") != 1 {
-		t.Fatalf("broken domain in the sweep: %s", status)
-	}
-	var due int
-	_ = e.raw.QueryRow(ctx, `SELECT count(*) FROM workspace_domains WHERE status = 'active' AND next_check_at < now() + interval '23 hours'`).Scan(&due)
-	if due != 0 {
-		t.Fatalf("%d active domains due before tomorrow's sweep", due)
-	}
-
-	e.cf.limited = true
-	before := len(e.cf.calls)
+	e.clock = e.clock.Add(2 * time.Hour)
 	e.tick()
-	e.tick()
-	if n := len(e.cf.calls) - before; n != 1 {
-		t.Fatalf("%d calls after a 429, want the job paused after the first", n)
+	if status, _ := e.row(gone); status != "removed" {
+		t.Fatalf("deleted workspace after 30 days: %s", status)
 	}
-	e.cf.limited = false
 }

@@ -55,17 +55,11 @@ func TestLoad(t *testing.T) {
 		{"docs url with a path", map[string]string{"AUTH_DEV_SIGNIN": "true", "DOCS_URL": "http://localhost:8003/docs"}, "DOCS_URL must be an origin", nil},
 		{"local docs url in production", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "DOCS_URL": "http://localhost:8003"}, "DOCS_URL must be a public https origin", nil},
 		{"custom domains off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return !c.CustomDomains.Enabled() }},
-		{"custom domains", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok", "CLOUDFLARE_ZONE_ID": "0123456789abcdef0123456789abcdef",
-			"CUSTOM_DOMAIN_TARGET": "Portal.helvetly.com."}, "", func(c Config) bool {
-			return c.CustomDomains.Enabled() && c.CustomDomains.Target == "portal.helvetly.com" && c.CustomDomains.APIURL == "https://api.cloudflare.com/client/v4"
+		{"custom domains", map[string]string{"AUTH_DEV_SIGNIN": "true", "CUSTOM_DOMAIN_TARGET": "Domains.helvetly.com."}, "", func(c Config) bool {
+			return c.CustomDomains.Enabled() && c.CustomDomains.Target == "domains.helvetly.com" && !c.CustomDomains.Fake
 		}},
-		{"half of custom domains", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok"}, "or none", nil},
-		{"bad zone id", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok", "CLOUDFLARE_ZONE_ID": "helvetly.com",
-			"CUSTOM_DOMAIN_TARGET": "portal.helvetly.com"}, "CLOUDFLARE_ZONE_ID", nil},
-		{"bad target", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok", "CLOUDFLARE_ZONE_ID": "0123456789abcdef0123456789abcdef",
-			"CUSTOM_DOMAIN_TARGET": "https://portal.helvetly.com"}, "CUSTOM_DOMAIN_TARGET", nil},
-		{"plain http cloudflare api", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok", "CLOUDFLARE_ZONE_ID": "0123456789abcdef0123456789abcdef",
-			"CUSTOM_DOMAIN_TARGET": "portal.helvetly.com", "CLOUDFLARE_API_URL": "http://api.cloudflare.com"}, "CLOUDFLARE_API_URL", nil},
+		{"bad target", map[string]string{"AUTH_DEV_SIGNIN": "true", "CUSTOM_DOMAIN_TARGET": "https://domains.helvetly.com"}, "CUSTOM_DOMAIN_TARGET", nil},
+		{"fake domains need dev sign-in", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_DOMAINS": "true"}, "HELVETLY_E2E_FAKE_DOMAINS", nil},
 		{"media off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.MediaURL == "" }},
 		{"media origin", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "https://Media.helvetly.com/"}, "",
 			func(c Config) bool { return c.MediaURL == "https://media.helvetly.com" }},
@@ -164,7 +158,7 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CUSTOM_DOMAIN_TARGET", "HELVETLY_E2E_FAKE_DOMAINS"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"

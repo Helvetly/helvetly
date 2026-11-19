@@ -2,6 +2,7 @@ package portalscope
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -251,7 +252,13 @@ func TestDomains(t *testing.T) {
 		{"domain refuses another scope's prefix", "portal.acme.ch", "/w/beta/api/v1/public/portal/session", http.StatusNotFound, "", nil},
 		{"unknown host page is not the platform", "evil.example.org", "/", http.StatusNotFound, "", nil},
 		{"unknown host api goes on unscoped", "10.0.0.5:3333", "/api/health", http.StatusTeapot, "", &seen{"/api/health", "", false}},
-		{"unknown host keeps slug api", "127.0.0.1:3338", "/w/beta/api/v1/public/portal/session", http.StatusTeapot, "", &seen{"/api/v1/public/portal/session", "wsp_b", false}},
+		{"unknown host refuses the staff api", "evil.example.org", "/api/v1/invoices", http.StatusNotFound, "", nil},
+		{"unknown host refuses mcp", "evil.example.org", "/api/mcp", http.StatusNotFound, "", nil},
+		{"unknown host refuses the portal api", "evil.example.org", "/api/v1/public/portal/session", http.StatusNotFound, "", nil},
+		{"unknown host refuses slug api", "evil.example.org", "/w/beta/api/v1/public/portal/session", http.StatusNotFound, "", nil},
+		{"unknown host answers the certificate question", "evil.example.org", "/api/v1/public/portal/domain-check", http.StatusTeapot, "",
+			&seen{"/api/v1/public/portal/domain-check", "", false}},
+		{"loopback host keeps slug api", "127.0.0.1:3338", "/w/beta/api/v1/public/portal/session", http.StatusTeapot, "", &seen{"/api/v1/public/portal/session", "wsp_b", false}},
 		{"platform host stays the platform", "app.example.com", "/settings/", http.StatusTeapot, "", &seen{"/settings/", "", false}},
 		{"media host is ours", "media.example.com", "/api/media/x", http.StatusTeapot, "", &seen{"/api/media/x", "", false}},
 		{"slug page moves to the domain", "portal.example.com", "/w/acme/invoices/?x=1", http.StatusFound, "https://portal.acme.ch/invoices/?x=1", nil},
@@ -328,4 +335,37 @@ func withHost(host string) *http.Request {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Host = host
 	return req
+}
+
+// TestUnknownHostLookups: hosts the cache does not know cost a lookup each, capped per client address, and the cache
+// never grows past maxCached.
+func TestUnknownHostLookups(t *testing.T) {
+	f := newFake()
+	r := New("https://portal.example.com", f)
+	r.EnableDomains("https://app.example.com")
+	h := r.Handler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) }))
+	limited := 0
+	for i := range hostLookupsPerMinute + 5 {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, withHost(fmt.Sprintf("x%d.example.org", i)))
+		if rec.Code == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited != 5 || f.lookups != hostLookupsPerMinute {
+		t.Fatalf("%d refused, %d lookups", limited, f.lookups)
+	}
+	// Known hosts are still answered from the cache.
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, withHost("x1.example.org"))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("cached unknown host: %d", rec.Code)
+	}
+	for i := range maxCached + 10 {
+		_, _, _ = r.lookup(context.Background(), r.byHost, fmt.Sprintf("y%d.example.org", i), nil,
+			func() (store.PortalScope, error) { return store.PortalScope{}, store.ErrNotFound })
+	}
+	if n := len(r.byHost); n > maxCached {
+		t.Fatalf("cache holds %d hosts", n)
+	}
 }

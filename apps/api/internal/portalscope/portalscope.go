@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"slices"
@@ -48,6 +49,8 @@ type Resolver struct {
 	mu      sync.Mutex
 	byHost  map[string]cached // host → its workspace, or none
 	byWS    map[string]cached // workspace → its active domain, or none
+	// hostLimit caps the lookups of uncached hosts per client address.
+	hostLimit *auth.RateLimiter
 }
 
 // cached is one lookup, good until expires: other instances' changes show within cacheFor.
@@ -57,7 +60,17 @@ type cached struct {
 	expires time.Time
 }
 
-const cacheFor = 30 * time.Second
+// cacheFor bounds how long another instance's change takes to show here (Forget clears this instance's at once);
+// maxCached bounds the memory a flood of made-up hosts can take: a full cache is emptied and fills again.
+const (
+	cacheFor  = 15 * time.Second
+	maxCached = 10_000
+	// hostLookupsPerMinute caps, per client address, the database lookups of hosts the cache does not know.
+	hostLookupsPerMinute = 300
+)
+
+// errHostLimit: a client asked about too many unknown hosts.
+var errHostLimit = errors.New("too many host lookups")
 
 // lookupsPerMinute leaves a portal page's own requests (page, prefetches, API calls) well inside it.
 const lookupsPerMinute = 600
@@ -69,7 +82,7 @@ func New(portalURL string, db Store) *Resolver {
 		u = &url.URL{}
 	}
 	return &Resolver{base: strings.TrimRight(portalURL, "/"), host: u.Host, db: db, limit: auth.NewRateLimiter(lookupsPerMinute, time.Minute),
-		byHost: map[string]cached{}, byWS: map[string]cached{}}
+		byHost: map[string]cached{}, byWS: map[string]cached{}, hostLimit: auth.NewRateLimiter(hostLookupsPerMinute, time.Minute)}
 }
 
 // EnableDomains turns custom domains on. own are the installation's other origins or hosts (PUBLIC_URL, MEDIA_URL,
@@ -104,14 +117,18 @@ func hostname(host string) string {
 	return strings.ToLower(strings.TrimSuffix(host, "."))
 }
 
-// lookup caches find's answer for key in m; an error is not cached.
-func (r *Resolver) lookup(ctx context.Context, m map[string]cached, key string, find func() (store.PortalScope, error)) (store.PortalScope, bool, error) {
+// lookup caches find's answer for key in m; an error is not cached. allow, when set, admits a lookup the cache
+// cannot answer (errHostLimit when it refuses).
+func (r *Resolver) lookup(ctx context.Context, m map[string]cached, key string, allow func() bool, find func() (store.PortalScope, error)) (store.PortalScope, bool, error) {
 	now := time.Now()
 	r.mu.Lock()
 	c, ok := m[key]
 	r.mu.Unlock()
 	if ok && now.Before(c.expires) {
 		return c.scope, c.found, nil
+	}
+	if allow != nil && !allow() {
+		return store.PortalScope{}, false, errHostLimit
 	}
 	scope, err := find()
 	found := err == nil
@@ -125,14 +142,19 @@ func (r *Resolver) lookup(ctx context.Context, m map[string]cached, key string, 
 		return scope, false, err
 	}
 	r.mu.Lock()
+	if len(m) >= maxCached {
+		clear(m)
+	}
 	m[key] = cached{scope: scope, found: found, expires: now.Add(cacheFor)}
 	r.mu.Unlock()
 	return scope, found, nil
 }
 
-// domainScope is the workspace whose active domain host is.
-func (r *Resolver) domainScope(ctx context.Context, host string) (store.PortalScope, bool, error) {
-	return r.lookup(ctx, r.byHost, host, func() (store.PortalScope, error) { return r.db.PortalScopeByDomain(ctx, host) })
+// domainScope is the workspace whose active domain req's host is.
+func (r *Resolver) domainScope(req *http.Request) (store.PortalScope, bool, error) {
+	host := hostname(req.Host)
+	return r.lookup(req.Context(), r.byHost, host, func() bool { return r.hostLimit.Allow(req) },
+		func() (store.PortalScope, error) { return r.db.PortalScopeByDomain(req.Context(), host) })
 }
 
 // ActiveDomain is the workspace's active domain, "" when it has none (or custom domains are off).
@@ -140,7 +162,7 @@ func (r *Resolver) ActiveDomain(ctx context.Context, workspaceID string) (string
 	if !r.domains {
 		return "", nil
 	}
-	scope, found, err := r.lookup(ctx, r.byWS, workspaceID, func() (store.PortalScope, error) {
+	scope, found, err := r.lookup(ctx, r.byWS, workspaceID, nil, func() (store.PortalScope, error) {
 		host, err := r.db.ActivePortalDomain(ctx, workspaceID)
 		return store.PortalScope{WorkspaceID: workspaceID, Domain: host}, err
 	})
@@ -199,24 +221,43 @@ func (r *Resolver) URLOf(ctx context.Context, s store.PortalScope) (string, erro
 	return r.domainURL(domain), nil
 }
 
-// byDomain serves a request for a host that is not the installation's own and reports whether it did: an active
-// domain's portal, or 404 for a page of an unknown host (never the platform). The API of an unknown host is left to
-// the path rules (health checks reach the origin by its address, a development proxy forwards /w/<slug>/api/…); on a
-// domain only the portal's API is served.
-func (r *Resolver) byDomain(w http.ResponseWriter, req *http.Request, next http.Handler) bool {
-	api := strings.HasPrefix(req.URL.Path, "/api/") || strings.HasPrefix(req.URL.Path, "/w/") && strings.Contains(req.URL.Path, "/api/")
-	scope, found, err := r.domainScope(req.Context(), hostname(req.Host))
+// originAPI are the paths any host may reach: the health checks, and the origin's certificate question.
+func originAPI(path string) bool {
+	return path == "/api/health" || path == "/api/ready" || path == "/api/v1/public/portal/domain-check"
+}
+
+// byDomain serves a request for a host that is not the installation's own: an active domain's portal (its pages and
+// the portal's API, nothing else), and for any other host only the health checks and the certificate question, 404
+// otherwise. Never the platform, its API or another scope's prefix.
+func (r *Resolver) byDomain(w http.ResponseWriter, req *http.Request, next http.Handler) {
+	api := strings.HasPrefix(req.URL.Path, "/api/") || strings.HasPrefix(req.URL.Path, "/w/")
+	if originAPI(req.URL.Path) {
+		next.ServeHTTP(w, req)
+		return
+	}
+	scope, found, err := r.domainScope(req)
 	switch {
+	case errors.Is(err, errHostLimit):
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
 	case err != nil:
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
-	case !found && api:
-		return false
 	case !found || api && !portalAPI(req.URL.Path):
 		writeNotFound(w, api)
 	default:
 		next.ServeHTTP(w, req.WithContext(WithScope(req.Context(), scope)))
 	}
-	return true
+}
+
+// ours: host is one of the installation's (PORTAL_URL's, the others EnableDomains names) or a loopback address,
+// which only a local proxy or health check sends.
+func (r *Resolver) ours(host string) bool {
+	h := hostname(host)
+	if slices.Contains(r.own, h) || h == "localhost" {
+		return true
+	}
+	ip, err := netip.ParseAddr(strings.Trim(h, "[]"))
+	return err == nil && ip.IsLoopback()
 }
 
 type ctxKey struct{}
@@ -241,7 +282,8 @@ func Prefix(slug string) string { return "/w/" + slug }
 // proxies them from its own. Every other request goes on unchanged.
 func (r *Resolver) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if r.domains && !slices.Contains(r.own, hostname(req.Host)) && r.byDomain(w, req, next) {
+		if r.domains && !r.ours(req.Host) {
+			r.byDomain(w, req, next)
 			return
 		}
 		asked, rest, ok := strings.Cut(strings.TrimPrefix(req.URL.Path, "/w/"), "/")
