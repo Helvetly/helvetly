@@ -95,6 +95,11 @@ test('instalment schedule: a CHF 600 credit after full payment is refunded and s
     Array(5).fill('200.00'),
   )
   await page
+    .getByRole('dialog', { name: 'Pay in instalments' })
+    .getByRole('button', { name: 'Save' })
+    .click()
+  await expect(page.getByText(/^5× · /)).toBeVisible()
+  await page
     .getByRole('button', { name: /^Issue/ })
     .first()
     .click()
