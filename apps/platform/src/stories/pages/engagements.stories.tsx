@@ -4,6 +4,7 @@ import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 
 import { EngagementsPage } from '@/components/engagements/engagements-page'
 import type { Entry, Period } from '@/lib/engagements'
+import { sampleSettings } from '@/test/invoice-api'
 
 import { sessionHandler } from '../screen-fixtures'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
@@ -33,6 +34,52 @@ export const Detail: Story = {
 }
 export const DetailDark = dark(Detail)
 export const DetailPhone = phone(Detail)
+
+/**
+ * The new-engagement drawer's choices are full-width rows: every title on one line, the marks in one column, and
+ * the extra-hours price shows the regular price's currency and basis. "Paid separately" comes first and is the default.
+ */
+export const NewForm: Story = {
+  parameters: pageParameters('/engagements', { new: '1' }, [
+    http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+  ]),
+  play: async () => {
+    // The drawer first shows a loader in a sheet of its own; the form replaces it once the settings are in.
+    const radios = await within(document.body).findAllByRole('radio')
+    const dialog = within(radios[0]!.closest<HTMLElement>('[role=dialog]')!)
+    for (const name of ['Schedule', 'Billing']) {
+      const rows = radios
+        .filter((radio) => radio.closest('[role=radiogroup]')?.getAttribute('aria-label') === name)
+        .map((radio) => radio.closest('label')!)
+      expect(rows.length).toBeGreaterThan(1)
+      const widths = new Set(rows.map((row) => Math.round(row.getBoundingClientRect().width)))
+      expect(widths.size).toBe(1)
+      for (const row of rows) {
+        const title = row.querySelector<HTMLElement>('[id$=-title]')!
+        const line = parseFloat(getComputedStyle(title).lineHeight)
+        expect(title.getBoundingClientRect().height).toBeLessThan(line * 1.5)
+      }
+    }
+    // A new engagement starts as "Paid separately", listed first, and the preview says nothing is invoiced.
+    const billing = within(dialog.getByRole('radiogroup', { name: 'Billing' })).getAllByRole(
+      'radio',
+    )
+    expect(billing.map((radio) => radio.getAttribute('value'))).toEqual([
+      'paid',
+      'advance',
+      'arrears',
+    ])
+    expect(dialog.getByRole('radio', { name: 'Paid separately' })).toBeChecked()
+    // the side panel is hidden on phones, so only its presence counts
+    expect(dialog.getByText(/Nothing is invoiced from this engagement/)).toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('radio', { name: 'Advance' }))
+    await userEvent.click(dialog.getByRole('button', { name: /Different price for extra/ }))
+    const overage = await dialog.findByRole('textbox', { name: /Price for extra/ })
+    await expect(overage.parentElement).toHaveTextContent(/^CHF\s*Net$/)
+  },
+}
+export const NewFormDark = dark(NewForm)
+export const NewFormPhone = phone(NewForm)
 
 const middle = (rect: DOMRect) => rect.top + rect.height / 2
 

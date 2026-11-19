@@ -1,7 +1,6 @@
 'use client'
 
 import { HelpTip } from '@helvetly/ui/components/form-field'
-import { cn } from '@helvetly/ui/lib/utils'
 import { Check, type LucideIcon } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
@@ -56,7 +55,11 @@ export type FormChoice<T extends string> = {
   icon: LucideIcon
 }
 
-/** Mutually exclusive choices as a pair of cards (native radios: the arrow keys move the choice). */
+/**
+ * Mutually exclusive choices as a stack of full-width rows (native radios: the arrow keys move the choice).
+ * One column at every width, so a long title or a German description never wraps into a narrow card;
+ * every row takes the tallest one's height.
+ */
 export function FormChoiceCards<T extends string>({
   label,
   value,
@@ -70,17 +73,13 @@ export function FormChoiceCards<T extends string>({
 }) {
   const group = useId()
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className={cn('grid gap-3', options.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
-    >
+    <div role="radiogroup" aria-label={label} className="grid auto-rows-fr gap-2">
       {options.map(({ value: option, title, text, icon: Icon }) => {
         const id = `${group}-${option}`
         return (
           <label
             key={option}
-            className="group/choice relative grid cursor-pointer gap-0.5 rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:bg-muted/30 has-checked:border-foreground/80 has-checked:bg-muted/40 has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
+            className="group/choice flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:bg-muted/30 has-checked:border-foreground/80 has-checked:bg-muted/40 has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
           >
             <input
               type="radio"
@@ -93,20 +92,24 @@ export function FormChoiceCards<T extends string>({
               className="sr-only"
             />
             <span
-              id={`${id}-title`}
-              className="flex items-center gap-1.5 pr-5 text-[13.5px] font-medium"
+              aria-hidden
+              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-has-checked/choice:text-foreground"
             >
-              <Icon aria-hidden className="size-3.5 stroke-[1.75] text-muted-foreground" />
-              {title}
+              <Icon className="size-4 stroke-[1.75]" />
             </span>
-            <span id={`${id}-text`} className="text-[12.5px] text-muted-foreground">
-              {text}
+            <span className="grid min-w-0 flex-1 gap-0.5">
+              <span id={`${id}-title`} className="text-[13.5px] font-medium">
+                {title}
+              </span>
+              <span id={`${id}-text`} className="text-[12.5px] text-muted-foreground">
+                {text}
+              </span>
             </span>
             <span
               aria-hidden
-              className="absolute top-2.5 right-2.5 hidden size-4 items-center justify-center rounded-full bg-foreground text-background group-has-checked/choice:flex"
+              className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-has-checked/choice:border-foreground group-has-checked/choice:bg-foreground group-has-checked/choice:text-background"
             >
-              <Check className="size-2.5 stroke-[3]" />
+              <Check className="hidden size-2.5 stroke-[3] group-has-checked/choice:block" />
             </span>
           </label>
         )
