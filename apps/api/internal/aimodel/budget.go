@@ -31,6 +31,9 @@ var (
 	// ErrCap: the call is larger than one call, operation or batch may be (Caps, MaxInputTokens), apart from the
 	// monthly allowance.
 	ErrCap = errors.New("input exceeds what one model call may use")
+	// ErrGroupCap (always with ErrCap): the group (an import batch) has spent its Caps.Group; another call of it is
+	// refused however small, a new group is not.
+	ErrGroupCap = errors.New("the batch has spent what one batch may use")
 	// ErrAttempts: this step already made its calls (maxAttempts).
 	ErrAttempts = errors.New("model call attempts used")
 	// ErrUnfunded: the cost budget cannot pay for the token pool at the model's prices; an operator must fund it or
@@ -50,8 +53,10 @@ const (
 	maxAttempts = 2
 	minOutput   = 16
 	// staleAfter: a call still reserved this long ended with its process; its outcome is unknown. Longer than any
-	// Generate's deadline (Call.Timeout).
-	staleAfter = 10 * time.Minute
+	// Generate's deadline (MaxAnswerTimeout) and its settlement (settleTimeout), so a live call is never taken for one.
+	staleAfter = 5 * time.Minute
+	// settleTimeout bounds recording a call's outcome after the provider answered.
+	settleTimeout = 5 * time.Second
 	// answerTimeout bounds a Generate a person waits on in an HTTP request, under a proxy's 100 s limit.
 	answerTimeout = 90 * time.Second
 	// MaxAnswerTimeout bounds a background Generate (an import file part, filing), which reads a whole PDF. A job's
@@ -128,6 +133,12 @@ type Budget struct {
 // time left. A provider still busy then (Busy) and with a fallback model (NewOpenAI) is asked once on that model,
 // reserved and priced at its card, while half of the call's time is left.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
+	reply, err := b.generateAll(ctx, p, ws, req, call)
+	b.watch(ctx, ws.ID, err)
+	return reply, err
+}
+
+func (b Budget) generateAll(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
 	timeout := answerTimeout
 	if call.Timeout > 0 {
 		timeout = min(call.Timeout, MaxAnswerTimeout)
@@ -296,8 +307,11 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 		if err != nil {
 			return err
 		}
-		if _, busy, err := q.AICallInFlight(ctx, ws.ID, b.Pool); err != nil || busy {
-			return errors.Join(err, ErrUncertain)
+		// Only a busy pool is ErrUncertain (a caller waits on it without spending a try); a database error is not.
+		if _, busy, err := q.AICallInFlight(ctx, ws.ID, b.Pool); err != nil {
+			return fmt.Errorf("model call in flight: %w", err)
+		} else if busy {
+			return ErrUncertain
 		}
 		if b.Gate != nil {
 			if err := b.Gate(ctx, q, ws.ID); err != nil {
@@ -336,6 +350,9 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 			}
 		}
 		minCost := card.Cost(max(input, 0), 0, minOutput)
+		if call.Caps.Group > 0 && call.Caps.Group-groupSpent < card.Cost(0, 0, minOutput) {
+			return errors.Join(ErrCap, ErrGroupCap)
+		}
 		if capLeft < minCost && input < 0 {
 			return ErrCap
 		}
@@ -354,8 +371,10 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 			Operation: call.Operation, Step: call.Step, Group: call.Group, RateCard: card.Version, Model: card.Model,
 			Tier: card.Tier, Region: card.Region, ReservedTokens: input + output, ReservedMicros: card.Cost(input, 0, output),
 			CreatedAt: b.Now()}
-		if ok, err := q.InsertAICall(ctx, row); err != nil || !ok {
-			return errors.Join(err, ErrUncertain)
+		if ok, err := q.InsertAICall(ctx, row); err != nil {
+			return fmt.Errorf("reserve model call: %w", err)
+		} else if !ok {
+			return ErrUncertain
 		}
 		u.TokensReserved += row.ReservedTokens
 		u.CostReserved += row.ReservedMicros
@@ -392,7 +411,7 @@ func allowance(ctx context.Context, q store.Q, workspaceID string, a Allowance) 
 // settle records the call's outcome against the month it was admitted in, so a call that ends after midnight never
 // moves into the new month's budget.
 func (b Budget) settle(ctx context.Context, card RateCard, row store.AICall, reply Reply, known bool) error {
-	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
 	return b.DB.Tx(cleanup, func(q store.Q) error {
 		u, err := q.LockHeidiUsage(cleanup, row.WorkspaceID, row.Pool, row.Period, b.Now())
@@ -411,20 +430,35 @@ func (b Budget) settle(ctx context.Context, card RateCard, row store.AICall, rep
 				row.Input, row.CachedInput, row.Output, row.Reasoning = &r.Input, &r.CachedInput, &r.Output, &r.Reasoning
 				row.ReportedModel, row.ReportedTier, row.RequestID = r.Model, r.Tier, r.RequestID
 			}
-			if cost, ok := card.price(reply.Usage, total); ok {
-				row.Status, row.CostMicros = "settled", &cost
-				u.CostMicros += cost
-				u.CostReserved -= row.ReservedMicros
+			cost, ok := card.price(reply.Usage, total)
+			if ok {
+				row.Status = "settled"
 				if cost > row.ReservedMicros {
 					slog.WarnContext(cleanup, "model call cost more than it reserved", "call", row.ID, "reserved", row.ReservedMicros, "cost", cost)
 				}
 			} else {
-				slog.WarnContext(cleanup, "model call cost needs reconciliation", "call", row.ID, "workspace", row.WorkspaceID)
+				// Not priced: charged what its known tokens cost at the card's highest rate, at most its reservation,
+				// so the month never holds the reservation forever; cost_pending marks it for reconciliation.
+				tokens := total
+				if r := reply.Usage; r != nil {
+					tokens = max(tokens, r.Input+r.Output) // an inconsistent breakdown: the larger count
+				}
+				cost = card.WorstCost(tokens)
+				if tokens <= row.ReservedTokens { // the reservation bounds what the request allowed
+					cost = min(cost, row.ReservedMicros)
+				}
+				slog.WarnContext(cleanup, "model call cost needs reconciliation, charged at its highest rate", "call", row.ID,
+					"workspace", row.WorkspaceID, "cost_micros", cost)
 			}
+			row.CostMicros = &cost
+			u.CostMicros += cost
+			u.CostReserved = max(u.CostReserved-row.ReservedMicros, 0)
 		} else {
 			chargeReservation(cleanup, &row, &u, "unknown_usage:"+cmp.Or(row.Failure, "no_usage"))
 		}
-		if err := q.SettleAICall(cleanup, row, b.Now()); err != nil {
+		if err := q.SettleAICall(cleanup, row, b.Now()); errors.Is(err, store.ErrNotFound) {
+			return nil // a sweep took it for stale and charged its whole reservation, at least what it used
+		} else if err != nil {
 			return err
 		}
 		return q.SaveHeidiUsage(cleanup, row.WorkspaceID, row.Pool, row.Period, u, b.Now())
@@ -445,26 +479,48 @@ func chargeReservation(ctx context.Context, row *store.AICall, u *store.HeidiUsa
 		"pool", row.Pool, "period", row.Period, "failure", failure, "tokens", tokens, "cost_micros", cost)
 }
 
-// expireStale settles a call left reserved by a process that died at its whole reservation, never released as if
-// nothing had been spent.
+// expireStale settles the pool's call left reserved by a process that died at its whole reservation, never released
+// as if nothing had been spent.
 func (b Budget) expireStale(ctx context.Context, workspaceID string) error {
 	c, ok, err := b.DB.AICallInFlight(ctx, workspaceID, b.Pool)
 	if err != nil || !ok || b.Now().Sub(c.CreatedAt) < staleAfter {
 		return err
 	}
-	return b.DB.Tx(ctx, func(q store.Q) error {
-		u, err := q.LockHeidiUsage(ctx, workspaceID, b.Pool, c.Period, b.Now())
+	return expire(ctx, b.DB, c, b.Now())
+}
+
+func expire(ctx context.Context, db *store.Store, c store.AICall, now time.Time) error {
+	return db.Tx(ctx, func(q store.Q) error {
+		u, err := q.LockHeidiUsage(ctx, c.WorkspaceID, c.Pool, c.Period, now)
 		if err != nil {
 			return err
 		}
 		chargeReservation(ctx, &c, &u, "unknown_usage:stale")
-		if err := q.SettleAICall(ctx, c, b.Now()); errors.Is(err, store.ErrNotFound) {
+		if err := q.SettleAICall(ctx, c, now); errors.Is(err, store.ErrNotFound) {
 			return nil // settled meanwhile
 		} else if err != nil {
 			return err
 		}
-		return q.SaveHeidiUsage(ctx, workspaceID, b.Pool, c.Period, u, b.Now())
+		return q.SaveHeidiUsage(ctx, c.WorkspaceID, c.Pool, c.Period, u, now)
 	})
+}
+
+// ExpireStale settles every workspace's stale call (expireStale), so a pool a dead process left in flight is free
+// again within staleAfter and a sweep interval, whether or not anyone asks the model meanwhile.
+func ExpireStale(ctx context.Context, db *store.Store, now time.Time) error {
+	calls, err := db.StaleAICalls(ctx, now.Add(-staleAfter))
+	if err != nil {
+		return fmt.Errorf("list stale model calls: %w", err)
+	}
+	// One call that fails to settle never holds back the others' pools.
+	var errs []error
+	for _, c := range calls {
+		if err := expire(ctx, db, c, now); err != nil {
+			slog.ErrorContext(ctx, "settle stale model call", "call", c.ID, "workspace", c.WorkspaceID, "pool", c.Pool, "error", err)
+			errs = append(errs, fmt.Errorf("settle stale model call %s: %w", c.ID, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // SettleUncertain, run at startup, settles the calls an earlier release left "uncertain" at their whole reservation
@@ -485,10 +541,10 @@ func SettleUncertain(ctx context.Context, db *store.Store, now time.Time) error 
 	return nil
 }
 
-// RunSettleUncertain repeats SettleUncertain every few minutes until ctx ends: during a rolling deploy an instance of
-// an earlier release may still leave a call uncertain.
-func RunSettleUncertain(ctx context.Context, db *store.Store) {
-	tick := time.NewTicker(5 * time.Minute)
+// RunSweep settles stale calls (ExpireStale) every minute, and calls an instance of an earlier release may still
+// leave uncertain during a rolling deploy (SettleUncertain), until ctx ends.
+func RunSweep(ctx context.Context, db *store.Store) {
+	tick := time.NewTicker(time.Minute)
 	defer tick.Stop()
 	for {
 		select {
@@ -496,8 +552,9 @@ func RunSettleUncertain(ctx context.Context, db *store.Store) {
 			return
 		case <-tick.C:
 		}
-		if err := SettleUncertain(ctx, db, time.Now()); err != nil && ctx.Err() == nil {
-			slog.ErrorContext(ctx, "settle uncertain model calls", "error", err)
+		now := time.Now()
+		if err := errors.Join(ExpireStale(ctx, db, now), SettleUncertain(ctx, db, now)); err != nil && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "sweep model calls", "error", err)
 		}
 	}
 }

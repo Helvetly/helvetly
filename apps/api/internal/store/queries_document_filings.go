@@ -61,6 +61,14 @@ func (q Q) ClaimFilings(ctx context.Context, now time.Time, lease time.Duration,
 	return out, rows.Err()
 }
 
+// DeferFiling makes a queued filing due again at next without counting its claim as a try: it waited for its
+// workspace's model pool and never ran.
+func (q Q) DeferFiling(ctx context.Context, documentID string, next time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE document_filings SET due_at = $2, attempts = greatest(attempts - 1, 0)
+		WHERE document_id = $1 AND status = 'queued'`, documentID, next)
+	return err
+}
+
 // RetryFiling makes a queued filing due again at next.
 func (q Q) RetryFiling(ctx context.Context, documentID string, next time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE document_filings SET due_at = $2 WHERE document_id = $1 AND status = 'queued'`, documentID, next)

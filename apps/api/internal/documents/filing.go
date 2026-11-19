@@ -157,6 +157,12 @@ func (s *Service) file(ctx context.Context, j store.FilingJob) {
 	if err == nil {
 		return
 	}
+	if errors.Is(err, aimodel.ErrUncertain) { // the pool is busy: wait without spending a try, it frees within its stale window
+		if rerr := s.db.DeferFiling(ctx, j.DocumentID, s.now().Add(10*time.Second)); rerr != nil {
+			s.log.ErrorContext(ctx, "defer AI filing", "document", j.DocumentID, "error", rerr)
+		}
+		return
+	}
 	if retryable(err) && j.Attempts < filingTries {
 		next := s.now().Add(10 * time.Second << min(j.Attempts-1, 5))
 		if rerr := s.db.RetryFiling(ctx, j.DocumentID, next); rerr != nil {
@@ -171,12 +177,9 @@ func (s *Service) file(ctx context.Context, j store.FilingJob) {
 	}
 }
 
-// retryable: another model call of the workspace is in flight, the provider failed (charged at most its reservation;
-// aimodel's attempts per step stop a second retry), or a database or storage error; never a refusal or a used allowance.
+// retryable: the provider failed (charged at most its reservation; aimodel's attempts per step stop a second retry),
+// or a database or storage error; never a refusal or a used allowance.
 func retryable(err error) bool {
-	if errors.Is(err, aimodel.ErrUncertain) {
-		return true
-	}
 	for _, final := range []error{errSkip, aimodel.ErrQuota, aimodel.ErrTooLarge, aimodel.ErrCap,
 		aimodel.ErrAttempts, aimodel.ErrUnfunded, store.ErrFeatureDenied, store.ErrNotFound} {
 		if errors.Is(err, final) {

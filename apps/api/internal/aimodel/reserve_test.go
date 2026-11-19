@@ -204,7 +204,9 @@ func TestUnknownOutcomeIsChargedItsReservationAndTheMonthStaysOpen(t *testing.T)
 	}
 }
 
-func TestTotalWithoutBreakdownSettlesTokensAndKeepsTheCostPending(t *testing.T) {
+// A total without a breakdown is charged at the card's highest rate, at most its reservation: nothing stays reserved
+// for a reconciliation nobody runs, which slowly ate the month's cost guard.
+func TestTotalWithoutBreakdownIsChargedItsHighestCost(t *testing.T) {
 	db, raw, ws := reserveDB(t)
 	total := int64(130)
 	p := &scripted{input: 100, reply: func(Request) (Reply, error) { return Reply{Text: "ok", Tokens: &total}, nil }}
@@ -213,8 +215,8 @@ func TestTotalWithoutBreakdownSettlesTokensAndKeepsTheCostPending(t *testing.T) 
 		t.Fatal(err)
 	}
 	u := usageOf(t, db, ws, "2026-11")
-	if u.TokensUsed != 130 || u.TokensReserved != 0 || u.CostMicros != 0 || u.CostReserved != luna.Cost(100, 0, 100) || u.Uncertain {
-		t.Fatalf("usage = %+v, want tokens settled and the cost kept reserved, never zero", u)
+	if want := min(luna.Cost(100, 0, 100), luna.WorstCost(130)); u != (store.HeidiUsage{TokensUsed: 130, CostMicros: want}) {
+		t.Fatalf("usage = %+v, want tokens settled and %d micro-USD charged, nothing held reserved", u, want)
 	}
 	if s := statuses(t, raw); s[0] != "cost_pending" {
 		t.Fatalf("calls = %v", s)

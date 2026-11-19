@@ -25,6 +25,9 @@ const (
 	maxAttempts     = 4
 	maxOutputTokens = 16_000
 	maxChunkRecords = 500
+	// poolWait: a file whose workspace's model pool is busy (another call in flight) is read again this soon, without
+	// counting the try; the pool frees within aimodel's stale window at worst.
+	poolWait = 20 * time.Second
 )
 
 // Run reads queued files every few seconds until ctx ends; a person waits on the result.
@@ -74,6 +77,10 @@ func (s *Service) process(ctx context.Context, f store.ImportFile) {
 	if f.Attempts <= maxAttempts { // more claims than tries: earlier ones ended without finishing (the instance died)
 		err = s.extract(ctx, f)
 	}
+	if errors.Is(err, aimodel.ErrUncertain) {
+		s.deferFile(ctx, f)
+		return
+	}
 	status, reason, retry := "done", (*string)(nil), (*time.Time)(nil)
 	if err != nil {
 		var fail failure
@@ -97,6 +104,18 @@ func (s *Service) process(ctx context.Context, f store.ImportFile) {
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "record import file", "file", f.ID, "error", err)
+	}
+}
+
+// deferFile queues f again after poolWait without spending its try. A file no longer claimed (its batch cancelled or
+// deleted, or the claim lapsed to another worker) is left as it is.
+func (s *Service) deferFile(ctx context.Context, f store.ImportFile) {
+	err := s.db.DeferImportFile(ctx, f.ID, f.Attempts, s.now().Add(poolWait), s.now())
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		s.log.InfoContext(ctx, "import file no longer claimed, not deferred", "file", f.ID)
+	case err != nil:
+		s.log.ErrorContext(ctx, "defer import file", "file", f.ID, "error", err)
 	}
 }
 
@@ -331,13 +350,15 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 		return "", nil, failure{"This workspace has used its monthly AI import and filing allowance. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrTooLarge):
 		return "", nil, failure{"This part of the file is larger than the remaining monthly AI import and filing allowance."}
+	case errors.Is(err, aimodel.ErrGroupCap):
+		return "", nil, failure{"This import has used what one import may spend on the AI model, so this file was not read. Upload it again as a new import."}
 	case errors.Is(err, aimodel.ErrCap):
 		return "", nil, failure{"This file is larger than one AI import may read, whatever is left of the monthly allowance. Split it into smaller files and upload them again."}
 	case errors.Is(err, aimodel.ErrAttempts):
 		return "", nil, failure{aiNoAnswer}
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return "", nil, failure{"AI import is paused while the service's AI budget is being updated. Nothing more was sent to the AI model."}
-	case err != nil: // another call in flight, or a provider failure (charged at most its reservation): retried
+	case err != nil: // another call in flight (waits, process), or a provider failure (charged at most its reservation): retried
 		return "", nil, err
 	}
 	var out map[string]json.RawMessage
