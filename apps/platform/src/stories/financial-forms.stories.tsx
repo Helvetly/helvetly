@@ -56,6 +56,23 @@ export const ProductOpeningFocus: Story = {
     await expect(within(document.body).getByRole('textbox', { name: 'Name' })).toHaveFocus()
   },
 }
+// Every section heading carries its icon tile, as in the client form.
+export const ProductSectionIcons: Story = {
+  render: () => <ProductForm defaults={defaults} onClose={fn()} onSaved={fn()} />,
+  play: async () => {
+    const headings = within(document.body).getAllByRole('heading', { level: 3 })
+    await expect(headings.map((heading) => heading.textContent)).toEqual([
+      'Basics',
+      'Price',
+      'Details',
+    ])
+    await expect(
+      headings.filter((heading) =>
+        heading.parentElement?.querySelector('[data-slot="section-icon"] svg'),
+      ),
+    ).toHaveLength(3)
+  },
+}
 const savedProduct = fn()
 const productInput = fn()
 const savedClient = fn()
