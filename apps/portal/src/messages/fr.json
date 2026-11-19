@@ -214,9 +214,11 @@
   "dynamicWeek": "semaine",
   "dynamicOn": " le {value1}",
   "dynamicOn2": "{verb} le {value2}",
-  "emailIsAClientOfSeveralSuppliers": "{email} a plusieurs comptes. Lequel voulez-vous ouvrir ?",
   "portalAddressNotFound": "Cette adresse de portail n’existe pas",
   "portalAddressNotFoundHint": "Vérifiez le lien dans l’e-mail de votre fournisseur ou demandez-lui l’adresse actuelle de son portail.",
+  "signedInAs": "Connecté en tant que",
   "thatSignInHasExpired": "Cette connexion a expiré. Saisissez votre e-mail pour recevoir un nouveau code.",
+  "useAnotherEmail": "Utiliser une autre adresse e-mail",
+  "yourAddressHasSeveralAccounts": "Votre adresse a plusieurs comptes. Lequel voulez-vous ouvrir ?",
   "zRich": "Zurich"
 }

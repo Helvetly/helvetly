@@ -209,6 +209,10 @@ export const CodeThenAccountChooser: Story = {
       canvas.getByRole('button', { name: 'Müller Treuhand AG as Keller AG' }),
     ).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Studio Berg as Anna Keller' })).toBeVisible()
+    await expect(canvas.getByText('anna@example.ch')).toBeVisible()
+    // Another address: back to the email step.
+    await userEvent.click(canvas.getByRole('button', { name: 'Use another email' }))
+    await expect(await canvas.findByLabelText('Email')).toBeVisible()
   },
 }
 

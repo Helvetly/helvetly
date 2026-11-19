@@ -1,4 +1,5 @@
 'use client'
+import { Button } from '@helvetly/ui/components/button'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
@@ -9,7 +10,7 @@ import { translate } from '@/lib/i18n'
 import { choosePortalAccount, type PortalAccount } from '@/lib/portal'
 import { shorten } from '@/lib/text'
 
-import { WorkspaceMark } from './portal-bits'
+import { LoginAvatar, WorkspaceMark } from './portal-bits'
 
 // The header's cut: the supplier's name after 16 characters, the whole of it in a tooltip.
 const NAME_CHARS = 16
@@ -18,15 +19,18 @@ const leave = (url: string) => window.location.assign(url)
 
 /**
  * The first screen after the code on the shared portal for an address with several clients: one row per account,
- * each opening its supplier's own portal address. `go` leaves for that address (a test's spy in stories).
+ * each opening its supplier's own portal address, under who signed in, with the way back to another address.
+ * `go` leaves for the chosen address (a test's spy in stories).
  */
 export function PortalAccountChooser({
   email,
   accounts,
+  onBack,
   go = leave,
 }: {
   email: string
   accounts: PortalAccount[]
+  onBack: () => void
   go?: (url: string) => void
 }) {
   const choose = useMutation({ mutationFn: choosePortalAccount, onSuccess: (url) => go(url) })
@@ -35,8 +39,24 @@ export function PortalAccountChooser({
       <div className="grid gap-1.5 text-center">
         <h1 className="text-page font-semibold tracking-tight">{translate('chooseAnAccount')}</h1>
         <p className="text-body text-balance text-muted-foreground">
-          {translate('emailIsAClientOfSeveralSuppliers', { email })}
+          {translate('yourAddressHasSeveralAccounts')}
         </p>
+      </div>
+      <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-3">
+        <LoginAvatar name={email} src="" />
+        <span className="grid min-w-0 flex-1 leading-tight">
+          <span className="text-caption text-muted-foreground">{translate('signedInAs')}</span>
+          <span className="truncate text-body-sm font-medium">{email}</span>
+        </span>
+        <Button
+          variant="link"
+          size="sm"
+          className="shrink-0"
+          disabled={choose.isPending || choose.isSuccess}
+          onClick={onBack}
+        >
+          {translate('useAnotherEmail')}
+        </Button>
       </div>
       <ul className="grid gap-2">
         {accounts.map((account) => {

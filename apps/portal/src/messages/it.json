@@ -214,9 +214,11 @@
   "dynamicWeek": "settimana",
   "dynamicOn": " il {value1}",
   "dynamicOn2": "{verb} il {value2}",
-  "emailIsAClientOfSeveralSuppliers": "{email} ha più di un account. Quale vuoi aprire?",
   "portalAddressNotFound": "Questo indirizzo del portale non esiste",
   "portalAddressNotFoundHint": "Controlla il link nell’email del tuo fornitore o chiedigli l’indirizzo attuale del portale.",
+  "signedInAs": "Accesso effettuato come",
   "thatSignInHasExpired": "Questo accesso è scaduto. Inserisci la tua email per ricevere un nuovo codice.",
+  "useAnotherEmail": "Usa un'altra email",
+  "yourAddressHasSeveralAccounts": "Il tuo indirizzo ha più di un account. Quale vuoi aprire?",
   "zRich": "Zurigo"
 }

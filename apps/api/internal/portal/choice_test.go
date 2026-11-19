@@ -192,3 +192,15 @@ func TestTicketRechecksAccess(t *testing.T) {
 		t.Fatalf("redeem: %d", res.StatusCode)
 	}
 }
+
+// TestChooseLandsOnTheActiveDomain: a workspace with its own active domain is opened at that domain's root.
+func TestChooseLandsOnTheActiveDomain(t *testing.T) {
+	e := scopedEnv(t)
+	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at, status_since) VALUES
+		('dom_b', 'wsp_b', 'portal.other.ch', 'active', now(), 'usr', now(), now(), now())`)
+	c, csrf, _ := e.offer()
+	_, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
+	if url, _ := out["url"].(string); !strings.HasPrefix(url, "http://portal.other.ch/login/#ticket=") {
+		t.Fatalf("url: %v", out)
+	}
+}

@@ -214,9 +214,11 @@
   "dynamicWeek": "week",
   "dynamicOn": " on {value1}",
   "dynamicOn2": "{verb} on {value2}",
-  "emailIsAClientOfSeveralSuppliers": "{email} has more than one account. Which one would you like to open?",
   "portalAddressNotFound": "This portal address doesn’t exist",
   "portalAddressNotFoundHint": "Check the link in your supplier’s email, or ask them for their current portal address.",
+  "signedInAs": "Signed in as",
   "thatSignInHasExpired": "That sign-in has expired. Enter your email to get a new code.",
+  "useAnotherEmail": "Use another email",
+  "yourAddressHasSeveralAccounts": "Your address has more than one account. Which one would you like to open?",
   "zRich": "Zürich"
 }

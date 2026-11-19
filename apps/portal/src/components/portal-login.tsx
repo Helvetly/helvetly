@@ -75,7 +75,14 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
         {/* A card from sm up; a phone keeps the full width for the six code boxes. */}
         <div className="sm:rounded-2xl sm:bg-card sm:p-10 sm:shadow-elevation-soft">
           {step && accounts ? (
-            <PortalAccountChooser email={step.email} accounts={accounts} />
+            <PortalAccountChooser
+              email={step.email}
+              accounts={accounts}
+              onBack={() => {
+                setAccounts(null)
+                setStep(null)
+              }}
+            />
           ) : step ? (
             <EmailCodeForm
               email={step.email}

@@ -29,7 +29,7 @@ const phone = {
 const meta = {
   title: 'Portal/Account chooser',
   component: PortalAccountChooser,
-  args: { email: 'anna@example.ch', accounts: portalAccounts, go: fn() },
+  args: { email: 'anna@example.ch', accounts: portalAccounts, go: fn(), onBack: fn() },
   parameters: { msw: { handlers: [...accountChoice(), ...portalHandlers] } },
   decorators: [
     (Story) => (
@@ -46,9 +46,10 @@ export const TwoAccounts: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'Choose an account' })).toBeVisible()
-    await expect(canvas.getByText(/anna@example.ch has more than one account/)).toBeVisible()
-    const rows = canvas.getAllByRole('button')
-    await expect(rows).toHaveLength(2)
+    // Who signed in, with the way back to another address.
+    await expect(canvas.getByText('Signed in as')).toBeVisible()
+    await expect(canvas.getByText('anna@example.ch')).toBeVisible()
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(2)
     await userEvent.click(canvas.getByRole('button', { name: 'Studio Berg as Anna Keller' }))
     // Off to that supplier's own portal address, with its one-time ticket.
     await waitFor(() =>
@@ -77,7 +78,7 @@ export const LongNames: Story = {
     ).toBeInTheDocument()
     // A short name gets no tooltip.
     await expect(canvas.getByText('Studio Berg')).toBeVisible()
-    await expect(canvas.getAllByRole('button')).toHaveLength(3)
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(3)
   },
 }
 
@@ -87,11 +88,11 @@ export const Phone: Story = {
   parameters: phone,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole('button')).toHaveLength(3)
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(3)
     // Long client names stay on one cut line: nothing pushes the page sideways.
     await Promise.all(
       canvas
-        .getAllByRole('button')
+        .getAllByRole('listitem')
         .map((row) => expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth)),
     )
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
@@ -119,5 +120,14 @@ export const ChoiceExpired: Story = {
     await expect(args.go).not.toHaveBeenCalled()
     // Rows can be tried again.
     await expect(canvas.getByRole('button', { name: 'Studio Berg as Anna Keller' })).toBeEnabled()
+  },
+}
+
+export const UseAnotherEmail: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Use another email' }))
+    await expect(args.onBack).toHaveBeenCalledOnce()
+    await expect(args.go).not.toHaveBeenCalled()
   },
 }
