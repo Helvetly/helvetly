@@ -67,3 +67,32 @@ func TestWorkspaceDomainsDNSMigration(t *testing.T) {
 		t.Fatalf("Up again: %v", err)
 	}
 }
+
+// TestWorkspaceDomainsCloudflareMigration: 00034 brings Cloudflare's columns back next to verified_at; Down drops them.
+func TestWorkspaceDomainsCloudflareMigration(t *testing.T) {
+	ctx := context.Background()
+	p, pool := migrationProvider(t)
+	if _, err := p.UpTo(ctx, 33); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO workspaces (id, name, created_at) VALUES ('ws_d', 'D', now());
+		INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, status_since, created_by, created_at, updated_at)
+		VALUES ('dom_1', 'ws_d', 'portal.d.ch', 'pending', now(), now(), 'usr', now(), now())`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 34); err != nil {
+		t.Fatal(err)
+	}
+	var id *string
+	var cf, ssl, name, value string
+	if err := pool.QueryRow(ctx, `SELECT cf_hostname_id, cf_status, ssl_status, ownership_name, ownership_value FROM workspace_domains WHERE id = 'dom_1'`).
+		Scan(&id, &cf, &ssl, &name, &value); err != nil || id != nil || cf+ssl+name+value != "" {
+		t.Fatalf("existing row after 00034: %v %q: %v", id, cf+ssl+name+value, err)
+	}
+	if _, err := p.DownTo(ctx, 33); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 34); err != nil {
+		t.Fatalf("Up again: %v", err)
+	}
+}

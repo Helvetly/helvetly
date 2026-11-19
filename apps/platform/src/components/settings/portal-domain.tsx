@@ -46,13 +46,14 @@ const STAGES: Record<DomainStage, { tone: Tone; label: string }> = {
   problem: { tone: 'red', label: translate('domainStageProblem') },
 }
 
-const problemText = (problem: DomainProblem, releasesAt: string | null) =>
-  ({
-    dns: translate('domainProblemDns'),
-    verification: translate('domainProblemVerification'),
-    certificate: translate('domainProblemCertificate'),
-    plan: translate('domainProblemPlan', { date: releasesAt ? formatDate(releasesAt) : '' }),
-  })[problem]
+const PROBLEMS: Record<DomainProblem, string> = {
+  dns: translate('domainProblemDns'),
+  verification: translate('domainProblemVerification'),
+  certificate: translate('domainProblemCertificate'),
+  blocked: translate('domainProblemBlocked'),
+  taken: translate('domainProblemTaken'),
+  plan: translate('domainProblemPlan'),
+}
 
 /** What each record is for, in plain words. */
 const RECORD_WHY: Record<string, string> = {
@@ -77,6 +78,7 @@ const REFUSALS: Record<string, string> = {
   domain_apex: translate('domainApex'),
   domain_reserved: translate('domainReserved'),
   domain_taken: translate('domainTaken'),
+  domain_elsewhere: translate('domainElsewhere'),
   domain_exists: translate('domainExists'),
   domain_unavailable: translate('domainUnavailable'),
 }
@@ -231,14 +233,14 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
       </div>
       {domain.problem && (
         <div role="alert" className="grid gap-0.5 text-body-sm">
-          <p className="text-destructive">{problemText(domain.problem, domain.releases_at)}</p>
+          <p className="text-destructive">{PROBLEMS[domain.problem]}</p>
           {domain.detail && <p className="text-muted-foreground">{domain.detail}</p>}
         </div>
       )}
       <p className="text-body-sm text-pretty text-muted-foreground">
         {translate(active ? 'customDomainKeepRecords' : 'customDomainRecords')}
       </p>
-      {domain.releases_at && domain.problem !== 'plan' && (
+      {domain.releases_at && (
         <p className="text-body-sm text-muted-foreground">
           {translate('domainReleasesAt', { date: formatDate(domain.releases_at) })}
         </p>

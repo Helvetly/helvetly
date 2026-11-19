@@ -70,7 +70,7 @@ test('a client opens its supplier’s own portal address, signs in there and see
     )
     await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
     await expect(portal).toHaveURL(at(path))
-    await expect(portal.locator('header').getByText(name, { exact: true })).toBeVisible()
+    await expect(portal.locator('header').getByLabel(name, { exact: true })).toBeVisible()
 
     // Links stay inside the workspace's address.
     await portal.getByRole('link', { name: 'Invoices', exact: true }).click()

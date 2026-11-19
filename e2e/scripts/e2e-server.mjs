@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { cloudflareZone, startCloudflareFake } from './cloudflare-fake.mjs'
+
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const schema = `helvetly_e2e_${process.pid}_${randomUUID().replaceAll('-', '')}`
 const bucket = schema.replaceAll('_', '-')
@@ -15,6 +17,7 @@ database.searchParams.set('search_path', schema)
 const apiPort = '3338'
 const port = '8008'
 const portalPort = '8009'
+const cloudflarePort = '3339'
 const env = {
   ...process.env,
   DATABASE_URL: database.toString(),
@@ -41,8 +44,12 @@ const env = {
   S3_OBJECT_LOCK_DAYS: '0',
   API_URL: `http://127.0.0.1:${apiPort}`,
   DOCUMENTS_MAX_UPLOAD_MB: '1',
-  // Custom portal domains; tests have no public DNS or certificates, so every domain's checks pass.
-  CUSTOM_DOMAIN_TARGET: 'domains.helvetly.com',
+  // Custom portal domains against a fake Cloudflare (scripts/cloudflare-fake.mjs); the tests have no public DNS, so
+  // every ownership TXT record is found.
+  CLOUDFLARE_API_TOKEN: 'e2e-cloudflare-token',
+  CLOUDFLARE_ZONE_ID: cloudflareZone,
+  CUSTOM_DOMAIN_TARGET: 'portal.helvetly.com',
+  CLOUDFLARE_API_URL: `http://127.0.0.1:${cloudflarePort}`,
   HELVETLY_E2E_FAKE_DOMAINS: 'true',
   NEXT_TELEMETRY_DISABLED: '1',
   HELVETLY_E2E_NEXT_DIST: 'true',
@@ -80,6 +87,8 @@ process.on('SIGTERM', () => void stop().finally(() => process.exit()))
 process.on('SIGINT', () => void stop().finally(() => process.exit()))
 
 try {
+  const cloudflare = startCloudflareFake(Number(cloudflarePort))
+  process.once('exit', () => cloudflare.close())
   await databaseAction('create')
   await finished(run('go', ['build', '-o', binary, './cmd/helvetly'], 'apps/api'))
   const api = run(binary, [], 'apps/api')

@@ -220,17 +220,18 @@ func run() error {
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
 	workspacesSvc.SetPortal(portalScopes)
-	var domainChecker customdomains.Checker // nil: no custom domains (CUSTOM_DOMAIN_TARGET unset)
+	var cloudflare customdomains.Cloudflare // nil: no custom domains (CLOUDFLARE_* unset)
+	var domainDNS customdomains.Checker = customdomains.NewChecker()
 	ownHosts := []string{cfg.PublicURL, cfg.PortalURL, cfg.MediaURL, cfg.APIURL, cfg.DocsURL}
 	if cfg.CustomDomains.Enabled() {
-		domainChecker = customdomains.NewChecker()
+		cloudflare = customdomains.NewCloudflare(cfg.CustomDomains.APIURL, cfg.CustomDomains.ZoneID, cfg.CustomDomains.APIToken)
 		if cfg.CustomDomains.Fake {
-			domainChecker = customdomains.Trusting{}
+			domainDNS = customdomains.Trusting{}
 		}
 		portalScopes.EnableDomains(ownHosts...)
 	}
-	customDomainsSvc := customdomains.New(db, authSvc, domainChecker, cfg.CustomDomains.Target, ownHosts, cfg.SecretKey, portalScopes, slog.Default())
-	bg.Go(ctx, "custom domains", customDomainsSvc.Run) // every minute: pending domains with backoff, the others daily
+	customDomainsSvc := customdomains.New(db, authSvc, cloudflare, domainDNS, cfg.CustomDomains.Target, ownHosts, cfg.SecretKey, portalScopes, slog.Default())
+	bg.Go(ctx, "custom domains", customDomainsSvc.Run) // every minute: pending domains with backoff, the others daily; the zone cleaned up daily
 	// The one-time workspace-name suggestion is pinned to the cheapest model, whatever model Heidi is set to.
 	var nameModel aimodel.Provider = aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, aimodel.DefaultModel, "")
 	if cfg.AI.FakeImportModel {

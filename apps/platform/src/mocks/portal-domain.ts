@@ -9,14 +9,16 @@ import type {
 } from '@/lib/workspaces'
 
 const PATH = '/api/v1/workspace/portal/domain'
-const TARGET = 'domains.helvetly.com'
+const TARGET = 'portal.helvetly.com'
 const RELEASES_AT = '2026-12-03T09:58:00Z'
 
+/** Cloudflare's own words, as the API passes them on. */
 const DETAILS: Record<DomainProblem, string> = {
-  dns: `No CNAME record from portal.mueller-treuhand.ch to ${TARGET} was found.`,
-  verification:
-    'No TXT record _helvetly-verify.portal.mueller-treuhand.ch with the value shown was found.',
-  certificate: 'https://portal.mueller-treuhand.ch/api/health answered 502',
+  dns: 'custom hostname does not CNAME to this zone.',
+  verification: '',
+  certificate: '',
+  blocked: '',
+  taken: '',
   plan: '',
 }
 
@@ -38,19 +40,23 @@ export const portalDomain = (
     { type: 'CNAME', name: hostname, value: TARGET },
     {
       type: 'TXT',
-      name: `_helvetly-verify.${hostname}`,
-      value: 'helvetly-3f9a1c7e5b2d48a6c0e1f7a9b3d5c2e8',
+      name: `_cf-custom-hostname.${hostname}`,
+      value: '5cc0f6b2-8f5c-4c1e-9d0a-3e7b2a91c4d8',
     },
   ],
-  verified_at: stage === 'active' || stage === 'certificate' ? '2026-11-19T10:00:00Z' : null,
+  verified_at:
+    stage === 'active' || stage === 'certificate' || problem === 'plan'
+      ? '2026-11-19T10:00:00Z'
+      : null,
   last_checked_at: '2026-11-19T10:00:00Z',
-  releases_at: stage === 'active' ? null : RELEASES_AT,
+  // A proven domain the plan turned off is kept, not released.
+  releases_at: stage === 'active' || problem === 'plan' ? null : RELEASES_AT,
   created_at: '2026-11-19T09:58:00Z',
 })
 
 let state: PortalDomainSettings = { enabled: true, target: TARGET, domain: null }
 
-/** `domain` null: none yet; `enabled` false: the server has no CUSTOM_DOMAIN_TARGET. */
+/** `domain` null: none yet; `enabled` false: the server has no Cloudflare for SaaS settings. */
 export function resetPortalDomain(domain: PortalDomain | null = null, enabled = true) {
   state = { enabled, target: TARGET, domain }
 }
@@ -58,7 +64,7 @@ export function resetPortalDomain(domain: PortalDomain | null = null, enabled = 
 const refuse = (status: number, code: string, message: string, details?: object) =>
   HttpResponse.json({ error: { code, message, details } }, { status })
 
-/** Hosts the mock refuses as the API would: one per refusal, plus DNS not answering. */
+/** Hosts the mock refuses as the API would: one per refusal, plus Cloudflare not answering. */
 function refusal(hostname: string) {
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hostname))
     return refuse(422, 'domain_invalid', 'Enter a valid domain.')
@@ -80,11 +86,17 @@ function refusal(hostname: string) {
         },
       },
     )
+  if (hostname === 'portal.elsewhere.ch')
+    return refuse(
+      409,
+      'domain_elsewhere',
+      'This domain is connected to another service on Cloudflare. Remove it there first, then add it again.',
+    )
   if (hostname === 'portal.down.ch')
     return refuse(
       502,
       'domain_unavailable',
-      'The domain’s DNS did not answer. Try again in a minute.',
+      'The domain service did not answer. Try again in a minute.',
     )
   return null
 }
