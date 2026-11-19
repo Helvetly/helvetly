@@ -1,3 +1,4 @@
+import { ThemeProvider } from '@helvetly/ui/components/theme-provider'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
@@ -114,10 +115,10 @@ export const Desktop: Story = {
 }
 
 /**
- * The language row opens a submenu with every language, the current one checked; the keyboard reaches it
- * with the arrow keys. Choosing one saves it and reloads, as before.
+ * The language row opens the product's language dialog (the one on the sign-in page), every language in it and the
+ * current one pressed; the menu is gone by then. Escape closes it and gives focus back to the account button.
  */
-export const LanguageSubmenu: Story = {
+export const LanguageDialog: Story = {
   render: page(<PortalOverview />),
   play: async ({ canvasElement }) => {
     const account = await within(canvasElement).findByRole('button', { name: /^Account menu/ })
@@ -125,32 +126,68 @@ export const LanguageSubmenu: Story = {
     await userEvent.keyboard('{Enter}')
     const menu = await within(document.body).findByRole('menu')
     const language = within(menu).getByRole('menuitem', { name: /^Language/ })
-    language.focus()
-    await userEvent.keyboard('{ArrowRight}')
-    const sub = await waitFor(() => {
-      const menus = within(document.body).getAllByRole('menu')
-      expect(menus).toHaveLength(2)
-      return menus[1] ?? menu
-    })
-    const options = within(sub).getAllByRole('menuitemradio')
+    await expect(language).toHaveTextContent('English')
+    await userEvent.click(language)
+    const dialog = await within(document.body).findByRole('dialog', { name: 'Change language' })
+    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
+    const options = within(dialog).getAllByRole('button', { pressed: false })
     await expect(options.map((option) => option.textContent)).toEqual(
-      expect.arrayContaining(['Deutsch', 'English', 'Français', 'Italiano']),
+      expect.arrayContaining(['Deutsch', 'Français', 'Italiano']),
     )
-    await expect(within(sub).getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
-      'aria-checked',
+    await expect(within(dialog).getByRole('button', { name: 'English' })).toHaveAttribute(
+      'aria-pressed',
       'true',
     )
-    await waitFor(() => expect(sub.contains(document.activeElement)).toBe(true))
-    // Left goes back to the row, Escape closes the menu.
-    await userEvent.keyboard('{ArrowLeft}')
-    await waitFor(() => expect(language).toHaveFocus())
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true))
     await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(account).toHaveFocus())
   },
 }
-export const LanguageSubmenuDark: Story = {
-  ...LanguageSubmenu,
+export const LanguageDialogDark: Story = {
+  ...LanguageDialog,
   parameters: { ...meta.parameters, dark: true },
+}
+
+// Its own storage key, so a story never changes the theme Storybook itself remembers.
+const THEME_KEY = 'story-portal-theme'
+
+/** Light / Dark / System in the account menu, as on the platform: a choice applies at once and is saved. */
+export const ThemeSwitch: Story = {
+  render: page(<PortalOverview />),
+  decorators: [
+    (Story) => {
+      localStorage.removeItem(THEME_KEY)
+      return (
+        <ThemeProvider storageKey={THEME_KEY} hotkey={false}>
+          <Story />
+        </ThemeProvider>
+      )
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const html = document.documentElement
+    await userEvent.click(
+      await within(canvasElement).findByRole('button', { name: /^Account menu/ }),
+    )
+    const menu = await within(document.body).findByRole('menu')
+    const theme = within(menu).getByRole('group', { name: 'Theme' })
+    await waitFor(() =>
+      expect(within(theme).getByRole('menuitemradio', { name: 'System' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      ),
+    )
+    await userEvent.click(within(theme).getByRole('menuitemradio', { name: 'Dark' }))
+    await waitFor(() => expect(html).toHaveClass('dark'))
+    await expect(localStorage.getItem(THEME_KEY)).toBe('dark')
+    // Choosing a theme keeps the menu open, as on the platform.
+    await expect(menu).toBeVisible()
+    await userEvent.click(within(theme).getByRole('menuitemradio', { name: 'Light' }))
+    await waitFor(() => expect(html).not.toHaveClass('dark'))
+    await expect(localStorage.getItem(THEME_KEY)).toBe('light')
+    await userEvent.keyboard('{Escape}')
+  },
 }
 
 export const DesktopDark: Story = { ...Desktop, parameters: { ...Desktop.parameters, dark: true } }

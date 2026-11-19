@@ -62,7 +62,8 @@ test('shows the nav with the current page marked, and Profile in the account men
     '/profile',
   )
   expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeTruthy()
-  expect(within(menu).queryByRole('menuitemradio')).toBeNull()
+  expect(within(menu).queryByText('Switch client')).toBeNull()
+  expect(within(menu).getByRole('group', { name: 'Theme' })).toBeTruthy()
 })
 
 test('offers the clients to switch to in the account menu, with a foreign workspace named', async () => {
@@ -80,7 +81,10 @@ test('offers the clients to switch to in the account menu, with a foreign worksp
   )
   show()
   const menu = await openAccountMenu()
-  const radios = within(menu).getAllByRole('menuitemradio')
+  const theme = within(menu).getByRole('group', { name: 'Theme' })
+  const radios = within(menu)
+    .getAllByRole('menuitemradio')
+    .filter((radio) => !theme.contains(radio))
   expect(radios.map((r) => r.textContent)).toEqual(['Keller AG', 'Other AG', 'Third AGBeispiel AG'])
   expect(radios[0]?.getAttribute('aria-checked')).toBe('true')
 })

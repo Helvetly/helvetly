@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
-import { LanguageSubmenu } from '@helvetly/ui/components/language-switcher'
+import { useTranslate } from '@helvetly/ui/components/language-provider'
+import { LanguageDialog, LanguageMenuItem } from '@helvetly/ui/components/language-switcher'
+import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -27,7 +29,15 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
@@ -64,12 +74,17 @@ export function usePortalSession(): PortalSession {
 function AccountMenu({
   session,
   onSwitch,
+  onLanguage,
   onSignOut,
+  triggerRef,
 }: {
   session: PortalSession
   onSwitch: (id: string) => void
+  onLanguage: () => void
   onSignOut: () => void
+  triggerRef: RefObject<HTMLButtonElement | null>
 }) {
+  const translateUi = useTranslate()
   return (
     <DropdownMenu>
       <Tooltip>
@@ -78,6 +93,7 @@ function AccountMenu({
             {/* One button, like the platform's sidebar user card: the avatar alone on narrow screens, with
                 the name and email beside it and the chevrons from lg up. */}
             <Button
+              ref={triggerRef}
               variant="ghost"
               className="h-10 min-w-10 justify-center gap-2.5 rounded-full p-0 lg:h-12 lg:max-w-64 lg:justify-start lg:rounded-xl lg:pr-2 lg:pl-1.5"
             >
@@ -157,7 +173,16 @@ function AccountMenu({
             {translate('profile2')}
           </Link>
         </DropdownMenuItem>
-        <LanguageSubmenu />
+        <LanguageMenuItem onSelect={onLanguage} />
+        <DropdownMenuSeparator />
+        {/* The platform account menu's Theme row. */}
+        <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+          <span aria-hidden className="text-sm">
+            {translateUi('theme')}
+          </span>
+          <ThemeToggle inMenu />
+        </div>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSignOut}>
           <LogOut />
           {translate('signOut')}
@@ -258,6 +283,8 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
   const router = useRouter()
   const pathname = unscoped(usePathname() ?? '').replace(/\/$/, '') || '/'
   const queryClient = useQueryClient()
+  const [languageOpen, setLanguageOpen] = useState(false)
+  const accountButton = useRef<HTMLButtonElement>(null)
   const { data: session, isPending } = useQuery({
     queryKey: portalKeys.session,
     queryFn: getPortalSession,
@@ -324,7 +351,15 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
               <AccountMenu
                 session={session}
                 onSwitch={(id) => void switchClient(id)}
+                onLanguage={() => setLanguageOpen(true)}
                 onSignOut={() => void signOut()}
+                triggerRef={accountButton}
+              />
+              {/* Outside the menu, so the menu closing does not take the dialog with it. */}
+              <LanguageDialog
+                open={languageOpen}
+                onOpenChange={setLanguageOpen}
+                returnFocus={accountButton}
               />
             </div>
           </div>
