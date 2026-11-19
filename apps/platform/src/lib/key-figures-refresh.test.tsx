@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
 import { expensesApi, useExpenseAction } from './expenses'
-import { useMarkPaid } from './invoices'
+import { useAddPayment } from './invoices'
 import { queryKeys } from './queries'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -23,10 +23,15 @@ function setup(id: string) {
   return { wrapper, stale }
 }
 
-test('marking an invoice paid makes the key figures stale', async () => {
+test('recording a payment makes the key figures stale', async () => {
   const { wrapper, stale } = setup('inv_1')
-  const { result } = renderHook(() => useMarkPaid(), { wrapper })
-  await act(() => result.current.mutateAsync('inv_1'))
+  const { result } = renderHook(() => useAddPayment(), { wrapper })
+  await act(() =>
+    result.current.mutateAsync({
+      id: 'inv_1',
+      input: { amount: '100.00', paid_on: '2026-11-19', method: 'bank_transfer' },
+    }),
+  )
   expect(stale()).toBe(true)
 })
 
