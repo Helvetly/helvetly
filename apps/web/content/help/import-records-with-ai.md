@@ -22,4 +22,5 @@ The AI import needs **Pro** or **Business** and works within the plan's AI token
   Approval covers all AI tools there, only for you. Declining or closing the dialog starts no upload
   or AI processing and keeps your draft and files.
 - Imports use the monthly AI allowance.
+- One import takes up to 25 files of 25 MB each. A ZIP is opened one level deep and may hold up to 250 files; one import reads at most 250 files in all.
 - If your old system already declared VAT for the imported invoices, close those months in **Books → Closing** first.

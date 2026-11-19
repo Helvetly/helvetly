@@ -1,6 +1,7 @@
 package imports
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -589,5 +590,38 @@ func TestUploadRequestLimit(t *testing.T) {
 	if w := e.upload("clients", files); w.Code != http.StatusRequestEntityTooLarge || code(w) != "payload_too_large" ||
 		!strings.Contains(w.Body.String(), "95 MB") {
 		t.Fatalf("over the request limit: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestUploadRefusesAnImportItCannotFinish(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	zipOfCSVs := func(prefix string, n int) []byte {
+		files := map[string][]byte{}
+		for i := range n {
+			files[fmt.Sprintf("%s-%03d.csv", prefix, i)] = fmt.Appendf(nil, "name\n%s %d\n", prefix, i)
+		}
+		return zipOf(t, files, zip.Deflate)
+	}
+	if w := e.upload("clients", map[string][]byte{"a.zip": zipOfCSVs("a", 200), "b.zip": zipOfCSVs("b", 51)}); w.Code != 400 ||
+		!strings.Contains(w.Body.String(), "at most 250 files") || !strings.Contains(w.Body.String(), "has 251") {
+		t.Fatalf("251 files in one import: %d %s", w.Code, w.Body)
+	}
+	if n := len(e.files.objects); n != 0 {
+		t.Fatalf("%d objects stored for a refused import", n)
+	}
+
+	e.s.budget.Allowance = func(context.Context, store.Q, string) (int64, error) { return 249 * minFileTokens, nil }
+	if w := e.upload("clients", map[string][]byte{"a.zip": zipOfCSVs("a", 250)}); w.Code != http.StatusPaymentRequired ||
+		code(w) != "limit_reached" || !strings.Contains(w.Body.String(), "250 files") {
+		t.Fatalf("over the allowance left: %d %s", w.Code, w.Body)
+	}
+	e.s.budget.Allowance = func(context.Context, store.Q, string) (int64, error) { return 250 * minFileTokens, nil }
+	w := e.upload("clients", map[string][]byte{"a.zip": zipOfCSVs("a", 250)})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("250 files: %d %s", w.Code, w.Body)
+	}
+	if b := decode[store.ImportBatch](t, w); len(b.Files) != 250 {
+		t.Fatalf("%d files queued, want 250", len(b.Files))
 	}
 }

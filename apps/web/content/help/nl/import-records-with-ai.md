@@ -20,4 +20,5 @@ AI-import vereist **Pro** of **Business** en gebruikt de AI-tokens van het abonn
 
 - Voordat je voor het eerst AI gebruikt in elke werkruimte geef je toestemming om inhoud naar de AI-aanbieder te sturen. Die toestemming geldt daar voor alle AI-hulpmiddelen, alleen voor jou. Weigeren of het dialoogvenster sluiten start geen upload of AI-verwerking en behoudt je concept en bestanden.
 - Imports gebruiken het maandelijkse AI-tegoed.
+- Eén import neemt tot 25 bestanden van elk 25 MB aan. Een ZIP wordt één niveau diep geopend en mag tot 250 bestanden bevatten; één import leest in totaal hoogstens 250 bestanden.
 - Als je oude systeem al btw over de geïmporteerde facturen heeft aangegeven, sluit die maanden dan eerst af via **Books → Closing**.

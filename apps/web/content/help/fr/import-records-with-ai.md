@@ -24,4 +24,5 @@ L’import par IA nécessite **Pro** ou **Business** et utilise le quota de toke
   uniquement pour vous. Refuser ou fermer la boîte de dialogue ne lance aucun téléversement ni
   traitement par IA ; votre brouillon et vos fichiers sont conservés.
 - Les imports consomment le quota mensuel d’IA.
+- Un import accepte jusqu’à 25 fichiers de 25 Mo chacun. Un ZIP est ouvert sur un niveau et peut contenir jusqu’à 250 fichiers ; un import lit au plus 250 fichiers au total.
 - Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Books → Closing**.

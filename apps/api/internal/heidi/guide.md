@@ -325,7 +325,7 @@ Keywords: signature, e-signature, sign, unterschrift, sign pdf, signing, docusig
 Keywords: import, ai import, migrate, spreadsheet, csv, excel, bulk upload, bring data, from old system
 
 1. Open **Clients**, **Products & services**, **Engagements** or **Invoices** and choose **Import** in the page's **…** menu. For expenses, use **Upload receipts**.
-2. Drop spreadsheets, PDFs, photos or Word files, then click **Read files**.
+2. Drop spreadsheets, PDFs, photos or Word files, or a ZIP of them, then click **Read files**. One import takes up to 25 files of 25 MB each; a ZIP may hold up to 250 files, and one import reads at most 250 files in all.
 3. Review the records found. Edit a row, untick any you don't want and resolve conflicts.
 4. Click **Import** to create the selected records, then **Done**.
 5. You can also attach files in Heidi and pick "Import as". The import drawer then opens with those files.

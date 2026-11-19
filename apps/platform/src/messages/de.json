@@ -4282,7 +4282,7 @@
   "invoiceSettingsDescription": "Wie Rechnungen nummeriert, bezahlt, gemahnt und gedruckt werden.",
   "shortcutSettings": "Einstellungen öffnen",
   "importDropTitle": "Dateien hier ablegen",
-  "importLimits": "Bis zu {count} Dateien zu je 25 MB, insgesamt 95 MB; ein ZIP wird eine Ebene tief geöffnet.",
+  "importLimits": "Bis zu {count} Dateien zu je 25 MB, insgesamt 95 MB; ein ZIP wird eine Ebene tief geöffnet und darf {entries} Dateien enthalten.",
   "chooseFiles": "Dateien auswählen",
   "importFileTypes": "Dateitypen, die Sie importieren können",
   "howImportWorks": "So funktioniert der Import",

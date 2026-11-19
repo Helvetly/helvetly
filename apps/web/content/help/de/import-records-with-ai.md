@@ -24,4 +24,5 @@ Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der
   Arbeitsbereich. Wenn Sie ablehnen oder den Dialog schliessen, startet weder ein Upload noch eine
   KI-Verarbeitung; Entwurf und Dateien bleiben erhalten.
 - Für Importe wird die monatliche KI-Zulage verwendet.
+- Ein Import nimmt bis zu 25 Dateien zu je 25 MB an. Ein ZIP wird eine Ebene tief geöffnet und darf bis zu 250 Dateien enthalten; ein Import liest insgesamt höchstens 250 Dateien.
 - Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Books → Closing**.

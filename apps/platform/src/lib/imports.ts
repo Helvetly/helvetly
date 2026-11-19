@@ -160,6 +160,8 @@ export type ImportKindConfig = {
 
 export const IMPORT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.csv,.txt,.xlsx,.docx,.zip'
 export const MAX_IMPORT_FILES = 25
+/** Files one ZIP may hold, and one import may read in all (the API's maxEntries and maxBatchFiles). */
+export const MAX_ZIP_ENTRIES = 250
 export const MAX_IMPORT_FILE_BYTES = MAX_FILE_BYTES
 
 /** The registered kinds (docs/imports-contract.md, "Adding a kind"): one entry per kind the Go API registers. */

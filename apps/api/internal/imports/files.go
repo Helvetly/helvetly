@@ -23,10 +23,12 @@ import (
 const (
 	maxFiles      = 25
 	maxFileBytes  = uploads.MaxFileBytes
-	maxEntries    = 50
+	maxEntries    = 250
+	maxBatchFiles = maxEntries // files one import reads, ZIP entries counted one by one: bounds a batch's model calls
 	maxEntryBytes = 10 << 20
-	maxZipBytes   = 50 << 20
+	maxZipBytes   = 100 << 20 // what one ZIP unpacks to in all; entries are read one at a time, never held together
 	maxZipRatio   = 100
+	maxXLSXBytes  = 50 << 20 // what one Excel file unpacks to, held in memory while it is read
 	maxSheetRows  = 5000
 	chunkChars    = 12_000 // one model call's text, so its records fit the output cap
 )
@@ -123,7 +125,7 @@ func zipEntries(name string, b []byte) ([]entry, error) {
 		}
 		total += int64(len(data))
 		if total > maxZipBytes {
-			return nil, refuse(name, "the ZIP unpacks to more than 50 MB.")
+			return nil, refuse(name, "the ZIP unpacks to more than 100 MB.")
 		}
 		if f.CompressedSize64 > 0 && uint64(len(data)) > maxZipRatio*f.CompressedSize64 {
 			return nil, refuse(name, "the ZIP is compressed suspiciously far; it is not opened.")
@@ -162,9 +164,9 @@ func readEntry(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-// entryBytes reads entry index of a stored ZIP again, for the job.
-func entryBytes(zipBytes []byte, index int) ([]byte, error) {
-	r, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
+// entryBytes reads entry index of a stored ZIP again, for the job: only its directory and that entry are read.
+func entryBytes(zipFile io.ReaderAt, size int64, index int) ([]byte, error) {
+	r, err := zip.NewReader(zipFile, size)
 	if err != nil || index < 0 || index >= len(r.File) {
 		return nil, errors.New("the ZIP entry can't be read")
 	}
@@ -231,7 +233,7 @@ func splitText(text string) []chunk {
 
 // xlsxSheets returns each non-empty sheet as CSV text headed by its name, at most maxSheetRows rows each.
 func xlsxSheets(b []byte) ([]string, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(b), excelize.Options{UnzipSizeLimit: maxZipBytes, UnzipXMLSizeLimit: maxEntryBytes})
+	f, err := excelize.OpenReader(bytes.NewReader(b), excelize.Options{UnzipSizeLimit: maxXLSXBytes, UnzipXMLSizeLimit: maxEntryBytes})
 	if err != nil {
 		return nil, unsupported{"the Excel file can't be opened: save it again as .xlsx."}
 	}

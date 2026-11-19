@@ -4282,7 +4282,7 @@
   "invoiceSettingsDescription": "How invoices are numbered, paid, reminded and printed.",
   "shortcutSettings": "Open settings",
   "importDropTitle": "Drop files here",
-  "importLimits": "Up to {count} files of 25 MB each, 95 MB in all; a ZIP is opened one level deep.",
+  "importLimits": "Up to {count} files of 25 MB each, 95 MB in all; a ZIP is opened one level deep and may hold {entries} files.",
   "chooseFiles": "Choose files",
   "importFileTypes": "File types you can import",
   "howImportWorks": "How the import works",

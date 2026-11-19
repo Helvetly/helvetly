@@ -22,4 +22,5 @@ Import AI vyžaduje **Pro** nebo **Business** a využívá tokeny AI daného tar
   Souhlas zahrnuje všechny tamní nástroje AI pouze pro vás. Odmítnutí nebo zavření dialogu nespustí nahrávání
   ani zpracování AI a zachová návrh i soubory.
 - Importy využívají měsíční limit AI.
+- Jeden import přijme až 25 souborů po 25 MB. ZIP se otevře o jednu úroveň a může obsahovat až 250 souborů; jeden import přečte celkem nejvýše 250 souborů.
 - Pokud váš starý systém již přiznal DPH za importované faktury, nejprve uzavřete příslušné měsíce v **Books → Closing**.
