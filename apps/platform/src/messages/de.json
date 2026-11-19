@@ -1534,7 +1534,6 @@
   "invoicesAndDocumentsThatMentionThemKeepTheirCopy": "Rechnungen und Dokumente, in denen sie erwähnt werden, bewahren eine Kopie der Einzelheiten auf. Dies kann hier nicht rückgängig gemacht werden.",
   "invoicesAndPayments": "Rechnungen und Zahlungen",
   "invoicesCanBeIssuedWithTheseDetails": " – Rechnungen können mit diesen Angaben ausgestellt werden.",
-  "invoicesCarryNoVATAndSaySo": "Auf Rechnungen ist keine Mehrwertsteuer ausgewiesen.",
   "invoicesCarryNoVATThePricesAreTheTotals": "Rechnungen enthalten keine Mehrwertsteuer: Die Preise sind Gesamtpreise.",
   "invoicesCouldnTBeLoaded": "Rechnungen konnten nicht geladen werden: ",
   "invoiceSettings": "Rechnungseinstellungen",

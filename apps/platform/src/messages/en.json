@@ -1534,7 +1534,6 @@
   "invoicesAndDocumentsThatMentionThemKeepTheirCopy": "Invoices and documents that mention them keep their copy of the details. This can’t be undone here.",
   "invoicesAndPayments": "Invoices and payments",
   "invoicesCanBeIssuedWithTheseDetails": " — invoices can be issued with these details.",
-  "invoicesCarryNoVATAndSaySo": "Invoices carry no VAT and say so.",
   "invoicesCarryNoVATThePricesAreTheTotals": "Invoices carry no VAT: the prices are the totals.",
   "invoicesCouldnTBeLoaded": "Invoices couldn’t be loaded: ",
   "invoiceSettings": "Invoice settings",

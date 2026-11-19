@@ -850,7 +850,7 @@ function VatCard({
         description={
           on
             ? translate('invoicesShowYourUIDWithAndVATPerRate', { suffix: suffix })
-            : translate('invoicesCarryNoVATAndSaySo')
+            : translate('invoicesCarryNoVATThePricesAreTheTotals')
         }
         checked={on}
         onCheckedChange={(vat_registered) => onChange({ vat_registered })}
