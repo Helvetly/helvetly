@@ -14,7 +14,7 @@
     "test:einvoice": "bash scripts/validate-einvoice.sh",
     "test:xsd": "pnpm --filter @helvetly/api test:xsd",
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
-    "build:storybook": "pnpm --filter @helvetly/platform exec storybook build --disable-telemetry && pnpm --filter @helvetly/portal exec storybook build --disable-telemetry",
+    "build:storybook": "pnpm --filter @helvetly/platform exec storybook build --disable-telemetry --stats-json storybook-static && pnpm --filter @helvetly/portal exec storybook build --disable-telemetry --stats-json storybook-static",
     "typecheck": "turbo run typecheck",
     "lint": "oxlint --deny-warnings && turbo run lint",
     "lint:ui": "bash scripts/ui-guard.sh",

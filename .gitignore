@@ -40,3 +40,6 @@ apps/api/helvetly
 .claude/scheduled_tasks.lock
 # Vitest blob reports of sharded runs (CI merges them for coverage)
 .vitest/
+
+# Written by CI on a pull request (scripts/visual-affected.mjs)
+e2e/visual/affected.json

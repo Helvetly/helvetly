@@ -119,8 +119,6 @@ jobs:
         with: *go-cache-config
       - *install
       - run: pnpm build
-      - if: needs.changes.outputs.frontend == 'true'
-        run: pnpm build:storybook
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: helvetly-${{ github.sha }}
@@ -273,22 +271,54 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  storybook:
+    name: Build Storybooks
+    needs: [changes, quick]
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          filter: blob:none # history for the diff below
+          persist-credentials: false
+      - *pnpm
+      - *node
+      - *install
+      - run: pnpm build:storybook
+      # A PR's focus audit opens only the stories its changes reach. ready_for_review (like main, merge groups
+      # and manual runs) audits every story, so whatever the module graph missed still turns up there.
+      - if: github.event_name == 'pull_request' && github.event.action != 'ready_for_review'
+        run: node scripts/visual-affected.mjs '${{ github.event.pull_request.base.sha }}' e2e/visual/affected.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: storybook-${{ github.sha }}
+          path: |
+            apps/platform/storybook-static
+            apps/portal/storybook-static
+            e2e/visual/affected.json
+          if-no-files-found: error
+          retention-days: 1
+
   visual:
     name: Visual regression (${{ matrix.shard }})
-    needs: [changes, quick]
+    needs: [changes, quick, storybook]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/5', '2/5', '3/5', '4/5', '5/5'] # screenshots and the focus audit of every story
+        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8'] # screenshots and the focus audit of every story
     steps:
       - *checkout
       - *pnpm
       - *node
       - *install
-      - run: pnpm build:storybook
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: storybook-${{ github.sha }}
       - run: pnpm test:visual --shard=${{ matrix.shard }} # Playwright inside the pinned mcr.microsoft.com/playwright image
         env:
           CI: 'true'
@@ -335,7 +365,7 @@ jobs:
 
   required:
     name: CI required
-    needs: [changes, quick, static, go, einvoice, vitest, coverage, visual, e2e]
+    needs: [changes, quick, static, go, einvoice, vitest, coverage, storybook, visual, e2e]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
