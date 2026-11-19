@@ -85,6 +85,7 @@
   --font-serif: var(--font-serif);
   --shadow-elevation-1: var(--elevation-1);
   --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-soft: var(--elevation-soft);
   --color-heidi: var(--heidi);
   --color-heidi-soft: var(--heidi-soft);
   --color-heidi-ink: var(--heidi-ink);
@@ -227,6 +228,8 @@
   --radius: 0.5rem;
   /* The app window: the panel floats on the canvas with a hairline and a whisper of shadow. */
   --elevation-1: 0 0 0 1px oklch(0.21 0.006 286 / 0.07), 0 1px 2px oklch(0.21 0.006 286 / 0.05);
+  /* A card that lifts a little off its panel: a hairline and a wide, soft shadow. */
+  --elevation-soft: 0 0 0 1px oklch(0.21 0.006 286 / 0.05), 0 8px 24px rgb(149 157 165 / 0.2);
   --elevation-2:
     0 12px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.03);
   --sidebar: var(--background);
@@ -285,6 +288,7 @@
   --chart-4: oklch(0.68 0.12 230);
   --chart-5: oklch(0.78 0.14 75);
   --elevation-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 2px oklch(0 0 0 / 0.3);
+  --elevation-soft: 0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px oklch(0 0 0 / 0.35);
   --elevation-2: 0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -8px oklch(0 0 0 / 0.55);
   --heidi: #a593ff;
   --heidi-soft: oklch(0.3 0.08 292);

@@ -41,6 +41,12 @@ export const Detail: Story = {
     const sheet = await within(canvasElement.ownerDocument.body).findByRole('dialog')
     // The drawer never scrolls sideways.
     await waitFor(() => expect(sheet.scrollWidth).toBeLessThanOrEqual(sheet.clientWidth))
+    // The dates sit in their own column beside the amount, or in a row under it on a phone.
+    const summary = await within(sheet).findByRole('region', { name: 'Summary' })
+    const amount = within(summary).getByText('1’081.00').getBoundingClientRect()
+    const dates = within(summary).getByText('Issue date').getBoundingClientRect()
+    if (window.innerWidth >= 640) await expect(dates.left).toBeGreaterThan(amount.right)
+    else await expect(dates.top).toBeGreaterThan(amount.bottom)
   },
 }
 export const DetailPhone = phone(Detail)
