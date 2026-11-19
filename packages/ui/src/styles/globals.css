@@ -821,3 +821,14 @@ h1 .accent {
     scroll-behavior: auto !important;
   }
 }
+
+/* Where dropped files land, the same everywhere: a thin dashed brand edge and a light brand tint.
+   The tint is an image, so `bg-card` underneath makes the zone opaque where it covers content. */
+@utility drop-zone {
+  border: 1px dashed color-mix(in oklab, var(--brand-solid) 45%, transparent);
+  border-radius: var(--radius-xl);
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--brand-surface) 70%, transparent),
+    color-mix(in oklab, var(--brand-surface) 70%, transparent)
+  );
+}

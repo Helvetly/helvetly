@@ -501,7 +501,7 @@ function PanelBody() {
       <SelectionMenu root={root} scroller={scroller} onQuote={quoteInReply} />
 
       {dragging && (
-        <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-heidi/60 bg-heidi-soft/60 text-[14px] text-heidi-ink backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-heidi/45 bg-heidi-soft/60 text-[14px] text-heidi-ink backdrop-blur-sm">
           <Upload className="size-5" />
           {translate('dropFilesToAttach')}
         </div>

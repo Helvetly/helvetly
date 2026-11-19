@@ -23,6 +23,7 @@ const components: [App, string][] = [
   ['platform', 'design-system-components--meters'],
   ['platform', 'design-system-components--segmented-control'],
   ['platform', 'design-system-components--panel-and-empty-state'],
+  ['platform', 'design-system-components--drop-zone'],
 ]
 const themes = ['light', 'dark'] as const
 
