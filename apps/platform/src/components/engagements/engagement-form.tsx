@@ -32,6 +32,7 @@ import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ClientSearch } from '@/components/invoices/client-search'
 import { ProductPicker } from '@/components/products/product-picker'
+import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
@@ -693,25 +694,17 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                         />
                         {standard && (
                           <>
-                            <div className="relative w-24 shrink-0">
-                              <input
-                                {...describe('vat_rate')}
-                                aria-label={translate('vatRate')}
-                                aria-describedby={
-                                  errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
-                                }
-                                inputMode="decimal"
-                                value={values.vat_rate}
-                                onChange={(event) => set('vat_rate', event.target.value)}
-                                className={cn(inputClass, 'pr-7 text-right tabular-nums')}
-                              />
-                              <span
-                                aria-hidden
-                                className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
-                              >
-                                %
-                              </span>
-                            </div>
+                            <PercentInput
+                              {...describe('vat_rate')}
+                              aria-label={translate('vatRate')}
+                              aria-describedby={
+                                errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
+                              }
+                              value={values.vat_rate}
+                              onValueChange={(value) => set('vat_rate', value)}
+                              className="w-24 shrink-0"
+                              inputClassName={cn(inputClass, 'text-right tabular-nums')}
+                            />
                             <Segmented
                               label={translate('vatRatePresets')}
                               value={values.vat_rate}

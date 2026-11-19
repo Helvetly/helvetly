@@ -28,6 +28,7 @@ import {
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { ProductPicker } from '@/components/products/product-picker'
+import { PercentInput } from '@/components/shared/percent-input'
 import { translate } from '@/lib/i18n'
 import {
   defaultExemptionCode,
@@ -40,7 +41,6 @@ import {
   VATEX_CODES,
   type VatMode,
 } from '@/lib/invoices'
-import { typedPercent } from '@/lib/percent'
 
 import {
   addPickedLine,
@@ -445,25 +445,15 @@ export function LinesEditor({
               )}
             </span>
             {showDiscount && (
-              <span className="relative">
-                <input
-                  {...describe(line, 'discount_percent')}
-                  aria-label={translate('lineDiscountPercent', { value1: index + 1 })}
-                  inputMode="decimal"
-                  value={line.discount_percent}
-                  onChange={(event) =>
-                    set(index, {
-                      discount_percent: typedPercent(event.target.value, line.discount_percent),
-                    })
-                  }
-                  onKeyDown={(event) => onKeyDown(event, index, 'discount_percent')}
-                  placeholder="0"
-                  className={cn(cellInput, 'pr-6 text-right')}
-                />
-                <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-sm text-muted-foreground">
-                  %
-                </span>
-              </span>
+              <PercentInput
+                {...describe(line, 'discount_percent')}
+                aria-label={translate('lineDiscountPercent', { value1: index + 1 })}
+                value={line.discount_percent}
+                onValueChange={(value) => set(index, { discount_percent: value })}
+                onKeyDown={(event) => onKeyDown(event, index, 'discount_percent')}
+                placeholder="0"
+                inputClassName={cn(cellInput, 'text-right')}
+              />
             )}
             {withVat && (
               <span>
@@ -648,11 +638,10 @@ function VatPicker({
               <DropdownMenuRadioItem value={value}>{line.vat_rate}%</DropdownMenuRadioItem>
             )}
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <input
+            <PercentInput
               aria-label={translate('otherRate')}
-              inputMode="decimal"
               value={custom}
-              onChange={(event) => setCustom(event.target.value)}
+              onValueChange={setCustom}
               onKeyDown={(event) => {
                 event.stopPropagation()
                 if (event.key === 'Enter' && custom.trim())
@@ -663,9 +652,9 @@ function VatPicker({
                   })
               }}
               placeholder={translate('otherRateEG19')}
-              className="h-7 w-full rounded-md border border-input bg-card px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="w-full"
+              inputClassName="h-7 w-full rounded-md border border-input bg-card px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
-            <span className="text-[13px] text-muted-foreground">%</span>
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

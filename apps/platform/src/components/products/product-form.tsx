@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormSection } from '@/components/form-section'
+import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useHabits } from '@/lib/habits'
@@ -320,26 +321,18 @@ export function ProductForm({
                   />
                   {standard && (
                     <>
-                      <div className="relative w-24 shrink-0">
-                        <input
-                          {...describe('vat_rate')}
-                          aria-label={translate('vatRate')}
-                          aria-describedby={
-                            errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
-                          }
-                          inputMode="decimal"
-                          value={values.vat_rate}
-                          onChange={(event) => set('vat_rate', event.target.value)}
-                          placeholder="8.1"
-                          className={cn(inputClass, 'pr-7 text-right tabular-nums')}
-                        />
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
-                        >
-                          %
-                        </span>
-                      </div>
+                      <PercentInput
+                        {...describe('vat_rate')}
+                        aria-label={translate('vatRate')}
+                        aria-describedby={
+                          errors.vat_rate ? `${fieldId('vat_category')}-error` : undefined
+                        }
+                        value={values.vat_rate}
+                        onValueChange={(value) => set('vat_rate', value)}
+                        placeholder="8.1"
+                        className="w-24 shrink-0"
+                        inputClassName={cn(inputClass, 'text-right tabular-nums')}
+                      />
                       <Segmented
                         label={translate('vatRatePresets')}
                         value={values.vat_rate}

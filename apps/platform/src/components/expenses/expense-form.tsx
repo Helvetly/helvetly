@@ -35,6 +35,7 @@ import {
 import { ExpenseCategoryField } from '@/components/expenses/expense-category-field'
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -822,15 +823,14 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                         placeholder="0.00"
                         className={cn(inputClass, 'text-right tabular-nums')}
                       />
-                      <input
+                      <PercentInput
                         {...describe(`lines.${index}.vat_rate`)}
                         aria-label={translate('lineVATRate', { value1: index + 1 })}
-                        inputMode="decimal"
                         list="expense-vat-rates"
                         value={line.vat_rate}
-                        onChange={(event) => setLine(index, { vat_rate: event.target.value })}
+                        onValueChange={(value) => setLine(index, { vat_rate: value })}
                         placeholder="8.1"
-                        className={cn(inputClass, 'text-right tabular-nums')}
+                        inputClassName={cn(inputClass, 'text-right tabular-nums')}
                       />
                       <Button
                         type="button"
@@ -981,18 +981,15 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     }}
                   />
                   {values.input_tax === 'partial' && (
-                    <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      <input
-                        {...describe('deductible_percent')}
-                        inputMode="decimal"
-                        value={values.deductible_percent}
-                        onChange={(event) => set('deductible_percent', event.target.value)}
-                        placeholder="50"
-                        aria-label={translate('deductibleShareInPercent')}
-                        className={cn(inputClass, 'w-20 text-right tabular-nums')}
-                      />
-                      %
-                    </span>
+                    <PercentInput
+                      {...describe('deductible_percent')}
+                      value={values.deductible_percent}
+                      onValueChange={(value) => set('deductible_percent', value)}
+                      placeholder="50"
+                      aria-label={translate('deductibleShareInPercent')}
+                      className="w-24"
+                      inputClassName={cn(inputClass, 'text-right tabular-nums')}
+                    />
                   )}
                 </div>
               </FormField>

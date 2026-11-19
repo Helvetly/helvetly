@@ -53,6 +53,7 @@ import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
 import { RecordLink } from '@/components/record-link'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
+import { PercentInput } from '@/components/shared/percent-input'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient, type Client } from '@/lib/clients'
 import { linkInvoice, useInvoiceEngagement } from '@/lib/engagements'
@@ -91,7 +92,6 @@ import {
   type IssueReason,
   type InvoiceSettings,
 } from '@/lib/invoices'
-import { typedPercent } from '@/lib/percent'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
@@ -1246,27 +1246,18 @@ function Editor({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="flex items-center gap-2 text-muted-foreground">
                         {translate('discount2')}
-                        <span className="relative">
-                          <input
-                            id="invoice-discount_percent"
-                            aria-label={translate('discountOnTheWholeDocumentPercent')}
-                            aria-invalid={errors.discount_percent ? true : undefined}
-                            inputMode="decimal"
-                            disabled={credit}
-                            value={values.discount_percent}
-                            onChange={(event) =>
-                              set(
-                                'discount_percent',
-                                typedPercent(event.target.value, values.discount_percent),
-                              )
-                            }
-                            placeholder="0"
-                            className="h-7 w-14 rounded-md bg-muted/60 pr-5 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
-                          />
-                          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-caption text-muted-foreground">
-                            %
-                          </span>
-                        </span>
+                        <PercentInput
+                          id="invoice-discount_percent"
+                          aria-label={translate('discountOnTheWholeDocumentPercent')}
+                          aria-invalid={errors.discount_percent ? true : undefined}
+                          disabled={credit}
+                          value={values.discount_percent}
+                          onValueChange={(value) => set('discount_percent', value)}
+                          placeholder="0"
+                          compact
+                          className="inline-block"
+                          inputClassName="h-7 w-14 rounded-md bg-muted/60 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                        />
                       </dt>
                       <dd className="tabular-nums">
                         {totals && !isZero(totals.discount_amount) ? (
