@@ -292,7 +292,8 @@ export const ScrolledHeader: Story = {
     await expect(header).not.toHaveAttribute('data-scrolled')
     const glass = header?.previousElementSibling ?? header
     await expect(getComputedStyle(glass ?? document.body).backdropFilter).toMatch(/blur/)
-    window.scrollTo(0, 320)
+    // Well short of the end of the page, so every renderer stops at the same place.
+    window.scrollTo(0, 120)
     await waitFor(() => expect(header).toHaveAttribute('data-scrolled'))
     await expect(getComputedStyle(header ?? document.body).boxShadow).not.toBe('none')
     // The content goes under the header, which stays at the top.
