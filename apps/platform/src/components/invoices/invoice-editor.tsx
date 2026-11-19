@@ -102,6 +102,7 @@ import { DateField, DueDateField, quietValue, ServiceField } from './date-fields
 import {
   ClientBlock,
   MetaLabel,
+  PaperFooter,
   PARTY_LABEL,
   proseInput,
   SellerBlock,
@@ -881,7 +882,7 @@ function Editor({
                 aria-label={title}
                 // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
                 className={cn(
-                  'relative left-1/2 w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
+                  'relative left-1/2 flex w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 flex-col border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
                   !banner && 'border-t-0',
                 )}
               >
@@ -1338,8 +1339,7 @@ function Editor({
                   </dl>
                 </div>
 
-                {/* The rule sits outside the field, so focus outlines only the text. */}
-                <div className="mt-10 border-t border-border/70 pt-4">
+                <PaperFooter>
                   <textarea
                     aria-label={translate('footer')}
                     value={values.footer}
@@ -1349,7 +1349,7 @@ function Editor({
                     rows={1}
                     className={cn(proseInput, 'text-body-sm text-muted-foreground')}
                   />
-                </div>
+                </PaperFooter>
               </article>
 
               {kind === 'invoice' && values.client_id && (

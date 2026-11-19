@@ -3,7 +3,16 @@ import { expect, userEvent, within } from 'storybook/test'
 
 import { InvoiceEditorDrawer } from '@/components/invoices/invoice-editor'
 
-import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import {
+  closeHeidi,
+  dark,
+  desktop,
+  expectFooterAtTheBottom,
+  Frame,
+  pageParameters,
+  phone,
+  shows,
+} from './frame'
 
 const meta = {
   title: 'Pages/Invoice editor',
@@ -110,3 +119,12 @@ export const EngagementIsOptional: Story = {
     await expect(await page.findByRole('menuitem', { name: 'Engagement' })).toBeVisible()
   },
 }
+
+/** Like a printed page, the footer text sits at the bottom of the paper, with the free space above it. */
+export const FooterAtTheBottom: Story = {
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    await expectFooterAtTheBottom(within(document.body).getByRole('article'))
+  },
+}
+export const FooterAtTheBottomPhone = phone(FooterAtTheBottom)

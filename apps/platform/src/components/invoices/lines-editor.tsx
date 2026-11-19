@@ -319,11 +319,7 @@ export function LinesEditor({
                 maxLength={500}
                 onChange={(event) => set(index, { description: event.target.value })}
                 onKeyDown={(event) => onKeyDown(event, index, 'description')}
-                placeholder={
-                  index === 0
-                    ? translate('whatDidYouDeliverEGWebsiteDesign')
-                    : translate('description')
-                }
+                placeholder={translate('whatDidYouDeliverEGWebsiteDesign')}
                 className={cn(
                   cellInput,
                   'block [field-sizing:content] h-auto min-h-8 resize-none py-1.5',

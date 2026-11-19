@@ -75,6 +75,14 @@ describe('LinesEditor', () => {
     expect(latest.some(needsPrice)).toBe(false)
   })
 
+  it('gives an added line the same description hint as the first', async () => {
+    render(<Harness initial={[blank()]} />)
+    await userEvent.click(screen.getByRole('button', { name: /Add line/ }))
+    const hint = 'What did you deliver? e.g. Website design'
+    expect(screen.getByLabelText('Line 1 description').getAttribute('placeholder')).toBe(hint)
+    expect(screen.getByLabelText('Line 2 description').getAttribute('placeholder')).toBe(hint)
+  })
+
   it('keeps the price of a product in the invoice currency', async () => {
     picked.currency = 'CHF'
     render(<Harness initial={[blank()]} />)

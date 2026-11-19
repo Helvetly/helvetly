@@ -8,7 +8,16 @@ import { emailTemplateHandlers } from '@/mocks/email-templates'
 import { quoteHandlers, resetQuotesMock } from '@/mocks/quotes'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
-import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import {
+  closeHeidi,
+  dark,
+  desktop,
+  expectFooterAtTheBottom,
+  Frame,
+  pageParameters,
+  phone,
+  shows,
+} from './frame'
 
 /** The quotes page with the stateful quote fake behind it; `handlers` answer first. */
 const quotes = (query: Record<string, string> = {}, handlers: RequestHandler[] = []) =>
@@ -334,5 +343,14 @@ export const ClientTab: Story = {
     await userEvent.click(body.getByRole('button', { name: 'New quote' }))
     const editor = await body.findByRole('form', { name: 'New quote' })
     await seen(await within(editor).findByText('Sophie Meier'))
+  },
+}
+
+/** The quote's footer text sits at the bottom of the paper, as on the invoice editor. */
+export const EditorFooterAtTheBottom: Story = {
+  parameters: quotes({ new: '1' }),
+  play: async ({ canvasElement }) => {
+    const editor = await page(canvasElement).findByRole('form', { name: 'New quote' }, wait)
+    await expectFooterAtTheBottom(within(editor).getByRole('article'))
   },
 }
