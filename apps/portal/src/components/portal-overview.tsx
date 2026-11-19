@@ -5,7 +5,7 @@ import { TONES } from '@helvetly/ui/components/status-badge'
 import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { CircleAlert, CircleCheck, Wallet } from 'lucide-react'
+import { ArrowRight, CircleAlert, CircleCheck, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -70,7 +70,7 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
   return (
     <div className="grid gap-4">
       {overdue.length > 0 && (
-        <p className={cn('flex items-start gap-2 rounded-lg px-3 py-2 text-sm', TONES.red)}>
+        <p className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-body ${TONES.red}`}>
           <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             {overdue.length === 1
@@ -84,13 +84,13 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
         </p>
       )}
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="grid gap-1">
+        <div className="grid gap-2">
           {due.map(([currency, total]) => (
-            <p key={currency} className="text-3xl font-semibold tracking-tight tabular-nums">
+            <p key={currency} className="text-display font-semibold tracking-tight tabular-nums">
               {formatMoney(total, currency)}
             </p>
           ))}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             {urgent.length === 1
               ? translate('message1OpenInvoice')
               : translate('openInvoices', { length: urgent.length })}
@@ -102,8 +102,11 @@ function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: stri
             )}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/invoices">{translate('viewInvoices')}</Link>
+        <Button asChild size="lg">
+          <Link href="/invoices">
+            {translate('viewInvoices')}
+            <ArrowRight data-icon="inline-end" />
+          </Link>
         </Button>
       </div>
     </div>
@@ -116,14 +119,14 @@ function Attention({ invoices, today }: { invoices: PortalInvoice[]; today: stri
   return (
     <section
       aria-labelledby="overview-attention"
-      className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}
+      className={cn(cardClass, 'grid content-start gap-2 p-4 sm:p-6')}
     >
       <SectionTitle id="overview-attention" action={viewAll('/invoices', translate('allInvoices'))}>
         {translate('needsYourAttention')}
       </SectionTitle>
-      <ul className="-mx-2 grid">
+      <ul className="-mx-2 grid divide-y divide-border/70">
         {top.map((invoice) => (
-          <li key={invoice.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5">
+          <li key={invoice.id} className="flex items-center gap-3 px-2 py-3">
             <span className="grid min-w-0 flex-1 leading-tight">
               <span className="truncate text-body font-medium">{invoice.number}</span>
               <span
@@ -152,13 +155,16 @@ function QuotesToAnswer() {
   const awaiting = query.data?.filter(isAwaiting) ?? []
   if (awaiting.length === 0) return null
   return (
-    <section aria-labelledby="overview-quotes" className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}>
+    <section
+      aria-labelledby="overview-quotes"
+      className={cn(cardClass, 'grid content-start gap-2 p-4 sm:p-6')}
+    >
       <SectionTitle id="overview-quotes" action={viewAll('/quotes', translate('answerQuotes'))}>
         {translate('quotesToAnswer')}
       </SectionTitle>
-      <ul className="-mx-2 grid">
+      <ul className="-mx-2 grid divide-y divide-border/70">
         {awaiting.slice(0, 3).map((quote) => (
-          <li key={quote.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5">
+          <li key={quote.id} className="flex items-center gap-3 px-2 py-3">
             <span className="grid min-w-0 flex-1 leading-tight">
               <span className="truncate text-body font-medium">{quoteName(quote)}</span>
               <span className="text-body-sm text-muted-foreground">
@@ -184,7 +190,7 @@ function Engagements({ today }: { today: string }) {
   return (
     <section
       aria-labelledby="overview-engagements"
-      className={cn(cardClass, 'grid gap-3 p-4 sm:p-5')}
+      className={cn(cardClass, 'grid content-start gap-4 p-4 sm:p-6')}
     >
       <SectionTitle
         id="overview-engagements"
@@ -197,7 +203,7 @@ function Engagements({ today }: { today: string }) {
       ) : query.error ? (
         <RetryAlert what={translate('engagements')} onRetry={() => void query.refetch()} />
       ) : (
-        <ul className="grid gap-4">
+        <ul className="grid gap-5">
           {running.map((engagement) => {
             const period = engagement.current_period
             if (!period) return null
@@ -206,7 +212,7 @@ function Engagements({ today }: { today: string }) {
                 ? Number(period.used) / Number(engagement.quantity)
                 : 0
             return (
-              <li key={engagement.id} className="grid gap-1.5">
+              <li key={engagement.id} className="grid gap-2">
                 <div className="flex items-baseline justify-between gap-3 text-body">
                   <span className="truncate font-medium">{engagement.name}</span>
                   <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
@@ -236,7 +242,7 @@ function RecentDocuments({ today }: { today: string }) {
   return (
     <section
       aria-labelledby="overview-documents"
-      className={cn(cardClass, 'grid gap-1 p-4 sm:p-5')}
+      className={cn(cardClass, 'grid content-start gap-2 p-4 sm:p-6')}
     >
       <SectionTitle
         id="overview-documents"
@@ -249,9 +255,9 @@ function RecentDocuments({ today }: { today: string }) {
       ) : query.error ? (
         <RetryAlert what={translate('documents')} onRetry={() => void query.refetch()} />
       ) : (
-        <ul className="-mx-2 grid">
+        <ul className="-mx-2 grid divide-y divide-border/70">
           {query.data.slice(0, 3).map((doc) => (
-            <li key={doc.id} className="flex items-center gap-3 rounded-lg px-2 py-2">
+            <li key={doc.id} className="flex items-center gap-3 px-2 py-3">
               <FileTile contentType={doc.content_type} />
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate text-body">{doc.name}</span>
@@ -285,33 +291,46 @@ export function PortalOverview() {
   const name = session.data?.client.name
 
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       <PageHeader title={`${greeting(hour)}${name ? `, ${name}` : ''}`}>
         {session.data &&
           translate('sharesYourInvoicesWorkAndDocumentsHere', {
             name: session.data.workspace.name,
           })}
       </PageHeader>
-      <section aria-labelledby="overview-due" className={cn(cardClass, 'grid gap-4 p-4 sm:p-6')}>
-        <h2
-          id="overview-due"
-          className="flex items-center gap-2 text-body-sm font-medium text-muted-foreground"
-        >
-          <Wallet className="size-4 text-brand" aria-hidden />
-          {translate('amountDue')}
-        </h2>
-        {invoices.isPending ? (
-          <Loader className="min-h-16" />
-        ) : invoices.error ? (
-          <RetryAlert what={translate('yourInvoices')} onRetry={() => void invoices.refetch()} />
-        ) : (
-          <AmountDue invoices={invoices.data} today={today} />
-        )}
-      </section>
-      {invoices.data && <Attention invoices={invoices.data} today={today} />}
-      <QuotesToAnswer />
-      <Engagements today={today} />
-      <RecentDocuments today={today} />
+      {/* Wide screens: what is due on the left, engagements and files beside it (gone when empty). */}
+      <div className="grid gap-5 sm:gap-6 lg:flex lg:items-start">
+        <div className="grid min-w-0 gap-5 sm:gap-6 lg:flex-1">
+          <section
+            aria-labelledby="overview-due"
+            className={cn(cardClass, 'grid gap-5 p-5 shadow-elevation-soft sm:p-8')}
+          >
+            <h2
+              id="overview-due"
+              className="flex items-center gap-2 text-body font-medium text-muted-foreground"
+            >
+              <Wallet className="size-4 text-brand" aria-hidden />
+              {translate('amountDue')}
+            </h2>
+            {invoices.isPending ? (
+              <Loader className="min-h-16" />
+            ) : invoices.error ? (
+              <RetryAlert
+                what={translate('yourInvoices')}
+                onRetry={() => void invoices.refetch()}
+              />
+            ) : (
+              <AmountDue invoices={invoices.data} today={today} />
+            )}
+          </section>
+          {invoices.data && <Attention invoices={invoices.data} today={today} />}
+          <QuotesToAnswer />
+        </div>
+        <div className="grid min-w-0 gap-5 empty:hidden sm:gap-6 lg:w-96 lg:shrink-0">
+          <Engagements today={today} />
+          <RecentDocuments today={today} />
+        </div>
+      </div>
     </div>
   )
 }

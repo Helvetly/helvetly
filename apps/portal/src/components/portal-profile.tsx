@@ -105,16 +105,16 @@ export function PortalProfile() {
   )
   if (query.isPending)
     return (
-      <div className="grid gap-5 sm:gap-6">
+      <div className="grid gap-6 sm:gap-8">
         {header}
         <Loader className="min-h-72" />
       </div>
     )
   if (query.error)
     return (
-      <div className="grid gap-5 sm:gap-6">
+      <div className="grid gap-6 sm:gap-8">
         {header}
-        <div className={cn(cardClass, 'p-4 sm:p-5')}>
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
           <RetryAlert what={translate('yourDetails')} onRetry={() => void query.refetch()} />
         </div>
       </div>
@@ -178,7 +178,7 @@ export function PortalProfile() {
     )
 
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="grid gap-6 sm:gap-8">
       {header}
       <PortalPhoto />
       {pending && (
@@ -236,7 +236,7 @@ export function PortalProfile() {
         }}
       >
         {GROUPS.map(({ title, icon: Icon, keys }) => (
-          <fieldset key={title} className={cn(cardClass, 'grid gap-4 p-4 sm:p-5')}>
+          <fieldset key={title} className={cn(cardClass, 'grid gap-4 p-4 sm:p-6')}>
             <legend className="float-left flex items-center gap-2 text-title-sm font-medium">
               <span className="flex size-7 items-center justify-center rounded-lg bg-section-icon-surface text-section-icon">
                 <Icon className="size-4" aria-hidden />
