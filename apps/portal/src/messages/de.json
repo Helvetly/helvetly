@@ -214,5 +214,7 @@
   "dynamicOn2": "{verb} am {value2}",
   "portalAddressNotFound": "Diese Portaladresse gibt es nicht",
   "portalAddressNotFoundHint": "Prüfen Sie den Link in der E-Mail Ihres Lieferanten oder fragen Sie ihn nach der aktuellen Portaladresse.",
-  "zRich": "Zürich"
+  "zRich": "Zürich",
+  "portalUnavailable": "Das Kundenportal ist nicht verfügbar",
+  "portalUnavailableHint": "Ihr Anbieter hat sein Kundenportal vorübergehend ausgeschaltet. Fragen Sie direkt nach, wenn Sie Rechnungen oder Dokumente brauchen."
 }

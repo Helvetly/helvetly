@@ -25,22 +25,72 @@ func (s *Service) registerPortal(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/workspace/portal", s.auth.SignedIn(s.getPortal))
 	mux.HandleFunc("GET /api/v1/workspace/portal/availability", s.auth.SignedIn(s.portalAvailability))
 	mux.HandleFunc("PUT /api/v1/workspace/portal", s.auth.SignedIn(s.putPortal))
+	mux.HandleFunc("PUT /api/v1/workspace/portal/access", s.auth.SignedIn(s.putPortalAccess))
 }
 
 var errPortalAdminOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner or admin can change the portal address.", nil)
 
-func (s *Service) writePortal(w http.ResponseWriter, slug string) {
-	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]string{"slug": slug, "url": s.portal.URLFor(slug)}})
+// writePortal answers with the slug, the whole address and whether the portal is on for the workspace.
+func (s *Service) writePortal(w http.ResponseWriter, r *http.Request, workspaceID, slug string) {
+	off, err := s.db.PortalOff(r.Context(), workspaceID)
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"slug": slug, "url": s.portal.URLFor(slug), "enabled": !off}})
 }
 
-// getPortal is where the workspace's clients sign in: its slug and the whole address.
+// getPortal is where the workspace's clients sign in: its slug, the whole address and whether the portal is on.
 func (s *Service) getPortal(w http.ResponseWriter, r *http.Request, sess store.Session) {
 	slug, err := s.portal.Slug(r.Context(), sess.Workspace)
 	if err != nil {
 		s.auth.WriteError(w, r, err)
 		return
 	}
-	s.writePortal(w, slug)
+	s.writePortal(w, r, sess.Workspace.ID, slug)
+}
+
+// putPortalAccess turns the whole client portal on or off (owner or admin), audited. Off, no client signs in, every
+// portal session ends and no invitation goes out; each client's own switch is kept.
+func (s *Service) putPortalAccess(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	if sess.Role != "owner" && sess.Role != "admin" {
+		s.auth.WriteError(w, r, errPortalAdminOnly)
+		return
+	}
+	var in struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if !s.auth.Decode(w, r, &in) {
+		return
+	}
+	if in.Enabled == nil {
+		s.auth.WriteError(w, r, auth.Error(http.StatusUnprocessableEntity, "invalid", "Say whether the portal is on.", map[string]any{"fields": map[string]string{"enabled": "required"}}))
+		return
+	}
+	slug, err := s.portal.Slug(r.Context(), sess.Workspace)
+	if err == nil {
+		err = s.db.Tx(r.Context(), func(q store.Q) error {
+			off, err := q.PortalOff(r.Context(), sess.Workspace.ID)
+			if err != nil || off == !*in.Enabled {
+				return err
+			}
+			if err := q.SetPortalOff(r.Context(), sess.Workspace.ID, !*in.Enabled); err != nil {
+				return err
+			}
+			kind := "workspace.portal_turned_off"
+			if *in.Enabled {
+				kind = "workspace.portal_turned_on"
+			}
+			actor := sess.User.ID
+			return q.LogEvent(r.Context(), store.FinancialEvent{WorkspaceID: sess.Workspace.ID, Kind: kind,
+				SubjectType: "workspace", SubjectID: sess.Workspace.ID, ActorID: &actor, At: s.now(), Payload: []byte(`{}`)})
+		})
+	}
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	s.writePortal(w, r, sess.Workspace.ID, slug)
 }
 
 // slugProblem is why the workspace cannot take slug: "invalid", "reserved", "taken" or "".
@@ -95,7 +145,7 @@ func (s *Service) putPortal(w http.ResponseWriter, r *http.Request, sess store.S
 		return
 	}
 	if slug == previous {
-		s.writePortal(w, slug)
+		s.writePortal(w, r, sess.Workspace.ID, slug)
 		return
 	}
 	problem, err := s.slugProblem(r.Context(), sess.Workspace.ID, slug)
@@ -124,5 +174,5 @@ func (s *Service) putPortal(w http.ResponseWriter, r *http.Request, sess store.S
 		s.auth.WriteError(w, r, err)
 		return
 	}
-	s.writePortal(w, slug)
+	s.writePortal(w, r, sess.Workspace.ID, slug)
 }

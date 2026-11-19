@@ -30,7 +30,7 @@ const portalLogin = `lower(coalesce(nullif(c.email, ''), nullif(c.billing_email,
 func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) ([]PortalAccess, error) {
 	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name FROM clients c
 		JOIN workspaces w ON w.id = c.workspace_id
-		WHERE `+portalLogin+` = lower($1) AND c.portal_enabled AND c.deleted_at IS NULL AND w.deleted_at IS NULL
+		WHERE `+portalLogin+` = lower($1) AND c.portal_enabled AND NOT w.portal_off AND c.deleted_at IS NULL AND w.deleted_at IS NULL
 			AND ($2 = '' OR w.id = $2)
 		ORDER BY c.name, c.id`, email, workspaceID)
 	if err != nil {
@@ -58,15 +58,15 @@ func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, 
 	return err
 }
 
-// PortalSessionByToken re-checks access on every read: turning the portal off or changing the client's portal
-// address ends the session at once.
+// PortalSessionByToken re-checks access on every read: turning the portal off (for the client or the whole
+// workspace) or changing the client's portal address ends the session at once.
 func (q Q) PortalSessionByToken(ctx context.Context, tokenHash string, now time.Time) (PortalSession, error) {
 	var s PortalSession
 	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at, s.scoped
 		FROM portal_sessions s
 		JOIN clients c ON c.id = s.client_id
 		JOIN workspaces w ON w.id = s.workspace_id
-		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND `+portalLogin+` = s.email
+		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND NOT w.portal_off AND `+portalLogin+` = s.email
 			AND c.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, now).
 		Scan(&s.ID, &s.CSRFToken, &s.Email, &s.ClientID, &s.ClientName,
 			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt, &s.Scoped)

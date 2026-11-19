@@ -16,6 +16,7 @@ const screens: [App, string][] = [
   ['platform', 'books-ledger--trial-balance'],
   ['platform', 'books-ledger--loaded'],
   ['platform', 'books-ledger--save-invalid'],
+  ['platform', 'settings-portal-address--with-domain'],
   ['portal', 'pages-portal--overview'],
   ['portal', 'pages-portal--invoices'],
   ['portal', 'pages-portal--profile'],

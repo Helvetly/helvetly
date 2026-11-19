@@ -9,12 +9,23 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// openScope is the request's scope when its workspace's portal is open: the plan includes it and a client has it on.
-// Otherwise the workspace answers like an unknown one, so the endpoint names no workspace that has no portal.
+// errPortalClosed: the workspace turned its whole portal off. The sign-in page says the portal is not available and
+// names nobody.
+var errPortalClosed = auth.Error(http.StatusNotFound, "portal_closed", "This client portal is not available.", nil)
+
+// openScope is the request's scope when its workspace's portal is open: on, the plan includes it and a client has it
+// on. Otherwise the workspace answers like an unknown one, so the endpoint names no workspace that has no portal.
 func (s *Service) openScope(r *http.Request) (store.PortalScope, error) {
 	scope, ok := portalscope.FromContext(r.Context())
 	if !ok {
 		return scope, auth.ErrNotFound
+	}
+	off, err := s.db.Q.PortalOff(r.Context(), scope.WorkspaceID)
+	if err == nil && off {
+		err = errPortalClosed
+	}
+	if err != nil {
+		return scope, err
 	}
 	open, err := s.db.Q.FeatureAllowed(r.Context(), scope.WorkspaceID, store.FeatureClientPortal)
 	if err == nil && open {

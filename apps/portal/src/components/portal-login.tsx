@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { translate } from '@/lib/i18n'
 import {
   getPortalScope,
+  isPortalClosed,
   getPortalSession,
   portalKeys,
   startPortalSignIn,
@@ -21,6 +22,7 @@ import { scoped } from '@/lib/scope'
 import { siteUrl } from '@/lib/site'
 
 import { WorkspaceMark } from './portal-bits'
+import { PortalNotFound } from './portal-not-found'
 
 /**
  * The staff sign-in's email and code steps, against the portal's own endpoints. With `workspace` the
@@ -45,6 +47,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
   useEffect(() => {
     if (signedIn) router.replace(scoped('/'))
   }, [signedIn, router])
+  if (isPortalClosed(scope.error)) return <PortalNotFound closed />
   if (session.isPending || scope.isPending || signedIn)
     return <div className="min-h-svh bg-background" aria-busy />
 

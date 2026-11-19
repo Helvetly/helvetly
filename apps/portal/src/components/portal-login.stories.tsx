@@ -186,6 +186,33 @@ export const WorkspaceAddress: Story = {
   },
 }
 
+/** The workspace turned its whole portal off: the calm "not available" page instead of the form, naming nobody. */
+export const WorkspacePortalOff: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        http.get('/api/v1/public/portal/scope', () =>
+          HttpResponse.json(
+            { error: { code: 'portal_closed', message: 'This client portal is not available.' } },
+            { status: 404 },
+          ),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  beforeEach: WorkspaceAddress.beforeEach,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(canvas.queryByLabelText('Email')).toBeNull()
+    await expect(canvas.queryByText('Müller Treuhand AG')).toBeNull()
+  },
+}
+
 export const WorkspaceAddressPhone: Story = {
   parameters: { ...WorkspaceAddress.parameters, ...phone },
   beforeEach: WorkspaceAddress.beforeEach,

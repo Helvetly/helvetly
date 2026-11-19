@@ -79,3 +79,22 @@ func (q Q) HasPortalClients(ctx context.Context, workspaceID string) (bool, erro
 		workspaceID).Scan(&ok)
 	return ok, err
 }
+
+// PortalOff: the workspace turned its whole client portal off.
+func (q Q) PortalOff(ctx context.Context, workspaceID string) (bool, error) {
+	var off bool
+	err := q.db.QueryRow(ctx, `SELECT portal_off FROM workspaces WHERE id = $1`, workspaceID).Scan(&off)
+	return off, err
+}
+
+// SetPortalOff turns the workspace's client portal off or on; turning it off ends every portal session at once.
+func (q Q) SetPortalOff(ctx context.Context, workspaceID string, off bool) error {
+	if _, err := q.db.Exec(ctx, `UPDATE workspaces SET portal_off = $2 WHERE id = $1`, workspaceID, off); err != nil {
+		return err
+	}
+	if !off {
+		return nil
+	}
+	_, err := q.db.Exec(ctx, `DELETE FROM portal_sessions WHERE workspace_id = $1`, workspaceID)
+	return err
+}

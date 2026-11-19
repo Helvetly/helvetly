@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
-import { PortalDomainSection } from '@/components/settings/portal-domain'
+import { PortalDomainRow } from '@/components/settings/portal-domain'
 import type { PlanId } from '@/lib/billing'
 import {
   portalDomain,
@@ -20,17 +20,17 @@ const onPlan = (plan: PlanId) =>
 
 const meta = {
   title: 'Settings/Portal domain',
-  component: PortalDomainSection,
+  component: PortalDomainRow,
   args: { canEdit: true },
   parameters: { msw: { handlers: [onPlan('business'), ...portalDomainHandlers] } },
   beforeEach: () => resetPortalDomain(),
   render: (args) => (
     <div className="@container/sections max-w-5xl p-6">
-      <PortalDomainSection {...args} />
+      <PortalDomainRow {...args} />
       <Toaster />
     </div>
   ),
-} satisfies Meta<typeof PortalDomainSection>
+} satisfies Meta<typeof PortalDomainRow>
 export default meta
 type Story = StoryObj<typeof meta>
 
@@ -211,16 +211,21 @@ export const ReadOnlyNone: Story = {
   },
 }
 
-/** A plan without custom domains: the plan that has them, nothing to type. */
+/** A plan without custom domains: the row stays, locked, with why and the way to upgrade; nothing to type. */
 export const PlanLocked: Story = {
   parameters: { msw: { handlers: [onPlan('pro'), ...portalDomainLockedHandlers] } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
       await canvas.findByText(/include a custom portal domain; Business does/),
-    ).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: 'Add domain' })).toBeDisabled()
+    ).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
+    )
+    await expect(canvas.getByRole('heading', { name: /Your own domain/ })).toBeVisible()
     await expect(canvas.queryByLabelText(/^Domain/)).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Add domain' })).toBeNull()
   },
 }
 
@@ -265,12 +270,12 @@ export const TakenUnproven: Story = {
   },
 }
 
-/** Without Cloudflare for SaaS settings on the server the section is not there. */
+/** Without Cloudflare for SaaS settings on the server the row is not there. */
 export const Disabled: Story = {
   beforeEach: () => resetPortalDomain(null, false),
   play: async ({ canvasElement }) => {
     await new Promise((resolve) => setTimeout(resolve, 300))
-    await expect(within(canvasElement).queryByText('Custom domain')).toBeNull()
+    await expect(within(canvasElement).queryByText('Your own domain')).toBeNull()
   },
 }
 

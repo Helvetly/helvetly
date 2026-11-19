@@ -214,5 +214,7 @@
   "dynamicOn2": "{verb} on {value2}",
   "portalAddressNotFound": "This portal address doesn’t exist",
   "portalAddressNotFoundHint": "Check the link in your supplier’s email, or ask them for their current portal address.",
-  "zRich": "Zürich"
+  "zRich": "Zürich",
+  "portalUnavailable": "The client portal is not available",
+  "portalUnavailableHint": "Your supplier has turned their client portal off for now. Ask them if you need your invoices or documents."
 }

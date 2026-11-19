@@ -165,3 +165,54 @@ test('one address, client of two workspaces, signs in on each address separately
     await staff.dispose()
   }
 })
+
+test('the owner turns the whole portal off in settings: the client is signed out and the address says it is not available; on again lets them back in', async ({
+  api,
+  page,
+  browser,
+}) => {
+  const email = `off-${randomUUID()}@example.test`
+  const client = await api.save('/clients', { name: uniqueName('Off'), is_company: false, email })
+  await api.save(`/clients/${text(client.id)}`, { portal_enabled: true }, 'PATCH')
+  const path = await portalPath(api.request)
+  const context = await browser.newContext({ baseURL: portalURL })
+  try {
+    const verified = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: await code(context, path, email) },
+    })
+    expect(verified.status()).toBe(201)
+    await expect(await session(context, path)).toBeOK()
+
+    await page.goto('/settings/workspace#portal-address')
+    const toggle = page.getByRole('switch', { name: 'Client portal', exact: true })
+    await expect(toggle).toBeChecked()
+    await toggle.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('Turn off the client portal?')
+    await dialog.getByRole('button', { name: 'Turn off', exact: true }).click()
+    await expect(toggle).not.toBeChecked()
+
+    // Off: the session is gone, no sign-in, and the address names nobody.
+    expect((await session(context, path)).status()).toBe(401)
+    const again = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: await code(context, path, email) },
+    })
+    expect(again.status()).toBe(403)
+    const portal = await context.newPage()
+    await portal.goto(`${path}login/`)
+    await expect(
+      portal.getByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(portal.getByLabel('Email', { exact: true })).toHaveCount(0)
+
+    // On again (no question): the client's own access is as it was.
+    await toggle.click()
+    await expect(toggle).toBeChecked()
+    const back = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: await code(context, path, email) },
+    })
+    expect(back.status()).toBe(201)
+  } finally {
+    await context.close()
+  }
+})

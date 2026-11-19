@@ -122,15 +122,19 @@ export type PortalScope = {
   url: string
 }
 
+/** The workspace turned its whole portal off: the API names nobody, the page says the portal is not available. */
+export const isPortalClosed = (error: unknown) =>
+  error instanceof ApiError && error.code === 'portal_closed'
+
 /**
  * The workspace of a scoped page: under /w/<slug>/ or on the workspace's own domain (portal.firma.ch, no prefix);
- * null on the shared portal (the API answers 404 there).
+ * null on the shared portal (the API answers 404 there). A portal turned off throws (`isPortalClosed`).
  */
 export async function getPortalScope(): Promise<PortalScope | null> {
   try {
     return await call<PortalScope>('/scope')
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null
+    if (error instanceof ApiError && error.status === 404 && !isPortalClosed(error)) return null
     throw error
   }
 }

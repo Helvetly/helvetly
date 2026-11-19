@@ -6,11 +6,12 @@ import { Input } from '@helvetly/ui/components/input'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { Copy, Link2, RefreshCw } from 'lucide-react'
+import { Copy, Link2, Lock, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { PLANS_HREF, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -26,7 +27,7 @@ import {
 } from '@/lib/workspaces'
 
 import { HelpTip } from './help-tip'
-import { ActionRow, FieldGrid, SettingsSection } from './layout'
+import { FieldGrid } from './layout'
 
 /** What someone types or pastes ("https://Portal.Firma.ch/login") as the bare host the API expects. */
 export function domainOf(input: string): string {
@@ -83,47 +84,56 @@ const REFUSALS: Record<string, string> = {
   domain_unavailable: translate('domainUnavailable'),
 }
 
-const title = (
-  <span className="inline-flex items-center gap-1.5">
-    {translate('customDomain')}
-    <HelpTip label={translate('customDomain')}>{translate('customDomainHelp')}</HelpTip>
-  </span>
-)
-
-/** The client portal at the workspace's own domain: add it, the DNS records to create, its status. */
-export function PortalDomainSection({ canEdit }: { canEdit: boolean }) {
+/**
+ * The client portal at the workspace's own domain, as a row under its address: add it, the DNS records to create,
+ * its status. On a plan without it the row stays, locked, with the way to the plans. Not there at all when the
+ * server has no Cloudflare for SaaS settings.
+ */
+export function PortalDomainRow({ canEdit }: { canEdit: boolean }) {
   const settings = usePortalDomain().data
+  const lock = useFeatureLock('custom_portal_domain')
   if (!settings?.enabled) return null
+  const locked = Boolean(lock) && !settings.domain
+  const body = settings.domain ? (
+    <DomainStatus domain={settings.domain} canEdit={canEdit} />
+  ) : lock ? (
+    <p className="text-body-sm text-pretty text-muted-foreground">
+      {lock.hint}.{' '}
+      <Link href={PLANS_HREF} className="text-foreground underline underline-offset-2">
+        {translate('upgrade')}
+      </Link>
+    </p>
+  ) : canEdit ? (
+    <AddDomain />
+  ) : (
+    <p className="text-body-sm text-muted-foreground">{translate('customDomainNone')}</p>
+  )
   return (
-    <SettingsSection id="portal-domain" icon={Link2} title={title}>
-      {settings.domain ? (
-        <DomainStatus domain={settings.domain} canEdit={canEdit} />
-      ) : canEdit ? (
-        <AddDomain />
-      ) : (
-        <p className="text-body-sm text-muted-foreground">{translate('customDomainNone')}</p>
-      )}
-    </SettingsSection>
+    <div
+      id="portal-domain"
+      data-slot="portal-domain"
+      data-locked={locked || undefined}
+      className="grid gap-3 border-t pt-5"
+    >
+      <h3 className="flex items-center gap-1.5 text-body font-medium">
+        {locked ? (
+          <Lock aria-hidden className="size-3.5 text-muted-foreground" />
+        ) : (
+          <Link2 aria-hidden className="size-3.5 text-muted-foreground" />
+        )}
+        {translate('ownDomain')}
+        <HelpTip label={translate('ownDomain')}>{translate('customDomainHelp')}</HelpTip>
+      </h3>
+      {body}
+    </div>
   )
 }
 
 function AddDomain() {
-  const lock = useFeatureLock('custom_portal_domain')
   const add = useAddPortalDomain()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string>()
   const [proof, setProof] = useState<DomainRecord>()
-  if (lock)
-    return (
-      <ActionRow title={translate('customDomain')} description={translate('customDomainIntro')}>
-        <span className="flex items-center gap-2">
-          <PlanTag lock={lock} />
-          <Button size="sm" variant="outline" disabled>
-            {translate('addCustomDomain')}
-          </Button>
-        </span>
-      </ActionRow>
-    )
   return (
     <form
       noValidate
@@ -168,6 +178,7 @@ function AddDomain() {
           <Input
             {...describedBy('portal-domain-input', error)}
             placeholder="portal.yourcompany.com"
+            className="bg-card"
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
