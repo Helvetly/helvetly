@@ -230,6 +230,7 @@
   --elevation-1: 0 0 0 1px oklch(0.21 0.006 286 / 0.07), 0 1px 2px oklch(0.21 0.006 286 / 0.05);
   /* A card that lifts a little off its panel: a hairline and a wide, soft shadow. */
   --elevation-soft: 0 0 0 1px oklch(0.21 0.006 286 / 0.05), 0 8px 24px rgb(149 157 165 / 0.2);
+  --sticky-shadow: 0 6px 12px -8px rgb(15 23 42 / 0.18);
   --elevation-2:
     0 12px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.03);
   --sidebar: var(--background);
@@ -289,6 +290,7 @@
   --chart-5: oklch(0.78 0.14 75);
   --elevation-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 2px oklch(0 0 0 / 0.3);
   --elevation-soft: 0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px oklch(0 0 0 / 0.35);
+  --sticky-shadow: 0 1px 0 oklch(1 0 0 / 0.08), 0 8px 16px -6px oklch(0 0 0 / 0.9);
   --elevation-2: 0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -8px oklch(0 0 0 / 0.55);
   --heidi: #a593ff;
   --heidi-soft: oklch(0.3 0.08 292);
@@ -478,6 +480,14 @@ h1 .accent {
   }
 }
 @layer components {
+  /* A drawer's sticky header lifts off the content only once that content scrolls under it
+     (SheetContent sets data-scrolled); at the top it stays flat on its hairline border. */
+  [data-slot='sheet-content'] header.sticky {
+    transition: box-shadow 150ms ease-out;
+  }
+  [data-slot='sheet-content'][data-scrolled] header.sticky {
+    box-shadow: var(--sticky-shadow);
+  }
   @media (prefers-reduced-motion: no-preference) {
     :is(
       button,
