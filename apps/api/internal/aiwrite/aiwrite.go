@@ -252,7 +252,7 @@ func modelError(err error) error {
 		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "AI writing is paused while the service's AI budget is being updated.", nil)
 	case errors.Is(err, aimodel.ErrUncertain), errors.Is(err, aimodel.ErrAttempts):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace. Try again in a moment.", nil)
-	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
+	case aimodel.Busy(err):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
 		return auth.Error(http.StatusServiceUnavailable, "ai_failed", "The AI couldn't write this right now. Nothing was changed. Try again in a moment.", nil)

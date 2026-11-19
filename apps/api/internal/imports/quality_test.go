@@ -28,7 +28,7 @@ func TestModelQualityOnMultilingualInvoices(t *testing.T) {
 	base := cmp.Or(os.Getenv("OPENAI_BASE_URL"), "https://api.openai.com/v1")
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")
-	e.s.provider = aimodel.NewOpenAI(key, base, model)
+	e.s.provider = aimodel.NewOpenAI(key, base, model, "")
 
 	docs := []struct {
 		name, text string

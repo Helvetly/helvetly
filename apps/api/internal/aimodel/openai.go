@@ -10,23 +10,40 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type openAI struct {
 	key, url string
 	card     RateCard
 	client   *http.Client
+	fallback *openAI
 }
 
 // NewOpenAI keeps credentials on the server. baseURL is the API root of OpenAI or a compatible gateway
 // (https://api.openai.com/v1, validated at startup); model is one of Cards (validated at startup), asked for at its
-// card's tier, never upgraded to a faster or dearer one.
-func NewOpenAI(key, baseURL, model string) Provider {
+// card's tier, never upgraded to a faster or dearer one. fallback ("" none) is another of Cards, asked by Generate
+// when model stays busy.
+func NewOpenAI(key, baseURL, model, fallback string) Provider {
 	if key == "" {
 		return nil
 	}
-	return &openAI{key: key, card: Cards[model], url: baseURL + "/responses", client: &http.Client{Timeout: MaxAnswerTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+	client := &http.Client{Timeout: MaxAnswerTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	p := &openAI{key: key, card: Cards[model], url: baseURL + "/responses", client: client}
+	if fallback != "" {
+		p.fallback = &openAI{key: key, card: Cards[fallback], url: p.url, client: client}
+	}
+	return p
+}
+
+// Fallback is the provider of the fallback model, nil when there is none.
+func (p *openAI) Fallback() Provider {
+	if p.fallback == nil {
+		return nil
+	}
+	return p.fallback
 }
 
 type inputPart struct {
@@ -108,11 +125,11 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 	defer resp.Body.Close()
 	zero := int64(0)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		reply := Reply{}
-		if resp.StatusCode >= 400 && resp.StatusCode < 500 { // refused before generating: nothing billed
+		reply, err := Reply{}, statusError(resp)
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 || FailureKind(err) == FailOverloaded { // refused before generating: nothing billed
 			reply.Tokens, reply.Usage = &zero, &Usage{Model: p.card.Model, Tier: p.card.Tier}
 		}
-		return reply, statusError(resp)
+		return reply, err
 	}
 	failed := &ProviderError{HTTPStatus: resp.StatusCode, RequestID: resp.Header.Get("x-request-id")}
 	b, err = io.ReadAll(io.LimitReader(resp.Body, 2<<20+1))
@@ -221,7 +238,10 @@ func statusError(resp *http.Response) error {
 	}
 	switch {
 	case resp.StatusCode == http.StatusTooManyRequests && e.Code != "insufficient_quota":
-		e.Kind = FailRateLimited
+		e.Kind, e.RetryAfter = FailRateLimited, retryAfter(resp.Header.Get("Retry-After"), time.Now())
+	case resp.StatusCode == http.StatusServiceUnavailable && strings.Contains(strings.ToLower(e.Type+" "+e.Code+" "+e.Message), "overloaded"):
+		// The model refused the request before generating, unlike another 5xx whose usage is unknown.
+		e.Kind, e.RetryAfter = FailOverloaded, retryAfter(resp.Header.Get("Retry-After"), time.Now())
 	case resp.StatusCode == http.StatusTooManyRequests, resp.StatusCode == http.StatusUnauthorized,
 		resp.StatusCode == http.StatusForbidden, resp.StatusCode == http.StatusNotFound:
 		e.Kind = FailConfig // an exhausted account, a wrong key or a model the key may not use
@@ -231,6 +251,18 @@ func statusError(resp *http.Response) error {
 		e.Kind = FailRejected
 	}
 	return e
+}
+
+// retryAfter reads a Retry-After header, in seconds or as an HTTP date, capped at maxRetryWait; 0 when absent or
+// unreadable.
+func retryAfter(header string, now time.Time) time.Duration {
+	var d time.Duration
+	if s, err := strconv.Atoi(strings.TrimSpace(header)); err == nil {
+		d = time.Duration(min(s, int(maxRetryWait/time.Second)+1)) * time.Second
+	} else if t, err := http.ParseTime(header); err == nil {
+		d = t.Sub(now)
+	}
+	return min(max(d, 0), maxRetryWait)
 }
 
 // InputTokens uses the official count endpoint with the identical input before starting generation.

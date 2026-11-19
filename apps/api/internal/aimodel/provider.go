@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // maxReplyBytes bounds a reply's text: a structured extraction of a long spreadsheet chunk is the largest.
@@ -54,6 +55,7 @@ type Provider interface {
 // Reasons a provider call failed: Kind of ProviderError, stored on its ai_calls row.
 const (
 	FailRateLimited = "rate_limited" // 429: the provider is busy; try again shortly
+	FailOverloaded  = "overloaded"   // 503 "model overloaded": refused before generating; try again shortly
 	FailConfig      = "config"       // credentials, model or the provider account (401, 403, 404, insufficient_quota)
 	FailRejected    = "rejected"     // another 4xx: the provider refused this request
 	FailServer      = "server"       // 5xx
@@ -75,7 +77,9 @@ type ProviderError struct {
 	Status, Reason string
 	// RequestID is the provider's x-request-id, ResponseID the response's id.
 	RequestID, ResponseID string
-	Err                   error
+	// RetryAfter is the provider's Retry-After on a rate limit or an overload, capped at maxRetryWait; 0 = none.
+	RetryAfter time.Duration
+	Err        error
 }
 
 func (e *ProviderError) Error() string {
@@ -111,4 +115,10 @@ func FailureKind(err error) string {
 		return pe.Kind
 	}
 	return ""
+}
+
+// Busy says the provider refused the call within err as rate limited or overloaded: nothing was generated or billed.
+func Busy(err error) bool {
+	k := FailureKind(err)
+	return k == FailRateLimited || k == FailOverloaded
 }

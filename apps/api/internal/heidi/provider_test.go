@@ -22,6 +22,7 @@ func TestAModelFailureIsAnsweredInPlainWordsByItsCause(t *testing.T) {
 	}{
 		{"temporary", "member", failed(aimodel.FailServer), "heidi_provider_unavailable", "Heidi couldn't answer right now. Nothing was changed. Try again in a moment."},
 		{"rate limit", "member", failed(aimodel.FailRateLimited), "heidi_busy", "Heidi is busy right now. Try again in a minute."},
+		{"overloaded", "owner", failed(aimodel.FailOverloaded), "heidi_busy", "Heidi is busy right now. Try again in a minute."},
 		{"setup, owner", "owner", failed(aimodel.FailConfig), "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings."},
 		{"setup, admin", "admin", failed(aimodel.FailConfig), "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings."},
 		{"setup, member", "member", failed(aimodel.FailConfig), "heidi_provider_unavailable", "Heidi couldn't answer right now. Nothing was changed. Try again in a moment."},

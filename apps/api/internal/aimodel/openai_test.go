@@ -34,7 +34,7 @@ func TestOpenAIRequestUsesResponsesAndExplicitAttachmentsOnly(t *testing.T) {
 		_, _ = fmt.Fprint(w, `{"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"Check the source receipt."}]}],"usage":{"total_tokens":43}}`)
 	}))
 	defer server.Close()
-	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 	p.url = server.URL
 	result, err := p.Answer(context.Background(), Request{Instructions: "You cannot read the workspace.", History: []Turn{{Role: "user", Text: "Earlier"}, {Role: "assistant", Text: "Previous answer"}}, Message: "Read my files", MaxOutputTokens: 256, Files: []File{{Name: "receipt.pdf", ContentType: "application/pdf", Bytes: []byte("%PDF-current")}, {Name: "photo.png", ContentType: "image/png", Bytes: []byte("current-image")}}})
 	if err != nil || result.Text != "Check the source receipt." || result.Tokens == nil || *result.Tokens != 43 {
@@ -71,7 +71,7 @@ func TestOpenAIFailuresPreserveKnownAndUnknownUsage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(tc.status); _, _ = fmt.Fprint(w, tc.body) }))
 			defer server.Close()
-			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 			p.url = server.URL
 			reply, err := p.Answer(context.Background(), Request{Message: "hello", MaxOutputTokens: 32})
 			if tc.name != "missing accounting" && err == nil {
@@ -102,7 +102,7 @@ func TestOpenAICancellationIsUnknownAndRedirectsAreNotFollowed(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 	p.url = server.URL + "?redirect"
 	if _, err := p.Answer(context.Background(), Request{Message: "hello"}); err == nil || outside.Load() != 0 {
 		t.Fatalf("redirect followed: calls=%d err=%v", outside.Load(), err)
@@ -139,7 +139,7 @@ func TestOpenAIInputCountUsesSamePromptAndRejectsMissingCount(t *testing.T) {
 				_, _ = fmt.Fprint(w, tc.body)
 			}))
 			defer server.Close()
-			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 			p.url = server.URL
 			n, err := p.InputTokens(context.Background(), Request{Message: "Count this input"})
 			if (err == nil) != tc.ok || tc.ok && n != 31 {
@@ -158,7 +158,7 @@ func TestOpenAIStructuredOutputAsksForStrictSchema(t *testing.T) {
 		_, _ = fmt.Fprint(w, `{"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"{\"records\":[]}"}]}],"usage":{"total_tokens":9}}`)
 	}))
 	defer server.Close()
-	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 	p.url = server.URL
 	reply, err := p.Answer(context.Background(), Request{Instructions: "Extract.", Message: "rows", Schema: &Schema{Name: "import_clients", JSON: map[string]any{"type": "object"}}})
 	if err != nil || reply.Text != `{"records":[]}` {
@@ -181,7 +181,7 @@ func TestOpenAIReportsTheUsageBreakdownItIsPricedBy(t *testing.T) {
 		{partial, nil}, // a total alone settles tokens; the cost is reconciled, not guessed
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, tc.body) }))
-		p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+		p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 		p.url = server.URL
 		reply, err := p.Answer(context.Background(), Request{Message: "hello"})
 		server.Close()

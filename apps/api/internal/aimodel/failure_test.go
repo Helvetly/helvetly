@@ -39,6 +39,9 @@ func TestOpenAIFailuresSayWhy(t *testing.T) {
 		{name: "server error", status: 500, body: `{"error":{"type":"server_error","code":null,"message":"Oops."}}`,
 			kind: FailServer, message: "Oops."},
 		{name: "server error without JSON", status: 502, body: `<html>Bad gateway</html>`, kind: FailServer},
+		{name: "model overloaded", status: 503, body: overloaded, kind: FailOverloaded, code: "model_overloaded",
+			message: "The requested model was temporarily overloaded. Follow Retry-After when present before retrying.", known: true},
+		{name: "unavailable, not overloaded", status: 503, body: `{"error":{"type":"server_error","code":null,"message":"Unavailable."}}`, kind: FailServer},
 		{name: "cut short by the output budget", status: 200, body: partial, kind: FailIncomplete, reason: "max_output_tokens",
 			text: "Refund 16 of 24 lessons:", known: true, responseID: "resp_9"},
 		{name: "empty text", status: 200, body: `{"id":"resp_e","status":"completed","output":[],"usage":{"total_tokens":12}}`,
@@ -52,7 +55,7 @@ func TestOpenAIFailuresSayWhy(t *testing.T) {
 				_, _ = fmt.Fprint(w, tc.body)
 			}))
 			defer server.Close()
-			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 			p.url = server.URL
 			reply, err := p.Answer(context.Background(), Request{Message: "hello", MaxOutputTokens: 4096})
 			pe, ok := errors.AsType[*ProviderError](err)
@@ -81,7 +84,7 @@ func TestOpenAITimeoutIsUnknown(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna").(*openAI)
+	p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", "gpt-6-luna", "").(*openAI)
 	p.url, p.client.Timeout = server.URL, 20*time.Millisecond
 	reply, err := p.Answer(context.Background(), Request{Message: "hello"})
 	if FailureKind(err) != FailTimeout || reply.Tokens != nil {

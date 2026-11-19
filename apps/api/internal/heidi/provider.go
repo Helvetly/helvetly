@@ -139,7 +139,7 @@ func answerOf(sess store.Session, reply ProviderReply, spent int64, err error) (
 		return turn{}, auth.Error(503, "heidi_paused", "Heidi's model answers are paused while the service's AI budget is being updated. Local commands remain available.", nil)
 	case errors.Is(err, aimodel.ErrUncertain):
 		return turn{}, auth.Error(503, "heidi_usage_uncertain", "Heidi is still finishing an earlier request. Nothing was changed. Try again in a moment; local commands still work.", nil)
-	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
+	case aimodel.Busy(err):
 		return turn{}, auth.Error(503, "heidi_busy", "Heidi is busy right now. Try again in a minute.", nil)
 	case aimodel.FailureKind(err) == aimodel.FailConfig && (sess.Role == "owner" || sess.Role == "admin"):
 		return turn{}, auth.Error(503, "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings.", nil)
