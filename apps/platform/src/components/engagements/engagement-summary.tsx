@@ -212,7 +212,7 @@ export function EngagementSummary({
             {periods.last && <PeriodItem period={periods.last} />}
           </ol>
           {periods.count !== null && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body-sm text-muted-foreground">
               {translate('periodsInTotal', { count: periods.count })}
             </p>
           )}
