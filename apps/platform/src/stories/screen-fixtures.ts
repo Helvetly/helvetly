@@ -7,7 +7,7 @@ import type { Usage } from '@/lib/documents'
 import type { Summary } from '@/lib/invoices'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
-import { legalFormsHandler } from '@/test/invoice-api'
+import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 export const storySession: Session = {
   user: { id: 'usr_story', name: 'Anna Muster', email: 'anna@example.com', avatar_url: null },
@@ -67,7 +67,7 @@ export const screenHandlers = [
   legalFormsHandler,
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
-  http.get('/api/v1/billing', () => HttpResponse.json(billingFixture())),
+  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
   http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),
   http.get('/api/v1/documents/folders', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/trash', () => HttpResponse.json({ data: [] })),
@@ -92,4 +92,43 @@ export const screenHandlers = [
   // Nothing recorded, so nothing to close on the dashboard's to-do list.
   http.get('/api/v1/periods', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/periods/activity', () => HttpResponse.json({ data: [] })),
+]
+
+const nothing = <T>(data: T) => HttpResponse.json({ data })
+
+/**
+ * What every story gets after its own handlers (`.storybook/preview.tsx`): the shell's reads with neutral answers, so
+ * a screen never runs into the dev server's 404 because a story left out a request it does not care about.
+ */
+export const storyDefaults = [
+  ...screenHandlers,
+  http.get('/api/v1/auth/config', () =>
+    HttpResponse.json({ google: false, email: true, passkey: true, dev_codes: false }),
+  ),
+  http.get('/api/v1/invoice-settings', () => nothing(sampleSettings({ vat_registered: false }))),
+  http.get('/api/v1/vat-return/settings', () =>
+    nothing({ method: 'effective', period: 'quarterly', basis: 'agreed', net_rates: [] }),
+  ),
+  http.get('/api/v1/workspaces/deleted', () => nothing([])),
+  http.get('/api/v1/templates', () => nothing([])),
+  http.get('/api/v1/instalment-plans', () => nothing([])),
+  http.get('/api/v1/invoices/:id/deliveries', () => nothing([])),
+  http.get('/api/v1/invoices/:id/transmissions', () => nothing([])),
+  http.get('/api/v1/invoices/:id/engagement', () => nothing(null)),
+  http.get('/api/v1/invoices/:id/dunning', () =>
+    nothing({
+      applies: false,
+      enabled: false,
+      client_enabled: false,
+      paused: false,
+      next: null,
+      notices: [],
+    }),
+  ),
+  http.get('/api/v1/documents/:id/content', () => new HttpResponse(null, { status: 204 })),
+  http.get(
+    '/api/v1/imports/:id/files/:file/content',
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.get('/api/v1/email-templates', () => nothing([])),
 ]
