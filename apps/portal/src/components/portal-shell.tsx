@@ -15,7 +15,6 @@ import { LanguageDialog, LanguageMenuItem } from '@helvetly/ui/components/langua
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
-import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FilePenLine, FileText, FolderOpen, Gauge, House, LogOut, UserRound } from 'lucide-react'
 import Link from 'next/link'
@@ -175,14 +174,17 @@ function AccountMenu({
   )
 }
 
-/** Underlined tabs in the header from `md` up; below, a fixed bottom tab bar with icons and labels. */
+/**
+ * Tabs in the header from `md` up; below, a fixed bottom tab bar with icons and labels. The active tab is a soft
+ * pill in the platform sidebar's active colours (on phones only the icon carries it), never an underline.
+ */
 function PortalNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label={translate('portal')}
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:shrink-0 md:border-0 md:bg-transparent md:pb-0"
     >
-      <ul className="grid grid-cols-5 md:flex md:h-16 md:gap-1">
+      <ul className="grid grid-cols-5 md:flex md:h-16 md:items-center md:gap-1">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === href : pathname.startsWith(href)
           return (
@@ -190,20 +192,17 @@ function PortalNav({ pathname }: { pathname: string }) {
               <Link
                 href={scoped(href)}
                 aria-current={active ? 'page' : undefined}
+                data-active={active || undefined}
                 // A pointer press does not take focus, so no browser can draw the keyboard ring after a
-                // click; the underline marks the active tab, and Tab still reaches every link.
+                // click; the pill marks the active tab, and Tab still reaches every link.
                 onMouseDown={(event) => event.preventDefault()}
                 // Not cn(): tailwind-merge would drop the type-scale size for the colour.
-                // Transparent top and bottom borders keep the label centred above the underline.
-                className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-caption font-medium outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:flex-row md:gap-2 md:border-y-2 md:border-transparent md:px-3 md:py-0 md:text-body ${active ? 'text-foreground md:border-b-brand' : 'text-muted-foreground md:hover:border-b-border'}`}
+                className="group/tab flex flex-col items-center gap-0.5 rounded-md pt-1.5 pb-1.5 text-caption font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:h-9 md:flex-row md:gap-2 md:px-3 md:py-0 md:text-body md:hover:bg-sidebar-accent/60 data-active:text-sidebar-accent-foreground md:data-active:bg-sidebar-accent"
               >
-                <Icon
-                  aria-hidden
-                  className={cn(
-                    'size-5 stroke-[1.75] md:size-4 md:max-lg:hidden',
-                    active && 'text-brand',
-                  )}
-                />
+                {/* On phones the pill sits behind the icon only; from md up the whole tab is the pill. */}
+                <span className="grid h-7 w-12 place-items-center rounded-full transition-colors group-hover/tab:bg-sidebar-accent/60 group-data-active/tab:bg-sidebar-accent md:contents">
+                  <Icon aria-hidden className="size-5 stroke-[1.75] md:size-4 md:max-lg:hidden" />
+                </span>
                 {label}
               </Link>
             </li>

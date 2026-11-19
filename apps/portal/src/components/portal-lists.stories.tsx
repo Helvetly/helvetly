@@ -98,42 +98,105 @@ const withHistory = (response: Parameters<typeof http.get>[1]) => ({
 const phone = {
   viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
 }
-const openHistory = async (canvasElement: HTMLElement) => {
+const openActivity = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement)
-  await userEvent.click(await canvas.findByText('History'))
-  // The baseline shows the opened list at rest, without the click's focus ring.
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  const details = await canvas.findByRole('button', { name: 'Details' })
+  await userEvent.click(details)
+  // The baseline shows the opened list at rest, without the click's hover tint or focus ring.
+  await userEvent.unhover(details)
+  details.blur()
   return canvas
 }
 
-/** The history opens to every logged delivery, by period and newest first, with note and performance. */
-export const EngagementHistory: Story = {
+/**
+ * Details opens the activity inside the card: newest first, a light divider per period, each row with date,
+ * quantity, note and the client performance only where the supplier wrote one. Details again closes it.
+ */
+export const EngagementActivity: Story = {
   parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
-    const canvas = await openHistory(canvasElement)
-    const periods = canvas.getAllByRole('heading', { level: 3 })
+    const canvas = within(canvasElement)
+    const details = await canvas.findByRole('button', { name: 'Details' })
+    await expect(details).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('region')).toBeNull()
+
+    // A click anywhere on the summary opens it, not only on the button: the button covers the summary.
+    const text = canvas.getByText('10 hours per month').getBoundingClientRect()
+    const hit = document.elementFromPoint(text.left + 4, text.top + text.height / 2)
+    await expect(hit).toBe(details)
+    await userEvent.click(details)
+    await expect(details).toHaveAttribute('aria-expanded', 'true')
+    const region = await canvas.findByRole('region', { name: 'Support retainer' })
+    await expect(details).toHaveAttribute('aria-controls', region.id)
+    const periods = within(region).getAllByRole('heading', { level: 3 })
     await expect(periods.map((h) => h.textContent)).toEqual([
       '1 Nov 2026 – 30 Nov 2026',
       '1 Oct 2026 – 31 Oct 2026',
     ])
-    const rows = [...canvasElement.querySelectorAll('ol > li')]
+    const rows = await within(region).findAllByRole('listitem')
     await expect(rows).toHaveLength(4)
-    await expect(rows[0]).toHaveTextContent('Server updates and backup check')
-    await expect(rows[0]).toHaveTextContent('Performance: Quick answers, access ready on time')
+    await expect(rows[0]).toHaveTextContent('18 Nov 2026')
     await expect(rows[0]).toHaveTextContent('1.5 hours')
-    await expect(canvas.getByText('Mailbox migration')).toBeVisible()
+    await expect(rows[0]).toHaveTextContent('Server updates and backup check')
+    await expect(rows[0]).toHaveTextContent(
+      'Client performance: Quick answers, access ready on time',
+    )
+    // Not shared for this delivery: no label, no empty box.
+    await expect(rows[1]).toHaveTextContent('Mailbox migration')
+    await expect(rows[1]).not.toHaveTextContent('Client performance')
+    await expect(within(region).getAllByText('Client performance:')).toHaveLength(2)
+
+    await userEvent.click(details)
+    await expect(details).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('region')).toBeNull()
+    await userEvent.click(details)
+    await canvas.findByRole('region', { name: 'Support retainer' })
+    // The baseline shows the card at rest: no hover tint, no focus ring.
+    await userEvent.unhover(details)
+    details.blur()
   },
 }
 
-export const EngagementHistoryDark: Story = {
-  ...EngagementHistory,
-  parameters: { ...EngagementHistory.parameters, dark: true },
+export const EngagementActivityDark: Story = {
+  ...EngagementActivity,
+  parameters: { ...EngagementActivity.parameters, dark: true },
+}
+
+/** Each card opens on its own: both can be open at once, and closing one leaves the other open. */
+export const EngagementsSeveralOpen: Story = {
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByText('Support retainer')
+    const [first, second] = canvas.getAllByRole('button', { name: 'Details' })
+    if (!first || !second) throw new Error('Two engagements expected')
+    await userEvent.click(first)
+    await userEvent.click(second)
+    await waitFor(() => expect(canvas.getAllByRole('region')).toHaveLength(2))
+    await userEvent.click(first)
+    await expect(first).toHaveAttribute('aria-expanded', 'false')
+    await expect(second).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getAllByRole('region')).toHaveLength(1)
+  },
+}
+
+/** Each engagement takes the whole width of the page, one below the other. */
+export const EngagementsFullWidth: Story = {
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByText('Support retainer')
+    const [a, b] = canvas.getAllByRole('listitem').map((li) => li.getBoundingClientRect())
+    await expect(a?.width).toBe(b?.width)
+    await expect(a?.left).toBe(b?.left)
+    await expect(b?.top ?? 0).toBeGreaterThan(a?.bottom ?? 0)
+  },
 }
 
 const long = 'Long session covering the yearly closing, '.repeat(8).trim()
-/** A long note and performance wrap inside the card and never push the page sideways on a phone. */
-export const EngagementHistoryLongTextPhone: Story = {
+/** A long note and client performance wrap inside the card and never push the page sideways on a phone. */
+export const EngagementActivityLongTextPhone: Story = {
   parameters: {
     ...phone,
     ...withHistory(() =>
@@ -159,33 +222,44 @@ export const EngagementHistoryLongTextPhone: Story = {
   globals: { viewport: { value: 'phone' } },
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
-    const canvas = await openHistory(canvasElement)
-    await expect(canvas.getByText('12.25 hours')).toBeVisible()
-    await expect(canvas.getByText(`Performance:`)).toBeVisible()
+    const canvas = await openActivity(canvasElement)
+    await expect(await canvas.findByText('12.25 hours')).toBeVisible()
+    await expect(canvas.getByText('Client performance:')).toBeVisible()
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
   },
 }
 
-export const EngagementHistoryEmpty: Story = {
+export const EngagementActivityEmpty: Story = {
   parameters: withHistory(() => HttpResponse.json({ data: [] })),
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = await openActivity(canvasElement)
     await expect(await canvas.findByText('Nothing logged yet.')).toBeVisible()
-    await expect(canvas.queryByText('History')).toBeNull()
+    await expect(canvas.getByRole('region').querySelector('ol')).toBeNull()
   },
 }
 
-export const EngagementHistoryError: Story = {
-  parameters: withHistory(() => HttpResponse.json({}, { status: 500 })),
+let activityCalls = 0
+/** The activity failing to load says so inside the card; Try again asks once more and shows it. */
+export const EngagementActivityError: Story = {
+  parameters: withHistory(() =>
+    ++activityCalls === 1
+      ? HttpResponse.json({}, { status: 500 })
+      : HttpResponse.json({ data: portalEngagementHistory }),
+  ),
+  beforeEach: () => {
+    activityCalls = 0
+  },
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = await openActivity(canvasElement)
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'The history couldn’t be loaded',
     )
+    await userEvent.click(canvas.getByRole('button', { name: 'Try again' }))
+    await expect(await canvas.findByText('Mailbox migration')).toBeVisible()
   },
 }
 
