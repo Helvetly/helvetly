@@ -54,6 +54,7 @@ import (
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/templates"
+	"helvetly.com/api/internal/uidregister"
 	"helvetly.com/api/internal/vatreturn"
 	"helvetly.com/api/internal/workspaces"
 )
@@ -146,6 +147,12 @@ func run() error {
 		mailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, quoteMailer = businessMail, businessMail, businessMail, businessMail, businessMail, businessMail // two vars: copying a nil interface between types is fine, a typed nil pointer is not
 	}
 	clientsSvc.SetMailer(portalInviteMailer, cfg.PortalURL)
+	var uidRegister uidregister.Register // nil with UID_REGISTER_URL=off: lookups answer "unavailable"
+	if cfg.UIDRegisterURL != "" {
+		reg := uidregister.New(cfg.UIDRegisterURL)
+		uidRegister = reg
+		clientsSvc.SetRegister(reg)
+	}
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
 	authSvc.CompleteOnboarding = invoicesSvc.CompleteOnboarding
 	quotesSvc := quotes.New(db, authSvc, invoicesSvc, files, quoteMailer, slog.Default())
@@ -255,6 +262,7 @@ func run() error {
 		authSvc.Register(mux)
 		exportSvc.Register(mux)
 		clientsSvc.Register(mux)
+		uidregister.Routes(mux, authSvc, uidRegister)
 		portalSvc.Register(mux)
 		invoicesSvc.Register(mux)
 		quotesSvc.Register(mux)

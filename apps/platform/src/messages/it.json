@@ -4466,5 +4466,22 @@
   "validUntilLabel": "Valida fino al",
   "relatedAddsTo": "Integra",
   "relatedCorrects": "Corregge",
-  "relatedCredits": "Accredita"
+  "relatedCredits": "Accredita",
+  "uidRegisterUnavailable": "Il registro IDI non è raggiungibile al momento. Può comunque inserire i dati manualmente.",
+  "uidSearchLoading": "Ricerca nel registro IDI…",
+  "uidSearchNotFound": "Nessuna azienda trovata nel registro IDI. Può comunque aggiungerla.",
+  "uidRegisterMatches": "Aziende nel registro IDI",
+  "vatRegistered": "assoggettata all'IVA",
+  "uidInactive": "cancellata",
+  "fromTheSwissUIDRegister": "Dal registro IDI svizzero",
+  "uidCheckLoading": "Verifica nel registro IDI…",
+  "uidCheckNotFound": "Non trovato nel registro IDI. Può comunque salvare.",
+  "uidCheckInactive": "{name} non è più attiva nel registro IDI.",
+  "uidCheckVat": "{name}: attiva e assoggettata all'IVA nel registro IDI.",
+  "uidCheckNoVat": "{name}: attiva nel registro IDI, non assoggettata all'IVA.",
+  "uidCheckNoVatSuffix": "{name} non è assoggettata all'IVA: tolga IVA dal numero.",
+  "filledFromUIDRegister": "Compilato dal registro IDI.",
+  "filledFromUIDRegisterReplaced": "Compilato dal registro IDI, sostituisce: {fields}.",
+  "uidVerified": "IDI verificato",
+  "uidVerifiedTip": "Verificato nel registro IDI svizzero come {uid} il {date}."
 }

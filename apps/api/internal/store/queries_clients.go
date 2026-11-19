@@ -50,6 +50,8 @@ type Client struct {
 	PortalEnabled      bool              `json:"portal_enabled"`
 	PortalInvitedAt    *time.Time        `json:"portal_invited_at"`   // when the portal invitation last went out
 	PortalSignedInAt   *time.Time        `json:"portal_signed_in_at"` // the client's first portal sign-in
+	VerifiedUID        *string           `json:"verified_uid"`        // the UID the Swiss UID register knows the client under
+	UIDVerifiedAt      *time.Time        `json:"uid_verified_at"`     // when the register last confirmed it
 	Contacts           []Contact         `json:"contacts"`
 	IsDraft            bool              `json:"is_draft"`
 	MissingFields      []string          `json:"missing_fields"`
@@ -103,7 +105,7 @@ var ClientSorts = map[string]string{"number": "c.number", "name": "lower(c.name)
 
 const clientColumns = `c.id, c.number, c.name, c.preferred_name, c.is_company, c.is_active, c.email, c.billing_email, c.phone,
 	c.website, c.street, c.street_number, c.apt, c.zip, c.city, c.country, c.vat_number, c.language, c.currency,
-	c.payment_terms_days, c.internal_id, c.note, c.tags, c.created_at, c.updated_at, c.electronic_address, c.registration_number, c.dunning_enabled, c.einvoice_format, c.leitweg_id, c.region, c.portal_enabled, c.portal_invited_at, c.portal_signed_in_at,
+	c.payment_terms_days, c.internal_id, c.note, c.tags, c.created_at, c.updated_at, c.electronic_address, c.registration_number, c.dunning_enabled, c.einvoice_format, c.leitweg_id, c.region, c.portal_enabled, c.portal_invited_at, c.portal_signed_in_at, c.verified_uid, c.uid_verified_at,
 	(SELECT count(*) FROM document_links l JOIN documents d ON d.id = l.document_id AND d.deleted_at IS NULL
 		WHERE l.target_type = 'client' AND l.target_id = c.id),
 	EXISTS (SELECT 1 FROM client_change_requests r WHERE r.client_id = c.id AND r.status = 'pending'),
@@ -114,7 +116,7 @@ func scanClient(row interface{ Scan(...any) error }) (Client, error) {
 	var c Client
 	err := row.Scan(&c.ID, &c.Number, &c.Name, &c.PreferredName, &c.IsCompany, &c.IsActive, &c.Email, &c.BillingEmail, &c.Phone,
 		&c.Website, &c.Street, &c.StreetNumber, &c.Apt, &c.Zip, &c.City, &c.Country, &c.VATNumber, &c.Language, &c.Currency,
-		&c.PaymentTermsDays, &c.InternalID, &c.Note, &c.Tags, &c.CreatedAt, &c.UpdatedAt, &c.ElectronicAddress, &c.RegistrationNumber, &c.DunningEnabled, &c.EInvoiceFormat, &c.LeitwegID, &c.Region, &c.PortalEnabled, &c.PortalInvitedAt, &c.PortalSignedInAt, &c.FilesCount, &c.PendingChange, &c.Contacts)
+		&c.PaymentTermsDays, &c.InternalID, &c.Note, &c.Tags, &c.CreatedAt, &c.UpdatedAt, &c.ElectronicAddress, &c.RegistrationNumber, &c.DunningEnabled, &c.EInvoiceFormat, &c.LeitwegID, &c.Region, &c.PortalEnabled, &c.PortalInvitedAt, &c.PortalSignedInAt, &c.VerifiedUID, &c.UIDVerifiedAt, &c.FilesCount, &c.PendingChange, &c.Contacts)
 	address := map[string]*string{"street": c.Street, "street_number": c.StreetNumber, "zip": c.Zip, "city": c.City, "country": c.Country}
 	c.MissingFields = []string{}
 	for _, f := range DraftFields {
@@ -160,6 +162,13 @@ func (q Q) createClient(ctx context.Context, workspaceID, id string, fields map[
 			ON CONFLICT (workspace_id) DO UPDATE SET clients_seq = workspace_counters.clients_seq + 1 RETURNING clients_seq)
 		INSERT INTO clients (id, workspace_id, number, created_at, updated_at, `+strings.Join(cols, ", ")+`)
 		SELECT $1, $2, seq.clients_seq, $3, $3, `+placeholders(4, len(cols))+` FROM seq`, append([]any{id, workspaceID, now}, args...)...)
+	return err
+}
+
+// SetClientUIDVerification records the UID the register confirmed and when, or clears both (uid nil).
+func (q Q) SetClientUIDVerification(ctx context.Context, workspaceID, id string, uid *string, at *time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE clients SET verified_uid = $3, uid_verified_at = $4
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`, workspaceID, id, uid, at)
 	return err
 }
 

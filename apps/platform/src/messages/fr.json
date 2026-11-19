@@ -4466,5 +4466,22 @@
   "validUntilLabel": "Valable jusqu’au",
   "relatedAddsTo": "Complète",
   "relatedCorrects": "Corrige",
-  "relatedCredits": "Crédite"
+  "relatedCredits": "Crédite",
+  "uidRegisterUnavailable": "Le registre IDE est injoignable pour le moment. Vous pouvez tout de même saisir les données vous-même.",
+  "uidSearchLoading": "Recherche dans le registre IDE…",
+  "uidSearchNotFound": "Aucune entreprise trouvée dans le registre IDE. Vous pouvez tout de même l'ajouter.",
+  "uidRegisterMatches": "Entreprises du registre IDE",
+  "vatRegistered": "assujettie à la TVA",
+  "uidInactive": "radiée",
+  "fromTheSwissUIDRegister": "Du registre IDE suisse",
+  "uidCheckLoading": "Vérification dans le registre IDE…",
+  "uidCheckNotFound": "Introuvable dans le registre IDE. Vous pouvez tout de même enregistrer.",
+  "uidCheckInactive": "{name} n'est plus active dans le registre IDE.",
+  "uidCheckVat": "{name} : active et assujettie à la TVA dans le registre IDE.",
+  "uidCheckNoVat": "{name} : active dans le registre IDE, non assujettie à la TVA.",
+  "uidCheckNoVatSuffix": "{name} n'est pas assujettie à la TVA : retirez TVA du numéro.",
+  "filledFromUIDRegister": "Rempli depuis le registre IDE.",
+  "filledFromUIDRegisterReplaced": "Rempli depuis le registre IDE, remplace : {fields}.",
+  "uidVerified": "IDE vérifiée",
+  "uidVerifiedTip": "Vérifiée dans le registre IDE suisse sous {uid} le {date}."
 }

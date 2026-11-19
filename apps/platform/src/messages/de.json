@@ -4466,5 +4466,22 @@
   "validUntilLabel": "Gültig bis",
   "relatedAddsTo": "Ergänzt",
   "relatedCorrects": "Korrigiert",
-  "relatedCredits": "Gutschrift zu"
+  "relatedCredits": "Gutschrift zu",
+  "uidRegisterUnavailable": "Das UID-Register ist gerade nicht erreichbar. Sie können die Angaben trotzdem selbst ausfüllen.",
+  "uidSearchLoading": "Suche im UID-Register …",
+  "uidSearchNotFound": "Keine Firma im UID-Register gefunden. Sie können sie trotzdem erfassen.",
+  "uidRegisterMatches": "Firmen im UID-Register",
+  "vatRegistered": "MWST-pflichtig",
+  "uidInactive": "gelöscht",
+  "fromTheSwissUIDRegister": "Aus dem Schweizer UID-Register",
+  "uidCheckLoading": "Prüfung im UID-Register …",
+  "uidCheckNotFound": "Nicht im UID-Register gefunden. Sie können trotzdem speichern.",
+  "uidCheckInactive": "{name} ist im UID-Register nicht mehr aktiv.",
+  "uidCheckVat": "{name}: im UID-Register aktiv und MWST-pflichtig.",
+  "uidCheckNoVat": "{name}: im UID-Register aktiv, nicht MWST-pflichtig.",
+  "uidCheckNoVatSuffix": "{name} ist nicht MWST-pflichtig: Entfernen Sie MWST aus der Nummer.",
+  "filledFromUIDRegister": "Aus dem UID-Register ausgefüllt.",
+  "filledFromUIDRegisterReplaced": "Aus dem UID-Register ausgefüllt, ersetzt: {fields}.",
+  "uidVerified": "UID geprüft",
+  "uidVerifiedTip": "Im Schweizer UID-Register als {uid} geprüft am {date}."
 }
