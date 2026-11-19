@@ -41,7 +41,7 @@
 1 radius apps/platform/src/components/api/api-tokens.tsx
 2 radius apps/platform/src/components/clients/clients-page.tsx
 2 radius apps/platform/src/components/clients/fields.tsx
-2 radius apps/platform/src/components/documents/documents-page.tsx
+1 radius apps/platform/src/components/documents/documents-page.tsx
 1 radius apps/platform/src/components/documents/folder-tree.tsx
 5 radius apps/platform/src/components/documents/items-view.tsx
 2 radius apps/platform/src/components/documents/kind.tsx

@@ -1246,7 +1246,7 @@ export function DocumentsPage() {
 
         {canWrite && desktopDrag && view.section !== 'trash' && (
           <div className="pointer-events-none fixed inset-0 z-30 flex items-end justify-center p-8 md:pl-[calc(var(--sidebar-width,16rem)+1rem)]">
-            <div className="absolute inset-2 animate-in rounded-[18px] border-2 border-dashed border-primary/50 bg-primary/[0.04] duration-150 fade-in" />
+            <div className="absolute inset-2 animate-in drop-zone duration-150 fade-in" />
             <div className="relative flex animate-in items-center gap-3 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] text-white shadow-elevation-2 duration-200 slide-in-from-bottom-2 dark:bg-zinc-800">
               <UploadIcon className="size-[18px]" />
               {translate('dropToUploadTo')}

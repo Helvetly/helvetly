@@ -119,7 +119,7 @@ export function DropZone({
       <div
         data-over={over || undefined}
         className={cn(
-          'group relative flex rounded-xl border border-dashed border-border bg-muted/40 transition-colors duration-150 not-has-disabled:hover:border-primary/40 not-has-disabled:hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-primary/60 data-over:bg-primary/5',
+          'group relative flex rounded-xl border border-dashed border-border bg-muted/40 transition-colors duration-150 not-has-disabled:hover:border-primary/40 not-has-disabled:hover:bg-muted/60 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-brand-solid/45 data-over:bg-brand-surface/70',
           picked
             ? 'items-center gap-3 px-4 py-3 text-left'
             : 'flex-col items-center gap-3 px-6 py-10 text-center',
