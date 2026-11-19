@@ -227,9 +227,7 @@ export const SendValidation: Story = {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
     await seen(await within(dialog).findByText(/Email isn’t set up on this server/))
 
-    await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Mark as sent without email' }),
-    )
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Mark as sent' }))
     await toasted(canvasElement, /marked as sent/)
     const summary = await body.findByRole('region', { name: 'Summary' })
     await seen(await within(summary).findByText('3 Dec 2026'))

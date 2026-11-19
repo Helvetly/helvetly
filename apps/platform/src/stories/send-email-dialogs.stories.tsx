@@ -82,7 +82,7 @@ export const QuoteDraftFailed: Story = {
   },
 }
 
-/** Email is not set up: Send explains it, and Mark as sent without email records it sent (buttons wait meanwhile). */
+/** Email is not set up: Send explains it, and Mark as sent records it sent (buttons wait meanwhile). */
 export const InvoiceMailDownMarkSent: Story = {
   parameters: {
     msw: {
@@ -121,9 +121,71 @@ export const InvoiceMailDownMarkSent: Story = {
     await expect(
       await dialog.findByText(/Mark the invoice as sent, then send the PDF yourself/),
     ).toBeVisible()
-    const mark = dialog.getByRole('button', { name: 'Mark as sent without email' })
+    const mark = dialog.getByRole('button', { name: 'Mark as sent' })
     await userEvent.click(mark)
     await waitFor(() => expect(mark).toBeDisabled())
     await waitFor(() => expect(read()).toEqual({ email: false }))
+  },
+}
+
+/**
+ * Opening puts the cursor in To, not on the (?) beside its label: no tip pops up on its own, keyboard focus
+ * still shows it, and Mark as sent is an outlined button with an icon at the left of the footer.
+ */
+export const InvoiceOpensInTo: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        noClient,
+        sendHandler,
+        http.get('/api/v1/invoices/:id/email', async () => {
+          await delay(300)
+          return HttpResponse.json({ data: draft })
+        }),
+      ],
+    },
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const dialog = within(await body.findByRole('dialog'))
+    const to = dialog.getByRole('textbox', { name: /^To/ })
+    await waitFor(() => expect(to).toHaveFocus())
+    await expect(body.queryByRole('tooltip')).toBeNull()
+    await waitFor(() => expect(to).toHaveValue('billing@acme.ch'))
+    await expect(to).toHaveFocus()
+    await userEvent.tab({ shift: true })
+    await expect(dialog.getByRole('button', { name: /^About To/ })).toHaveFocus()
+    await expect(await body.findByRole('tooltip')).toHaveTextContent(/Separate several addresses/)
+    const mark = dialog.getByRole('button', { name: 'Mark as sent' })
+    await expect(mark).toHaveAttribute('data-variant', 'outline')
+    await expect(mark.querySelector('svg')).not.toBeNull()
+    const cancel = dialog.getByRole('button', { name: 'Cancel' })
+    await expect(mark.getBoundingClientRect().right).toBeLessThan(
+      cancel.getBoundingClientRect().left,
+    )
+  },
+}
+export const InvoiceOpensInToPhone: Story = {
+  ...InvoiceOpensInTo,
+  globals: { viewport: { value: 'phone' } },
+}
+
+/** The dialog as it opens with its draft in, for the visual suite. */
+export const InvoiceReady: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        noClient,
+        http.get('/api/v1/invoices/:id/email', () => HttpResponse.json({ data: draft })),
+      ],
+    },
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'))
+    await waitFor(() =>
+      expect(dialog.getByRole('textbox', { name: /^Subject/ })).toHaveValue(draft.subject),
+    )
   },
 }

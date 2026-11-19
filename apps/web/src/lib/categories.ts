@@ -4,6 +4,7 @@ import { perLanguage } from '@/lib/i18n'
 
 const categoriesIn = perLanguage((translate): Record<string, string> => ({
   'Account and security': translate('category1'),
+  'Choosing software': translate('category14'),
   Clients: translate('category2'),
   'Documents and signatures': translate('category3'),
   'E-invoicing': translate('category4'),

@@ -1,6 +1,7 @@
 import { localizedHref } from '@helvetly/i18n'
 
 import { FaqSection } from '@/components/faq'
+import { About } from '@/components/home/about'
 import { Features } from '@/components/home/features'
 import { HeidiSection } from '@/components/home/heidi-section'
 import { Hero } from '@/components/home/hero'
@@ -12,13 +13,14 @@ import { PricingCards } from '@/components/pricing-cards'
 import { Container, SectionHeading } from '@/components/section'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/metadata'
-import { YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
+import { plansIn, YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 
 type Props = { params: Promise<{ lang?: string }> }
 
 export default async function HomePage({ params }: Props) {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
+  const { PLANS } = plansIn(lang)
   const structuredData = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -27,6 +29,7 @@ export default async function HomePage({ params }: Props) {
         name: 'Helvetly',
         url: SITE_URL,
         logo: `${SITE_URL}/apple-icon.png`,
+        sameAs: ['https://github.com/Helvetly/helvetly'],
       },
       {
         '@type': 'SoftwareApplication',
@@ -36,6 +39,19 @@ export default async function HomePage({ params }: Props) {
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
         inLanguage: lang,
+        offers: PLANS.map((plan) => ({
+          '@type': 'Offer',
+          name: plan.name,
+          price: plan.monthly,
+          priceCurrency: 'CHF',
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: plan.monthly,
+            priceCurrency: 'CHF',
+            unitText: 'per person per month',
+            valueAddedTaxIncluded: true,
+          },
+        })),
       },
     ],
   }
@@ -50,6 +66,7 @@ export default async function HomePage({ params }: Props) {
       />
       <Hero lang={lang} />
       <Standards lang={lang} />
+      <About lang={lang} />
       <Features lang={lang} />
       <HeidiSection lang={lang} />
       <Steps lang={lang} />

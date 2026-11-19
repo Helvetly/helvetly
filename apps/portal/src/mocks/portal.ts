@@ -140,8 +140,12 @@ export const portalDocuments: PortalDocument[] = [
 export const portalProfile: PortalProfile = {
   profile: {
     name: 'Keller AG',
+    is_company: true,
+    preferred_name: 'Anna Keller',
+    email: 'anna@keller.ch',
     billing_email: null,
     phone: null,
+    website: 'https://keller.ch',
     street: 'Bahnhofstrasse',
     street_number: '1',
     apt: null,
