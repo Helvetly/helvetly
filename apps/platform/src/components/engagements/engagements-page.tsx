@@ -14,6 +14,7 @@ import {
   Ban,
   CalendarClock,
   ClipboardCheck,
+  ClipboardPlus,
   Download,
   Layers,
   PanelRightOpen,
@@ -83,6 +84,7 @@ import {
 import { EngagementDetail } from './engagement-detail'
 import { EngagementForm } from './engagement-form'
 import { friendlyError, useRefreshEngagement } from './entry-log'
+import { LogDeliveryDialog } from './log-delivery-dialog'
 
 const LIVE = 'scheduled,active'
 
@@ -178,7 +180,7 @@ const HEADERS = [
   [translate('attention'), 'w-[17%]'],
 ] as const
 
-type Command = 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
+type Command = 'log' | 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
 type Access = { canWrite: boolean; canManage: boolean }
 
 /** A row's actions, for its "…" button and its right-click menu: the drawer's own, no more. */
@@ -198,6 +200,12 @@ export function engagementMenu(
           <PanelRightOpen />
           {translate('openDetails')}
         </Item>
+        {access.canWrite && (
+          <Item onSelect={() => onCommand('log', engagement)}>
+            <ClipboardPlus />
+            {translate('logDelivery')}
+          </Item>
+        )}
         {access.canWrite && (
           <Item onSelect={() => onCommand('edit', engagement)}>
             <Pencil />
@@ -448,6 +456,7 @@ export function EngagementsPage() {
   const [term, setTerm] = useState('')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Engagement | null>(null)
+  const [logging, setLogging] = useState<Engagement | null>(null)
   const [deleting, setDeleting] = useState<Engagement[] | null>(null)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const showForm = creating || url.get('new') === '1'
@@ -523,6 +532,7 @@ export function EngagementsPage() {
       return next
     })
   const command = (name: Command, engagement: Engagement) => {
+    if (name === 'log') setLogging(engagement)
     if (name === 'edit') setEditing(engagement)
     if (name === 'delete') setDeleting([engagement])
     if (name === 'renew')
@@ -768,6 +778,7 @@ export function EngagementsPage() {
           if (!editing) openEngagement(saved.id)
         }}
       />
+      {logging && <LogDeliveryDialog engagement={logging} onClose={() => setLogging(null)} />}
       {deleting && deleting.length > 0 && (
         <ConfirmDialog
           title={

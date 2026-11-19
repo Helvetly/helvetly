@@ -39,6 +39,7 @@ import {
   type Entry,
   type EntryInput,
   type Period,
+  type PeriodSummary,
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { useMembers } from '@/lib/members'
@@ -77,10 +78,13 @@ export function QuickLog({
   engagementId,
   unit,
   current,
+  onLogged,
 }: {
   engagementId: string
   unit: string | null
-  current: Period | null
+  current: PeriodSummary | null
+  /** Called after a save; without it the form stays for the next entry. */
+  onLogged?: () => void
 }) {
   const refresh = useRefreshEngagement()
   const members = useMembers()
@@ -108,7 +112,8 @@ export function QuickLog({
       setQuantity('')
       setNote('')
       refresh()
-      quantityRef.current?.focus()
+      if (onLogged) onLogged()
+      else quantityRef.current?.focus()
       toast.success(
         translate('logged', { quantity: data.entry.quantity, value2: unit ? ` ${unit}` : '' }),
         {
