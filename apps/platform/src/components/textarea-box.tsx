@@ -5,6 +5,7 @@ import type { ComponentProps, ReactNode } from 'react'
 /**
  * A description-like textarea with its tools (Write with AI) and its character count inside the field's border,
  * on a row of their own under the text, so the text never runs beneath them and an error never hides them.
+ * The box itself resizes (not the textarea), so the grip sits in the box's corner, under the tools row.
  */
 export function TextareaBox({
   max,
@@ -21,17 +22,17 @@ export function TextareaBox({
   return (
     <div
       data-slot="textarea-box"
-      className="grid min-w-0 rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/50 has-[textarea[aria-invalid=true]]:border-destructive has-[textarea[aria-invalid=true]]:ring-destructive/20 dark:bg-input/30"
+      className="flex min-h-min min-w-0 resize-y flex-col overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/50 has-[textarea[aria-invalid=true]]:border-destructive has-[textarea[aria-invalid=true]]:ring-destructive/20 dark:bg-input/30"
     >
       <textarea
         {...props}
         className={cn(
-          'min-h-20 w-full resize-y rounded-t-md bg-transparent px-3 pt-2 pb-1 text-sm outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:opacity-60',
+          'min-h-20 w-full grow resize-none rounded-t-md bg-transparent px-3 pt-2 pb-1 text-sm outline-none placeholder:text-placeholder disabled:cursor-not-allowed disabled:opacity-60',
           className,
         )}
       />
       {(tools || max !== undefined) && (
-        <div className="flex min-h-8 items-center gap-2 px-1.5 pb-1">
+        <div className="flex min-h-8 shrink-0 items-center gap-2 pr-4 pb-1 pl-1.5">
           {tools}
           {max !== undefined && (
             <span
