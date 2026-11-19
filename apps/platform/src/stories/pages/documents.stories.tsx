@@ -5,6 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { DocumentsPage } from '@/components/documents/documents-page'
 
 import { sessionHandler } from '../screen-fixtures'
+import { folders as sampleFolders } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const meta = {
@@ -179,4 +180,76 @@ export const NoFoldersReadOnly: Story = {
     await expect(folders.queryByRole('list', { name: 'Suggested' })).toBeNull()
     await expect(folders.queryByRole('button', { name: 'New folder' })).toBeNull()
   },
+}
+
+const invoices = { ...sampleFolders[2], id: 'fld_invoices', name: 'Invoices', starred: false }
+const nestedFolders = http.get('/api/v1/documents/folders', () =>
+  HttpResponse.json({
+    data: [
+      ...sampleFolders,
+      invoices,
+      { ...invoices, id: 'fld_invoices_2025', name: '2025', parent_id: 'fld_invoices' },
+    ],
+  }),
+)
+
+/**
+ * The sidebar: All documents, Recent, Templates and Signatures on top; a folder's own icon is its
+ * disclosure (open while expanded), its name opens it. A selected tile keeps its size.
+ */
+export const FolderTree: Story = {
+  parameters: pageParameters('/documents', {}, [nestedFolders]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
+    const tree = within(nav)
+    const places = Array.from(nav.children)
+      .slice(0, 4)
+      .map((place) => place.textContent)
+    await expect(places).toEqual(['All documents', 'Recent', 'Templates', 'Signatures'])
+
+    const toggle = await tree.findByRole('button', { name: 'Expand Invoices' })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(tree.queryByText('2025')).toBeNull()
+    await userEvent.click(toggle)
+    const collapse = tree.getByRole('button', { name: 'Collapse Invoices' })
+    await expect(collapse).toHaveAttribute('aria-expanded', 'true')
+    await expect(tree.getByText('2025')).toBeVisible()
+    // Leaves have no toggle; the name stays the one way into a folder.
+    await expect(tree.queryByRole('button', { name: 'Expand 2025' })).toBeNull()
+
+    // Keyboard: the toggle takes focus and Enter flips it; arrows on the name work too.
+    collapse.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(tree.getByRole('button', { name: 'Expand Invoices' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    tree.getByRole('button', { name: /^Invoices/ }).focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(tree.getByText('2025')).toBeVisible())
+    // The arrow stays in the tree: no tile in the grid gets selected by it.
+    await expect(body.queryAllByRole('checkbox', { checked: true })).toHaveLength(0)
+    const active = canvasElement.ownerDocument.activeElement
+    if (active instanceof HTMLElement) active.blur()
+
+    await selectTile(canvasElement)
+  },
+}
+export const FolderTreeDark = dark(FolderTree)
+/** On a phone the sidebar is a drawer: the selected tile keeps its size beside the others. */
+export const FolderTreePhone: Story = {
+  ...phone(FolderTree),
+  play: async ({ canvasElement }) => selectTile(canvasElement),
+}
+
+async function selectTile(canvasElement: HTMLElement) {
+  const body = within(canvasElement.ownerDocument.body)
+  const check = await body.findByRole(
+    'checkbox',
+    { name: 'Select Receipts 2026' },
+    { timeout: 8000 },
+  )
+  await userEvent.click(check)
+  await expect(check).toBeChecked()
 }

@@ -8,7 +8,6 @@ import {
 } from '@helvetly/ui/components/context-menu'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
-  ChevronRight,
   Clock,
   FileSignature,
   LayoutTemplate,
@@ -119,12 +118,10 @@ export function FolderTree({
           type="button"
           aria-current={rootOpen ? 'page' : undefined}
           onClick={() => actions.open(null)}
-          className={cn(row, 'h-9 pl-1.5')}
+          className={cn(row, 'pl-2.5')}
           {...root.props}
         >
-          <span className="flex size-6 items-center justify-center rounded-md bg-card text-foreground shadow-elevation-1 ring-1 ring-black/[0.03] dark:ring-foreground/10">
-            <HardDrive className="size-3.5 stroke-[1.75]" />
-          </span>
+          <HardDrive className="size-4 shrink-0 stroke-[1.5]" />
           <span className="flex-1 truncate">{translate('allDocuments')}</span>
         </button>
         <Pinnable pinned={pinned} tab={{ type: 'recent' }}>
@@ -136,6 +133,28 @@ export function FolderTree({
           >
             <Clock className="size-4 shrink-0 stroke-[1.5]" />
             <span className="flex-1 truncate">{translate('recent')}</span>
+          </button>
+        </Pinnable>
+        <Pinnable pinned={pinned} tab={{ type: 'templates' }}>
+          <button
+            type="button"
+            aria-current={section === 'templates' ? 'page' : undefined}
+            onClick={() => actions.section('templates')}
+            className={cn(row, 'pl-2.5')}
+          >
+            <LayoutTemplate className="size-4 shrink-0 stroke-[1.5]" />
+            <span className="flex-1 truncate">{translate('templates')}</span>
+          </button>
+        </Pinnable>
+        <Pinnable pinned={pinned} tab={{ type: 'signatures' }}>
+          <button
+            type="button"
+            aria-current={section === 'signatures' ? 'page' : undefined}
+            onClick={() => actions.section('signatures')}
+            className={cn(row, 'pl-2.5')}
+          >
+            <FileSignature className="size-4 shrink-0 stroke-[1.5]" />
+            <span className="flex-1 truncate">{translate('signatures')}</span>
           </button>
         </Pinnable>
         {starred.length > 0 && (
@@ -225,28 +244,6 @@ export function FolderTree({
       </nav>
 
       <div className="mt-auto grid gap-0.5">
-        <Pinnable pinned={pinned} tab={{ type: 'templates' }}>
-          <button
-            type="button"
-            aria-current={section === 'templates' ? 'page' : undefined}
-            onClick={() => actions.section('templates')}
-            className={cn(row, 'pl-2.5')}
-          >
-            <LayoutTemplate className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('templates')}</span>
-          </button>
-        </Pinnable>
-        <Pinnable pinned={pinned} tab={{ type: 'signatures' }}>
-          <button
-            type="button"
-            aria-current={section === 'signatures' ? 'page' : undefined}
-            onClick={() => actions.section('signatures')}
-            className={cn(row, 'pl-2.5')}
-          >
-            <FileSignature className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('signatures')}</span>
-          </button>
-        </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'trash' }}>
           <button
             type="button"
@@ -366,7 +363,7 @@ export function TreeGuide({ x, last }: { x: number; last: boolean }) {
 
 // Rows indent by one icon column per level; the guide lines hang from the parent's icon centre.
 const INDENT = 20
-const BASE = 6 // the row's left padding, as "All documents" (pl-1.5)
+const BASE = 6 // the row's left padding; with the 24px icon box, icons centre where "Recent"'s does
 const ICON_CENTRE = BASE + 12
 
 function TreeNode({
@@ -399,6 +396,9 @@ function TreeNode({
   const canWrite = useCan('write:documents')
   const drop = useDropTarget(folder.id)
   const guide = ICON_CENTRE + (depth - 1) * INDENT
+  const toggleLabel = expanded
+    ? translate('collapse2', { name: folder.name })
+    : translate('expand2', { name: folder.name })
   return (
     <li className="relative">
       {depth > 0 && <TreeGuide x={guide} last={last} />}
@@ -410,30 +410,6 @@ function TreeNode({
             style={{ paddingLeft: BASE + depth * INDENT }}
             {...drop.props}
           >
-            {hasChildren && (
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label={
-                  expanded
-                    ? translate('collapse2', { name: folder.name })
-                    : translate('expand2', { name: folder.name })
-                }
-                onClick={onToggle}
-                className={cn(
-                  // In the panel's padding, left of the row: it takes no width, so icons align at every depth.
-                  'absolute top-1/2 -left-3 flex h-4 w-3 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground/80 opacity-0 transition-opacity group-hover/row:opacity-100 group-has-focus-visible/row:opacity-100 hover:bg-foreground/[0.06] hover:text-foreground',
-                  expanded && 'opacity-100',
-                )}
-              >
-                <ChevronRight
-                  className={cn(
-                    'size-3.5 transition-transform duration-150',
-                    expanded && 'rotate-90',
-                  )}
-                />
-              </button>
-            )}
             {renaming ? (
               <span className="flex min-w-0 flex-1 items-center gap-2">
                 <span className="flex size-6 shrink-0 items-center justify-center">
@@ -442,33 +418,56 @@ function TreeNode({
                 <InlineRename name={folder.name} isFile={false} onDone={onRenameDone} />
               </span>
             ) : (
-              <button
-                type="button"
-                draggable={canWrite}
-                aria-current={current ? 'page' : undefined}
-                aria-expanded={hasChildren ? expanded : undefined}
-                onDragStart={(event) =>
-                  startDrag(
-                    event,
-                    { files: [], folders: [folder.id], from: folder.parent_id },
-                    folder.name,
-                  )
-                }
-                onDragEnd={endDrag}
-                onClick={() => actions.open(folder.id)}
-                onKeyDown={(event) => {
-                  if (canWrite && event.key === 'F2') onRenameStart()
-                  if (event.key === 'ArrowRight' && hasChildren && !expanded) onToggle()
-                  if (event.key === 'ArrowLeft' && expanded) onToggle()
-                }}
-                className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-left outline-none"
-              >
-                <span className="flex size-6 shrink-0 items-center justify-center">
-                  <FolderMark open={drop.over} className="size-4" />
-                </span>
-                <span className="min-w-0 truncate">{folder.name}</span>
-                {folder.total_files > 0 && <Count>{folder.total_files}</Count>}
-              </button>
+              <>
+                {hasChildren && (
+                  // The folder's own icon is its disclosure: open while expanded, closed while not.
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label={toggleLabel}
+                    title={toggleLabel}
+                    onClick={onToggle}
+                    className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md outline-none hover:bg-foreground/[0.06]"
+                  >
+                    <FolderMark open={expanded || drop.over} className="size-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  draggable={canWrite}
+                  aria-current={current ? 'page' : undefined}
+                  onDragStart={(event) =>
+                    startDrag(
+                      event,
+                      { files: [], folders: [folder.id], from: folder.parent_id },
+                      folder.name,
+                    )
+                  }
+                  onDragEnd={endDrag}
+                  onClick={() => actions.open(folder.id)}
+                  onKeyDown={(event) => {
+                    if (canWrite && event.key === 'F2') onRenameStart()
+                    // Handled arrows stay in the tree; the page would otherwise move the grid's selection too.
+                    if (event.key === 'ArrowRight' && hasChildren && !expanded) {
+                      event.preventDefault()
+                      onToggle()
+                    }
+                    if (event.key === 'ArrowLeft' && expanded) {
+                      event.preventDefault()
+                      onToggle()
+                    }
+                  }}
+                  className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-left outline-none"
+                >
+                  {!hasChildren && (
+                    <span className="flex size-6 shrink-0 items-center justify-center">
+                      <FolderMark open={drop.over} className="size-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate">{folder.name}</span>
+                  {folder.total_files > 0 && <Count>{folder.total_files}</Count>}
+                </button>
+              </>
             )}
           </div>
         </ContextMenuTrigger>
