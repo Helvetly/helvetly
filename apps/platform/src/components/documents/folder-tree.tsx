@@ -127,6 +127,17 @@ export function FolderTree({
           </span>
           <span className="flex-1 truncate">{translate('allDocuments')}</span>
         </button>
+        <Pinnable pinned={pinned} tab={{ type: 'recent' }}>
+          <button
+            type="button"
+            aria-current={section === 'recent' ? 'page' : undefined}
+            onClick={() => actions.section('recent')}
+            className={cn(row, 'pl-2.5')}
+          >
+            <Clock className="size-4 shrink-0 stroke-[1.5]" />
+            <span className="flex-1 truncate">{translate('recent')}</span>
+          </button>
+        </Pinnable>
         {starred.length > 0 && (
           <>
             <Label>{translate('starred')}</Label>
@@ -234,17 +245,6 @@ export function FolderTree({
           >
             <FileSignature className="size-4 shrink-0 stroke-[1.5]" />
             <span className="flex-1 truncate">{translate('signatures')}</span>
-          </button>
-        </Pinnable>
-        <Pinnable pinned={pinned} tab={{ type: 'recent' }}>
-          <button
-            type="button"
-            aria-current={section === 'recent' ? 'page' : undefined}
-            onClick={() => actions.section('recent')}
-            className={cn(row, 'pl-2.5')}
-          >
-            <Clock className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('recent')}</span>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'trash' }}>
