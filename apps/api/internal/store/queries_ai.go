@@ -90,3 +90,16 @@ func (q Q) SettleUncertainAICalls(ctx context.Context, now time.Time) ([]AICall,
 	_, err = q.db.Exec(ctx, `UPDATE heidi_usage SET uncertain=false, updated_at=$1 WHERE uncertain`, now)
 	return calls, err
 }
+
+// StaleAICalls are the calls of every workspace still reserved since before: their process ended with them.
+func (q Q) StaleAICalls(ctx context.Context, before time.Time) ([]AICall, error) {
+	rows, err := q.db.Query(ctx, `SELECT id,workspace_id,pool,period,created_at,reserved_tokens,reserved_micros FROM ai_calls
+		WHERE status='reserved' AND created_at<=$1 ORDER BY created_at`, before)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (AICall, error) {
+		c := AICall{Status: "reserved"}
+		return c, r.Scan(&c.ID, &c.WorkspaceID, &c.Pool, &c.Period, &c.CreatedAt, &c.ReservedTokens, &c.ReservedMicros)
+	})
+}

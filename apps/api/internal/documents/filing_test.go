@@ -356,3 +356,39 @@ func TestAIFilingSpendsTheAutomationPool(t *testing.T) {
 		t.Fatalf("automation used %d, Heidi used %d reserved %d", automation.TokensUsed, heidi.TokensUsed, heidi.TokensReserved)
 	}
 }
+
+// A filing that finds its workspace's pool busy (another call in flight, or one a dead process left) waits without
+// spending its tries: the pool frees within aimodel's stale window, longer than all the tries' pauses together.
+func TestAIFilingWaitsForABusyPoolWithoutSpendingTries(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	m := e.filer(nil)
+	e.approveAI(b)
+	ctx := context.Background()
+	if _, err := e.raw.Exec(ctx, `INSERT INTO ai_calls(id,workspace_id,period,kind,operation,step,status,rate_card,model,tier,region,reserved_tokens,reserved_micros,created_at,pool)
+		VALUES ('aic_busy',$1,$2,'import','imf_x','0','reserved','c','m','default','regional',10,1,now(),'automation')`, b.workspace, store.UsagePeriod(time.Now())); err != nil {
+		t.Fatal(err)
+	}
+	up := e.uploaded(b, "invoice-acme.pdf", pdf)
+	for range filingTries + 2 {
+		if _, err := e.raw.Exec(ctx, `UPDATE document_filings SET due_at = now() - interval '1 second'`); err != nil {
+			t.Fatal(err)
+		}
+		e.fileDue()
+	}
+	var attempts int
+	if err := e.raw.QueryRow(ctx, `SELECT attempts FROM document_filings WHERE document_id = $1`, up.ID).Scan(&attempts); err != nil {
+		t.Fatal(err)
+	}
+	if d := e.get(b, up.ID); len(m.asked()) != 0 || d.AIFiling == nil || d.AIFiling.Status != "queued" || attempts != 0 {
+		t.Fatalf("while the pool is busy: %d calls, %d tries, %+v", len(m.asked()), attempts, d.AIFiling)
+	}
+	if _, err := e.raw.Exec(ctx, `UPDATE ai_calls SET status = 'settled', total_tokens = 10, cost_micros = 1 WHERE id = 'aic_busy';
+		UPDATE document_filings SET due_at = now() - interval '1 second'`); err != nil {
+		t.Fatal(err)
+	}
+	e.fileDue()
+	if d := e.get(b, up.ID); len(m.asked()) != 1 || d.AIFiling == nil || d.AIFiling.Status != "filed" {
+		t.Fatalf("once the pool is free: %d calls, %+v", len(m.asked()), d.AIFiling)
+	}
+}

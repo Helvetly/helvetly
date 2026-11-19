@@ -409,6 +409,33 @@ func TestAChunkIsAskedAtMostTwice(t *testing.T) {
 	}
 }
 
+// A file that finds its workspace's model pool busy (another call in flight, or one a dead process left) waits without
+// spending its tries, however long that takes: before, a call a crash left reserved failed every file read meanwhile.
+func TestABusyPoolDoesNotSpendAFilesTries(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	clock := time.Now().UTC()
+	e.s.now = func() time.Time { return clock }
+	if _, err := e.raw.Exec(context.Background(), `INSERT INTO ai_calls(id,workspace_id,period,kind,operation,step,status,rate_card,model,tier,region,reserved_tokens,reserved_micros,created_at,pool)
+		VALUES ('aic_dead','ws_a',$1,'filing','doc_x','file','reserved','c','m','default','regional',10,1,$2,'automation')`, store.UsagePeriod(clock), clock); err != nil {
+		t.Fatal(err)
+	}
+	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.pdf": []byte("%PDF-1.7 waits")}))
+	var got store.ImportBatch
+	for range 9 { // 4½ minutes: inside the stale window, past every try's pause together
+		clock = clock.Add(30 * time.Second)
+		got = e.extracted(b.ID)
+	}
+	if e.model.calls.Load() != 0 || got.Files[0].Status != "queued" {
+		t.Fatalf("while the pool is busy: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
+	}
+	e.model.replies = append(e.model.replies, answer(`{"records":[]}`))
+	clock = clock.Add(time.Hour) // the dead call is stale: the next call charges it and goes ahead
+	if got = e.extracted(b.ID); e.model.calls.Load() != 1 || got.Files[0].Status != "done" {
+		t.Fatalf("once the pool is free: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
+	}
+}
+
 func TestConsentWithdrawnStopsExtraction(t *testing.T) {
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")

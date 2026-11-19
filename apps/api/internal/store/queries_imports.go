@@ -318,6 +318,17 @@ func (q Q) FinishImportFile(ctx context.Context, id string, attempt int, status 
 	return err
 }
 
+// DeferImportFile queues a claimed file again at next without counting its claim as a try: it waited for its
+// workspace's model pool and never ran.
+func (q Q) DeferImportFile(ctx context.Context, id string, attempt int, next, now time.Time) error {
+	tag, err := q.db.Exec(ctx, `UPDATE import_files SET status='queued', attempts=attempts-1, next_attempt_at=$3, claimed_until=NULL,
+		updated_at=$4 WHERE id=$1 AND status='extracting' AND attempts=$2`, id, attempt, next, now)
+	if err == nil && tag.RowsAffected() != 1 {
+		return ErrNotFound
+	}
+	return err
+}
+
 // ImportOutcome: a batch's state once a file finishes. Open counts files still to read; Error is a failed file's
 // reason, "" when none failed.
 type ImportOutcome struct {

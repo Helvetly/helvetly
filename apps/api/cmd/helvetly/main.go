@@ -177,7 +177,7 @@ func run() error {
 		businessMail.Meter = billingSvc
 	}
 	// every 5 min: calls an instance of an earlier release left uncertain during a rolling deploy
-	bg.Go(ctx, "AI uncertain calls", func(ctx context.Context) { aimodel.RunSettleUncertain(ctx, db) })
+	bg.Go(ctx, "AI call sweep", func(ctx context.Context) { aimodel.RunSweep(ctx, db) })
 	bg.Go(ctx, "storage count", files.RunReconcile) // every 10 min: counted objects whose write storage never confirmed
 	db.SetFeatureGate(billingSvc.RequireFeature)
 	// a job leaves an automatic action refused for a used-up limit alone until the month or the cap changes
