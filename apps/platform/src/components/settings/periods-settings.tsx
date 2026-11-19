@@ -306,7 +306,7 @@ function CloseStatus({
   return (
     <section
       aria-label={translate('closeStatus')}
-      className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-xl border bg-card px-5 py-4"
+      className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-xl bg-card px-5 py-4 shadow-elevation-soft"
     >
       <div className="flex min-w-0 flex-1 basis-80 items-center gap-4">
         <span
