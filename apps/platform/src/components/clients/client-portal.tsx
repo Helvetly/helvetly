@@ -15,6 +15,7 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 import type { ReactElement, ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -112,19 +113,26 @@ export function PortalAccess({
   const on = Boolean(client.portal_enabled)
   const login = portalLogin(client)
   const invitation = invitationStatus(client)
+  // The whole workspace's portal is off: this client's switch is kept but lets nobody in.
+  const workspaceOff = usePortalAddress().data?.enabled === false
+  const offNote = workspaceOff && <WorkspacePortalOff />
 
   if (!on)
     return (
-      <StatusRow icon={KeyRound} label={translate('access')}>
-        <StatusBadge>{translate('off')}</StatusBadge>
-        <span className="text-body-sm text-muted-foreground">
-          {translate('turnItOnToLetTheClientSignIn')}
-        </span>
-      </StatusRow>
+      <div className="grid">
+        {offNote}
+        <StatusRow icon={KeyRound} label={translate('access')}>
+          <StatusBadge>{translate('off')}</StatusBadge>
+          <span className="text-body-sm text-muted-foreground">
+            {translate('turnItOnToLetTheClientSignIn')}
+          </span>
+        </StatusRow>
+      </div>
     )
 
   return (
     <div className="grid">
+      {offNote}
       <StatusRow icon={KeyRound} label={translate('access')}>
         <StatusBadge tone="green">{translate('on')}</StatusBadge>
         <span className="text-body-sm text-muted-foreground max-sm:hidden">
@@ -158,7 +166,7 @@ export function PortalAccess({
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={resend.isPending || Boolean(portalLock)}
+                    disabled={resend.isPending || Boolean(portalLock) || workspaceOff}
                     onClick={() =>
                       resend.mutate(client.id, {
                         onSuccess: () =>
@@ -185,6 +193,23 @@ export function PortalAccess({
         </div>
       )}
       <PortalLinkRow />
+    </div>
+  )
+}
+
+/** The workspace turned its whole portal off: why this client cannot sign in, and where to turn it on. */
+function WorkspacePortalOff() {
+  return (
+    <div className="pt-1 pb-2">
+      <Callout tone="warning" icon={TriangleAlert} className="rounded-lg px-3 py-2.5">
+        {translate('portalOffForWorkspace')}{' '}
+        <Link
+          href="/settings/workspace#portal-address"
+          className="underline underline-offset-2 hover:no-underline"
+        >
+          {translate('turnOnInSettings')}
+        </Link>
+      </Callout>
     </div>
   )
 }

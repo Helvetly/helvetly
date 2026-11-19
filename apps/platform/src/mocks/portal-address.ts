@@ -17,9 +17,12 @@ const RESERVED = new Set([
 const TAKEN = new Set(['acme', 'beta-treuhand'])
 
 let slug = 'mueller-treuhand'
+let enabled = true
 
-export function resetPortalAddress(to = 'mueller-treuhand') {
+/** `on` false: the workspace turned its whole portal off. */
+export function resetPortalAddress(to = 'mueller-treuhand', on = true) {
   slug = to
+  enabled = on
 }
 
 const problemOf = (value: string) => {
@@ -29,7 +32,7 @@ const problemOf = (value: string) => {
   return null
 }
 
-const address = () => ({ data: { slug, url: `${BASE}${slug}/` } })
+const address = () => ({ data: { slug, url: `${BASE}${slug}/`, enabled } })
 
 export const portalAddressHandlers = [
   http.get('/api/v1/workspace/portal/availability', ({ request }) => {
@@ -37,6 +40,10 @@ export const portalAddressHandlers = [
     return HttpResponse.json({ data: { available: problem === null, problem } })
   }),
   http.get('/api/v1/workspace/portal', () => HttpResponse.json(address())),
+  http.put<never, { enabled: boolean }>('/api/v1/workspace/portal/access', async ({ request }) => {
+    enabled = (await request.json()).enabled
+    return HttpResponse.json(address())
+  }),
   http.put<never, { slug: string }>('/api/v1/workspace/portal', async ({ request }) => {
     const wanted = (await request.json()).slug
     const problem = wanted === slug ? null : problemOf(wanted)

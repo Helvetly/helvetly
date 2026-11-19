@@ -226,5 +226,7 @@
   "alreadySignedInHere": "Déjà connecté ici",
   "continuingSignsOut": "Vous êtes connecté en tant que {email} ({client}). Continuer déconnecte ce compte ici.",
   "staySignedIn": "Rester connecté",
-  "continue": "Continuer"
+  "continue": "Continuer",
+  "portalUnavailable": "Le portail client n’est pas disponible",
+  "portalUnavailableHint": "Votre fournisseur a désactivé son portail client pour le moment. Demandez-lui directement vos factures ou documents."
 }

@@ -57,7 +57,7 @@ are the reference.
   and is never given to another workspace, by a 302 that is never cached since a workspace may take an earlier slug back;
   reserved words refused; changes audited). Slug lookups are rate limited per client address before the database is asked. Its portal is
   `PORTAL_URL/w/<slug>/`: the resolver strips the prefix and puts the workspace in the request context, so the same
-  static portal serves it and its API calls go to `/w/<slug>/api/…`; an unknown slug is the portal's 404. `GET /api/v1/public/portal/scope` names the workspace only while its portal is open (plan and a client with it on). Under a scope,
+  static portal serves it and its API calls go to `/w/<slug>/api/…`; an unknown slug is the portal's 404. `GET /api/v1/public/portal/scope` names the workspace only while its portal is open (plan and a client with it on). An owner or admin can turn the whole portal off (`workspaces.portal_off`, audited): sign-in and every session are refused at once, no invitation goes out, each client's own switch is kept, and the scope answers `portal_closed` (the portal's "not available" page, naming nobody). Under a scope,
   sign-in looks only at that workspace's clients (the same answer whether or not the address exists) and the session
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there; plain `/login` keeps the cross-workspace
   search; an address with several clients chooses one there, and the chosen address opens its session only from a

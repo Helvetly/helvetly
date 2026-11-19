@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import { translate } from '@/lib/i18n'
 import {
   getPortalScope,
+  isPortalClosed,
   getPortalSession,
   issuePortalTicket,
   peekPortalTicket,
@@ -27,6 +28,7 @@ import { siteUrl } from '@/lib/site'
 
 import { PortalAccountChooser } from './portal-account-chooser'
 import { WorkspaceMark } from './portal-bits'
+import { PortalNotFound } from './portal-not-found'
 import { PortalTicketConfirm } from './portal-ticket-confirm'
 
 const leave = (url: string) => window.location.assign(url)
@@ -99,6 +101,7 @@ export function PortalLogin(props: {
   useEffect(() => {
     if (signedIn && !confirming) router.replace(scoped('/'))
   }, [signedIn, confirming, router])
+  if (isPortalClosed(scope.error)) return <PortalNotFound closed />
   if (
     session.isPending ||
     scope.isPending ||

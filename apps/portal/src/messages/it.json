@@ -226,5 +226,7 @@
   "alreadySignedInHere": "Accesso già effettuato qui",
   "continuingSignsOut": "Hai effettuato l’accesso come {email} ({client}). Continuando, questo account viene disconnesso qui.",
   "staySignedIn": "Resta connesso",
-  "continue": "Continua"
+  "continue": "Continua",
+  "portalUnavailable": "Il portale clienti non è disponibile",
+  "portalUnavailableHint": "Il tuo fornitore ha disattivato il suo portale clienti per ora. Chiedigli direttamente fatture o documenti."
 }

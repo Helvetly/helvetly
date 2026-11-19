@@ -226,5 +226,7 @@
   "alreadySignedInHere": "Hier bereits angemeldet",
   "continuingSignsOut": "Sie sind als {email} ({client}) angemeldet. Wenn Sie fortfahren, wird dieses Konto hier abgemeldet.",
   "staySignedIn": "Angemeldet bleiben",
-  "continue": "Weiter"
+  "continue": "Weiter",
+  "portalUnavailable": "Das Kundenportal ist nicht verfügbar",
+  "portalUnavailableHint": "Ihr Anbieter hat sein Kundenportal vorübergehend ausgeschaltet. Fragen Sie direkt nach, wenn Sie Rechnungen oder Dokumente brauchen."
 }

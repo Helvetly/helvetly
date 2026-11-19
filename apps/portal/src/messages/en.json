@@ -226,5 +226,7 @@
   "alreadySignedInHere": "Already signed in here",
   "continuingSignsOut": "You are signed in as {email} ({client}). Continuing signs that account out here.",
   "staySignedIn": "Stay signed in",
-  "continue": "Continue"
+  "continue": "Continue",
+  "portalUnavailable": "The client portal is not available",
+  "portalUnavailableHint": "Your supplier has turned their client portal off for now. Ask them if you need your invoices or documents."
 }
