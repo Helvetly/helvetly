@@ -59,7 +59,7 @@ INSERT INTO limit_plans (offer_id, plan_id, limit_key, state, value, per_additio
 SELECT 'helvetly-v1.3', plan_id, limit_key, state, value, per_additional_paid_seat FROM limit_plans WHERE offer_id = 'helvetly-v1.2';
 
 INSERT INTO offer_audit (actor, action, target, after, reason)
-VALUES ('migration 00031', 'offer.publish', 'helvetly-v1.3', jsonb_build_object('offer_id', 'helvetly-v1.3', 'checksum', 'f22b1f76f927e66790b097fe864e8ffe9e35c60c09664b5c5f6fe926391fc0cd'),
+VALUES ('migration 00032', 'offer.publish', 'helvetly-v1.3', jsonb_build_object('offer_id', 'helvetly-v1.3', 'checksum', 'f22b1f76f927e66790b097fe864e8ffe9e35c60c09664b5c5f6fe926391fc0cd'),
     'Business gets the client portal on its own domain, approved by the owner');
 
 -- +goose Down
