@@ -8,7 +8,9 @@ import {
   defaultPaymentMethods,
   EXEMPTION_CATEGORIES,
   formatAmount,
+  formatDay,
   fromCents,
+  INTERVALS,
   isReceivable,
   parseDecimalInput,
   toCents,
@@ -371,6 +373,17 @@ export const startInstalments = (
   first_due_date: firstDue,
   items: null,
 })
+
+/** The footer's one line for a schedule: "3× · Monthly · from 1 Dec 2026"; the rows as typed win over the shape. */
+export function instalmentsSummary(schedule: EditorInstalments): string {
+  const interval = INTERVALS.find((entry) => entry.value === schedule.interval)?.label ?? ''
+  const first = schedule.items?.[0]?.due_date ?? schedule.first_due_date
+  return translate('instalmentsSummary', {
+    count: schedule.items?.length ?? schedule.count,
+    interval,
+    date: first ? formatDay(first) : '—',
+  })
+}
 
 /** A saved schedule as typed; the editor makes it generated again when it equals the preview's. */
 function editorInstalments(invoice: Invoice): EditorInstalments | null {

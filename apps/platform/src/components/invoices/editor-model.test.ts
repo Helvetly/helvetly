@@ -8,6 +8,7 @@ import {
   changeVatMode,
   emptyValues,
   instalmentGap,
+  instalmentsSummary,
   lockedInput,
   moveLine,
   prepaidTotal,
@@ -446,4 +447,32 @@ test('a price above what the API accepts is an error on its line, also for the p
   }
   expect(toInput(values).errors).toEqual({ 'b.unit_price': 'At most 100’000’000.00' })
   expect(toInput(values, true).errors).toEqual({ 'b.unit_price': 'At most 100’000’000.00' })
+})
+
+test.each([
+  [
+    'the shape before any row is typed',
+    { count: '3', interval: 'monthly' as const, first_due_date: '2026-12-19', items: null },
+    '3× · Monthly · from 19 Dec 2026',
+  ],
+  [
+    'typed rows: their number and first date',
+    {
+      count: '3',
+      interval: 'quarterly' as const,
+      first_due_date: '2026-12-19',
+      items: [
+        { due_date: '2027-01-05', amount: '500.00' },
+        { due_date: '2027-04-05', amount: '500.00' },
+      ],
+    },
+    '2× · Quarterly · from 5 Jan 2027',
+  ],
+  [
+    'no first date yet',
+    { count: '4', interval: 'weekly' as const, first_due_date: '', items: null },
+    '4× · Weekly · from —',
+  ],
+])('instalments summary: %s', (_, schedule, expected) => {
+  expect(instalmentsSummary(schedule)).toBe(expected)
 })

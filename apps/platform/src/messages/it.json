@@ -4493,5 +4493,8 @@
   "contractDocumentOfClient": "Documenti di questo cliente",
   "contractDocumentOther": "Altri documenti",
   "descriptionKeptLong": "Salvata prima del limite di {max} caratteri: resta così com’è. Per modificarla, accorciala a {max} caratteri.",
-  "periodsInTotal": "{count, plural, one {# periodo} other {# periodi}} in tutto"
+  "periodsInTotal": "{count, plural, one {# periodo} other {# periodi}} in tutto",
+  "editInstalments": "Modifica le rate",
+  "instalmentsSummary": "{count}× · {interval} · dal {date}",
+  "instalmentsDialogDescription": "Una fattura, più scadenze, una QR-fattura per ciascuna."
 }

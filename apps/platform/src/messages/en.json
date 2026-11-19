@@ -4493,5 +4493,8 @@
   "contractDocumentOfClient": "This client’s documents",
   "contractDocumentOther": "Other documents",
   "descriptionKeptLong": "Saved before the {max}-character limit: it is kept as it is. To change it, shorten it to {max} characters.",
-  "periodsInTotal": "{count, plural, one {# period} other {# periods}} in total"
+  "periodsInTotal": "{count, plural, one {# period} other {# periods}} in total",
+  "editInstalments": "Edit instalments",
+  "instalmentsSummary": "{count}× · {interval} · from {date}",
+  "instalmentsDialogDescription": "One invoice, several due dates, one QR bill each."
 }

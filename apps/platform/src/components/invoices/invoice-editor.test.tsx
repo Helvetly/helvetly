@@ -393,6 +393,7 @@ test.each([
     server.use(http.get('/api/v1/invoices/inv_9', () => HttpResponse.json({ data: draft })))
     search = new URLSearchParams('id=inv_9')
     renderEditor()
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit instalments' }))
     expect(await screen.findByRole('textbox', { name: 'Instalment 3 amount' })).toHaveValue(
       rows[2]?.[1],
     )

@@ -4493,5 +4493,8 @@
   "contractDocumentOfClient": "Dokumente dieses Kunden",
   "contractDocumentOther": "Weitere Dokumente",
   "descriptionKeptLong": "Vor der Grenze von {max} Zeichen gespeichert: Sie bleibt unverändert erhalten. Um sie zu ändern, kürzen Sie sie auf {max} Zeichen.",
-  "periodsInTotal": "{count, plural, one {# Periode} other {# Perioden}} insgesamt"
+  "periodsInTotal": "{count, plural, one {# Periode} other {# Perioden}} insgesamt",
+  "editInstalments": "Raten bearbeiten",
+  "instalmentsSummary": "{count}× · {interval} · ab {date}",
+  "instalmentsDialogDescription": "Eine Rechnung, mehrere Fälligkeiten, je ein QR-Einzahlungsschein."
 }
