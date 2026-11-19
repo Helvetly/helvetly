@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
@@ -267,4 +267,16 @@ test('focus skips a control whose popover is still fading out', async () => {
   await vi.waitFor(() => expect(row).toHaveFocus())
   row.remove()
   card.remove()
+})
+
+test('a drawer is marked scrolled only while its content is scrolled away from the top', () => {
+  render(<Drawer onClose={() => {}} />)
+  const drawer = screen.getByRole('dialog')
+  expect(drawer).not.toHaveAttribute('data-scrolled')
+  drawer.scrollTop = 40
+  fireEvent.scroll(drawer)
+  expect(drawer).toHaveAttribute('data-scrolled')
+  drawer.scrollTop = 0
+  fireEvent.scroll(drawer)
+  expect(drawer).not.toHaveAttribute('data-scrolled')
 })

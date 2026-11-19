@@ -113,6 +113,7 @@ function SheetContent({
   onEscapeKeyDown,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onScroll,
   ref,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
@@ -168,6 +169,13 @@ function SheetContent({
           className,
         )}
         {...props}
+        // Marks the drawer scrolled so its sticky header can lift off the content (globals.css).
+        // Set on the node, not in state: a scroll must not re-render the whole drawer.
+        onScroll={(event) => {
+          onScroll?.(event)
+          const node = event.currentTarget
+          node.toggleAttribute('data-scrolled', node.scrollTop > 0)
+        }}
         // Drawers close only on × or Esc: a stray click outside must never throw away work.
         onInteractOutside={(event) => {
           onInteractOutside?.(event)
