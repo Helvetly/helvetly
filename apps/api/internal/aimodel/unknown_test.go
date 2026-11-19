@@ -104,10 +104,16 @@ func automationUsage(t *testing.T, db *store.Store, ws store.Workspace) store.He
 	return u
 }
 
-// deadline records the deadline each answer is given.
+// deadline records the deadline the count and the answer are given.
 type deadline struct {
 	scripted
-	got time.Duration
+	got, count time.Duration
+}
+
+func (p *deadline) InputTokens(ctx context.Context, r Request) (int64, error) {
+	d, _ := ctx.Deadline()
+	p.count = time.Until(d).Round(time.Second)
+	return p.scripted.InputTokens(ctx, r)
 }
 
 func (p *deadline) Answer(ctx context.Context, r Request) (Reply, error) {
@@ -116,7 +122,8 @@ func (p *deadline) Answer(ctx context.Context, r Request) (Reply, error) {
 	return p.scripted.Answer(ctx, r)
 }
 
-func TestAnAnswerHasItsCallsDeadline(t *testing.T) {
+// TestACallHasOneDeadline: the count (at most countTimeout) and the answer share the call's deadline.
+func TestACallHasOneDeadline(t *testing.T) {
 	db, _, ws := reserveDB(t)
 	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
 	for i, tc := range []struct{ timeout, want time.Duration }{
@@ -125,8 +132,8 @@ func TestAnAnswerHasItsCallsDeadline(t *testing.T) {
 		p := &deadline{scripted: scripted{input: 10, reply: used(10, 0, 1, 0)}}
 		call := testCall
 		call.Operation, call.Timeout = fmt.Sprint("op", i), tc.timeout
-		if _, err := b.Generate(context.Background(), p, ws, Request{}, call); err != nil || p.got != tc.want {
-			t.Fatalf("timeout %v: deadline %v (err %v), want %v", tc.timeout, p.got, err, tc.want)
+		if _, err := b.Generate(context.Background(), p, ws, Request{}, call); err != nil || p.got != tc.want || p.count != countTimeout {
+			t.Fatalf("timeout %v: answer %v, count %v (err %v), want %v and %v", tc.timeout, p.got, p.count, err, tc.want, countTimeout)
 		}
 	}
 }

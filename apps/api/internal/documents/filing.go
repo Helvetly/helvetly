@@ -26,7 +26,9 @@ import (
 // reach it: they are not uploaded here and are not documents to store.Document.
 
 const (
-	filingLease     = 4 * time.Minute // a claimed filing comes due again this long after an instance died with it; > aimodel.MaxAnswerTimeout
+	// filingLease: a claimed filing comes due again this long after an instance died with it; longer than one
+	// Generate (aimodel.MaxAnswerTimeout, counts and retries included).
+	filingLease     = 4 * time.Minute
 	filingBatch     = 5
 	filingTries     = 6
 	filingMaxOutput = 300
@@ -169,8 +171,8 @@ func (s *Service) file(ctx context.Context, j store.FilingJob) {
 	}
 }
 
-// retryable: another model call of the workspace is in flight, the provider failed with known usage, or a database or
-// storage error; never a refusal, a used allowance or an outcome that must not be asked again.
+// retryable: another model call of the workspace is in flight, the provider failed (charged at most its reservation;
+// aimodel's attempts per step stop a second retry), or a database or storage error; never a refusal or a used allowance.
 func retryable(err error) bool {
 	if errors.Is(err, aimodel.ErrUncertain) {
 		return true

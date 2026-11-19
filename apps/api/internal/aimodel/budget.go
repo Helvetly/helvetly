@@ -49,12 +49,15 @@ const (
 	maxAttempts = 2
 	minOutput   = 16
 	// staleAfter: a call still reserved this long ended with its process; its outcome is unknown. Longer than any
-	// call's deadline (Call.Timeout).
+	// Generate's deadline (Call.Timeout).
 	staleAfter = 10 * time.Minute
-	// answerTimeout bounds a call a person waits on in an HTTP request, under a proxy's 100 s limit.
+	// answerTimeout bounds a Generate a person waits on in an HTTP request, under a proxy's 100 s limit.
 	answerTimeout = 90 * time.Second
-	// MaxAnswerTimeout bounds a background call (an import file, filing), which reads a whole PDF.
+	// MaxAnswerTimeout bounds a background Generate (an import file part, filing), which reads a whole PDF. A job's
+	// lease on its work must be longer.
 	MaxAnswerTimeout = 3 * time.Minute
+	// countTimeout bounds one input count; it is quick, and a slow one must leave the answer its time.
+	countTimeout = 30 * time.Second
 )
 
 // Caps bound one call, its operation (all calls for an import file or a Heidi turn, attempts included) and its group
@@ -80,8 +83,8 @@ const (
 )
 
 // Call names a provider call for its caps and attempts: Kind is "heidi", "import", "filing", "organize" or "write", Operation the turn,
-// file or document, Step the chunk or stage within it, Group the batch ("" none). Timeout bounds the answer (0 =
-// answerTimeout, for a request a person waits on; at most MaxAnswerTimeout).
+// file or document, Step the chunk or stage within it, Group the batch ("" none). Timeout bounds the whole Generate:
+// counts, retries and the answer (0 = answerTimeout, for a request a person waits on; at most MaxAnswerTimeout).
 type Call struct {
 	Kind, Operation, Step, Group string
 	MaxOutput                    int64
@@ -117,12 +120,17 @@ type Budget struct {
 //
 // A failure that cost nothing (the provider refused before generating: a rate limit, or the input count) is tried
 // again up to len(retryDelays) times after growing pauses, each retry its own step and reservation; a failure whose
-// usage is unknown never is.
+// usage is unknown never is. Neither is one with less than half of the call's time left.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
+	timeout := answerTimeout
+	if call.Timeout > 0 {
+		timeout = min(call.Timeout, MaxAnswerTimeout)
+	}
+	deadline := time.Now().Add(timeout)
 	step := call.Step
 	for i := 0; ; i++ {
-		reply, err := b.generate(ctx, p, ws, req, call)
-		if err == nil || i == len(retryDelays) || !retryable(err) {
+		reply, err := b.generate(ctx, p, ws, req, call, deadline)
+		if err == nil || i == len(retryDelays) || !retryable(err) || time.Until(deadline) < timeout/2+retryDelays[i] {
 			return reply, err
 		}
 		select {
@@ -153,7 +161,7 @@ func retryable(err error) bool {
 	return false
 }
 
-func (b Budget) generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
+func (b Budget) generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call, deadline time.Time) (Reply, error) {
 	card := p.Card()
 	period := store.UsagePeriod(b.Now())
 	if err := b.expireStale(ctx, ws.ID); err != nil {
@@ -162,7 +170,9 @@ func (b Budget) generate(ctx context.Context, p Provider, ws store.Workspace, re
 	if _, err := b.admit(ctx, ws, period, card, call, -1); err != nil {
 		return Reply{}, err
 	}
-	inputTokens, err := p.InputTokens(ctx, req)
+	countCtx, cancelCount := context.WithTimeout(ctx, min(countTimeout, time.Until(deadline)))
+	inputTokens, err := p.InputTokens(countCtx, req)
+	cancelCount()
 	if err != nil || inputTokens < 0 {
 		if ctx.Err() == nil {
 			logFailure(ctx, store.AICall{WorkspaceID: ws.ID, Kind: call.Kind, Step: call.Step + "/count", Model: card.Model}, 0, err)
@@ -185,11 +195,7 @@ func (b Budget) generate(ctx context.Context, p Provider, ws store.Workspace, re
 	}
 	// A started generation is billed whether or not the caller stays: cancelling it would lose its usage and charge
 	// the whole reservation. Only the call's own deadline bounds it.
-	timeout := answerTimeout
-	if call.Timeout > 0 {
-		timeout = min(call.Timeout, MaxAnswerTimeout)
-	}
-	answerCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	answerCtx, cancel := context.WithDeadline(context.WithoutCancel(ctx), deadline)
 	started := time.Now()
 	reply, providerErr := p.Answer(answerCtx, req)
 	cancel()
@@ -415,4 +421,21 @@ func SettleUncertain(ctx context.Context, db *store.Store, now time.Time) error 
 			"pool", c.Pool, "period", c.Period, "failure", c.Failure, "tokens", c.ReservedTokens, "cost_micros", c.ReservedMicros)
 	}
 	return nil
+}
+
+// RunSettleUncertain repeats SettleUncertain every few minutes until ctx ends: during a rolling deploy an instance of
+// an earlier release may still leave a call uncertain.
+func RunSettleUncertain(ctx context.Context, db *store.Store) {
+	tick := time.NewTicker(5 * time.Minute)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		if err := SettleUncertain(ctx, db, time.Now()); err != nil && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "settle uncertain model calls", "error", err)
+		}
+	}
 }

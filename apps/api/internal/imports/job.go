@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	jobLease        = 5 * time.Minute // a claimed file is left to its job this long; renewed per chunk, > aimodel.MaxAnswerTimeout
+	// jobLease: a claimed file is left to its job this long, renewed per chunk; longer than one Generate
+	// (aimodel.MaxAnswerTimeout, counts and retries included).
+	jobLease        = 5 * time.Minute
 	jobBatch        = 5
 	maxAttempts     = 4
 	maxOutputTokens = 16_000
