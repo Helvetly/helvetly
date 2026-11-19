@@ -33,6 +33,7 @@ type Storage interface {
 type Config struct {
 	SessionTTL   time.Duration
 	CookieSecure bool
+	PortalURL    string // the shared portal's origin, where a handoff returns
 }
 
 // URLs is where a workspace's clients sign in (internal/portalscope).
@@ -65,6 +66,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/public/portal/auth/start", s.start)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/verify", s.verify)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/choose", s.choose)
+	mux.HandleFunc("GET /api/v1/public/portal/auth/handoff", s.handoff)
+	mux.HandleFunc("POST /api/v1/public/portal/auth/handoff", s.issue)
+	mux.HandleFunc("POST /api/v1/public/portal/auth/ticket/peek", s.peekTicket)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/ticket", s.redeem)
 	mux.HandleFunc("GET /api/v1/public/portal/scope", s.getScope)
 	mux.HandleFunc("GET /api/v1/public/portal/scope/logo", s.getScopeLogo)

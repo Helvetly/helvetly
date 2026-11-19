@@ -219,5 +219,12 @@
   "thatSignInHasExpired": "Diese Anmeldung ist abgelaufen. Geben Sie Ihre E-Mail-Adresse ein, um einen neuen Code zu erhalten.",
   "useAnotherEmail": "Andere E-Mail-Adresse verwenden",
   "yourAddressHasSeveralAccounts": "Ihre Adresse hat mehr als ein Konto. Welches möchten Sie öffnen?",
-  "zRich": "Zürich"
+  "zRich": "Zürich",
+  "continueWithThisAccount": "Mit diesem Konto fortfahren?",
+  "onlyContinueIfYouChoseIt": "Fahren Sie nur fort, wenn Sie dieses Konto gerade selbst gewählt haben. Hat Ihnen jemand diesen Link geschickt, brechen Sie ab.",
+  "clientAtSupplier": "{client} bei {supplier}",
+  "alreadySignedInHere": "Hier bereits angemeldet",
+  "continuingSignsOut": "Sie sind als {email} ({client}) angemeldet. Wenn Sie fortfahren, wird dieses Konto hier abgemeldet.",
+  "staySignedIn": "Angemeldet bleiben",
+  "continue": "Weiter"
 }

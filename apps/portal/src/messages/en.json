@@ -219,5 +219,12 @@
   "thatSignInHasExpired": "That sign-in has expired. Enter your email to get a new code.",
   "useAnotherEmail": "Use another email",
   "yourAddressHasSeveralAccounts": "Your address has more than one account. Which one would you like to open?",
-  "zRich": "Zürich"
+  "zRich": "Zürich",
+  "continueWithThisAccount": "Continue with this account?",
+  "onlyContinueIfYouChoseIt": "Continue only if you just chose this account yourself. If someone sent you this link, cancel.",
+  "clientAtSupplier": "{client} at {supplier}",
+  "alreadySignedInHere": "Already signed in here",
+  "continuingSignsOut": "You are signed in as {email} ({client}). Continuing signs that account out here.",
+  "staySignedIn": "Stay signed in",
+  "continue": "Continue"
 }

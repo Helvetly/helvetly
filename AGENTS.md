@@ -60,7 +60,9 @@ are the reference.
   static portal serves it and its API calls go to `/w/<slug>/api/…`; an unknown slug is the portal's 404. `GET /api/v1/public/portal/scope` names the workspace only while its portal is open (plan and a client with it on). Under a scope,
   sign-in looks only at that workspace's clients (the same answer whether or not the address exists) and the session
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there; plain `/login` keeps the cross-workspace
-  search. Links in email come from `CanonicalURL`.
+  search; an address with several clients chooses one there, and the chosen address opens its session only from a
+  one-time ticket bound to the browser that chose (a state cookie its own host set in a handoff) after the person
+  confirms whom they continue as. Links in email come from `CanonicalURL`.
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
   through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not

@@ -71,7 +71,7 @@ func newEnv(t *testing.T) *env {
 	t.Cleanup(srv.Close)
 	scopes := portalscope.New(srv.URL, st.Q)
 	scopes.EnableDomains() // the test server's own host stays the portal's; workspace_domains rows add others
-	New(st, fa, files, scopes, Config{SessionTTL: time.Hour, CookieSecure: true}, discard).Register(mux)
+	New(st, fa, files, scopes, Config{SessionTTL: time.Hour, CookieSecure: true, PortalURL: srv.URL}, discard).Register(mux)
 	front = scopes.Handler(mux)
 	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st}
 	e.exec = func(sql string, args ...any) {

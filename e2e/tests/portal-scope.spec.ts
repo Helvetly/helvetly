@@ -210,6 +210,11 @@ test('a client of two workspaces signs in on the shared portal, chooses the seco
     expect((await session(context, '/')).status()).toBe(401)
 
     await pick.click()
+    // The chosen address asks before it opens anything.
+    await expect(portal.getByRole('heading', { name: 'Continue with this account?' })).toBeVisible()
+    await expect(portal.getByText(`${secondClient} at ${secondName}`)).toBeVisible()
+    expect((await session(context, secondPath)).status()).toBe(401)
+    await portal.getByRole('button', { name: 'Continue', exact: true }).click()
     await expect(portal).toHaveURL(at(secondPath))
     await expect(portal.locator('header').getByLabel(secondName, { exact: true })).toBeVisible()
 
@@ -224,6 +229,100 @@ test('a client of two workspaces signs in on the shared portal, chooses the seco
     )
   } finally {
     await context.close()
+    await staff.dispose()
+  }
+})
+
+test('a ticket link sent to someone else signs nobody in; the browser that chose still continues', async ({
+  api,
+  playwright,
+  browser,
+  baseURL,
+}) => {
+  const email = `attacker-${randomUUID()}@example.test`
+  const first = await api.save('/clients', { name: uniqueName('First'), is_company: false, email })
+  await api.save(`/clients/${text(first.id)}`, { portal_enabled: true }, 'PATCH')
+
+  const staff = await playwright.request.newContext({ baseURL })
+  const attacker = await browser.newContext({ baseURL: portalURL })
+  const victim = await browser.newContext({ baseURL: portalURL })
+  try {
+    const other = await signIn(staff, `other-${randomUUID()}@example.test`)
+    const secondName = uniqueName('Second Studio')
+    await other.save('/workspace', { name: secondName }, 'PATCH')
+    const secondClient = uniqueName('Attacker Account')
+    const second = await other.save('/clients', { name: secondClient, is_company: false, email })
+    await other.save(`/clients/${text(second.id)}`, { portal_enabled: true }, 'PATCH')
+    const secondPath = await portalPath(staff)
+    // The victim is a client of the same workspace, already signed in on its address.
+    const victimEmail = `victim-${randomUUID()}@example.test`
+    const own = await other.save('/clients', {
+      name: uniqueName('Victim'),
+      is_company: false,
+      email: victimEmail,
+    })
+    await other.save(`/clients/${text(own.id)}`, { portal_enabled: true }, 'PATCH')
+    const verified = await victim.request.post(`${secondPath}api/v1/public/portal/auth/verify`, {
+      data: { email: victimEmail, code: await code(victim, secondPath, victimEmail) },
+    })
+    expect(verified.status()).toBe(201)
+
+    // The attacker chooses their account on the shared portal and keeps the ticket's address instead of continuing.
+    const page = await attacker.newPage()
+    await page.goto('/login/')
+    await page.getByLabel('Email', { exact: true }).fill(email)
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+    const dev = await attacker.request.get(
+      `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
+    )
+    await page.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
+    let link = ''
+    await page.route('**/api/v1/public/portal/auth/handoff', async (route) => {
+      if (route.request().method() !== 'POST') return route.continue()
+      const res = await route.fetch()
+      link = text(object(await res.json()).url)
+      await route.fulfill({ response: res })
+    })
+    await page.getByRole('button', { name: `${secondName} as ${secondClient}` }).click()
+    await expect(page.getByRole('heading', { name: 'Continue with this account?' })).toBeVisible()
+    expect(link).toContain(`${secondPath}login/#ticket=`)
+
+    // The victim opens it: nothing is shown or opened, and their own session stays theirs.
+    const ticket = link.slice(link.indexOf('#ticket=') + '#ticket='.length)
+    const refused = await Promise.all(
+      ['auth/ticket/peek', 'auth/ticket'].map((path) =>
+        victim.request.post(`${secondPath}api/v1/public/portal/${path}`, { data: { ticket } }),
+      ),
+    )
+    expect(refused.map((res) => res.status())).toEqual([401, 401])
+    const victimPage = await victim.newPage()
+    await victimPage.goto(link)
+    await expect(victimPage).toHaveURL(at(secondPath))
+    await expect(victimPage.getByText(secondClient)).toHaveCount(0)
+    expect(object(object(await (await session(victim, secondPath)).json()).client).id).toBe(own.id)
+
+    // A browser with no session there gets the sign-in form, not the attacker's account.
+    const stranger = await browser.newContext({ baseURL: portalURL })
+    try {
+      const strangerPage = await stranger.newPage()
+      await strangerPage.goto(link)
+      await expect(strangerPage.getByText(/That sign-in has expired/)).toBeVisible()
+      await expect(strangerPage.getByText(secondClient)).toHaveCount(0)
+      expect((await session(stranger, secondPath)).status()).toBe(401)
+    } finally {
+      await stranger.close()
+    }
+
+    // The ticket was refused, not spent: the attacker's own browser still continues to their own account.
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(page).toHaveURL(at(secondPath))
+    expect(object(object(await (await session(attacker, secondPath)).json()).client).id).toBe(
+      second.id,
+    )
+  } finally {
+    await attacker.close()
+    await victim.close()
     await staff.dispose()
   }
 })

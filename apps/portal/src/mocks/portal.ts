@@ -278,7 +278,7 @@ export const portalAccounts: PortalAccount[] = [
   { client_id: 'cli_7', client_name: 'Anna Keller', workspace_name: 'Studio Berg', logo_url: null },
 ]
 
-/** Verify on the shared portal for an address with these accounts; choose answers that supplier's address. */
+/** Verify on the shared portal for an address with these accounts; choose answers that supplier's handoff. */
 export const accountChoice = (accounts: PortalAccount[] = portalAccounts) => [
   http.post(`${P}/auth/verify`, () =>
     HttpResponse.json({ csrf_token: 'choice-csrf', accounts }, { status: 200 }),
@@ -286,7 +286,7 @@ export const accountChoice = (accounts: PortalAccount[] = portalAccounts) => [
   http.post(`${P}/auth/choose`, async ({ request }) => {
     const { client_id } = (await request.json()) as { client_id: string }
     return HttpResponse.json({
-      url: `https://portal.helvetly.com/w/${client_id}/login/#ticket=one-time`,
+      url: `https://portal.helvetly.com/w/${client_id}/api/v1/public/portal/auth/handoff`,
     })
   }),
 ]
@@ -304,6 +304,18 @@ export const portalHandlers = [
     HttpResponse.json({ csrf_token: portalSession.csrf_token }, { status: 201 }),
   ),
   http.delete(`${P}/session`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${P}/auth/handoff`, () =>
+    HttpResponse.json({
+      url: 'https://portal.helvetly.com/w/mueller-treuhand/login/#ticket=one-time',
+    }),
+  ),
+  http.post(`${P}/auth/ticket/peek`, () =>
+    HttpResponse.json({
+      email: 'anna@example.ch',
+      client_name: 'Keller AG',
+      workspace_name: 'Müller Treuhand AG',
+    }),
+  ),
   http.post(`${P}/auth/ticket`, () =>
     HttpResponse.json({ csrf_token: portalSession.csrf_token }, { status: 201 }),
   ),

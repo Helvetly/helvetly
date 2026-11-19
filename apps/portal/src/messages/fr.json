@@ -219,5 +219,12 @@
   "thatSignInHasExpired": "Cette connexion a expiré. Saisissez votre e-mail pour recevoir un nouveau code.",
   "useAnotherEmail": "Utiliser une autre adresse e-mail",
   "yourAddressHasSeveralAccounts": "Votre adresse a plusieurs comptes. Lequel voulez-vous ouvrir ?",
-  "zRich": "Zurich"
+  "zRich": "Zurich",
+  "continueWithThisAccount": "Continuer avec ce compte ?",
+  "onlyContinueIfYouChoseIt": "Continuez uniquement si vous venez de choisir ce compte vous-même. Si quelqu’un vous a envoyé ce lien, annulez.",
+  "clientAtSupplier": "{client} chez {supplier}",
+  "alreadySignedInHere": "Déjà connecté ici",
+  "continuingSignsOut": "Vous êtes connecté en tant que {email} ({client}). Continuer déconnecte ce compte ici.",
+  "staySignedIn": "Rester connecté",
+  "continue": "Continuer"
 }

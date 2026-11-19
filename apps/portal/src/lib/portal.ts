@@ -160,12 +160,22 @@ export async function verifyPortalCode(email: string, code: string) {
   return result
 }
 
-/** Spends the choice on one account: the address of its supplier's portal to go to, with a one-time ticket. */
+/** Records the chosen account: the address of its supplier's portal to go to next, which sends the browser back here. */
 export const choosePortalAccount = async (clientId: string) =>
   (await call<{ url: string }>('/auth/choose', { method: 'POST', json: { client_id: clientId } }))
     .url
 
-/** Opens this scope's session with the ticket the shared portal's choice made. */
+/** Spends the choice on a ticket bound to the state the chosen address sent back: where to show the ticket. */
+export const issuePortalTicket = async (state: string) =>
+  (await call<{ url: string }>('/auth/handoff', { method: 'POST', json: { state } })).url
+
+/** Whom a ticket signs in as, without spending it; only the browser that chose sees it. */
+export type PortalTicketPeek = { email: string; client_name: string; workspace_name: string }
+
+export const peekPortalTicket = (ticket: string) =>
+  call<PortalTicketPeek>('/auth/ticket/peek', { method: 'POST', json: { ticket } })
+
+/** Opens this scope's session with the ticket the shared portal's choice made, ending the one the browser had here. */
 export async function redeemPortalTicket(ticket: string) {
   const result = await call<{ csrf_token: string }>('/auth/ticket', {
     method: 'POST',

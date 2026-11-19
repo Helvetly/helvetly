@@ -271,7 +271,7 @@ func run() error {
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
-	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
+	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure, PortalURL: cfg.PortalURL}, slog.Default())
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", server.Ready(db.Ping))

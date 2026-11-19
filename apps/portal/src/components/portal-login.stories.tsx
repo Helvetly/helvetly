@@ -217,43 +217,174 @@ export const CodeThenAccountChooser: Story = {
 }
 
 let redeemed: string[] = []
+let issued: string[] = []
+let left: string[] = []
+const unauthenticated = () =>
+  HttpResponse.json(
+    { error: { code: 'unauthenticated', message: 'Sign in to continue.' } },
+    { status: 401 },
+  )
+const recordRedeem = http.post('/api/v1/public/portal/auth/ticket', async ({ request }) => {
+  redeemed.push(((await request.json()) as { ticket: string }).ticket)
+  return HttpResponse.json({ csrf_token: 'new' }, { status: 201 })
+})
+const recordIssue = http.post('/api/v1/public/portal/auth/handoff', async ({ request }) => {
+  issued.push(((await request.json()) as { state: string }).state)
+  return HttpResponse.json({ url: 'https://portal.mueller.ch/login/#ticket=one-time' })
+})
+
+/** Opens the story at `address` (its fragment included), as the browser arrives there. */
+const arriveAt = (address: string) => () => {
+  redeemed = []
+  issued = []
+  left = []
+  const before = window.location.href
+  window.history.replaceState(window.history.state, '', address)
+  return () => window.history.replaceState(window.history.state, '', before)
+}
+const record = (url: string) => left.push(url)
+
+/** Back on the shared portal from the chosen address: its state is spent on a ticket, and the browser goes on. */
+export const ArrivalWithAState: Story = {
+  parameters: { msw: { handlers: [signedOut, recordIssue, ...portalHandlers] } },
+  beforeEach: arriveAt('/login/#state=s1'),
+  args: { go: record },
+  play: async () => {
+    await waitFor(() => expect(left).toEqual(['https://portal.mueller.ch/login/#ticket=one-time']))
+    await expect(issued).toEqual(['s1'])
+    await expect(window.location.hash).toBe('')
+  },
+}
+
+/** A state without the choice of this browser (or a spent one) asks to sign in again. */
+export const ArrivalWithAStrangeState: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        http.post('/api/v1/public/portal/auth/handoff', unauthenticated),
+        ...portalHandlers,
+      ],
+    },
+  },
+  beforeEach: arriveAt('/login/#state=s1'),
+  args: { go: record },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('That sign-in has expired.')
+    await expect(left).toEqual([])
+    await expect(canvas.getByLabelText('Email')).toBeVisible()
+  },
+}
+
 const ticketArrival = {
+  parameters: { msw: { handlers: [signedOut, scopedPortal(), recordRedeem, ...portalHandlers] } },
+  beforeEach: arriveAt('/w/mueller-treuhand/login/#ticket=one-time'),
+}
+
+/** On the chosen address the ticket says whom it signs in as, and is spent only on Continue. */
+export const TicketAsksFirst: Story = {
+  ...ticketArrival,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByRole('heading', { name: 'Continue with this account?' }),
+    ).toBeVisible()
+    await expect(canvas.getByText('anna@example.ch')).toBeVisible()
+    await expect(canvas.getByText('Keller AG at Müller Treuhand AG')).toBeVisible()
+    await expect(window.location.hash).toBe('')
+    await expect(redeemed).toEqual([])
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(redeemed).toEqual(['one-time']))
+  },
+}
+
+export const TicketAsksFirstDark: Story = {
+  ...ticketArrival,
+  parameters: { ...ticketArrival.parameters, dark: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByRole('heading', { name: 'Continue with this account?' }),
+    ).toBeVisible()
+  },
+}
+
+/** Cancel spends nothing and leaves the sign-in form. */
+export const TicketCancelled: Story = {
+  ...ticketArrival,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Cancel' }))
+    await expect(await canvas.findByLabelText('Email')).toBeVisible()
+    await expect(redeemed).toEqual([])
+  },
+}
+
+/** Someone already signed in here is named, and is not signed out without saying so. */
+export const TicketWhileSignedIn: Story = {
+  parameters: { msw: { handlers: [scopedPortal(), recordRedeem, ...portalHandlers] } },
+  beforeEach: arriveAt('/w/mueller-treuhand/login/#ticket=one-time'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Already signed in here')).toBeVisible()
+    await expect(canvas.getByText(/Continuing signs that account out here/)).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Stay signed in' }))
+    await waitFor(() => expect(canvasElement.querySelector('[aria-busy]')).not.toBeNull())
+    await expect(redeemed).toEqual([])
+  },
+}
+
+export const TicketWhileSignedInPhone: Story = {
+  ...TicketWhileSignedIn,
+  parameters: { ...TicketWhileSignedIn.parameters, ...phone },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Already signed in here')).toBeVisible()
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+  },
+}
+
+/** A ticket this browser did not choose (a link someone sent), or a spent one, shows nothing and asks to sign in. */
+export const TicketFromAnotherBrowser: Story = {
   parameters: {
     msw: {
       handlers: [
         signedOut,
         scopedPortal(),
-        http.post('/api/v1/public/portal/auth/ticket', async ({ request }) => {
-          redeemed.push(((await request.json()) as { ticket: string }).ticket)
-          return HttpResponse.json(
-            { error: { code: 'unauthenticated', message: 'Sign in to continue.' } },
-            { status: 401 },
-          )
-        }),
+        http.post('/api/v1/public/portal/auth/ticket/peek', unauthenticated),
+        recordRedeem,
         ...portalHandlers,
       ],
     },
   },
-  beforeEach: () => {
-    redeemed = []
-    const before = window.location.href
-    window.history.replaceState(
-      window.history.state,
-      '',
-      '/w/mueller-treuhand/login/#ticket=one-time',
-    )
-    return () => window.history.replaceState(window.history.state, '', before)
-  },
-}
-
-/** Arriving from the chooser: the ticket is taken off the address and spent once; a spent one asks to sign in again. */
-export const ArrivalWithASpentTicket: Story = {
-  ...ticketArrival,
+  beforeEach: arriveAt('/w/mueller-treuhand/login/#ticket=one-time'),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('alert')).toHaveTextContent('That sign-in has expired.')
-    await expect(redeemed).toEqual(['one-time'])
-    await expect(window.location.hash).toBe('')
+    await expect(canvas.queryByText('anna@example.ch')).toBeNull()
+    await expect(redeemed).toEqual([])
     await expect(canvas.getByLabelText('Email')).toBeVisible()
+  },
+}
+
+/** A ticket refused on Continue says so where it was confirmed. */
+export const TicketRefusedOnContinue: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        scopedPortal(),
+        http.post('/api/v1/public/portal/auth/ticket', unauthenticated),
+        ...portalHandlers,
+      ],
+    },
+  },
+  beforeEach: arriveAt('/w/mueller-treuhand/login/#ticket=one-time'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Continue' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('That sign-in has expired.')
+    await expect(canvas.getByRole('button', { name: 'Continue' })).toBeEnabled()
   },
 }

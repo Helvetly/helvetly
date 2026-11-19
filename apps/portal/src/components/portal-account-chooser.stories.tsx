@@ -54,7 +54,7 @@ export const TwoAccounts: Story = {
     // Off to that supplier's own portal address, with its one-time ticket.
     await waitFor(() =>
       expect(args.go).toHaveBeenCalledWith(
-        'https://portal.helvetly.com/w/cli_7/login/#ticket=one-time',
+        'https://portal.helvetly.com/w/cli_7/api/v1/public/portal/auth/handoff',
       ),
     )
   },

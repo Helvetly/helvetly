@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ func (e *env) offer() (*http.Cookie, string, []any) {
 	return c, out["csrf_token"].(string), out["accounts"].([]any)
 }
 
-// ticketOf is the ticket in the fragment of the address choose answered.
+// ticketOf is the ticket in the fragment of the address issue answered.
 func ticketOf(t *testing.T, url string) string {
 	t.Helper()
 	_, ticket, ok := strings.Cut(url, "#ticket=")
@@ -34,6 +35,41 @@ func ticketOf(t *testing.T, url string) string {
 		t.Fatalf("no ticket in %q", url)
 	}
 	return ticket
+}
+
+// handoff follows choose's address (under prefix) without its redirect, as a browser would load it: the state cookie
+// it set and where it sends the browser.
+func (e *env) handoff(prefix string) (*http.Cookie, string) {
+	e.t.Helper()
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	res, err := client.Get(e.srv.URL + prefix + "/api/v1/public/portal/auth/handoff")
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	res.Body.Close()
+	for _, c := range res.Cookies() {
+		if strings.HasPrefix(c.Name, handoffCookie) && c.Value != "" {
+			return c, res.Header.Get("Location")
+		}
+	}
+	return nil, res.Header.Get("Location")
+}
+
+// ticket goes the whole way for ana@acme.ch's cli_9 (workspace Other): offer, choose, handoff at /w/other, issue.
+// It answers the ticket and the handoff's state cookie of the browser that chose.
+func (e *env) ticket() (string, *http.Cookie) {
+	e.t.Helper()
+	c, csrf, _ := e.offer()
+	if res, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf); res.StatusCode != 200 {
+		e.t.Fatalf("choose: %d %v", res.StatusCode, out)
+	}
+	binding, location := e.handoff("/w/other")
+	_, state, _ := strings.Cut(location, "#state=")
+	res, out := e.do("POST", "/auth/handoff", map[string]string{"state": state}, c, "")
+	if res.StatusCode != 200 {
+		e.t.Fatalf("issue: %d %v", res.StatusCode, out)
+	}
+	return ticketOf(e.t, out["url"].(string)), binding
 }
 
 func TestChooserOffersEveryClient(t *testing.T) {
@@ -102,15 +138,14 @@ func TestChoose(t *testing.T) {
 		csrf    bool
 		expire  bool
 		status  int
-		spent   bool // the choice is gone afterwards
 		landsAt string
 	}{
-		{"another workspace's client of the address", "cli_9", true, false, 200, true, "/w/other/login/#ticket="},
-		{"a client of the first workspace", "cli_2", true, false, 200, true, "/w/studio/login/#ticket="},
-		{"without the CSRF token", "cli_9", false, false, 403, false, ""},
-		{"a client of another address", "cli_3", true, false, 404, false, ""},
-		{"an unknown client", "cli_none", true, false, 404, false, ""},
-		{"an expired choice", "cli_9", true, true, 401, true, ""},
+		{"another workspace's client of the address", "cli_9", true, false, 200, "/w/other/api/v1/public/portal/auth/handoff"},
+		{"a client of the first workspace", "cli_2", true, false, 200, "/w/studio/api/v1/public/portal/auth/handoff"},
+		{"without the CSRF token", "cli_9", false, false, 403, ""},
+		{"a client of another address", "cli_3", true, false, 404, ""},
+		{"an unknown client", "cli_none", true, false, 404, ""},
+		{"an expired choice", "cli_9", true, true, 401, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := scopedEnv(t)
@@ -126,81 +161,237 @@ func TestChoose(t *testing.T) {
 			if res.StatusCode != tc.status {
 				t.Fatalf("choose: %d %v", res.StatusCode, out)
 			}
-			if tc.landsAt != "" && !strings.HasPrefix(out["url"].(string), e.srv.URL+tc.landsAt) {
+			if tc.landsAt != "" && out["url"] != e.srv.URL+tc.landsAt {
 				t.Fatalf("url: %v", out["url"])
 			}
+			// Choosing gives no ticket and keeps the choice: the person may still choose another client.
+			if strings.Contains(fmt.Sprint(out), "ticket") || choiceCookieOf(res) != nil {
+				t.Fatalf("choose answered a ticket: %v", out)
+			}
 			again, _ := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_1"}, c, csrf)
-			if spent := again.StatusCode == 401; spent != tc.spent {
+			if open := again.StatusCode == 200; open == tc.expire {
 				t.Fatalf("choosing again: %d", again.StatusCode)
 			}
 		})
 	}
 }
 
-func TestTicket(t *testing.T) {
+func TestHandoff(t *testing.T) {
+	e := scopedEnv(t)
+	binding, location := e.handoff("/w/other")
+	if binding == nil || binding.Name != handoffCookie+"_wsp_b" || !binding.HttpOnly || !binding.Secure || binding.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("cookie: %+v", binding)
+	}
+	if location != e.srv.URL+"/login/#state="+binding.Value {
+		t.Fatalf("location: %q", location)
+	}
+	// Each handoff is a new state; the shared portal has none.
+	if again, _ := e.handoff("/w/other"); again.Value == binding.Value {
+		t.Fatal("the same state twice")
+	}
+	if c, _ := e.handoff(""); c != nil {
+		t.Fatalf("shared portal: %+v", c)
+	}
+}
+
+func TestIssue(t *testing.T) {
 	for _, tc := range []struct {
-		name, prefix string
-		expire       bool
-		status       int
+		name   string
+		choose bool
+		cookie bool
+		state  string
+		status int
 	}{
-		{"its workspace's scope", "/w/other", false, 201},
-		{"another workspace's scope", "/w/studio", false, 401},
-		{"the shared portal", "", false, 401},
-		{"expired", "/w/other", true, 401},
+		{"a chosen choice", true, true, "s1", 200},
+		{"nothing chosen yet", false, true, "s1", 401},
+		{"without the choice cookie", true, false, "s1", 401},
+		{"without a state", true, true, "", 401},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := scopedEnv(t)
 			c, csrf, _ := e.offer()
-			_, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
-			ticket := ticketOf(t, out["url"].(string))
+			if tc.choose {
+				e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
+			}
+			cookie := c
+			if !tc.cookie {
+				cookie = nil
+			}
+			res, out := e.do("POST", "/auth/handoff", map[string]string{"state": tc.state}, cookie, "")
+			if res.StatusCode != tc.status {
+				t.Fatalf("issue: %d %v", res.StatusCode, out)
+			}
+			if tc.status != 200 {
+				return
+			}
+			if !strings.HasPrefix(out["url"].(string), e.srv.URL+"/w/other/login/#ticket=") {
+				t.Fatalf("url: %v", out["url"])
+			}
+			// Spent: no second ticket, no other client chosen after it, and nothing under a scope.
+			if res, _ := e.do("POST", "/auth/handoff", map[string]string{"state": "s2"}, c, ""); res.StatusCode != 401 {
+				t.Fatalf("second ticket: %d", res.StatusCode)
+			}
+			if res, _ := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_1"}, c, csrf); res.StatusCode != 401 {
+				t.Fatalf("choose after: %d", res.StatusCode)
+			}
+		})
+	}
+	e := scopedEnv(t)
+	c, csrf, _ := e.offer()
+	e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
+	if res, _ := e.doAt("/w/other", "POST", "/auth/handoff", map[string]string{"state": "s1"}, c, ""); res.StatusCode != 401 {
+		t.Fatalf("issue under a scope: %d", res.StatusCode)
+	}
+}
+
+// TestTicketIsBoundToTheBrowser: a ticket is seen and redeemed only alongside the state cookie of the handoff it was
+// issued for, so a link of one's own ticket signs nobody else in.
+func TestTicketIsBoundToTheBrowser(t *testing.T) {
+	for _, tc := range []struct {
+		name, prefix string
+		binding      string // "own", "other" (another handoff's), "none", "elsewhere" (own value, another scope's name)
+		expire       bool
+		status       int
+	}{
+		{"the browser that chose", "/w/other", "own", false, 201},
+		{"a browser without the state", "/w/other", "none", false, 401},
+		{"a browser with another state", "/w/other", "other", false, 401},
+		{"another workspace's scope", "/w/studio", "elsewhere", false, 401},
+		{"the shared portal", "", "elsewhere", false, 401},
+		{"expired", "/w/other", "own", true, 401},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := scopedEnv(t)
+			ticket, own := e.ticket()
 			if tc.expire {
 				e.exec(`UPDATE portal_sign_in_choices SET expires_at = now() - interval '1 second'`)
 			}
-			res, got := e.doAt(tc.prefix, "POST", "/auth/ticket", map[string]string{"ticket": ticket}, nil, "")
+			var cookie *http.Cookie
+			switch tc.binding {
+			case "own":
+				cookie = own
+			case "other":
+				cookie, _ = e.handoff("/w/other")
+			case "elsewhere":
+				cookie = &http.Cookie{Name: handoffCookie + "_wsp_a", Value: own.Value}
+				if tc.prefix == "" {
+					cookie.Name = handoffCookie + "_"
+				}
+			}
+			body := map[string]string{"ticket": ticket}
+			wantPeek := 401
+			if tc.status == 201 {
+				wantPeek = 200
+			}
+			res, peek := e.doAt(tc.prefix, "POST", "/auth/ticket/peek", body, cookie, "")
+			if res.StatusCode != wantPeek {
+				t.Fatalf("peek: %d %v", res.StatusCode, peek)
+			}
+			if tc.status == 201 && (peek["email"] != "ana@acme.ch" || peek["client_name"] != "Acme of Other" || peek["workspace_name"] != "Other" || len(peek) != 3) {
+				t.Fatalf("peek: %v", peek)
+			}
+			res, got := e.doAt(tc.prefix, "POST", "/auth/ticket", body, cookie, "")
 			if res.StatusCode != tc.status {
 				t.Fatalf("redeem: %d %v", res.StatusCode, got)
 			}
-			if tc.status == 201 {
-				s := scopedCookie(res)
-				if s == nil || s.Name != sessionCookie+"_wsp_b" {
-					t.Fatalf("cookie: %+v", s)
+			if tc.status != 201 {
+				if scopedCookie(res) != nil {
+					t.Fatal("a session without the browser's state")
 				}
-				_, sess := e.doAt("/w/other", "GET", "/session", nil, s, "")
-				if sess["client"].(map[string]any)["id"] != "cli_9" || len(sess["clients"].([]any)) != 1 {
-					t.Fatalf("session: %v", sess)
+				// Refused, not spent: the browser that chose still signs in (unless it expired).
+				if res, _ := e.doAt("/w/other", "POST", "/auth/ticket", body, own, ""); (res.StatusCode == 201) == tc.expire {
+					t.Fatalf("the browser that chose, after: %d", res.StatusCode)
 				}
-				if res, _ := e.doAt("/w/studio", "GET", "/invoices", nil, &http.Cookie{Name: sessionCookie + "_wsp_a", Value: s.Value}, ""); res.StatusCode != 401 {
-					t.Fatalf("read another workspace: %d", res.StatusCode)
-				}
+				return
 			}
-			// Single use, whatever the first try did.
-			if res, _ := e.doAt("/w/other", "POST", "/auth/ticket", map[string]string{"ticket": ticket}, nil, ""); res.StatusCode != 401 {
+			s := scopedCookie(res)
+			if s == nil || s.Name != sessionCookie+"_wsp_b" {
+				t.Fatalf("cookie: %+v", s)
+			}
+			cleared := false
+			for _, c := range res.Cookies() {
+				cleared = cleared || c.Name == own.Name && c.MaxAge < 0
+			}
+			if !cleared {
+				t.Fatal("state cookie kept")
+			}
+			_, sess := e.doAt("/w/other", "GET", "/session", nil, s, "")
+			if sess["client"].(map[string]any)["id"] != "cli_9" || len(sess["clients"].([]any)) != 1 {
+				t.Fatalf("session: %v", sess)
+			}
+			// Single use.
+			if res, _ := e.doAt("/w/other", "POST", "/auth/ticket/peek", body, own, ""); res.StatusCode != 401 {
+				t.Fatalf("peek after: %d", res.StatusCode)
+			}
+			if res, _ := e.doAt("/w/other", "POST", "/auth/ticket", body, own, ""); res.StatusCode != 401 {
 				t.Fatalf("second redeem: %d", res.StatusCode)
 			}
 		})
 	}
 }
 
-// TestTicketRechecksAccess: a client whose portal went off between the choice and the ticket gets no session.
-func TestTicketRechecksAccess(t *testing.T) {
+// TestPeekLeavesTheTicket: looking at a ticket, however often, does not spend it.
+func TestPeekLeavesTheTicket(t *testing.T) {
 	e := scopedEnv(t)
-	c, csrf, _ := e.offer()
-	_, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
-	e.exec(`UPDATE clients SET portal_enabled = false WHERE id = 'cli_9'`)
-	res, _ := e.doAt("/w/other", "POST", "/auth/ticket", map[string]string{"ticket": ticketOf(t, out["url"].(string))}, nil, "")
-	if res.StatusCode != 403 || scopedCookie(res) != nil {
+	ticket, own := e.ticket()
+	for range 3 {
+		if res, _ := e.doAt("/w/other", "POST", "/auth/ticket/peek", map[string]string{"ticket": ticket}, own, ""); res.StatusCode != 200 {
+			t.Fatalf("peek: %d", res.StatusCode)
+		}
+	}
+	if res, _ := e.doAt("/w/other", "POST", "/auth/ticket", map[string]string{"ticket": ticket}, own, ""); res.StatusCode != 201 {
 		t.Fatalf("redeem: %d", res.StatusCode)
 	}
 }
 
-// TestChooseLandsOnTheActiveDomain: a workspace with its own active domain is opened at that domain's root.
+// TestRedeemEndsTheScopesSession: continuing as the ticket's client ends the session the browser had in that scope.
+func TestRedeemEndsTheScopesSession(t *testing.T) {
+	e := scopedEnv(t)
+	e.client("cli_8", "wsp_b", "Bob of Other", "bob@other.ch", "")
+	before, _ := e.signInAt("/w/other", "bob@other.ch")
+	ticket, own := e.ticket()
+	req, _ := http.NewRequest("POST", e.srv.URL+"/w/other/api/v1/public/portal/auth/ticket", strings.NewReader(`{"ticket":"`+ticket+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(own)
+	req.AddCookie(before)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != 201 {
+		t.Fatalf("redeem: %d", res.StatusCode)
+	}
+	if res, _ := e.doAt("/w/other", "GET", "/session", nil, before, ""); res.StatusCode != 401 {
+		t.Fatalf("the earlier session: %d", res.StatusCode)
+	}
+}
+
+// TestTicketRechecksAccess: a client whose portal went off between the choice and the ticket gets no session.
+func TestTicketRechecksAccess(t *testing.T) {
+	e := scopedEnv(t)
+	ticket, own := e.ticket()
+	e.exec(`UPDATE clients SET portal_enabled = false WHERE id = 'cli_9'`)
+	for _, path := range []string{"/auth/ticket/peek", "/auth/ticket"} {
+		res, _ := e.doAt("/w/other", "POST", path, map[string]string{"ticket": ticket}, own, "")
+		if res.StatusCode != 403 || scopedCookie(res) != nil {
+			t.Fatalf("%s: %d", path, res.StatusCode)
+		}
+	}
+}
+
+// TestChooseLandsOnTheActiveDomain: a workspace with its own active domain hands off and is opened at that domain.
 func TestChooseLandsOnTheActiveDomain(t *testing.T) {
 	e := scopedEnv(t)
 	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at, status_since) VALUES
 		('dom_b', 'wsp_b', 'portal.other.ch', 'active', now(), 'usr', now(), now(), now())`)
 	c, csrf, _ := e.offer()
 	_, out := e.do("POST", "/auth/choose", map[string]string{"client_id": "cli_9"}, c, csrf)
-	if url, _ := out["url"].(string); !strings.HasPrefix(url, "http://portal.other.ch/login/#ticket=") {
+	if url, _ := out["url"].(string); url != "http://portal.other.ch/api/v1/public/portal/auth/handoff" {
 		t.Fatalf("url: %v", out)
+	}
+	_, issued := e.do("POST", "/auth/handoff", map[string]string{"state": "s1"}, c, "")
+	if url, _ := issued["url"].(string); !strings.HasPrefix(url, "http://portal.other.ch/login/#ticket=") {
+		t.Fatalf("url: %v", issued)
 	}
 }
