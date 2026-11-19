@@ -30,6 +30,8 @@ const env = {
   STRIPE_SECRET_KEY: '',
   OPENAI_API_KEY: '',
   HELVETLY_E2E_FAKE_AI: 'true',
+  // Tests never call the federal register.
+  UID_REGISTER_URL: 'off',
   STRIPE_WEBHOOK_SECRET: '',
   S3_ENDPOINT: 'http://localhost:9310',
   S3_REGION: 'us-east-1',

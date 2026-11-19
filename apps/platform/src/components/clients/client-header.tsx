@@ -31,6 +31,7 @@ import { translate } from '@/lib/i18n'
 
 import { addressLines, ClientStatusBadge } from './client-bits'
 import { countryName } from './client-form-model'
+import { UidVerifiedBadge } from './uid-register-fields'
 
 export const websiteHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`)
 export const mapsHref = (query: string) =>
@@ -200,6 +201,7 @@ export function ClientHeader({
               {client.is_draft && !client.is_active && (
                 <ClientStatusBadge client={{ ...client, is_draft: false }} />
               )}
+              <UidVerifiedBadge client={client} />
             </div>
             <p className="text-body-sm text-muted-foreground">{clientKind(client)}</p>
           </div>

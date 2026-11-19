@@ -23,6 +23,7 @@ const baseHandlers = [
   http.get('/api/v1/session', () => HttpResponse.json(session)),
   http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/uid-register/search', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/expense-categories', () =>
     HttpResponse.json({
       data: [

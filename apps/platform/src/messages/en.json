@@ -4466,5 +4466,22 @@
   "validUntilLabel": "Valid until",
   "relatedAddsTo": "Adds to",
   "relatedCorrects": "Corrects",
-  "relatedCredits": "Credits"
+  "relatedCredits": "Credits",
+  "uidRegisterUnavailable": "The UID register can't be reached right now. You can still fill in the details yourself.",
+  "uidSearchLoading": "Searching the UID register…",
+  "uidSearchNotFound": "No company found in the UID register. You can still add it.",
+  "uidRegisterMatches": "Companies in the UID register",
+  "vatRegistered": "VAT-registered",
+  "uidInactive": "deleted",
+  "fromTheSwissUIDRegister": "From the Swiss UID register",
+  "uidCheckLoading": "Checking the UID register…",
+  "uidCheckNotFound": "Not found in the UID register. You can still save it.",
+  "uidCheckInactive": "{name} is no longer active in the UID register.",
+  "uidCheckVat": "{name}: active and VAT-registered in the UID register.",
+  "uidCheckNoVat": "{name}: active in the UID register, not VAT-registered.",
+  "uidCheckNoVatSuffix": "{name} isn't VAT-registered: remove MWST from the number.",
+  "filledFromUIDRegister": "Filled in from the UID register.",
+  "filledFromUIDRegisterReplaced": "Filled in from the UID register, replacing {fields}.",
+  "uidVerified": "UID verified",
+  "uidVerifiedTip": "Verified in the Swiss UID register as {uid} on {date}."
 }
