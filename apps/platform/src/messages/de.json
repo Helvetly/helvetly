@@ -4505,5 +4505,8 @@
   "portalSlugInvalid": "Verwenden Sie 3 bis 32 Kleinbuchstaben, Ziffern und Bindestriche, nicht am Anfang oder Ende.",
   "portalSlugReserved": "Diese Adresse ist reserviert. Wählen Sie eine andere.",
   "portalSlugTaken": "Ein anderer Arbeitsbereich verwendet diese Adresse. Wählen Sie eine andere.",
-  "auditPortalAddressChanged": "Portaladresse geändert"
+  "auditPortalAddressChanged": "Portaladresse geändert",
+  "editInstalments": "Raten bearbeiten",
+  "instalmentsSummary": "{count}× · {interval} · ab {date}",
+  "instalmentsDialogDescription": "Eine Rechnung, mehrere Fälligkeiten, je ein QR-Einzahlungsschein."
 }

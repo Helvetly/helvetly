@@ -4505,5 +4505,8 @@
   "portalSlugInvalid": "Utilisez 3 à 32 lettres minuscules, chiffres et traits d’union, pas au début ni à la fin.",
   "portalSlugReserved": "Cette adresse est réservée. Choisissez-en une autre.",
   "portalSlugTaken": "Un autre espace de travail utilise cette adresse. Choisissez-en une autre.",
-  "auditPortalAddressChanged": "Adresse du portail modifiée"
+  "auditPortalAddressChanged": "Adresse du portail modifiée",
+  "editInstalments": "Modifier les échéances",
+  "instalmentsSummary": "{count}× · {interval} · dès le {date}",
+  "instalmentsDialogDescription": "Une facture, plusieurs échéances, une QR-facture pour chacune."
 }

@@ -1360,29 +1360,28 @@ function Editor({
                   onChange={(prepayments) => set('prepayments', prepayments)}
                 />
               )}
-
-              {isReceivable(kind) && (
-                <InstalmentsSection
-                  value={values.instalments}
-                  onChange={(instalments) => set('instalments', instalments)}
-                  reminders={values.reminders_enabled}
-                  onReminders={(on) => set('reminders_enabled', on)}
-                  payable={payable}
-                  generated={generated}
-                  currency={values.currency}
-                  issueDate={values.issue_date}
-                  firstDue={values.due_date}
-                  settings={settings}
-                  errors={errors}
-                  blocker={blocker}
-                  onSplit={draftId && valid ? () => void openPlan() : undefined}
-                />
-              )}
             </div>
           </div>
         </div>
         <div className="shrink-0 border-t border-border/60 px-3 py-3 sm:px-6">
           <div className="mx-auto grid w-full max-w-[1040px] gap-2">
+            {isReceivable(kind) && (
+              <InstalmentsSection
+                value={values.instalments}
+                onChange={(instalments) => set('instalments', instalments)}
+                reminders={values.reminders_enabled}
+                onReminders={(on) => set('reminders_enabled', on)}
+                payable={payable}
+                generated={generated}
+                currency={values.currency}
+                issueDate={values.issue_date}
+                firstDue={values.due_date}
+                settings={settings}
+                errors={errors}
+                blocker={blocker}
+                onSplit={draftId && valid ? () => void openPlan() : undefined}
+              />
+            )}
             <section className="grid gap-1.5 rounded-xl px-1">
               <label
                 htmlFor="invoice-note"

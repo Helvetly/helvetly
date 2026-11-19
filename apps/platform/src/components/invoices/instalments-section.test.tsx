@@ -1,7 +1,7 @@
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -85,12 +85,61 @@ const amounts = () =>
     .getAllByRole('textbox', { name: /^Instalment \d amount$/ })
     .map((input) => (input instanceof HTMLInputElement ? input.value : ''))
 
-test('section shows the server rows until one is edited', async () => {
+const renderHarness = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <Harness />
     </QueryClientProvider>,
   )
+const dialog = () => screen.getByRole('dialog', { name: 'Pay in instalments' })
+
+test('switching on opens the settings; Save leaves the summary in the footer row', async () => {
+  renderHarness()
+  await userEvent.click(screen.getByRole('switch', { name: 'Pay in instalments' }))
+  expect(within(dialog()).getByRole('switch', { name: 'Payment reminders' })).toBeChecked()
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Save' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByText('3× · Monthly · from 1 Dec 2026')).toBeVisible()
+  expect(screen.getByRole('switch', { name: 'Pay in instalments' })).toBeChecked()
+})
+
+test('Cancel on the first switch-on turns instalments off again', async () => {
+  renderHarness()
+  await userEvent.click(screen.getByRole('switch', { name: 'Pay in instalments' }))
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByRole('switch', { name: 'Pay in instalments' })).not.toBeChecked()
+  expect(screen.queryByRole('button', { name: 'Edit instalments' })).not.toBeInTheDocument()
+})
+
+test('Edit changes the schedule; Cancel there keeps what was saved', async () => {
+  renderHarness()
+  await userEvent.click(screen.getByRole('switch', { name: 'Pay in instalments' }))
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Save' }))
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit instalments' }))
+  await userEvent.selectOptions(
+    within(dialog()).getByRole('combobox', { name: 'Interval' }),
+    'quarterly',
+  )
+  await userEvent.click(within(dialog()).getByRole('switch', { name: 'Payment reminders' }))
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Save' }))
+  expect(screen.getByText('3× · Quarterly · from 1 Dec 2026')).toBeVisible()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit instalments' }))
+  expect(within(dialog()).getByRole('switch', { name: 'Payment reminders' })).not.toBeChecked()
+  const count = within(dialog()).getByRole('textbox', { name: 'Number of instalments' })
+  await userEvent.clear(count)
+  await userEvent.type(count, '6')
+  await userEvent.click(within(dialog()).getByRole('switch', { name: 'Payment reminders' }))
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }))
+  expect(screen.getByText('3× · Quarterly · from 1 Dec 2026')).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Edit instalments' }))
+  expect(within(dialog()).getByRole('switch', { name: 'Payment reminders' })).not.toBeChecked()
+})
+
+test('section shows the server rows until one is edited', async () => {
+  renderHarness()
   await userEvent.click(screen.getByRole('switch', { name: 'Pay in instalments' }))
   expect(screen.getByRole('textbox', { name: 'Number of instalments' })).toHaveValue('3')
   expect(screen.getByRole('combobox', { name: 'Interval' })).toHaveValue('monthly')
@@ -101,6 +150,7 @@ test('section shows the server rows until one is edited', async () => {
   await userEvent.clear(first)
   await userEvent.type(first, '400')
   expect(screen.getByRole('status')).toHaveTextContent('Off by 39.65')
+  expect(within(dialog()).getByRole('button', { name: 'Save' })).toBeDisabled()
 
   // Equal parts again; a new count drops the typed rows too.
   await userEvent.click(screen.getByRole('button', { name: 'Equal parts' }))
@@ -144,7 +194,8 @@ test('sum mismatch blocks issue button', async () => {
   const previewed = requests.findLast((r) => r.path === '/api/v1/invoices/preview')
   expect(previewed?.body).toMatchObject({ instalments: { count: 3, interval: 'monthly' } })
   expect(previewed?.body).not.toHaveProperty('instalments.items')
-  const issue = screen.getByRole('button', { name: 'Issue invoice' })
+  // Behind the open dialog, so hidden from the accessibility tree.
+  const issue = screen.getByRole('button', { name: 'Issue invoice', hidden: true })
   expect(issue).toBeEnabled()
 
   const first = screen.getByRole('textbox', { name: 'Instalment 1 amount' })

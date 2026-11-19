@@ -1,8 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { http, HttpResponse } from 'msw'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { InvoiceEditorDrawer } from '@/components/invoices/invoice-editor'
+import type { InvoiceInput } from '@/lib/invoices'
+import { previewRows, sampleSchedule } from '@/test/invoice-api'
 
+import { draftInvoice } from './api'
 import {
   closeHeidi,
   dark,
@@ -128,3 +132,107 @@ export const FooterAtTheBottom: Story = {
   },
 }
 export const FooterAtTheBottomPhone = phone(FooterAtTheBottom)
+
+/** The preview answers the schedule's rows, as the server does: the draft's 3'134.90 in three monthly parts. */
+const instalmentPreview = {
+  ...pageParameters('/invoices', { compose: 'inv_draft' }, [
+    http.post<never, Partial<InvoiceInput>>('/api/v1/invoices/preview', async ({ request }) => {
+      const input = await request.json()
+      return HttpResponse.json({
+        data: {
+          ...draftInvoice,
+          instalments: input.instalments ? sampleSchedule(previewRows) : null,
+        },
+      })
+    }),
+  ]),
+  a11y: meta.parameters.a11y,
+}
+const instalmentsDialog = () =>
+  within(document.body).getByRole('dialog', { name: 'Pay in instalments' })
+const switchOn = async () => {
+  const page = within(document.body)
+  await userEvent.click(await page.findByRole('switch', { name: 'Pay in instalments' }))
+  const dialog = instalmentsDialog()
+  await waitFor(() =>
+    expect(within(dialog).getAllByRole('textbox', { name: /^Instalment \d amount$/ })).toHaveLength(
+      3,
+    ),
+  )
+  return dialog
+}
+
+/** "Pay in instalments" sits in the footer above the internal note; switching it on opens the settings. */
+export const InstalmentsSettings: Story = {
+  parameters: instalmentPreview,
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const dialog = await switchOn()
+    await expect(within(dialog).getByRole('switch', { name: 'Payment reminders' })).toBeChecked()
+    await expect(within(dialog).getByText(/Amount due/)).toBeVisible()
+  },
+}
+export const InstalmentsSettingsDark = dark(InstalmentsSettings)
+export const InstalmentsSettingsPhone = phone(InstalmentsSettings)
+
+/** Saved, the footer row keeps only the summary, an Edit button and the switch. */
+export const InstalmentsSummary: Story = {
+  parameters: instalmentPreview,
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    const dialog = await switchOn()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await expect(page.queryByRole('dialog', { name: 'Pay in instalments' })).toBeNull()
+    await expect(page.getByText('3× · Monthly · from 5 Dec 2026')).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Pay in instalments' })).toBeChecked()
+    await expect(page.getByRole('button', { name: 'Edit instalments' })).toBeVisible()
+  },
+}
+export const InstalmentsSummaryDark = dark(InstalmentsSummary)
+export const InstalmentsSummaryPhone = phone(InstalmentsSummary)
+
+/** Cancel on the first switch-on leaves the invoice without instalments. */
+export const InstalmentsCancelled: Story = {
+  parameters: instalmentPreview,
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    const dialog = await switchOn()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await expect(page.queryByRole('dialog', { name: 'Pay in instalments' })).toBeNull()
+    await expect(page.getByRole('switch', { name: 'Pay in instalments' })).not.toBeChecked()
+    await expect(page.queryByText(/3× ·/)).toBeNull()
+  },
+}
+
+/** Edit reopens the settings; a new interval and the reminders switch show after Save, rows that do not add up block it. */
+export const InstalmentsEdited: Story = {
+  parameters: instalmentPreview,
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    await userEvent.click(within(await switchOn()).getByRole('button', { name: 'Save' }))
+
+    await userEvent.click(page.getByRole('button', { name: 'Edit instalments' }))
+    const dialog = instalmentsDialog()
+    await userEvent.selectOptions(
+      within(dialog).getByRole('combobox', { name: 'Interval' }),
+      'quarterly',
+    )
+    await userEvent.click(within(dialog).getByRole('switch', { name: 'Payment reminders' }))
+    const first = await within(dialog).findByRole('textbox', { name: 'Instalment 1 amount' })
+    await userEvent.clear(first)
+    await userEvent.type(first, '1000')
+    await expect(await within(dialog).findByText('Off by 44.95')).toBeVisible()
+    await expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Equal parts' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await expect(await page.findByText('3× · Quarterly · from 5 Dec 2026')).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Edit instalments' }))
+    await expect(
+      within(instalmentsDialog()).getByRole('switch', { name: 'Payment reminders' }),
+    ).not.toBeChecked()
+  },
+}
