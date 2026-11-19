@@ -1,8 +1,8 @@
 'use client'
 
 // The session's workspace settings, typed by hand from docs/workspaces-contract.md.
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -78,4 +78,51 @@ export function useWorkspaceLogo() {
     onSuccess: refresh,
   })
   return { upload, remove, progress }
+}
+
+/** Where the workspace's clients sign in: its own slug and the whole portal address. */
+export type PortalAddress = { slug: string; url: string }
+export type SlugProblem = 'invalid' | 'reserved' | 'taken'
+
+const portalKey = ['workspace', 'portal'] as const
+
+export function usePortalAddress(enabled = true) {
+  return useQuery({
+    queryKey: portalKey,
+    queryFn: async () => (await request<{ data: PortalAddress }>('/workspace/portal')).data,
+    enabled,
+  })
+}
+
+/** Whether the workspace can take `slug`; off while it is the current one or empty. */
+export function useSlugAvailability(slug: string, current: string | undefined) {
+  const wanted = useDebounced(slug.trim().toLowerCase())
+  return useQuery({
+    queryKey: [...portalKey, 'availability', wanted],
+    queryFn: async () =>
+      (
+        await request<{ data: { available: boolean; problem: SlugProblem | null } }>(
+          `/workspace/portal/availability?slug=${encodeURIComponent(wanted)}`,
+        )
+      ).data,
+    enabled: wanted !== '' && wanted !== current,
+    staleTime: 10_000,
+  })
+}
+
+export function useSetPortalSlug() {
+  const queryClient = useQueryClient()
+  return useMutation<{ data: PortalAddress }, ApiError, string>({
+    mutationFn: (slug) => request('/workspace/portal', { method: 'PUT', json: { slug } }),
+    onSuccess: (result) => queryClient.setQueryData(portalKey, result.data),
+  })
+}
+
+function useDebounced(value: string, ms = 300) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(timer)
+  }, [value, ms])
+  return debounced
 }

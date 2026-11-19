@@ -46,6 +46,7 @@ import (
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/platform"
 	"helvetly.com/api/internal/portal"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/products"
 	"helvetly.com/api/internal/quotes"
 	"helvetly.com/api/internal/retention"
@@ -130,6 +131,7 @@ func run() error {
 	slog.Info("object storage", "addressing", map[bool]string{true: "virtual", false: "path"}[cfg.S3.VirtualHosted],
 		"downloads", downloads,
 		"protection", describeMode(retention.Mode(files), cfg.S3.ObjectLockDays))
+	portalScopes := portalscope.New(cfg.PortalURL, db.Q)
 	clientsSvc := clients.New(db, authSvc, files, slog.Default())
 	var mailer invoices.Mailer // stays a nil interface without a mail server: sending answers 503
 	var inviteMailer invitations.Mailer
@@ -146,7 +148,7 @@ func run() error {
 		inviteMailer, feedbackMailer = sender, sender                                                                                                                          // joining a workspace and feedback to Helvetly: no business limit
 		mailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, quoteMailer = businessMail, businessMail, businessMail, businessMail, businessMail, businessMail // two vars: copying a nil interface between types is fine, a typed nil pointer is not
 	}
-	clientsSvc.SetMailer(portalInviteMailer, cfg.PortalURL)
+	clientsSvc.SetMailer(portalInviteMailer, portalScopes)
 	var uidRegister uidregister.Register // nil with UID_REGISTER_URL=off: lookups answer "unavailable"
 	if cfg.UIDRegisterURL != "" {
 		reg := uidregister.New(cfg.UIDRegisterURL)
@@ -211,6 +213,7 @@ func run() error {
 	notificationsSvc := notifications.New(db, authSvc, notifyMailer, cfg.PublicURL, cfg.SecretKey, slog.Default())
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
+	workspacesSvc.SetPortal(portalScopes)
 	// The one-time workspace-name suggestion is pinned to the cheapest model, whatever model Heidi is set to.
 	var nameModel aimodel.Provider = aimodel.NewOpenAI(cfg.AI.OpenAIKey, cfg.AI.OpenAIBaseURL, aimodel.DefaultModel)
 	if cfg.AI.FakeImportModel {
@@ -250,7 +253,7 @@ func run() error {
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
-	portalSvc := portal.New(db, authSvc, files, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
+	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", server.Ready(db.Ping))
@@ -296,6 +299,7 @@ func run() error {
 
 	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://")), api))) // scopes, then plan limits, before the handlers
 	mcpSvc.SetAPI(guarded)                                                                                                                                  // tool calls pass the same guards as REST
+	guarded = portalScopes.Handler(guarded)                                                                                                                 // /w/<slug>/… on the portal's host: resolved and unprefixed first
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           auth.ForwardedFor(cfg.TrustedProxies, openapi.CORS(cfg.DocsURL, guarded)), // the client address first; the docs playground's CORS before the guards

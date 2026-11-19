@@ -1,7 +1,6 @@
 package portal
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -13,6 +12,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/notifications"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/store"
 )
 
@@ -28,6 +28,7 @@ var (
 	errUnauthenticated = auth.Error(http.StatusUnauthorized, "unauthenticated", "Sign in to continue.", nil)
 	errNoAccess        = auth.Error(http.StatusForbidden, "no_portal_access", "This address has no access to a client portal.", nil)
 	errCSRF            = auth.Error(http.StatusForbidden, "csrf_failed", "Missing or invalid X-CSRF-Token header.", nil)
+	errTooMany         = auth.Error(http.StatusTooManyRequests, "rate_limited", "Too many requests: try again in a minute.", nil)
 )
 
 func hashToken(v string) string {
@@ -35,8 +36,23 @@ func hashToken(v string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func (s *Service) cookie(token string, expires time.Time) *http.Cookie {
-	return &http.Cookie{Name: sessionCookie, Value: token, Path: "/", Expires: expires,
+// cookieName keeps one session per portal scope in the browser: signing in to one workspace's portal leaves the
+// others' sessions alone, and a cookie of one scope is never even read under another.
+func cookieName(r *http.Request) string {
+	if scope, ok := portalscope.FromContext(r.Context()); ok {
+		return sessionCookie + "_" + scope.WorkspaceID
+	}
+	return sessionCookie
+}
+
+// scopeWorkspace is the workspace the request is scoped to, "" for the unscoped portal.
+func scopeWorkspace(r *http.Request) string {
+	scope, _ := portalscope.FromContext(r.Context())
+	return scope.WorkspaceID
+}
+
+func (s *Service) cookie(r *http.Request, token string, expires time.Time) *http.Cookie {
+	return &http.Cookie{Name: cookieName(r), Value: token, Path: "/", Expires: expires,
 		HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode}
 }
 
@@ -50,7 +66,7 @@ func (s *Service) open(w http.ResponseWriter, r *http.Request, email string, a s
 				return err
 			}
 		}
-		if err := q.CreatePortalSession(r.Context(), auth.NewID("pse"), hashToken(token), csrf, email, a.ClientID, a.WorkspaceID, now, expires); err != nil {
+		if err := q.CreatePortalSession(r.Context(), auth.NewID("pse"), hashToken(token), csrf, email, a.ClientID, a.WorkspaceID, scopeWorkspace(r) != "", now, expires); err != nil {
 			return err
 		}
 		if first, err := q.MarkPortalSignedIn(r.Context(), a.ClientID, now); err != nil || !first {
@@ -63,7 +79,7 @@ func (s *Service) open(w http.ResponseWriter, r *http.Request, email string, a s
 	if err != nil {
 		return err
 	}
-	http.SetCookie(w, s.cookie(token, expires))
+	http.SetCookie(w, s.cookie(r, token, expires))
 	auth.WriteJSON(w, http.StatusCreated, map[string]string{"csrf_token": csrf})
 	return nil
 }
@@ -80,7 +96,7 @@ func (s *Service) start(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, auth.Error(http.StatusBadRequest, "invalid_email", "Enter a valid email address.", nil))
 		return
 	}
-	access, err := s.access(r.Context(), email)
+	access, err := s.access(r, email)
 	if err == nil {
 		// Every address goes through the same cooldown and limits; only one with access gets the code.
 		err = s.auth.SendEmailCode(r, email, len(access) > 0)
@@ -105,7 +121,7 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	access, err := s.access(r.Context(), email)
+	access, err := s.access(r, email)
 	if err == nil && len(access) == 0 {
 		err = errNoAccess
 	}
@@ -120,12 +136,16 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 // signedIn lets the request through with its portal session, or answers 401; unsafe methods also need the CSRF token.
 func (s *Service) signedIn(h handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(sessionCookie)
+		c, err := r.Cookie(cookieName(r))
 		if err != nil {
 			s.fail(w, r, errUnauthenticated)
 			return
 		}
 		sess, err := s.db.Q.PortalSessionByToken(r.Context(), hashToken(c.Value), s.now())
+		// A session is valid only under the scope it was opened in: one workspace's never reads another's.
+		if err == nil && (sess.Scoped != (scopeWorkspace(r) != "") || sess.Scoped && sess.Workspace.ID != scopeWorkspace(r)) {
+			err = store.ErrNotFound
+		}
 		if err == store.ErrNotFound {
 			s.fail(w, r, errUnauthenticated)
 			return
@@ -162,7 +182,7 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 }
 
 func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
-	access, err := s.access(r.Context(), sess.Email)
+	access, err := s.access(r, sess.Email)
 	if err != nil {
 		return err
 	}
@@ -171,7 +191,7 @@ func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.
 		Name          string `json:"name"`
 		WorkspaceName string `json:"workspace_name"`
 	}
-	avatar, err := s.sessionAvatarURL(r.Context(), sess)
+	avatar, err := s.sessionAvatarURL(r, sess)
 	if err != nil {
 		return err
 	}
@@ -197,7 +217,7 @@ func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess stor
 	if !s.auth.Decode(w, r, &in) {
 		return nil
 	}
-	access, err := s.access(r.Context(), sess.Email)
+	access, err := s.access(r, sess.Email)
 	if err != nil {
 		return err
 	}
@@ -213,14 +233,16 @@ func (s *Service) deleteSession(w http.ResponseWriter, r *http.Request, sess sto
 	if err := s.db.Q.DeletePortalSession(r.Context(), sess.ID); err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: cookieName(r), Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
-// access is the clients email may open in the portal: those of workspaces whose plan includes it.
-func (s *Service) access(ctx context.Context, email string) ([]store.PortalAccess, error) {
-	all, err := s.db.Q.PortalAccessByEmail(ctx, email)
+// access is the clients email may open in the portal: those of workspaces whose plan includes it, and only the
+// scope's workspace under a scope.
+func (s *Service) access(r *http.Request, email string) ([]store.PortalAccess, error) {
+	ctx := r.Context()
+	all, err := s.db.Q.PortalAccessByEmail(ctx, email, scopeWorkspace(r))
 	if err != nil {
 		return nil, err
 	}

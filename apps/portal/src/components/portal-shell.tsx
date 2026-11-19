@@ -23,12 +23,14 @@ import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
 import {
+  getPortalScope,
   getPortalSession,
   portalKeys,
   signOutPortal,
   switchPortalClient,
   type PortalSession,
 } from '@/lib/portal'
+import { scoped, unscoped } from '@/lib/scope'
 
 import { LoginAvatar, WorkspaceMark } from './portal-bits'
 
@@ -111,7 +113,7 @@ function AccountMenu({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile">
+          <Link href={scoped('/profile')}>
             <UserRound />
             {translate('profile2')}
           </Link>
@@ -139,7 +141,7 @@ function PortalNav({ pathname }: { pathname: string }) {
           return (
             <li key={href} className="md:flex">
               <Link
-                href={href}
+                href={scoped(href)}
                 aria-current={active ? 'page' : undefined}
                 // A pointer press does not take focus, so no browser can draw the keyboard ring after a
                 // click; the underline marks the active tab, and Tab still reaches every link.
@@ -191,7 +193,7 @@ function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
  */
 export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUrl?: string }) {
   const router = useRouter()
-  const pathname = (usePathname() ?? '').replace(/\/$/, '') || '/'
+  const pathname = unscoped(usePathname() ?? '').replace(/\/$/, '') || '/'
   const queryClient = useQueryClient()
   const { data: session, isPending } = useQuery({
     queryKey: portalKeys.session,
@@ -199,8 +201,14 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
     retry: false,
   })
 
+  const { data: scope } = useQuery({
+    queryKey: portalKeys.scope,
+    queryFn: getPortalScope,
+    retry: false,
+  })
+
   useEffect(() => {
-    if (session === null) router.replace('/login')
+    if (session === null) router.replace(scoped('/login'))
   }, [session, router])
 
   if (isPending || !session) return null
@@ -212,7 +220,7 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
       // Not clear(): on '/' nothing re-renders the shell, which would keep the old client. Resetting
       // drops the old answers and refetches what is on screen.
       void queryClient.resetQueries()
-      router.replace('/')
+      router.replace(scoped('/'))
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -221,7 +229,7 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
     try {
       await signOutPortal()
       queryClient.clear()
-      router.replace('/login')
+      router.replace(scoped('/login'))
     } catch (error) {
       toast.error(errorMessage(error))
     }
@@ -234,7 +242,10 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
         <header className="sticky top-0 z-30 border-b bg-card">
           {/* Full width: the brand sits at the far left, the tabs and account menu at the far right. */}
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
-            <WorkspaceBrand name={session.workspace.name} logoUrl={logoUrl} />
+            <WorkspaceBrand
+              name={session.workspace.name}
+              logoUrl={logoUrl ?? scope?.logo_url ?? undefined}
+            />
             <PortalNav pathname={pathname} />
             <div className="shrink-0">
               <AccountMenu

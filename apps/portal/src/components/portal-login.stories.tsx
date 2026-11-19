@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalHandlers } from '@/mocks/portal'
+import { portalHandlers, scopedPortal } from '@/mocks/portal'
 
 import { PortalLogin } from './portal-login'
 
@@ -165,5 +165,33 @@ export const Branded: Story = {
     await expect(await canvas.findByText('Muster Beratung und Treuhand AG')).toBeVisible()
     await expect(canvas.getByRole('heading', { name: 'Client portal' })).toBeVisible()
     await expect(canvas.getByText('MB')).toBeVisible()
+  },
+}
+
+/** Under a workspace's own address (/w/<slug>/) the page reads the mark and name from GET /scope. */
+export const WorkspaceAddress: Story = {
+  parameters: { msw: { handlers: [signedOut, scopedPortal(), ...portalHandlers] } },
+  // The page reads its scope from the address; the story's own address comes back afterwards.
+  beforeEach: () => {
+    const before = window.location.href
+    window.history.replaceState(window.history.state, '', '/w/mueller-treuhand/login/')
+    return () => window.history.replaceState(window.history.state, '', before)
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Müller Treuhand AG')).toBeVisible()
+    await expect(canvas.getByText('MT')).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Client portal' })).toBeVisible()
+    await expect(canvas.getByLabelText('Email')).toBeVisible()
+  },
+}
+
+export const WorkspaceAddressPhone: Story = {
+  parameters: { ...WorkspaceAddress.parameters, ...phone },
+  beforeEach: WorkspaceAddress.beforeEach,
+  globals: { viewport: { value: 'phone' } },
+  play: async (context) => {
+    await WorkspaceAddress.play?.(context)
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
   },
 }

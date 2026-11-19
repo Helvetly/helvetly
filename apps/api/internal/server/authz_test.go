@@ -53,6 +53,7 @@ import (
 	"helvetly.com/api/internal/openapi"
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/portal"
+	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/products"
 	"helvetly.com/api/internal/quotes"
 	"helvetly.com/api/internal/server"
@@ -161,11 +162,13 @@ func app(t *testing.T) (http.Handler, *store.Store, *pgxpool.Pool) {
 	sig := signatures.New(st, a, files, nil, cfg.PublicURL, log)
 	opts := heidi.Options{Provider: aimodel.Fake{}, Allowance: bill.AITokens, AllowStorage: bill.AllowStorage}
 	m := mcp.New(a, openapi.Operations)
+	wsSvc := workspaces.New(st, a, bill, files, log)
+	wsSvc.SetPortal(portalscope.New(cfg.PortalURL, st.Q))
 	services := []interface{ Register(*http.ServeMux) }{
-		m, a, dataexport.New(st, a, files, log), cl, portal.New(st, a, files, portal.Config{SessionTTL: time.Hour}, log),
+		m, a, dataexport.New(st, a, files, log), cl, portal.New(st, a, files, portalscope.New(cfg.PortalURL, st.Q), portal.Config{SessionTTL: time.Hour}, log),
 		inv, qs, dun, mem, invs, prod, eng, inst, books.New(st, a), vatreturn.New(st, a), ledger.New(st, a), ein, del,
 		expenses.New(st, a, files, log), documents.New(st, a, files, cfg.DocumentsMaxUpload, log), sig,
-		templates.New(st, a, files, nil, sig, log), bill, workspaces.New(st, a, bill, files, log), dashboard.New(st, a),
+		templates.New(st, a, files, nil, sig, log), bill, wsSvc, dashboard.New(st, a),
 		heidi.New(st, a, files, eng, opts), feedback.New(st, a, files, nil, "", log), avatars.New(st, a, files, log),
 		imports.New(st, a, files, log, imports.Options{Provider: aimodel.Fake{}, Allowance: bill.AITokens, AllowStorage: bill.AllowStorage}),
 		notifications.New(st, a, nil, cfg.PublicURL, cfg.SecretKey, log),
@@ -636,7 +639,7 @@ func TestPortalAndStaffSessionsDoNotCross(t *testing.T) {
 	token, csrf := rand.Text(), rand.Text()
 	sum := sha256.Sum256([]byte(token))
 	if err := st.CreatePortalSession(ctx, auth.NewID("pse"), hex.EncodeToString(sum[:]), csrf, "alpha-secret@example.com",
-		s.ids["clients"], a.workspace, now, now.Add(time.Hour)); err != nil {
+		s.ids["clients"], a.workspace, false, now, now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	send := func(cookie, value, method, path string) int {

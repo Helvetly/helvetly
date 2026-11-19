@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"helvetly.com/api/internal/portalscope"
 	"io"
 	"log/slog"
 	"net/http"
@@ -52,7 +53,7 @@ func newPortalEnv(t *testing.T) (*env, *fakeMailer) {
 	files := &fakeStorage{objects: map[string][]byte{}}
 	svc := New(st, a, files, discard)
 	m := &fakeMailer{}
-	svc.SetMailer(m, "https://portal.example.com")
+	svc.SetMailer(m, portalscope.New("https://portal.example.com", st.Q))
 	mux := http.NewServeMux()
 	a.Register(mux)
 	svc.Register(mux)
@@ -68,7 +69,7 @@ func (e *env) portalClient(b *browser) (clientID, token string) {
 	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch", "portal_enabled": true}, 200, nil)
 	token = "tok_" + c.ID
 	now := time.Now().UTC()
-	if err := e.st.CreatePortalSession(context.Background(), "pss_"+c.ID, token, "csrf", "ana@acme.ch", c.ID, b.workspace, now, now.Add(time.Hour)); err != nil {
+	if err := e.st.CreatePortalSession(context.Background(), "pss_"+c.ID, token, "csrf", "ana@acme.ch", c.ID, b.workspace, false, now, now.Add(time.Hour)); err != nil {
 		e.t.Fatal(err)
 	}
 	return c.ID, token
@@ -151,7 +152,7 @@ func TestInviteWhenTurnedOnOrMoved(t *testing.T) {
 		t.Fatalf("mails = %+v", m.sent)
 	}
 	msg := m.sent[0]
-	if !strings.Contains(msg.Text, "https://portal.example.com/") || !strings.Contains(msg.Text, "Acme") {
+	if !strings.Contains(msg.Text, "https://portal.example.com/w/acme/") || !strings.Contains(msg.Text, "Acme") {
 		t.Fatalf("invite = %+v", msg)
 	}
 	e.do(b, "GET", path, nil, 200, &out)

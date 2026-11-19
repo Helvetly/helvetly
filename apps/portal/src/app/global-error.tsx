@@ -9,6 +9,7 @@ import '@helvetly/ui/globals.css'
 import Link from 'next/link'
 
 import { translate } from '@/lib/i18n'
+import { scoped } from '@/lib/scope'
 
 /** The last resort, when even the app's frame crashed: it replaces the root layout. */
 export default function GlobalError({ reset }: { error: PageError; reset: () => void }) {
@@ -20,7 +21,7 @@ export default function GlobalError({ reset }: { error: PageError; reset: () => 
             reset={reset}
             home={
               <Button asChild variant="outline">
-                <Link href="/">
+                <Link href={scoped('/')}>
                   <House />
                   {translate('goToOverview')}
                 </Link>

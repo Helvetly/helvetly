@@ -8,6 +8,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 
 import { translate } from '@/lib/i18n'
+import { applyScope } from '@/lib/scope'
+
+// Before any call: under /w/<slug>/ every API call goes under the same prefix.
+if (typeof window !== 'undefined') applyScope()
 
 // A 4xx will answer the same on a retry; network errors and 5xx get two more tries.
 const retry = (count: number, error: Error) =>

@@ -1,6 +1,8 @@
 // Client portal, typed by hand from docs/portal-contract.md. Every call is `public`: a 401 here
 // is the portal's own sign-in, never the staff redirect.
-import { ApiError, request, setCsrfToken, type EmailCodeSent } from '@helvetly/ui/lib/http'
+import { ApiError, apiUrl, request, setCsrfToken, type EmailCodeSent } from '@helvetly/ui/lib/http'
+
+import { scopePrefix } from './scope'
 
 export type PortalSession = {
   /** The client's address this session signed in with. */
@@ -91,6 +93,28 @@ export const portalKeys = {
   engagements: ['portal', 'engagements'] as const,
   documents: ['portal', 'documents'] as const,
   profile: ['portal', 'profile'] as const,
+  scope: ['portal', 'scope'] as const,
+}
+
+/** Whose portal this address is: a workspace's own (/w/<slug>/), with its name and logo. */
+export type PortalScope = {
+  name: string
+  slug: string
+  /** null when the workspace has no logo. */
+  logo_url: string | null
+  /** Its canonical address. */
+  url: string
+}
+
+/** The workspace of a scoped page; null on the shared portal (the API answers 404 there). */
+export async function getPortalScope(): Promise<PortalScope | null> {
+  if (!scopePrefix()) return null
+  try {
+    return await call<PortalScope>('/scope')
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
 }
 
 export const startPortalSignIn = (email: string) =>
@@ -152,13 +176,13 @@ export async function signOutPortal() {
 export const listPortalInvoices = async () =>
   (await call<{ data: PortalInvoice[] }>('/invoices')).data
 export const portalInvoicePdfUrl = (invoiceId: string) =>
-  `/api/v1${base}/invoices/${id(invoiceId)}/pdf`
+  apiUrl(`${base}/invoices/${id(invoiceId)}/pdf`)
 export const listPortalEngagements = async () =>
   (await call<{ data: PortalEngagement[] }>('/engagements')).data
 export const listPortalDocuments = async () =>
   (await call<{ data: PortalDocument[] }>('/documents')).data
 export const portalDocumentUrl = (documentId: string) =>
-  `/api/v1${base}/documents/${id(documentId)}/download`
+  apiUrl(`${base}/documents/${id(documentId)}/download`)
 export const getPortalProfile = () => call<PortalProfile>('/profile')
 
 /** A 422 throws an ApiError whose `details.fields` names each bad field. */

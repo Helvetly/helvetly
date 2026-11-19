@@ -16,6 +16,7 @@ type PortalAccess struct {
 type PortalSession struct {
 	ID, CSRFToken        string
 	Email                string
+	Scoped               bool // opened under the workspace's portal address, valid only there
 	ClientID, ClientName string
 	LastActiveAt         time.Time
 	Workspace            Workspace
@@ -24,12 +25,14 @@ type PortalSession struct {
 // portalLogin is a client's portal address: its email, else its billing email.
 const portalLogin = `lower(coalesce(nullif(c.email, ''), nullif(c.billing_email, '')))`
 
-// PortalAccessByEmail: the live clients with the portal on whose portal address is this one (any case).
-func (q Q) PortalAccessByEmail(ctx context.Context, email string) ([]PortalAccess, error) {
+// PortalAccessByEmail: the live clients with the portal on whose portal address is this one (any case), only in
+// workspaceID unless it is "".
+func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) ([]PortalAccess, error) {
 	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name FROM clients c
 		JOIN workspaces w ON w.id = c.workspace_id
 		WHERE `+portalLogin+` = lower($1) AND c.portal_enabled AND c.deleted_at IS NULL AND w.deleted_at IS NULL
-		ORDER BY c.name, c.id`, email)
+			AND ($2 = '' OR w.id = $2)
+		ORDER BY c.name, c.id`, email, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -45,13 +48,13 @@ func (q Q) PortalAccessByEmail(ctx context.Context, email string) ([]PortalAcces
 	return out, rows.Err()
 }
 
-func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, clientID, workspaceID string, now, expires time.Time) error {
+func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, clientID, workspaceID string, scoped bool, now, expires time.Time) error {
 	// Expired portal sessions are never read again: each portal sign-in clears them, as staff sign-in does its own.
 	if _, err := q.db.Exec(ctx, `DELETE FROM portal_sessions WHERE expires_at < $1`, now); err != nil {
 		return err
 	}
-	_, err := q.db.Exec(ctx, `INSERT INTO portal_sessions (id, token_hash, csrf_token, email, client_id, workspace_id, created_at, expires_at, last_active_at)
-		VALUES ($1, $2, $3, lower($4), $5, $6, $7, $8, $7)`, id, tokenHash, csrf, email, clientID, workspaceID, now, expires)
+	_, err := q.db.Exec(ctx, `INSERT INTO portal_sessions (id, token_hash, csrf_token, email, client_id, workspace_id, created_at, expires_at, last_active_at, scoped)
+		VALUES ($1, $2, $3, lower($4), $5, $6, $7, $8, $7, $9)`, id, tokenHash, csrf, email, clientID, workspaceID, now, expires, scoped)
 	return err
 }
 
@@ -59,14 +62,14 @@ func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, 
 // address ends the session at once.
 func (q Q) PortalSessionByToken(ctx context.Context, tokenHash string, now time.Time) (PortalSession, error) {
 	var s PortalSession
-	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at
+	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at, s.scoped
 		FROM portal_sessions s
 		JOIN clients c ON c.id = s.client_id
 		JOIN workspaces w ON w.id = s.workspace_id
 		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND `+portalLogin+` = s.email
 			AND c.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, now).
 		Scan(&s.ID, &s.CSRFToken, &s.Email, &s.ClientID, &s.ClientName,
-			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt)
+			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt, &s.Scoped)
 	return s, err
 }
 

@@ -22,7 +22,7 @@ import { useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { useResendPortalInvite, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import { useAuthConfig } from '@/lib/queries'
+import { usePortalAddress } from '@/lib/workspaces'
 
 /** The address a client signs in to the portal with: its email, else its billing email ('' for none). */
 export function portalLogin(client: { email: string | null; billing_email: string | null }) {
@@ -258,9 +258,7 @@ function PortalLinkActions({ url }: { url: string }) {
           aria-label={translate('copyPortalLink')}
           className="text-muted-foreground"
           onClick={() =>
-            void navigator.clipboard
-              .writeText(`${url}/`)
-              .then(() => toast(translate('portalLinkCopied')))
+            void navigator.clipboard.writeText(url).then(() => toast(translate('portalLinkCopied')))
           }
         >
           <Copy />
@@ -274,7 +272,7 @@ function PortalLinkActions({ url }: { url: string }) {
           aria-label={translate('openThePortal')}
           className="text-muted-foreground"
         >
-          <a href={localizedHref(`${url}/`)} target="_blank" rel="noreferrer">
+          <a href={localizedHref(url)} target="_blank" rel="noreferrer">
             <ExternalLink />
           </a>
         </Button>
@@ -283,16 +281,16 @@ function PortalLinkActions({ url }: { url: string }) {
   )
 }
 
-const host = (url: string) => url.replace(/^https?:\/\//, '')
+const host = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 /** The drawer's "Portal" row; nothing until the API says where the portal is. */
 function PortalLinkRow() {
-  const url = useAuthConfig().data?.portal_url
+  const url = usePortalAddress().data?.url
   if (!url) return null
   return (
     <StatusRow icon={Globe} label={translate('portal')} action={<PortalLinkActions url={url} />}>
       <a
-        href={localizedHref(`${url}/`)}
+        href={localizedHref(url)}
         target="_blank"
         rel="noreferrer"
         className="truncate underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"
@@ -305,13 +303,13 @@ function PortalLinkRow() {
 
 /** Where clients sign in, with copy and open buttons; nothing until the API says. */
 export function PortalLink() {
-  const url = useAuthConfig().data?.portal_url
+  const url = usePortalAddress().data?.url
   if (!url) return null
   return (
     <p className="flex min-w-0 items-center gap-1 text-body-sm text-muted-foreground">
       <span className="shrink-0">{translate('clientsSignInAt')}</span>
       <a
-        href={localizedHref(`${url}/`)}
+        href={localizedHref(url)}
         target="_blank"
         rel="noreferrer"
         className="min-w-0 truncate text-foreground underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"

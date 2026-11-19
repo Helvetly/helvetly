@@ -17,8 +17,13 @@ type Mailer interface {
 	Send(ctx context.Context, m mailer.Message) error
 }
 
+// PortalURLs is where a workspace's clients sign in (internal/portalscope).
+type PortalURLs interface {
+	CanonicalURL(ctx context.Context, ws store.Workspace) (string, error)
+}
+
 // SetMailer turns portal invitations on; without one, turning the portal on sends nothing.
-func (s *Service) SetMailer(m Mailer, portalURL string) { s.mail, s.portalURL = m, portalURL }
+func (s *Service) SetMailer(m Mailer, urls PortalURLs) { s.mail, s.portalURLs = m, urls }
 
 // PortalLogin is the address a client signs in to the portal with: its email, else its billing email ("" for none).
 func PortalLogin(c store.Client) string {
@@ -72,7 +77,10 @@ func (s *Service) resendPortalInvite(w http.ResponseWriter, r *http.Request, ses
 // sendPortalInvite mails the invitation to the client's portal address and records when.
 func (s *Service) sendPortalInvite(ctx context.Context, sess store.Session, c store.Client) error {
 	to := PortalLogin(c)
-	link := s.portalURL + "/"
+	link, err := s.portalURLs.CanonicalURL(ctx, sess.Workspace)
+	if err != nil {
+		return fmt.Errorf("portal address: %w", err)
+	}
 	text := fmt.Sprintf("Hello %s,\n\n%s now gives you access to their client portal, where you can see your invoices, "+
 		"engagements and shared documents:\n\n%s\n\nEnter this email address and we send you a code to sign in: there is no password.\n",
 		c.Name, sess.Workspace.Name, link)

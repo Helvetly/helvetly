@@ -52,6 +52,8 @@ type Service struct {
 	// namer is the model of the one-time name suggestion (nil: off); limit is its per-address rate limit.
 	namer aimodel.Provider
 	limit *auth.RateLimiter
+	// portal is the client portal's address (nil: its settings are off).
+	portal PortalAddresses
 }
 
 func New(db *store.Store, a Auth, b Billing, files Storage, log *slog.Logger) *Service {
@@ -69,6 +71,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/workspace/logo", s.auth.SignedIn(s.putLogo))
 	mux.HandleFunc("DELETE /api/v1/workspace/logo", s.auth.SignedIn(s.deleteLogo))
 	mux.HandleFunc("GET /api/v1/workspaces/{id}/logo", s.auth.SignedIn(s.getWorkspaceLogo))
+	if s.portal != nil {
+		s.registerPortal(mux)
+	}
 }
 
 var errOwnerOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner can change or delete the workspace.", nil)

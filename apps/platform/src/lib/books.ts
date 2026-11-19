@@ -100,4 +100,5 @@ export const EVENT_LABELS: Record<string, string> = {
   'period.reopened': translate('periodReopened'),
   'plan.created': translate('instalmentPlanCreated'),
   'plan.cancelled': translate('instalmentPlanCancelled'),
+  'workspace.portal_address_changed': translate('auditPortalAddressChanged'),
 }

@@ -178,5 +178,7 @@
   "dynamicMonth": "Monat",
   "dynamicWeek": "Woche",
   "dynamicOn": " am {value1}",
-  "dynamicOn2": "{verb} am {value2}"
+  "dynamicOn2": "{verb} am {value2}",
+  "portalAddressNotFound": "Diese Portaladresse gibt es nicht",
+  "portalAddressNotFoundHint": "Prüfen Sie den Link in der E-Mail Ihres Lieferanten oder fragen Sie ihn nach der aktuellen Portaladresse."
 }

@@ -17,7 +17,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const PORTAL = 'https://portal.helvetly.com'
+const PORTAL = 'https://portal.helvetly.com/w/mueller-treuhand/'
 const saved = fn()
 const resent = fn()
 
@@ -43,8 +43,10 @@ const handlers = (client: Client) => {
         email: true,
         passkey: true,
         dev_codes: false,
-        portal_url: PORTAL,
       }),
+    ),
+    http.get('/api/v1/workspace/portal', () =>
+      HttpResponse.json({ data: { slug: 'mueller-treuhand', url: PORTAL } }),
     ),
     http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: current })),
     http.patch<never, Partial<ClientInput>>('/api/v1/clients/cli_1', async ({ request }) => {
@@ -185,10 +187,9 @@ export const CopyPortalLink: Story = {
   render: detail,
   play: async () => {
     const card = await portalCard()
-    await expect(await card.findByRole('link', { name: /portal\.helvetly\.com/ })).toHaveAttribute(
-      'href',
-      `${PORTAL}/`,
-    )
+    await expect(
+      await card.findByRole('link', { name: 'portal.helvetly.com/w/mueller-treuhand' }),
+    ).toHaveAttribute('href', PORTAL)
     const write = fn(async (_text: string) => {})
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: write },
@@ -199,7 +200,7 @@ export const CopyPortalLink: Story = {
       '_blank',
     )
     await userEvent.click(card.getByRole('button', { name: 'Copy portal link' }))
-    await expect(write).toHaveBeenCalledWith(`${PORTAL}/`)
+    await expect(write).toHaveBeenCalledWith(PORTAL)
     await expect(await body().findByText('Portal link copied.')).toBeInTheDocument() // the toast
   },
 }

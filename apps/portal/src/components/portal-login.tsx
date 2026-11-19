@@ -10,7 +10,14 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { translate } from '@/lib/i18n'
-import { getPortalSession, portalKeys, startPortalSignIn, verifyPortalCode } from '@/lib/portal'
+import {
+  getPortalScope,
+  getPortalSession,
+  portalKeys,
+  startPortalSignIn,
+  verifyPortalCode,
+} from '@/lib/portal'
+import { scoped } from '@/lib/scope'
 import { siteUrl } from '@/lib/site'
 
 import { WorkspaceMark } from './portal-bits'
@@ -19,7 +26,7 @@ import { WorkspaceMark } from './portal-bits'
  * The staff sign-in's email and code steps, against the portal's own endpoints. With `workspace` the
  * page carries that supplier's mark and name instead of Helvetly's.
  */
-export function PortalLogin({ workspace }: { workspace?: { name: string; logoUrl?: string } }) {
+export function PortalLogin(props: { workspace?: { name: string; logoUrl?: string } }) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<{ email: string; sent: EmailCodeSent } | null>(null)
@@ -29,11 +36,17 @@ export function PortalLogin({ workspace }: { workspace?: { name: string; logoUrl
     queryFn: getPortalSession,
     retry: false,
   })
+  // Under a workspace's own address (/w/<slug>/), that workspace's mark and name.
+  const scope = useQuery({ queryKey: portalKeys.scope, queryFn: getPortalScope, retry: false })
+  const workspace =
+    props.workspace ??
+    (scope.data ? { name: scope.data.name, logoUrl: scope.data.logo_url ?? undefined } : undefined)
   const signedIn = Boolean(session.data)
   useEffect(() => {
-    if (signedIn) router.replace('/')
+    if (signedIn) router.replace(scoped('/'))
   }, [signedIn, router])
-  if (session.isPending || signedIn) return <div className="min-h-svh bg-background" aria-busy />
+  if (session.isPending || scope.isPending || signedIn)
+    return <div className="min-h-svh bg-background" aria-busy />
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
@@ -48,7 +61,7 @@ export function PortalLogin({ workspace }: { workspace?: { name: string; logoUrl
               resend={() => startPortalSignIn(step.email)}
               onDone={() => {
                 queryClient.clear()
-                router.replace('/')
+                router.replace(scoped('/'))
               }}
               onBack={() => setStep(null)}
             />

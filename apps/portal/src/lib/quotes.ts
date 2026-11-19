@@ -1,5 +1,5 @@
 // The client's quotes in the portal, typed by hand from "Client portal" in docs/quotes-contract.md.
-import { request } from '@helvetly/ui/lib/http'
+import { apiUrl, request } from '@helvetly/ui/lib/http'
 
 import { translate } from '@/lib/i18n'
 
@@ -27,7 +27,7 @@ const id = encodeURIComponent
 export const listPortalQuotes = async () =>
   (await request<{ data: PortalQuote[] }>(base, { public: true })).data
 
-export const portalQuotePdfUrl = (quoteId: string) => `/api/v1${base}/${id(quoteId)}/pdf`
+export const portalQuotePdfUrl = (quoteId: string) => apiUrl(`${base}/${id(quoteId)}/pdf`)
 
 /** A 409 `invalid_state` throws an ApiError saying the quote expired or was already answered. */
 export const decidePortalQuote = async (quoteId: string, decision: QuoteDecision, note: string) =>
