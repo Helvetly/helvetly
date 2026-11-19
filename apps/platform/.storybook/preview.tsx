@@ -2,14 +2,15 @@ import '@helvetly/ui/globals.css'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
-import { mswLoader } from '@helvetly/vitest-config/storybook-msw'
+import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { configure } from 'storybook/test'
 
 import { RecordDrawers } from '../src/components/record-drawers'
 import { clippedRings } from '../src/stories/focus-ring'
+import { storyDefaults } from '../src/stories/screen-fixtures'
 
 // findBy…/waitFor give up after 1 s by default. In the full browser run a heavy screen can take longer to render
 // (settings, books, ledger), so a random one failed although nothing was wrong; 5 s waits for slow renders only and
@@ -24,6 +25,15 @@ if (import.meta.env.MODE === 'test') {
   document.head.append(style)
 }
 
+// A query whose mock answered without its data (`{ data }` left out) left the screen on a state the app never sees.
+let undefinedQueries: string[] = []
+const queryCache = () =>
+  new QueryCache({
+    onError: (error) => {
+      if (error.message.endsWith('data is undefined')) undefinedQueries.push(error.message)
+    },
+  })
+
 function StoryProviders({
   children,
   ownMain,
@@ -36,6 +46,7 @@ function StoryProviders({
   const [client] = useState(
     () =>
       new QueryClient({
+        queryCache: queryCache(),
         defaultOptions: {
           queries: { retry: false, staleTime: Infinity },
           mutations: { retry: false },
@@ -61,6 +72,7 @@ const startUrl = window.location.href
 
 const preview: Preview = {
   beforeEach: (context) => {
+    undefinedQueries = []
     window.history.replaceState(null, '', startUrl)
     const root = document.documentElement
     root.classList.add(...fontClassName.split(' '))
@@ -83,6 +95,9 @@ const preview: Preview = {
     ])
     const clipped = clippedRings(document)
     if (clipped.length > 0) throw new Error(`Focus ring cut off:\n${clipped.join('\n')}`)
+    expectAllHandled()
+    if (undefinedQueries.length > 0)
+      throw new Error(`Query answered without data:\n${[...new Set(undefinedQueries)].join('\n')}`)
   },
   decorators: [
     (Story, context) => (
@@ -95,7 +110,7 @@ const preview: Preview = {
       </StoryProviders>
     ),
   ],
-  loaders: [mswLoader()],
+  loaders: [mswLoader(storyDefaults)],
   parameters: {
     nextjs: { appDirectory: true },
     a11y: { test: 'error' },
