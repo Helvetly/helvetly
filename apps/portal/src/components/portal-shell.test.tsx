@@ -43,6 +43,14 @@ test('without a session it goes to the portal sign-in', async () => {
   await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'))
 })
 
+test('names the supplier once in the header, and the account button shows no email', async () => {
+  show()
+  const header = (await screen.findByRole('navigation', { name: 'Portal' })).closest('header')
+  expect(header?.textContent?.split(portalSession.workspace.name)).toHaveLength(2)
+  const account = screen.getByRole('button', { name: /^Account menu/ })
+  expect(account.textContent).not.toContain(portalSession.email)
+})
+
 const openAccountMenu = async () => {
   const trigger = await screen.findByRole('button', { name: /^Account menu/ })
   fireEvent.keyDown(trigger, { key: 'Enter' })
@@ -133,7 +141,7 @@ test('after switching client on the overview, the shell shows the new client', a
   )
 })
 
-test('the header shows its hairline only while the page is scrolled', async () => {
+test('the header shows its shadow only while the page is scrolled', async () => {
   show()
   const header = (await screen.findByRole('navigation', { name: 'Portal' })).closest('header')
   expect(header?.hasAttribute('data-scrolled')).toBe(false)
