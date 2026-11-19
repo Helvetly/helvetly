@@ -93,7 +93,7 @@ export function DunningCard({ invoice, canManage }: { invoice: Invoice; canManag
                   href={localizedHref(noticePdfUrl(invoice.id, notice.level))}
                   target="_blank"
                   rel="noreferrer"
-                  className="truncate text-[13px] font-medium text-link underline underline-offset-2 hover:no-underline"
+                  className="truncate text-body-sm font-medium text-link underline underline-offset-2 hover:no-underline"
                 >
                   {notice.title}
                 </a>
@@ -107,7 +107,7 @@ export function DunningCard({ invoice, canManage }: { invoice: Invoice; canManag
                     : translate('sentAutomatically')}
                 </span>
               </span>
-              <span className="shrink-0 text-right text-[13px] tabular-nums">
+              <span className="shrink-0 text-right text-body-sm tabular-nums">
                 {formatMoney(notice.total, invoice.currency)}
                 {notice.fee !== '0.00' && (
                   <span className="block text-xs text-muted-foreground">
