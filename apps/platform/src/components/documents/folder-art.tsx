@@ -26,13 +26,13 @@ export function FolderMark({ open, className }: { open?: boolean; className?: st
       <path
         d={
           open
-            ? 'M3.4 8.6A1.6 1.6 0 0 1 5 7.2h17a1.2 1.2 0 0 1 1.17 1.45l-1.62 8.1A1.6 1.6 0 0 1 20 18H3.6A1.6 1.6 0 0 1 2 16.4Z'
+            ? 'M6 10.4A1.4 1.4 0 0 1 7.3 9.4h15.1a1.1 1.1 0 0 1 1.05 1.42l-1.9 6.05A1.6 1.6 0 0 1 20 18H3.4a1.1 1.1 0 0 1-1.03-1.48Z'
             : 'M1.3 7.6A1.6 1.6 0 0 1 2.9 6h18.2a1.6 1.6 0 0 1 1.6 1.6l-.5 8.9A1.6 1.6 0 0 1 20.6 18H3.4a1.6 1.6 0 0 1-1.6-1.5Z'
         }
         fill={`url(#${front})`}
       />
       <path
-        d={open ? 'M5 7.75h16.6' : 'M2.9 6.55h18.2'}
+        d={open ? 'M7.3 9.95h15' : 'M2.9 6.55h18.2'}
         stroke="#fff"
         strokeOpacity="0.7"
         strokeWidth="0.7"
