@@ -1,9 +1,15 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 
 import { DropdownMenu, DropdownMenuContent } from './dropdown-menu'
 import { Flag } from './flag'
-import { LanguageDialogButton, LanguageSubmenu, LanguageSwitcher } from './language-switcher'
+import {
+  LanguageDialog,
+  LanguageDialogButton,
+  LanguageMenuItem,
+  LanguageSwitcher,
+} from './language-switcher'
 
 test('shows language flags independently of Swiss regional formatting', async () => {
   const user = userEvent.setup()
@@ -53,25 +59,36 @@ test('the footer language button opens a dialog with every language, the current
   )
 })
 
-test('the account-menu language row shows the current language and opens every language', async () => {
-  const user = userEvent.setup()
-  render(
-    <DropdownMenu open>
-      <DropdownMenuContent>
-        <LanguageSubmenu />
-      </DropdownMenuContent>
-    </DropdownMenu>,
+/** An account menu with the language row, the dialog outside it, as in the portal. */
+function Menu() {
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  return (
+    <>
+      <DropdownMenu defaultOpen>
+        <DropdownMenuContent>
+          <LanguageMenuItem onSelect={() => setOpen(true)} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <button ref={trigger}>Account</button>
+      <LanguageDialog open={open} onOpenChange={setOpen} returnFocus={trigger} />
+    </>
   )
+}
+
+test('the account-menu language row shows the current language and opens the language dialog', async () => {
+  const user = userEvent.setup()
+  render(<Menu />)
 
   const row = screen.getByRole('menuitem', { name: /^Language/ })
   expect(row).toHaveTextContent('English')
   await user.click(row)
-  const sub = await screen.findAllByRole('menuitemradio')
-  expect(sub.map((item) => item.textContent)).toEqual(
-    expect.arrayContaining(['Deutsch', 'English', 'Français', 'Italiano']),
-  )
-  expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
-    'aria-checked',
+  const dialog = await screen.findByRole('dialog', { name: 'Change language' })
+  expect(within(dialog).getByRole('button', { name: 'English' })).toHaveAttribute(
+    'aria-pressed',
     'true',
   )
+  expect(screen.queryByRole('menu')).toBeNull()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: 'Account' })).toHaveFocus()
 })
