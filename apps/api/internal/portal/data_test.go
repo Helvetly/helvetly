@@ -3,6 +3,7 @@ package portal
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -175,5 +176,62 @@ func TestEngagementsActiveOnly(t *testing.T) {
 	if res.StatusCode != 200 || !strings.Contains(body, "eng_live") || strings.Contains(body, "eng_cancel") || strings.Contains(body, "eng_other") ||
 		!strings.Contains(body, `"quantity":"10"`) || !strings.Contains(body, `"used":"12.5"`) || !strings.Contains(body, `"remaining":"0"`) || !strings.Contains(body, `"overage":"2.5"`) {
 		t.Fatalf("got %d %s", res.StatusCode, body)
+	}
+}
+
+func TestEngagementEntries(t *testing.T) {
+	e := scopedEnv(t)
+	e.engagement("eng_live", "cli_1", "", 1, 1500)
+	e.engagement("eng_other", "cli_2", "", 2, 1000)
+	e.exec(`UPDATE engagement_entries SET note = 'Grammar', client_performance = 'Well prepared', created_by = NULL WHERE id = 'ent_eng_live'`)
+	e.exec(`INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, note, created_at)
+		VALUES ('ent_old','eng_live','per_eng_live',current_date - 1,500,'Older',now())`)
+	// The same login is a client of the other workspace too.
+	e.exec(`INSERT INTO engagements (id, workspace_id, number, client_id, title, unit, quantity, billing, price_basis, unit_price, currency, vat_category, vat_rate,
+		start_date, recurrence, interval, created_at, updated_at)
+		VALUES ('eng_b','wsp_b',1,'cli_9','B','hour',10000,'arrears','net',15000,'CHF','S',810,current_date - 5,'monthly',1,now(),now())`)
+	c, _ := e.signIn("ana@acme.ch")
+
+	res, body := e.get(c, "/engagements/eng_live/entries")
+	if res.StatusCode != 200 {
+		t.Fatalf("own: %d %s", res.StatusCode, body)
+	}
+	var out struct {
+		Data []struct {
+			StartsOn string           `json:"starts_on"`
+			Entries  []map[string]any `json:"entries"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &out); err != nil || len(out.Data) != 1 || len(out.Data[0].Entries) != 2 {
+		t.Fatalf("shape: %v %s", err, body)
+	}
+	first := out.Data[0].Entries[0] // newest first
+	if first["id"] != "ent_eng_live" || first["quantity"] != "1.5" || first["note"] != "Grammar" || first["client_performance"] != "Well prepared" {
+		t.Fatalf("first: %v", first)
+	}
+	if len(first) != 5 {
+		t.Fatalf("exposes more than date, quantity, note and client performance: %v", first)
+	}
+
+	for _, tc := range []struct{ name, path string }{
+		{"another client of the workspace", "/engagements/eng_other/entries"},
+		{"the same login's client in another workspace", "/engagements/eng_b/entries"},
+		{"missing", "/engagements/eng_missing/entries"},
+	} {
+		if res, body := e.get(c, tc.path); res.StatusCode != 404 {
+			t.Errorf("%s: %d %s", tc.name, res.StatusCode, body)
+		}
+	}
+	if res, _ := e.get(&http.Cookie{Name: sessionCookie, Value: "x"}, "/engagements/eng_live/entries"); res.StatusCode != 401 {
+		t.Errorf("signed out: %d", res.StatusCode)
+	}
+
+	// A session scoped to the other workspace reaches only that workspace's engagement.
+	sc, _ := e.signInAt("/w/other", "ana@acme.ch")
+	if res, _ := e.doAt("/w/other", "GET", "/engagements/eng_b/entries", nil, sc, ""); res.StatusCode != 200 {
+		t.Errorf("scoped own: %d", res.StatusCode)
+	}
+	if res, _ := e.doAt("/w/other", "GET", "/engagements/eng_live/entries", nil, sc, ""); res.StatusCode != 404 {
+		t.Errorf("scoped other workspace: %d", res.StatusCode)
 	}
 }

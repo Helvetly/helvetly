@@ -5,6 +5,7 @@ import { civilToday } from '@/lib/dates'
 import type {
   PortalDocument,
   PortalEngagement,
+  PortalEngagementPeriod,
   PortalInvoice,
   PortalProfile,
   PortalScope,
@@ -103,6 +104,44 @@ export const portalEngagements: PortalEngagement[] = [
     quantity: '6',
     recurrence: 'monthly',
     current_period: { ...period, used: '7.5', remaining: '0', overage: '1.5' },
+  },
+]
+
+/** Fixed dates, so the history reads the same in every visual baseline. */
+export const portalEngagementHistory: PortalEngagementPeriod[] = [
+  {
+    starts_on: '2026-11-01',
+    ends_on: '2026-11-30',
+    entries: [
+      {
+        id: 'ent_3',
+        date: '2026-11-18',
+        quantity: '1.5',
+        note: 'Server updates and backup check',
+        client_performance: 'Quick answers, access ready on time',
+      },
+      {
+        id: 'ent_2',
+        date: '2026-11-11',
+        quantity: '2',
+        note: 'Mailbox migration',
+        client_performance: null,
+      },
+      { id: 'ent_1', date: '2026-11-04', quantity: '0.5', note: null, client_performance: null },
+    ],
+  },
+  {
+    starts_on: '2026-10-01',
+    ends_on: '2026-10-31',
+    entries: [
+      {
+        id: 'ent_0',
+        date: '2026-10-21',
+        quantity: '3',
+        note: 'Onboarding of two new staff',
+        client_performance: 'Well prepared',
+      },
+    ],
   },
 ]
 
@@ -242,6 +281,9 @@ export const portalHandlers = [
   http.delete(`${P}/session`, () => new HttpResponse(null, { status: 204 })),
   http.get(`${P}/invoices`, () => HttpResponse.json({ data: portalInvoices })),
   http.get(`${P}/engagements`, () => HttpResponse.json({ data: portalEngagements })),
+  http.get(`${P}/engagements/:id/entries`, () =>
+    HttpResponse.json({ data: portalEngagementHistory }),
+  ),
   http.get(`${P}/documents`, () => HttpResponse.json({ data: portalDocuments })),
   http.get(`${P}/profile`, () => HttpResponse.json(portalProfile)),
   http.get(`${P}/quotes`, () => HttpResponse.json({ data: portalQuotes })),

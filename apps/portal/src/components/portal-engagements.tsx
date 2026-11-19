@@ -1,4 +1,5 @@
 'use client'
+import { Disclosure } from '@helvetly/ui/components/disclosure'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
 import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
@@ -10,7 +11,12 @@ import type { ReactNode } from 'react'
 
 import { civilToday, daysLeftText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
-import { listPortalEngagements, portalKeys, type PortalEngagement } from '@/lib/portal'
+import {
+  listPortalEngagementHistory,
+  listPortalEngagements,
+  portalKeys,
+  type PortalEngagement,
+} from '@/lib/portal'
 
 import { cardClass, EmptyState, PageHeader, RetryAlert } from './portal-bits'
 
@@ -53,6 +59,58 @@ function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
     >
       {children}
     </span>
+  )
+}
+
+/** Every logged delivery, by period and newest first: date, quantity, note and how the client did. */
+function History({ engagement }: { engagement: PortalEngagement }) {
+  const query = useQuery({
+    queryKey: portalKeys.engagementHistory(engagement.id),
+    queryFn: () => listPortalEngagementHistory(engagement.id),
+  })
+  if (query.isPending) return <Loader className="min-h-11" />
+  if (query.error)
+    return <RetryAlert what={translate('theHistory')} onRetry={() => void query.refetch()} />
+  const count = query.data.reduce((sum, period) => sum + period.entries.length, 0)
+  if (count === 0)
+    return <p className="text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
+  return (
+    <Disclosure label={translate('history')} count={count}>
+      <div className="grid gap-3 py-2 pr-3">
+        {query.data.map((period) => (
+          <section key={period.starts_on} className="grid gap-1">
+            <h3 className="text-caption font-medium text-muted-foreground tabular-nums">
+              {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
+            </h3>
+            <ol className="divide-y divide-border">
+              {period.entries.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 py-2"
+                >
+                  <time
+                    dateTime={entry.date}
+                    className="text-body-sm text-muted-foreground tabular-nums"
+                  >
+                    {formatDate(entry.date)}
+                  </time>
+                  <span className="row-span-3 text-right text-body-sm font-medium whitespace-nowrap tabular-nums">
+                    {Number(entry.quantity)} {engagement.unit}
+                  </span>
+                  {entry.note && <p className="text-body break-words">{entry.note}</p>}
+                  {entry.client_performance && (
+                    <p className="text-body-sm break-words text-muted-foreground">
+                      <span className="font-medium">{translate('performance')}:</span>{' '}
+                      {entry.client_performance}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+    </Disclosure>
   )
 }
 
@@ -106,6 +164,7 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
       ) : (
         <p className="text-sm text-muted-foreground">{translate('noPeriodIsRunningRightNow')}</p>
       )}
+      <History engagement={engagement} />
     </li>
   )
 }

@@ -23,12 +23,13 @@ func realDrafts(e *env) {
 type entryOut struct {
 	Data struct {
 		Entry struct {
-			ID                string  `json:"id"`
-			PeriodID          string  `json:"period_id"`
-			Date              string  `json:"date"`
-			Quantity          string  `json:"quantity"`
-			ClientPerformance *string `json:"client_performance"`
-			PerformedBy       *struct {
+			ID                   string  `json:"id"`
+			PeriodID             string  `json:"period_id"`
+			Date                 string  `json:"date"`
+			Quantity             string  `json:"quantity"`
+			ClientPerformance    *string `json:"client_performance"`
+			PerformanceOnInvoice bool    `json:"client_performance_on_invoice"`
+			PerformedBy          *struct {
 				Name string `json:"name"`
 			} `json:"performed_by"`
 			Invoice *struct {
@@ -215,6 +216,46 @@ func TestArrearsPerEntryAndAdvanceInvoice(t *testing.T) {
 	}
 	e.fails(b, "POST", url, map[string]any{"kind": "advance"}, 409, "already_invoiced")
 	e.fails(b, "POST", "/api/v1/engagements/"+adv.ID+"/periods/epr_missing/invoice", map[string]any{"kind": "advance"}, 404, "not_found")
+}
+
+func TestPerEntryLineClientPerformance(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body map[string]any
+		want string
+	}{
+		{"off by default", map[string]any{"note": "Lesson", "client_performance": "Well prepared"}, "[German · 03.11.2026 · Lesson|1500|10000|Z]"},
+		{"on", map[string]any{"note": "Lesson", "client_performance": "Well prepared", "client_performance_on_invoice": true},
+			"[German · 03.11.2026 · Lesson · Well prepared|1500|10000|Z]"},
+		{"on without text", map[string]any{"client_performance_on_invoice": true}, "[German · 03.11.2026|1500|10000|Z]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newEnv(t)
+			realDrafts(e)
+			b := e.workspace()
+			eng := e.create(b, input(e.client(b), map[string]any{"billing": "arrears"}))
+			path := "/api/v1/engagements/" + eng.ID
+			body := map[string]any{"quantity": "1.5", "date": "2026-11-03"}
+			for k, v := range tc.body {
+				body[k] = v
+			}
+			var out entryOut
+			e.do(b, "POST", path+"/entries", body, 201, &out)
+			if out.Data.Entry.PerformanceOnInvoice != (tc.body["client_performance_on_invoice"] == true) {
+				t.Fatalf("client_performance_on_invoice: %v", out.Data.Entry.PerformanceOnInvoice)
+			}
+			var inv invoiceOut
+			e.do(b, "POST", path+"/periods/"+eng.CurrentPeriod.ID+"/invoice", map[string]any{"kind": "usage", "detail": "per_entry"}, 201, &inv)
+			if got := fmt.Sprint(e.lines(inv.Data.InvoiceID)); got != tc.want {
+				t.Fatalf("lines %v", got)
+			}
+		})
+	}
+	e := newEnv(t)
+	b := e.workspace()
+	eng := e.create(b, input(e.client(b), nil))
+	e.fails(b, "POST", "/api/v1/engagements/"+eng.ID+"/entries", map[string]any{"quantity": "1", "client_performance_on_invoice": "yes"},
+		422, "validation_failed", "client_performance_on_invoice")
 }
 
 func TestConcurrentInvoicingInvoicesOnce(t *testing.T) {

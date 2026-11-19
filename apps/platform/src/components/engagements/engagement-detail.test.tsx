@@ -106,6 +106,7 @@ const entry = (change: Partial<Entry> = {}): Entry => ({
   quantity: '1.5',
   note: '<b>Grammar</b> & Umlaute äöü',
   client_performance: null,
+  client_performance_on_invoice: false,
   performed_by: null,
   invoice: null,
   created_at: '2026-11-01T09:00:00Z',
@@ -246,14 +247,14 @@ describe('entries', () => {
 describe('entries panel', () => {
   it('groups entries by period with a count and total', async () => {
     entries = [
-      entry({ client_performance: 'On time' }),
+      entry({ client_performance: 'On time', client_performance_on_invoice: true }),
       entry({ id: 'ent_2', quantity: '2.25', note: null }),
     ]
     open()
     const group = await screen.findByRole('region', { name: '1. Jan 2020 – 31. Dec 2099' })
     expect(group).toHaveTextContent('2 entries · 3.75 h')
     expect(group).toHaveTextContent('No note')
-    expect(group).toHaveTextContent('Client performance: On time')
+    expect(group).toHaveTextContent('Client performance: On time · on invoice')
   })
 
   it('says when nothing is logged and offers no export', async () => {

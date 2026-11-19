@@ -309,6 +309,7 @@ const entry = (id: string, periodId: string, date: string, quantity: string, not
     quantity,
     note,
     client_performance: null,
+    client_performance_on_invoice: false,
     performed_by: anna,
     invoice:
       periodId === 'epr_0'
@@ -466,6 +467,10 @@ export const RowMenuLogDelivery: Story = {
     await expect(within(dialog).getByRole('button', { name: 'Log' })).toBeDisabled()
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1,5')
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4')
+    // Client performance stays off the invoice unless chosen.
+    const onInvoice = within(dialog).getByRole('checkbox', { name: 'Show on invoice' })
+    await expect(onInvoice).not.toBeChecked()
+    await userEvent.click(onInvoice)
     await userEvent.type(
       within(dialog).getByRole('textbox', { name: 'Client performance' }),
       'Well prepared{Enter}',
@@ -475,6 +480,7 @@ export const RowMenuLogDelivery: Story = {
       quantity: '1.5',
       note: 'Lesson 4',
       client_performance: 'Well prepared',
+      client_performance_on_invoice: true,
     })
     // The undo toast names what was logged (it is still fading in).
     await expect(await body.findByText(/Logged 1\.5/)).toBeInTheDocument()

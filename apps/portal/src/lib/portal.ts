@@ -44,6 +44,19 @@ export type PortalEngagement = {
   } | null
 }
 
+/** One period of an engagement's history with what was logged in it, newest first. */
+export type PortalEngagementPeriod = {
+  starts_on: string
+  ends_on: string
+  entries: {
+    id: string
+    date: string
+    quantity: string
+    note: string | null
+    client_performance: string | null
+  }[]
+}
+
 export type PortalDocument = {
   id: string
   name: string
@@ -95,6 +108,7 @@ export const portalKeys = {
   invoices: ['portal', 'invoices'] as const,
   quotes: ['portal', 'quotes'] as const,
   engagements: ['portal', 'engagements'] as const,
+  engagementHistory: (engagementId: string) => ['portal', 'engagements', engagementId] as const,
   documents: ['portal', 'documents'] as const,
   profile: ['portal', 'profile'] as const,
   scope: ['portal', 'scope'] as const,
@@ -183,6 +197,8 @@ export const portalInvoicePdfUrl = (invoiceId: string) =>
   apiUrl(`${base}/invoices/${id(invoiceId)}/pdf`)
 export const listPortalEngagements = async () =>
   (await call<{ data: PortalEngagement[] }>('/engagements')).data
+export const listPortalEngagementHistory = async (engagementId: string) =>
+  (await call<{ data: PortalEngagementPeriod[] }>(`/engagements/${id(engagementId)}/entries`)).data
 export const listPortalDocuments = async () =>
   (await call<{ data: PortalDocument[] }>('/documents')).data
 export const portalDocumentUrl = (documentId: string) =>

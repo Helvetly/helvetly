@@ -2,7 +2,12 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalDocuments, portalEngagements, portalHandlers } from '@/mocks/portal'
+import {
+  portalDocuments,
+  portalEngagementHistory,
+  portalEngagements,
+  portalHandlers,
+} from '@/mocks/portal'
 
 import { PortalDocuments } from './portal-documents'
 import { PortalEngagements } from './portal-engagements'
@@ -77,6 +82,110 @@ export const EngagementWithoutPeriod: Story = {
     await expect(await canvas.findByText('No period is running right now.')).toBeVisible()
     await expect(canvas.getByText('10 hours in total')).toBeVisible()
     await expect(canvas.queryByRole('progressbar')).toBeNull()
+  },
+}
+
+/** One engagement whose history answers with response. */
+const withHistory = (response: Parameters<typeof http.get>[1]) => ({
+  msw: {
+    handlers: [
+      http.get(`${P}/engagements`, () => HttpResponse.json({ data: [retainer] })),
+      http.get(`${P}/engagements/:id/entries`, response),
+      ...portalHandlers,
+    ],
+  },
+})
+const phone = {
+  viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
+}
+const openHistory = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement)
+  await userEvent.click(await canvas.findByText('History'))
+  // The baseline shows the opened list at rest, without the click's focus ring.
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  return canvas
+}
+
+/** The history opens to every logged delivery, by period and newest first, with note and performance. */
+export const EngagementHistory: Story = {
+  parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = await openHistory(canvasElement)
+    const periods = canvas.getAllByRole('heading', { level: 3 })
+    await expect(periods.map((h) => h.textContent)).toEqual([
+      '1 Nov 2026 – 30 Nov 2026',
+      '1 Oct 2026 – 31 Oct 2026',
+    ])
+    const rows = [...canvasElement.querySelectorAll('ol > li')]
+    await expect(rows).toHaveLength(4)
+    await expect(rows[0]).toHaveTextContent('Server updates and backup check')
+    await expect(rows[0]).toHaveTextContent('Performance: Quick answers, access ready on time')
+    await expect(rows[0]).toHaveTextContent('1.5 hours')
+    await expect(canvas.getByText('Mailbox migration')).toBeVisible()
+  },
+}
+
+export const EngagementHistoryDark: Story = {
+  ...EngagementHistory,
+  parameters: { ...EngagementHistory.parameters, dark: true },
+}
+
+const long = 'Long session covering the yearly closing, '.repeat(8).trim()
+/** A long note and performance wrap inside the card and never push the page sideways on a phone. */
+export const EngagementHistoryLongTextPhone: Story = {
+  parameters: {
+    ...phone,
+    ...withHistory(() =>
+      HttpResponse.json({
+        data: [
+          {
+            starts_on: '2026-11-01',
+            ends_on: '2026-11-30',
+            entries: [
+              {
+                id: 'ent_l',
+                date: '2026-11-18',
+                quantity: '12.25',
+                note: long,
+                client_performance: long,
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  },
+  globals: { viewport: { value: 'phone' } },
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = await openHistory(canvasElement)
+    await expect(canvas.getByText('12.25 hours')).toBeVisible()
+    await expect(canvas.getByText(`Performance:`)).toBeVisible()
+    await waitFor(() =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
+    )
+  },
+}
+
+export const EngagementHistoryEmpty: Story = {
+  parameters: withHistory(() => HttpResponse.json({ data: [] })),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Nothing logged yet.')).toBeVisible()
+    await expect(canvas.queryByText('History')).toBeNull()
+  },
+}
+
+export const EngagementHistoryError: Story = {
+  parameters: withHistory(() => HttpResponse.json({}, { status: 500 })),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'The history couldn’t be loaded',
+    )
   },
 }
 

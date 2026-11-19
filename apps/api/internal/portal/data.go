@@ -17,6 +17,7 @@ func (s *Service) registerData(handle func(string, handler)) {
 	handle("GET /api/v1/public/portal/invoices", s.invoices)
 	handle("GET /api/v1/public/portal/invoices/{id}/pdf", s.invoicePDF)
 	handle("GET /api/v1/public/portal/engagements", s.engagements)
+	handle("GET /api/v1/public/portal/engagements/{id}/entries", s.engagementEntries)
 	handle("GET /api/v1/public/portal/documents", s.documents)
 	handle("GET /api/v1/public/portal/documents/{id}/download", s.downloadDocument)
 }
@@ -137,6 +138,52 @@ func (s *Service) engagements(w http.ResponseWriter, r *http.Request, sess store
 	out := []item{}
 	for _, e := range list {
 		out = append(out, item{e.ID, e.Title, e.Unit, e.Quantity, e.Recurrence, currentPeriod(e, periods[e.ID], today)})
+	}
+	auth.WriteJSON(w, http.StatusOK, data(out))
+	return nil
+}
+
+// engagementEntries is the client's history of one of their engagements: each period with logged deliveries, newest
+// first. Only what the client may see: no member, invoice or audit fields.
+func (s *Service) engagementEntries(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
+	e, err := s.db.Q.Engagement(r.Context(), sess.Workspace.ID, r.PathValue("id"), false)
+	if err != nil {
+		return err
+	}
+	if e.ClientID != sess.ClientID {
+		return auth.ErrNotFound
+	}
+	entries, err := s.db.Q.Entries(r.Context(), e.ID, "")
+	if err != nil {
+		return err
+	}
+	periods, err := s.db.Q.EngagementPeriodsOf(r.Context(), []string{e.ID})
+	if err != nil {
+		return err
+	}
+	type entry struct {
+		ID                string               `json:"id"`
+		Date              string               `json:"date"`
+		Quantity          invoicecalc.Quantity `json:"quantity"`
+		Note              *string              `json:"note"`
+		ClientPerformance *string              `json:"client_performance"`
+	}
+	type period struct {
+		StartsOn string  `json:"starts_on"`
+		EndsOn   string  `json:"ends_on"`
+		Entries  []entry `json:"entries"`
+	}
+	out := []period{}
+	for _, p := range periods[e.ID] { // newest first, as the entries
+		var list []entry
+		for _, en := range entries {
+			if en.PeriodID == p.ID {
+				list = append(list, entry{en.ID, en.Date, en.Quantity, en.Note, en.ClientPerformance})
+			}
+		}
+		if len(list) > 0 {
+			out = append(out, period{p.StartsOn, p.EndsOn, list})
+		}
 	}
 	auth.WriteJSON(w, http.StatusOK, data(out))
 	return nil

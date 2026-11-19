@@ -176,6 +176,9 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 				if picked[j].Note != nil {
 					d += " · " + *picked[j].Note
 				}
+				if picked[j].PerformanceOnInvoice && picked[j].ClientPerformance != nil {
+					d += " · " + *picked[j].ClientPerformance
+				}
 				out = append(out, line(e, d, qty[j], unit))
 			}
 			if len(out) > 0 {

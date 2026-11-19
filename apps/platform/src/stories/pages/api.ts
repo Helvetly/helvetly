@@ -365,6 +365,7 @@ const entries: Entry[] = [
   quantity,
   note,
   client_performance: null,
+  client_performance_on_invoice: false,
   performed_by: anna,
   invoice: null,
   created_at: `${date}T16:00:00Z`,
