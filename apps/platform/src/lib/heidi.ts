@@ -2,6 +2,7 @@
 import { locale } from '@helvetly/i18n'
 
 import { request, respond } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 import { IMPORT_ACCEPT } from '@/lib/imports'
 import { STATUS_LABELS, type DisplayStatus } from '@/lib/invoices'
 
@@ -69,7 +70,7 @@ export type HeidiEvent =
   | { type: 'import'; import_id: string }
   | HeidiConfirmation
   | { type: 'done'; usage: { tokens: number } }
-  | { type: 'error'; message: string }
+  | { type: 'error'; code?: string; message: string }
 
 /** One message of a stored conversation (`GET /conversations/{id}`). */
 export type HeidiMessage = {
@@ -335,7 +336,13 @@ export function toHeidiEvent(value: unknown): HeidiEvent | null {
       return { type: 'done', usage: { tokens: typeof tokens === 'number' ? tokens : 0 } }
     }
     case 'error':
-      return isString(value.message) ? { type: 'error', message: value.message } : null
+      return isString(value.message)
+        ? {
+            type: 'error',
+            message: value.message,
+            ...(isString(value.code) && { code: value.code }),
+          }
+        : null
     default:
       return null
   }
@@ -405,4 +412,22 @@ export const heidiApi = {
     request<{ data: HeidiSuggestion[] }>(
       `/heidi/suggestions?${new URLSearchParams(client ? { page, client } : { page })}`,
     ),
+}
+
+/** A failed Heidi answer in the reader's language, by its code; the server's words for a code this app doesn't know. */
+export function heidiErrorText(code: string | undefined, message: string): string {
+  switch (code) {
+    case 'heidi_provider_unavailable':
+      return translate('heidiErrorUnavailable')
+    case 'heidi_busy':
+      return translate('heidiErrorBusy')
+    case 'heidi_ai_misconfigured':
+      return translate('heidiErrorMisconfigured')
+    case 'heidi_usage_uncertain':
+      return translate('heidiErrorUsageUncertain')
+    case 'heidi_paused':
+      return translate('heidiErrorPaused')
+    default:
+      return message
+  }
 }

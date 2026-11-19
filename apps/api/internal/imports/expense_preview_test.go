@@ -250,7 +250,7 @@ func TestPreviewProviderFailureIsKnownAndStoresNothing(t *testing.T) {
 		tokens := int64(5)
 		return aimodel.Reply{Tokens: &tokens}, http.ErrHandlerTimeout
 	}}
-	if w := e.preview("request-0001", pngBytes(t), nil); w.Code != 503 || code(w) != "ai_unavailable" {
+	if w := e.preview("request-0001", pngBytes(t), nil); w.Code != 503 || code(w) != "ai_failed" {
 		t.Errorf("%d %s", w.Code, w.Body)
 	}
 	if n := e.expenseCount("ws_a"); n != 0 {

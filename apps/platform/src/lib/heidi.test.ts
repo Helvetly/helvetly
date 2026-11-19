@@ -1,4 +1,4 @@
-import { createEventParser, toHeidiEvent, type HeidiEvent } from './heidi'
+import { createEventParser, heidiErrorText, toHeidiEvent, type HeidiEvent } from './heidi'
 
 const parseAll = (chunks: string[]) => {
   const events: HeidiEvent[] = []
@@ -123,4 +123,31 @@ test('keeps who generated an answer and drops an unknown marker', () => {
     type: 'text',
     value: 'a',
   })
+})
+
+describe('heidi errors', () => {
+  it('keeps the code of an error frame', () => {
+    expect(toHeidiEvent({ type: 'error', code: 'heidi_busy', message: 'Busy.' })).toEqual({
+      type: 'error',
+      code: 'heidi_busy',
+      message: 'Busy.',
+    })
+    expect(toHeidiEvent({ type: 'error', message: 'Old server.' })).toEqual({
+      type: 'error',
+      message: 'Old server.',
+    })
+  })
+  it.each([
+    [
+      'heidi_provider_unavailable',
+      "Heidi couldn't answer right now. Nothing was changed. Try again in a moment.",
+    ],
+    ['heidi_busy', 'Heidi is busy right now. Try again in a minute.'],
+    ['heidi_ai_misconfigured', 'AI is not configured correctly. Check the model settings.'],
+    ['heidi_paused', "Heidi's AI answers are paused for now. Local commands still work."],
+  ])("words %s in the reader's language", (code, text) =>
+    expect(heidiErrorText(code, 'Server words.')).toBe(text),
+  )
+  it('shows the server words for an unknown code', () =>
+    expect(heidiErrorText('quota_exceeded', 'Allowance used.')).toBe('Allowance used.'))
 })

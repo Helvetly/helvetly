@@ -19,7 +19,9 @@ type AICall struct {
 	Output, Reasoning, Total               *int64
 	CostMicros                             *int64
 	ReportedModel, ReportedTier, RequestID string
-	CreatedAt                              time.Time
+	// Failure is why the provider call failed (aimodel's Fail… reasons, "stale"), "" when it did not.
+	Failure   string
+	CreatedAt time.Time
 }
 
 // InsertAICall reserves the one call in flight of the workspace's pool; false when another call holds it.
@@ -33,8 +35,8 @@ func (q Q) InsertAICall(ctx context.Context, c AICall) (bool, error) {
 // SettleAICall records a reserved call's outcome; only a call still reserved is settled, once.
 func (q Q) SettleAICall(ctx context.Context, c AICall, now time.Time) error {
 	tag, err := q.db.Exec(ctx, `UPDATE ai_calls SET status=$2,input_tokens=$3,cached_input_tokens=$4,output_tokens=$5,reasoning_tokens=$6,total_tokens=$7,
-		cost_micros=$8,reported_model=$9,reported_tier=$10,request_id=$11,settled_at=$12 WHERE id=$1 AND status='reserved'`,
-		c.ID, c.Status, c.Input, c.CachedInput, c.Output, c.Reasoning, c.Total, c.CostMicros, c.ReportedModel, c.ReportedTier, c.RequestID, now)
+		cost_micros=$8,reported_model=$9,reported_tier=$10,request_id=$11,settled_at=$12,failure=$13 WHERE id=$1 AND status='reserved'`,
+		c.ID, c.Status, c.Input, c.CachedInput, c.Output, c.Reasoning, c.Total, c.CostMicros, c.ReportedModel, c.ReportedTier, c.RequestID, now, c.Failure)
 	if err == nil && tag.RowsAffected() != 1 {
 		return ErrNotFound
 	}
