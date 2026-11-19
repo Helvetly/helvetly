@@ -70,7 +70,7 @@ func (s *Service) putPortalAccess(w http.ResponseWriter, r *http.Request, sess s
 	slug, err := s.portal.Slug(r.Context(), sess.Workspace)
 	if err == nil {
 		err = s.db.Tx(r.Context(), func(q store.Q) error {
-			off, err := q.PortalOff(r.Context(), sess.Workspace.ID)
+			off, err := q.LockPortalOff(r.Context(), sess.Workspace.ID)
 			if err != nil || off == !*in.Enabled {
 				return err
 			}
@@ -105,8 +105,22 @@ func (s *Service) slugProblem(ctx context.Context, workspaceID, slug string) (st
 	return "taken", nil
 }
 
-// portalAvailability answers the slug editor as it types: {available, problem}.
+// slugChecksPerMinute is how many addresses one person may check a minute: plenty for typing, too few to list them.
+const slugChecksPerMinute = 30
+
+var errSlugChecksTooMany = auth.Error(http.StatusTooManyRequests, "rate_limited", "Too many address checks. Wait a moment.", nil)
+
+// portalAvailability answers the slug editor as it types: {available, problem}. Only those who may change the slug
+// ask, and each person a limited number of times, so it cannot list other workspaces' addresses.
 func (s *Service) portalAvailability(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	if sess.Role != "owner" && sess.Role != "admin" {
+		s.auth.WriteError(w, r, errPortalAdminOnly)
+		return
+	}
+	if !s.slugLimit.AllowKey(sess.User.ID) {
+		s.auth.WriteError(w, r, errSlugChecksTooMany)
+		return
+	}
 	problem, err := s.slugProblem(r.Context(), sess.Workspace.ID, strings.ToLower(strings.TrimSpace(r.URL.Query().Get("slug"))))
 	if err != nil {
 		s.auth.WriteError(w, r, err)

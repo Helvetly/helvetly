@@ -97,6 +97,34 @@ export const ChangeSlug: Story = {
   },
 }
 
+/** The check itself refused (too many checks): no status and Save stays possible, since saving checks again. */
+export const CheckRateLimited: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/workspace/portal/availability', () =>
+          HttpResponse.json(
+            { error: { code: 'rate_limited', message: 'Too many address checks. Wait a moment.' } },
+            { status: 429 },
+          ),
+        ),
+        onPlan('business'),
+        ...portalAddressHandlers,
+        ...portalDomainHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await slugInput(canvas)
+    await userEvent.clear(input)
+    await userEvent.type(input, 'mueller')
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Save' })).toBeEnabled())
+    await expect(canvas.queryByText('Checking…')).toBeNull()
+    await expect(canvas.queryByText('Available')).toBeNull()
+  },
+}
+
 /** A slug the pattern refuses says why at once, without asking the server. */
 export const InvalidSlug: Story = {
   play: async ({ canvasElement }) => {

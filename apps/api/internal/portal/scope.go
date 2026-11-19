@@ -20,19 +20,20 @@ func (s *Service) openScope(r *http.Request) (store.PortalScope, error) {
 	if !ok {
 		return scope, auth.ErrNotFound
 	}
-	off, err := s.db.Q.PortalOff(r.Context(), scope.WorkspaceID)
-	if err == nil && off {
-		err = errPortalClosed
-	}
-	if err != nil {
-		return scope, err
-	}
 	open, err := s.db.Q.FeatureAllowed(r.Context(), scope.WorkspaceID, store.FeatureClientPortal)
 	if err == nil && open {
 		open, err = s.db.Q.HasPortalClients(r.Context(), scope.WorkspaceID)
 	}
 	if err == nil && !open {
-		err = auth.ErrNotFound
+		return scope, auth.ErrNotFound
+	}
+	// Off is said only of a portal that would otherwise be open, so it reveals no workspace an unknown slug would not.
+	var off bool
+	if err == nil {
+		off, err = s.db.Q.PortalOff(r.Context(), scope.WorkspaceID)
+	}
+	if err == nil && off {
+		err = errPortalClosed
 	}
 	return scope, err
 }

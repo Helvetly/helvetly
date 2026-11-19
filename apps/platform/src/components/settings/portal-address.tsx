@@ -171,7 +171,10 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
     changed &&
     !malformed &&
     typed !== '' &&
-    (!availability.settled || availability.query.isFetching || !availability.query.data)
+    // A check that failed (too many, offline) says nothing and holds nothing back: saving checks again.
+    (!availability.settled ||
+      availability.query.isFetching ||
+      (!availability.query.data && !availability.query.isError))
   const checked = changed && !checking && !malformed ? availability.query.data : undefined
   const error =
     form.errors.slug ??

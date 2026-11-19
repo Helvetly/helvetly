@@ -52,12 +52,14 @@ type Service struct {
 	// namer is the model of the one-time name suggestion (nil: off); limit is its per-address rate limit.
 	namer aimodel.Provider
 	limit *auth.RateLimiter
+	// slugLimit caps each person's portal address checks (typing, debounced).
+	slugLimit *auth.RateLimiter
 	// portal is the client portal's address (nil: its settings are off).
 	portal PortalAddresses
 }
 
 func New(db *store.Store, a Auth, b Billing, files Storage, log *slog.Logger) *Service {
-	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(6, time.Minute)}
+	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(6, time.Minute), slugLimit: auth.NewRateLimiter(slugChecksPerMinute, time.Minute)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {

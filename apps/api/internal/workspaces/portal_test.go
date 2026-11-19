@@ -3,6 +3,7 @@ package workspaces
 import (
 	"context"
 	"net/url"
+	"sync"
 	"testing"
 )
 
@@ -109,5 +110,45 @@ func TestPortalAccess(t *testing.T) {
 	}
 	if len(kinds) != 2 || kinds[0] != "workspace.portal_turned_off" || kinds[1] != "workspace.portal_turned_on" {
 		t.Fatalf("audit: %v", kinds)
+	}
+}
+
+// Two owners turning the portal off at once: the row lock makes one of them the change, audited once.
+func TestPortalAccessConcurrentAuditsOnce(t *testing.T) {
+	e := newEnv(t)
+	owner, ws := e.person("Müller AG", "owner")
+	admin := e.join(ws, "admin")
+	var wg sync.WaitGroup
+	for _, who := range []*browser{owner, admin, owner, admin} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if status, out := e.do(who, "PUT", "/api/v1/workspace/portal/access", map[string]bool{"enabled": false}); status != 200 {
+				t.Errorf("%d %v", status, out)
+			}
+		}()
+	}
+	wg.Wait()
+	var n int
+	if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM financial_events WHERE workspace_id = $1 AND kind = 'workspace.portal_turned_off'`, ws).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("audit rows: %d %v", n, err)
+	}
+}
+
+// Only owners and admins check addresses, each a limited number of times a minute.
+func TestPortalAvailabilityGuarded(t *testing.T) {
+	e := newEnv(t)
+	owner, ws := e.person("Müller AG", "owner")
+	member := e.join(ws, "member")
+	if status, _ := e.do(member, "GET", "/api/v1/workspace/portal/availability?slug=acme", nil); status != 403 {
+		t.Fatalf("member: %d", status)
+	}
+	for i := range slugChecksPerMinute {
+		if status, _ := e.do(owner, "GET", "/api/v1/workspace/portal/availability?slug=acme", nil); status != 200 {
+			t.Fatalf("check %d: %d", i, status)
+		}
+	}
+	if status, out := e.do(owner, "GET", "/api/v1/workspace/portal/availability?slug=acme", nil); status != 429 {
+		t.Fatalf("over the limit: %d %v", status, out)
 	}
 }
