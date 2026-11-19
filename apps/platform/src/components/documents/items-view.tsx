@@ -1,6 +1,7 @@
 'use client'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
+import { Separator } from '@helvetly/ui/components/separator'
 import {
   Tooltip,
   TooltipContent,
@@ -79,13 +80,13 @@ export type ItemsProps = {
   /** The rubber band selected these (added to the selection when ⌘/Shift was held). */
   onBand: (keys: ItemKey[], additive: boolean) => void
   onBackground: () => void
-  /** Grid sections folded away, and the Recent strip shown between folders and files. */
+  /** Grid sections folded away, and the Recent strip shown above folders and files. */
   collapsed: ReadonlySet<SectionId>
   onToggleSection: (id: SectionId) => void
   recent?: ReactNode
 }
 
-/** Folders then files, as a grid of cards or a list with columns; both drag, drop and band-select. */
+/** Recent, folders, files: a grid of cards or a list with columns; both drag, drop and band-select. */
 export function ItemsView(props: ItemsProps) {
   const box = useRef<HTMLDivElement>(null)
   const [band, setBand] = useState<Rect | null>(null)
@@ -275,22 +276,23 @@ function Grid(props: ItemsProps) {
   )
   return (
     <div className="@container grid gap-7 p-4 md:p-5">
-      {props.folders.length > 0 &&
-        section(
-          'folders',
-          translate('folders'),
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(124px,1fr))] gap-x-2 gap-y-3 @2xl:grid-cols-[repeat(auto-fill,minmax(164px,1fr))]">
-            {props.folders.map((folder) => (
-              <FolderTile key={folder.id} props={props} folder={folder} />
-            ))}
-          </div>,
-        )}
       {props.recent &&
         section(
           'recent',
           translate('recent'),
           props.recent,
           translate('theLatestUploadsFromEveryFolder'),
+        )}
+      {props.recent && props.folders.length > 0 && <Separator />}
+      {props.folders.length > 0 &&
+        section(
+          'folders',
+          translate('folders'),
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-x-2 gap-y-3 @2xl:grid-cols-[repeat(auto-fill,minmax(132px,1fr))]">
+            {props.folders.map((folder) => (
+              <FolderTile key={folder.id} props={props} folder={folder} />
+            ))}
+          </div>,
         )}
       {props.files.length > 0 &&
         section(
@@ -363,7 +365,7 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
               <StarGlyph className="size-4" />
             </span>
           )}
-          <FolderArt full={folder.total_files > 0} className="w-[80px] @2xl:w-[112px]" />
+          <FolderArt full={folder.total_files > 0} className="w-16 @2xl:w-[90px]" />
           <span className="block w-full min-w-0 text-center">
             {renaming ? (
               <InlineRename

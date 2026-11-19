@@ -51,7 +51,7 @@ test('searches the catalogue and hands back the line for the invoice’s VAT mod
 
   expect(onPick).toHaveBeenCalledWith(
     {
-      description: 'Hosting\nMonthly, managed',
+      description: 'Hosting – Monthly, managed',
       quantity: '1',
       unit: 'month',
       unit_price: '21.62',
