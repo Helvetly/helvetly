@@ -36,6 +36,9 @@ func TestRoutes(t *testing.T) {
 			if got := strings.TrimSpace(rec.Body.String()); tt.body != "" && got != tt.body {
 				t.Fatalf("body = %q, want %q", got, tt.body)
 			}
+			if got := rec.Header().Get("X-Robots-Tag"); got != "noindex, nofollow" {
+				t.Fatalf("X-Robots-Tag = %q, want noindex, nofollow", got)
+			}
 		})
 	}
 }

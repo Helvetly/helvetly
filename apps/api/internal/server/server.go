@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-// New routes /api to the API (liveness, and the routes `register` adds) and everything else to the frontend.
+// New routes /api to the API (liveness, and the routes `register` adds) and everything else to the frontend; every
+// response asks search engines not to index it.
 func New(frontend http.Handler, register func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -21,7 +22,11 @@ func New(frontend http.Handler, register func(*http.ServeMux)) http.Handler {
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": map[string]string{"code": "not_found", "message": "Not found."}})
 	})
 	mux.Handle("/", frontend)
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only the public website is for search engines: the app, portal, API and media hosts all stay out of the index.
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+		mux.ServeHTTP(w, r)
+	})
 }
 
 // Ready is the readiness probe (GET /api/ready): 200 while ping (the database) succeeds, else 503 without the error
