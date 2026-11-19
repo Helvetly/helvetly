@@ -21,7 +21,6 @@ import {
   ReceiptText,
   RefreshCw,
   RotateCcw,
-  Search,
   SearchX,
   Trash2,
   TrendingDown,
@@ -33,6 +32,7 @@ import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable, Pager } from '@/components/data/list-table'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
   dropdownKit,
@@ -631,19 +631,14 @@ export function EngagementsPage() {
         onRefresh={refresh}
       >
         <div className="relative flex flex-1 flex-col">
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
-            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-              <Search className="size-4 shrink-0 stroke-[1.5]" />
-              <input
-                type="search"
-                aria-label={translate('searchEngagements')}
-                placeholder={translate('searchTitleClientOrReference')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
-              />
-            </label>
-          </div>
+          <ListToolbar>
+            <ListSearch
+              label={translate('searchEngagements')}
+              placeholder={translate('searchTitleClientOrReference')}
+              value={search}
+              onChange={setSearch}
+            />
+          </ListToolbar>
 
           {list.error ? (
             <LoadProblem

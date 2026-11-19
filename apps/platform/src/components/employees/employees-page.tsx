@@ -5,22 +5,14 @@ import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import {
-  Download,
-  IdCard,
-  Lock,
-  ScrollText,
-  Search,
-  SearchX,
-  Settings,
-  UserPlus,
-} from 'lucide-react'
+import { Download, IdCard, Lock, ScrollText, SearchX, Settings, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { NativeSelect } from '@/components/clients/fields'
 import { listTable } from '@/components/data/list-table'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
@@ -126,18 +118,14 @@ export function EmployeesPage() {
       ) : (
         <div className="flex flex-1 flex-col">
           {/* On a phone the search has its own row and the two filters share the next. */}
-          <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 md:px-5">
-            <label className="flex h-8 min-w-40 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground max-sm:basis-full">
-              <Search className="size-4 shrink-0 stroke-[1.5]" />
-              <input
-                type="search"
-                aria-label={translate('employeeSearchLabel')}
-                placeholder={translate('employeeSearchPlaceholder')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
-              />
-            </label>
+          <ListToolbar className="flex-wrap gap-2 px-3 py-2 md:px-5">
+            <ListSearch
+              className="min-w-40 max-sm:basis-full"
+              label={translate('employeeSearchLabel')}
+              placeholder={translate('employeeSearchPlaceholder')}
+              value={search}
+              onChange={setSearch}
+            />
             <NativeSelect
               aria-label={translate('employeeStatusLabel')}
               wrapperClassName="w-36 max-sm:w-auto max-sm:flex-1"
@@ -173,7 +161,7 @@ export function EmployeesPage() {
             <HelpTip label={translate('employeeAndMembersLabel')}>
               {translate('employeeAndMembersTip')}
             </HelpTip>
-          </div>
+          </ListToolbar>
 
           {list.error ? (
             <LoadProblem

@@ -11,7 +11,6 @@ import {
   CloudOff,
   Ellipsis,
   ListFilter,
-  Search,
   SearchX,
   SlidersHorizontal,
   Trash2,
@@ -27,6 +26,7 @@ import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
 import { listTable } from './list-table'
+import { ListSearch, ListToolbar, ToolbarText } from './list-toolbar'
 import { DetailsPopover, DetailsSheet, type RowDetails } from './row-details'
 
 export type Column<Row> = {
@@ -96,7 +96,7 @@ export function TablePage<Row extends { id: string }>({
       />
       {kpis}
       <div className="relative flex flex-1 flex-col">
-        <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
+        <ListToolbar>
           <Button
             variant="ghost"
             size="sm"
@@ -104,19 +104,14 @@ export function TablePage<Row extends { id: string }>({
             onClick={soon(translate('filtersAre'))}
           >
             <ListFilter className="stroke-[1.5]" />
-            {translate('filters')}
+            <ToolbarText>{translate('filters')}</ToolbarText>
           </Button>
-          <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-            <Search className="size-4 shrink-0 stroke-[1.5]" />
-            <input
-              type="search"
-              aria-label={translate('search2', { noun: noun })}
-              placeholder={translate('search')}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
-            />
-          </label>
+          <ListSearch
+            label={translate('search2', { noun: noun })}
+            placeholder={translate('search')}
+            value={search}
+            onChange={setSearch}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -124,9 +119,9 @@ export function TablePage<Row extends { id: string }>({
             onClick={soon(translate('customColumnsAre'))}
           >
             <SlidersHorizontal className="stroke-[1.5]" />
-            <span className="max-sm:sr-only">{translate('customize')}</span>
+            <ToolbarText className="max-sm:sr-only">{translate('customize')}</ToolbarText>
           </Button>
-        </div>
+        </ListToolbar>
 
         {query.error ? (
           <State

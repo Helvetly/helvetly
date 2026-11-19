@@ -38,6 +38,7 @@ import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable, Pager } from '@/components/data/list-table'
+import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
   PageContextMenu,
@@ -464,20 +465,15 @@ export function InvoicesPage() {
       >
         <div className="relative flex flex-1 flex-col">
           {isReceivable(params.kind) && <InvoiceKpis />}
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
+          <ListToolbar>
             <Filters params={params} onChange={update} />
-            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-              <Search className="size-4 shrink-0 stroke-[1.5]" />
-              <input
-                type="search"
-                aria-label={translate('searchInvoices')}
-                placeholder={translate('searchNumberClientOrReference')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full min-w-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-placeholder"
-              />
-            </label>
-          </div>
+            <ListSearch
+              label={translate('searchInvoices')}
+              placeholder={translate('searchNumberClientOrReference')}
+              value={search}
+              onChange={setSearch}
+            />
+          </ListToolbar>
           <ActiveFilters params={params} onChange={update} />
 
           {list.error ? (
@@ -844,7 +840,7 @@ function Filters({
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
           <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
+          <ToolbarText>{translate('filters')}</ToolbarText>
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}

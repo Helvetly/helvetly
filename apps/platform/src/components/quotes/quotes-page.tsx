@@ -10,7 +10,6 @@ import {
   FilePlus2,
   Files,
   Hourglass,
-  Search,
   SearchX,
   Send,
   type LucideIcon,
@@ -19,6 +18,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { listTable } from '@/components/data/list-table'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { PageContextMenu } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { Initials } from '@/components/initials'
@@ -119,19 +119,14 @@ export function QuotesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['quotes'] })}
       >
         <div className="relative flex flex-1 flex-col">
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b px-2 md:px-3">
-            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground">
-              <Search className="size-4 shrink-0 stroke-[1.5]" />
-              <input
-                type="search"
-                aria-label={translate('searchQuotes')}
-                placeholder={translate('searchNumberClientOrReference')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
-              />
-            </label>
-          </div>
+          <ListToolbar>
+            <ListSearch
+              label={translate('searchQuotes')}
+              placeholder={translate('searchNumberClientOrReference')}
+              value={search}
+              onChange={setSearch}
+            />
+          </ListToolbar>
           {list.error ? (
             <State
               icon={<CloudOff />}
