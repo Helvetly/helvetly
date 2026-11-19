@@ -149,7 +149,23 @@ export const Drawer: Story = {
     // One section per document, its records beneath.
     const first = await body().findByRole('region', { name: 'invoices.zip › 2025-IN-001.pdf' })
     await expect(first).toBeVisible()
+    // A file whose one record is already in Helvetly says so and starts closed.
+    const known = body().getByRole('button', { name: /2025-IN-004\.pdf/ })
+    await expect(known).toHaveTextContent('Already in Helvetly')
+    await expect(known).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(known)
     await expect(body().getByRole('region', { name: '2025-IN-004.pdf' })).toBeVisible()
+    // Each kind in a file is a group of its own, headed by its name and count, the client before its invoice.
+    const groups = within(first).getAllByRole('group')
+    await expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toEqual([
+      'imf_1-clients',
+      'imf_1-invoices',
+      'imf_1-engagements',
+    ])
+    await expect(within(groups[0]!).getByRole('heading', { name: /^Clients\s*1$/ })).toBeVisible()
+    await expect(within(first).getAllByRole('columnheader', { name: 'Name' })[0]).toHaveClass(
+      'font-medium',
+    )
     // The file's card names its type once.
     await expect(body().getAllByText(/Invoice you issued/)).toHaveLength(2)
     await expect(body().getByText(/does not look like an invoice/)).toBeVisible()
@@ -205,5 +221,112 @@ export const InChat: Story = {
       'href',
       expect.stringContaining('ent_imr_invoice'),
     )
+  },
+}
+
+// The same invoice imported again: its client and the invoice, each matched to what Helvetly already has.
+const knownClient = record(
+  'imr_known_client',
+  'clients',
+  { name: 'Shuchi Kumra', city: 'Zürich', country: 'CH' },
+  {
+    file_id: 'imf_again',
+    status: 'skipped',
+    duplicate: { id: 'cli_shuchi', label: 'Shuchi Kumra', reason: 'same name' },
+  },
+)
+const knownInvoice = record(
+  'imr_known_invoice',
+  'invoices',
+  {
+    client_name: 'Shuchi Kumra',
+    number: '2026/IN/012',
+    issue_date: '2026-03-02',
+    currency: 'CHF',
+    total: '1200.00',
+    issued_elsewhere: true,
+  },
+  {
+    file_id: 'imf_again',
+    duplicate: { id: 'inv_12', label: '2026/IN/012 · Shuchi Kumra', reason: 'number already used' },
+  },
+)
+const newClient = record(
+  'imr_new_client',
+  'clients',
+  { name: 'Lea Neu', city: 'Bern', country: 'CH' },
+  { file_id: 'imf_new' },
+)
+const newInvoice = record(
+  'imr_new_invoice',
+  'invoices',
+  { client_name: 'Lea Neu', number: '2026/IN/013', currency: 'CHF', total: '480.00' },
+  { file_id: 'imf_new' },
+)
+
+const reimport = (files: ImportFile[], records: ImportRecord[]) => () => {
+  current = { ...batch(records), files }
+  committed = []
+}
+
+/** A file imported again: the same records as the first time, each matched; the file says so and starts closed. */
+export const ReImportAllMatched: Story = {
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  beforeEach: reimport(
+    [file('imf_again', '2026-IN-012.pdf', { reused: true })],
+    [knownClient, knownInvoice],
+  ),
+  parameters: { msw: { handlers: handlers() } },
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    const toggle = await body().findByRole('button', { name: /2026-IN-012\.pdf/ })
+    await expect(toggle).toHaveTextContent('All 2 records already in Helvetly')
+    await expect(toggle).toHaveTextContent('already in Documents')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(body().getByRole('button', { name: 'Import 0' })).toBeDisabled()
+
+    await userEvent.click(toggle)
+    const found = body().getByRole('region', { name: '2026-IN-012.pdf' })
+    await expect(within(found).getByText('Matches Shuchi Kumra in Helvetly')).toBeVisible()
+    await expect(within(found).getByText('same name · linked, not created again')).toBeVisible()
+    await expect(
+      within(found).getByText('Already in Helvetly: 2026/IN/012 · Shuchi Kumra'),
+    ).toBeVisible()
+    await expect(
+      within(found).getByText('number already used · tick to import anyway'),
+    ).toBeVisible()
+    const [clientLink, invoiceLink] = within(found).getAllByRole('link', { name: 'Open' })
+    await expect(clientLink).toHaveAttribute('href', expect.stringContaining('cli_shuchi'))
+    await expect(invoiceLink).toHaveAttribute('href', expect.stringContaining('inv_12'))
+    // The linked client has nothing to choose; the invoice is left out unless ticked.
+    await expect(within(found).queryByRole('checkbox', { name: 'Select Shuchi Kumra' })).toBeNull()
+    const invoiceBox = within(found).getByRole('checkbox', { name: 'Select 2026/IN/012' })
+    await expect(invoiceBox).not.toBeChecked()
+    await userEvent.click(invoiceBox)
+    await expect(within(found).getByText('number already used')).toBeVisible()
+    await expect(body().getByRole('button', { name: 'Import 1' })).toBeEnabled()
+  },
+}
+
+/** A new file beside one already imported: only the new one opens and is ticked. */
+export const ReImportMixed: Story = {
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  beforeEach: reimport(
+    [file('imf_again', '2026-IN-012.pdf'), file('imf_new', '2026-IN-013.pdf')],
+    [knownClient, knownInvoice, newClient, newInvoice],
+  ),
+  parameters: { msw: { handlers: handlers() } },
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    const again = await body().findByRole('button', { name: /2026-IN-012\.pdf/ })
+    const fresh = body().getByRole('button', { name: /2026-IN-013\.pdf/ })
+    await expect(again).toHaveAttribute('aria-expanded', 'false')
+    await expect(fresh).toHaveAttribute('aria-expanded', 'true')
+    await expect(fresh).toHaveTextContent('2 records found')
+    await expect(body().getByRole('checkbox', { name: 'Select Lea Neu' })).toBeChecked()
+    await expect(body().getByRole('checkbox', { name: 'Select 2026/IN/013' })).toBeChecked()
+
+    await userEvent.click(body().getByRole('button', { name: 'Import 2' }))
+    await waitFor(() => expect(committed).toEqual(['imr_new_client', 'imr_new_invoice']))
   },
 }

@@ -130,7 +130,7 @@
 5 text-px apps/platform/src/components/help/help-dialog.tsx
 3 text-px apps/platform/src/components/import/import-conflicts.tsx
 3 text-px apps/platform/src/components/import/import-drawer.tsx
-4 text-px apps/platform/src/components/import/import-review.tsx
+3 text-px apps/platform/src/components/import/import-review.tsx
 1 text-px apps/platform/src/components/initials.tsx
 15 text-px apps/platform/src/components/invoices/client-invoices.tsx
 1 text-px apps/platform/src/components/invoices/client-search.tsx

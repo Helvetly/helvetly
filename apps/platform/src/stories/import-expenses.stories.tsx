@@ -91,7 +91,7 @@ let categories = startingCategories
 /** Every request the drawer and its record editor make besides the import's own. */
 const drawerHandlers = [
   sessionHandler(),
-  http.get('/api/v1/billing', () => HttpResponse.json(billingFixture())),
+  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
   http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: categories })),
   http.post<never, { name: string; account_code: string }>(
     '/api/v1/expense-categories',
@@ -188,9 +188,7 @@ export const ReviewReceipts: Story = {
     await expect(
       body().getByRole('button', { name: /Swiss VAT is 8.1, 2.6 or 3.8 %/ }),
     ).toBeVisible()
-    await expect(
-      body().getByText('Possible duplicate: Expense 9 · SBB (same date and total)'),
-    ).toBeVisible()
+    await expect(body().getByText('Already in Helvetly: Expense 9 · SBB')).toBeVisible()
     await expect(body().getByRole('button', { name: 'Import 1' })).toBeEnabled()
 
     await userEvent.click(body().getByRole('button', { name: 'Edit Hotel Adler' }))

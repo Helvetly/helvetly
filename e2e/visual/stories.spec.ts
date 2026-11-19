@@ -20,7 +20,7 @@ const screens: [App, string][] = [
   ['portal', 'pages-portal--overview'],
   ['portal', 'pages-portal--invoices'],
   ['portal', 'pages-portal--profile'],
-  ['portal', 'portal-lists--engagement-history'],
+  ['portal', 'portal-lists--engagement-activity'],
   ['portal', 'portal-shell--desktop'],
   ['portal', 'portal-shell--scrolled-header'],
 ]

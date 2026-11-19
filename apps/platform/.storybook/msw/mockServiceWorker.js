@@ -10,6 +10,8 @@
 const PACKAGE_VERSION = '3.0.3'
 const INTEGRITY_CHECKSUM = '5cd5cf8b54c3a90f82960cedcd637772'
 const IS_MOCKED_RESPONSE = Symbol('isMockedResponse')
+// Helvetly: well under Chrome's 5-minute limit for one event, far over any story's own wait.
+const UNANSWERED_MS = 60_000
 
 const activeClientIds = new Set()
 /**
@@ -25,6 +27,10 @@ addEventListener('activate', function (event) {
   event.waitUntil(self.clients.claim())
 })
 
+// Helvetly: replies to the page's messages are one-way `client.postMessage`. Upstream awaits a reply on a MessagePort
+// that the msw client never sends, so the `MOCK_ACTIVATE` event stayed open; Chrome kills a worker whose event outlives
+// 5 minutes, and the restarted worker forgot the page mid-story (404s, failed module imports). Re-apply this after
+// `msw init` (scripts/ci.test.mjs checks it).
 addEventListener('message', function (event) {
   const clientId = Reflect.get(event.source || {}, 'id')
 
@@ -61,7 +67,7 @@ addEventListener('message', function (event) {
         const client = await self.clients.get(clientId)
 
         if (client != null) {
-          await sendToClient(client, {
+          client.postMessage({
             type: 'CLIENT_CLOSED',
           })
         }
@@ -83,14 +89,14 @@ addEventListener('message', function (event) {
 
       switch (event.data) {
         case 'KEEPALIVE_REQUEST': {
-          await sendToClient(client, {
+          client.postMessage({
             type: 'KEEPALIVE_RESPONSE',
           })
           break
         }
 
         case 'INTEGRITY_CHECK_REQUEST': {
-          await sendToClient(client, {
+          client.postMessage({
             type: 'INTEGRITY_CHECK_RESPONSE',
             payload: {
               packageVersion: PACKAGE_VERSION,
@@ -103,7 +109,7 @@ addEventListener('message', function (event) {
         case 'MOCK_ACTIVATE': {
           activeClientIds.add(clientId)
 
-          await sendToClient(client, {
+          client.postMessage({
             type: 'MOCKING_ENABLED',
             payload: {
               client: {
@@ -325,17 +331,25 @@ async function getResponse(event, client, requestId) {
 
   // Notify the client that a request has been intercepted.
   const serializedRequest = await serializeRequest(event.request)
-  const clientMessage = await sendToClient(
-    client,
-    {
-      type: 'REQUEST',
-      payload: {
-        id: requestId,
-        ...serializedRequest,
-      },
-    },
-    [serializedRequest.body],
+  // Helvetly: a handler that never answers (`delay('infinite')`, or a story frame closed mid-request) must not hold
+  // this fetch event open past Chrome's 5-minute limit either; it fails like a dropped connection instead.
+  const unanswered = new Promise((resolve) =>
+    setTimeout(resolve, UNANSWERED_MS, { type: 'UNANSWERED' }),
   )
+  const clientMessage = await Promise.race([
+    unanswered,
+    sendToClient(
+      client,
+      {
+        type: 'REQUEST',
+        payload: {
+          id: requestId,
+          ...serializedRequest,
+        },
+      },
+      [serializedRequest.body],
+    ),
+  ])
 
   switch (clientMessage.type) {
     case 'MOCK_RESPONSE': {
@@ -344,6 +358,10 @@ async function getResponse(event, client, requestId) {
 
     case 'PASSTHROUGH': {
       return passthrough(clientMessage.data)
+    }
+
+    case 'UNANSWERED': {
+      return Response.error()
     }
   }
 

@@ -1,13 +1,13 @@
 'use client'
-import { Disclosure } from '@helvetly/ui/components/disclosure'
+import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
 import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ChevronDown, Gauge } from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
 
 import { civilToday, daysLeftText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
@@ -16,6 +16,7 @@ import {
   listPortalEngagements,
   portalKeys,
   type PortalEngagement,
+  type PortalEngagementPeriod,
 } from '@/lib/portal'
 
 import { cardClass, EmptyState, PageHeader, RetryAlert } from './portal-bits'
@@ -62,109 +63,159 @@ function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
   )
 }
 
-/** Every logged delivery, by period and newest first: date, quantity, note and how the client did. */
-function History({ engagement }: { engagement: PortalEngagement }) {
+/** One logged delivery: date, quantity, the note and, when the supplier wrote one, the client performance. */
+function ActivityRow({
+  entry,
+  unit,
+}: {
+  entry: PortalEngagementPeriod['entries'][number]
+  unit: string
+}) {
+  const performance = entry.client_performance?.trim()
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)_6rem]">
+      <time
+        dateTime={entry.date}
+        className="text-body-sm text-muted-foreground tabular-nums sm:pt-px"
+      >
+        {formatDate(entry.date)}
+      </time>
+      <span className="text-right text-body-sm font-medium whitespace-nowrap tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-px">
+        {Number(entry.quantity)} {unit}
+      </span>
+      {(entry.note || performance) && (
+        <div className="col-span-2 grid min-w-0 gap-1.5 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+          {entry.note && <p className="text-body break-words">{entry.note}</p>}
+          {performance && (
+            <p className="rounded-md bg-muted/60 px-2.5 py-1.5 text-body-sm break-words text-muted-foreground">
+              <span className="font-medium text-foreground">{translate('clientPerformance')}:</span>{' '}
+              {performance}
+            </p>
+          )}
+        </div>
+      )}
+    </li>
+  )
+}
+
+/** Every logged delivery, newest first, with a light divider where a period starts. */
+function Activity({ engagement }: { engagement: PortalEngagement }) {
   const query = useQuery({
     queryKey: portalKeys.engagementHistory(engagement.id),
     queryFn: () => listPortalEngagementHistory(engagement.id),
   })
-  if (query.isPending) return <Loader className="min-h-11" />
+  if (query.isPending) return <Loader className="min-h-20" />
   if (query.error)
     return <RetryAlert what={translate('theHistory')} onRetry={() => void query.refetch()} />
-  const count = query.data.reduce((sum, period) => sum + period.entries.length, 0)
-  if (count === 0)
-    return <p className="text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
+  if (query.data.every((period) => period.entries.length === 0))
+    return (
+      <p className="py-2 text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
+    )
   return (
-    <Disclosure label={translate('history')} count={count}>
-      <div className="grid gap-3 py-2 pr-3">
-        {query.data.map((period) => (
-          <section key={period.starts_on} className="grid gap-1">
-            <h3 className="text-caption font-medium text-muted-foreground tabular-nums">
-              {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
-            </h3>
-            <ol className="divide-y divide-border">
-              {period.entries.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 py-2"
-                >
-                  <time
-                    dateTime={entry.date}
-                    className="text-body-sm text-muted-foreground tabular-nums"
-                  >
-                    {formatDate(entry.date)}
-                  </time>
-                  <span className="row-span-3 text-right text-body-sm font-medium whitespace-nowrap tabular-nums">
-                    {Number(entry.quantity)} {engagement.unit}
-                  </span>
-                  {entry.note && <p className="text-body break-words">{entry.note}</p>}
-                  {entry.client_performance && (
-                    <p className="text-body-sm break-words text-muted-foreground">
-                      <span className="font-medium">{translate('performance')}:</span>{' '}
-                      {entry.client_performance}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </section>
-        ))}
-      </div>
-    </Disclosure>
+    <div className="grid gap-2">
+      {query.data.map((period) => (
+        <section key={period.starts_on}>
+          <h3 className="flex items-center gap-3 text-caption font-medium text-muted-foreground tabular-nums after:h-px after:flex-1 after:bg-border">
+            {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
+          </h3>
+          <ol className="divide-y divide-border/60">
+            {period.entries.map((entry) => (
+              <ActivityRow key={entry.id} entry={entry} unit={engagement.unit} />
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
   )
 }
 
+/**
+ * One engagement across the page: what was agreed and how much of it is used, and below it an accordion with
+ * the logged activity. Each card opens on its own; nothing is remembered.
+ */
 function EngagementCard({ engagement, today }: { engagement: PortalEngagement; today: string }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
   const period = engagement.current_period
   const quantity = Number(engagement.quantity)
   const share = period && quantity > 0 ? Number(period.used) / quantity : 0
   return (
-    <li className={cn(cardClass, 'grid content-start gap-5 p-4 sm:p-6')}>
-      <div className="grid gap-0.5">
-        <h2 className="text-title-sm font-medium">{engagement.name}</h2>
-        <p className="text-body-sm text-muted-foreground">{commitment(engagement)}</p>
-      </div>
-      {period ? (
-        <>
-          <div className="grid gap-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                {Number(period.used)}
-                <span className="text-base font-normal text-muted-foreground">
-                  {' '}
-                  / {quantity} {engagement.unit}
+    <li className={cardClass}>
+      {/* The Details button stretches over the summary, so a click anywhere on it opens the activity. */}
+      <div className="relative grid gap-4 rounded-xl p-4 transition-colors has-[[data-toggle]:hover]:bg-muted/40 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid min-w-0 gap-0.5">
+            <h2 id={`${id}-title`} className="text-title-sm font-medium break-words">
+              {engagement.name}
+            </h2>
+            <p className="text-body-sm text-muted-foreground">{commitment(engagement)}</p>
+          </div>
+          <Button
+            data-toggle
+            variant="ghost"
+            size="sm"
+            aria-expanded={open}
+            aria-controls={`${id}-activity`}
+            onClick={() => setOpen(!open)}
+            className="shrink-0 text-muted-foreground after:absolute after:inset-0 after:rounded-xl"
+          >
+            {translate('details')}
+            <ChevronDown
+              data-icon="inline-end"
+              aria-hidden
+              className={cn('transition-transform duration-200', open && 'rotate-180')}
+            />
+          </Button>
+        </div>
+        {period ? (
+          <>
+            <div className="grid gap-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                  {Number(period.used)}
+                  <span className="text-base font-normal text-muted-foreground">
+                    {' '}
+                    / {quantity} {engagement.unit}
+                  </span>
+                </p>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {Math.round(share * 100)}%
                 </span>
-              </p>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {Math.round(share * 100)}%
-              </span>
+              </div>
+              <UsageBar engagement={engagement} />
             </div>
-            <UsageBar engagement={engagement} />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {Number(period.overage) > 0 ? (
-              <Chip tone="amber">
-                {translate('overage')}
-                {Number(period.overage)} {engagement.unit}
-              </Chip>
-            ) : (
-              <Chip tone="gray">
-                {translate('remaining')}
-                {Number(period.remaining)} {engagement.unit}
-              </Chip>
-            )}
-          </div>
-          <p className="flex flex-wrap justify-between gap-x-3 border-t pt-3 text-body-sm text-muted-foreground">
-            <span>
-              {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
-            </span>
-            <span>{daysLeftText(period.ends_on, today)}</span>
-          </p>
-        </>
-      ) : (
-        <p className="text-sm text-muted-foreground">{translate('noPeriodIsRunningRightNow')}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-sm text-muted-foreground">
+              {Number(period.overage) > 0 ? (
+                <Chip tone="amber">
+                  {translate('overage')}
+                  {Number(period.overage)} {engagement.unit}
+                </Chip>
+              ) : (
+                <Chip tone="gray">
+                  {translate('remaining')}
+                  {Number(period.remaining)} {engagement.unit}
+                </Chip>
+              )}
+              <span className="tabular-nums">
+                {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
+              </span>
+              <span aria-hidden>·</span>
+              <span>{daysLeftText(period.ends_on, today)}</span>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">{translate('noPeriodIsRunningRightNow')}</p>
+        )}
+      </div>
+      {open && (
+        <section
+          id={`${id}-activity`}
+          aria-labelledby={`${id}-title`}
+          className="border-t px-4 pt-3 pb-4 sm:px-6 sm:pb-5"
+        >
+          <Activity engagement={engagement} />
+        </section>
       )}
-      <History engagement={engagement} />
     </li>
   )
 }
@@ -190,7 +241,7 @@ export function PortalEngagements() {
           </EmptyState>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <ul className="grid gap-4">
           {query.data.map((engagement) => (
             <EngagementCard key={engagement.id} engagement={engagement} today={today} />
           ))}

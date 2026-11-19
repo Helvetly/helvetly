@@ -216,7 +216,8 @@ func (q Q) AddImportRecords(ctx context.Context, f ImportFile, records []ImportR
 	return q.InsertImportRecords(ctx, f, records, now)
 }
 
-// InsertImportRecords appends records read from file f after the batch's last one, without counting a chunk.
+// InsertImportRecords appends records read from file f after the batch's last one, without counting a chunk; a record
+// without a status is pending.
 func (q Q) InsertImportRecords(ctx context.Context, f ImportFile, records []ImportRecord, now time.Time) error {
 	var next int
 	if err := q.db.QueryRow(ctx, `SELECT coalesce(max(position), -1) + 1 FROM import_records WHERE batch_id=$1`, f.BatchID).Scan(&next); err != nil {
@@ -224,8 +225,8 @@ func (q Q) InsertImportRecords(ctx context.Context, f ImportFile, records []Impo
 	}
 	for i, r := range records {
 		if _, err := q.db.Exec(ctx, `INSERT INTO import_records (id, batch_id, file_id, workspace_id, position, kind, data, issues,
-			duplicate, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`,
-			r.ID, f.BatchID, f.ID, f.WorkspaceID, next+i, r.Kind, r.Data, r.Issues, r.Duplicate, now); err != nil {
+			duplicate, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,coalesce(nullif($11, ''), 'pending'),$10,$10)`,
+			r.ID, f.BatchID, f.ID, f.WorkspaceID, next+i, r.Kind, r.Data, r.Issues, r.Duplicate, now, r.Status); err != nil {
 			return err
 		}
 	}
