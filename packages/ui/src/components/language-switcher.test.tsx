@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { DropdownMenu, DropdownMenuContent } from './dropdown-menu'
 import { Flag } from './flag'
-import { LanguageDialogButton, LanguageSwitcher } from './language-switcher'
+import { LanguageDialogButton, LanguageSubmenu, LanguageSwitcher } from './language-switcher'
 
 test('shows language flags independently of Swiss regional formatting', async () => {
   const user = userEvent.setup()
@@ -48,6 +49,29 @@ test('the footer language button opens a dialog with every language, the current
     expect(within(dialog).getByRole('button', { name })).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { name: 'English' })).toHaveAttribute(
     'aria-pressed',
+    'true',
+  )
+})
+
+test('the account-menu language row shows the current language and opens every language', async () => {
+  const user = userEvent.setup()
+  render(
+    <DropdownMenu open>
+      <DropdownMenuContent>
+        <LanguageSubmenu />
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  )
+
+  const row = screen.getByRole('menuitem', { name: /^Language/ })
+  expect(row).toHaveTextContent('English')
+  await user.click(row)
+  const sub = await screen.findAllByRole('menuitemradio')
+  expect(sub.map((item) => item.textContent)).toEqual(
+    expect.arrayContaining(['Deutsch', 'English', 'Français', 'Italiano']),
+  )
+  expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
+    'aria-checked',
     'true',
   )
 })
