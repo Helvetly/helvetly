@@ -14,9 +14,11 @@ import {
   serverFieldErrors,
   committedTotal,
   nextSteps,
+  periodPreview,
   schedulePeriods,
   summarySentence,
   toInput,
+  keptLongDescription,
   validate,
   type FormValues,
 } from './engagement-form-model'
@@ -195,7 +197,43 @@ describe('committedTotal', () => {
   })
 })
 
+const monthly = (end_date: string) =>
+  periodPreview(filled({ recurrence: 'monthly', start_date: '2026-11-19', end_date }))
+
+describe('periodPreview', () => {
+  it('lists the first three, then the last with its number and the count, up to the end date', () =>
+    expect(monthly('2027-03-19')).toEqual({
+      first: [
+        { n: 1, start: '2026-11-19', end: '2026-12-18' },
+        { n: 2, start: '2026-12-19', end: '2027-01-18' },
+        { n: 3, start: '2027-01-19', end: '2027-02-18' },
+      ],
+      last: { n: 5, start: '2027-03-19', end: '2027-03-19' },
+      more: true,
+      count: 5,
+    }))
+  it('lists all of up to four periods', () => {
+    expect(monthly('2027-03-18')).toMatchObject({ last: null, more: false, count: 4 })
+    expect(monthly('2027-03-18').first).toHaveLength(4)
+  })
+  it('ends the only period on an end date inside it', () =>
+    expect(monthly('2026-11-20')).toEqual({
+      first: [{ n: 1, start: '2026-11-19', end: '2026-11-20' }],
+      last: null,
+      more: false,
+      count: 1,
+    }))
+  it('lists three and more while open-ended', () =>
+    expect(monthly('')).toMatchObject({ last: null, more: true, count: null }))
+})
+
 describe('nextSteps', () => {
+  it('does not promise a next period when the end date leaves one', () =>
+    expect(
+      nextSteps(
+        filled({ recurrence: 'monthly', start_date: '2026-11-19', end_date: '2026-11-20' }),
+      ),
+    ).not.toContain('A new period with the same quantity starts automatically.'))
   it('says an advance draft follows when auto invoicing is on', () =>
     expect(nextSteps(filled({ auto_invoice: true }))).toContain(
       'An advance invoice draft is created when the period starts.',
@@ -265,5 +303,21 @@ describe('paid separately', () => {
     expect(committedTotal(paid)).toBeNull()
     expect(nextSteps(paid)[0]).toMatch(/Nothing is invoiced/)
     expect(summarySentence(paid, 'Muster AG')).toMatch(/Paid separately$/)
+  })
+})
+
+describe('description limit', () => {
+  const long = 'b'.repeat(1500)
+  it('refuses more than 1000 characters', () => {
+    expect(validate(filled({ description: 'a'.repeat(1000) })).description).toBeUndefined()
+    expect(validate(filled({ description: 'a'.repeat(1001) })).description).toBe(
+      'Use at most 1000 characters.',
+    )
+  })
+  it('keeps a longer description saved before the limit while it is unchanged', () => {
+    expect(keptLongDescription(` ${long}\n`, long)).toBe(true)
+    expect(validate(filled({ description: long }), long).description).toBeUndefined()
+    expect(validate(filled({ description: `${long}c` }), long).description).toBeDefined()
+    expect(validate(filled({ description: long.slice(0, 1200) }), long).description).toBeDefined()
   })
 })

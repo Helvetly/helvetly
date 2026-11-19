@@ -55,6 +55,7 @@ import {
 import { useCan } from '@/lib/permissions'
 import { queryKeys } from '@/lib/queries'
 
+import { ContractDocumentField } from './contract-document-field'
 import {
   ENGAGEMENT_HABIT_FIELDS,
   habitValues,
@@ -62,6 +63,7 @@ import {
   FALLBACK_DEFAULTS,
   canRollOver,
   DESCRIPTION_MAX,
+  keptLongDescription,
   FIELD_ORDER,
   RECURRENCE_OPTIONS,
   serverFieldErrors,
@@ -265,7 +267,7 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
 
   const submit = () => {
     if (submitting.current) return
-    const found = validate(values)
+    const found = validate(values, initial.description)
     setErrors(found)
     if (Object.keys(found).length) return focusFirstError(found)
     submitting.current = true
@@ -400,6 +402,11 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     field="description"
                     label={translate('description')}
                     error={errors.description}
+                    hint={
+                      keptLongDescription(values.description, initial.description)
+                        ? translate('descriptionKeptLong', { max: DESCRIPTION_MAX })
+                        : undefined
+                    }
                     tip={translate('internalNotesAlsoAddedUnderTheTitleOnInvoice')}
                   >
                     <TextareaBox
@@ -502,66 +509,76 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     }))
                   }
                 />
-                {recurring && (
-                  <FormField
-                    field="interval"
-                    label={translate('every')}
-                    error={errors.interval}
-                    required
+                {/* Every | Starts | Ends on one row where the dates still fit, else Every on a row of its own. */}
+                <div className="@container">
+                  <div
+                    className={cn(
+                      'grid gap-4 @sm:grid-cols-2',
+                      recurring &&
+                        '@md:grid-cols-[minmax(10.5rem,1fr)_minmax(0,1fr)_minmax(0,1fr)]',
+                    )}
                   >
-                    <div className="flex gap-1.5 sm:max-w-xs">
+                    {recurring && (
+                      <FormField
+                        field="interval"
+                        className="@sm:col-span-2 @md:col-span-1"
+                        label={translate('every')}
+                        error={errors.interval}
+                        required
+                      >
+                        <div className="flex gap-1.5">
+                          <input
+                            {...describe('interval')}
+                            inputMode="numeric"
+                            value={values.interval}
+                            onChange={(event) => set('interval', event.target.value)}
+                            className={cn(inputClass, 'w-12 shrink-0 text-right tabular-nums')}
+                          />
+                          <Combobox
+                            id="engagement-recurrence"
+                            label={translate('period')}
+                            value={values.recurrence}
+                            options={[...RECURRENCE_OPTIONS]}
+                            placeholder={translate('period')}
+                            className="min-w-0 flex-1"
+                            onChange={(code) => {
+                              const next = RECURRENCE_OPTIONS.find((o) => o.value === code)?.value
+                              if (next) set('recurrence', next satisfies Recurrence)
+                            }}
+                          />
+                        </div>
+                      </FormField>
+                    )}
+                    <FormField
+                      field="start_date"
+                      label={translate('starts')}
+                      error={errors.start_date}
+                      required
+                    >
                       <input
-                        {...describe('interval')}
-                        inputMode="numeric"
-                        value={values.interval}
-                        onChange={(event) => set('interval', event.target.value)}
-                        className={cn(inputClass, 'w-16 shrink-0 text-right tabular-nums')}
+                        {...describe('start_date')}
+                        type="date"
+                        value={values.start_date}
+                        onChange={(event) => set('start_date', event.target.value)}
+                        className={inputClass}
                       />
-                      <Combobox
-                        id="engagement-recurrence"
-                        label={translate('period')}
-                        value={values.recurrence}
-                        options={[...RECURRENCE_OPTIONS]}
-                        placeholder={translate('period')}
-                        onChange={(code) => {
-                          const next = RECURRENCE_OPTIONS.find((o) => o.value === code)?.value
-                          if (next) set('recurrence', next satisfies Recurrence)
-                        }}
+                    </FormField>
+                    <FormField
+                      field="end_date"
+                      label={recurring ? translate('endsOptional') : translate('ends')}
+                      error={errors.end_date}
+                      required={!recurring}
+                      hint={recurring ? translate('leaveEmptyToRunUntilYouCancelIt') : undefined}
+                    >
+                      <input
+                        {...describe('end_date')}
+                        type="date"
+                        value={values.end_date}
+                        onChange={(event) => set('end_date', event.target.value)}
+                        className={inputClass}
                       />
-                    </div>
-                  </FormField>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    field="start_date"
-                    label={translate('starts')}
-                    error={errors.start_date}
-                    required
-                  >
-                    <input
-                      {...describe('start_date')}
-                      type="date"
-                      value={values.start_date}
-                      onChange={(event) => set('start_date', event.target.value)}
-                      className={inputClass}
-                    />
-                  </FormField>
-                  <FormField
-                    field="end_date"
-                    label={recurring ? translate('endsOptional') : translate('ends')}
-                    error={errors.end_date}
-                    required={!recurring}
-                    hint={recurring ? translate('leaveEmptyToRunUntilYouCancelIt') : undefined}
-                  >
-                    <input
-                      {...describe('end_date')}
-                      type="date"
-                      value={values.end_date}
-                      onChange={(event) => set('end_date', event.target.value)}
-                      className={inputClass}
-                    />
-                  </FormField>
+                    </FormField>
+                  </div>
                 </div>
               </FormSection>
 
@@ -797,13 +814,14 @@ function FormSheetBody({ onClose, engagement, clientId, onSaved }: FormSheetProp
                     field="document_id"
                     label={translate('contractDocument')}
                     error={errors.document_id}
-                    tip={translate('theIDOfTheSignedContractInDocuments')}
+                    tip={translate('contractDocumentTip')}
                   >
-                    <input
-                      {...describe('document_id')}
+                    <ContractDocumentField
+                      id={fieldId('document_id')}
                       value={values.document_id}
-                      onChange={(event) => set('document_id', event.target.value)}
-                      className={cn(inputClass, 'font-mono text-[13px]')}
+                      clientId={values.client_id}
+                      invalid={Boolean(errors.document_id)}
+                      onChange={(id) => set('document_id', id)}
                     />
                   </FormField>
                 </div>

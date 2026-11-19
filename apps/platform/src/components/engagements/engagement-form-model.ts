@@ -72,8 +72,12 @@ export const FIELD_ORDER: (keyof FormValues)[] = [
 export const PRESET_MONTHS = [1, 3, 6, 12] as const
 const MAX_QUANTITY_MILLI = 1_000_000_000n
 const MAX_PRICE_CENTS = 10_000_000_000n
-/** As the API's limit (engagements/input.go), counted after trimming. */
-export const DESCRIPTION_MAX = 2000
+/** As the API's limit (engagements/input.go) and products', counted after trimming. */
+export const DESCRIPTION_MAX = 1000
+
+/** A description saved before the limit, longer than it and not changed: kept and saved as it is. */
+export const keptLongDescription = (description: string, saved: string) =>
+  description.trim().length > DESCRIPTION_MAX && description.trim() === saved.trim()
 
 /** What a new engagement starts with: the workspace's currency and VAT defaults. */
 export type Defaults = { currency: string; vat_registered: boolean; default_vat_rate: string }
@@ -201,7 +205,8 @@ const priceCents = (text: string) => {
   return p === null || p.startsWith('-') ? null : toCents(p)
 }
 
-export function validate(values: FormValues): FieldErrors {
+/** `savedDescription`: the engagement's description as loaded, which may stay over the limit unchanged. */
+export function validate(values: FormValues, savedDescription = ''): FieldErrors {
   const errors: FieldErrors = {}
   if (!values.client_id) errors.client_id = translate('chooseAClient')
   const title = values.title.trim()
@@ -241,8 +246,11 @@ export function validate(values: FormValues): FieldErrors {
     if (rate === null || rate.startsWith('-') || Number(rate) > 100 || Number(rate) === 0)
       errors.vat_rate = translate('enterAVATRateAbove0UpTo100')
   }
-  if (values.description.trim().length > DESCRIPTION_MAX)
-    errors.description = translate('useAtMost2000Characters')
+  if (
+    values.description.trim().length > DESCRIPTION_MAX &&
+    !keptLongDescription(values.description, savedDescription)
+  )
+    errors.description = translate('useAtMostCharacters3', { DESCRIPTION_MAX })
   if (values.reference.trim().length > 100) errors.reference = translate('useAtMost100Characters')
   return errors
 }
@@ -350,6 +358,32 @@ export function schedulePeriods(values: FormValues, limit: number): Period[] {
   return periods
 }
 
+// End dates reach 2100, so a weekly schedule from 2000 has about 5'300 periods.
+const MAX_LISTED = 6000
+
+export type NumberedPeriod = Period & { n: number }
+
+/**
+ * The periods the summary lists: all of them up to four; else the first three, then, with an end date, the last
+ * one and how many there are in all (`count`, null while open-ended).
+ */
+export function periodPreview(values: FormValues): {
+  first: NumberedPeriod[]
+  last: NumberedPeriod | null
+  more: boolean
+  count: number | null
+} {
+  const ends = isDate(values.end_date)
+  const all = schedulePeriods(values, ends ? MAX_LISTED : 4).map((p, i) => ({ ...p, n: i + 1 }))
+  const short = all.length <= (ends ? 4 : 3)
+  return {
+    first: short ? all : all.slice(0, 3),
+    last: ends && !short ? (all.at(-1) ?? null) : null,
+    more: !short,
+    count: ends ? all.length : null,
+  }
+}
+
 /** What the engagement is worth in total; null while unknown (no end date on a recurring one). */
 export function committedTotal(values: FormValues) {
   if (values.billing === 'paid') return null
@@ -411,7 +445,9 @@ export function nextSteps(values: FormValues): string[] {
     )
     steps.push('Nothing is sent or issued without you.')
   }
-  if (recurring) steps.push('A new period with the same quantity starts automatically.')
+  // Not when the end date leaves a single period.
+  if (recurring && schedulePeriods(values, 2).length !== 1)
+    steps.push('A new period with the same quantity starts automatically.')
   if (canRollOver(values) && values.rollover)
     steps.push('Unused quantity carries into the next period only, then expires.')
   return steps

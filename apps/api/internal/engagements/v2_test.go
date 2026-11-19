@@ -155,3 +155,40 @@ func TestInvoiceDetailDefault(t *testing.T) {
 func (f *fakeDrafts) Seller(context.Context, store.Q, string) (store.Party, []byte, string, error) {
 	return store.Party{}, nil, "en", nil
 }
+
+func TestDescriptionLimit(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	cli := e.client(b)
+	at, over := strings.Repeat("é", descriptionMax), strings.Repeat("a", descriptionMax+1)
+	e.fails(b, "POST", "/api/v1/engagements", input(cli, map[string]any{"description": over}), 422, "validation_failed", "description")
+	v := e.create(b, input(cli, map[string]any{"description": at}))
+
+	// One saved before the limit: it loads and saves unchanged, any change has to fit the limit.
+	legacy := strings.Repeat("b", 1500)
+	if _, err := e.pool.Exec(context.Background(), `UPDATE engagements SET description = $1 WHERE id = $2`, legacy, v.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, description string
+		status            int
+	}{
+		{"unchanged", legacy, 200},
+		{"unchanged with outer spaces", " " + legacy + "\n", 200},
+		{"changed and still long", legacy + "c", 422},
+		{"shortened but above the limit", legacy[:1200], 422},
+		{"shortened to the limit", legacy[:descriptionMax], 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.status == 200 {
+				e.do(b, "PATCH", "/api/v1/engagements/"+v.ID, map[string]any{"description": tc.description, "title": "Renamed"}, 200, nil)
+				return
+			}
+			e.fails(b, "PATCH", "/api/v1/engagements/"+v.ID, map[string]any{"description": tc.description}, 422, "validation_failed", "description")
+		})
+	}
+	var got string
+	if err := e.pool.QueryRow(context.Background(), `SELECT description FROM engagements WHERE id = $1`, v.ID).Scan(&got); err != nil || got != legacy[:descriptionMax] {
+		t.Fatalf("description %d chars, %v", len(got), err)
+	}
+}

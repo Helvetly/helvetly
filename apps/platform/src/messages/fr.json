@@ -3015,7 +3015,6 @@
   "theFolder": "le dossier",
   "theFullEditorIsComingSoon": "L’éditeur complet arrive bientôt.",
   "theHelvetlyDocs": "les Helvetly documents",
-  "theIDOfTheSignedContractInDocuments": "L’ID du contrat signé dans Documents.",
   "theInvoicesItIssuedStayAsTheyAreThe": "Les factures qu’elle a émises restent telles quelles ; le reste n’est jamais délivré. Cela ne peut pas être annulé.",
   "theLastChargeDidnTGoThroughStripeRetries": "La dernière charge n’a pas abouti. Stripe réessaye la carte ;",
   "theLatestClosedMonthIs": "; le dernier mois fermé est le {value1}.",
@@ -3295,7 +3294,6 @@
   "useATemplate": "Utiliser un modèle…",
   "useAtMost100Characters": "Utilisez au maximum 100 caractères",
   "useAtMost10Signers": "Utilisez au maximum 10 signataires.",
-  "useAtMost2000Characters": "Utilisez au maximum 2 000 caractères",
   "useAtMost200Characters": "Utiliser au maximum 200 caractères",
   "useAtMost200Characters2": "Utilisez au maximum 200 caractères.",
   "useAtMost64Characters": "Utilisez au maximum 64 caractères.",
@@ -4486,5 +4484,13 @@
   "filledFromUIDRegister": "Rempli depuis le registre IDE.",
   "filledFromUIDRegisterReplaced": "Rempli depuis le registre IDE, remplace : {fields}.",
   "uidVerified": "IDE vérifiée",
-  "uidVerifiedTip": "Vérifiée dans le registre IDE suisse sous {uid} le {date}."
+  "uidVerifiedTip": "Vérifiée dans le registre IDE suisse sous {uid} le {date}.",
+  "contractDocumentTip": "Le contrat signé dans Documents. Les documents du client apparaissent en premier.",
+  "contractDocumentNone": "Aucun",
+  "contractDocumentNoneYet": "Aucun document pour l’instant. Importez le contrat signé dans Documents pour le lier ici.",
+  "contractDocumentLinked": "Document lié",
+  "contractDocumentOfClient": "Documents de ce client",
+  "contractDocumentOther": "Autres documents",
+  "descriptionKeptLong": "Enregistrée avant la limite de {max} caractères : elle est conservée telle quelle. Pour la modifier, raccourcissez-la à {max} caractères.",
+  "periodsInTotal": "{count, plural, one {# période} other {# périodes}} au total"
 }

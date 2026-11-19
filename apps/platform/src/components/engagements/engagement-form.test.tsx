@@ -141,7 +141,7 @@ test('the description and a different overage price stay behind their buttons', 
   await userEvent.click(screen.getByRole('button', { name: /Add description/ }))
   expect(await screen.findByRole('textbox', { name: /Description/ })).toHaveFocus()
   // The API's limit, counted as on the product form.
-  expect(screen.getByText('0 / 2000')).toBeInTheDocument()
+  expect(screen.getByText('0 / 1000')).toBeInTheDocument()
 
   expect(screen.queryByRole('textbox', { name: /Price for extra/ })).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: /Different price for extra hours/ }))
