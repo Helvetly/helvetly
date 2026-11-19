@@ -290,7 +290,7 @@
   --chart-5: oklch(0.78 0.14 75);
   --elevation-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 2px oklch(0 0 0 / 0.3);
   --elevation-soft: 0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px oklch(0 0 0 / 0.35);
-  --sticky-shadow: 0 6px 12px -8px oklch(0 0 0 / 0.6);
+  --sticky-shadow: 0 1px 0 oklch(1 0 0 / 0.08), 0 8px 16px -6px oklch(0 0 0 / 0.9);
   --elevation-2: 0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -8px oklch(0 0 0 / 0.55);
   --heidi: #a593ff;
   --heidi-soft: oklch(0.3 0.08 292);
