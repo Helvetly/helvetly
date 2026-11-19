@@ -23,6 +23,7 @@ import {
   useSidebar,
 } from '@helvetly/ui/components/sidebar'
 import { TONES } from '@helvetly/ui/components/status-badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -208,12 +209,14 @@ export function AppSidebar({ session }: { session: Session }) {
               }}
               onClick={() => setPaletteOpen(true)}
               aria-expanded={paletteOpen}
-              // Compact: the height and type of a nav row, a hairline shadow instead of a raised card.
-              className="h-8 gap-2 rounded-lg bg-[#fdfdfd] px-2.5 text-[13.5px] text-[#6b6a6d] shadow-[0_0_0_1px_rgb(0_0_0/0.04),0_1px_2px_rgb(0_0_0/0.04)] hover:bg-white hover:text-foreground active:bg-white aria-expanded:bg-white aria-expanded:text-foreground dark:bg-card dark:text-muted-foreground dark:active:bg-card [&_svg]:size-4! [&_svg]:stroke-[1.5]"
+              // A quiet grey well without an edge, muted text; hover, focus and the open palette deepen it a step.
+              className="h-8 gap-2 rounded-lg bg-black/[0.04] px-2.5 text-[13.5px] text-muted-foreground transition-colors duration-150 hover:bg-black/[0.06] hover:text-foreground focus-visible:bg-black/[0.06] active:bg-black/[0.06] aria-expanded:bg-black/[0.06] aria-expanded:text-foreground dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:focus-visible:bg-white/[0.07] dark:active:bg-white/[0.07] dark:aria-expanded:bg-white/[0.07] [&_svg]:size-4! [&_svg]:stroke-[1.5]"
             >
               <Zap />
               <span>{translate('quickActions')}</span>
-              <Kbd className="ml-auto group-data-[collapsible=icon]:hidden">/</Kbd>
+              <Kbd className="ml-auto border-transparent bg-black/[0.06] text-muted-foreground group-data-[collapsible=icon]:hidden dark:bg-white/[0.08]">
+                /
+              </Kbd>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -376,11 +379,15 @@ function MiniBadge({
   )
 }
 
-function UserAvatar({ user }: { user: User }) {
+function UserAvatar({ user, className }: { user: User; className?: string }) {
   return (
-    <Avatar className="size-8">
-      {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
-      <AvatarFallback className="bg-white text-[11px] font-medium text-zinc-700 shadow-[0_1px_2px_rgb(0_0_0/0.08)] ring-1 ring-black/[0.06] ring-inset dark:bg-zinc-700 dark:text-zinc-200 dark:ring-white/10">
+    // A rounded square in a thin border with a 2px gap: the gap sits inside the box, so the icon rail's 32px
+    // button does not cut the border off. Without a photo, the initials on a soft blue tint.
+    <Avatar
+      className={cn('size-9 rounded-xl border border-foreground/15 p-0.5 after:hidden', className)}
+    >
+      {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" className="rounded-lg" />}
+      <AvatarFallback className="rounded-lg bg-info-surface text-caption font-semibold tracking-wide text-info">
         {initialsOf(displayName(user))}
       </AvatarFallback>
     </Avatar>
@@ -400,6 +407,9 @@ function UserMenu({
   onShortcuts: () => void
 }) {
   const router = useRouter()
+  const { state, isMobile } = useSidebar()
+  // Its tooltip only on the icon rail, where the avatar stands alone; elsewhere the name is on the button.
+  const [tooltip, setTooltip] = useState(false)
   const settingsHref = useSettingsHref()
   useShortcut('settings', () => router.push(settingsHref))
   const queryClient = useQueryClient()
@@ -414,21 +424,32 @@ function UserMenu({
 
   return (
     <SidebarMenu>
-      <SidebarMenuItem className="flex items-center gap-1">
+      <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton className="h-12 min-w-0 flex-1 gap-2.5 rounded-lg px-1.5 group-data-[collapsible=icon]:p-0!">
-              <UserAvatar user={user} />
-              <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate text-body font-medium" title={displayName(user)}>
-                  {displayName(user)}
-                </span>
-                <span className="truncate text-caption text-muted-foreground" title={user.email}>
-                  {user.email}
-                </span>
-              </span>
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
+          <Tooltip open={tooltip && state === 'collapsed' && !isMobile} onOpenChange={setTooltip}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton className="h-13 gap-2.5 rounded-xl px-2 transition-colors duration-150 group-data-[collapsible=icon]:p-0! hover:bg-black/[0.04] dark:hover:bg-white/[0.06] data-open:bg-black/[0.04] dark:data-open:bg-white/[0.06]">
+                  <UserAvatar user={user} className="group-data-[collapsible=icon]:size-8" />
+                  <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
+                    <span
+                      className="truncate text-body font-medium text-foreground"
+                      title={displayName(user)}
+                    >
+                      {displayName(user)}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground" title={user.email}>
+                      {user.email}
+                    </span>
+                  </span>
+                  <ChevronsUpDown className="ml-auto size-4! stroke-[1.75] text-foreground/60" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="center">
+              {displayName(user)}
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenuContent
             side="top"
             align="start"
