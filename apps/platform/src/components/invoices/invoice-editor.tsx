@@ -843,16 +843,17 @@ function Editor({
             </div>
           </div>
         </div>
-        <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
+        {/* Flex columns down to the page, so a short document still reaches the internal note. */}
+        <div className="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
           <div
             ref={top}
             className={cn(
-              '@container min-w-0 flex-1 scroll-mt-16 px-3 pb-8 sm:px-6',
+              '@container flex min-w-0 flex-1 scroll-mt-16 flex-col px-3 pb-8 sm:px-6',
               // The page starts at the options bar's line; only a notice above it needs the gap.
               banner && 'pt-4',
             )}
           >
-            <div className="mx-auto grid w-full max-w-[1040px] grid-cols-[minmax(0,1fr)] gap-4">
+            <div className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-4">
               {preceding && invoice?.credited_invoice && (
                 <Callout tone="warning" icon={CircleAlert}>
                   {preceding}{' '}
@@ -877,7 +878,7 @@ function Editor({
                 aria-label={title}
                 // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
                 className={cn(
-                  'relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
+                  'relative left-1/2 w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
                   !banner && 'border-t-0',
                 )}
               >
