@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +8,7 @@ import { setupServer } from 'msw/node'
 import { handlers } from '@/mocks/handlers'
 import { sampleInvoice, sampleSchedule } from '@/test/invoice-api'
 
-import { DunningCard, dunnable } from './dunning-card'
+import { DunningCard, dunnable, sendLabel } from './dunning-card'
 
 const server = setupServer(...handlers)
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
@@ -21,7 +22,9 @@ const renderCard = (canManage = true, id = 'inv_card') =>
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <DunningCard invoice={{ ...open, id }} canManage={canManage} />
+      <TooltipProvider>
+        <DunningCard invoice={{ ...open, id }} canManage={canManage} />
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 
@@ -33,20 +36,54 @@ test('only issued receivable invoices without instalments are dunned', () => {
   expect(dunnable({ ...open, plan: { id: 'pln_1', seq: 1, count: 3 } })).toBe(false)
 })
 
+test('the send button names the level by its rank', () => {
+  const next = { level: 1, levels: 3, title: 'Zahlungserinnerung', due_on: '2026-12-15' }
+  expect(sendLabel(next)).toBe('Send reminder')
+  expect(sendLabel({ ...next, level: 2 })).toBe('Send reminder 2')
+  expect(sendLabel({ ...next, level: 3 })).toBe('Send final reminder')
+  expect(sendLabel({ ...next, levels: 1 })).toBe('Send final reminder')
+})
+
 test('sends the next level by hand, lists it with its letter, and pauses', async () => {
   renderCard()
   expect(await screen.findByText('Zahlungserinnerung goes out on 15 Dec 2026.')).toBeVisible()
-  await userEvent.click(screen.getByRole('button', { name: 'Send Zahlungserinnerung now' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Send reminder' }))
   const sent = await screen.findByRole('list', { name: 'Reminders sent' })
   const letter = within(sent).getByRole('link', { name: 'Zahlungserinnerung' })
   expect(letter).toHaveAttribute('href', '/api/v1/invoices/inv_card/dunning/1/pdf')
-  expect(within(sent).getByText(/by Anna Muster/)).toBeVisible()
+  expect(within(sent).getByText('To ap@kunde.ch · by Anna Muster')).toBeVisible()
+  // when it went out, to the minute
+  expect(within(sent).getByText(/\d{1,2}:\d{2}/)).toHaveAttribute('datetime')
+  expect(screen.getByRole('button', { name: 'Send reminder 2' })).toBeEnabled()
   expect(screen.getByText('2. Mahnung goes out on 29 Dec 2026.')).toBeVisible()
 
   await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
   expect(await screen.findByText('Paused: no reminder goes out until you resume.')).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: 'Resume' }))
   expect(await screen.findByText('2. Mahnung goes out on 29 Dec 2026.')).toBeVisible()
+})
+
+test('without automatic reminders Pause is off and says why, sending by hand still works', async () => {
+  server.use(
+    http.get('/api/v1/invoices/:id/dunning', () =>
+      HttpResponse.json({
+        data: {
+          applies: true,
+          enabled: false,
+          client_enabled: true,
+          paused: false,
+          next: { level: 1, levels: 3, title: 'Zahlungserinnerung', due_on: '2026-12-15' },
+          notices: [],
+        },
+      }),
+    ),
+  )
+  renderCard(true, 'inv_card_off')
+  const pause = await screen.findByRole('button', { name: 'Pause' })
+  expect(pause).toBeDisabled()
+  await userEvent.hover(pause.parentElement ?? pause)
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('nothing to pause')
+  expect(screen.getByRole('button', { name: 'Send reminder' })).toBeEnabled()
 })
 
 test('read-only people see the reminders without the actions', async () => {
@@ -65,9 +102,9 @@ test('a refused send keeps the card and says why', async () => {
     ),
   )
   renderCard(true, 'inv_card_refused')
-  await userEvent.click(await screen.findByRole('button', { name: /^Send / }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Send reminder' }))
   expect(await screen.findByText('Zahlungserinnerung goes out on 15 Dec 2026.')).toBeVisible()
-  expect(screen.getByRole('button', { name: /^Send / })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Send reminder' })).toBeEnabled()
 })
 
 test('a failed load says so', async () => {

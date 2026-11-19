@@ -1,9 +1,10 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
-import { formatDate } from '@helvetly/ui/lib/format'
-import { FileText } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { Mail, Pause, Play, Send } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -31,6 +32,22 @@ const DONE: Record<DunningAction, string> = {
   send: translate('reminderSent'),
   pause: translate('dunningPaused'),
   resume: translate('dunningResumed'),
+}
+
+// The viewer's own time zone: when the email actually left, not the invoice's civil day.
+const sentAt = new Intl.DateTimeFormat(languageTag, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** "Send reminder", "Send reminder 2", "Send final reminder": the level by its rank, not the letter's title. */
+export function sendLabel(next: NonNullable<Dunning['next']>) {
+  if (next.level === next.levels) return translate('sendFinalReminder')
+  if (next.level === 1) return translate('sendReminder')
+  return translate('sendReminderLevel', { level: next.level })
 }
 
 /** The invoice's reminders: what goes out next, what was sent (each letter opens), and the actions. */
@@ -62,25 +79,35 @@ export function DunningCard({ invoice, canManage }: { invoice: Invoice; canManag
     >
       <p className="text-[13px] text-muted-foreground">{dunningSummary(data)}</p>
       {data.notices.length > 0 && (
-        <ul aria-label={translate('remindersSent')} className="mt-3 grid gap-2">
+        <ul aria-label={translate('remindersSent')} className="mt-3 grid divide-y divide-border">
           {data.notices.map((notice) => (
-            <li key={notice.level} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="grid min-w-0">
+            <li key={notice.level} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+              <span
+                aria-hidden
+                className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              >
+                <Mail className="size-3.5" />
+              </span>
+              <span className="grid min-w-0 flex-1 gap-0.5">
                 <a
                   href={localizedHref(noticePdfUrl(invoice.id, notice.level))}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 font-medium text-link underline underline-offset-2 hover:no-underline"
+                  className="truncate text-body-sm font-medium text-link underline underline-offset-2 hover:no-underline"
                 >
-                  <FileText aria-hidden className="size-3.5" />
                   {notice.title}
                 </a>
-                <span className="truncate text-xs text-muted-foreground">
-                  {formatDate(notice.sent_on)} · {notice.email}
-                  {notice.sent_by ? translate('by', { sent_by: notice.sent_by }) : ''}
+                <time dateTime={notice.sent_at} className="text-xs text-muted-foreground">
+                  {sentAt.format(new Date(notice.sent_at))}
+                </time>
+                <span className="text-xs break-words text-muted-foreground">
+                  {translate('reminderSentTo', { email: notice.email })}
+                  {notice.sent_by
+                    ? translate('by', { sent_by: notice.sent_by })
+                    : translate('sentAutomatically')}
                 </span>
               </span>
-              <span className="shrink-0 text-right tabular-nums">
+              <span className="shrink-0 text-right text-body-sm tabular-nums">
                 {formatMoney(notice.total, invoice.currency)}
                 {notice.fee !== '0.00' && (
                   <span className="block text-xs text-muted-foreground">
@@ -112,22 +139,41 @@ function Actions({
   busy: boolean
   run: (action: DunningAction) => void
 }) {
+  // Pause only stops the automatic run: without one there is nothing to pause.
+  const automatic = data.enabled && data.client_enabled
+  const toggle = data.paused ? 'resume' : 'pause'
+  const next = data.next
   return (
-    <span className="flex items-center gap-1">
-      {data.paused ? (
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => run('resume')}>
-          {translate('resume')}
-        </Button>
-      ) : (
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => run('pause')}>
-          {translate('pause')}
+    <span className="flex items-center gap-1.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* A span keeps the tooltip working while the button is disabled. */}
+          <span tabIndex={automatic ? undefined : 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !automatic}
+              onClick={() => run(toggle)}
+            >
+              {data.paused ? <Play /> : <Pause />}
+              {translate(toggle)}
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {!automatic
+            ? translate('noAutomaticRemindersToPause')
+            : data.paused
+              ? translate('resumeAutomaticReminders')
+              : translate('pauseAutomaticReminders')}
+        </TooltipContent>
+      </Tooltip>
+      {next && (
+        <Button size="sm" disabled={busy} onClick={() => run('send')}>
+          <Send />
+          {sendLabel(next)}
         </Button>
       )}
-      <Button variant="outline" size="sm" disabled={busy} onClick={() => run('send')}>
-        {translate('send2')}
-        {data.next?.title ?? 'reminder'}
-        {translate('now')}
-      </Button>
     </span>
   )
 }
