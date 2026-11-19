@@ -354,6 +354,11 @@ func TestSettings(t *testing.T) {
 	if !got.Data.IsComplete || *got.Data.IBAN != "CH4431999123000889012" || *got.Data.Seller.VATNumber != "CHE-109.322.551 MWST" {
 		t.Fatalf("saved: %+v", got.Data)
 	}
+	e.fails(b, "PUT", "/api/v1/invoice-settings", map[string]any{"bic": "ZKB"}, http.StatusUnprocessableEntity, "validation_failed", "bic")
+	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"bic": "zkbk chzz 80a"}, http.StatusOK, &got)
+	if got.Data.BIC == nil || *got.Data.BIC != "ZKBKCHZZ80A" {
+		t.Fatalf("bic: %+v", got.Data.BIC)
+	}
 	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"vat_registered": false}, http.StatusOK, &got)
 	if got.Data.DefaultVATMode != "none" || !got.Data.IsComplete || got.Data.Seller.Name != "Muster GmbH" {
 		t.Fatalf("unregistered: %+v", got.Data)

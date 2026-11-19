@@ -39,6 +39,7 @@ import {
   LoaderCircle,
   Plus,
   Trash2,
+  Unlink2,
   X,
   ArrowLeft,
 } from 'lucide-react'
@@ -418,6 +419,8 @@ function Editor({
   // The contract row shows once added, and stays while it holds a number or a document.
   const canLinkEngagement = useCan('write:engagements')
   const [contractShown, setContractShown] = useState(false)
+  // unlinked from the client's number: stays editable while the person clears the field to type another number
+  const [ownClientNumber, setOwnClientNumber] = useState(false)
   const [engagementShown, setEngagementShown] = useState(false)
   const linkedEngagement = useInvoiceEngagement(canLinkEngagement ? draftId : null).data
   // Optional rows: shown while they hold something or once added; the rest wait under "Add field".
@@ -1095,59 +1098,75 @@ function Editor({
                               {translate('clientNumberShort')}
                             </MetaLabel>
                             <dd className="flex min-w-0 items-center gap-0.5">
-                              <input
-                                id="invoice-client_number"
-                                value={values.client_number_display ?? ''}
-                                maxLength={40}
-                                onChange={(event) =>
-                                  set('client_number_display', event.target.value || null)
-                                }
-                                placeholder={client ? String(client.number) : '—'}
-                                className={cn(
-                                  quietValue,
-                                  'min-w-0 flex-1',
-                                  // linked: the client's own number reads as the value, not as a hint
-                                  values.client_number_display === null &&
-                                    'placeholder:text-foreground',
-                                )}
-                              />
                               {client &&
-                                (values.client_number_display === null ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Link
-                                        href={`/clients?id=${encodeURIComponent(client.id)}`}
-                                        aria-label={translate('clientNumberLinked', {
-                                          name: client.name,
-                                        })}
-                                        className="grid size-6 shrink-0 place-items-center rounded-md text-brand hover:bg-muted"
-                                      >
-                                        <Link2 className="size-3.5" />
-                                      </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {translate('clientNumberLinked', { name: client.name })}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : (
+                              !ownClientNumber &&
+                              values.client_number_display === null ? (
+                                <>
+                                  <input
+                                    id="invoice-client_number"
+                                    value={String(client.number)}
+                                    readOnly
+                                    className={cn(quietValue, 'min-w-0 flex-1')}
+                                  />
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon-xs"
-                                        aria-label={translate('clientNumberUseClients')}
-                                        className="shrink-0 text-muted-foreground"
-                                        onClick={() => set('client_number_display', null)}
+                                        aria-label={translate('clientNumberUnlink', {
+                                          name: client.name,
+                                        })}
+                                        className="shrink-0 text-brand"
+                                        onClick={() => {
+                                          setOwnClientNumber(true)
+                                          set('client_number_display', String(client.number))
+                                        }}
                                       >
                                         <Link2 />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      {translate('clientNumberUseClients')}
+                                      {translate('clientNumberUnlink', { name: client.name })}
                                     </TooltipContent>
                                   </Tooltip>
-                                ))}
+                                </>
+                              ) : (
+                                <>
+                                  <input
+                                    id="invoice-client_number"
+                                    value={values.client_number_display ?? ''}
+                                    maxLength={40}
+                                    onChange={(event) =>
+                                      set('client_number_display', event.target.value || null)
+                                    }
+                                    placeholder={client ? String(client.number) : '—'}
+                                    className={cn(quietValue, 'min-w-0 flex-1')}
+                                  />
+                                  {client && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon-xs"
+                                          aria-label={translate('clientNumberUseClients')}
+                                          className="shrink-0 text-muted-foreground"
+                                          onClick={() => {
+                                            setOwnClientNumber(false)
+                                            set('client_number_display', null)
+                                          }}
+                                        >
+                                          <Unlink2 />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {translate('clientNumberUseClients')}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </>
+                              )}
                               <HideField
                                 label={translate('clientNumberHide')}
                                 onHide={() => set('client_number_display', '')}

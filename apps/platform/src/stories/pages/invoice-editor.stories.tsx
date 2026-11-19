@@ -72,6 +72,30 @@ export const OptionalFields: Story = {
   },
 }
 
+/**
+ * The link icon beside Client no. toggles, never navigates: linked shows the client's own number read-only;
+ * unlinked takes a number typed in, and linking again goes back to the client's.
+ */
+export const ClientNumberLinkToggle: Story = {
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    const linked = await page.findByRole('textbox', { name: /Client no\./ })
+    await expect(linked).toHaveValue('1')
+    await expect(linked).toHaveAttribute('readonly')
+    await userEvent.click(page.getByRole('button', { name: /Unlink to type your own/ }))
+    const own = page.getByRole('textbox', { name: /Client no\./ })
+    await expect(own).not.toHaveAttribute('readonly')
+    await userEvent.clear(own)
+    await expect(own).not.toHaveAttribute('readonly') // emptied, still the person's own field
+    await userEvent.type(own, 'K-0815')
+    await expect(own).toHaveValue('K-0815')
+    await userEvent.click(page.getByRole('button', { name: 'Use the client’s number' }))
+    await expect(page.getByRole('textbox', { name: /Client no\./ })).toHaveValue('1')
+    await expect(page.getByText('Alpenglow Studio GmbH')).toBeVisible() // still in the editor
+  },
+}
+
 /** The engagement row is optional too: under Add field until chosen, and it hides again while empty. */
 export const EngagementIsOptional: Story = {
   play: async (context) => {

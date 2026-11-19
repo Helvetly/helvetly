@@ -122,6 +122,7 @@ type Values = {
   default_vat_rate: string
   iban: string
   bank_name: string
+  bic: string
   currency: string
   language: DocLanguage
   default_terms_days: string
@@ -199,6 +200,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     default_vat_rate: settings.default_vat_rate,
     iban: settings.iban ? formatIban(settings.iban) : '',
     bank_name: settings.bank_name ?? '',
+    bic: settings.bic ?? '',
     currency: settings.currency,
     language: settings.language,
     default_terms_days: String(settings.default_terms_days),
@@ -259,6 +261,7 @@ export function toSettingsInput(values: Values): SettingsInput {
     default_vat_rate: parseDecimalInput(values.default_vat_rate, 2) ?? values.default_vat_rate,
     iban: orNull(values.iban),
     bank_name: orNull(values.bank_name),
+    bic: orNull(values.bic),
     currency: values.currency,
     language: values.language,
     default_terms_days: Number(values.default_terms_days),
@@ -459,7 +462,7 @@ const SECTIONS: {
     title: translate('bankAccount'),
     icon: Landmark,
     required: ['iban'],
-    fields: ['iban', 'bank_name'],
+    fields: ['iban', 'bank_name', 'bic'],
   },
   // Not needed to issue: incomplete only while Revolut is on without a username.
   {
@@ -1211,6 +1214,17 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     onChange={(e) => set('bank_name', e.target.value)}
                     placeholder={translate('eGZRcherKantonalbank')}
                     className={bigInput}
+                  />
+                </FormField>
+                <FormField id={inputId('bic')} label="BIC / SWIFT" error={shown.bic} width="sm">
+                  <input
+                    {...describe('bic')}
+                    value={values.bic}
+                    maxLength={14}
+                    onChange={(e) => set('bic', e.target.value.toUpperCase())}
+                    placeholder={translate('eGZKBKCHZZ80A')}
+                    spellCheck={false}
+                    className={cn(bigInput, 'font-mono text-body tracking-wide')}
                   />
                 </FormField>
                 {values.iban.trim() && iban.valid && <IbanNote iban={iban} />}

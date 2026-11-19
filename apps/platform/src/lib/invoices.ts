@@ -490,6 +490,7 @@ export type InvoiceSettings = {
   default_vat_rate: Decimal
   iban: string | null
   bank_name: string | null
+  bic: string | null
   currency: string
   language: DocLanguage
   default_terms_days: number

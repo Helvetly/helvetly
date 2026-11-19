@@ -30,6 +30,7 @@ type Document struct {
 	Phone      *string
 	Buyer      store.Party
 	BankName   *string
+	BIC        *string
 	Bill       *swissqr.Bill // nil: no QR bill page
 	Draft      bool          // watermark the invoice pages; the QR bill page says so above the slip
 	Created    time.Time     // the PDF's creation date
@@ -293,14 +294,8 @@ func (r *renderer) invoicePages() {
 	if inv.Kind == "quote" { // a quote carries its valid-until date in DueDate
 		meta = append(meta, [2]string{l.ValidUntil, swissDate(inv.DueDate)})
 	}
-	if n, ok := clientNumber(inv); ok {
-		meta = append(meta, [2]string{l.ClientNumber, n})
-	}
 	if inv.Reference != nil {
 		meta = append(meta, [2]string{l.Reference, *inv.Reference})
-	}
-	if inv.ContractReference != nil {
-		meta = append(meta, [2]string{l.ContractNumber, *inv.ContractReference})
 	}
 	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
 	r.contact = contactLine(issuer.Email, phone)
@@ -705,18 +700,24 @@ func (r *renderer) closing(y float64) {
 	for _, n := range notes {
 		block = append(block, r.wrap(n, contentW)...)
 	}
+	// payment details, as the editor groups them: the client and contract numbers, then the bank and reference
+	var details []string
+	if n, ok := clientNumber(inv); ok {
+		details = append(details, l.ClientNumber+": "+n)
+	}
+	if inv.ContractReference != nil {
+		details = append(details, l.ContractNumber+": "+*inv.ContractReference)
+	}
 	if receivable[inv.Kind] {
-		block = append(block, "") // the due date stands in the header
 		if inv.Payment.IBAN != nil {
-			bank := l.BankDetails + ": IBAN " + swissqr.FormatIBAN(*inv.Payment.IBAN)
-			if r.d.BankName != nil {
-				bank += ", " + *r.d.BankName
-			}
-			block = append(block, bank)
+			details = append(details, l.BankDetails+": "+bankDetails(*inv.Payment.IBAN, r.d.BankName, r.d.BIC))
 		}
 		if ref := paymentReference(inv.Payment.ReferenceType, inv.Payment.Reference); ref != "" {
-			block = append(block, l.PaymentReference+": "+ref)
+			details = append(details, l.PaymentReference+": "+ref)
 		}
+	}
+	if len(details) > 0 {
+		block = append(append(block, ""), details...)
 	}
 	if inv.Kind == "credit_note" && r.d.Refund {
 		block = append(block, "", l.Refunded)
@@ -729,6 +730,18 @@ func (r *renderer) closing(y float64) {
 		r.set("", 9)
 		r.block(y, append([]string{""}, r.wrap(*inv.Footer, contentW)...))
 	}
+}
+
+// bankDetails: "UBS Switzerland AG, IBAN CH93 0076 …, BIC UBSWCHZH80A", each part only when known.
+func bankDetails(iban string, name, bic *string) string {
+	parts := []string{"IBAN " + swissqr.FormatIBAN(iban)}
+	if name != nil && *name != "" {
+		parts = append([]string{*name}, parts...)
+	}
+	if bic != nil && *bic != "" {
+		parts = append(parts, "BIC "+*bic)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // paymentReference: the reference as printed, in blocks; "" without one.
