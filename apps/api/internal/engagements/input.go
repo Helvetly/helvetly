@@ -27,6 +27,8 @@ const (
 	maxQuantity = 1_000_000_000  // 1'000'000 in thousandths
 	minDate     = "2000-01-01"   // bounds the periods a weekly engagement can open at once
 	maxDate     = "2100-12-31"
+	// descriptionMax matches products' descriptions; older engagements may keep a longer one while it is unchanged.
+	descriptionMax = 1000
 )
 
 func validationFailed(fields map[string]string) error {
@@ -99,7 +101,11 @@ func applyFields(e *store.Engagement, body map[string]json.RawMessage, d store.W
 				fail(k, "Enter a title.")
 			}
 		case "description":
-			e.Description = text(k, raw, 2000, nil, fail)
+			limit := descriptionMax
+			if e.Description != nil && sameText(raw, *e.Description) { // a longer one from before the limit, unchanged
+				limit = utf8.RuneCountInString(*e.Description)
+			}
+			e.Description = text(k, raw, limit, nil, fail)
 		case "product_id":
 			e.ProductID = text(k, raw, 100, nil, fail)
 		case "unit":
@@ -229,6 +235,12 @@ func applyFields(e *store.Engagement, body map[string]json.RawMessage, d store.W
 		fail("auto_invoice", "Set a price to create invoice drafts automatically.")
 	}
 	return invalid
+}
+
+// sameText: raw is the JSON string s, as text stores it (trimmed, \r\n as \n).
+func sameText(raw json.RawMessage, s string) bool {
+	var v string
+	return json.Unmarshal(raw, &v) == nil && strings.TrimSpace(strings.ReplaceAll(v, "\r\n", "\n")) == s
 }
 
 // literal: a decimal as given, from a JSON string ("12.50") or number (12.5, never read as a float).

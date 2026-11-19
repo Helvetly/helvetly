@@ -10658,7 +10658,8 @@
           },
           "description": {
             "type": ["string", "null"],
-            "maxLength": 2000
+            "maxLength": 1000,
+            "description": "At most 1000 characters. An engagement saved earlier with a longer one keeps it while it is sent unchanged."
           },
           "product_id": {
             "type": ["string", "null"],

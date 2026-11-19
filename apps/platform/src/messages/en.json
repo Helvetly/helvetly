@@ -3015,7 +3015,6 @@
   "theFolder": "the folder",
   "theFullEditorIsComingSoon": "The full editor is coming soon.",
   "theHelvetlyDocs": "the Helvetly docs",
-  "theIDOfTheSignedContractInDocuments": "The ID of the signed contract in Documents.",
   "theInvoicesItIssuedStayAsTheyAreThe": "The invoices it issued stay as they are; the rest are never issued. This can’t be undone.",
   "theLastChargeDidnTGoThroughStripeRetries": "The last charge didn’t go through. Stripe retries the card;",
   "theLatestClosedMonthIs": "; the latest closed month is {value1}.",
@@ -3295,7 +3294,6 @@
   "useATemplate": "Use a template…",
   "useAtMost100Characters": "Use at most 100 characters",
   "useAtMost10Signers": "Use at most 10 signers.",
-  "useAtMost2000Characters": "Use at most 2000 characters",
   "useAtMost200Characters": "Use at most 200 characters",
   "useAtMost200Characters2": "Use at most 200 characters.",
   "useAtMost64Characters": "Use at most 64 characters.",
@@ -4486,5 +4484,13 @@
   "filledFromUIDRegister": "Filled in from the UID register.",
   "filledFromUIDRegisterReplaced": "Filled in from the UID register, replacing {fields}.",
   "uidVerified": "UID verified",
-  "uidVerifiedTip": "Verified in the Swiss UID register as {uid} on {date}."
+  "uidVerifiedTip": "Verified in the Swiss UID register as {uid} on {date}.",
+  "contractDocumentTip": "The signed contract in Documents. The client’s documents come first.",
+  "contractDocumentNone": "None",
+  "contractDocumentNoneYet": "No documents yet. Upload the signed contract in Documents to link it here.",
+  "contractDocumentLinked": "Linked document",
+  "contractDocumentOfClient": "This client’s documents",
+  "contractDocumentOther": "Other documents",
+  "descriptionKeptLong": "Saved before the {max}-character limit: it is kept as it is. To change it, shorten it to {max} characters.",
+  "periodsInTotal": "{count, plural, one {# period} other {# periods}} in total"
 }

@@ -3015,7 +3015,6 @@
   "theFolder": "la cartella",
   "theFullEditorIsComingSoon": "L’editor completo sarà presto disponibile.",
   "theHelvetlyDocs": "i Helvetly documenti",
-  "theIDOfTheSignedContractInDocuments": "L’ID del contratto firmato in Documenti.",
   "theInvoicesItIssuedStayAsTheyAreThe": "Le fatture emesse rimangono così come sono; il resto non viene mai rilasciato. Questa operazione non può essere annullata.",
   "theLastChargeDidnTGoThroughStripeRetries": "L’ultima carica non è andata a buon fine. Stripe riprova la carta;",
   "theLatestClosedMonthIs": "; l’ultimo mese chiuso è {value1}.",
@@ -3295,7 +3294,6 @@
   "useATemplate": "Utilizza un modello…",
   "useAtMost100Characters": "Utilizza al massimo 100 caratteri",
   "useAtMost10Signers": "Utilizzare al massimo 10 firmatari.",
-  "useAtMost2000Characters": "Utilizza al massimo 2000 caratteri",
   "useAtMost200Characters": "Utilizzare al massimo 200 caratteri",
   "useAtMost200Characters2": "Utilizza al massimo 200 caratteri.",
   "useAtMost64Characters": "Utilizzare al massimo 64 caratteri.",
@@ -4486,5 +4484,13 @@
   "filledFromUIDRegister": "Compilato dal registro IDI.",
   "filledFromUIDRegisterReplaced": "Compilato dal registro IDI, sostituisce: {fields}.",
   "uidVerified": "IDI verificato",
-  "uidVerifiedTip": "Verificato nel registro IDI svizzero come {uid} il {date}."
+  "uidVerifiedTip": "Verificato nel registro IDI svizzero come {uid} il {date}.",
+  "contractDocumentTip": "Il contratto firmato in Documenti. I documenti del cliente compaiono per primi.",
+  "contractDocumentNone": "Nessuno",
+  "contractDocumentNoneYet": "Ancora nessun documento. Carica il contratto firmato in Documenti per collegarlo qui.",
+  "contractDocumentLinked": "Documento collegato",
+  "contractDocumentOfClient": "Documenti di questo cliente",
+  "contractDocumentOther": "Altri documenti",
+  "descriptionKeptLong": "Salvata prima del limite di {max} caratteri: resta così com’è. Per modificarla, accorciala a {max} caratteri.",
+  "periodsInTotal": "{count, plural, one {# periodo} other {# periodi}} in tutto"
 }

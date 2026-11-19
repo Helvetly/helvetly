@@ -11,11 +11,13 @@ import { BillingLabel, ProgressBar } from './engagement-bits'
 import {
   committedTotal,
   nextSteps,
+  periodPreview,
   periodTotal,
   schedulePeriods,
   summarySentence,
   swissDate,
   type FormValues,
+  type NumberedPeriod,
 } from './engagement-form-model'
 
 /** A value that is still missing is shown muted (still readable: muted is the faintest text that passes contrast). */
@@ -140,7 +142,7 @@ export function EngagementSummary({
   const perPeriod = periodTotal(values)
   const committed = committedTotal(values)
   const money = (amount: string) => formatMoney(amount, values.currency)
-  const periods = schedulePeriods(values, 4)
+  const periods = periodPreview(values)
   const category = VAT_CATEGORIES.find((c) => c.value === values.vat_category)
   const basis = values.price_basis === 'net' ? 'net' : 'gross'
 
@@ -193,22 +195,27 @@ export function EngagementSummary({
         </dl>
       </Block>
 
-      {recurring && periods.length > 0 && (
-        <Block title={translate('firstPeriods')} className="border-t pt-4 max-lg:hidden">
+      {recurring && periods.first.length > 0 && (
+        <Block
+          title={periods.count === null ? translate('firstPeriods') : translate('periods')}
+          className="border-t pt-4 max-lg:hidden"
+        >
           <ol className="grid gap-2 text-[13px] tabular-nums">
-            {periods.slice(0, 3).map((period, index) => (
-              <li key={period.start} className="flex items-center gap-2.5">
-                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-foreground/60" />
-                <span className="text-muted-foreground">{index + 1}.</span>
-                {swissDate(period.start)} – {swissDate(period.end)}
-              </li>
+            {periods.first.map((period) => (
+              <PeriodItem key={period.n} period={period} />
             ))}
-            {periods.length > 3 && (
+            {periods.more && (
               <li className="flex items-center gap-2.5 text-muted-foreground">
                 <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-border" />…
               </li>
             )}
+            {periods.last && <PeriodItem period={periods.last} />}
           </ol>
+          {periods.count !== null && (
+            <p className="text-[13px] text-muted-foreground">
+              {translate('periodsInTotal', { count: periods.count })}
+            </p>
+          )}
         </Block>
       )}
 
@@ -223,5 +230,15 @@ export function EngagementSummary({
         </ul>
       </Block>
     </aside>
+  )
+}
+
+function PeriodItem({ period }: { period: NumberedPeriod }) {
+  return (
+    <li className="flex items-center gap-2.5">
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-foreground/60" />
+      <span className="text-muted-foreground">{period.n}.</span>
+      {swissDate(period.start)} – {swissDate(period.end)}
+    </li>
   )
 }

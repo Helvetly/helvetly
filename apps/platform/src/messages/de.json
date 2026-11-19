@@ -3015,7 +3015,6 @@
   "theFolder": "den Ordner",
   "theFullEditorIsComingSoon": "Der vollständige Editor ist bald verfügbar.",
   "theHelvetlyDocs": "die Helvetly-Dokumente",
-  "theIDOfTheSignedContractInDocuments": "Die ID des unterzeichneten Vertrags in Dokumenten.",
   "theInvoicesItIssuedStayAsTheyAreThe": "Die ausgestellten Rechnungen bleiben unverändert; der Rest wird nie ausgegeben. Dies kann nicht rückgängig gemacht werden.",
   "theLastChargeDidnTGoThroughStripeRetries": "Die letzte Ladung wurde nicht durchgeführt. Stripe versucht die Karte erneut;",
   "theLatestClosedMonthIs": "; Der letzte geschlossene Monat ist {value1}.",
@@ -3295,7 +3294,6 @@
   "useATemplate": "Verwenden Sie eine Vorlage…",
   "useAtMost100Characters": "Verwenden Sie höchstens 100 Zeichen",
   "useAtMost10Signers": "Verwenden Sie höchstens 10 Unterzeichner.",
-  "useAtMost2000Characters": "Verwenden Sie höchstens 2000 Zeichen",
   "useAtMost200Characters": "Verwenden Sie höchstens 200 Zeichen",
   "useAtMost200Characters2": "Verwenden Sie höchstens 200 Zeichen.",
   "useAtMost64Characters": "Verwenden Sie maximal 64 Zeichen.",
@@ -4486,5 +4484,13 @@
   "filledFromUIDRegister": "Aus dem UID-Register ausgefüllt.",
   "filledFromUIDRegisterReplaced": "Aus dem UID-Register ausgefüllt, ersetzt: {fields}.",
   "uidVerified": "UID geprüft",
-  "uidVerifiedTip": "Im Schweizer UID-Register als {uid} geprüft am {date}."
+  "uidVerifiedTip": "Im Schweizer UID-Register als {uid} geprüft am {date}.",
+  "contractDocumentTip": "Der unterschriebene Vertrag aus den Dokumenten. Die Dokumente des Kunden stehen zuerst.",
+  "contractDocumentNone": "Keines",
+  "contractDocumentNoneYet": "Noch keine Dokumente. Laden Sie den unterschriebenen Vertrag in den Dokumenten hoch, um ihn hier zu verknüpfen.",
+  "contractDocumentLinked": "Verknüpftes Dokument",
+  "contractDocumentOfClient": "Dokumente dieses Kunden",
+  "contractDocumentOther": "Weitere Dokumente",
+  "descriptionKeptLong": "Vor der Grenze von {max} Zeichen gespeichert: Sie bleibt unverändert erhalten. Um sie zu ändern, kürzen Sie sie auf {max} Zeichen.",
+  "periodsInTotal": "{count, plural, one {# Periode} other {# Perioden}} insgesamt"
 }

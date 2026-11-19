@@ -7,6 +7,7 @@ import type { Entry, Period } from '@/lib/engagements'
 import { sampleSettings } from '@/test/invoice-api'
 
 import { sessionHandler } from '../screen-fixtures'
+import { engagements, page } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
@@ -80,6 +81,161 @@ export const NewForm: Story = {
 }
 export const NewFormDark = dark(NewForm)
 export const NewFormPhone = phone(NewForm)
+
+const settingsHandler = http.get('/api/v1/invoice-settings', () =>
+  HttpResponse.json({ data: sampleSettings() }),
+)
+
+/** The open new-engagement drawer, switched to a recurring schedule from 19.11.2026. */
+async function recurringForm() {
+  const radios = await within(document.body).findAllByRole('radio')
+  const dialog = within(radios[0]!.closest<HTMLElement>('[role=dialog]')!)
+  await userEvent.click(dialog.getByRole('radio', { name: /Recurring/ }))
+  fireEvent.change(dialog.getByLabelText(/^Starts/), { target: { value: '2026-11-19' } })
+  return dialog
+}
+
+const box = (element: HTMLElement) => element.getBoundingClientRect()
+
+/**
+ * Recurring: Every | Starts | Ends share one row when the form is wide, each control one height, the "leave empty"
+ * hint under Ends. The periods stop at the end date: the first three, "…", then the last with its number and count.
+ */
+export const NewFormRecurring: Story = {
+  parameters: pageParameters('/engagements', { new: '1' }, [settingsHandler]),
+  play: async () => {
+    const dialog = await recurringForm()
+    const every = dialog.getByRole('textbox', { name: /Every/ })
+    const unit = dialog.getByRole('button', { name: /Period/ })
+    const starts = dialog.getByLabelText(/^Starts/)
+    const ends = dialog.getByLabelText(/^Ends/)
+    for (const control of [unit, starts, ends]) expect(box(control).height).toBe(box(every).height)
+    expect(box(every).top).toBe(box(starts).top)
+    expect(box(starts).top).toBe(box(ends).top)
+    // The number and the unit fill their cell.
+    const cell = every.closest<HTMLElement>('[data-slot=form-field]')!
+    expect(Math.round(box(unit).right - box(every).left)).toBe(Math.round(box(cell).width))
+    expect(dialog.getByText('Leave empty to run until you cancel it.')).toBeVisible()
+    // Open-ended: three periods, "…", and new ones keep coming.
+    const periods = dialog.getByRole('heading', { name: 'First periods' }).parentElement!
+    expect(within(periods).getAllByRole('listitem')).toHaveLength(4)
+    expect(dialog.getByText(/starts automatically/)).toBeInTheDocument()
+
+    fireEvent.change(ends, { target: { value: '2027-03-19' } })
+    const listed = dialog.getByRole('heading', { name: 'Periods' }).parentElement!
+    expect(
+      within(listed)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      '1.19.11.2026 – 18.12.2026',
+      '2.19.12.2026 – 18.1.2027',
+      '3.19.1.2027 – 18.2.2027',
+      '…',
+      '5.19.3.2027 – 19.3.2027',
+    ])
+    expect(listed).toHaveTextContent('5 periods in total')
+
+    // An end date inside the first period leaves that one period, shortened, and nothing after it.
+    fireEvent.change(ends, { target: { value: '2026-11-20' } })
+    expect(
+      within(listed)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['1.19.11.2026 – 20.11.2026'])
+    expect(listed).toHaveTextContent('1 period in total')
+    expect(dialog.queryByText(/starts automatically/)).not.toBeInTheDocument()
+    expect(dialog.queryByText(/18\. Dec/)).not.toBeInTheDocument()
+  },
+}
+export const NewFormRecurringDark = dark(NewFormRecurring)
+
+/** On a phone, Every takes a row of its own, full width, above Starts and Ends. */
+export const NewFormRecurringPhone: Story = {
+  ...phone(NewFormRecurring),
+  play: async () => {
+    const dialog = await recurringForm()
+    const every = dialog.getByRole('textbox', { name: /Every/ })
+    const unit = dialog.getByRole('button', { name: /Period/ })
+    const starts = dialog.getByLabelText(/^Starts/)
+    expect(box(every).bottom).toBeLessThan(box(starts).top)
+    expect(Math.round(box(unit).right - box(every).left)).toBe(Math.round(box(starts).width))
+    expect(Math.round(box(unit).right)).toBe(Math.round(box(starts).right))
+    expect(box(unit).height).toBe(box(starts).height)
+  },
+}
+
+/** The contract is picked from Documents (or none); with no documents the control is disabled and says why. */
+export const NewFormContractDocument: Story = {
+  parameters: pageParameters('/engagements', { new: '1' }, [settingsHandler]),
+  play: async () => {
+    const radios = await within(document.body).findAllByRole('radio')
+    const dialog = within(radios[0]!.closest<HTMLElement>('[role=dialog]')!)
+    const picker = dialog.getByRole('button', { name: /^Contract document/ })
+    await waitFor(() => expect(picker).toBeEnabled())
+    await expect(picker).toHaveTextContent('None')
+    await userEvent.click(picker)
+    const body = within(document.body)
+    await userEvent.type(body.getByPlaceholderText('Search…'), 'lease')
+    await userEvent.click(await body.findByRole('option', { name: /Office lease 2026\.pdf/ }))
+    await expect(picker).toHaveTextContent('Office lease 2026.pdf')
+  },
+}
+
+export const NewFormNoDocuments: Story = {
+  parameters: pageParameters('/engagements', { new: '1' }, [
+    settingsHandler,
+    http.get('/api/v1/documents', () => HttpResponse.json(page([]))),
+  ]),
+  play: async () => {
+    const radios = await within(document.body).findAllByRole('radio')
+    const dialog = within(radios[0]!.closest<HTMLElement>('[role=dialog]')!)
+    const picker = dialog.getByRole('button', { name: /^Contract document/ })
+    await waitFor(() => expect(picker).toBeDisabled())
+    await expect(
+      dialog.getByText(/No documents yet\. Upload the signed contract in Documents/),
+    ).toBeVisible()
+  },
+}
+
+const longDescription = 'Weekly lessons. '.repeat(94).trim() // 1503 characters, saved before the limit
+const saved: { body?: Record<string, unknown> } = {}
+
+/**
+ * An engagement saved with a description over today's 1000 characters still opens and saves unchanged; the counter
+ * is red and a hint explains it. Changing the description then asks for at most 1000.
+ */
+export const EditLongDescription: Story = {
+  parameters: pageParameters('/engagements', { id: 'eng_1' }, [
+    settingsHandler,
+    http.get('/api/v1/engagements/eng_1', () =>
+      HttpResponse.json({ data: { ...engagements[0], description: longDescription } }),
+    ),
+    http.patch('/api/v1/engagements/eng_1', async ({ request }) => {
+      saved.body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ data: { ...engagements[0], description: longDescription } })
+    }),
+  ]),
+  play: async (context) => {
+    await shows('Design retainer')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'More actions' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Edit' }))
+    const description = await body.findByRole('textbox', { name: /Description/ })
+    await expect(description).toHaveValue(longDescription)
+    await expect(body.getByText(`${longDescription.length} / 1000`)).toBeVisible()
+    await expect(body.getByText(/Saved before the 1000-character limit/)).toBeVisible()
+
+    await userEvent.type(description, '!')
+    await userEvent.click(body.getByRole('button', { name: 'Save changes' }))
+    await expect(await body.findByText('Use at most 1000 characters.')).toBeVisible()
+    expect(saved.body).toBeUndefined()
+
+    await userEvent.type(description, '{Backspace}')
+    await userEvent.click(body.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(saved.body?.description).toBe(longDescription))
+  },
+}
 
 const middle = (rect: DOMRect) => rect.top + rect.height / 2
 
