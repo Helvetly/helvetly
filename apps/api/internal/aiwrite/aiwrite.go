@@ -250,8 +250,8 @@ func modelError(err error) error {
 		return auth.Error(http.StatusForbidden, "quota_exceeded", "This workspace has used its monthly Heidi allowance.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "AI writing is paused while the service's AI budget is being updated.", nil)
-	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain), errors.Is(err, aimodel.ErrAttempts):
-		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace, or its usage is being reconciled. Try again in a moment.", nil)
+	case errors.Is(err, aimodel.ErrUncertain), errors.Is(err, aimodel.ErrAttempts):
+		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace. Try again in a moment.", nil)
 	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):

@@ -104,6 +104,9 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+	if err := aimodel.SettleUncertain(ctx, db, time.Now()); err != nil {
+		return err
+	}
 	bg := &jobs{restartDelay: time.Minute}
 	authSvc, err := auth.New(cfg, db, slog.Default())
 	if err != nil {
@@ -173,6 +176,8 @@ func run() error {
 	if businessMail != nil {
 		businessMail.Meter = billingSvc
 	}
+	// every 5 min: calls an instance of an earlier release left uncertain during a rolling deploy
+	bg.Go(ctx, "AI uncertain calls", func(ctx context.Context) { aimodel.RunSettleUncertain(ctx, db) })
 	bg.Go(ctx, "storage count", files.RunReconcile) // every 10 min: counted objects whose write storage never confirmed
 	db.SetFeatureGate(billingSvc.RequireFeature)
 	// a job leaves an automatic action refused for a used-up limit alone until the month or the cap changes

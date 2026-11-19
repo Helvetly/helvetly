@@ -137,8 +137,8 @@ func answerOf(sess store.Session, reply ProviderReply, spent int64, err error) (
 		return turn{}, auth.Error(413, "heidi_input_too_large", "This conversation and its attachments are larger than one Heidi answer may read, whatever is left of the monthly allowance. Start a new conversation or attach fewer or smaller files.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return turn{}, auth.Error(503, "heidi_paused", "Heidi's model answers are paused while the service's AI budget is being updated. Local commands remain available.", nil)
-	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain):
-		return turn{}, auth.Error(503, "heidi_usage_uncertain", "Heidi is still finishing an earlier request, or this month's AI use is being checked. Nothing was changed. Try again in a few minutes; local commands still work.", nil)
+	case errors.Is(err, aimodel.ErrUncertain):
+		return turn{}, auth.Error(503, "heidi_usage_uncertain", "Heidi is still finishing an earlier request. Nothing was changed. Try again in a moment; local commands still work.", nil)
 	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
 		return turn{}, auth.Error(503, "heidi_busy", "Heidi is busy right now. Try again in a minute.", nil)
 	case aimodel.FailureKind(err) == aimodel.FailConfig && (sess.Role == "owner" || sess.Role == "admin"):

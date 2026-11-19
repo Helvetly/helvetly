@@ -146,7 +146,8 @@ func TestARateLimitIsRetriedThreeTimesThenLogged(t *testing.T) {
 	}
 }
 
-func TestAFailureWithUnknownUsageIsNeverRetried(t *testing.T) {
+// TestAFailureWithUnknownUsageIsNotRetriedHere: it was charged its reservation; asking again is the caller's choice.
+func TestAFailureWithUnknownUsageIsNotRetriedHere(t *testing.T) {
 	noRetryDelay(t)
 	db, _, ws := reserveDB(t)
 	p := &scripted{input: 10, reply: func(Request) (Reply, error) {

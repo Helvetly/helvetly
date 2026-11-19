@@ -361,26 +361,30 @@ func TestExtractionReviewsUntrustedRecords(t *testing.T) {
 	}
 }
 
-func TestUnknownModelUsageIsNeverRetried(t *testing.T) {
+// TestAnUnansweredPartIsAskedOnceMore: a lost answer is charged its reservation and the file waits for one more try;
+// a second loss ends the file with a reason that says how to try again, and the next upload is read.
+func TestAnUnansweredPartIsAskedOnceMore(t *testing.T) {
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")
-	e.model.replies = append(e.model.replies, func(aimodel.Request) (aimodel.Reply, error) {
-		return aimodel.Reply{}, context.DeadlineExceeded
-	})
+	lost := func(aimodel.Request) (aimodel.Reply, error) { return aimodel.Reply{}, context.DeadlineExceeded }
+	e.model.replies = append(e.model.replies, lost, lost, answer(`{"records":[]}`))
 	b := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"c.pdf": []byte("%PDF-1.7 lost")}))
-	got := e.extracted(b.ID)
-	if got.Files[0].Status != "failed" || got.Files[0].Error == nil || !strings.Contains(*got.Files[0].Error, "not asked again") {
-		t.Fatalf("file: %+v", got.Files[0])
-	}
-	b2 := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"d.pdf": []byte("%PDF-1.7 next")}))
 	clock := time.Now().UTC()
 	e.s.now = func() time.Time { return clock }
-	for range maxAttempts + 1 {
-		clock = clock.Add(24 * time.Hour)
-		got = e.extracted(b2.ID)
+	got := e.extracted(b.ID)
+	if got.Files[0].Status != "queued" || e.model.calls.Load() != 1 {
+		t.Fatalf("after the first loss: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
 	}
-	if e.model.calls.Load() != 1 || got.Files[0].Status != "failed" {
-		t.Fatalf("uncertain usage called the model again: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
+	for range maxAttempts {
+		clock = clock.Add(24 * time.Hour)
+		got = e.extracted(b.ID)
+	}
+	if e.model.calls.Load() != 2 || got.Files[0].Status != "failed" || got.Files[0].Error == nil || *got.Files[0].Error != aiNoAnswer {
+		t.Fatalf("after the second loss: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
+	}
+	b2 := decode[store.ImportBatch](t, e.upload("clients", map[string][]byte{"d.pdf": []byte("%PDF-1.7 next")}))
+	if got := e.extracted(b2.ID); e.model.calls.Load() != 3 || got.Files[0].Status != "done" {
+		t.Fatalf("the next upload: calls=%d file=%+v", e.model.calls.Load(), got.Files[0])
 	}
 }
 
@@ -400,7 +404,7 @@ func TestAChunkIsAskedAtMostTwice(t *testing.T) {
 		clock = clock.Add(time.Hour)
 		got = e.extracted(b.ID)
 	}
-	if e.model.calls.Load() != 2 || got.Files[0].Status != "failed" || got.Files[0].Error == nil || !strings.Contains(*got.Files[0].Error, "failed twice") {
+	if e.model.calls.Load() != 2 || got.Files[0].Status != "failed" || got.Files[0].Error == nil || *got.Files[0].Error != aiNoAnswer {
 		t.Fatalf("calls=%d file=%+v, want two calls and the file failed", e.model.calls.Load(), got.Files[0])
 	}
 }

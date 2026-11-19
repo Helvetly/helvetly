@@ -239,8 +239,8 @@ func organizeError(err error) error {
 		return auth.Error(http.StatusRequestEntityTooLarge, "organize_too_large", "There are too many documents to organize at once. Organize one folder at a time.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "AI organizing is paused while the service's AI budget is being updated.", nil)
-	case errors.Is(err, aimodel.ErrUnaccounted), errors.Is(err, aimodel.ErrUncertain):
-		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace, or its usage is being reconciled. Try again in a moment.", nil)
+	case errors.Is(err, aimodel.ErrUncertain):
+		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace. Try again in a moment.", nil)
 	case aimodel.FailureKind(err) == aimodel.FailRateLimited:
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):

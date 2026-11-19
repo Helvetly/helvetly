@@ -163,15 +163,12 @@ func TestClassifierFailureFallsBackToTheMainCall(t *testing.T) {
 	}
 }
 
-func TestClassifierWithUnknownUsageBlocksTheMainCall(t *testing.T) {
-	_, mux, p, _ := modelFixture(t)
+func TestClassifierWithUnknownUsageIsChargedAndFallsBackToTheMainCall(t *testing.T) {
+	_, mux, p, used := modelFixture(t)
 	p.scope = func(ProviderRequest) (ProviderReply, error) { return ProviderReply{}, context.DeadlineExceeded }
 	w := chat(t, mux, "unknown", "Summarize my open receivables")
-	// The classifier's step was streamed before it failed, so the blocked main call is an error frame.
-	events := frames(t, w)
-	if w.Code != 200 || p.calls.Load() != 0 || len(events) != 2 || events[0]["label"] != labelClassify || events[1]["type"] != "error" ||
-		events[1]["code"] != "heidi_usage_uncertain" {
-		t.Fatalf("%d calls=%d %s", w.Code, p.calls.Load(), w.Body)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Explanation.") || p.calls.Load() != 1 || used() <= 43 {
+		t.Fatalf("%d calls=%d used=%d %s", w.Code, p.calls.Load(), used(), w.Body)
 	}
 }
 

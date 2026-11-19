@@ -896,3 +896,14 @@ export function importProblem(error: unknown): ImportProblem {
       }
   }
 }
+
+/** The API's English reasons for a failed file that this app words in the reader's language; others as sent. */
+const FILE_ERRORS: Record<string, () => string> = {
+  "The AI couldn't read this file, even after a second try. Upload it again to try again.": () =>
+    translate('importAiNoAnswer'),
+}
+
+/** Why a file failed, in the reader's language when the app knows the reason. */
+export function fileErrorText(error: string): string {
+  return FILE_ERRORS[error]?.() ?? error
+}

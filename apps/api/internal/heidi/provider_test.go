@@ -25,8 +25,8 @@ func TestAModelFailureIsAnsweredInPlainWordsByItsCause(t *testing.T) {
 		{"setup, owner", "owner", failed(aimodel.FailConfig), "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings."},
 		{"setup, admin", "admin", failed(aimodel.FailConfig), "heidi_ai_misconfigured", "AI is not configured correctly. Check the model settings."},
 		{"setup, member", "member", failed(aimodel.FailConfig), "heidi_provider_unavailable", "Heidi couldn't answer right now. Nothing was changed. Try again in a moment."},
-		{"timeout", "owner", errors.Join(aimodel.ErrProvider, aimodel.ErrUnaccounted, &aimodel.ProviderError{Kind: aimodel.FailTimeout}), "heidi_usage_uncertain", "Heidi is still finishing an earlier request"},
-		{"usage being checked", "owner", aimodel.ErrUncertain, "heidi_usage_uncertain", "Heidi is still finishing an earlier request"},
+		{"timeout", "owner", errors.Join(aimodel.ErrProvider, aimodel.ErrUnaccounted, &aimodel.ProviderError{Kind: aimodel.FailTimeout}), "heidi_provider_unavailable", "Heidi couldn't answer right now. Nothing was changed. Try again"},
+		{"another call in flight", "owner", aimodel.ErrUncertain, "heidi_usage_uncertain", "Heidi is still finishing an earlier request"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := answerOf(store.Session{Role: tc.role}, ProviderReply{}, 0, tc.err)

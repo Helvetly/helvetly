@@ -1,8 +1,10 @@
 import { ApiError } from '@/lib/api'
+import { translate } from '@/lib/i18n'
 
 import {
   commitSummary,
   defaultSelection,
+  fileErrorText,
   importKindByLabel,
   importProblem,
   importsApi,
@@ -241,4 +243,15 @@ test('explains errors for novices', () => {
     '25 MB',
   )
   expect(importProblem(new ApiError(500, 'http_500', 'Request failed (500).')).kind).toBe('retry')
+})
+
+describe('fileErrorText', () => {
+  it('words a known reason in the reader’s language and passes others as sent', () => {
+    expect(
+      fileErrorText(
+        "The AI couldn't read this file, even after a second try. Upload it again to try again.",
+      ),
+    ).toBe(translate('importAiNoAnswer'))
+    expect(fileErrorText('The uploaded file is missing.')).toBe('The uploaded file is missing.')
+  })
 })
