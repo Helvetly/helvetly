@@ -1534,7 +1534,6 @@
   "invoicesAndDocumentsThatMentionThemKeepTheirCopy": "Le fatture ed i documenti che li menzionano conservano la loro copia dei dettagli. L’operazione non può essere annullata qui.",
   "invoicesAndPayments": "Fatture e pagamenti",
   "invoicesCanBeIssuedWithTheseDetails": " : è possibile emettere fatture con questi dettagli.",
-  "invoicesCarryNoVATAndSaySo": "Le fatture non riportano IVA e lo dicono.",
   "invoicesCarryNoVATThePricesAreTheTotals": "Le fatture non hanno IVA: i prezzi sono i totali.",
   "invoicesCouldnTBeLoaded": "Impossibile caricare le fatture: ",
   "invoiceSettings": "Impostazioni fattura",
