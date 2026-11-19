@@ -64,6 +64,9 @@ describe('localizedAlternates', () => {
         'en-GB': '/pricing',
         'fr-CH': '/fr/pricing',
         'it-CH': '/it/pricing',
+        'nl-NL': '/nl/pricing',
+        'cs-CZ': '/cs/pricing',
+        'sv-SE': '/sv/pricing',
         'x-default': '/pricing',
       },
     })
@@ -108,18 +111,38 @@ describe('public languages', () => {
     },
   )
 
-  it('accepts and remembers every public language handed over through ?lang', () => {
-    expect(configuration.browserLocales.toSorted()).toEqual(
-      Object.keys(configuration.locales).toSorted(),
-    )
+  it('accepts and remembers only application languages handed over through ?lang', () => {
+    expect(configuration.browserLocales).toEqual(['de', 'en', 'fr', 'it'])
     const storage = new Map<string, string>()
     const store = {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => void storage.set(key, value),
     }
-    for (const language of Object.keys(configuration.locales)) {
+    for (const language of configuration.browserLocales) {
       expect(browserLocale(`?lang=${language}`, store)).toBe(language)
       expect(browserLocale('', store)).toBe(language)
     }
+  })
+
+  it.each([
+    ['nl', 'Nederlands', 'nl-NL'],
+    ['cs', 'Čeština', 'cs-CZ'],
+    ['sv', 'Svenska', 'sv-SE'],
+  ])('publishes %s only on public sites', (code, name, tag) => {
+    if (!isLocale(code)) throw new Error(`${code} is not a public language`)
+    expect(localeDetails(code)).toEqual({ name, languageTag: tag, numberLocale: tag })
+    expect(localizedHref('/pricing?currency=EUR#basic', code)).toBe(
+      `/${code}/pricing?currency=EUR#basic`,
+    )
+    expect(localizedHref(`/${code}/pricing`, 'en')).toBe('/pricing')
+    const storage = new Map<string, string>()
+    const store = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => void storage.set(key, value),
+    }
+    expect(browserLocale(`?lang=${code}`, store, [tag])).toBe('en')
+    expect(storage.size).toBe(0)
+    browserLocale('?lang=de', store)
+    expect(browserLocale(`?lang=${code}`, store, [tag])).toBe('de')
   })
 })

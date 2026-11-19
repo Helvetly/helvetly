@@ -21,6 +21,21 @@
       "name": "Italiano",
       "languageTag": "it-CH",
       "numberLocale": "de-CH"
+    },
+    "nl": {
+      "name": "Nederlands",
+      "languageTag": "nl-NL",
+      "numberLocale": "nl-NL"
+    },
+    "cs": {
+      "name": "Čeština",
+      "languageTag": "cs-CZ",
+      "numberLocale": "cs-CZ"
+    },
+    "sv": {
+      "name": "Svenska",
+      "languageTag": "sv-SE",
+      "numberLocale": "sv-SE"
     }
   }
 }
