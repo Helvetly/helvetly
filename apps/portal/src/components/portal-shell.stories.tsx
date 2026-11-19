@@ -52,30 +52,108 @@ type Story = StoryObj<typeof meta>
 
 const page = (children: ReactNode) => () => <PortalShell>{children}</PortalShell>
 
-/** Desktop: pill tabs, the client's name by its avatar, and the account menu with the switcher. */
+const longWorkspace = 'John Doe Consulting und Treuhand GmbH with a long registered name'
+const longEmail = 'anna.mueller-bernasconi.accounting@muster-beratung-treuhand.ch'
+
+/** Desktop: the client's name and email by its avatar on one button that opens the account menu. */
 export const Desktop: Story = {
   render: page(<PortalOverview />),
+  parameters: {
+    ...meta.parameters,
+    msw: {
+      handlers: [
+        http.get(`${P}/session`, () =>
+          HttpResponse.json({
+            ...portalSession,
+            email: longEmail,
+            workspace: { name: longWorkspace },
+            client: { id: 'cli_1', name: longClient },
+            clients: [
+              { id: 'cli_1', name: longClient, workspace_name: 'Muster GmbH' },
+              { id: 'cli_2', name: 'Keller AG', workspace_name: 'Beispiel Treuhand AG' },
+            ],
+          }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('link', { name: 'Overview' })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    await userEvent.click(canvas.getByRole('button', { name: /^Account menu/ }))
+    const account = canvas.getByRole('button', { name: /^Account menu/ })
+    // Long name and email are cut short on the button, whole in their titles.
+    const email = within(account).getByText(longEmail)
+    await expect(email).toBeVisible()
+    await expect(email).toHaveAttribute('title', longEmail)
+    await expect(email.scrollWidth).toBeGreaterThan(email.clientWidth)
+    await expect(within(account).getByText(longClient)).toHaveAttribute('title', longClient)
+    await expect(account.getBoundingClientRect().width).toBeLessThanOrEqual(256)
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+
+    await userEvent.click(account)
     const menu = await within(document.body).findByRole('menu')
-    await waitFor(() => expect(within(menu).getByText(portalSession.email)).toBeVisible())
-    await expect(within(menu).getByText('Switch client')).toBeVisible()
+    await waitFor(() => expect(within(menu).getByText('Switch client')).toBeVisible())
     await expect(within(menu).getByRole('menuitemradio', { name: /Keller AG/ })).toHaveTextContent(
       'Beispiel Treuhand AG',
     )
     await expect(within(menu).getByRole('menuitem', { name: 'Profile' })).toBeVisible()
+    await expect(within(menu).getByRole('menuitem', { name: /^Language/ })).toHaveTextContent(
+      'English',
+    )
     await expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
+    await expect(account).toHaveFocus()
+    // The header at rest for the visual baseline.
+    account.blur()
+  },
+}
+
+/**
+ * The language row opens a submenu with every language, the current one checked; the keyboard reaches it
+ * with the arrow keys. Choosing one saves it and reloads, as before.
+ */
+export const LanguageSubmenu: Story = {
+  render: page(<PortalOverview />),
+  play: async ({ canvasElement }) => {
+    const account = await within(canvasElement).findByRole('button', { name: /^Account menu/ })
+    account.focus()
+    await userEvent.keyboard('{Enter}')
+    const menu = await within(document.body).findByRole('menu')
+    const language = within(menu).getByRole('menuitem', { name: /^Language/ })
+    language.focus()
+    await userEvent.keyboard('{ArrowRight}')
+    const sub = await waitFor(() => {
+      const menus = within(document.body).getAllByRole('menu')
+      expect(menus).toHaveLength(2)
+      return menus[1] ?? menu
+    })
+    const options = within(sub).getAllByRole('menuitemradio')
+    await expect(options.map((option) => option.textContent)).toEqual(
+      expect.arrayContaining(['Deutsch', 'English', 'Français', 'Italiano']),
+    )
+    await expect(within(sub).getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await waitFor(() => expect(sub.contains(document.activeElement)).toBe(true))
+    // Left goes back to the row, Escape closes the menu.
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(() => expect(language).toHaveFocus())
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())
   },
 }
+export const LanguageSubmenuDark: Story = {
+  ...LanguageSubmenu,
+  parameters: { ...meta.parameters, dark: true },
+}
 
-export const DesktopDark: Story = { ...Desktop, parameters: { ...meta.parameters, dark: true } }
+export const DesktopDark: Story = { ...Desktop, parameters: { ...Desktop.parameters, dark: true } }
 
 async function fitsThePhone(canvasElement: HTMLElement, text: string) {
   await within(canvasElement).findAllByText(text)
@@ -95,7 +173,16 @@ const onPhone = (render: Story['render'], text: string): Story => ({
 })
 const dark = (story: Story): Story => ({ ...story, parameters: { ...meta.parameters, dark: true } })
 
-export const OverviewPhone = onPhone(page(<PortalOverview />), longDocument)
+/** On a phone the account button is the avatar alone; its tooltip names the client. */
+export const OverviewPhone: Story = {
+  ...onPhone(page(<PortalOverview />), longDocument),
+  play: async ({ canvasElement }) => {
+    await fitsThePhone(canvasElement, longDocument)
+    const account = within(canvasElement).getByRole('button', { name: /^Account menu/ })
+    await expect(within(account).getByText(portalSession.email)).not.toBeVisible()
+    await expect(account.getBoundingClientRect().width).toBe(40)
+  },
+}
 export const OverviewPhoneDark = dark(OverviewPhone)
 
 export const InvoicesPhone: Story = {
@@ -118,8 +205,6 @@ export const DocumentsPhoneDark = dark(DocumentsPhone)
 export const ProfilePhone = onPhone(page(<PortalProfile />), 'Tax IDs')
 export const ProfilePhoneDark = dark(ProfilePhone)
 
-const longWorkspace = 'John Doe Consulting und Treuhand GmbH with a long registered name'
-
 /** Tablet width, long supplier name: it is cut short beside the tabs, and its tooltip has all of it. */
 export const LongWorkspaceName: Story = {
   render: page(<PortalOverview />),
@@ -140,17 +225,21 @@ export const LongWorkspaceName: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const name = await canvas.findByText(longWorkspace)
+    // The first 16 characters and an ellipsis; the whole name for screen readers and in the tooltip.
+    const name = await canvas.findByText('John Doe Consult…')
+    await expect(canvas.getByText(longWorkspace)).toHaveClass('sr-only')
     const nav = canvas.getByRole('navigation', { name: 'Portal' })
-    await waitFor(() =>
-      expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
-        nav.getBoundingClientRect().left,
-      ),
+    await expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(
+      nav.getBoundingClientRect().left,
     )
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
     await userEvent.hover(name)
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(longWorkspace)
   },
+}
+export const LongWorkspaceNameDark: Story = {
+  ...LongWorkspaceName,
+  parameters: { ...LongWorkspaceName.parameters, dark: true },
 }
 
 /**

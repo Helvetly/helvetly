@@ -14,6 +14,7 @@ const screens: [App, string][] = [
   ['portal', 'pages-portal--overview'],
   ['portal', 'pages-portal--invoices'],
   ['portal', 'pages-portal--profile'],
+  ['portal', 'portal-shell--desktop'],
 ]
 const components: [App, string][] = [
   ['platform', 'design-system-controls--button-variants'],
