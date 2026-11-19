@@ -99,3 +99,10 @@ export const phone = <S extends Story>(story: S): S => ({
   ...story,
   globals: { ...story.globals, viewport: { value: 'phone' } },
 })
+
+/** The paper's footer block (rule and field) ends at the paper's bottom padding, so the free space lies above it. */
+export const expectFooterAtTheBottom = async (paper: HTMLElement) => {
+  const footer = within(paper).getByRole('textbox', { name: 'Footer' }).parentElement
+  const gap = paper.getBoundingClientRect().bottom - (footer?.getBoundingClientRect().bottom ?? 0)
+  await expect(gap).toBeLessThanOrEqual(parseFloat(getComputedStyle(paper).paddingBottom) + 1)
+}

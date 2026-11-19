@@ -21,6 +21,7 @@ import { DateField, quietValue } from '@/components/invoices/date-fields'
 import {
   ClientBlock,
   MetaLabel,
+  PaperFooter,
   proseInput,
   SellerBlock,
   TotalLine,
@@ -323,7 +324,7 @@ function Editor({
                 <article
                   aria-label={translate('quote2')}
                   // A flat page from the options bar's line down to the internal note, its sides at the work area's edges.
-                  className="relative left-1/2 w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 border-x bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
+                  className="relative left-1/2 flex w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 flex-col border-x bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
                 >
                   <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
                     <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />
@@ -499,8 +500,7 @@ function Editor({
                     )}
                   </dl>
 
-                  {/* The rule sits outside the field, so focus outlines only the text. */}
-                  <div className="mt-10 border-t border-border/70 pt-4">
+                  <PaperFooter>
                     <textarea
                       aria-label={translate('footer')}
                       aria-invalid={errors.footer ? true : undefined}
@@ -511,7 +511,7 @@ function Editor({
                       rows={1}
                       className={cn(proseInput, 'text-body-sm text-muted-foreground')}
                     />
-                  </div>
+                  </PaperFooter>
                   {(errors.intro || errors.footer) && (
                     <p className="mt-2 text-caption text-destructive">
                       {errors.intro ?? errors.footer}

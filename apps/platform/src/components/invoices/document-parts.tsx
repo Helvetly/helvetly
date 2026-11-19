@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowUpRight, CircleAlert, CircleHelp, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 
 import { addressLines } from '@/components/clients/client-bits'
 import { ClientForm } from '@/components/clients/client-form'
@@ -25,6 +25,16 @@ export const PARTY_LABEL =
 
 export const proseInput =
   'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+
+/** The paper's closing text: pinned to the bottom of the page, or after the content when that is longer. */
+export function PaperFooter({ children }: { children: ReactNode }) {
+  // The padding keeps the gap after the totals; the rule sits outside the field, so focus outlines only the text.
+  return (
+    <div className="mt-auto pt-10">
+      <div className="border-t border-border/70 pt-4">{children}</div>
+    </div>
+  )
+}
 
 /** Name, address lines, country and VAT number, set the same way for seller and client. */
 function PartyLines({
