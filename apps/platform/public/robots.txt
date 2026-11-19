@@ -1,2 +1,3 @@
+# Crawling stays allowed so Google sees each page's noindex; a Disallow would hide it and keep known URLs indexed.
 User-agent: *
-Disallow: /
+Allow: /

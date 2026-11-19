@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import { Providers } from '@/components/providers'
 
 export const metadata: Metadata = {
-  robots: { index: false },
+  robots: { index: false, follow: false },
 }
 
 export default function Layout({ children }: Readonly<{ children: ReactNode }>) {
