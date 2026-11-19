@@ -98,6 +98,11 @@ func TestLoad(t *testing.T) {
 		{"invalid OpenAI key", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_API_KEY": "fake\nkey"}, "OPENAI_API_KEY", nil},
 		{"invalid model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "invalid model"}, "OPENAI_MODEL", nil},
 		{"model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "gpt-6-luna-fast"}, "OPENAI_MODEL", nil},
+		{"fallback model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-6.1-sol"}, "",
+			func(c Config) bool { return c.AI.Model == "gpt-6-luna" && c.AI.FallbackModel == "gpt-6.1-sol" }},
+		{"no fallback model", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.AI.FallbackModel == "" }},
+		{"fallback model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-6-sol"}, "OPENAI_FALLBACK_MODEL", nil},
+		{"fallback model same as the model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "gpt-6.1-sol", "OPENAI_FALLBACK_MODEL": "gpt-6.1-sol"}, "OPENAI_FALLBACK_MODEL", nil},
 		{"feedback email", map[string]string{"AUTH_DEV_SIGNIN": "true", "FEEDBACK_EMAIL": "team@helvetly.test"}, "", func(c Config) bool {
 			return c.FeedbackEmail == "team@helvetly.test"
 		}},
@@ -147,7 +152,7 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"

@@ -53,7 +53,7 @@ func TestUnknownUsageIsChargedItsReservation(t *testing.T) {
 					"usage":{"input_tokens":100,"output_tokens":20,"total_tokens":120,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}`)
 			}))
 			defer server.Close()
-			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", DefaultModel).(*openAI)
+			p := NewOpenAI("fake-openai-key", "https://api.openai.com/v1", DefaultModel, "").(*openAI)
 			p.url, p.client.Timeout = server.URL, 50*time.Millisecond
 			log := captureLog(t)
 			b := Budget{DB: db, Pool: PoolAutomation, Now: func() time.Time { return nov }, Allowance: fixed(1_000_000), CostAllowance: fixed(1_000_000)}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	mrand "math/rand/v2"
 	"strings"
 	"time"
 
@@ -91,6 +92,8 @@ type Call struct {
 	MaxOutput                    int64
 	Caps                         Caps
 	Timeout                      time.Duration
+	// fallback marks the one call on the fallback model: the pool is funded for the configured model, not for it.
+	fallback bool
 }
 
 // Budget is one pool's monthly token allowance and its cost guard (heidi_usage and ai_calls of Pool). A nil Allowance
@@ -119,32 +122,76 @@ type Budget struct {
 // is the reserved output, so the provider cannot bill more, and the cost is reserved at uncached input prices. A usage
 // report without a cost breakdown settles the tokens and keeps the cost reserved for reconciliation.
 //
-// A failure that cost nothing (the provider refused before generating: a rate limit, or the input count) is tried
-// again up to len(retryDelays) times after growing pauses, each retry its own step and reservation; a failure whose
-// usage is unknown never is. Neither is one with less than half of the call's time left.
+// A failure that cost nothing (the provider refused before generating: a rate limit, an overload, or the input count)
+// is tried again up to len(retryDelays) times, after the provider's Retry-After or growing pauses, each retry its own
+// step and reservation; a failure whose usage is unknown never is. Neither is one with less than half of the call's
+// time left. A provider still busy then (Busy) and with a fallback model (NewOpenAI) is asked once on that model,
+// reserved and priced at its card, while half of the call's time is left.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
 	timeout := answerTimeout
 	if call.Timeout > 0 {
 		timeout = min(call.Timeout, MaxAnswerTimeout)
 	}
 	deadline := time.Now().Add(timeout)
+	reply, err := b.retrying(ctx, p, ws, req, call, deadline, timeout)
+	f, ok := p.(interface{ Fallback() Provider })
+	if !ok || !Busy(err) || ctx.Err() != nil || time.Until(deadline) < timeout/2 {
+		return reply, err
+	}
+	fallback := f.Fallback()
+	if fallback == nil {
+		return reply, err
+	}
+	slog.WarnContext(ctx, "model busy, asking the fallback model", "workspace", ws.ID, "kind", call.Kind, "step", call.Step,
+		"model", p.Card().Model, "fallback_model", fallback.Card().Model, "reason", FailureKind(err))
+	call.Step, call.fallback = call.Step+"/fallback", true
+	fallbackReply, fallbackErr := b.generate(ctx, fallback, ws, req, call, deadline)
+	if fallbackErr != nil && !errors.Is(fallbackErr, ErrProvider) {
+		// Refused before asking (its card does not fit the caps or what is left): the person hears the model is busy.
+		slog.WarnContext(ctx, "model fallback refused", "workspace", ws.ID, "kind", call.Kind, "step", call.Step,
+			"fallback_model", fallback.Card().Model, "error", fallbackErr.Error())
+		return reply, err
+	}
+	return fallbackReply, fallbackErr
+}
+
+// retrying asks p, retrying a failure that cost nothing (retryable) while time is left.
+func (b Budget) retrying(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call, deadline time.Time, timeout time.Duration) (Reply, error) {
 	step := call.Step
 	for i := 0; ; i++ {
 		reply, err := b.generate(ctx, p, ws, req, call, deadline)
-		if err == nil || i == len(retryDelays) || !retryable(err) || time.Until(deadline) < timeout/2+retryDelays[i] {
+		if err == nil || i == len(retryDelays) || !retryable(err) {
+			return reply, err
+		}
+		wait := retryWait(err, retryDelays[i])
+		if time.Until(deadline) < timeout/2+wait {
 			return reply, err
 		}
 		select {
 		case <-ctx.Done():
 			return reply, err
-		case <-time.After(retryDelays[i]):
+		case <-time.After(wait):
 		}
 		call.Step = fmt.Sprintf("%s/retry%d", step, i+1)
 	}
 }
 
-// retryDelays are the pauses before each retry of a failure that cost nothing.
+// retryDelays are the pauses before each retry of a failure that cost nothing, without a Retry-After.
 var retryDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second}
+
+// maxRetryWait caps a provider's Retry-After, so one answer never waits on it for long.
+const maxRetryWait = 20 * time.Second
+
+// retryWait is the provider's Retry-After when it sent one, else delay ±50% so retries of many calls spread out.
+func retryWait(err error, delay time.Duration) time.Duration {
+	if pe, ok := errors.AsType[*ProviderError](err); ok && pe.RetryAfter > 0 {
+		return pe.RetryAfter
+	}
+	if delay <= 0 {
+		return 0
+	}
+	return delay/2 + mrand.N(delay)
+}
 
 // errCount marks a failed input count: nothing was reserved or generated.
 var errCount = errors.New("the provider could not count the input tokens")
@@ -154,7 +201,7 @@ func retryable(err error) bool {
 		return false
 	}
 	switch FailureKind(err) {
-	case FailRateLimited:
+	case FailRateLimited, FailOverloaded:
 		return true
 	case FailServer, FailTimeout, FailNetwork, FailInvalid:
 		return errors.Is(err, errCount)
@@ -265,7 +312,7 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 		if err != nil {
 			return err
 		}
-		if tokens != math.MaxInt64 && cost != math.MaxInt64 {
+		if tokens != math.MaxInt64 && cost != math.MaxInt64 && !call.fallback {
 			if err := card.Funds(tokens, cost); err != nil {
 				return err
 			}
