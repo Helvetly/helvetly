@@ -24,7 +24,8 @@ const balances = [
   bal('1000', 'Kasse', '1081.00', '0.00', '1081.00'),
   bal('1100', 'Forderungen aus Lieferungen und Leistungen', '1081.00', '1081.00', '0.00'),
   { ...bal('1020', 'Bank EUR', '200.00', '0.00', '200.00'), currency: 'EUR' },
-  bal('3200', 'Handelswarenertrag', '0.00', '1000.00', '-1000.00'),
+  bal('2200', 'Geschuldete MWST', '0.00', '81.00', '-81.00'),
+  bal('3200', 'Dienstleistungserlöse', '0.00', '1000.00', '-1000.00'),
 ]
 
 const accounts: LedgerAccounts = {
@@ -38,6 +39,16 @@ const accounts: LedgerAccounts = {
   input_vat_other: '1171',
   bank: { bank_transfer: '1020', cash: '1000' },
 }
+
+const line = (
+  date: string,
+  ref: string,
+  description: string,
+  contra: string,
+  debit: string,
+  credit: string,
+  balance: string,
+) => ({ date, ref, description, contra, debit, credit, balance })
 
 const handlers = (role: string, report: Partial<LedgerReport> = {}, fail = false) => [
   http.get('/api/v1/session', () => HttpResponse.json(session(role))),
@@ -65,17 +76,44 @@ const handlers = (role: string, report: Partial<LedgerReport> = {}, fail = false
         name: 'Forderungen aus Lieferungen und Leistungen',
         currency: 'CHF',
         opening: '0.00',
-        closing: '1081.00',
+        closing: '0.00',
         lines: [
-          {
-            date: '2026-03-01',
-            ref: 'RE-2026-0001',
-            description: 'Invoice',
-            contra: '3200',
-            debit: '1081.00',
-            credit: '0.00',
-            balance: '1081.00',
-          },
+          line(
+            '2026-03-01',
+            'RE-2026-0001',
+            'Invoice RE-2026-0001 · Website relaunch',
+            '3200',
+            '1081.00',
+            '0.00',
+            '1081.00',
+          ),
+          line(
+            '2026-03-28',
+            'RE-2026-0001',
+            'Payment RE-2026-0001',
+            '1000',
+            '0.00',
+            '1081.00',
+            '0.00',
+          ),
+          line(
+            '2026-04-02',
+            'RE-2026-0002',
+            'Invoice RE-2026-0002 · Hosting and maintenance April to June',
+            '3200',
+            '2222.00',
+            '0.00',
+            '2222.00',
+          ),
+          line(
+            '2026-04-30',
+            'RE-2026-0002',
+            'Payment RE-2026-0002',
+            '1020',
+            '0.00',
+            '2222.00',
+            '0.00',
+          ),
         ],
       },
     }),
@@ -121,12 +159,38 @@ export const Loaded: Story = {
     const c = within(canvasElement)
     await expect(await c.findByText('Kasse')).toBeVisible()
     await expect(c.getByText('EUR')).toBeVisible()
-    await userEvent.click(c.getByText('1100'))
+    // Accounts sit under their class of the Swiss SME chart, and the totals agree.
+    const classes = c.getAllByRole('rowheader').map((cell) => cell.textContent)
+    await expect(classes).toEqual(
+      expect.arrayContaining(['1Assets', '2Liabilities and equity', '3Operating revenue']),
+    )
+    await expect(c.getByText('Debits equal credits')).toBeVisible()
+    // The period select groups its quarters and months.
+    const period = c.getByRole('combobox', { name: 'Period' })
+    await expect([...period.querySelectorAll('optgroup')].map((g) => g.label)).toEqual([
+      'Quarters',
+      'Months',
+    ])
+    await userEvent.click(c.getByRole('button', { name: /^1100 / }))
     const drawer = body(canvasElement)
-    await drawer.findByText('RE-2026-0001')
-    // the drawer fades in
-    await waitFor(() => expect(drawer.getByText('RE-2026-0001')).toBeVisible())
-    await expect(drawer.getByText('Closing balance')).toBeVisible()
+    const dialog = await drawer.findByRole('dialog')
+    // the drawer slides in
+    await waitFor(() => expect(within(dialog).getAllByText('RE-2026-0002')[0]).toBeVisible())
+    await expect(within(dialog).getAllByText('Closing balance')[0]).toBeVisible()
+    await expect(within(dialog).getAllByText('Dienstleistungserlöse')[0]).toBeVisible()
+    // Wide enough that the statement needs no sideways scroll.
+    const table = dialog.querySelector('table')?.parentElement
+    await waitFor(() => expect(table?.scrollWidth).toBeLessThanOrEqual(table?.clientWidth ?? 0))
+  },
+}
+
+/** The Saldenliste alone: classes with subtotals, quiet dashes for zero, the balanced total. */
+export const TrialBalance: Story = {
+  parameters: { msw: { handlers: handlers('owner') } },
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await expect(await c.findByText('Debits equal credits')).toBeVisible()
+    await expect(c.getByRole('rowheader', { name: /Total · CHF/ })).toBeVisible()
   },
 }
 
@@ -164,25 +228,61 @@ export const Member: Story = {
     const c = within(canvasElement)
     await userEvent.click(await c.findByRole('button', { name: 'Accounts' }))
     const drawer = body(canvasElement)
-    await expect(await drawer.findByLabelText('Revenue')).toBeDisabled()
+    await expect(await drawer.findByLabelText(/^Revenue/)).toBeDisabled()
     await waitFor(() =>
       expect(drawer.getByText('View only: ask an owner or admin for edit access.')).toBeVisible(),
     )
   },
 }
 
+/** The accounts form checks each code itself, names the field and focuses the first wrong one. */
 export const SaveInvalid: Story = {
   parameters: { msw: { handlers: handlers('owner') } },
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
     await userEvent.click(await c.findByRole('button', { name: 'Accounts' }))
     const drawer = body(canvasElement)
-    const revenue = await drawer.findByLabelText('Revenue')
+    const revenue = await drawer.findByLabelText(/^Revenue/)
+    await expect(drawer.getByText('Sales')).toBeVisible()
+    await expect(drawer.getByText('Bank and cash')).toBeVisible()
+    await expect(drawer.getByLabelText(/^TWINT|^Bank transfer/)).toBeVisible()
     await userEvent.clear(revenue)
-    await userEvent.type(revenue, 'x')
-    await userEvent.click(drawer.getByRole('button', { name: 'Save' }))
-    await drawer.findByText('Use 3 to 10 digits.')
+    await userEvent.type(revenue, '32')
+    await userEvent.click(drawer.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() =>
+      expect(drawer.getByText('Enter an account code of 3 to 10 digits.')).toBeVisible(),
+    )
+    await expect(revenue).toHaveAttribute('aria-invalid', 'true')
+    await expect(revenue).toHaveFocus()
+  },
+}
+
+/** A code the API refuses comes back under its field. */
+export const SaveRefused: Story = {
+  parameters: { msw: { handlers: handlers('owner') } },
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await userEvent.click(await c.findByRole('button', { name: 'Accounts' }))
+    const drawer = body(canvasElement)
+    const revenue = await drawer.findByLabelText(/^Revenue/)
+    await userEvent.clear(revenue)
+    await userEvent.type(revenue, '3400')
+    await userEvent.click(drawer.getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(drawer.getByText('Use 3 to 10 digits.')).toBeVisible())
+  },
+}
+
+/** Leaving with unsaved codes asks first. */
+export const DiscardChanges: Story = {
+  parameters: { msw: { handlers: handlers('owner') } },
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await userEvent.click(await c.findByRole('button', { name: 'Accounts' }))
+    const drawer = body(canvasElement)
+    const revenue = await drawer.findByLabelText(/^Revenue/)
+    await userEvent.type(revenue, '1')
+    await userEvent.click(drawer.getByRole('button', { name: 'Cancel' }))
+    await expect(await drawer.findByText('Discard your changes?')).toBeVisible()
   },
 }
 
