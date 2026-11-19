@@ -25,13 +25,15 @@ type RateCard struct {
 // regional is OpenAI's +10% for regional processing: base rate × 1.1, in micro-USD per million tokens.
 func regional(usdPerMillion float64) int64 { return int64(usdPerMillion*1.1*1e6 + 0.5) }
 
-// Cards are the models a deployment may choose (OPENAI_MODEL), at Standard tier, from OpenAI's price list verified
-// 2026-11-15. Sol and Astra are priced only so an operator's explicit choice is costed; the sold token pools are
-// funded for Luna, and Budget refuses calls whose card cannot fund the pool (ErrUnfunded).
+// Cards are the models a deployment may choose (OPENAI_MODEL, OPENAI_FALLBACK_MODEL), at Standard tier, from OpenAI's
+// price list verified 2026-11-15 (gpt-5.6-luna, the previous Luna kept as a fallback, 2026-11-19). Sol, Astra and
+// Luna 5.6 are priced only so an operator's explicit choice is costed; the sold token pools are funded for gpt-6-luna,
+// and Budget refuses calls whose card cannot fund the pool (ErrUnfunded).
 var Cards = map[string]RateCard{
-	"gpt-6-luna":  {Version: "openai-2026-11-15", Model: "gpt-6-luna", Tier: "default", Region: "regional", Input: regional(0.10), Cached: regional(0.01), Output: regional(0.50)},
-	"gpt-6.1-sol": {Version: "openai-2026-11-15", Model: "gpt-6.1-sol", Tier: "default", Region: "regional", Input: regional(2), Cached: regional(0.10), Output: regional(10)},
-	"gpt-6-astra": {Version: "openai-2026-11-15", Model: "gpt-6-astra", Tier: "default", Region: "regional", Input: regional(10), Cached: regional(1), Output: regional(50)},
+	"gpt-6-luna":   {Version: "openai-2026-11-15", Model: "gpt-6-luna", Tier: "default", Region: "regional", Input: regional(0.10), Cached: regional(0.01), Output: regional(0.50)},
+	"gpt-6.1-sol":  {Version: "openai-2026-11-15", Model: "gpt-6.1-sol", Tier: "default", Region: "regional", Input: regional(2), Cached: regional(0.10), Output: regional(10)},
+	"gpt-5.6-luna": {Version: "openai-2026-11-19", Model: "gpt-5.6-luna", Tier: "default", Region: "regional", Input: regional(0.20), Cached: regional(0.02), Output: regional(1.20)},
+	"gpt-6-astra":  {Version: "openai-2026-11-15", Model: "gpt-6-astra", Tier: "default", Region: "regional", Input: regional(10), Cached: regional(1), Output: regional(50)},
 }
 
 // Cost is the micro-USD price of uncached input, cached input and output tokens, rounded up.
