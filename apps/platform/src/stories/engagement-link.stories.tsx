@@ -86,9 +86,9 @@ export const EditorAddFromPicker: Story = {
     await userEvent.keyboard('Spanish lessons')
     await expect(body.getByRole('option', { name: 'Add “Spanish lessons”' })).toBeVisible()
     await userEvent.keyboard('{Enter}')
-    await expect(await body.findByRole('dialog', { name: /New engagement/ })).toBeVisible()
-    await expect(await body.findByRole('textbox', { name: /^Title/ })).toHaveValue(
-      'Spanish lessons',
+    // The drawer shows a loading frame first, then the form: wait for the form's field.
+    await waitFor(async () =>
+      expect(await body.findByRole('textbox', { name: /^Title/ })).toHaveValue('Spanish lessons'),
     )
     await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
   },

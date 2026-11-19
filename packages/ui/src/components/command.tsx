@@ -167,8 +167,8 @@ function CommandCreateItem({
 }: React.ComponentProps<typeof CommandPrimitive.Item>) {
   // Sticky at the list's end and never filtered out: adding stays one row away whatever is typed or scrolled.
   return (
-    <div className="sticky bottom-0 z-10 bg-popover">
-      <CommandSeparator alwaysRender className="mx-0" />
+    // A border, not a CommandSeparator: a listbox may hold only options and groups.
+    <div className="sticky bottom-0 z-10 border-t bg-popover">
       <CommandPrimitive.Group className="p-1" forceMount={forceMount}>
         <CommandPrimitive.Item
           data-slot="command-create-item"
