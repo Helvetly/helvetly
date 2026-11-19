@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import type { ExpenseCategory } from '@/lib/expenses'
 import type { ImportBatch, ImportRecord } from '@/lib/imports'
 
 import { sessionHandler } from './screen-fixtures'
@@ -81,6 +83,32 @@ const batch = (records: ImportRecord[]): ImportBatch => ({
 let current = batch([clean, wrongRate, repeated])
 const body = () => within(document.body)
 
+const startingCategories: ExpenseCategory[] = [
+  { id: 'exc_1', name: 'Travel', account_code: '6640', is_archived: false, expenses_count: 3 },
+  { id: 'exc_2', name: 'Telecom', account_code: '6510', is_archived: false, expenses_count: 1 },
+]
+let categories = startingCategories
+/** Every request the drawer and its record editor make besides the import's own. */
+const drawerHandlers = [
+  sessionHandler(),
+  http.get('/api/v1/billing', () => HttpResponse.json(billingFixture())),
+  http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: categories })),
+  http.post<never, { name: string; account_code: string }>(
+    '/api/v1/expense-categories',
+    async ({ request }) => {
+      const input = await request.json()
+      const created = {
+        id: `exc_${categories.length + 1}`,
+        ...input,
+        is_archived: false,
+        expenses_count: 0,
+      }
+      categories = [...categories, created]
+      return HttpResponse.json({ data: created }, { status: 201 })
+    },
+  ),
+]
+
 /**
  * Receipts read into draft expenses: the wrong Swiss rate and the receipt already booked wait for a look;
  * fixing the rate ticks the row, and the import creates the drafts that then wait in "To review".
@@ -92,7 +120,7 @@ export const ReviewReceipts: Story = {
   parameters: {
     msw: {
       handlers: [
-        sessionHandler(),
+        ...drawerHandlers,
         http.get('/api/v1/imports', () =>
           HttpResponse.json({
             data: [
@@ -192,28 +220,13 @@ const suggestedCategory = record('imr_cat', {
 
 /** The model suggested a category the workspace lacks: the editor offers to create it, and the name stays. */
 export const SuggestedNewCategory: Story = {
+  beforeEach: () => {
+    categories = startingCategories
+  },
   parameters: {
     msw: {
       handlers: [
-        sessionHandler(),
-        http.get('/api/v1/expense-categories', () =>
-          HttpResponse.json({
-            data: [
-              { id: 'exc_1', name: 'Travel', account_code: '6640', is_archived: false },
-              { id: 'exc_2', name: 'Telecom', account_code: '6510', is_archived: false },
-            ],
-          }),
-        ),
-        http.post<never, { name: string; account_code: string }>(
-          '/api/v1/expense-categories',
-          async ({ request }) => {
-            const input = await request.json()
-            return HttpResponse.json(
-              { data: { id: 'exc_3', ...input, is_archived: false } },
-              { status: 201 },
-            )
-          },
-        ),
+        ...drawerHandlers,
         http.get('/api/v1/imports', () =>
           HttpResponse.json({
             data: [
@@ -237,11 +250,15 @@ export const SuggestedNewCategory: Story = {
     await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
     await userEvent.click(await body().findByRole('button', { name: 'Edit Apple Store' }))
     await expect(await body().findByText('Suggested new category: Software')).toBeVisible()
-    await userEvent.click(body().getAllByRole('button', { name: 'Create' })[0] as HTMLElement)
-    await expect(await body().findByRole('textbox', { name: 'Category name' })).toHaveValue(
-      'Software',
-    )
-    await userEvent.click(body().getAllByRole('button', { name: 'Create' })[1] as HTMLElement)
+    // Only owners and admins create categories, so the button waits for the session, which may land after the list.
+    await userEvent.click(await body().findByRole('button', { name: 'Create' }))
+    const name = await body().findByRole('textbox', { name: 'Category name' })
+    await expect(name).toHaveValue('Software')
+    const popover = name.closest('[data-slot="popover-content"]')
+    if (!(popover instanceof HTMLElement)) throw new Error('The category name is not in a popover')
+    await userEvent.click(within(popover).getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(body().queryByRole('textbox', { name: 'Category name' })).toBeNull())
+    await waitFor(() => expect(body().queryByText('Suggested new category: Software')).toBeNull())
+    await expect(categories.map((category) => category.name)).toContain('Software')
   },
 }
