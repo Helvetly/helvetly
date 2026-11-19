@@ -62,6 +62,9 @@ const internalCard = async () => {
   const heading = await body.findByRole('heading', { name: 'Internal' })
   return within(heading.closest('section') ?? document.body)
 }
+/** An inline editor stays open, with the value inside it, until the save answers; then the row shows the value. */
+const closed = (card: ReturnType<typeof within>, name: string) =>
+  waitFor(() => expect(card.queryByRole('textbox', { name })).not.toBeInTheDocument())
 
 /** Tags, the internal ID and the note change in place after they were added, through the client update. */
 export const EditInPlace: Story = {
@@ -81,6 +84,7 @@ export const EditInPlace: Story = {
     await waitFor(() =>
       expect(saved).toHaveBeenLastCalledWith({ tags: ['retainer', 'Key-account'] }),
     )
+    await closed(card, 'Tags')
     await expect(await card.findByText('Key-account')).toBeVisible()
     await expect(card.queryByText('sss')).not.toBeInTheDocument()
 
@@ -89,6 +93,7 @@ export const EditInPlace: Story = {
     await expect(id).toHaveValue('K-1')
     await userEvent.type(id, '042{Enter}')
     await waitFor(() => expect(saved).toHaveBeenLastCalledWith({ internal_id: 'K-1042' }))
+    await closed(card, 'Internal ID')
     await expect(await card.findByText('K-1042')).toBeVisible()
 
     await userEvent.click(card.getByRole('button', { name: /Edit note/ }))
@@ -99,6 +104,7 @@ export const EditInPlace: Story = {
     await waitFor(() =>
       expect(saved).toHaveBeenLastCalledWith({ note: 'Pays late.\nCall before sending.' }),
     )
+    await closed(card, 'Note')
     await expect(await card.findByText(/Call before sending/)).toBeVisible()
 
     // Cleared values save as empty and offer to add them again.
