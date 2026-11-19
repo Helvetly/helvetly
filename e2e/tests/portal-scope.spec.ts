@@ -197,7 +197,9 @@ test('the owner turns the whole portal off in settings: the client is signed out
     const again = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
       data: { email, code: await code(context, path, email) },
     })
-    expect(again.status()).toBe(403)
+    // No code is sent while off (the same answer as for an unknown address), so nothing verifies.
+    expect(again.status()).not.toBe(201)
+    expect((await session(context, path)).status()).toBe(401)
     const portal = await context.newPage()
     await portal.goto(`${path}login/`)
     await expect(
