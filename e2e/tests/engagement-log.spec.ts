@@ -6,7 +6,7 @@ const dayBefore = (iso: string) => {
   return day.toISOString().slice(0, 10)
 }
 
-test('the detail logs a delivery and points at the date when it falls before the start', async ({
+test('the detail logs a delivery, with client performance on the invoice, and points at the date when it falls before the start', async ({
   page,
   api,
 }) => {
@@ -45,10 +45,16 @@ test('the detail logs a delivery and points at the date when it falls before the
 
   await date.fill(today())
   await expect(date).not.toHaveAttribute('aria-invalid')
+  await form.getByRole('textbox', { name: 'Client performance' }).fill('Well prepared')
+  await form.getByRole('checkbox', { name: 'Show on invoice' }).check()
   await form.getByRole('button', { name: /^Log 1/ }).click()
   await expect(page.getByText(/Logged 1/)).toBeVisible()
   const list = await api.request.get(`/api/v1${entries}`)
   const saved = object(await list.json()).data
   if (!Array.isArray(saved)) throw new Error('Expected the entries')
   expect(saved.map((entry) => object(entry).date)).toEqual([today()])
+  expect(object(saved[0])).toMatchObject({
+    client_performance: 'Well prepared',
+    client_performance_on_invoice: true,
+  })
 })

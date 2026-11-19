@@ -125,6 +125,7 @@ export type Entry = {
   quantity: Decimal
   note: string | null
   client_performance: string | null
+  client_performance_on_invoice: boolean
   performed_by: { id: string; name: string } | null
   invoice: InvoiceLink | null
   created_at: string
@@ -136,6 +137,7 @@ export type EntryInput = {
   quantity: Decimal
   note?: string | null
   client_performance?: string | null
+  client_performance_on_invoice?: boolean
   performed_by?: string | null
 }
 

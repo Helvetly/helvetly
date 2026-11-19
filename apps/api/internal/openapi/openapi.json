@@ -9994,7 +9994,11 @@
           "client_performance": {
             "type": ["string", "null"],
             "maxLength": 500,
-            "description": "Internal note on how the client did; never on invoices or in the portal."
+            "description": "How the client did. The client sees it in the portal; on invoices only when client_performance_on_invoice is true."
+          },
+          "client_performance_on_invoice": {
+            "type": "boolean",
+            "description": "Add client_performance to this entry's own invoice line (per-entry invoices). Default false."
           },
           "performed_by": {
             "type": ["string", "null"],
@@ -10361,6 +10365,9 @@
           "client_performance": {
             "type": ["string", "null"]
           },
+          "client_performance_on_invoice": {
+            "type": "boolean"
+          },
           "performed_by": {
             "anyOf": [
               {
@@ -10403,6 +10410,7 @@
           "quantity",
           "note",
           "client_performance",
+          "client_performance_on_invoice",
           "performed_by",
           "invoice",
           "created_at",

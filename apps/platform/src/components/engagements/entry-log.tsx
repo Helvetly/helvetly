@@ -1,6 +1,7 @@
 'use client'
 import { languageTag, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Input } from '@helvetly/ui/components/input'
 import {
   InputGroup,
@@ -103,6 +104,7 @@ export function QuickLog({
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
   const [performance, setPerformance] = useState('')
+  const [onInvoice, setOnInvoice] = useState(false)
   const [by, setBy] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const quantityRef = useRef<HTMLInputElement>(null)
@@ -121,12 +123,14 @@ export function QuickLog({
         quantity,
         note: note.trim() || null,
         client_performance: performance.trim() || null,
+        client_performance_on_invoice: onInvoice,
         ...(by ? { performed_by: by } : {}),
       }),
     onSuccess: ({ data }) => {
       setQuantity('')
       setNote('')
       setPerformance('')
+      setOnInvoice(false)
       setErrors({})
       refresh()
       if (onLogged) onLogged()
@@ -283,12 +287,15 @@ export function QuickLog({
         {errorText('note')}
       </div>
       <div className="grid gap-1.5">
-        <label htmlFor={`${id}-performance`} className={label}>
-          {translate('clientPerformance')}{' '}
-          <span className="font-normal text-placeholder">
-            {translate('optionalInternalNeverOnInvoices')}
-          </span>
-        </label>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <label htmlFor={`${id}-performance`} className={label}>
+            {translate('clientPerformance')}{' '}
+            <span className="font-normal text-placeholder">
+              {translate('optionalTheClientSeesItInThePortal')}
+            </span>
+          </label>
+          <ShowOnInvoice checked={onInvoice} onChange={setOnInvoice} />
+        </div>
         <Input
           id={`${id}-performance`}
           aria-label={translate('clientPerformance')}
@@ -322,6 +329,22 @@ export function QuickLog({
   )
 }
 
+/** Whether the client performance goes on the entry's own invoice line; off unless chosen. */
+function ShowOnInvoice({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (on: boolean) => void
+}) {
+  return (
+    <label className="flex shrink-0 items-center gap-2 text-body-sm text-muted-foreground">
+      <Checkbox checked={checked} onCheckedChange={(on) => onChange(on === true)} />
+      {translate('showOnInvoice')}
+    </label>
+  )
+}
+
 const dayMonth = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
@@ -346,6 +369,7 @@ function EntryRow({
     quantity: entry.quantity,
     note: entry.note ?? '',
     client_performance: entry.client_performance ?? '',
+    client_performance_on_invoice: entry.client_performance_on_invoice,
   })
   const [confirming, setConfirming] = useState(false)
 
@@ -371,6 +395,7 @@ function EntryRow({
       quantity: draft.quantity,
       note: draft.note.trim() || null,
       client_performance: draft.client_performance.trim() || null,
+      client_performance_on_invoice: draft.client_performance_on_invoice,
     })
 
   if (editing)
@@ -426,14 +451,20 @@ function EntryRow({
               </Button>
             </Tip>
           </div>
-          <Input
-            aria-label={translate('clientPerformance')}
-            placeholder={translate('howDidTheClientDo')}
-            className="col-span-full"
-            maxLength={500}
-            value={draft.client_performance}
-            onChange={(e) => setDraft({ ...draft, client_performance: e.target.value })}
-          />
+          <div className="col-span-full flex items-center gap-3">
+            <Input
+              aria-label={translate('clientPerformance')}
+              placeholder={translate('howDidTheClientDo')}
+              className="min-w-0 flex-1"
+              maxLength={500}
+              value={draft.client_performance}
+              onChange={(e) => setDraft({ ...draft, client_performance: e.target.value })}
+            />
+            <ShowOnInvoice
+              checked={draft.client_performance_on_invoice}
+              onChange={(on) => setDraft({ ...draft, client_performance_on_invoice: on })}
+            />
+          </div>
         </form>
       </li>
     )
@@ -463,6 +494,9 @@ function EntryRow({
           <p className="line-clamp-2 text-body-sm text-muted-foreground">
             <span className="font-medium">{translate('clientPerformance')}:</span>{' '}
             {entry.client_performance}
+            {entry.client_performance_on_invoice && (
+              <span className="text-caption"> · {translate('onInvoice')}</span>
+            )}
           </p>
         )}
         {(entry.performed_by || entry.invoice) && (

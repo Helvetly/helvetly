@@ -61,7 +61,7 @@ func (s *Service) listEntries(w http.ResponseWriter, r *http.Request, sess store
 func (s *Service) applyEntry(ctx context.Context, q store.Q, sess store.Session, v EngagementView, en *store.EngagementEntry,
 	body map[string]json.RawMessage, create bool) error {
 	for k := range body {
-		if !slices.Contains([]string{"date", "quantity", "note", "client_performance", "performed_by"}, k) {
+		if !slices.Contains([]string{"date", "quantity", "note", "client_performance", "client_performance_on_invoice", "performed_by"}, k) {
 			return badRequest("Unknown field " + strconv.Quote(k) + ".")
 		}
 	}
@@ -92,6 +92,9 @@ func (s *Service) applyEntry(ctx context.Context, q store.Q, sess store.Session,
 	}
 	if raw, set := body["client_performance"]; set {
 		en.ClientPerformance = text("client_performance", raw, 500, nil, fail)
+	}
+	if raw, set := body["client_performance_on_invoice"]; set && json.Unmarshal(raw, &en.PerformanceOnInvoice) != nil {
+		fail("client_performance_on_invoice", "Enter true or false.")
 	}
 	if raw, set := body["performed_by"]; set {
 		en.PerformedBy = nil
