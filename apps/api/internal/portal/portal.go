@@ -38,6 +38,8 @@ type Config struct {
 // URLs is where a workspace's clients sign in (internal/portalscope).
 type URLs interface {
 	URLOf(ctx context.Context, s store.PortalScope) (string, error)
+	CanonicalURL(ctx context.Context, ws store.Workspace) (string, error)
+	Slug(ctx context.Context, ws store.Workspace) (string, error)
 }
 
 type Service struct {
@@ -62,6 +64,8 @@ type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/public/portal/auth/start", s.start)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/verify", s.verify)
+	mux.HandleFunc("POST /api/v1/public/portal/auth/choose", s.choose)
+	mux.HandleFunc("POST /api/v1/public/portal/auth/ticket", s.redeem)
 	mux.HandleFunc("GET /api/v1/public/portal/scope", s.getScope)
 	mux.HandleFunc("GET /api/v1/public/portal/scope/logo", s.getScopeLogo)
 	handle := func(pattern string, h handler) {

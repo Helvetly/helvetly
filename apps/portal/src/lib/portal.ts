@@ -138,13 +138,40 @@ export async function getPortalScope(): Promise<PortalScope | null> {
 export const startPortalSignIn = (email: string) =>
   call<EmailCodeSent>('/auth/start', { method: 'POST', json: { email } })
 
+/** One client an address may open, offered on the shared portal when the address has several. */
+export type PortalAccount = {
+  client_id: string
+  client_name: string
+  workspace_name: string
+  /** null when the supplier has no logo. */
+  logo_url: string | null
+}
+
+/**
+ * A session, or on the shared portal for an address with several clients, the accounts to choose from (the
+ * CSRF token is then the choice's, good only for choosePortalAccount).
+ */
 export async function verifyPortalCode(email: string, code: string) {
-  const result = await call<{ csrf_token: string }>('/auth/verify', {
+  const result = await call<{ csrf_token: string; accounts?: PortalAccount[] }>('/auth/verify', {
     method: 'POST',
     json: { email, code },
   })
   setCsrfToken(result.csrf_token)
   return result
+}
+
+/** Spends the choice on one account: the address of its supplier's portal to go to, with a one-time ticket. */
+export const choosePortalAccount = async (clientId: string) =>
+  (await call<{ url: string }>('/auth/choose', { method: 'POST', json: { client_id: clientId } }))
+    .url
+
+/** Opens this scope's session with the ticket the shared portal's choice made. */
+export async function redeemPortalTicket(ticket: string) {
+  const result = await call<{ csrf_token: string }>('/auth/ticket', {
+    method: 'POST',
+    json: { ticket },
+  })
+  setCsrfToken(result.csrf_token)
 }
 
 /** /session as an API of any version sends it: older ones have no `email` or `clients`. */

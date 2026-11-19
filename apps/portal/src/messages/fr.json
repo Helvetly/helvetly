@@ -19,6 +19,7 @@
   "answerQuotes": "Répondre aux offres de prix",
   "apartment": "Appartement",
   "aptSuite": "Appartement / suite",
+  "asClient": "en tant que {client}",
   "awaitingYourAnswer": "En attente de votre réponse",
   "bahnhofstrasse": "Bahnhofstrasse",
   "billingEmail": "E-mail de facturation",
@@ -30,6 +31,7 @@
   "che123456789MWST": "CHE-123.456.789 MWST",
   "chooseACountry": "Choisissez un pays",
   "chooseAllToSeeEveryInvoice": "Choisissez « Tous » pour voir chaque facture.",
+  "chooseAnAccount": "Choisir un compte",
   "city": "Ville",
   "clientPortal": "Portail client",
   "company": "Société",
@@ -213,5 +215,9 @@
   "dynamicOn2": "{verb} le {value2}",
   "portalAddressNotFound": "Cette adresse de portail n’existe pas",
   "portalAddressNotFoundHint": "Vérifiez le lien dans l’e-mail de votre fournisseur ou demandez-lui l’adresse actuelle de son portail.",
+  "signedInAs": "Connecté en tant que",
+  "thatSignInHasExpired": "Cette connexion a expiré. Saisissez votre e-mail pour recevoir un nouveau code.",
+  "useAnotherEmail": "Utiliser une autre adresse e-mail",
+  "yourAddressHasSeveralAccounts": "Votre adresse a plusieurs comptes. Lequel voulez-vous ouvrir ?",
   "zRich": "Zurich"
 }
