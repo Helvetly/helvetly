@@ -133,7 +133,7 @@ function PortalNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label={translate('portal')}
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:min-w-0 md:overflow-x-auto md:border-0 md:bg-transparent md:pb-0"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:shrink-0 md:border-0 md:bg-transparent md:pb-0"
     >
       <ul className="grid grid-cols-5 md:flex md:h-16 md:gap-1">
         {NAV.map(({ href, label, icon: Icon }) => {
@@ -143,6 +143,9 @@ function PortalNav({ pathname }: { pathname: string }) {
               <Link
                 href={scoped(href)}
                 aria-current={active ? 'page' : undefined}
+                // A pointer press does not take focus, so no browser can draw the keyboard ring after a
+                // click; the underline marks the active tab, and Tab still reaches every link.
+                onMouseDown={(event) => event.preventDefault()}
                 // Not cn(): tailwind-merge would drop the type-scale size for the colour.
                 // Transparent top and bottom borders keep the label centred above the underline.
                 className={`flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-caption font-medium outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:flex-row md:gap-2 md:border-y-2 md:border-transparent md:px-3 md:py-0 md:text-body ${active ? 'text-foreground md:border-b-brand' : 'text-muted-foreground md:hover:border-b-border'}`}
@@ -167,7 +170,7 @@ function PortalNav({ pathname }: { pathname: string }) {
 /** The supplier's mark and name; a long name is cut short with the whole of it in a tooltip. */
 function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 md:max-w-44 lg:max-w-64 xl:max-w-80">
+    <div className="flex min-w-0 flex-1 items-center gap-3">
       <WorkspaceMark name={name} logoUrl={logoUrl} />
       <span className="grid min-w-0 leading-tight">
         <Tooltip>
@@ -237,13 +240,14 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
       <div className="min-h-svh bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         {/* No backdrop-filter here: it would trap the fixed bottom bar inside the header. */}
         <header className="sticky top-0 z-30 border-b bg-card">
-          <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-6 lg:gap-10 lg:px-8">
+          {/* Full width: the brand sits at the far left, the tabs and account menu at the far right. */}
+          <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
             <WorkspaceBrand
               name={session.workspace.name}
               logoUrl={logoUrl ?? scope?.logo_url ?? undefined}
             />
             <PortalNav pathname={pathname} />
-            <div className="ml-auto shrink-0">
+            <div className="shrink-0">
               <AccountMenu
                 session={session}
                 onSwitch={(id) => void switchClient(id)}
