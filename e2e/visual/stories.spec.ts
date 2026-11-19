@@ -6,6 +6,7 @@ import { open, sizes, type App } from './storybook'
 const screens: [App, string][] = [
   ['platform', 'pages-dashboard--with-data'],
   ['platform', 'pages-invoices--list'],
+  ['platform', 'pages-invoices--detail'],
   ['platform', 'pages-clients--detail'],
   ['platform', 'pages-invoice-editor--draft-with-lines'],
   ['platform', 'pages-documents--folders-and-files'],
@@ -22,6 +23,7 @@ const components: [App, string][] = [
   ['platform', 'design-system-components--meters'],
   ['platform', 'design-system-components--segmented-control'],
   ['platform', 'design-system-components--panel-and-empty-state'],
+  ['platform', 'design-system-components--drop-zone'],
 ]
 const themes = ['light', 'dark'] as const
 

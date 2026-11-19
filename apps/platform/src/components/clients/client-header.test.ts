@@ -1,3 +1,5 @@
+import { Globe, Mail, MapPin, Phone } from 'lucide-react'
+
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { clientKind, headerFacts } from './client-header'
@@ -12,6 +14,8 @@ test('facts are links, in the order email, phone, location, website', () => {
     ['Location', 'Zürich, Switzerland'],
     ['Website', 'alpenglow.ch'],
   ])
+  // The Contact card's icons, so the header and the card read the same.
+  expect(facts.map((fact) => fact.icon)).toEqual([Mail, Phone, MapPin, Globe])
   expect(facts[0]?.href).toBe('mailto:hello@alpenglow.ch')
   expect(facts[1]?.href).toBe('tel:+41441234567')
   expect(facts[2]?.href).toContain(

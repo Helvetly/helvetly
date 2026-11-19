@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/sitecheck"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 )
@@ -42,10 +43,18 @@ type Service struct {
 
 	mail      Mailer // nil: no portal invitations
 	portalURL string
+	register  Register // nil: no UID register checks
+	site      siteResolver
+}
+
+// siteResolver finds the URL a typed website answers on (sitecheck.Checker; a stub in tests).
+type siteResolver interface {
+	Resolve(ctx context.Context, text string) (string, error)
 }
 
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, files: files, log: log, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{db: db, auth: a, files: files, log: log, now: func() time.Time { return time.Now().UTC() },
+		site: sitecheck.New()}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -66,6 +75,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/clients/export", s.export)
 	handle("GET /api/v1/clients/tags", s.tags)
 	handle("POST /api/v1/clients/bulk", s.bulk)
+	handle("POST /api/v1/clients/website-check", s.checkWebsite)
 	handle("GET /api/v1/clients/{id}", s.get)
 	handle("PATCH /api/v1/clients/{id}", s.update)
 	handle("DELETE /api/v1/clients/{id}", s.delete)
@@ -91,6 +101,26 @@ func badQuery(msg string) error {
 }
 
 // ---- clients ----
+
+// checkWebsite answers the URL a typed website really answers on, so the page saves a working address.
+func (s *Service) checkWebsite(w http.ResponseWriter, r *http.Request, _ store.Session) error {
+	var body struct {
+		Website string `json:"website"`
+	}
+	if !s.auth.Decode(w, r, &body) {
+		return nil
+	}
+	final, err := s.site.Resolve(r.Context(), body.Website)
+	var refused *sitecheck.Error
+	if errors.As(err, &refused) {
+		return validationFailed(map[string]string{"website": refused.Message})
+	}
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]string{"website": final}))
+	return nil
+}
 
 func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var body map[string]json.RawMessage
@@ -119,6 +149,7 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	s.verifyUID(r.Context(), sess.Workspace.ID, &c)
 	auth.WriteJSON(w, http.StatusCreated, data(c))
 	return nil
 }
@@ -174,6 +205,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	s.verifyUID(r.Context(), sess.Workspace.ID, &after)
 	// The portal turned on, or its address changed while on: the address gets the link.
 	if after.PortalEnabled && PortalLogin(after) != "" && (!before.PortalEnabled || PortalLogin(before) != PortalLogin(after)) {
 		s.invitePortal(r.Context(), sess, after)

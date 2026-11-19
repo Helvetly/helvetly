@@ -425,11 +425,11 @@ function Detail({
         <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (
-              <li key={line.id} className="flex items-start gap-3 py-2.5 first:pt-1">
-                <span className="w-5 shrink-0 pt-px text-[12.5px] text-muted-foreground tabular-nums">
+              <li key={line.id} className="flex items-center gap-3 py-2 first:pt-0.5">
+                <span className="w-5 shrink-0 text-[12.5px] text-muted-foreground tabular-nums">
                   {line.position}
                 </span>
-                <span className="grid min-w-0 flex-1 gap-0.5">
+                <span className="grid min-w-0 flex-1">
                   <span className="text-[14px] whitespace-pre-line">{line.description}</span>
                   {!repeatsAmount(line, invoice.vat_mode) && (
                     <span className="text-[12.5px] text-muted-foreground tabular-nums">
@@ -647,7 +647,7 @@ function Detail({
         </Panel>
       </TabsContent>
 
-      <TabsContent value="pdf" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
+      <TabsContent value="pdf" className="flex min-h-0 flex-col gap-3 p-4 sm:p-5">
         <div className="flex items-center justify-end gap-2">
           <span className="mr-auto pl-1 text-[13px] text-muted-foreground">
             {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : translate('loading')}
@@ -665,13 +665,13 @@ function Detail({
             </a>
           </Button>
         </div>
-        {/* The drawer scrolls the pages; the viewer itself grows with them. */}
+        {/* The viewer fills the rest of the drawer and scrolls its own pages. */}
         <PdfView
           key={invoice.updated_at}
           title={translate('pdfOf', { value1: documentName(invoice) })}
           src={pdfUrl(invoice.id)}
           onPages={setPages}
-          className="overflow-visible bg-transparent dark:bg-transparent"
+          className="min-h-[420px] flex-1 basis-0 rounded-lg"
         />
       </TabsContent>
     </Tabs>

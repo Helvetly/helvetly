@@ -21,7 +21,7 @@ export function FormSection({
   children,
 }: {
   /** The section's icon tile before the title, as in settings. */
-  icon?: LucideIcon
+  icon: LucideIcon
   title: string
   description?: string
   /** Help behind a (?) next to the title. */
@@ -34,7 +34,7 @@ export function FormSection({
     <section className="grid gap-5 border-b border-border/60 px-5 py-8 last:border-b-0 md:px-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
       <header className="grid content-start gap-1">
         <span className="flex items-center gap-1.5">
-          {icon && <SectionIcon icon={icon} className="mr-1" />}
+          <SectionIcon icon={icon} className="mr-1" />
           <h3 className="text-[15px] font-semibold">{title}</h3>
           {tip && <HelpTip label={title}>{tip}</HelpTip>}
         </span>

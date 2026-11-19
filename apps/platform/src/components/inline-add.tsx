@@ -40,6 +40,7 @@ export function InlineTextEditor({
   mono = false,
   multiline = false,
   maxLength,
+  pendingHint,
   save,
   onDone,
 }: {
@@ -50,6 +51,8 @@ export function InlineTextEditor({
   multiline?: boolean
   /** The API's limit: no more can be typed, and a multiline field counts what is left. */
   maxLength?: number
+  /** Shown under the field while a slow save runs, e.g. a website being checked. */
+  pendingHint?: string
   save: (text: string) => Promise<unknown>
   onDone: () => void
 }) {
@@ -136,6 +139,9 @@ export function InlineTextEditor({
           {text.length} / {maxLength}
         </span>
       )}
+      {pending && pendingHint && (
+        <output className="text-xs text-muted-foreground">{pendingHint}</output>
+      )}
       {error && (
         <span role="alert" className="text-xs text-destructive">
           {error}
@@ -157,6 +163,7 @@ export function InlineAdd({
   placeholder?: string
   mono?: boolean
   multiline?: boolean
+  pendingHint?: string
   save: (text: string) => Promise<unknown>
 }) {
   const [editing, setEditing] = useState(false)

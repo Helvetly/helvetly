@@ -10,7 +10,7 @@ import {
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowRight, MailX } from 'lucide-react'
+import { ArrowRight, CheckCheck, MailX } from 'lucide-react'
 import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -195,8 +195,7 @@ export function PaymentDialog({
       aside={
         <Button
           type="button"
-          variant="ghost"
-          className="-ml-2.5 text-muted-foreground"
+          variant="outline"
           disabled={markPaid.isPending || add.isPending}
           onClick={() =>
             markPaid.mutate(invoice.id, {
@@ -208,6 +207,7 @@ export function PaymentDialog({
             })
           }
         >
+          <CheckCheck />
           {translate('markFullyPaidToday')}
         </Button>
       }

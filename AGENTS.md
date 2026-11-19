@@ -80,6 +80,11 @@ are the reference.
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import
   and document filing (`ai_automation_tokens_per_month`), never one for the other; each call reserves its tokens
   and rate-card cost first, one call in flight per workspace and pool, see `ai_calls`).
+- **Swiss UID register** (`internal/uidregister`): the client form's company lookup and the "UID verified" mark
+  (`clients.verified_uid`, `uid_verified_at`, set when a client is saved) call the federal public SOAP service
+  (`UID_REGISTER_URL`, the production endpoint by default, `off` = none) through the API only, at most 15 calls a
+  minute per instance (the service allows 20) with a 10-minute cache; unreachable means "unavailable", never a
+  refused save. Session-only: not a public API operation, MCP tool or Heidi answer.
 
 ## 4. Where code goes (DRY)
 

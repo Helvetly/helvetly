@@ -6582,6 +6582,15 @@
             "format": "date-time",
             "description": "When the client first signed in to the portal."
           },
+          "verified_uid": {
+            "type": ["string", "null"],
+            "description": "The UID (CHE-123.456.789) under which the Swiss UID register lists the client as active, checked when the client is saved."
+          },
+          "uid_verified_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the Swiss UID register last confirmed verified_uid."
+          },
           "contacts": {
             "type": "array",
             "items": {

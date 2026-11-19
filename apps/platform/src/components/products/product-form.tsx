@@ -6,6 +6,7 @@ import { Kbd } from '@helvetly/ui/components/kbd'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { cn } from '@helvetly/ui/lib/utils'
+import { Banknote, Info, Tag } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
@@ -198,6 +199,7 @@ export function ProductForm({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <FormSection
+              icon={Info}
               title={translate('basics')}
               description={translate('whatYouSellAsItAppearsOnInvoiceLines')}
             >
@@ -253,6 +255,7 @@ export function ProductForm({
             </FormSection>
 
             <FormSection
+              icon={Banknote}
               title={translate('price2')}
               description={translate('whatYouChargeThePreviewShowsTheAmountsPer')}
             >
@@ -363,6 +366,7 @@ export function ProductForm({
             </FormSection>
 
             <FormSection
+              icon={Tag}
               title={translate('details')}
               description={translate('optionalCodesForYourOwnRecords')}
             >

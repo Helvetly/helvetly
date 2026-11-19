@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, waitFor, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { InvoicesPage } from '@/components/invoices/invoices-page'
 import type { Invoice } from '@/lib/invoices'
@@ -41,9 +41,75 @@ export const Detail: Story = {
     const sheet = await within(canvasElement.ownerDocument.body).findByRole('dialog')
     // The drawer never scrolls sideways.
     await waitFor(() => expect(sheet.scrollWidth).toBeLessThanOrEqual(sheet.clientWidth))
+    // The dates sit in their own column beside the amount, or in a row under it on a phone.
+    const summary = await within(sheet).findByRole('region', { name: 'Summary' })
+    const amount = within(summary).getByText('1’081.00').getBoundingClientRect()
+    const dates = within(summary).getByText('Issue date').getBoundingClientRect()
+    if (window.innerWidth >= 640) await expect(dates.left).toBeGreaterThan(amount.right)
+    else await expect(dates.top).toBeGreaterThan(amount.bottom)
   },
 }
 export const DetailPhone = phone(Detail)
+
+/** A valid PDF of `count` blank A4 pages, so the preview has pages to scroll. */
+function blankPdf(count: number) {
+  const pages = Array.from({ length: count }, (_, i) => 3 + i)
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${pages.map((n) => `${n} 0 R`).join(' ')}] /Count ${count} >>`,
+    ...pages.map(() => '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] >>'),
+  ]
+  let pdf = '%PDF-1.4\n'
+  const offsets = objects.map((body, i) => {
+    const at = pdf.length
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`
+    return at
+  })
+  const xref = pdf.length
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  pdf += offsets.map((at) => `${String(at).padStart(10, '0')} 00000 n \n`).join('')
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return pdf
+}
+
+/** The PDF tab: the preview is its own scroller, so the wheel over it moves the pages, not the drawer. */
+export const DetailPdf: Story = {
+  parameters: pageParameters('/invoices', { id: scheduledInvoice.id }, [
+    http.get(`/api/v1/invoices/${scheduledInvoice.id}`, () =>
+      HttpResponse.json({ data: scheduledInvoice }),
+    ),
+    http.get(`/api/v1/invoices/${scheduledInvoice.id}/pdf`, () =>
+      HttpResponse.text(blankPdf(3), { headers: { 'Content-Type': 'application/pdf' } }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const sheet = await within(canvasElement.ownerDocument.body).findByRole('dialog')
+    await userEvent.click(await within(sheet).findByRole('tab', { name: 'PDF' }))
+    const viewer = await within(sheet).findByRole('document')
+    await waitFor(() => expect(viewer.querySelectorAll('canvas')).toHaveLength(3))
+    expect(getComputedStyle(viewer).overscrollBehaviorY).toBe('contain')
+    await waitFor(() => expect(viewer.scrollHeight).toBeGreaterThan(viewer.clientHeight))
+    // The viewer stays within the drawer instead of growing with its pages.
+    expect(viewer.clientHeight).toBeLessThan(sheet.clientHeight)
+  },
+}
+export const DetailPdfDark = dark(DetailPdf)
+
+/** Record a payment: paying the whole rest today is a visible button next to the main action. */
+export const RecordPayment: Story = {
+  parameters: Detail.parameters,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const sheet = await body.findByRole('dialog')
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Record payment' }))
+    const dialog = await body.findByRole('dialog', { name: 'Record a payment' })
+    const markPaid = within(dialog).getByRole('button', { name: 'Mark fully paid today' })
+    expect(markPaid).toHaveAttribute('data-variant', 'outline')
+    expect(markPaid.querySelector('svg')).not.toBeNull()
+  },
+}
+export const RecordPaymentDark = dark(RecordPayment)
+export const RecordPaymentPhone = phone(RecordPayment)
 
 /** The drawer of `invoice`, served for the sample invoice's id. */
 const drawerOf = (invoice: Invoice) =>

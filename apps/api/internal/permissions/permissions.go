@@ -112,6 +112,7 @@ func MayUseAPI(sess store.Session) bool { return Allows(sess.Role, sess.Scopes, 
 // Dashboard, Heidi and imports instead check permissions for each included resource, requested action or kind.
 var prefixes = []struct{ path, resource string }{
 	{"/api/v1/clients", "clients"},
+	{"/api/v1/uid-register", "clients"}, // the client form's company lookup
 	{"/api/v1/invoices", "invoices"},
 	{"/api/v1/invoice-settings", "invoice-settings"},
 	{"/api/v1/email-templates", "invoice-settings"},

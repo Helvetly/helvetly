@@ -316,13 +316,14 @@ function Editor({
             </div>
           </div>
 
-          <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
-            <div className="@container min-w-0 px-3 pb-8 sm:px-6">
-              <div className="mx-auto w-full max-w-[1040px]">
+          {/* Flex columns down to the page, so a short quote still reaches the internal note. */}
+          <div className="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
+            <div className="@container flex min-w-0 flex-1 flex-col px-3 sm:px-6">
+              <div className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col">
                 <article
                   aria-label={translate('quote2')}
-                  // A flat page that starts at the options bar's line, its sides at the work area's edges.
-                  className="relative left-1/2 w-[calc(100cqw+1.5rem)] -translate-x-1/2 border border-t-0 bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
+                  // A flat page from the options bar's line down to the internal note, its sides at the work area's edges.
+                  className="relative left-1/2 w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 border-x bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10"
                 >
                   <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
                     <LetterheadLogo url={logoSrc(settings)} canEdit={canManage} />

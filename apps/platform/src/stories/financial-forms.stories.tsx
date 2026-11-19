@@ -23,6 +23,7 @@ const baseHandlers = [
   http.get('/api/v1/session', () => HttpResponse.json(session)),
   http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/uid-register/search', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/expense-categories', () =>
     HttpResponse.json({
       data: [
@@ -54,6 +55,23 @@ export const ProductOpeningFocus: Story = {
   play: async ({ mount }) => {
     await mount(<ProductForm defaults={defaults} onClose={fn()} onSaved={fn()} />)
     await expect(within(document.body).getByRole('textbox', { name: 'Name' })).toHaveFocus()
+  },
+}
+// Every section heading carries its icon tile, as in the client form.
+export const ProductSectionIcons: Story = {
+  render: () => <ProductForm defaults={defaults} onClose={fn()} onSaved={fn()} />,
+  play: async () => {
+    const headings = within(document.body).getAllByRole('heading', { level: 3 })
+    await expect(headings.map((heading) => heading.textContent)).toEqual([
+      'Basics',
+      'Price',
+      'Details',
+    ])
+    await expect(
+      headings.filter((heading) =>
+        heading.parentElement?.querySelector('[data-slot="section-icon"] svg'),
+      ),
+    ).toHaveLength(3)
   },
 }
 const savedProduct = fn()
