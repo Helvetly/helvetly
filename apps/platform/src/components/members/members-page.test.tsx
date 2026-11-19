@@ -182,8 +182,19 @@ test('leaving on your own row goes to /login after 204', async () => {
   await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'))
 })
 
+test('the sole owner gets no actions menu on their own row', async () => {
+  serve('owner', [member({ user_id: 'usr_9', name: 'Me Myself', role: 'owner', is_you: true })], [])
+  renderPage()
+  expect(await screen.findByText('You')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Actions for Me Myself' })).toBeNull()
+})
+
 test('a 409 last_owner message is shown as a toast', async () => {
-  serve('member', [member({ user_id: 'usr_9', name: 'Me Myself', role: 'owner', is_you: true })])
+  // The other owner left after this list loaded.
+  serve('owner', [
+    member({ user_id: 'usr_9', name: 'Me Myself', role: 'owner', is_you: true }),
+    member({ user_id: 'usr_1', name: 'Olga Owner', role: 'owner' }),
+  ])
   server.use(
     http.delete('/api/v1/members/usr_9', () =>
       HttpResponse.json(

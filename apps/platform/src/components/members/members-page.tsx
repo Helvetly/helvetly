@@ -105,6 +105,7 @@ export function MembersPage() {
   const alone =
     tab === 0 && !filtered && members.data?.length === 1 && invitations.data?.length === 0
   const empty = memberRows.length + invitationRows.length === 0
+  const owners = (members.data ?? []).filter((row) => row.role === 'owner').length
 
   const memberRun = {
     setRole: (member: Member, next: Role) =>
@@ -232,7 +233,7 @@ export function MembersPage() {
             </thead>
             <tbody>
               {memberRows.map((member) => {
-                const menu = memberMenu(member, manager ? role : '', memberRun)
+                const menu = memberMenu(member, manager ? role : '', owners, memberRun)
                 return (
                   <tr key={member.user_id} className={listTable.row}>
                     <td className={listTable.td}>
@@ -377,14 +378,17 @@ function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role
 function memberMenu(
   member: Member,
   actor: string,
+  owners: number,
   run: {
     setRole: (member: Member, role: Role) => void
     ask: (pending: Pending) => void
     editAccess: (member: Member) => void
   },
 ): RowMenuSpec | null {
-  const roles = assignableRoles(actor, member.role)
-  if (roles.length === 0 && !member.is_you) return null
+  // The last owner can neither change their role nor leave (the API answers 409 last_owner).
+  const lastOwner = member.role === 'owner' && owners === 1
+  const roles = lastOwner ? [] : assignableRoles(actor, member.role)
+  if (roles.length === 0 && (!member.is_you || lastOwner)) return null
   return {
     title: member.name,
     items: ({ Item, Separator }) => (

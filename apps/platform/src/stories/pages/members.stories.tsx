@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { MembersPage } from '@/components/members/members-page'
 
+import { members } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const meta = {
@@ -102,3 +104,18 @@ export const UrlRestore: Story = {
     await absent(context.canvasElement, 'Luca Rossi', 'Mia Keller')
   },
 }
+
+/** Alone in the workspace: no role change and no leaving for the last owner, so no "…" menu. */
+export const SoleOwner: Story = {
+  parameters: pageParameters('/members', {}, [
+    http.get('/api/v1/members/invitations', () => HttpResponse.json({ data: [] })),
+    http.get('/api/v1/members', () => HttpResponse.json({ data: members.slice(0, 1) })),
+  ]),
+  play: async (context) => {
+    await shows('Anna Muster', 'Work together')?.(context)
+    const body = page(context.canvasElement)
+    await expect(body.getByText('Anyone can leave; the last owner stays.')).toBeVisible()
+    await expect(body.queryByRole('button', { name: 'Actions for Anna Muster' })).toBeNull()
+  },
+}
+export const SoleOwnerPhone = phone(SoleOwner)
