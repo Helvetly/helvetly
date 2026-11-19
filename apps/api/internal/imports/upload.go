@@ -91,11 +91,48 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		list = append(list, u)
 	}
+	if kind.Parse == nil {
+		if err := s.fits(r.Context(), sess.Workspace.ID, list); err != nil {
+			return err
+		}
+	}
 	b, err := s.store(r.Context(), sess, kind, list)
 	if err != nil {
 		return err
 	}
 	auth.WriteJSON(w, http.StatusCreated, map[string]any{"data": b})
+	return nil
+}
+
+// minFileTokens is the least one file's model call takes (instructions, schema and a short answer), to refuse up front
+// an import the month's allowance clearly cannot read.
+const minFileTokens = 2_000
+
+// fits refuses, before anything is stored, an import the job could not finish: more files than one import reads, or
+// more than the automation pool has left this month, so it never stops halfway for want of tokens it was sure to lack.
+func (s *Service) fits(ctx context.Context, workspaceID string, list []upload) error {
+	n := 0
+	for _, u := range list {
+		if u.entries == nil {
+			n++
+		}
+		for _, e := range u.entries {
+			if e.unsupportedR == "" {
+				n++
+			}
+		}
+	}
+	if n > maxBatchFiles {
+		return invalid(fmt.Sprintf("One import reads at most %d files, ZIP contents included, and this one has %d. Split them into smaller imports.", maxBatchFiles, n))
+	}
+	left, allowed, err := s.budget.Left(ctx, s.db.Q, workspaceID)
+	if err != nil {
+		return err
+	}
+	if left < int64(n)*minFileTokens {
+		return auth.Error(http.StatusPaymentRequired, "limit_reached", fmt.Sprintf("This import has %d files to read, more than the AI import and filing allowance left this month covers. Upload fewer files, or wait for next month's allowance.", n),
+			map[string]any{"limit": "ai_automation_tokens_per_month", "used": allowed - max(left, 0), "max": allowed})
+	}
 	return nil
 }
 

@@ -55,7 +55,8 @@ const (
 type Caps struct{ Call, Operation, Group int64 }
 
 var (
-	ImportCaps = Caps{Call: 50_000, Operation: 250_000, Group: 1_000_000}
+	// ImportCaps: a batch reads up to 250 files; its group cap pays one full Luna call (about USD 0.02) for each.
+	ImportCaps = Caps{Call: 50_000, Operation: 250_000, Group: 5_000_000}
 	HeidiCaps  = Caps{Call: 250_000, Operation: 250_000}
 	// FilingCaps: one uploaded document classified for filing, one call (and its one retry).
 	FilingCaps = Caps{Call: 50_000, Operation: 100_000}
@@ -227,6 +228,20 @@ func (b Budget) admit(ctx context.Context, ws store.Workspace, period string, ca
 		return q.SaveHeidiUsage(ctx, ws.ID, b.Pool, period, u, b.Now())
 	})
 	return row, err
+}
+
+// Left is how many tokens this month's allowance of the pool still holds, and the allowance; math.MaxInt64 for both
+// when it is unlimited. It reserves nothing: a caller refuses work up front with it, Generate still admits every call.
+func (b Budget) Left(ctx context.Context, q store.Q, workspaceID string) (left, allowed int64, err error) {
+	allowed, err = allowance(ctx, q, workspaceID, b.Allowance)
+	if err != nil || allowed == math.MaxInt64 {
+		return allowed, allowed, err
+	}
+	u, err := q.HeidiUsage(ctx, workspaceID, b.Pool, store.UsagePeriod(b.Now()))
+	if err != nil {
+		return 0, 0, err
+	}
+	return allowed - u.TokensUsed - u.TokensReserved, allowed, nil
 }
 
 func allowance(ctx context.Context, q store.Q, workspaceID string, a Allowance) (int64, error) {

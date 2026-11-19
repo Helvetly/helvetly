@@ -32,6 +32,7 @@ import {
   IMPORT_ACCEPT,
   MAX_IMPORT_FILE_BYTES,
   MAX_IMPORT_FILES,
+  MAX_ZIP_ENTRIES,
   type ImportFile,
 } from '@/lib/imports'
 import { MAX_REQUEST_BYTES } from '@/lib/upload-packs'
@@ -138,7 +139,7 @@ export function DropZone({
             {picked ? translate('importDropMore') : translate('importDropTitle')}
           </p>
           <p className="text-caption text-muted-foreground">
-            {translate('importLimits', { count: MAX_IMPORT_FILES })}
+            {translate('importLimits', { count: MAX_IMPORT_FILES, entries: MAX_ZIP_ENTRIES })}
           </p>
         </div>
         {/* Looks like a button; the input above it takes the click. */}

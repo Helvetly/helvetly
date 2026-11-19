@@ -4282,7 +4282,7 @@
   "invoiceSettingsDescription": "Come le fatture vengono numerate, pagate, sollecitate e stampate.",
   "shortcutSettings": "Apri le impostazioni",
   "importDropTitle": "Rilascia i file qui",
-  "importLimits": "Fino a {count} file da 25 MB ciascuno, 95 MB in tutto; uno ZIP viene aperto di un livello.",
+  "importLimits": "Fino a {count} file da 25 MB ciascuno, 95 MB in tutto; uno ZIP viene aperto di un livello e può contenere {entries} file.",
   "chooseFiles": "Scegli file",
   "importFileTypes": "Tipi di file importabili",
   "howImportWorks": "Come funziona l’importazione",

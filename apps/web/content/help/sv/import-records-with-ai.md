@@ -23,4 +23,5 @@ AI-importen kräver **Pro** eller **Business** och använder planens AI-token.
   Godkännandet omfattar alla AI-verktyg där och gäller bara dig. Om du avböjer eller stänger dialogrutan startar ingen uppladdning
   eller AI-bearbetning, och ditt utkast och dina filer finns kvar.
 - Importer använder månadens AI-kvot.
+- En import tar emot upp till 25 filer på 25 MB vardera. En ZIP öppnas en nivå djupt och får innehålla upp till 250 filer; en import läser högst 250 filer totalt.
 - Om ditt gamla system redan har momsdeklarerat de importerade fakturorna stänger du först dessa månader i **Books → Closing**.
