@@ -49,7 +49,7 @@ export const CopyAddress: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await slugInput(canvas)).toHaveValue('mueller-treuhand')
-    await expect(canvas.getByText('portal.helvetly.com/w/', { exact: false })).toBeVisible()
+    await expect(canvas.getByText('https://portal.helvetly.com')).toBeVisible()
     await expect(canvas.queryByText('Address')).toBeNull()
     await expect(canvas.queryByRole('status')).toBeEmptyDOMElement()
     const write = fn(async (_text: string) => {})
