@@ -41,12 +41,19 @@ export function NotificationMeta({ n, className }: { n: Notification; className?
   )
 }
 
-/** A notification's title, the same in the bubble and on the page: semibold, dimmed once read. */
-export function NotificationTitle({ n, className = '' }: { n: Notification; className?: string }) {
+/**
+ * A notification's title, the same in the bubble and on the page: semibold, dimmed once read. In the bubble it is
+ * one slightly smaller line; one that does not fit ends in "…" and shows whole on hover.
+ */
+export function NotificationTitle({ n, compact = false }: { n: Notification; compact?: boolean }) {
   // Plain strings, not cn(): tailwind-merge would take text-body for a colour and drop it.
   const tone = n.read ? 'text-foreground/85' : 'text-foreground'
+  const fit = compact ? 'truncate text-body-sm' : 'text-body wrap-anywhere'
   return (
-    <span className={`text-body leading-snug font-semibold wrap-anywhere ${tone} ${className}`}>
+    <span
+      title={compact ? n.title : undefined}
+      className={`${fit} leading-snug font-semibold ${tone}`}
+    >
       {n.title}
     </span>
   )
@@ -92,7 +99,7 @@ export function NotificationList({
           >
             <CategoryIcon category={n.category} />
             <span className="grid min-w-0 gap-0.5">
-              <NotificationTitle n={n} className="line-clamp-2" />
+              <NotificationTitle n={n} compact />
               <NotificationBody n={n} className="truncate" />
               <NotificationMeta n={n} />
             </span>

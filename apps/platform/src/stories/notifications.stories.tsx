@@ -92,6 +92,24 @@ export const BellHidesOldReads: Story = {
   },
 }
 
+const longTitle =
+  'Your engagements import is ready to review, with records from every uploaded file'
+
+/** A title too long for the bubble stays on one line, ends in "…" and shows whole on hover. */
+export const BellLongTitle: Story = {
+  render: () => bell(),
+  beforeEach: () =>
+    resetNotificationsMock(
+      sampleNotifications().map((n, i) => (i === 0 ? Object.assign(n, { title: longTitle }) : n)),
+    ),
+  play: async ({ canvasElement }) => {
+    const bubble = await openBell(canvasElement)
+    const title = await bubble.findByTitle(longTitle)
+    await expect(title.getBoundingClientRect().height).toBeLessThanOrEqual(20)
+    await expect(title.scrollWidth).toBeGreaterThan(title.clientWidth)
+  },
+}
+
 export const BellCaughtUp: Story = {
   render: () => bell(),
   beforeEach: () => resetNotificationsMock(allRead()),
