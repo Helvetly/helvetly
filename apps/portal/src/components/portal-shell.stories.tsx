@@ -277,3 +277,31 @@ export const WideScreen: Story = {
   },
 }
 export const WideScreenDark = dark(WideScreen)
+
+/**
+ * Scrolled: the page passes under a glass header (translucent, blurred, saturated), which shows its hairline
+ * and soft shadow only now; at the top it lies flat on the page.
+ */
+export const ScrolledHeader: Story = {
+  render: page(<PortalOverview />),
+  parameters: Desktop.parameters,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByText('Needs your attention')
+    const header = canvasElement.querySelector('header')
+    await expect(header).not.toHaveAttribute('data-scrolled')
+    const glass = header?.previousElementSibling ?? header
+    await expect(getComputedStyle(glass ?? document.body).backdropFilter).toMatch(/blur/)
+    window.scrollTo(0, 320)
+    await waitFor(() => expect(header).toHaveAttribute('data-scrolled'))
+    await expect(getComputedStyle(header ?? document.body).boxShadow).not.toBe('none')
+    // The content goes under the header, which stays at the top.
+    await expect(header?.getBoundingClientRect().top).toBe(0)
+    await expect(glass?.getBoundingClientRect().top).toBe(0)
+    await expect(glass?.getBoundingClientRect().height).toBe(header?.getBoundingClientRect().height)
+  },
+}
+export const ScrolledHeaderDark: Story = {
+  ...ScrolledHeader,
+  parameters: { ...Desktop.parameters, dark: true },
+}

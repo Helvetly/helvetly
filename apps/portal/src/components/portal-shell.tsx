@@ -239,6 +239,18 @@ function WorkspaceBrand({ name, logoUrl }: { name: string; logoUrl?: string }) {
 }
 
 /**
+ * Marks the header scrolled while the page is scrolled away from the top, so its hairline and shadow show only
+ * once content passes under it. Set on the node, not in state: a scroll must not re-render the page.
+ */
+function markScrolled(header: HTMLElement | null) {
+  if (!header) return
+  const update = () => header.toggleAttribute('data-scrolled', window.scrollY > 0)
+  update()
+  window.addEventListener('scroll', update, { passive: true })
+  return () => window.removeEventListener('scroll', update)
+}
+
+/**
  * Gate and frame of every portal page: no session goes to the portal's own sign-in. `logoUrl` is the
  * supplier's logo when the portal knows it (initials otherwise).
  */
@@ -289,8 +301,18 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
   return (
     <SessionContext.Provider value={session}>
       <div className="min-h-svh bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-        {/* No backdrop-filter here: it would trap the fixed bottom bar inside the header. */}
-        <header className="sticky top-0 z-30 border-b bg-card">
+        {/* Glass: the page shows blurred through the header. A sticky layer of its own under the header (its
+            height, 4rem and the 1px border): a backdrop-filter on the header would trap the fixed bottom tab bar
+            inside it, and one inside the header's stacking context sees nothing behind it. Without blur
+            support, a solid background. */}
+        <div
+          aria-hidden
+          className="sticky top-0 z-30 -mb-[calc(4rem+1px)] h-[calc(4rem+1px)] bg-background supports-[backdrop-filter]:bg-background/75 supports-[backdrop-filter]:backdrop-blur-md supports-[backdrop-filter]:backdrop-saturate-150"
+        />
+        <header
+          ref={markScrolled}
+          className="sticky top-0 z-30 border-b border-transparent transition-[border-color,box-shadow] duration-150 ease-out data-scrolled:border-border data-scrolled:shadow-(--sticky-shadow)"
+        >
           {/* Full width: the brand sits at the far left, the tabs and account menu at the far right. */}
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
             <WorkspaceBrand
