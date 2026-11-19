@@ -101,7 +101,14 @@ test("a PDF imported from a client's drawer becomes that client's invoice", asyn
   await drawer.getByRole('button', { name: /^Import 1/ }).click()
   await expect(drawer.getByText('1 created', { exact: false })).toBeVisible()
 
-  const batches = object(await (await api.request.get('/api/v1/imports?kind=invoices')).json()).data
+  // A client's imports are listed with that client only, never on the Invoices page.
+  const unscoped = object(await (await api.request.get('/api/v1/imports?kind=invoices')).json())
+  expect(unscoped.data).toEqual([])
+  const batches = object(
+    await (
+      await api.request.get(`/api/v1/imports?kind=invoices&client_id=${String(client.id)}`)
+    ).json(),
+  ).data
   if (!Array.isArray(batches)) throw new Error('Expected import batches')
   const batch = await api.read(`/imports/${String(object(batches[0]).id)}`)
   expect(batch.client_id).toBe(client.id)
