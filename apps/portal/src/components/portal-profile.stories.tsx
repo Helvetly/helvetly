@@ -216,3 +216,119 @@ export const OldRejectionHidden: Story = {
     await expect(canvas.queryByRole('region', { name: 'Rejected change request' })).toBeNull()
   },
 }
+
+let requiredSent: unknown
+
+/** The name is required as in the platform's client form: cleared, it is refused before anything is sent. */
+export const RequiredName: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post(`${P}/requests`, async ({ request }) => {
+          requiredSent = await request.json()
+          return HttpResponse.json({}, { status: 201 })
+        }),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    requiredSent = undefined
+    const canvas = within(canvasElement)
+    const name = await canvas.findByLabelText(/Company name/)
+    // The red asterisk, as on the platform.
+    await expect(name.closest('[data-slot="form-field"]')).toHaveTextContent('Company name*')
+    await userEvent.clear(name)
+    await userEvent.click(canvas.getByRole('button', { name: 'Request change' }))
+    await expect(await canvas.findByText('Enter the company name.')).toBeVisible()
+    await expect(name).toHaveAttribute('aria-invalid', 'true')
+    await expect(name).toHaveFocus()
+    await expect(requiredSent).toBeUndefined()
+  },
+}
+
+/** The platform's checks: email, website and Swiss UID, each under its own field. */
+export const FieldValidation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const billing = await canvas.findByLabelText('Invoices go to')
+    await userEvent.type(billing, 'books@keller')
+    const website = canvas.getByLabelText('Website')
+    await userEvent.clear(website)
+    await userEvent.type(website, 'keller')
+    const vat = canvas.getByLabelText('VAT / UID number')
+    await userEvent.type(vat, 'che123456789')
+    // Formatted as typed, as in the platform.
+    await expect(vat).toHaveValue('CHE-123.456.789')
+    await userEvent.click(canvas.getByRole('button', { name: 'Request change' }))
+    await expect(await canvas.findByText('Enter a valid email address.')).toBeVisible()
+    await expect(canvas.getByText('Enter a website, e.g. example.ch.')).toBeVisible()
+    await expect(canvas.getByText('This UID number isn’t valid. Check the digits.')).toBeVisible()
+  },
+}
+
+/** The sign-in address is shown but cannot be requested here. */
+export const SignInEmailReadOnly: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const email = await canvas.findByLabelText('Sign-in email')
+    await expect(email).toHaveValue('anna@keller.ch')
+    await expect(email).toHaveAttribute('readonly')
+    await expect(canvas.getByLabelText('Contact person')).toHaveValue('Anna Keller')
+  },
+}
+
+const sameRow = (elements: HTMLElement[]) =>
+  new Set(elements.map((element) => Math.round(element.getBoundingClientRect().top))).size === 1
+
+/** Street, number and apartment on one line, ZIP, city and country on the next; ZIP and number narrow. */
+export const AddressLayout: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const street = await canvas.findByLabelText('Street')
+    const number = canvas.getByLabelText('Number')
+    const apt = canvas.getByLabelText('Apt / suite')
+    const zip = canvas.getByLabelText('ZIP')
+    const city = canvas.getByLabelText('City')
+    const country = canvas.getByLabelText('Country')
+    await expect(sameRow([street, number, apt])).toBe(true)
+    await expect(sameRow([zip, city, country])).toBe(true)
+    await expect(number.getBoundingClientRect().width).toBeLessThan(
+      street.getBoundingClientRect().width / 2,
+    )
+    await expect(zip.getBoundingClientRect().width).toBeLessThan(city.getBoundingClientRect().width)
+  },
+}
+
+/** Phones: street and number share a line, the apartment and the country take their own. */
+export const AddressLayoutPhone: Story = {
+  parameters: {
+    viewport: {
+      options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } },
+    },
+  },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const street = await canvas.findByLabelText('Street')
+    await expect(sameRow([street, canvas.getByLabelText('Number')])).toBe(true)
+    await expect(sameRow([street, canvas.getByLabelText('Apt / suite')])).toBe(false)
+    await expect(sameRow([canvas.getByLabelText('ZIP'), canvas.getByLabelText('City')])).toBe(true)
+  },
+}
+
+export const AddressLayoutPhoneDark: Story = {
+  ...AddressLayoutPhone,
+  parameters: { ...AddressLayoutPhone.parameters, dark: true },
+}
+
+/** The request bar follows the scroll only once something changed. */
+export const StickyOnceChanged: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const bar = (await canvas.findByRole('button', { name: 'Request change' })).parentElement
+    await expect(bar).not.toHaveClass('sticky')
+    await userEvent.type(canvas.getByLabelText('City'), ' West')
+    await expect(bar).toHaveClass('sticky')
+  },
+}

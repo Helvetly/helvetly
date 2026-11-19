@@ -52,10 +52,13 @@ export type PortalDocument = {
   shared_at: string
 }
 
+/** What a client may ask to change (the API's clients.ProfileFields). */
 export type ProfileFields = {
   name: string
+  preferred_name: string | null
   billing_email: string | null
   phone: string | null
+  website: string | null
   street: string | null
   street_number: string | null
   apt: string | null
@@ -75,7 +78,8 @@ export type ChangeDecision = ChangeRequest & {
   decided_at: string | null
 }
 export type PortalProfile = {
-  profile: ProfileFields
+  /** `email` (the sign-in address) and `is_company` are shown, never requested. */
+  profile: ProfileFields & { email: string | null; is_company: boolean }
   pending: ChangeRequest | null
   last_decision: ChangeDecision | null
 }

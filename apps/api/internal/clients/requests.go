@@ -13,9 +13,10 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// profileFields: the only client fields a client may ask to change through the portal.
-var profileFields = []string{"name", "billing_email", "phone", "street", "street_number", "apt", "zip", "city", "country",
-	"vat_number", "registration_number"}
+// ProfileFields: the only client fields a client may ask to change through the portal. The sign-in email
+// is not one: it decides who may sign in, so only the supplier changes it.
+var ProfileFields = []string{"name", "preferred_name", "billing_email", "phone", "website", "street", "street_number", "apt", "zip",
+	"city", "country", "vat_number", "registration_number"}
 
 // addressFields are approved or discarded together, as the one choice "address".
 var addressFields = []string{"street", "street_number", "apt", "zip", "city", "country"}
@@ -24,13 +25,13 @@ const maxRejectReason = 500
 
 var errForbiddenDecide = auth.Error(http.StatusForbidden, "forbidden", "Only owners and admins can decide on change requests.", nil)
 
-// ParseProfile validates a portal change request body with the client field rules, restricted to profileFields.
+// ParseProfile validates a portal change request body with the client field rules, restricted to ProfileFields.
 func ParseProfile(body map[string]json.RawMessage) (map[string]any, error) {
 	if len(body) == 0 {
 		return nil, auth.Error(http.StatusBadRequest, "invalid_request", "Send at least one field to change.", nil)
 	}
 	parsers := map[string]fieldParser{}
-	for _, k := range profileFields {
+	for _, k := range ProfileFields {
 		parsers[k] = clientFields[k]
 	}
 	return parseFields(body, parsers, false)
