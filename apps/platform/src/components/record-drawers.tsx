@@ -281,6 +281,7 @@ function StackedDocument({ id, onClose }: { id: string; onClose: () => void }) {
         link: page,
         unlink: page,
         sign: page,
+        extract: page,
         openFolder: (folder) =>
           router.push(folder ? `/documents?${new URLSearchParams({ folder })}` : '/documents'),
       }}

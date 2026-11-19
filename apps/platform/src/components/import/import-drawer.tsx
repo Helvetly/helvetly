@@ -10,7 +10,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Loader2, Play, RotateCcw, Sparkles, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 
 import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
@@ -33,6 +33,7 @@ import {
   useDiscardImport,
   useImportBatch,
   useImportBatches,
+  useImportDocuments,
   useUploadImport,
   type CommitResult,
   type ImportTarget,
@@ -55,12 +56,15 @@ import { InvoiceRecordEditor } from './invoice-record-editor'
 export function ImportDrawer({
   kind,
   client,
+  documents,
   onClose,
   onCreated,
 }: {
   kind: ImportTarget
   /** An invoice import for this client: every invoice read is assigned to it. */
   client?: { id: string; name: string }
+  /** Files already in Documents to read instead of uploads: the import starts as the drawer opens. */
+  documents?: string[]
   onClose: () => void
   /** After a commit that created records: what the batch has created so far. */
   onCreated?: (summary: string) => void
@@ -74,7 +78,7 @@ export function ImportDrawer({
   const lock = kind === 'payroll' ? null : aiLock
   const [batchId, setBatchId] = useState<string | null>(null)
   // Set once the person chose: continue the unfinished batch, or start over.
-  const [fresh, setFresh] = useState(false)
+  const [fresh, setFresh] = useState(Boolean(documents))
   const [picked, setPicked] = useState<Set<string> | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [results, setResults] = useState<ReadonlyMap<string, CommitResult>>(new Map())
@@ -86,7 +90,9 @@ export function ImportDrawer({
 
   const list = useImportBatches(kind)
   const batch = useImportBatch(batchId)
-  const upload = useUploadImport(kind, client?.id)
+  const uploadFiles = useUploadImport(kind, client?.id)
+  const fromDocuments = useImportDocuments()
+  const upload = documents ? fromDocuments : uploadFiles
   const commit = useCommitImport(kind, batchId ?? '')
   const discard = useDiscardImport(kind)
 
@@ -108,18 +114,24 @@ export function ImportDrawer({
     const approved = !readsWithAI(kind) || (await ensure())
     asking.current = false
     if (!approved) return
-    upload.mutate(files, {
-      onSuccess: (created) => {
+    const handlers = {
+      onSuccess: (created: { id: string }) => {
         setBatchId(created.id)
         setFresh(true)
         setFiles([])
       },
       // Approval withdrawn elsewhere: the next try asks again instead of trusting a stale answer.
-      onError: (error) => {
+      onError: (error: unknown) => {
         if (isAIConsentRequired(error)) void queryClient.invalidateQueries({ queryKey: usageKey })
       },
-    })
+    }
+    if (documents) fromDocuments.mutate(documents, handlers)
+    else uploadFiles.mutate(files, handlers)
   }
+  const startOnOpen = useEffectEvent(() => {
+    if (documents) void read()
+  })
+  useEffect(() => startOnOpen(), [])
   const reset = () => {
     setBatchId(null)
     setFresh(true)
@@ -210,8 +222,16 @@ export function ImportDrawer({
         )}
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
-        <DropZone files={files} disabled={upload.isPending || Boolean(lock)} onChange={setFiles} />
-        {files.length === 0 && (
+        {documents ? (
+          upload.isPending && <Loader className="min-h-52" />
+        ) : (
+          <DropZone
+            files={files}
+            disabled={upload.isPending || Boolean(lock)}
+            onChange={setFiles}
+          />
+        )}
+        {!documents && files.length === 0 && (
           <ImportSteps
             suggests={
               config ? translate('importSuggestions', { noun }) : translate('importStepReadText')
@@ -220,25 +240,25 @@ export function ImportDrawer({
         )}
       </div>
     )
+    const count = documents?.length ?? files.length
     status = upload.isPending
-      ? translate('uploading3')
-      : files.length
+      ? translate(documents ? 'importStarting' : 'uploading3')
+      : count
         ? translate('dynamicChosen', {
-            length: files.length,
-            value2: files.length === 1 ? translate('dynamicFile') : translate('dynamicFiles3'),
+            length: count,
+            value2: count === 1 ? translate('dynamicFile') : translate('dynamicFiles3'),
           })
         : translate('noFilesChosenYet')
     actions = (
-      <Button
-        disabled={!files.length || upload.isPending || Boolean(lock)}
-        onClick={() => void read()}
-      >
+      <Button disabled={!count || upload.isPending || Boolean(lock)} onClick={() => void read()}>
         {upload.isPending ? (
           <Loader2 className="animate-spin motion-reduce:animate-none" />
         ) : (
           <Sparkles />
         )}
-        {upload.isPending ? translate('uploading3') : translate('readFiles')}
+        {upload.isPending
+          ? translate(documents ? 'importStarting' : 'uploading3')
+          : translate('readFiles')}
       </Button>
     )
   } else if (!batch.data) {

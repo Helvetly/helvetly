@@ -166,6 +166,7 @@ var scopedInHandler = []string{
 	"POST /api/v1/ai/write",     // any member: writes nothing, its consent and Heidi's pool are checked in the handler
 	// imports: the scope follows the batch's kind (write:<kind>, plus write:documents to upload)
 	"POST /api/v1/imports",
+	"POST /api/v1/imports/documents", // auto, plus read:documents for the chosen files
 	"GET /api/v1/imports",
 	"GET /api/v1/imports/x",
 	"GET /api/v1/imports/x/files/x/content",

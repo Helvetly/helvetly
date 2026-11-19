@@ -110,3 +110,43 @@ test("a PDF imported from a client's drawer becomes that client's invoice", asyn
   const invoice = await api.read(`/invoices/${String(object(records[0]).entity_id)}`)
   expect(invoice.client_id).toBe(client.id)
 })
+
+test('a CSV kept in Documents is read with AI from its row and imported, with no second copy', async ({
+  page,
+  api,
+}) => {
+  const name = uniqueName('Kept Delta')
+  const file = `${uniqueName('clients').replaceAll(' ', '-')}.csv`
+  // Kept before the AI is approved, so filing leaves it at the top level.
+  const kept = await api.request.post('/api/v1/documents', {
+    headers: { 'X-CSRF-Token': api.csrf },
+    multipart: {
+      file: {
+        name: file,
+        mimeType: 'text/csv',
+        buffer: Buffer.from(`name,email,city,country\n${name},delta@example.test,Chur,CH\n`),
+      },
+    },
+  })
+  expect(kept.status()).toBe(201)
+  await api.approveAI()
+  const count = async () => object(await (await api.request.get('/api/v1/documents')).json()).meta
+
+  const before = await count()
+  await openPage(page, '/documents', 'Documents')
+  await page.getByRole('checkbox', { name: `Select ${file}` }).click()
+  await page
+    .getByRole('toolbar', { name: 'Selected rows' })
+    .getByRole('button', { name: 'Extract with AI' })
+    .click()
+  const drawer = page.getByRole('dialog', { name: 'Import documents' })
+  await expect(drawer.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 30_000 })
+  await drawer.getByRole('button', { name: /^Import 1/ }).click()
+  await expect(drawer.getByText('1 created', { exact: false })).toBeVisible()
+
+  const response = await api.request.get(`/api/v1/clients?search=${encodeURIComponent(name)}`)
+  const rows = object(await response.json()).data
+  if (!Array.isArray(rows)) throw new Error('Expected clients')
+  expect(rows.map((row) => object(row).name)).toEqual([name])
+  expect(await count()).toEqual(before)
+})

@@ -79,6 +79,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 		}))
 	}
 	handle("POST /api/v1/imports", s.upload)
+	handle("POST /api/v1/imports/documents", s.fromDocuments)
 	handle("GET /api/v1/imports", s.list)
 	handle("GET /api/v1/imports/{id}", s.get)
 	handle("DELETE /api/v1/imports/{id}", s.discard)

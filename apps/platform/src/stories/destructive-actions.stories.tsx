@@ -316,6 +316,7 @@ export const DocumentMoveToTrash: Story = {
           unlink: fn(),
           openFolder: fn(),
           sign: fn(),
+          extract: fn(),
         }}
         onNavigate={fn()}
         onClose={fn()}

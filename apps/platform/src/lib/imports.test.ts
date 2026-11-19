@@ -86,6 +86,21 @@ test('the upload sends kind and files[] as multipart and refuses a malformed ans
   await expect(importsApi.upload('clients', [file])).rejects.toThrow('cannot read')
 })
 
+test('an import from Documents sends the chosen ids as JSON', async () => {
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    Response.json({ data: batch({ kind: 'auto' }) }, { status: 201 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(importsApi.fromDocuments(['doc_1', 'doc_2'])).resolves.toEqual(
+    batch({ kind: 'auto' }),
+  )
+  const [url, init] = fetchMock.mock.calls[0] ?? []
+  expect(String(url)).toMatch(/\/api\/v1\/imports\/documents$/)
+  expect(init?.method).toBe('POST')
+  expect(JSON.parse(String(init?.body))).toEqual({ document_ids: ['doc_1', 'doc_2'] })
+})
+
 test('polls only while the files are still being read', () => {
   expect(pollInterval(batch({ status: 'extracting' }))).toBe(2000)
   expect(pollInterval(batch())).toBe(false)

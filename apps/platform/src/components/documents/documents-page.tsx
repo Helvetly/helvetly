@@ -56,6 +56,7 @@ import {
   Upload as UploadIcon,
   X,
   Share2,
+  Sparkles,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -128,6 +129,7 @@ import { setUrlQuery } from '@/lib/url-query'
 import { useAIFilingToast } from './ai-filing'
 import { NewFolderDialog, FolderPickerDialog } from './dialogs'
 import { DropProvider, useDropTarget, type DropActions } from './drop-target'
+import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
 import { FolderTree } from './folder-tree'
 import { ItemsView } from './items-view'
@@ -227,6 +229,8 @@ export function DocumentsPage() {
   const signLock = useFeatureLock('simple_signatures')
   const aiLock = useFeatureLock('ai_import')
   const [organizing, setOrganizing] = useState(false)
+  // Documents being read by "Extract with AI": the import drawer is open on them.
+  const [extracting, setExtracting] = useState<string[] | null>(null)
   const pathname = usePathname()
   const query = useSearchParams()
   const view = parseView(query)
@@ -365,6 +369,13 @@ export function DocumentsPage() {
   ]
   const selectedKeys = new Set([...selection.keys].filter((key) => order.includes(key)))
   const selectedSplit = splitKeys(selectedKeys)
+  // Why "Extract with AI" cannot read these items (the plan's reason first), or null when it can.
+  const extractReason = (split: { files: string[]; folders: string[] }) =>
+    aiLock?.hint ??
+    extractBlock(
+      [...files, ...recentFiles].filter((file) => split.files.includes(file.id)),
+      split.folders.length,
+    )
 
   // ---- commands ----
   const reportBulk = (result: BulkResult, verb: string, retry?: (ids: string[]) => void) => {
@@ -667,6 +678,13 @@ export function DocumentsPage() {
             </ContextMenuItem>
           </>
         )}
+        {canWrite && (
+          <ExtractItem
+            reason={extractReason(split)}
+            onSelect={() => setExtracting(split.files)}
+            lock={aiLock}
+          />
+        )}
         {canWrite && single && file && !file.deleted_at && (
           <ContextMenuItem onSelect={() => setShareFrom(file)}>
             <Share2 />
@@ -738,6 +756,10 @@ export function DocumentsPage() {
     sign: (file) => {
       navigate({ file: null })
       setSignFrom(file)
+    },
+    extract: (file) => {
+      navigate({ file: null })
+      setExtracting([file.id])
     },
   }
 
@@ -1189,6 +1211,13 @@ export function DocumentsPage() {
                         onClick: () => setPicker({ mode: 'move', ...selectedSplit }),
                         write: true,
                       },
+                      {
+                        label: translate('extractWithAI'),
+                        icon: <Sparkles />,
+                        onClick: () => setExtracting(selectedSplit.files),
+                        disabled: extractReason(selectedSplit) ?? undefined,
+                        write: true,
+                      },
                       ...(selectedSplit.files.length > 0 && selectedSplit.folders.length === 0
                         ? [
                             {
@@ -1259,6 +1288,14 @@ export function DocumentsPage() {
 
       <UploadTray uploads={uploads.uploads} act={uploads.act} />
       {importDrawer.isOpen && <ImportDrawer kind="auto" onClose={importDrawer.close} />}
+      {extracting && (
+        <ImportDrawer
+          key={extracting.join()}
+          kind="auto"
+          documents={extracting}
+          onClose={() => setExtracting(null)}
+        />
+      )}
 
       {shareFrom && <ShareDrawer file={shareFrom} onClose={() => setShareFrom(null)} />}
       {signFrom !== undefined && (
@@ -1861,5 +1898,29 @@ function CreateMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/** Reads the chosen files with AI into the import drawer's review; disabled with the reason when it cannot. */
+function ExtractItem({
+  reason,
+  lock,
+  onSelect,
+}: {
+  reason: string | null
+  lock: FeatureLock
+  onSelect: () => void
+}) {
+  return (
+    <ContextMenuItem disabled={Boolean(reason)} onSelect={onSelect}>
+      <Sparkles />
+      <span className="grid">
+        {translate('extractWithAI')}
+        {reason && !lock && (
+          <span className="text-caption text-pretty text-muted-foreground">{reason}</span>
+        )}
+      </span>
+      {lock && <PlanTag lock={lock} />}
+    </ContextMenuItem>
   )
 }
