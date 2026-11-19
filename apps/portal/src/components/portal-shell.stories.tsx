@@ -152,3 +152,39 @@ export const LongWorkspaceName: Story = {
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(longWorkspace)
   },
 }
+
+/**
+ * A wide screen: the header spans the whole width, the supplier at the far left and the tabs beside the
+ * account menu at the far right. A click on a tab leaves no focus box; the keyboard still gets the ring.
+ */
+export const WideScreen: Story = {
+  render: page(<PortalOverview />),
+  globals: { viewport: { value: 'wide' } },
+  parameters: {
+    ...meta.parameters,
+    viewport: { options: { wide: { name: 'Wide', styles: { width: '1920px', height: '900px' } } } },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const overview = await canvas.findByRole('link', { name: 'Overview' })
+    // The test browser is 1200 px wide: still wider than the page's centred column.
+    const row = canvasElement.querySelector('header > div')
+    const header = row?.getBoundingClientRect() ?? new DOMRect()
+    const brand = row?.firstElementChild?.getBoundingClientRect()
+    const avatar = canvas.getByRole('button', { name: /^Account menu/ }).getBoundingClientRect()
+    const nav = canvas.getByRole('navigation', { name: 'Portal' }).getBoundingClientRect()
+    await expect((brand?.left ?? 0) - header.left).toBeLessThanOrEqual(32)
+    await expect(header.right - avatar.right).toBeLessThanOrEqual(32)
+    await expect(avatar.left - nav.right).toBeLessThan(40)
+
+    await userEvent.click(overview)
+    await expect(overview).not.toHaveFocus()
+    await expect(getComputedStyle(overview).boxShadow).not.toMatch(/inset/)
+    overview.focus()
+    await userEvent.tab()
+    const invoices = canvas.getByRole('link', { name: 'Invoices' })
+    await expect(invoices).toHaveFocus()
+    await expect(getComputedStyle(invoices).boxShadow).toMatch(/inset/)
+  },
+}
+export const WideScreenDark = dark(WideScreen)
