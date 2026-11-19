@@ -15,11 +15,16 @@ import {
   Building2,
   Ellipsis,
   FilePlus2,
+  Globe,
   LayoutTemplate,
+  Mail,
+  MapPin,
   Pencil,
+  Phone,
   Power,
   Trash2,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
 
@@ -36,7 +41,14 @@ export const websiteHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `
 export const mapsHref = (query: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
 
-export type HeaderFact = { label: string; text: string; href: string; external?: boolean }
+export type HeaderFact = {
+  label: string
+  /** The same icon as the field's row in the Contact card. */
+  icon: LucideIcon
+  text: string
+  href: string
+  external?: boolean
+}
 
 /** The client's key facts under its name, each a link; a fact the client lacks is left out. */
 export function headerFacts(client: Client): HeaderFact[] {
@@ -45,14 +57,25 @@ export function headerFacts(client: Client): HeaderFact[] {
   const place = [client.city, country].filter(Boolean).join(', ')
   const facts: (HeaderFact | null)[] = [
     client.email
-      ? { label: translate('email'), text: client.email, href: `mailto:${client.email}` }
+      ? {
+          label: translate('email'),
+          icon: Mail,
+          text: client.email,
+          href: `mailto:${client.email}`,
+        }
       : null,
     client.phone
-      ? { label: translate('phone'), text: displayPhone(client.phone), href: `tel:${client.phone}` }
+      ? {
+          label: translate('phone'),
+          icon: Phone,
+          text: displayPhone(client.phone),
+          href: `tel:${client.phone}`,
+        }
       : null,
     place
       ? {
           label: translate('location'),
+          icon: MapPin,
           text: place,
           href: mapsHref([...lines, country].filter(Boolean).join(', ')),
           external: true,
@@ -61,6 +84,7 @@ export function headerFacts(client: Client): HeaderFact[] {
     client.website
       ? {
           label: translate('website'),
+          icon: Globe,
           text: client.website.replace(/^https?:\/\//i, '').replace(/\/$/, ''),
           href: websiteHref(client.website),
           external: true,
@@ -221,16 +245,18 @@ export function ClientHeader({
 }
 
 function Fact({ fact }: { fact: HeaderFact }) {
+  const Icon = fact.icon
   return (
     <div className="grid min-w-0 gap-0.5">
       <dt className="text-caption text-muted-foreground">{fact.label}</dt>
-      <dd className="min-w-0 truncate text-body">
+      <dd className="flex min-w-0 items-center gap-1.5 text-body">
+        <Icon aria-hidden className="size-3.5 shrink-0 stroke-[1.5] text-muted-foreground" />
         <a
           href={localizedHref(fact.href)}
           target={fact.external ? '_blank' : undefined}
           rel={fact.external ? 'noreferrer' : undefined}
           className={cn(
-            'underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground',
+            'min-w-0 truncate underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground',
             fact.label === 'Phone' && 'tabular-nums',
           )}
         >

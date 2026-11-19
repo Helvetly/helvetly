@@ -23,6 +23,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
+	"helvetly.com/api/internal/sitecheck"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -76,6 +77,7 @@ type env struct {
 	st    *store.Store
 	srv   *httptest.Server
 	files *fakeStorage
+	svc   *Service
 }
 
 func newEnv(t *testing.T) *env {
@@ -91,10 +93,11 @@ func newEnv(t *testing.T) *env {
 	files := &fakeStorage{objects: map[string][]byte{}}
 	mux := http.NewServeMux()
 	a.Register(mux)
-	New(st, a, files, discard).Register(mux)
+	svc := New(st, a, files, discard)
+	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, srv: srv, files: files}
+	return &env{t: t, st: st, srv: srv, files: files, svc: svc}
 }
 
 // browser is a signed-in person: their session cookie and CSRF token.
@@ -858,4 +861,34 @@ func TestFilesRequestLimit(t *testing.T) {
 	if resp, raw := e.send(b, "POST", "/api/v1/clients/"+c.ID+"/files", body, ct); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("under the request limit: %d %s", resp.StatusCode, raw)
 	}
+}
+
+// stubSites answers like sitecheck without the network: one known site, everything else unreachable.
+type stubSites struct{}
+
+func (stubSites) Resolve(_ context.Context, text string) (string, error) {
+	if text == "alpenglow.ch" {
+		return "https://www.alpenglow.ch", nil
+	}
+	return "", &sitecheck.Error{Message: "We couldn't reach " + text + "."}
+}
+
+func TestCheckWebsite(t *testing.T) {
+	e := newEnv(t)
+	e.svc.site = stubSites{}
+	owner := e.workspace()
+	var out struct{ Data struct{ Website string } }
+	e.do(owner, "POST", "/api/v1/clients/website-check", map[string]any{"website": "alpenglow.ch"}, 200, &out)
+	if out.Data.Website != "https://www.alpenglow.ch" {
+		t.Fatalf("website = %q", out.Data.Website)
+	}
+	var failed apiErr
+	e.do(owner, "POST", "/api/v1/clients/website-check", map[string]any{"website": "gone.ch"}, 422, &failed)
+	if failed.Error.Details.Fields["website"] != "We couldn't reach gone.ch." {
+		t.Fatalf("fields = %v", failed.Error.Details.Fields)
+	}
+	e.fails(owner, "POST", "/api/v1/clients/website-check", map[string]any{"url": "x.ch"}, 400, "invalid_request")
+	e.fails(&browser{token: owner.token, csrf: "wrong"}, "POST", "/api/v1/clients/website-check",
+		map[string]any{"website": "alpenglow.ch"}, 403, "csrf_failed")
+	e.fails(nil, "POST", "/api/v1/clients/website-check", map[string]any{"website": "alpenglow.ch"}, 401, "unauthenticated")
 }
