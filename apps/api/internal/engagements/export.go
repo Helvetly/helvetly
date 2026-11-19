@@ -13,7 +13,7 @@ import (
 var engagementsHeader = []string{"number", "title", "client", "status", "billing", "recurrence", "interval", "start_date", "end_date",
 	"unit", "quantity", "unit_price", "currency", "period_start", "period_end", "used", "remaining", "overage", "reference"}
 
-var entriesHeader = []string{"date", "period_start", "period_end", "quantity", "unit", "note", "performed_by", "invoice_number"}
+var entriesHeader = []string{"date", "period_start", "period_end", "quantity", "unit", "note", "client_performance", "performed_by", "invoice_number"}
 
 func str(v *string) string {
 	if v == nil {
@@ -130,7 +130,7 @@ func (s *Service) exportEntries(w http.ResponseWriter, r *http.Request, sess sto
 		if en.Invoice != nil {
 			number = str(en.Invoice.Number)
 		}
-		rows = append(rows, []string{en.Date, from, to, en.Quantity.String(), str(e.Unit), str(en.Note), by, number})
+		rows = append(rows, []string{en.Date, from, to, en.Quantity.String(), str(e.Unit), str(en.Note), str(en.ClientPerformance), by, number})
 	}
 	s.writeCSV(w, "engagement-"+strconv.FormatInt(e.Number, 10)+"-entries.csv", entriesHeader, rows)
 	return nil
