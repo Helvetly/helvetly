@@ -125,7 +125,12 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 	if err == nil && len(access) == 0 {
 		err = errNoAccess
 	}
-	if err == nil {
+	switch {
+	case err != nil:
+	// The shared portal asks an address with several clients which one first; a scope has fixed the workspace.
+	case len(access) > 1 && scopeWorkspace(r) == "":
+		err = s.offerChoice(w, r, email, access)
+	default:
 		err = s.open(w, r, email, access[0], "")
 	}
 	if err != nil {
