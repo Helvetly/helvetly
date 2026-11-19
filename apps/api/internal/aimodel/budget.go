@@ -134,7 +134,7 @@ type Budget struct {
 // reserved and priced at its card, while half of the call's time is left.
 func (b Budget) Generate(ctx context.Context, p Provider, ws store.Workspace, req Request, call Call) (Reply, error) {
 	reply, err := b.generateAll(ctx, p, ws, req, call)
-	watchRefusal(ctx, ws.ID, b.Pool, err, b.Now())
+	b.watch(ctx, ws.ID, err)
 	return reply, err
 }
 

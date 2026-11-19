@@ -103,3 +103,12 @@ func (q Q) StaleAICalls(ctx context.Context, before time.Time) ([]AICall, error)
 		return c, r.Scan(&c.ID, &c.WorkspaceID, &c.Pool, &c.Period, &c.CreatedAt, &c.ReservedTokens, &c.ReservedMicros)
 	})
 }
+
+// AICallAdmittedSince says whether any instance got a call of the workspace's pool admitted since then, one refused
+// for the provider's configuration aside: the pool was not blocked.
+func (q Q) AICallAdmittedSince(ctx context.Context, workspace, pool string, since time.Time) (bool, error) {
+	var ok bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM ai_calls WHERE workspace_id=$1 AND pool=$2 AND created_at>=$3
+		AND failure NOT IN ('config','unknown_usage:config'))`, workspace, pool, since).Scan(&ok)
+	return ok, err
+}

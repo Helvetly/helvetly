@@ -549,8 +549,6 @@ func TestStaleWindowOutlastsALiveCall(t *testing.T) {
 	}
 }
 
-// A pool refused for a non-quota reason for blockedAlert is logged as an error, once per period; any other outcome
-// clears it.
 // forgetRefusals starts a test with no pool watched: the watch outlives a test, and every test's clock starts at nov.
 func forgetRefusals(t *testing.T) {
 	blockedMu.Lock()
@@ -558,27 +556,82 @@ func forgetRefusals(t *testing.T) {
 	clear(blocked)
 }
 
-func TestABlockedPoolIsReported(t *testing.T) {
+// watchBudget watches a workspace's Heidi pool on a clock the test sets.
+func watchBudget(t *testing.T) (Budget, *clock, store.Workspace, *store.Store) {
 	forgetRefusals(t)
+	db, _, ws := reserveDB(t)
+	c := newClock(nov)
+	return Budget{DB: db, Pool: PoolHeidi, Now: c.Now}, c, ws, db
+}
+
+func (b Budget) watchAt(c *clock, ws store.Workspace, at time.Duration, err error) {
+	c.set(nov.Add(at))
+	b.watch(context.Background(), ws.ID, err)
+}
+
+// A pool refused for a non-quota reason for blockedAlert with nothing admitted is logged as an error, once per period;
+// any other outcome clears it.
+func TestABlockedPoolIsReported(t *testing.T) {
+	b, c, ws, _ := watchBudget(t)
 	log := captureLog(t)
-	ws, t0 := "ws_watch_"+t.Name(), nov
-	busy := ErrUncertain
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0)
-	watchRefusal(context.Background(), ws, PoolHeidi, ErrQuota, t0.Add(time.Minute)) // clears
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0.Add(2*time.Minute))
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0.Add(16*time.Minute))
+	b.watchAt(c, ws, 0, ErrUncertain)
+	b.watchAt(c, ws, time.Minute, ErrQuota) // clears
+	b.watchAt(c, ws, 2*time.Minute, ErrUncertain)
+	b.watchAt(c, ws, 16*time.Minute, ErrUncertain)
 	if strings.Contains(log.String(), "AI pool refusing calls") {
 		t.Fatalf("reported before it lasted %v: %s", blockedAlert, log)
 	}
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0.Add(17*time.Minute))
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0.Add(20*time.Minute))
+	b.watchAt(c, ws, 17*time.Minute, ErrUncertain)
+	b.watchAt(c, ws, 20*time.Minute, ErrUncertain)
 	if n := strings.Count(log.String(), "AI pool refusing calls"); n != 1 || !strings.Contains(log.String(), "reason=in_flight") {
 		t.Fatalf("reported %d times: %s", n, log)
 	}
-	watchRefusal(context.Background(), ws, PoolHeidi, nil, t0.Add(21*time.Minute))
-	watchRefusal(context.Background(), ws, PoolHeidi, busy, t0.Add(40*time.Minute))
+	b.watchAt(c, ws, 21*time.Minute, nil)
+	b.watchAt(c, ws, 40*time.Minute, ErrUncertain)
 	if n := strings.Count(log.String(), "AI pool refusing calls"); n != 1 {
 		t.Fatalf("an answer must clear the watch: %s", log)
+	}
+}
+
+// With several instances, one may only ever see the pool busy with another's calls: those admissions in ai_calls
+// mean the pool works, so nothing is reported and the wait starts again.
+func TestAPoolBusyWithAnotherInstanceIsNotReported(t *testing.T) {
+	b, c, ws, db := watchBudget(t)
+	log := captureLog(t)
+	b.watchAt(c, ws, 0, ErrUncertain)
+	err := db.Tx(context.Background(), func(q store.Q) error { // the other instance's call, admitted meanwhile
+		_, err := q.InsertAICall(context.Background(), store.AICall{ID: "aic_other", WorkspaceID: ws.ID, Period: "2026-11",
+			Pool: PoolHeidi, Kind: "heidi", Operation: "o", Step: "answer", RateCard: luna.Version, Model: luna.Model,
+			Tier: luna.Tier, Region: luna.Region, CreatedAt: nov.Add(10 * time.Minute)})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.watchAt(c, ws, 16*time.Minute, ErrUncertain)
+	b.watchAt(c, ws, 20*time.Minute, ErrUncertain) // the new wait starts here
+	b.watchAt(c, ws, 34*time.Minute, ErrUncertain)
+	if strings.Contains(log.String(), "AI pool refusing calls") {
+		t.Fatalf("reported a pool another instance uses: %s", log)
+	}
+	b.watchAt(c, ws, 35*time.Minute, ErrUncertain)
+	if !strings.Contains(log.String(), "AI pool refusing calls") {
+		t.Fatalf("a pool stuck since the other instance's call is reported: %s", log)
+	}
+}
+
+// Pools not refused for watchIdle are forgotten, so the watch never grows with workspaces that stop asking.
+func TestIdleWatchesAreForgotten(t *testing.T) {
+	b, c, ws, _ := watchBudget(t)
+	for i := range 3 {
+		c.set(nov)
+		b.watch(context.Background(), fmt.Sprintf("%s_%d", ws.ID, i), ErrUncertain)
+	}
+	b.watchAt(c, ws, watchIdle, ErrUncertain)
+	blockedMu.Lock()
+	defer blockedMu.Unlock()
+	if len(blocked) != 1 || blocked[ws.ID+" "+PoolHeidi] == nil {
+		t.Fatalf("watched = %v, want only the pool refused now", blocked)
 	}
 }
 
