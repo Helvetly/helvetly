@@ -2,19 +2,22 @@
 // prefix /w/<slug>/ on PORTAL_URL's host, for pages and API calls alike (the portal calls /w/<slug>/api/…, so its
 // downloads and images carry the scope too). A request without the prefix is unscoped: the shared /login.
 //
-// Phase 2 adds verified custom domains: Handler resolves the Host to its workspace before looking at the path, and
-// CanonicalURL answers with the domain; callers do not change.
+// Phase 2, custom domains (internal/customdomains): with EnableDomains, Handler first resolves a Host that is a
+// workspace's active domain (portal.firma.ch) to its workspace, pages at the root and the portal's API at /api, and
+// CanonicalURL answers with the domain while it is active and the plan includes it.
 package portalscope
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"helvetly.com/api/internal/auth"
@@ -27,6 +30,9 @@ type Store interface {
 	PortalScopeBySlug(ctx context.Context, slug string) (store.PortalScope, error)
 	CurrentPortalSlug(ctx context.Context, workspaceID string) (string, error)
 	AddFirstPortalSlug(ctx context.Context, workspaceID, slug string, now time.Time) (bool, error)
+	PortalScopeByDomain(ctx context.Context, host string) (store.PortalScope, error)
+	ActivePortalDomain(ctx context.Context, workspaceID string) (string, error)
+	FeatureAllowed(ctx context.Context, workspaceID, feature string) (bool, error)
 }
 
 type Resolver struct {
@@ -35,7 +41,23 @@ type Resolver struct {
 	db   Store
 	// limit caps the slug lookups per client address: every /w/<x>/… request is one, so probing for slugs is bounded.
 	limit *auth.RateLimiter
+
+	// domains: custom domains are on (EnableDomains); own are the installation's hostnames, never a custom domain.
+	domains bool
+	own     []string
+	mu      sync.Mutex
+	byHost  map[string]cached // host → its workspace, or none
+	byWS    map[string]cached // workspace → its active domain, or none
 }
+
+// cached is one lookup, good until expires: other instances' changes show within cacheFor.
+type cached struct {
+	scope   store.PortalScope
+	found   bool
+	expires time.Time
+}
+
+const cacheFor = 30 * time.Second
 
 // lookupsPerMinute leaves a portal page's own requests (page, prefetches, API calls) well inside it.
 const lookupsPerMinute = 600
@@ -46,7 +68,155 @@ func New(portalURL string, db Store) *Resolver {
 	if err != nil {
 		u = &url.URL{}
 	}
-	return &Resolver{base: strings.TrimRight(portalURL, "/"), host: u.Host, db: db, limit: auth.NewRateLimiter(lookupsPerMinute, time.Minute)}
+	return &Resolver{base: strings.TrimRight(portalURL, "/"), host: u.Host, db: db, limit: auth.NewRateLimiter(lookupsPerMinute, time.Minute),
+		byHost: map[string]cached{}, byWS: map[string]cached{}}
+}
+
+// EnableDomains turns custom domains on. own are the installation's other origins or hosts (PUBLIC_URL, MEDIA_URL,
+// …): requests for them are never a custom domain, and with domains on a page for a host that is neither ours nor an
+// active domain is 404 instead of the platform.
+func (r *Resolver) EnableDomains(own ...string) {
+	r.domains = true
+	r.own = []string{hostname(r.host)}
+	for _, o := range own {
+		if u, err := url.Parse(o); err == nil && u.Host != "" {
+			o = u.Host
+		}
+		if o != "" {
+			r.own = append(r.own, hostname(o))
+		}
+	}
+}
+
+// Forget drops the cached domains, after a domain is added, changes status or is removed.
+func (r *Resolver) Forget() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	clear(r.byHost)
+	clear(r.byWS)
+}
+
+// hostname is host without its port, lowercase.
+func hostname(host string) string {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.ToLower(strings.TrimSuffix(host, "."))
+}
+
+// lookup caches find's answer for key in m; an error is not cached.
+func (r *Resolver) lookup(ctx context.Context, m map[string]cached, key string, find func() (store.PortalScope, error)) (store.PortalScope, bool, error) {
+	now := time.Now()
+	r.mu.Lock()
+	c, ok := m[key]
+	r.mu.Unlock()
+	if ok && now.Before(c.expires) {
+		return c.scope, c.found, nil
+	}
+	scope, err := find()
+	found := err == nil
+	if found {
+		allowed, ferr := r.db.FeatureAllowed(ctx, scope.WorkspaceID, store.FeatureCustomPortalDomain)
+		if ferr != nil {
+			return scope, false, ferr
+		}
+		found = allowed // a plan without the feature: the domain stops resolving at once
+	} else if !errors.Is(err, store.ErrNotFound) {
+		return scope, false, err
+	}
+	r.mu.Lock()
+	m[key] = cached{scope: scope, found: found, expires: now.Add(cacheFor)}
+	r.mu.Unlock()
+	return scope, found, nil
+}
+
+// domainScope is the workspace whose active domain host is.
+func (r *Resolver) domainScope(ctx context.Context, host string) (store.PortalScope, bool, error) {
+	return r.lookup(ctx, r.byHost, host, func() (store.PortalScope, error) { return r.db.PortalScopeByDomain(ctx, host) })
+}
+
+// ActiveDomain is the workspace's active domain, "" when it has none (or custom domains are off).
+func (r *Resolver) ActiveDomain(ctx context.Context, workspaceID string) (string, error) {
+	if !r.domains {
+		return "", nil
+	}
+	scope, found, err := r.lookup(ctx, r.byWS, workspaceID, func() (store.PortalScope, error) {
+		host, err := r.db.ActivePortalDomain(ctx, workspaceID)
+		return store.PortalScope{WorkspaceID: workspaceID, Domain: host}, err
+	})
+	if !found || err != nil {
+		return "", err
+	}
+	return scope.Domain, nil
+}
+
+// domainURL is the portal's address on a custom domain: PORTAL_URL's scheme, the domain's root.
+func (r *Resolver) domainURL(domain string) string {
+	scheme, _, _ := strings.Cut(r.base, "://")
+	return scheme + "://" + domain + "/"
+}
+
+// portalAPI are the API paths a custom domain serves: the portal's, and the health checks.
+func portalAPI(path string) bool {
+	return strings.HasPrefix(path, "/api/v1/public/portal/") || path == "/api/health" || path == "/api/ready"
+}
+
+func writeNotFound(w http.ResponseWriter, api bool) {
+	if !api {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("Not found.\n"))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"Not found."}}` + "\n"))
+}
+
+// OnDomain reports whether Handler resolved the request by its custom domain (the portal is served, never the
+// platform).
+func OnDomain(req *http.Request) bool {
+	s, ok := FromContext(req.Context())
+	return ok && s.Domain != ""
+}
+
+// PathPrefix is the prefix of the scope's pages and API calls on the address the request came in on: none on a
+// custom domain, /w/<slug> under PORTAL_URL.
+func PathPrefix(s store.PortalScope) string {
+	if s.Domain != "" {
+		return ""
+	}
+	return Prefix(s.Slug)
+}
+
+// URLOf is the scope's canonical address: its active domain, else PORTAL_URL/w/<slug>/.
+func (r *Resolver) URLOf(ctx context.Context, s store.PortalScope) (string, error) {
+	domain, err := r.ActiveDomain(ctx, s.WorkspaceID)
+	if domain == "" || err != nil {
+		return r.URLFor(s.Slug), err
+	}
+	return r.domainURL(domain), nil
+}
+
+// byDomain serves a request for a host that is not the installation's own and reports whether it did: an active
+// domain's portal, or 404 for a page of an unknown host (never the platform). The API of an unknown host is left to
+// the path rules (health checks reach the origin by its address, a development proxy forwards /w/<slug>/api/…); on a
+// domain only the portal's API is served.
+func (r *Resolver) byDomain(w http.ResponseWriter, req *http.Request, next http.Handler) bool {
+	api := strings.HasPrefix(req.URL.Path, "/api/") || strings.HasPrefix(req.URL.Path, "/w/") && strings.Contains(req.URL.Path, "/api/")
+	scope, found, err := r.domainScope(req.Context(), hostname(req.Host))
+	switch {
+	case err != nil:
+		http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+	case !found && api:
+		return false
+	case !found || api && !portalAPI(req.URL.Path):
+		writeNotFound(w, api)
+	default:
+		next.ServeHTTP(w, req.WithContext(WithScope(req.Context(), scope)))
+	}
+	return true
 }
 
 type ctxKey struct{}
@@ -71,6 +241,9 @@ func Prefix(slug string) string { return "/w/" + slug }
 // proxies them from its own. Every other request goes on unchanged.
 func (r *Resolver) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if r.domains && !slices.Contains(r.own, hostname(req.Host)) && r.byDomain(w, req, next) {
+			return
+		}
 		asked, rest, ok := strings.Cut(strings.TrimPrefix(req.URL.Path, "/w/"), "/")
 		rest = "/" + rest
 		api := strings.HasPrefix(rest, "/api/")
@@ -100,6 +273,20 @@ func (r *Resolver) Handler(next http.Handler) http.Handler {
 			return
 		}
 		page := !api && (req.Method == http.MethodGet || req.Method == http.MethodHead)
+		if page && ok {
+			// The workspace's own domain is its portal's address while it works: 302, since it may break or go.
+			domain, err := r.ActiveDomain(req.Context(), scope.WorkspaceID)
+			if err != nil {
+				http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			if domain != "" {
+				target := url.URL{Path: rest, RawQuery: req.URL.RawQuery}
+				w.Header().Set("Cache-Control", "no-store")
+				http.Redirect(w, req, strings.TrimSuffix(r.domainURL(domain), "/")+target.String(), http.StatusFound)
+				return
+			}
+		}
 		if !api && (asked != scope.Slug && page || !ok) {
 			target := url.URL{Path: Prefix(scope.Slug) + rest, RawQuery: req.URL.RawQuery}
 			status := http.StatusMovedPermanently // only /w/<slug> → /w/<slug>/, which never changes
@@ -116,14 +303,14 @@ func (r *Resolver) Handler(next http.Handler) http.Handler {
 	})
 }
 
-// CanonicalURL is where the workspace's clients sign in (with a trailing slash); a workspace without a slug gets one
-// from its name first.
+// CanonicalURL is where the workspace's clients sign in (with a trailing slash): its active domain, else its slug's
+// address; a workspace without a slug gets one from its name first.
 func (r *Resolver) CanonicalURL(ctx context.Context, ws store.Workspace) (string, error) {
 	slug, err := r.Slug(ctx, ws)
 	if err != nil {
 		return "", err
 	}
-	return r.URLFor(slug), nil
+	return r.URLOf(ctx, store.PortalScope{WorkspaceID: ws.ID, Slug: slug})
 }
 
 // URLFor is the portal address of a slug.

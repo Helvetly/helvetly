@@ -15,10 +15,10 @@ import (
 //go:embed all:dist all:portal-dist
 var embedded embed.FS
 
-// Handler serves the portal to requests for portalURL's host and the platform to the rest; secure (an https
-// PUBLIC_URL) adds HSTS.
-func Handler(portalURL string, secure bool) http.Handler {
-	return byHost(portalURL, handler(secure, sub("dist")), handler(secure, sub("portal-dist")))
+// Handler serves the portal to requests for portalURL's host and to those onDomain says came for a workspace's own
+// domain, and the platform to the rest; secure (an https PUBLIC_URL) adds HSTS.
+func Handler(portalURL string, secure bool, onDomain func(*http.Request) bool) http.Handler {
+	return byHost(portalURL, onDomain, handler(secure, sub("dist")), handler(secure, sub("portal-dist")))
 }
 
 func sub(dir string) fs.FS {
@@ -30,13 +30,13 @@ func sub(dir string) fs.FS {
 }
 
 // byHost picks the app by the Host header; a bad portalURL (refused by config) serves only the platform.
-func byHost(portalURL string, platform, portal http.Handler) http.Handler {
+func byHost(portalURL string, onDomain func(*http.Request) bool, platform, portal http.Handler) http.Handler {
 	u, err := url.Parse(portalURL)
 	if err != nil || u.Host == "" {
 		return platform
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.EqualFold(r.Host, u.Host) {
+		if strings.EqualFold(r.Host, u.Host) || onDomain(r) {
 			portal.ServeHTTP(w, r)
 			return
 		}

@@ -33,7 +33,8 @@ var requiredPlan = map[string]string{
 	store.FeatureLedgerExports: billing.Pro, store.FeatureDataExport: billing.Pro, store.FeatureAutomations: billing.Pro,
 	store.FeatureInvoiceReminders: billing.Pro, store.FeatureInvoiceInstalments: billing.Pro,
 	store.FeatureEngagementAutomation: billing.Pro, store.FeatureClientPortal: billing.Business,
-	store.FeatureEInvoiceXML: billing.Business,
+	store.FeatureCustomPortalDomain: billing.Business,
+	store.FeatureEInvoiceXML:        billing.Business,
 }
 
 var rank = map[string]int{billing.Basic: 0, billing.Pro: 1, billing.Business: 2}

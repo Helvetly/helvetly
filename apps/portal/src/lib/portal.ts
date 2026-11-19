@@ -2,8 +2,6 @@
 // is the portal's own sign-in, never the staff redirect.
 import { ApiError, apiUrl, request, setCsrfToken, type EmailCodeSent } from '@helvetly/ui/lib/http'
 
-import { scopePrefix } from './scope'
-
 export type PortalSession = {
   /** The client's address this session signed in with. */
   email: string
@@ -110,9 +108,11 @@ export type PortalScope = {
   url: string
 }
 
-/** The workspace of a scoped page; null on the shared portal (the API answers 404 there). */
+/**
+ * The workspace of a scoped page: under /w/<slug>/ or on the workspace's own domain (portal.firma.ch, no prefix);
+ * null on the shared portal (the API answers 404 there).
+ */
 export async function getPortalScope(): Promise<PortalScope | null> {
-  if (!scopePrefix()) return null
   try {
     return await call<PortalScope>('/scope')
   } catch (error) {

@@ -37,7 +37,7 @@ type Config struct {
 
 // URLs is where a workspace's clients sign in (internal/portalscope).
 type URLs interface {
-	URLFor(slug string) string
+	URLOf(ctx context.Context, s store.PortalScope) (string, error)
 }
 
 type Service struct {

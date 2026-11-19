@@ -42,6 +42,8 @@ var Events = []event{
 	{"client.change_requested", "clients", true, true},
 	{"portal.first_sign_in", "clients", true, false},
 	{"portal.document_viewed", "clients", true, false},
+	{"portal.domain_active", "clients", true, false},
+	{"portal.domain_failed", "clients", true, true},
 	{"signature.viewed", "documents", false, false},
 	{"signature.signed", "documents", false, false},
 	{"signature.completed", "documents", false, false},

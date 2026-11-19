@@ -11,6 +11,8 @@ import (
 type PortalScope struct {
 	WorkspaceID, Name, Slug string
 	LogoFileID              *string
+	// Domain is the workspace's own host the request came in on (portal.firma.ch), "" under PORTAL_URL/w/<slug>/.
+	Domain string
 }
 
 // PortalScopeBySlug resolves any slug the workspace has had; ErrNotFound for an unknown one or a deleted workspace.

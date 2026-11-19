@@ -26,7 +26,8 @@ var actions = map[string]string{
 	"billing.payment_disputed":     "View billing",
 	"billing.subscription_changed": "View billing", "billing.limit_near": "Compare plans", "period.closed": "View periods",
 	"period.reopened": "View periods", "vat.return_due": "Open the VAT return", "import.ready": "Review the import",
-	"import.failed": "Open the import", "quote.accepted": "Make the invoice", "quote.declined": "View the quote",
+	"import.failed": "Open the import", "portal.domain_active": "View the portal settings",
+	"portal.domain_failed": "Check the domain", "quote.accepted": "Make the invoice", "quote.declined": "View the quote",
 }
 
 // data is a notification's stored fields; numbers read as their text.
@@ -111,6 +112,13 @@ func words(event string, d data) message {
 		return message{title: or(d.s("contact_name"), "The client") + " signed in to the client portal for the first time",
 			body: or(d.s("client_name"), "The client") + " can now see its invoices and shared documents there.",
 			href: clientHref(d.s("client_id")), actor: d.s("contact_name")}
+	case "portal.domain_active":
+		return message{title: "Your client portal is live at " + d.s("hostname"),
+			body: "Invitations and emails to your clients now link to https://" + d.s("hostname") + "/.", href: "/settings/workspace"}
+	case "portal.domain_failed":
+		return message{title: d.s("hostname") + " stopped working for your client portal",
+			body: "Until it works again, your clients sign in at your portal address on Helvetly. Check the DNS record in the settings.",
+			href: "/settings/workspace"}
 	case "portal.document_viewed":
 		return message{title: fmt.Sprintf("%s opened “%s”", or(d.s("contact_name"), "The client"), d.s("document_name")),
 			body: "Shared with " + or(d.s("client_name"), "the client") + " in the client portal.",

@@ -2,6 +2,7 @@ package portal
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -179,5 +180,77 @@ func TestScopeEndpoint(t *testing.T) {
 	e.exec(`UPDATE workspaces SET deleted_at = now() WHERE id = 'wsp_b'`)
 	if res, _ = e.doAt("/w/other", "GET", "/scope", nil, nil, ""); res.StatusCode != 404 {
 		t.Fatalf("deleted workspace: %d", res.StatusCode)
+	}
+}
+
+// onHost asks the portal API at path on a workspace's own domain (the Host header, as Cloudflare and Caddy pass it).
+func (e *env) onHost(host, method, path string, cookie *http.Cookie, body string) (*http.Response, map[string]any) {
+	e.t.Helper()
+	req, _ := http.NewRequest(method, e.srv.URL+path, strings.NewReader(body))
+	req.Host = host
+	req.Header.Set("Content-Type", "application/json")
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(res.Body).Decode(&out)
+	return res, out
+}
+
+// TestCustomDomains: an active domain is its workspace's portal at the root; a session of one workspace's domain is
+// refused on another's, even under that one's cookie name, and the cookie is host-only.
+func TestCustomDomains(t *testing.T) {
+	e := scopedEnv(t)
+	if err := e.store.CreateWorkspace(context.Background(), store.Workspace{ID: "wsp_c", Name: "Third"}, "UTC", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	e.exec(`INSERT INTO portal_slugs (slug, workspace_id, created_at) VALUES ('third', 'wsp_c', now())`)
+	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at) VALUES
+		('dom_a', 'wsp_a', 'portal.studio.ch', 'active', now(), 'usr', now(), now()),
+		('dom_b', 'wsp_b', 'portal.other.ch', 'active', now(), 'usr', now(), now()),
+		('dom_c', 'wsp_c', 'pending.third.ch', 'pending', now(), 'usr', now(), now())`)
+	e.exec(`UPDATE workspaces SET logo_file_id = 'logo1' WHERE id = 'wsp_a'`) // before the first request: the resolver caches
+	const api = "/api/v1/public/portal"
+	res, out := e.onHost("portal.studio.ch", "POST", api+"/auth/verify", nil, `{"email":"ana@acme.ch","code":"123456"}`)
+	a := scopedCookie(res)
+	if res.StatusCode != 201 || a == nil || a.Name != sessionCookie+"_wsp_a" || a.Domain != "" {
+		t.Fatalf("sign in on the domain: %d %v %+v", res.StatusCode, out, a)
+	}
+	if res, _ := e.onHost("portal.other.ch", "POST", api+"/auth/verify", nil, `{"email":"bob@beta.ch","code":"123456"}`); res.StatusCode != 403 {
+		t.Fatalf("another workspace's client signed in on B's domain: %d", res.StatusCode)
+	}
+	rename := func(name string) *http.Cookie { return &http.Cookie{Name: name, Value: a.Value} }
+	for _, tc := range []struct {
+		name, host, path string
+		cookie           *http.Cookie
+		status           int
+	}{
+		{"own domain", "portal.studio.ch", api + "/session", a, 200},
+		{"own workspace under its slug", "127.0.0.1", "/w/studio" + api + "/session", a, 200},
+		{"another workspace's domain", "portal.other.ch", api + "/session", a, 401},
+		{"another workspace's domain, its cookie name", "portal.other.ch", api + "/session", rename(sessionCookie + "_wsp_b"), 401},
+		{"unscoped", "127.0.0.1", api + "/session", rename(sessionCookie), 401},
+		{"staff api on a domain", "portal.studio.ch", "/api/v1/invoices", a, 404},
+		{"pending domain is no scope", "pending.third.ch", api + "/scope", nil, 404},
+		{"unknown host is no scope", "portal.nobody.ch", api + "/scope", nil, 404},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			host := tc.host
+			if host == "127.0.0.1" {
+				host = strings.TrimPrefix(e.srv.URL, "http://")
+			}
+			if res, _ := e.onHost(host, "GET", tc.path, tc.cookie, ""); res.StatusCode != tc.status {
+				t.Fatalf("%s %s: %d, want %d", host, tc.path, res.StatusCode, tc.status)
+			}
+		})
+	}
+	res, out = e.onHost("portal.studio.ch", "GET", api+"/scope", nil, "")
+	if res.StatusCode != 200 || out["slug"] != "studio" || out["url"] != "http://portal.studio.ch/" || out["logo_url"] != api+"/scope/logo?v=logo1" {
+		t.Fatalf("scope on the domain: %d %v", res.StatusCode, out)
 	}
 }

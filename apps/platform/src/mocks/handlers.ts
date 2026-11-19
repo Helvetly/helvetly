@@ -23,6 +23,7 @@ import { heidiHandlers } from './heidi'
 import { ledgerHandlers } from './ledger'
 import { notificationHandlers } from './notifications'
 import { portalAddressHandlers } from './portal-address'
+import { portalDomainHandlers } from './portal-domain'
 import { quoteHandlers } from './quotes'
 import { templateHandlers } from './templates'
 
@@ -424,4 +425,5 @@ export const handlers = [
   ...(process.env.VITEST ? employeesHandlers : []),
   ...(process.env.VITEST ? emailTemplateHandlers : []),
   ...(process.env.VITEST ? portalAddressHandlers : []),
+  ...(process.env.VITEST ? portalDomainHandlers : []),
 ]

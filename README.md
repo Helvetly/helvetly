@@ -134,7 +134,7 @@ client portal) and passes the `Host` header through.
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Process        | `/usr/local/bin/helvetly`, uid 65532, no shell; needs no writable path except `/tmp` (give it a volume)                                                                       |
 | Listen         | `HTTP_ADDR`, default `:3333`, plain HTTP behind your TLS proxy                                                                                                                |
-| Hosts          | `PORTAL_URL`'s host gets the client portal, any other host the platform; `/api/*` is the API on both                                                                          |
+| Hosts          | `PORTAL_URL`'s host and workspaces' active custom domains get the client portal, any other host the platform; `/api/*` is the API on both                                     |
 | Health         | `GET /api/health` (process), `GET /api/ready` (also the database); `helvetly healthcheck [ready\|health]`                                                                     |
 | Settings       | environment only, validated at start; a bad value stops the start with a message naming it                                                                                    |
 | Migrations     | applied at start, forward only                                                                                                                                                |
@@ -145,6 +145,29 @@ Production needs at least `DATABASE_URL`, `PUBLIC_URL`, `PORTAL_URL` (another ho
 (`openssl rand -base64 32`; keep a backup), `SMTP_*`, `MAIL_FROM` and the five `S3_*` settings; never set
 `AUTH_DEV_SIGNIN`. Every setting is described in [.env.example](.env.example). Build-time values
 (`NEXT_PUBLIC_*`, Docker build arguments) end up in the browser's JavaScript: public URLs only, never secrets.
+
+### Custom portal domains
+
+Optional, on the Business plan: a workspace serves its client portal on its own host (`portal.firma.ch`) instead of
+`PORTAL_URL/w/<slug>/`. It needs a Cloudflare zone with Cloudflare for SaaS and the three settings
+`CLOUDFLARE_API_TOKEN` (Zone · SSL and Certificates · Edit on that zone only), `CLOUDFLARE_ZONE_ID` and
+`CUSTOM_DOMAIN_TARGET`, a proxied hostname on the zone that is its custom-hostname fallback origin and reaches this
+binary; normally `PORTAL_URL`'s host, so customers point their CNAME at the portal's own address
+(`portal.firma.ch CNAME portal.helvetly.com`). The workspace adds one CNAME to the target in its settings' instructions; Helvetly creates the custom hostname,
+follows it until Cloudflare has verified it and issued the certificate, checks it daily, and deletes it when the
+domain is removed. Your proxy must send requests for any other host from Cloudflare to the binary with the `Host`
+header unchanged; for on-demand origin certificates, `GET /api/v1/public/portal/domain-check?domain=<host>` answers
+200 only for a workspace's domain. On such a host only the portal and its API are served, never the platform, and
+with custom domains on, pages of an unknown host are 404. A domain that breaks (CNAME removed, certificate lost) or a
+plan without the feature falls back to `/w/<slug>/` at once; the owners are told, and the job removes a domain whose
+plan lost it.
+
+Scale: Cloudflare for SaaS includes 100 custom hostnames on the Free, Pro and Business zone plans, charges USD 0.10 a
+month for each further one, and allows at most 50 000 (more only on Enterprise). Cloudflare's API allows 1200 calls per
+five minutes per user, shared with Terraform and the dashboard: Helvetly makes at most two a second. Pending domains
+are asked about one by one with backoff (1 minute doubling to an hour, 50 per minute at most); active domains are
+checked together once a day from the zone's hostname list, 1000 a page (50 calls for 50 000 domains). After a 429 the
+checks wait five minutes.
 
 ### Releases
 

@@ -97,6 +97,7 @@ var gated = map[string]Feature{
 
 	"POST /api/v1/clients/{id}/portal-invitation": store.FeatureClientPortal,
 	"POST /api/v1/documents/{id}/shares":          store.FeatureClientPortal, // a share shows the document in the portal
+	"PUT /api/v1/workspace/portal/domain":         store.FeatureCustomPortalDomain,
 }
 
 // Guard gives an early answer for writes that exceed a plan or need a feature it lacks, and makes an unsubscribed
