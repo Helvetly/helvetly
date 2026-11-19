@@ -1,5 +1,4 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { MailX } from 'lucide-react'
@@ -12,6 +11,7 @@ import {
   emails,
   fieldErrors,
   FormDialog,
+  MarkSentButton,
   recipientErrors,
 } from '@/components/invoices/invoice-dialogs'
 import { TextareaBox } from '@/components/textarea-box'
@@ -108,17 +108,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       pending={send.isPending}
       onSubmit={submit}
       onClose={onClose}
-      aside={
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-muted-foreground"
-          disabled={send.isPending}
-          onClick={markSent}
-        >
-          {translate('markAsSentWithoutEmail')}
-        </Button>
-      }
+      aside={<MarkSentButton disabled={send.isPending} onClick={markSent} />}
     >
       {mailDown && (
         <Callout tone="warning" icon={MailX}>
@@ -137,7 +127,8 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           type="email"
           multiple
           value={recipients}
-          disabled={draft.isPending}
+          // Read-only, not disabled, while the draft loads: the dialog's first focus lands here.
+          readOnly={draft.isPending}
           onChange={(event) => setTo(event.target.value)}
           placeholder={translate('helloClientCh')}
           className={fieldClass}

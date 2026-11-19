@@ -9,13 +9,13 @@ import {
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Segmented } from '@helvetly/ui/components/segmented'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowRight, CheckCheck, MailX } from 'lucide-react'
+import { ArrowRight, MailCheck, MailX } from 'lucide-react'
 import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { toastError } from '@/components/billing/upgrade-prompt'
 import { inputClass as fieldClass } from '@/components/clients/fields'
 import {
   fixActionClass,
@@ -41,7 +41,6 @@ import {
   toCents,
   useAddPayment,
   useAddRefund,
-  useMarkPaid,
   useSendInvoice,
   type InvoiceListItem,
   type IssueReason,
@@ -109,6 +108,21 @@ export function FormDialog({
   )
 }
 
+/** A send dialog's second way out: the document already went by post, by the user's own email or by hand. */
+export function MarkSentButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="outline" disabled={disabled} onClick={onClick}>
+          <MailCheck />
+          {translate('markAsSent')}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">{translate('markAsSentTip')}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 export const fieldErrors = (error: unknown): Record<string, string> => {
   if (!(error instanceof ApiError) || error.status !== 422) return {}
   const fields = error.details.fields
@@ -120,7 +134,7 @@ export const fieldErrors = (error: unknown): Record<string, string> => {
   )
 }
 
-/** Records a payment (part or all of what is due), or marks the invoice paid in one go. */
+/** Records a payment: it opens on the whole amount due, today, by bank transfer, so one click pays it in full. */
 export function PaymentDialog({
   invoice,
   onClose,
@@ -134,7 +148,6 @@ export function PaymentDialog({
   const [note, setNote] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const add = useAddPayment()
-  const markPaid = useMarkPaid()
 
   const submit = () => {
     const value = parseDecimalInput(amount, 2, true)
@@ -189,28 +202,9 @@ export function PaymentDialog({
         </>
       }
       action="Record payment"
-      pending={add.isPending || markPaid.isPending}
+      pending={add.isPending}
       onSubmit={submit}
       onClose={onClose}
-      aside={
-        <Button
-          type="button"
-          variant="outline"
-          disabled={markPaid.isPending || add.isPending}
-          onClick={() =>
-            markPaid.mutate(invoice.id, {
-              onSuccess: (updated) => {
-                toast.success(translate('markedAsPaid', { value1: documentName(updated) }))
-                onClose()
-              },
-              onError: toastError,
-            })
-          }
-        >
-          <CheckCheck />
-          {translate('markFullyPaidToday')}
-        </Button>
-      }
     >
       <div className="grid grid-cols-2 gap-3">
         <FormField id="payment-amount" label={translate('amount')} required error={errors.amount}>
@@ -497,17 +491,7 @@ export function SendDialog({
       pending={send.isPending}
       onSubmit={submit}
       onClose={onClose}
-      aside={
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-muted-foreground"
-          disabled={send.isPending}
-          onClick={markSent}
-        >
-          {translate('markAsSentWithoutEmail')}
-        </Button>
-      }
+      aside={<MarkSentButton disabled={send.isPending} onClick={markSent} />}
     >
       {mailDown && (
         <Callout tone="warning" icon={MailX}>
@@ -526,7 +510,8 @@ export function SendDialog({
           type="email"
           multiple
           value={recipients}
-          disabled={draft.isPending}
+          // Read-only, not disabled, while the draft loads: the dialog's first focus lands here.
+          readOnly={draft.isPending}
           onChange={(event) => setTo(event.target.value)}
           placeholder={translate('accountsClientCh')}
           className={fieldClass}

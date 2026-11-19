@@ -135,7 +135,7 @@ test.each([
 
 test('marksTheInvoiceSentWithoutEmail', async () => {
   const posted = open('invoice')
-  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent without email' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent' }))
   await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
 })
 
@@ -155,6 +155,6 @@ test('mailDownOffersMarkingSent', async () => {
   expect(
     await screen.findByText(/Mark the invoice as sent, then send the PDF yourself/),
   ).toBeVisible()
-  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent without email' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Mark as sent' }))
   await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
 })

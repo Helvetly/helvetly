@@ -1360,8 +1360,6 @@ export const invoicesApi = {
     request<One<Invoice>>(`${path(id)}/void`, post(reason ? { reason } : {})),
   addPayment: (id: string, input: PaymentInput) =>
     request<One<Invoice>>(`${path(id)}/payments`, post(input)),
-  markPaid: (id: string, body: { paid_on?: string; method?: PaymentMethod } = {}) =>
-    request<One<Invoice>>(`${path(id)}/mark-paid`, post(body)),
   payments: (id: string) => request<One<Payment[]>>(`${path(id)}/payments`),
   addRefund: (id: string, input: RefundInput) =>
     request<One<Invoice>>(`${path(id)}/refunds`, post(input)),
@@ -1566,7 +1564,6 @@ export const useAddRefund = () =>
   useInvoiceAction(({ id, input }: { id: string; input: RefundInput }) =>
     invoicesApi.addRefund(id, input),
   )
-export const useMarkPaid = () => useInvoiceAction((id: string) => invoicesApi.markPaid(id))
 
 export const useCreditNote = () =>
   useInvoiceAction((id: string) => invoicesApi.creditNote(id), creditedChanged)
