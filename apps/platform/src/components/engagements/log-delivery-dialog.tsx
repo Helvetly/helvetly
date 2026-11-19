@@ -32,8 +32,7 @@ export function LogDeliveryDialog({
         </div>
         <div className="px-6 pt-5 pb-6">
           <QuickLog
-            engagementId={engagement.id}
-            unit={engagement.unit}
+            engagement={engagement}
             current={engagement.current_period}
             onLogged={onClose}
           />

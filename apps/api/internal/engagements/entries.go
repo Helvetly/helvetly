@@ -110,11 +110,11 @@ func (s *Service) applyEntry(ctx context.Context, q store.Q, sess store.Session,
 	if fields["date"] == "" && en.Date != "" {
 		switch last := lastDay(v.Engagement); {
 		case en.Date < v.StartDate:
-			fail("date", "The date cannot be before the engagement starts.")
+			fail("date", "Pick a date from "+dayMonthYear(v.StartDate)+" (the engagement's start).")
 		case en.Date > today:
-			fail("date", "The date cannot be in the future.")
+			fail("date", "Pick a date up to today ("+dayMonthYear(today)+").")
 		case last != "" && en.Date > last:
-			fail("date", "The date is after the engagement ends.")
+			fail("date", "Pick a date up to "+dayMonthYear(last)+" (the engagement's end).")
 		default:
 			i := slices.IndexFunc(v.periods, func(p PeriodSummary) bool { return p.StartsOn <= en.Date && en.Date <= p.EndsOn })
 			if i < 0 {
@@ -128,6 +128,14 @@ func (s *Service) applyEntry(ctx context.Context, q store.Q, sess store.Session,
 		return validationFailed(fields)
 	}
 	return nil
+}
+
+// dayMonthYear is an ISO date as people read it in a message: "19 Nov 2026".
+func dayMonthYear(iso string) string {
+	if t, ok := parseDate(iso); ok {
+		return t.Format("2 Jan 2006")
+	}
+	return iso
 }
 
 // entryReply is the entry with its (recomputed) period.

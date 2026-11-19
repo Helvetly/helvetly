@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 
 import { NativeSelect } from '@/components/clients/fields'
 import { RecordLink } from '@/components/record-link'
+import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   createEntry,
@@ -47,9 +48,12 @@ import { queryKeys } from '@/lib/queries'
 import { todayIn } from '@/lib/timezone'
 
 import { plain, sumQuantities, Tip, unitShort, withUnit } from './engagement-bits'
+import { entryDateBounds, entryDateProblem } from './entry-date'
 
-/** The API's refusals, in words for the person. */
+/** The API's refusals, in words for the person: a 422 says what is wrong with which field, never just "check the fields". */
 export function friendlyError(error: unknown): string {
+  const fields = apiFieldErrors(error)
+  if (fields && Object.keys(fields).length > 0) return Object.values(fields).join(' ')
   if (error instanceof ApiError) {
     if (error.code === 'entry_invoiced') return translate('thisEntryIsOnAnInvoiceDeleteTheDraft')
     if (error.code === 'already_invoiced') return translate('thisPeriodAlreadyHasAnUpfrontInvoice')
@@ -73,26 +77,35 @@ export function useRefreshEngagement() {
   }
 }
 
-/** Date, quantity, note, who: Enter logs it and puts the cursor back on quantity. */
+/** The fields the quick form shows a server refusal under. */
+const QUICK_LOG_FIELDS = ['quantity', 'date', 'performed_by', 'note'] as const
+
+/**
+ * Date, quantity, note, who: Enter logs it and puts the cursor back on quantity. The engagement's detail and its
+ * list row's "Log delivery" dialog both use this one form.
+ */
 export function QuickLog({
-  engagementId,
-  unit,
+  engagement,
   current,
   onLogged,
 }: {
-  engagementId: string
-  unit: string | null
+  engagement: Pick<Engagement, 'id' | 'unit' | 'start_date' | 'end_date' | 'cancelled_on'>
   current: PeriodSummary | null
   /** Called after a save; without it the form stays for the next entry. */
   onLogged?: () => void
 }) {
+  const { id: engagementId, unit } = engagement
   const refresh = useRefreshEngagement()
   const members = useMembers()
-  const [date, setDate] = useState(today)
+  const bounds = entryDateBounds(engagement, today())
+  // A form opened on an engagement that starts later than today, or ended, starts on a day it accepts.
+  const [date, setDate] = useState(() => (bounds.max < bounds.min ? bounds.min : bounds.max))
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
   const [by, setBy] = useState('')
+  const [errors, setErrors] = useState<FieldErrors>({})
   const quantityRef = useRef<HTMLInputElement>(null)
+  const dateRef = useRef<HTMLInputElement>(null)
 
   const amount = milli(quantity)
   const over =
@@ -111,6 +124,7 @@ export function QuickLog({
     onSuccess: ({ data }) => {
       setQuantity('')
       setNote('')
+      setErrors({})
       refresh()
       if (onLogged) onLogged()
       else quantityRef.current?.focus()
@@ -127,18 +141,45 @@ export function QuickLog({
         },
       )
     },
-    onError: (error: unknown) => toast.error(friendlyError(error)),
+    onError: (error: unknown) => {
+      const fields = apiFieldErrors(error) ?? {}
+      const shown = QUICK_LOG_FIELDS.filter((field) => fields[field])
+      setErrors(Object.fromEntries(shown.map((field) => [field, fields[field]])))
+      if (shown.includes('date')) dateRef.current?.focus()
+      else if (shown.length > 0) quantityRef.current?.focus()
+      // A refusal that names no field here still says why.
+      if (shown.length === 0) toast.error(friendlyError(error))
+    },
   })
 
   const submit = () => {
-    if (amount > 0 && !save.isPending) save.mutate()
+    if (amount <= 0 || save.isPending) return
+    const problem = entryDateProblem(date, bounds)
+    if (problem) {
+      setErrors({ date: problem })
+      dateRef.current?.focus()
+      return
+    }
+    save.mutate()
   }
 
   const id = useId()
   const label = 'text-caption font-medium text-muted-foreground'
+  const invalid = (field: (typeof QUICK_LOG_FIELDS)[number]) =>
+    errors[field] ? { 'aria-invalid': true, 'aria-describedby': `${id}-${field}-error` } : {}
+  const errorText = (field: (typeof QUICK_LOG_FIELDS)[number]) =>
+    errors[field] && (
+      <p id={`${id}-${field}-error`} className="text-caption text-destructive">
+        {errors[field]}
+      </p>
+    )
+  const clear = (field: (typeof QUICK_LOG_FIELDS)[number]) =>
+    errors[field] && setErrors((shown) => ({ ...shown, [field]: undefined }))
   return (
     <form
       className="grid gap-3"
+      // The form's own messages say which day to pick; the browser's bubble would only say "too early".
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
         submit()
@@ -158,7 +199,11 @@ export function QuickLog({
               placeholder="0"
               className="tabular-nums"
               value={quantity}
-              onChange={(event) => setQuantity(event.target.value.replace(',', '.'))}
+              {...invalid('quantity')}
+              onChange={(event) => {
+                clear('quantity')
+                setQuantity(event.target.value.replace(',', '.'))
+              }}
             />
             {unit && (
               <InputGroupAddon align="inline-end">
@@ -166,19 +211,26 @@ export function QuickLog({
               </InputGroupAddon>
             )}
           </InputGroup>
+          {errorText('quantity')}
         </div>
         <div className="grid gap-1.5">
           <label htmlFor={`${id}-date`} className={label}>
             {translate('date')}
           </label>
           <Input
+            ref={dateRef}
             id={`${id}-date`}
             type="date"
-
             value={date}
-            max={today()}
-            onChange={(event) => setDate(event.target.value)}
+            min={bounds.min}
+            max={bounds.max}
+            {...invalid('date')}
+            onChange={(event) => {
+              clear('date')
+              setDate(event.target.value)
+            }}
           />
+          {errorText('date')}
         </div>
         <div className="grid gap-1.5 max-sm:col-span-2">
           <label htmlFor={`${id}-by`} className={label}>
@@ -187,7 +239,11 @@ export function QuickLog({
           <NativeSelect
             id={`${id}-by`}
             value={by}
-            onChange={(event) => setBy(event.target.value)}
+            {...invalid('performed_by')}
+            onChange={(event) => {
+              clear('performed_by')
+              setBy(event.target.value)
+            }}
             className="h-8"
           >
             <option value="">{translate('me')}</option>
@@ -199,6 +255,7 @@ export function QuickLog({
                 </option>
               ))}
           </NativeSelect>
+          {errorText('performed_by')}
         </div>
       </div>
       <div className="grid gap-1.5">
@@ -213,10 +270,14 @@ export function QuickLog({
           aria-label={translate('note')}
           placeholder={translate('whatWasDone')}
           maxLength={500}
-
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          {...invalid('note')}
+          onChange={(event) => {
+            clear('note')
+            setNote(event.target.value)
+          }}
         />
+        {errorText('note')}
       </div>
       <div className="flex min-h-8 items-center gap-3">
         {over > 0 ? (

@@ -473,6 +473,109 @@ export const RowMenuLogDelivery: Story = {
 }
 export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
 
+// Design retainer as one recorded on 19 Nov 2026: its first period runs from then to the end of the year.
+const late = {
+  ...engagements[0]!,
+  start_date: '2026-11-19',
+  current_period: {
+    ...engagements[0]!.current_period!,
+    starts_on: '2026-11-19',
+    ends_on: '2026-12-31',
+  },
+}
+const lateHandlers = [
+  http.get('/api/v1/engagements/:id', () => HttpResponse.json({ data: late })),
+  http.get('/api/v1/engagements', () => HttpResponse.json(page([late, ...engagements.slice(1)]))),
+]
+const beforeStart = /Pick a date from .*2026 \(the engagement's start\)\./
+
+/** The date field of the quick form under `scope`, set to `day` (a date input takes no typing in a test). */
+const setDate = (scope: HTMLElement, day: string) =>
+  fireEvent.change(within(scope).getByLabelText('Date'), { target: { value: day } })
+
+/**
+ * A day before the engagement's start, from a row's menu: the form says so under the date and sends nothing; the
+ * start day itself is logged. The date input also offers only the days the API accepts.
+ */
+export const RowMenuLogBeforeStart: Story = {
+  parameters: pageParameters('/engagements', {}, [
+    http.post('/api/v1/engagements/:id/entries', async ({ request }) => {
+      logged = await request.json()
+      return HttpResponse.json({ data: { entry: { id: 'ent_new', quantity: '1' }, period: null } })
+    }),
+    ...lateHandlers,
+  ]),
+  play: async (context) => {
+    logged = undefined
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for Design retainer' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Log delivery' }))
+    const dialog = await body.findByRole('dialog', { name: 'Log delivery' })
+    const date = within(dialog).getByLabelText('Date')
+    await expect(date).toHaveAttribute('min', '2026-11-19')
+    setDate(dialog, '2026-11-13')
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1{Enter}')
+    await expect(await within(dialog).findByText(beforeStart)).toBeVisible()
+    await expect(date).toHaveAttribute('aria-invalid', 'true')
+    await expect(date).toHaveFocus()
+    await expect(logged).toBeUndefined()
+    // Picking a day it accepts clears the message; the start day is logged.
+    setDate(dialog, '2026-11-19')
+    await expect(within(dialog).queryByText(beforeStart)).toBeNull()
+    await userEvent.click(within(dialog).getByRole('button', { name: /^Log 1/ }))
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Log delivery' })).toBeNull())
+    await expect(logged).toMatchObject({ date: '2026-11-19', quantity: '1' })
+  },
+}
+
+/** The same check in the engagement's detail: the one form both places use. */
+export const DetailLogBeforeStart: Story = {
+  parameters: pageParameters('/engagements', { id: 'eng_1' }, [
+    http.post('/api/v1/engagements/:id/entries', () => {
+      logged = 'sent'
+      return HttpResponse.json({ data: { entry: { id: 'ent_new', quantity: '1' }, period: null } })
+    }),
+    ...lateHandlers,
+  ]),
+  play: async () => {
+    logged = undefined
+    const body = within(document.body)
+    const panel = (await body.findByRole('heading', { name: 'Log delivery' })).closest('section')!
+    await expect(within(panel).getByLabelText('Date')).toHaveAttribute('min', '2026-11-19')
+    setDate(panel, '2026-11-13')
+    await userEvent.type(within(panel).getByRole('textbox', { name: 'Quantity' }), '1{Enter}')
+    await expect(await within(panel).findByText(beforeStart)).toBeVisible()
+    await expect(logged).toBeUndefined()
+  },
+}
+
+/** A refusal from the API lands under the field it names, never as a bare "check the fields". */
+export const DetailLogServerFieldError: Story = {
+  parameters: pageParameters('/engagements', { id: 'eng_1' }, [
+    http.post('/api/v1/engagements/:id/entries', () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: 'validation_failed',
+            message: 'Check the highlighted fields.',
+            details: { fields: { date: 'The date is outside every period.' } },
+          },
+        },
+        { status: 422 },
+      ),
+    ),
+  ]),
+  play: async () => {
+    const body = within(document.body)
+    const panel = (await body.findByRole('heading', { name: 'Log delivery' })).closest('section')!
+    await userEvent.type(within(panel).getByRole('textbox', { name: 'Quantity' }), '1{Enter}')
+    await expect(await within(panel).findByText('The date is outside every period.')).toBeVisible()
+    await expect(within(panel).getByLabelText('Date')).toHaveAttribute('aria-invalid', 'true')
+    await expect(body.queryByText('Check the highlighted fields.')).toBeNull()
+  },
+}
+
 /** Right-click outside the rows: the page's own actions, like every other list. */
 export const PageMenu: Story = {
   play: async (context) => {
