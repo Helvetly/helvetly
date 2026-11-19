@@ -26,7 +26,7 @@ import (
 // reach it: they are not uploaded here and are not documents to store.Document.
 
 const (
-	filingLease     = 2 * time.Minute // a claimed filing comes due again this long after an instance died with it
+	filingLease     = 4 * time.Minute // a claimed filing comes due again this long after an instance died with it; > aimodel.MaxAnswerTimeout
 	filingBatch     = 5
 	filingTries     = 6
 	filingMaxOutput = 300
@@ -175,7 +175,7 @@ func retryable(err error) bool {
 	if errors.Is(err, aimodel.ErrUncertain) {
 		return true
 	}
-	for _, final := range []error{errSkip, aimodel.ErrUnaccounted, aimodel.ErrQuota, aimodel.ErrTooLarge, aimodel.ErrCap,
+	for _, final := range []error{errSkip, aimodel.ErrQuota, aimodel.ErrTooLarge, aimodel.ErrCap,
 		aimodel.ErrAttempts, aimodel.ErrUnfunded, store.ErrFeatureDenied, store.ErrNotFound} {
 		if errors.Is(err, final) {
 			return false
@@ -221,7 +221,8 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, j.UserID)
 	}
-	call := aimodel.Call{Kind: "filing", Operation: doc.ID, Step: "file", MaxOutput: filingMaxOutput, Caps: aimodel.FilingCaps}
+	call := aimodel.Call{Kind: "filing", Operation: doc.ID, Step: "file", MaxOutput: filingMaxOutput, Caps: aimodel.FilingCaps,
+		Timeout: aimodel.MaxAnswerTimeout}
 	reply, err := budget.Generate(ctx, s.filer, ws, req, call)
 	if len(req.Files) > 0 && (errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge)) {
 		// too large to read whole: its name may still say enough

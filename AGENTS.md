@@ -89,7 +89,9 @@ are the reference.
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import
   and document filing (`ai_automation_tokens_per_month`), never one for the other; each call reserves its tokens
-  and rate-card cost first, one call in flight per workspace and pool, see `ai_calls`).
+  and rate-card cost first, one call in flight per workspace and pool, see `ai_calls`; a call whose usage is never
+  reported (timeout, lost answer, a process that died) is charged its whole reservation and may be asked once more,
+  never blocking the month).
 - **Swiss UID register** (`internal/uidregister`): the client form's company lookup and the "UID verified" mark
   (`clients.verified_uid`, `uid_verified_at`, set when a client is saved) call the federal public SOAP service
   (`UID_REGISTER_URL`, the production endpoint by default, `off` = none) through the API only, at most 15 calls a

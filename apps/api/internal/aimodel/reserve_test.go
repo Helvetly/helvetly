@@ -182,23 +182,24 @@ func TestReservesBothThenSettlesActualAndReleasesTheRest(t *testing.T) {
 	}
 }
 
-func TestUnknownOutcomeKeepsBothReservationsAndIsNotRetried(t *testing.T) {
+func TestUnknownOutcomeIsChargedItsReservationAndTheMonthStaysOpen(t *testing.T) {
 	db, raw, ws := reserveDB(t)
 	p := &scripted{input: 100, reply: func(Request) (Reply, error) { return Reply{}, context.DeadlineExceeded }}
 	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }, CostAllowance: fixed(1_000_000)}
-	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUnaccounted) {
-		t.Fatalf("err = %v, want ErrUnaccounted", err)
+	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUnaccounted) || p.answers.Load() != 1 {
+		t.Fatalf("err = %v after %d answers, want one ErrUnaccounted", err, p.answers.Load())
 	}
 	u := usageOf(t, db, ws, "2026-11")
-	if !u.Uncertain || u.TokensReserved != 200 || u.CostReserved != luna.Cost(100, 0, 100) || u.TokensUsed != 0 {
-		t.Fatalf("usage = %+v, want both reservations kept and the month uncertain", u)
+	if u != (store.HeidiUsage{TokensUsed: 200, CostMicros: luna.Cost(100, 0, 100)}) {
+		t.Fatalf("usage = %+v, want both reservations charged as used", u)
 	}
 	call := testCall
 	call.Operation = "another"
-	if _, err := b.Generate(context.Background(), p, ws, Request{}, call); !errors.Is(err, ErrUncertain) || p.answers.Load() != 1 {
-		t.Fatalf("next call: %v after %d answers, want ErrUncertain without asking again", err, p.answers.Load())
+	p.reply = used(100, 0, 10, 0)
+	if _, err := b.Generate(context.Background(), p, ws, Request{}, call); err != nil || p.answers.Load() != 2 {
+		t.Fatalf("next call: %v after %d answers, want it answered", err, p.answers.Load())
 	}
-	if s := statuses(t, raw); len(s) != 1 || s[0] != "uncertain" {
+	if s := statuses(t, raw); len(s) != 2 || s[0] != "settled" || s[1] != "settled" {
 		t.Fatalf("calls = %v", s)
 	}
 }
@@ -362,7 +363,7 @@ func TestAStepIsTriedAtMostTwice(t *testing.T) {
 	}
 }
 
-func TestAReservationLeftByADeadProcessBecomesUncertain(t *testing.T) {
+func TestAReservationLeftByADeadProcessIsChargedInFull(t *testing.T) {
 	db, raw, ws := reserveDB(t)
 	ok, err := db.InsertAICall(context.Background(), store.AICall{ID: "aic_dead", WorkspaceID: ws.ID, Period: "2026-11", Pool: PoolHeidi, Kind: "heidi",
 		Operation: "f", Step: "0", RateCard: luna.Version, Model: luna.Model, Tier: luna.Tier, Region: luna.Region,
@@ -372,11 +373,20 @@ func TestAReservationLeftByADeadProcessBecomesUncertain(t *testing.T) {
 	}
 	p := &scripted{input: 10, reply: used(10, 0, 1, 0)}
 	b := Budget{DB: db, Pool: PoolHeidi, Now: func() time.Time { return nov }}
-	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); !errors.Is(err, ErrUncertain) || p.counts.Load() != 0 {
-		t.Fatalf("err = %v, want ErrUncertain without contacting the provider", err)
+	// The dead call's reservation was never added to heidi_usage here; only its charge is.
+	if _, err := b.Generate(context.Background(), p, ws, Request{}, testCall); err != nil || p.answers.Load() != 1 {
+		t.Fatalf("err = %v, want the next call answered", err)
 	}
-	if s := statuses(t, raw); s[0] != "uncertain" || !usageOf(t, db, ws, "2026-11").Uncertain {
-		t.Fatalf("calls = %v, want the dead call uncertain and its month blocked", s)
+	if s := statuses(t, raw); s[0] != "settled" || s[1] != "settled" {
+		t.Fatalf("calls = %v, want the dead call settled", s)
+	}
+	var failure string
+	var total, cost int64
+	if err := raw.QueryRow(context.Background(), `SELECT failure,total_tokens,cost_micros FROM ai_calls WHERE id='aic_dead'`).Scan(&failure, &total, &cost); err != nil {
+		t.Fatal(err)
+	}
+	if u := usageOf(t, db, ws, "2026-11"); failure != "unknown_usage:stale" || total != 10 || cost != 5 || u.TokensUsed != 10+11 || u.CostMicros != 5+luna.Cost(10, 0, 1) {
+		t.Fatalf("dead call %s %d %d, usage %+v", failure, total, cost, u)
 	}
 }
 

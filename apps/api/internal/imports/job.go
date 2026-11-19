@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	jobLease        = 5 * time.Minute // a claimed file is left to its job this long; renewed per chunk
+	jobLease        = 5 * time.Minute // a claimed file is left to its job this long; renewed per chunk, > aimodel.MaxAnswerTimeout
 	jobBatch        = 5
 	maxAttempts     = 4
 	maxOutputTokens = 16_000
@@ -58,6 +58,9 @@ func (s *Service) Tick(ctx context.Context) error {
 }
 
 const triesUsed = "The file could not be read after several tries. Upload it again later."
+
+// aiNoAnswer: a part's model call failed twice (aimodel's maxAttempts); the platform translates this exact text.
+const aiNoAnswer = "The AI couldn't read this file, even after a second try. Upload it again to try again."
 
 // failure ends a file for good with a reason for the person; any other error is retried with backoff.
 type failure struct{ reason string }
@@ -294,15 +297,14 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	} else {
 		req.Message += c.text
 	}
-	call := aimodel.Call{Kind: "import", Operation: f.ID, Step: strconv.Itoa(i), Group: f.BatchID, MaxOutput: maxOutputTokens, Caps: aimodel.ImportCaps}
+	call := aimodel.Call{Kind: "import", Operation: f.ID, Step: strconv.Itoa(i), Group: f.BatchID, MaxOutput: maxOutputTokens, Caps: aimodel.ImportCaps,
+		Timeout: aimodel.MaxAnswerTimeout}
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.uploaderGate(ctx, q, workspaceID, user, k)
 	}
 	reply, err := budget.Generate(ctx, s.provider, ws, req, call)
 	switch {
-	case errors.Is(err, aimodel.ErrUnaccounted):
-		return "", nil, failure{"The AI model's answer was lost and its usage is unknown, so it is not asked again. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrQuota):
 		return "", nil, failure{"This workspace has used its monthly AI import and filing allowance. The rest of this file was not read."}
 	case errors.Is(err, aimodel.ErrTooLarge):
@@ -310,10 +312,10 @@ func (s *Service) ask(ctx context.Context, k Kind, ws store.Workspace, user stri
 	case errors.Is(err, aimodel.ErrCap):
 		return "", nil, failure{"This file is larger than one AI import may read, whatever is left of the monthly allowance. Split it into smaller files and upload them again."}
 	case errors.Is(err, aimodel.ErrAttempts):
-		return "", nil, failure{"The AI model failed twice on this part of the file, so it is not asked again. Upload the file again later."}
+		return "", nil, failure{aiNoAnswer}
 	case errors.Is(err, aimodel.ErrUnfunded):
 		return "", nil, failure{"AI import is paused while the service's AI budget is being updated. Nothing more was sent to the AI model."}
-	case err != nil: // usage still being settled by another call, or a provider failure with known usage: retried
+	case err != nil: // another call in flight, or a provider failure (charged at most its reservation): retried
 		return "", nil, err
 	}
 	var out map[string]json.RawMessage

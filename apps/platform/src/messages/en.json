@@ -661,6 +661,7 @@
   "correctedInvoice": "Corrected invoice",
   "corrections": "Corrections",
   "correctsInvoice": "Corrects invoice",
+  "importAiNoAnswer": "The AI couldn't read this file, even after a second try. Upload it again to try again.",
   "couldNotBeRead": "Could not be read",
   "couldNotChangeTheDailyDigest": "Could not change the daily digest.",
   "couldNotCopySelectTheTextAndCopyIt": "Could not copy. Select the text and copy it instead.",
@@ -4511,7 +4512,7 @@
   "heidiErrorUnavailable": "Heidi couldn't answer right now. Nothing was changed. Try again in a moment.",
   "heidiErrorBusy": "Heidi is busy right now. Try again in a minute.",
   "heidiErrorMisconfigured": "AI is not configured correctly. Check the model settings.",
-  "heidiErrorUsageUncertain": "Heidi is still finishing an earlier request, or this month's AI use is being checked. Nothing was changed. Try again in a few minutes; local commands still work.",
+  "heidiErrorUsageUncertain": "Heidi is still finishing an earlier request. Nothing was changed. Try again in a moment; local commands still work.",
   "heidiErrorPaused": "Heidi's AI answers are paused for now. Local commands still work.",
   "aiErrorBusy": "The AI is busy right now. Try again in a minute.",
   "aiWriteErrorFailed": "The AI couldn't write this right now. Nothing was changed. Try again in a moment."

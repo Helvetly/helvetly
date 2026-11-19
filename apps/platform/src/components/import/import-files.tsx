@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { translate } from '@/lib/i18n'
 import {
   DOCUMENT_TYPES,
+  fileErrorText,
   IMPORT_ACCEPT,
   MAX_IMPORT_FILE_BYTES,
   MAX_IMPORT_FILES,
@@ -314,7 +315,7 @@ function fileStatus(file: ImportFile, records: number) {
         value2: records === 1 ? 'record' : 'records',
       })
     case 'failed':
-      return file.error ?? translate('couldNotBeRead')
+      return file.error ? fileErrorText(file.error) : translate('couldNotBeRead')
   }
 }
 

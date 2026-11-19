@@ -283,10 +283,16 @@ func TestProviderUsageIsActualAndInputBudgetIsCheckedBeforeGeneration(t *testing
 	}
 }
 
-func TestUnknownProviderUsageBlocksOnlyFurtherModelCalls(t *testing.T) {
+func TestUnknownProviderUsageIsChargedAndTheNextQuestionAnswered(t *testing.T) {
 	s, mux, sess, _ := fixture(t)
+	lost := true
 	p := &testProvider{input: 10, answer: func(context.Context, ProviderRequest) (ProviderReply, error) {
-		return ProviderReply{}, context.DeadlineExceeded
+		if lost {
+			lost = false
+			return ProviderReply{}, context.DeadlineExceeded
+		}
+		tokens := int64(12)
+		return ProviderReply{Text: "Explanation.", Tokens: &tokens}, nil
 	}}
 	s.provider = p
 	grant(t, mux)
@@ -295,13 +301,13 @@ func TestUnknownProviderUsageBlocksOnlyFurtherModelCalls(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"type":"error"`) || strings.Contains(w.Body.String(), `"type":"done"`) {
 		t.Fatalf("unknown: %d %s", w.Code, w.Body)
 	}
-	w = chat(t, mux, "again", "Explain another term")
-	if w.Code != 503 || p.calls.Load() != 1 {
-		t.Fatalf("unknown usage retried provider: %d calls=%d", w.Code, p.calls.Load())
-	}
 	u, err := s.db.HeidiUsage(context.Background(), sess.Workspace.ID, aimodel.PoolHeidi, s.now().In(sess.Workspace.Location()).Format("2006-01"))
-	if err != nil || !u.Uncertain || u.TokensUsed != 0 {
-		t.Fatalf("unknown was fabricated: %+v %v", u, err)
+	if err != nil || u.TokensUsed <= 10 || u.TokensReserved != 0 {
+		t.Fatalf("the lost answer was not charged its reservation: %+v %v", u, err)
+	}
+	w = chat(t, mux, "again", "Explain another term")
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Explanation.") || p.calls.Load() != 2 {
+		t.Fatalf("next question: %d calls=%d %s", w.Code, p.calls.Load(), w.Body)
 	}
 	w = chat(t, mux, "local", "Which invoices are overdue?")
 	if w.Code != 200 {

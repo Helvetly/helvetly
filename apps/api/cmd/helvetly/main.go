@@ -104,6 +104,9 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+	if err := aimodel.SettleUncertain(ctx, db, time.Now()); err != nil {
+		return err
+	}
 	bg := &jobs{restartDelay: time.Minute}
 	authSvc, err := auth.New(cfg, db, slog.Default())
 	if err != nil {
