@@ -1,4 +1,5 @@
 {
+  "addNamed": "“{name}” toevoegen",
   "about": "Over {label}",
   "aCodeWasJustSentWaitAFewSeconds": "Er is net een code verstuurd. Wacht een paar seconden voordat je een nieuwe aanvraagt.",
   "cannotReachHelvetlyCheckYourConnection": "Helvetly is niet bereikbaar. Controleer je verbinding.",

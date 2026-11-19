@@ -1,4 +1,5 @@
 {
+  "addNamed": "Lägg till ”{name}”",
   "about": "Om {label}",
   "aCodeWasJustSentWaitAFewSeconds": "En kod har precis skickats. Vänta några sekunder innan du begär en ny.",
   "cannotReachHelvetlyCheckYourConnection": "Det går inte att nå Helvetly. Kontrollera din anslutning.",

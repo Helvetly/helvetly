@@ -1,4 +1,5 @@
 {
+  "addNamed": "Přidat „{name}“",
   "about": "O položce {label}",
   "aCodeWasJustSentWaitAFewSeconds": "Kód byl právě odeslán. Než požádáte o další, počkejte několik sekund.",
   "cannotReachHelvetlyCheckYourConnection": "Helvetly není dostupné. Zkontrolujte připojení.",
