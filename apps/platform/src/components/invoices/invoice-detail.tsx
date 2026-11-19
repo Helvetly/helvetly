@@ -425,11 +425,11 @@ function Detail({
         <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (
-              <li key={line.id} className="flex items-start gap-3 py-2.5 first:pt-1">
-                <span className="w-5 shrink-0 pt-px text-[12.5px] text-muted-foreground tabular-nums">
+              <li key={line.id} className="flex items-center gap-3 py-2 first:pt-0.5">
+                <span className="w-5 shrink-0 text-[12.5px] text-muted-foreground tabular-nums">
                   {line.position}
                 </span>
-                <span className="grid min-w-0 flex-1 gap-0.5">
+                <span className="grid min-w-0 flex-1">
                   <span className="text-[14px] whitespace-pre-line">{line.description}</span>
                   {!repeatsAmount(line, invoice.vat_mode) && (
                     <span className="text-[12.5px] text-muted-foreground tabular-nums">
