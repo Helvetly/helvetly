@@ -73,7 +73,7 @@ test('asks the API for one page with the filters', () => {
 
 test('an item becomes an invoice line with the price of the invoice’s VAT mode', () => {
   expect(lineFromProduct(item, 'exclusive')).toEqual({
-    description: 'Consulting\nSenior, on site',
+    description: 'Consulting – Senior, on site',
     quantity: '1',
     unit: 'hour',
     unit_price: '150.00',
