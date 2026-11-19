@@ -1,13 +1,13 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
-import { Textarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Bug, ImagePlus, Lightbulb, Lock, X } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 
+import { TextareaBox } from '@/components/textarea-box'
 import { errorMessage } from '@/lib/api'
 import {
   MAX_DESCRIPTION,
@@ -156,7 +156,7 @@ export function FeedbackForm({
               *
             </span>
           </label>
-          <Textarea
+          <TextareaBox
             id="feedback-description"
             aria-required
             aria-invalid={Boolean(error) && !length}
@@ -175,18 +175,9 @@ export function FeedbackForm({
               if (event.key === 'Enter' && (event.metaKey || event.ctrlKey))
                 form.current?.requestSubmit()
             }}
+            max={MAX_DESCRIPTION}
             className="min-h-36 resize-none text-[14px] leading-relaxed"
           />
-          {length > MAX_DESCRIPTION - 500 && (
-            <p
-              className={cn(
-                'text-right text-[12px] tabular-nums',
-                length > MAX_DESCRIPTION ? 'text-destructive' : 'text-muted-foreground',
-              )}
-            >
-              {length} / {MAX_DESCRIPTION}
-            </p>
-          )}
         </div>
 
         <div className="grid gap-2">

@@ -3,17 +3,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import type { Product } from '@/lib/products'
+
 import { ProductForm } from './product-form'
 import { bulkActions } from './products-page'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const renderForm = () => {
+const renderForm = (product?: Product) => {
   const onSaved = vi.fn<() => void>()
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
         <ProductForm
+          product={product}
           defaults={{ currency: 'CHF', vat_registered: true, default_vat_rate: '8.1' }}
           onClose={vi.fn<() => void>()}
           onSaved={onSaved}
@@ -24,7 +27,7 @@ const renderForm = () => {
   return { onSaved }
 }
 
-test('previews the gross price while typing and saves with ⌘Enter', async () => {
+test('a new item is priced gross: previews the net part while typing and saves with ⌘Enter', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
     Response.json(
       { data: { id: 'prd_1', name: 'Web design', ...JSON.parse(String(init?.body)) } },
@@ -35,8 +38,12 @@ test('previews the gross price while typing and saves with ⌘Enter', async () =
   const { onSaved } = renderForm()
 
   await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Web design')
+  expect(screen.getByRole('radio', { name: 'Gross' })).toBeChecked()
   await userEvent.type(screen.getByRole('textbox', { name: /Unit price/ }), '150')
-  expect(screen.getByRole('status', { name: 'Price per unit' })).toHaveTextContent('CHF 162.15')
+  const preview = screen.getByRole('status', { name: 'Price per unit' })
+  expect(preview).toHaveTextContent('CHF 138.76')
+  expect(preview).toHaveTextContent('CHF 11.24')
+  expect(preview).toHaveTextContent('CHF 150.00')
   await userEvent.keyboard('{Meta>}{Enter}{/Meta}')
 
   await waitFor(() => expect(onSaved).toHaveBeenCalled(), { timeout: 3000 })
@@ -44,6 +51,7 @@ test('previews the gross price while typing and saves with ⌘Enter', async () =
   expect(body).toMatchObject({
     name: 'Web design',
     unit_price: '150.00',
+    price_basis: 'gross',
     vat_category: 'S',
     vat_rate: '8.1',
     currency: 'CHF',
@@ -131,4 +139,87 @@ test('members get export only in the bulk bar', () => {
     'Export CSV',
     'Delete',
   ])
+})
+
+const netItem: Product = {
+  id: 'prd_1',
+  type: 'service',
+  name: 'Consulting',
+  description: 'Strategy sessions.',
+  sku: null,
+  gtin: null,
+  unit: 'hour',
+  price_basis: 'net',
+  unit_price: '150.00',
+  unit_price_net: '150.00',
+  unit_price_gross: '162.15',
+  currency: 'CHF',
+  vat_category: 'S',
+  vat_rate: '8.1',
+  is_archived: false,
+  archived_at: null,
+  created_at: '2026-11-18T10:00:00Z',
+  updated_at: '2026-11-18T10:00:00Z',
+}
+
+test('an item saved net keeps net when edited', () => {
+  renderForm(netItem)
+  expect(screen.getByRole('radio', { name: 'Net' })).toBeChecked()
+  expect(screen.getByRole('status', { name: 'Price per unit' })).toHaveTextContent('CHF 162.15')
+})
+
+test('the currency sits in the price field and the VAT rate beside the VAT category', async () => {
+  renderForm()
+  const price = screen.getByRole('textbox', { name: /Unit price/ })
+  const row = price.parentElement?.parentElement
+  expect(row).toContainElement(screen.getByRole('button', { name: 'Currency CHF' }))
+  expect(row).toContainElement(screen.getByRole('radio', { name: 'Gross' }))
+  const rate = screen.getByRole('textbox', { name: 'VAT rate' })
+  expect(rate.closest('[data-slot=form-field]')).toContainElement(
+    document.getElementById('product-vat_category'),
+  )
+  // Outside VAT there is no rate to enter.
+  await userEvent.click(document.getElementById('product-vat_category') ?? document.body)
+  await userEvent.click(await screen.findByRole('option', { name: /Not subject/ }))
+  expect(screen.queryByRole('textbox', { name: 'VAT rate' })).not.toBeInTheDocument()
+})
+
+test('Write with AI and the count sit inside the description field', async () => {
+  renderForm()
+  const description = screen.getByRole('textbox', { name: /Description/ })
+  const box = description.closest('[data-slot=textarea-box]')
+  expect(box).toContainElement(screen.getByRole('button', { name: 'Write with AI' }))
+  expect(box).toHaveTextContent('0 / 1000')
+  await userEvent.type(description, 'Two revisions')
+  expect(box).toHaveTextContent('13 / 1000')
+})
+
+test('the AI draft is written from the unsaved values of the form', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+    Response.json({ data: { text: 'Hourly web design.' } }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  renderForm()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Web design')
+  await userEvent.type(screen.getByRole('textbox', { name: /Unit price/ }), '120')
+  await userEvent.click(screen.getByRole('button', { name: 'Write with AI' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Write a draft' }))
+  await waitFor(() => expect(fetch).toHaveBeenCalled())
+  const [url, init] = fetch.mock.calls[0] ?? []
+  expect(url).toBe('/api/v1/ai/write')
+  expect(JSON.parse(String(init?.body))).toMatchObject({
+    field: 'product_description',
+    action: 'draft',
+    text: '',
+    max_length: 1000,
+    context: {
+      name: 'Web design',
+      kind: 'service',
+      price: 'CHF 120 gross',
+      vat: 'Standard',
+      vat_rate: '8.1 %',
+    },
+  })
+  await userEvent.click(await screen.findByRole('button', { name: 'Use this' }))
+  expect(screen.getByRole('textbox', { name: /Description/ })).toHaveValue('Hourly web design.')
 })

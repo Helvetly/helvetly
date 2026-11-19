@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { FormSection } from '@/components/form-section'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { EINVOICE_FORMATS, useSaveClient, type Client } from '@/lib/clients'
 import { useHabits, withHabits } from '@/lib/habits'
@@ -636,27 +637,15 @@ export function ClientForm({
             field="note"
             label={translate('note')}
             error={errors.note}
-            hint={
-              <span className="flex justify-between">
-                {translate('onlyYourTeamSeesThis')}
-                <span
-                  className={cn(
-                    'tabular-nums',
-                    values.note.length > NOTE_MAX && 'text-destructive',
-                  )}
-                >
-                  {values.note.length} / {NOTE_MAX}
-                </span>
-              </span>
-            }
+            hint={translate('onlyYourTeamSeesThis')}
           >
-            <textarea
+            <TextareaBox
               {...describe('note')}
               rows={3}
               value={values.note}
               onChange={(event) => set('note', event.target.value)}
               placeholder={translate('anythingYourTeamShouldKnowAboutThisClient')}
-              className={cn(inputClass, 'h-auto min-h-20 resize-y py-2')}
+              max={NOTE_MAX}
             />
           </FormField>
           {client && (

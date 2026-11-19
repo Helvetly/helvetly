@@ -6,7 +6,7 @@ import { ClientForm } from '@/components/clients/client-form'
 import { ExpenseForm } from '@/components/expenses/expense-form'
 import { ProductForm } from '@/components/products/product-form'
 import type { ClientInput } from '@/lib/clients'
-import type { ProductInput } from '@/lib/products'
+import type { Product, ProductInput } from '@/lib/products'
 import { sampleSettings } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
@@ -95,15 +95,22 @@ export const ProductPreviewAndSingleSave: Story = {
   play: async () => {
     const body = within(document.body)
     await userEvent.type(body.getByRole('textbox', { name: 'Name' }), 'Web design')
+    // A new item is priced gross: the preview takes the VAT out of what was typed.
+    await expect(body.getByRole('radio', { name: 'Gross' })).toBeChecked()
     await userEvent.type(body.getByRole('textbox', { name: /Unit price/ }), '150')
     await expect(body.getByRole('status', { name: 'Price per unit' })).toHaveTextContent(
-      'CHF 162.15',
+      'CHF 138.76',
     )
     await userEvent.keyboard('{Control>}{Enter}{Enter}{/Control}')
     await waitFor(() => expect(savedProduct).toHaveBeenCalledOnce())
     await expect(productInput).toHaveBeenCalledOnce()
     await expect(productInput).toHaveBeenCalledWith(
-      expect.objectContaining({ unit_price: '150.00', vat_rate: '8.1', currency: 'CHF' }),
+      expect.objectContaining({
+        unit_price: '150.00',
+        price_basis: 'gross',
+        vat_rate: '8.1',
+        currency: 'CHF',
+      }),
     )
   },
 }
@@ -138,6 +145,70 @@ export const ProductServerValidation: Story = {
     await expect(await body.findByText('Another active item already uses this SKU.')).toBeVisible()
     await expect(body.getByRole('textbox', { name: /SKU/ })).toHaveFocus()
     await expect(savedProduct).not.toHaveBeenCalled()
+  },
+}
+
+const netProduct: Product = {
+  id: 'prd_net',
+  type: 'service',
+  name: 'Consulting',
+  description: 'Strategy sessions.',
+  sku: null,
+  gtin: null,
+  unit: 'hour',
+  price_basis: 'net',
+  unit_price: '150.00',
+  unit_price_net: '150.00',
+  unit_price_gross: '162.15',
+  currency: 'CHF',
+  vat_category: 'S',
+  vat_rate: '8.1',
+  is_archived: false,
+  archived_at: null,
+  created_at: '2026-11-18T10:00:00Z',
+  updated_at: '2026-11-18T10:00:00Z',
+}
+
+/** Editing keeps the saved price basis; currency, price and Net|Gross share one row, the VAT rate sits beside VAT. */
+export const ProductEditKeepsNet: Story = {
+  render: () => (
+    <ProductForm product={netProduct} defaults={defaults} onClose={fn()} onSaved={fn()} />
+  ),
+  play: async () => {
+    const body = within(document.body)
+    await expect(body.getByRole('radio', { name: 'Net' })).toBeChecked()
+    await expect(body.getByRole('status', { name: 'Price per unit' })).toHaveTextContent(
+      'CHF 162.15',
+    )
+    const price = body.getByRole('textbox', { name: /Unit price/ })
+    const currency = body.getByRole('button', { name: 'Currency CHF' })
+    await expect(currency.getBoundingClientRect().top).toBe(price.getBoundingClientRect().top)
+    await expect(currency.getBoundingClientRect().height).toBe(price.getBoundingClientRect().height)
+    const rate = body.getByRole('textbox', { name: 'VAT rate' })
+    const category = document.getElementById('product-vat_category')
+    await expect(category?.getBoundingClientRect().top).toBe(rate.getBoundingClientRect().top)
+    await expect(rate.getBoundingClientRect().width).toBeLessThan(120)
+  },
+}
+
+/** Write with AI and the count sit inside the description's border; long text scrolls above them, never under. */
+export const ProductDescriptionTools: Story = {
+  render: () => <ProductForm defaults={defaults} onClose={fn()} onSaved={fn()} />,
+  play: async () => {
+    const body = within(document.body)
+    const description = body.getByRole('textbox', { name: /Description/ })
+    const box = description.closest('[data-slot=textarea-box]')
+    const ai = body.getByRole('button', { name: 'Write with AI' })
+    await expect(box).toContainElement(ai)
+    await expect(box).toHaveTextContent('0 / 1000')
+    await userEvent.click(description)
+    await userEvent.paste(Array.from({ length: 12 }, (_, i) => `Line ${i + 1}`).join('\n'))
+    await expect(box).toHaveTextContent('/ 1000')
+    const text = description.getBoundingClientRect()
+    await expect(text.bottom).toBeLessThanOrEqual(ai.getBoundingClientRect().top)
+    await expect(box?.getBoundingClientRect().bottom).toBeGreaterThan(
+      ai.getBoundingClientRect().bottom,
+    )
   },
 }
 

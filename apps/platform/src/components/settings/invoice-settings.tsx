@@ -58,6 +58,7 @@ import {
   type SectionState,
 } from '@/components/section-form'
 import { NumberFormatField } from '@/components/settings/number-format-field'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -1632,16 +1633,16 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   id={inputId('footer')}
                   label={translate('footerText')}
                   error={shown.footer}
-                  hint={<span className="tabular-nums">{values.footer.length} / 1000</span>}
                 >
-                  <textarea
+                  <TextareaBox
                     {...describe('footer')}
                     rows={3}
                     maxLength={1000}
                     value={values.footer}
                     onChange={(e) => set('footer', e.target.value)}
                     placeholder={translate('eGThankYouForYourTrustPayableWithin')}
-                    className={cn(bigInput, 'h-auto min-h-24 resize-y py-2.5 leading-relaxed')}
+                    max={1000}
+                    className="min-h-24 leading-relaxed"
                   />
                 </FormField>
               </Section>

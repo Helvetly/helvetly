@@ -2,8 +2,6 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { CountedTextarea } from '@helvetly/ui/components/textarea'
-import { cn } from '@helvetly/ui/lib/utils'
 import { MailX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -16,6 +14,7 @@ import {
   FormDialog,
   recipientErrors,
 } from '@/components/invoices/invoice-dialogs'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useQuoteEmailDraft } from '@/lib/email-templates'
@@ -176,14 +175,15 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         required
         error={errors.message}
       >
-        <CountedTextarea
+        <TextareaBox
           {...describedBy('quote-send-message', errors.message)}
           rows={10}
           maxLength={5000}
+          max={5000}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>
@@ -250,7 +250,7 @@ export function QuoteDecisionDialog({
           placeholder={
             accept ? translate('confirmedByPhoneOnMonday') : translate('wentWithAnotherOffer')
           }
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>

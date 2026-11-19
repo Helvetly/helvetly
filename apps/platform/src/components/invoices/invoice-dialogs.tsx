@@ -9,7 +9,6 @@ import {
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { CountedTextarea } from '@helvetly/ui/components/textarea'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowRight, MailX } from 'lucide-react'
 import Link from 'next/link'
@@ -26,6 +25,7 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useInvoiceEmailDraft } from '@/lib/email-templates'
@@ -554,14 +554,15 @@ export function SendDialog({
         />
       </FormField>
       <FormField id="send-message" label={translate('message')} required error={errors.message}>
-        <CountedTextarea
+        <TextareaBox
           {...describedBy('send-message', errors.message)}
           rows={10}
           maxLength={5000}
+          max={5000}
           value={shownMessage}
           disabled={draft.isPending}
           onChange={(event) => setMessage(event.target.value)}
-          className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
+          className="leading-relaxed"
         />
       </FormField>
     </FormDialog>
