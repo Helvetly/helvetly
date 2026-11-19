@@ -264,20 +264,25 @@ export function Message({
           {message.state === 'error' && (
             <div
               role="alert"
-              className="mt-2 flex items-center gap-2 rounded-lg bg-destructive-surface/60 px-3 py-2 text-body-sm text-destructive"
+              className="mt-2 flex items-start gap-2 rounded-lg bg-destructive-surface/60 px-3 py-2 text-body-sm text-destructive"
             >
-              <AlertCircle className="size-4 shrink-0" />
-              <span className="flex-1">{message.error ?? translate('somethingWentWrong2')}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="px-2 text-inherit hover:bg-background/50"
-                disabled={busy}
-                onClick={onRetry}
-              >
-                <RotateCw />
-                {translate('retry2')}
-              </Button>
+              {/* The icon sits on the first line; Retry follows the text, however many lines it takes. */}
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                <span className="text-pretty">
+                  {message.error ?? translate('somethingWentWrong2')}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 px-2 text-inherit hover:bg-background/50"
+                  disabled={busy}
+                  onClick={onRetry}
+                >
+                  <RotateCw />
+                  {translate('retry2')}
+                </Button>
+              </div>
             </div>
           )}
         </div>

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -103,7 +104,7 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 	r.Header.Set("Content-Type", "application/json")
 	resp, err := p.client.Do(r)
 	if err != nil {
-		return Reply{}, fmt.Errorf("OpenAI request failed: %w", err)
+		return Reply{}, transportError(err)
 	}
 	defer resp.Body.Close()
 	zero := int64(0)
@@ -112,18 +113,23 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 { // refused before generating: nothing billed
 			reply.Tokens, reply.Usage = &zero, &Usage{Model: p.card.Model, Tier: p.card.Tier}
 		}
-		return reply, fmt.Errorf("OpenAI returned HTTP %d", resp.StatusCode)
+		return reply, statusError(resp)
 	}
+	failed := &ProviderError{HTTPStatus: resp.StatusCode, RequestID: resp.Header.Get("x-request-id")}
 	b, err = io.ReadAll(io.LimitReader(resp.Body, 2<<20+1))
 	if err != nil || len(b) > 2<<20 {
-		return Reply{}, errors.New("OpenAI response is unreadable or too large")
+		failed.Kind, failed.Err = FailInvalid, errors.New("the response is unreadable or too large")
+		return Reply{}, failed
 	}
 	var out struct {
-		ID          string `json:"id"`
-		Model       string `json:"model"`
-		ServiceTier string `json:"service_tier"`
-		Status      string `json:"status"`
-		Output      []struct {
+		ID                string `json:"id"`
+		Model             string `json:"model"`
+		ServiceTier       string `json:"service_tier"`
+		Status            string `json:"status"`
+		IncompleteDetails *struct {
+			Reason string `json:"reason"`
+		} `json:"incomplete_details"`
+		Output []struct {
 			Type    string `json:"type"`
 			Content []struct {
 				Type    string `json:"type"`
@@ -144,7 +150,8 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 		} `json:"usage"`
 	}
 	if err = json.Unmarshal(b, &out); err != nil {
-		return Reply{}, errors.New("OpenAI returned invalid JSON")
+		failed.Kind, failed.Err = FailInvalid, errors.New("the response is not JSON")
+		return Reply{}, failed
 	}
 	reply := Reply{}
 	if u := out.Usage; u != nil {
@@ -168,10 +175,63 @@ func (p *openAI) Answer(ctx context.Context, in Request) (Reply, error) {
 			}
 		}
 	}
-	if out.Status != "completed" || strings.TrimSpace(reply.Text) == "" || len(reply.Text) > maxReplyBytes {
-		return reply, errors.New("OpenAI did not return a complete text response")
+	failed.Status, failed.ResponseID = out.Status, out.ID
+	switch {
+	case len(reply.Text) > maxReplyBytes:
+		failed.Kind, reply.Text = FailEmpty, ""
+	case out.Status == "incomplete":
+		// Its usage is known and settled; a caller may keep the partial text (Reply.Text) of a cut-short answer.
+		failed.Kind = FailIncomplete
+		if out.IncompleteDetails != nil {
+			failed.Reason = out.IncompleteDetails.Reason
+		}
+	case out.Status != "completed":
+		failed.Kind = FailServer
+	case strings.TrimSpace(reply.Text) == "":
+		failed.Kind = FailEmpty
+	default:
+		return reply, nil
 	}
-	return reply, nil
+	return reply, failed
+}
+
+// transportError classifies a request that got no response: its outcome is unknown.
+func transportError(err error) error {
+	kind := FailNetwork
+	if ne, ok := errors.AsType[net.Error](err); errors.Is(err, context.DeadlineExceeded) || ok && ne.Timeout() {
+		kind = FailTimeout
+	}
+	return &ProviderError{Kind: kind, Err: err}
+}
+
+// statusError reads an error response's status and OpenAI error object ({"error":{"type","code","message"}}).
+func statusError(resp *http.Response) error {
+	e := &ProviderError{HTTPStatus: resp.StatusCode, RequestID: resp.Header.Get("x-request-id")}
+	var body struct {
+		Error struct {
+			Type    string `json:"type"`
+			Code    any    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 16<<10)).Decode(&body) == nil {
+		e.Type, e.Message = body.Error.Type, body.Error.Message
+		if body.Error.Code != nil {
+			e.Code = fmt.Sprint(body.Error.Code)
+		}
+	}
+	switch {
+	case resp.StatusCode == http.StatusTooManyRequests && e.Code != "insufficient_quota":
+		e.Kind = FailRateLimited
+	case resp.StatusCode == http.StatusTooManyRequests, resp.StatusCode == http.StatusUnauthorized,
+		resp.StatusCode == http.StatusForbidden, resp.StatusCode == http.StatusNotFound:
+		e.Kind = FailConfig // an exhausted account, a wrong key or a model the key may not use
+	case resp.StatusCode >= 500:
+		e.Kind = FailServer
+	default:
+		e.Kind = FailRejected
+	}
+	return e
 }
 
 // InputTokens uses the official count endpoint with the identical input before starting generation.
@@ -195,18 +255,18 @@ func (p *openAI) InputTokens(ctx context.Context, in Request) (int64, error) {
 	r.Header.Set("Content-Type", "application/json")
 	resp, err := p.client.Do(r)
 	if err != nil {
-		return 0, fmt.Errorf("OpenAI input count failed: %w", err)
+		return 0, transportError(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return 0, fmt.Errorf("OpenAI input count returned HTTP %d", resp.StatusCode)
+		return 0, statusError(resp)
 	}
 	var out struct {
 		Object      string `json:"object"`
 		InputTokens *int64 `json:"input_tokens"`
 	}
 	if err = json.NewDecoder(io.LimitReader(resp.Body, 65536)).Decode(&out); err != nil || out.Object != "response.input_tokens" || out.InputTokens == nil || *out.InputTokens < 0 {
-		return 0, errors.New("OpenAI input count was invalid")
+		return 0, &ProviderError{Kind: FailInvalid, HTTPStatus: resp.StatusCode, RequestID: resp.Header.Get("x-request-id"), Err: errors.New("the input count is invalid")}
 	}
 	return *out.InputTokens, nil
 }

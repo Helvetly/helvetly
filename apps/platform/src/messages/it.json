@@ -4507,5 +4507,12 @@
   "auditPortalAddressChanged": "Indirizzo del portale modificato",
   "editInstalments": "Modifica le rate",
   "instalmentsSummary": "{count}× · {interval} · dal {date}",
-  "instalmentsDialogDescription": "Una fattura, più scadenze, una QR-fattura per ciascuna."
+  "instalmentsDialogDescription": "Una fattura, più scadenze, una QR-fattura per ciascuna.",
+  "heidiErrorUnavailable": "Heidi non è riuscita a rispondere ora. Non è stato modificato nulla. Riprova tra un momento.",
+  "heidiErrorBusy": "Heidi è occupata in questo momento. Riprova tra un minuto.",
+  "heidiErrorMisconfigured": "L'IA non è configurata correttamente. Controlla le impostazioni del modello.",
+  "heidiErrorUsageUncertain": "Heidi sta ancora completando una richiesta precedente, oppure l'uso dell'IA di questo mese è in verifica. Non è stato modificato nulla. Riprova tra qualche minuto; i comandi locali funzionano comunque.",
+  "heidiErrorPaused": "Le risposte IA di Heidi sono in pausa per ora. I comandi locali funzionano comunque.",
+  "aiErrorBusy": "L'IA è occupata in questo momento. Riprova tra un minuto.",
+  "aiWriteErrorFailed": "L'IA non è riuscita a scrivere questo testo ora. Non è stato modificato nulla. Riprova tra un momento."
 }

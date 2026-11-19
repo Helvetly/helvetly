@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
-import { errorMessage } from '@/lib/api'
+import { ApiError, errorMessage } from '@/lib/api'
 import { expenseKeys } from '@/lib/expenses'
 import {
   goesToImport,
   heidiApi,
+  heidiErrorText,
   readEvents,
   usageKey,
   type HeidiAction,
@@ -225,7 +226,11 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
               break
             case 'error':
               outcome.ended = 'error'
-              update(id, () => ({ state: 'error', error: event.message, status: undefined }))
+              update(id, () => ({
+                state: 'error',
+                error: heidiErrorText(event.code, event.message),
+                status: undefined,
+              }))
               break
             case 'done':
               outcome.ended = 'done'
@@ -257,7 +262,14 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         update(id, () =>
           controller.signal.aborted
             ? { state: 'stopped', status: undefined }
-            : { state: 'error', status: undefined, error: errorMessage(error) },
+            : {
+                state: 'error',
+                status: undefined,
+                error:
+                  error instanceof ApiError
+                    ? heidiErrorText(error.code, error.message)
+                    : errorMessage(error),
+              },
         )
       } finally {
         update(id, (message) => ({

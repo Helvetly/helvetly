@@ -2,7 +2,11 @@
 // Responses client and the workspace's monthly token budget with its at-most-once rule (docs/heidi-contract.md).
 package aimodel
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+)
 
 // maxReplyBytes bounds a reply's text: a structured extraction of a long spreadsheet chunk is the largest.
 const maxReplyBytes = 256 << 10
@@ -45,4 +49,66 @@ type Provider interface {
 	InputTokens(context.Context, Request) (int64, error)
 	// Card prices the provider's model; calls are reserved and settled by it.
 	Card() RateCard
+}
+
+// Reasons a provider call failed: Kind of ProviderError, stored on its ai_calls row.
+const (
+	FailRateLimited = "rate_limited" // 429: the provider is busy; try again shortly
+	FailConfig      = "config"       // credentials, model or the provider account (401, 403, 404, insufficient_quota)
+	FailRejected    = "rejected"     // another 4xx: the provider refused this request
+	FailServer      = "server"       // 5xx
+	FailTimeout     = "timeout"
+	FailNetwork     = "network"
+	FailIncomplete  = "incomplete" // the response stopped early; Reason says why (max_output_tokens, content_filter)
+	FailEmpty       = "empty"      // completed without text, or with more than a reply may hold
+	FailInvalid     = "invalid"    // the response was not the JSON the API documents
+)
+
+// ProviderError says why a provider call failed, for the log and the caller's answer. It never holds the prompt, the
+// answer or the key.
+type ProviderError struct {
+	Kind       string
+	HTTPStatus int
+	// Type, Code and Message are the provider's error object.
+	Type, Code, Message string
+	// Status is the response's status, Reason its incomplete_details.reason.
+	Status, Reason string
+	// RequestID is the provider's x-request-id, ResponseID the response's id.
+	RequestID, ResponseID string
+	Err                   error
+}
+
+func (e *ProviderError) Error() string {
+	s := "model provider: " + e.Kind
+	if e.Reason != "" {
+		s += " (" + e.Reason + ")"
+	}
+	if e.HTTPStatus != 0 {
+		s += fmt.Sprintf(" HTTP %d", e.HTTPStatus)
+	}
+	if e.Code != "" || e.Message != "" {
+		s += ": " + e.Code + " " + e.Message
+	}
+	if e.Err != nil {
+		s += ": " + e.Err.Error()
+	}
+	return s
+}
+
+func (e *ProviderError) Unwrap() error { return e.Err }
+
+// failure is the short reason stored on the call's row: the kind, and why an incomplete response stopped.
+func (e *ProviderError) failure() string {
+	if e.Reason != "" {
+		return e.Kind + ":" + e.Reason
+	}
+	return e.Kind
+}
+
+// FailureKind is the Kind of the ProviderError within err, "" when there is none.
+func FailureKind(err error) string {
+	if pe, ok := errors.AsType[*ProviderError](err); ok {
+		return pe.Kind
+	}
+	return ""
 }
