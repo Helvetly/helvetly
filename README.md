@@ -149,26 +149,37 @@ Production needs at least `DATABASE_URL`, `PUBLIC_URL`, `PORTAL_URL` (another ho
 ### Custom portal domains
 
 Optional, on the Business plan: a workspace serves its client portal on its own host (`portal.firma.ch`) instead of
-`PORTAL_URL/w/<slug>/`. Set `CUSTOM_DOMAIN_TARGET` to a hostname that reaches the binary directly through your proxy,
-with no CDN proxy in front of it (for example `domains.helvetly.com`, DNS only). The workspace's settings show two
-records: `portal.firma.ch CNAME <target>` and a TXT record `_helvetly-verify.portal.firma.ch` whose value proves the
-domain is theirs (a dangling CNAME proves nothing). Helvetly checks both through DNS itself, then requests
-`https://portal.firma.ch/api/health`; your proxy gets the certificate on that first request with on-demand TLS, asking
-`GET /api/v1/public/portal/domain-check?domain=<host>` first, which answers 200 only for a domain whose ownership is
-proven. In Caddy: `on_demand_tls { ask http://<app>/api/v1/public/portal/domain-check }` and a catch-all `https://`
-site with `tls { on_demand }` that proxies to the binary with the `Host` header unchanged.
+`PORTAL_URL/w/<slug>/`, through Cloudflare for SaaS custom hostnames. It needs a Cloudflare zone with Cloudflare for
+SaaS and three settings, all or none: `CLOUDFLARE_API_TOKEN` (Zone · SSL and Certificates · Edit on that zone only),
+`CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`, a proxied hostname on the zone that is its custom-hostname fallback
+origin and reaches this binary; normally `PORTAL_URL`'s host, so customers point their CNAME at the portal's own
+address. Your proxy must send requests for any other host from Cloudflare (and only from Cloudflare's ranges) to the
+binary with the `Host` header unchanged; the origin never needs a certificate for a customer's domain.
 
-On such a host only the portal and its API are served. With custom domains on, any host that is neither the
-installation's nor an active domain gets 404 for everything but the health checks and `domain-check`. Pending domains
-are checked with backoff (1 minute doubling to an hour), active ones daily. A domain that breaks (CNAME removed, HTTPS
-failing) falls back to `/w/<slug>/` at once and the owners are told; a plan without the feature turns it off until the
-plan has it again. A domain that is pending or failed for 14 days is released, and a workspace that proves it owns a
-name another workspace holds without proof takes it over. A deleted workspace keeps its domain for the 30 days it may
-be restored.
+The workspace's settings show two records: `portal.firma.ch CNAME portal.helvetly.com` and the TXT record Cloudflare
+names for the custom hostname (`_cf-custom-hostname.portal.firma.ch`). Helvetly creates the custom hostname (HTTP
+certificate validation, which Cloudflare completes once the CNAME is in place), follows it, and checks the TXT record
+itself: Cloudflare activates a hostname on its CNAME alone, which a dangling record left by a former customer would
+give anyone, so the domain goes active only when Cloudflare reports the hostname and its certificate active and the TXT
+record has proved ownership once. On such a host only the portal and its API are served, never the platform; with
+custom domains on, any host that is neither the installation's nor an active domain gets 404 for everything but the
+health checks.
 
-Scale: nothing is paid per domain. Certificates come from Let's Encrypt (about 300 new ones per three hours per
-account; renewals of 50 000 domains are roughly 800 a day) and live in your proxy's storage, which several proxies
-must share. The job checks at most 100 domains a minute.
+A domain that breaks (CNAME removed, certificate lost, the name moved to another Cloudflare account) falls back to
+`/w/<slug>/` at once and the owners are told. A domain pending or failed for 14 days is released and its custom
+hostname deleted; a workspace that proves it owns a name another workspace holds without proof (its own TXT record
+`_helvetly-verify.<host>`, shown when it tries) takes it over. A plan without the feature turns a domain off; a proven
+one is kept and comes back with the plan, an unproven one is released after 14 days. A deleted workspace keeps its
+domain for the 30 days it may be restored. A daily cleanup deletes the zone's custom hostnames the app made that no
+domain holds any more (a failed delete, a row never stored); names no domain ever had are left alone.
+
+Scale: Cloudflare for SaaS includes 100 custom hostnames on the Free, Pro and Business zone plans, charges USD 0.10 a
+month for each further one, and allows at most 50 000 (more on Enterprise). Cloudflare's API allows 1200 calls per five
+minutes per user, shared with Terraform and the dashboard; each instance makes at most two a second and pauses when
+Cloudflare answers 429 (for its Retry-After, else five minutes). Every domain is checked on its own by id: pending ones
+with backoff (1 minute doubling to an hour, refreshing Cloudflare's validation), the others daily. A tick claims up to
+100 due domains (`FOR UPDATE SKIP LOCKED`, so instances never check one twice) and checks them four at a time. The
+cleanup walks the zone's list by `result_info`, 1000 a page asked, whatever page size Cloudflare grants.
 
 ### Releases
 

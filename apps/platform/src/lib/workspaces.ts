@@ -120,7 +120,7 @@ export function useSetPortalSlug() {
 
 /** Where a custom domain is on its way: its DNS record, its certificate, live, or a problem to fix. */
 export type DomainStage = 'dns' | 'certificate' | 'active' | 'problem'
-export type DomainProblem = 'dns' | 'verification' | 'certificate' | 'plan'
+export type DomainProblem = 'dns' | 'verification' | 'certificate' | 'blocked' | 'taken' | 'plan'
 /** A record the customer adds at their DNS provider: the CNAME to Helvetly and the TXT proving ownership. */
 export type DomainRecord = { type: string; name: string; value: string }
 export type PortalDomain = {
@@ -139,7 +139,7 @@ export type PortalDomain = {
   releases_at: string | null
   created_at: string
 }
-/** The portal's custom domain; `enabled` is false when this server has no CUSTOM_DOMAIN_TARGET. */
+/** The portal's custom domain; `enabled` is false when this server has no Cloudflare for SaaS settings. */
 export type PortalDomainSettings = { enabled: boolean; target: string; domain: PortalDomain | null }
 
 const domainKey = [...portalKey, 'domain'] as const
