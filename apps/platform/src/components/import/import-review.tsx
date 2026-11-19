@@ -270,7 +270,7 @@ export function ReviewTable({
         className="w-full min-w-[640px] text-left text-[13px]"
       >
         {/* Headers read as headers: small caps on a muted row, the values below in the foreground. */}
-        <thead className="border-b bg-muted/50 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        <thead className="border-b bg-muted/50 text-caption font-medium tracking-wide text-muted-foreground uppercase">
           <tr>
             <th scope="col" className="w-10 px-3 py-2">
               <Checkbox
@@ -542,7 +542,7 @@ function Existing({
         </Badge>
         <Link
           href={config.entityHref(duplicate.id)}
-          className="text-[12px] underline underline-offset-2"
+          className="text-caption underline underline-offset-2"
         >
           {translate('openAction')}
         </Link>
