@@ -269,7 +269,10 @@ export type PickedLine = Pick<
 >
 
 export function lineFromProduct(product: Product, vatMode: VatMode): PickedLine {
-  const description = product.description ? `${product.name}\n${product.description}` : product.name
+  // One line that wraps only when it must: a line break would always print the description on its own row.
+  const description = product.description
+    ? `${product.name} – ${product.description}`
+    : product.name
   if (vatMode === 'none')
     return {
       description,
