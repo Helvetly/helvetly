@@ -294,8 +294,16 @@ test('a quote PDF imported from the quotes page becomes a sent quote with its ow
     buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
   })
   await again.getByRole('button', { name: 'Process with AI', exact: true }).click()
-  await expect(again.getByText(`Quote ${number} already exists.`).first()).toBeVisible({
-    timeout: 30_000,
-  })
+  // The record is read again, but waits with the taken number as its issue: nothing is created twice.
+  const issueOfNewest = async () => {
+    const list = object(await (await api.request.get('/api/v1/imports?kind=quotes')).json()).data
+    if (!Array.isArray(list) || !list.length) return null
+    const batch = await api.read(`/imports/${String(object(list[0]).id)}`)
+    const records = Array.isArray(batch.records) ? batch.records : []
+    return records.length ? object(object(records[0]).issues).number : null
+  }
+  await expect.poll(issueOfNewest, { timeout: 30_000 }).toBe(`Quote ${number} already exists.`)
   await expect(again.getByRole('checkbox', { name: `Select ${number}` })).not.toBeChecked()
+  const all = object(await (await api.request.get('/api/v1/quotes')).json()).data
+  expect(Array.isArray(all) && all.filter((row) => object(row).number === number)).toHaveLength(1)
 })
