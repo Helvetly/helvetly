@@ -77,16 +77,16 @@ func TestOptionalClientAndContractNumbers(t *testing.T) {
 func TestDetailBlocksAllLanguages(t *testing.T) {
 	for lang, want := range map[string][]string{
 		"de": {"Vertragsangaben:", "Kundennummer:", "7", "Vertragsnummer:", "C-1",
-			"Bank- und Zahlungsangaben:", "Bank:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
+			"Bank- und Zahlungsangaben:", "Kontoinhaber:", "Muster Beratung GmbH", "Bank:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
 			"IBAN:", "CH44 3199 9123 0008 8901 2", "Zahlungsreferenz:", "00 00000 00000 00000 02026 00000"},
 		"fr": {"Données contractuelles:", "N° client:", "7", "N° de contrat:", "C-1",
-			"Coordonnées bancaires et de paiement:", "Banque:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
+			"Coordonnées bancaires et de paiement:", "Titulaire du compte:", "Muster Beratung GmbH", "Banque:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
 			"IBAN:", "CH44 3199 9123 0008 8901 2", "Référence de paiement:", "00 00000 00000 00000 02026 00000"},
 		"it": {"Dati contrattuali:", "N. cliente:", "7", "N. contratto:", "C-1",
-			"Coordinate bancarie e di pagamento:", "Banca:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
+			"Coordinate bancarie e di pagamento:", "Titolare del conto:", "Muster Beratung GmbH", "Banca:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
 			"IBAN:", "CH44 3199 9123 0008 8901 2", "Riferimento di pagamento:", "00 00000 00000 00000 02026 00000"},
 		"en": {"Contract details:", "Client number:", "7", "Contract number:", "C-1",
-			"Bank and payment details:", "Bank name:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
+			"Bank and payment details:", "Account holder:", "Muster Beratung GmbH", "Bank name:", "Zürcher Kantonalbank", "SWIFT / BIC:", "ZKBKCHZZ80A",
 			"IBAN:", "CH44 3199 9123 0008 8901 2", "Payment reference:", "00 00000 00000 00000 02026 00000"},
 	} {
 		d := sample(lang, 1)
@@ -117,12 +117,12 @@ func TestDetailBlocksOmitEmptyRows(t *testing.T) {
 			d := sample("en", 1)
 			d.Invoice.ClientNumberDisplay, d.BankName, d.Invoice.Payment.IBAN, d.Invoice.Payment.Reference = ptr(""), nil, nil, nil
 			return d
-		}, nil, []string{"Contract details:", "Bank and payment details:", "IBAN:"}},
+		}, nil, []string{"Contract details:", "Bank and payment details:", "Account holder:", "IBAN:"}},
 		{"self-billed: contract block only", func() Document {
 			d := sample("en", 1)
 			d.Invoice.Kind, d.Bill = "self_billed", nil
 			return d
-		}, []string{"Contract details:", "Client number:"}, []string{"Bank and payment details:", "IBAN:"}},
+		}, []string{"Contract details:", "Client number:"}, []string{"Bank and payment details:", "Account holder:", "IBAN:"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
