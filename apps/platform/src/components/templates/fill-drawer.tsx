@@ -49,6 +49,14 @@ import {
 
 const STEPS = [translate('templateClient'), translate('fillIn'), translate('send')] as const
 
+/** What a box says before a client fills it: the field's kind or label. */
+function caption(field: TemplateDraftField) {
+  if (field.kind === 'signature' || field.kind === 'date' || field.kind === 'name')
+    return fieldCaption({ ...field, kind: field.kind })
+  if (field.kind === 'text') return field.label || translate('text')
+  return field.kind === 'custom' ? field.label : DATA_LABELS[field.kind]
+}
+
 /**
  * Make a document from a template for one client: the client's details fill the template, then it
  * is saved to Documents, emailed, or (when the template asks for signatures) sent to sign.
@@ -146,18 +154,17 @@ export function FillTemplateDrawer({
   }
 
   const draftFields = template ? toDraftFields(template) : []
-  const caption = (field: TemplateDraftField) => {
-    if (field.kind === 'signature' || field.kind === 'date' || field.kind === 'name')
-      return fieldCaption({ ...field, kind: field.kind })
-    if (field.kind === 'text') return field.label || translate('text')
-    const value = step > 0 ? (values[valueKey({ id: field.key, kind: field.kind })] ?? '') : ''
-    return value.trim() || (field.kind === 'custom' ? field.label : DATA_LABELS[field.kind])
-  }
+  // Once a client is chosen, data fields show their values as the generated PDF prints them.
+  const printed = (field: TemplateDraftField) =>
+    step > 0 && isDataKind(field.kind)
+      ? (values[valueKey({ id: field.key, kind: field.kind })] ?? '')
+      : null
   const preview = (
     <DocPreview
       document={template?.document ?? null}
       fields={draftFields}
       caption={caption}
+      printed={printed}
       pages={pages}
       onPages={setPages}
       empty={translate('chooseATemplateToSeeItHere')}

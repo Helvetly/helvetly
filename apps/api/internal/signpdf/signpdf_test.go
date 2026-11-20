@@ -5,11 +5,13 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"strings"
 	"testing"
 	"time"
 
 	"codeberg.org/go-pdf/fpdf"
 
+	"helvetly.com/api/internal/pdffont"
 	"helvetly.com/api/internal/pdffont/pdffonttest"
 )
 
@@ -121,4 +123,74 @@ func TestAnyScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	pdffonttest.Fonts(t, stamped)
+}
+
+func TestFitSize(t *testing.T) {
+	cases := []struct {
+		name         string
+		w, h         float64
+		lines        int
+		widest, want float64
+	}{
+		{"the box height sets it", 200, 20, 1, 3, 15},
+		{"a larger box, larger text", 200, 40, 1, 3, 30},
+		{"a smaller box, smaller text", 200, 10, 1, 3, 7.5},
+		{"two lines share the height", 200, 40, 2, 3, 15},
+		{"a wide value shrinks to the width", 60, 20, 1, 6, 10},
+		{"never below the minimum", 8, 20, 1, 6, 4},
+		{"an empty value keeps the height's size", 200, 20, 1, 0, 15},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := fitSize(c.w, c.h, c.lines, c.widest); got != c.want {
+				t.Fatalf("fitSize(%v, %v, %d, %v) = %v, want %v", c.w, c.h, c.lines, c.widest, got, c.want)
+			}
+		})
+	}
+}
+
+// TestDrawLinesPrints: black text at the box's left edge, vertically centred, its size from the box.
+func TestDrawLinesPrints(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		h     float64
+		size  string
+	}{
+		{"short value fills the height", "Müller AG", 20, "15.00 Tf"},
+		{"a taller box, larger text", "Müller AG", 40, "30.00 Tf"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			pdf := fpdf.New("P", "pt", "A4", "")
+			pdf.SetCompression(false)
+			pdf.SetCellMargin(0)
+			txt := pdffont.New(pdf)
+			pdf.AddPage()
+			drawLines(pdf, txt, c.value, 100, 200, 300, c.h)
+			var b bytes.Buffer
+			if err := pdf.Output(&b); err != nil {
+				t.Fatal(err)
+			}
+			out := b.String()
+			if !strings.Contains(out, c.size) {
+				t.Fatalf("no %q in the page", c.size)
+			}
+			if !strings.Contains(out, "0.000 g") {
+				t.Fatal("text is not black")
+			}
+			if !strings.Contains(out, "BT 100.00 ") {
+				t.Fatal("text does not start at the box's left edge")
+			}
+		})
+	}
+	pdf := fpdf.New("P", "pt", "A4", "")
+	txt := pdffont.New(pdf)
+	long := "A rather long client name that is much wider than its box"
+	txt.Font("", 1)
+	size := fitSize(200, 20, 1, txt.Width(long))
+	txt.Font("", size)
+	if size >= 15 || txt.Width(long) > 200.001 {
+		t.Fatalf("a long value at %v pt is %v wide in a 200 pt box", size, txt.Width(long))
+	}
 }
