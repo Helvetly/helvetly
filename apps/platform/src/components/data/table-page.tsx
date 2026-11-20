@@ -26,7 +26,7 @@ import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
 import { listTable } from './list-table'
-import { ListSearch, ListToolbar, ToolbarText } from './list-toolbar'
+import { ListSearch, ListToolbar } from './list-toolbar'
 import { DetailsPopover, DetailsSheet, type RowDetails } from './row-details'
 
 export type Column<Row> = {
@@ -100,11 +100,11 @@ export function TablePage<Row extends { id: string }>({
           <Button
             variant="ghost"
             size="sm"
-            className="text-[15px] font-normal"
+            className="text-title-sm font-normal"
             onClick={soon(translate('filtersAre'))}
           >
             <ListFilter className="stroke-[1.5]" />
-            <ToolbarText>{translate('filters')}</ToolbarText>
+            {translate('filters')}
           </Button>
           <ListSearch
             label={translate('search2', { noun: noun })}
@@ -115,11 +115,11 @@ export function TablePage<Row extends { id: string }>({
           <Button
             variant="ghost"
             size="sm"
-            className="text-[15px] font-normal"
+            className="text-title-sm font-normal"
             onClick={soon(translate('customColumnsAre'))}
           >
             <SlidersHorizontal className="stroke-[1.5]" />
-            <ToolbarText className="max-sm:sr-only">{translate('customize')}</ToolbarText>
+            <span className="max-sm:sr-only">{translate('customize')}</span>
           </Button>
         </ListToolbar>
 

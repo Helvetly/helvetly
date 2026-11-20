@@ -40,7 +40,7 @@ function parseAnswer(form: HeidiForm, answer: string): Values {
 }
 
 const pill =
-  'h-8 rounded-full px-3 text-[13.5px] shadow-elevation-1 transition-[background-color,color,box-shadow] duration-150 enabled:hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:shadow-none disabled:opacity-60 bg-card'
+  'h-8 rounded-full px-3 text-body-sm shadow-elevation-1 transition-[background-color,color,box-shadow] duration-150 enabled:hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:shadow-none disabled:opacity-60 bg-card'
 
 function Choice({
   field,

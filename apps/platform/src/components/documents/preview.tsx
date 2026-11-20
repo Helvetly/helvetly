@@ -276,7 +276,7 @@ function ExtractButton({ reason, onClick }: { reason: string | null; onClick: ()
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant="ghost"
+          variant="ai"
           size="icon-sm"
           aria-label={label}
           aria-disabled={Boolean(reason)}

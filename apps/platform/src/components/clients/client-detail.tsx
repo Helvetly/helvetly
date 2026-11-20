@@ -244,7 +244,7 @@ function ClientNote({ note, onAdd, save }: InternalField<string> & { note: strin
       />
     )
   const text = (
-    <span className="block text-[13.5px] leading-relaxed whitespace-pre-wrap">{note}</span>
+    <span className="block text-[13.5px] leading-[22px] whitespace-pre-wrap">{note}</span>
   )
   if (!onEdit) return <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2.5">{text}</p>
   if (editing) return <div className="mt-2 flex">{editor}</div>

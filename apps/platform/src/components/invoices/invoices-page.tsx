@@ -43,7 +43,7 @@ import {
   useFeatureLock,
 } from '@/components/billing/feature-lock'
 import { listTable, Pager } from '@/components/data/list-table'
-import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
   PageContextMenu,
@@ -873,9 +873,9 @@ function Filters({
   return (
     <Popover onOpenChange={(open) => !open && setPicking(false)}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
-          <ToolbarText>{translate('filters')}</ToolbarText>
+          {translate('filters')}
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}

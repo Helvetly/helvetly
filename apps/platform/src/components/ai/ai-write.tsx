@@ -84,12 +84,7 @@ export function AIWrite({
   return (
     <Popover open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className={cn('gap-1 text-heidi hover:text-heidi', className)}
-        >
+        <Button type="button" variant="ai" size="xs" className={className}>
           <HeidiSparkle />
           {translate('aiWriteButton')}
         </Button>

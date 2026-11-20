@@ -17,7 +17,7 @@ export function affectedStories(paths, graphs) {
   for (const path of paths) {
     // The audit's own code; screenshots and stories.spec.ts do not change what it finds.
     const audit =
-      /^e2e\/visual\/(focus-layout\.spec\.ts|storybook\.ts|playwright\.config\.ts|run\.sh|serve\.mjs)$/
+      /^e2e\/visual\/(focus-layout\.spec\.ts|text-centring\.spec\.ts|storybook\.ts|playwright\.config\.ts|run\.sh|serve\.mjs)$/
     if (
       audit.test(path) ||
       /^(scripts\/visual-affected\.mjs|package\.json|pnpm-.*|apps\/[a-z]+\/\.storybook\/.*)$/.test(

@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
+  CommandCreateItem,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -54,7 +55,10 @@ export function ProductPicker({
   }, [term])
   const search = useProductSearch(debounced, currency, open)
   const items = search.data ?? []
-  const [adding, setAdding] = useState(false)
+  // The name the new item starts with (what was typed), or null while no item is being added.
+  const [adding, setAdding] = useState<string | null>(null)
+  const typed = term.trim()
+  const exact = items.some((product) => product.name.toLowerCase() === typed.toLowerCase())
 
   return (
     <>
@@ -73,7 +77,11 @@ export function ProductPicker({
             </Button>
           )}
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
+        <PopoverContent
+          align="start"
+          aria-label={translate('productsAndServices')}
+          className="w-[min(26rem,calc(100vw-2rem))] p-0"
+        >
           <Command shouldFilter={false} label={translate('productsAndServices')}>
             <CommandInput
               placeholder={translate('searchNameSKUOrGTIN')}
@@ -87,15 +95,6 @@ export function ProductPicker({
                   : debounced
                     ? translate('nothingMatches4')
                     : translate('yourCatalogueIsEmpty')}
-                {!search.isPending && (
-                  <AddToCatalogue
-                    onAdd={() => {
-                      setOpen(false)
-                      setTerm('')
-                      setAdding(true)
-                    }}
-                  />
-                )}
               </CommandEmpty>
               {items.length > 0 && (
                 <CommandGroup
@@ -141,15 +140,24 @@ export function ProductPicker({
                   })}
                 </CommandGroup>
               )}
+              <AddToCatalogue
+                name={exact ? '' : typed}
+                onAdd={(name) => {
+                  setOpen(false)
+                  setTerm('')
+                  setAdding(name)
+                }}
+              />
             </CommandList>
           </Command>
         </PopoverContent>
       </Popover>
-      {adding && (
+      {adding !== null && (
         <NewProductSheet
-          onClose={() => setAdding(false)}
+          name={adding}
+          onClose={() => setAdding(null)}
           onSaved={(product) => {
-            setAdding(false)
+            setAdding(null)
             onPick(lineFromProduct(product, vatMode), product)
           }}
         />
@@ -158,26 +166,29 @@ export function ProductPicker({
   )
 }
 
-/** Offered only once the list is empty, so the picker reads the session only when it is needed. */
-function AddToCatalogue({ onAdd }: { onAdd: () => void }) {
+/**
+ * The list's last row, whatever it holds: a new catalogue item, named after the search when nothing matches it
+ * exactly. Rendered only while the picker is open, so the session is read only then.
+ */
+function AddToCatalogue({ name, onAdd }: { name: string; onAdd: (name: string) => void }) {
   const canWrite = useCan('write:products')
   const role = useSession().data?.role
   if (!canWrite || !canManageProducts(role)) return null
   return (
-    <div className="mt-3">
-      <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
-        <Plus />
-        {translate('addToCatalogue')}
-      </Button>
-    </div>
+    <CommandCreateItem className="justify-start" onSelect={() => onAdd(name)}>
+      <Plus />
+      {name ? translate('addNameToCatalogue', { name }) : translate('addToCatalogue')}
+    </CommandCreateItem>
   )
 }
 
 /** A second drawer over the invoice: the new item is saved to the catalogue and lands on the invoice. */
 function NewProductSheet({
+  name,
   onClose,
   onSaved,
 }: {
+  name: string
   onClose: () => void
   onSaved: (product: Product) => void
 }) {
@@ -193,6 +204,7 @@ function NewProductSheet({
         vat_registered: settings?.vat_registered ?? true,
         default_vat_rate: settings?.default_vat_rate ?? '8.1',
       }}
+      name={name}
       onClose={onClose}
       onSaved={onSaved}
     />

@@ -1,5 +1,5 @@
 import { translate } from '@helvetly/ui/lib/i18n'
-import { cn } from 'cn'
+import { cn } from '@helvetly/ui/lib/utils'
 import { LoaderCircle } from 'lucide-react'
 
 /**

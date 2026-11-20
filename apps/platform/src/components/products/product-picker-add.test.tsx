@@ -70,7 +70,7 @@ test('an empty catalogue offers a new item, which is saved and lands on the invo
   const onPick = renderPicker()
   await userEvent.click(screen.getByRole('button', { name: 'Add from catalogue' }))
   expect(await screen.findByText('Your catalogue is empty.')).toBeVisible()
-  await userEvent.click(await screen.findByRole('button', { name: 'Add to catalogue' }))
+  await userEvent.click(await screen.findByRole('option', { name: 'Add to catalogue' }))
 
   await userEvent.click(await screen.findByRole('button', { name: 'Save new item' }))
   expect(onPick).toHaveBeenCalledWith(
@@ -85,5 +85,5 @@ test('a member who may not manage the catalogue is not offered a new item', asyn
   renderPicker()
   await userEvent.click(screen.getByRole('button', { name: 'Add from catalogue' }))
   expect(await screen.findByText('Your catalogue is empty.')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'Add to catalogue' })).toBeNull()
+  expect(screen.queryByRole('option', { name: 'Add to catalogue' })).toBeNull()
 })

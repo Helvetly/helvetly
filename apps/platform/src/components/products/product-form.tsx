@@ -63,6 +63,7 @@ const CATEGORY_OPTIONS = VAT_CATEGORIES.map((category) => ({
 export function ProductForm({
   product,
   defaults,
+  name = '',
   importing,
   onClose,
   onSaved,
@@ -70,6 +71,8 @@ export function ProductForm({
   /** The item to edit; none creates a new one. */
   product?: Product
   defaults: Defaults
+  /** A new item's name to start with: what was typed in the catalogue picker. */
+  name?: string
   /** An import record edited in this form: nothing is created, Save hands the values back to the import. */
   importing?: FormImport
   onClose: () => void
@@ -78,7 +81,9 @@ export function ProductForm({
   const { habits, remember } = useHabits()
   const [fromImport] = useState(() => importing && valuesFromImport(importing.data, defaults))
   const [initial] = useState(() =>
-    product ? valuesFromProduct(product) : (fromImport?.values ?? newValues(defaults, habits)),
+    product
+      ? valuesFromProduct(product)
+      : (fromImport?.values ?? { ...newValues(defaults, habits), name }),
   )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>(() =>
