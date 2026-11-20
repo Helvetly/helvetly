@@ -129,7 +129,7 @@ export const EngagementActivity: Story = {
     await expect(details).toHaveAttribute('aria-expanded', 'true')
     const region = await canvas.findByRole('region', { name: 'Support retainer' })
     await expect(details).toHaveAttribute('aria-controls', region.id)
-    const periods = within(region).getAllByRole('heading', { level: 3 })
+    const periods = await within(region).findAllByRole('heading', { level: 3 }) // the history loads after the region opens
     await expect(periods.map((h) => h.textContent)).toEqual([
       '1 Nov 2026 – 30 Nov 2026',
       '1 Oct 2026 – 31 Oct 2026',
