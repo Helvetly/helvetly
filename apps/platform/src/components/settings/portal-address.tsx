@@ -206,9 +206,10 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
           }}
         >
           <InputGroup className="bg-card">
-            <InputGroupAddon>
+            {/* The fixed part sits on grey so the white slug reads as the field one types into. */}
+            <InputGroupAddon className="self-stretch rounded-l-[inherit] border-r bg-muted pr-2">
               {/* One run of text (the group's gap would split it); a phone keeps only "…/w/" for the slug. */}
-              <InputGroupText className="pr-0 text-muted-foreground">
+              <InputGroupText className="text-muted-foreground">
                 <span>
                   <span className="max-sm:hidden">https://{hostOf(address)}</span>
                   <span className="sm:hidden">…</span>/w/
@@ -222,7 +223,7 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              className="pl-0!" // the slug follows the address without a gap (the group pads its input)
+              className="pl-2!"
               maxLength={32}
               value={form.values.slug}
               onChange={(event) => form.set('slug', event.target.value)}
