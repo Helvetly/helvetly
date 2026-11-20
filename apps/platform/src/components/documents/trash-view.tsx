@@ -218,10 +218,7 @@ function RowAction({
           variant={destructive ? 'destructive-ghost' : 'ghost'}
           size="icon-sm"
           aria-label={label}
-          className={cn(
-            'cursor-pointer',
-            !destructive && 'text-muted-foreground hover:text-foreground',
-          )}
+          className={cn('cursor-pointer', !destructive && 'text-muted-foreground')}
           onClick={onClick}
         >
           {children}

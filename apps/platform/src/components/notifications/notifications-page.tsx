@@ -163,16 +163,11 @@ function Row({ n }: { n: Notification }) {
           title={label}
           disabled={setRead.isPending}
           onClick={toggle}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground"
         >
           {n.read ? <Mail /> : <MailOpen />}
         </Button>
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground max-sm:hidden"
-        >
+        <Button asChild variant="ghost" size="sm" className="text-muted-foreground max-sm:hidden">
           <RecordLink
             href={n.href}
             prefetch={false}

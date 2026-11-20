@@ -1,4 +1,5 @@
 'use client'
+import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -176,15 +177,17 @@ export function FolderTree({
         <Label
           action={
             canWrite && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 aria-label={translate('newFolder')}
                 title={translate('newFolder')}
                 onClick={() => actions.newFolder(current)}
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-70 transition hover:bg-foreground/[0.06] hover:text-foreground hover:opacity-100"
+                className="text-muted-foreground"
               >
                 <Plus className="size-4 stroke-[1.5]" />
-              </button>
+              </Button>
             )
           }
         >

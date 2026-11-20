@@ -1,3 +1,4 @@
+import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { EllipsisVertical } from 'lucide-react'
 import type { MouseEvent } from 'react'
@@ -17,17 +18,16 @@ function open(event: MouseEvent<HTMLButtonElement>) {
 /** A "⋮" that opens the surrounding right-click menu where it stands, so both are one menu. */
 export function MenuButton({ label, className }: { label: string; className?: string }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       aria-label={label}
       onClick={open}
       onDoubleClick={(event) => event.stopPropagation()}
-      className={cn(
-        'relative z-[1] flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
-        className,
-      )}
+      className={cn('relative z-[1] text-muted-foreground', className)}
     >
-      <EllipsisVertical className="size-4" />
-    </button>
+      <EllipsisVertical />
+    </Button>
   )
 }

@@ -93,7 +93,8 @@ type ColumnDef = {
   wide?: boolean
   id: ColumnId
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   /** Shown until switched off in Customize. */
   visible: boolean
@@ -112,7 +113,6 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'name',
     label: translate('name'),
-    width: 'w-[30%]',
     sort: 'name',
     visible: true,
     cell: () => null,
@@ -842,7 +842,7 @@ function ActiveFilters({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-body-sm font-normal text-muted-foreground"
+          className="text-body-sm font-normal text-muted-foreground"
           onClick={() =>
             onChange({
               ...(statusView(params.status) === null && { status: [] }),

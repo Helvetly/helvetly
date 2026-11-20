@@ -95,7 +95,8 @@ type ColumnId = 'name' | 'type' | 'sku' | 'unit' | 'price' | 'vat' | 'updated'
 type ColumnDef = {
   id: ColumnId
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   align?: 'right'
   /** Only from a wide panel (≥72rem), where there is room. */
@@ -110,7 +111,6 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'name',
     label: translate('name'),
-    width: 'w-[34%]',
     sort: 'name',
     visible: true,
     cell: () => null,

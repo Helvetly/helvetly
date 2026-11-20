@@ -1,4 +1,5 @@
 'use client'
+import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { Separator } from '@helvetly/ui/components/separator'
@@ -469,18 +470,20 @@ function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             aria-label={translate('shareWithAClient', { name: file.name })}
             onClick={(event) => {
               event.stopPropagation()
               onOpen()
             }}
             onDoubleClick={(event) => event.stopPropagation()}
-            className="relative z-[1] flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="relative z-[1] text-muted-foreground"
           >
             <Share2 className="size-4" />
-          </button>
+          </Button>
         </TooltipTrigger>
         <TooltipContent>{translate('shareWithClient2')}</TooltipContent>
       </Tooltip>

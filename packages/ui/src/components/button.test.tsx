@@ -7,12 +7,13 @@ test('renders the requested variant', () => {
   expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute('data-variant', 'outline')
 })
 
-test('a disabled primary button keeps readable text instead of fading', () => {
+test('a disabled primary button stays primary, only faded', () => {
   render(<Button disabled>Save</Button>)
   const button = screen.getByRole('button', { name: 'Save' })
   expect(button).toBeDisabled()
-  expect(button.className).toContain('disabled:text-muted-foreground')
-  expect(button.className).toContain('disabled:opacity-100')
+  expect(button.className).toContain('bg-primary')
+  expect(button.className).toContain('disabled:opacity-50')
+  expect(button.className).not.toContain('disabled:bg-muted')
 })
 
 test('a destructive outline button is red-edged on the card, not a solid red block', () => {

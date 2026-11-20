@@ -172,7 +172,7 @@ const TitleCell = ({ engagement }: { engagement: Engagement }) => (
 )
 
 const HEADERS = [
-  [translate('engagement2'), 'w-[26%]'],
+  [translate('engagement2'), ''],
   [translate('period'), 'w-[17%]'],
   [translate('progress'), 'w-[20%]'],
   [translate('remaining'), 'w-[10%] text-right'],
