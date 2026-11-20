@@ -3,12 +3,17 @@ import { cleanup } from '@testing-library/react'
 import { afterAll, afterEach } from 'vitest'
 
 import { expectQuietConsole, guardConsole } from './console-guard'
+import { expectTypedFormButtons } from './form-buttons'
 
 guardConsole()
 
 // Unmounting can still log (a late state update, an effect's cleanup), so the console is checked after it.
 afterEach(() => {
-  cleanup()
+  try {
+    expectTypedFormButtons()
+  } finally {
+    cleanup()
+  }
   expectQuietConsole()
 })
 // What lands after a file's last test (a request still in flight) fails the file.

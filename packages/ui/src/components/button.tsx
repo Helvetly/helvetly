@@ -66,6 +66,7 @@ function Button({
   variant = 'default',
   size = 'default',
   asChild = false,
+  type,
   ...props
 }: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
@@ -79,6 +80,8 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      // A bare <button> submits its form; only an explicit type="submit" may. asChild keeps the child's own.
+      type={asChild ? type : (type ?? 'button')}
       {...props}
     />
   )

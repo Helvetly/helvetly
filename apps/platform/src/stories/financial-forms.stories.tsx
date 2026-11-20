@@ -1,3 +1,4 @@
+import { expectButtonsDoNotSubmit } from '@helvetly/vitest-config/form-buttons'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
@@ -410,5 +411,30 @@ export const ExpenseAmountFields: Story = {
     await userEvent.click(body.getByRole('button', { name: /^Currency/ }))
     await userEvent.click(await body.findByRole('option', { name: /EUR/ }))
     await waitFor(() => expect(amount.parentElement).toHaveTextContent('EUR'))
+  },
+}
+
+// Only the save button saves: every other button in these forms leaves the drawer open and unsaved.
+export const ProductButtonsDoNotSubmit: Story = {
+  render: () => <ProductForm defaults={defaults} onClose={fn()} onSaved={savedProduct} />,
+  play: async () => {
+    await expectButtonsDoNotSubmit(document.body)
+    await expect(savedProduct).not.toHaveBeenCalled()
+  },
+}
+export const ClientButtonsDoNotSubmit: Story = {
+  render: () => <ClientForm onClose={fn()} onSaved={savedClient} />,
+  play: async () => {
+    await expectButtonsDoNotSubmit(document.body)
+    await expect(savedClient).not.toHaveBeenCalled()
+  },
+}
+export const ExpenseButtonsDoNotSubmit: Story = {
+  render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
+  play: async () => {
+    await waitFor(() => expect(document.querySelector('form button')).not.toBeNull())
+    // Save draft saves on purpose, as a second save button beside Save and book.
+    await expectButtonsDoNotSubmit(document.body, { skip: /^Save draft$/ })
+    await expect(savedExpense).not.toHaveBeenCalled()
   },
 }

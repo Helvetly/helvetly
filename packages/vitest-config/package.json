@@ -8,7 +8,8 @@
     "./setup": "./src/setup.ts",
     "./types": "./src/types.d.ts",
     "./storybook-msw": "./src/storybook-msw.ts",
-    "./console-guard": "./src/console-guard.ts"
+    "./console-guard": "./src/console-guard.ts",
+    "./form-buttons": "./src/form-buttons.ts"
   },
   "dependencies": {
     "@testing-library/jest-dom": "^7.0.1",

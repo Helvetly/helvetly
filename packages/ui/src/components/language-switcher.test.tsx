@@ -70,7 +70,9 @@ function Menu() {
           <LanguageMenuItem onSelect={() => setOpen(true)} />
         </DropdownMenuContent>
       </DropdownMenu>
-      <button ref={trigger}>Account</button>
+      <button type="button" ref={trigger}>
+        Account
+      </button>
       <LanguageDialog open={open} onOpenChange={setOpen} returnFocus={trigger} />
     </>
   )

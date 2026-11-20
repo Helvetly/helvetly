@@ -123,7 +123,11 @@ let current = engagement()
 let undoAction: MouseEventHandler<HTMLButtonElement> | undefined
 const undo = () => {
   // A real button gives the handler a real click event.
-  render(<button onClick={undoAction}>Undo toast</button>)
+  render(
+    <button type="button" onClick={undoAction}>
+      Undo toast
+    </button>,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Undo toast' }))
 }
 let invoiceReply: Response = HttpResponse.json(
