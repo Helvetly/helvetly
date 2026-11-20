@@ -42,8 +42,9 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
   const unread = latest.data?.unread ?? 0
   const toggle = (next: boolean) => {
     setOpen(next)
-    // Opening loads again by itself (the panel's query is never fresh); closing updates the page's lists too.
-    if (!next) void refresh()
+    // Opening loads anew, cancelling a load still on its way with an older cutoff (from closing just before);
+    // closing updates the page's lists too.
+    void (next ? latest.refetch() : refresh())
   }
   const go = () => {
     toggle(false)
