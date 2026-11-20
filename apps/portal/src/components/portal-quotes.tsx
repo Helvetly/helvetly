@@ -141,7 +141,7 @@ function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => 
           </DialogHeader>
           <FormField
             id="quote-note"
-            label={translate('noteOptional')}
+            label={translate('note')}
             hint={translate('upToCharacters', { NOTE_MAX: NOTE_MAX })}
           >
             <Textarea

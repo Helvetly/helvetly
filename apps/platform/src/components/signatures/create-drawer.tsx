@@ -514,7 +514,7 @@ function SignersStep({
       <FormField
         id="sig-days"
         label={translate('expiresAfter')}
-        hint={translate('linksStopWorkingOn', { value1: formatDate(expiryDate(days)) })}
+        status={translate('linksStopWorkingOn', { value1: formatDate(expiryDate(days)) })}
       >
         <div className="flex items-center gap-2">
           <Input

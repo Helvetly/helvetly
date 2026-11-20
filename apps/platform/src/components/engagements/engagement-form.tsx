@@ -461,7 +461,7 @@ function FormSheetBody({
                     field="description"
                     label={translate('description')}
                     error={errors.description}
-                    hint={
+                    status={
                       keptLongDescription(values.description, initial.description)
                         ? translate('descriptionKeptLong', { max: DESCRIPTION_MAX })
                         : undefined
@@ -626,7 +626,7 @@ function FormSheetBody({
                     </FormField>
                     <FormField
                       field="end_date"
-                      label={recurring ? translate('endsOptional') : translate('ends')}
+                      label={translate('ends')}
                       error={errors.end_date}
                       required={!recurring}
                       hint={recurring ? translate('leaveEmptyToRunUntilYouCancelIt') : undefined}

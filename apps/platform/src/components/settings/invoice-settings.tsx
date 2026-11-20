@@ -1363,7 +1363,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     label={translate('currency')}
                     width="md"
                     error={shown.currency}
-                    hint={currencyLocked ?? undefined}
+                    status={currencyLocked ?? undefined}
                   >
                     <fieldset disabled={Boolean(currencyLocked)} className="contents">
                       <Combobox

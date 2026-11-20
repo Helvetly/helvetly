@@ -483,7 +483,7 @@ function ValueFields({
             label={label}
             required={custom}
             error={custom && tried && !value.trim() ? translate('fillThisIn') : undefined}
-            hint={
+            status={
               !custom && !value.trim() ? translate('theClientHasNoneTheBoxStaysEmpty') : undefined
             }
           >

@@ -789,12 +789,12 @@ function CompanyStep({
           id="onboarding-iban"
           label="IBAN"
           error={errors.iban}
-          hint={
-            iban.valid
-              ? iban.qr
-                ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
-                : translate('invoicesGetACreditorReferenceSCOR')
-              : translate('whereClientsPayYouPrintedOnTheQRBill')
+          hint={translate('whereClientsPayYouPrintedOnTheQRBill')}
+          status={
+            iban.valid &&
+            (iban.qr
+              ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
+              : translate('invoicesGetACreditorReferenceSCOR'))
           }
         >
           <input
@@ -863,7 +863,7 @@ function VatCard({
             error={error}
           >
             {swiss ? (
-              <InputGroup className="h-9 bg-card">
+              <InputGroup>
                 <InputGroupAddon>
                   <InputGroupText className="font-code text-foreground">
                     {translate('che2')}
@@ -1047,7 +1047,7 @@ function PreferencesStep({
           id="onboarding-number-format"
           label={translate('numberFormat')}
           error={formatError}
-          hint={
+          status={
             !formatError &&
             translate('yourNextInvoiceNumber', { number: exampleNumber(numberFormat, today(), 1) })
           }

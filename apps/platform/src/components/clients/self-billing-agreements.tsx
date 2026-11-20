@@ -109,13 +109,13 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
             >
               <Input type="date" {...field('starts_on')} />
             </FormField>
-            <FormField id="sba-ends_on" label={translate('endsOnOptional')} error={errors.ends_on}>
+            <FormField id="sba-ends_on" label={translate('endsOn2')} error={errors.ends_on}>
               <Input type="date" {...field('ends_on')} />
             </FormField>
           </div>
           <FormField
             id="sba-accepted_by"
-            label={translate('acceptedByOptional')}
+            label={translate('acceptedBy')}
             error={errors.accepted_by}
           >
             <Input
@@ -124,7 +124,7 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
               {...field('accepted_by')}
             />
           </FormField>
-          <FormField id="sba-note" label={translate('noteOptional')} error={errors.note}>
+          <FormField id="sba-note" label={translate('note')} error={errors.note}>
             <Input
               maxLength={1000}
               placeholder={translate('whereTheSignedAgreementIsFiled')}

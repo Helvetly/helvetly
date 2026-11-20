@@ -121,7 +121,7 @@ test('reject asks first, takes an optional reason, then calls the API', async ()
   const confirm = within(
     await screen.findByRole('dialog', { name: 'Reject the requested changes?' }),
   )
-  await userEvent.type(confirm.getByLabelText('Reason for the client (optional)'), ' Wrong VAT ')
+  await userEvent.type(confirm.getByLabelText('Reason for the client'), ' Wrong VAT ')
   await userEvent.click(confirm.getByRole('button', { name: 'Reject' }))
   expect(await screen.findByText('Request rejected')).toBeTruthy()
   expect(posted(fetchMock, '/reject')).toEqual({ reason: 'Wrong VAT' })

@@ -271,7 +271,7 @@ export function ClientForm({
               label={company ? translate('companyName') : translate('fullName')}
               error={errors.name}
               required
-              hint={
+              status={
                 filled && (
                   <output>
                     {filled.replaced.length
@@ -484,7 +484,7 @@ export function ClientForm({
             label={translate('vatUIDNumber')}
             error={errors.vat_number}
             tip={translate('swissUIDLikeCHE123456789MWSTOr')}
-            hint={uidToCheck(values.vat_number) && <RegisterCheckHint vat={values.vat_number} />}
+            status={uidToCheck(values.vat_number) && <RegisterCheckHint vat={values.vat_number} />}
           >
             <input
               {...describe('vat_number')}

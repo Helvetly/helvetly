@@ -269,8 +269,3 @@
     grid-column: auto / span 6;
   }
 }
-
-/* One control height in settings: plain inputs match the comboboxes and selects (2.25rem). */
-[data-slot='settings-fields'] [data-slot='input'] {
-  height: 2.25rem;
-}

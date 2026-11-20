@@ -36,7 +36,7 @@ describe('SelfBillingAgreements', () => {
     expect(screen.getByText('Enter the start date.')).toBeTruthy()
 
     await userEvent.type(screen.getByLabelText(/^Starts on\*?$/), '2027-01-01')
-    await userEvent.type(screen.getByLabelText('Accepted by (optional)'), 'Eva Keller')
+    await userEvent.type(screen.getByLabelText('Accepted by'), 'Eva Keller')
     await userEvent.click(screen.getByRole('button', { name: 'Save agreement' }))
     expect(await screen.findByText(/Eva Keller/)).toBeTruthy()
 

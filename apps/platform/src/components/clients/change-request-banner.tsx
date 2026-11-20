@@ -333,9 +333,7 @@ function ChangeRequestReview({
             }}
           >
             <div className="mt-4 grid gap-1.5 text-left">
-              <Label htmlFor="change-request-reason">
-                {translate('reasonForTheClientOptional')}
-              </Label>
+              <Label htmlFor="change-request-reason">{translate('reasonForTheClient')}</Label>
               <Textarea
                 id="change-request-reason"
                 value={reason}

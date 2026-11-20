@@ -259,7 +259,6 @@ export function QuickLog({
               clear('performed_by')
               setBy(event.target.value)
             }}
-            className="h-8"
           >
             <option value="">{translate('me')}</option>
             {members.data
@@ -274,12 +273,12 @@ export function QuickLog({
         </div>
       </div>
       <div className="grid gap-1.5">
-        <label htmlFor={`${id}-note`} className={label}>
-          {translate('note')}{' '}
-          <span className="font-normal text-placeholder">
-            {translate('optionalShownOnPerEntryInvoiceLines')}
-          </span>
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={`${id}-note`} className={label}>
+            {translate('note')}
+          </label>
+          <HelpTip label={translate('note')}>{translate('shownOnPerEntryInvoiceLines')}</HelpTip>
+        </span>
         <Input
           id={`${id}-note`}
           aria-label={translate('note')}
@@ -295,12 +294,14 @@ export function QuickLog({
         {errorText('note')}
       </div>
       <div className="grid gap-1.5">
-        <label htmlFor={`${id}-performance`} className={label}>
-          {translate('clientPerformance')}{' '}
-          <span className="font-normal text-placeholder">
-            {translate('optionalTheClientSeesItInThePortal')}
-          </span>
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={`${id}-performance`} className={label}>
+            {translate('clientPerformance')}
+          </label>
+          <HelpTip label={translate('clientPerformance')}>
+            {translate('clientSeesItInThePortal')}
+          </HelpTip>
+        </span>
         <Input
           id={`${id}-performance`}
           aria-label={translate('clientPerformance')}

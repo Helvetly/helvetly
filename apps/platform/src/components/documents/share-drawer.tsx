@@ -12,6 +12,7 @@ import { formatDate } from '@helvetly/ui/lib/format'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { NativeSelect } from '@/components/clients/fields'
 import { errorMessage } from '@/lib/api'
 import {
   shareDocument,
@@ -57,12 +58,12 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
               {translate('client')}
             </label>
             <div className="flex gap-2">
-              <select
+              <NativeSelect
+                wrapperClassName="flex-1"
                 id="share-client"
                 value={value}
                 disabled={options.length === 0 || add.isPending}
                 onChange={(event) => setChosen(event.target.value)}
-                className="h-9 min-w-0 flex-1 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
               >
                 <option value="">
                   {options.length === 0
@@ -74,7 +75,7 @@ export function ShareDrawer({ file, onClose }: { file: DocFile; onClose: () => v
                     {client.name}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button type="submit" disabled={!value || add.isPending}>
                 {add.isPending ? translate('sharing') : translate('share')}
               </Button>
