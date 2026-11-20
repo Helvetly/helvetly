@@ -128,7 +128,7 @@ function Attention({ invoices, today }: { invoices: PortalInvoice[]; today: stri
         {top.map((invoice) => (
           <li key={invoice.id} className="flex items-center gap-3 px-2 py-3">
             <span className="grid min-w-0 flex-1 leading-tight">
-              <span className="truncate text-body font-medium">{invoice.number}</span>
+              <span className="font-code truncate font-medium">{invoice.number}</span>
               <span
                 className={`text-body-sm ${invoice.is_overdue ? 'text-destructive' : 'text-muted-foreground'}`}
               >

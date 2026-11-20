@@ -430,7 +430,7 @@ function ClientRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px]">{client.name}</span>
         <span className="block truncate text-[12px] text-muted-foreground">
-          #{client.number}
+          <span className="font-code">#{client.number}</span>
           {client.city && ` · ${client.city}`}
           {client.email && ` · ${client.email}`}
         </span>

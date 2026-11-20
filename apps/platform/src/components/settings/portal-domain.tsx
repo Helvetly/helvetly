@@ -321,7 +321,7 @@ function RecordRow({ record }: { record: DomainRecord }) {
   return (
     <li className="grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-body-sm @md:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1.4fr)] @md:items-center @md:gap-3">
       <Field label={translate('dnsRecordType')}>
-        <span className="font-mono">{record.type}</span>
+        <span className="font-code">{record.type}</span>
       </Field>
       <Field label={translate('dnsRecordName')}>
         <Copyable value={record.name} label={translate('copyDnsName')} />
@@ -350,7 +350,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Copyable({ value, label }: { value: string; label: string }) {
   return (
     <span className="flex min-w-0 items-center gap-1">
-      <span className="min-w-0 font-mono break-all">{value}</span>
+      <span className="font-code min-w-0 break-all">{value}</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

@@ -175,7 +175,7 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {employee.employee_number && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-caption text-muted-foreground">
+            <span className="font-code ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
               {employee.employee_number}
             </span>
           )}
@@ -622,17 +622,17 @@ function ProtectedPanel({ employee, canReveal }: { employee: Employee; canReveal
       }
     >
       <Row label={translate('employeeRowBankAccount')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.bank_account : hint(employee.bank_account_hint)}
         </span>
       </Row>
       <Row label={translate('employeeTaxId')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.tax_id : hint(employee.tax_id_hint)}
         </span>
       </Row>
       <Row label={translate('employeeSocialSecurityNumber')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.social_security_number : hint(employee.social_security_number_hint)}
         </span>
       </Row>

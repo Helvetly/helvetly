@@ -150,7 +150,7 @@ function IdentifierRow({
           />
         )
       }
-      value={value && <span className="font-mono text-[13px]">{value}</span>}
+      value={value && <span className="font-code">{value}</span>}
     />
   )
 }
@@ -246,7 +246,7 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {product.sku && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px] text-muted-foreground">
+            <span className="font-code ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption text-muted-foreground">
               {product.sku}
             </span>
           )}

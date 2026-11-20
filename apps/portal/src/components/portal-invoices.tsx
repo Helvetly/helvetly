@@ -84,7 +84,7 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
     <li className={rowClass}>
       <IconTile icon={FileText} variant="row" size="lg" className="max-sm:hidden" />
       <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
-        <span className="truncate text-body font-medium">{invoice.number}</span>
+        <span className="font-code truncate font-medium">{invoice.number}</span>
         <span
           // Not cn(): tailwind-merge would drop the type-scale size for the colour.
           className={`truncate text-body-sm ${invoice.is_overdue ? 'text-destructive' : 'text-muted-foreground'}`}

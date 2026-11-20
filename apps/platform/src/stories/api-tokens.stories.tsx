@@ -55,7 +55,7 @@ export const List: Story = {
     // A custom token: one badge per resource, writes tinted.
     await expect(canvas.getByText('Invoices and payments · write')).toBeVisible()
     await expect(canvas.getByText('Expenses · read')).toBeVisible()
-    await expect(canvas.getByText('hvt_K7QM…')).toHaveClass('font-mono')
+    await expect(canvas.getByText('hvt_K7QM…')).toHaveClass('font-code')
     await expect(
       canvas.getByText(/Side project · created .* · never used · never expires/),
     ).toBeVisible()

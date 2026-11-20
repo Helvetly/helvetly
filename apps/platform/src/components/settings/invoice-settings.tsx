@@ -1128,7 +1128,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                         value={values.vat_number}
                         onChange={(e) => set('vat_number', formatUid(e.target.value))}
                         placeholder={translate('eGCHE123456789MWST')}
-                        className={cn(bigInput, 'font-mono text-body')}
+                        className={cn(bigInput, 'font-code text-body')}
                       />
                     </FormField>
                     <>
@@ -1199,7 +1199,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     onBlur={() => iban.valid && set('iban', iban.formatted)}
                     placeholder={translate('eGCH9300762011623852957')}
                     spellCheck={false}
-                    className={cn(bigInput, 'font-mono text-body tracking-wide')}
+                    className={cn(bigInput, 'font-code text-body tracking-wide')}
                   />
                 </FormField>
                 <FormField
@@ -1224,7 +1224,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     onChange={(e) => set('bic', e.target.value.toUpperCase())}
                     placeholder={translate('eGZKBKCHZZ80A')}
                     spellCheck={false}
-                    className={cn(bigInput, 'font-mono text-body tracking-wide')}
+                    className={cn(bigInput, 'font-code text-body tracking-wide')}
                   />
                 </FormField>
                 {values.iban.trim() && iban.valid && <IbanNote iban={iban} />}
@@ -1280,7 +1280,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     <div className="relative">
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-body text-muted-foreground"
+                        className="font-code pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-body text-muted-foreground"
                       >
                         {translate('revolutMe')}
                       </span>
@@ -1295,7 +1295,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                         placeholder={translate('yourname')}
                         className={cn(
                           bigInput,
-                          'pl-[104px] font-mono text-body',
+                          'font-code pl-[104px] text-body',
                           revolutName && 'pr-11',
                         )}
                       />

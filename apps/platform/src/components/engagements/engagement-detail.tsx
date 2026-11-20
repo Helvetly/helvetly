@@ -150,7 +150,7 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
         <div className="flex h-12 items-center gap-1 px-3">
           <span className="text-body-sm text-muted-foreground">
             {translate('engagement')}
-            {engagement.number}
+            <span className="font-code">{engagement.number}</span>
           </span>
           <div className="ml-auto flex items-center gap-1">
             {writable && (

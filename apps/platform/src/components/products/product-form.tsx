@@ -427,7 +427,7 @@ export function ProductForm({
                     value={values.sku}
                     onChange={(event) => set('sku', event.target.value)}
                     placeholder={translate('webHOUR')}
-                    className={cn(inputClass, 'font-mono text-[13px]')}
+                    className={cn(inputClass, 'font-code text-[13px]')}
                   />
                 </FormField>
                 {values.type === 'product' && (
@@ -443,7 +443,7 @@ export function ProductForm({
                       value={values.gtin}
                       onChange={(event) => set('gtin', event.target.value)}
                       placeholder="7612345678900"
-                      className={cn(inputClass, 'font-mono text-[13px]')}
+                      className={cn(inputClass, 'font-code text-[13px]')}
                     />
                   </FormField>
                 )}

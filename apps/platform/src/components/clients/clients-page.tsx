@@ -107,7 +107,7 @@ const COLUMNS: ColumnDef[] = [
     width: 'w-[76px]',
     sort: 'number',
     visible: true,
-    cell: (client) => <span className="text-muted-foreground tabular-nums">#{client.number}</span>,
+    cell: (client) => <span className="font-code text-muted-foreground">#{client.number}</span>,
   },
   {
     id: 'name',
@@ -1087,9 +1087,7 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="truncate text-[15px]">
               {client.name}{' '}
-              <span className="text-[13px] text-muted-foreground tabular-nums">
-                #{client.number}
-              </span>
+              <span className="font-code text-[13px] text-muted-foreground">#{client.number}</span>
             </span>
             <span className="truncate text-[13px] text-muted-foreground">
               {[client.email, client.city].filter(Boolean).join(' · ') ||

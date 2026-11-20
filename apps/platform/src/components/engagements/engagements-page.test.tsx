@@ -187,7 +187,7 @@ test('attention renders text only', () => {
 test('lists engagements with client, period and billing', async () => {
   renderPage()
   expect(await screen.findAllByText('Support retainer')).not.toHaveLength(0)
-  expect(screen.getAllByText(/Muster AG · #4/)).not.toHaveLength(0)
+  expect(screen.getAllByText('#4')[0]?.parentElement).toHaveTextContent('Muster AG · #4')
   expect(screen.getByText('1.–30. Nov 2026')).toBeInTheDocument()
   expect(screen.getByText('Advance')).toBeInTheDocument()
   expect(lib.listEngagements).toHaveBeenCalledWith(

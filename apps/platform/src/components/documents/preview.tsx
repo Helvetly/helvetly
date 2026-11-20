@@ -485,7 +485,7 @@ function Details({
                 .writeText(file.sha256 ?? '')
                 .then(() => toast.success(translate('sha256Copied')))
             }
-            className="group/sha flex w-full cursor-pointer items-center gap-2 rounded-lg bg-muted/60 py-2 pr-2 pl-2.5 text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+            className="group/sha font-code flex w-full cursor-pointer items-center gap-2 rounded-lg bg-muted/60 py-2 pr-2 pl-2.5 text-left text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="min-w-0 flex-1 truncate">
               {translate('sha256')}
@@ -617,7 +617,9 @@ function AttachClient({ onPick }: { onPick: (clientId: string) => void }) {
               >
                 <Link2 className="size-3.5 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate">{client.name}</span>
-                <span className="text-[12px] text-muted-foreground">#{client.number}</span>
+                <span className="font-code text-[12px] text-muted-foreground">
+                  #{client.number}
+                </span>
               </button>
             ))
           )}

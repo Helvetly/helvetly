@@ -73,7 +73,7 @@ export function InstalmentSchedule({
               <td className="py-2">
                 <span className="whitespace-nowrap tabular-nums">{formatDay(item.due_date)}</span>
                 {item.reference && (
-                  <span className="block font-mono text-[11.5px] text-muted-foreground max-sm:hidden">
+                  <span className="font-code block text-muted-foreground max-sm:hidden">
                     {groupReference(item.reference)}
                   </span>
                 )}
