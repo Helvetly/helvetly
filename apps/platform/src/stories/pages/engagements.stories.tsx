@@ -321,12 +321,28 @@ const entry = (id: string, periodId: string, date: string, quantity: string, not
 const log: Entry[] = [
   entry('ent_5', 'epr_1', '2026-11-07', '1', 'Call with Lena about the launch'),
   entry('ent_4', 'epr_1', '2026-11-05', '3', 'Brand guidelines, typography and colour pages'),
+  {
+    ...entry('ent_6', 'epr_1', '2026-11-05', '0.5', 'Review call'),
+    client_performance: 'You did well',
+    client_performance_on_invoice: true,
+    performed_by: { id: 'usr_9', name: 'Maximiliane Kowalczyk-Sonnenberg' },
+  },
   entry('ent_3', 'epr_1', '2026-11-03', '2.5', null),
   entry('ent_2', 'epr_0', '2026-10-21', '6', 'Homepage layout'),
   entry('ent_1', 'epr_0', '2026-10-08', '5', 'Kick-off workshop'),
 ]
+// Invoiced with a line per entry, so an entry's performance chosen for the invoice shows "on invoice".
+const perEntry = engagements.map((one) =>
+  one.id === 'eng_1' ? { ...one, invoice_detail: 'per_entry' as const } : one,
+)
 const drawer = (entries: Entry[]) =>
   pageParameters('/engagements', { id: 'eng_1' }, [
+    http.get('/api/v1/engagements/:id', ({ params }) => {
+      const found = perEntry.find((one) => one.id === params.id)
+      // Anything else (the summary) falls through to the page's own handlers.
+      return found && HttpResponse.json({ data: found })
+    }),
+    http.get('/api/v1/engagements', () => HttpResponse.json(page(perEntry))),
     http.get('/api/v1/engagements/:id/periods', () => HttpResponse.json({ data: history })),
     http.get('/api/v1/engagements/:id/entries', () => HttpResponse.json({ data: entries })),
   ])
@@ -338,7 +354,27 @@ export const DetailSections: Story = {
     await shows('Kick-off workshop')?.(context)
     const body = within(document.body)
     const current = body.getByRole('region', { name: '1.–30. Nov 2026' })
-    await expect(current).toHaveTextContent('3 entries · 6.5 h')
+    await expect(current).toHaveTextContent('4 entries · 7 h')
+    // Each day owns its entries: two on Thu 5 Nov.
+    const days = within(current).getAllByRole('time')
+    await expect(days.map((day) => day.textContent)).toEqual([
+      'Sat 7 Nov',
+      'Thu 5 Nov',
+      'Tue 3 Nov',
+    ])
+    const thursday = within(days[1]?.parentElement ?? current).getAllByRole('listitem')
+    await expect(thursday).toHaveLength(2)
+    const review = thursday[1] ?? current
+    await expect(review).toHaveTextContent('Review call')
+    await expect(review).toHaveTextContent('Client performance: You did well')
+    await expect(within(review).getByText('on invoice')).toBeVisible()
+    // A long author name is cut short, and the tooltip says it whole.
+    const author = within(review).getByText('Maximiliane Kowalczyk-Sonnenberg')
+    await expect(author.scrollWidth).toBeGreaterThan(author.clientWidth)
+    await userEvent.hover(author)
+    await waitFor(() =>
+      expect(body.getByRole('tooltip')).toHaveTextContent('Maximiliane Kowalczyk-Sonnenberg'),
+    )
     await expect(current).toHaveTextContent('No note')
     await expect(body.getByRole('region', { name: '1.–31. Oct 2026' })).toHaveTextContent(
       '2 entries · 11 h',
@@ -467,14 +503,23 @@ export const RowMenuLogDelivery: Story = {
     await expect(within(dialog).getByRole('button', { name: 'Log' })).toBeDisabled()
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1,5')
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4')
-    // Client performance stays off the invoice unless chosen.
-    const onInvoice = within(dialog).getByRole('checkbox', { name: 'Show on invoice' })
+    // German lessons invoice a line per entry: the performance can go on it, once there is one, and only if chosen.
+    const onInvoice = within(dialog).getByRole('checkbox', {
+      name: 'Also print on the invoice line',
+    })
+    await expect(onInvoice).toBeDisabled()
+    const performance = within(dialog).getByRole('textbox', { name: 'Client performance' })
+    await userEvent.type(performance, 'Well prepared')
+    await expect(onInvoice).toBeEnabled()
     await expect(onInvoice).not.toBeChecked()
-    await userEvent.click(onInvoice)
-    await userEvent.type(
-      within(dialog).getByRole('textbox', { name: 'Client performance' }),
-      'Well prepared{Enter}',
+    await userEvent.hover(
+      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
     )
+    await waitFor(() =>
+      expect(body.getByRole('tooltip')).toHaveTextContent('20.11.2026 · Lesson · You did well'),
+    )
+    await userEvent.click(onInvoice)
+    await userEvent.type(performance, '{Enter}')
     await waitFor(() => expect(body.queryByRole('dialog', { name: 'Log delivery' })).toBeNull())
     await expect(logged).toMatchObject({
       quantity: '1.5',
@@ -487,6 +532,32 @@ export const RowMenuLogDelivery: Story = {
   },
 }
 export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
+
+/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is off and says why. */
+export const LogDeliverySummaryInvoice: Story = {
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for Bookkeeping support' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Log delivery' }))
+    const dialog = await body.findByRole('dialog', { name: 'Log delivery' })
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: 'Client performance' }),
+      'Well prepared',
+    )
+    await expect(
+      within(dialog).getByRole('checkbox', { name: 'Also print on the invoice line' }),
+    ).toBeDisabled()
+    await userEvent.hover(
+      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
+    )
+    await waitFor(() =>
+      expect(body.getByRole('tooltip')).toHaveTextContent(
+        'This engagement invoices one summary line',
+      ),
+    )
+  },
+}
 
 // Design retainer as one recorded on 19 Nov 2026: its first period runs from then to the end of the year.
 const late = {

@@ -2,11 +2,12 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
-import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
+import { StatusBadge, TONES, type Tone } from '@helvetly/ui/components/status-badge'
+import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Gauge } from 'lucide-react'
+import { ChevronDown, Gauge, MessageSquareQuote } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 
 import { civilToday, daysLeftText } from '@/lib/dates'
@@ -63,42 +64,103 @@ function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
   )
 }
 
-/** One logged delivery: date, quantity, the note and, when the supplier wrote one, the client performance. */
-function ActivityRow({
-  entry,
-  unit,
-}: {
-  entry: PortalEngagementPeriod['entries'][number]
-  unit: string
-}) {
+type Entry = PortalEngagementPeriod['entries'][number]
+
+/** Sums decimal quantities without float noise ("0.1" + "0.2" is 0.3). */
+const total = (entries: Entry[]) =>
+  Math.round(entries.reduce((sum, entry) => sum + Number(entry.quantity) * 1000, 0)) / 1000
+
+/** One logged delivery: the note first, its quantity on the right, the client performance under the note. */
+function ActivityEntry({ entry, unit }: { entry: Entry; unit: string }) {
   const performance = entry.client_performance?.trim()
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)_6rem]">
-      <time
-        dateTime={entry.date}
-        className="text-body-sm text-muted-foreground tabular-nums sm:pt-px"
-      >
-        {formatDate(entry.date)}
-      </time>
-      <span className="text-right text-body-sm font-medium whitespace-nowrap tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-px">
+    <li className="flex items-start justify-between gap-3">
+      <div className="grid min-w-0 gap-1">
+        {entry.note ? (
+          <p className="text-body break-words">{entry.note}</p>
+        ) : (
+          <p className="text-body text-muted-foreground italic">{translate('noNote')}</p>
+        )}
+        {performance && (
+          <p className="flex gap-1.5 border-l-2 pl-2 text-body-sm break-words text-muted-foreground">
+            <MessageSquareQuote aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            <span className="min-w-0">
+              <span className="font-medium text-foreground/80">
+                {translate('clientPerformance')}
+              </span>
+              <span className="sr-only">:</span> {performance}
+            </span>
+          </p>
+        )}
+      </div>
+      <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 text-body-sm font-medium whitespace-nowrap tabular-nums">
         {Number(entry.quantity)} {unit}
       </span>
-      {(entry.note || performance) && (
-        <div className="col-span-2 grid min-w-0 gap-1.5 sm:col-span-1 sm:col-start-2 sm:row-start-1">
-          {entry.note && <p className="text-body break-words">{entry.note}</p>}
-          {performance && (
-            <p className="rounded-md bg-muted/60 px-2.5 py-1.5 text-body-sm break-words text-muted-foreground">
-              <span className="font-medium text-foreground">{translate('clientPerformance')}:</span>{' '}
-              {performance}
-            </p>
-          )}
-        </div>
-      )}
     </li>
   )
 }
 
-/** Every logged delivery, newest first, with a light divider where a period starts. */
+/** One period: its range and what was used in it, then its days, each owning that day's entries. */
+function ActivityPeriod({
+  period,
+  engagement,
+}: {
+  period: PortalEngagementPeriod
+  engagement: PortalEngagement
+}) {
+  const id = useId()
+  const current = period.starts_on === engagement.current_period?.starts_on
+  return (
+    <section aria-labelledby={id} className="grid gap-1">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b pb-2">
+        <div className="flex items-center gap-2">
+          <h3 id={id} className="text-body tabular-nums">
+            {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
+          </h3>
+          {current && (
+            <StatusBadge tone="blue" size="sm">
+              {translate('currentPeriod')}
+            </StatusBadge>
+          )}
+        </div>
+        <p className="text-body-sm text-muted-foreground tabular-nums">
+          {translate('ofUsed', {
+            value1: total(period.entries),
+            quantity: Number(engagement.quantity),
+            unit: engagement.unit,
+          })}
+          {' · '}
+          {translate('entriesCount', { count: period.entries.length })}
+        </p>
+      </header>
+      {period.entries.length === 0 ? (
+        <p className="py-3 text-body-sm text-muted-foreground">
+          {translate('nothingLoggedInThisPeriod')}
+        </p>
+      ) : (
+        <ol className="divide-y divide-border/60">
+          {byDay(period.entries).map((day) => (
+            <li
+              key={day.date}
+              className="grid gap-2 py-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-4"
+            >
+              <time dateTime={day.date} className="text-body-sm font-medium tabular-nums sm:pt-0.5">
+                {formatDay(day.date)}
+              </time>
+              <ul className="grid gap-3">
+                {day.items.map((entry) => (
+                  <ActivityEntry key={entry.id} entry={entry} unit={engagement.unit} />
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+/** Every logged delivery, newest first, by period and day. */
 function Activity({ engagement }: { engagement: PortalEngagement }) {
   const query = useQuery({
     queryKey: portalKeys.engagementHistory(engagement.id),
@@ -112,18 +174,9 @@ function Activity({ engagement }: { engagement: PortalEngagement }) {
       <p className="py-2 text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
     )
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-5">
       {query.data.map((period) => (
-        <section key={period.starts_on}>
-          <h3 className="flex items-center gap-3 text-caption font-medium text-muted-foreground tabular-nums after:h-px after:flex-1 after:bg-border">
-            {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
-          </h3>
-          <ol className="divide-y divide-border/60">
-            {period.entries.map((entry) => (
-              <ActivityRow key={entry.id} entry={entry} unit={engagement.unit} />
-            ))}
-          </ol>
-        </section>
+        <ActivityPeriod key={period.starts_on} period={period} engagement={engagement} />
       ))}
     </div>
   )
