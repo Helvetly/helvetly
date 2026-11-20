@@ -2610,6 +2610,8 @@
   "requestsYouSent": "Requests you sent",
   "resend": " Resend",
   "resets": "Resets {at}",
+  "resetColumnWidths": "Reset column widths",
+  "resizeColumn": "Resize {column}",
   "resizeHeidi": "Resize Heidi",
   "resource": "Resource",
   "restAPI": "REST API",

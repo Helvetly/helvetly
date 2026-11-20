@@ -52,6 +52,11 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
+import {
+  ColumnResizer,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -129,8 +134,12 @@ const BULK_DONE: Record<BulkAction, string> = {
   delete: 'deleted',
 }
 
+/** Status and receipt keep their widths: short badges and an icon. */
+const RESIZABLE = ['number', 'supplier', 'category', 'date', 'total']
+
 /** The expenses list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ExpensesPage() {
+  const widths = useResizableColumns('expenses', RESIZABLE, { flex: 'supplier' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -474,7 +483,7 @@ export function ExpensesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
                     <th className={listTable.select}>
@@ -492,6 +501,7 @@ export function ExpensesPage() {
                       return (
                         <th
                           key={column.id}
+                          {...widths.head(column.id)}
                           aria-sort={
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
@@ -522,6 +532,13 @@ export function ExpensesPage() {
                           ) : (
                             column.label
                           )}
+                          {RESIZABLE.includes(column.id) && (
+                            <ColumnResizer
+                              columns={widths}
+                              column={column.id}
+                              label={column.label}
+                            />
+                          )}
                         </th>
                       )
                     })}
@@ -542,7 +559,7 @@ export function ExpensesPage() {
                     />
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((expense) => (

@@ -21,6 +21,11 @@ import { useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { dropdownKit, PageContextMenu, type MenuKit } from '@/components/data/menus'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -66,8 +71,12 @@ const VIEWS: { status: QuoteStatus | null; label: string; icon: LucideIcon }[] =
   })),
 ]
 
+/** Status keeps its width: badges are short and the same everywhere. */
+const RESIZABLE = ['number', 'client', 'date', 'valid', 'total']
+
 /** The quotes list; the status view, the search (?q=), the open quote (?id=) and a new one (?new=1) live in the URL. */
 export function QuotesPage() {
+  const widths = useResizableColumns('quotes', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
   const pathname = usePathname()
   const query = useSearchParams()
@@ -216,18 +225,39 @@ export function QuotesPage() {
             )
           ) : (
             <>
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
-                    <th className={cn(listTable.th, 'w-[180px]')}>{translate('number')}</th>
-                    <th className={listTable.th}>{translate('client')}</th>
-                    <th className={cn(listTable.th, 'hidden w-[128px] @6xl:table-cell')}>
-                      {translate('date')}
-                    </th>
-                    <th className={cn(listTable.th, 'w-[128px]')}>{translate('validUntil3')}</th>
-                    <th className={cn(listTable.th, listTable.numeric, 'w-[17%]')}>
-                      {translate('total')}
-                    </th>
+                    <ResizableHead
+                      columns={widths}
+                      column="number"
+                      label={translate('number')}
+                      className={cn(listTable.th, 'w-[180px]')}
+                    />
+                    <ResizableHead
+                      columns={widths}
+                      column="client"
+                      label={translate('client')}
+                      className={listTable.th}
+                    />
+                    <ResizableHead
+                      columns={widths}
+                      column="date"
+                      label={translate('date')}
+                      className={cn(listTable.th, 'hidden w-[128px] @6xl:table-cell')}
+                    />
+                    <ResizableHead
+                      columns={widths}
+                      column="valid"
+                      label={translate('validUntil3')}
+                      className={cn(listTable.th, 'w-[128px]')}
+                    />
+                    <ResizableHead
+                      columns={widths}
+                      column="total"
+                      label={translate('total')}
+                      className={cn(listTable.th, listTable.numeric, 'w-[17%]')}
+                    />
                     <th className={cn(listTable.th, 'w-[120px]')}>{translate('status')}</th>
                   </tr>
                 </thead>
@@ -285,7 +315,7 @@ export function QuotesPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((quote) => (

@@ -2610,6 +2610,8 @@
   "requestsYouSent": "Richieste inviate",
   "resend": " Reinvia",
   "resets": "Ripristina {at}",
+  "resetColumnWidths": "Ripristina la larghezza delle colonne",
+  "resizeColumn": "Ridimensiona {column}",
   "resizeHeidi": "Ridimensiona Heidi",
   "resource": "Risorsa",
   "restAPI": "RIPOSO API",

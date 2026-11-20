@@ -14,6 +14,11 @@ import { NativeSelect } from '@/components/clients/fields'
 import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { PageHeader } from '@/components/shell/page-header'
@@ -233,15 +238,38 @@ export function EmployeesPage() {
 }
 
 function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string) => void }) {
+  const widths = useResizableColumns('employees', ['name', 'position', 'department', 'since'], {
+    flex: 'name',
+  })
   return (
     <>
-      <table className={cn(listTable.table, 'hidden lg:table')}>
+      <ResizableTable columns={widths} className={cn(listTable.table, 'hidden lg:table')}>
         <thead>
           <tr className={listTable.head}>
-            <th className={cn(listTable.th, 'w-[30%]')}>{translate('employeeColName')}</th>
-            <th className={cn(listTable.th, 'w-[22%]')}>{translate('employeePosition')}</th>
-            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeDepartment')}</th>
-            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeColSince')}</th>
+            <ResizableHead
+              columns={widths}
+              column="name"
+              label={translate('employeeColName')}
+              className={cn(listTable.th, 'w-[30%]')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="position"
+              label={translate('employeePosition')}
+              className={cn(listTable.th, 'w-[22%]')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="department"
+              label={translate('employeeDepartment')}
+              className={cn(listTable.th, 'w-[16%]')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="since"
+              label={translate('employeeColSince')}
+              className={cn(listTable.th, 'w-[16%]')}
+            />
             <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeStatusLabel')}</th>
           </tr>
         </thead>
@@ -277,7 +305,7 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string
             </tr>
           ))}
         </tbody>
-      </table>
+      </ResizableTable>
       <ul className={cn(listTable.list, 'lg:hidden')}>
         {rows.map((employee) => {
           const content = (

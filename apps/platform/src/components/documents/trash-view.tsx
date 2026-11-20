@@ -9,6 +9,11 @@ import type { ReactNode } from 'react'
 
 import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { daysLeft, formatSize, isRetained, type TrashItem } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
@@ -44,6 +49,7 @@ export function TrashView({
   onEmpty: () => void
   canDelete: boolean
 }) {
+  const widths = useResizableColumns('trash', ['name', 'was', 'deleted', 'size'], { flex: 'name' })
   const canWrite = useCan('write:documents')
   if (error) return <LoadProblem error={error} what={translate('theTrash')} onRetry={onRetry} />
   if (!items) return <LoadingRows />
@@ -73,7 +79,7 @@ export function TrashView({
           </Button>
         )}
       </div>
-      <table className={listTable.table}>
+      <ResizableTable columns={widths} className={listTable.table}>
         <thead>
           <tr className={listTable.head}>
             <th className={listTable.select}>
@@ -83,14 +89,30 @@ export function TrashView({
                 onCheckedChange={(checked) => onToggleAll(checked === true)}
               />
             </th>
-            <th className={listTable.th}>{translate('name')}</th>
-            <th className={cn(listTable.th, 'hidden w-[18%] @4xl:table-cell')}>
-              {translate('wasIn')}
-            </th>
-            <th className={cn(listTable.th, 'hidden w-[18%] @5xl:table-cell')}>
-              {translate('deleted2')}
-            </th>
-            <th className={cn(listTable.th, listTable.numeric, 'w-[10%]')}>{translate('size')}</th>
+            <ResizableHead
+              columns={widths}
+              column="name"
+              label={translate('name')}
+              className={listTable.th}
+            />
+            <ResizableHead
+              columns={widths}
+              column="was"
+              label={translate('wasIn')}
+              className={cn(listTable.th, 'hidden w-[18%] @4xl:table-cell')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="deleted"
+              label={translate('deleted2')}
+              className={cn(listTable.th, 'hidden w-[18%] @5xl:table-cell')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="size"
+              label={translate('size')}
+              className={cn(listTable.th, listTable.numeric, 'w-[10%]')}
+            />
             <th className={cn(listTable.th, 'w-[150px]')}>{translate('deletedForGood')}</th>
             <th className="w-[92px] pr-3">
               <span className="sr-only">{translate('actions')}</span>
@@ -196,7 +218,7 @@ export function TrashView({
             )
           })}
         </tbody>
-      </table>
+      </ResizableTable>
     </div>
   )
 }
