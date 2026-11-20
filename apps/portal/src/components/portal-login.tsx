@@ -1,5 +1,4 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
@@ -19,7 +18,6 @@ import {
   verifyPortalCode,
 } from '@/lib/portal'
 import { scoped, scopePrefix } from '@/lib/scope'
-import { siteUrl } from '@/lib/site'
 
 import { WorkspaceMark } from './portal-bits'
 import { PortalLinksRequest } from './portal-links-request'
@@ -101,19 +99,14 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
             </div>
           )}
         </div>
-        <p className="text-center text-body-sm text-balance text-muted-foreground">
-          <ShieldCheck className="mr-1.5 inline size-4 -translate-y-px text-brand" aria-hidden />
-          {translate('noPasswordWeEmailYouAOneTimeCode')}
-        </p>
-        <p className="text-center text-body-sm text-muted-foreground">
-          <a
-            href={localizedHref(siteUrl('/privacy'))}
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            {translate('privacyPolicy')}
-          </a>
-        </p>
-        <div className="-mt-3 flex justify-center">
+        {/* The shared page emails portal links, not a code. */}
+        {!shared && (
+          <p className="text-center text-body-sm text-balance text-muted-foreground">
+            <ShieldCheck className="mr-1.5 inline size-4 -translate-y-px text-brand" aria-hidden />
+            {translate('noPasswordWeEmailYouAOneTimeCode')}
+          </p>
+        )}
+        <div className="flex justify-center">
           <LanguageDialogButton />
         </div>
       </div>
