@@ -2,12 +2,13 @@ import '@helvetly/ui/globals.css'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
+import { expectQuietConsole, guardConsole } from '@helvetly/vitest-config/console-guard'
 import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { configure } from 'storybook/test'
+import { configure, getConfig } from 'storybook/test'
 
 import { RecordDrawers } from '../src/components/record-drawers'
 import { clippedRings } from '../src/stories/focus-ring'
@@ -17,6 +18,9 @@ import { storyDefaults } from '../src/stories/screen-fixtures'
 // (settings, books, ledger), so a random one failed although nothing was wrong; 5 s waits for slow renders only and
 // still fails a story whose expected state never appears.
 configure({ asyncUtilTimeout: 5000 })
+
+// Only the test run fails a story on console output; the built Storybook (and its screenshots) shows the story.
+if (import.meta.env.MODE === 'test') guardConsole()
 
 // In the test run enter animations end at once: a play asserting a dialog or sheet that was still fading in read
 // opacity 0 under CI load. Exit animations, delays and loops keep their timing; Storybook itself keeps all motion.
@@ -73,6 +77,22 @@ const startUrl = window.location.href
 
 const preview: Preview = {
   beforeEach: (context) => {
+    // Storybook wraps every Testing Library event in act (set per story, hence here). A blur that user-event
+    // fires inside one event dispatches `change` through the same wrapper, and act inside a busy act makes React
+    // warn "suspended inside an act scope". The outer act already flushes the nested event's updates.
+    const wrap = getConfig().eventWrapper
+    let inside = false
+    configure({
+      eventWrapper: (event) => {
+        if (inside) return event()
+        inside = true
+        try {
+          return wrap(event)
+        } finally {
+          inside = false
+        }
+      },
+    })
     undefinedQueries = []
     window.history.replaceState(null, '', startUrl)
     // sonner replays every toast still open when a Toaster mounts: the last story's toast would show in this one.
@@ -99,6 +119,7 @@ const preview: Preview = {
     const clipped = clippedRings(document)
     if (clipped.length > 0) throw new Error(`Focus ring cut off:\n${clipped.join('\n')}`)
     expectAllHandled()
+    expectQuietConsole()
     if (undefinedQueries.length > 0)
       throw new Error(`Query answered without data:\n${[...new Set(undefinedQueries)].join('\n')}`)
   },

@@ -73,12 +73,16 @@ export const TemplateRowEdits: Story = {
 
 /** Signatures, like Templates and Trash, drops the page's file actions for its own one. */
 export const Signatures: Story = {
-  parameters: pageParameters('/documents', { view: 'signatures' }),
+  parameters: pageParameters('/documents', { view: 'signatures' }, [
+    http.get('/api/v1/signatures', () => HttpResponse.json({ data: [] })),
+  ]),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await expect(
-      await body.findByRole('button', { name: 'PDF for signature' }, { timeout: 8000 }),
+      await body.findByText('Nothing out for signature', {}, { timeout: 8000 }),
     ).toBeVisible()
+    // The page's own action, and the empty list's.
+    await expect(body.getAllByRole('button', { name: 'PDF for signature' })).toHaveLength(2)
     for (const name of ['Upload', 'Create', 'Organize with AI'])
       expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
   },

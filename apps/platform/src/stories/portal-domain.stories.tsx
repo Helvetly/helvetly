@@ -229,6 +229,34 @@ export const PlanLocked: Story = {
   },
 }
 
+/**
+ * Pro with an operator's override of the feature: the API lists it (and the client portal it requires) among the
+ * workspace's features, so the form is there as on Business, no upsell.
+ */
+export const ProWithOverride: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/billing', () => {
+          const pro = billingFixture({ locked: false, plan: 'pro', status: 'active' })
+          return HttpResponse.json({
+            data: { ...pro, features: [...pro.features, 'client_portal', 'custom_portal_domain'] },
+          })
+        }),
+        ...portalDomainHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByLabelText(/^Domain/)
+    await expect(canvas.queryByRole('link', { name: 'Upgrade to Business' })).toBeNull()
+    await userEvent.type(input, 'portal.firma.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Add domain' }))
+    await expect(await canvas.findByText('Waiting for DNS')).toBeVisible()
+  },
+}
+
 /** The API's refusals show at the field: a main domain, another workspace's, another Cloudflare account's. */
 export const Refused: Story = {
   play: async ({ canvasElement }) => {

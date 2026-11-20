@@ -88,8 +88,10 @@ export function DocumentLogoFrame({
     >
       {/* The box is placed by the same maths as the export; the object URL is local, so nothing to optimise. */}
       <span
-        className="pointer-events-none absolute"
+        className="pointer-events-none"
+        // Position inline with the rest of the placement: next/image's fill check reads it from the style.
         style={{
+          position: 'absolute',
           left: `${(at.x / ratio) * 100}%`,
           top: `${at.y * 100}%`,
           width: `${(at.width / ratio) * 100}%`,

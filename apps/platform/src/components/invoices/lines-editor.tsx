@@ -469,6 +469,7 @@ export function LinesEditor({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon-xs"
                     aria-label={translate('actionsForLine', { value1: index + 1 })}
@@ -515,6 +516,7 @@ export function LinesEditor({
 
       <div className="flex flex-wrap items-center gap-1 pt-2">
         <Button
+          type="button"
           variant="ghost"
           data-field="add-line"
           className="gap-1.5 px-2 text-link hover:text-link"
@@ -553,7 +555,11 @@ export function LinesEditor({
                 { key: next.key, field: 'quantity', select: true }
           }}
           trigger={
-            <Button variant="ghost" className="gap-1.5 px-2 text-link hover:text-link">
+            <Button
+              type="button"
+              variant="ghost"
+              className="gap-1.5 px-2 text-link hover:text-link"
+            >
               <Package className="size-3.5" />
               {translate('addFromCatalogue')}
             </Button>
@@ -561,6 +567,7 @@ export function LinesEditor({
         />
         {!showDiscount && (
           <Button
+            type="button"
             variant="ghost"
             className="gap-1.5 px-2 text-link hover:text-link"
             onClick={() => setShowDiscount(true)}

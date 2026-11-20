@@ -214,6 +214,8 @@ describe('LogoCropDialog, document logo', () => {
     if (img) {
       Object.defineProperty(img, 'naturalWidth', { value: 400 })
       Object.defineProperty(img, 'naturalHeight', { value: 600 })
+      // jsdom lays nothing out: the height the filled box gives it in a browser
+      Object.defineProperty(img, 'height', { value: 288 })
       fireEvent.load(img)
     }
     await waitFor(() => expect(parseFloat(box?.style.width ?? '')).toBeCloseTo(66.667, 2))

@@ -21,11 +21,15 @@ let unhandled: string[] = []
 
 const options: Parameters<SetupWorker['start']>[0] = {
   quiet: true,
-  onUnhandledRequest(request, print) {
+  onUnhandledFrame({ frame, defaults }) {
+    const data: unknown = frame.data
+    if (!(data && typeof data === 'object' && 'request' in data && data.request instanceof Request))
+      return defaults.error()
+    const { request } = data
     const url = new URL(request.url)
     if (!url.pathname.includes('/api/')) return
     unhandled.push(`${request.method} ${url.pathname}${url.search}`)
-    print.error()
+    defaults.error()
   },
 }
 

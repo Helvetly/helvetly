@@ -30,11 +30,11 @@ const server = setupServer(
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterAll(() => server.close())
 
-const renderSection = () =>
+const client = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+const renderSection = (queryClient = client()) =>
   render(
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
+    <QueryClientProvider client={queryClient}>
       <DeletedWorkspaces />
     </QueryClientProvider>,
   )
@@ -49,8 +49,16 @@ test('lists a deleted workspace and restores it into the session', async () => {
 
 test('shows nothing when no workspace is restorable', async () => {
   deleted = []
-  const { container } = renderSection()
-  await waitFor(() => expect(server.listHandlers().length).toBeGreaterThan(0))
-  await new Promise((resolve) => setTimeout(resolve, 50))
-  expect(container).toBeEmptyDOMElement()
+  const queryClient = client()
+  const { container } = renderSection(queryClient)
+  // the empty list has arrived and been rendered, not merely not loaded yet
+  await waitFor(() =>
+    expect(
+      queryClient
+        .getQueryCache()
+        .getAll()
+        .map((query) => query.state.status),
+    ).toEqual(['success']),
+  )
+  await waitFor(() => expect(container).toBeEmptyDOMElement())
 })

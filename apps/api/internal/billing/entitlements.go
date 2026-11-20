@@ -207,6 +207,24 @@ func resolve(rows []store.ResolvedLimit, seats int64) (Rights, error) {
 		r.Items[l.Key] = e
 		r.Order = append(r.Order, l.Key)
 	}
+	// A feature an operator turns on turns on the features it requires, as the plan that includes it does
+	// (custom_portal_domain on Pro opens the client portal too), unless the workspace has its own value of that feature;
+	// it ends with it. A limit's own value does not: the operator turns its feature on too.
+	for changed := true; changed; {
+		changed = false
+		for _, key := range r.Order {
+			e := r.Items[key]
+			if e.Source != SourceWorkspace || e.Kind != KindAccess || e.State != StateEnabled {
+				continue
+			}
+			for _, f := range e.RequiresFeatures {
+				if req, ok := r.Items[f]; ok && req.State != StateEnabled && req.Source != SourceWorkspace {
+					req.State, req.Source, req.ExpiresAt = StateEnabled, SourceWorkspace, e.ExpiresAt
+					r.Items[f], changed = req, true
+				}
+			}
+		}
+	}
 	for changed := true; changed; { // until a feature disabled through another's dependency has disabled its own
 		changed = false
 		for key, e := range r.Items {

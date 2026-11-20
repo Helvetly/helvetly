@@ -1,7 +1,7 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { delay, http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -15,8 +15,9 @@ import { ChoosePlan, PlanGate } from './plan-gate'
 
 vi.mock('sonner', () => ({ toast: vi.fn<(message: string) => void>() }))
 
-const server = setupServer()
-beforeAll(() => server.listen())
+// The API never answers in these tests unless a test says otherwise: what the gate shows comes from seeded data.
+const server = setupServer(http.get('/api/v1/*', () => delay('infinite')))
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterAll(() => server.close())
 
 let pathname = '/clients'
@@ -35,10 +36,7 @@ const session: Session = {
 }
 
 function renderWith(node: ReactNode, billing?: Billing, role = 'owner') {
-  // Billing never answers in these tests unless it is seeded.
-  const client = new QueryClient({
-    defaultOptions: { queries: { queryFn: () => new Promise(() => {}), retry: false } },
-  })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   client.setQueryData(queryKeys.session, { ...session, role })
   if (billing) client.setQueryData(billingKeys.overview, billing)
   render(
@@ -157,7 +155,7 @@ test('billing the person may not read does not hold the page', async () => {
   )
   expect(await screen.findByText('The list', {}, { timeout: 2000 })).toBeVisible()
   // The page's own read refetches billing; the gate must not take the page away again.
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  await act(() => new Promise((resolve) => setTimeout(resolve, 300)))
   expect(screen.getByText('The list')).toBeVisible()
 })
 

@@ -83,7 +83,7 @@ const server = setupServer(
   }),
   http.all('*', () => new HttpResponse(null, { status: 404 })),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 beforeEach(() => {

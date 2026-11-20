@@ -61,7 +61,7 @@ const server = setupServer(
     })
   }),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
   active = [engagement('eng_1', 1, 'German')]
   posted = null
