@@ -39,7 +39,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
@@ -175,6 +175,21 @@ function primaryFor(invoice: Invoice): {
   return { command: null, label: translate('downloadPDF'), icon: <Download /> }
 }
 
+/** The header's main button; a tip says what it does when its label alone could worry (Send only opens a review). */
+function PrimaryButton({
+  tip,
+  ...props
+}: ComponentProps<typeof Button> & { tip: string | undefined }) {
+  const button = <Button className="gap-1.5" {...props} />
+  if (!tip) return button
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent className="max-w-64">{tip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** `wrap` lets long text and controls (whose focus ring a truncate would clip) flow onto more lines. */
 function Row({ label, wrap, children }: { label: string; wrap?: boolean; children: ReactNode }) {
   return (
@@ -255,7 +270,12 @@ function Timeline({ invoice, canManage }: { invoice: Invoice; canManage: boolean
             <span className={cn('text-[13px]', done ? 'text-foreground' : 'text-muted-foreground')}>
               {step.label}
               {skippable && (
-                <span className="text-muted-foreground/80"> · {translate('optionalStep')}</span>
+                <>
+                  {' '}
+                  <span className="whitespace-nowrap text-muted-foreground/80">
+                    · {translate('optionalStep')}
+                  </span>
+                </>
               )}
             </span>
             <span className="-mt-1 text-[12px] text-muted-foreground tabular-nums">
@@ -364,20 +384,13 @@ function Detail({
                 </a>
               </Button>
             ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className="gap-1.5"
-                    disabled={busy}
-                    onClick={() => primary.command && run(primary.command, invoice)}
-                  >
-                    {primary.icon} {primary.label}
-                  </Button>
-                </TooltipTrigger>
-                {primary.command === 'send' && (
-                  <TooltipContent className="max-w-64">{translate('sendTip')}</TooltipContent>
-                )}
-              </Tooltip>
+              <PrimaryButton
+                tip={primary.command === 'send' ? translate('sendTip') : undefined}
+                disabled={busy}
+                onClick={() => primary.command && run(primary.command, invoice)}
+              >
+                {primary.icon} {primary.label}
+              </PrimaryButton>
             )}
             <RecordPageButton />
             <Button
