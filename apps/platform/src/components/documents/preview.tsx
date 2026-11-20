@@ -593,7 +593,8 @@ function AttachClient({ onPick }: { onPick: (clientId: string) => void }) {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 gap-1 p-1.5">
-        <label className="flex h-8 items-center gap-2 rounded-md px-2 text-muted-foreground">
+        {/* A menu's search: quiet, the menu is its box (field-surface.spec.ts). */}
+        <label className="field-quiet flex h-8 items-center gap-2 rounded-md px-2 text-muted-foreground">
           <Search className="size-4 shrink-0" />
           <input
             aria-label={translate('searchClients')}

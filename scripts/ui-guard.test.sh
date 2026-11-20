@@ -47,6 +47,12 @@ assert_eq 'fails on a skeleton or a pulse placeholder' 1 "$?"
 assert_eq 'names both' yes "$([[ "$out" == *'pulse apps/portal/src/d.tsx'*'skeleton apps/portal/src/d.tsx'*'0 → 2'* ]] && echo yes || echo no)"
 rm "$tree/apps/portal/src/d.tsx"
 
+echo '<input className="h-8 rounded-md border border-input bg-card" />' >"$tree/apps/portal/src/f.tsx"
+out="$(run)"
+assert_eq 'fails on a hand-made field box' 1 "$?"
+assert_eq 'names it' yes "$([[ "$out" == *'field apps/portal/src/f.tsx'*'0 → 1'* ]] && echo yes || echo no)"
+rm "$tree/apps/portal/src/f.tsx"
+
 echo '<p className="text-[11px]" />' >>"$tree/apps/platform/src/a.tsx"
 run >/dev/null
 assert_eq 'fails when a file gains one' 1 "$?"

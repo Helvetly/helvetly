@@ -78,16 +78,17 @@ export function Combobox({
     >
       <PopoverTrigger asChild>
         <Button
-          size="lg"
           id={id}
           type="button"
-          variant="outline"
+          variant="ghost"
+          data-slot="combobox-trigger"
           disabled={disabled}
           aria-invalid={invalid || undefined}
           aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
-          // Styled as a field, not a button: same border, background and shadow as inputClass.
+          // A field, not a button: the shared field look, without a button's hover tint or weight.
           className={cn(
-            'w-full min-w-0 justify-between rounded-md border-input bg-card px-3 font-normal shadow-xs hover:border-input hover:bg-card aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive dark:bg-input/30',
+            inputClass,
+            'justify-between gap-1.5 bg-clip-border text-left font-normal hover:bg-card aria-expanded:border-ring aria-expanded:bg-card dark:hover:bg-input/30 dark:aria-expanded:bg-input/30',
             className,
           )}
         >

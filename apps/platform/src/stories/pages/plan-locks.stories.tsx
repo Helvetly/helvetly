@@ -1,4 +1,5 @@
 import { Button } from '@helvetly/ui/components/button'
+import { Input } from '@helvetly/ui/components/input'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useMutation } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -219,7 +220,7 @@ export const LockedAreaBlurred: Story = {
           <LockedArea lock={lock} kept="Expenses you already have stay available to read.">
             <div className="grid gap-3 pt-24">
               <Button>New expense</Button>
-              <input aria-label="Supplier" className="h-9 rounded-md border px-3" />
+              <Input aria-label="Supplier" />
               <p className="text-body">Office rent, 1 200.00 CHF</p>
             </div>
           </LockedArea>

@@ -71,6 +71,7 @@ export function Composer({
           {translate('messageTo')}
           {to}
         </label>
+        {/* Quiet: the composer card is its box (field-surface.spec.ts). */}
         <textarea
           id="composer"
           ref={field}
@@ -79,7 +80,7 @@ export function Composer({
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => event.key === 'Escape' && onClose()}
-          className="block w-full resize-none bg-transparent px-4 pt-3.5 pr-10 text-[15px] outline-none placeholder:text-placeholder"
+          className="field-quiet block w-full resize-none bg-transparent px-4 pt-3.5 pr-10 text-[15px] outline-none placeholder:text-placeholder"
         />
         <Button
           variant="ghost"

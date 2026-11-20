@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import {
@@ -291,7 +292,6 @@ function Editor({
                   placeholder={translate('currency')}
                   renderValue={(option) => option.value}
                   contentClassName="w-[300px]"
-                  className="h-8"
                   onChange={(code) => set('currency', code)}
                 />
               </div>
@@ -461,7 +461,7 @@ function Editor({
                           placeholder="0"
                           compact
                           className="inline-block"
-                          inputClassName="h-7 w-14 rounded-md bg-muted/60 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+                          inputClassName="field-quiet h-7 w-14 rounded-md bg-muted/60 pl-2 text-right text-body-sm tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
                         />
                       </dt>
                       <dd className="tabular-nums">
@@ -539,7 +539,10 @@ function Editor({
                 onChange={(event) => set('note', event.target.value)}
                 placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
                 rows={1}
-                className="[field-sizing:content] max-h-32 w-full resize-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-body leading-relaxed shadow-xs outline-none placeholder:text-placeholder focus:border-ring focus:ring-2 focus:ring-ring/40"
+                className={cn(
+                  inputClass,
+                  '[field-sizing:content] h-auto max-h-32 resize-none py-2.5 text-body leading-relaxed',
+                )}
               />
             </section>
           </div>

@@ -3,7 +3,8 @@
 # hard-coded hex colours (`bg-[#f6f3e4]`, `'#fff'`), arbitrary text sizes (`text-[13px]`), arbitrary
 # radii (`rounded-[6px]`; use the radius scale) and shadows (`shadow-[…]`; use shadow-elevation-1/2),
 # shadows on hover (`hover:shadow`; hovers stay calm), skeleton
-# placeholders (`<Skeleton`) and pulses (`animate-pulse`; loading shows `Loader` instead) per file in
+# placeholders (`<Skeleton`), pulses (`animate-pulse`; loading shows `Loader` instead) and hand-made field
+# boxes (`border-input`; every field takes `fieldSurface` from packages/ui/src/lib/field-surface.ts) per file in
 # the platform, the portal and packages/ui, and compares them with scripts/ui-guard-baseline.txt. A count
 # above its baseline fails (use a token from globals.css instead); a count below it fails too, until
 # `--update` writes the lower baseline, so the debt can only shrink. Stories and tests are not counted.
@@ -25,7 +26,8 @@ rules() {
     "shadow${t}(^|[^:])shadow-\[" \
     "hover-shadow${t}hover:shadow" \
     "skeleton${t}<Skeleton|components/skeleton" \
-    "pulse${t}animate-pulse"
+    "pulse${t}animate-pulse" \
+    "field${t}border-input"
 }
 
 # "<count> <rule> <file>" per file with matches, sorted by rule and file.
@@ -60,7 +62,7 @@ main() {
     }' "$baseline" <(current) | sort)"
   [[ -z "$report" ]] && return 0
   if grep -q '^more' <<<"$report"; then
-    printf 'ui-guard: new raw colours, text sizes or skeletons; use the tokens in packages/ui/src/styles/globals.css and Loader from packages/ui for loading\n' >&2
+    printf 'ui-guard: new raw colours, text sizes, skeletons or field boxes; use the tokens in packages/ui/src/styles/globals.css, Loader from packages/ui for loading and fieldSurface for a field\n' >&2
     grep '^more' <<<"$report" | cut -f2- >&2
   fi
   if grep -q '^less' <<<"$report"; then

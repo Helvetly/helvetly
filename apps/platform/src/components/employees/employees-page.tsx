@@ -129,7 +129,6 @@ export function EmployeesPage() {
             <NativeSelect
               aria-label={translate('employeeStatusLabel')}
               wrapperClassName="w-36 max-sm:w-auto max-sm:flex-1"
-              className="h-8"
               value={params.status}
               onChange={(event) =>
                 setParams({
@@ -148,7 +147,6 @@ export function EmployeesPage() {
             <NativeSelect
               aria-label={translate('employeeDepartment')}
               wrapperClassName="w-44 max-sm:w-auto max-sm:flex-1"
-              className="h-8"
               disabled={departments.length === 0}
               value={params.department ?? ''}
               onChange={(event) => setParams({ department: event.target.value || null })}

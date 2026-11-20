@@ -320,7 +320,7 @@ export function PortalProfile() {
                 type="email"
                 readOnly
                 value={text(profile.email)}
-                className={cn(inputClass, 'bg-muted/60 text-muted-foreground dark:bg-muted/60')}
+                className={cn(inputClass, 'text-muted-foreground')}
               />
             </FormField>
             {field('billing_email', {

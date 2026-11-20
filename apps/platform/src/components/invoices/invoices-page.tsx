@@ -5,6 +5,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
@@ -978,7 +979,7 @@ function Filters({
                   value={params.from ?? ''}
                   max={params.to ?? undefined}
                   onChange={(event) => onChange({ from: event.target.value || null })}
-                  className="h-8 rounded-md border border-input bg-card px-2 text-[13px] tabular-nums shadow-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  className={cn(inputClass, 'px-2 tabular-nums')}
                 />
                 <input
                   type="date"
@@ -986,7 +987,7 @@ function Filters({
                   value={params.to ?? ''}
                   min={params.from ?? undefined}
                   onChange={(event) => onChange({ to: event.target.value || null })}
-                  className="h-8 rounded-md border border-input bg-card px-2 text-[13px] tabular-nums shadow-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  className={cn(inputClass, 'px-2 tabular-nums')}
                 />
               </div>
             </fieldset>

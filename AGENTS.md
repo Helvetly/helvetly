@@ -215,6 +215,12 @@ artifact. A step added to `check` goes into a CI job too. Rules:
 - Focus never changes the layout: no ring, hint or font change may move a box, and fields one types into are
   at least 16 px on phones (`globals.css`; Safari zooms in on smaller ones). `e2e/visual/focus-layout.spec.ts`
   checks every story at desktop and phone width in the visual suite.
+- Every field has one look: `fieldSurface` / `fieldClass` (`packages/ui/src/lib/field-surface.ts`, behind `Input`,
+  `Textarea`, `InputGroup`, `Combobox`, `NativeSelect`). Never override its background, border, shadow, corners or
+  height; a composite field puts it on its outer box (`data-field-surface`) and keeps the controls inside bare.
+  `e2e/visual/field-surface.spec.ts` compares every field of every story with it in both themes; the only exemptions
+  carry `field-quiet` (the invoice and quote paper, a list toolbar's search, a menu's search, a chat composer), and
+  `ui-guard` counts hand-made `border-input` boxes.
 - A button-like control's label is centred in its box to within 1 px (`e2e/visual/text-centring.spec.ts`, every
   story at both widths). Chromium rounds Inter's ascent and descent to whole pixels, differently on macOS and
   Linux, so give a control's label a whole-pixel size with its paired line height (`text-body-sm`, `text-sm`), not

@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Textarea } from '@helvetly/ui/components/textarea'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -379,7 +380,13 @@ function ClientPicker({
   return (
     <section className="grid gap-2">
       <h3 className="text-[13px] font-medium">{translate('client')}</h3>
-      <label className="flex h-9 items-center gap-2 rounded-lg bg-muted/60 px-2.5 text-muted-foreground focus-within:bg-card focus-within:ring-2 focus-within:ring-ring/30">
+      <label
+        data-field-surface
+        className={cn(
+          fieldSurface,
+          'flex h-9 items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
+        )}
+      >
         <Search className="size-4 shrink-0 stroke-[1.5]" />
         <input
           type="search"

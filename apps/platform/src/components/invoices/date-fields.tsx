@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Calendar } from '@helvetly/ui/components/calendar'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -17,9 +18,12 @@ export const toDate = (civil: string) => {
 export const toCivil = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-/** Every value in the meta list: quiet text that shows a field on hover and focus. */
+/**
+ * Every value in the meta list: quiet text that shows a field on hover and focus. The document canvas is its box, so
+ * it is exempt from the one field look (`field-quiet`, e2e/visual/field-surface.spec.ts).
+ */
 export const quietValue =
-  'flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[13.5px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/70 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40 aria-expanded:bg-muted/70 data-invalid:text-destructive'
+  'field-quiet flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[13.5px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/70 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40 aria-expanded:bg-muted/70 data-invalid:text-destructive'
 
 /** Every date popover: the calendar's width, 12px padding, one column. */
 const popover = 'grid w-auto gap-2 p-3'
@@ -147,7 +151,7 @@ export function DueDateField({
             </button>
           ))}
         </div>
-        <label className="flex h-8 items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
+        <label className="flex h-9 items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
           {translate('otherTerm')}
           <input
             inputMode="numeric"
@@ -157,7 +161,7 @@ export function DueDateField({
               if (event.key === 'Enter' && custom) choose(addDays(issueDate, Number(custom)))
             }}
             placeholder="45"
-            className="h-7 w-14 rounded-md border border-input bg-card px-2 text-right text-[12.5px] text-foreground tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className={cn(inputClass, 'w-16 px-2 text-right text-foreground tabular-nums')}
           />
           {translate('days')}
         </label>

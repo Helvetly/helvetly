@@ -79,7 +79,6 @@ export function PortalLinksRequest() {
             autoComplete="email"
             spellCheck={false}
             placeholder={uiText('youCompanyCom')}
-            className="h-10"
             value={email}
             aria-invalid={!!error}
             onChange={(event) => setEmail(event.target.value)}
