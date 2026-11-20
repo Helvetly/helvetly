@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { BadgeCheck, ChevronDown } from 'lucide-react'
@@ -31,9 +32,9 @@ export function ApprovalInbox({ onOpen }: { onOpen: (id: string) => void }) {
       >
         <BadgeCheck aria-hidden className="size-4 text-warning" />
         <span id="approval-inbox-title">{translate('approvalInboxTitle')}</span>
-        <span className="rounded-full bg-warning-surface px-1.5 text-caption text-warning tabular-nums">
+        <Badge tone="amber" size="sm" className="tabular-nums">
           {items.length}
-        </span>
+        </Badge>
         <ChevronDown
           aria-hidden
           className={cn(

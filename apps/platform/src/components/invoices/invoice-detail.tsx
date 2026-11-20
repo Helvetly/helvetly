@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -369,9 +370,9 @@ function Detail({
     <Tabs defaultValue="overview" className="min-h-full gap-0">
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-          <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">
+          <Badge size="sm" className="ml-1 tabular-nums">
             {invoice.number ?? translate('draft')}
-          </span>
+          </Badge>
           <span className="ml-1.5 text-[13px] text-muted-foreground">
             {kindInfo(invoice.kind).label}
           </span>
@@ -519,9 +520,9 @@ function Detail({
                 >
                   {tab.label}
                   {Boolean(tab.count) && (
-                    <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground tabular-nums">
+                    <Badge size="sm" className="tabular-nums">
                       {tab.count}
-                    </span>
+                    </Badge>
                   )}
                 </TabsTrigger>
               ))}

@@ -43,11 +43,7 @@ export function MemberCell({
       <span className="min-w-0 leading-tight">
         <span className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>
-          {you && (
-            <span className="shrink-0 rounded-[4px] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {translate('you2')}
-            </span>
-          )}
+          {you && <Badge size="sm">{translate('you2')}</Badge>}
         </span>
         <span className="block truncate text-[13px] text-muted-foreground">{detail}</span>
       </span>

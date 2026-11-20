@@ -470,7 +470,11 @@ export function ReviewTable({
                       />
                     )}
                     {record.status === 'failed' && record.error && issues.length === 0 && (
-                      <span className="rounded-md bg-destructive-surface px-2 py-0.5 text-caption text-destructive">
+                      <Badge
+                        tone="red"
+                        size="sm"
+                        className="inline-block h-auto py-0.5 whitespace-normal"
+                      >
                         {record.error}
                         {(result?.error?.code === 'limit_reached' ||
                           result?.error?.code === 'feature_not_in_plan') && (
@@ -484,7 +488,7 @@ export function ReviewTable({
                             </Link>
                           </>
                         )}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 </td>

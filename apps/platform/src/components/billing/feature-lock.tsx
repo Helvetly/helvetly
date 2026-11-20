@@ -1,5 +1,6 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -74,17 +75,11 @@ export function PlanTag({
   className?: string
 }) {
   return (
-    <span
-      data-slot="plan-tag"
-      className={cn(
-        'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 text-caption leading-5 font-medium text-muted-foreground',
-        className,
-      )}
-    >
+    <Badge size="sm" data-slot="plan-tag" className={cn('ml-auto', className)}>
       <Lock className="size-3" aria-hidden />
       {lock.plan?.name ?? translate('upgrade')}
       <span className="sr-only">: {lock.hint}</span>
-    </span>
+    </Badge>
   )
 }
 

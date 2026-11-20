@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -246,9 +247,9 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {product.sku && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px] text-muted-foreground">
+            <Badge size="sm" className="ml-1 font-mono">
               {product.sku}
-            </span>
+            </Badge>
           )}
           <span className="ml-1.5 text-[13px] text-muted-foreground">
             {product.type === 'product' ? translate('product') : translate('service')}

@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -332,9 +333,12 @@ function Label({ children, action }: { children: string; action?: ReactNode }) {
 /** A count as a quiet pill right after a name; a bit stronger on the open row so it stays legible. */
 function Count({ children }: { children: number }) {
   return (
-    <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] leading-4 text-muted-foreground tabular-nums group-aria-[current=page]/row:bg-foreground/[0.08] group-data-current/row:bg-foreground/[0.08] dark:bg-foreground/[0.08] dark:group-aria-[current=page]/row:bg-foreground/[0.14] dark:group-data-current/row:bg-foreground/[0.14]">
+    <Badge
+      size="sm"
+      className="tabular-nums group-aria-[current=page]/row:bg-foreground/[0.08] group-data-current/row:bg-foreground/[0.08]"
+    >
       {children}
-    </span>
+    </Badge>
   )
 }
 

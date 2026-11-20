@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -163,12 +164,9 @@ const COLUMNS: ColumnDef[] = [
     cell: (client) => (
       <span className="flex gap-1 overflow-hidden">
         {client.tags.map((tag) => (
-          <span
-            key={tag}
-            className="h-5 shrink-0 rounded-[4px] px-1.5 text-[12px] leading-5 text-muted-foreground ring-1 ring-border ring-inset"
-          >
+          <Badge variant="outline" size="sm" key={tag}>
             {tag}
-          </span>
+          </Badge>
         ))}
       </span>
     ),

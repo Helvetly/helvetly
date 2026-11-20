@@ -175,9 +175,9 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {employee.employee_number && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-caption text-muted-foreground">
+            <Badge size="sm" className="ml-1 font-mono">
               {employee.employee_number}
-            </span>
+            </Badge>
           )}
           <div className="ml-auto flex items-center gap-1">
             {hasMenu && hr.lockReason && (

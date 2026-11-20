@@ -156,9 +156,9 @@ function Detail({
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-10 flex h-12 items-center gap-1 border-b border-border/60 bg-card/95 px-3 backdrop-blur">
-        <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground tabular-nums">
+        <Badge size="sm" className="ml-1 tabular-nums">
           #{expense.number}
-        </span>
+        </Badge>
         <span className="ml-1.5 text-[13px] text-muted-foreground">{translate('expense2')}</span>
         <div className="ml-auto flex items-center gap-1">
           <DropdownMenu>

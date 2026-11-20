@@ -335,16 +335,16 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                 <div className="flex min-h-6 items-center justify-between gap-2">
                   <h2 className="text-title font-semibold tracking-[-0.01em]">{plan.name}</h2>
                   {onPlan && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-surface px-2 text-caption leading-5 font-medium text-brand">
+                    <Badge tone="blue" size="sm">
                       <Check className="size-3" aria-hidden />
                       {translate('current')}
-                    </span>
+                    </Badge>
                   )}
                   {scheduled && !onPlan && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 text-caption leading-5 font-medium text-muted-foreground">
+                    <Badge size="sm">
                       <CalendarClock className="size-3" aria-hidden />
                       {translate('scheduled')}
-                    </span>
+                    </Badge>
                   )}
                 </div>
                 <p className="mt-1 min-h-[2lh] text-body-sm text-pretty text-muted-foreground">
@@ -483,9 +483,9 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           <div className="flex items-center gap-2">
             {promo ? (
               <>
-                <span className="rounded-full bg-brand-surface px-2.5 text-caption leading-[22px] font-medium text-brand">
+                <Badge tone="blue" size="sm">
                   {promo.code} · {describeDiscount(promo)}
-                </span>
+                </Badge>
                 <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
                   {translate('change')}
                 </button>
