@@ -96,7 +96,7 @@ export function useNavTarget() {
 }
 
 const itemClass =
-  'h-9 gap-2.5 rounded-lg px-2.5 text-[15px] leading-none font-normal text-sidebar-foreground transition-[color,background-color,box-shadow] duration-150 data-active:bg-white data-active:font-medium data-active:hover:bg-white data-active:shadow-[0_1px_3px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.04)] dark:data-active:bg-white/[0.08] dark:data-active:shadow-none [&_svg]:size-[18px]! [&_svg]:stroke-[1.5] [&_svg]:text-[#7f7f81] dark:[&_svg]:text-muted-foreground data-active:text-brand data-active:[&_svg]:text-brand'
+  'h-9 gap-2.5 rounded-lg px-2.5 text-[15px] leading-5 font-normal text-sidebar-foreground transition-[color,background-color,box-shadow] duration-150 data-active:bg-white data-active:font-medium data-active:hover:bg-white data-active:shadow-[0_1px_3px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.04)] dark:data-active:bg-white/[0.08] dark:data-active:shadow-none [&_svg]:size-[18px]! [&_svg]:stroke-[1.5] [&_svg]:text-[#7f7f81] dark:[&_svg]:text-muted-foreground data-active:text-brand data-active:[&_svg]:text-brand'
 
 /** The person's name, or the part of the email before the @. */
 const displayName = (user: User) => user.name || user.email.split('@')[0] || user.email
