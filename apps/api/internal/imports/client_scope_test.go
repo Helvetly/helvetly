@@ -5,6 +5,7 @@ import (
 	"context"
 	"mime/multipart"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -117,7 +118,7 @@ func TestClientScopedImportAssignsEveryInvoice(t *testing.T) {
 			t.Fatalf("invoice client %q: %v", client, err)
 		}
 	}
-	summaries := decode[[]store.ImportBatchSummary](t, e.do("GET", "/api/v1/imports?kind=invoices", nil))
+	summaries := decode[[]store.ImportBatchSummary](t, e.do("GET", "/api/v1/imports?kind=invoices&client_id=cli_mine", nil))
 	if len(summaries) != 1 || summaries[0].ClientID == nil || *summaries[0].ClientID != "cli_mine" {
 		t.Fatalf("summaries: %+v", summaries)
 	}
@@ -136,5 +137,50 @@ func TestUnscopedInvoiceImportStillMatchesTheDocument(t *testing.T) {
 	}
 	if strings.Contains(e.model.seen[0].Message, "billed to the business's client") {
 		t.Fatalf("model told a client: %s", e.model.seen[0].Message)
+	}
+}
+
+// Each entry point lists only its own batches: an invoice import never shows on Engagements, a client's only in that
+// client's drawer, a Documents import only in Documents.
+func TestImportListPerContext(t *testing.T) {
+	e := newEnv(t)
+	e.consent("ws_a", "usr_a")
+	e.clients(t)
+	ids := map[string]string{}
+	for name, up := range map[string][2]string{
+		"invoices": {"invoices", ""}, "client": {"invoices", "cli_mine"}, "engagements": {"engagements", ""}, "documents": {"auto", ""},
+	} {
+		ids[name] = decode[store.ImportBatch](t, e.uploadFor(up[0], up[1])).ID
+	}
+	for _, tc := range []struct {
+		query  string
+		status int
+		want   []string
+	}{
+		{"kind=invoices", 200, []string{ids["invoices"]}},
+		{"kind=invoices&client_id=cli_mine", 200, []string{ids["client"]}},
+		{"kind=engagements", 200, []string{ids["engagements"]}},
+		{"kind=auto", 200, []string{ids["documents"]}},
+		{"kind=clients", 200, nil},
+		{"kind=engagements&client_id=cli_mine", 400, nil},
+		{"kind=invoices&client_id=cli_other", 400, nil},
+		{"kind=invoices&client_id=", 400, nil},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			w := e.do("GET", "/api/v1/imports?"+tc.query, nil)
+			if w.Code != tc.status {
+				t.Fatalf("status %d, want %d: %s", w.Code, tc.status, w.Body)
+			}
+			if w.Code != 200 {
+				return
+			}
+			var got []string
+			for _, b := range decode[[]store.ImportBatchSummary](t, w) {
+				got = append(got, b.ID)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("batches %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

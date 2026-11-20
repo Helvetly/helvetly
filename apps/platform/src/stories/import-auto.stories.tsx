@@ -153,8 +153,6 @@ export const Drawer: Story = {
     const known = body().getByRole('button', { name: /2025-IN-004\.pdf/ })
     await expect(known).toHaveTextContent('Already in Helvetly')
     await expect(known).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(known)
-    await expect(body().getByRole('region', { name: '2025-IN-004.pdf' })).toBeVisible()
     // Each kind in a file is a group of its own, headed by its name and count, the client before its invoice.
     const groups = within(first).getAllByRole('group')
     await expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toEqual([
@@ -172,7 +170,6 @@ export const Drawer: Story = {
     await expect(
       body().getByText(/Found 1 client, 2 invoices and 1 engagement · 3 selected/),
     ).toBeVisible()
-    await expect(body().getByRole('checkbox', { name: 'Select 2025/IN/004' })).not.toBeChecked()
 
     // Unticking every invoice keeps the clients and the engagement ticked.
     const [, invoices] = within(first).getAllByRole('table')
@@ -184,6 +181,14 @@ export const Drawer: Story = {
     await userEvent.click(body().getByRole('button', { name: 'Import 2' }))
     await waitFor(() => expect(committed).toEqual(['imr_client', 'imr_engagement']))
     await expect(await body().findByText('2 created')).toBeVisible()
+
+    // One file open at a time: opening the known one closes the first.
+    await userEvent.click(known)
+    await expect(body().getByRole('region', { name: '2025-IN-004.pdf' })).toBeVisible()
+    await expect(
+      body().getByRole('button', { name: /invoices\.zip › 2025-IN-001\.pdf/ }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    await expect(body().getByRole('checkbox', { name: 'Select 2025/IN/004' })).not.toBeChecked()
 
     // One tick at the top selects the rows still open in every file.
     await userEvent.click(body().getByRole('checkbox', { name: 'Select all rows' }))
@@ -328,5 +333,38 @@ export const ReImportMixed: Story = {
 
     await userEvent.click(body().getByRole('button', { name: 'Import 2' }))
     await waitFor(() => expect(committed).toEqual(['imr_new_client', 'imr_new_invoice']))
+  },
+}
+
+/** The file with problems opens first; opening another closes it: one file open at a time. */
+export const ProblemFileFirst: Story = {
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  beforeEach: reimport(
+    [file('imf_new', '2026-IN-013.pdf'), file('imf_bad', '2026-IN-014.pdf')],
+    [
+      newClient,
+      newInvoice,
+      record(
+        'imr_bad_invoice',
+        'invoices',
+        { client_name: 'Lea Neu', number: '', currency: 'CHF', total: '90.00' },
+        { file_id: 'imf_bad', issues: { number: 'The invoice number is missing.' } },
+      ),
+    ],
+  ),
+  parameters: { msw: { handlers: handlers() } },
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    const clean = await body().findByRole('button', { name: /2026-IN-013\.pdf/ })
+    const bad = body().getByRole('button', { name: /2026-IN-014\.pdf/ })
+    await expect(bad).toHaveAttribute('aria-expanded', 'true')
+    await expect(clean).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(clean)
+    await expect(clean).toHaveAttribute('aria-expanded', 'true')
+    await expect(bad).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(clean)
+    await expect(clean).toHaveAttribute('aria-expanded', 'false')
+    await expect(bad).toHaveAttribute('aria-expanded', 'false')
   },
 }

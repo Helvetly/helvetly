@@ -184,7 +184,12 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err := need(sess, "read:"+k.Resource); err != nil {
 		return err
 	}
-	list, err := s.db.ImportBatches(r.Context(), sess.Workspace.ID, sess.User.ID, k.Name)
+	// The page's context: a client's drawer lists only that client's batches, every other entry point none of them.
+	clientID, err := s.batchClient(r.Context(), sess, k, r.URL.Query()["client_id"])
+	if err != nil {
+		return err
+	}
+	list, err := s.db.ImportBatches(r.Context(), sess.Workspace.ID, sess.User.ID, k.Name, clientID)
 	if err != nil {
 		return err
 	}

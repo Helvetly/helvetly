@@ -152,9 +152,6 @@ export const EngagementActivity: Story = {
     await expect(canvas.queryByRole('region')).toBeNull()
     await userEvent.click(details)
     await canvas.findByRole('region', { name: 'Support retainer' })
-    // The baseline shows the card at rest: no hover tint, no focus ring.
-    await userEvent.unhover(details)
-    details.blur()
   },
 }
 
