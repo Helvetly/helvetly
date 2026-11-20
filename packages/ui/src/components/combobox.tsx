@@ -10,14 +10,14 @@ import {
   CommandList,
   CommandShortcut,
 } from '@helvetly/ui/components/command'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { useId, useRef, useState, type ReactNode } from 'react'
 
-export const inputClass =
-  'h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30'
+export { inputClass }
 
 /** `group` puts the option under that heading, in the order groups first appear. */
 export type Option = { value: string; label: string; hint?: string; group?: string }

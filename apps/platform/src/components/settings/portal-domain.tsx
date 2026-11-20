@@ -213,7 +213,6 @@ function AddDomain() {
           <Input
             {...describedBy('portal-domain-input', error)}
             placeholder="portal.yourcompany.com"
-            className="bg-card"
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}

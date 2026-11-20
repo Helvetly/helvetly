@@ -205,9 +205,9 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
             if (!checking && !error) section.save()
           }}
         >
-          <InputGroup className="bg-card">
+          <InputGroup>
             {/* The fixed part sits on grey so the white slug reads as the field one types into. */}
-            <InputGroupAddon className="self-stretch rounded-l-lg border-r bg-muted pr-2">
+            <InputGroupAddon className="self-stretch rounded-l-md border-r bg-muted pr-2">
               {/* One run of text (the group's gap would split it); a phone keeps only "…/w/" for the slug. */}
               <InputGroupText className="text-muted-foreground">
                 <span>
