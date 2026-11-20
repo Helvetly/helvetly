@@ -7,6 +7,7 @@ import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-m
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { configure } from 'storybook/test'
 
 // findBy…/waitFor give up after 1 s by default. In the full browser run a heavy screen can take longer to render
@@ -63,6 +64,8 @@ const startUrl = window.location.href
 const preview: Preview = {
   beforeEach: (context) => {
     window.history.replaceState(null, '', startUrl)
+    // sonner replays every toast still open when a Toaster mounts: the last story's toast would show in this one.
+    toast.dismiss()
     const root = document.documentElement
     root.classList.add(...fontClassName.split(' '))
     const previous = root.classList.contains('dark')
