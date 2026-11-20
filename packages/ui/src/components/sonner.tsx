@@ -31,6 +31,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--normal-text': 'var(--background)',
           '--normal-border': 'var(--foreground)',
           '--border-radius': 'var(--radius)',
+          // An open drawer or dialog sets pointer-events: none on <body>; a toast's Undo must still take the click.
+          pointerEvents: 'auto',
         } as React.CSSProperties
       }
       toastOptions={{

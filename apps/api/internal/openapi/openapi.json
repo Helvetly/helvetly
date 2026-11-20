@@ -3203,7 +3203,7 @@
         "operationId": "send_invoice",
         "tags": ["Invoices"],
         "summary": "Email an issued invoice, or mark it sent",
-        "description": "Emails the issued document's PDF (with the client's e-invoice XML attached when the client asked for one, einvoice_format) and records a delivery; the invoice's sent_at is set. Drafts must be issued first (409 invalid_state); invoices imported as issued elsewhere cannot be sent (409 issued_elsewhere); 503 mail_unavailable when the server has no email. 422 validation_failed on to/cc/subject/message (details.fields). Sends a real email on every call, so a retry sends it again. Send {} to use the defaults. email false only marks the invoice sent (its PDF handed over another way): no email, no delivery, mail need not be set up; an invoice sent already keeps its first sent_at; 409 invalid_state for a void invoice.",
+        "description": "Emails the issued document's PDF (with the client's e-invoice XML attached when the client asked for one, einvoice_format) and records a delivery; the invoice's sent_at is set. Drafts must be issued first (409 invalid_state); invoices imported as issued elsewhere cannot be sent (409 issued_elsewhere); 503 mail_unavailable when the server has no email. 422 validation_failed on to/cc/subject/message (details.fields). Sends a real email on every call, so a retry sends it again. Send {} to use the defaults. email false only marks the invoice sent (its PDF handed over another way): no email, no delivery, mail need not be set up; an invoice sent already keeps its first sent_at; 409 invalid_state for a void invoice. email false with sent false takes the mark back (sent_at cleared), refused with 409 invalid_state once the invoice was emailed.",
         "parameters": [
           {
             "name": "id",
@@ -9141,6 +9141,11 @@
             "type": "boolean",
             "default": true,
             "description": "false only marks the invoice sent (handed over another way): no email goes out."
+          },
+          "sent": {
+            "type": "boolean",
+            "default": true,
+            "description": "With email false, false takes back a mark as sent: sent_at is cleared. 409 invalid_state when the invoice was emailed."
           }
         },
         "required": [],
