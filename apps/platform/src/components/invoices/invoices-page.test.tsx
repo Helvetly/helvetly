@@ -49,6 +49,8 @@ const server = setupServer(
       data: billingFixture({ plan: 'business', status: 'active', locked: false }),
     }),
   ),
+  // Nothing waits for this person's approval.
+  http.get('/api/v1/approvals/inbox', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/session', () =>
     HttpResponse.json({ user: { id: 'usr_1', name: 'Anna' }, role: 'member', csrf_token: 't' }),
   ),
