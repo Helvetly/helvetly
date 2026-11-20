@@ -368,6 +368,12 @@ export const ScrolledHeader: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByText('Needs your attention')
+    // Every section loaded, so the page has its full height before it scrolls.
+    await canvas.findByText('Quotes to answer')
+    await canvas.findByText('Engagement usage')
+    await within(await canvas.findByRole('region', { name: 'Recently shared' })).findAllByRole(
+      'listitem',
+    )
     const header = canvasElement.querySelector('header')
     await expect(header).not.toHaveAttribute('data-scrolled')
     const style = getComputedStyle(header ?? document.body)
