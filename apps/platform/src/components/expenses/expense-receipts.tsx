@@ -68,7 +68,7 @@ export function ReceiptDrop({
     <div
       data-over={over || undefined}
       className={cn(
-        'relative grid justify-items-center gap-1 rounded-xl border border-dashed border-border px-4 text-center text-[13px] text-muted-foreground transition-colors duration-150 hover:border-foreground/25 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-brand-solid/45 data-over:bg-brand-surface/70',
+        'relative grid justify-items-center gap-1 rounded-xl border border-dashed border-border px-4 text-center text-body-sm text-muted-foreground transition-colors duration-150 hover:border-foreground/25 has-focus-visible:ring-3 has-focus-visible:ring-ring/40 data-over:border-brand-solid/45 data-over:bg-brand-surface/70',
         compact ? 'py-5' : 'py-8',
       )}
     >
@@ -120,7 +120,7 @@ export function StagedReceipts({
         >
           <StagedThumbnail file={file} />
           <span className="grid min-w-0 flex-1 leading-tight">
-            <span className="text-[13.5px] break-all">{file.name}</span>
+            <span className="text-body-sm break-all">{file.name}</span>
             <span className="text-xs text-muted-foreground">
               {formatFileSize(file.size)}
               {translate('uploadsWhenYouSave')}
@@ -263,7 +263,7 @@ export function ExpenseReceipts({
   if (receipts.isPending) return <Loader className="min-h-64" />
   if (receipts.error)
     return (
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-body-sm text-muted-foreground">
         {translate('theReceiptsCouldnTBeLoaded')}{' '}
         <button
           type="button"
@@ -282,7 +282,7 @@ export function ExpenseReceipts({
         {upload && <UploadProgress upload={upload} />}
       </div>
     ) : (
-      <p className="text-[13.5px] text-muted-foreground">{translate('receiptNone')}</p>
+      <p className="text-body-sm text-muted-foreground">{translate('receiptNone')}</p>
     )
 
   const index = list.indexOf(shown)
@@ -296,7 +296,7 @@ export function ExpenseReceipts({
         <figcaption className="flex items-center gap-3 border-t border-border/60 py-2 pr-2 pl-3">
           <FileBadge type={shown.content_type} />
           <span className="grid min-w-0 flex-1 leading-tight">
-            <span className="truncate text-[13.5px] font-medium" title={shown.name}>
+            <span className="truncate text-body-sm font-medium" title={shown.name}>
               {shown.name}
             </span>
             <span className="truncate text-xs text-muted-foreground">{receiptMeta(shown)}</span>
@@ -408,7 +408,7 @@ function ReceiptStage({
     return (
       <a
         href={localizedHref(receiptUrl(expenseId, receipt.id))}
-        className="grid cursor-pointer justify-items-center gap-2 bg-muted/40 px-4 py-12 text-center text-[13px] text-muted-foreground hover:text-foreground dark:bg-background"
+        className="grid cursor-pointer justify-items-center gap-2 bg-muted/40 px-4 py-12 text-center text-body-sm text-muted-foreground hover:text-foreground dark:bg-background"
       >
         <FileText className="size-6 stroke-[1.5]" />
         <span>{translate('thisPhotoFormatHasNoPreviewInTheBrowser')}</span>
@@ -474,7 +474,7 @@ function ReceiptThumb({
       ) : (
         <span className="grid justify-items-center gap-0.5 text-muted-foreground">
           <FileText className="size-5 stroke-[1.5]" />
-          <span className="text-[10px] font-medium tracking-wide uppercase">
+          <span className="text-caption font-medium tracking-wide uppercase">
             {isPdf(receipt.content_type) ? 'PDF' : (receipt.name.split('.').pop() ?? '')}
           </span>
         </span>
@@ -495,7 +495,7 @@ function AddTile({ onFiles, disabled }: { onFiles: (files: File[]) => void; disa
       )}
     >
       <Plus className="size-4" />
-      <span className="text-[11px] leading-none">{translate('receiptAddShort')}</span>
+      <span className="text-caption leading-none">{translate('receiptAddShort')}</span>
       <input
         type="file"
         multiple
@@ -536,7 +536,7 @@ function UploadTile({ upload }: { upload: Upload }) {
       title={uploadLabel(upload)}
       className={cn(tile, 'flex-col gap-1.5 bg-muted/60 px-2.5 ring-1 ring-border')}
     >
-      <Upload className="size-4 animate-pulse text-muted-foreground" />
+      <Upload className="size-4 text-muted-foreground" />
       <span className="h-1 w-full overflow-hidden rounded-full bg-border">
         <span
           className="block h-full rounded-full bg-primary transition-[width] duration-200"
@@ -549,7 +549,7 @@ function UploadTile({ upload }: { upload: Upload }) {
 
 function UploadProgress({ upload }: { upload: Upload }) {
   return (
-    <output className="grid gap-1.5 rounded-lg px-3 py-2.5 text-[13px] ring-1 ring-border">
+    <output className="grid gap-1.5 rounded-lg px-3 py-2.5 text-body-sm ring-1 ring-border">
       <span className="break-all">{uploadLabel(upload)}</span>
       <span className="h-1 overflow-hidden rounded-full bg-muted">
         <span
@@ -602,7 +602,7 @@ function ReceiptViewer({
         <DialogTitle className="sr-only">{receipt.name}</DialogTitle>
         <DialogDescription className="sr-only">{receiptMeta(receipt)}</DialogDescription>
         <header className="flex h-12 shrink-0 items-center gap-1 border-b border-border/60 pr-2 pl-4">
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{receipt.name}</span>
+          <span className="min-w-0 flex-1 truncate text-body-sm font-medium">{receipt.name}</span>
           {many && (
             <span className="px-1.5 text-xs text-muted-foreground tabular-nums">
               {index + 1} / {receipts.length}
@@ -669,7 +669,7 @@ function ReceiptViewer({
                 />
               </button>
             ) : (
-              <div className="grid h-full place-content-center justify-items-center gap-2 p-6 text-center text-[13px] text-muted-foreground">
+              <div className="grid h-full place-content-center justify-items-center gap-2 p-6 text-center text-body-sm text-muted-foreground">
                 <FileText className="size-6 stroke-[1.5]" />
                 <span>{translate('thisPhotoFormatHasNoPreviewInTheBrowser')}</span>
               </div>
