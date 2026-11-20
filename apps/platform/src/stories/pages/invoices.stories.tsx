@@ -160,6 +160,28 @@ export const DetailSendOptional: Story = {
 }
 export const DetailSendOptionalPhone = phone(DetailSendOptional)
 
+const paidUnsent: Invoice = {
+  ...scheduledInvoice,
+  status: 'paid',
+  sent_at: null,
+  updated_at: '2026-11-20T09:00:00Z',
+}
+
+/** Paid without Sent ever recorded: Sent is a skipped step, amber with a question mark and amber lines. */
+export const DetailSentSkipped: Story = {
+  parameters: drawerOf(paidUnsent),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const sheet = within(await body.findByRole('dialog'))
+    const step = await sheet.findByLabelText('Skipped: not recorded')
+    await expect(step).toHaveAttribute('data-step-state', 'skipped')
+    await expect(sheet.queryByRole('button', { name: 'Mark as sent' })).toBeNull()
+    await userEvent.hover(step)
+    await expect(await body.findByRole('tooltip')).toHaveTextContent('Skipped: not recorded')
+  },
+}
+export const DetailSentSkippedDark = dark(DetailSentSkipped)
+
 /** The amount a summary label (Paid, Credited, Refunded, …) shows. */
 const summary = async (sheet: HTMLElement, label: string) =>
   within(sheet).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent

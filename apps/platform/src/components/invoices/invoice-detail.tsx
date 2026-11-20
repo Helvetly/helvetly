@@ -25,6 +25,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   ArrowRightLeft,
   Check,
+  CircleHelp,
   Download,
   Ellipsis,
   FileCode2,
@@ -260,28 +261,53 @@ function Timeline({
       {steps.map((step, i) => {
         const done = Boolean(step.at)
         const skippable = step.optional && !done
+        const skippedAt = (j: number) =>
+          Boolean(steps[j]?.optional && !steps[j]?.at && steps.slice(j + 1).some((s) => s.at))
+        // An optional step the document went past without it: amber, with its lines to and from it.
+        const skipped = skippedAt(i)
         return (
           <li key={step.label} className="relative grid gap-1.5 pr-2">
             <span className="flex items-center">
-              <span
-                className={cn(
-                  'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
-                  done
-                    ? 'bg-success-solid text-white'
-                    : skippable
-                      ? 'border border-dashed border-muted-foreground/50 bg-card'
-                      : i === current
-                        ? 'bg-card ring-[1.5px] ring-brand-solid ring-inset'
-                        : 'bg-card ring-1 ring-border ring-inset',
-                )}
-              >
-                {done && <Check className="size-3" strokeWidth={3} />}
-              </span>
+              {skipped ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      role="img"
+                      tabIndex={0}
+                      aria-label={translate('stepNotRecorded')}
+                      data-step-state="skipped"
+                      className="z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full border border-dashed border-warning-solid bg-warning-surface text-warning"
+                    >
+                      <CircleHelp className="size-3" strokeWidth={2.5} />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{translate('stepNotRecorded')}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <span
+                  className={cn(
+                    'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
+                    done
+                      ? 'bg-success-solid text-white'
+                      : skippable
+                        ? 'border border-dashed border-muted-foreground/50 bg-card'
+                        : i === current
+                          ? 'bg-card ring-[1.5px] ring-brand-solid ring-inset'
+                          : 'bg-card ring-1 ring-border ring-inset',
+                  )}
+                >
+                  {done && <Check className="size-3" strokeWidth={3} />}
+                </span>
+              )}
               {i < steps.length - 1 && (
                 <span
                   className={cn(
                     'h-px flex-1',
-                    done && steps[i + 1]?.at ? 'bg-success-solid' : 'bg-border',
+                    skipped || skippedAt(i + 1)
+                      ? 'bg-warning-solid'
+                      : done && steps[i + 1]?.at
+                        ? 'bg-success-solid'
+                        : 'bg-border',
                   )}
                 />
               )}

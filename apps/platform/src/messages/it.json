@@ -4677,6 +4677,7 @@
   "customDomainBenefitTls": "Certificato TLS gratuito, rinnovato per te",
   "customDomainBenefitSetup": "Un solo record DNS, pronto in pochi minuti",
   "optionalStep": "facoltativo",
+  "stepNotRecorded": "Saltato: non registrato",
   "sendTip": "Controlla e invia via e-mail al cliente. Nulla parte prima della tua conferma.",
   "approval": "Approvazione",
   "approvals": "Approvazioni",
