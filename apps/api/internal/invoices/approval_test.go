@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/billing"
@@ -231,6 +232,90 @@ func TestApprovalEditResetsIt(t *testing.T) {
 	e.fails(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusConflict, "approval_required")
 	if kinds := e.auditKinds(tm.author.workspace, d.ID); kinds[len(kinds)-1] != "approval.reset" {
 		t.Fatalf("audit %v", kinds)
+	}
+}
+
+func TestSellerChangeResetsOnlyApprovalsStillInUse(t *testing.T) {
+	e := newEnv(t)
+	tm, clientID, acc, _ := e.team()
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	approved := func() string {
+		id := e.draft(tm.author, clientID, nil).ID
+		e.approval(tm.author, "POST", path(id, "approval"), nil, http.StatusOK)
+		e.approval(tm.acc1, "POST", path(id, "approval/approve"), e.req(id, nil), http.StatusOK)
+		return id
+	}
+	issued, planned, draft := approved(), approved(), approved()
+	e.invoice(tm.author, "POST", path(issued, "issue"), nil, http.StatusOK)
+	e.plan(tm.author, planned, map[string]any{"count": 2, "interval": "monthly", "first_due_date": e.today()}, http.StatusCreated)
+	e.do(tm.author, "PUT", "/api/v1/invoice-settings", map[string]any{"seller": map[string]string{"name": "New Name AG"}}, http.StatusOK, nil)
+
+	for _, id := range []string{issued, planned} {
+		v := e.approval(tm.author, "GET", path(id, "approval"), nil, http.StatusOK)
+		if v.State != "approved" || v.CanWithdraw || v.Trail[len(v.Trail)-1].Kind != "approved" {
+			t.Errorf("historical approval of %s changed: %+v", id, v)
+		}
+	}
+	e.fails(tm.author, "POST", path(planned, "approval/withdraw"), nil, http.StatusConflict, "planned")
+	e.fails(tm.author, "POST", path(draft, "issue"), nil, http.StatusConflict, "approval_required")
+}
+
+func TestIssueWaitsForSellerApprovalReset(t *testing.T) {
+	e := newEnv(t)
+	tm, clientID, acc, _ := e.team()
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	draft := e.draft(tm.author, clientID, nil).ID
+	e.approval(tm.author, "POST", path(draft, "approval"), nil, http.StatusOK)
+	e.approval(tm.acc1, "POST", path(draft, "approval/approve"), e.req(draft, nil), http.StatusOK)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	tx, err := e.raw.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "invoice-settings:"+tm.author.workspace); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE approval_requests SET status = 'reset' WHERE doc_id = $1`, draft); err != nil {
+		t.Fatal(err)
+	}
+	status := make(chan int, 1)
+	go func() {
+		resp, _ := e.send(tm.author, "POST", path(draft, "issue"), nil)
+		status <- resp.StatusCode
+	}()
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		var waiting bool
+		err := e.raw.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)))`,
+			tx.Conn().PgConn().PID()).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case got := <-status:
+			t.Fatalf("issue completed with %d before the approval reset committed", got)
+		case <-ctx.Done():
+			t.Fatal("issue did not wait for the seller change")
+		case <-tick.C:
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-status:
+		if got != http.StatusConflict {
+			t.Fatalf("issue after approval reset returned %d", got)
+		}
+	case <-ctx.Done():
+		t.Fatal("issue did not finish after the seller change")
 	}
 }
 

@@ -255,9 +255,7 @@ func planSource(ctx context.Context, q store.Q, workspaceID string, inv store.In
 	if inv.Plan != nil {
 		return inv.Plan.Seq == 0, nil
 	}
-	// a cancelled plan is not joined on the invoice; look among the client's plans
-	plans, err := q.Plans(ctx, workspaceID, inv.ClientID)
-	return slices.ContainsFunc(plans, func(p store.Plan) bool { return p.SourceInvoiceID == inv.ID }), err
+	return q.HasSourcePlan(ctx, workspaceID, inv.ID)
 }
 
 func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -272,6 +270,9 @@ func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.
 	ctx, today := r.Context(), s.today(sess.Workspace)
 	var plan store.Plan
 	err = s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockInvoiceSettings(ctx, sess.Workspace.ID); err != nil {
+			return err
+		}
 		inv, err := q.Invoice(ctx, sess.Workspace.ID, r.PathValue("id"), today, true)
 		if err != nil {
 			return err

@@ -255,10 +255,13 @@ func (q Q) ApprovalAuthors(ctx context.Context, workspaceID string, docIDs []str
 	return out, rows.Err()
 }
 
-// OpenApprovalDocs: the documents of the workspace with a pending or approved request.
-func (q Q) OpenApprovalDocs(ctx context.Context, workspaceID string) ([]string, error) {
-	rows, err := q.db.Query(ctx, `SELECT doc_id FROM approval_requests WHERE workspace_id = $1 AND status IN ('pending', 'approved')
-		ORDER BY doc_id`, workspaceID)
+// OpenInvoiceApprovalDrafts: open approvals that can still be reset by a settings change.
+func (q Q) OpenInvoiceApprovalDrafts(ctx context.Context, workspaceID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, `SELECT r.doc_id FROM approval_requests r
+		JOIN invoices i ON i.workspace_id = r.workspace_id AND i.id = r.doc_id
+		WHERE r.workspace_id = $1 AND r.status IN ('pending', 'approved') AND i.status = 'draft'
+		AND NOT EXISTS (SELECT 1 FROM instalment_plans p WHERE p.source_invoice_id = i.id)
+		ORDER BY r.doc_id`, workspaceID)
 	if err != nil {
 		return nil, err
 	}

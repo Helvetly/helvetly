@@ -128,7 +128,7 @@ func (s *Service) ResetAll(ctx context.Context, q store.Q, sess store.Session, s
 	if s == nil {
 		return nil
 	}
-	ids, err := q.OpenApprovalDocs(ctx, sess.Workspace.ID)
+	ids, err := q.OpenInvoiceApprovalDrafts(ctx, sess.Workspace.ID)
 	if err != nil {
 		return err
 	}

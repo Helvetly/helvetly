@@ -147,6 +147,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	}
 	ctx, id := r.Context(), r.PathValue("id")
 	err = s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockInvoiceSettings(ctx, sess.Workspace.ID); err != nil {
+			return err
+		}
 		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
 		if err != nil {
 			return err
@@ -339,24 +342,27 @@ func daysBetween(from, to string) int {
 
 func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	ctx, id := r.Context(), r.PathValue("id")
-	inv, err := s.db.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), false)
-	if err != nil {
-		return err
-	}
-	if inv.Status != "draft" {
-		return errLocked
-	}
-	if planned, err := planSource(ctx, s.db.Q, sess.Workspace.ID, inv); err != nil {
-		return err
-	} else if planned {
-		return errPlanned
-	}
-	err = s.db.Tx(ctx, func(q store.Q) error {
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockInvoiceSettings(ctx, sess.Workspace.ID); err != nil {
+			return err
+		}
+		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
+		if err != nil {
+			return err
+		}
+		if inv.Status != "draft" {
+			return errLocked
+		}
+		if planned, err := planSource(ctx, q, sess.Workspace.ID, inv); err != nil {
+			return err
+		} else if planned {
+			return errPlanned
+		}
 		deleted, err := q.DeleteDraft(ctx, sess.Workspace.ID, id)
 		if err != nil {
 			return err
 		}
-		if !deleted { // issued meanwhile
+		if !deleted {
 			return errLocked
 		}
 		return s.approvals.Forget(ctx, q, sess.Workspace.ID, id)

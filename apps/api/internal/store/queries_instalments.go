@@ -192,6 +192,14 @@ func (q Q) Plans(ctx context.Context, workspaceID, clientID string) ([]Plan, err
 	return plans, nil
 }
 
+// HasSourcePlan includes cancelled plans, whose source invoice stays locked.
+func (q Q) HasSourcePlan(ctx context.Context, workspaceID, invoiceID string) (bool, error) {
+	var found bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM instalment_plans WHERE workspace_id = $1 AND source_invoice_id = $2)`,
+		workspaceID, invoiceID).Scan(&found)
+	return found, err
+}
+
 func (q Q) planItems(ctx context.Context, planID string) ([]PlanItem, error) {
 	rows, err := q.db.Query(ctx, `SELECT it.seq, it.due_date::text, it.issue_on::text, it.invoice_id, i.number, i.status, it.issued_at
 		FROM instalment_plan_items it LEFT JOIN invoices i ON i.id = it.invoice_id WHERE it.plan_id = $1 ORDER BY it.seq`, planID)
