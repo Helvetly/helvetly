@@ -21,7 +21,7 @@ const onPlan = (plan: PlanId) =>
 const meta = {
   title: 'Settings/Portal domain',
   component: PortalDomainRow,
-  args: { canEdit: true },
+  args: { canEdit: true, currentUrl: 'https://portal.helvetly.com/w/mueller-treuhand/' },
   parameters: { msw: { handlers: [onPlan('business'), ...portalDomainHandlers] } },
   beforeEach: () => resetPortalDomain(),
   render: (args) => (
@@ -217,9 +217,9 @@ export const PlanLocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      await canvas.findByText(/include a custom portal domain; Business does/),
+      await canvas.findByRole('region', { name: 'Your portal on your own address' }),
     ).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
     )

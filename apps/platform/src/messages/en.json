@@ -4649,5 +4649,14 @@
   "auditPortalTurnedOff": "Client portal turned off",
   "auditPortalTurnedOn": "Client portal turned on",
   "portalOffForWorkspace": "The client portal is off for the whole workspace, so this client can’t sign in.",
-  "turnOnInSettings": "Turn it on in Settings"
+  "turnOnInSettings": "Turn it on in Settings",
+  "includedInPlan": "Included in {plan}",
+  "customDomainUpsellTitle": "Your portal on your own address",
+  "customDomainUpsellPitch": "Clients sign in at {example}, under your name instead of Helvetly’s. Set up in minutes.",
+  "customDomainUpsellExample": "portal.yourfirm.ch",
+  "customDomainUpsellNow": "Now",
+  "customDomainUpsellThen": "Your domain",
+  "customDomainBenefitBrand": "Your brand in the address bar",
+  "customDomainBenefitTls": "Free TLS certificate, renewed for you",
+  "customDomainBenefitSetup": "One DNS record, ready in minutes"
 }

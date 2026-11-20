@@ -233,19 +233,36 @@ export const DomainOnBusiness: Story = {
   },
 }
 
-/** A lower plan: the domain row is there, locked, with one line and Upgrade. */
+/** A lower plan: the domain row invites to Business, with the address it would give and the way to upgrade. */
 export const DomainLocked: Story = {
   parameters: {
     msw: { handlers: [onPlan('pro'), ...portalAddressHandlers, ...portalDomainLockedHandlers] },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByText(/include a custom portal domain; Business does/),
-    ).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Upgrade' })).toBeVisible()
+    const card = within(
+      await canvas.findByRole('region', { name: 'Your portal on your own address' }),
+    )
+    await expect(card.getByText('Included in Business')).toBeVisible()
+    await expect(card.getByText('portal.helvetly.com/w/mueller-treuhand')).toBeVisible()
+    await expect(card.getByText('portal.yourfirm.ch')).toBeVisible()
+    await expect(card.getByText('Free TLS certificate, renewed for you')).toBeVisible()
+    const upgrade = card.getByRole('link', { name: 'Upgrade to Business' })
+    await expect(upgrade).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
+    )
+    await expect(card.getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/settings\/billing\/plans\/?#compare$/),
+    )
     await expect(canvas.queryByLabelText(/^Domain/)).toBeNull()
   },
+}
+
+export const DomainLockedDark: Story = {
+  ...DomainLocked,
+  parameters: { ...DomainLocked.parameters, dark: true },
 }
 
 /** A member sees and copies the address, read-only, and cannot switch the portal. */

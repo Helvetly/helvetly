@@ -4649,5 +4649,14 @@
   "auditPortalTurnedOff": "Kundenportal ausgeschaltet",
   "auditPortalTurnedOn": "Kundenportal eingeschaltet",
   "portalOffForWorkspace": "Das Kundenportal ist für den ganzen Arbeitsbereich aus, daher kann sich dieser Kunde nicht anmelden.",
-  "turnOnInSettings": "In den Einstellungen einschalten"
+  "turnOnInSettings": "In den Einstellungen einschalten",
+  "includedInPlan": "In {plan} enthalten",
+  "customDomainUpsellTitle": "Ihr Portal unter Ihrer eigenen Adresse",
+  "customDomainUpsellPitch": "Kunden melden sich unter {example} an, unter Ihrem Namen statt dem von Helvetly. In wenigen Minuten eingerichtet.",
+  "customDomainUpsellExample": "portal.ihrefirma.ch",
+  "customDomainUpsellNow": "Jetzt",
+  "customDomainUpsellThen": "Ihre Domain",
+  "customDomainBenefitBrand": "Ihre Marke in der Adresszeile",
+  "customDomainBenefitTls": "Kostenloses TLS-Zertifikat, automatisch erneuert",
+  "customDomainBenefitSetup": "Ein DNS-Eintrag, in Minuten bereit"
 }
