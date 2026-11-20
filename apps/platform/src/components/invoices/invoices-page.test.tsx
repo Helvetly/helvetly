@@ -133,9 +133,9 @@ test('New invoice makes an invoice; its menu makes the other types', async () =>
   expect(lastUrl()).toBe('/invoices?compose=new')
 
   await userEvent.click(screen.getByRole('button', { name: 'New invoice options' }))
-  expect(screen.getByRole('menuitem', { name: /Credit note/ })).toHaveAttribute(
+  // Made from an issued invoice: always offered, the picker that follows asks which one.
+  expect(screen.getByRole('menuitem', { name: /Credit note/ })).not.toHaveAttribute(
     'aria-disabled',
-    'true',
   )
   await userEvent.click(screen.getByRole('menuitem', { name: 'Prepayment invoice' }))
   expect(lastUrl()).toBe('/invoices?compose=new&ckind=prepayment')

@@ -36,7 +36,12 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
-import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import {
+  ExportItem,
+  PlanTag,
+  unlessLocked,
+  useFeatureLock,
+} from '@/components/billing/feature-lock'
 import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
 import {
@@ -96,6 +101,7 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 
 import { ClientSearch } from './client-search'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
+import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
 import { InvoiceNumber, KIND_ICONS, Money, RowStatus } from './invoice-bits'
 import { CommandItems, useInvoiceCommands, type InvoiceCommand } from './invoice-commands'
 import { InvoiceDetail } from './invoice-detail'
@@ -284,6 +290,7 @@ export function InvoicesPage() {
   const [search, setSearch] = useState(params.search)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [deleting, setDeleting] = useState<InvoiceListItem[] | null>(null)
+  const [deriving, setDeriving] = useState<DeriveFrom | null>(null)
   const list = useInvoiceList(params)
   const prefetch = usePrefetch(invoiceQuery)
 
@@ -442,7 +449,7 @@ export function InvoicesPage() {
         onSelect={selectTab}
         primary={translate('newInvoice')}
         onPrimary={newInvoice}
-        primaryMenu={<NewMenuItems onNew={openEditor} />}
+        primaryMenu={<NewMenuItems onNew={openEditor} onDerive={setDeriving} canWrite={canWrite} />}
         menu={pageItems(dropdownKit)}
       />
       {importDrawer.isOpen && <ImportDrawer kind="invoices" onClose={importDrawer.close} />}
@@ -676,6 +683,16 @@ export function InvoicesPage() {
         )}
       </RecordReplaceContext.Provider>
       {commands.dialogs}
+      {deriving && (
+        <DerivePicker
+          derived={deriving}
+          onClose={() => setDeriving(null)}
+          onPick={(invoice) => {
+            setDeriving(null)
+            commands.run(deriving.command, invoice)
+          }}
+        />
+      )}
       {deleting && deleting.length > 0 && (
         <ConfirmDialog
           title={
@@ -703,8 +720,17 @@ export function InvoicesPage() {
   )
 }
 
-/** The split button's menu: the types made from scratch, then those made from an issued invoice. */
-function NewMenuItems({ onNew }: { onNew: (kind: InvoiceKind) => void }) {
+/** The split button's menu: the types made from scratch, then those made from an issued invoice (picked next). */
+function NewMenuItems({
+  onNew,
+  onDerive,
+  canWrite,
+}: {
+  onNew: (kind: InvoiceKind) => void
+  onDerive: (derived: DeriveFrom) => void
+  canWrite: boolean
+}) {
+  const corrections = useFeatureLock('invoice_corrections')
   return (
     <>
       {CREATABLE_KINDS.map((kind) => {
@@ -715,21 +741,27 @@ function NewMenuItems({ onNew }: { onNew: (kind: InvoiceKind) => void }) {
           </DropdownMenuItem>
         )
       })}
-      <DropdownMenuSeparator />
-      {(['credit_note', 'debit_note', 'corrected'] as const).map((kind) => {
-        const Icon = KIND_ICONS[kind]
-        return (
-          <DropdownMenuItem key={kind} disabled>
-            <Icon />
-            <span className="grid leading-tight">
-              {kindInfo(kind).label}
-              <span className="text-xs text-muted-foreground">
-                {translate('fromAnIssuedInvoice')}
+      {canWrite && <DropdownMenuSeparator />}
+      {canWrite &&
+        DERIVED.map((derived) => {
+          const Icon = KIND_ICONS[derived.kind]
+          return (
+            <DropdownMenuItem
+              key={derived.kind}
+              disabled={Boolean(corrections)}
+              onSelect={() => onDerive(derived)}
+            >
+              <Icon />
+              <span className="grid leading-tight">
+                {kindInfo(derived.kind).label}
+                <span className="text-xs text-muted-foreground">
+                  {translate('fromAnIssuedInvoice')}
+                </span>
               </span>
-            </span>
-          </DropdownMenuItem>
-        )
-      })}
+              {corrections && <PlanTag lock={corrections} />}
+            </DropdownMenuItem>
+          )
+        })}
     </>
   )
 }

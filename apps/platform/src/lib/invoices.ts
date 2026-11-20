@@ -1424,6 +1424,17 @@ export const invoiceListQuery = (params: ListParams) => {
   return { queryKey: invoiceKeys.list(query.toString()), queryFn: () => invoicesApi.list(query) }
 }
 
+/** Issued documents of every kind (open or paid), newest first: what credit notes and corrections start from. */
+export function useIssuedInvoices(search: string) {
+  const query = apiQuery({ ...DEFAULT_PARAMS, search, status: ['open', 'paid'] })
+  query.delete('kind')
+  return useQuery({
+    queryKey: invoiceKeys.list(query.toString()),
+    queryFn: () => invoicesApi.list(query),
+    placeholderData: keepPreviousData,
+  })
+}
+
 /** Paid prepayments can span several pages; the picker must not hide older eligible documents. */
 export function usePaidPrepayments(clientId: string) {
   return useInfiniteQuery({

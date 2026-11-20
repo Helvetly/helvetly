@@ -235,3 +235,44 @@ export const ReadOnlyNoDrop: Story = {
   parameters: readOnly('/invoices'),
   play: noDropTarget('Sophie Meier', 'invoices'),
 }
+
+/** The split button's menu, opened from its arrow. */
+async function openNewMenu(canvasElement: HTMLElement) {
+  const body = within(canvasElement.ownerDocument.body)
+  await body.findAllByText('Sophie Meier', {}, { timeout: 8000 })
+  await userEvent.click(body.getByRole('button', { name: 'New invoice options' }))
+  return within(await body.findByRole('menu'))
+}
+
+/** "Credit note" from the menu asks which issued invoice, then starts the row menu's own flow. */
+export const NewFromIssuedPicker: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const menu = await openNewMenu(canvasElement)
+    await userEvent.click(menu.getByRole('menuitem', { name: /Credit note/ }))
+    const picker = within(await body.findByRole('dialog'))
+    // Issued only: the open and paid invoices, never the draft.
+    await picker.findByText('2026-044')
+    await expect(picker.getByText('2026-042')).toBeVisible()
+    await expect(picker.getAllByRole('option')).toHaveLength(3)
+    await userEvent.click(picker.getByText('2026-044'))
+    await expect(await body.findByText('Credit Invoice 2026-044?')).toBeVisible()
+  },
+}
+
+/** Nothing issued yet: the item still opens the picker, which says why it is empty. */
+export const NewFromIssuedNone: Story = {
+  parameters: emptyList('/invoices', '/api/v1/invoices'),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await body.findByText('No invoices yet', {}, { timeout: 8000 })
+    await userEvent.click(body.getByRole('button', { name: 'New invoice options' }))
+    const menu = within(await body.findByRole('menu'))
+    await userEvent.click(menu.getByRole('menuitem', { name: /Debit note/ }))
+    const picker = within(await body.findByRole('dialog'))
+    await expect(await picker.findByText('No issued invoices yet')).toBeVisible()
+    await expect(
+      picker.getByText('Issue an invoice first; this document always refers to one.'),
+    ).toBeVisible()
+  },
+}
