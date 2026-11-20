@@ -114,6 +114,16 @@ function install(page: Page) {
       keyboardFocus: async (control: HTMLElement) => {
         await audit.settle(control)
         control.focus({ preventScroll: true })
+        return audit.focusChanged()
+      },
+      focusChanged: async () => {
+        // A focus transition can still be pending after two frames.
+        await Promise.allSettled(
+          document
+            .getAnimations()
+            .filter((animation) => animation instanceof CSSTransition && animation.pending)
+            .map((animation) => animation.ready),
+        )
         await audit.frame()
         await audit.frame()
         return audit.changed()
@@ -149,10 +159,8 @@ function install(page: Page) {
           : null
       },
       afterClick: async () => {
-        await audit.frame()
-        await audit.frame()
         const control: unknown = Reflect.get(window, 'focusLayoutClicked')
-        const shifted = audit.changed()
+        const shifted = await audit.focusChanged()
         return shifted.length && control instanceof Element
           ? [audit.report('Click on', control, shifted)]
           : []
