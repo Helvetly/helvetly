@@ -107,9 +107,9 @@ export const SettingsConfigured: Story = {
   play: async () => {
     const invoicesPolicy = await policy('Invoices')
     await expect(invoicesPolicy.getByRole('switch')).toBeChecked()
-    await expect(invoicesPolicy.getByLabelText(/Only when the total is at least/)).toHaveValue(
-      '1’000.00',
-    )
+    await expect(
+      invoicesPolicy.getByRole('textbox', { name: /^Only when the total is at least/ }),
+    ).toHaveValue('1’000.00')
     await expect(invoicesPolicy.getByRole('status', { name: 'Summary' })).toHaveTextContent(
       /2 people from Accountants and 1 from Management must approve\. The author never approves their own document\. Only documents of 1’000\.00 or more need approval\./,
     )
@@ -141,7 +141,9 @@ export const SettingsValidation: Story = {
     await expect(await creditNotes.findByRole('alert')).toHaveTextContent('Add at least one rule.')
 
     const invoicesPolicy = await policy('Invoices')
-    const threshold = invoicesPolicy.getByLabelText(/Only when the total is at least/)
+    const threshold = invoicesPolicy.getByRole('textbox', {
+      name: /^Only when the total is at least/,
+    })
     await userEvent.clear(threshold)
     await userEvent.type(threshold, 'abc')
     await userEvent.click(invoicesPolicy.getByRole('button', { name: 'Save' }))
@@ -171,7 +173,9 @@ export const SettingsRefusedByServer: Story = {
   beforeEach: () => resetApprovals(configuredApprovals()),
   play: async () => {
     const invoicesPolicy = await policy('Invoices')
-    const threshold = invoicesPolicy.getByLabelText(/Only when the total is at least/)
+    const threshold = invoicesPolicy.getByRole('textbox', {
+      name: /^Only when the total is at least/,
+    })
     await userEvent.clear(threshold)
     await userEvent.type(threshold, '2000')
     await userEvent.click(invoicesPolicy.getByRole('button', { name: 'Save' }))
