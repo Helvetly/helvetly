@@ -160,7 +160,7 @@ func TestStatusBoundaries(t *testing.T) {
 		{store.Engagement{StartDate: "2026-01-01", EndDate: d("2026-10-01"), CancelledOn: d("2026-09-01")}, "2026-11-07", "cancelled"},
 		{store.Engagement{StartDate: "2026-01-01", EndDate: d("2026-11-30"), CancelledOn: d("2026-10-01")}, "2026-11-07", "cancelled"},
 	} {
-		if got := status(c.e, c.today); got != c.want {
+		if got := Status(c.e, c.today); got != c.want {
 			t.Errorf("%+v %s: got %s", c.e, c.today, got)
 		}
 	}

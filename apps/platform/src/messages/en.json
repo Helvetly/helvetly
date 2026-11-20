@@ -2192,7 +2192,7 @@
   "optionalNothingIsSentOrIssuedWithoutYou": "Optional. Nothing is sent or issued without you.",
   "shownOnPerEntryInvoiceLines": "Shown on per-entry invoice lines.",
   "clientPerformance": "Client performance",
-  "clientSeesItInThePortal": "The client sees it in the portal.",
+  "clientSeesItInThePortal": "The client sees it in the portal, under “For you”.",
   "onInvoice": "on invoice",
   "alsoPrintOnTheInvoiceLine": "Also print on the invoice line",
   "theClientPerformanceIsAddedToThisEntrysInvoiceLine": "Added after the note on this entry’s invoice line, e.g. “20.11.2026 · Lesson · You did well”.",

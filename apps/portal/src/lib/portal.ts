@@ -30,9 +30,11 @@ export type PortalInvoice = {
 export type PortalEngagement = {
   id: string
   name: string
-  unit: string
+  unit: string | null
   quantity: string
   recurrence: string
+  /** "active", or why it is past: ended, cancelled, or a one-off that expired or is used up. */
+  status: 'active' | 'ended' | 'cancelled' | 'expired' | 'used_up'
   current_period: {
     starts_on: string
     ends_on: string

@@ -113,9 +113,25 @@ func currentPeriod(e store.Engagement, periods []store.EngagementPeriod, today s
 	return picked
 }
 
+// portalStatus says whether the client still has the engagement to draw on: "active", or why it is past ("ended",
+// "cancelled", and for a one-off "expired" once its period is over or "used_up" once nothing is left). A recurring
+// engagement's next period may not be opened yet, so only its dates end it.
+func portalStatus(e store.Engagement, period *periodView, today string) string {
+	if st := engagements.Status(e, today); st != "active" || e.Recurrence != "none" || period == nil {
+		return st
+	}
+	switch {
+	case period.EndsOn < today:
+		return "expired"
+	case period.Remaining == 0:
+		return "used_up"
+	}
+	return "active"
+}
+
 func (s *Service) engagements(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	today := s.today(sess)
-	list, err := s.db.Q.ListEngagements(r.Context(), sess.Workspace.ID, store.EngagementFilter{ClientID: sess.ClientID, Statuses: []string{"active"}, Today: today})
+	list, err := s.db.Q.ListEngagements(r.Context(), sess.Workspace.ID, store.EngagementFilter{ClientID: sess.ClientID, Statuses: []string{"active", "ended", "cancelled"}, Today: today})
 	if err != nil {
 		return err
 	}
@@ -133,11 +149,13 @@ func (s *Service) engagements(w http.ResponseWriter, r *http.Request, sess store
 		Unit          *string              `json:"unit"`
 		Quantity      invoicecalc.Quantity `json:"quantity"`
 		Recurrence    string               `json:"recurrence"`
+		Status        string               `json:"status"`
 		CurrentPeriod *periodView          `json:"current_period"`
 	}
 	out := []item{}
 	for _, e := range list {
-		out = append(out, item{e.ID, e.Title, e.Unit, e.Quantity, e.Recurrence, currentPeriod(e, periods[e.ID], today)})
+		period := currentPeriod(e, periods[e.ID], today)
+		out = append(out, item{e.ID, e.Title, e.Unit, e.Quantity, e.Recurrence, portalStatus(e, period, today), period})
 	}
 	auth.WriteJSON(w, http.StatusOK, data(out))
 	return nil

@@ -144,7 +144,8 @@ func lastDay(e store.Engagement) string {
 	return last
 }
 
-func status(e store.Engagement, today string) string {
+// Status is the engagement's lifecycle state on today: scheduled, active, ended or cancelled.
+func Status(e store.Engagement, today string) string {
 	cancelled, ended := e.CancelledOn != nil && *e.CancelledOn < today, e.EndDate != nil && *e.EndDate < today
 	switch {
 	case cancelled && (!ended || *e.CancelledOn <= *e.EndDate): // both past: whichever came first
@@ -288,7 +289,7 @@ func (s *Service) view(ctx context.Context, q store.Q, e store.Engagement, today
 }
 
 func derive(e store.Engagement, periods []store.EngagementPeriod, today string) EngagementView {
-	v := EngagementView{Engagement: e, Status: status(e, today), Attention: []string{}}
+	v := EngagementView{Engagement: e, Status: Status(e, today), Attention: []string{}}
 	t := store.Product{PriceBasis: e.PriceBasis, UnitPrice: e.UnitPrice, VATCategory: e.VATCategory, VATRate: e.VATRate}
 	t.Derive()
 	v.UnitPriceNet, v.UnitPriceGross = t.UnitPriceNet, t.UnitPriceGross

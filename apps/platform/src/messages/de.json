@@ -2192,7 +2192,7 @@
   "optionalNothingIsSentOrIssuedWithoutYou": "Optional. Ohne Sie wird nichts versendet oder ausgestellt.",
   "shownOnPerEntryInvoiceLines": "Wird in einzelnen Rechnungszeilen angezeigt.",
   "clientPerformance": "Leistung des Kunden",
-  "clientSeesItInThePortal": "Der Kunde sieht es im Portal.",
+  "clientSeesItInThePortal": "Der Kunde sieht es im Portal unter „Für Sie“.",
   "onInvoice": "auf Rechnung",
   "alsoPrintOnTheInvoiceLine": "Auch auf der Rechnungszeile drucken",
   "theClientPerformanceIsAddedToThisEntrysInvoiceLine": "Wird nach der Notiz auf der Rechnungszeile dieses Eintrags ergänzt, z. B. «20.11.2026 · Lektion · Gut gemacht».",

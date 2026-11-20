@@ -1,4 +1,12 @@
-import { civilToday, daysBetween, daysLeftText, dueText, greeting, sharedText } from './dates'
+import {
+  civilToday,
+  daysBetween,
+  daysLeftText,
+  dueText,
+  formatPeriod,
+  greeting,
+  sharedText,
+} from './dates'
 
 test('civilToday is the local calendar day, zero-padded', () => {
   expect(civilToday(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05')
@@ -51,4 +59,10 @@ test.each([
   ['2026-10-05T09:00:00Z', 'Shared 5 Oct 2026'],
 ])('sharedText(%s) on 2026-11-10 is "%s"', (sharedAt, expected) => {
   expect(sharedText(sharedAt, '2026-11-10')).toBe(expected)
+})
+
+test('formatPeriod names the year once', () => {
+  // Intl puts thin spaces around the dash.
+  expect(formatPeriod('2026-11-19', '2026-12-18')).toMatch(/^19 Nov\s–\s18 Dec 2026$/)
+  expect(formatPeriod('2026-12-19', '2027-01-18')).toMatch(/^19 Dec 2026\s–\s18 Jan 2027$/)
 })

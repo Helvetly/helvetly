@@ -2192,7 +2192,7 @@
   "optionalNothingIsSentOrIssuedWithoutYou": "Facoltativo. Niente viene inviato o emesso senza di te.",
   "shownOnPerEntryInvoiceLines": "Mostrato nelle righe della fattura per partita.",
   "clientPerformance": "Prestazione del cliente",
-  "clientSeesItInThePortal": "Il cliente lo vede nel portale.",
+  "clientSeesItInThePortal": "Il cliente lo vede nel portale, sotto «Per lei».",
   "onInvoice": "in fattura",
   "alsoPrintOnTheInvoiceLine": "Stampa anche sulla riga di fattura",
   "theClientPerformanceIsAddedToThisEntrysInvoiceLine": "Aggiunto dopo la nota sulla riga di fattura di questa voce, ad es. «20.11.2026 · Lezione · Ben fatto».",
