@@ -31,9 +31,12 @@ test('toggles when any part of the card is clicked', async () => {
   const user = userEvent.setup()
   render(<Row />)
   const toggle = screen.getByRole('switch', { name: 'Payment reminders' })
+  const card = toggle.closest('[data-slot=switch-row]')
+  const offLook = card?.className
   await user.click(screen.getByText('Overdue invoices get reminders.'))
   expect(toggle).toBeChecked()
-  expect(toggle.closest('[data-slot=switch-row]')).toHaveAttribute('data-checked')
+  // Only the switch shows the state; the card looks the same on and off.
+  expect(card?.className).toBe(offLook)
   await user.click(toggle)
   expect(toggle).not.toBeChecked()
 })
