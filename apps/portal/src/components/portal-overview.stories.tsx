@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalHandlers, portalInvoices } from '@/mocks/portal'
+import { portalHandlers, portalInvoices, portalSession } from '@/mocks/portal'
 
 import { PortalOverview } from './portal-overview'
 
@@ -16,8 +16,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const year = new Date().getFullYear()
+const phone = {
+  viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
+}
 
-/** Greeting, the open total with its overdue part, the three invoices to act on, usage and files. */
+/** Key numbers on top, then one row per thing to do (overdue first), engagements and files beside it. */
 export const Filled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -30,35 +33,82 @@ export const Filled: Story = {
     await expect(
       canvas.getByText('Muster GmbH shares your invoices, work and documents here.'),
     ).toBeVisible()
-    await expect(await canvas.findByText('CHF 4’800.00')).toBeVisible()
-    await expect(canvas.getByText(/1 invoice is overdue/)).toHaveTextContent('CHF 860.00')
-    await expect(canvas.getByText(/3 open invoices/)).toHaveTextContent('next due in 5 days')
+
+    const tiles = within(await canvas.findByLabelText('Summary'))
+    await expect(tiles.getByText('CHF 4’800.00')).toBeVisible()
+    await expect(tiles.getByText('CHF 860.00')).toBeVisible()
+    await expect(await tiles.findByText('Quotes to answer')).toBeVisible()
+    await expect(await tiles.findByText('125% used')).toBeVisible()
+    // Every tile the same height.
+    const heights = [...canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')].map(
+      (tile) => Math.round(tile.getBoundingClientRect().height),
+    )
+    await expect(heights).toHaveLength(4)
+    await expect(new Set(heights).size).toBe(1)
 
     const attention = canvas.getByRole('region', { name: 'Needs your attention' })
-    const rows = within(attention).getAllByRole('listitem')
-    await expect(rows.map((row) => row.textContent?.slice(0, 8))).toEqual([
-      `${year}-009`,
-      `${year}-012`,
-      `${year}-014`,
+    const groups = within(attention)
+      .getAllByRole('list')
+      .map((group) => group.getAttribute('aria-labelledby'))
+    await expect(groups).toEqual([
+      'attention-overdue',
+      'attention-soon',
+      'attention-review',
+      'attention-later',
     ])
-    await expect(within(attention).getByText('12 days overdue')).toBeVisible()
-    await expect(within(attention).getByText('Due in 5 days')).toBeVisible()
+    const overdue = within(attention).getByRole('list', { name: 'Overdue' })
+    await expect(within(overdue).getByText(`Invoice ${year}-009`)).toBeVisible()
+    await expect(within(overdue).getByText(/12 days overdue/)).toBeVisible()
+    const soon = within(attention).getByRole('list', { name: 'Due soon' })
+    await expect(within(soon).getByText(`Invoice ${year}-012`)).toBeVisible()
+    await expect(within(soon).getByText(`Quote Q-${year}-002 · Rev. 2`)).toBeVisible()
+    const review = within(attention).getByRole('list', { name: 'To review' })
+    await expect(within(review).getByText(`Quote Q-${year}-001`)).toBeVisible()
     await expect(
       within(attention).getByRole('link', { name: `Download PDF of invoice ${year}-009` }),
     ).toHaveAttribute('href', `${P}/invoices/inv_3/pdf`)
 
     const engagements = canvas.getByRole('region', { name: 'Engagements' })
     await expect(await within(engagements).findByText('40% used')).toBeVisible()
-    await expect(within(engagements).getByText('125% used')).toBeVisible()
-
     const documents = canvas.getByRole('region', { name: 'Recently shared' })
     await expect(await within(documents).findByText('Contract.pdf')).toBeVisible()
-    await expect(within(documents).getByText(/Shared 2 days ago/)).toBeVisible()
     await expect(within(documents).getAllByRole('listitem')).toHaveLength(3)
   },
 }
 
 export const FilledDark: Story = { ...Filled, parameters: { ...Filled.parameters, dark: true } }
+
+/** Pay opens how to pay in place: the amount, the due date and the PDF with its QR bill. */
+export const PayInPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: `Pay invoice ${year}-009` }))
+    const dialog = await within(document.body).findByRole('dialog', {
+      name: `Pay invoice ${year}-009`,
+    })
+    await expect(within(dialog).getByText('CHF 860.00')).toBeVisible()
+    await expect(within(dialog).getByText(/12 days overdue/)).toBeVisible()
+    await expect(within(dialog).getByRole('link', { name: 'Download PDF' })).toHaveAttribute(
+      'href',
+      `${P}/invoices/inv_3/pdf`,
+    )
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
+  },
+}
+
+/** Accept answers a quote in place; once accepted it leaves the list. */
+export const AcceptInPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: `Accept quote Q-${year}-001` }))
+    const dialog = await within(document.body).findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /Accept quote/ }))
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
+    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
+    await waitFor(() => expect(within(attention).queryByText(`Quote Q-${year}-001`)).toBeNull())
+  },
+}
 
 /** Each currency is its own exact total. */
 export const SeveralCurrencies: Story = {
@@ -78,18 +128,19 @@ export const SeveralCurrencies: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(await canvas.findByText('CHF 4’800.00')).toBeVisible()
-    await expect(canvas.getByText('EUR 50.50')).toBeVisible()
+    const tiles = within(await within(canvasElement).findByLabelText('Summary'))
+    await expect(tiles.getByText('CHF 4’800.00')).toBeVisible()
+    await expect(tiles.getByText('EUR 50.50')).toBeVisible()
   },
 }
 
-/** Nothing due, no engagements, no files: one friendly message, no empty sections. */
+/** Nothing due, nothing to answer, no engagements, no files: a calm "all set" and no empty sections. */
 export const AllClear: Story = {
   parameters: {
     msw: {
       handlers: [
         http.get(`${P}/invoices`, () => HttpResponse.json({ data: [] })),
+        http.get(`${P}/quotes`, () => HttpResponse.json({ data: [] })),
         http.get(`${P}/engagements`, () => HttpResponse.json({ data: [] })),
         http.get(`${P}/documents`, () => HttpResponse.json({ data: [] })),
         ...portalHandlers,
@@ -98,18 +149,97 @@ export const AllClear: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('You’re all set — nothing is due')).toBeVisible()
+    await expect(await canvas.findByText('You’re all set')).toBeVisible()
+    await expect(canvas.getByText('Nothing due')).toBeVisible()
+    await expect(canvas.getByText('Everything is on time')).toBeVisible()
     await waitFor(() =>
       expect(canvas.queryByRole('region', { name: 'Recently shared' })).toBeNull(),
     )
-    await expect(canvas.queryByRole('region', { name: 'Needs your attention' })).toBeNull()
     await expect(canvas.queryByRole('region', { name: 'Engagements' })).toBeNull()
+    // The to-do list takes the whole width: no side column leaving a hole.
+    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
+    await expect(attention.getBoundingClientRect().width).toBe(
+      attention.parentElement?.getBoundingClientRect().width,
+    )
   },
 }
 
 export const AllClearDark: Story = {
   ...AllClear,
   parameters: { ...AllClear.parameters, dark: true },
+}
+
+/** No engagements: the usage tile and card are gone, three tiles fill the strip. */
+export const NoEngagements: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/engagements`, () => HttpResponse.json({ data: [] })),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Quotes to answer')).toBeVisible()
+    await waitFor(() =>
+      expect(canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')).toHaveLength(3),
+    )
+    await expect(canvas.queryByText('Engagement usage')).toBeNull()
+    await expect(canvas.queryByRole('region', { name: 'Engagements' })).toBeNull()
+    await expect(await canvas.findByRole('region', { name: 'Recently shared' })).toBeVisible()
+  },
+}
+
+const longSupplier =
+  'John Doe John Doe John Doe John Doe Consulting und Treuhand GmbH with a very long registered name'
+
+/** A 100-character legal name is cut in the greeting's subtitle; the full one is its tooltip. */
+export const LongCompanyName: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/session`, () =>
+          HttpResponse.json({
+            ...portalSession,
+            client: { id: 'cli_1', name: 'Keller Beratung und Treuhand AG mit einem langen Namen' },
+            workspace: { name: longSupplier },
+          }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const subtitle = await canvas.findByTitle(longSupplier)
+    await expect(subtitle).toHaveTextContent(
+      'John Doe John Doe John Doe John Doe Cons… shares your invoices, work and documents here.',
+    )
+    const heading = canvas.getByRole('heading', { level: 1 })
+    await expect(heading).toHaveTextContent(/Keller Beratung und Treuhand AG mit eine…$/)
+  },
+}
+
+/** A phone: one column in priority order (numbers, to-dos, engagements, files), nothing wider than the screen. */
+export const Phone: Story = {
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const engagements = await canvas.findByRole('region', { name: 'Engagements' })
+    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
+    const summary = await canvas.findByLabelText('Summary')
+    await expect(summary.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      attention.getBoundingClientRect().top,
+    )
+    await expect(attention.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      engagements.getBoundingClientRect().top,
+    )
+    await waitFor(() =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
+    )
+  },
 }
 
 export const Loading: Story = {

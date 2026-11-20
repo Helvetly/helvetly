@@ -1,15 +1,35 @@
 'use client'
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@helvetly/ui/components/dialog'
 import { Loader } from '@helvetly/ui/components/loader'
-import { TONES } from '@helvetly/ui/components/status-badge'
+import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CircleAlert, CircleCheck, Wallet } from 'lucide-react'
+import {
+  Check,
+  CircleAlert,
+  CircleCheck,
+  Download,
+  FilePenLine,
+  FileText,
+  Gauge,
+  QrCode,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
-import { civilToday, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
+import { civilToday, daysBetween, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
 import { byUrgency, sumByCurrency } from '@/lib/invoices'
 import {
@@ -18,26 +38,33 @@ import {
   listPortalEngagements,
   listPortalInvoices,
   portalDocumentUrl,
+  portalInvoicePdfUrl,
   portalKeys,
+  type PortalEngagement,
   type PortalInvoice,
 } from '@/lib/portal'
-import { isAwaiting, listPortalQuotes, quoteName } from '@/lib/quotes'
-
 import {
-  cardClass,
-  DownloadLink,
-  FileTile,
-  InvoiceStatus,
-  PageHeader,
-  PdfLink,
-  RetryAlert,
-  SectionTitle,
-} from './portal-bits'
-import { UsageBar } from './portal-engagements'
-import { QuotePdfLink } from './portal-quotes'
+  isAwaiting,
+  listPortalQuotes,
+  portalQuotePdfUrl,
+  quoteName,
+  type PortalQuote,
+} from '@/lib/quotes'
+import { shorten } from '@/lib/text'
 
-const moneyList = (sums: [string, string][]) =>
-  sums.map(([currency, total]) => formatMoney(total, currency)).join(' · ')
+import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './portal-bits'
+import { UsageBar } from './portal-engagements'
+import { DecisionDialog, type Asking } from './portal-quotes'
+
+/** Days before a due date (or a quote's last day) that move it into "Due soon". */
+const SOON_DAYS = 14
+
+const moneyLines = (sums: [string, string][]) =>
+  sums.map(([currency, total]) => (
+    <span key={currency} className="block whitespace-nowrap">
+      {formatMoney(total, currency)}
+    </span>
+  ))
 
 const viewAll = (href: string, label: string) => (
   <Link
@@ -48,138 +75,354 @@ const viewAll = (href: string, label: string) => (
   </Link>
 )
 
-function AmountDue({ invoices, today }: { invoices: PortalInvoice[]; today: string }) {
-  const urgent = byUrgency(invoices)
-  const due = sumByCurrency(urgent, (i) => i.amount_due)
-  const overdue = urgent.filter((i) => i.is_overdue)
-  const next = urgent.find((i) => !i.is_overdue && i.due_date)?.due_date
+const usedShare = (engagement: PortalEngagement) => {
+  const quantity = Number(engagement.quantity)
+  return engagement.current_period && quantity > 0
+    ? Number(engagement.current_period.used) / quantity
+    : 0
+}
 
-  if (due.length === 0)
+/** A soft tinted tile carrying an icon: the row's or tile's state at a glance. */
+function ToneIcon({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
+  return (
+    <span
+      className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', TONES[tone])}
+    >
+      <Icon className="size-[18px]" aria-hidden />
+    </span>
+  )
+}
+
+type Tile = {
+  key: string
+  icon: LucideIcon
+  tone: Tone
+  label: string
+  value: ReactNode
+  meta: ReactNode
+  alert?: boolean
+}
+
+const TILE_COLUMNS = ['', '', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4']
+
+/** 2–4 tiles of the same height: what is due, overdue, quotes to answer, engagement usage. */
+function Summary({
+  invoices,
+  quotes,
+  engagements,
+}: {
+  invoices: PortalInvoice[]
+  quotes: PortalQuote[]
+  engagements: PortalEngagement[]
+}) {
+  const open = byUrgency(invoices)
+  const due = sumByCurrency(open, (i) => i.amount_due)
+  const overdue = open.filter((i) => i.is_overdue)
+  const next = open.find((i) => !i.is_overdue && i.due_date)?.due_date
+  const awaiting = quotes.filter(isAwaiting)
+  const busiest = engagements.toSorted((a, b) => usedShare(b) - usedShare(a))[0]
+
+  const tiles: Tile[] = [
+    {
+      key: 'due',
+      icon: Wallet,
+      tone: 'gray',
+      label: translate('amountDue'),
+      value: due.length > 0 ? moneyLines(due) : translate('nothingDue'),
+      meta: next
+        ? translate('nextDueOn', { date: formatDate(next) })
+        : translate('invoiceCount', { count: open.length }),
+    },
+    {
+      key: 'overdue',
+      icon: overdue.length > 0 ? CircleAlert : CircleCheck,
+      tone: overdue.length > 0 ? 'amber' : 'green',
+      label: translate('overdue'),
+      value:
+        overdue.length > 0
+          ? moneyLines(sumByCurrency(overdue, (i) => i.amount_due))
+          : translate('none'),
+      meta:
+        overdue.length > 0
+          ? translate('invoiceCount', { count: overdue.length })
+          : translate('everythingOnTime'),
+      alert: overdue.length > 0,
+    },
+  ]
+  if (awaiting.length > 0)
+    tiles.push({
+      key: 'quotes',
+      icon: FilePenLine,
+      tone: 'blue',
+      label: translate('quotesToAnswer'),
+      value: awaiting.length,
+      meta: translate('validUntil2', {
+        value1: formatDate(awaiting.map((q) => q.valid_until).toSorted()[0] ?? ''),
+      }),
+    })
+  if (busiest)
+    tiles.push({
+      key: 'usage',
+      icon: Gauge,
+      tone: usedShare(busiest) > 1 ? 'amber' : 'gray',
+      label: translate('engagementUsage'),
+      value: translate('percentUsed', { percent: Math.round(usedShare(busiest) * 100) }),
+      meta: busiest.name,
+    })
+
+  return (
+    <dl
+      aria-label={translate('summary')}
+      className={cn('grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4', TILE_COLUMNS[tiles.length])}
+    >
+      {tiles.map((tile, index) => (
+        <div
+          key={tile.key}
+          className={cn(
+            cardClass,
+            'grid min-w-0 content-start gap-2 p-4 sm:p-5',
+            // An odd last tile spans the row below lg, so no hole is left beside it.
+            index === tiles.length - 1 && tiles.length % 2 === 1 && 'max-lg:col-span-2',
+          )}
+        >
+          <dt className="flex items-center gap-2 text-body-sm text-muted-foreground">
+            <span
+              className={cn(
+                'flex size-6 shrink-0 items-center justify-center rounded-md',
+                TONES[tile.tone],
+              )}
+            >
+              <tile.icon className="size-3.5" aria-hidden />
+            </span>
+            <span className="truncate">{tile.label}</span>
+          </dt>
+          <dd
+            // Not cn(): tailwind-merge would drop the type-scale size for the colour.
+            className={`text-title font-semibold tracking-tight tabular-nums sm:text-page ${tile.alert ? 'text-destructive' : ''}`}
+          >
+            {tile.value}
+          </dd>
+          <dd className="truncate text-body-sm text-muted-foreground">{tile.meta}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+const GROUPS = ['overdue', 'soon', 'review', 'later'] as const
+type Group = (typeof GROUPS)[number]
+const GROUP_LABEL: Record<Group, string> = {
+  overdue: translate('overdue'),
+  soon: translate('dueSoon'),
+  review: translate('toReview'),
+  later: translate('later'),
+}
+
+type Item = {
+  key: string
+  group: Group
+  icon: LucideIcon
+  tone: Tone
+  title: string
+  meta: string
+  /** The exact date beside `meta`, left out on phones. */
+  date?: string
+  overdue?: boolean
+  amount: string
+  action: ReactNode
+  pdf: ReactNode
+}
+
+const invoiceGroup = (invoice: PortalInvoice, today: string): Group => {
+  if (invoice.is_overdue) return 'overdue'
+  return invoice.due_date && daysBetween(today, invoice.due_date) <= SOON_DAYS ? 'soon' : 'later'
+}
+
+/** Every thing waiting for the client, one row each with one action, overdue first. */
+function Attention({
+  invoices,
+  quotes,
+  today,
+  onPay,
+  onAsk,
+}: {
+  invoices: PortalInvoice[]
+  quotes: PortalQuote[]
+  today: string
+  onPay: (invoice: PortalInvoice) => void
+  onAsk: (asking: Asking) => void
+}) {
+  const items: Item[] = [
+    ...byUrgency(invoices).map((invoice): Item => {
+      const group = invoiceGroup(invoice, today)
+      return {
+        key: invoice.id,
+        group,
+        icon: FileText,
+        tone: group === 'later' ? 'blue' : 'amber',
+        title: translate('invoiceNumber', { number: invoice.number }),
+        meta: invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate'),
+        date: invoice.due_date ? formatDate(invoice.due_date) : undefined,
+        overdue: invoice.is_overdue,
+        amount: formatMoney(invoice.amount_due, invoice.currency),
+        action: (
+          <Button
+            variant="outline"
+            aria-label={translate('payInvoice', { number: invoice.number })}
+            onClick={() => onPay(invoice)}
+          >
+            <QrCode aria-hidden />
+            {translate('pay')}
+          </Button>
+        ),
+        pdf: (
+          <DownloadLink
+            href={portalInvoicePdfUrl(invoice.id)}
+            label={translate('downloadPDFOfInvoice', { number: invoice.number })}
+          />
+        ),
+      }
+    }),
+    ...quotes
+      .filter(isAwaiting)
+      .toSorted((a, b) => a.valid_until.localeCompare(b.valid_until))
+      .map((quote): Item => {
+        const soon = daysBetween(today, quote.valid_until) <= SOON_DAYS
+        return {
+          key: quote.id,
+          group: soon ? 'soon' : 'review',
+          icon: FilePenLine,
+          tone: soon ? 'amber' : 'blue',
+          title: translate('quoteTitle', { name: quoteName(quote) }),
+          meta: translate('validUntil2', { value1: formatDate(quote.valid_until) }),
+          amount: formatMoney(quote.total, quote.currency),
+          action: (
+            <Button
+              variant="outline"
+              aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
+              onClick={() => onAsk({ quote, decision: 'accept' })}
+            >
+              <Check aria-hidden />
+              {translate('accept')}
+            </Button>
+          ),
+          pdf: (
+            <DownloadLink
+              href={portalQuotePdfUrl(quote.id)}
+              label={translate('downloadPDFOfQuote', { value1: quoteName(quote) })}
+            />
+          ),
+        }
+      }),
+  ]
+
+  if (items.length === 0)
     return (
-      <div className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-toggle-surface text-toggle">
-          <CircleCheck className="size-5" aria-hidden />
+      <div className="grid justify-items-center gap-3 py-10 text-center">
+        <span className={cn('flex size-12 items-center justify-center rounded-full', TONES.green)}>
+          <CircleCheck className="size-6" aria-hidden />
         </span>
-        <div className="grid">
-          <p className="font-medium">{translate('youReAllSetNothingIsDue')}</p>
-          <p className="text-sm text-muted-foreground">{translate('newInvoicesWillShowUpHere')}</p>
+        <div className="grid gap-1">
+          <p className="text-title-sm font-medium">{translate('youReAllSet')}</p>
+          <p className="max-w-xs text-body-sm text-pretty text-muted-foreground">
+            {translate('nothingNeedsYourAttention')}
+          </p>
         </div>
       </div>
     )
 
   return (
     <div className="grid gap-4">
-      {overdue.length > 0 && (
-        <p className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-body ${TONES.red}`}>
-          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>
-            {overdue.length === 1
-              ? translate('message1InvoiceIs')
-              : translate('invoicesAre', { length: overdue.length })}
-            {translate('overdue2')}{' '}
-            <strong className="font-medium whitespace-nowrap tabular-nums">
-              {moneyList(sumByCurrency(overdue, (i) => i.amount_due))}
-            </strong>
-          </span>
-        </p>
-      )}
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="grid gap-2">
-          {due.map(([currency, total]) => (
-            <p key={currency} className="text-display font-semibold tracking-tight tabular-nums">
-              {formatMoney(total, currency)}
-            </p>
-          ))}
-          <p className="text-body text-muted-foreground">
-            {urgent.length === 1
-              ? translate('message1OpenInvoice')
-              : translate('openInvoices', { length: urgent.length })}
-            {next && (
-              <>
-                {` · ${dueText(next, today).replace(/^Due/, 'next due')} `}
-                <span className="whitespace-nowrap">({formatDate(next)})</span>
-              </>
-            )}
-          </p>
-        </div>
-        <Button asChild size="lg">
-          <Link href="/invoices">
-            {translate('viewInvoices')}
-            <ArrowRight data-icon="inline-end" />
-          </Link>
-        </Button>
-      </div>
+      {GROUPS.map((group) => {
+        const rows = items.filter((item) => item.group === group)
+        if (rows.length === 0) return null
+        return (
+          <div key={group} className="grid">
+            <h3
+              id={`attention-${group}`}
+              className="text-caption font-medium text-muted-foreground"
+            >
+              {GROUP_LABEL[group]}
+            </h3>
+            <ul
+              aria-labelledby={`attention-${group}`}
+              className="-mx-2 grid divide-y divide-border/70"
+            >
+              {rows.map((item) => (
+                // Phones: the actions go to a line of their own, so the title and date stay readable.
+                <li key={item.key} className="flex flex-wrap items-center gap-3 px-2 py-3">
+                  <ToneIcon icon={item.icon} tone={item.tone} />
+                  <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
+                    <span className="truncate text-body font-medium">{item.title}</span>
+                    <span
+                      // Not cn(): tailwind-merge would drop the type-scale size for the colour.
+                      className={`truncate text-body-sm ${item.overdue ? 'text-destructive' : 'text-muted-foreground'}`}
+                    >
+                      <span className="tabular-nums sm:hidden">{item.amount} · </span>
+                      {item.meta}
+                      {item.date && <span className="max-sm:hidden"> · {item.date}</span>}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-body font-medium tabular-nums max-sm:hidden">
+                    {item.amount}
+                  </span>
+                  <span className="flex shrink-0 gap-2 max-sm:basis-full max-sm:pl-12">
+                    {item.action}
+                    {item.pdf}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function Attention({ invoices, today }: { invoices: PortalInvoice[]; today: string }) {
-  const top = byUrgency(invoices).slice(0, 3)
-  if (top.length === 0) return null
+/** How to pay: the Swiss QR bill sits on the PDF's payment slip; the portal takes no payments itself. */
+function PayDialog({
+  invoice,
+  today,
+  onClose,
+}: {
+  invoice: PortalInvoice
+  today: string
+  onClose: () => void
+}) {
   return (
-    <section
-      aria-labelledby="overview-attention"
-      className={cn(cardClass, 'grid content-start gap-2 p-4 sm:p-6')}
-    >
-      <SectionTitle id="overview-attention" action={viewAll('/invoices', translate('allInvoices'))}>
-        {translate('needsYourAttention')}
-      </SectionTitle>
-      <ul className="-mx-2 grid divide-y divide-border/70">
-        {top.map((invoice) => (
-          <li key={invoice.id} className="flex items-center gap-3 px-2 py-3">
-            <span className="grid min-w-0 flex-1 leading-tight">
-              <span className="truncate text-body font-medium">{invoice.number}</span>
-              <span
-                className={`text-body-sm ${invoice.is_overdue ? 'text-destructive' : 'text-muted-foreground'}`}
-              >
-                {invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate')}
-              </span>
-            </span>
-            <span className="max-sm:hidden">
-              <InvoiceStatus invoice={invoice} />
-            </span>
-            <span className="text-right text-body font-medium tabular-nums">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{translate('payInvoice', { number: invoice.number })}</DialogTitle>
+          <DialogDescription>{translate('payWithTheQRBillSteps')}</DialogDescription>
+        </DialogHeader>
+        <dl className="grid grid-cols-2 gap-4 rounded-lg bg-muted/60 p-4">
+          <div className="grid gap-0.5">
+            <dt className="text-body-sm text-muted-foreground">{translate('amountDue')}</dt>
+            <dd className="text-title-sm font-semibold tabular-nums">
               {formatMoney(invoice.amount_due, invoice.currency)}
-            </span>
-            <PdfLink invoice={invoice} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/** Quotes waiting for the client's answer; nothing while there are none (or they failed to load). */
-function QuotesToAnswer() {
-  const query = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
-  const awaiting = query.data?.filter(isAwaiting) ?? []
-  if (awaiting.length === 0) return null
-  return (
-    <section
-      aria-labelledby="overview-quotes"
-      className={cn(cardClass, 'grid content-start gap-2 p-4 sm:p-6')}
-    >
-      <SectionTitle id="overview-quotes" action={viewAll('/quotes', translate('answerQuotes'))}>
-        {translate('quotesToAnswer')}
-      </SectionTitle>
-      <ul className="-mx-2 grid divide-y divide-border/70">
-        {awaiting.slice(0, 3).map((quote) => (
-          <li key={quote.id} className="flex items-center gap-3 px-2 py-3">
-            <span className="grid min-w-0 flex-1 leading-tight">
-              <span className="truncate text-body font-medium">{quoteName(quote)}</span>
-              <span className="text-body-sm text-muted-foreground">
-                {translate('validUntil')}
-                {formatDate(quote.valid_until)}
-              </span>
-            </span>
-            <span className="text-right text-body font-medium tabular-nums">
-              {formatMoney(quote.total, quote.currency)}
-            </span>
-            <QuotePdfLink quote={quote} />
-          </li>
-        ))}
-      </ul>
-    </section>
+            </dd>
+          </div>
+          <div className="grid gap-0.5">
+            <dt className="text-body-sm text-muted-foreground">{translate('due')}</dt>
+            <dd className={`text-body font-medium ${invoice.is_overdue ? 'text-destructive' : ''}`}>
+              {invoice.due_date
+                ? `${formatDate(invoice.due_date)} · ${dueText(invoice.due_date, today)}`
+                : translate('noDueDate')}
+            </dd>
+          </div>
+        </dl>
+        <DialogFooter>
+          <Button asChild>
+            <a href={localizedHref(portalInvoicePdfUrl(invoice.id))}>
+              <Download aria-hidden />
+              {translate('downloadPDF')}
+            </a>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -207,17 +450,14 @@ function Engagements({ today }: { today: string }) {
           {running.map((engagement) => {
             const period = engagement.current_period
             if (!period) return null
-            const share =
-              Number(engagement.quantity) > 0
-                ? Number(period.used) / Number(engagement.quantity)
-                : 0
             return (
               <li key={engagement.id} className="grid gap-2">
                 <div className="flex items-baseline justify-between gap-3 text-body">
                   <span className="truncate font-medium">{engagement.name}</span>
                   <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
-                    {Math.round(share * 100)}
-                    {translate('used')}
+                    {translate('percentUsed', {
+                      percent: Math.round(usedShare(engagement) * 100),
+                    })}
                   </span>
                 </div>
                 <UsageBar engagement={engagement} />
@@ -278,59 +518,93 @@ function RecentDocuments({ today }: { today: string }) {
   )
 }
 
-/** Greeting, amount due (overdue first), invoices to act on, engagement usage and new documents. */
+/** A long legal name would fill the header; the full one stays in the tooltip and the shell. */
+const NAME_MAX = 40
+
+/** Greeting, a strip of key numbers, the to-do list, and engagements and new files beside it. */
 export function PortalOverview() {
   const today = civilToday()
   const [hour] = useState(() => new Date().getHours())
+  const [paying, setPaying] = useState<PortalInvoice | null>(null)
+  const [asking, setAsking] = useState<Asking | null>(null)
   const session = useQuery({
     queryKey: portalKeys.session,
     queryFn: getPortalSession,
     retry: false,
   })
   const invoices = useQuery({ queryKey: portalKeys.invoices, queryFn: listPortalInvoices })
+  // Quotes and engagements add tiles and rows; a failure there leaves them out, their pages say why.
+  const quotes = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
+  const engagements = useQuery({
+    queryKey: portalKeys.engagements,
+    queryFn: listPortalEngagements,
+  })
   const name = session.data?.client.name
+  const supplier = session.data?.workspace.name
+  const running = engagements.data?.filter((e) => e.current_period) ?? []
 
   return (
     <div className="grid gap-6 sm:gap-8">
-      <PageHeader title={`${greeting(hour)}${name ? `, ${name}` : ''}`}>
-        {session.data &&
-          translate('sharesYourInvoicesWorkAndDocumentsHere', {
-            name: session.data.workspace.name,
-          })}
-      </PageHeader>
-      {/* Wide screens: what is due on the left, engagements and files beside it (gone when empty). */}
-      <div className="grid gap-5 sm:gap-6 lg:flex lg:items-start">
-        <div className="grid min-w-0 gap-5 sm:gap-6 lg:flex-1">
+      <header className="grid min-w-0 gap-1.5">
+        <h1 className="truncate text-page font-semibold tracking-tight sm:text-display">
+          {greeting(hour)}
+          {name && `, ${shorten(name, NAME_MAX)}`}
+        </h1>
+        {supplier && (
+          <p className="text-body text-muted-foreground sm:text-title-sm" title={supplier}>
+            {translate('sharesYourInvoicesWorkAndDocumentsHere', {
+              name: shorten(supplier, NAME_MAX),
+            })}
+          </p>
+        )}
+      </header>
+
+      {invoices.isPending ? (
+        <Loader className="min-h-24" />
+      ) : invoices.error ? (
+        <section aria-label={translate('amountDue')} className={cn(cardClass, 'p-4 sm:p-6')}>
+          <RetryAlert what={translate('yourInvoices')} onRetry={() => void invoices.refetch()} />
+        </section>
+      ) : (
+        <Summary invoices={invoices.data} quotes={quotes.data ?? []} engagements={running} />
+      )}
+
+      {/* Phones: one column in priority order. Wide screens: the to-do list, engagements and files beside it. */}
+      <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-start">
+        {!invoices.error && (
           <section
-            aria-labelledby="overview-due"
-            className={cn(cardClass, 'grid gap-5 p-5 sm:p-8')}
+            aria-labelledby="overview-attention"
+            className={cn(cardClass, 'grid min-w-0 content-start gap-3 p-4 sm:p-6 lg:flex-1')}
           >
-            <h2
-              id="overview-due"
-              className="flex items-center gap-2 text-body font-medium text-muted-foreground"
+            <SectionTitle
+              id="overview-attention"
+              action={viewAll('/invoices', translate('allInvoices'))}
             >
-              <Wallet className="size-4 text-brand" aria-hidden />
-              {translate('amountDue')}
-            </h2>
-            {invoices.isPending ? (
-              <Loader className="min-h-16" />
-            ) : invoices.error ? (
-              <RetryAlert
-                what={translate('yourInvoices')}
-                onRetry={() => void invoices.refetch()}
+              {translate('needsYourAttention')}
+            </SectionTitle>
+            {invoices.data ? (
+              <Attention
+                invoices={invoices.data}
+                quotes={quotes.data ?? []}
+                today={today}
+                onPay={setPaying}
+                onAsk={setAsking}
               />
             ) : (
-              <AmountDue invoices={invoices.data} today={today} />
+              <Loader className="min-h-24" />
             )}
           </section>
-          {invoices.data && <Attention invoices={invoices.data} today={today} />}
-          <QuotesToAnswer />
-        </div>
+        )}
         <div className="grid min-w-0 gap-5 empty:hidden sm:gap-6 lg:w-96 lg:shrink-0">
           <Engagements today={today} />
           <RecentDocuments today={today} />
         </div>
       </div>
+
+      {paying && <PayDialog invoice={paying} today={today} onClose={() => setPaying(null)} />}
+      {asking && (
+        <DecisionDialog key={asking.quote.id} {...asking} onClose={() => setAsking(null)} />
+      )}
     </div>
   )
 }
