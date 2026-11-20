@@ -14,7 +14,6 @@ import { EmptyState } from '@helvetly/ui/components/empty-state'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -351,7 +350,7 @@ function TrialBalance({
                   <td className="px-4 py-2.5">
                     {row.name}
                     {row.currency !== currency && (
-                      <Badge variant="secondary" className="ml-2 text-muted-foreground">
+                      <Badge size="sm" className="ml-2">
                         {row.currency}
                       </Badge>
                     )}
@@ -384,14 +383,14 @@ function TrialBalance({
               <td className={`px-4 py-3 ${money}`}>{formatAmount(credit)}</td>
               <td className="px-4 py-3 text-right" colSpan={2}>
                 {isZero(difference) ? (
-                  <StatusBadge tone="green" size="sm">
+                  <Badge tone="green" size="sm">
                     <Check aria-hidden className="mr-1 size-3" />
                     {translate('debitsEqualCredits')}
-                  </StatusBadge>
+                  </Badge>
                 ) : (
-                  <StatusBadge tone="amber" size="sm">
+                  <Badge tone="amber" size="sm">
                     {translate('offBy', { value1: formatAmount(difference) })}
-                  </StatusBadge>
+                  </Badge>
                 )}
               </td>
             </tr>

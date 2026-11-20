@@ -1,14 +1,14 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
-import { StatusBadge, TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, Gauge, MessageSquareQuote } from 'lucide-react'
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useState } from 'react'
 
 import { civilToday, daysLeftText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
@@ -53,16 +53,6 @@ const PER: Record<string, string> = {
 /** "10 hours per month"; a one-off ('none') is "10 hours in total". */
 const commitment = ({ quantity, unit, recurrence }: PortalEngagement) =>
   `${Number(quantity)} ${unit} ${PER[recurrence] ? translate('dynamicPer', { value1: PER[recurrence] }) : translate('inTotal')}`
-
-function Chip({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return (
-    <span
-      className={`inline-flex h-6 items-center rounded-full px-2.5 text-body-sm tabular-nums ${TONES[tone]}`}
-    >
-      {children}
-    </span>
-  )
-}
 
 type Entry = PortalEngagementPeriod['entries'][number]
 
@@ -118,9 +108,9 @@ function ActivityPeriod({
             {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
           </h3>
           {current && (
-            <StatusBadge tone="blue" size="sm">
+            <Badge tone="blue" size="sm">
               {translate('currentPeriod')}
-            </StatusBadge>
+            </Badge>
           )}
         </div>
         <p className="text-body-sm text-muted-foreground tabular-nums">
@@ -239,15 +229,15 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-sm text-muted-foreground">
               {Number(period.overage) > 0 ? (
-                <Chip tone="amber">
+                <Badge tone="amber" className="tabular-nums">
                   {translate('overage')}
                   {Number(period.overage)} {engagement.unit}
-                </Chip>
+                </Badge>
               ) : (
-                <Chip tone="gray">
+                <Badge className="tabular-nums">
                   {translate('remaining')}
                   {Number(period.remaining)} {engagement.unit}
-                </Chip>
+                </Badge>
               )}
               <span className="tabular-nums">
                 {formatDate(period.starts_on)} – {formatDate(period.ends_on)}

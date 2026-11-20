@@ -322,8 +322,8 @@ describe('eventLook', () => {
     ['invoice.voided', 'red'],
     ['payment.deleted', 'red'],
     ['plan.cancelled', 'red'],
-    ['period.closed', 'gray'],
-    ['something.new', 'gray'],
+    ['period.closed', 'neutral'],
+    ['something.new', 'neutral'],
   ])('tints %s %s', (kind, tone) => {
     expect(eventLook(kind).tone).toBe(tone)
   })

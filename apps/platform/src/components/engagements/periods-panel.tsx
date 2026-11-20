@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -7,8 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatMoney } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { useMutation } from '@tanstack/react-query'
 import { Download, Ellipsis, FilePlus2, Mail, TriangleAlert } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -37,12 +38,11 @@ import { SendReportDialog } from './send-report-dialog'
 export const unitShort = (unit: string | null) =>
   UNITS.find((entry) => entry.value === unit)?.short ?? unit ?? ''
 
-const INVOICE_TONE = { draft: 'gray', open: 'blue', paid: 'green' } as const
 const STATE = {
-  open: ['green', translate('current')],
-  upcoming: ['gray', translate('upcoming')],
-  closed: ['gray', translate('closed')],
-} as const
+  open: translate('current'),
+  upcoming: translate('upcoming'),
+  closed: translate('closed'),
+}
 
 /** Every period with what was used, its invoices, and the ways to invoice it. */
 export function PeriodsPanel({
@@ -116,12 +116,11 @@ export function PeriodsPanel({
           period.full_quantity !== period.quantity &&
             `prorated from ${withUnit(period.full_quantity, unit)}`,
         ].filter(Boolean)
-        const [stateTone, stateLabel] = STATE[period.state]
         return (
           <li key={period.id} className="grid gap-2 py-3 first:pt-1 last:pb-0">
             <div className="flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-body font-medium whitespace-nowrap">{periodLabel(period)}</span>
-              <StatusBadge tone={stateTone}>{stateLabel}</StatusBadge>
+              <Badge tone={STATUS_TONES.period[period.state]}>{STATE[period.state]}</Badge>
               <div className="ml-auto flex shrink-0 items-center gap-1">
                 {primary && (
                   <Button size="sm" variant="outline" disabled={busy} onClick={primary.run}>
@@ -226,10 +225,10 @@ export function PeriodsPanel({
               <div className="flex flex-wrap gap-1.5">
                 {period.invoices.map((link) => (
                   <RecordLink key={link.id} href={`/invoices?id=${encodeURIComponent(link.id)}`}>
-                    <StatusBadge tone={INVOICE_TONE[link.status]}>
+                    <Badge tone={STATUS_TONES.invoice[link.status]}>
                       {link.kind === 'advance' ? translate('upfront') : translate('usage')} ·{' '}
                       {link.number ?? translate('draft')}
-                    </StatusBadge>
+                    </Badge>
                   </RecordLink>
                 ))}
               </div>

@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
@@ -130,9 +131,9 @@ export function ClientFiles({ clientId }: { clientId: string }) {
           <span className="flex items-center gap-1.5">
             {translate('files')}{' '}
             {count > 0 && (
-              <span className="rounded-full bg-muted px-1.5 text-caption text-muted-foreground tabular-nums">
+              <Badge size="sm" className="tabular-nums">
                 {count}
-              </span>
+              </Badge>
             )}
           </span>
         }

@@ -1,10 +1,11 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { CreditCard, Download, Receipt } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef } from 'react'
@@ -190,14 +191,6 @@ function PaymentMethod({
   )
 }
 
-const INVOICE_TONES: Record<string, Tone> = {
-  paid: 'green',
-  open: 'amber',
-  draft: 'gray',
-  void: 'gray',
-  uncollectible: 'red',
-}
-
 /** Helvetly's invoices to the workspace: date, number, amount, status and the PDF. */
 function Invoices() {
   const details = useBillingDetails(true)
@@ -273,9 +266,15 @@ function Invoices() {
                       {formatPrice({ amount: invoice.total, currency: invoice.currency })}
                     </td>
                     <td className="py-2.5 pl-4 @sm:pl-6">
-                      <StatusBadge tone={INVOICE_TONES[invoice.status] ?? 'gray'}>
+                      <Badge
+                        tone={
+                          STATUS_TONES.billingInvoice[
+                            invoice.status as keyof typeof STATUS_TONES.billingInvoice
+                          ] ?? 'neutral'
+                        }
+                      >
                         {capitalize(invoice.status)}
-                      </StatusBadge>
+                      </Badge>
                     </td>
                     <td className="py-2 text-right">
                       {invoice.pdf && (

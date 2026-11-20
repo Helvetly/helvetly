@@ -64,7 +64,7 @@ export function TwoFactor() {
             title={
               <>
                 {translate('authenticatorApp')}{' '}
-                <Badge variant={status.enabled ? 'default' : 'secondary'}>
+                <Badge tone={status.enabled ? 'green' : 'neutral'}>
                   {status.enabled ? translate('on') : translate('off')}
                 </Badge>
               </>

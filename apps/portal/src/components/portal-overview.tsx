@@ -1,7 +1,7 @@
 'use client'
+import { TONES } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
-import { TONES } from '@helvetly/ui/components/status-badge'
 import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'

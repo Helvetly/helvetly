@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -193,14 +194,9 @@ function Detail({
     <Tabs defaultValue="overview" className="min-h-full gap-0">
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-          <span
-            className={cn(
-              'ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption font-medium text-muted-foreground tabular-nums',
-              quote.number && 'font-code',
-            )}
-          >
+          <Badge size="sm" className={cn('ml-1 tabular-nums', quote.number && 'font-code')}>
             {quoteNumber(quote)}
-          </span>
+          </Badge>
           <span className="ml-1.5 text-body-sm text-muted-foreground">{translate('quote2')}</span>
           <div className="ml-auto flex items-center gap-1">
             <DropdownMenu>

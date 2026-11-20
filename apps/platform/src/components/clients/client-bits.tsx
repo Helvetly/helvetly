@@ -1,14 +1,15 @@
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { Badge } from '@helvetly/ui/components/badge'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 
 import { streetLine, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
 export function ClientStatusBadge({ client }: { client: Pick<Client, 'is_draft' | 'is_active'> }) {
-  if (client.is_draft) return <StatusBadge tone="amber">{translate('draft')}</StatusBadge>
+  if (client.is_draft) return <Badge tone={STATUS_TONES.client.draft}>{translate('draft')}</Badge>
   return client.is_active ? (
-    <StatusBadge tone="green">{translate('active')}</StatusBadge>
+    <Badge tone={STATUS_TONES.client.active}>{translate('active')}</Badge>
   ) : (
-    <StatusBadge tone="gray">{translate('inactive')}</StatusBadge>
+    <Badge tone={STATUS_TONES.client.inactive}>{translate('inactive')}</Badge>
   )
 }
 
@@ -19,14 +20,12 @@ export function ChangesPendingBadge({
   client: Pick<Client, 'pending_change_request'>
 }) {
   return client.pending_change_request ? (
-    <StatusBadge tone="blue">{translate('changesPending')}</StatusBadge>
+    <Badge tone={STATUS_TONES.client.changes_pending}>{translate('changesPending')}</Badge>
   ) : null
 }
 
 export function ClientTypeBadge({ company }: { company: boolean }) {
-  return (
-    <StatusBadge tone="blue">{company ? translate('company') : translate('person')}</StatusBadge>
-  )
+  return <Badge tone="blue">{company ? translate('company') : translate('person')}</Badge>
 }
 
 /** "Bahnhofstrasse 1, Apt 3" / "8001 Zürich" — what there is of the address. */

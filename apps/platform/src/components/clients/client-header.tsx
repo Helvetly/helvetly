@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
@@ -145,9 +146,9 @@ export function ClientHeader({
   return (
     <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
       <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-        <span className="font-code ml-1 rounded-md bg-muted px-1.5 py-0.5 text-caption font-medium text-muted-foreground">
+        <Badge size="sm" className="font-code ml-1">
           #{client.number}
-        </span>
+        </Badge>
         <span className="ml-1.5 text-body-sm text-muted-foreground max-sm:sr-only">
           {translate('client')}
         </span>

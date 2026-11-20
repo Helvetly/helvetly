@@ -1,8 +1,9 @@
 'use client'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   AlertTriangle,
@@ -37,10 +38,10 @@ import {
 import { translate } from '@/lib/i18n'
 
 const BADGES = {
-  past_due: { tone: 'red', label: translate('pastDue') },
-  cancels: { tone: 'amber', label: translate('cancels') },
-  trialing: { tone: 'blue', label: translate('trial') },
-  active: { tone: 'green', label: translate('active') },
+  past_due: { tone: STATUS_TONES.subscription.past_due, label: translate('pastDue') },
+  cancels: { tone: STATUS_TONES.subscription.cancels, label: translate('cancels') },
+  trialing: { tone: STATUS_TONES.subscription.trialing, label: translate('trial') },
+  active: { tone: STATUS_TONES.subscription.active, label: translate('active') },
 } satisfies Record<string, { tone: Tone; label: string }>
 
 const badgeOf = (billing: Billing) =>
@@ -87,7 +88,7 @@ export function PlanSummary({
               <h3 className="text-title font-semibold tracking-[-0.015em]">
                 {plan ? plan.name : translate('noPlan')}
               </h3>
-              {plan && <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
+              {plan && <Badge tone={badge.tone}>{badge.label}</Badge>}
             </div>
             <p className="text-body-sm text-muted-foreground">
               {!plan

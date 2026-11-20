@@ -1,10 +1,11 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
   AtSign,
   Copy,
@@ -39,16 +40,20 @@ export function invitationStatus(
   if (client.portal_signed_in_at)
     return {
       label: translate('signedIn2', { value1: formatDate(client.portal_signed_in_at) }),
-      tone: 'green',
+      tone: STATUS_TONES.invitation.signed_in,
       action: 'Resend',
     }
   if (client.portal_invited_at)
     return {
       label: translate('sent', { value1: formatDate(client.portal_invited_at) }),
-      tone: 'blue',
+      tone: STATUS_TONES.invitation.sent,
       action: 'Resend',
     }
-  return { label: translate('notSent'), tone: 'gray', action: 'Send invitation' }
+  return {
+    label: translate('notSent'),
+    tone: STATUS_TONES.invitation.not_sent,
+    action: 'Send invitation',
+  }
 }
 
 /** The invitation line in the client form, for a saved client. */
@@ -122,7 +127,7 @@ export function PortalAccess({
       <div className="grid">
         {offNote}
         <StatusRow icon={KeyRound} label={translate('access')}>
-          <StatusBadge>{translate('off')}</StatusBadge>
+          <Badge>{translate('off')}</Badge>
           <span className="text-body-sm text-muted-foreground">
             {translate('turnItOnToLetTheClientSignIn')}
           </span>
@@ -134,7 +139,7 @@ export function PortalAccess({
     <div className="grid">
       {offNote}
       <StatusRow icon={KeyRound} label={translate('access')}>
-        <StatusBadge tone="green">{translate('on')}</StatusBadge>
+        <Badge tone="green">{translate('on')}</Badge>
         <span className="text-body-sm text-muted-foreground max-sm:hidden">
           {translate('seesItsInvoicesEngagementsAndSharedDocuments')}
         </span>
@@ -184,7 +189,7 @@ export function PortalAccess({
               )
             }
           >
-            <StatusBadge tone={invitation.tone}>{invitation.label}</StatusBadge>
+            <Badge tone={invitation.tone}>{invitation.label}</Badge>
           </StatusRow>
         </>
       ) : (

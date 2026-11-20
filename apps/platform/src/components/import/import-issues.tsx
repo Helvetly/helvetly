@@ -1,9 +1,11 @@
 'use client'
+import { badgeVariants } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@helvetly/ui/components/hover-card'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { cn } from '@helvetly/ui/lib/utils'
 import { Pencil, TriangleAlert, UserRound } from 'lucide-react'
 import { useState } from 'react'
 
@@ -49,7 +51,10 @@ export function IssueChip({
           type="button"
           aria-label={`${translate('importNeedsFix')}: ${lines.join('. ')}`}
           onClick={onFix}
-          className="inline-flex items-center gap-1 rounded-full bg-warning-surface px-2 py-0.5 text-caption font-medium text-warning ring-1 ring-warning-border transition-colors ring-inset hover:bg-warning-surface/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+          className={cn(
+            badgeVariants({ tone: 'amber', size: 'sm' }),
+            'transition-colors hover:bg-warning-surface/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none',
+          )}
         >
           <TriangleAlert className="size-3" />
           {translate('importNeedsFix')}

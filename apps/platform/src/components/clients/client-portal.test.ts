@@ -10,7 +10,7 @@ test.each([
 })
 
 test.each([
-  [{}, { label: 'Not sent', tone: 'gray', action: 'Send invitation' }],
+  [{}, { label: 'Not sent', tone: 'neutral', action: 'Send invitation' }],
   [
     { portal_invited_at: '2026-11-10T12:00:00Z', portal_signed_in_at: null },
     { label: 'Sent 10 Nov 2026', tone: 'blue', action: 'Resend' },

@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { HelpTip } from '@helvetly/ui/components/form-field'
@@ -11,7 +12,6 @@ import {
   InputGroupText,
 } from '@helvetly/ui/components/input-group'
 import { Panel } from '@helvetly/ui/components/panel'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -519,7 +519,7 @@ function EntryRow({
               <span className="sr-only">:</span> {entry.client_performance}
               {perEntry && entry.client_performance_on_invoice && (
                 <span className="ml-1.5 inline-flex align-middle">
-                  <StatusBadge size="sm">{translate('onInvoice')}</StatusBadge>
+                  <Badge size="sm">{translate('onInvoice')}</Badge>
                 </span>
               )}
             </p>

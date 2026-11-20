@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
@@ -155,18 +156,9 @@ export function HeaderBadge({
   children: ReactNode
 }) {
   return (
-    <span
-      className={cn(
-        'inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium ring-1 ring-inset [&_svg]:size-3 [&_svg]:shrink-0',
-        tone === 'warning'
-          ? 'bg-warning-surface text-warning ring-warning-border'
-          : tone === 'success'
-            ? 'bg-success-surface text-success ring-success/20'
-            : 'bg-muted text-muted-foreground ring-border',
-      )}
-    >
+    <Badge size="sm" tone={tone === 'warning' ? 'amber' : tone === 'success' ? 'green' : 'neutral'}>
       {children}
-    </span>
+    </Badge>
   )
 }
 

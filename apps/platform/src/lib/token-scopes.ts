@@ -69,7 +69,7 @@ export function accessByResource(scopes: readonly string[]): ScopeMatrix {
   return matrix
 }
 
-export type ScopeBadge = { label: string; tone: 'gray' | 'amber' }
+export type ScopeBadge = { label: string; tone: 'neutral' | 'amber' }
 
 /**
  * Compact labels for a token's scopes: "Full access" or "Read everything" for the presets, else one per
@@ -79,12 +79,14 @@ export type ScopeBadge = { label: string; tone: 'gray' | 'amber' }
 export function scopeBadges(scopes: readonly string[]): ScopeBadge[] {
   const readAll = scopes.includes('read:*') || scopes.includes('write:*')
   if (scopes.includes('write:*')) return [{ label: translate('fullAccess'), tone: 'amber' }]
-  const badges: ScopeBadge[] = readAll ? [{ label: translate('readEverything'), tone: 'gray' }] : []
+  const badges: ScopeBadge[] = readAll
+    ? [{ label: translate('readEverything'), tone: 'neutral' }]
+    : []
   for (const { name, label } of TOKEN_RESOURCES) {
     if (scopes.includes(`write:${name}`))
       badges.push({ label: translate('write4', { label: label }), tone: 'amber' })
     else if (!readAll && scopes.includes(`read:${name}`))
-      badges.push({ label: translate('read5', { label: label }), tone: 'gray' })
+      badges.push({ label: translate('read5', { label: label }), tone: 'neutral' })
   }
   return badges
 }

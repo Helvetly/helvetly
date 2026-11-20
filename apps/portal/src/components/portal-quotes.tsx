@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -12,10 +13,10 @@ import { FormField } from '@helvetly/ui/components/form-field'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Loader } from '@helvetly/ui/components/loader'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { ApiError, errorMessage } from '@helvetly/ui/lib/http'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, FilePenLine, LoaderCircle, X } from 'lucide-react'
@@ -44,16 +45,15 @@ import {
   rowClass,
 } from './portal-bits'
 
-const STATUS: Record<PortalQuote['status'], [Tone, string]> = {
-  sent: ['blue', translate('awaitingYourAnswer')],
-  accepted: ['green', translate('accepted2')],
-  declined: ['red', translate('declined2')],
-  expired: ['gray', translate('expired')],
+const STATUS: Record<PortalQuote['status'], string> = {
+  sent: translate('awaitingYourAnswer'),
+  accepted: translate('accepted2'),
+  declined: translate('declined2'),
+  expired: translate('expired'),
 }
 
 export function QuoteStatus({ quote }: { quote: PortalQuote }) {
-  const [tone, label] = STATUS[quote.status]
-  return <StatusBadge tone={tone}>{label}</StatusBadge>
+  return <Badge tone={STATUS_TONES.quote[quote.status]}>{STATUS[quote.status]}</Badge>
 }
 
 /** What the quote's state means for the client, in one line. */

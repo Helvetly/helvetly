@@ -1,13 +1,13 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Meter } from '@helvetly/ui/components/meter'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatMoney } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { Briefcase, ChevronRight, FileText, UserRound, type LucideIcon } from 'lucide-react'
 
 import { ClientStatusBadge } from '@/components/clients/client-bits'
 import { plain } from '@/components/engagements/engagement-bits'
-import { STATUS_TONES } from '@/components/invoices/invoice-bits'
 import { useOpenHref } from '@/components/record-link'
 import type { HeidiRecord } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
@@ -71,9 +71,7 @@ function Trailing({ record }: { record: HeidiRecord }) {
           <span className="text-body-sm font-medium tabular-nums">
             {formatMoney(record.amount, record.currency)}
           </span>
-          <StatusBadge tone={STATUS_TONES[record.status]}>
-            {STATUS_LABELS[record.status]}
-          </StatusBadge>
+          <Badge tone={STATUS_TONES.invoice[record.status]}>{STATUS_LABELS[record.status]}</Badge>
         </span>
       )
     case 'engagement':

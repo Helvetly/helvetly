@@ -44,7 +44,7 @@ export function SignInMethods({ email }: { email: string }) {
             title={
               <>
                 {translate('emailCode')}
-                <Badge variant="secondary">
+                <Badge tone={emailOn ? 'green' : 'neutral'}>
                   {emailOn ? translate('on') : translate('unavailable')}
                 </Badge>
               </>
@@ -73,7 +73,7 @@ export function SignInMethods({ email }: { email: string }) {
               title={
                 <>
                   {translate('google')}
-                  {google && <Badge variant="secondary">{translate('connected')}</Badge>}
+                  {google && <Badge tone="green">{translate('connected')}</Badge>}
                 </>
               }
               meta={

@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -172,14 +173,14 @@ export function ImportClientField({
             <div className="grid min-w-0 flex-1 gap-1">
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="truncate text-body font-semibold">{documentName}</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-caption text-muted-foreground ring-1 ring-border">
+                <Badge variant="outline" size="sm">
                   {found.is_company === false ? (
                     <UserRound aria-hidden className="size-3" />
                   ) : (
                     <Building2 aria-hidden className="size-3" />
                   )}
                   {found.is_company === false ? translate('person') : translate('company')}
-                </span>
+                </Badge>
               </p>
               <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
                 <ScanSearch aria-hidden className="size-3.5 shrink-0" />

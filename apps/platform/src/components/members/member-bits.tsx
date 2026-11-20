@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { Users } from 'lucide-react'
@@ -43,11 +43,7 @@ export function MemberCell({
       <span className="min-w-0 leading-tight">
         <span className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>
-          {you && (
-            <span className="shrink-0 rounded-[4px] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {translate('you2')}
-            </span>
-          )}
+          {you && <Badge size="sm">{translate('you2')}</Badge>}
         </span>
         <span className="block truncate text-[13px] text-muted-foreground">{detail}</span>
       </span>
@@ -126,5 +122,5 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
  * only their HR list). */
 export function AccessBadge({ role, scopes }: { role: string; scopes: string[] | null }) {
   const preset = PRESETS.find((entry) => entry.id === presetOf(role === 'member' ? scopes : null))
-  return <StatusBadge>{preset?.label ?? translate('custom')}</StatusBadge>
+  return <Badge>{preset?.label ?? translate('custom')}</Badge>
 }

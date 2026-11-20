@@ -1,10 +1,10 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -126,9 +126,7 @@ export function BookingsSheet({ month, onClose }: { month: string; onClose: () =
                 <li key={`${item.entry.id}-${item.kind}`} className="grid gap-1 px-3 py-2.5">
                   <span className="flex flex-wrap items-center gap-2 text-body">
                     <span className="min-w-0 flex-1 truncate">{item.entry.employee_name}</span>
-                    <StatusBadge tone={item.blocked ? 'amber' : 'green'}>
-                      {KIND_LABELS[item.kind]}
-                    </StatusBadge>
+                    <Badge tone={item.blocked ? 'amber' : 'green'}>{KIND_LABELS[item.kind]}</Badge>
                     <span className="text-body-sm text-muted-foreground">
                       {formatDate(item.date)}
                     </span>

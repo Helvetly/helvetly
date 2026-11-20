@@ -1,4 +1,4 @@
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { Badge } from '@helvetly/ui/components/badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -112,18 +112,16 @@ function ListPreview({ values, clientName }: { values: FormValues; clientName: s
             </Soft>
           </span>
         </span>
-        <StatusBadge tone={upcoming ? 'gray' : 'green'}>
+        <Badge tone={upcoming ? 'neutral' : 'green'}>
           {upcoming ? translate('scheduled') : translate('active')}
-        </StatusBadge>
+        </Badge>
       </div>
       <ProgressBar period={period} unit={unit?.value ?? null} />
       <div className="flex flex-wrap gap-1">
-        <StatusBadge tone="blue">
+        <Badge tone="blue">
           <BillingLabel engagement={values} />
-        </StatusBadge>
-        {values.auto_invoice && (
-          <StatusBadge tone="amber">{translate('draftsAutomatic')}</StatusBadge>
-        )}
+        </Badge>
+        {values.auto_invoice && <Badge tone="amber">{translate('draftsAutomatic')}</Badge>}
       </div>
     </div>
   )

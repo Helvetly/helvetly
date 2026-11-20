@@ -1,10 +1,11 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Check,
@@ -241,7 +242,7 @@ export function MembersPage() {
                     </td>
                     <td className="px-3">
                       <span className="flex flex-wrap items-center gap-1">
-                        <StatusBadge>{capitalize(member.role)}</StatusBadge>
+                        <Badge>{capitalize(member.role)}</Badge>
                         <AccessBadge role={member.role} scopes={member.scopes} />
                       </span>
                     </td>
@@ -249,7 +250,7 @@ export function MembersPage() {
                       <LastActive iso={member.last_active_at} />
                     </td>
                     <td className="px-3">
-                      <StatusBadge tone="green">{translate('active')}</StatusBadge>
+                      <Badge tone={STATUS_TONES.member.active}>{translate('active')}</Badge>
                     </td>
                     <td className={listTable.menu}>
                       {menu && (
@@ -272,7 +273,7 @@ export function MembersPage() {
                   </td>
                   <td className="px-3">
                     <span className="flex flex-wrap items-center gap-1">
-                      <StatusBadge>{capitalize(invitation.role)}</StatusBadge>
+                      <Badge>{capitalize(invitation.role)}</Badge>
                       <AccessBadge role={invitation.role} scopes={invitation.scopes} />
                     </span>
                   </td>
@@ -280,7 +281,7 @@ export function MembersPage() {
                     {translate('expires3', { value1: formatDate(invitation.expires_at) })}
                   </td>
                   <td className="px-3">
-                    <StatusBadge tone="blue">{translate('invited')}</StatusBadge>
+                    <Badge tone={STATUS_TONES.member.invited}>{translate('invited')}</Badge>
                   </td>
                   <td className={listTable.menu}>
                     {manager && (

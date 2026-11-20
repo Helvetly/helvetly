@@ -1,5 +1,6 @@
 'use client'
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
+import { Badge } from '@helvetly/ui/components/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@helvetly/ui/components/sidebar'
-import { TONES } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -330,9 +330,14 @@ export function AppSidebar({ session }: { session: Session }) {
 
 function NewTag() {
   return (
-    <span className="rounded-[4px] bg-heidi px-1.5 text-[11px] leading-[18px] font-semibold tracking-wide text-background uppercase group-data-[collapsible=icon]:hidden">
+    <Badge
+      variant="solid"
+      tone="violet"
+      size="sm"
+      className="tracking-wide uppercase group-data-[collapsible=icon]:hidden"
+    >
       {translate('new3')}
-    </span>
+    </Badge>
   )
 }
 
@@ -355,7 +360,7 @@ function PlanText({ children, testId }: { children: ReactNode; testId?: string }
   )
 }
 
-/** A small muted tag, a notch under the shared status badge, for a role. */
+/** A small neutral tag for a role. */
 function MiniBadge({
   children,
   className,
@@ -366,16 +371,9 @@ function MiniBadge({
   testId?: string
 }) {
   return (
-    <span
-      data-testid={testId}
-      className={cn(
-        'inline-flex h-[18px] w-fit max-w-full items-center truncate rounded-sm px-1.5 text-[11px] leading-none whitespace-nowrap',
-        TONES.gray,
-        className,
-      )}
-    >
+    <Badge size="sm" data-testid={testId} className={cn('truncate', className)}>
       {children}
-    </span>
+    </Badge>
   )
 }
 

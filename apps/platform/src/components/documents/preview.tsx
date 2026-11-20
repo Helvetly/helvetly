@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import {
@@ -543,9 +544,9 @@ function TagsPanel({
       ) : file.tags.length > 0 ? (
         <span className="flex flex-wrap gap-1">
           {file.tags.map((tag) => (
-            <span key={tag} className="rounded-md bg-muted px-1.5 py-0.5 text-caption">
+            <Badge size="sm" key={tag}>
               {tag}
-            </span>
+            </Badge>
           ))}
         </span>
       ) : (
