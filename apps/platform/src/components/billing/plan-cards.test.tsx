@@ -79,7 +79,7 @@ const server = setupServer(
     })
   }),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   checkout = undefined
   server.resetHandlers()

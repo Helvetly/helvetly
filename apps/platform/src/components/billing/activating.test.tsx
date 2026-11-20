@@ -36,7 +36,7 @@ const server = setupServer(
       : HttpResponse.json({ data: reads[0] })
   }),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterAll(() => server.close())
 afterEach(() => {
   vi.useRealTimers()

@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
-import type { Transmission } from '@/lib/transmissions'
+import { type Transmission, transmissionsKey } from '@/lib/transmissions'
 
 import { TransmissionsCard } from './transmissions-card'
 
@@ -36,12 +36,13 @@ function show(list: Transmission[], canManage = true) {
       return HttpResponse.json({ data: { ...failed, status: 'queued' } }, { status: 202 })
     }),
   )
+  const queries = new QueryClient()
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={queries}>
       <TransmissionsCard invoiceId="inv_1" canManage={canManage} />
     </QueryClientProvider>,
   )
-  return () => retried
+  return Object.assign(() => retried, { queries })
 }
 
 test('a failed transmission shows why and can be retried', async () => {
@@ -49,7 +50,7 @@ test('a failed transmission shows why and can be retried', async () => {
   expect(await screen.findByText('export · xrechnung-ubl')).toBeVisible()
   expect(screen.getByText('provider unavailable')).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
-  await vi.waitFor(() => expect(retried()).toBe('trn_1'))
+  await waitFor(() => expect(retried()).toBe('trn_1'))
 })
 
 test('an accepted one shows the channel id and no retry; members without rights get no retry', async () => {
@@ -65,7 +66,9 @@ test('an accepted one shows the channel id and no retry; members without rights 
 })
 
 test('nothing shows without transmissions', async () => {
-  show([])
-  await new Promise((resolve) => setTimeout(resolve, 50))
+  const { queries } = show([])
+  await waitFor(() =>
+    expect(queries.getQueryState(transmissionsKey('inv_1'))?.status).toBe('success'),
+  )
   expect(screen.queryByText('E-invoice transmissions')).not.toBeInTheDocument()
 })

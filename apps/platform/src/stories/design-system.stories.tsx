@@ -286,11 +286,13 @@ export const SwitchRowStates: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const vat = canvas.getByRole('switch', { name: 'Registered for VAT' })
+    const card = vat.closest('[data-slot=switch-row]')
+    const offLook = card?.className
     await userEvent.tab()
     await expect(vat).toHaveFocus()
     await userEvent.keyboard(' ')
     await expect(vat).toBeChecked()
-    await expect(vat.closest('[data-slot=switch-row]')).toHaveAttribute('data-checked')
+    await expect(card?.className).toBe(offLook)
     const portal = canvas.getByRole('switch', { name: 'Let the client sign in' })
     await userEvent.click(canvas.getByText(/billing email when there is no email/))
     await expect(portal).not.toBeChecked()

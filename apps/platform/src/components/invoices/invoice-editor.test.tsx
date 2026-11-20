@@ -8,7 +8,9 @@ import { setupServer } from 'msw/node'
 
 import type { Invoice, InvoiceInput } from '@/lib/invoices'
 import {
+  billingHandler,
   editorApi,
+  noEngagementHandler,
   listItem,
   previewRows,
   sampleInvoice as baseInvoice,
@@ -69,6 +71,8 @@ const server = setupServer(
     HttpResponse.json({ data: [], meta: { page: 1, page_size: 50, total: 0, total_pages: 0 } }),
   ),
   ...editorApi(clients),
+  billingHandler(),
+  noEngagementHandler,
 )
 server.events.on('request:start', async ({ request }) => {
   if (request.method === 'GET') return
@@ -535,7 +539,10 @@ const typeUnsaved = async () => {
   renderEditor()
   await userEvent.type(await screen.findByLabelText('Line 1 description'), 'Workshop')
 }
-const backButton = () => act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+const backButton = () =>
+  act(async () => {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
 
 test('Back with unsavable input asks to discard; Keep editing retains it and guards again', async () => {
   const pushed = vi.spyOn(window.history, 'pushState')
@@ -543,7 +550,7 @@ test('Back with unsavable input asks to discard; Keep editing retains it and gua
   await typeUnsaved()
   expect(pushed).toHaveBeenCalledOnce() // one guard entry, once
 
-  backButton()
+  await backButton()
   const dialog = await screen.findByRole('dialog', { name: 'Discard your changes?' })
   await userEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
   expect(back).not.toHaveBeenCalled()
@@ -551,7 +558,7 @@ test('Back with unsavable input asks to discard; Keep editing retains it and gua
   expect(screen.getByLabelText('Line 1 description')).toHaveValue('Workshop')
   expect(pushed).toHaveBeenCalledTimes(2) // the guard is back for the next Back
 
-  backButton()
+  await backButton()
   await userEvent.click(
     within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
       'button',
@@ -574,7 +581,7 @@ test('an explicit Discard on Back is not asked again by the tab-close warning', 
   vi.spyOn(window.history, 'back').mockImplementation(() => {})
   await typeUnsaved()
   expect(warns()).toBe(true)
-  backButton()
+  await backButton()
   await userEvent.click(
     within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
       'button',
@@ -584,7 +591,7 @@ test('an explicit Discard on Back is not asked again by the tab-close warning', 
     ),
   )
   expect(warns()).toBe(true) // kept: reload and tab close still warn
-  backButton()
+  await backButton()
   await userEvent.click(
     within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
       'button',
@@ -594,14 +601,14 @@ test('an explicit Discard on Back is not asked again by the tab-close warning', 
     ),
   )
   expect(warns()).toBe(false) // the approved departure goes without a second question
-  backButton() // the Back stayed on this page: the warning is armed again
+  await backButton() // the Back stayed on this page: the warning is armed again
   expect(warns()).toBe(true)
 })
 
 test('after a Discard whose Back went nowhere, the next edit is protected again', async () => {
   vi.spyOn(window.history, 'back').mockImplementation(() => {}) // first history entry: no popstate follows
   await typeUnsaved()
-  backButton()
+  await backButton()
   await userEvent.click(
     within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
       'button',
@@ -620,7 +627,7 @@ test('after a Discard whose Back went nowhere, a different invalid entry is prot
   await typeUnsaved()
   const price = screen.getByLabelText('Line 1 price')
   await userEvent.type(price, 'bad-a') // saves as 0.00, like any invalid price
-  backButton()
+  await backButton()
   await userEvent.click(
     within(await screen.findByRole('dialog', { name: 'Discard your changes?' })).getByRole(
       'button',

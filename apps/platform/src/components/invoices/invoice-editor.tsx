@@ -460,6 +460,7 @@ function Editor({
       : []),
   ]
   const top = useRef<HTMLDivElement>(null)
+  const addedField = useRef<string | null>(null) // focused once the Add field menu has closed
 
   const save = useSaveInvoice()
   const saving = useRef<Promise<Invoice> | null>(null)
@@ -1221,15 +1222,24 @@ function Editor({
                                   {translate('addField')}
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start">
+                              <DropdownMenuContent
+                                align="start"
+                                // The menu hands focus back to its trigger on close: send it to the added field instead.
+                                onCloseAutoFocus={(event) => {
+                                  const added = addedField.current
+                                  addedField.current = null
+                                  const field = added && document.getElementById(added)
+                                  if (!field) return
+                                  event.preventDefault()
+                                  field.focus()
+                                }}
+                              >
                                 {hiddenFields.map((field) => (
                                   <DropdownMenuItem
                                     key={field.id}
                                     onSelect={() => {
+                                      addedField.current = field.id
                                       field.show()
-                                      requestAnimationFrame(() =>
-                                        document.getElementById(field.id)?.focus(),
-                                      )
                                     }}
                                   >
                                     {field.label}

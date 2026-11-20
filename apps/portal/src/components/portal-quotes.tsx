@@ -75,9 +75,9 @@ export const QuotePdfLink = ({ quote }: { quote: PortalQuote }) => (
   />
 )
 
-type Asking = { quote: PortalQuote; decision: QuoteDecision }
+export type Asking = { quote: PortalQuote; decision: QuoteDecision }
 
-function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => void }) {
+export function DecisionDialog({ quote, decision, onClose }: Asking & { onClose: () => void }) {
   const queryClient = useQueryClient()
   const session = useQuery({
     queryKey: portalKeys.session,

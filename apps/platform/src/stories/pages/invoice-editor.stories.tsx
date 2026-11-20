@@ -18,11 +18,27 @@ import {
   shows,
 } from './frame'
 
+// Autosave answers like the server: the draft as saved.
+const autosave = http.patch('/api/v1/invoices/inv_draft', () =>
+  HttpResponse.json({ data: draftInvoice }),
+)
+/** Waits for the editor's pending autosave, so no save lands after the story ends. */
+const settled = () =>
+  waitFor(
+    () =>
+      expect(within(document.body).getByRole('status', { hidden: true })).toHaveTextContent(
+        'Saved',
+      ),
+    {
+      timeout: 3000,
+    },
+  )
+
 const meta = {
   title: 'Pages/Invoice editor',
   beforeEach: closeHeidi,
   parameters: {
-    ...pageParameters('/invoices', { compose: 'inv_draft' }),
+    ...pageParameters('/invoices', { compose: 'inv_draft' }, [autosave]),
     // shortcut: the date buttons' aria-labels ("Due date: 5 Dec 2026") leave out visible text
     // ("in 30 days", "Add date or period"); turn this rule on again once the editor fixes them.
     a11y: {
@@ -70,8 +86,11 @@ export const OptionalFields: Story = {
     await userEvent.click(page.getByRole('button', { name: 'Add field' }))
     await userEvent.click(await page.findByRole('menuitem', { name: 'Contract no.' }))
     const contract = await page.findByRole('textbox', { name: /Contract no\./ })
+    // The chosen field takes focus a frame later.
+    await waitFor(() => expect(contract).toHaveFocus())
     await userEvent.type(contract, 'C23-25-CP2302')
     await expect(contract).toHaveValue('C23-25-CP2302')
+    await userEvent.tab() // leave the field before the menu takes focus
     await userEvent.click(page.getByRole('button', { name: 'Add field' }))
     await userEvent.click(await page.findByRole('menuitem', { name: 'Client no.' }))
     await expect(await page.findByRole('textbox', { name: /Client no\./ })).toBeVisible()
@@ -82,6 +101,7 @@ export const OptionalFields: Story = {
     await userEvent.click(page.getByRole('button', { name: 'Add field' }))
     await userEvent.click(await page.findByRole('menuitem', { name: 'Contract no.' }))
     await expect(await page.findByRole('textbox', { name: /Contract no\./ })).toHaveValue('')
+    await settled()
   },
 }
 
@@ -106,6 +126,7 @@ export const ClientNumberLinkToggle: Story = {
     await userEvent.click(page.getByRole('button', { name: 'Use the client’s number' }))
     await expect(page.getByRole('textbox', { name: /Client no\./ })).toHaveValue('1')
     await expect(page.getByText('Alpenglow Studio GmbH')).toBeVisible() // still in the editor
+    await settled()
   },
 }
 
@@ -136,6 +157,7 @@ export const FooterAtTheBottomPhone = phone(FooterAtTheBottom)
 /** The preview answers the schedule's rows, as the server does: the draft's 3'134.90 in three monthly parts. */
 const instalmentPreview = {
   ...pageParameters('/invoices', { compose: 'inv_draft' }, [
+    autosave,
     http.post<never, Partial<InvoiceInput>>('/api/v1/invoices/preview', async ({ request }) => {
       const input = await request.json()
       return HttpResponse.json({
@@ -170,6 +192,7 @@ export const InstalmentsSettings: Story = {
     const dialog = await switchOn()
     await expect(within(dialog).getByRole('switch', { name: 'Payment reminders' })).toBeChecked()
     await expect(within(dialog).getByText(/Amount due/)).toBeVisible()
+    await settled()
   },
 }
 export const InstalmentsSettingsDark = dark(InstalmentsSettings)
@@ -187,6 +210,7 @@ export const InstalmentsSummary: Story = {
     await expect(page.getByText('3× · Monthly · from 5 Dec 2026')).toBeVisible()
     await expect(page.getByRole('switch', { name: 'Pay in instalments' })).toBeChecked()
     await expect(page.getByRole('button', { name: 'Edit instalments' })).toBeVisible()
+    await settled()
   },
 }
 export const InstalmentsSummaryDark = dark(InstalmentsSummary)
@@ -203,6 +227,7 @@ export const InstalmentsCancelled: Story = {
     await expect(page.queryByRole('dialog', { name: 'Pay in instalments' })).toBeNull()
     await expect(page.getByRole('switch', { name: 'Pay in instalments' })).not.toBeChecked()
     await expect(page.queryByText(/3× ·/)).toBeNull()
+    await settled()
   },
 }
 
@@ -234,5 +259,6 @@ export const InstalmentsEdited: Story = {
     await expect(
       within(instalmentsDialog()).getByRole('switch', { name: 'Payment reminders' }),
     ).not.toBeChecked()
+    await settled()
   },
 }

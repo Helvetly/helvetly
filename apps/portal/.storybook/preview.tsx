@@ -2,7 +2,8 @@ import '@helvetly/ui/globals.css'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
-import { mswLoader } from '@helvetly/vitest-config/storybook-msw'
+import { expectQuietConsole, guardConsole } from '@helvetly/vitest-config/console-guard'
+import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
@@ -12,6 +13,9 @@ import { configure } from 'storybook/test'
 // (settings, books, ledger), so a random one failed although nothing was wrong; 5 s waits for slow renders only and
 // still fails a story whose expected state never appears.
 configure({ asyncUtilTimeout: 5000 })
+
+// Only the test run fails a story on console output; the built Storybook (and its screenshots) shows the story.
+if (import.meta.env.MODE === 'test') guardConsole()
 
 // In the test run enter animations end at once: a play asserting a dialog or sheet that was still fading in read
 // opacity 0 under CI load. Exit animations, delays and loops keep their timing; Storybook itself keeps all motion.
@@ -78,6 +82,10 @@ const preview: Preview = {
       </StoryProviders>
     ),
   ],
+  afterEach: () => {
+    expectAllHandled()
+    expectQuietConsole()
+  },
   loaders: [mswLoader()],
   parameters: {
     nextjs: { appDirectory: true },

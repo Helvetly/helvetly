@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
@@ -36,7 +36,7 @@ test('someone signed in is sent on without the sign-in screen ever showing', asy
   server.use(http.get('/api/v1/session', () => HttpResponse.json({ email: 'a@example.com' })))
   renderScreen()
   expect(screen.queryByText(/Terms of Service/)).toBeNull()
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/clients'))
+  await waitFor(() => expect(replace).toHaveBeenCalledWith('/clients'))
   expect(screen.queryByText(/Terms of Service/)).toBeNull()
 })
 

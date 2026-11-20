@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import golden from '@/lib/public-offer.golden.json'
@@ -26,7 +26,8 @@ afterEach(() => vi.unstubAllGlobals())
 it('shows the build price while the API confirms it', async () => {
   priceWith(async () => new Response(JSON.stringify({ data: { ...offer, ...golden } })))
   expect(screen.getByText('CHF 49')).toBeInTheDocument()
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+  await act(() => new Promise((resolve) => setTimeout(resolve)))
+  expect(fetch).toHaveBeenCalledOnce()
   expect(screen.getByText('CHF 49')).toBeInTheDocument()
 })
 

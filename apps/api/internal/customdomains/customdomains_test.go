@@ -912,3 +912,40 @@ func TestCleanup(t *testing.T) {
 	}
 	_ = orphan
 }
+
+// TestOverride: an operator's custom_portal_domain on a plan without it counts like the plan that has it: the domain is
+// added, served and kept through a downgrade; cleared, it is off at once, as after a downgrade.
+func TestOverride(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	b, ws := e.workspace(billing.Pro, "owner")
+	set := func() {
+		w := store.WorkspaceLimit{WorkspaceID: ws, Key: store.FeatureCustomPortalDomain, State: billing.StateEnabled, Reason: "test"}
+		if err := billing.SetWorkspaceOverride(ctx, e.st, w, "test", time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set()
+	e.add(b, "portal.granted.ch")
+	e.live("portal.granted.ch")
+	if host, _ := e.scopes.ActiveDomain(ctx, ws); host != "portal.granted.ch" {
+		t.Fatalf("Pro with the override: %q", host)
+	}
+	billingtest.On(t, e.st, ws, billing.Basic) // a downgrade keeps what the operator gave
+	e.scopes.Forget()
+	e.tick()
+	if status, _ := e.row(ws); status != "active" {
+		t.Fatalf("after a downgrade with the override: %s", status)
+	}
+	if err := billing.ClearWorkspaceOverride(ctx, e.st, ws, store.FeatureCustomPortalDomain, "test", "test"); err != nil {
+		t.Fatal(err)
+	}
+	e.scopes.Forget()
+	if host, _ := e.scopes.ActiveDomain(ctx, ws); host != "" {
+		t.Fatalf("resolves after the override was cleared: %q", host)
+	}
+	e.tick()
+	if status, problem := e.row(ws); status != "failed" || problem != ProblemPlan {
+		t.Fatalf("after the override was cleared: %s %s", status, problem)
+	}
+}

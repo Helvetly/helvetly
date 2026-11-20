@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, renderHook, screen } from '@testing-library/react'
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -47,10 +47,10 @@ test('a second Duplicate while the first is out makes no second draft', async ()
     result.current.run('duplicate', invoice)
     result.current.run('duplicate', invoice)
   })
-  await vi.waitFor(() => expect(posts).toEqual(['duplicate']))
+  await waitFor(() => expect(posts).toEqual(['duplicate']))
   act(() => result.current.run('duplicate', invoice))
   release.current.resolve()
-  await vi.waitFor(() => expect(result.current.busy).toBe(false))
+  await waitFor(() => expect(result.current.busy).toBe(false))
   expect(posts).toEqual(['duplicate'])
 })
 
@@ -72,7 +72,7 @@ test('confirming Credit note again while the first is out makes no second draft'
     await userEvent.click(screen.getByRole('button', { name: 'Credit' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Create credit note' }))
   }
-  await vi.waitFor(() => expect(posts.length).toBeGreaterThan(0))
+  await waitFor(() => expect(posts.length).toBeGreaterThan(0))
   release.current.resolve()
-  await vi.waitFor(() => expect(posts).toEqual(['credit-note']))
+  await waitFor(() => expect(posts).toEqual(['credit-note']))
 })
