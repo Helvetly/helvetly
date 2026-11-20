@@ -17,7 +17,6 @@ database.searchParams.set('search_path', schema)
 const apiPort = '3338'
 const port = '8008'
 const portalPort = '8009'
-const cloudflarePort = '3339'
 const env = {
   ...process.env,
   DATABASE_URL: database.toString(),
@@ -50,7 +49,6 @@ const env = {
   CLOUDFLARE_API_TOKEN: 'e2e-cloudflare-token',
   CLOUDFLARE_ZONE_ID: cloudflareZone,
   CUSTOM_DOMAIN_TARGET: 'portal.helvetly.com',
-  CLOUDFLARE_API_URL: `http://127.0.0.1:${cloudflarePort}`,
   HELVETLY_E2E_FAKE_DOMAINS: 'true',
   NEXT_TELEMETRY_DISABLED: '1',
   HELVETLY_E2E_NEXT_DIST: 'true',
@@ -88,8 +86,8 @@ process.on('SIGTERM', () => void stop().finally(() => process.exit()))
 process.on('SIGINT', () => void stop().finally(() => process.exit()))
 
 try {
-  const cloudflare = startCloudflareFake(Number(cloudflarePort))
-  process.once('exit', () => cloudflare.close())
+  const cloudflare = await startCloudflareFake()
+  env.CLOUDFLARE_API_URL = `http://127.0.0.1:${cloudflare.address().port}`
   await databaseAction('create')
   await finished(run('go', ['build', '-o', binary, './cmd/helvetly'], 'apps/api'))
   const api = run(binary, [], 'apps/api')
