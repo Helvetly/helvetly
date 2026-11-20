@@ -67,6 +67,7 @@ import { errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import {
+  displayStatus,
   addDays,
   canManageInvoices,
   daysBetween,
@@ -99,6 +100,7 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
+import { ApprovalInbox } from './approval-inbox'
 import { ClientSearch } from './client-search'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
@@ -264,7 +266,7 @@ const COLUMNS: ColumnDef[] = [
     label: translate('status'),
     width: 'w-[112px]',
     cell: (invoice) => (
-      <span className="flex items-center gap-1.5">
+      <span className="flex flex-wrap items-center gap-1.5">
         <RowStatus invoice={invoice} />
       </span>
     ),
@@ -471,6 +473,7 @@ export function InvoicesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['invoices'] })}
       >
         <div className="relative flex flex-1 flex-col">
+          <ApprovalInbox onOpen={open} />
           {isReceivable(params.kind) && <InvoiceKpis />}
           <ListToolbar>
             <Filters params={params} onChange={update} />
@@ -1032,6 +1035,7 @@ const InvoiceRow = memo(function InvoiceRow({
     <RowContextMenu menu={menu} bulk={bulk}>
       <tr
         data-selected={selected || undefined}
+        data-attention={displayStatus(invoice) === 'overdue' || undefined}
         onPointerEnter={() => act.prefetch(invoice.id)}
         data-open={isOpen || undefined}
         onClick={(event) => {
@@ -1090,6 +1094,7 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
     <RowContextMenu menu={menu} bulk={bulk}>
       <li
         data-selected={selected || undefined}
+        data-attention={displayStatus(invoice) === 'overdue' || undefined}
         onPointerEnter={() => act.prefetch(invoice.id)}
         className={listTable.item}
       >

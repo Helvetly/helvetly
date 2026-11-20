@@ -39,6 +39,9 @@ var Events = []event{
 	{"einvoice.delivered", "invoices", true, false},
 	{"quote.accepted", "invoices", true, true},
 	{"quote.declined", "invoices", true, true},
+	{"approval.requested", "invoices", true, true},
+	{"approval.approved", "invoices", true, true},
+	{"approval.rejected", "invoices", true, true},
 	{"client.change_requested", "clients", true, true},
 	{"portal.first_sign_in", "clients", true, false},
 	{"portal.document_viewed", "clients", true, false},
@@ -186,20 +189,98 @@ type notification struct {
 	CreatedAt time.Time  `json:"created_at"`
 	Read      bool       `json:"read"`
 	ReadAt    *time.Time `json:"read_at"`
+	// NeedsYou: the reader has something to do (the bell's "Needs you"); Action labels the button to Href.
+	NeedsYou bool   `json:"needs_you"`
+	Action   string `json:"action"`
+	// Resolved: what later settled one that needs you (the invoice was paid), else null.
+	Resolved *resolution `json:"resolved"`
 }
 
-func view(n store.Notification) notification {
+type resolution struct {
+	Title     string    `json:"title"`
+	Body      *string   `json:"body"`
+	Action    string    `json:"action"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// needsYou: the events that ask the reader to act; every other event is an update.
+var needsYou = map[string]bool{
+	"invoice.overdue": true, "einvoice.delivery_failed": true, "quote.accepted": true, "client.change_requested": true,
+	"portal.domain_failed": true, "signature.declined": true, "engagement.draft_created": true,
+	"billing.trial_ending": true, "billing.payment_failed": true, "billing.payment_disputed": true,
+	"vat.return_due": true, "import.ready": true, "import.failed": true,
+	"approval.requested": true, "approval.approved": true, "approval.rejected": true,
+}
+
+// settledBy: the later event about the same record (the same href) that settles one that needs you.
+var settledBy = map[string]string{
+	"invoice.overdue":          "invoice.paid",
+	"einvoice.delivery_failed": "einvoice.delivered",
+	"portal.domain_failed":     "portal.domain_active",
+}
+
+func optional(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// view is a notification as the bell shows it; settled is what settled it, if anything did.
+func view(n store.Notification, settled *store.Notification) notification {
 	m := render(n)
 	e, _ := lookup(n.Event)
 	v := notification{ID: strconv.FormatInt(n.ID, 10), Event: n.Event, Category: e.Category, Title: m.title, Href: m.href,
-		CreatedAt: n.CreatedAt, Read: n.ReadAt != nil, ReadAt: n.ReadAt}
-	if m.body != "" {
-		v.Body = &m.body
-	}
-	if m.actor != "" {
-		v.Actor = &m.actor
+		CreatedAt: n.CreatedAt, Read: n.ReadAt != nil, ReadAt: n.ReadAt, Body: optional(m.body), Actor: optional(m.actor),
+		NeedsYou: needsYou[n.Event], Action: m.action}
+	if settled != nil {
+		r := render(*settled)
+		v.Resolved = &resolution{Title: r.title, Body: optional(r.body), Action: r.action, CreatedAt: settled.CreatedAt}
 	}
 	return v
+}
+
+// settled finds, for each row that needs you, the later notification about the same record that settled it.
+func (s *Service) settled(ctx context.Context, sess store.Session, rows []store.Notification) (map[int64]*store.Notification, error) {
+	out := map[int64]*store.Notification{}
+	var after int64
+	events := []string{}
+	for _, n := range rows {
+		if e, ok := settledBy[n.Event]; ok {
+			if after == 0 || n.ID < after {
+				after = n.ID
+			}
+			if !slices.Contains(events, e) {
+				events = append(events, e)
+			}
+		}
+	}
+	if len(events) == 0 {
+		return out, nil
+	}
+	// shortcut: looks at the next 500 settling events only; page by id if a workspace ever has more in its bell.
+	later, err := s.db.LaterNotifications(ctx, sess.Workspace.ID, sess.User.ID, after, events, 500)
+	if err != nil {
+		return nil, err
+	}
+	hrefs := make([]string, len(later))
+	for i, l := range later {
+		hrefs[i] = render(l).href
+	}
+	for _, n := range rows {
+		e, ok := settledBy[n.Event]
+		if !ok {
+			continue
+		}
+		href := render(n).href
+		for i := range later {
+			if later[i].ID > n.ID && later[i].Event == e && hrefs[i] == href {
+				out[n.ID] = &later[i]
+				break
+			}
+		}
+	}
+	return out, nil
 }
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -254,9 +335,13 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		id := strconv.FormatInt(rows[limit-1].ID, 10)
 		next = &id
 	}
+	settled, err := s.settled(ctx, sess, rows)
+	if err != nil {
+		return err
+	}
 	out := make([]notification, 0, len(rows))
 	for _, n := range rows {
-		out = append(out, view(n))
+		out = append(out, view(n, settled[n.ID]))
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "unread": unread, "next": next})
 	return nil

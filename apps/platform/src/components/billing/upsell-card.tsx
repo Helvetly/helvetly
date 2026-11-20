@@ -20,12 +20,15 @@ export function UpsellCard({
   pitch,
   preview,
   benefits,
+  heading: Heading = 'h4',
 }: {
   lock: NonNullable<FeatureLock>
   title: string
   pitch: ReactNode
   preview?: ReactNode
   benefits: { icon: LucideIcon; text: string }[]
+  /** The title's level in its page's outline: a row's under its section (h4), or the page's own section (h2). */
+  heading?: 'h2' | 'h3' | 'h4'
 }) {
   return (
     <section
@@ -40,7 +43,7 @@ export function UpsellCard({
             {translate('includedInPlan', { plan: lock.plan.name })}
           </span>
         )}
-        <h4 className="text-title-sm font-semibold text-balance">{title}</h4>
+        <Heading className="text-title-sm font-semibold text-balance">{title}</Heading>
         <p className="text-body-sm text-pretty text-muted-foreground">{pitch}</p>
       </div>
       {preview}

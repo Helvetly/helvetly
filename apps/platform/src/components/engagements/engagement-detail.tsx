@@ -290,6 +290,7 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
           periods={periods.data ?? []}
           unit={unit}
           writable={writable}
+          perEntry={engagement.invoice_detail === 'per_entry'}
         />
 
         <Panel title={translate('periods')}>

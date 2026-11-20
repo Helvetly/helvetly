@@ -28,6 +28,7 @@ var actions = map[string]string{
 	"period.reopened": "View periods", "vat.return_due": "Open the VAT return", "import.ready": "Review the import",
 	"import.failed": "Open the import", "portal.domain_active": "View the portal settings",
 	"portal.domain_failed": "Check the domain", "portal.domain_released": "View the portal settings", "quote.accepted": "Make the invoice", "quote.declined": "View the quote",
+	"approval.requested": "Review the draft", "approval.approved": "Issue it", "approval.rejected": "Open the draft",
 }
 
 // data is a notification's stored fields; numbers read as their text.
@@ -100,6 +101,17 @@ func words(event string, d data) message {
 			body:  or(d.s("contact_name"), "The client") + " sent the change from the client portal. Approve or reject it on the client's page.",
 			href:  clientHref(d.s("client_id")),
 			actor: d.s("contact_name")}
+	case "approval.requested":
+		return message{title: or(d.s("actor"), "A team member") + " asks you to approve " + approvalDoc(d),
+			body: strings.TrimSpace(money + " · it is issued once approved."), href: invoice}
+	case "approval.approved":
+		return message{title: "Your " + approvalDoc(d) + " was approved", body: "You can issue it now.", href: invoice}
+	case "approval.rejected":
+		body := "It is a draft again: change it and submit it again."
+		if d.s("comment") != "" {
+			body = "“" + d.s("comment") + "”"
+		}
+		return message{title: or(d.s("actor"), "A team member") + " rejected your " + approvalDoc(d), body: body, href: invoice}
 	case "quote.accepted", "quote.declined":
 		verb := map[string]string{"quote.accepted": "accepted", "quote.declined": "declined"}[event]
 		body := "In the client portal."
@@ -209,6 +221,13 @@ func words(event string, d data) message {
 			href: importHref(d.s("path"))}
 	}
 	return message{title: "Something happened in your workspace", href: "/"}
+}
+
+// approvalDoc names a draft waiting for approval: "credit note for Acme AG".
+func approvalDoc(d data) string {
+	kind := map[string]string{"credit_note": "credit note", "debit_note": "debit note", "corrected": "corrected invoice",
+		"proforma": "pro-forma invoice"}[d.s("kind")]
+	return or(kind, "invoice") + strings.Replace(from(d.s("client")), " from ", " for ", 1)
 }
 
 func from(client string) string {

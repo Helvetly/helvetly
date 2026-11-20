@@ -184,7 +184,13 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		inv.PaymentMethods = usableMethods(inv.PaymentMethods, set, inv.Currency)
 		compute(&inv)
 		syncSchedule(&inv)
-		return saveDraft(ctx, q, sess, inv, s.now())
+		if err := saveDraft(ctx, q, sess, inv, s.now()); err != nil {
+			return err
+		}
+		if _, ok := body["reminders_enabled"]; ok && len(body) == 1 { // not what was approved
+			return nil
+		}
+		return s.approvals.Reset(ctx, q, sess, approvalDoc(inv))
 	})
 	if err != nil {
 		return err
@@ -265,8 +271,19 @@ func setReminders(ctx context.Context, q store.Q, workspaceID, id string, raw js
 
 // saveDraft saves the draft, its reminders switch, its schedule and its prepayment basis together, including a full
 // credit of a final invoice.
+// wrote records the session's person as an author of the draft: an author never approves it (internal/approvals).
+func wrote(ctx context.Context, q store.Q, sess store.Session, id string) error {
+	if sess.User.ID == "" { // a job
+		return nil
+	}
+	return q.AddApprovalAuthor(ctx, sess.Workspace.ID, id, sess.User.ID)
+}
+
 func saveDraft(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, now time.Time) error {
 	if err := q.SaveDraft(ctx, sess.Workspace.ID, inv, now); err != nil {
+		return err
+	}
+	if err := wrote(ctx, q, sess, inv.ID); err != nil {
 		return err
 	}
 	if err := q.SetRemindersEnabled(ctx, inv.ID, inv.RemindersEnabled); err != nil {
@@ -334,12 +351,18 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 	} else if planned {
 		return errPlanned
 	}
-	deleted, err := s.db.DeleteDraft(ctx, sess.Workspace.ID, id)
+	err = s.db.Tx(ctx, func(q store.Q) error {
+		deleted, err := q.DeleteDraft(ctx, sess.Workspace.ID, id)
+		if err != nil {
+			return err
+		}
+		if !deleted { // issued meanwhile
+			return errLocked
+		}
+		return s.approvals.Forget(ctx, q, sess.Workspace.ID, id)
+	})
 	if err != nil {
 		return err
-	}
-	if !deleted { // issued meanwhile
-		return errLocked
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil

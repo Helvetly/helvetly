@@ -117,7 +117,7 @@ export function FormChoiceCards<T extends string>({
             </span>
             <span
               aria-hidden
-              className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-has-checked/choice:border-foreground group-has-checked/choice:bg-foreground group-has-checked/choice:text-background"
+              className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-has-checked/choice:border-primary group-has-checked/choice:bg-primary group-has-checked/choice:text-primary-foreground"
             >
               <Check className="hidden size-2.5 stroke-[3] group-has-checked/choice:block" />
             </span>

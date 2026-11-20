@@ -42,7 +42,7 @@ export function Segmented<T extends string>({
         <label
           key={option.value}
           className={cn(
-            'relative flex items-center justify-center rounded-md px-3 text-body-sm text-muted-foreground transition-colors duration-150 hover:text-foreground has-checked:bg-card has-checked:text-foreground has-checked:shadow-elevation-1 has-focus-visible:ring-2 has-focus-visible:ring-ring/50',
+            'relative flex items-center justify-center rounded-md px-3 text-body-sm text-muted-foreground transition-colors duration-150 hover:text-foreground has-checked:bg-card has-checked:text-brand has-checked:shadow-elevation-1 has-focus-visible:ring-2 has-focus-visible:ring-ring/50',
             size === 'sm' ? 'min-h-7' : 'min-h-8',
             // Filling a narrow field, a long option wraps instead of running off the page.
             fill ? 'py-1 text-center text-balance' : 'whitespace-nowrap',

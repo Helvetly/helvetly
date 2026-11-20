@@ -6,6 +6,7 @@ import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
+  BadgeCheck,
   Banknote,
   CalendarRange,
   Download,
@@ -46,6 +47,8 @@ const ICONS: Record<string, LucideIcon> = {
   refund: Undo2,
   expense: Receipt,
   plan: CalendarRange,
+  approval: BadgeCheck,
+  approvals: BadgeCheck,
 }
 const TONE_BY_AREA: Record<string, Tone> = {
   invoice: 'blue',
@@ -72,7 +75,11 @@ export function eventLook(kind: string): { Icon: LucideIcon; tone: Tone } {
 const reference = (event: FinancialEvent) => {
   const number = event.payload.number
   if (typeof number === 'number') return translate('no3', { number: number })
-  return typeof number === 'string' ? number : event.subject_id
+  if (typeof number === 'string') return number
+  // An approver group's name; a policy's document type.
+  const { name, doc_type } = event.payload
+  if (typeof name === 'string') return name
+  return typeof doc_type === 'string' ? doc_type : event.subject_id
 }
 
 export function AuditLogSettings() {

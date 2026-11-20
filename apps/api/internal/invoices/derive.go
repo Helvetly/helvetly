@@ -82,7 +82,10 @@ func (s *Service) derive(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		compute(&inv)
 		id = inv.ID
-		if err := q.SaveDraft(ctx, ws.ID, inv, s.now()); err != nil || len(inv.Prepayments) == 0 {
+		if err := q.SaveDraft(ctx, ws.ID, inv, s.now()); err != nil {
+			return err
+		}
+		if err := wrote(ctx, q, sess, inv.ID); err != nil || len(inv.Prepayments) == 0 {
 			return err
 		}
 		ids := make([]string, len(inv.Prepayments))

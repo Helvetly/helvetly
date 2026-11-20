@@ -29,12 +29,14 @@ test('a teammate joining reaches the bell, which forgets it 5 minutes after it w
   await page.clock.runFor(61_000)
   await expect(bell).toHaveAccessibleDescription('1 unread')
 
-  // Opening the bubble marks it read but keeps it marked new while open.
+  // Opening the bubble marks nothing read; "Mark all as read" does.
   await bell.click()
   const bubble = page.getByRole('dialog', { name: 'Notifications' })
-  const item = bubble.getByRole('link', { name: /joined the workspace/ })
+  const item = bubble.getByRole('region', { name: 'Updates' }).getByText(/joined the workspace/)
   await expect(item).toBeVisible()
   await expect(bubble.getByText('New', { exact: true })).toBeVisible()
+  await expect(bell).toHaveAccessibleDescription('1 unread')
+  await bubble.getByRole('button', { name: 'Mark all as read' }).click()
   await expect(bell).toHaveAccessibleDescription('')
 
   // Read a minute ago: still in the bubble, without the dot.

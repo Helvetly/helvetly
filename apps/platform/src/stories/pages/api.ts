@@ -339,6 +339,7 @@ export const engagements = [
     client: ref(2),
     title: 'German lessons',
     description: null,
+    invoice_detail: 'per_entry',
     recurrence: 'none',
     quantity: '20',
     current_period: period({

@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/mail"
@@ -123,9 +124,12 @@ func newEnv(t *testing.T) *env {
 	}
 	e := &env{t: t, st: st, raw: raw, files: &fakeStorage{objects: map[string][]byte{}}, mail: &fakeMailer{}}
 	e.svc = New(st, a, e.files, e.mail, discard)
+	appr := approvals.New(st, a)
+	e.svc.SetApprovals(appr)
 	mux := http.NewServeMux()
 	a.Register(mux)
 	e.svc.Register(mux)
+	appr.Register(mux)
 	e.srv = httptest.NewServer(mux)
 	t.Cleanup(e.srv.Close)
 	return e
@@ -254,9 +258,10 @@ type Invoice struct {
 		QRBill  bool `json:"qr_bill"`
 		Revolut bool `json:"revolut"`
 	}
-	Payments []struct{ ID, Amount string }
-	Seller   *store.Party
-	Buyer    *store.Party
+	Payments      []struct{ ID, Amount string }
+	Seller        *store.Party
+	Buyer         *store.Party
+	ApprovalState *string
 }
 
 // UnmarshalJSON maps snake_case without tagging every field above.

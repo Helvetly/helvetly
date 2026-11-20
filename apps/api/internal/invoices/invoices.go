@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/storage"
@@ -50,6 +51,8 @@ type Service struct {
 	einvoice EInvoiceExporter
 	// planCreated runs after a plan commits (internal/instalments' Wake, which imports this package)
 	planCreated func()
+	// approvals gates issuing a draft whose type needs approval; nil: never
+	approvals *approvals.Service
 }
 
 // EInvoiceExporter is internal/einvoice's Export: the e-invoice file (XML, or the Factur-X PDF) of an issued invoice.
@@ -116,6 +119,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/invoices/{id}/deliveries", s.deliveries)
 	handle("GET /api/v1/invoices/{id}/pdf", s.pdf)
 	s.registerDerived(mux)
+	s.registerApproval(handle)
 }
 
 var (

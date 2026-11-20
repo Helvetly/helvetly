@@ -237,7 +237,9 @@ const renderDetail = (id: string) =>
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <Detail id={id} />
+      <TooltipProvider>
+        <Detail id={id} />
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 

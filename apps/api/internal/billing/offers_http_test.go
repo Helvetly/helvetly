@@ -157,7 +157,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != currentOffer || len(items) != 67 {
+	if data["offer_id"] != currentOffer || len(items) != 68 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {

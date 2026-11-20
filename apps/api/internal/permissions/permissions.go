@@ -167,6 +167,9 @@ var instead = []struct {
 	{false, "/api/v1/employees/*/protected", []string{"write:payroll"}},
 	{false, "/api/v1/employment/settings", []string{"read:employees|read:payroll"}},
 	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
+	// approvers decide on documents they can see; their approver group, not invoice editing, lets them
+	{true, "/api/v1/invoices/*/approval/approve", []string{"read:invoices"}},
+	{true, "/api/v1/invoices/*/approval/reject", []string{"read:invoices"}},
 }
 
 // tokensPath is a person's own API tokens: the "api" area lets them create, list and revoke them whatever the

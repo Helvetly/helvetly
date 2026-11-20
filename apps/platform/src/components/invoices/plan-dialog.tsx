@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 
 import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { ApiError, errorMessage } from '@/lib/api'
+import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import type { Plan } from '@/lib/instalments'
 import {
@@ -95,7 +96,10 @@ export function PlanDialog({
         },
         onError: (error) => {
           const fromServer = fieldErrors(error)
-          if (Object.keys(fromServer).length) setErrors(fromServer)
+          if (isApprovalRequired(error)) {
+            toastApprovalRequired(queryClient, invoiceId)
+            onClose()
+          } else if (Object.keys(fromServer).length) setErrors(fromServer)
           else toast.error(errorMessage(error))
         },
       },

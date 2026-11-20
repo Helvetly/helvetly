@@ -15,6 +15,7 @@ import {
 import { useState } from 'react'
 
 import { ApiError, errorFromBody, getCsrfToken, request, respond } from '@/lib/api'
+import type { ApprovalState } from '@/lib/approvals'
 import type { ElectronicAddress, Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import type { Plan } from '@/lib/instalments'
@@ -181,6 +182,8 @@ export type Invoice = Totals & {
   deducted_on: { id: string; number: string } | null
   number: string | null
   status: InvoiceStatus
+  /** A draft's latest approval request; null when it never had one. */
+  approval_state: Exclude<ApprovalState, 'none'> | null
   is_overdue: boolean
   client_id: string
   client: { id: string; number: number; name: string }
@@ -401,6 +404,7 @@ export type InvoiceListItem = Pick<
   | 'type_code'
   | 'number'
   | 'status'
+  | 'approval_state'
   | 'is_overdue'
   | 'client'
   | 'issue_date'
@@ -522,6 +526,8 @@ export type SendInput = {
   message?: string
   /** false: only marks it sent (its PDF handed over another way), no email. */
   email?: boolean
+  /** With email false, false takes a mark as sent back. */
+  sent?: boolean
 }
 export type PaymentInput = {
   amount: Decimal

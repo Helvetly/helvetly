@@ -33,7 +33,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(useSyncExternalStore(url.subscribe, url.get)),
 }))
 
-import { BUBBLE_KEEP_MS, byDay, listQuery, type Notification } from '@/lib/notifications'
+import {
+  bellCounts,
+  bellSections,
+  BUBBLE_KEEP_MS,
+  byDay,
+  listQuery,
+  shortTime,
+  type Notification,
+} from '@/lib/notifications'
 import {
   notificationHandlers,
   resetNotificationsMock,
@@ -115,6 +123,9 @@ const at = (iso: string): Notification => ({
   created_at: iso,
   read: true,
   read_at: iso,
+  needs_you: false,
+  action: 'View invoice',
+  resolved: null,
 })
 
 test('byDay groups under Today, Yesterday, This week and Earlier and keeps the order', () => {
@@ -149,36 +160,90 @@ test('the bubble asks for what was read in the last five minutes, by the clock a
   )
 })
 
-test('the bell shows the count, opening it marks read and keeps the dots, old reads stay out', async () => {
+test('the bubble counts and sections: a settled item stays under Needs you but no longer counts', () => {
+  const overdue = { ...at('2026-11-10T09:00:00Z'), needs_you: true }
+  const settled = {
+    ...at('2026-11-10T08:00:00Z'),
+    needs_you: true,
+    resolved: {
+      title: 'Paid',
+      body: null,
+      action: 'View invoice',
+      created_at: '2026-11-10T10:00:00Z',
+    },
+  }
+  const update = at('2026-11-10T07:00:00Z')
+  const items = [overdue, settled, update]
+  expect(bellCounts(items)).toEqual({ all: 3, needs: 1, updates: 1 })
+  expect(bellSections(items, 'all').map((s) => [s.label, s.items.length])).toEqual([
+    ['Needs you', 2],
+    ['Updates', 1],
+  ])
+  expect(bellSections(items, 'updates').map((s) => s.label)).toEqual(['Updates'])
+  expect(bellSections([update], 'needs')).toEqual([])
+})
+
+test('the bubble shows "now" within a minute, the time today and the day before that', () => {
+  const now = new Date(2026, 10, 12, 12, 0, 30)
+  expect(shortTime(new Date(2026, 10, 12, 12, 0).toISOString(), now)).toBe('now')
+  expect(shortTime(new Date(2026, 10, 12, 9, 5).toISOString(), now)).toMatch(/09.05/)
+  expect(shortTime(new Date(2026, 10, 8, 9, 5).toISOString(), now)).toMatch(/8|Nov/)
+})
+
+test('the bell shows the count; opening it marks nothing read, groups and filters', async () => {
   const user = userEvent.setup()
   renderBell()
   expect(await screen.findByTestId('bell-count')).toHaveTextContent('2')
   await user.click(screen.getByRole('button', { name: 'Notifications', description: '2 unread' }))
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByRole('link', { name: /Invoice RE-2026-0042 was paid/ })).toBeVisible()
+  const needs = await within(dialog).findByRole('region', { name: 'Needs you' })
   // Read a minute ago: still here; read a day ago: only on the page.
-  expect(within(dialog).getByRole('link', { name: /RE-2026-0037 is overdue/ })).toBeVisible()
+  expect(within(needs).getByText(/RE-2026-0037 is overdue/)).toBeVisible()
   expect(within(dialog).queryByText(/expenses import/)).toBeNull()
+  const updates = within(dialog).getByRole('region', { name: 'Updates' })
+  expect(within(updates).getByText('Invoice RE-2026-0042 was paid')).toBeVisible()
   expect(within(dialog).getAllByText('New')).toHaveLength(2)
-  await waitFor(() => expect(screen.queryByTestId('bell-count')).toBeNull())
-  expect(reads).toBe(1)
-  expect(within(dialog).getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
+  expect(screen.getByTestId('bell-count')).toHaveTextContent('2')
+  expect(reads).toBe(0)
+
+  const filters = within(dialog).getByRole('group', { name: 'Show' })
+  expect(within(filters).getByRole('button', { name: 'All 3' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await user.click(within(filters).getByRole('button', { name: 'Needs you 1' }))
+  expect(within(dialog).queryByRole('region', { name: 'Updates' })).toBeNull()
+  await user.click(within(filters).getByRole('button', { name: 'Updates 2' }))
+  expect(within(dialog).queryByRole('region', { name: 'Needs you' })).toBeNull()
+
   expect(within(dialog).getByRole('link', { name: 'All notifications' })).toHaveAttribute(
     'href',
     '/notifications',
   )
-  expect(within(dialog).getByRole('link', { name: 'Notification preferences' })).toHaveAttribute(
+  expect(within(dialog).getByRole('link', { name: 'Notification settings' })).toHaveAttribute(
     'href',
     '/notifications?prefs=1',
   )
+  expect(await within(dialog).findByText('Also sent by email')).toBeVisible()
+
+  await user.click(within(dialog).getByRole('button', { name: 'Mark all as read' }))
+  await waitFor(() => expect(screen.queryByTestId('bell-count')).toBeNull())
+  expect(reads).toBe(1)
+  expect(within(dialog).queryByText('New')).toBeNull()
+  expect(within(dialog).getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
 })
 
-test('clicking an item in the bubble marks it read and closes the bubble', async () => {
+test("an item's button opens it, marks it read and closes the bubble", async () => {
   const user = userEvent.setup()
   renderBell()
   await user.click(await screen.findByRole('button', { name: /^Notifications/ }))
   const dialog = await screen.findByRole('dialog')
-  await user.click(within(dialog).getByRole('link', { name: /Ana Keller signed/ }))
+  await user.click(
+    await within(dialog).findByRole('link', {
+      name: 'View the request',
+      description: /Ana Keller signed/,
+    }),
+  )
   await waitFor(() => expect(one).toContain('ntf_5:read'))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 })
@@ -190,10 +255,10 @@ test('the bell says when everything is caught up', async () => {
   await user.click(screen.getByRole('button', { name: 'Notifications' }))
   expect(await screen.findByText('You’re all caught up')).toBeVisible()
   expect(screen.queryByTestId('bell-count')).toBeNull()
-  expect(reads).toBe(0)
+  expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
 })
 
-test('on a phone the sidebar item goes to the notifications page with the count', async () => {
+test('on a phone the sidebar item opens the notifications in a sheet, with the count', async () => {
   const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
     Object.assign(new EventTarget(), {
       matches: query.includes('max-width'),
@@ -205,11 +270,16 @@ test('on a phone the sidebar item goes to the notifications page with the count'
     }),
   )
   try {
+    const user = userEvent.setup()
     renderBell()
-    const link = await screen.findByRole('link', { name: 'Notifications', description: '2 unread' })
-    expect(link).toHaveAttribute('href', '/notifications')
+    const button = await screen.findByRole('button', {
+      name: 'Notifications',
+      description: '2 unread',
+    })
     expect(screen.getByTestId('bell-count')).toHaveTextContent('2')
-    expect(screen.queryByRole('button', { name: /^Notifications/ })).toBeNull()
+    await user.click(button)
+    const sheet = await screen.findByRole('dialog', { name: 'Notifications' })
+    expect(await within(sheet).findByRole('region', { name: 'Needs you' })).toBeVisible()
   } finally {
     matchMedia.mockRestore()
   }

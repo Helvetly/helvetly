@@ -25,6 +25,10 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/helvetly/helvetly
+  # actions/checkout runs `git init`; a default branch name keeps git's "Using 'master'" hint out of the log.
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
 
 jobs:
   image:

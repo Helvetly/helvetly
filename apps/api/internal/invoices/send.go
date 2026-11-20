@@ -29,6 +29,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		Subject json.RawMessage `json:"subject"`
 		Message json.RawMessage `json:"message"`
 		Email   *bool           `json:"email"`
+		Sent    *bool           `json:"sent"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -45,6 +46,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		return ErrIssuedElsewhere
 	}
 	if body.Email != nil && !*body.Email {
+		if body.Sent != nil && !*body.Sent {
+			return s.unmarkSent(w, r, sess, inv)
+		}
 		return s.markSent(w, r, sess, inv)
 	}
 	if s.mail == nil {
@@ -127,6 +131,24 @@ func (s *Service) markSent(w http.ResponseWriter, r *http.Request, sess store.Se
 	if inv.SentAt == nil {
 		if err := s.db.MarkSent(r.Context(), inv.ID, s.now()); err != nil {
 			return fmt.Errorf("mark invoice %s sent: %w", inv.ID, err)
+		}
+	}
+	return s.respond(w, r, sess, http.StatusOK, inv.ID)
+}
+
+// unmarkSent takes back a mark as sent (the undo of markSent). An invoice that went out by email stays sent: the
+// client has it.
+func (s *Service) unmarkSent(w http.ResponseWriter, r *http.Request, sess store.Session, inv store.Invoice) error {
+	if inv.Status == "void" || inv.Status == "replaced" {
+		return invalidState("A voided or replaced invoice cannot be changed.")
+	}
+	if inv.SentAt != nil {
+		cleared, err := s.db.UnmarkSent(r.Context(), inv.ID, s.now())
+		if err != nil {
+			return fmt.Errorf("unmark invoice %s sent: %w", inv.ID, err)
+		}
+		if !cleared {
+			return invalidState("This invoice was emailed to the client, so it stays sent.")
 		}
 	}
 	return s.respond(w, r, sess, http.StatusOK, inv.ID)

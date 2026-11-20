@@ -18,7 +18,7 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
-/** The Helvetly app icon: a brand-teal rounded tile with the mark. Size it with `className`. */
+/** The Helvetly app icon: a logo-teal rounded tile with the mark. Size it with `className`. */
 export function Logo({ className }: { className?: string }) {
   return (
     <span

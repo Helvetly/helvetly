@@ -78,3 +78,37 @@ func TestMarkSentRefused(t *testing.T) {
 		t.Fatalf("another workspace marked its invoice sent: %v", at)
 	}
 }
+
+var unmark = map[string]any{"email": false, "sent": false}
+
+// The undo of a mark as sent clears sent_at, and repeats harmlessly; an invoice that was emailed stays sent.
+func TestUnmarkSent(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		first   map[string]any
+		status  int
+		cleared bool
+	}{
+		{"marked by hand", noEmail, http.StatusOK, true},
+		{"never sent", nil, http.StatusOK, true},
+		{"emailed", map[string]any{}, http.StatusConflict, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			e := newEnv(t)
+			b, clientID := e.ready()
+			inv := e.issued(b, clientID, nil)
+			if tt.first != nil {
+				e.do(b, "POST", path(inv.ID, "send"), tt.first, http.StatusOK, nil)
+			}
+			if tt.status == http.StatusOK {
+				e.do(b, "POST", path(inv.ID, "send"), unmark, http.StatusOK, nil)
+				e.do(b, "POST", path(inv.ID, "send"), unmark, http.StatusOK, nil)
+			} else {
+				e.fails(b, "POST", path(inv.ID, "send"), unmark, tt.status, "invalid_state")
+			}
+			if at := e.sentAt(b, inv.ID); (at == nil) != tt.cleared {
+				t.Fatalf("sent_at %v, want cleared %v", at, tt.cleared)
+			}
+		})
+	}
+}

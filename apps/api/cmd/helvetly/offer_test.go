@@ -50,7 +50,7 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1.3" || len(c.Plans) != 3 ||
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1.4" || len(c.Plans) != 3 ||
 		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
 		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
 		t.Fatalf("catalog: %q %v", out, err)
@@ -58,7 +58,7 @@ func TestOfferCommand(t *testing.T) {
 	if _, err := run("catalog", "-offer", "nope"); err == nil {
 		t.Fatal("catalog of an unknown offer")
 	}
-	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 69 records") {
+	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 70 records") {
 		t.Fatalf("validate: %q %v", out, err)
 	}
 	broken := o

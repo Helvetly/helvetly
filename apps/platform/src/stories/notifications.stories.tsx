@@ -1,6 +1,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { SidebarMenu, SidebarMenuItem, SidebarProvider } from '@helvetly/ui/components/sidebar'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { focusManager } from '@tanstack/react-query'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
@@ -14,6 +15,7 @@ import {
   notificationHandlers,
   resetNotificationsMock,
   sampleNotifications,
+  settleNotificationMock,
 } from '@/mocks/notifications'
 
 const meta = {
@@ -61,7 +63,8 @@ const bell = ({ collapsed = false } = {}) => (
   </SidebarProvider>
 )
 
-export const BellOpensAndMarksRead: Story = {
+/** Everything: what needs you first, then updates; opening marks nothing read, the button does. */
+export const BellAll: Story = {
   render: () => bell(),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -70,10 +73,21 @@ export const BellOpensAndMarksRead: Story = {
     ).toBeVisible()
     await expect(canvas.getByTestId('bell-count')).toHaveTextContent('2')
     const bubble = await openBell(canvasElement)
-    await expect(bubble.getByRole('link', { name: /Invoice RE-2026-0042 was paid/ })).toBeVisible()
-    // The unread ones keep their dot while the bubble is open.
+    const needs = await bubble.findByRole('region', { name: 'Needs you' })
+    await expect(needs).toHaveTextContent(/RE-2026-0037 is overdue/)
+    await expect(bubble.getByRole('region', { name: 'Updates' })).toHaveTextContent(
+      /RE-2026-0042 was paid/,
+    )
+    await expect(bubble.getByRole('button', { name: 'All 3' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    // The unread ones keep their dot until read.
     await expect(bubble.getAllByText('New')).toHaveLength(2)
+    await expect(canvas.getByTestId('bell-count')).toHaveTextContent('2')
+    await userEvent.click(bubble.getByRole('button', { name: 'Mark all as read' }))
     await waitFor(() => expect(canvas.queryByTestId('bell-count')).toBeNull())
+    await expect(bubble.queryByText('New')).toBeNull()
     await expect(bubble.getByRole('link', { name: 'All notifications' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/notifications\/?$/),
@@ -81,21 +95,61 @@ export const BellOpensAndMarksRead: Story = {
   },
 }
 
-export const BellHidesOldReads: Story = {
+export const BellNeedsYou: Story = {
   render: () => bell(),
   play: async ({ canvasElement }) => {
     const bubble = await openBell(canvasElement)
-    // Read a minute ago: still in the bubble; read yesterday: only on the page. The list may still be loading.
-    await expect(await bubble.findByRole('link', { name: /RE-2026-0037 is overdue/ })).toBeVisible()
-    await expect(bubble.queryByText(/expenses import/)).toBeNull()
-    await expect(bubble.queryByText(/Lea Meier joined/)).toBeNull()
+    await userEvent.click(await bubble.findByRole('button', { name: 'Needs you 1' }))
+    await expect(bubble.getByRole('region', { name: 'Needs you' })).toBeVisible()
+    await expect(bubble.queryByRole('region', { name: 'Updates' })).toBeNull()
+    await expect(
+      bubble.getByRole('link', { name: 'View invoice', description: /RE-2026-0037 is overdue/ }),
+    ).toBeVisible()
+  },
+}
+
+export const BellUpdates: Story = {
+  render: () => bell(),
+  play: async ({ canvasElement }) => {
+    const bubble = await openBell(canvasElement)
+    await userEvent.click(await bubble.findByRole('button', { name: 'Updates 2' }))
+    await expect(bubble.getByRole('region', { name: 'Updates' })).toHaveTextContent(
+      /Ana Keller signed/,
+    )
+    await expect(bubble.queryByRole('region', { name: 'Needs you' })).toBeNull()
+  },
+}
+
+/** Paid elsewhere while the bubble is open: the overdue item turns green and the Needs-you count drops. */
+export const BellLiveResolve: Story = {
+  render: () => bell(),
+  play: async ({ canvasElement }) => {
+    const bubble = await openBell(canvasElement)
+    const needs = await bubble.findByRole('region', { name: 'Needs you' })
+    await expect(within(needs).getByText(/RE-2026-0037 is overdue/)).toBeVisible()
+    await expect(bubble.getByRole('button', { name: 'Needs you 1' })).toBeVisible()
+    settleNotificationMock('ntf_4', {
+      title: 'Invoice RE-2026-0037 was paid',
+      body: 'CHF 980.00 received from Beta GmbH.',
+      action: 'View invoice',
+      created_at: new Date().toISOString(),
+    })
+    // Coming back to the tab loads at once (the open bubble also checks every 10 seconds).
+    focusManager.setFocused(false)
+    focusManager.setFocused(true)
+    const paid = await within(needs).findByText('Invoice RE-2026-0037 was paid')
+    // It fades in.
+    await waitFor(() => expect(paid).toBeVisible())
+    await expect(within(needs).getByText('Settled')).toBeInTheDocument()
+    await expect(bubble.getByRole('button', { name: 'Needs you 0' })).toBeVisible()
+    focusManager.setFocused(undefined)
   },
 }
 
 const longTitle =
   'Your engagements import is ready to review, with records from every uploaded file'
 
-/** A title too long for the bubble stays on one line, ends in "…" and shows whole on hover. */
+/** A long title wraps inside the bubble instead of running off it. */
 export const BellLongTitle: Story = {
   render: () => bell(),
   beforeEach: () =>
@@ -104,13 +158,13 @@ export const BellLongTitle: Story = {
     ),
   play: async ({ canvasElement }) => {
     const bubble = await openBell(canvasElement)
-    const title = await bubble.findByTitle(longTitle)
-    await expect(title.getBoundingClientRect().height).toBeLessThanOrEqual(20)
-    await expect(title.scrollWidth).toBeGreaterThan(title.clientWidth)
+    const title = await bubble.findByText(longTitle)
+    await expect(title.getBoundingClientRect().height).toBeGreaterThan(20)
+    await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
   },
 }
 
-export const BellCaughtUp: Story = {
+export const BellEmpty: Story = {
   render: () => bell(),
   beforeEach: () => resetNotificationsMock(allRead()),
   play: async ({ canvasElement }) => {
@@ -120,10 +174,31 @@ export const BellCaughtUp: Story = {
     const bubble = await openBell(canvasElement)
     await expect(await bubble.findByText('You’re all caught up')).toBeVisible()
     await expect(bubble.getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
+    await userEvent.click(bubble.getByRole('button', { name: 'Needs you 0' }))
+    await expect(bubble.getByText('Nothing needs you right now')).toBeVisible()
   },
 }
 
-export const BellDark: Story = { ...BellOpensAndMarksRead, parameters: { dark: true } }
+export const BellDark: Story = { ...BellAll, parameters: { dark: true } }
+
+/** On a phone the bell opens the same notifications in a sheet from the bottom, the full width. */
+export const BellPhone: Story = {
+  render: () => bell(),
+  parameters: {
+    viewport: {
+      options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } },
+    },
+  },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole('button', { name: /^Notifications/ }),
+    )
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Notifications' })
+    await expect(await within(sheet).findByRole('region', { name: 'Needs you' })).toBeVisible()
+    await waitFor(() => expect(sheet.getBoundingClientRect().width).toBe(window.innerWidth))
+  },
+}
 
 export const BellError: Story = {
   render: () => bell(),
