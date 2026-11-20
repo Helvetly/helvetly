@@ -30,6 +30,33 @@ export async function render(page: Page, app: App, id: string) {
   await page.evaluate(() => document.fonts.ready)
 }
 
+/**
+ * Clears what a play function's clicks leave behind (a focus ring, a hover tint), so the shot shows the
+ * story at rest whatever the timing. A story whose baseline shows focus or hover on purpose sets
+ * `parameters.visual.keepFocus`.
+ */
+async function atRest(page: Page) {
+  const keepFocus = await page.evaluate(() => {
+    const preview: unknown = Reflect.get(window, '__STORYBOOK_PREVIEW__')
+    const story: unknown =
+      typeof preview === 'object' && preview ? Reflect.get(preview, 'currentRender') : undefined
+    const entry: unknown =
+      typeof story === 'object' && story ? Reflect.get(story, 'story') : undefined
+    const parameters: unknown =
+      typeof entry === 'object' && entry ? Reflect.get(entry, 'parameters') : undefined
+    const visual: unknown =
+      typeof parameters === 'object' && parameters ? Reflect.get(parameters, 'visual') : undefined
+    return typeof visual === 'object' && visual ? Reflect.get(visual, 'keepFocus') === true : false
+  })
+  if (keepFocus) return
+  // Outside the viewport: no element is under the pointer.
+  await page.mouse.move(-1, -1)
+  await page.evaluate(async () => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame)
+  })
+}
+
 /** A story ready to shoot: rendered, its data in view, in `theme`, in Inter. */
 export async function open(page: Page, app: App, id: string, theme: 'light' | 'dark') {
   await render(page, app, id)
@@ -46,6 +73,7 @@ export async function open(page: Page, app: App, id: string, theme: 'light' | 'd
     (dark) => document.documentElement.classList.toggle('dark', dark),
     theme === 'dark',
   )
+  await atRest(page)
   // A baseline in a fallback font would hide every typography change, so a missing Inter fails loudly.
   expect(
     await page.evaluate(async () => (await document.fonts.load('14px Inter')).length),

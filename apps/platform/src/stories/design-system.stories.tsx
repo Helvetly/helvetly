@@ -22,6 +22,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const ButtonVariants: Story = {
+  // The baseline shows the keyboard focus ring on Cancel.
+  parameters: { visual: { keepFocus: true } },
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
       <Button>Save</Button>
