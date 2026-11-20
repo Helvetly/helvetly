@@ -53,7 +53,7 @@ async function atRest(page: Page) {
   await page.mouse.move(-1, -1)
   await page.evaluate(async () => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-    for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame)
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
   })
 }
 
