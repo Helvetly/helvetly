@@ -31,7 +31,7 @@ const components: [App, string][] = [
   ['platform', 'design-system-controls--button-sizes'],
   ['platform', 'design-system-controls--disabled-and-loading'],
   ['platform', 'design-system-controls--validation-error'],
-  ['platform', 'design-system-controls--status-badges'],
+  ['platform', 'design-system-badges--all-badges'],
   ['platform', 'design-system-components--callouts'],
   ['platform', 'design-system-components--meters'],
   ['platform', 'design-system-components--segmented-control'],
