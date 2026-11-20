@@ -93,7 +93,7 @@ are the reference.
   `draft`; its latest request (`approval_requests`, one `pending|approved` at a time, decisions in
   `approval_decisions`) gives `approval_state`. The document package calls approvals in its own transaction with the
   row locked: `Gate` before issuing (`409 approval_required`), `Reset` after any edit (the request ends, submit again),
-  `Forget` on delete. No policy, or no feature after a downgrade: nothing is gated or read. Automatic issues (a
+  `Forget` on delete; an instalment plan from a draft needs its approval too. No policy, or no feature after a downgrade: nothing is gated. Automatic issues (a
   void's credit note, plan instalments) are not gated. Steps go to the audit log (`approval.*`, configuration
   `approvals.*`), never as money events; `approval.requested|approved|rejected` notify. Approving is session-only:
   the operations are not public API operations or MCP tools, and an API token only reads `approval_state`.

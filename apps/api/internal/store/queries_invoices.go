@@ -336,8 +336,9 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState
 
 // approvalState: a draft's latest approval request as pending, approved or rejected; null without one or once it was
-// withdrawn or reset (an issued document keeps the state it was issued with).
-const approvalState = `(SELECT CASE WHEN ar.status IN ('pending', 'approved', 'rejected') THEN ar.status END FROM approval_requests ar
+// withdrawn or reset. An issued document shows only approved (one issued after its policy was turned off was not).
+const approvalState = `(SELECT CASE WHEN ar.status = 'approved' OR ar.status IN ('pending', 'rejected') AND i.status = 'draft'
+	THEN ar.status END FROM approval_requests ar
 	WHERE ar.workspace_id = i.workspace_id AND ar.doc_id = i.id ORDER BY ar.submitted_at DESC, ar.id DESC LIMIT 1)`
 
 // invoicePlanJoin: the plan that issued the document, or the live plan the draft is the source of.

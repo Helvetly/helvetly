@@ -273,3 +273,11 @@ func (q Q) DraftInvoicesByID(ctx context.Context, workspaceID string, ids []stri
 	}
 	return out, rows.Err()
 }
+
+// ApprovalGroupOpen: a pending or approved request's rules need the group.
+func (q Q) ApprovalGroupOpen(ctx context.Context, workspaceID, groupID string) (bool, error) {
+	var used bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM approval_requests WHERE workspace_id = $1 AND status IN ('pending', 'approved')
+		AND rules @> jsonb_build_array(jsonb_build_object('group_id', $2::text)))`, workspaceID, groupID).Scan(&used)
+	return used, err
+}

@@ -187,6 +187,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := saveDraft(ctx, q, sess, inv, s.now()); err != nil {
 			return err
 		}
+		if _, ok := body["reminders_enabled"]; ok && len(body) == 1 { // not what was approved
+			return nil
+		}
 		return s.approvals.Reset(ctx, q, sess, approvalDoc(inv))
 	})
 	if err != nil {
@@ -337,14 +340,17 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 	} else if planned {
 		return errPlanned
 	}
-	deleted, err := s.db.DeleteDraft(ctx, sess.Workspace.ID, id)
+	err = s.db.Tx(ctx, func(q store.Q) error {
+		deleted, err := q.DeleteDraft(ctx, sess.Workspace.ID, id)
+		if err != nil {
+			return err
+		}
+		if !deleted { // issued meanwhile
+			return errLocked
+		}
+		return s.approvals.Forget(ctx, q, sess.Workspace.ID, id)
+	})
 	if err != nil {
-		return err
-	}
-	if !deleted { // issued meanwhile
-		return errLocked
-	}
-	if err := s.approvals.Forget(ctx, s.db.Q, sess.Workspace.ID, id); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)

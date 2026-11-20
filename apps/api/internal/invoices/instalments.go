@@ -287,6 +287,10 @@ func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.
 		case inv.Instalments != nil:
 			return invalidState("This draft has an instalment schedule: remove it to plan partial invoices instead.")
 		}
+		// the plan issues the draft's partial invoices later, so it needs the approval issuing the draft needs
+		if err := s.approvals.Gate(ctx, q, sess.Workspace.ID, approvalDoc(inv)); err != nil {
+			return err
+		}
 		if len(inv.Prepayments) > 0 { // the partials could not share the deduction
 			return cannotIssue([]reason{{Code: "planned_with_prepayments", Field: "prepayment_ids",
 				Message: "A draft that deducts prepayments cannot become an instalment plan: remove the prepayments first."}})

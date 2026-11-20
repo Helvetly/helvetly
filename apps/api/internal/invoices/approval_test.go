@@ -371,3 +371,46 @@ func TestApprovalPlanGate(t *testing.T) {
 	e.fails(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusForbidden, "feature_not_in_plan")
 	e.invoice(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusOK)
 }
+
+// A plan issues its draft's partial invoices later, so it needs the approval the draft needs; a group a waiting
+// request needs is not deleted; deleting a draft removes its requests; switching reminders keeps an approval.
+func TestApprovalPlanGroupDeleteAndReminders(t *testing.T) {
+	e := newEnv(t)
+	tm, clientID, acc, mgmt := e.team()
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	d := e.draft(tm.author, clientID, nil)
+	body := map[string]any{"count": 2, "interval": "monthly", "first_due_date": e.today()}
+	e.fails(tm.author, "POST", path(d.ID, "plan"), body, http.StatusConflict, "approval_required")
+
+	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
+	e.policy(tm.author, "invoice", nil, rule(mgmt, 1)) // Accountants leave the policy, the request still needs them
+	e.fails(tm.author, "DELETE", "/api/v1/approvals/groups/"+acc, nil, http.StatusConflict, "group_in_use")
+	e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK)
+	e.invoice(tm.author, "PATCH", path(d.ID), map[string]any{"reminders_enabled": false}, http.StatusOK)
+	if v := e.approval(tm.author, "GET", path(d.ID, "approval"), nil, http.StatusOK); v.State != "approved" {
+		t.Fatalf("after switching reminders: %+v", v)
+	}
+	e.plan(tm.author, d.ID, body, http.StatusCreated)
+
+	other := e.draft(tm.author, clientID, nil)
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	e.approval(tm.author, "POST", path(other.ID, "approval"), nil, http.StatusOK)
+	e.do(tm.author, "DELETE", path(other.ID), nil, http.StatusNoContent, nil)
+	var n int
+	if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM approval_requests WHERE doc_id = $1`, other.ID).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("requests of the deleted draft: %d %v", n, err)
+	}
+}
+
+// A draft issued after its policy was turned off does not stay "pending".
+func TestApprovalStateAfterPolicyOff(t *testing.T) {
+	e := newEnv(t)
+	tm, clientID, acc, _ := e.team()
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	d := e.draft(tm.author, clientID, nil)
+	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
+	e.do(tm.author, "PUT", "/api/v1/approvals/policies/invoice", map[string]any{"enabled": false, "rules": []any{}}, http.StatusOK, nil)
+	if got := e.invoice(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusOK); got.ApprovalState != nil {
+		t.Fatalf("issued with approval_state %s", *got.ApprovalState)
+	}
+}

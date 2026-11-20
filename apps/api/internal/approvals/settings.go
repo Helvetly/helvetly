@@ -21,7 +21,8 @@ const (
 
 var (
 	errForbidden = auth.Error(http.StatusForbidden, "forbidden", "Only owners and admins can do this.", nil)
-	errGroupUsed = auth.Error(http.StatusConflict, "group_in_use", "A policy uses this group: remove it from the policy first.", nil)
+	errGroupUsed = auth.Error(http.StatusConflict, "group_in_use",
+		"A policy or a document waiting for approval uses this group: remove it from the policy first, and decide or withdraw the waiting documents.", nil)
 )
 
 func validation(field, msg string) error {
@@ -154,6 +155,11 @@ func (s *Service) deleteGroup(w http.ResponseWriter, r *http.Request, sess store
 			if slices.ContainsFunc(p.Rules, func(r store.ApprovalRule) bool { return r.GroupID != nil && *r.GroupID == id }) {
 				return errGroupUsed
 			}
+		}
+		if used, err := q.ApprovalGroupOpen(ctx, sess.Workspace.ID, id); err != nil {
+			return err
+		} else if used {
+			return errGroupUsed
 		}
 		if err := q.DeleteApprovalGroup(ctx, sess.Workspace.ID, id); err != nil {
 			return err
