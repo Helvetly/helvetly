@@ -39,7 +39,7 @@ import { toast } from 'sonner'
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { listTable, Pager } from '@/components/data/list-table'
-import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
   PageContextMenu,
@@ -420,7 +420,7 @@ export function ClientsPage() {
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-[15px] font-normal">
                   <SlidersHorizontal className="stroke-[1.5]" />
-                  <ToolbarText className="max-sm:sr-only">{translate('customize')}</ToolbarText>
+                  <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 gap-1 p-2">
@@ -904,7 +904,7 @@ function Filters({
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-[15px] font-normal">
           <ListFilter className="stroke-[1.5]" />
-          <ToolbarText>{translate('filters')}</ToolbarText>
+          {translate('filters')}
           {count > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
               {count}

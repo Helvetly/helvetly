@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { listTable } from '@/components/data/list-table'
-import { ListSearch, ListToolbar, ToolbarText } from '@/components/data/list-toolbar'
+import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -326,7 +326,7 @@ function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
-          <ToolbarText>{translate('filters')}</ToolbarText>
+          {translate('filters')}
           {roles.length > 0 && (
             <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
               {roles.length}

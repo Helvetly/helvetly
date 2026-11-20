@@ -1,9 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
 import { expect, test, type Page } from '@playwright/test'
 
-import { render, sizes, type App } from './storybook'
+import { render, sizes, stories } from './storybook'
 
 // Focusing a form control must never move or resize anything: not the control, its label or hint, nor the
 // fields below it. Every story with a control is opened at desktop and phone width; each control is focused
@@ -11,33 +8,6 @@ import { render, sizes, type App } from './storybook'
 // is compared with the one it had a moment before. Rings, outlines and other out-of-flow decoration (an
 // absolute or fixed box: a tooltip, a resize grip) push nothing aside, so they do not count. On a phone every
 // field is at least 16 px, or Safari zooms the page in as it gets focus (globals.css).
-
-// On a pull request CI writes the stories its changes reach (scripts/visual-affected.mjs); without the file,
-// every story.
-const affectedFile = resolve(import.meta.dirname, 'affected.json')
-const affected: unknown = existsSync(affectedFile)
-  ? JSON.parse(readFileSync(affectedFile, 'utf8'))
-  : undefined
-
-function stories(app: App) {
-  const only = typeof affected === 'object' && affected ? Reflect.get(affected, app) : undefined
-  const file = resolve(import.meta.dirname, `../../apps/${app}/storybook-static/index.json`)
-  const index: unknown = JSON.parse(readFileSync(file, 'utf8'))
-  const entries = typeof index === 'object' && index ? Reflect.get(index, 'entries') : undefined
-  return Object.values(typeof entries === 'object' && entries ? entries : {}).flatMap(
-    (entry: unknown) => {
-      const id = typeof entry === 'object' && entry ? Reflect.get(entry, 'id') : undefined
-      const type = typeof entry === 'object' && entry ? Reflect.get(entry, 'type') : undefined
-      // A dark variant lays out exactly like its light story.
-      return type === 'story' &&
-        typeof id === 'string' &&
-        !id.endsWith('-dark') &&
-        (!Array.isArray(only) || only.includes(id))
-        ? [id]
-        : []
-    },
-  )
-}
 
 /** Installs `window.focusLayout` in the story: one object, as the page gets this code as text. */
 function install(page: Page) {

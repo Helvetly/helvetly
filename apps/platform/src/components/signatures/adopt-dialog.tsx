@@ -68,7 +68,7 @@ export function AdoptDialog({
               type="button"
               aria-pressed={method === value}
               onClick={() => setMethod(value)}
-              className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg text-[13.5px] text-muted-foreground transition-colors aria-pressed:bg-card aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-elevation-1"
+              className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg text-[13.5px] leading-5 text-muted-foreground transition-colors aria-pressed:bg-card aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-elevation-1"
             >
               <Icon className="size-4" /> {label}
             </button>

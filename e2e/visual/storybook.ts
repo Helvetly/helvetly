@@ -1,8 +1,39 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { expect, type Page } from '@playwright/test'
 
 export const storybook = { platform: 'http://127.0.0.1:6611', portal: 'http://127.0.0.1:6612' }
 export type App = keyof typeof storybook
 export const sizes = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } }
+
+// On a pull request CI writes the stories its changes reach (scripts/visual-affected.mjs); without the file,
+// every story.
+const affectedFile = resolve(import.meta.dirname, 'affected.json')
+const affected: unknown = existsSync(affectedFile)
+  ? JSON.parse(readFileSync(affectedFile, 'utf8'))
+  : undefined
+
+/** The light stories of `app` this run audits. */
+export function stories(app: App) {
+  const only = typeof affected === 'object' && affected ? Reflect.get(affected, app) : undefined
+  const file = resolve(import.meta.dirname, `../../apps/${app}/storybook-static/index.json`)
+  const index: unknown = JSON.parse(readFileSync(file, 'utf8'))
+  const entries = typeof index === 'object' && index ? Reflect.get(index, 'entries') : undefined
+  return Object.values(typeof entries === 'object' && entries ? entries : {}).flatMap(
+    (entry: unknown) => {
+      const id = typeof entry === 'object' && entry ? Reflect.get(entry, 'id') : undefined
+      const type = typeof entry === 'object' && entry ? Reflect.get(entry, 'type') : undefined
+      // A dark variant lays out exactly like its light story.
+      return type === 'story' &&
+        typeof id === 'string' &&
+        !id.endsWith('-dark') &&
+        (!Array.isArray(only) || only.includes(id))
+        ? [id]
+        : []
+    },
+  )
+}
 
 // The sample data is relative to "now"; a fixed clock keeps dates, ages and greetings stable.
 const now = new Date('2026-11-10T09:30:00+01:00')

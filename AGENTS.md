@@ -215,6 +215,10 @@ artifact. A step added to `check` goes into a CI job too. Rules:
 - Focus never changes the layout: no ring, hint or font change may move a box, and fields one types into are
   at least 16 px on phones (`globals.css`; Safari zooms in on smaller ones). `e2e/visual/focus-layout.spec.ts`
   checks every story at desktop and phone width in the visual suite.
+- A button-like control's label is centred in its box to within 1 px (`e2e/visual/text-centring.spec.ts`, every
+  story at both widths). Chromium rounds Inter's ascent and descent to whole pixels, so a fractional size such
+  as `text-[13.5px]` needs an explicit line height (`leading-5`) rather than an inherited ratio; never nudge a
+  label with `translate-y` or one-sided padding.
 - Frontend behaviour is verified with Storybook stories and `play` interactions in Chromium,
   including relevant loading, empty, error, permission, validation and pending-write states.
   Keep pure unit/API tests; Storybook does not replace real end-to-end integration tests.

@@ -13,12 +13,6 @@ export function ListToolbar({ className, children }: { className?: string; child
   )
 }
 
-/** A toolbar control's words, optically centred with its icon. */
-// Inter's caps sit about a pixel above the middle of their line box, so the words move down one pixel.
-export function ToolbarText({ className, children }: { className?: string; children: ReactNode }) {
-  return <span className={cn('translate-y-px', className)}>{children}</span>
-}
-
 /** The list's search field: grows to fill the toolbar between its other controls. */
 export function ListSearch({
   label,

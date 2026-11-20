@@ -273,7 +273,7 @@ export function Placement<K extends string>({
                   onActive(index)
                   setArmed(null)
                 }}
-                className="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-left text-[13.5px] transition-colors hover:bg-foreground/[0.045] aria-pressed:bg-foreground/[0.06] aria-pressed:font-medium"
+                className="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-left text-[13.5px] leading-5 transition-colors hover:bg-foreground/[0.045] aria-pressed:bg-foreground/[0.06] aria-pressed:font-medium"
               >
                 <span
                   className="size-2.5 shrink-0 rounded-full"
@@ -302,7 +302,7 @@ export function Placement<K extends string>({
                   event.dataTransfer.effectAllowed = 'copy'
                 }}
                 onClick={() => setArmed(armed === kind ? null : kind)}
-                className="flex h-10 cursor-grab items-center gap-2.5 rounded-lg border border-dashed bg-card px-2.5 text-left text-[13.5px] transition-colors hover:bg-foreground/[0.03] active:cursor-grabbing aria-pressed:border-solid"
+                className="flex h-10 cursor-grab items-center gap-2.5 rounded-lg border border-dashed bg-card px-2.5 text-left text-[13.5px] leading-5 transition-colors hover:bg-foreground/[0.03] active:cursor-grabbing aria-pressed:border-solid"
                 style={{
                   borderColor: `${color}66`,
                   ...(armed === kind && { borderColor: color, backgroundColor: `${color}12` }),

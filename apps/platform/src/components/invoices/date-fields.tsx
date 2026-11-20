@@ -19,7 +19,7 @@ export const toCivil = (date: Date) =>
 
 /** Every value in the meta list: quiet text that shows a field on hover and focus. */
 export const quietValue =
-  'flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[13.5px] tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/70 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40 aria-expanded:bg-muted/70 data-invalid:text-destructive'
+  'flex h-8 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-[13.5px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/70 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40 aria-expanded:bg-muted/70 data-invalid:text-destructive'
 
 /** Every date popover: the calendar's width, 12px padding, one column. */
 const popover = 'grid w-auto gap-2 p-3'
