@@ -6,6 +6,7 @@ import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-m
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { configure } from 'storybook/test'
 
 import { RecordDrawers } from '../src/components/record-drawers'
@@ -73,6 +74,8 @@ const startUrl = window.location.href
 const preview: Preview = {
   beforeEach: (context) => {
     undefinedQueries = []
+    // Toasts live outside the story's tree and would outlast it into the next story.
+    toast.dismiss()
     window.history.replaceState(null, '', startUrl)
     const root = document.documentElement
     root.classList.add(...fontClassName.split(' '))

@@ -6,6 +6,7 @@ import { mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { configure } from 'storybook/test'
 
 // findBy…/waitFor give up after 1 s by default. In the full browser run a heavy screen can take longer to render
@@ -58,6 +59,8 @@ const startUrl = window.location.href
 
 const preview: Preview = {
   beforeEach: (context) => {
+    // Toasts live outside the story's tree and would outlast it into the next story.
+    toast.dismiss()
     window.history.replaceState(null, '', startUrl)
     const root = document.documentElement
     root.classList.add(...fontClassName.split(' '))

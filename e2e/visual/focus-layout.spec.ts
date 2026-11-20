@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
 
-import { render, sizes, type App } from './storybook'
+import { render, sizes, switchStory, type App } from './storybook'
 
 // Focusing a form control must never move or resize anything: not the control, its label or hint, nor the
 // fields below it. Every story with a control is opened at desktop and phone width; each control is focused
@@ -214,36 +214,83 @@ async function call(page: Page, method: string, index = 0): Promise<unknown> {
 
 const strings = (value: unknown) => (Array.isArray(value) ? value.map(String) : [])
 
+/** What focusing every control of the open story moved, resized or made Safari zoom in on. */
+async function auditStory(page: Page, size: string) {
+  await install(page)
+  const found = size === 'phone' ? strings(await call(page, 'zooming')) : []
+  // A key press first: from then on, focus from script is keyboard focus (:focus-visible).
+  await page.keyboard.press('Shift')
+  found.push(...strings(await call(page, 'keyboard')))
+  const click = async (index: number) => {
+    const point = await call(page, 'prepareClick', index)
+    if (!Array.isArray(point)) return []
+    await page.mouse.click(Number(point[0]), Number(point[1]))
+    return strings(await call(page, 'afterClick'))
+  }
+  const fields = Number(await call(page, 'textFields'))
+  // One field after the other, as each click moves focus away from the one before.
+  const clickFrom = async (index: number): Promise<string[]> => {
+    if (index >= fields) return []
+    const recheck = async () => {
+      await page.waitForTimeout(400)
+      return click(index)
+    }
+    const shifted = (await click(index)).length ? await recheck() : []
+    return [...shifted, ...(await clickFrom(index + 1))]
+  }
+  found.push(...(await clickFrom(0)))
+  return found
+}
+
+// One page sweeps a batch of stories, switching between them in place (switchStory). A story with a finding is
+// opened afresh and audited again, so only what a full load also shows fails the test.
+const batch = 20
+
 for (const app of ['platform', 'portal'] as const) {
-  for (const id of stories(app)) {
+  const ids = stories(app)
+  for (let start = 0; start < ids.length; start += batch) {
+    const mine = ids.slice(start, start + batch)
     for (const [size, viewport] of Object.entries(sizes)) {
-      test(`focus keeps the layout: ${app} ${id} ${size}`, async ({ page }) => {
-        await page.setViewportSize(viewport)
-        await render(page, app, id)
-        await install(page)
-        const found = size === 'phone' ? strings(await call(page, 'zooming')) : []
-        // A key press first: from then on, focus from script is keyboard focus (:focus-visible).
-        await page.keyboard.press('Shift')
-        found.push(...strings(await call(page, 'keyboard')))
-        const click = async (index: number) => {
-          const point = await call(page, 'prepareClick', index)
-          if (!Array.isArray(point)) return []
-          await page.mouse.click(Number(point[0]), Number(point[1]))
-          return strings(await call(page, 'afterClick'))
+      test(`focus keeps the layout: ${app} ${mine[0]} … (${mine.length}) ${size}`, async ({
+        context,
+      }) => {
+        test.setTimeout(mine.length * 30_000)
+        // A tab that has held many stories can run out of memory on a heavy one (a large upload): then the
+        // story opens again in a new tab, like a story whose fresh load crashes, which still fails.
+        const fresh = async () => {
+          const tab = await context.newPage()
+          await tab.setViewportSize(viewport)
+          return tab
         }
-        const fields = Number(await call(page, 'textFields'))
-        // One field after the other, as each click moves focus away from the one before.
-        const clickFrom = async (index: number): Promise<string[]> => {
-          if (index >= fields) return []
-          const recheck = async () => {
-            await page.waitForTimeout(400)
-            return click(index)
+        let page = await fresh()
+        const open = async (id: string, first: boolean) => {
+          if (first) return render(page, app, id)
+          try {
+            await switchStory(page, id)
+          } catch (error) {
+            if (!(error instanceof Error) || !/Target crashed/.test(error.message)) throw error
+            await page.close().catch(() => undefined)
+            page = await fresh()
+            await render(page, app, id)
           }
-          const shifted = (await click(index)).length ? await recheck() : []
-          return [...shifted, ...(await clickFrom(index + 1))]
         }
-        found.push(...(await clickFrom(0)))
-        expect(found, 'focusing a control moved or resized these elements').toEqual([])
+        // One story after the other, as they share the page.
+        const sweep = async ([id, ...rest]: string[], first: boolean): Promise<void> => {
+          if (!id) return
+          await test.step(id, async () => {
+            await open(id, first)
+            let found = await auditStory(page, size)
+            if (found.length) {
+              await render(page, app, id)
+              found = await auditStory(page, size)
+            }
+            expect
+              .soft(found, `${id}: focusing a control moved or resized these elements`)
+              .toEqual([])
+          })
+          await sweep(rest, false)
+        }
+        await sweep(mine, true)
       })
     }
   }
