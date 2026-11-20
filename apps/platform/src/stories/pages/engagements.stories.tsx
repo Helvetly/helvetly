@@ -533,7 +533,7 @@ export const RowMenuLogDelivery: Story = {
 }
 export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
 
-/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is off and says why. */
+/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is not shown. */
 export const LogDeliverySummaryInvoice: Story = {
   play: async (context) => {
     await shows('Bookkeeping support')?.(context)
@@ -546,16 +546,12 @@ export const LogDeliverySummaryInvoice: Story = {
       'Well prepared',
     )
     await expect(
-      within(dialog).getByRole('checkbox', { name: 'Also print on the invoice line' }),
-    ).toBeDisabled()
-    await userEvent.hover(
-      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
-    )
-    await waitFor(() =>
-      expect(body.getByRole('tooltip')).toHaveTextContent(
-        'This engagement invoices one summary line',
-      ),
-    )
+      within(dialog).queryByRole('checkbox', { name: 'Also print on the invoice line' }),
+    ).toBeNull()
+    await expect(within(dialog).queryByText('Also print on the invoice line')).toBeNull()
+    await expect(
+      within(dialog).queryByRole('button', { name: 'About Also print on the invoice line' }),
+    ).toBeNull()
   },
 }
 

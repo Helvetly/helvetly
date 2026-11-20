@@ -2187,7 +2187,6 @@
   "onInvoice": "in fattura",
   "alsoPrintOnTheInvoiceLine": "Stampa anche sulla riga di fattura",
   "theClientPerformanceIsAddedToThisEntrysInvoiceLine": "Aggiunto dopo la nota sulla riga di fattura di questa voce, ad es. «20.11.2026 · Lezione · Ben fatto».",
-  "thisEngagementInvoicesOneSummaryLine": "Questo incarico è fatturato con una sola riga riepilogativa, quindi non c’è una riga per voce.",
   "howDidTheClientDo": "Com’è andato il cliente?",
   "options": "{label} opzioni",
   "or": "o ",

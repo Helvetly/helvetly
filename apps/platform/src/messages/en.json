@@ -2187,7 +2187,6 @@
   "onInvoice": "on invoice",
   "alsoPrintOnTheInvoiceLine": "Also print on the invoice line",
   "theClientPerformanceIsAddedToThisEntrysInvoiceLine": "Added after the note on this entry’s invoice line, e.g. “20.11.2026 · Lesson · You did well”.",
-  "thisEngagementInvoicesOneSummaryLine": "This engagement invoices one summary line, so there is no line per entry to print it on.",
   "howDidTheClientDo": "How did the client do?",
   "options": "{label} options",
   "or": "or ",
