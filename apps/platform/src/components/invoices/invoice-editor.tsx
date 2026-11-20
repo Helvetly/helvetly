@@ -1617,7 +1617,7 @@ function PaymentNote({
           <PaymentRow
             icon={ibanValid ? Landmark : CircleAlert}
             invalid={!ibanValid}
-            title={<span className="font-mono tracking-tight">{formatIban(settings.iban)}</span>}
+            title={<span className="font-code">{formatIban(settings.iban)}</span>}
             detail={ibanValid ? settings.bank_name : translate('checkTheIBAN')}
           />
           {qrBill && <PaymentRow icon={METHOD_ICONS.qr_bill} title={translate('swissQRBill')} />}

@@ -584,11 +584,7 @@ function Detail({
                 placeholder: translate('che123456789MWST'),
                 mono: true,
               })}
-              value={
-                client.vat_number && (
-                  <span className="font-mono text-[13px]">{client.vat_number}</span>
-                )
-              }
+              value={client.vat_number && <span className="font-code">{client.vat_number}</span>}
             />
             <Row
               icon={Send}

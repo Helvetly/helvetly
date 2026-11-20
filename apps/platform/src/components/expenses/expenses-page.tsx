@@ -860,9 +860,7 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
             onCheckedChange={() => act.toggle(expense.id)}
           />
         </td>
-        <td className={cn(listTable.td, 'text-muted-foreground tabular-nums')}>
-          #{expense.number}
-        </td>
+        <td className={cn(listTable.td, 'font-code text-muted-foreground')}>#{expense.number}</td>
         <td className="px-3">
           <span className="grid min-w-0 leading-tight">
             <span className="truncate" title={expense.supplier_name ?? undefined}>

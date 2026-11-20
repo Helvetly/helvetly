@@ -66,7 +66,7 @@ export function NumberFormatField({
         ]}
         renderValue={(option) => (
           <span className="flex items-baseline gap-2">
-            <span className={cn(option.value !== CUSTOM && 'font-mono')}>{option.label}</span>
+            <span className={cn(option.value !== CUSTOM && 'font-code')}>{option.label}</span>
             {option.hint && <span className="text-muted-foreground">{option.hint}</span>}
           </span>
         )}
@@ -83,7 +83,7 @@ export function NumberFormatField({
               ref={input}
               aria-label={translate('customNumberFormat')}
               aria-invalid={invalid || undefined}
-              className={cn(inputClass, 'font-mono')}
+              className={cn(inputClass, 'font-code')}
               value={value}
               maxLength={40}
               spellCheck={false}
@@ -104,7 +104,7 @@ export function NumberFormatField({
                 onClick={() => insert(token)}
               >
                 {label}
-                <span className="font-mono text-muted-foreground">{token}</span>
+                <span className="font-code text-muted-foreground">{token}</span>
               </Button>
             ))}
           </fieldset>

@@ -129,7 +129,7 @@ const COLUMNS: ColumnDef[] = [
     sort: 'sku',
     visible: true,
     cell: (product) =>
-      product.sku ? <span className="font-mono text-[13px] break-all">{product.sku}</span> : dash,
+      product.sku ? <span className="font-code break-all">{product.sku}</span> : dash,
   },
   {
     id: 'unit',
@@ -974,9 +974,13 @@ const ProductItem = memo(function ProductItem({ product, selected, bulk, access,
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="text-[15px] break-words">{product.name}</span>
             <span className="text-[13px] break-all text-muted-foreground">
-              {[product.type === 'product' ? 'Product' : 'Service', product.sku]
-                .filter(Boolean)
-                .join(' · ')}
+              {product.type === 'product' ? 'Product' : 'Service'}
+              {product.sku && (
+                <>
+                  {' · '}
+                  <span className="font-code">{product.sku}</span>
+                </>
+              )}
             </span>
           </span>
           <PriceCell product={product} />

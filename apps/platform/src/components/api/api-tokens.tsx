@@ -173,7 +173,7 @@ export function ApiTokens() {
               }
               meta={
                 <>
-                  <span className="font-mono text-caption">{token.prefix}…</span> ·{' '}
+                  <span className="font-code text-caption">{token.prefix}…</span> ·{' '}
                   {token.workspace.name}
                   {translate('created')}
                   {formatDate(token.created_at)} ·{' '}

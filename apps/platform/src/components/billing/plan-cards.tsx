@@ -484,7 +484,8 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
             {promo ? (
               <>
                 <span className="rounded-full bg-brand-surface px-2.5 text-caption leading-[22px] font-medium text-brand">
-                  {promo.code} · {describeDiscount(promo)}
+                  <span className="font-code text-caption">{promo.code}</span> ·{' '}
+                  {describeDiscount(promo)}
                 </span>
                 <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
                   {translate('change')}

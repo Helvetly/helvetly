@@ -491,7 +491,7 @@ export function ClientForm({
               value={values.vat_number}
               onChange={(event) => set('vat_number', formatUid(event.target.value))}
               placeholder={translate('che123456789MWST')}
-              className={cn(inputClass, 'font-mono text-[13px]')}
+              className={cn(inputClass, 'font-code')}
             />
           </FormField>
           <FormField
@@ -653,7 +653,7 @@ export function ClientForm({
                   onChange={(event) => set('leitweg_id', event.target.value)}
                   placeholder="04011000-1234512345-06"
                   spellCheck={false}
-                  className={cn(inputClass, 'font-mono')}
+                  className={cn(inputClass, 'font-code')}
                 />
               </FormField>
             </div>

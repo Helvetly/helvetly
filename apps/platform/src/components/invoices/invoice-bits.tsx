@@ -116,7 +116,7 @@ export function Money({
 /** The number, or a muted dash while it has none (the status already says Draft). */
 export function InvoiceNumber({ invoice }: { invoice: Pick<Invoice, 'number'> }) {
   return invoice.number ? (
-    <span className="tabular-nums">{invoice.number}</span>
+    <span className="font-code">{invoice.number}</span>
   ) : (
     <span className="text-muted-foreground">
       <span aria-hidden>—</span>

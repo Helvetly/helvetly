@@ -755,7 +755,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     value={values.supplier_vat_number}
                     onChange={(event) => set('supplier_vat_number', event.target.value)}
                     placeholder={translate('che123456789MWST')}
-                    className={cn(inputClass, 'font-mono text-[13px]')}
+                    className={cn(inputClass, 'font-code text-[13px]')}
                   />
                 </FormField>
                 <FormField

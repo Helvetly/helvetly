@@ -482,6 +482,14 @@ h1 .accent {
   }
 }
 @layer components {
+  /* Identifiers and codes (document numbers, payment references, IBAN, SKU, UID, tokens): never names,
+     dates, amounts or prose. Mono reads larger than the sans at one size, so it steps down a little;
+     in this layer any text-* size wins (inputs keep 16 px on phones). Muted only when secondary. */
+  .font-code {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9em;
+  }
   /* A drawer's sticky header lifts off the content only once that content scrolls under it
      (SheetContent sets data-scrolled); at the top it stays flat on its hairline border. */
   [data-slot='sheet-content'] header.sticky {

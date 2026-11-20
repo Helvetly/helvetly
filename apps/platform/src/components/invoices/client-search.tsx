@@ -55,7 +55,7 @@ export function ClientSearch({
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate">{client.name}</span>
                 <span className="truncate text-[12px] text-muted-foreground">
-                  #{client.number}
+                  <span className="font-code">#{client.number}</span>
                   {client.city && ` · ${client.city}`}
                   {client.currency && ` · ${client.currency}`}
                 </span>

@@ -186,7 +186,7 @@ export function InvoicePreview({
         <span className="grid min-w-0 content-start gap-0.5">
           <span className="font-semibold">{words.pay}</span>
           {iban?.valid ? (
-            <span className="font-mono text-[9.5px]">{iban.formatted}</span>
+            <span className="font-code text-[9.5px]">{iban.formatted}</span>
           ) : (
             <Gap className="mt-1 w-36" />
           )}

@@ -156,7 +156,7 @@ function Detail({
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-10 flex h-12 items-center gap-1 border-b border-border/60 bg-card/95 px-3 backdrop-blur">
-        <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground tabular-nums">
+        <span className="font-code ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground">
           #{expense.number}
         </span>
         <span className="ml-1.5 text-[13px] text-muted-foreground">{translate('expense2')}</span>
@@ -402,7 +402,7 @@ function Detail({
           {expense.supplier_vat_number && (
             <Row
               label={translate('supplierVATUID')}
-              value={<span className="font-mono text-[13px]">{expense.supplier_vat_number}</span>}
+              value={<span className="font-code">{expense.supplier_vat_number}</span>}
             />
           )}
           {expense.description && <Row label={translate('whatFor')} value={expense.description} />}

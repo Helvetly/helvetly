@@ -395,7 +395,12 @@ function Detail({
     <Tabs defaultValue="overview" className="min-h-full gap-0">
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-          <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">
+          <span
+            className={cn(
+              'ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground tabular-nums',
+              invoice.number && 'font-code',
+            )}
+          >
             {invoice.number ?? translate('draft')}
           </span>
           <span className="ml-1.5 text-[13px] text-muted-foreground">
@@ -674,13 +679,11 @@ function Detail({
                   : translate('creditorReference')
               }
             >
-              <span className="font-mono text-[13px]">
-                {groupReference(invoice.payment.reference)}
-              </span>
+              <span className="font-code">{groupReference(invoice.payment.reference)}</span>
             </Row>
           )}
           <Row label={translate('payTo')}>
-            <span className="font-mono text-[13px]">
+            <span className="font-code">
               {invoice.payment.iban ? formatIban(invoice.payment.iban) : '—'}
             </span>
           </Row>
