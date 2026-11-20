@@ -142,7 +142,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   )
   await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
   expect(card('Basic')).toHaveTextContent('CHF 183')
-  expect(card('Basic')).toHaveTextContent('CHF 15per person / month')
+  expect(card('Basic')).toHaveTextContent('CHF 15.25per person / month')
   expect(card('Basic')).toHaveTextContent('CHF 183 a year, billed yearly')
   expect(card('Basic')).not.toHaveTextContent('Save CHF')
   expect(card('Basic').querySelector('[data-slot=team-total]')).toHaveTextContent(
