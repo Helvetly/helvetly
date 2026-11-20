@@ -121,6 +121,13 @@ export const portalEngagementHistory: PortalEngagementPeriod[] = [
         client_performance: 'Quick answers, access ready on time',
       },
       {
+        id: 'ent_4',
+        date: '2026-11-18',
+        quantity: '0.5',
+        note: 'Printer set up at reception',
+        client_performance: null,
+      },
+      {
         id: 'ent_2',
         date: '2026-11-11',
         quantity: '2',
@@ -143,6 +150,7 @@ export const portalEngagementHistory: PortalEngagementPeriod[] = [
       },
     ],
   },
+  { starts_on: '2026-09-01', ends_on: '2026-09-30', entries: [] },
 ]
 
 export const portalDocuments: PortalDocument[] = [

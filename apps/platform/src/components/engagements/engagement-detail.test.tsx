@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -254,7 +254,8 @@ describe('entries panel', () => {
     const group = await screen.findByRole('region', { name: '1. Jan 2020 – 31. Dec 2099' })
     expect(group).toHaveTextContent('2 entries · 3.75 h')
     expect(group).toHaveTextContent('No note')
-    expect(group).toHaveTextContent('Client performance: On time · on invoice')
+    expect(group).toHaveTextContent('Client performance: On time')
+    expect(within(group).getByText('on invoice')).toBeInTheDocument()
   })
 
   it('says when nothing is logged and offers no export', async () => {
