@@ -20,6 +20,21 @@ func (e *env) userID(b *browser) string {
 	return id
 }
 
+// req is a decision's body: the open request's id (as the drawer sends it) and the rest of body.
+func (e *env) req(docID string, body map[string]any) map[string]any {
+	e.t.Helper()
+	out := map[string]any{"request_id": ""}
+	var id *string
+	if err := e.raw.QueryRow(context.Background(), `SELECT id FROM approval_requests WHERE doc_id = $1 AND status IN ('pending', 'approved')`,
+		docID).Scan(&id); err == nil && id != nil {
+		out["request_id"] = *id
+	}
+	for k, v := range body {
+		out[k] = v
+	}
+	return out
+}
+
 func (e *env) group(b *browser, name string, members ...*browser) string {
 	e.t.Helper()
 	ids := []string{}
@@ -135,17 +150,17 @@ func TestApprovalTwoGroupsWithMinimums(t *testing.T) {
 		t.Fatalf("status %s", got.Status)
 	}
 	// the author is in Management but never approves their own request
-	e.fails(tm.author, "POST", path(d.ID, "approval/approve"), nil, http.StatusForbidden, "approval_not_allowed")
+	e.fails(tm.author, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusForbidden, "approval_not_allowed")
 
-	e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), map[string]any{"comment": "Fine"}, http.StatusOK)
-	e.fails(tm.acc1, "POST", path(d.ID, "approval/approve"), nil, http.StatusForbidden, "approval_not_allowed") // once
-	v = e.approval(tm.mgr, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK)
+	e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), e.req(d.ID, map[string]any{"comment": "Fine"}), http.StatusOK)
+	e.fails(tm.acc1, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusForbidden, "approval_not_allowed") // once
+	v = e.approval(tm.mgr, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK)
 	if v.State != "pending" || v.Rules[0].Approved != 1 || v.Rules[1].Approved != 1 {
 		t.Fatalf("one accountant short: %+v", v)
 	}
 	e.fails(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusConflict, "approval_required")
 
-	if v = e.approval(tm.acc2, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK); v.State != "approved" {
+	if v = e.approval(tm.acc2, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK); v.State != "approved" {
 		t.Fatalf("all rules hold: %+v", v)
 	}
 	if got := e.notified(tm.author.workspace, "approval.approved"); !slices.Equal(got, []string{e.userID(tm.author)}) {
@@ -172,23 +187,23 @@ func TestApprovalRejectEditAndResubmit(t *testing.T) {
 	d := e.draft(tm.author, clientID, nil)
 	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
 
-	e.fails(tm.acc1, "POST", path(d.ID, "approval/reject"), map[string]any{"comment": "  "}, http.StatusUnprocessableEntity,
+	e.fails(tm.acc1, "POST", path(d.ID, "approval/reject"), e.req(d.ID, map[string]any{"comment": "  "}), http.StatusUnprocessableEntity,
 		"validation_failed", "comment")
-	v := e.approval(tm.acc1, "POST", path(d.ID, "approval/reject"), map[string]any{"comment": "Wrong rate"}, http.StatusOK)
+	v := e.approval(tm.acc1, "POST", path(d.ID, "approval/reject"), e.req(d.ID, map[string]any{"comment": "Wrong rate"}), http.StatusOK)
 	if v.State != "rejected" || v.Comment == nil || *v.Comment != "Wrong rate" {
 		t.Fatalf("rejected: %+v", v)
 	}
 	if got := e.notified(tm.author.workspace, "approval.rejected"); !slices.Equal(got, []string{e.userID(tm.author)}) {
 		t.Fatalf("told %v", got)
 	}
-	e.fails(tm.acc2, "POST", path(d.ID, "approval/approve"), nil, http.StatusConflict, "invalid_state")
+	e.fails(tm.acc2, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusConflict, "invalid_state")
 	e.fails(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusConflict, "approval_required")
 
 	e.invoice(tm.author, "PATCH", path(d.ID), map[string]any{"lines": []any{line("3", "100.00")}}, http.StatusOK)
 	if v = e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK); v.State != "pending" {
 		t.Fatalf("resubmitted: %+v", v)
 	}
-	e.approval(tm.acc2, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK)
+	e.approval(tm.acc2, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK)
 	e.invoice(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusOK)
 }
 
@@ -198,7 +213,7 @@ func TestApprovalEditResetsIt(t *testing.T) {
 	e.policy(tm.author, "invoice", nil, rule(acc, 1))
 	d := e.draft(tm.author, clientID, nil)
 	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
-	if v := e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK); v.State != "approved" {
+	if v := e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK); v.State != "approved" {
 		t.Fatalf("approved: %+v", v)
 	}
 	if got := e.invoice(tm.author, "GET", path(d.ID), nil, http.StatusOK); got.ApprovalState == nil || *got.ApprovalState != "approved" {
@@ -259,10 +274,10 @@ func TestApprovalOnePersonCountsOnce(t *testing.T) {
 	e.policy(tm.author, "invoice", nil, rule(acc, 1), rule(mgmt, 1))
 	d := e.draft(tm.author, clientID, nil)
 	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
-	if v := e.approval(both, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK); v.State != "pending" {
+	if v := e.approval(both, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK); v.State != "pending" {
 		t.Fatalf("one person filled both groups: %+v", v)
 	}
-	if v := e.approval(tm.mgr, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK); v.State != "approved" {
+	if v := e.approval(tm.mgr, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK); v.State != "approved" {
 		t.Fatalf("second person: %+v", v)
 	}
 }
@@ -279,7 +294,7 @@ func TestApprovalAnyoneThresholdAndTypes(t *testing.T) {
 	e.approval(tm.author, "POST", path(big.ID, "approval"), nil, http.StatusOK)
 	// anyone who can read invoices, a plain member outside every group too
 	outsider := e.join(tm.author.workspace, "member")
-	if v := e.approval(outsider, "POST", path(big.ID, "approval/approve"), nil, http.StatusOK); v.State != "approved" {
+	if v := e.approval(outsider, "POST", path(big.ID, "approval/approve"), e.req(big.ID, nil), http.StatusOK); v.State != "approved" {
 		t.Fatalf("anyone: %+v", v)
 	}
 	src := e.invoice(tm.author, "POST", path(big.ID, "issue"), nil, http.StatusOK)
@@ -342,13 +357,14 @@ func TestApprovalConcurrentDecisions(t *testing.T) {
 	e.policy(tm.author, "invoice", nil, rule(acc, 2), rule(mgmt, 1))
 	d := e.draft(tm.author, clientID, nil)
 	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
+	body := e.req(d.ID, nil)
 
-	if got := e.statuses(tm.acc1, 6, "POST", path(d.ID, "approval/approve"), none); got[http.StatusOK] != 1 || got[http.StatusForbidden] != 5 {
+	if got := e.statuses(tm.acc1, 6, "POST", path(d.ID, "approval/approve"), func(int) any { return body }); got[http.StatusOK] != 1 || got[http.StatusForbidden] != 5 {
 		t.Fatalf("double click: %v", got)
 	}
 	done := make(chan int, 2)
 	for _, b := range []*browser{tm.acc2, tm.mgr} {
-		go func() { resp, _ := e.send(b, "POST", path(d.ID, "approval/approve"), nil); done <- resp.StatusCode }()
+		go func() { resp, _ := e.send(b, "POST", path(d.ID, "approval/approve"), body); done <- resp.StatusCode }()
 	}
 	if a, b := <-done, <-done; a != http.StatusOK || b != http.StatusOK {
 		t.Fatalf("statuses %d %d", a, b)
@@ -385,7 +401,7 @@ func TestApprovalPlanGroupDeleteAndReminders(t *testing.T) {
 	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
 	e.policy(tm.author, "invoice", nil, rule(mgmt, 1)) // Accountants leave the policy, the request still needs them
 	e.fails(tm.author, "DELETE", "/api/v1/approvals/groups/"+acc, nil, http.StatusConflict, "group_in_use")
-	e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), nil, http.StatusOK)
+	e.approval(tm.acc1, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK)
 	e.invoice(tm.author, "PATCH", path(d.ID), map[string]any{"reminders_enabled": false}, http.StatusOK)
 	if v := e.approval(tm.author, "GET", path(d.ID, "approval"), nil, http.StatusOK); v.State != "approved" {
 		t.Fatalf("after switching reminders: %+v", v)
@@ -413,4 +429,40 @@ func TestApprovalStateAfterPolicyOff(t *testing.T) {
 	if got := e.invoice(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusOK); got.ApprovalState != nil {
 		t.Fatalf("issued with approval_state %s", *got.ApprovalState)
 	}
+}
+
+// Nobody who wrote the draft approves it, whoever submits it; a decision names the request it saw, so a stale screen
+// never approves content submitted again; changing the seller's account resets open requests.
+func TestApprovalAuthorsStaleScreenAndSettings(t *testing.T) {
+	e := newEnv(t)
+	tm, clientID, acc, _ := e.team()
+	e.policy(tm.author, "invoice", nil, rule(acc, 1))
+	d := e.draft(tm.acc1, clientID, nil)                                                                        // acc1 writes it
+	e.invoice(tm.acc2, "PATCH", path(d.ID), map[string]any{"lines": []any{line("3", "100.00")}}, http.StatusOK) // acc2 changes it
+	e.fails(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusConflict, "approval_unsatisfiable")
+
+	third := e.join(tm.author.workspace, "member")
+	e.do(tm.author, "PATCH", "/api/v1/approvals/groups/"+acc, map[string]any{"member_ids": []string{e.userID(tm.acc1), e.userID(tm.acc2),
+		e.userID(third)}}, http.StatusOK, nil)
+	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
+	for _, b := range []*browser{tm.acc1, tm.acc2} {
+		if v := e.approval(b, "GET", path(d.ID, "approval"), nil, http.StatusOK); v.CanDecide {
+			t.Fatal("an author may decide")
+		}
+		e.fails(b, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusForbidden, "approval_not_allowed")
+	}
+	stale := e.req(d.ID, nil)
+	e.approval(tm.author, "POST", path(d.ID, "approval/withdraw"), nil, http.StatusOK)
+	e.approval(tm.author, "POST", path(d.ID, "approval"), nil, http.StatusOK)
+	e.fails(third, "POST", path(d.ID, "approval/approve"), stale, http.StatusConflict, "approval_changed")
+	e.fails(third, "POST", path(d.ID, "approval/approve"), map[string]any{}, http.StatusConflict, "approval_changed")
+	if v := e.approval(third, "POST", path(d.ID, "approval/approve"), e.req(d.ID, nil), http.StatusOK); v.State != "approved" {
+		t.Fatalf("approved: %+v", v)
+	}
+
+	e.do(tm.author, "PUT", "/api/v1/invoice-settings", map[string]any{"iban": "CH93 0076 2011 6238 5295 7"}, http.StatusOK, nil)
+	if v := e.approval(tm.author, "GET", path(d.ID, "approval"), nil, http.StatusOK); v.State != "none" || v.Trail[len(v.Trail)-1].Kind != "reset" {
+		t.Fatalf("after the IBAN changed: %+v", v)
+	}
+	e.fails(tm.author, "POST", path(d.ID, "issue"), nil, http.StatusConflict, "approval_required")
 }

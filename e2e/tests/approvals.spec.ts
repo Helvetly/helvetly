@@ -36,8 +36,20 @@ async function draft(api: FinancialAPI) {
 }
 
 const approval = async (api: FinancialAPI, id: string) => api.read(`/invoices/${id}/approval`)
-const act = (api: FinancialAPI, id: string, action: string, data: unknown = {}) =>
-  api.write(`/invoices/${id}/approval${action ? `/${action}` : ''}`, data)
+/** A decision names the request the person saw, as the drawer does: the open one, read in their own session. */
+async function act(
+  api: FinancialAPI,
+  id: string,
+  action: string,
+  data: Record<string, unknown> = {},
+) {
+  const decides = action === 'approve' || action === 'reject'
+  const request_id = decides ? (await approval(api, id)).request_id : undefined
+  return api.write(
+    `/invoices/${id}/approval${action ? `/${action}` : ''}`,
+    decides ? { ...data, request_id } : data,
+  )
+}
 
 async function openDrawer(page: Page, id: string) {
   await page.goto(`/invoices?id=${id}`)

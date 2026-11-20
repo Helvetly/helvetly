@@ -220,10 +220,49 @@ func (q Q) SetApprovalStatus(ctx context.Context, requestID, status string, by *
 	return err
 }
 
-// DeleteApprovalRequests removes a deleted draft's requests and their decisions.
+// DeleteApprovalRequests removes a deleted draft's requests, their decisions and its authors.
 func (q Q) DeleteApprovalRequests(ctx context.Context, workspaceID, docID string) error {
+	if _, err := q.db.Exec(ctx, `DELETE FROM approval_authors WHERE workspace_id = $1 AND doc_id = $2`, workspaceID, docID); err != nil {
+		return err
+	}
 	_, err := q.db.Exec(ctx, `DELETE FROM approval_requests WHERE workspace_id = $1 AND doc_id = $2`, workspaceID, docID)
 	return err
+}
+
+// AddApprovalAuthor records that the person wrote the draft (created or changed it).
+func (q Q) AddApprovalAuthor(ctx context.Context, workspaceID, docID, userID string) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO approval_authors (workspace_id, doc_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		workspaceID, docID, userID)
+	return err
+}
+
+// ApprovalAuthors: the people who wrote each of the drafts, by draft.
+func (q Q) ApprovalAuthors(ctx context.Context, workspaceID string, docIDs []string) (map[string][]string, error) {
+	rows, err := q.db.Query(ctx, `SELECT doc_id, user_id FROM approval_authors WHERE workspace_id = $1 AND doc_id = ANY($2)`,
+		workspaceID, docIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]string{}
+	for rows.Next() {
+		var doc, user string
+		if err := rows.Scan(&doc, &user); err != nil {
+			return nil, err
+		}
+		out[doc] = append(out[doc], user)
+	}
+	return out, rows.Err()
+}
+
+// OpenApprovalDocs: the documents of the workspace with a pending or approved request.
+func (q Q) OpenApprovalDocs(ctx context.Context, workspaceID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, `SELECT doc_id FROM approval_requests WHERE workspace_id = $1 AND status IN ('pending', 'approved')
+		ORDER BY doc_id`, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
 // UserNames: each person's name, else their email, by id (people who left a workspace too).

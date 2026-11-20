@@ -89,12 +89,16 @@ are the reference.
   `corrected`; quotes, expenses and payroll take the same shape later). Owners and admins keep approver groups and a
   policy per type: on/off, an optional minimum total (in the document's currency) and rules that must all hold
   (at least N approvals from a group, or from anyone who can read the documents). Approvals are matched to rule slots so
-  one person counts once; the submitter never approves; the rules are a snapshot taken at submit. The document stays
+  one person counts once; nobody who wrote the draft (`approval_authors`: created or changed it) and not the submitter
+  approves it; the rules are a snapshot taken at submit; a decision names the `request_id` it saw (`409
+  approval_changed` otherwise). The document stays
   `draft`; its latest request (`approval_requests`, one `pending|approved` at a time, decisions in
   `approval_decisions`) gives `approval_state`. The document package calls approvals in its own transaction with the
-  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after any edit (the request ends, submit again),
-  `Forget` on delete; an instalment plan from a draft needs its approval too. No policy, or no feature after a downgrade: nothing is gated. Automatic issues (a
-  void's credit note, plan instalments) are not gated. Steps go to the audit log (`approval.*`, configuration
+  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after any edit (the request ends, submit again;
+  a change of the seller, IBAN or Revolut account in the invoice settings ends every open request, `ResetAll`),
+  `Forget` on delete; an instalment plan from a draft needs its approval too. No policy, or no feature after a downgrade: nothing is gated. Not gated: a void's
+  credit note, plan instalments (the plan itself needs the draft's approval) and invoices imported as issued
+  elsewhere (`IssueImported`). Steps go to the audit log (`approval.*`, configuration
   `approvals.*`), never as money events; `approval.requested|approved|rejected` notify. Approving is session-only:
   the operations are not public API operations or MCP tools, and an API token only reads `approval_state`.
 - **Workspace deletion** is soft: `workspaces.deleted_at`, members, sessions and open invitations end, and a

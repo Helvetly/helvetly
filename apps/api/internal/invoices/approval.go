@@ -25,17 +25,17 @@ func approvalDoc(inv store.Invoice) approvals.Doc {
 
 func (s *Service) registerApproval(handle func(string, handler)) {
 	handle("GET /api/v1/invoices/{id}/approval", s.approvalView)
-	handle("POST /api/v1/invoices/{id}/approval", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, _ *string) error {
+	handle("POST /api/v1/invoices/{id}/approval", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, _ decision) error {
 		return s.approvals.Submit(ctx, q, sess, d)
 	}))
-	handle("POST /api/v1/invoices/{id}/approval/withdraw", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, _ *string) error {
+	handle("POST /api/v1/invoices/{id}/approval/withdraw", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, _ decision) error {
 		return s.approvals.Withdraw(ctx, q, sess, d)
 	}))
-	handle("POST /api/v1/invoices/{id}/approval/approve", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, c *string) error {
-		return s.approvals.Approve(ctx, q, sess, d, c)
+	handle("POST /api/v1/invoices/{id}/approval/approve", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, b decision) error {
+		return s.approvals.Approve(ctx, q, sess, d, b.requestID, b.comment)
 	}))
-	handle("POST /api/v1/invoices/{id}/approval/reject", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, c *string) error {
-		return s.approvals.Reject(ctx, q, sess, d, c)
+	handle("POST /api/v1/invoices/{id}/approval/reject", s.approvalAction(func(ctx context.Context, q store.Q, sess store.Session, d approvals.Doc, b decision) error {
+		return s.approvals.Reject(ctx, q, sess, d, b.requestID, b.comment)
 	}))
 }
 
@@ -54,10 +54,17 @@ func (s *Service) approvalView(w http.ResponseWriter, r *http.Request, sess stor
 }
 
 // approvalAction runs an approval step on the locked invoice, so it serialises with edits, issuing and other steps.
-func (s *Service) approvalAction(step func(context.Context, store.Q, store.Session, approvals.Doc, *string) error) handler {
+// decision: the request the person decides on (the one they saw) and their comment.
+type decision struct {
+	requestID string
+	comment   *string
+}
+
+func (s *Service) approvalAction(step func(context.Context, store.Q, store.Session, approvals.Doc, decision) error) handler {
 	return func(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 		var body struct {
-			Comment *string `json:"comment"`
+			RequestID string  `json:"request_id"`
+			Comment   *string `json:"comment"`
 		}
 		if r.ContentLength != 0 && !s.auth.Decode(w, r, &body) {
 			return nil
@@ -80,7 +87,7 @@ func (s *Service) approvalAction(step func(context.Context, store.Q, store.Sessi
 			if err != nil {
 				return err
 			}
-			return step(ctx, q, sess, approvalDoc(inv), comment)
+			return step(ctx, q, sess, approvalDoc(inv), decision{requestID: body.RequestID, comment: comment})
 		})
 		if err != nil {
 			return err

@@ -129,7 +129,11 @@ func (s *Service) View(ctx context.Context, q store.Q, sess store.Session, doc D
 		if err != nil {
 			return v, err
 		}
-		v.CanDecide = latest.Status == "pending" && mayDecide(sess, doc, latest, mine)
+		not, err := excluded(ctx, q, sess.Workspace.ID, doc.ID, latest.SubmittedBy)
+		if err != nil {
+			return v, err
+		}
+		v.CanDecide = latest.Status == "pending" && mayDecide(sess, doc, latest, mine, not)
 	}
 	return v, nil
 }
@@ -152,11 +156,19 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	if err != nil {
 		return nil, err
 	}
+	all := make([]string, len(pending))
+	for i, r := range pending {
+		all[i] = r.DocID
+	}
+	authors, err := q.ApprovalAuthors(ctx, sess.Workspace.ID, all)
+	if err != nil {
+		return nil, err
+	}
 	var ids, people []string
 	var mayI []store.ApprovalRequest
 	for _, r := range pending {
 		// every type so far is an invoice kind
-		if mayDecide(sess, Doc{Resource: "invoices"}, &r, mine) {
+		if mayDecide(sess, Doc{Resource: "invoices"}, &r, mine, authors[r.DocID]) {
 			mayI = append(mayI, r)
 			ids, people = append(ids, r.DocID), append(people, r.SubmittedBy)
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -325,7 +326,15 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 		}
 		set.derive()
 		saved = set
-		return q.PutInvoiceSettings(r.Context(), sess.Workspace.ID, set, s.now())
+		if err := q.PutInvoiceSettings(r.Context(), sess.Workspace.ID, set, s.now()); err != nil {
+			return err
+		}
+		// issuing prints the seller and the accounts as they are then: an approval was given to what it saw
+		if !reflect.DeepEqual(before.Seller, set.Seller) || !reflect.DeepEqual(before.IBAN, set.IBAN) ||
+			!reflect.DeepEqual(before.RevolutUsername, set.RevolutUsername) {
+			return s.approvals.ResetAll(r.Context(), q, sess, "invoice")
+		}
+		return nil
 	})
 	if err != nil {
 		return err

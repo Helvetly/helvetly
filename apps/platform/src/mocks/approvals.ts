@@ -254,31 +254,39 @@ export const approvalHandlers = [
       trail: [...current.trail, entry('withdrawn')],
     })
   }),
-  http.post<{ id: string }>('/api/v1/invoices/:id/approval/approve', ({ params }) => {
-    const current = approvalFor(params.id)
-    if (!current.can_decide) return refuse(403, 'approval_not_allowed', 'You can’t decide this.')
-    // My approval fills the first slot still open.
-    const open = current.rules.findIndex((rule) => rule.approved < rule.min)
-    const rules = current.rules.map((rule, i) =>
-      i === open ? { ...rule, approved: rule.approved + 1 } : rule,
-    )
-    const done = rules.every((rule) => rule.approved >= rule.min)
-    inbox = inbox.filter((item) => item.doc_id !== params.id)
-    return answer(params.id, {
-      ...current,
-      rules,
-      state: done ? 'approved' : 'pending',
-      can_decide: false,
-      can_withdraw: done ? false : current.can_withdraw,
-      trail: [...current.trail, entry('approved')],
-    })
-  }),
-  http.post<{ id: string }, { comment?: string }>(
-    '/api/v1/invoices/:id/approval/reject',
+  http.post<{ id: string }>(
+    '/api/v1/invoices/:id/approval/approve',
     async ({ params, request }) => {
-      const { comment } = await request.json()
       const current = approvalFor(params.id)
       if (!current.can_decide) return refuse(403, 'approval_not_allowed', 'You can’t decide this.')
+      const sent = (await request.json()) as { request_id?: string }
+      if (sent.request_id !== current.request_id)
+        return refuse(409, 'approval_changed', 'This document was changed and submitted again.')
+      // My approval fills the first slot still open.
+      const open = current.rules.findIndex((rule) => rule.approved < rule.min)
+      const rules = current.rules.map((rule, i) =>
+        i === open ? { ...rule, approved: rule.approved + 1 } : rule,
+      )
+      const done = rules.every((rule) => rule.approved >= rule.min)
+      inbox = inbox.filter((item) => item.doc_id !== params.id)
+      return answer(params.id, {
+        ...current,
+        rules,
+        state: done ? 'approved' : 'pending',
+        can_decide: false,
+        can_withdraw: done ? false : current.can_withdraw,
+        trail: [...current.trail, entry('approved')],
+      })
+    },
+  ),
+  http.post<{ id: string }, { comment?: string; request_id?: string }>(
+    '/api/v1/invoices/:id/approval/reject',
+    async ({ params, request }) => {
+      const { comment, request_id } = await request.json()
+      const current = approvalFor(params.id)
+      if (!current.can_decide) return refuse(403, 'approval_not_allowed', 'You can’t decide this.')
+      if (request_id !== current.request_id)
+        return refuse(409, 'approval_changed', 'This document was changed and submitted again.')
       if (!comment?.trim()) return invalid({ comment: 'Say what needs to change.' })
       inbox = inbox.filter((item) => item.doc_id !== params.id)
       return answer(params.id, {

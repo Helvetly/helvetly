@@ -271,8 +271,19 @@ func setReminders(ctx context.Context, q store.Q, workspaceID, id string, raw js
 
 // saveDraft saves the draft, its reminders switch, its schedule and its prepayment basis together, including a full
 // credit of a final invoice.
+// wrote records the session's person as an author of the draft: an author never approves it (internal/approvals).
+func wrote(ctx context.Context, q store.Q, sess store.Session, id string) error {
+	if sess.User.ID == "" { // a job
+		return nil
+	}
+	return q.AddApprovalAuthor(ctx, sess.Workspace.ID, id, sess.User.ID)
+}
+
 func saveDraft(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, now time.Time) error {
 	if err := q.SaveDraft(ctx, sess.Workspace.ID, inv, now); err != nil {
+		return err
+	}
+	if err := wrote(ctx, q, sess, inv.ID); err != nil {
 		return err
 	}
 	if err := q.SetRemindersEnabled(ctx, inv.ID, inv.RemindersEnabled); err != nil {

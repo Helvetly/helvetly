@@ -65,6 +65,14 @@ CREATE TABLE approval_decisions (
     PRIMARY KEY (request_id, user_id)
 );
 
+-- The people who wrote a draft (created or changed it): none of them approves it, whoever submits it.
+CREATE TABLE approval_authors (
+    workspace_id text NOT NULL REFERENCES workspaces (id) ON DELETE CASCADE,
+    doc_id       text NOT NULL,
+    user_id      text NOT NULL,
+    PRIMARY KEY (doc_id, user_id)
+);
+
 INSERT INTO limits (key, kind, unit, scope, period, requires_features, allow_unlimited, position, description)
 SELECT 'document_approvals', 'access', 'boolean', 'workspace', NULL, '{}'::text[], true, max(position) + 1,
     'Approval by team members before a document is issued'
@@ -102,6 +110,7 @@ DELETE FROM offer_versions WHERE id = 'helvetly-v1.4';
 ALTER TABLE offer_versions ENABLE TRIGGER offer_versions_immutable;
 ALTER TABLE limit_plans ENABLE TRIGGER limit_plans_immutable;
 DELETE FROM limits WHERE key = 'document_approvals';
+DROP TABLE approval_authors;
 DROP TABLE approval_decisions;
 DROP TABLE approval_requests;
 DROP TABLE approval_policies;

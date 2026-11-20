@@ -53,7 +53,7 @@ func (s *Service) CreateDraft(ctx context.Context, q store.Q, sess store.Session
 	if err := q.SaveDraft(ctx, sess.Workspace.ID, inv, s.now()); err != nil {
 		return "", err
 	}
-	return inv.ID, nil
+	return inv.ID, wrote(ctx, q, sess, inv.ID)
 }
 
 // Seller returns the invoice settings' seller block, the logo bytes (nil for none) and the settings' language, for

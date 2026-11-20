@@ -86,11 +86,25 @@ export const approvalsApi = {
   inbox: async () => (await request<One<InboxItem[]>>('/approvals/inbox')).data,
   get: async (id: string) =>
     (await request<One<Approval>>(`/invoices/${encodeURIComponent(id)}/approval`)).data,
-  act: async ({ id, action, comment }: { id: string; action: ApprovalAction; comment?: string }) =>
+  /** `requestId` is the request the person saw: the API refuses a decision on one submitted again since. */
+  act: async ({
+    id,
+    action,
+    comment,
+    requestId,
+  }: {
+    id: string
+    action: ApprovalAction
+    comment?: string
+    requestId?: string | null
+  }) =>
     (
       await request<One<Approval>>(
         invoicePath(id, action),
-        send('POST', comment ? { comment } : {}),
+        send('POST', {
+          ...(comment ? { comment } : {}),
+          ...(requestId ? { request_id: requestId } : {}),
+        }),
       )
     ).data,
 }
@@ -148,7 +162,17 @@ export function useInvoiceApproval(id: string, enabled: boolean) {
 export function useApprovalAction() {
   const queryClient = useQueryClient()
   return useMutation<Approval, ApiError, { id: string; action: ApprovalAction; comment?: string }>({
-    mutationFn: approvalsApi.act,
+    // the decision names the request on screen, so a stale drawer never approves content submitted again
+    mutationFn: (variables) =>
+      approvalsApi.act({
+        ...variables,
+        requestId: queryClient.getQueryData<Approval>(approvalKeys.invoice(variables.id))
+          ?.request_id,
+      }),
+    onError: (error, { id }) => {
+      if (error.code === 'approval_changed')
+        void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(id) })
+    },
     onSuccess: (approval, { id }) => {
       queryClient.setQueryData(approvalKeys.invoice(id), approval)
       void queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(id), exact: true })

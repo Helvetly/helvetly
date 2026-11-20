@@ -64,6 +64,7 @@ var (
 	errNotRequired  = auth.Error(http.StatusConflict, "approval_not_required", "This document does not need approval.", nil)
 	errNotAllowed   = auth.Error(http.StatusForbidden, "approval_not_allowed", "You cannot approve or reject this document.", nil)
 	errUnsatisfied  = auth.Error(http.StatusConflict, "approval_unsatisfiable", "Not enough team members can approve this document: add approvers to the groups in Settings → Approvals.", nil)
+	errChanged      = auth.Error(http.StatusConflict, "approval_changed", "This document was changed and submitted again: review it again.", nil)
 	errCommentEmpty = auth.Error(http.StatusUnprocessableEntity, "validation_failed", "Say why the document is rejected.",
 		map[string]any{"fields": map[string]string{"comment": "Say why the document is rejected."}})
 )
@@ -119,6 +120,29 @@ func (s *Service) Reset(ctx context.Context, q store.Q, sess store.Session, doc 
 		return err
 	}
 	return s.end(ctx, q, sess, doc, open, "reset", nil)
+}
+
+// ResetAll ends every open request of the workspace: what issuing prints changed under them (the seller or the
+// account in the invoice settings). subject is the documents' audit subject type.
+func (s *Service) ResetAll(ctx context.Context, q store.Q, sess store.Session, subject string) error {
+	if s == nil {
+		return nil
+	}
+	ids, err := q.OpenApprovalDocs(ctx, sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		open, err := q.OpenApprovalRequest(ctx, sess.Workspace.ID, id)
+		if err != nil {
+			return err
+		}
+		reason := "The invoice settings changed."
+		if err := s.end(ctx, q, sess, Doc{Subject: subject, ID: id}, open, "reset", &reason); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Forget removes a deleted draft's requests.
@@ -181,11 +205,20 @@ func candidates(ctx context.Context, q store.Q, workspaceID, resource string) ([
 	return out, nil
 }
 
-// eligible: the candidates, other than the submitter, who fit at least one rule.
-func eligible(cands []candidate, rules []store.ApprovalRule, submitter string) []candidate {
+// excluded: who never approves the document: the people who wrote it and the submitter.
+func excluded(ctx context.Context, q store.Q, workspaceID, docID, submitter string) ([]string, error) {
+	authors, err := q.ApprovalAuthors(ctx, workspaceID, []string{docID})
+	if err != nil {
+		return nil, err
+	}
+	return append(authors[docID], submitter), nil
+}
+
+// eligible: the candidates, other than the excluded, who fit at least one rule.
+func eligible(cands []candidate, rules []store.ApprovalRule, not []string) []candidate {
 	var out []candidate
 	for _, c := range cands {
-		if c.id != submitter && slices.ContainsFunc(rules, func(r store.ApprovalRule) bool { return fits(r, c.groups) }) {
+		if !slices.Contains(not, c.id) && slices.ContainsFunc(rules, func(r store.ApprovalRule) bool { return fits(r, c.groups) }) {
 			out = append(out, c)
 		}
 	}
@@ -211,7 +244,11 @@ func (s *Service) Submit(ctx context.Context, q store.Q, sess store.Session, doc
 	if err != nil {
 		return err
 	}
-	approvers := eligible(cands, p.Rules, sess.User.ID)
+	not, err := excluded(ctx, q, sess.Workspace.ID, doc.ID, sess.User.ID)
+	if err != nil {
+		return err
+	}
+	approvers := eligible(cands, p.Rules, not)
 	groups := make([][]string, len(approvers))
 	ids := make([]string, len(approvers))
 	for i, c := range approvers {
@@ -260,8 +297,9 @@ func (s *Service) Withdraw(ctx context.Context, q store.Q, sess store.Session, d
 
 func manager(sess store.Session) bool { return sess.Role == "owner" || sess.Role == "admin" }
 
-// decider: the open request the session's person may decide on, with their groups among the rules'.
-func decider(ctx context.Context, q store.Q, sess store.Session, doc Doc) (*store.ApprovalRequest, []string, error) {
+// decider: the open request the session's person may decide on, with their groups among the rules'. requestID is
+// the request the person saw: a decision never lands on content submitted again since.
+func decider(ctx context.Context, q store.Q, sess store.Session, doc Doc, requestID string) (*store.ApprovalRequest, []string, error) {
 	open, err := q.OpenApprovalRequest(ctx, sess.Workspace.ID, doc.ID)
 	if err != nil {
 		return nil, nil, err
@@ -269,11 +307,18 @@ func decider(ctx context.Context, q store.Q, sess store.Session, doc Doc) (*stor
 	if open == nil || open.Status != "pending" || !doc.Draft {
 		return nil, nil, invalidState("This document is not waiting for approval.")
 	}
+	if requestID != open.ID {
+		return nil, nil, errChanged
+	}
 	groups, err := q.ApprovalGroupsOf(ctx, sess.Workspace.ID, sess.User.ID)
 	if err != nil {
 		return nil, nil, err
 	}
-	if !mayDecide(sess, doc, open, groups) {
+	not, err := excluded(ctx, q, sess.Workspace.ID, doc.ID, open.SubmittedBy)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !mayDecide(sess, doc, open, groups, not) {
 		return nil, nil, errNotAllowed
 	}
 	used := []string{}
@@ -285,17 +330,18 @@ func decider(ctx context.Context, q store.Q, sess store.Session, doc Doc) (*stor
 	return open, used, nil
 }
 
-// mayDecide: not the submitter, not decided yet, can read the document and fits a rule of the request.
-func mayDecide(sess store.Session, doc Doc, r *store.ApprovalRequest, groups []string) bool {
-	return r.SubmittedBy != sess.User.ID &&
+// mayDecide: not excluded (an author or the submitter), not decided yet, can read the document and fits a rule of
+// the request.
+func mayDecide(sess store.Session, doc Doc, r *store.ApprovalRequest, groups, not []string) bool {
+	return r.SubmittedBy != sess.User.ID && !slices.Contains(not, sess.User.ID) &&
 		!slices.ContainsFunc(r.Decisions, func(d store.ApprovalDecision) bool { return d.UserID == sess.User.ID }) &&
 		permissions.Allows(sess.Role, sess.Scopes, "read:"+doc.Resource) &&
 		slices.ContainsFunc(r.Rules, func(rule store.ApprovalRule) bool { return fits(rule, groups) })
 }
 
 // Approve records the person's approval; the request is approved once its rules hold, and its submitter is told.
-func (s *Service) Approve(ctx context.Context, q store.Q, sess store.Session, doc Doc, comment *string) error {
-	open, groups, err := decider(ctx, q, sess, doc)
+func (s *Service) Approve(ctx context.Context, q store.Q, sess store.Session, doc Doc, requestID string, comment *string) error {
+	open, groups, err := decider(ctx, q, sess, doc, requestID)
 	if err != nil {
 		return err
 	}
@@ -327,11 +373,11 @@ func (s *Service) Approve(ctx context.Context, q store.Q, sess store.Session, do
 }
 
 // Reject sends the draft back to its author with the reason.
-func (s *Service) Reject(ctx context.Context, q store.Q, sess store.Session, doc Doc, comment *string) error {
+func (s *Service) Reject(ctx context.Context, q store.Q, sess store.Session, doc Doc, requestID string, comment *string) error {
 	if comment == nil {
 		return errCommentEmpty
 	}
-	open, groups, err := decider(ctx, q, sess, doc)
+	open, groups, err := decider(ctx, q, sess, doc, requestID)
 	if err != nil {
 		return err
 	}
