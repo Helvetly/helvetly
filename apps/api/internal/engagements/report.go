@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/engagementpdf"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
@@ -230,11 +232,11 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 		in  *string
 		out *string
 		max int
-	}{{"subject", body.Subject, &subject, 200}, {"message", body.Message, &message, 5000}} {
+	}{{"subject", body.Subject, &subject, 200}, {"message", body.Message, &message, emailtemplate.MaxMessage}} {
 		if o.in == nil {
 			continue
 		}
-		if v := strings.TrimSpace(*o.in); v == "" || len(v) > o.max {
+		if v := strings.TrimSpace(*o.in); v == "" || utf8.RuneCountInString(v) > o.max {
 			fields[o.key] = fmt.Sprintf("Use 1 to %d characters.", o.max)
 		} else {
 			*o.out = v

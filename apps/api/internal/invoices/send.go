@@ -12,6 +12,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
 )
@@ -71,7 +72,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		}
 	}
 	if body.Message != nil {
-		if v := p.text("message", body.Message, limitFor(body.Message, message, 5000), nil); v != nil {
+		if v := p.text("message", body.Message, limitFor(body.Message, message, emailtemplate.MaxMessage), nil); v != nil {
 			message = withRevolut(*v, inv)
 		}
 	}

@@ -55,6 +55,7 @@ var purposes = map[string]string{
 	"invoice_intro":          "the friendly opening text of an invoice, shown above its lines",
 	"quote_intro":            "the friendly opening text of a quote, shown above its lines",
 	"invoice_footer":         "the closing text of an invoice, shown below its lines: a short thank-you and payment note",
+	"email_message":          "the message of an email that sends a document (invoice, quote or service report) to the client, with the document attached as a PDF: a greeting, one or two short sentences about the document and a sign-off, on separate lines",
 }
 
 var asks = map[string]string{

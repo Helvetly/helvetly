@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/store"
 )
 
@@ -80,14 +81,14 @@ func TestQuoteSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 	b := e.workspace()
 	q := e.draft(b, e.client(b))
 	// the template is within the limits, the rendered draft (company name filled in) is not
-	own := store.EmailTemplate{Kind: "quote", Language: "de", Subject: "{company}" + strings.Repeat("s", 191), Body: strings.Repeat("{company}", 100) + strings.Repeat("b", 4100)}
+	own := store.EmailTemplate{Kind: "quote", Language: "de", Subject: "{company}" + strings.Repeat("s", 191), Body: strings.Repeat("{company}", 100) + strings.Repeat("b", emailtemplate.MaxMessage-900)}
 	if err := e.st.SetEmailTemplate(context.Background(), b.workspace, own, "", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	var d draftOut
 	path := "/api/v1/quotes/" + q.ID
 	e.do(b, "GET", path+"/email", nil, http.StatusOK, &d)
-	if utf8.RuneCountInString(d.Data.Subject) <= 200 || utf8.RuneCountInString(d.Data.Message) <= 5000 {
+	if utf8.RuneCountInString(d.Data.Subject) <= 200 || utf8.RuneCountInString(d.Data.Message) <= emailtemplate.MaxMessage {
 		t.Fatalf("draft is %d / %d runes, want over the limits", utf8.RuneCountInString(d.Data.Subject), utf8.RuneCountInString(d.Data.Message))
 	}
 	e.fails(b, "POST", path+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")
@@ -95,5 +96,28 @@ func TestQuoteSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 	e.quote(b, "POST", path+"/send", map[string]any{"subject": d.Data.Subject, "message": d.Data.Message}, http.StatusOK)
 	if m := e.mail.sent[0]; m.Subject != d.Data.Subject || m.Text != d.Data.Message {
 		t.Fatalf("mail %q / %q, want the draft", m.Subject, m.Text)
+	}
+}
+
+func TestQuoteSendMessageLimit(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	q := e.draft(b, e.client(b))
+	for _, tc := range []struct {
+		name  string
+		runes int
+		ok    bool
+	}{
+		{"one over the limit", emailtemplate.MaxMessage + 1, false},
+		{"at the limit, counted in characters not bytes", emailtemplate.MaxMessage, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"message": strings.Repeat("é", tc.runes)}
+			if tc.ok {
+				e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", body, http.StatusOK)
+			} else {
+				e.fails(b, "POST", "/api/v1/quotes/"+q.ID+"/send", body, http.StatusUnprocessableEntity, "validation_failed", "message")
+			}
+		})
 	}
 }

@@ -42,7 +42,7 @@ func TestCheckLimitsRunes(t *testing.T) {
 	ok := func(s, b int) bool {
 		return len(Check("invoice", Template{Subject: strings.Repeat("ä", s), Body: strings.Repeat("ä", b)})) == 0
 	}
-	if !ok(200, 5000) || ok(201, 5000) || ok(200, 5001) {
+	if !ok(200, MaxMessage) || ok(201, MaxMessage) || ok(200, MaxMessage+1) {
 		t.Fatal("rune limits wrong")
 	}
 }
@@ -51,7 +51,7 @@ func TestCheckMessages(t *testing.T) {
 	got := Check("quote", Template{Subject: "Quote {due_date}", Body: ""})
 	want := map[string]string{
 		"subject": "Unknown variable {due_date}. Use {document}, {number}, {client}, {amount}, {company}, {valid_until}.",
-		"body":    "Enter a message of at most 5000 characters.",
+		"body":    "Enter a message of at most 2500 characters.",
 	}
 	if got["body"] != want["body"] || got["subject"] != want["subject"] {
 		t.Fatalf("got %v", got)

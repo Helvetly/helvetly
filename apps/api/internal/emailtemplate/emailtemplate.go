@@ -16,10 +16,11 @@ type Template struct {
 	Body    string `json:"body"`
 }
 
-const (
-	maxSubject = 200
-	maxBody    = 5000
-)
+// MaxMessage is the longest message, in characters, of an email sent with a document (invoice, quote, service
+// report) and of a workspace's own message template.
+const MaxMessage = 2500
+
+const maxSubject = 200
 
 var (
 	Kinds     = []string{"invoice", "credit_note", "proforma", "quote"}
@@ -127,8 +128,8 @@ func Check(kind string, t Template) map[string]string {
 	}
 	if msg := unknown(kind, t.Body); msg != "" {
 		bad["body"] = msg
-	} else if n := utf8.RuneCountInString(t.Body); strings.TrimSpace(t.Body) == "" || n > maxBody {
-		bad["body"] = "Enter a message of at most 5000 characters."
+	} else if n := utf8.RuneCountInString(t.Body); strings.TrimSpace(t.Body) == "" || n > MaxMessage {
+		bad["body"] = fmt.Sprintf("Enter a message of at most %d characters.", MaxMessage)
 	}
 	return bad
 }

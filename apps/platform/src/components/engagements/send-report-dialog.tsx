@@ -7,12 +7,13 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
 import { inputClass as fieldClass } from '@/components/clients/fields'
+import { EmailMessageField } from '@/components/email-message-field'
+import { fieldErrors } from '@/components/invoices/invoice-dialogs'
 import { errorMessage } from '@/lib/api'
 import { getEngagement, periodLabel, sendReport, type PeriodSummary } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
@@ -62,7 +63,11 @@ export function SendReportDialog({
       toast.success(translate('serviceReportSentTo', { value1: sent.join(', ') }))
       onOpenChange(false)
     },
-    onError: (error: unknown) => toast.error(errorMessage(error)),
+    onError: (error: unknown) => {
+      const fromServer = fieldErrors(error)
+      if (Object.keys(fromServer).length) setErrors(fromServer)
+      else toast.error(errorMessage(error))
+    },
   })
 
   const submit = () => {
@@ -133,24 +138,29 @@ export function SendReportDialog({
                 className={fieldClass}
               />
             </FormField>
-            <FormField id="report-subject" label={translate('subject')}>
+            <FormField id="report-subject" label={translate('subject')} error={errors.subject}>
               <input
-                {...describedBy('report-subject')}
+                {...describedBy('report-subject', errors.subject)}
                 value={subject ?? defaultSubject}
                 onChange={(event) => setSubject(event.target.value)}
                 className={fieldClass}
               />
             </FormField>
-            <FormField id="report-message" label={translate('message')}>
-              <textarea
-                {...describedBy('report-message')}
-                rows={4}
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                placeholder={translate('optionalAShortNoteAboveTheAttachedReport')}
-                className={cn(fieldClass, 'h-auto resize-y py-2 leading-relaxed')}
-              />
-            </FormField>
+            <EmailMessageField
+              id="report-message"
+              error={errors.message}
+              value={message}
+              onChange={setMessage}
+              placeholder={translate('optionalAShortNoteAboveTheAttachedReport')}
+              context={{
+                document: translate('serviceReport', {
+                  value1: engagement?.title ?? '',
+                  value2: periodLabel(period),
+                }),
+                client: engagement?.client.name,
+                subject: subject ?? defaultSubject,
+              }}
+            />
           </div>
           <div className="flex items-center gap-2 border-t border-border/70 px-6 py-3">
             <Button

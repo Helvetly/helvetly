@@ -10,6 +10,7 @@ import {
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowRight, MailCheck, MailX } from 'lucide-react'
 import Link from 'next/link'
@@ -17,6 +18,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { inputClass as fieldClass } from '@/components/clients/fields'
+import { EmailMessageField } from '@/components/email-message-field'
 import {
   fixActionClass,
   fixCount,
@@ -25,7 +27,6 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
-import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useInvoiceEmailDraft } from '@/lib/email-templates'
@@ -568,18 +569,21 @@ export function SendDialog({
           className={fieldClass}
         />
       </FormField>
-      <FormField id="send-message" label={translate('message')} required error={errors.message}>
-        <TextareaBox
-          {...describedBy('send-message', errors.message)}
-          rows={10}
-          maxLength={5000}
-          max={5000}
-          value={shownMessage}
-          disabled={draft.isPending}
-          onChange={(event) => setMessage(event.target.value)}
-          className="leading-relaxed"
-        />
-      </FormField>
+      <EmailMessageField
+        id="send-message"
+        required
+        error={errors.message}
+        value={shownMessage}
+        disabled={draft.isPending}
+        onChange={setMessage}
+        context={{
+          document: documentName(invoice),
+          client: invoice.client.name,
+          amount: formatMoney(invoice.amount_due, invoice.currency),
+          due_date: formatDate(invoice.due_date),
+          subject: shownSubject,
+        }}
+      />
     </FormDialog>
   )
 }
