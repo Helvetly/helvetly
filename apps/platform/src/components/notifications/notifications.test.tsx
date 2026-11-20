@@ -65,6 +65,15 @@ const server = setupServer(
     return undefined
   }),
   ...notificationHandlers,
+  // the page header reads the signed-in person's access
+  http.get('/api/v1/session', () =>
+    HttpResponse.json({
+      user: { id: 'usr_1', name: 'Anna' },
+      role: 'owner',
+      scopes: ['*:*'],
+      csrf_token: 't',
+    }),
+  ),
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {

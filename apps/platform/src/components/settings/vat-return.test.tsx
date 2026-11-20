@@ -6,9 +6,11 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { queryKeys } from '@/lib/queries'
 import type { VATReturn, VATReturnSettings } from '@/lib/vat-return'
 import { handlers } from '@/mocks/handlers'
+import { sampleSettings } from '@/test/invoice-api'
 
 import { dueBy, resultOf, sectionsOf, VATReturnPage } from './vat-return'
 
@@ -93,6 +95,13 @@ const saved: { body: VATReturnSettings | null } = { body: null }
 
 const server = setupServer(
   ...handlers,
+  // the plan that includes VAT returns, and a VAT-registered business (the books tabs read it)
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', locked: false }),
+    }),
+  ),
+  http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
   http.get('/api/v1/vat-return/settings', () => HttpResponse.json({ data: defaults })),
   http.put<never, VATReturnSettings>('/api/v1/vat-return/settings', async ({ request }) => {
     saved.body = await request.json()

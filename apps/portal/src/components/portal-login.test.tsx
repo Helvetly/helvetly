@@ -13,8 +13,12 @@ const server = setupServer(
   http.get('/api/v1/public/portal/session', () =>
     HttpResponse.json({ error: { code: 'unauthenticated', message: 'x' } }, { status: 401 }),
   ),
+  // The shared portal: no workspace address.
+  http.get('/api/v1/public/portal/scope', () =>
+    HttpResponse.json({ error: { code: 'not_found', message: 'x' } }, { status: 404 }),
+  ),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterAll(() => server.close())
 
 test('the sign-in links to the privacy policy on the website', async () => {

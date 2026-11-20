@@ -18,6 +18,12 @@ function ThemeProvider({
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      // The no-flash script runs only from the server's HTML; a script React creates in the browser never runs, so
+      // there it is an inert block (React warns about an executable one). The differing type is deliberate.
+      scriptProps={{
+        type: typeof window === 'undefined' ? undefined : 'text/plain',
+        suppressHydrationWarning: true,
+      }}
       {...props}
     >
       {hotkey && <ThemeHotkey />}

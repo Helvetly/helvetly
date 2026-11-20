@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 const server = setupServer(...portalHandlers)
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   replace.mockClear()

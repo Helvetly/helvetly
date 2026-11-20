@@ -2,6 +2,8 @@
 // It answers what the tests drive; computation is the server's job and is canned here.
 import { http, HttpResponse } from 'msw'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
+import type { Billing } from '@/lib/billing'
 import type { Client } from '@/lib/clients'
 import {
   kindInfo,
@@ -324,3 +326,13 @@ export function editorApi(clients: Client[]) {
     }),
   ]
 }
+
+/** `GET /api/v1/billing` for the editor's plan tags: Business, so nothing is locked unless a test passes a plan. */
+export const billingHandler = (
+  billing: Billing = billingFixture({ plan: 'business', status: 'active', locked: false }),
+) => http.get('/api/v1/billing', () => HttpResponse.json({ data: billing }))
+
+/** A saved draft belongs to no engagement until a test links one. */
+export const noEngagementHandler = http.get('/api/v1/invoices/:id/engagement', () =>
+  HttpResponse.json({ data: null }),
+)

@@ -6,7 +6,7 @@ import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { setupServer } from 'msw/node'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
-import type { Billing } from '@/lib/billing'
+import { billingKeys, type Billing } from '@/lib/billing'
 
 import { InviteDialog } from './invite-dialog'
 
@@ -30,6 +30,8 @@ const invitation = {
 }
 
 /** Opens the dialog as an owner and answers the invitation POST, recording its body. */
+let client = new QueryClient()
+
 function setup(
   status = 201,
   body: JsonBodyType = { data: invitation },
@@ -44,8 +46,9 @@ function setup(
       return HttpResponse.json(body, { status })
     }),
   )
+  client = new QueryClient()
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={client}>
       <TooltipProvider>
         <InviteDialog actorRole={actorRole} onClose={() => {}} />
       </TooltipProvider>
@@ -270,6 +273,7 @@ test.each([
 ])('there is no cost note on %s', async (_name, over) => {
   setup(201, { data: invitation }, perSeat(over))
   await screen.findByRole('button', { name: 'Send invitation' })
-  await new Promise((resolve) => setTimeout(resolve, 50))
+  // the plan has arrived, so a missing note is not merely a note still loading
+  await waitFor(() => expect(client.getQueryState(billingKeys.overview)?.status).toBe('success'))
   expect(screen.queryByText(/once accepted/)).toBeNull()
 })

@@ -1,8 +1,18 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterAll, afterEach } from 'vitest'
 
-afterEach(cleanup)
+import { expectQuietConsole, guardConsole } from './console-guard'
+
+guardConsole()
+
+// Unmounting can still log (a late state update, an effect's cleanup), so the console is checked after it.
+afterEach(() => {
+  cleanup()
+  expectQuietConsole()
+})
+// What lands after a file's last test (a request still in flight) fails the file.
+afterAll(expectQuietConsole)
 
 // jsdom has no matchMedia; sonner and the sidebar's useIsMobile read it. Nothing ever matches.
 window.matchMedia ??= (query: string) => {

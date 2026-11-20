@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { toast } from 'sonner'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { einvoiceBlock, type Invoice } from '@/lib/invoices'
 import { instalmentPlans } from '@/mocks/data'
 import { sampleInvoice as baseInvoice, sampleSchedule } from '@/test/invoice-api'
@@ -121,6 +122,12 @@ const credited = sampleInvoice({
 })
 let recorded: unknown = null
 const server = setupServer(
+  // Business: every invoice feature is on, so no plan tag or lock shows.
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', locked: false }),
+    }),
+  ),
   http.get('/api/v1/session', () =>
     HttpResponse.json({ user: by, role: 'owner', csrf_token: 't' }),
   ),
@@ -130,6 +137,7 @@ const server = setupServer(
   ),
   http.get('/api/v1/invoices/inv_9', () => HttpResponse.json({ data: credited })),
   http.get('/api/v1/invoices/:id/deliveries', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/invoices/:id/transmissions', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/invoices/:id/dunning', () =>
     HttpResponse.json({
       data: {

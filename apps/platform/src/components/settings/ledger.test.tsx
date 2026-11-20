@@ -3,11 +3,14 @@ import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { ledgerExportUrl } from '@/lib/ledger'
 import { queryKeys } from '@/lib/queries'
 import { handlers } from '@/mocks/handlers'
+import { sampleSettings } from '@/test/invoice-api'
 
 import { groupByClass, LedgerPage, rangeOf, sumAmounts, validateAccounts } from './ledger'
 
@@ -18,7 +21,16 @@ vi.mock('next/navigation', () => ({
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
 const requests: string[] = []
-const server = setupServer(...handlers)
+const server = setupServer(
+  ...handlers,
+  // a VAT-registered business on the plan with the ledger: the books tabs read both
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', locked: false }),
+    }),
+  ),
+  http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+)
 server.events.on('request:start', ({ request }) => {
   const url = new URL(request.url)
   if (url.pathname === '/api/v1/ledger')
@@ -29,6 +41,8 @@ afterAll(() => server.close())
 
 function wrap(role: string, timezone?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // the shell loaded the session already; the page only reads it
+  client.setQueryDefaults(queryKeys.session, { staleTime: Infinity })
   client.setQueryData(queryKeys.session, { role, workspace: { timezone } })
   render(
     <QueryClientProvider client={client}>

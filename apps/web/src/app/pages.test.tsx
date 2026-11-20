@@ -1,6 +1,7 @@
 import { LanguageProvider } from '@helvetly/ui/components/language-provider'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { compareIn } from '@/lib/compare'
@@ -44,6 +45,13 @@ function serve({ offer = true, trace = '' } = {}) {
 
 afterEach(() => vi.unstubAllGlobals())
 
+/** Renders a page and lets its requests (the offer, Cloudflare's trace) answer, so their updates land in the test. */
+async function renderPage(page: ReactNode) {
+  const view = render(page)
+  await act(() => new Promise((resolve) => setTimeout(resolve)))
+  return view
+}
+
 it.each(Object.entries({ en, de, fr, it: italian, nl, cs, sv }))(
   '%s marketing percentages have no preceding whitespace',
   (_, catalog) => {
@@ -55,7 +63,7 @@ describe('home page', () => {
   beforeEach(() => serve())
 
   it('leads with the promise and sends the trial to the platform sign-in', async () => {
-    render(await HomePage(english))
+    await renderPage(await HomePage(english))
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Your Swiss back office, beautifully in order.',
     )
@@ -65,7 +73,7 @@ describe('home page', () => {
   })
 
   it('shows Heidi’s first example answered, and another one on request', async () => {
-    render(await HomePage(english))
+    await renderPage(await HomePage(english))
     expect(screen.getByText('Which invoices are overdue?')).toBeTruthy()
     expect(screen.getByText(/Three invoices are overdue/)).toBeTruthy()
 
@@ -75,7 +83,7 @@ describe('home page', () => {
   })
 
   it('answers what Helvetly is and states every plan as a structured offer', async () => {
-    const { container } = render(await HomePage(english))
+    const { container } = await renderPage(await HomePage(english))
     expect(screen.getByRole('heading', { level: 2, name: 'What is Helvetly?' })).toBeTruthy()
     const data = JSON.parse(
       container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
@@ -93,7 +101,7 @@ describe('home page in German', () => {
   beforeEach(() => serve())
 
   it('is worded in German, links to German pages and signs in in German', async () => {
-    render(
+    await renderPage(
       <LanguageProvider language="de">
         {await HomePage({ params: Promise.resolve({ lang: 'de' }) })}
       </LanguageProvider>,
@@ -121,7 +129,7 @@ describe.each(['fr', 'it', 'nl', 'cs', 'sv'] as const)('home page in %s', (langu
   it('is worded in the language, links to its pages and hands the language to sign-in', async () => {
     const translate = translatorFor(language)
     const inEnglish = translatorFor('en')
-    render(
+    await renderPage(
       <LanguageProvider language={language}>
         {await HomePage({ params: Promise.resolve({ lang: language }) })}
       </LanguageProvider>,
@@ -182,7 +190,7 @@ describe('pricing page', () => {
       ] as const)(
         'bolds only annual amounts and keeps percentages joined on %s',
         async (_, Page) => {
-          const { container } = render(
+          const { container } = await renderPage(
             <LanguageProvider language={language}>
               {await Page({ params: Promise.resolve({ lang: language }) })}
             </LanguageProvider>,
@@ -206,7 +214,7 @@ describe('pricing page', () => {
 
   it('shows the same figures in the visitor’s currency', async () => {
     inZone('Europe/Berlin')
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('EUR')).toBeTruthy()
     expect(within(pro).getByText('EUR 471').closest('p')?.textContent).toBe(
@@ -216,7 +224,7 @@ describe('pricing page', () => {
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect((await within(pro).findByText('USD 471')).closest('p')?.textContent).toBe(
       'USD 471 a year, billed yearly',
@@ -226,7 +234,7 @@ describe('pricing page', () => {
 
   it('asks the API for the offer once for the cards and the table', async () => {
     const fetch = serve()
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
     expect(fetch.mock.calls.filter(([url]) => url === OFFER_URL)).toHaveLength(1)
     expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull()
@@ -237,7 +245,7 @@ describe('pricing page', () => {
 
   it('shows no price and no checkout while the API cannot confirm the offer', async () => {
     serve({ offer: false })
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     const alert = await screen.findByRole('alert')
     expect(within(alert).getByText('Pricing is temporarily unavailable.')).toBeTruthy()
     expect(within(alert).getByRole('button', { name: 'Retry' }).getAttribute('aria-busy')).toBe(
@@ -276,7 +284,7 @@ describe('pricing page', () => {
   })
 
   it('shows yearly prices first and monthly ones on request', async () => {
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('39')).toBeTruthy()
     expect(within(pro).getByText('CHF 471').closest('p')?.textContent).toBe(
@@ -289,7 +297,7 @@ describe('pricing page', () => {
   })
 
   it('compares every feature by area, with allowances in their cells', async () => {
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     const table = screen.getByRole('table', { name: 'What each plan includes' })
     expect(
       within(table)
@@ -310,20 +318,24 @@ describe('pricing page', () => {
   })
 
   it('lists only what a plan includes on its card', async () => {
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     expect(within(screen.getAllByRole('article')[0]!).queryByText(/not included/i)).toBeNull()
   })
 
   it('recommends Pro without claiming popularity', async () => {
-    render(await PricingPage(english))
+    await renderPage(await PricingPage(english))
     expect(within(screen.getAllByRole('article')[1]!).getByText('Recommended')).toBeTruthy()
     expect(screen.queryByText(/most popular|every feature/i)).toBeNull()
   })
 })
 
 describe('comparison with Magic Heidi', () => {
+  beforeEach(() => serve())
+
   it('says where each product is ahead', async () => {
-    render(await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }))
+    await renderPage(
+      await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }),
+    )
     const portal = screen.getByRole('rowheader', { name: 'Client portal' }).closest('tr')!
     expect(within(portal).getByText('In Business')).toBeTruthy()
     expect(within(portal).getByText('Not offered')).toBeTruthy()
@@ -336,7 +348,7 @@ describe('comparison with Magic Heidi', () => {
   })
 
   it.each(COMPETITORS.map((c) => c.slug))('has a page for %s with a dated source', async (slug) => {
-    render(await ComparePage({ params: Promise.resolve({ lang: 'en', slug }) }))
+    await renderPage(await ComparePage({ params: Promise.resolve({ lang: 'en', slug }) }))
     const them = COMPETITORS.find((c) => c.slug === slug)!
     expect(screen.getByRole('columnheader', { name: them.name })).toBeTruthy()
     expect(
@@ -345,7 +357,7 @@ describe('comparison with Magic Heidi', () => {
   })
 
   it('lists every comparison on the index and in the footer', async () => {
-    render(await CompareIndexPage(english))
+    await renderPage(await CompareIndexPage(english))
     for (const c of COMPETITORS)
       expect(screen.getByRole('link', { name: new RegExp(`Helvetly vs ${c.name}`) })).toBeTruthy()
   })
@@ -353,7 +365,7 @@ describe('comparison with Magic Heidi', () => {
 
 describe('legal pages', () => {
   it('render the Markdown with linked section headings', async () => {
-    render(await TermsPage(english))
+    await renderPage(await TermsPage(english))
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of service' })).toBeTruthy()
     expect(screen.getByRole('heading', { level: 2, name: '1. Parties and scope' }).id).toBe(
       '1-parties-and-scope',
@@ -364,7 +376,7 @@ describe('legal pages', () => {
   })
 
   it('lets the keyboard scroll a wide table (WCAG 2.1.1)', async () => {
-    render(await SubprocessorsPage(english))
+    await renderPage(await SubprocessorsPage(english))
     const table = screen.getAllByRole('table')[0]!
     const scroller = table.parentElement!
     expect(scroller.tabIndex).toBe(0)
@@ -377,7 +389,7 @@ describe('questions', () => {
   const questions = faqIn('en')
 
   it('answers every question on one page, grouped by topic, each with its own anchor', async () => {
-    const { container } = render(await FaqPage(english))
+    const { container } = await renderPage(await FaqPage(english))
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Getting started',
       'Prices and plans',
@@ -404,7 +416,7 @@ describe('questions', () => {
   ] as const)(
     'leads the %s page with a few questions and links to all of them',
     async (teaser, Page) => {
-      render(await Page(english))
+      await renderPage(await Page(english))
       for (const item of questions.filter((q) => q.teaser === teaser)) {
         expect(screen.getByText(item.q)).toBeTruthy()
       }
@@ -418,7 +430,7 @@ describe('questions', () => {
   )
 
   it('links the German teaser to the German page', async () => {
-    render(
+    await renderPage(
       <LanguageProvider language="de">
         {await HomePage({ params: Promise.resolve({ lang: 'de' }) })}
       </LanguageProvider>,

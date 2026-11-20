@@ -8,6 +8,7 @@ import { sampleClient } from '@/test/invoice-fixtures'
 
 import { sessionHandler } from './screen-fixtures'
 
+const other = sampleClient({ id: 'cli_2', number: 2, name: 'Bergblick AG' })
 const command = fn()
 const close = fn()
 
@@ -15,6 +16,13 @@ const handlers = (client: Client, request: ChangeRequest | null = null) => [
   sessionHandler(),
   http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: client })),
+  // The template drawer's client picker lists the active clients next to the one it starts with.
+  http.get('/api/v1/clients', () =>
+    HttpResponse.json({
+      data: [client, other],
+      meta: { page: 1, page_size: 8, total: 2, total_pages: 1 },
+    }),
+  ),
   http.get('/api/v1/clients/cli_1/change-request', () => HttpResponse.json({ data: request })),
   http.get('/api/v1/clients/cli_1/self-billing-agreements', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/auth/config', () =>
@@ -115,9 +123,16 @@ export const Toolbar: Story = {
     await expect(command).toHaveBeenLastCalledWith('delete', expect.anything())
 
     await userEvent.click(await top.findByRole('button', { name: 'Document' }))
+    const drawer = within(await body.findByRole('dialog', { name: 'New document from a template' }))
+    // The drawer starts with this client chosen and lists the others once its reads answer.
+    await expect(await drawer.findByRole('button', { name: /Bergblick AG/ })).toBeVisible()
+    await expect(drawer.getByRole('button', { name: /Alpenglow Studio GmbH/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await expect(
-      await body.findByRole('dialog', { name: 'New document from a template' }),
-    ).toBeInTheDocument()
+      await drawer.findByText('No templates yet. Make one in Documents → Templates.'),
+    ).toBeVisible()
   },
 }
 

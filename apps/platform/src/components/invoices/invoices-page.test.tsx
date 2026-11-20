@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { editorApi, listItem, sampleInvoice, sampleSummary } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
@@ -42,6 +43,12 @@ const invoices = [
   sampleInvoice({ id: 'inv_4', kind: 'credit_note', number: 'CN-2026-001', status: 'paid' }),
 ]
 const server = setupServer(
+  // Business: every invoice feature is on, so no plan tag or lock shows.
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', locked: false }),
+    }),
+  ),
   http.get('/api/v1/session', () =>
     HttpResponse.json({ user: { id: 'usr_1', name: 'Anna' }, role: 'member', csrf_token: 't' }),
   ),
