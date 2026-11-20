@@ -136,7 +136,7 @@ export const invoices = [
   }),
 ]
 
-const expense = (change: Partial<Expense>): Expense => ({
+export const expense = (change: Partial<Expense>): Expense => ({
   id: 'exp_1',
   number: 1,
   status: 'booked',
