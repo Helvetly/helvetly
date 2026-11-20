@@ -8,7 +8,7 @@ import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { ArrowRight, BellRing, DoorOpen, Plus, X } from 'lucide-react'
+import { ArrowRight, BellRing, DoorOpen, Plus, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
@@ -51,6 +51,42 @@ export const ButtonVariants: Story = {
     await userEvent.click(primary)
     await userEvent.tab()
     await expect(canvas.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+  },
+}
+
+const variants = [
+  'default',
+  'outline',
+  'secondary',
+  'ghost',
+  'destructive',
+  'destructive-outline',
+  'destructive-ghost',
+  'link',
+  'ai',
+] as const
+const textSizes = ['xs', 'sm', 'default', 'lg', 'xl'] as const
+
+/** Every variant at every text size, with an icon: the visual suite checks each label sits in the middle. */
+export const EveryVariantAndSize: Story = {
+  render: () => (
+    <div className="grid gap-3">
+      {variants.map((variant) => (
+        <div key={variant} className="flex flex-wrap items-center gap-3">
+          {textSizes.map((size) => (
+            <Button key={size} variant={variant} size={size}>
+              <Sparkles />
+              {variant} {size}
+            </Button>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getAllByRole('button')).toHaveLength(
+      variants.length * textSizes.length,
+    )
   },
 }
 

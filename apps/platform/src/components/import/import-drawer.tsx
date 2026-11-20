@@ -251,7 +251,11 @@ export function ImportDrawer({
           })
         : translate('noFilesChosenYet')
     actions = (
-      <Button disabled={!count || upload.isPending || Boolean(lock)} onClick={() => void read()}>
+      <Button
+        variant="ai"
+        disabled={!count || upload.isPending || Boolean(lock)}
+        onClick={() => void read()}
+      >
         {upload.isPending ? (
           <Loader2 className="animate-spin motion-reduce:animate-none" />
         ) : (
