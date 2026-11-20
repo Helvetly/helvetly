@@ -80,7 +80,7 @@
 1 shadow apps/platform/src/components/onboarding/invoice-preview.tsx
 1 shadow apps/platform/src/components/shell/mobile-tab-bar.tsx
 1 shadow apps/portal/src/components/portal-bits.tsx
-2 shadow packages/ui/src/components/button.tsx
+1 shadow packages/ui/src/components/button.tsx
 1 shadow packages/ui/src/components/checkbox.tsx
 1 shadow packages/ui/src/components/confirm-dialog.tsx
 1 shadow packages/ui/src/components/hover-card.tsx

@@ -114,6 +114,7 @@ func fakeFiling(message string) map[string]any {
 	var name string
 	var folders [][2]string
 	inFolders := false
+	clients := fakeClients(message)
 	for line := range strings.Lines(message) {
 		line = strings.TrimRight(line, "\n")
 		switch {
@@ -137,6 +138,10 @@ func fakeFiling(message string) map[string]any {
 		}
 	}
 	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil}
+	if record := fakeRecordPath(base, clients); record != "" {
+		out["new_folder"] = record
+		return out
+	}
 	for _, f := range folders {
 		leaf := strings.ToLower(f[1][strings.LastIndex(f[1], "/")+1:])
 		if strings.Contains(base, strings.TrimSuffix(leaf, "s")) {
@@ -175,12 +180,18 @@ func recordProperties(schema map[string]any, key string) map[string][]string {
 // the name's first word of three letters or more, plural, tagged with that word.
 func fakeOrganize(message string) map[string]any {
 	proposals := []map[string]any{}
+	clients := fakeClients(message)
 	for line := range strings.Lines(message) {
 		var doc struct{ ID, Name, Folder string }
 		if json.Unmarshal([]byte(line), &doc) != nil || doc.ID == "" {
 			continue
 		}
 		base := strings.ToLower(strings.TrimSuffix(doc.Name, path.Ext(doc.Name)))
+		if record := fakeRecordPath(base, clients); record != "" {
+			proposals = append(proposals, map[string]any{"document_id": doc.ID, "folder": record, "tags": []string{},
+				"reason": "The name says whose record it is.", "change": record != doc.Folder})
+			continue
+		}
 		words := strings.FieldsFunc(base, func(r rune) bool { return !unicode.IsLetter(r) })
 		i := slices.IndexFunc(words, func(w string) bool { return len([]rune(w)) >= 3 })
 		if i < 0 {
@@ -192,4 +203,54 @@ func fakeOrganize(message string) map[string]any {
 			"reason": "The name says it is a " + words[i] + ".", "change": folder != doc.Folder})
 	}
 	return map[string]any{"proposals": proposals}
+}
+
+// fakeClients: the client names listed under "Clients:" (one per line, until a blank line).
+func fakeClients(message string) []string {
+	var out []string
+	in := false
+	for line := range strings.Lines(message) {
+		line = strings.TrimRight(line, "\n")
+		switch {
+		case line == "Clients:":
+			in = true
+		case line == "":
+			in = false
+		case in:
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+// fakeRecordPath files by the name: "invoice" or "quote" with a listed client's name (spaces as - or _) goes to
+// Clients/<client>/Invoices|Quotes/<year>, "receipt" to Expenses/<year>; the year is a four-digit number in the
+// name, else 2026. "" for anything else.
+func fakeRecordPath(base string, clients []string) string {
+	year := "2026"
+	for _, w := range strings.FieldsFunc(base, func(r rune) bool { return !unicode.IsDigit(r) }) {
+		if len(w) == 4 && w >= "1900" && w <= "2200" {
+			year = w
+			break
+		}
+	}
+	flat := strings.NewReplacer("-", " ", "_", " ").Replace(base)
+	if strings.Contains(flat, "receipt") {
+		return "Expenses/" + year
+	}
+	kind := ""
+	switch {
+	case strings.Contains(flat, "invoice"):
+		kind = "Invoices"
+	case strings.Contains(flat, "quote"):
+		kind = "Quotes"
+	default:
+		return ""
+	}
+	for _, c := range clients {
+		if strings.Contains(flat, strings.ToLower(c)) {
+			return "Clients/" + c + "/" + kind + "/" + year
+		}
+	}
+	return ""
 }

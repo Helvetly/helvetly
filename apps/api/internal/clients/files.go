@@ -260,7 +260,7 @@ func (s *Service) uploadFiles(w http.ResponseWriter, r *http.Request, sess store
 				if err := q.AddDocumentLink(r.Context(), sess.Workspace.ID, duplicate.ID, "client", clientID, sess.User.ID, now); err != nil {
 					return err
 				}
-				if err := s.moveFromTop(r.Context(), q, sess, duplicate.ID, now); err != nil {
+				if err := s.moveFromTop(r.Context(), q, sess, clientID, duplicate.ID, now); err != nil {
 					return err
 				}
 				f, err := q.ClientFile(r.Context(), clientID, duplicate.ID)
@@ -307,13 +307,14 @@ func readHead(h *multipart.FileHeader) ([]byte, error) {
 	return head[:n], nil
 }
 
-// moveFromTop files a reused Document that sits at the top level into the Clients folder; one in a folder stays.
-func (s *Service) moveFromTop(ctx context.Context, q store.Q, sess store.Session, id string, now time.Time) error {
+// moveFromTop files a reused Document that sits at the top level into the client's Documents folder; one in a folder
+// stays.
+func (s *Service) moveFromTop(ctx context.Context, q store.Q, sess store.Session, clientID, id string, now time.Time) error {
 	d, err := q.Document(ctx, sess.Workspace.ID, id)
 	if err != nil || d.FolderID != nil {
 		return err
 	}
-	folder, err := q.ClientsFolder(ctx, sess.Workspace.ID, sess.User.ID, now)
+	folder, err := q.ClientRecordFolder(ctx, sess.Workspace.ID, clientID, "documents", now.Year(), sess.User.ID, now)
 	if err != nil {
 		return err
 	}

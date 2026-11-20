@@ -23,3 +23,10 @@ test('a destructive outline button is red-edged on the card, not a solid red blo
   expect(button.className).toContain('text-destructive')
   expect(button.className).not.toContain('bg-destructive ')
 })
+
+test('the ai variant is an outline-sized button with the gradient edge', () => {
+  render(<Button variant="ai">Organize</Button>)
+  const button = screen.getByRole('button', { name: 'Organize' })
+  expect(button).toHaveAttribute('data-variant', 'ai')
+  expect(button.className).toContain('ai-edge')
+})

@@ -346,7 +346,7 @@ func TestFolders(t *testing.T) {
 	e.uploaded(b, "a.pdf", pdf, "folder_id", offers.ID)
 	e.uploaded(b, "b.pdf", pdf+"xx", "folder_id", y2026.ID)
 	var all one[[]store.Folder]
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &all)
+	all.Data = e.userFolders(b)
 	for _, f := range all.Data {
 		if f.ID == offers.ID && (f.FileCount != 1 || f.TotalFiles != 2 || f.TotalSize != int64(2*len(pdf)+2)) {
 			t.Fatalf("offers totals: %+v", f)
@@ -579,7 +579,7 @@ func TestTrash(t *testing.T) {
 		}
 	}
 	var folders one[[]store.Folder]
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 0 {
 		t.Fatalf("folders after trash: %+v", folders.Data)
 	}
@@ -595,7 +595,7 @@ func TestTrash(t *testing.T) {
 	if got := names(e.list(b, "sort=name").Data); !slices.Equal(got, []string{"loose (2).pdf", "loose.pdf", "plan.pdf", "sketch.png"}) {
 		t.Fatalf("after restore: %v", got)
 	}
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 3 || !slices.ContainsFunc(folders.Data, func(f store.Folder) bool { return f.Name == "Projects (2)" }) {
 		t.Fatalf("folders after restore: %+v", folders.Data)
 	}
@@ -784,4 +784,12 @@ func TestImportedInvoiceOriginalIsKept(t *testing.T) {
 	}
 	var emptied one[map[string]int]
 	e.do(b, "POST", "/api/v1/documents/trash/empty", nil, 200, &emptied)
+}
+
+// userFolders: the live folders people made (not the system folders).
+func (e *env) userFolders(b *browser) []store.Folder {
+	e.t.Helper()
+	var all one[[]store.Folder]
+	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &all)
+	return slices.DeleteFunc(all.Data, func(f store.Folder) bool { return f.SystemKind != nil })
 }

@@ -4795,5 +4795,7 @@
   "auditApprovalReset": "Freigabe durch Änderung zurückgesetzt",
   "auditApprovalGroupSaved": "Freigabegruppe gespeichert",
   "auditApprovalGroupDeleted": "Freigabegruppe gelöscht",
-  "auditApprovalPolicySaved": "Freigaberegeln gespeichert"
+  "auditApprovalPolicySaved": "Freigaberegeln gespeichert",
+  "systemFolderTip": "Von Helvetly verwaltet: kann nicht umbenannt, verschoben oder gelöscht werden",
+  "systemFolderError": "Dieser Ordner wird von Helvetly verwaltet und kann nicht umbenannt, verschoben oder gelöscht werden."
 }

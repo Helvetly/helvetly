@@ -1,9 +1,15 @@
+import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
+import { FolderName } from '@/components/documents/system-mark'
 
+import de from '../../messages/de.json'
+import en from '../../messages/en.json'
+import fr from '../../messages/fr.json'
+import it from '../../messages/it.json'
 import { sessionHandler } from '../screen-fixtures'
 import { folders as sampleFolders } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
@@ -256,4 +262,100 @@ async function selectTile(canvasElement: HTMLElement) {
   )
   await userEvent.click(check)
   await expect(check).toBeChecked()
+}
+
+const lockTip = "Managed by Helvetly: can't be renamed, moved or deleted"
+
+/** Helvetly's own folders carry a quiet lock, and their menu offers no rename, move or trash. */
+export const SystemFolders: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
+    const tree = within(nav)
+    const clients = await tree.findByRole('button', { name: /^Clients/ })
+    // Clients and Expenses; the plain folders have none.
+    await expect(tree.getAllByLabelText(lockTip)).toHaveLength(2)
+    await expect(within(clients).getByLabelText(lockTip)).toBeVisible()
+
+    await userEvent.pointer({ keys: '[MouseRight]', target: clients })
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.getByRole('menuitem', { name: /New folder inside/ })).toBeVisible()
+    await expect(menu.queryByRole('menuitem', { name: /Rename/ })).toBeNull()
+    await expect(menu.queryByRole('menuitem', { name: /Move to Trash/ })).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    // the open menu hides the rest of the page from the accessibility tree until it is gone
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+
+    // A plain folder keeps them.
+    await userEvent.pointer({
+      keys: '[MouseRight]',
+      target: await tree.findByRole('button', { name: /^Tax/ }),
+    })
+    const plain = within(await body.findByRole('menu'))
+    await expect(plain.getByRole('menuitem', { name: /Rename/ })).toBeVisible()
+    await expect(plain.getByRole('menuitem', { name: /Move to Trash/ })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    // the open menu hides the rest of the page from the accessibility tree until it is gone
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+
+    // Inside, the empty-system rule leaves 2025 where it holds files; the path opens.
+    await userEvent.click(await tree.findByRole('button', { name: 'Expand Clients' }))
+    await expect(await tree.findByText('Acme AG')).toBeVisible()
+  },
+}
+export const SystemFoldersDark = dark(SystemFolders)
+
+/** A stale screen: the server refuses to trash a system folder, and the toast says so in words. */
+export const SystemFolderRefused: Story = {
+  parameters: pageParameters('/documents', {}, [
+    http.get('/api/v1/documents/folders', () =>
+      HttpResponse.json({ data: sampleFolders.map((f) => ({ ...f, system_kind: null })) }),
+    ),
+    http.post('/api/v1/documents/bulk', () =>
+      HttpResponse.json(
+        { error: { code: 'system_folder', message: 'This folder is managed by Helvetly.' } },
+        { status: 409 },
+      ),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
+    await userEvent.pointer({
+      keys: '[MouseRight]',
+      target: await within(nav).findByRole('button', { name: /^Clients/ }),
+    })
+    await userEvent.click(await body.findByRole('menuitem', { name: /Move to Trash/ }))
+    await expect(
+      await body.findByText(
+        "This folder is managed by Helvetly and can't be renamed, moved or deleted.",
+      ),
+    ).toBeInTheDocument()
+  },
+}
+
+const translators = createTranslators({ en, de, fr, it })
+
+/** The same folders in German: system folders translate, a client's name and the year do not. */
+export const SystemFolderNamesGerman: Story = {
+  render: () => (
+    <ul>
+      {sampleFolders
+        .filter((folder) => folder.id.startsWith('fld_sys_'))
+        .map((folder) => (
+          <li key={folder.id}>
+            <FolderName folder={folder} t={translators('de')} />
+          </li>
+        ))}
+    </ul>
+  ),
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement)
+    await expect(view.getByText('Kunden')).toBeVisible()
+    await expect(view.getByText('Rechnungen')).toBeVisible()
+    await expect(view.getByText('Ausgaben')).toBeVisible()
+    await expect(view.getByText('Acme AG')).toBeVisible()
+    await expect(view.getAllByText('2025')).toHaveLength(2)
+    await expect(view.queryByText('Invoices')).toBeNull()
+  },
 }

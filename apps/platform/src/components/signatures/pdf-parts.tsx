@@ -18,6 +18,7 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { signerColor, type DraftField } from '@/lib/signatures'
+import { folderLabel } from '@/lib/system-folders'
 
 import { KindIcon } from '../documents/kind'
 import { FieldBox } from './parts'
@@ -148,8 +149,8 @@ function DocRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px]">{file.name}</span>
         <span className="block truncate text-[12px] text-muted-foreground">
-          {file.folder?.name ?? translate('allDocuments')} · {formatSize(file.size)} ·{' '}
-          {formatDate(file.updated_at)}
+          {file.folder ? folderLabel(file.folder) : translate('allDocuments')} ·{' '}
+          {formatSize(file.size)} · {formatDate(file.updated_at)}
         </span>
       </span>
       {selected && <Check className="size-4 text-brand" />}

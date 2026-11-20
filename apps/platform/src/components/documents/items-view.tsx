@@ -33,8 +33,9 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
+import { folderLabel, isSystemFolder } from '@/lib/system-folders'
 
-import { SortedByAI, TagChips } from './ai-filing'
+import { TagChips } from './ai-filing'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderArt, FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
@@ -52,6 +53,7 @@ import {
 } from './selection'
 import { ShareDrawer } from './share-drawer'
 import { StarGlyph } from './star'
+import { FolderName } from './system-mark'
 import { Thumbnail } from './thumbnail'
 
 export type ItemsProps = {
@@ -163,7 +165,13 @@ export function ItemsView(props: ItemsProps) {
 }
 
 /** Drag, click, double-click and context-menu wiring shared by every item. */
-function useItem(props: ItemsProps, key: ItemKey, name: string, folderTarget: string | null) {
+function useItem(
+  props: ItemsProps,
+  key: ItemKey,
+  name: string,
+  folderTarget: string | null,
+  system = false,
+) {
   const drop = useDropTarget(folderTarget ?? '')
   const isFolder = key.startsWith('folder:')
   const prefetch = usePrefetch(docQuery)
@@ -176,14 +184,21 @@ function useItem(props: ItemsProps, key: ItemKey, name: string, folderTarget: st
     },
     drop: isFolder ? drop.props : {},
     handlers: {
-      draggable: true,
+      draggable: !system,
       onDragStart: (event: DragEvent) => {
         const keys = props.selected.has(key) ? [...props.selected] : [key]
-        const { files, folders } = splitKeys(keys)
+        const split = splitKeys(keys)
+        // A system folder never moves, so it stays out of what is dragged.
+        const managed = new Set(props.folders.filter(isSystemFolder).map((folder) => folder.id))
+        const files = split.files
+        const folders = split.folders.filter((id) => !managed.has(id))
+        if (files.length + folders.length === 0) return event.preventDefault()
         startDrag(
           event,
           { files, folders, from: props.from },
-          keys.length === 1 ? name : translate('dynamicItems', { length: keys.length }),
+          files.length + folders.length === 1
+            ? name
+            : translate('dynamicItems', { length: files.length + folders.length }),
         )
       },
       onDragEnd: endDrag,
@@ -349,7 +364,7 @@ const filesAndSize = (count: number, size: number) =>
 /** A folder as a big glossy illustration, its name and what is inside. */
 function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
   const key = folderKey(folder.id)
-  const item = useItem(props, key, folder.name, folder.id)
+  const item = useItem(props, key, folderLabel(folder), folder.id, isSystemFolder(folder))
   const renaming = props.renaming === key
   return (
     <div className="group/card relative">
@@ -378,10 +393,10 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
               />
             ) : (
               <span
-                className="block truncate text-[13.5px] leading-5 font-medium"
-                title={folder.name}
+                className="flex justify-center text-[13.5px] leading-5 font-medium"
+                title={folderLabel(folder)}
               >
-                {folder.name}
+                <FolderName folder={folder} />
               </span>
             )}
             <span className="block truncate text-[12.5px] text-muted-foreground">
@@ -394,7 +409,7 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
       <ItemCheck
         props={props}
         item={key}
-        name={folder.name}
+        name={folderLabel(folder)}
         className="absolute top-2.5 left-2.5 z-[2]"
       />
     </div>
@@ -438,7 +453,9 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
               )}
               <span className="block truncate text-[12px] text-muted-foreground">
                 {props.showLocation
-                  ? (file.folder?.name ?? translate('allDocuments'))
+                  ? file.folder
+                    ? folderLabel(file.folder)
+                    : translate('allDocuments')
                   : `${formatSize(file.size)} · ${formatDate(file.created_at)}`}
               </span>
             </span>
@@ -491,15 +508,9 @@ function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
 /** Small marks for links and business records. */
 function FileBadges({ file, className }: { file: DocFile; className?: string }) {
   const retained = isRetained(file.retained_until)
-  const sorted = file.ai_filing?.status === 'filed'
-  if (!retained && !sorted && file.links.length === 0) return null
+  if (!retained && file.links.length === 0) return null
   return (
     <span className={cn('flex gap-1', className)}>
-      {sorted && (
-        <span className="flex size-5 items-center justify-center rounded-full bg-card/95 shadow-elevation-1">
-          <SortedByAI file={file} />
-        </span>
-      )}
       {file.links.length > 0 && (
         <span
           title={file.links.map((link) => link.label).join(', ')}
@@ -615,6 +626,7 @@ function NameCell({
   props,
   item,
   name,
+  label,
   isFile,
   detail,
   aside,
@@ -622,6 +634,8 @@ function NameCell({
   props: ItemsProps
   item: ItemKey
   name: string
+  /** What shows instead of the name while it is not edited (a system folder's translated name and lock). */
+  label?: ReactNode
   isFile: boolean
   detail: string
   /** After the detail line's text: a file's tags. */
@@ -636,8 +650,8 @@ function NameCell({
           onDone={(next) => props.onRenameDone(item, next)}
         />
       ) : (
-        <span className="block truncate leading-5 font-medium" title={name}>
-          {name}
+        <span className={cn('block leading-5 font-medium', !label && 'truncate')} title={name}>
+          {label ?? name}
         </span>
       )}
       <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
@@ -699,21 +713,21 @@ const actions =
 
 function FolderRow({ props, folder }: { props: ItemsProps; folder: Folder }) {
   const key = folderKey(folder.id)
-  const item = useItem(props, key, folder.name, folder.id)
+  const item = useItem(props, key, folderLabel(folder), folder.id, isSystemFolder(folder))
   return (
     <ItemMenu props={props} item={key}>
       <tr
         {...item.data}
         {...item.handlers}
         {...item.drop}
-        draggable={props.renaming !== key}
+        draggable={props.renaming !== key && !isSystemFolder(folder)}
         className={rowClass}
       >
         <td className={listTable.select}>
           <ItemCheck
             props={props}
             item={key}
-            name={folder.name}
+            name={folderLabel(folder)}
             className="size-4 rounded-[4px] opacity-100"
           />
         </td>
@@ -725,7 +739,8 @@ function FolderRow({ props, folder }: { props: ItemsProps; folder: Folder }) {
             <NameCell
               props={props}
               item={key}
-              name={folder.name}
+              name={folderLabel(folder)}
+              label={<FolderName folder={folder} />}
               isFile={false}
               detail={filesAndSize(folder.total_files, folder.total_size)}
             />
@@ -741,7 +756,7 @@ function FolderRow({ props, folder }: { props: ItemsProps; folder: Folder }) {
           {folder.starred && <StarGlyph className="size-3.5" />}
         </td>
         <td className={actions}>
-          <MenuButton label={translate('actionsFor', { name: folder.name })} />
+          <MenuButton label={translate('actionsFor', { name: folderLabel(folder) })} />
         </td>
       </tr>
     </ItemMenu>
@@ -778,12 +793,7 @@ function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
               name={file.name}
               isFile
               detail={`${formatSize(file.size)} · ${KIND_LABELS[file.kind]}`}
-              aside={
-                <>
-                  <SortedByAI file={file} />
-                  <TagChips tags={file.tags} />
-                </>
-              }
+              aside={<TagChips tags={file.tags} />}
             />
           </span>
         </td>
@@ -791,7 +801,9 @@ function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
           <td className={muted}>
             <span className="flex min-w-0 items-center gap-1.5">
               <FolderMark className="size-4" />
-              <span className="truncate">{file.folder?.name ?? translate('allDocuments')}</span>
+              <span className="truncate">
+                {file.folder ? folderLabel(file.folder) : translate('allDocuments')}
+              </span>
             </span>
           </td>
         )}

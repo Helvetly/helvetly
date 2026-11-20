@@ -232,6 +232,10 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	if err := q.Issue(ctx, sess.Workspace.ID, inv, seq, s.now()); err != nil {
 		return err
 	}
+	if err := q.FileClientRecord(ctx, sess.Workspace.ID, inv.ClientID, "invoices", store.YearOf(inv.IssueDate, s.now()),
+		sess.User.ID, store.RecordPDF(auth.NewID("doc"), key, fileName(inv), body, s.now()), "invoice", inv.ID); err != nil {
+		return err
+	}
 	if inv.Instalments != nil {
 		if err := q.SetInstalments(ctx, inv.ID, inv.Instalments.Interval, inv.Instalments.Items); err != nil {
 			return err

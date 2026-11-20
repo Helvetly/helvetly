@@ -7,11 +7,19 @@ import (
 	"time"
 )
 
-// FolderPath: the folder at names (top level first), each level found by name (case-insensitive, live) or made;
-// returns the last one's id. Run it in a transaction.
+// FolderPath: the folder at names (top level first), each level found by name (case-insensitive, live) or made, the
+// system levels (Expenses/<year>) as system folders; returns the last one's id. Run it in a transaction.
 func (q Q) FolderPath(ctx context.Context, workspaceID, userID string, names []string, now time.Time) (string, error) {
 	var parent *string
-	for _, name := range names {
+	for i, name := range names {
+		if kind := systemLevel(names, i); kind != "" {
+			id, err := q.systemFolder(ctx, workspaceID, parent, kind, "", name, userID, now)
+			if err != nil {
+				return "", err
+			}
+			parent = &id
+			continue
+		}
 		if err := q.LockContainer(ctx, workspaceID, parent); err != nil {
 			return "", err
 		}

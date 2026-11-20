@@ -8163,6 +8163,22 @@
           },
           "name": {
             "type": "string"
+          },
+          "system_kind": {
+            "type": ["string", "null"],
+            "enum": [
+              "clients",
+              "expenses",
+              "client",
+              "invoices",
+              "quotes",
+              "engagements",
+              "signatures",
+              "documents",
+              "year",
+              null
+            ],
+            "description": "A system folder Helvetly keeps (Clients/<client>/<record type>/<year>, Expenses/<year>): it can't be renamed, moved or deleted, and the name of a typed one comes in the language of Accept-Language (en, de, fr, it)."
           }
         },
         "required": ["id", "name"]
@@ -11320,6 +11336,22 @@
           "starred": {
             "type": "boolean",
             "description": "Starred by the person the token acts as; stars are personal."
+          },
+          "system_kind": {
+            "type": ["string", "null"],
+            "enum": [
+              "clients",
+              "expenses",
+              "client",
+              "invoices",
+              "quotes",
+              "engagements",
+              "signatures",
+              "documents",
+              "year",
+              null
+            ],
+            "description": "A system folder Helvetly keeps (Clients/<client>/<record type>/<year>, Expenses/<year>): it can't be renamed, moved or deleted, and the name of a typed one comes in the language of Accept-Language (en, de, fr, it)."
           }
         },
         "required": [
@@ -11333,7 +11365,8 @@
           "created_by",
           "created_at",
           "updated_at",
-          "starred"
+          "starred",
+          "system_kind"
         ]
       },
       "DocumentBulkInput": {
