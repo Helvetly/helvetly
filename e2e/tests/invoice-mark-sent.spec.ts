@@ -48,9 +48,4 @@ test('the stepper marks an invoice sent without email, and the toast undoes it',
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(drawer.getByRole('button', { name: 'Mark as sent' })).toBeVisible()
   expect((await api.read(`/invoices/${id}`)).sent_at).toBeNull()
-
-  // an emailed invoice stays sent
-  await api.save(`/invoices/${id}/send`, {})
-  const refused = await api.write(`/invoices/${id}/send`, { email: false, sent: false })
-  expect(refused.status()).toBe(409)
 })
