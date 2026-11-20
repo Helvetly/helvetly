@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -26,7 +26,8 @@ const env = {
   PORTAL_URL: `http://localhost:${portalPort}`,
   AUTH_DEV_SIGNIN: 'true',
   COOKIE_SECURE: 'false',
-  SECRET_KEY: '',
+  // A real key per run, so the API does not fall back to (and warn about) the fixed development key.
+  SECRET_KEY: randomBytes(32).toString('base64'),
   GOOGLE_CLIENT_ID: '',
   GOOGLE_CLIENT_SECRET: '',
   SMTP_HOST: '',
