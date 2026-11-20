@@ -87,7 +87,7 @@ export function Combobox({
           aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
           // Styled as a field, not a button: same border, background and shadow as inputClass.
           className={cn(
-            'w-full justify-between rounded-md border-input bg-card px-3 font-normal shadow-xs hover:border-input hover:bg-card aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive dark:bg-input/30',
+            'w-full min-w-0 justify-between rounded-md border-input bg-card px-3 font-normal shadow-xs hover:border-input hover:bg-card aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive dark:bg-input/30',
             className,
           )}
         >
@@ -96,7 +96,13 @@ export function Combobox({
               {label}
             </span>
           )}
-          <span id={valueId} className={cn('truncate', !selected && 'text-muted-foreground')}>
+          <span
+            id={valueId}
+            className={cn(
+              'min-w-0 flex-1 truncate text-left',
+              !selected && 'text-muted-foreground',
+            )}
+          >
             {selected ? (renderValue?.(selected) ?? selected.label) : placeholder}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />

@@ -391,7 +391,7 @@ export const folders = [
   folder('fld_receipts', 'Receipts 2026', 12),
   folder('fld_tax', 'Tax', 4),
 ]
-const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
+export const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
   id,
   name,
   folder_id: null,
