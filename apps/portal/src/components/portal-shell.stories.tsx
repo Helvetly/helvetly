@@ -192,6 +192,7 @@ export const ThemeSwitch: Story = {
     await waitFor(() => expect(html).not.toHaveClass('dark'))
     await expect(localStorage.getItem(THEME_KEY)).toBe('light')
     await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(menu).not.toBeInTheDocument())
   },
 }
 
