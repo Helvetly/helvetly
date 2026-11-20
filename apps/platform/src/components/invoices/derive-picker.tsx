@@ -96,7 +96,7 @@ export function DerivePicker({
                   <span className="truncate font-medium">
                     <InvoiceNumber invoice={invoice} />
                   </span>
-                  <span className="truncate text-[12px] text-muted-foreground">
+                  <span className="truncate text-xs text-muted-foreground">
                     {invoice.client.name} · {formatDay(invoice.issue_date)}
                   </span>
                 </span>
