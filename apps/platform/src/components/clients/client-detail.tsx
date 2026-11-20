@@ -143,7 +143,7 @@ function Row({
           onClick={() =>
             void navigator.clipboard
               .writeText(copy)
-              .then(() => toast(translate('copied', { label: label })))
+              .then(() => toast.success(translate('copied', { label: label })))
           }
         >
           <Copy />
@@ -624,7 +624,9 @@ function Detail({
                   { id: client.id, input: { portal_enabled: on } },
                   {
                     onSuccess: () =>
-                      toast(on ? translate('clientPortalOn') : translate('clientPortalOff')),
+                      toast.success(
+                        on ? translate('clientPortalOn') : translate('clientPortalOff'),
+                      ),
                     onError: toastError,
                   },
                 )

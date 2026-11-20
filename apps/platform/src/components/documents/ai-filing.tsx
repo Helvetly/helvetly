@@ -90,7 +90,7 @@ export function announceFiling(files: DocFile[], queryClient: QueryClient) {
       label: translate('undo'),
       onClick: () =>
         void Promise.all(filed.map((file) => docsApi.undoFiling(file.id)))
-          .then(() => toast(translate('aiFilingUndone', { count })), toastError)
+          .then(() => toast.success(translate('aiFilingUndone', { count })), toastError)
           .finally(() => refreshDocuments(queryClient)),
     },
   })

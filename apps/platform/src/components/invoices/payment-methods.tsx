@@ -173,7 +173,7 @@ export function PaymentSummary({ payment }: { payment: Invoice['payment'] }) {
             onClick={() => {
               const link = payment.revolut_url ?? ''
               void navigator.clipboard.writeText(link).then(
-                () => toast(translate('revolutLinkCopied')),
+                () => toast.success(translate('revolutLinkCopied')),
                 () => toast.error(translate('couldnTCopyTheLink')),
               )
             }}
