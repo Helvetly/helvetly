@@ -130,8 +130,8 @@ export const emailTemplateHandlers = [
       const line = typeof subject === 'string' ? subject.trim() : ''
       if (!line || [...line].length > 200 || /[\r\n]/.test(line))
         fields.subject = 'Enter a subject of at most 200 characters, on one line.'
-      if (typeof body !== 'string' || !body.trim() || [...body].length > 5000)
-        fields.body = 'Enter a message of at most 5000 characters.'
+      if (typeof body !== 'string' || !body.trim() || [...body].length > 2500)
+        fields.body = 'Enter a message of at most 2500 characters.'
       if (Object.keys(fields).length)
         return fail(400, 'invalid_request', 'Check the fields.', { fields })
       Object.assign(current, { subject: line, body, custom: true })

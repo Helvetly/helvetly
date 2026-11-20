@@ -10,6 +10,7 @@ import type { ComponentProps, ReactNode } from 'react'
 export function TextareaBox({
   max,
   tools,
+  resizable = true,
   className,
   ...props
 }: ComponentProps<'textarea'> & {
@@ -17,12 +18,17 @@ export function TextareaBox({
   max?: number
   /** Controls at the bottom left, e.g. AIWrite. */
   tools?: ReactNode
+  /** False keeps the box at the textarea's own height; its text scrolls inside. */
+  resizable?: boolean
 }) {
   const length = String(props.value ?? '').length
   return (
     <div
       data-slot="textarea-box"
-      className="flex min-h-min min-w-0 resize-y flex-col overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/50 has-[textarea[aria-invalid=true]]:border-destructive has-[textarea[aria-invalid=true]]:ring-destructive/20 dark:bg-input/30"
+      className={cn(
+        'flex min-h-min min-w-0 flex-col overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/50 has-[textarea[aria-invalid=true]]:border-destructive has-[textarea[aria-invalid=true]]:ring-destructive/20 dark:bg-input/30',
+        resizable && 'resize-y',
+      )}
     >
       <textarea
         {...props}

@@ -14,6 +14,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/notifications"
 	"helvetly.com/api/internal/store"
@@ -152,8 +153,8 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 		invalid["subject"] = "Enter a subject of at most 200 characters."
 	}
 	if message != nil && (strings.TrimSpace(*message) == "" ||
-		utf8.RuneCountInString(*message) > 5000 && strings.TrimSpace(*message) != strings.TrimSpace(draft.Body)) {
-		invalid["message"] = "Enter a message of at most 5000 characters."
+		utf8.RuneCountInString(*message) > emailtemplate.MaxMessage && strings.TrimSpace(*message) != strings.TrimSpace(draft.Body)) {
+		invalid["message"] = fmt.Sprintf("Enter a message of at most %d characters.", emailtemplate.MaxMessage)
 	}
 	if len(invalid) > 0 {
 		return mail.Message{}, validationFailed(invalid)

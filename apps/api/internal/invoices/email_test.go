@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/store"
 )
 
@@ -149,10 +150,10 @@ func TestSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 	e := newEnv(t)
 	b, client := e.ready()
 	// the template is within the limits, the rendered draft (company name filled in) is not
-	e.setTemplate(b, "invoice", "en", "{company}"+strings.Repeat("s", 191), strings.Repeat("{company}", 100)+strings.Repeat("b", 4100))
+	e.setTemplate(b, "invoice", "en", "{company}"+strings.Repeat("s", 191), strings.Repeat("{company}", 100)+strings.Repeat("b", emailtemplate.MaxMessage-900))
 	inv := e.issued(b, client, map[string]any{"language": "en"})
 	d := e.draftOf(b, inv.ID, http.StatusOK).Data
-	if utf8.RuneCountInString(d.Subject) <= 200 || utf8.RuneCountInString(d.Message) <= 5000 {
+	if utf8.RuneCountInString(d.Subject) <= 200 || utf8.RuneCountInString(d.Message) <= emailtemplate.MaxMessage {
 		t.Fatalf("draft is %d / %d runes, want over the limits", utf8.RuneCountInString(d.Subject), utf8.RuneCountInString(d.Message))
 	}
 	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": d.Subject, "message": d.Message}, http.StatusOK, nil)
@@ -161,4 +162,27 @@ func TestSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 	}
 	e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")
 	e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"message": d.Message + "!"}, http.StatusUnprocessableEntity, "validation_failed", "message")
+}
+
+func TestSendMessageLimit(t *testing.T) {
+	e := newEnv(t)
+	b, client := e.ready()
+	inv := e.issued(b, client, map[string]any{"language": "en"})
+	for _, tc := range []struct {
+		name  string
+		runes int
+		ok    bool
+	}{
+		{"at the limit, counted in characters not bytes", emailtemplate.MaxMessage, true},
+		{"one over the limit", emailtemplate.MaxMessage + 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"message": strings.Repeat("é", tc.runes)}
+			if tc.ok {
+				e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", body, http.StatusOK, nil)
+			} else {
+				e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", body, http.StatusUnprocessableEntity, "validation_failed", "message")
+			}
+		})
+	}
 }

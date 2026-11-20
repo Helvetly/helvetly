@@ -8,6 +8,7 @@ export type AIWriteField =
   | 'invoice_intro'
   | 'invoice_footer'
   | 'quote_intro'
+  | 'email_message'
 
 export type AIWriteAction = 'draft' | 'improve' | 'shorten' | 'formal' | 'custom'
 
