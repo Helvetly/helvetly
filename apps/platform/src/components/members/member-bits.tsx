@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { Users } from 'lucide-react'
@@ -126,5 +126,5 @@ export function InvitePanel({ onInvite }: { onInvite?: () => void }) {
  * only their HR list). */
 export function AccessBadge({ role, scopes }: { role: string; scopes: string[] | null }) {
   const preset = PRESETS.find((entry) => entry.id === presetOf(role === 'member' ? scopes : null))
-  return <StatusBadge>{preset?.label ?? translate('custom')}</StatusBadge>
+  return <Badge>{preset?.label ?? translate('custom')}</Badge>
 }

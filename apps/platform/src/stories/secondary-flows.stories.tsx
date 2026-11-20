@@ -1,7 +1,7 @@
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, Mail } from 'lucide-react'
@@ -27,10 +27,10 @@ export const SemanticColors: Story = {
   render: () => (
     <div className="grid gap-4">
       <div className="flex flex-wrap gap-2">
-        {(['green', 'blue', 'amber', 'red', 'gray'] satisfies Tone[]).map((tone) => (
-          <StatusBadge key={tone} tone={tone}>
+        {(['green', 'blue', 'amber', 'red', 'neutral'] satisfies Tone[]).map((tone) => (
+          <Badge key={tone} tone={tone}>
             {tone}
-          </StatusBadge>
+          </Badge>
         ))}
       </div>
       <div className="flex flex-wrap gap-2">

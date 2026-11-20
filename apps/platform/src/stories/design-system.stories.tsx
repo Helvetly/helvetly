@@ -1,4 +1,3 @@
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { FormField, describedBy } from '@helvetly/ui/components/form-field'
@@ -284,24 +283,6 @@ export const HelpByKeyboard: Story = {
     await expect(canvas.getByRole('button', { name: 'About Tax category' })).toHaveFocus()
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
       'Choose the category for this transaction',
-    )
-  },
-}
-
-export const StatusBadges: Story = {
-  render: () => (
-    <div className="flex flex-wrap gap-2">
-      <Badge>Active</Badge>
-      <Badge variant="secondary">Draft</Badge>
-      <Badge variant="outline">Archived</Badge>
-      <Badge variant="destructive">Failed</Badge>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    await Promise.all(
-      ['Active', 'Draft', 'Archived', 'Failed'].map((text) =>
-        expect(within(canvasElement).getByText(text)).toBeVisible(),
-      ),
     )
   },
 }

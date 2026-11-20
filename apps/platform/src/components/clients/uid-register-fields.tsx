@@ -1,5 +1,5 @@
 'use client'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -171,10 +171,10 @@ export function UidVerifiedBadge({
           type="button"
           className="inline-flex cursor-default rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          <StatusBadge tone="green">
+          <Badge tone="green">
             <BadgeCheck className="mr-1 size-3.5" />
             {translate('uidVerified')}
-          </StatusBadge>
+          </Badge>
         </button>
       </TooltipTrigger>
       <TooltipContent>

@@ -42,6 +42,9 @@
   --color-info: var(--info);
   --color-info-solid: var(--info-solid);
   --color-info-surface: var(--info-surface);
+  --color-violet: var(--violet);
+  --color-violet-solid: var(--violet-solid);
+  --color-violet-surface: var(--violet-surface);
   --color-logo-from: var(--logo-from);
   --color-logo-to: var(--logo-to);
   /* Flag colours are the flags' own, the same in every theme. */
@@ -200,6 +203,9 @@
   --info: #2650b8;
   --info-solid: #3b74f2;
   --info-surface: #ecf2ff;
+  --violet: #6431c9;
+  --violet-solid: #8b5cf6;
+  --violet-surface: #f1ebff;
   /* A switched-on setting is a success, in the vivid solid (the white thumb is ≥ 3:1 on it). */
   --toggle: var(--success-solid);
   --toggle-surface: var(--success-surface);
@@ -273,6 +279,9 @@
   --info: oklch(0.84 0.08 262);
   --info-solid: oklch(0.7 0.15 262);
   --info-surface: oklch(0.29 0.06 264);
+  --violet: oklch(0.83 0.09 295);
+  --violet-solid: oklch(0.7 0.16 295);
+  --violet-surface: oklch(0.29 0.07 295);
   --toggle: var(--success-solid);
   --toggle-surface: var(--success-surface);
   --toggle-border: oklch(0.4 0.09 150);

@@ -1,5 +1,6 @@
 'use client'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
+import { Badge } from '@helvetly/ui/components/badge'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   ArrowLeftRight,
@@ -19,7 +20,6 @@ import {
   formatAmount,
   isPositive,
   STATUS_LABELS,
-  type DisplayStatus,
   type Invoice,
   type InvoiceKind,
 } from '@/lib/invoices'
@@ -36,41 +36,25 @@ export const KIND_ICONS: Record<InvoiceKind, LucideIcon> = {
   self_billed: ArrowLeftRight,
 }
 
-export const STATUS_TONES: Record<DisplayStatus, Tone> = {
-  draft: 'gray',
-  open: 'blue',
-  overdue: 'red',
-  paid: 'green',
-  void: 'gray',
-  credited: 'gray',
-  replaced: 'gray',
-  credit_draft: 'gray',
-  credit_applied: 'amber',
-}
-
 export function InvoiceStatusBadge({
   invoice,
 }: {
   invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'amount_paid'>
 }) {
   const status = displayStatus(invoice)
-  return <StatusBadge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>
+  return <Badge tone={STATUS_TONES.invoice[status]}>{STATUS_LABELS[status]}</Badge>
 }
 
-const APPROVAL_BADGES: Record<
-  NonNullable<Invoice['approval_state']>,
-  { tone: Tone; label: string }
-> = {
-  pending: { tone: 'amber', label: translate('approvalPending') },
-  approved: { tone: 'green', label: translate('approvalApproved') },
-  rejected: { tone: 'red', label: translate('approvalChangesRequested') },
+const APPROVAL_LABELS: Record<NonNullable<Invoice['approval_state']>, string> = {
+  pending: translate('approvalPending'),
+  approved: translate('approvalApproved'),
+  rejected: translate('approvalChangesRequested'),
 }
 
 /** A draft's approval: "Pending approval", "Approved", "Changes requested"; nothing without a request. */
 export function ApprovalBadge({ state }: { state: Invoice['approval_state'] }) {
   if (!state) return null
-  const { tone, label } = APPROVAL_BADGES[state]
-  return <StatusBadge tone={tone}>{label}</StatusBadge>
+  return <Badge tone={STATUS_TONES.approval[state]}>{APPROVAL_LABELS[state]}</Badge>
 }
 
 /** A row's status, or "Refund due" while the customer is owed money back; a draft's approval beside it. */
@@ -83,7 +67,7 @@ export function RowStatus({
   >
 }) {
   return isPositive(invoice.refund_due) ? (
-    <StatusBadge tone="amber">{translate('refundDue')}</StatusBadge>
+    <Badge tone={STATUS_TONES.invoice.refund_due}>{translate('refundDue')}</Badge>
   ) : (
     <>
       <InvoiceStatusBadge invoice={invoice} />

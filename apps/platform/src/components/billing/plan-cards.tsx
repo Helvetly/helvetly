@@ -1,8 +1,8 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
@@ -261,11 +261,11 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           onChange={setPeriod}
         />
         {saving > 0 && (
-          <StatusBadge tone="green">
+          <Badge tone="green">
             {translate('save')}
             {saving}
             {translate('yearly2')}
-          </StatusBadge>
+          </Badge>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 'use client'
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
+import { TONES } from '@helvetly/ui/components/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@helvetly/ui/components/sidebar'
-import { TONES } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -370,7 +370,7 @@ function MiniBadge({
       data-testid={testId}
       className={cn(
         'inline-flex h-[18px] w-fit max-w-full items-center truncate rounded-sm px-1.5 text-[11px] leading-none whitespace-nowrap',
-        TONES.gray,
+        TONES.neutral,
         className,
       )}
     >

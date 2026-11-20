@@ -432,7 +432,7 @@ export function ReviewTable({
                   <div className="grid justify-items-start gap-1">
                     {created && record.entity_id && (
                       <span className="flex items-center gap-1.5">
-                        <Badge variant="secondary">{translate('created3')}</Badge>
+                        <Badge>{translate('created3')}</Badge>
                         <Link
                           href={config.entityHref(record.entity_id)}
                           className="text-[12px] underline underline-offset-2"
@@ -446,11 +446,7 @@ export function ReviewTable({
                       !skipped &&
                       config.badges
                         ?.filter((field) => record.data[field] === true)
-                        .map((field) => (
-                          <Badge key={field} variant="secondary">
-                            {config.fields[field]}
-                          </Badge>
-                        ))}
+                        .map((field) => <Badge key={field}>{config.fields[field]}</Badge>)}
                     {record.duplicate && isExisting(record) && (
                       <Existing
                         config={config}
@@ -539,7 +535,7 @@ function Existing({
   return (
     <span className="grid justify-items-start gap-0.5">
       <span className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="secondary" className="h-auto text-left whitespace-normal">
+        <Badge className="h-auto text-left whitespace-normal">
           {linked && <Link2 aria-hidden />}
           {translate(linked ? 'importMatches' : 'importAlreadyIn', { label: duplicate.label })}
         </Badge>

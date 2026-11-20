@@ -1,5 +1,6 @@
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CalendarCheck, Info, Signature, TextCursorInput, UserRound } from 'lucide-react'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
@@ -33,30 +34,28 @@ export const signingPalette = {
   hint: translate('orClickOneThenClickWhereItGoesDate'),
 } satisfies Omit<Palette<FieldKind>, 'lanes'>
 
-const REQUEST_TONES: Record<RequestStatus, [Tone, string]> = {
-  pending: ['blue', translate('outForSignature')],
-  completed: ['green', translate('completed')],
-  declined: ['red', translate('declined')],
-  revoked: ['gray', translate('revoked')],
-  expired: ['amber', translate('expired')],
+const REQUEST_LABELS: Record<RequestStatus, string> = {
+  pending: translate('outForSignature'),
+  completed: translate('completed'),
+  declined: translate('declined'),
+  revoked: translate('revoked'),
+  expired: translate('expired'),
 }
 
-const SIGNER_TONES: Record<SignerStatus, [Tone, string]> = {
-  waiting: ['gray', translate('waiting')],
-  sent: ['blue', translate('sent3')],
-  viewed: ['amber', translate('viewed')],
-  signed: ['green', translate('signed')],
-  declined: ['red', translate('declined')],
+const SIGNER_LABELS: Record<SignerStatus, string> = {
+  waiting: translate('waiting'),
+  sent: translate('sent3'),
+  viewed: translate('viewed'),
+  signed: translate('signed'),
+  declined: translate('declined'),
 }
 
 export function RequestBadge({ status }: { status: RequestStatus }) {
-  const [tone, label] = REQUEST_TONES[status]
-  return <StatusBadge tone={tone}>{label}</StatusBadge>
+  return <Badge tone={STATUS_TONES.signatureRequest[status]}>{REQUEST_LABELS[status]}</Badge>
 }
 
 export function SignerBadge({ status }: { status: SignerStatus }) {
-  const [tone, label] = SIGNER_TONES[status]
-  return <StatusBadge tone={tone}>{label}</StatusBadge>
+  return <Badge tone={STATUS_TONES.signer[status]}>{SIGNER_LABELS[status]}</Badge>
 }
 
 const SES_DETAIL = translate('underSwissZertESAndEUEIDASThisIsA')

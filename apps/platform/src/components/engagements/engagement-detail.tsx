@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -11,7 +12,6 @@ import {
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -47,7 +47,7 @@ import { PeriodsPanel } from './periods-panel'
 const STATUS = {
   scheduled: ['blue', translate('scheduled')],
   active: ['green', translate('active')],
-  ended: ['gray', translate('ended')],
+  ended: ['neutral', translate('ended')],
   cancelled: ['amber', translate('cancelled')],
 } as const
 
@@ -224,9 +224,9 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
             >
               {engagement.client.name}
             </RecordLink>
-            <StatusBadge tone={tone}>{label}</StatusBadge>
+            <Badge tone={tone}>{label}</Badge>
             {engagement.auto_invoice && (
-              <StatusBadge tone="gray">{translate('draftsAutomatic')}</StatusBadge>
+              <Badge tone="neutral">{translate('draftsAutomatic')}</Badge>
             )}
             <AttentionBadges attention={engagement.attention} />
           </div>

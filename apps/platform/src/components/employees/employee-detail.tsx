@@ -1,5 +1,6 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -14,7 +15,6 @@ import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { countryName } from '@helvetly/ui/lib/countries'
@@ -281,13 +281,9 @@ function Detail({
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
             <EmployeeStatusBadge status={employee.status} />
-            {employee.legal_hold && (
-              <StatusBadge tone="amber">{translate('employeeLegalHold')}</StatusBadge>
-            )}
-            {employee.restricted && (
-              <StatusBadge tone="red">{translate('employeeRestricted')}</StatusBadge>
-            )}
-            {employee.erased_at && <StatusBadge>{translate('employeeErased')}</StatusBadge>}
+            {employee.legal_hold && <Badge tone="amber">{translate('employeeLegalHold')}</Badge>}
+            {employee.restricted && <Badge tone="red">{translate('employeeRestricted')}</Badge>}
+            {employee.erased_at && <Badge>{translate('employeeErased')}</Badge>}
             <span className="text-body-sm text-muted-foreground">
               {[employee.position, employee.department].filter(Boolean).join(' · ')}
             </span>
@@ -436,9 +432,7 @@ function EmploymentTab({ employee, hr }: { employee: Employee; hr: HrAccess }) {
             {employee.member_name ? (
               <>
                 {employee.member_name}
-                {!employee.member_active && (
-                  <StatusBadge>{translate('employeeNoLongerMember')}</StatusBadge>
-                )}
+                {!employee.member_active && <Badge>{translate('employeeNoLongerMember')}</Badge>}
               </>
             ) : (
               <span className="text-muted-foreground">{translate('employeeNotLinked')}</span>
@@ -525,7 +519,7 @@ function SwissPanel({ employee }: { employee: Employee }) {
 const RESOLUTION = {
   register_only: { tone: 'blue', label: translate('employeeResolutionRegister') },
   ambiguous: { tone: 'amber', label: translate('employeeResolutionAmbiguous') },
-  unsupported: { tone: 'gray', label: translate('employeeResolutionUnsupported') },
+  unsupported: { tone: 'neutral', label: translate('employeeResolutionUnsupported') },
 } as const
 
 function JurisdictionPanel({ id }: { id: string }) {
@@ -541,9 +535,9 @@ function JurisdictionPanel({ id }: { id: string }) {
       {resolution ? (
         <div className="grid gap-3 text-body">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone={RESOLUTION[resolution.status].tone}>
+            <Badge tone={RESOLUTION[resolution.status].tone}>
               {RESOLUTION[resolution.status].label}
-            </StatusBadge>
+            </Badge>
             <span className="text-muted-foreground">
               {resolution.country_name || resolution.jurisdiction}
             </span>

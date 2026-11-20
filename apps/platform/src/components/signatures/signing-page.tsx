@@ -1,5 +1,6 @@
 'use client'
 import { numberLocale } from '@helvetly/i18n'
+import { TONES, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import {
@@ -526,27 +527,20 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
   )
 }
 
-const NOTICE_TONES = {
-  gray: 'bg-muted text-muted-foreground',
-  green: 'bg-success-surface text-success',
-}
-
 function Notice({
   icon: Icon,
   title,
   text,
-  tone = 'gray',
+  tone = 'neutral',
 }: {
   icon: LucideIcon
   title: string
   text: string
-  tone?: keyof typeof NOTICE_TONES
+  tone?: Tone
 }) {
   return (
     <Shell>
-      <span
-        className={cn('flex size-12 items-center justify-center rounded-full', NOTICE_TONES[tone])}
-      >
+      <span className={cn('flex size-12 items-center justify-center rounded-full', TONES[tone])}>
         <Icon className="size-5 stroke-[1.75]" />
       </span>
       <h1 className="mt-5 text-[19px] font-medium tracking-[-0.01em] text-balance">{title}</h1>

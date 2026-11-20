@@ -1,10 +1,10 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { Info, X } from 'lucide-react'
@@ -95,9 +95,9 @@ export function RetentionReview({
                       })}
                     </span>
                     {item.blocked_by && (
-                      <StatusBadge tone={item.blocked_by === 'erased' ? 'gray' : 'amber'}>
+                      <Badge tone={item.blocked_by === 'erased' ? 'neutral' : 'amber'}>
                         {BLOCKED[item.blocked_by]}
-                      </StatusBadge>
+                      </Badge>
                     )}
                   </div>
                   {item.blocked_by !== 'erased' &&

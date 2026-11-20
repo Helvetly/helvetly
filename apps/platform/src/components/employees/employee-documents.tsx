@@ -1,11 +1,11 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatFileSize } from '@helvetly/ui/lib/format'
 import { Download, Lock, LockOpen, Trash2, Upload } from 'lucide-react'
@@ -133,12 +133,8 @@ export function EmployeeDocuments({ employee }: { employee: Employee }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 text-body-sm">
-                  {doc.legal_hold && (
-                    <StatusBadge tone="amber">{translate('employeeLegalHold')}</StatusBadge>
-                  )}
-                  {doc.retention_due && (
-                    <StatusBadge tone="red">{translate('employeeDocReview')}</StatusBadge>
-                  )}
+                  {doc.legal_hold && <Badge tone="amber">{translate('employeeLegalHold')}</Badge>}
+                  {doc.retention_due && <Badge tone="red">{translate('employeeDocReview')}</Badge>}
                   <span className="text-muted-foreground">{retentionText(doc)}</span>
                 </div>
                 {doc.retention_guidance && doc.retention_guidance.length > 0 && (

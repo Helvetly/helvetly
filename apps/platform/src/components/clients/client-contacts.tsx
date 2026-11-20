@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -9,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import {
   displayPhone,
   PHONE_ERROR,
@@ -210,9 +210,9 @@ export function ClientContacts({ client }: { client: Client }) {
                 <span className="flex items-center gap-2 truncate text-[13.5px]">
                   {contact.name}
                   {contact.is_primary && (
-                    <StatusBadge tone="green" size="sm">
+                    <Badge tone="green" size="sm">
                       {translate('primary')}
-                    </StatusBadge>
+                    </Badge>
                   )}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">

@@ -1,23 +1,12 @@
 import { localizedHref } from '@helvetly/i18n'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Children, memo, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
-const STATUS_TONES: Record<string, Tone> = {
-  paid: 'green',
-  approved: 'green',
-  active: 'green',
-  sent: 'blue',
-  new: 'blue',
-  pending: 'blue',
-  invited: 'blue',
-  overdue: 'amber',
-  rejected: 'gray',
-  draft: 'gray',
-  inactive: 'gray',
-}
+const WORD_TONES: Record<string, Tone> = STATUS_TONES.word
 
 const NUMBER = /^[-+]?(CHF\s?)?[\d'’.,\s]+%?$/
 
@@ -79,10 +68,10 @@ const components: Components = {
   ),
   code: ({ children, className }) => {
     const text = textOf(children)
-    const tone = STATUS_TONES[text.toLowerCase()]
+    const tone = WORD_TONES[text.toLowerCase()]
     // An inline code span holding a status word is a status, shown like everywhere else.
     if (!className && tone)
-      return <StatusBadge tone={tone}>{text.charAt(0).toUpperCase() + text.slice(1)}</StatusBadge>
+      return <Badge tone={tone}>{text.charAt(0).toUpperCase() + text.slice(1)}</Badge>
     return (
       <code className="rounded-[4px] bg-muted px-1 py-0.5 font-mono text-[0.85em]">{children}</code>
     )

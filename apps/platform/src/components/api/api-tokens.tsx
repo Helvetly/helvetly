@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -7,7 +8,6 @@ import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { KeySquare, LoaderCircle, Lock, Plus, Trash2, TriangleAlert, X } from 'lucide-react'
@@ -71,9 +71,9 @@ function ScopeBadges({ scopes }: { scopes: string[] }) {
   return (
     <>
       {badges.slice(0, MAX_BADGES).map((badge) => (
-        <StatusBadge key={badge.label} tone={badge.tone}>
+        <Badge key={badge.label} tone={badge.tone}>
           {badge.label}
-        </StatusBadge>
+        </Badge>
       ))}
       {hidden.length > 0 && (
         <Tooltip>
@@ -82,7 +82,7 @@ function ScopeBadges({ scopes }: { scopes: string[] }) {
               type="button"
               className="rounded-[4px] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
-              <StatusBadge>+{hidden.length}</StatusBadge>
+              <Badge>+{hidden.length}</Badge>
             </button>
           </TooltipTrigger>
           <TooltipContent>{hidden.map((badge) => badge.label).join(', ')}</TooltipContent>

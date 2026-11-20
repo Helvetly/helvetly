@@ -1,6 +1,6 @@
 'use client'
-import { TONES } from '@helvetly/ui/components/status-badge'
-import { cn } from '@helvetly/ui/lib/utils'
+import { Badge } from '@helvetly/ui/components/badge'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { QrCode } from 'lucide-react'
 
 import { translate } from '@/lib/i18n'
@@ -12,18 +12,9 @@ import {
   INSTALMENT_STATUS_LABELS,
   INTERVALS,
   type InstalmentItem,
-  type InstalmentStatus,
   type Invoice,
   toCents,
 } from '@/lib/invoices'
-
-const TONE: Record<InstalmentStatus, string> = {
-  paid: TONES.green,
-  part_paid: TONES.amber,
-  open: 'bg-muted text-muted-foreground',
-  overdue: TONES.red,
-  credited: 'bg-muted text-muted-foreground',
-}
 
 /** What credit notes took off the instalment. */
 const credited = (item: InstalmentItem) => toCents(item.amount) - toCents(item.effective)
@@ -100,14 +91,9 @@ export function InstalmentSchedule({
                   : formatMoney(item.open, invoice.currency)}
               </td>
               <td className="py-2 pl-3 text-right">
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[12px] whitespace-nowrap',
-                    TONE[item.status],
-                  )}
-                >
+                <Badge size="sm" tone={STATUS_TONES.instalment[item.status]}>
                   {INSTALMENT_STATUS_LABELS[item.status]}
-                </span>
+                </Badge>
               </td>
             </tr>
           ))}

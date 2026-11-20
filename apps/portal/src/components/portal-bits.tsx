@@ -2,10 +2,11 @@
 import { localizedHref } from '@helvetly/i18n'
 // Small pieces every portal screen shares: page header, card, section states, file and invoice bits.
 import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
+import { Badge, TONES, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { EmptyState as SharedEmptyState } from '@helvetly/ui/components/empty-state'
-import { StatusBadge, TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Download,
@@ -167,7 +168,7 @@ export function FileTile({ contentType, className }: { contentType: string; clas
       title={kind?.label ?? translate('file')}
       className={cn(
         'flex size-9 shrink-0 items-center justify-center rounded-lg',
-        TONES[kind?.tone ?? 'gray'],
+        TONES[kind?.tone ?? 'neutral'],
         className,
       )}
     >
@@ -176,20 +177,22 @@ export function FileTile({ contentType, className }: { contentType: string; clas
   )
 }
 
-const STATUS: Record<string, [Tone, string]> = {
-  open: ['blue', translate('open')],
-  paid: ['green', translate('paid')],
-  void: ['gray', translate('void')],
-  replaced: ['gray', translate('replaced')],
+const STATUS: Record<string, string> = {
+  open: translate('open'),
+  paid: translate('paid'),
+  void: translate('void'),
+  replaced: translate('replaced'),
 }
+const TONE: Record<string, Tone> = STATUS_TONES.invoice
 
 export function InvoiceStatus({ invoice }: { invoice: PortalInvoice }) {
-  if (invoice.is_overdue) return <StatusBadge tone="red">{translate('overdue')}</StatusBadge>
+  if (invoice.is_overdue)
+    return <Badge tone={STATUS_TONES.invoice.overdue}>{translate('overdue')}</Badge>
   // The server marks a fully credited invoice void; one paid before it was credited (and refunded) was not cancelled.
   if (invoice.status === 'void' && Number(invoice.amount_paid) > 0)
-    return <StatusBadge tone="gray">{translate('credited')}</StatusBadge>
-  const [tone, label] = STATUS[invoice.status] ?? ['gray', invoice.status.replaceAll('_', ' ')]
-  return <StatusBadge tone={tone}>{label}</StatusBadge>
+    return <Badge tone={STATUS_TONES.invoice.credited}>{translate('credited')}</Badge>
+  const label = STATUS[invoice.status] ?? invoice.status.replaceAll('_', ' ')
+  return <Badge tone={TONE[invoice.status] ?? 'neutral'}>{label}</Badge>
 }
 
 /** A download: icon and `text` from `sm` up; the icon alone (with a tooltip) below, or always without `text`. */

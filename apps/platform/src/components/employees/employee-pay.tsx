@@ -1,10 +1,10 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
@@ -85,9 +85,7 @@ export function EmployeePay({ employee }: { employee: Employee }) {
                       frequency: frequencyLabel(terms.frequency)?.toLowerCase(),
                     })}
                   </span>
-                  {terms.current && (
-                    <StatusBadge tone="green">{translate('payrollCurrent')}</StatusBadge>
-                  )}
+                  {terms.current && <Badge tone="green">{translate('payrollCurrent')}</Badge>}
                 </span>
                 <span className="text-body-sm text-muted-foreground">
                   {translate('payrollFrom', { date: formatDate(terms.effective_from) })}

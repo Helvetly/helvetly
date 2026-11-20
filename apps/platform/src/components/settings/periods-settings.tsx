@@ -1,5 +1,6 @@
 'use client'
 import { languageTag } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Command,
@@ -27,7 +28,6 @@ import {
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -611,13 +611,13 @@ function MonthRow({
         </span>
       </span>
       <span className="flex items-center justify-end gap-1.5 @3xl/sections:order-4 @3xl/sections:justify-start">
-        <StatusBadge tone={state === 'closed' ? 'green' : state === 'current' ? 'blue' : 'gray'}>
+        <Badge tone={state === 'closed' ? 'green' : state === 'current' ? 'blue' : 'neutral'}>
           {state === 'closed'
             ? translate('closed')
             : state === 'current'
               ? translate('inProgress')
               : translate('open')}
-        </StatusBadge>
+        </Badge>
         {drafts && (
           <Tooltip>
             <TooltipTrigger asChild>
