@@ -4663,5 +4663,7 @@
   "customDomainUpsellThen": "Your domain",
   "customDomainBenefitBrand": "Your brand in the address bar",
   "customDomainBenefitTls": "Free TLS certificate, renewed for you",
-  "customDomainBenefitSetup": "One DNS record, ready in minutes"
+  "customDomainBenefitSetup": "One DNS record, ready in minutes",
+  "optionalStep": "optional",
+  "sendTip": "Review and email it to the client. Nothing goes out until you confirm."
 }

@@ -4663,5 +4663,7 @@
   "customDomainUpsellThen": "Ihre Domain",
   "customDomainBenefitBrand": "Ihre Marke in der Adresszeile",
   "customDomainBenefitTls": "Kostenloses TLS-Zertifikat, automatisch erneuert",
-  "customDomainBenefitSetup": "Ein DNS-Eintrag, in Minuten bereit"
+  "customDomainBenefitSetup": "Ein DNS-Eintrag, in Minuten bereit",
+  "optionalStep": "optional",
+  "sendTip": "Prüfen und per E-Mail an den Kunden senden. Nichts geht raus, bevor Sie bestätigen."
 }

@@ -121,6 +121,45 @@ const drawerOf = (invoice: Invoice) =>
     http.get(`/api/v1/invoices/${invoice.id}`, () => HttpResponse.json({ data: invoice })),
   ])
 
+const unsent: Invoice = { ...scheduledInvoice, sent_at: null }
+const sendBodies: unknown[] = []
+
+/**
+ * Sending is optional: Sent is a dashed step marked "optional", Paid is next all the same, the header's Send says it
+ * only opens a review, and Mark as sent records the step without an email, with an undo in its toast.
+ */
+export const DetailSendOptional: Story = {
+  parameters: pageParameters('/invoices', { id: unsent.id }, [
+    http.get(`/api/v1/invoices/${unsent.id}`, () => HttpResponse.json({ data: unsent })),
+    http.post(`/api/v1/invoices/${unsent.id}/send`, async ({ request }) => {
+      const body: unknown = await request.json()
+      sendBodies.push(body)
+      const undone = typeof body === 'object' && body !== null && 'sent' in body
+      return HttpResponse.json({
+        data: { ...unsent, sent_at: undone ? null : '2026-11-20T09:00:00Z' },
+      })
+    }),
+  ]),
+  play: async ({ canvasElement }) => {
+    sendBodies.length = 0
+    const body = within(canvasElement.ownerDocument.body)
+    const sheet = within(await body.findByRole('dialog'))
+    await expect(await sheet.findByText(/· optional/)).toBeVisible()
+    await expect(sheet.getByText('Next')).toBeVisible()
+    await userEvent.hover(sheet.getByRole('button', { name: 'Send' }))
+    await expect(await body.findByRole('tooltip')).toHaveTextContent(
+      /Nothing goes out until you confirm/,
+    )
+    await userEvent.click(sheet.getByRole('button', { name: 'Mark as sent' }))
+    await waitFor(() => expect(sendBodies).toEqual([{ email: false }]))
+    await userEvent.click(await body.findByRole('button', { name: 'Undo' }))
+    await waitFor(() =>
+      expect(sendBodies).toEqual([{ email: false }, { email: false, sent: false }]),
+    )
+  },
+}
+export const DetailSendOptionalPhone = phone(DetailSendOptional)
+
 /** The amount a summary label (Paid, Credited, Refunded, …) shows. */
 const summary = async (sheet: HTMLElement, label: string) =>
   within(sheet).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent

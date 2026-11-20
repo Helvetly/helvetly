@@ -19,6 +19,7 @@ import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { Switch } from '@helvetly/ui/components/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -38,12 +39,13 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { dropdownKit } from '@/components/data/menus'
+import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
@@ -173,6 +175,21 @@ function primaryFor(invoice: Invoice): {
   return { command: null, label: translate('downloadPDF'), icon: <Download /> }
 }
 
+/** The header's main button; a tip says what it does when its label alone could worry (Send only opens a review). */
+function PrimaryButton({
+  tip,
+  ...props
+}: ComponentProps<typeof Button> & { tip: string | undefined }) {
+  const button = <Button className="gap-1.5" {...props} />
+  if (!tip) return button
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent className="max-w-64">{tip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** `wrap` lets long text and controls (whose focus ring a truncate would clip) flow onto more lines. */
 function Row({ label, wrap, children }: { label: string; wrap?: boolean; children: ReactNode }) {
   return (
@@ -188,15 +205,20 @@ function Row({ label, wrap, children }: { label: string; wrap?: boolean; childre
 const unitShort = (unit: Invoice['lines'][number]['unit']) =>
   unit ? (UNITS.find((entry) => entry.value === unit)?.short ?? unit) : ''
 
-/** Created → Issued → Sent → Paid, with the dates each step happened. */
-function Timeline({ invoice }: { invoice: Invoice }) {
+/**
+ * Created → Issued → Sent → Paid, with the dates each step happened. Sent is optional (the PDF may go by post, by
+ * hand or through the portal), so it can be marked from here and never blocks Paid.
+ */
+function Timeline({ invoice, canManage }: { invoice: Invoice; canManage: boolean }) {
   const credit = invoice.kind === 'credit_note'
+  const proforma = invoice.kind === 'proforma'
+  const markSent = useMarkSent()
   const steps = [
-    { label: translate('created3'), at: invoice.created_at },
-    { label: translate('issued4'), at: invoice.issued_at },
-    ...(credit ? [] : [{ label: translate('sent3'), at: invoice.sent_at }]),
-    // A proforma is never paid: it ends when it is sent (or converted).
-    ...(invoice.kind === 'proforma'
+    { label: translate('created3'), at: invoice.created_at, optional: false },
+    { label: translate('issued4'), at: invoice.issued_at, optional: false },
+    // A proforma ends when it is sent, so there it is the last step, not an optional one.
+    ...(credit ? [] : [{ label: translate('sent3'), at: invoice.sent_at, optional: !proforma }]),
+    ...(proforma
       ? []
       : [
           {
@@ -208,14 +230,17 @@ function Timeline({ invoice }: { invoice: Invoice }) {
                   ? translate('replaced')
                   : translate('paid'),
             at: ['paid', 'void', 'replaced'].includes(invoice.status) ? invoice.updated_at : null,
+            optional: false,
           },
         ]),
   ]
-  const current = steps.findIndex((step) => !step.at)
+  const current = steps.findIndex((step) => !step.at && !step.optional)
+  const canMark = canManage && invoice.status === 'open'
   return (
     <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((step, i) => {
         const done = Boolean(step.at)
+        const skippable = step.optional && !done
         return (
           <li key={step.label} className="relative grid gap-1.5 pr-2">
             <span className="flex items-center">
@@ -224,9 +249,11 @@ function Timeline({ invoice }: { invoice: Invoice }) {
                   'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
                   done
                     ? 'bg-primary text-primary-foreground'
-                    : i === current
-                      ? 'bg-card ring-[1.5px] ring-foreground/60 ring-inset'
-                      : 'bg-card ring-1 ring-border ring-inset',
+                    : skippable
+                      ? 'border border-dashed border-muted-foreground/50 bg-card'
+                      : i === current
+                        ? 'bg-card ring-[1.5px] ring-foreground/60 ring-inset'
+                        : 'bg-card ring-1 ring-border ring-inset',
                 )}
               >
                 {done && <Check className="size-3" strokeWidth={3} />}
@@ -242,9 +269,37 @@ function Timeline({ invoice }: { invoice: Invoice }) {
             </span>
             <span className={cn('text-[13px]', done ? 'text-foreground' : 'text-muted-foreground')}>
               {step.label}
+              {skippable && (
+                <>
+                  {' '}
+                  <span className="whitespace-nowrap text-muted-foreground/80">
+                    · {translate('optionalStep')}
+                  </span>
+                </>
+              )}
             </span>
             <span className="-mt-1 text-[12px] text-muted-foreground tabular-nums">
-              {step.at ? formatDate(step.at) : i === current ? translate('next2') : '—'}
+              {step.at ? (
+                formatDate(step.at)
+              ) : skippable && canMark ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={markSent.pending}
+                      onClick={() => markSent.mark(invoice)}
+                      className="rounded-sm underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                    >
+                      {translate('markAsSent')}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-64">{translate('markAsSentTip')}</TooltipContent>
+                </Tooltip>
+              ) : i === current ? (
+                translate('next2')
+              ) : (
+                '—'
+              )}
             </span>
           </li>
         )
@@ -329,13 +384,13 @@ function Detail({
                 </a>
               </Button>
             ) : (
-              <Button
-                className="gap-1.5"
+              <PrimaryButton
+                tip={primary.command === 'send' ? translate('sendTip') : undefined}
                 disabled={busy}
                 onClick={() => primary.command && run(primary.command, invoice)}
               >
                 {primary.icon} {primary.label}
-              </Button>
+              </PrimaryButton>
             )}
             <RecordPageButton />
             <Button
@@ -382,7 +437,7 @@ function Detail({
             </Callout>
           )}
 
-          <Timeline invoice={invoice} />
+          <Timeline invoice={invoice} canManage={canManage} />
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[

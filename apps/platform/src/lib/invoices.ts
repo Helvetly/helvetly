@@ -522,6 +522,8 @@ export type SendInput = {
   message?: string
   /** false: only marks it sent (its PDF handed over another way), no email. */
   email?: boolean
+  /** With email false, false takes a mark as sent back. */
+  sent?: boolean
 }
 export type PaymentInput = {
   amount: Decimal

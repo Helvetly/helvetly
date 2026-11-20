@@ -675,6 +675,13 @@ func (q Q) MarkSent(ctx context.Context, id string, now time.Time) error {
 	return err
 }
 
+// UnmarkSent clears sent_at unless an email delivery exists; false when one does.
+func (q Q) UnmarkSent(ctx context.Context, id string, now time.Time) (bool, error) {
+	tag, err := q.db.Exec(ctx, `UPDATE invoices SET sent_at = NULL, updated_at = $2
+		WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM invoice_deliveries WHERE invoice_id = $1)`, id, now)
+	return tag.RowsAffected() > 0, err
+}
+
 // ---- payments ----
 
 func (q Q) CreatePayment(ctx context.Context, invoiceID, userID string, p Payment) error {

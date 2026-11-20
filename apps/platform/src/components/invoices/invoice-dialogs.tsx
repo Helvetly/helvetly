@@ -123,6 +123,35 @@ export function MarkSentButton({ disabled, onClick }: { disabled: boolean; onCli
   )
 }
 
+/** Marks an issued invoice sent without an email; the toast's undo takes the mark back. */
+export function useMarkSent() {
+  const send = useSendInvoice()
+  const mark = (invoice: InvoiceListItem, onDone?: () => void) =>
+    send.mutate(
+      { id: invoice.id, input: { email: false } },
+      {
+        onSuccess: () => {
+          onDone?.()
+          toast.success(
+            translate('markedAsSentSendItsPDFYourself', { value1: documentName(invoice) }),
+            {
+              action: {
+                label: translate('undo'),
+                // mutateAsync, not mutate: the dialog that marked it may be gone by now.
+                onClick: () =>
+                  void send
+                    .mutateAsync({ id: invoice.id, input: { email: false, sent: false } })
+                    .catch((error: unknown) => toast.error(errorMessage(error))),
+              },
+            },
+          )
+        },
+        onError: (error) => toast.error(errorMessage(error)),
+      },
+    )
+  return { mark, pending: send.isPending }
+}
+
 export const fieldErrors = (error: unknown): Record<string, string> => {
   if (!(error instanceof ApiError) || error.status !== 422) return {}
   const fields = error.details.fields
@@ -473,11 +502,7 @@ export function SendDialog({
     )
   }
 
-  const markSent = () =>
-    run(
-      { email: false },
-      translate('markedAsSentSendItsPDFYourself', { value1: documentName(invoice) }),
-    )
+  const markSent = useMarkSent()
 
   return (
     <FormDialog
@@ -486,12 +511,17 @@ export function SendDialog({
         value1: documentName(invoice),
         name: invoice.client.name,
       })}
-      action="Send"
+      action={translate('send')}
       wide
-      pending={send.isPending}
+      pending={send.isPending || markSent.pending}
       onSubmit={submit}
       onClose={onClose}
-      aside={<MarkSentButton disabled={send.isPending} onClick={markSent} />}
+      aside={
+        <MarkSentButton
+          disabled={send.isPending || markSent.pending}
+          onClick={() => markSent.mark(invoice, onClose)}
+        />
+      }
     >
       {mailDown && (
         <Callout tone="warning" icon={MailX}>
