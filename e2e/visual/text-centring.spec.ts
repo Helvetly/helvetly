@@ -107,6 +107,9 @@ function offCentre(page: Page) {
       const starts = Math.max(...lines.map((found) => found.rect?.top ?? 0))
       const ends = Math.min(...lines.map((found) => found.rect?.bottom ?? 0))
       if (starts >= ends) return []
+      // Nor is a caption under an icon (a file tile: the icon over "PDF"): the two are centred together.
+      const icons = [...control.querySelectorAll('svg, img')].filter((icon) => look.shown(icon))
+      if (icons.some((icon) => icon.getBoundingClientRect().bottom <= starts)) return []
       // The label is the largest text; a smaller count or shortcut beside it is centred on its own.
       const largest = Math.max(...lines.map((found) => found.size))
       const label = lines.filter((found) => found.size === largest)
