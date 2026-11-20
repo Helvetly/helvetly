@@ -1,7 +1,8 @@
-import { defaultLocale } from '@helvetly/i18n'
+import { defaultLocale, isLocale, localeDetails, locales, localizedHref } from '@helvetly/i18n'
 
 import { compareIn } from '@/lib/compare'
 import { readCollection } from '@/lib/content'
+import { translatorFor } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/metadata'
 import { PLATFORM_URL } from '@/lib/site'
 
@@ -17,12 +18,31 @@ export function llmsTxt(): string {
   return [
     '# Helvetly',
     '',
-    '> Business software for small Swiss companies: clients, quotes and invoices with the Swiss QR bill and e-invoice ' +
-      'XML, payment reminders, expenses, documents, e-signatures, a client portal, the books and VAT return, ' +
-      'employees, and Heidi, an AI assistant that knows your books. Hosted in the EU (Frankfurt), passwordless sign-in.',
+    `> ${translatorFor(defaultLocale)('whatIsHelvetlyAnswer')}`,
     '',
     'Prices are per person and month, tax included, in CHF, EUR or USD; every new workspace starts with a free ' +
       '7-day Pro trial. The site is also in German, French, Italian, Dutch, Czech and Swedish (/de, /fr, /it, /nl, /cs, /sv).',
+    '',
+    '## Scope and availability',
+    '',
+    'Built in Switzerland; EU hosting (Frankfurt). The public website supports seven languages; ' +
+      'the application and client portal support English, German, French and Italian. ' +
+      'Feature availability and usage limits depend on the plan; employee records and the payroll register are Business features. ' +
+      'The payroll register records externally calculated pay; it does not calculate salaries or payroll taxes. ' +
+      'E-invoice exports support specific European formats, not universal tax compliance or built-in network delivery. ' +
+      'Heidi is optional and requires each user’s approval.',
+    '',
+    '## Languages',
+    '',
+    ...Object.keys(locales)
+      .filter(isLocale)
+      .map((language) =>
+        link(
+          localeDetails(language).name,
+          localizedHref('/', language),
+          translatorFor(language)('metaHomeDescription'),
+        ),
+      ),
     '',
     '## Product',
     '',
@@ -35,7 +55,7 @@ export function llmsTxt(): string {
     link(
       'Security',
       '/security',
-      'hosting in Switzerland, encryption, sign-in and data protection',
+      'EU hosting (Frankfurt), encryption, sign-in and data protection',
     ),
     link('Questions', '/faq', 'frequent questions about plans, data and switching'),
     `- [Start the free trial](${PLATFORM_URL}/login): sign-in by email code, Google or passkey creates the account`,

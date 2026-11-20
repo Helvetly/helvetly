@@ -1,12 +1,12 @@
 ---
 title: How to choose back-office software
-description: All-in-one or separate tools, what a solo consultant and a small team need, clients abroad, AI help and a checklist for Swiss businesses.
+description: Choose back-office software for a small business: clients, invoices, expenses, documents, books, employee records, AI and support for local requirements.
 category: Choosing software
-updated: 2026-11-19
+updated: 2026-11-20
 readingMinutes: 7
 ---
 
-The right back-office software for a Swiss freelancer or small business is the one that covers your whole path from quote to payment, including the QR bill, reminders and the VAT return, without forcing you to copy data between tools. For most solo consultants and small teams, one all-in-one platform with an export for the fiduciary needs less admin than five separate tools.
+The right back-office software connects the daily work of a small business: clients, quotes, invoices, expenses, documents, books and employee records. Whether you work in Switzerland, the EU or the US, check the currencies, document formats and local requirements you actually need. One shared workspace reduces duplicate data entry; specialist tools still make sense for complex needs.
 
 This guide explains what to look for and when separate tools still make sense. For product-by-product details, see [bexio alternatives in Switzerland](/guides/bexio-alternatives).
 
@@ -41,10 +41,10 @@ An all-in-one platform also has a cost: you depend on one vendor, and each part 
 
 ## What is the best all-in-one back-office platform for freelancers?
 
-There is no single best one; it depends on what you need around your invoices. Helvetly covers clients, quotes, invoices, reminders, expenses, documents, e-signatures, a client portal and the VAT return in one web app. bexio, KLARA and AbaNinja add full accounting and payroll; Magic Heidi keeps it simple for the self-employed.
+There is no single best platform; choose by the work your business needs to manage. Helvetly brings clients, quotes, invoices, reminders, expenses, documents, e-signatures, a client portal, books and employee records into one web app. Its payroll register stores externally calculated pay. Compare bexio, KLARA and AbaNinja for payroll calculation or a till; Magic Heidi focuses on simpler needs for the self-employed.
 
-- **You want to get paid with less admin:** Helvetly puts quotes, invoices with a QR bill, automatic reminders, instalments, expenses, contracts to sign and the VAT return in one place.
-- **You want full bookkeeping, payroll or a till in the same tool:** bexio, KLARA or AbaNinja are suites built for that.
+- **You want a connected back office:** Helvetly combines client management, invoicing, expenses, documents, signatures and books; the Business plan adds employee records and a payroll register.
+- **You need payroll calculation or a till:** compare the relevant bexio, KLARA or AbaNinja modules with your local requirements.
 - **You send few invoices and keep simple books:** Magic Heidi has a free plan and native apps.
 - **You keep your own double-entry books:** Banana and CashCtrl are accounting packages first.
 
@@ -104,7 +104,7 @@ AI use counts against a monthly AI allowance. See [use Heidi](/help/use-heidi) a
 
 ## A checklist for choosing back-office software
 
-Before you decide, check that the software:
+For a business operating in Switzerland, check that the software:
 
 1. Creates Swiss QR bills with a QR reference or Creditor Reference and structured addresses ([the Swiss QR bill](/guides/qr-bill)).
 2. Shows everything a Swiss VAT invoice needs ([what a Swiss invoice must contain](/guides/invoice-requirements)).

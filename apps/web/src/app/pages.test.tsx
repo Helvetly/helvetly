@@ -65,7 +65,7 @@ describe('home page', () => {
   it('leads with the promise and sends the trial to the platform sign-in', async () => {
     await renderPage(await HomePage(english))
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-      'Your Swiss back office, beautifully in order.',
+      'Your back office, Swiss quality.',
     )
     expect(
       screen.getByRole('link', { name: /Start your 7-day Pro trial/ }).getAttribute('href'),
@@ -82,19 +82,37 @@ describe('home page', () => {
     expect(await screen.findByText(/Logged · 34.5 of 40 h used/)).toBeTruthy()
   })
 
-  it('answers what Helvetly is and states every plan as a structured offer', async () => {
-    const { container } = await renderPage(await HomePage(english))
-    expect(screen.getByRole('heading', { level: 2, name: 'What is Helvetly?' })).toBeTruthy()
-    const data = JSON.parse(
-      container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
-    )
-    const app = data['@graph'].find(
-      (node: { '@type': string }) => node['@type'] === 'SoftwareApplication',
-    )
-    expect(
-      app.offers.map((offer: { name: string; price: number }) => [offer.name, offer.price]),
-    ).toEqual(plansIn('en').PLANS.map((plan) => [plan.name, plan.monthly]))
-  })
+  it.each(['en', 'de', 'fr', 'it', 'nl', 'cs', 'sv'] as const)(
+    'describes the whole back office and its offers in %s structured data',
+    async (lang) => {
+      const translate = translatorFor(lang)
+      const page = await HomePage({ params: Promise.resolve({ lang }) })
+      const { container } = await renderPage(page)
+      expect(
+        screen.getByRole('heading', { level: 2, name: translate('whatIsHelvetly') }),
+      ).toBeTruthy()
+      const data = JSON.parse(
+        container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
+      )
+      const app = data['@graph'].find(
+        (node: { '@type': string }) => node['@type'] === 'SoftwareApplication',
+      )
+      expect(app.description).toBe(translate('whatIsHelvetlyAnswer'))
+      expect(app.featureList).toContain(translate('employeesAndPayrollRegister'))
+      expect(app.featureList).toContain(translate('featureGroupBooks'))
+      expect(app.publisher).toEqual({ '@id': 'https://www.helvetly.com/#organization' })
+      expect(data['@graph']).toContainEqual(
+        expect.objectContaining({
+          '@type': 'WebSite',
+          name: 'Helvetly',
+          inLanguage: ['de-CH', 'en-GB', 'fr-CH', 'it-CH', 'nl-NL', 'cs-CZ', 'sv-SE'],
+        }),
+      )
+      expect(
+        app.offers.map((offer: { name: string; price: number }) => [offer.name, offer.price]),
+      ).toEqual(plansIn(lang).PLANS.map((plan) => [plan.name, plan.monthly]))
+    },
+  )
 })
 
 describe('home page in German', () => {
@@ -107,7 +125,7 @@ describe('home page in German', () => {
       </LanguageProvider>,
     )
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-      'Ihr Schweizer Backoffice, einfach organisiert.',
+      'Ihr Backoffice, Schweizer Qualität.',
     )
     expect(screen.getByRole('link', { name: /Preise ansehen/ }).getAttribute('href')).toBe(
       '/de/pricing',

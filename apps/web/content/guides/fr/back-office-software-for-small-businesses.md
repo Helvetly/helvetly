@@ -1,13 +1,13 @@
 ---
 title: Comment choisir un logiciel de back-office
-description: Tout-en-un ou outils séparés, besoins d’un consultant indépendant et d’une petite équipe, clients à l’étranger, aide de l’IA et check-list.
+description: Choisir un logiciel de gestion pour une petite entreprise : clients, factures, dépenses, documents, comptabilité, personnel, IA et besoins locaux.
 category: Choosing software
 categoryLabel: Choisir un logiciel
-updated: 2026-11-19
+updated: 2026-11-20
 readingMinutes: 7
 ---
 
-Le bon logiciel de back-office pour un indépendant ou une petite entreprise en Suisse est celui qui couvre tout le chemin de l’offre au paiement, y compris la QR-facture, les rappels et le décompte TVA, sans vous obliger à recopier des données d’un outil à l’autre. Pour la plupart des consultants seuls et des petites équipes, une plateforme tout-en-un avec un export pour la fiduciaire demande moins d’administration que cinq outils séparés.
+Le bon logiciel de back-office relie le travail quotidien d’une petite entreprise : clients, devis, factures, dépenses, documents, comptabilité et dossiers du personnel. En Suisse, dans l’UE ou aux États-Unis, vérifiez les devises, formats de documents et exigences locales dont vous avez besoin. Un espace partagé évite les doubles saisies ; des outils spécialisés restent utiles pour les besoins complexes.
 
 Ce guide explique ce qu’il faut chercher et quand des outils séparés restent pertinents. Pour le détail produit par produit, voir [les alternatives à bexio en Suisse](/guides/bexio-alternatives).
 
@@ -42,10 +42,10 @@ Une plateforme tout-en-un a aussi un coût : vous dépendez d’un seul fourniss
 
 ## Quelle est la meilleure plateforme de back-office tout-en-un pour un indépendant ?
 
-Il n’y a pas de meilleure plateforme unique ; cela dépend de ce qu’il vous faut autour de vos factures. Helvetly réunit clients, offres, factures, rappels, dépenses, documents, signatures électroniques, portail client et décompte TVA dans une seule application web. bexio, KLARA et AbaNinja ajoutent la comptabilité complète et les salaires ; Magic Heidi reste simple pour les indépendants.
+Il n’existe pas de meilleure plateforme unique ; choisissez selon les tâches de votre entreprise. Helvetly réunit clients, devis, factures, rappels, dépenses, documents, signatures électroniques, portail client, comptabilité et dossiers du personnel dans une application web. Son registre des salaires conserve les montants calculés ailleurs. Pour le calcul des salaires ou une caisse, comparez bexio, KLARA et AbaNinja ; Magic Heidi vise les besoins plus simples des indépendants.
 
-- **Vous voulez être payé avec moins d’administration :** Helvetly réunit au même endroit offres, factures avec QR-facture, rappels automatiques, paiements échelonnés, dépenses, contrats à signer et décompte TVA.
-- **Vous voulez comptabilité complète, salaires ou caisse dans le même outil :** bexio, KLARA ou AbaNinja sont des suites conçues pour cela.
+- **Vous voulez un back-office relié :** Helvetly réunit gestion des clients, factures, dépenses, documents, signatures et comptabilité ; Business ajoute les dossiers du personnel et un registre des salaires.
+- **Vous avez besoin du calcul des salaires ou d’une caisse :** comparez les modules adaptés de bexio, KLARA ou AbaNinja à vos exigences locales.
 - **Vous envoyez peu de factures et tenez une comptabilité simple :** Magic Heidi propose une offre gratuite et des applications natives.
 - **Vous tenez vous-même votre comptabilité en partie double :** Banana et CashCtrl sont avant tout des logiciels de comptabilité.
 
@@ -105,7 +105,7 @@ L’usage de l’IA est décompté d’un quota mensuel d’IA. Voir [utiliser H
 
 ## Une liste de contrôle pour choisir un logiciel de back-office
 
-Avant de décider, vérifiez que le logiciel :
+Pour une entreprise qui exerce en Suisse, vérifiez que le logiciel :
 
 1. Crée des QR-factures suisses avec une référence QR ou une référence créancier et des adresses structurées ([la QR-facture suisse](/guides/qr-bill)).
 2. Affiche tout ce que demande une facture suisse soumise à la TVA ([ce que doit contenir une facture suisse](/guides/invoice-requirements)).
