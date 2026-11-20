@@ -1,14 +1,6 @@
 'use client'
 import { Badge } from '@helvetly/ui/components/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@helvetly/ui/components/tooltip'
-import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -95,26 +87,6 @@ export function announceFiling(files: DocFile[], queryClient: QueryClient) {
           .finally(() => refreshDocuments(queryClient)),
     },
   })
-}
-
-/** The quiet "Sorted by AI" mark of a file filing moved or tagged. */
-export function SortedByAI({ file, className }: { file: DocFile; className?: string }) {
-  if (file.ai_filing?.status !== 'filed') return null
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={cn('inline-flex shrink-0 items-center text-muted-foreground', className)}
-          >
-            <Sparkles aria-hidden className="size-3" />
-            <span className="sr-only">{translate('sortedByAI')}</span>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{translate('sortedByAI')}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
 }
 
 /** A file's tags as small chips, at most `max` with "+n" for the rest. */

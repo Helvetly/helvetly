@@ -68,6 +68,7 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
+import { folderLabel } from '@/lib/system-folders'
 
 import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
@@ -389,7 +390,9 @@ function Details({
         className="inline-flex max-w-full cursor-pointer items-center gap-1.5 underline underline-offset-2 hover:no-underline"
       >
         <FolderMark className="size-3.5" />
-        <span className="truncate">{file.folder?.name ?? translate('allDocuments')}</span>
+        <span className="truncate">
+          {file.folder ? folderLabel(file.folder) : translate('allDocuments')}
+        </span>
       </button>,
     ],
     [
@@ -557,7 +560,7 @@ function TagsPanel({
           <Sparkles className="size-3.5 shrink-0" />
           <span className="min-w-0 truncate">
             {filed.folder
-              ? translate('sortedByAIInto', { folder: filed.folder.name })
+              ? translate('sortedByAIInto', { folder: folderLabel(filed.folder) })
               : translate('sortedByAI')}
           </span>
           {canWrite && (

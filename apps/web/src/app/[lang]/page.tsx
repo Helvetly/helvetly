@@ -1,4 +1,4 @@
-import { localizedHref } from '@helvetly/i18n'
+import { localeDetails, locales, localizedHref } from '@helvetly/i18n'
 
 import { FaqSection } from '@/components/faq'
 import { About } from '@/components/home/about'
@@ -26,19 +26,41 @@ export default async function HomePage({ params }: Props) {
     '@graph': [
       {
         '@type': 'Organization',
+        '@id': `${SITE_URL}/#organization`,
         name: 'Helvetly',
         url: SITE_URL,
         logo: `${SITE_URL}/apple-icon.png`,
         sameAs: ['https://github.com/Helvetly/helvetly'],
       },
       {
+        '@type': 'WebSite',
+        '@id': `${SITE_URL}/#website`,
+        name: 'Helvetly',
+        url: SITE_URL,
+        inLanguage: Object.values(locales).map(({ languageTag }) => languageTag),
+        publisher: { '@id': `${SITE_URL}/#organization` },
+      },
+      {
         '@type': 'SoftwareApplication',
+        '@id': `${SITE_URL}${localizedHref('/', lang)}#software`,
         name: 'Helvetly',
         url: `${SITE_URL}${localizedHref('/', lang)}`,
-        description: translate('metaHomeDescription'),
+        description: translate('whatIsHelvetlyAnswer'),
+        featureList: [
+          translate('clients'),
+          translate('featureGroupInvoicing'),
+          translate('expenses'),
+          translate('documents'),
+          translate('electronicSignatures'),
+          translate('clientPortal'),
+          translate('featureGroupBooks'),
+          translate('employeesAndPayrollRegister'),
+          translate('heidi'),
+        ],
+        publisher: { '@id': `${SITE_URL}/#organization` },
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        inLanguage: lang,
+        inLanguage: localeDetails(lang).languageTag,
         offers: PLANS.map((plan) => ({
           '@type': 'Offer',
           name: plan.name,

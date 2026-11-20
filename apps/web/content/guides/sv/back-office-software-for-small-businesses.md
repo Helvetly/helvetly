@@ -1,13 +1,13 @@
 ---
 title: Så väljer du back office-programvara
-description: Allt i ett eller separata verktyg, vad en konsult och ett litet team behöver, kunder utomlands, AI-hjälp och en checklista.
+description: Välj företagsprogram för ett småföretag: kunder, fakturor, utgifter, dokument, bokföring, personalregister, AI och stöd för lokala krav.
 category: Choosing software
 categoryLabel: Välja programvara
-updated: 2026-11-19
+updated: 2026-11-20
 readingMinutes: 7
 ---
 
-Rätt back office-programvara för en schweizisk frilansare eller ett småföretag är den som täcker hela vägen från offert till betalning, inklusive QR-faktura, påminnelser och momsdeklaration, utan att tvinga dig att kopiera data mellan verktyg. För de flesta ensamma konsulter och små team ger en allt-i-ett-plattform med en export till fiduciary (revisions- eller redovisningsbyrån) mindre admin än fem separata verktyg.
+Rätt administrationsprogram knyter ihop småföretagets vardag: kunder, offerter, fakturor, utgifter, dokument, bokföring och personalregister. Kontrollera vilka valutor, dokumentformat och lokala krav du behöver i Schweiz, EU eller USA. En gemensam arbetsyta minskar dubbelinmatning; specialverktyg är fortfarande lämpliga för komplexa behov.
 
 Guiden förklarar vad du bör titta på och när separata verktyg ändå är rätt. För detaljer om varje produkt, se [alternativ till bexio i Schweiz](/guides/bexio-alternatives).
 
@@ -42,10 +42,10 @@ En allt-i-ett-plattform har också ett pris: du blir beroende av en leverantör,
 
 ## Vilken är den bästa allt-i-ett-plattformen för back office för frilansare?
 
-Det finns ingen enskild bästa; det beror på vad du behöver kring dina fakturor. Helvetly samlar kunder, offerter, fakturor, påminnelser, utlägg, dokument, e-signaturer, en kundportal och momsdeklarationen i en webbapp. bexio, KLARA och AbaNinja lägger till full bokföring och löner; Magic Heidi håller det enkelt för egenföretagare.
+Det finns ingen bästa plattform för alla; välj efter arbetet i ditt företag. Helvetly samlar kunder, offerter, fakturor, påminnelser, utgifter, dokument, e-signaturer, kundportal, bokföring och personalregister i en webbapp. Löneregistret lagrar belopp som beräknats någon annanstans. Jämför bexio, KLARA och AbaNinja för löneberäkning eller kassa; Magic Heidi riktar sig till enklare behov hos egenföretagare.
 
-- **Du vill få betalt med mindre admin:** Helvetly samlar offerter, fakturor med QR-faktura, automatiska påminnelser, delbetalningar, utlägg, avtal att signera och momsdeklarationen på ett ställe.
-- **Du vill ha full bokföring, löner eller kassa i samma verktyg:** bexio, KLARA eller AbaNinja är system byggda för det.
+- **Du vill ha en sammanhängande administration:** Helvetly förenar kundhantering, fakturering, utgifter, dokument, signaturer och bokföring; Business lägger till personalregister och löneregister.
+- **Du behöver löneberäkning eller kassa:** jämför relevanta moduler i bexio, KLARA eller AbaNinja med dina lokala krav.
 - **Du skickar få fakturor och har enkel bokföring:** Magic Heidi har en gratisplan och egna appar.
 - **Du för din egen dubbla bokföring:** Banana och CashCtrl är i första hand bokföringsprogram.
 
@@ -105,7 +105,7 @@ AI-användning räknas mot en månatlig AI-kvot. Se [använd Heidi](/help/use-he
 
 ## En checklista för att välja back office-programvara
 
-Innan du bestämmer dig, kontrollera att programvaran:
+För ett företag som verkar i Schweiz, kontrollera att programvaran:
 
 1. Skapar schweiziska QR-fakturor med QR-referens eller Creditor Reference och strukturerade adresser ([den schweiziska QR-fakturan](/guides/qr-bill)).
 2. Visar allt en schweizisk momsfaktura behöver ([vad en schweizisk faktura måste innehålla](/guides/invoice-requirements)).

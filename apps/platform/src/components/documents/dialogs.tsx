@@ -16,9 +16,11 @@ import { useRef, useState, type ReactNode } from 'react'
 
 import { childrenOf, isWithin, pathTo, type Folder } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { folderLabel } from '@/lib/system-folders'
 
 import { FolderMark } from './folder-art'
 import { TreeGuide } from './folder-tree'
+import { FolderName } from './system-mark'
 
 /** "New folder": a name, checked on the server (which answers a clash with a suggestion). */
 export function NewFolderDialog({
@@ -145,14 +147,16 @@ export function FolderPickerDialog({
             }
           >
             <FolderMark className="size-4" />
-            <span className="truncate">{folder.name}</span>
+            <FolderName folder={folder} />
           </Row>
           {expanded && branch(folder.id, depth + 1)}
         </div>
       )
     })
 
-  const where = picked ? (pathTo(folders, picked).at(-1)?.name ?? '') : translate('allDocuments')
+  const where = picked
+    ? folderLabel(pathTo(folders, picked).at(-1) ?? { name: '' })
+    : translate('allDocuments')
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-[440px]">

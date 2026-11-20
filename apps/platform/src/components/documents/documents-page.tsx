@@ -123,6 +123,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
+import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
 import { useTemplates, type Template } from '@/lib/templates'
 import { setUrlQuery } from '@/lib/url-query'
 
@@ -190,6 +191,13 @@ type Picker = { mode: 'move' | 'copy'; files: string[]; folders: string[] }
 type Clipboard = { mode: 'copy' | 'cut'; files: string[]; folders: string[] }
 type Confirm = { kind: 'delete'; items: TrashItem[] } | { kind: 'empty' }
 
+/** The refusal of a system folder in the user's language; any other error as the app shows it. */
+function docError(error: unknown) {
+  if (error instanceof ApiError && error.code === 'system_folder')
+    toast.error(translate('systemFolderError'))
+  else toastError(error)
+}
+
 /** The file manager: folder tree, breadcrumbs, grid or list, preview, uploads and the Trash. */
 // The header tabs' icons, as the sidebar shows the same places.
 const FolderTabIcon = ({ className }: { className?: string }) => (
@@ -254,7 +262,7 @@ export function DocumentsPage() {
   )
   const trash = useTrash()
   const sections = useCollapsed()
-  const toggleStar = useStarFolder(toastError)
+  const toggleStar = useStarFolder(docError)
 
   const [search, setSearch] = useState(view.search)
   const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION)
@@ -340,7 +348,9 @@ export function DocumentsPage() {
 
   const folderName = (id: string | null) =>
     id
-      ? (allFolders.find((folder) => folder.id === id)?.name ?? translate('theFolder'))
+      ? folderLabel(
+          allFolders.find((folder) => folder.id === id) ?? { name: translate('theFolder') },
+        )
       : translate('allDocuments')
 
   // ---- what is on screen ----
@@ -351,9 +361,11 @@ export function DocumentsPage() {
       ? []
       : searching
         ? allFolders.filter((folder) =>
-            folder.name.toLowerCase().includes(view.search.trim().toLowerCase()),
+            folderLabel(folder).toLowerCase().includes(view.search.trim().toLowerCase()),
           )
-        : (childrenOf(allFolders).get(current ?? '') ?? [])
+        : (childrenOf(
+            withoutEmptySystem(allFolders, new Set(pathTo(allFolders, current).map((f) => f.id))),
+          ).get(current ?? '') ?? [])
   if (view.sort === 'name' && view.desc) visibleFolders.reverse()
   const files = list.data?.data ?? []
   // The top level of "All documents", unfiltered: the storage overview and Recent show there.
@@ -371,6 +383,9 @@ export function DocumentsPage() {
   ]
   const selectedKeys = new Set([...selection.keys].filter((key) => order.includes(key)))
   const selectedSplit = splitKeys(selectedKeys)
+  // System folders cannot be renamed, moved or trashed; their files can.
+  const managed = new Set(allFolders.filter(isSystemFolder).map((folder) => folder.id))
+  const hasManaged = (split: { folders: string[] }) => split.folders.some((id) => managed.has(id))
   // Why "Extract with AI" cannot read these items (the plan's reason first), or null when it can.
   const extractReason = (split: { files: string[]; folders: string[] }) =>
     aiLock?.hint ??
@@ -424,11 +439,11 @@ export function DocumentsPage() {
             on_conflict: 'keep_both',
           }).then(
             (again) => reportBulk(again, translate('movedTo', { value1: folderName(target) })),
-            toastError,
+            docError,
           ),
       )
       clearSelection()
-    }, toastError)
+    }, docError)
 
   const trashItems = (payload: { files: string[]; folders: string[] }) =>
     runBulk({ action: 'trash', document_ids: payload.files, folder_ids: payload.folders }).then(
@@ -449,7 +464,7 @@ export function DocumentsPage() {
           })
         if (view.file && payload.files.includes(view.file)) navigate({ file: null })
       },
-      toastError,
+      docError,
     )
 
   const copyFiles = async (ids: string[], target: string | null) => {
@@ -462,7 +477,7 @@ export function DocumentsPage() {
         }),
       )
     } catch (error) {
-      toastError(error)
+      docError(error)
     } finally {
       refreshDocuments(queryClient)
     }
@@ -493,11 +508,11 @@ export function DocumentsPage() {
                   onClick: () =>
                     void docsApi
                       .update(fileId, { name: suggestion })
-                      .then(() => refreshDocuments(queryClient), toastError),
+                      .then(() => refreshDocuments(queryClient), docError),
                 }
               : undefined,
         })
-      } else toastError(error)
+      } else docError(error)
     }
   }
 
@@ -603,10 +618,15 @@ export function DocumentsPage() {
       event.preventDefault()
       setSelection({ keys: new Set(order), anchor: order[0] ?? null })
     } else if (key === 'Escape') clearSelection()
-    else if (canWrite && (key === 'Delete' || key === 'Backspace') && selectedKeys.size > 0) {
+    else if (
+      canWrite &&
+      (key === 'Delete' || key === 'Backspace') &&
+      selectedKeys.size > 0 &&
+      !hasManaged(selectedSplit)
+    ) {
       event.preventDefault()
       void trashItems(selectedSplit)
-    } else if (canWrite && key === 'F2' && selectedKeys.size === 1) {
+    } else if (canWrite && key === 'F2' && selectedKeys.size === 1 && !hasManaged(selectedSplit)) {
       event.preventDefault()
       setRenaming([...selectedKeys][0] ?? null)
     } else if (key === 'Enter' && focused) openItem(focused)
@@ -617,7 +637,13 @@ export function DocumentsPage() {
           value1: plural(selectedSplit.files.length, 'file'),
         }),
       )
-    } else if (canWrite && mod && key.toLowerCase() === 'x' && selectedKeys.size > 0) {
+    } else if (
+      canWrite &&
+      mod &&
+      key.toLowerCase() === 'x' &&
+      selectedKeys.size > 0 &&
+      !hasManaged(selectedSplit)
+    ) {
       setClipboard({ mode: 'cut', ...selectedSplit })
       toast(
         translate('cutPasteWithVInAnotherFolder', { value1: plural(selectedKeys.size, 'item') }),
@@ -641,7 +667,8 @@ export function DocumentsPage() {
     const single = keys.length === 1
     const file = [...files, ...recentFiles].find((entry) => fileKey(entry.id) === key)
     const folder = file ? undefined : allFolders.find((entry) => folderKey(entry.id) === key)
-    const name = file ? file.name : folder?.name
+    const name = file ? file.name : folder && folderLabel(folder)
+    const locked = hasManaged(split)
     return (
       <ContextMenuContent className="min-w-52">
         <ContextMenuLabel className={titleClass}>
@@ -693,7 +720,7 @@ export function DocumentsPage() {
             {translate('shareWithClient')}
           </ContextMenuItem>
         )}
-        {canWrite && single && (
+        {canWrite && single && !locked && (
           <ContextMenuItem onSelect={() => setRenaming(key)}>
             <Pencil />
             {translate('rename')}
@@ -701,7 +728,7 @@ export function DocumentsPage() {
           </ContextMenuItem>
         )}
         {single && folder && <StarItem folder={folder} onToggle={toggleStar} />}
-        {canWrite && (
+        {canWrite && !locked && (
           <>
             <ContextMenuSeparator />
             <ContextMenuItem onSelect={() => setPicker({ mode: 'move', ...split })}>
@@ -743,17 +770,17 @@ export function DocumentsPage() {
     restore: (file) =>
       void runBulk({ action: 'restore', document_ids: [file.id] }).then(
         (result) => reportBulk(result, 'restored'),
-        toastError,
+        docError,
       ),
     link: (file, clientId) =>
       void docsApi.link(file.id, 'client', clientId).then(() => {
         refreshDocuments(queryClient)
         toast.success(translate('linkedToTheClient'))
-      }, toastError),
+      }, docError),
     unlink: (file, link) =>
       void docsApi
         .unlink(file.id, link.type, link.id)
-        .then(() => refreshDocuments(queryClient), toastError),
+        .then(() => refreshDocuments(queryClient), docError),
     openFolder: (folder) => openFolder(folder),
     sign: (file) => {
       navigate({ file: null })
@@ -775,7 +802,7 @@ export function DocumentsPage() {
     }).then((result) => {
       setTrashSelected(new Set())
       reportBulk(result, 'restored')
-    }, toastError)
+    }, docError)
   const deleteForever = (items: TrashItem[]) =>
     void runBulk({
       action: 'delete',
@@ -784,7 +811,7 @@ export function DocumentsPage() {
     }).then((result) => {
       setTrashSelected(new Set())
       reportBulk(result, translate('deletedForever2'))
-    }, toastError)
+    }, docError)
 
   // The page's own actions: the header's "…" menu and a right-click on the empty surface.
   // The header's "…" leaves New folder to the Create menu beside it.
@@ -903,7 +930,7 @@ export function DocumentsPage() {
           listing && (
             <>
               <Button
-                variant="outline"
+                variant="ai"
                 onClick={() => (aiLock ? toastLocked(aiLock) : setOrganizing(true))}
               >
                 <HeidiSparkle />
@@ -947,7 +974,7 @@ export function DocumentsPage() {
                     void docsApi.createFolder(name, null).then(({ data }) => {
                       refreshDocuments(queryClient)
                       openFolder(data.id)
-                    }, toastError),
+                    }, docError),
                   kind: (kind) =>
                     navigate({
                       section: 'files',
@@ -1220,6 +1247,9 @@ export function DocumentsPage() {
                         label: translate('moveTo'),
                         icon: <FolderInput />,
                         onClick: () => setPicker({ mode: 'move', ...selectedSplit }),
+                        disabled: hasManaged(selectedSplit)
+                          ? translate('systemFolderTip')
+                          : undefined,
                         write: true,
                       },
                       {
@@ -1244,6 +1274,9 @@ export function DocumentsPage() {
                         icon: <Trash2 />,
                         destructive: true,
                         onClick: () => void trashItems(selectedSplit),
+                        disabled: hasManaged(selectedSplit)
+                          ? translate('systemFolderTip')
+                          : undefined,
                         write: true,
                       },
                     ]}
@@ -1413,7 +1446,7 @@ export function DocumentsPage() {
                 refreshDocuments(queryClient)
                 setTrashSelected(new Set())
                 toast.success(translate('deletedForever', { value1: plural(data.updated, 'item') }))
-              }, toastError)
+              }, docError)
           }}
         />
       )}
@@ -1481,7 +1514,7 @@ function Breadcrumbs({
         <span key={folder.id} className="flex min-w-0 items-center gap-0.5">
           <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
           <Crumb target={folder.id} current={i === crumbs.length - 1} onOpen={onOpen}>
-            {folder.name}
+            {folderLabel(folder)}
           </Crumb>
         </span>
       ))}

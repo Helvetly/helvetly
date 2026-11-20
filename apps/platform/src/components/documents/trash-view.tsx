@@ -13,6 +13,7 @@ import { LoadingRows, State } from '@/components/data/table-page'
 import { daysLeft, formatSize, isRetained, type TrashItem } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
+import { folderLabel } from '@/lib/system-folders'
 
 import { FolderMark } from './folder-art'
 import { KindIcon, kindOfType } from './kind'
@@ -140,7 +141,7 @@ export function TrashView({
                 </td>
                 <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
                   <span className="block truncate">
-                    {item.location?.name ?? translate('allDocuments')}
+                    {item.location ? folderLabel(item.location) : translate('allDocuments')}
                   </span>
                 </td>
                 <td className="hidden px-3 text-muted-foreground @5xl:table-cell">

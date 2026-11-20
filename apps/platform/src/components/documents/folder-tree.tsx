@@ -31,6 +31,7 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
+import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
 
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
@@ -38,6 +39,7 @@ import { InlineRename } from './inline-rename'
 import { KindIcon } from './kind'
 import { PinItem, type Pinned, type PinnedTab } from './pinned-tabs'
 import { StarGlyph, StarItem } from './star'
+import { FolderName } from './system-mark'
 
 export type TreeActions = {
   open: (folder: string | null) => void
@@ -78,10 +80,10 @@ export function FolderTree({
   actions: TreeActions
 }) {
   const canWrite = useCan('write:documents')
-  const tree = childrenOf(folders)
+  const onPath = new Set(pathTo(folders, current).map((folder) => folder.id))
+  const tree = childrenOf(withoutEmptySystem(folders, onPath))
   // Folders on the way to the open one start expanded; the rest follow the person's clicks.
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(new Map())
-  const onPath = new Set(pathTo(folders, current).map((folder) => folder.id))
   const isOpen = (id: string) => toggled.get(id) ?? onPath.has(id)
   const toggle = (id: string) => setToggled(new Map(toggled).set(id, !isOpen(id)))
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -308,12 +310,14 @@ function StarredRow({
         <span className="flex size-6 shrink-0 items-center justify-center">
           <FolderMark open={drop.over} className="size-4" />
         </span>
-        <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+        <span className="min-w-0 flex-1">
+          <FolderName folder={folder} />
+        </span>
       </button>
       <button
         type="button"
         aria-pressed
-        aria-label={translate('unstar2', { name: folder.name })}
+        aria-label={translate('unstar2', { name: folderLabel(folder) })}
         title={translate('unstar')}
         onClick={() => actions.star(folder)}
         className="-mr-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -403,9 +407,10 @@ function TreeNode({
   const canWrite = useCan('write:documents')
   const drop = useDropTarget(folder.id)
   const guide = ICON_CENTRE + (depth - 1) * INDENT
+  const system = isSystemFolder(folder)
   const toggleLabel = expanded
-    ? translate('collapse2', { name: folder.name })
-    : translate('expand2', { name: folder.name })
+    ? translate('collapse2', { name: folderLabel(folder) })
+    : translate('expand2', { name: folderLabel(folder) })
   return (
     <li className="relative">
       {depth > 0 && <TreeGuide x={guide} last={last} />}
@@ -441,19 +446,19 @@ function TreeNode({
                 )}
                 <button
                   type="button"
-                  draggable={canWrite}
+                  draggable={canWrite && !system}
                   aria-current={current ? 'page' : undefined}
                   onDragStart={(event) =>
                     startDrag(
                       event,
                       { files: [], folders: [folder.id], from: folder.parent_id },
-                      folder.name,
+                      folderLabel(folder),
                     )
                   }
                   onDragEnd={endDrag}
                   onClick={() => actions.open(folder.id)}
                   onKeyDown={(event) => {
-                    if (canWrite && event.key === 'F2') onRenameStart()
+                    if (canWrite && !system && event.key === 'F2') onRenameStart()
                     // Handled arrows stay in the tree; the page would otherwise move the grid's selection too.
                     if (event.key === 'ArrowRight' && hasChildren && !expanded) {
                       event.preventDefault()
@@ -471,7 +476,7 @@ function TreeNode({
                       <FolderMark open={drop.over} className="size-4" />
                     </span>
                   )}
-                  <span className="min-w-0 truncate">{folder.name}</span>
+                  <FolderName folder={folder} />
                   {folder.total_files > 0 && <Count>{folder.total_files}</Count>}
                 </button>
               </>
@@ -485,15 +490,15 @@ function TreeNode({
               {translate('newFolderInside')}
             </ContextMenuItem>
           )}
-          {canWrite && (
+          {canWrite && !system && (
             <ContextMenuItem onSelect={onRenameStart}>
               <Pencil />
               {translate('rename2')}
             </ContextMenuItem>
           )}
           <StarItem folder={folder} onToggle={actions.star} />
-          {canWrite && <ContextMenuSeparator />}
-          {canWrite && (
+          {canWrite && !system && <ContextMenuSeparator />}
+          {canWrite && !system && (
             <ContextMenuItem variant="destructive" onSelect={() => actions.trash(folder)}>
               <Trash2 />
               {translate('moveToTrash3')}

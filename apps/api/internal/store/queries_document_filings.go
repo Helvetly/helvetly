@@ -114,7 +114,7 @@ func (q Q) DocumentTags(ctx context.Context, workspaceID string, limit int) ([]s
 // DeleteEmptyFiledFolder deletes a folder AI filing made once nothing is in it, not even in the Trash; false when
 // something is.
 func (q Q) DeleteEmptyFiledFolder(ctx context.Context, workspaceID, id string) (bool, error) {
-	tag, err := q.db.Exec(ctx, `DELETE FROM document_folders f WHERE f.workspace_id = $1 AND f.id = $2 AND f.deleted_at IS NULL
+	tag, err := q.db.Exec(ctx, `DELETE FROM document_folders f WHERE f.workspace_id = $1 AND f.id = $2 AND f.deleted_at IS NULL AND f.system_kind IS NULL
 		AND NOT EXISTS (SELECT 1 FROM documents WHERE folder_id = f.id)
 		AND NOT EXISTS (SELECT 1 FROM document_folders c WHERE c.parent_id = f.id)
 		AND EXISTS (SELECT 1 FROM document_filings ff WHERE ff.folder_id = f.id AND ff.created_folder)`, workspaceID, id)
@@ -144,7 +144,7 @@ func (q Q) OrganizeDocuments(ctx context.Context, workspaceID string, folderIDs 
 
 // DeleteEmptyFolder deletes a live folder once nothing is in it, not even in the Trash; false when something is.
 func (q Q) DeleteEmptyFolder(ctx context.Context, workspaceID, id string) (bool, error) {
-	tag, err := q.db.Exec(ctx, `DELETE FROM document_folders f WHERE f.workspace_id = $1 AND f.id = $2 AND f.deleted_at IS NULL
+	tag, err := q.db.Exec(ctx, `DELETE FROM document_folders f WHERE f.workspace_id = $1 AND f.id = $2 AND f.deleted_at IS NULL AND f.system_kind IS NULL
 		AND NOT EXISTS (SELECT 1 FROM documents WHERE folder_id = f.id)
 		AND NOT EXISTS (SELECT 1 FROM document_folders c WHERE c.parent_id = f.id)`, workspaceID, id)
 	return tag.RowsAffected() > 0, err

@@ -55,7 +55,7 @@ func TestReadOrganize(t *testing.T) {
 		{name: "not JSON", text: "sorry", unreadble: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := readOrganize(tc.text, docs, folders)
+			got, err := readOrganize(tc.text, docs, folders, nil)
 			if tc.unreadble {
 				if _, code, _, _ := auth.Describe(err); code != "ai_unreadable" {
 					t.Fatalf("err = %v, want ai_unreadable", err)
@@ -220,7 +220,7 @@ func TestOrganizeApplyAndUndo(t *testing.T) {
 		t.Fatalf("apply = %+v", out.Data)
 	}
 	var folders one[[]store.Folder]
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 3 { // Invoices, Misc, 2025 (no Stolen, no Gone)
 		t.Fatalf("folders = %+v", folders.Data)
 	}
@@ -248,7 +248,7 @@ func TestOrganizeApplyAndUndo(t *testing.T) {
 		if dc.FolderID == nil || *dc.FolderID != misc.ID {
 			t.Fatalf("c after undo = %+v", dc)
 		}
-		e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+		folders.Data = e.userFolders(b)
 		if len(folders.Data) != 2 {
 			t.Fatalf("folders after undo = %+v", folders.Data)
 		}
@@ -272,7 +272,7 @@ func TestOrganizeUndoKeepsUsedFolders(t *testing.T) {
 		t.Fatalf("after undo = %+v", got)
 	}
 	var folders one[[]store.Folder]
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 1 || folders.Data[0].Name != "Contracts" {
 		t.Fatalf("folders = %+v", folders.Data)
 	}

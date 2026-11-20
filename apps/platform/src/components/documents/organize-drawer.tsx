@@ -25,6 +25,7 @@ import {
   type OrganizeProposal,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { pathLabel } from '@/lib/system-folders'
 
 /** Every folder's path ("Invoices/2025"), lower-cased, to tell a proposed folder that exists from a new one. */
 export function folderPaths(folders: Folder[]): Set<string> {
@@ -38,7 +39,7 @@ export function folderPaths(folders: Folder[]): Set<string> {
 
 /** A path as people read it: "Invoices › 2025", or "Top level". */
 const shownPath = (path: string | null) =>
-  path ? path.split('/').join(' › ') : translate('organizeTopLevel')
+  path ? pathLabel(path).split('/').join(' › ') : translate('organizeTopLevel')
 
 type Row = OrganizeProposal & { folderInput: string }
 
@@ -171,6 +172,12 @@ export function OrganizeDrawer({
           </Badge>
         )}
       </div>
+      {pathLabel(row.folderInput) !== row.folderInput && (
+        // The field keeps the canonical path the server matches; this is how it reads in the user's language.
+        <p className="truncate pl-1 text-caption text-muted-foreground">
+          {shownPath(row.folderInput)}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-1">
         {row.tags.map((tag) => (
           <span

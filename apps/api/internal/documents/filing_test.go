@@ -302,12 +302,12 @@ func TestUndoAIFiling(t *testing.T) {
 	e.do(b, "DELETE", "/api/v1/documents/"+first.ID+"/filing", nil, 200, nil) // twice is fine
 	// the folder filing made stays while a file is in it, and goes with the last one
 	var folders one[[]store.Folder]
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 1 {
 		t.Fatalf("folders after first undo: %+v", folders.Data)
 	}
 	e.do(b, "DELETE", "/api/v1/documents/"+second.ID+"/filing", nil, 200, nil)
-	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &folders)
+	folders.Data = e.userFolders(b)
 	if len(folders.Data) != 0 {
 		t.Fatalf("folder filing made was kept: %+v", folders.Data)
 	}

@@ -11,10 +11,14 @@ const buttonVariants = cva(
         // The primary action. Disabled it stays primary at half strength (the base's opacity), so
         // an inactive "Log" or "Save" still reads as the form's main action, not a grey chip.
         default:
-          'border-primary bg-primary bg-clip-border text-primary-foreground shadow-[0_1px_2px_rgb(29_79_209/0.3),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary/90 active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:shadow-none dark:shadow-none',
+          'border-primary bg-primary bg-clip-border text-primary-foreground shadow-[0_1px_2px_rgb(29_79_209/0.3),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary/90 active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:shadow-none',
         outline:
           // Hover is darker than the page background (#efeef1): plain muted vanishes on it.
-          'border-foreground/12 bg-card shadow-[0_1px_2px_rgb(0_0_0/0.08),0_2px_4px_-1px_rgb(0_0_0/0.06)] hover:border-foreground/20 hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] hover:text-foreground aria-expanded:border-foreground/20 aria-expanded:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:shadow-none dark:hover:bg-input/50',
+          'border-foreground/12 bg-card hover:border-foreground/20 hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] hover:text-foreground aria-expanded:border-foreground/20 aria-expanded:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:shadow-none dark:hover:bg-input/50',
+        // AI action (Organize with AI, Extract with AI): an outline button with a drifting violet,
+        // blue and pink edge. Put a HeidiSparkle first: it twinkles on hover.
+        // The clip is important: the base's bg-clip-padding would otherwise decide.
+        ai: 'ai-edge border-transparent [background-clip:padding-box,border-box]! text-foreground',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground',
         ghost:

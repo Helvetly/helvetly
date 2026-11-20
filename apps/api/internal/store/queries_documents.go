@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"path"
 	"strconv"
@@ -24,12 +23,14 @@ type Folder struct {
 	CreatedBy  *Uploader `json:"created_by"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-	Starred    bool      `json:"starred"` // by the person asking
+	Starred    bool      `json:"starred"`     // by the person asking
+	SystemKind *string   `json:"system_kind"` // a system folder (queries_system_folders.go): nobody renames, moves or deletes it
 }
 
 type FolderRef struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	SystemKind *string `json:"system_kind,omitempty"`
 }
 
 type Document struct {
@@ -94,10 +95,13 @@ const retentionSQL = `(SELECT to_char(make_date(max(extract(year FROM r.day))::i
 		WHERE l.document_id = d.id AND l.target_type = 'signature' AND s.completed_at IS NOT NULL) r)`
 
 // retainedSQL: document d may not be trashed or deleted on the day in parameter $today; the original of an invoice
-// issued elsewhere stays as long as the invoice (invoices.source_document_id) points at it.
+// issued elsewhere stays as long as the invoice (invoices.source_document_id) points at it, and the filed PDF of an
+// invoice or quote as long as the record (pdf_key) keeps it: they share one object.
 func retainedSQL(today string) string {
 	return `(coalesce(` + retentionSQL + ` >= ` + today + `, false)
-		OR EXISTS (SELECT 1 FROM invoices si WHERE si.source_document_id = d.id))`
+		OR EXISTS (SELECT 1 FROM invoices si WHERE si.source_document_id = d.id)
+		OR EXISTS (SELECT 1 FROM invoices pi WHERE pi.workspace_id = d.workspace_id AND pi.pdf_key = d.object_key)
+		OR EXISTS (SELECT 1 FROM quotes pq WHERE pq.workspace_id = d.workspace_id AND pq.pdf_key = d.object_key))`
 }
 
 // ---- folders ----
@@ -111,7 +115,7 @@ func (q Q) LockContainer(ctx context.Context, workspaceID string, folderID *stri
 // DocumentFolders: every live folder, by name, with the files directly inside and the totals of each subtree.
 func (q Q) DocumentFolders(ctx context.Context, workspaceID, userID string) ([]Folder, error) {
 	rows, err := q.db.Query(ctx, `SELECT f.id, f.name, f.parent_id, f.created_at, f.updated_at, u.id, u.name,
-			coalesce(s.n, 0), coalesce(s.size, 0), st.folder_id IS NOT NULL
+			coalesce(s.n, 0), coalesce(s.size, 0), st.folder_id IS NOT NULL, f.system_kind
 		FROM document_folders f LEFT JOIN users u ON u.id = f.created_by
 		LEFT JOIN document_folder_stars st ON st.folder_id = f.id AND st.user_id = $2
 		LEFT JOIN (SELECT folder_id, count(*) AS n, sum(size) AS size FROM documents
@@ -125,7 +129,7 @@ func (q Q) DocumentFolders(ctx context.Context, workspaceID, userID string) ([]F
 	for rows.Next() {
 		var f Folder
 		var uid, uname *string
-		if err := rows.Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt, &uid, &uname, &f.FileCount, &f.Size, &f.Starred); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt, &uid, &uname, &f.FileCount, &f.Size, &f.Starred, &f.SystemKind); err != nil {
 			return nil, err
 		}
 		if uid != nil {
@@ -187,9 +191,9 @@ func (q Q) StarFolder(ctx context.Context, workspaceID, userID, folderID string,
 // DocumentFolder: one live folder (without counts).
 func (q Q) DocumentFolder(ctx context.Context, workspaceID, id string) (Folder, error) {
 	var f Folder
-	err := q.db.QueryRow(ctx, `SELECT id, name, parent_id, created_at, updated_at FROM document_folders
+	err := q.db.QueryRow(ctx, `SELECT id, name, parent_id, created_at, updated_at, system_kind FROM document_folders
 		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`, workspaceID, id).
-		Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt)
+		Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt, &f.SystemKind)
 	return f, err
 }
 
@@ -382,24 +386,12 @@ func collect(rows interface {
 	return out, rows.Err()
 }
 
-// ClientsFolder: the top-level "Clients" folder that files uploaded on a client go to, made when missing.
-func (q Q) ClientsFolder(ctx context.Context, workspaceID, userID string, now time.Time) (string, error) {
-	if err := q.LockContainer(ctx, workspaceID, nil); err != nil {
-		return "", err
-	}
-	id, err := q.FolderNameTaken(ctx, workspaceID, nil, "Clients", "")
-	if err != nil || id != "" {
-		return id, err
-	}
-	id = "fld_" + strings.ToLower(rand.Text())
-	return id, q.CreateFolder(ctx, workspaceID, id, "Clients", nil, userID, now)
-}
-
 // ---- documents ----
 
 const documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
 		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, x.id, x.name, ` + retentionSQL + `,
-		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}')
+		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}'),
+		f.system_kind, fl.system_kind
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by
 	LEFT JOIN document_filings ff ON ff.document_id = d.id
@@ -407,20 +399,20 @@ const documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.cont
 
 func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, error) {
 	var d Document
-	var folderName, uid, uname, xid, xname, filing, filedID, filedName *string
+	var folderName, uid, uname, xid, xname, filing, filedID, filedName, folderKind, filedKind *string
 	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
 		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &xid, &xname, &d.RetainedUntil,
-		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags}, extra...)...)
+		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind}, extra...)...)
 	if filing != nil {
 		filed.Status = *filing
 		if filedID != nil && filedName != nil {
-			filed.Folder = &FolderRef{ID: *filedID, Name: *filedName}
+			filed.Folder = &FolderRef{ID: *filedID, Name: *filedName, SystemKind: filedKind}
 		}
 		d.AIFiling = &filed
 	}
 	if d.FolderID != nil && folderName != nil {
-		d.Folder = &FolderRef{ID: *d.FolderID, Name: *folderName}
+		d.Folder = &FolderRef{ID: *d.FolderID, Name: *folderName, SystemKind: folderKind}
 	}
 	if uid != nil {
 		d.UploadedBy = &Uploader{ID: *uid, Name: *uname}
@@ -634,14 +626,14 @@ func (s scanFirst) Scan(dest ...any) error { return s.row.Scan(append([]any{s.fi
 // shortcut: no paging, capped at 1000 rows; page it if a workspace ever trashes more within 30 days.
 func (q Q) Trash(ctx context.Context, workspaceID string) ([]TrashItem, error) {
 	rows, err := q.db.Query(ctx, `SELECT 'file', d.id, d.name, d.content_type, d.size, 0, f.id, f.name, `+retentionSQL+`,
-			d.deleted_at, u.id, u.name
+			d.deleted_at, u.id, u.name, f.system_kind
 		FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = d.deleted_by
 		WHERE d.workspace_id = $1 AND d.deleted_at IS NOT NULL AND d.trashed_with IS NULL AND NOT d.hr_private
 		UNION ALL
 		SELECT 'folder', g.id, g.name, NULL, coalesce((SELECT sum(size) FROM documents WHERE trashed_with = g.id), 0),
 			(SELECT count(*) FROM documents WHERE trashed_with = g.id) + (SELECT count(*) FROM document_folders WHERE trashed_with = g.id),
-			p.id, p.name, NULL, g.deleted_at, u.id, u.name
+			p.id, p.name, NULL, g.deleted_at, u.id, u.name, p.system_kind
 		FROM document_folders g LEFT JOIN document_folders p ON p.id = g.parent_id AND p.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = g.deleted_by
 		WHERE g.workspace_id = $1 AND g.deleted_at IS NOT NULL AND g.trashed_with IS NULL
@@ -653,13 +645,13 @@ func (q Q) Trash(ctx context.Context, workspaceID string) ([]TrashItem, error) {
 	items := []TrashItem{}
 	for rows.Next() {
 		var t TrashItem
-		var lid, lname, uid, uname *string
+		var lid, lname, uid, uname, lkind *string
 		if err := rows.Scan(&t.Type, &t.ID, &t.Name, &t.ContentType, &t.Size, &t.ItemCount, &lid, &lname, &t.RetainedUntil,
-			&t.DeletedAt, &uid, &uname); err != nil {
+			&t.DeletedAt, &uid, &uname, &lkind); err != nil {
 			return nil, err
 		}
 		if lid != nil {
-			t.Location = &FolderRef{ID: *lid, Name: *lname}
+			t.Location = &FolderRef{ID: *lid, Name: *lname, SystemKind: lkind}
 		}
 		if uid != nil {
 			t.DeletedBy = &Uploader{ID: *uid, Name: *uname}

@@ -4792,5 +4792,7 @@
   "auditApprovalReset": "Approvazione azzerata da una modifica",
   "auditApprovalGroupSaved": "Gruppo di approvazione salvato",
   "auditApprovalGroupDeleted": "Gruppo di approvazione eliminato",
-  "auditApprovalPolicySaved": "Regole di approvazione salvate"
+  "auditApprovalPolicySaved": "Regole di approvazione salvate",
+  "systemFolderTip": "Gestita da Helvetly: non può essere rinominata, spostata o eliminata",
+  "systemFolderError": "Questa cartella è gestita da Helvetly e non può essere rinominata, spostata o eliminata."
 }

@@ -1,4 +1,4 @@
-import { defaultLocale, locales, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, locales, localizedAlternates, localizedHref } from '@helvetly/i18n'
 import type { MetadataRoute } from 'next'
 
 import { compareIn } from '@/lib/compare'
@@ -35,10 +35,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: SITE + localizedHref(path || '/', language),
       alternates: {
         languages: Object.fromEntries(
-          Object.entries(locales).map(([code, details]) => [
-            details.languageTag,
-            SITE + localizedHref(path || '/', code),
-          ]),
+          Object.entries(localizedAlternates(path || '/', english).languages).map(
+            ([languageTag, href]) => [languageTag, SITE + href],
+          ),
         ),
       },
     })),

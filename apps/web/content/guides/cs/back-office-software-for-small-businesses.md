@@ -1,12 +1,12 @@
 ---
 title: Jak vybrat software pro zázemí firmy
-description: Vše v jednom, nebo samostatné nástroje, co potřebuje konzultant a malý tým, klienti v zahraničí, pomoc AI a kontrolní seznam.
+description: Jak vybrat software pro malou firmu: klienti, faktury, výdaje, dokumenty, účetnictví, personální evidence, AI a podpora místních požadavků.
 category: Choosing software
-updated: 2026-11-19
+updated: 2026-11-20
 readingMinutes: 7
 ---
 
-Správný software pro zázemí firmy je pro švýcarského živnostníka nebo malou firmu ten, který pokryje celou cestu od nabídky k platbě, včetně QR účtu, upomínek a přiznání k DPH, a nenutí vás kopírovat data mezi nástroji. Pro většinu samostatných konzultantů a malých týmů znamená jedna platforma vše v jednom s exportem pro fiduciáře méně administrativy než pět samostatných nástrojů.
+Správný firemní software propojuje každodenní práci malé firmy: klienty, nabídky, faktury, výdaje, dokumenty, účetnictví a personální evidenci. Ve Švýcarsku, EU i USA si ověřte měny, formáty dokumentů a místní požadavky, které potřebujete. Sdílený pracovní prostor omezuje dvojí zadávání dat; pro složité potřeby zůstávají vhodné specializované nástroje.
 
 Tento průvodce vysvětluje, na co se zaměřit a kdy mají samostatné nástroje stále smysl. Podrobnosti o jednotlivých produktech najdete v článku [alternativy k bexio ve Švýcarsku](/guides/bexio-alternatives).
 
@@ -41,10 +41,10 @@ Platforma vše v jednom má i svou cenu: závisíte na jednom dodavateli a každ
 
 ## Jaká je nejlepší platforma vše v jednom pro freelancery?
 
-Jediná nejlepší neexistuje; záleží na tom, co potřebujete kolem faktur. Helvetly pokrývá klienty, nabídky, faktury, upomínky, výdaje, dokumenty, elektronické podpisy, klientský portál a přiznání k DPH v jedné webové aplikaci. bexio, KLARA a AbaNinja přidávají plné účetnictví a mzdy; Magic Heidi vše zjednodušuje pro OSVČ.
+Neexistuje jedna nejlepší platforma pro všechny; vybírejte podle práce své firmy. Helvetly spojuje klienty, nabídky, faktury, upomínky, výdaje, dokumenty, elektronické podpisy, klientský portál, účetnictví a personální evidenci v jedné webové aplikaci. Mzdový registr uchovává částky vypočítané jinde. Pro výpočet mezd nebo pokladnu porovnejte bexio, KLARA a AbaNinja; Magic Heidi se zaměřuje na jednodušší potřeby živnostníků.
 
-- **Chcete dostávat zaplaceno s menší administrativou:** Helvetly spojuje nabídky, faktury s QR účtem, automatické upomínky, splátky, výdaje, smlouvy k podpisu a přiznání k DPH na jednom místě.
-- **Chcete plné účetnictví, mzdy nebo pokladnu ve stejném nástroji:** bexio, KLARA nebo AbaNinja jsou balíky na to určené.
+- **Chcete propojenou firemní administrativu:** Helvetly spojuje správu klientů, fakturaci, výdaje, dokumenty, podpisy a účetnictví; Business přidává personální evidenci a mzdový registr.
+- **Potřebujete výpočet mezd nebo pokladnu:** porovnejte příslušné moduly bexio, KLARA nebo AbaNinja se svými místními požadavky.
 - **Posíláte málo faktur a vedete jednoduché účetnictví:** Magic Heidi má bezplatný tarif a nativní aplikace.
 - **Vedete si vlastní podvojné účetnictví:** Banana a CashCtrl jsou především účetní programy.
 
@@ -104,7 +104,7 @@ Použití AI se počítá do měsíčního limitu AI. Viz [používání Heidi](
 
 ## Kontrolní seznam pro výběr softwaru pro zázemí firmy
 
-Než se rozhodnete, ověřte, že software:
+U firmy působící ve Švýcarsku ověřte, že software:
 
 1. Vytváří švýcarské QR účty s referencí QR nebo Creditor Reference a strukturovanými adresami ([švýcarský QR účet](/guides/qr-bill)).
 2. Zobrazuje vše, co švýcarská faktura s DPH potřebuje ([co musí obsahovat švýcarská faktura](/guides/invoice-requirements)).

@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { defaultLocale } from '@helvetly/i18n'
+import { defaultLocale, isLocale, locales, localizedHref } from '@helvetly/i18n'
 import { describe, expect, it } from 'vitest'
 
 import { compareIn } from '@/lib/compare'
 import { readCollection } from '@/lib/content'
+import { translatorFor } from '@/lib/i18n'
 import { llmsTxt } from '@/lib/llms'
 
 // apps/web, wherever the tests run (apps/web or the repository root), as lib/content.ts finds it.
@@ -16,6 +17,16 @@ const repo = join(web, '../..')
 
 describe('llms.txt', () => {
   const text = llmsTxt()
+
+  it('describes the whole back office and links every language with its own summary', () => {
+    expect(text).toContain(translatorFor('en')('whatIsHelvetlyAnswer'))
+    expect(text).toContain('EU hosting (Frankfurt)')
+    expect(text).not.toContain('hosting in Switzerland')
+    for (const language of Object.keys(locales).filter(isLocale)) {
+      expect(text).toContain(`https://www.helvetly.com${localizedHref('/', language)}`)
+      expect(text).toContain(translatorFor(language)('metaHomeDescription'))
+    }
+  })
 
   it('follows llmstxt.org: one H1, a summary quote, then link lists', () => {
     expect(text.match(/^# /gm)).toHaveLength(1)
