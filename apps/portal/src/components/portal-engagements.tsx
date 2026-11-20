@@ -1,16 +1,17 @@
 'use client'
-import { Badge } from '@helvetly/ui/components/badge'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Meter } from '@helvetly/ui/components/meter'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { byDay, formatDay } from '@helvetly/ui/lib/days'
-import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Gauge, MessageSquareQuote } from 'lucide-react'
-import { useId, useState } from 'react'
+import { ChevronDown, Gauge, History, MessageSquareHeart } from 'lucide-react'
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 
-import { civilToday, daysLeftText } from '@/lib/dates'
+import { civilToday, daysLeftText, formatPeriod } from '@/lib/dates'
+import { isActive, usedShare } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import {
   listPortalEngagementHistory,
@@ -19,6 +20,7 @@ import {
   type PortalEngagement,
   type PortalEngagementPeriod,
 } from '@/lib/portal'
+import { amountOf, shortAmount } from '@/lib/units'
 
 import { cardClass, EmptyState, PageHeader, RetryAlert } from './portal-bits'
 
@@ -32,13 +34,11 @@ export function UsageBar({ engagement }: { engagement: PortalEngagement }) {
   return (
     <Meter
       label={translate('ofUsed', {
-        value1: Number(period.used),
-        quantity: quantity,
-        unit: engagement.unit,
+        used: Number(period.used),
+        total: amountOf(quantity, engagement.unit),
       })}
       value={Math.min(Number(period.used), quantity * (1 + MAX_OVER_SHARE))}
       max={quantity}
-      size="lg"
     />
   )
 }
@@ -52,7 +52,14 @@ const PER: Record<string, string> = {
 
 /** "10 hours per month"; a one-off ('none') is "10 hours in total". */
 const commitment = ({ quantity, unit, recurrence }: PortalEngagement) =>
-  `${Number(quantity)} ${unit} ${PER[recurrence] ? translate('dynamicPer', { value1: PER[recurrence] }) : translate('inTotal')}`
+  `${amountOf(quantity, unit)} ${PER[recurrence] ? translate('dynamicPer', { value1: PER[recurrence] }) : translate('inTotal')}`
+
+const PAST: Record<Exclude<PortalEngagement['status'], 'active'>, [string, Tone]> = {
+  ended: [translate('ended'), 'neutral'],
+  cancelled: [translate('statusCancelled'), 'neutral'],
+  expired: [translate('statusExpired'), 'neutral'],
+  used_up: [translate('statusUsedUp'), 'green'],
+}
 
 type Entry = PortalEngagementPeriod['entries'][number]
 
@@ -60,97 +67,118 @@ type Entry = PortalEngagementPeriod['entries'][number]
 const total = (entries: Entry[]) =>
   Math.round(entries.reduce((sum, entry) => sum + Number(entry.quantity) * 1000, 0)) / 1000
 
-/** One logged delivery: the note first, its quantity on the right, the client performance under the note. */
-function ActivityEntry({ entry, unit }: { entry: Entry; unit: string }) {
-  const performance = entry.client_performance?.trim()
+/**
+ * One logged delivery as a compact row: the note (or a calm "Work logged" when there is neither note nor a word for
+ * the client), the supplier's word for the client as a quiet quote under it, the quantity on the right.
+ */
+function ActivityEntry({ entry, unit }: { entry: Entry; unit: string | null }) {
+  const note = entry.note?.trim()
+  const forYou = entry.client_performance?.trim()
   return (
-    <li className="flex items-start justify-between gap-3">
-      <div className="grid min-w-0 gap-1">
-        {entry.note ? (
-          <p className="text-body break-words">{entry.note}</p>
-        ) : (
-          <p className="text-body text-muted-foreground italic">{translate('noNote')}</p>
+    <li className="flex items-start justify-between gap-4 py-2.5">
+      <div className="grid min-w-0 gap-1.5">
+        {note && <p className="text-body break-words">{note}</p>}
+        {!note && !forYou && (
+          <p className="text-body text-muted-foreground">{translate('workLogged')}</p>
         )}
-        {performance && (
-          <p className="flex gap-1.5 border-l-2 pl-2 text-body-sm break-words text-muted-foreground">
-            <MessageSquareQuote aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-            <span className="min-w-0">
-              <span className="font-medium text-foreground/80">
-                {translate('clientPerformance')}
-              </span>
-              <span className="sr-only">:</span> {performance}
-            </span>
-          </p>
+        {forYou && (
+          <figure className="flex gap-2 rounded-md bg-brand-surface px-2.5 py-1.5 text-body-sm">
+            <MessageSquareHeart aria-hidden className="mt-0.5 size-3.5 shrink-0 text-brand" />
+            <figcaption className="min-w-0 break-words">
+              <span className="font-medium">{translate('clientPerformance')}</span>
+              <span className="sr-only">:</span> {forYou}
+            </figcaption>
+          </figure>
         )}
       </div>
-      <span className="inline-flex h-6 shrink-0 items-center rounded-md bg-muted px-2 text-body-sm font-medium whitespace-nowrap tabular-nums">
-        {Number(entry.quantity)} {unit}
+      <span className="shrink-0 pt-px text-body-sm text-muted-foreground tabular-nums">
+        {shortAmount(entry.quantity, unit)}
       </span>
     </li>
   )
 }
 
-/** One period: its range and what was used in it, then its days, each owning that day's entries. */
-function ActivityPeriod({
+/** A period's days, newest first: the date once with the day's total, its entries below as compact rows. */
+function Days({ entries, unit }: { entries: Entry[]; unit: string | null }) {
+  return (
+    <ol className="grid gap-4">
+      {byDay(entries).map((day) => (
+        <li key={day.date} className="grid">
+          <p className="flex items-baseline gap-2 border-b border-border/60 pb-1.5 text-body-sm">
+            <time dateTime={day.date} className="font-medium">
+              {formatDay(day.date)}
+            </time>
+            <span className="text-muted-foreground tabular-nums">
+              {translate('dayTotal', { total: shortAmount(total(day.items), unit) })}
+            </span>
+          </p>
+          <ul className="grid divide-y divide-border/40">
+            {day.items.map((entry) => (
+              <ActivityEntry key={entry.id} entry={entry} unit={unit} />
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** An earlier period, folded to one line with what was used in it; it opens on its own to show its days. */
+function EarlierPeriod({
   period,
   engagement,
 }: {
   period: PortalEngagementPeriod
   engagement: PortalEngagement
 }) {
+  const [open, setOpen] = useState(false)
   const id = useId()
-  const current = period.starts_on === engagement.current_period?.starts_on
+  const range = formatPeriod(period.starts_on, period.ends_on)
   return (
-    <section aria-labelledby={id} className="grid gap-1">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b pb-2">
-        <div className="flex items-center gap-2">
-          <h3 id={id} className="text-body tabular-nums">
-            {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
-          </h3>
-          {current && (
-            <Badge tone="blue" size="sm">
-              {translate('currentPeriod')}
-            </Badge>
+    <li className="grid">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+        className="-mx-2 flex items-center gap-2 rounded-md px-2 py-2 text-left text-body-sm transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            !open && '-rotate-90',
           )}
-        </div>
-        <p className="text-body-sm text-muted-foreground tabular-nums">
-          {translate('ofUsed', {
-            value1: total(period.entries),
-            quantity: Number(engagement.quantity),
-            unit: engagement.unit,
-          })}
-          {' · '}
-          {translate('entriesCount', { count: period.entries.length })}
-        </p>
-      </header>
-      {period.entries.length === 0 ? (
-        <p className="py-3 text-body-sm text-muted-foreground">
-          {translate('nothingLoggedInThisPeriod')}
-        </p>
-      ) : (
-        <ol className="divide-y divide-border/60">
-          {byDay(period.entries).map((day) => (
-            <li
-              key={day.date}
-              className="grid gap-2 py-3 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-4"
-            >
-              <time dateTime={day.date} className="text-body-sm font-medium tabular-nums sm:pt-0.5">
-                {formatDay(day.date)}
-              </time>
-              <ul className="grid gap-3">
-                {day.items.map((entry) => (
-                  <ActivityEntry key={entry.id} entry={entry} unit={engagement.unit} />
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ol>
+        />
+        <span className="min-w-0 flex-1 truncate font-medium tabular-nums">{range}</span>
+        <span className="shrink-0 text-muted-foreground tabular-nums">
+          {shortAmount(total(period.entries), null)} /{' '}
+          {shortAmount(engagement.quantity, engagement.unit)}
+          <span className="max-sm:hidden">
+            {' · '}
+            {translate('entriesCount', { count: period.entries.length })}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <section id={id} aria-label={range} className="pt-1 pb-2 pl-6">
+          {period.entries.length === 0 ? (
+            <p className="py-1 text-body-sm text-muted-foreground">
+              {translate('nothingLoggedInThisPeriod')}
+            </p>
+          ) : (
+            <Days entries={period.entries} unit={engagement.unit} />
+          )}
+        </section>
       )}
-    </section>
+    </li>
   )
 }
 
-/** Every logged delivery, newest first, by period and day. */
+/**
+ * Every logged delivery. The row above already shows the current period's numbers and dates, so its entries follow
+ * at once under a quiet "This period"; earlier periods are folded lines with their totals.
+ */
 function Activity({ engagement }: { engagement: PortalEngagement }) {
   const query = useQuery({
     queryKey: portalKeys.engagementHistory(engagement.id),
@@ -163,36 +191,87 @@ function Activity({ engagement }: { engagement: PortalEngagement }) {
     return (
       <p className="py-2 text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
     )
+  const running = isActive(engagement) ? engagement.current_period?.starts_on : undefined
+  const current = query.data.find((period) => period.starts_on === running)
+  const earlier = query.data.filter((period) => period !== current)
   return (
-    <div className="grid gap-5">
-      {query.data.map((period) => (
-        <ActivityPeriod key={period.starts_on} period={period} engagement={engagement} />
-      ))}
+    <div className="grid gap-4">
+      {running && (
+        <section aria-label={translate('thisPeriod')} className="grid gap-2">
+          <h3 className="text-caption font-medium text-muted-foreground">
+            {translate('thisPeriod')}
+          </h3>
+          {current && current.entries.length > 0 ? (
+            <Days entries={current.entries} unit={engagement.unit} />
+          ) : (
+            <p className="text-body-sm text-muted-foreground">
+              {translate('nothingLoggedInThisPeriod')}
+            </p>
+          )}
+        </section>
+      )}
+      {earlier.length > 0 && (
+        <section aria-label={translate('earlierPeriods')} className="grid gap-1">
+          {running && (
+            <h3 className="text-caption font-medium text-muted-foreground">
+              {translate('earlierPeriods')}
+            </h3>
+          )}
+          <ul className="grid">
+            {earlier.map((period) => (
+              <EarlierPeriod key={period.starts_on} period={period} engagement={engagement} />
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }
 
 /**
- * One engagement across the page: what was agreed and how much of it is used, and below it an accordion with
- * the logged activity. Each card opens on its own; nothing is remembered.
+ * One engagement as a compact row: name (and why it is past), what was agreed with the period and days left, a thin
+ * bar, and used / agreed with the share on the right. Details opens the activity below; a deep link opens it at once.
  */
-function EngagementCard({ engagement, today }: { engagement: PortalEngagement; today: string }) {
-  const [open, setOpen] = useState(false)
+function EngagementRow({
+  engagement,
+  today,
+  linked,
+}: {
+  engagement: PortalEngagement
+  today: string
+  linked: boolean
+}) {
+  const [open, setOpen] = useState(linked)
   const id = useId()
   const period = engagement.current_period
-  const quantity = Number(engagement.quantity)
-  const share = period && quantity > 0 ? Number(period.used) / quantity : 0
+  const past = engagement.status !== 'active' ? PAST[engagement.status] : null
+  const overage = period ? Number(period.overage) : 0
   return (
-    <li className={cardClass}>
-      {/* The Details button stretches over the summary, so a click anywhere on it opens the activity. */}
-      <div className="relative grid gap-4 rounded-xl p-4 transition-colors has-[[data-toggle]:hover]:bg-muted/40 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="grid min-w-0 gap-0.5">
-            <h2 id={`${id}-title`} className="text-title-sm font-medium break-words">
+    <li id={engagement.id} className="scroll-mt-24">
+      {/* The Details button stretches over the row, so a click anywhere on it opens the activity. */}
+      <div className="relative grid gap-2 px-4 py-3.5 transition-colors has-[[data-toggle]:hover]:bg-muted/40 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <h2 id={`${id}-title`} className="truncate text-body font-medium">
               {engagement.name}
             </h2>
-            <p className="text-body-sm text-muted-foreground">{commitment(engagement)}</p>
+            {past && (
+              <Badge tone={past[1]} size="sm" className="shrink-0">
+                {past[0]}
+              </Badge>
+            )}
           </div>
+          {period && (
+            <p className="shrink-0 text-body-sm tabular-nums">
+              <span className="font-medium">
+                {Number(period.used)} / {shortAmount(engagement.quantity, engagement.unit)}
+              </span>
+              <span className="text-muted-foreground">
+                {' '}
+                · {Math.round(usedShare(engagement) * 100)}%
+              </span>
+            </p>
+          )}
           <Button
             data-toggle
             variant="ghost"
@@ -200,9 +279,9 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
             aria-expanded={open}
             aria-controls={`${id}-activity`}
             onClick={() => setOpen(!open)}
-            className="shrink-0 text-muted-foreground after:absolute after:inset-0 after:rounded-xl"
+            className="-my-1 -mr-2 shrink-0 text-muted-foreground after:absolute after:inset-0"
           >
-            {translate('details')}
+            <span className="max-sm:sr-only">{translate('details')}</span>
             <ChevronDown
               data-icon="inline-end"
               aria-hidden
@@ -210,51 +289,34 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
             />
           </Button>
         </div>
-        {period ? (
-          <>
-            <div className="grid gap-2">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                  {Number(period.used)}
-                  <span className="text-base font-normal text-muted-foreground">
-                    {' '}
-                    / {quantity} {engagement.unit}
-                  </span>
-                </p>
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  {Math.round(share * 100)}%
-                </span>
-              </div>
-              <UsageBar engagement={engagement} />
-            </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-sm text-muted-foreground">
-              {Number(period.overage) > 0 ? (
-                <Badge tone="amber" className="tabular-nums">
-                  {translate('overage')}
-                  {Number(period.overage)} {engagement.unit}
-                </Badge>
-              ) : (
-                <Badge className="tabular-nums">
-                  {translate('remaining')}
-                  {Number(period.remaining)} {engagement.unit}
-                </Badge>
-              )}
+        <p className="truncate text-body-sm text-muted-foreground">
+          {commitment(engagement)}
+          {period ? (
+            <>
               <span className="tabular-nums">
-                {formatDate(period.starts_on)} – {formatDate(period.ends_on)}
+                {' '}
+                · {formatPeriod(period.starts_on, period.ends_on)}
               </span>
-              <span aria-hidden>·</span>
-              <span>{daysLeftText(period.ends_on, today)}</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">{translate('noPeriodIsRunningRightNow')}</p>
-        )}
+              {!past && <> · {daysLeftText(period.ends_on, today)}</>}
+              {overage > 0 && (
+                <span className="text-warning">
+                  {' · '}
+                  {translate('overage')}
+                  {amountOf(overage, engagement.unit)}
+                </span>
+              )}
+            </>
+          ) : (
+            <> · {translate('noPeriodIsRunningRightNow')}</>
+          )}
+        </p>
+        <UsageBar engagement={engagement} />
       </div>
       {open && (
         <section
           id={`${id}-activity`}
           aria-labelledby={`${id}-title`}
-          className="border-t px-4 pt-3 pb-4 sm:px-6 sm:pb-5"
+          className="border-t border-border/60 bg-muted/20 px-4 pt-3 pb-4 sm:px-6"
         >
           <Activity engagement={engagement} />
         </section>
@@ -263,33 +325,103 @@ function EngagementCard({ engagement, today }: { engagement: PortalEngagement; t
   )
 }
 
+type Tab = 'active' | 'past'
+const isTab = (value: string): value is Tab => value === 'active' || value === 'past'
+
+const onHashChange = (change: () => void) => {
+  window.addEventListener('hashchange', change)
+  return () => window.removeEventListener('hashchange', change)
+}
+
+/** The engagement a link names (`/engagements#eng_1`); nothing while the page is prerendered. */
+const useLinkedId = () =>
+  useSyncExternalStore(
+    onHashChange,
+    () => decodeURIComponent(window.location.hash.slice(1)),
+    () => '',
+  )
+
 export function PortalEngagements() {
   const query = useQuery({ queryKey: portalKeys.engagements, queryFn: listPortalEngagements })
   const today = civilToday()
+  const linked = useLinkedId()
+  const [chosen, setChosen] = useState<Tab | null>(null)
+  const target = query.data?.find((engagement) => engagement.id === linked)
+  const tab: Tab = chosen ?? (target && !isActive(target) ? 'past' : 'active')
+
+  useEffect(() => {
+    if (target) document.getElementById(target.id)?.scrollIntoView({ block: 'start' })
+  }, [target])
+
+  const body = () => {
+    if (query.isPending) return <Loader className="min-h-52" />
+    if (query.error)
+      return (
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
+          <RetryAlert what={translate('yourEngagements')} onRetry={() => void query.refetch()} />
+        </div>
+      )
+    const lists: Record<Tab, PortalEngagement[]> = {
+      active: query.data.filter(isActive),
+      past: query.data.filter((engagement) => !isActive(engagement)),
+    }
+    const empty: Record<Tab, [string, string]> = {
+      active: [
+        translate('noActiveEngagements'),
+        translate('agreedWorkSuchAsAMonthlySupportRetainerShows'),
+      ],
+      past: [translate('noPastEngagements'), translate('pastEngagementsMoveHere')],
+    }
+    const shown = lists[tab]
+    return (
+      <Tabs
+        value={tab}
+        onValueChange={(value) => isTab(value) && setChosen(value)}
+        className="gap-4"
+      >
+        <TabsList
+          aria-label={translate('show')}
+          className="h-9 max-w-full overflow-x-auto bg-card shadow-elevation-1"
+        >
+          {(['active', 'past'] as const).map((key) => (
+            <TabsTrigger key={key} value={key} className="px-3">
+              {key === 'active' ? translate('activeEngagements') : translate('pastEngagements')}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {lists[key].length}
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value={tab}>
+          {shown.length === 0 ? (
+            <div className={cardClass}>
+              <EmptyState icon={tab === 'active' ? Gauge : History} title={empty[tab][0]}>
+                {empty[tab][1]}
+              </EmptyState>
+            </div>
+          ) : (
+            <ul className={cn(cardClass, 'grid divide-y overflow-hidden')}>
+              {shown.map((engagement) => (
+                <EngagementRow
+                  key={`${engagement.id}-${engagement.id === linked}`}
+                  engagement={engagement}
+                  today={today}
+                  linked={engagement.id === linked}
+                />
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
+    )
+  }
+
   return (
     <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('engagements')}>
         {translate('theWorkAgreedWithYouAndHowMuchOf')}
       </PageHeader>
-      {query.isPending ? (
-        <Loader className="min-h-52" />
-      ) : query.error ? (
-        <div className={cn(cardClass, 'p-4 sm:p-6')}>
-          <RetryAlert what={translate('yourEngagements')} onRetry={() => void query.refetch()} />
-        </div>
-      ) : query.data.length === 0 ? (
-        <div className={cardClass}>
-          <EmptyState icon={Gauge} title={translate('noActiveEngagements')}>
-            {translate('agreedWorkSuchAsAMonthlySupportRetainerShows')}
-          </EmptyState>
-        </div>
-      ) : (
-        <ul className="grid gap-4">
-          {query.data.map((engagement) => (
-            <EngagementCard key={engagement.id} engagement={engagement} today={today} />
-          ))}
-        </ul>
-      )}
+      {body()}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { languageTag } from '@helvetly/i18n'
 import { formatDate } from '@helvetly/ui/lib/format'
 
 import { translate } from '@/lib/i18n'
@@ -49,3 +50,14 @@ export function sharedText(sharedAt: string, today: string) {
     ? translate('sharedDaysAgo', { ago: ago })
     : translate('shared', { value1: formatDate(sharedAt) })
 }
+
+const range = new Intl.DateTimeFormat(languageTag, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** "19 Nov – 18 Dec 2026": a period with its year once, in the reader's language. */
+export const formatPeriod = (from: string, to: string) =>
+  range.formatRange(new Date(from), new Date(to))

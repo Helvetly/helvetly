@@ -1,6 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
-import { TONES, type Tone } from '@helvetly/ui/components/badge'
+import { Badge, TONES, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -30,6 +30,7 @@ import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 
 import { civilToday, daysBetween, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
+import { isActive, mostRelevant, usedShare } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { byUrgency, sumByCurrency } from '@/lib/invoices'
 import {
@@ -51,6 +52,7 @@ import {
   type PortalQuote,
 } from '@/lib/quotes'
 import { shorten } from '@/lib/text'
+import { amountOf } from '@/lib/units'
 
 import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './portal-bits'
 import { UsageBar } from './portal-engagements'
@@ -75,13 +77,6 @@ const viewAll = (href: string, label: string) => (
   </Link>
 )
 
-const usedShare = (engagement: PortalEngagement) => {
-  const quantity = Number(engagement.quantity)
-  return engagement.current_period && quantity > 0
-    ? Number(engagement.current_period.used) / quantity
-    : 0
-}
-
 /** A soft tinted tile carrying an icon: the row's or tile's state at a glance. */
 function ToneIcon({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
   return (
@@ -100,6 +95,10 @@ type Tile = {
   label: string
   value: ReactNode
   meta: ReactNode
+  /** Sits under the value, e.g. a usage bar. */
+  extra?: ReactNode
+  /** A link at the label's right, e.g. "+2 more". */
+  action?: ReactNode
   alert?: boolean
 }
 
@@ -110,17 +109,20 @@ function Summary({
   invoices,
   quotes,
   engagements,
+  today,
 }: {
   invoices: PortalInvoice[]
   quotes: PortalQuote[]
   engagements: PortalEngagement[]
+  today: string
 }) {
   const open = byUrgency(invoices)
   const due = sumByCurrency(open, (i) => i.amount_due)
   const overdue = open.filter((i) => i.is_overdue)
   const next = open.find((i) => !i.is_overdue && i.due_date)?.due_date
   const awaiting = quotes.filter(isAwaiting)
-  const busiest = engagements.toSorted((a, b) => usedShare(b) - usedShare(a))[0]
+  const active = engagements.filter(isActive)
+  const shown = mostRelevant(active)
 
   const tiles: Tile[] = [
     {
@@ -160,20 +162,49 @@ function Summary({
         value1: formatDate(awaiting.map((q) => q.valid_until).toSorted()[0] ?? ''),
       }),
     })
-  if (busiest)
+  const period = shown?.current_period
+  if (shown && period)
     tiles.push({
       key: 'usage',
       icon: Gauge,
-      tone: usedShare(busiest) > 1 ? 'amber' : 'neutral',
+      tone: usedShare(shown) > 1 ? 'amber' : 'neutral',
       label: translate('engagementUsage'),
-      value: translate('percentUsed', { percent: Math.round(usedShare(busiest) * 100) }),
-      meta: busiest.name,
+      action:
+        active.length > 1
+          ? viewAll('/engagements', translate('moreEngagements', { count: active.length - 1 }))
+          : undefined,
+      value: translate('percentUsed', { percent: Math.round(usedShare(shown) * 100) }),
+      extra: <UsageBar engagement={shown} />,
+      meta: (
+        <span className="grid gap-0.5">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Link
+              href={`/engagements#${shown.id}`}
+              className="truncate font-medium text-foreground underline underline-offset-2 hover:no-underline"
+            >
+              {shown.name}
+            </Link>
+            <Badge tone="green" size="sm" className="shrink-0">
+              {translate('activeBadge')}
+            </Badge>
+          </span>
+          <span className="truncate tabular-nums">
+            {translate('ofUsed', {
+              used: Number(period.used),
+              total: amountOf(shown.quantity, shown.unit),
+            })}
+            {' · '}
+            {daysLeftText(period.ends_on, today)}
+          </span>
+        </span>
+      ),
     })
 
+  const small = tiles.filter((tile) => tile.key !== 'usage').length
   return (
     <dl
       aria-label={translate('summary')}
-      className={cn('grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4', TILE_COLUMNS[tiles.length])}
+      className={cn('grid grid-cols-2 gap-3 sm:gap-4', TILE_COLUMNS[tiles.length])}
     >
       {tiles.map((tile, index) => (
         <div
@@ -181,8 +212,9 @@ function Summary({
           className={cn(
             cardClass,
             'grid min-w-0 content-start gap-2 p-4 sm:p-5',
-            // An odd last tile spans the row below lg, so no hole is left beside it.
-            index === tiles.length - 1 && tiles.length % 2 === 1 && 'max-lg:col-span-2',
+            // Below lg the usage tile, the fullest, takes a row of its own, and so does an odd last small tile.
+            (tile.key === 'usage' || (index === small - 1 && small % 2 === 1)) &&
+              'max-lg:col-span-2',
           )}
         >
           <dt className="flex items-center gap-2 text-body-sm text-muted-foreground">
@@ -195,6 +227,7 @@ function Summary({
               <tile.icon className="size-3.5" aria-hidden />
             </span>
             <span className="truncate">{tile.label}</span>
+            {tile.action && <span className="ml-auto shrink-0">{tile.action}</span>}
           </dt>
           <dd
             // Not cn(): tailwind-merge would drop the type-scale size for the colour.
@@ -202,7 +235,8 @@ function Summary({
           >
             {tile.value}
           </dd>
-          <dd className="truncate text-body-sm text-muted-foreground">{tile.meta}</dd>
+          {tile.extra && <dd>{tile.extra}</dd>}
+          <dd className="min-w-0 truncate text-body-sm text-muted-foreground">{tile.meta}</dd>
         </div>
       ))}
     </dl>
@@ -426,56 +460,6 @@ function PayDialog({
   )
 }
 
-function Engagements({ today }: { today: string }) {
-  const query = useQuery({ queryKey: portalKeys.engagements, queryFn: listPortalEngagements })
-  const running = query.data?.filter((e) => e.current_period) ?? []
-  if (query.isSuccess && running.length === 0) return null
-  return (
-    <section
-      aria-labelledby="overview-engagements"
-      className={cn(cardClass, 'grid content-start gap-4 p-4 sm:p-6')}
-    >
-      <SectionTitle
-        id="overview-engagements"
-        action={viewAll('/engagements', translate('details'))}
-      >
-        {translate('engagements')}
-      </SectionTitle>
-      {query.isPending ? (
-        <Loader className="min-h-12" />
-      ) : query.error ? (
-        <RetryAlert what={translate('engagements')} onRetry={() => void query.refetch()} />
-      ) : (
-        <ul className="grid gap-5">
-          {running.map((engagement) => {
-            const period = engagement.current_period
-            if (!period) return null
-            return (
-              <li key={engagement.id} className="grid gap-2">
-                <div className="flex items-baseline justify-between gap-3 text-body">
-                  <span className="truncate font-medium">{engagement.name}</span>
-                  <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
-                    {translate('percentUsed', {
-                      percent: Math.round(usedShare(engagement) * 100),
-                    })}
-                  </span>
-                </div>
-                <UsageBar engagement={engagement} />
-                <p className="text-body-sm text-muted-foreground">
-                  {Number(period.used)}
-                  {translate('of')}
-                  {Number(engagement.quantity)} {engagement.unit} ·{' '}
-                  {daysLeftText(period.ends_on, today)}
-                </p>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </section>
-  )
-}
-
 function RecentDocuments({ today }: { today: string }) {
   const query = useQuery({ queryKey: portalKeys.documents, queryFn: listPortalDocuments })
   if (query.isSuccess && query.data.length === 0) return null
@@ -521,7 +505,7 @@ function RecentDocuments({ today }: { today: string }) {
 /** A long legal name would fill the header; the full one stays in the tooltip and the shell. */
 const NAME_MAX = 40
 
-/** Greeting, a strip of key numbers, the to-do list, and engagements and new files beside it. */
+/** Greeting, a strip of key numbers, the to-do list, and new files beside it. */
 export function PortalOverview() {
   const today = civilToday()
   const [hour] = useState(() => new Date().getHours())
@@ -541,7 +525,6 @@ export function PortalOverview() {
   })
   const name = session.data?.client.name
   const supplier = session.data?.workspace.name
-  const running = engagements.data?.filter((e) => e.current_period) ?? []
 
   return (
     <div className="grid gap-6 sm:gap-8">
@@ -566,10 +549,15 @@ export function PortalOverview() {
           <RetryAlert what={translate('yourInvoices')} onRetry={() => void invoices.refetch()} />
         </section>
       ) : (
-        <Summary invoices={invoices.data} quotes={quotes.data ?? []} engagements={running} />
+        <Summary
+          invoices={invoices.data}
+          quotes={quotes.data ?? []}
+          engagements={engagements.data ?? []}
+          today={today}
+        />
       )}
 
-      {/* Phones: one column in priority order. Wide screens: the to-do list, engagements and files beside it. */}
+      {/* Phones: one column in priority order. Wide screens: the to-do list with new files beside it, or alone. */}
       <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-start">
         {!invoices.error && (
           <section
@@ -596,7 +584,6 @@ export function PortalOverview() {
           </section>
         )}
         <div className="grid min-w-0 gap-5 empty:hidden sm:gap-6 lg:w-96 lg:shrink-0">
-          <Engagements today={today} />
           <RecentDocuments today={today} />
         </div>
       </div>

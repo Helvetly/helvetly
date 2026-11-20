@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalHandlers, portalInvoices, portalSession } from '@/mocks/portal'
+import { portalEngagements, portalHandlers, portalInvoices, portalSession } from '@/mocks/portal'
 
 import { PortalOverview } from './portal-overview'
 
@@ -20,7 +20,7 @@ const phone = {
   viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
 }
 
-/** Key numbers on top, then one row per thing to do (overdue first), engagements and files beside it. */
+/** Key numbers on top, then one row per thing to do (overdue first), new files beside it. */
 export const Filled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -38,7 +38,19 @@ export const Filled: Story = {
     await expect(tiles.getByText('CHF 4’800.00')).toBeVisible()
     await expect(tiles.getByText('CHF 860.00')).toBeVisible()
     await expect(await tiles.findByText('Quotes to answer')).toBeVisible()
+    // Usage: the engagement closest to its limit, named and linked to its row, with how many more are active.
     await expect(await tiles.findByText('125% used')).toBeVisible()
+    await expect(tiles.getByRole('link', { name: 'Website maintenance' })).toHaveAttribute(
+      'href',
+      '/engagements/#eng_2',
+    )
+    await expect(tiles.getByText('7.5 of 6 hours used', { exact: false })).toBeVisible()
+    await expect(tiles.getByText('Active')).toBeVisible()
+    await expect(tiles.getByRole('progressbar')).toHaveAccessibleName('7.5 of 6 hours used')
+    await expect(tiles.getByRole('link', { name: '+1 more' })).toHaveAttribute(
+      'href',
+      '/engagements/',
+    )
     // Every tile the same height.
     const heights = [...canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')].map(
       (tile) => Math.round(tile.getBoundingClientRect().height),
@@ -68,8 +80,8 @@ export const Filled: Story = {
       within(attention).getByRole('link', { name: `Download PDF of invoice ${year}-009` }),
     ).toHaveAttribute('href', `${P}/invoices/inv_3/pdf`)
 
-    const engagements = canvas.getByRole('region', { name: 'Engagements' })
-    await expect(await within(engagements).findByText('40% used')).toBeVisible()
+    // No engagements panel beside the to-do list: the usage tile and the Engagements page say it once.
+    await expect(canvas.queryByRole('region', { name: 'Engagements' })).toBeNull()
     const documents = canvas.getByRole('region', { name: 'Recently shared' })
     await expect(await within(documents).findByText('Contract.pdf')).toBeVisible()
     await expect(within(documents).getAllByRole('listitem')).toHaveLength(3)
@@ -191,6 +203,51 @@ export const NoEngagements: Story = {
   },
 }
 
+/** One active engagement: no "+N more"; a past one never fills the usage tile. */
+export const OneEngagement: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/engagements`, () =>
+          HttpResponse.json({
+            data: portalEngagements.filter((e) => e.id !== 'eng_2'),
+          }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const tiles = within(await within(canvasElement).findByLabelText('Summary'))
+    await expect(await tiles.findByText('40% used')).toBeVisible()
+    await expect(tiles.getByRole('link', { name: 'Support retainer' })).toHaveAttribute(
+      'href',
+      '/engagements/#eng_1',
+    )
+    await expect(tiles.getByText(/4 of 10 hours used · \d+ days? left|Last day/)).toBeVisible()
+    await expect(tiles.queryByRole('link', { name: /more/ })).toBeNull()
+  },
+}
+
+/** Only past engagements: no usage tile, as with none. */
+export const OnlyPastEngagements: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/engagements`, () =>
+          HttpResponse.json({ data: portalEngagements.filter((e) => e.status !== 'active') }),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Quotes to answer')).toBeVisible()
+    await expect(canvas.queryByText('Engagement usage')).toBeNull()
+  },
+}
+
 const longSupplier =
   'John Doe John Doe John Doe John Doe Consulting und Treuhand GmbH with a very long registered name'
 
@@ -221,20 +278,20 @@ export const LongCompanyName: Story = {
   },
 }
 
-/** A phone: one column in priority order (numbers, to-dos, engagements, files), nothing wider than the screen. */
+/** A phone: one column in priority order (numbers, to-dos, files), nothing wider than the screen. */
 export const Phone: Story = {
   parameters: phone,
   globals: { viewport: { value: 'phone' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const engagements = await canvas.findByRole('region', { name: 'Engagements' })
+    const documents = await canvas.findByRole('region', { name: 'Recently shared' })
     const attention = canvas.getByRole('region', { name: 'Needs your attention' })
     const summary = await canvas.findByLabelText('Summary')
     await expect(summary.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       attention.getBoundingClientRect().top,
     )
     await expect(attention.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      engagements.getBoundingClientRect().top,
+      documents.getBoundingClientRect().top,
     )
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),

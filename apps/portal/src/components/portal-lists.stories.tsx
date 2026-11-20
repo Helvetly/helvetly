@@ -30,31 +30,58 @@ const documents = (response: Parameters<typeof http.get>[1]) => ({
 })
 const retainer = portalEngagements[0]
 
-/** Both sample engagements: one within its hours, one over them. */
+/** Active and Past tabs with counts; each engagement a compact row with its numbers on the right. */
 export const Engagements: Story = {
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Support retainer')).toBeVisible()
-    await expect(canvas.getAllByText('10 hours per month')[0]).toBeVisible()
+    await expect(canvas.getByRole('tab', { name: 'Active 2' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(canvas.getByRole('tab', { name: 'Past 1' })).toBeVisible()
+    await expect(canvas.getByText('Website maintenance')).toBeVisible()
+    await expect(canvas.queryByText('Office move')).toBeNull()
+    await expect(canvas.getAllByText(/10 hours per month/)[0]).toBeVisible()
     await expect(canvas.getAllByRole('progressbar')).toHaveLength(2)
-    await expect(canvas.getByText('Overage 1.5 hours')).toBeVisible()
+    await expect(canvas.getByText(/Overage 1\.5 hours/)).toBeVisible()
     await expect(canvas.getAllByText(/days? left|Last day/)).toHaveLength(2)
   },
 }
 
 export const EngagementsDark: Story = { ...Engagements, parameters: { dark: true } }
 
-export const EngagementUsedAndRemaining: Story = {
+/** A row is compact: name and numbers on one line, the agreement and period on the next, a thin bar. */
+export const EngagementRowCompact: Story = {
   parameters: engagements([retainer]),
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Support retainer')).toBeVisible()
     await expect(canvas.getByRole('progressbar')).toHaveAccessibleName('4 of 10 hours used')
-    await expect(canvas.getByText('40%')).toBeVisible()
-    await expect(canvas.getByText('Remaining 6 hours')).toBeVisible()
+    await expect(canvas.getByText('4 / 10 h')).toBeVisible()
+    await expect(canvas.getByText('· 40%')).toBeVisible()
     await expect(canvas.queryByText(/Overage/)).toBeNull()
+    const row = canvas.getByRole('listitem')
+    await expect(row.getBoundingClientRect().height).toBeLessThan(110)
+  },
+}
+
+/** One unit, one hour; several, hours: never "10 hour". */
+export const EngagementUnitsPlural: Story = {
+  parameters: engagements([
+    {
+      ...retainer,
+      quantity: '1',
+      current_period: { ...retainer?.current_period, used: '1', remaining: '0', overage: '0' },
+    },
+  ]),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText(/^1 hour per month/)).toBeVisible()
+    await expect(canvas.getByRole('progressbar')).toHaveAccessibleName('1 of 1 hour used')
   },
 }
 
@@ -68,20 +95,96 @@ export const EngagementOverage: Story = {
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Overage 2 hours')).toBeVisible()
+    await expect(await canvas.findByText(/Overage 2 hours/)).toBeVisible()
     await expect(canvas.getByRole('progressbar')).toHaveAccessibleName('12 of 10 hours used')
     await expect(canvasElement.querySelector('[data-part=overage]')).not.toBeNull()
   },
 }
 
 export const EngagementWithoutPeriod: Story = {
-  parameters: engagements([{ ...retainer, recurrence: 'none', current_period: null }]),
+  parameters: engagements([
+    { ...retainer, recurrence: 'none', status: 'active', current_period: null },
+  ]),
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('No period is running right now.')).toBeVisible()
-    await expect(canvas.getByText('10 hours in total')).toBeVisible()
+    await expect(await canvas.findByText(/No period is running right now\./)).toBeVisible()
+    await expect(canvas.getByText(/10 hours in total/)).toBeVisible()
     await expect(canvas.queryByRole('progressbar')).toBeNull()
+  },
+}
+
+/** Past: ended, cancelled, expired and used-up engagements, each saying why, below their own tab. */
+export const EngagementsPast: Story = {
+  parameters: engagements([
+    retainer,
+    ...(['ended', 'cancelled', 'expired', 'used_up'] as const).map((status, index) => ({
+      ...retainer,
+      id: `eng_p${index}`,
+      name: `Past ${status}`,
+      status,
+    })),
+  ]),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Past 4' }))
+    const reasons = {
+      ended: 'Ended',
+      cancelled: 'Cancelled',
+      expired: 'Expired',
+      used_up: 'Fully used',
+    }
+    for (const [status, badge] of Object.entries(reasons)) {
+      const row = canvas.getByText(`Past ${status}`).closest('li')
+      expect(row && within(row).getByText(badge)).toBeVisible()
+    }
+    // A past engagement does not count down days.
+    await expect(canvas.queryByText(/days? left/)).toBeNull()
+    await expect(canvas.queryByText('Support retainer')).toBeNull()
+  },
+}
+
+/** Nothing past yet: the Past tab says what will show there. */
+export const EngagementsPastEmpty: Story = {
+  parameters: engagements([retainer]),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Past 0' }))
+    await expect(await canvas.findByText('No past engagements')).toBeVisible()
+  },
+}
+
+/** A link to `/engagements#eng_2` (from the overview's usage card) opens that engagement's details. */
+export const EngagementDeepLink: Story = {
+  beforeEach: () => {
+    window.history.replaceState(null, '', '#eng_2')
+    return () => window.history.replaceState(null, '', window.location.pathname)
+  },
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const region = await canvas.findByRole('region', { name: 'Website maintenance' })
+    await expect(region).toBeVisible()
+    await expect(canvas.queryByRole('region', { name: 'Support retainer' })).toBeNull()
+  },
+}
+
+/** A deep link to a past engagement opens the Past tab on it. */
+export const EngagementDeepLinkPast: Story = {
+  beforeEach: () => {
+    window.history.replaceState(null, '', '#eng_3')
+    return () => window.history.replaceState(null, '', window.location.pathname)
+  },
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('region', { name: 'Office move' })).toBeVisible()
+    await expect(canvas.getByRole('tab', { name: 'Past 1' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   },
 }
 
@@ -118,9 +221,9 @@ const openActivity = async (canvasElement: HTMLElement) => {
 }
 
 /**
- * Details opens the activity inside the card, newest first. Each period has its range, the current one marked, and
- * what was used in it; each day owns its entries; an entry shows its note (or "No note"), its quantity, and the
- * client performance only where the supplier wrote one. Details again closes it.
+ * Details opens the activity below the row. The row already shows this period's numbers, so its days follow at once
+ * under "This period", each day once with its total and its entries as compact rows: a note, a note with "For you",
+ * only "For you", or neither ("Work logged"). Earlier periods are folded lines with their totals.
  */
 export const EngagementActivity: Story = {
   parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
@@ -131,56 +234,69 @@ export const EngagementActivity: Story = {
     await expect(details).toHaveAttribute('aria-expanded', 'false')
     await expect(canvas.queryByRole('region')).toBeNull()
 
-    // A click anywhere on the summary opens it, not only on the button: the button covers the summary.
-    const text = canvas.getByText('10 hours per month').getBoundingClientRect()
+    // A click anywhere on the row opens it, not only on the button: the button covers the row.
+    const text = canvas.getByText(/10 hours per month/).getBoundingClientRect()
     const hit = document.elementFromPoint(text.left + 4, text.top + text.height / 2)
     await expect(hit).toBe(details)
     await userEvent.click(details)
     await expect(details).toHaveAttribute('aria-expanded', 'true')
     const region = await canvas.findByRole('region', { name: 'Support retainer' })
     await expect(details).toHaveAttribute('aria-controls', region.id)
-    const periods = await within(region).findAllByRole('heading', { level: 3 }) // the history loads after the region opens
-    await expect(periods.map((h) => h.textContent)).toEqual([
-      '1 Nov 2026 – 30 Nov 2026',
-      '1 Oct 2026 – 31 Oct 2026',
-      '1 Sept 2026 – 30 Sept 2026',
-    ])
-    const [november, october, september] = within(region).getAllByRole('region')
-    if (!november || !october || !september) throw new Error('Three periods expected')
-    await expect(november).toHaveAccessibleName('1 Nov 2026 – 30 Nov 2026')
-    await expect(within(november).getByText('Current')).toBeVisible()
-    await expect(within(october).queryByText('Current')).toBeNull()
-    await expect(november).toHaveTextContent('4.5 of 10 hours used · 4 entries')
-    await expect(october).toHaveTextContent('3 of 10 hours used · 1 entry')
-    await expect(september).toHaveTextContent('0 of 10 hours used · 0 entries')
-    await expect(september).toHaveTextContent('Nothing logged in this period.')
 
-    // Days own their entries: two on Wed 18 Nov, one each on the other days.
-    const days = within(november).getAllByRole('time')
+    // This period: no second bar or sum, the row above has them.
+    const current = await within(region).findByRole('region', { name: 'This period' })
+    await expect(within(current).queryByRole('progressbar')).toBeNull()
+    const days = within(current).getAllByRole('time')
     await expect(days.map((day) => day.textContent)).toEqual([
       'Wed 18 Nov',
       'Wed 11 Nov',
       'Wed 4 Nov',
     ])
-    const firstDay = within(days[0]?.parentElement ?? november).getAllByRole('listitem')
-    await expect(firstDay).toHaveLength(2)
-    await expect(firstDay[0]).toHaveTextContent('Server updates and backup check')
-    await expect(firstDay[0]).toHaveTextContent('1.5 hours')
-    await expect(firstDay[0]).toHaveTextContent(
-      'Client performance: Quick answers, access ready on time',
+    await expect(days[0]?.parentElement).toHaveTextContent('2 h on this day')
+    await expect(days[1]?.parentElement).toHaveTextContent('3 h on this day')
+    const day = (index: number) =>
+      within(days[index]?.closest('li') ?? current).getAllByRole('listitem')
+    // Note + For you, and a note alone.
+    const [both, noteOnly] = day(0)
+    await expect(both).toHaveTextContent('Server updates and backup check')
+    await expect(both).toHaveTextContent('For you: Quick answers, access ready on time')
+    await expect(both).toHaveTextContent('1.5 h')
+    await expect(noteOnly).toHaveTextContent('Printer set up at reception')
+    await expect(noteOnly).not.toHaveTextContent('For you')
+    // Only For you: no placeholder above it.
+    const [, forYouOnly] = day(1)
+    await expect(forYouOnly).toHaveTextContent('For you: Thank you for the quick answers')
+    await expect(forYouOnly).not.toHaveTextContent('Work logged')
+    // Neither: a calm "Work logged".
+    const [neither] = day(2)
+    await expect(neither).toHaveTextContent('Work logged')
+    await expect(neither).toHaveTextContent('0.5 h')
+
+    // Earlier periods: folded, with their totals; one opens on its own.
+    const earlier = within(region).getByRole('region', { name: 'Earlier periods' })
+    const october = within(earlier).getByRole('button', { name: /1\s–\s31 Oct 2026/ })
+    await expect(october).toHaveTextContent('3 / 10 h · 1 entry')
+    await expect(october).toHaveAttribute('aria-expanded', 'false')
+    await expect(within(earlier).getByRole('button', { name: /Sept/ })).toHaveTextContent(
+      '0 / 10 h · 0 entries',
     )
-    // Not shared for this delivery: no label, no empty box.
-    await expect(firstDay[1]).toHaveTextContent('Printer set up at reception')
-    await expect(firstDay[1]).not.toHaveTextContent('Client performance')
-    await expect(within(region).getAllByText('Client performance')).toHaveLength(2)
-    // An entry without a note says so instead of leaving a gap.
-    await expect(within(november).getByText('No note')).toBeVisible()
+    await userEvent.click(october)
+    const octoberDays = await within(earlier).findByRole('region', {
+      name: /1\s–\s31 Oct 2026/,
+    })
+    await expect(octoberDays).toHaveTextContent('Onboarding of two new staff')
+    await expect(octoberDays).toHaveTextContent('For you: Well prepared')
+    await userEvent.click(october)
+    await expect(within(earlier).queryByRole('region')).toBeNull()
+    october.blur()
 
     await userEvent.click(details)
     await expect(details).toHaveAttribute('aria-expanded', 'false')
     await expect(canvas.queryByRole('region')).toBeNull()
     await userEvent.click(details)
     await canvas.findByRole('region', { name: 'Support retainer' })
+    await userEvent.unhover(details)
+    details.blur()
   },
 }
 
@@ -189,7 +305,40 @@ export const EngagementActivityDark: Story = {
   parameters: { ...EngagementActivity.parameters, dark: true },
 }
 
-/** Each card opens on its own: both can be open at once, and closing one leaves the other open. */
+/** Several entries on one day line up: one date with the day's total, quantities in one right-aligned column. */
+export const EngagementDaySeveralEntries: Story = {
+  parameters: withHistory(() =>
+    HttpResponse.json({
+      data: [
+        {
+          starts_on: '2026-11-01',
+          ends_on: '2026-11-30',
+          entries: [
+            { id: 'a', date: '2026-11-19', quantity: '2', note: 's', client_performance: null },
+            { id: 'b', date: '2026-11-19', quantity: '5', note: null, client_performance: null },
+            { id: 'c', date: '2026-11-19', quantity: '2', note: 'iiii', client_performance: null },
+          ],
+        },
+      ],
+    }),
+  ),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = await openActivity(canvasElement)
+    const date = await canvas.findByRole('time')
+    await expect(date).toHaveTextContent('Thu 19 Nov')
+    await expect(date.parentElement).toHaveTextContent('9 h on this day')
+    const rows = within(date.closest('li') ?? canvasElement).getAllByRole('listitem')
+    await expect(rows.map((row) => row.textContent)).toEqual(['s2 h', 'Work logged5 h', 'iiii2 h'])
+    const rights = rows.map((row) =>
+      Math.round(row.lastElementChild?.getBoundingClientRect().right ?? 0),
+    )
+    await expect(new Set(rights).size).toBe(1)
+    await expect(canvas.queryByText('Earlier periods')).toBeNull()
+  },
+}
+
+/** Each row opens on its own: both can be open at once, and closing one leaves the other open. */
 export const EngagementsSeveralOpen: Story = {
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
@@ -200,7 +349,7 @@ export const EngagementsSeveralOpen: Story = {
     await userEvent.click(first)
     await userEvent.click(second)
     const cards = () =>
-      canvas.queryAllByRole('region', { name: /Support retainer|Website maintenance/ })
+      canvas.queryAllByRole('region', { name: /^(Support retainer|Website maintenance)$/ })
     await waitFor(() => expect(cards()).toHaveLength(2))
     await userEvent.click(first)
     await expect(first).toHaveAttribute('aria-expanded', 'false')
@@ -209,21 +358,8 @@ export const EngagementsSeveralOpen: Story = {
   },
 }
 
-/** Each engagement takes the whole width of the page, one below the other. */
-export const EngagementsFullWidth: Story = {
-  render: () => <PortalEngagements />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await canvas.findByText('Support retainer')
-    const [a, b] = canvas.getAllByRole('listitem').map((li) => li.getBoundingClientRect())
-    await expect(a?.width).toBe(b?.width)
-    await expect(a?.left).toBe(b?.left)
-    await expect(b?.top ?? 0).toBeGreaterThan(a?.bottom ?? 0)
-  },
-}
-
 const long = 'Long session covering the yearly closing, '.repeat(8).trim()
-/** A long note and client performance wrap inside the card and never push the page sideways on a phone. */
+/** A long note and "For you" wrap inside the row and never push the page sideways on a phone. */
 export const EngagementActivityLongTextPhone: Story = {
   parameters: {
     ...phone,
@@ -251,8 +387,8 @@ export const EngagementActivityLongTextPhone: Story = {
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
     const canvas = await openActivity(canvasElement)
-    await expect(await canvas.findByText('12.25 hours')).toBeVisible()
-    await expect(canvas.getByText('Client performance')).toBeVisible()
+    await expect(await canvas.findByText('12.25 h')).toBeVisible()
+    await expect(canvas.getByText('For you')).toBeVisible()
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
@@ -270,7 +406,7 @@ export const EngagementActivityEmpty: Story = {
 }
 
 let activityCalls = 0
-/** The activity failing to load says so inside the card; Try again asks once more and shows it. */
+/** The activity failing to load says so inside the row; Try again asks once more and shows it. */
 export const EngagementActivityError: Story = {
   parameters: withHistory(() =>
     ++activityCalls === 1
@@ -295,7 +431,9 @@ export const EngagementsEmpty: Story = {
   parameters: engagements([]),
   render: () => <PortalEngagements />,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('No active engagements')).toBeVisible()
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('No active engagements')).toBeVisible()
+    await expect(canvas.getByRole('tab', { name: 'Active 0' })).toBeVisible()
   },
 }
 

@@ -11,6 +11,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"helvetly.com/api/internal/invoicecalc"
+	"helvetly.com/api/internal/store"
 )
 
 type fakeFiles struct {
@@ -166,16 +169,59 @@ func (e *env) engagement(id, client, cancelled string, number, used int) {
 		VALUES ('ent_' || $1,$1,'per_' || $1,current_date,$2,now())`, id, used)
 }
 
-func TestEngagementsActiveOnly(t *testing.T) {
+func TestEngagementsActiveAndPast(t *testing.T) {
 	e := newEnv(t)
 	e.engagement("eng_live", "cli_1", "", 1, 12500)
 	e.engagement("eng_cancel", "cli_1", "2020-01-01", 2, 1000)
 	e.engagement("eng_other", "cli_2", "", 3, 1000)
 	c, _ := e.signIn("ana@acme.ch")
 	res, body := e.get(c, "/engagements")
-	if res.StatusCode != 200 || !strings.Contains(body, "eng_live") || strings.Contains(body, "eng_cancel") || strings.Contains(body, "eng_other") ||
+	if res.StatusCode != 200 || strings.Contains(body, "eng_other") ||
 		!strings.Contains(body, `"quantity":"10"`) || !strings.Contains(body, `"used":"12.5"`) || !strings.Contains(body, `"remaining":"0"`) || !strings.Contains(body, `"overage":"2.5"`) {
 		t.Fatalf("got %d %s", res.StatusCode, body)
+	}
+	var out struct {
+		Data []struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &out); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, d := range out.Data {
+		got[d.ID] = d.Status
+	}
+	if len(got) != 2 || got["eng_live"] != "active" || got["eng_cancel"] != "cancelled" {
+		t.Fatalf("statuses: %v", got)
+	}
+}
+
+func TestPortalStatus(t *testing.T) {
+	d := func(s string) *string { return &s }
+	period := func(ends string, remaining invoicecalc.Quantity) *periodView {
+		return &periodView{StartsOn: "2026-11-01", EndsOn: ends, Remaining: remaining}
+	}
+	for _, c := range []struct {
+		name   string
+		e      store.Engagement
+		period *periodView
+		want   string
+	}{
+		{"running monthly", store.Engagement{StartDate: "2026-01-01", Recurrence: "monthly"}, period("2026-11-30", 5000), "active"},
+		{"monthly used up stays active", store.Engagement{StartDate: "2026-01-01", Recurrence: "monthly"}, period("2026-11-30", 0), "active"},
+		{"monthly whose next period is not opened yet", store.Engagement{StartDate: "2026-01-01", Recurrence: "monthly"}, period("2026-10-31", 5000), "active"},
+		{"ended", store.Engagement{StartDate: "2026-01-01", Recurrence: "monthly", EndDate: d("2026-10-31")}, period("2026-10-31", 5000), "ended"},
+		{"cancelled", store.Engagement{StartDate: "2026-01-01", Recurrence: "monthly", CancelledOn: d("2026-11-01")}, period("2026-11-30", 5000), "cancelled"},
+		{"one-off running", store.Engagement{StartDate: "2026-11-01", Recurrence: "none"}, period("2026-11-30", 5000), "active"},
+		{"one-off used up", store.Engagement{StartDate: "2026-11-01", Recurrence: "none"}, period("2026-11-30", 0), "used_up"},
+		{"one-off period over", store.Engagement{StartDate: "2026-10-01", Recurrence: "none"}, period("2026-10-31", 5000), "expired"},
+		{"one-off without a period", store.Engagement{StartDate: "2026-11-01", Recurrence: "none"}, nil, "active"},
+	} {
+		if got := portalStatus(c.e, c.period, "2026-11-20"); got != c.want {
+			t.Errorf("%s: got %s, want %s", c.name, got, c.want)
+		}
 	}
 }
 
