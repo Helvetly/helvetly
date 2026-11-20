@@ -15,6 +15,7 @@ import (
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/aiwrite"
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/avatars"
 	"helvetly.com/api/internal/billing"
@@ -161,6 +162,8 @@ func run() error {
 		clientsSvc.SetRegister(reg)
 	}
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
+	approvalsSvc := approvals.New(db, authSvc)
+	invoicesSvc.SetApprovals(approvalsSvc)
 	authSvc.CompleteOnboarding = invoicesSvc.CompleteOnboarding
 	quotesSvc := quotes.New(db, authSvc, invoicesSvc, files, quoteMailer, slog.Default())
 	membersSvc := members.New(db, authSvc, slog.Default())
@@ -288,6 +291,7 @@ func run() error {
 		uidregister.Routes(mux, authSvc, uidRegister)
 		portalSvc.Register(mux)
 		invoicesSvc.Register(mux)
+		approvalsSvc.Register(mux)
 		quotesSvc.Register(mux)
 		dunningSvc.Register(mux)
 		membersSvc.Register(mux)

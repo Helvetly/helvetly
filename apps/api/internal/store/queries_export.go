@@ -50,6 +50,8 @@ var WorkspaceExportTables = []ExportTable{
 	child("signature_fields", "signature_requests", "request_id"), child("signature_events", "signature_requests", "request_id"),
 	own("templates"),
 	own("closed_periods"), own("financial_events"), own("ledger_settings"),
+	own("approval_groups"), own("approval_group_members"), own("approval_policies"), own("approval_requests"),
+	child("approval_decisions", "approval_requests", "request_id"),
 	own("workspace_counters"), own("dunning_notices"), own("vat_return_settings"), own("einvoice_transmissions"),
 	{"import_batches", `SELECT to_jsonb(t) FROM import_batches t WHERE t.workspace_id = $1 AND t.kind <> 'payroll'`},
 	{"import_files", `SELECT to_jsonb(t) FROM import_files t JOIN import_batches b ON b.id = t.batch_id

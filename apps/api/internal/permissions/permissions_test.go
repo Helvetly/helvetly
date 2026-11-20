@@ -173,6 +173,13 @@ var scopedInHandler = []string{
 	"DELETE /api/v1/imports/x",
 	"PATCH /api/v1/imports/x/records/x",
 	"POST /api/v1/imports/x/commit",
+	// approvals: the settings are for owners and admins, the inbox lists what each person may decide (read:invoices)
+	"GET /api/v1/approvals/settings",
+	"POST /api/v1/approvals/groups",
+	"PATCH /api/v1/approvals/groups/x",
+	"DELETE /api/v1/approvals/groups/x",
+	"PUT /api/v1/approvals/policies/x",
+	"GET /api/v1/approvals/inbox",
 }
 
 // TestEveryRouteIsMapped reads every route registered in internal/* so a new one cannot slip past the guard.

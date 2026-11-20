@@ -33,9 +33,9 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database, the one 00032 publishes (00007 published helvetly-v1,
-// 00017 helvetly-v1.1, 00018 helvetly-v1.2).
-const currentOffer = "helvetly-v1.3"
+// currentOffer is the offer on sale in the seeded database, the one 00039 publishes (00007 published helvetly-v1,
+// 00017 helvetly-v1.1, 00018 helvetly-v1.2, 00032 helvetly-v1.3).
+const currentOffer = "helvetly-v1.4"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]
@@ -53,7 +53,7 @@ func TestSeededOffer(t *testing.T) {
 	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
 		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
-	if len(o.Records) != 69 || len(defs) != 69 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 10 {
+	if len(o.Records) != 70 || len(defs) != 70 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 10 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}

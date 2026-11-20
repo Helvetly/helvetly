@@ -353,6 +353,17 @@ Pages: /settings/invoices
 4. Set **Defaults** (currency, document language, payment terms), **Instalments**, **Dunning** and the **Footer**.
    Only owners and admins can change these. Numbers are given at issue, without gaps, and restart every year when the format has a year. There is one number sequence, and credit notes get their own numbers.
 
+## Require approval before invoices are issued (approvals, approver groups)
+
+Keywords: approval, approve, approver, four-eyes, Vier-Augen-Prinzip, sign-off, review before issuing, approval groups, needs my approval, reject
+Pages: /settings/approvals
+
+1. Go to **Settings → Approvals** (owners and admins, on the Business plan).
+2. Under **Approver groups**, create groups such as Accountants or Management and add team members to them.
+3. For each document type (invoices, credit notes, debit notes, corrections), turn on **Require approval before issuing**, optionally only from a minimum total, and add who must approve: at least a number of people from a group, or from anyone who can see invoices. Every rule must be met.
+4. A draft then shows **Submit for approval** instead of **Issue**. Approvers are notified and find it under **Needs my approval** on the Invoices page, where they approve it or reject it with a reason. Once approved, the author (or anyone who can edit invoices) issues it.
+   The author never approves their own document, one person counts once, and any change to the draft ends the request so it is submitted again. Every step is kept in the audit log.
+
 ## Change the email text for invoices and quotes (email templates)
 
 Keywords: email template, email text, send by email, subject, message, wording, variables, invoice email, quote email, credit note email

@@ -184,7 +184,10 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		inv.PaymentMethods = usableMethods(inv.PaymentMethods, set, inv.Currency)
 		compute(&inv)
 		syncSchedule(&inv)
-		return saveDraft(ctx, q, sess, inv, s.now())
+		if err := saveDraft(ctx, q, sess, inv, s.now()); err != nil {
+			return err
+		}
+		return s.approvals.Reset(ctx, q, sess, approvalDoc(inv))
 	})
 	if err != nil {
 		return err
@@ -340,6 +343,9 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 	}
 	if !deleted { // issued meanwhile
 		return errLocked
+	}
+	if err := s.approvals.Forget(ctx, s.db.Q, sess.Workspace.ID, id); err != nil {
+		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil

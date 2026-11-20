@@ -84,6 +84,19 @@ are the reference.
   `CanonicalURL` returns it. Cookies stay host-only and named per workspace.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
+- **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
+  issued, per document type (`invoice` for every invoice kind without its own, `credit_note`, `debit_note`,
+  `corrected`; quotes, expenses and payroll take the same shape later). Owners and admins keep approver groups and a
+  policy per type: on/off, an optional minimum total (in the document's currency) and rules that must all hold
+  (at least N approvals from a group, or from anyone who can read the documents). Approvals are matched to rule slots so
+  one person counts once; the submitter never approves; the rules are a snapshot taken at submit. The document stays
+  `draft`; its latest request (`approval_requests`, one `pending|approved` at a time, decisions in
+  `approval_decisions`) gives `approval_state`. The document package calls approvals in its own transaction with the
+  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after any edit (the request ends, submit again),
+  `Forget` on delete. No policy, or no feature after a downgrade: nothing is gated or read. Automatic issues (a
+  void's credit note, plan instalments) are not gated. Steps go to the audit log (`approval.*`, configuration
+  `approvals.*`), never as money events; `approval.requested|approved|rejected` notify. Approving is session-only:
+  the operations are not public API operations or MCP tools, and an API token only reads `approval_state`.
 - **Workspace deletion** is soft: `workspaces.deleted_at`, members, sessions and open invitations end, and a
   `workspace_deletions` row keeps the members so whoever deleted it can restore it for 30 days. A job
   (`dataexport.RunBackups`) stores the owner's whole export plus `deletion.json` as a ZIP at
