@@ -4649,5 +4649,14 @@
   "auditPortalTurnedOff": "Portail client désactivé",
   "auditPortalTurnedOn": "Portail client activé",
   "portalOffForWorkspace": "Le portail client est désactivé pour tout l’espace de travail : ce client ne peut pas se connecter.",
-  "turnOnInSettings": "L’activer dans les paramètres"
+  "turnOnInSettings": "L’activer dans les paramètres",
+  "includedInPlan": "Inclus dans {plan}",
+  "customDomainUpsellTitle": "Votre portail à votre propre adresse",
+  "customDomainUpsellPitch": "Vos clients se connectent sur {example}, à votre nom plutôt qu’à celui de Helvetly. Prêt en quelques minutes.",
+  "customDomainUpsellExample": "portal.votreentreprise.ch",
+  "customDomainUpsellNow": "Aujourd’hui",
+  "customDomainUpsellThen": "Votre domaine",
+  "customDomainBenefitBrand": "Votre marque dans la barre d’adresse",
+  "customDomainBenefitTls": "Certificat TLS gratuit, renouvelé pour vous",
+  "customDomainBenefitSetup": "Un seul enregistrement DNS, prêt en quelques minutes"
 }

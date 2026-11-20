@@ -6,13 +6,13 @@ import { Input } from '@helvetly/ui/components/input'
 import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { Copy, Link2, Lock, RefreshCw } from 'lucide-react'
-import Link from 'next/link'
+import { BadgeCheck, Copy, Globe, Link2, Lock, RefreshCw, ShieldCheck, Timer } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { PLANS_HREF, useFeatureLock } from '@/components/billing/feature-lock'
+import { useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { UpsellCard } from '@/components/billing/upsell-card'
 import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
@@ -89,7 +89,13 @@ const REFUSALS: Record<string, string> = {
  * its status. On a plan without it the row stays, locked, with the way to the plans. Not there at all when the
  * server has no Cloudflare for SaaS settings.
  */
-export function PortalDomainRow({ canEdit }: { canEdit: boolean }) {
+export function PortalDomainRow({
+  canEdit,
+  currentUrl,
+}: {
+  canEdit: boolean
+  currentUrl?: string
+}) {
   const settings = usePortalDomain().data
   const lock = useFeatureLock('custom_portal_domain')
   if (!settings?.enabled) return null
@@ -97,12 +103,19 @@ export function PortalDomainRow({ canEdit }: { canEdit: boolean }) {
   const body = settings.domain ? (
     <DomainStatus domain={settings.domain} canEdit={canEdit} />
   ) : lock ? (
-    <p className="text-body-sm text-pretty text-muted-foreground">
-      {lock.hint}.{' '}
-      <Link href={PLANS_HREF} className="text-foreground underline underline-offset-2">
-        {translate('upgrade')}
-      </Link>
-    </p>
+    <UpsellCard
+      lock={lock}
+      title={translate('customDomainUpsellTitle')}
+      pitch={translate('customDomainUpsellPitch', {
+        example: translate('customDomainUpsellExample'),
+      })}
+      preview={currentUrl && <AddressPreview currentUrl={currentUrl} />}
+      benefits={[
+        { icon: BadgeCheck, text: translate('customDomainBenefitBrand') },
+        { icon: ShieldCheck, text: translate('customDomainBenefitTls') },
+        { icon: Timer, text: translate('customDomainBenefitSetup') },
+      ]}
+    />
   ) : canEdit ? (
     <AddDomain />
   ) : (
@@ -126,6 +139,28 @@ export function PortalDomainRow({ canEdit }: { canEdit: boolean }) {
       </h3>
       {body}
     </div>
+  )
+}
+
+/** The portal's address now and at a domain of one's own, as two small address bars. */
+function AddressPreview({ currentUrl }: { currentUrl: string }) {
+  const now = currentUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  return (
+    <dl
+      data-slot="address-preview"
+      className="grid items-center gap-x-3 gap-y-1 text-body-sm sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-y-1.5"
+    >
+      <dt className="text-caption text-muted-foreground">{translate('customDomainUpsellNow')}</dt>
+      <dd className="flex min-w-0 items-center gap-2 rounded-lg border border-dashed bg-card/60 px-3 py-1.5 text-muted-foreground">
+        <Globe aria-hidden className="size-3.5 shrink-0" />
+        <span className="truncate">{now}</span>
+      </dd>
+      <dt className="text-caption text-muted-foreground">{translate('customDomainUpsellThen')}</dt>
+      <dd className="flex min-w-0 items-center gap-2 rounded-lg border bg-card px-3 py-1.5 font-medium max-sm:mb-1">
+        <Lock aria-hidden className="size-3.5 shrink-0 text-success" />
+        <span className="truncate">{translate('customDomainUpsellExample')}</span>
+      </dd>
+    </dl>
   )
 }
 

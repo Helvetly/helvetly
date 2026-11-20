@@ -235,7 +235,7 @@ function PortalAddressForm({ address, canEdit }: { address: PortalAddress; canEd
           </InputGroup>
           {error && <FieldError id="portal-slug-error">{error}</FieldError>}
         </form>
-        <PortalDomainRow canEdit={canEdit} />
+        <PortalDomainRow canEdit={canEdit} currentUrl={address.url} />
       </div>
     </SettingsSection>
   )
