@@ -91,12 +91,13 @@ type Text struct {
 }
 
 // Fill returns the original with each text written into its box: Liberation Sans (any script through pdffont's
-// fallbacks), black, shrunk to fit.
+// fallbacks), black, sized by drawLines.
 func Fill(original []byte, texts []Text, title string) (out []byte, err error) {
 	defer recoverInto(&err)
 	pdf := fpdf.New("P", "pt", "A4", "")
 	pdf.SetTitle(title, true)
 	txt := pdffont.New(pdf)
+	pdf.SetCellMargin(0) // the text starts at the box's edge, as in the preview
 	pages(pdf, original, func(page int, w, h float64) {
 		for _, t := range texts {
 			if t.Page == page && strings.TrimSpace(t.Value) != "" {
@@ -135,28 +136,33 @@ func output(pdf *fpdf.Fpdf) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// drawLines writes text into the box, vertically centred, at the largest size up to 12 pt at which every line fits;
-// past 4 pt it stops shrinking and the text runs over.
+// Text sizes of a filled box (the platform's fitFontSize in lib/template-text.ts follows the same rule).
+const (
+	heightRatio = 0.75 // of a line's share of the box height
+	leading     = 1.15
+	minSize     = 4.0
+)
+
+// fitSize: the font size of lines in a w × h box, the widest line widest wide at size 1: the box height sets it,
+// a line wider than the box shrinks it, never below minSize.
+func fitSize(w, h float64, lines int, widest float64) float64 {
+	size := h / float64(max(lines, 1)) * heightRatio
+	if widest > 0 {
+		size = min(size, w/widest)
+	}
+	return max(size, minSize)
+}
+
+// drawLines writes text into the box like print on the page: black, left aligned, vertically centred, at fitSize.
 func drawLines(pdf *fpdf.Fpdf, txt *pdffont.Text, text string, x, y, w, h float64) {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	const leading = 1.15
-	size := min(max(h/float64(len(lines))/leading*0.8, 7), 12)
-	fits := func() bool {
-		if float64(len(lines))*size*leading > h {
-			return false
-		}
-		for _, l := range lines {
-			if txt.Width(l) > w {
-				return false
-			}
-		}
-		return true
+	txt.Font("", 1)
+	widest := 0.0
+	for _, l := range lines {
+		widest = max(widest, txt.Width(l))
 	}
+	size := fitSize(w, h, len(lines), widest)
 	txt.Font("", size)
-	for size > 4 && !fits() {
-		size -= 0.5
-		txt.Font("", size)
-	}
 	pdf.SetTextColor(0, 0, 0)
 	lh := size * leading
 	top := y + (h-lh*float64(len(lines)))/2

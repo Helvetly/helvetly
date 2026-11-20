@@ -182,14 +182,17 @@ export function DocPreview<K extends string>({
   document,
   fields,
   caption,
+  printed,
   pages,
   onPages,
   empty = translate('chooseAPDFToSeeItHere'),
 }: {
   document: { id: string; name: string } | null
   fields: DraftField<K>[]
-  /** What a field's box says: its kind, or (when filling a template) its value. */
+  /** What a field's box says: its kind or label. */
   caption: (field: DraftField<K>) => ReactNode
+  /** A filled field's value, shown printed instead of a box ("" prints nothing); null keeps the box. */
+  printed?: (field: DraftField<K>) => string | null
   pages: number
   onPages: (count: number) => void
   empty?: string
@@ -216,17 +219,32 @@ export function DocPreview<K extends string>({
         overlay={(page) =>
           fields
             .filter((field) => field.page === page)
-            .map((field) => (
-              <FieldBox
-                key={field.key}
-                box={field}
-                kind={field.kind}
-                color={signerColor(field.signer)}
-                className="@container gap-1 px-1.5"
-              >
-                <span className="truncate font-medium">{caption(field)}</span>
-              </FieldBox>
-            ))
+            .map((field) => {
+              const value = printed?.(field) ?? null
+              if (value !== null)
+                return value.trim() ? (
+                  <FieldBox
+                    key={field.key}
+                    box={field}
+                    kind={field.kind}
+                    color={signerColor(field.signer)}
+                    mode="output"
+                  >
+                    {value}
+                  </FieldBox>
+                ) : null
+              return (
+                <FieldBox
+                  key={field.key}
+                  box={field}
+                  kind={field.kind}
+                  color={signerColor(field.signer)}
+                  className="@container gap-1 px-1.5"
+                >
+                  <span className="truncate font-medium">{caption(field)}</span>
+                </FieldBox>
+              )
+            })
         }
       />
       <span className="pointer-events-none absolute top-3 left-4 z-10 rounded-full bg-card/90 px-2.5 py-1 text-[12px] text-muted-foreground shadow-elevation-1 backdrop-blur">
