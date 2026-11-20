@@ -1,5 +1,5 @@
 'use client'
-import { languageTag, localizedHref } from '@helvetly/i18n'
+import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Input } from '@helvetly/ui/components/input'
@@ -10,6 +10,8 @@ import {
   InputGroupText,
 } from '@helvetly/ui/components/input-group'
 import { Panel } from '@helvetly/ui/components/panel'
+import { StatusBadge } from '@helvetly/ui/components/status-badge'
+import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +20,7 @@ import {
   ClipboardList,
   Download,
   Lock,
+  MessageSquareQuote,
   Pencil,
   Plus,
   Trash2,
@@ -28,6 +31,7 @@ import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { NativeSelect } from '@/components/clients/fields'
+import { Initials } from '@/components/initials'
 import { RecordLink } from '@/components/record-link'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -345,12 +349,6 @@ function ShowOnInvoice({
   )
 }
 
-const dayMonth = new Intl.DateTimeFormat(languageTag, {
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-})
-
 function EntryRow({
   engagementId,
   entry,
@@ -473,35 +471,40 @@ function EntryRow({
   return (
     <li
       className={cn(
-        'group/entry grid min-h-11 items-center gap-x-3 py-2',
-        writable
-          ? 'grid-cols-[3.75rem_minmax(0,1fr)_auto_3.25rem]'
-          : 'grid-cols-[3.75rem_minmax(0,1fr)_auto]',
+        'group/entry grid min-h-11 items-start gap-x-3 py-2',
+        writable ? 'grid-cols-[minmax(0,1fr)_auto_3.25rem]' : 'grid-cols-[minmax(0,1fr)_auto]',
       )}
     >
-      <time
-        dateTime={entry.date}
-        title={formatDate(entry.date)}
-        className="text-body-sm whitespace-nowrap text-muted-foreground tabular-nums"
-      >
-        {dayMonth.format(new Date(entry.date))}
-      </time>
-      <div className="min-w-0">
-        <p className={cn('line-clamp-2 text-body', !entry.note && 'text-muted-foreground')}>
+      <div className="grid min-w-0 gap-1">
+        <p className={cn('line-clamp-2 text-body', !entry.note && 'text-muted-foreground italic')}>
           {entry.note || translate('noNote')}
         </p>
         {entry.client_performance && (
-          <p className="line-clamp-2 text-body-sm text-muted-foreground">
-            <span className="font-medium">{translate('clientPerformance')}:</span>{' '}
-            {entry.client_performance}
-            {entry.client_performance_on_invoice && (
-              <span className="text-caption"> · {translate('onInvoice')}</span>
-            )}
-          </p>
+          <div className="flex items-start gap-1.5 border-l-2 pl-2 text-body-sm text-muted-foreground">
+            <MessageSquareQuote aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            <p className="line-clamp-3 min-w-0">
+              <span className="font-medium text-foreground/80">
+                {translate('clientPerformance')}
+              </span>
+              <span className="sr-only">:</span> {entry.client_performance}
+              {entry.client_performance_on_invoice && (
+                <span className="ml-1.5 inline-flex align-middle">
+                  <StatusBadge size="sm">{translate('onInvoice')}</StatusBadge>
+                </span>
+              )}
+            </p>
+          </div>
         )}
         {(entry.performed_by || entry.invoice) && (
           <p className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
-            {entry.performed_by && <span className="truncate">{entry.performed_by.name}</span>}
+            {entry.performed_by && (
+              <Tip label={entry.performed_by.name}>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Initials name={entry.performed_by.name} className="size-5" />
+                  <span className="max-w-40 truncate">{entry.performed_by.name}</span>
+                </span>
+              </Tip>
+            )}
             {entry.performed_by && entry.invoice && <span aria-hidden>·</span>}
             {entry.invoice && (
               <RecordLink
@@ -527,7 +530,7 @@ function EntryRow({
           </Button>
         </span>
       ) : (
-        <span className="text-right text-body font-medium whitespace-nowrap tabular-nums">
+        <span className="text-right text-body leading-6 font-medium whitespace-nowrap tabular-nums">
           {plain(entry.quantity)}
           {short && <span className="ml-1 font-normal text-muted-foreground">{short}</span>}
         </span>
@@ -605,8 +608,8 @@ export function EntriesPanel({
         <div className="grid gap-4">
           {groups.map(({ period, rows }) => (
             <section key={period.id} aria-label={periodLabel(period)}>
-              <header className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-1.5 text-caption text-muted-foreground">
-                <h4 className="font-medium">{periodLabel(period)}</h4>
+              <header className="flex items-baseline justify-between gap-3 border-b pb-1.5 text-caption text-muted-foreground">
+                <h4 className="text-body-sm text-foreground">{periodLabel(period)}</h4>
                 <span className="tabular-nums">
                   {rows.length} {rows.length === 1 ? 'entry' : 'entries'} ·{' '}
                   <span className="font-medium text-foreground">
@@ -614,17 +617,30 @@ export function EntriesPanel({
                   </span>
                 </span>
               </header>
-              <ul className="divide-y divide-border/60">
-                {rows.map((entry) => (
-                  <EntryRow
-                    key={entry.id}
-                    engagementId={engagementId}
-                    entry={entry}
-                    unit={unit}
-                    writable={writable}
-                  />
+              <ol className="divide-y divide-border/60">
+                {byDay(rows).map((day) => (
+                  <li key={day.date} className="pt-2.5 pb-0.5">
+                    <time
+                      dateTime={day.date}
+                      title={formatDate(day.date)}
+                      className="text-body-sm font-medium tabular-nums"
+                    >
+                      {formatDay(day.date)}
+                    </time>
+                    <ul>
+                      {day.items.map((entry) => (
+                        <EntryRow
+                          key={entry.id}
+                          engagementId={engagementId}
+                          entry={entry}
+                          unit={unit}
+                          writable={writable}
+                        />
+                      ))}
+                    </ul>
+                  </li>
                 ))}
-              </ul>
+              </ol>
             </section>
           ))}
         </div>

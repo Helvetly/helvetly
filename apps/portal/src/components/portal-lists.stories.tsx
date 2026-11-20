@@ -85,11 +85,20 @@ export const EngagementWithoutPeriod: Story = {
   },
 }
 
+// The history's dates are fixed, so its current period is too, whatever day the story runs on.
+const novemberRetainer = retainer && {
+  ...retainer,
+  current_period: retainer.current_period && {
+    ...retainer.current_period,
+    starts_on: '2026-11-01',
+    ends_on: '2026-11-30',
+  },
+}
 /** One engagement whose history answers with response. */
 const withHistory = (response: Parameters<typeof http.get>[1]) => ({
   msw: {
     handlers: [
-      http.get(`${P}/engagements`, () => HttpResponse.json({ data: [retainer] })),
+      http.get(`${P}/engagements`, () => HttpResponse.json({ data: [novemberRetainer] })),
       http.get(`${P}/engagements/:id/entries`, response),
       ...portalHandlers,
     ],
@@ -109,8 +118,9 @@ const openActivity = async (canvasElement: HTMLElement) => {
 }
 
 /**
- * Details opens the activity inside the card: newest first, a light divider per period, each row with date,
- * quantity, note and the client performance only where the supplier wrote one. Details again closes it.
+ * Details opens the activity inside the card, newest first. Each period has its range, the current one marked, and
+ * what was used in it; each day owns its entries; an entry shows its note (or "No note"), its quantity, and the
+ * client performance only where the supplier wrote one. Details again closes it.
  */
 export const EngagementActivity: Story = {
   parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
@@ -133,19 +143,38 @@ export const EngagementActivity: Story = {
     await expect(periods.map((h) => h.textContent)).toEqual([
       '1 Nov 2026 – 30 Nov 2026',
       '1 Oct 2026 – 31 Oct 2026',
+      '1 Sept 2026 – 30 Sept 2026',
     ])
-    const rows = await within(region).findAllByRole('listitem')
-    await expect(rows).toHaveLength(4)
-    await expect(rows[0]).toHaveTextContent('18 Nov 2026')
-    await expect(rows[0]).toHaveTextContent('1.5 hours')
-    await expect(rows[0]).toHaveTextContent('Server updates and backup check')
-    await expect(rows[0]).toHaveTextContent(
+    const [november, october, september] = within(region).getAllByRole('region')
+    if (!november || !october || !september) throw new Error('Three periods expected')
+    await expect(november).toHaveAccessibleName('1 Nov 2026 – 30 Nov 2026')
+    await expect(within(november).getByText('Current')).toBeVisible()
+    await expect(within(october).queryByText('Current')).toBeNull()
+    await expect(november).toHaveTextContent('4.5 of 10 hours used · 4 entries')
+    await expect(october).toHaveTextContent('3 of 10 hours used · 1 entry')
+    await expect(september).toHaveTextContent('0 of 10 hours used · 0 entries')
+    await expect(september).toHaveTextContent('Nothing logged in this period.')
+
+    // Days own their entries: two on Wed 18 Nov, one each on the other days.
+    const days = within(november).getAllByRole('time')
+    await expect(days.map((day) => day.textContent)).toEqual([
+      'Wed 18 Nov',
+      'Wed 11 Nov',
+      'Wed 4 Nov',
+    ])
+    const firstDay = within(days[0]?.parentElement ?? november).getAllByRole('listitem')
+    await expect(firstDay).toHaveLength(2)
+    await expect(firstDay[0]).toHaveTextContent('Server updates and backup check')
+    await expect(firstDay[0]).toHaveTextContent('1.5 hours')
+    await expect(firstDay[0]).toHaveTextContent(
       'Client performance: Quick answers, access ready on time',
     )
     // Not shared for this delivery: no label, no empty box.
-    await expect(rows[1]).toHaveTextContent('Mailbox migration')
-    await expect(rows[1]).not.toHaveTextContent('Client performance')
-    await expect(within(region).getAllByText('Client performance:')).toHaveLength(2)
+    await expect(firstDay[1]).toHaveTextContent('Printer set up at reception')
+    await expect(firstDay[1]).not.toHaveTextContent('Client performance')
+    await expect(within(region).getAllByText('Client performance')).toHaveLength(2)
+    // An entry without a note says so instead of leaving a gap.
+    await expect(within(november).getByText('No note')).toBeVisible()
 
     await userEvent.click(details)
     await expect(details).toHaveAttribute('aria-expanded', 'false')
@@ -170,11 +199,13 @@ export const EngagementsSeveralOpen: Story = {
     if (!first || !second) throw new Error('Two engagements expected')
     await userEvent.click(first)
     await userEvent.click(second)
-    await waitFor(() => expect(canvas.getAllByRole('region')).toHaveLength(2))
+    const cards = () =>
+      canvas.queryAllByRole('region', { name: /Support retainer|Website maintenance/ })
+    await waitFor(() => expect(cards()).toHaveLength(2))
     await userEvent.click(first)
     await expect(first).toHaveAttribute('aria-expanded', 'false')
     await expect(second).toHaveAttribute('aria-expanded', 'true')
-    await expect(canvas.getAllByRole('region')).toHaveLength(1)
+    await expect(cards()).toHaveLength(1)
   },
 }
 
@@ -221,7 +252,7 @@ export const EngagementActivityLongTextPhone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await openActivity(canvasElement)
     await expect(await canvas.findByText('12.25 hours')).toBeVisible()
-    await expect(canvas.getByText('Client performance:')).toBeVisible()
+    await expect(canvas.getByText('Client performance')).toBeVisible()
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
