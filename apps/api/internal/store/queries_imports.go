@@ -150,13 +150,16 @@ func (q Q) importRecords(ctx context.Context, where string, args ...any) ([]Impo
 	return list, rows.Err()
 }
 
-// ImportBatches: the person's ten newest batches of a kind, with how many records still wait.
-func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string) ([]ImportBatchSummary, error) {
+// ImportBatches: the person's ten newest batches of one context (a kind, and the client an invoice import is for or
+// nil for none), with how many records still wait. A client's batches never show where no client is named, nor the
+// other way round.
+func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string, clientID *string) ([]ImportBatchSummary, error) {
 	rows, err := q.db.Query(ctx, `SELECT b.id, b.kind, b.client_id, b.created_at,
 			EXISTS (SELECT 1 FROM import_files f WHERE f.batch_id=b.id AND f.status IN ('queued','extracting')),
 			(SELECT count(*) FROM import_records r WHERE r.batch_id=b.id AND r.status NOT IN ('created','skipped'))
-		FROM import_batches b WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.kind=$3 ORDER BY b.created_at DESC, b.id DESC LIMIT 10`,
-		workspaceID, userID, kind)
+		FROM import_batches b WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.kind=$3
+			AND b.client_id IS NOT DISTINCT FROM $4 ORDER BY b.created_at DESC, b.id DESC LIMIT 10`,
+		workspaceID, userID, kind, clientID)
 	if err != nil {
 		return nil, err
 	}
