@@ -28,7 +28,8 @@ export function TextareaBox({
       data-slot="textarea-box"
       className={cn(
         fieldSurface,
-        'flex min-h-min min-w-0 flex-col overflow-hidden',
+        // The textarea dims itself while disabled; the count beside it stays readable.
+        'flex min-h-min min-w-0 flex-col overflow-hidden has-[textarea:disabled]:opacity-100',
         resizable && 'resize-y',
       )}
     >
