@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
 
 /**
  * A setting that is on or off: a card with a title, an optional description and a switch.
- * The whole card toggles; on, it takes the brand tint, the one accent next to the focus ring. `disabledReason` locks it and
+ * The whole card toggles; it looks the same on and off, only the switch shows the state. `disabledReason` locks it and
  * says why in a tooltip (and to screen readers).
  */
 function SwitchRow({
@@ -45,12 +45,10 @@ function SwitchRow({
     <label
       htmlFor={id}
       data-slot="switch-row"
-      data-checked={checked || undefined}
       data-disabled={locked || undefined}
       className={cn(
         'group/switch-row flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors',
-        'not-data-disabled:hover:border-brand-solid/30 not-data-disabled:hover:bg-brand-surface/40',
-        'data-checked:border-brand-solid/30 data-checked:bg-brand-surface/60',
+        'not-data-disabled:hover:border-foreground/20',
         'has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
         'data-disabled:cursor-not-allowed data-disabled:opacity-60',
         className,
@@ -59,7 +57,7 @@ function SwitchRow({
       {Icon && (
         <span
           aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground ring-1 ring-border transition-colors ring-inset group-data-checked/switch-row:text-brand group-data-checked/switch-row:ring-brand-solid/30"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground ring-1 ring-border ring-inset"
         >
           <Icon className="size-4 stroke-[1.75]" />
         </span>
