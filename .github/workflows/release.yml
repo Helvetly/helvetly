@@ -37,6 +37,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      artifact-metadata: write # the attestation's storage record, linking the image to this repository
     env:
       TAG: ${{ github.ref_name }}
     steps:
