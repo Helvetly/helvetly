@@ -271,15 +271,14 @@ function Timeline({
               {skipped ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span
-                      role="img"
-                      tabIndex={0}
+                    <button
+                      type="button"
                       aria-label={translate('stepNotRecorded')}
                       data-step-state="skipped"
-                      className="z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full border border-dashed border-warning-solid bg-warning-surface text-warning"
+                      className="z-10 flex size-[18px] shrink-0 cursor-default items-center justify-center rounded-full border border-dashed border-warning-solid bg-warning-surface text-warning outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
                       <CircleHelp className="size-3" strokeWidth={2.5} />
-                    </span>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>{translate('stepNotRecorded')}</TooltipContent>
                 </Tooltip>
