@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
+import { FieldError } from '@helvetly/ui/components/inline-error'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -13,6 +14,7 @@ import { toast } from 'sonner'
 import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormSection } from '@/components/form-section'
+import { useImportSubmit, type FormImport } from '@/components/import/form-import'
 import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -30,6 +32,7 @@ import {
   serverFieldErrors,
   toInput,
   validate,
+  valuesFromImport,
   valuesFromProduct,
   type Defaults,
   type FieldErrors,
@@ -60,21 +63,27 @@ const CATEGORY_OPTIONS = VAT_CATEGORIES.map((category) => ({
 export function ProductForm({
   product,
   defaults,
+  importing,
   onClose,
   onSaved,
 }: {
   /** The item to edit; none creates a new one. */
   product?: Product
   defaults: Defaults
+  /** An import record edited in this form: nothing is created, Save hands the values back to the import. */
+  importing?: FormImport
   onClose: () => void
   onSaved: (product: Product, created: boolean) => void
 }) {
   const { habits, remember } = useHabits()
+  const [fromImport] = useState(() => importing && valuesFromImport(importing.data, defaults))
   const [initial] = useState(() =>
-    product ? valuesFromProduct(product) : newValues(defaults, habits),
+    product ? valuesFromProduct(product) : (fromImport?.values ?? newValues(defaults, habits)),
   )
   const [values, setValues] = useState(initial)
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [errors, setErrors] = useState<FieldErrors>(() =>
+    importing ? { ...fromImport?.errors, ...serverFieldErrors({ fields: importing.issues }) } : {},
+  )
   const [discarding, setDiscarding] = useState(false)
   const form = useRef<HTMLFormElement>(null)
   const submitting = useRef(false)
@@ -96,12 +105,24 @@ export function ProductForm({
     if (first) document.getElementById(fieldId(first))?.focus()
   }
 
+  const sendImport = useImportSubmit(
+    importing,
+    (issues) => {
+      const left = serverFieldErrors({ fields: issues })
+      setErrors(left)
+      focusFirstError(left)
+    },
+    () => (submitting.current = false),
+  )
+  const pending = save.isPending || sendImport.isPending
+
   const submit = () => {
     if (submitting.current) return
     const found = validate(values)
     setErrors(found)
     if (Object.keys(found).length) return focusFirstError(found)
     submitting.current = true
+    if (importing) return sendImport.mutate(toInput(values))
     save.mutate(
       { id: product?.id, input: toInput(values) },
       {
@@ -144,7 +165,7 @@ export function ProductForm({
   // Closing mid-save would drop the answer: React Query skips a call's callbacks after unmount, so a
   // refusal (or the success toast) never shows and the typed data is gone.
   const requestClose = () => {
-    if (save.isPending) return
+    if (pending) return
     if (dirty) setDiscarding(true)
     else onClose()
   }
@@ -153,9 +174,11 @@ export function ProductForm({
     'aria-invalid': errors[field] ? true : undefined,
     'aria-describedby': errors[field] ? `${fieldId(field)}-error` : undefined,
   })
-  const title = product
-    ? translate('edit3', { name: product.name })
-    : translate('newProductOrService')
+  const title = importing
+    ? `${translate('editRecord')}: ${importing.name}`
+    : product
+      ? translate('edit3', { name: product.name })
+      : translate('newProductOrService')
 
   return (
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
@@ -183,8 +206,13 @@ export function ProductForm({
             <div className="grid min-w-0 gap-0.5">
               <h2 className="truncate text-lg font-semibold">{title}</h2>
               <p className="text-[13px] text-muted-foreground">
-                {translate('aNameAndAPriceAreEnoughInvoicesCopy')}
+                {importing
+                  ? translate('importEditFormText')
+                  : translate('aNameAndAPriceAreEnoughInvoicesCopy')}
               </p>
+              {errors.type && (
+                <FieldError id={`${fieldId('type')}-error`}>{errors.type}</FieldError>
+              )}
             </div>
             <Segmented
               label={translate('itemType')}
@@ -198,6 +226,7 @@ export function ProductForm({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
+            {importing?.notice}
             <FormSection
               icon={Info}
               title={translate('basics')}
@@ -262,7 +291,7 @@ export function ProductForm({
               <FormField
                 field="unit_price"
                 label={translate('unitPrice')}
-                error={errors.unit_price ?? errors.currency}
+                error={errors.unit_price ?? errors.currency ?? errors.price_basis}
                 required
                 tip={translate('enterThePriceAsYouQuoteItNetWithout')}
               >
@@ -430,12 +459,14 @@ export function ProductForm({
             <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
               {translate('cancel')}
             </Button>
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending
+            <Button type="submit" disabled={pending}>
+              {pending
                 ? translate('saving')
-                : product
-                  ? translate('saveChanges')
-                  : translate('addItem')}
+                : importing
+                  ? translate('save2')
+                  : product
+                    ? translate('saveChanges')
+                    : translate('addItem')}
             </Button>
           </div>
 

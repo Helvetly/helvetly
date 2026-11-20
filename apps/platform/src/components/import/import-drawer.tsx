@@ -48,6 +48,7 @@ import { DropZone, ImportSteps, ReadingProgress } from './import-files'
 import { IssueSummary } from './import-issues'
 import { FileReview, rowName } from './import-review'
 import { InvoiceRecordEditor } from './invoice-record-editor'
+import { editsInForm, RecordForm } from './record-form'
 
 /**
  * Upload files, let the AI read them, review the records and create the chosen ones: one sheet whose
@@ -428,16 +429,20 @@ export function ImportDrawer({
           />
         )}
 
-        {editingRecord?.kind === 'invoices' && (
+        {(editingRecord?.kind === 'invoices' || editingRecord?.kind === 'quotes') && (
           <InvoiceRecordEditor
             key={editingRecord.id}
-            config={IMPORT_KINDS.invoices}
+            config={IMPORT_KINDS[editingRecord.kind]}
             batchId={batchId ?? ''}
             record={editingRecord}
             fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
             fileSrc={importFileUrl(batchId ?? '', editingRecord.file_id)}
             clientLocked={Boolean(batch.data?.client_id)}
-            name={rowName(IMPORT_KINDS.invoices, editingRecord, records.indexOf(editingRecord))}
+            name={rowName(
+              IMPORT_KINDS[editingRecord.kind],
+              editingRecord,
+              records.indexOf(editingRecord),
+            )}
             onDone={(saved) => {
               setEditing(null)
               if (saved && isClean(saved))
@@ -445,12 +450,11 @@ export function ImportDrawer({
             }}
           />
         )}
-        {editingRecord && editingRecord.kind !== 'invoices' && (
-          <EditRecordDrawer
+        {editingRecord && editsInForm(editingRecord.kind) && (
+          <RecordForm
             key={editingRecord.id}
-            config={IMPORT_KINDS[editingRecord.kind]}
             batchId={batchId ?? ''}
-            record={editingRecord}
+            record={{ ...editingRecord, kind: editingRecord.kind }}
             fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
             name={rowName(
               IMPORT_KINDS[editingRecord.kind],
@@ -464,6 +468,28 @@ export function ImportDrawer({
             }}
           />
         )}
+        {editingRecord &&
+          editingRecord.kind !== 'invoices' &&
+          editingRecord.kind !== 'quotes' &&
+          !editsInForm(editingRecord.kind) && (
+            <EditRecordDrawer
+              key={editingRecord.id}
+              config={IMPORT_KINDS[editingRecord.kind]}
+              batchId={batchId ?? ''}
+              record={editingRecord}
+              fileName={batch.data?.files.find((file) => file.id === editingRecord.file_id)?.name}
+              name={rowName(
+                IMPORT_KINDS[editingRecord.kind],
+                editingRecord,
+                records.indexOf(editingRecord),
+              )}
+              onDone={(saved) => {
+                setEditing(null)
+                if (saved && isClean(saved))
+                  setPicked((current) => new Set([...(current ?? selected), saved.id]))
+              }}
+            />
+          )}
 
         {confirmDiscard !== null && (
           <ConfirmDialog

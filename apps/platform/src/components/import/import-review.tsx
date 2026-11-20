@@ -8,6 +8,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   Banknote,
   Check,
+  FileSignature,
   FileText,
   Handshake,
   Link2,
@@ -43,6 +44,7 @@ const KIND_ICONS: Record<ImportKind, LucideIcon> = {
   clients: UsersRound,
   products: Package,
   invoices: FileText,
+  quotes: FileSignature,
   engagements: Handshake,
   expenses: Receipt,
   payroll: Banknote,

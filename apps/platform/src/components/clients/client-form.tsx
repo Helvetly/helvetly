@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { FormSection } from '@/components/form-section'
+import { useImportSubmit, type FormImport } from '@/components/import/form-import'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { EINVOICE_FORMATS, useSaveClient, type Client } from '@/lib/clients'
@@ -36,6 +37,7 @@ import {
   toInput,
   validate,
   valuesFromClient,
+  valuesFromImport,
   type FieldErrors,
   type FormValues,
   CLIENT_HABIT_OPTIONS,
@@ -62,6 +64,7 @@ export function ClientForm({
   client,
   focus,
   prefill,
+  importing,
   onClose,
   onSaved,
 }: {
@@ -71,23 +74,30 @@ export function ClientForm({
   focus?: 'address'
   /** What a new client starts with, e.g. the details an imported document gave; they win over learned habits. */
   prefill?: Partial<FormValues>
+  /** An import record edited in this form: nothing is created, Save hands the values back to the import. */
+  importing?: FormImport
   onClose: () => void
   onSaved: (client: Client, created: boolean) => void
 }) {
   const { habits, remember } = useHabits()
+  const [fromImport] = useState(() => importing && valuesFromImport(importing.data))
   const [initial] = useState(() =>
     client
       ? valuesFromClient(client)
-      : {
-          ...withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
-            allowed: CLIENT_HABIT_OPTIONS,
-            eager: ['is_company'],
-          }),
-          ...prefill,
-        },
+      : fromImport
+        ? fromImport.values
+        : {
+            ...withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
+              allowed: CLIENT_HABIT_OPTIONS,
+              eager: ['is_company'],
+            }),
+            ...prefill,
+          },
   )
   const [values, setValues] = useState(initial)
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [errors, setErrors] = useState<FieldErrors>(() =>
+    importing ? { ...fromImport?.errors, ...serverFieldErrors({ fields: importing.issues }) } : {},
+  )
   const [discarding, setDiscarding] = useState(false)
   // A learned country counts as chosen: a phone typed later must not replace it.
   const [countryTouched, setCountryTouched] = useState(
@@ -138,12 +148,24 @@ export function ClientForm({
     if (first) document.getElementById(fieldId(first))?.focus()
   }
 
+  const sendImport = useImportSubmit(
+    importing,
+    (issues) => {
+      const left = serverFieldErrors({ fields: issues })
+      setErrors(left)
+      focusFirstError(left)
+    },
+    () => (submitting.current = false),
+  )
+  const pending = save.isPending || sendImport.isPending
+
   const submit = () => {
     if (submitting.current) return
     const found = validate(values)
     setErrors(found)
     if (Object.keys(found).length) return focusFirstError(found)
     submitting.current = true
+    if (importing) return sendImport.mutate(toInput(values, false))
     save.mutate(
       { id: client?.id, input: toInput(values, Boolean(client)) },
       {
@@ -187,7 +209,7 @@ export function ClientForm({
   // Closing mid-save would drop the answer: React Query skips a call's callbacks after unmount, so a
   // refusal (or the success toast) never shows and the typed data is gone.
   const requestClose = () => {
-    if (save.isPending) return
+    if (pending) return
     if (dirty) setDiscarding(true)
     else onClose()
   }
@@ -199,6 +221,12 @@ export function ClientForm({
   const company = values.is_company
   const login = portalLogin(values)
   const initialLogin = portalLogin(initial)
+
+  const title = importing
+    ? `${translate('editRecord')}: ${importing.name}`
+    : client
+      ? translate('edit3', { name: client.name })
+      : translate('newClient')
 
   const body = (
     <form
@@ -212,11 +240,11 @@ export function ClientForm({
     >
       <div className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4 md:px-8">
         <div className="grid min-w-0 gap-0.5">
-          <h2 className="truncate text-lg font-semibold">
-            {client ? translate('edit3', { name: client.name }) : translate('newClient')}
-          </h2>
+          <h2 className="truncate text-lg font-semibold">{title}</h2>
           <p className="text-[13px] text-muted-foreground">
-            {translate('onlyTheNameIsRequiredYouCanCompleteThe')}
+            {importing
+              ? translate('importEditFormText')
+              : translate('onlyTheNameIsRequiredYouCanCompleteThe')}
           </p>
         </div>
         <Segmented
@@ -231,6 +259,7 @@ export function ClientForm({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {importing?.notice}
         <FormSection
           icon={UserRound}
           title={translate('basics')}
@@ -480,37 +509,39 @@ export function ClientForm({
               className={inputClass}
             />
           </FormField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              field="electronic_scheme"
-              label={translate('eInvoiceAddressScheme')}
-              error={errors.electronic_scheme}
-              tip={translate('useTheEASCodeRegisteredWithYourEInvoice')}
-            >
-              <input
-                {...describe('electronic_scheme')}
-                value={values.electronic_scheme}
-                maxLength={4}
-                onChange={(event) => set('electronic_scheme', event.target.value)}
-                placeholder={translate('eG0088')}
-                className={inputClass}
-              />
-            </FormField>
-            <FormField
-              field="electronic_id"
-              label={translate('eInvoiceElectronicAddress')}
-              error={errors.electronic_id}
-            >
-              <input
-                {...describe('electronic_id')}
-                value={values.electronic_id}
-                maxLength={200}
-                onChange={(event) => set('electronic_id', event.target.value)}
-                placeholder="7612345678900"
-                className={inputClass}
-              />
-            </FormField>
-          </div>
+          {!importing && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                field="electronic_scheme"
+                label={translate('eInvoiceAddressScheme')}
+                error={errors.electronic_scheme}
+                tip={translate('useTheEASCodeRegisteredWithYourEInvoice')}
+              >
+                <input
+                  {...describe('electronic_scheme')}
+                  value={values.electronic_scheme}
+                  maxLength={4}
+                  onChange={(event) => set('electronic_scheme', event.target.value)}
+                  placeholder={translate('eG0088')}
+                  className={inputClass}
+                />
+              </FormField>
+              <FormField
+                field="electronic_id"
+                label={translate('eInvoiceElectronicAddress')}
+                error={errors.electronic_id}
+              >
+                <input
+                  {...describe('electronic_id')}
+                  value={values.electronic_id}
+                  maxLength={200}
+                  onChange={(event) => set('electronic_id', event.target.value)}
+                  placeholder="7612345678900"
+                  className={inputClass}
+                />
+              </FormField>
+            </div>
+          )}
         </FormSection>
 
         <FormSection
@@ -583,102 +614,112 @@ export function ClientForm({
               )}
             </div>
           </FormField>
-          <SwitchRow
-            id="client-dunning"
-            label={translate('paymentReminders')}
-            description={translate('overdueInvoicesGetDunningRemindersWhenDunningIsOn')}
-            checked={values.dunning_enabled}
-            onCheckedChange={(on) => set('dunning_enabled', on)}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              field="einvoice_format"
-              label={translate('eInvoice')}
-              error={errors.einvoice_format}
-              tip={translate('attachedAsXMLNextToThePDFWhenYou')}
-            >
-              <Combobox
-                id={fieldId('einvoice_format')}
-                value={values.einvoice_format}
-                options={EINVOICE_FORMATS}
-                placeholder={translate('chooseAFormat')}
-                onChange={(format) =>
-                  set('einvoice_format', format as FormValues['einvoice_format'])
-                }
-              />
-            </FormField>
-            <FormField
-              field="leitweg_id"
-              label={translate('leitwegID')}
-              error={errors.leitweg_id}
-              tip={translate('forAGermanPublicBodyItsRoutingIDUsed')}
-            >
-              <input
-                {...describe('leitweg_id')}
-                value={values.leitweg_id}
-                onChange={(event) => set('leitweg_id', event.target.value)}
-                placeholder="04011000-1234512345-06"
-                spellCheck={false}
-                className={cn(inputClass, 'font-mono')}
-              />
-            </FormField>
-          </div>
-        </FormSection>
-
-        <FormSection
-          icon={DoorOpen}
-          title={translate('clientPortal')}
-          description={translate('whereTheClientSeesItsInvoicesEngagementsAndShared')}
-          tip={translate('theClientSignsInWithAnEmailedCodeThere')}
-        >
-          <SwitchRow
-            id="client-portal"
-            label={translate('letTheClientSignIn')}
-            description={translate('withItsEmailOrTheBillingEmailWhenThere')}
-            checked={values.portal_enabled}
-            onCheckedChange={(on) => set('portal_enabled', on)}
-          />
-          {values.portal_enabled && (
-            <PortalStatus
-              login={login}
-              fallback={!values.email.trim()}
-              onAddEmail={() => document.getElementById(fieldId('email'))?.focus()}
-              invitation={
-                login !== initialLogin || !initial.portal_enabled
-                  ? translate('whenYouSaveGetsAnEmailWithThePortal', { login: login })
-                  : invitationText(client?.portal_invited_at)
-              }
+          {!importing && (
+            <SwitchRow
+              id="client-dunning"
+              label={translate('paymentReminders')}
+              description={translate('overdueInvoicesGetDunningRemindersWhenDunningIsOn')}
+              checked={values.dunning_enabled}
+              onCheckedChange={(on) => set('dunning_enabled', on)}
             />
           )}
+          {!importing && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                field="einvoice_format"
+                label={translate('eInvoice')}
+                error={errors.einvoice_format}
+                tip={translate('attachedAsXMLNextToThePDFWhenYou')}
+              >
+                <Combobox
+                  id={fieldId('einvoice_format')}
+                  value={values.einvoice_format}
+                  options={EINVOICE_FORMATS}
+                  placeholder={translate('chooseAFormat')}
+                  onChange={(format) =>
+                    set('einvoice_format', format as FormValues['einvoice_format'])
+                  }
+                />
+              </FormField>
+              <FormField
+                field="leitweg_id"
+                label={translate('leitwegID')}
+                error={errors.leitweg_id}
+                tip={translate('forAGermanPublicBodyItsRoutingIDUsed')}
+              >
+                <input
+                  {...describe('leitweg_id')}
+                  value={values.leitweg_id}
+                  onChange={(event) => set('leitweg_id', event.target.value)}
+                  placeholder="04011000-1234512345-06"
+                  spellCheck={false}
+                  className={cn(inputClass, 'font-mono')}
+                />
+              </FormField>
+            </div>
+          )}
         </FormSection>
+
+        {!importing && (
+          <FormSection
+            icon={DoorOpen}
+            title={translate('clientPortal')}
+            description={translate('whereTheClientSeesItsInvoicesEngagementsAndShared')}
+            tip={translate('theClientSignsInWithAnEmailedCodeThere')}
+          >
+            <SwitchRow
+              id="client-portal"
+              label={translate('letTheClientSignIn')}
+              description={translate('withItsEmailOrTheBillingEmailWhenThere')}
+              checked={values.portal_enabled}
+              onCheckedChange={(on) => set('portal_enabled', on)}
+            />
+            {values.portal_enabled && (
+              <PortalStatus
+                login={login}
+                fallback={!values.email.trim()}
+                onAddEmail={() => document.getElementById(fieldId('email'))?.focus()}
+                invitation={
+                  login !== initialLogin || !initial.portal_enabled
+                    ? translate('whenYouSaveGetsAnEmailWithThePortal', { login: login })
+                    : invitationText(client?.portal_invited_at)
+                }
+              />
+            )}
+          </FormSection>
+        )}
 
         <FormSection
           icon={Lock}
           title={translate('internal')}
           description={translate('onlyVisibleToYourTeam')}
         >
-          <FormField field="tags" label={translate('tags')} error={errors.tags}>
-            <TagsInput
-              id={fieldId('tags')}
-              value={values.tags}
-              invalid={Boolean(errors.tags)}
-              onChange={(tags) => set('tags', tags)}
-            />
-          </FormField>
-          <FormField
-            field="internal_id"
-            label={translate('internalID')}
-            error={errors.internal_id}
-            tip={translate('theClientSOwnReferenceEGTheirCustomer')}
-          >
-            <input
-              {...describe('internal_id')}
-              value={values.internal_id}
-              onChange={(event) => set('internal_id', event.target.value)}
-              placeholder={translate('k1042')}
-              className={inputClass}
-            />
-          </FormField>
+          {!importing && (
+            <>
+              <FormField field="tags" label={translate('tags')} error={errors.tags}>
+                <TagsInput
+                  id={fieldId('tags')}
+                  value={values.tags}
+                  invalid={Boolean(errors.tags)}
+                  onChange={(tags) => set('tags', tags)}
+                />
+              </FormField>
+              <FormField
+                field="internal_id"
+                label={translate('internalID')}
+                error={errors.internal_id}
+                tip={translate('theClientSOwnReferenceEGTheirCustomer')}
+              >
+                <input
+                  {...describe('internal_id')}
+                  value={values.internal_id}
+                  onChange={(event) => set('internal_id', event.target.value)}
+                  placeholder={translate('k1042')}
+                  className={inputClass}
+                />
+              </FormField>
+            </>
+          )}
           <FormField
             field="note"
             label={translate('note')}
@@ -714,12 +755,14 @@ export function ClientForm({
         <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
           {translate('cancel')}
         </Button>
-        <Button type="submit" disabled={save.isPending}>
-          {save.isPending
+        <Button type="submit" disabled={pending}>
+          {pending
             ? translate('saving')
-            : client
-              ? translate('saveChanges')
-              : translate('addClient')}
+            : importing
+              ? translate('save2')
+              : client
+                ? translate('saveChanges')
+                : translate('addClient')}
         </Button>
       </div>
 
@@ -739,7 +782,6 @@ export function ClientForm({
     </form>
   )
 
-  const title = client ? translate('edit3', { name: client.name }) : translate('newClient')
   return (
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent

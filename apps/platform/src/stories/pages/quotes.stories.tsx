@@ -18,6 +18,7 @@ import {
   phone,
   shows,
 } from './frame'
+import { dropOpensImport, emptyOffersImport, noDropTarget } from './page-drop'
 
 /** The quotes page with the stateful quote fake behind it; `handlers` answer first. */
 const quotes = (query: Record<string, string> = {}, handlers: RequestHandler[] = []) =>
@@ -66,15 +67,53 @@ export const Loading: Story = {
   },
 }
 
+const noQuotes = [
+  http.get('/api/v1/quotes', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
+]
+
+/** A new workspace: next to its first quote the empty list offers Import, and a drop anywhere works too. */
 export const Empty: Story = {
-  parameters: quotes({}, [http.get('/api/v1/quotes', () => HttpResponse.json({ data: [] }))]),
+  parameters: quotes({}, noQuotes),
   play: async (context) => {
     await shows('No quotes yet')?.(context)
     // The header's button and the empty state's own.
     await expect(
       page(context.canvasElement).getAllByRole('button', { name: 'New quote' }),
     ).toHaveLength(2)
+    await emptyOffersImport('No quotes yet')?.(context)
   },
+}
+export const EmptyDark = dark(Empty)
+export const EmptyPhone = phone(Empty)
+
+/** Import quotes sits in the split button beside New quote, as on the client's invoices. */
+export const ImportFromMenu: Story = {
+  parameters: quotes({}, noQuotes),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await body.findAllByText('No quotes yet', {}, wait)
+    await userEvent.click(body.getByRole('button', { name: 'New quote options' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Import quotes' }))
+    await waitFor(() => expect(new URL(window.location.href).searchParams.get('import')).toBe('1'))
+  },
+}
+
+/** Files dropped anywhere on the page open the quotes import with them chosen. */
+export const DropStartsImport: Story = {
+  parameters: quotes({}, noQuotes),
+  play: dropOpensImport(
+    'No quotes yet',
+    'Drop to read these files into quotes',
+    'quotes',
+    new File(['%PDF-1.4'], 'offerte.pdf', { type: 'application/pdf' }),
+  ),
+}
+
+/** Whoever may only read quotes has no drop target. */
+export const ReadOnlyNoDrop: Story = {
+  parameters: quotes({}, [sessionHandler({ role: 'member', scopes: ['read:*'] })]),
+  play: noDropTarget('Keller Holzbau AG', 'quotes'),
 }
 
 export const LoadError: Story = {

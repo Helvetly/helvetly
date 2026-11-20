@@ -241,3 +241,69 @@ test('an unfinished invoice import is offered on Invoices only, never on Engagem
   await invoices.getByRole('button', { name: 'Continue import' }).click()
   await expect(invoices.getByText(`${number}.pdf`).first()).toBeVisible()
 })
+
+test('a quote PDF imported from the quotes page becomes a sent quote with its own number', async ({
+  page,
+  api,
+}) => {
+  await api.approveAI()
+  await api.settings()
+  const client = await api.client()
+  const name = String(client.name)
+  const number = uniqueName('OF-E2E').replaceAll(' ', '-')
+
+  await openPage(page, '/quotes', 'Quotes')
+  await page.getByRole('button', { name: 'New quote options' }).click()
+  await page.getByRole('menuitem', { name: 'Import quotes' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Import quotes' })
+  await drawer.getByLabel('Choose files to import').setInputFiles({
+    name: `${number}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
+  })
+  await drawer.getByRole('button', { name: 'Process with AI', exact: true }).click()
+  const table = drawer.getByRole('table', { name: 'Records found' })
+  await expect(table.getByText(number)).toBeVisible({ timeout: 30_000 })
+
+  // The quote is the client's chosen in review, whatever the document's buyer was called.
+  await drawer.getByRole('button', { name: `Edit ${number}` }).click()
+  const editor = page.getByRole('dialog', { name: /Edit record/ })
+  await editor.getByRole('button', { name: 'Client', exact: true }).click()
+  await page.getByPlaceholder('Search clients by name, city or #number…').fill(name)
+  await page.getByRole('option', { name: new RegExp(name) }).click()
+  await editor.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(editor).toBeHidden()
+
+  await drawer.getByRole('button', { name: /^Import 1/ }).click()
+  await expect(drawer.getByText('1 created', { exact: false })).toBeVisible()
+
+  const quotes = object(await (await api.request.get('/api/v1/quotes')).json()).data
+  if (!Array.isArray(quotes)) throw new Error('Expected quotes')
+  const quote = object(quotes.find((row) => object(row).number === number))
+  // Sent on 15 Jan, valid for 30 days: past that, the list shows it expired.
+  expect(quote.status).toBe('expired')
+  expect(quote.client_id).toBe(client.id)
+  expect(quote.valid_until).toBe('2026-02-14')
+
+  // The same PDF again is the same quote: its number is taken, so nothing is created twice.
+  await page.goto('/quotes?import=1')
+  const again = page.getByRole('dialog', { name: 'Import quotes' })
+  await again.getByLabel('Choose files to import').setInputFiles({
+    name: `${number}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.7\n${number}\n%%EOF\n`),
+  })
+  await again.getByRole('button', { name: 'Process with AI', exact: true }).click()
+  // The record is read again, but waits with the taken number as its issue: nothing is created twice.
+  const issueOfNewest = async () => {
+    const list = object(await (await api.request.get('/api/v1/imports?kind=quotes')).json()).data
+    if (!Array.isArray(list) || !list.length) return null
+    const batch = await api.read(`/imports/${String(object(list[0]).id)}`)
+    const records = Array.isArray(batch.records) ? batch.records : []
+    return records.length ? object(object(records[0]).issues).number : null
+  }
+  await expect.poll(issueOfNewest, { timeout: 30_000 }).toBe(`Quote ${number} already exists.`)
+  await expect(again.getByRole('checkbox', { name: `Select ${number}` })).not.toBeChecked()
+  const all = object(await (await api.request.get('/api/v1/quotes')).json()).data
+  expect(Array.isArray(all) && all.filter((row) => object(row).number === number)).toHaveLength(1)
+})

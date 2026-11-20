@@ -391,6 +391,65 @@ export const IMPORT_KINDS = {
     listKey: ['invoices'],
     entityHref: (id) => `/invoices?id=${encodeURIComponent(id)}`,
   },
+  quotes: {
+    label: translate('quotes'),
+    path: '/quotes',
+    labelKey: 'number',
+    fields: {
+      client_id: translate('client'),
+      client_name: translate('client'),
+      number: translate('number'),
+      reference: translate('reference'),
+      issue_date: translate('date'),
+      valid_until: translate('validUntil3'),
+      currency: translate('importFieldCurrency'),
+      total: translate('total'),
+      lines: translate('lines'),
+      status: translate('status'),
+    },
+    columns: ['number', 'client_name', 'issue_date', 'valid_until', 'currency', 'total', 'status'],
+    editable: [
+      'client_id',
+      'number',
+      'reference',
+      'issue_date',
+      'valid_until',
+      'currency',
+      'total',
+      'status',
+    ],
+    dates: ['issue_date', 'valid_until'],
+    amounts: { total: 'currency' },
+    tips: {
+      number: translate('importQuoteNumberTip'),
+      total: translate('importTotalTip'),
+    },
+    cells: [
+      { label: translate('importNounQuote'), main: 'number', sub: ['issue_date', 'valid_until'] },
+      { label: translate('client'), main: 'client_name', sub: ['client_city'] },
+      {
+        label: translate('importTotalAmount'),
+        main: 'total',
+        money: 'currency',
+        sub: ['lines', 'status'],
+        align: 'end',
+      },
+    ],
+    noun: translate('importNounQuote'),
+    labels: {
+      number: translate('importQuoteNumber'),
+      issue_date: translate('importQuoteDate'),
+      total: translate('importTotalAmount'),
+    },
+    required: (values) => [
+      'client_id',
+      'currency',
+      ...(values.status && values.status !== 'draft' ? ['number'] : []),
+    ],
+    pickClient: true,
+    listKey: ['quotes'],
+    entityHref: (id) => `/quotes?id=${encodeURIComponent(id)}`,
+  },
   expenses: {
     label: translate('expenses'),
     labelKey: 'supplier_name',
@@ -628,7 +687,7 @@ const path = (id: string) => `/imports/${encodeURIComponent(id)}`
 /** A record field's new value: a scalar, or the rows of a list field (lines, instalments). */
 export type RecordChanges = Record<
   string,
-  string | boolean | null | Record<string, string | boolean | null>[]
+  string | number | boolean | null | Record<string, string | boolean | null>[]
 >
 
 export type CommitInput = { recordIds: string[]; resolutions?: Record<string, Resolution> }
@@ -820,7 +879,14 @@ export const resumable = (batches: ImportSummary[], clientId: string | null = nu
 
 /** The records of an `auto` import by kind, in the order the review shows them (and a commit creates them). */
 export function recordsByKind(records: ImportRecord[]) {
-  const order: ImportKind[] = ['clients', 'products', 'invoices', 'engagements', 'expenses']
+  const order: ImportKind[] = [
+    'clients',
+    'products',
+    'invoices',
+    'quotes',
+    'engagements',
+    'expenses',
+  ]
   return order
     .map((kind) => ({ kind, records: records.filter((record) => record.kind === kind) }))
     .filter((group) => group.records.length > 0)
@@ -838,6 +904,7 @@ const importCountMessages = {
   clients: 'importClientCount',
   products: 'importProductCount',
   invoices: 'importInvoiceCount',
+  quotes: 'importQuoteCount',
   engagements: 'importEngagementCount',
   expenses: 'importExpenseCount',
   payroll: 'importPayrollCount',

@@ -170,6 +170,76 @@ export function HeaderBadge({
   )
 }
 
+/**
+ * What the import says about a record, above its form: the issues to fix (each focuses its field), or that it
+ * looks good, a possible duplicate and a refused save.
+ */
+export function RecordNotice({
+  record,
+  labelOf,
+  focusId,
+  error,
+  fileName,
+}: {
+  record: ImportRecord
+  labelOf: (field: string) => string
+  focusId: (field: string) => string
+  error?: unknown
+  /** The file the record was read from, when no header names it. */
+  fileName?: string
+}) {
+  const issues = Object.entries(record.issues)
+  return (
+    <div className="grid gap-3 px-5 pt-6 md:px-8">
+      {fileName && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <HeaderBadge>
+            <FileText aria-hidden />
+            <span className="truncate">{fileName}</span>
+          </HeaderBadge>
+          {record.duplicate && (
+            <HeaderBadge tone="warning">{translate('importPossibleDuplicate')}</HeaderBadge>
+          )}
+        </div>
+      )}
+      {issues.length > 0 ? (
+        <Callout
+          tone="warning"
+          title={translate('importFixBeforeImport', { count: issues.length })}
+        >
+          <ul className="grid gap-1">
+            {issues.map(([field, message]) => (
+              <li key={field}>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById(focusId(field))?.focus()}
+                  className="text-left underline-offset-2 hover:underline"
+                >
+                  <span className="font-medium">{labelOf(field)}</span>
+                  <span className="text-muted-foreground">: {message}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Callout>
+      ) : (
+        <Callout tone="success">{translate('importRecordLooksGood')}</Callout>
+      )}
+      {record.duplicate && (
+        <Callout tone="warning">
+          {translate('possibleDuplicate')}
+          {record.duplicate.label} ({record.duplicate.reason}).
+        </Callout>
+      )}
+      {error != null && (
+        <p role="alert" className="text-caption text-destructive">
+          {errorMessage(error)}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /** The kind's sections, with every editable field no section names gathered in a last one. */
 function sectionsOf(config: ImportKindConfig): ImportSection[] {
   const named = config.sections ?? []
@@ -389,42 +459,7 @@ export function EditRecordDrawer({
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="grid gap-3 px-5 pt-6 md:px-8">
-              {issues.length > 0 ? (
-                <Callout
-                  tone="warning"
-                  title={translate('importFixBeforeImport', { count: issues.length })}
-                >
-                  <ul className="grid gap-1">
-                    {issues.map(([field, message]) => (
-                      <li key={field}>
-                        <button
-                          type="button"
-                          onClick={() => document.getElementById(fieldId(field))?.focus()}
-                          className="text-left underline-offset-2 hover:underline"
-                        >
-                          <span className="font-medium">{labelOf(field)}</span>
-                          <span className="text-muted-foreground">: {message}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </Callout>
-              ) : (
-                <Callout tone="success">{translate('importRecordLooksGood')}</Callout>
-              )}
-              {record.duplicate && (
-                <Callout tone="warning">
-                  {translate('possibleDuplicate')}
-                  {record.duplicate.label} ({record.duplicate.reason}).
-                </Callout>
-              )}
-              {patch.error && (
-                <p role="alert" className="text-caption text-destructive">
-                  {errorMessage(patch.error)}
-                </p>
-              )}
-            </div>
+            <RecordNotice record={record} labelOf={labelOf} focusId={fieldId} error={patch.error} />
             {sectionsOf(config).map((section) => (
               <FormSection
                 key={section.title}

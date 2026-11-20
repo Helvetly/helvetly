@@ -1,6 +1,7 @@
 'use client'
 
 import { HelpTip } from '@helvetly/ui/components/form-field'
+import { FieldError } from '@helvetly/ui/components/inline-error'
 import { Check, type LucideIcon } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
@@ -64,16 +65,25 @@ export function FormChoiceCards<T extends string>({
   label,
   value,
   options,
+  error,
   onChange,
 }: {
   label: string
   value: T
   options: FormChoice<T>[]
+  /** Shown under the choices, e.g. for an imported value that is none of them. */
+  error?: string
   onChange: (value: T) => void
 }) {
   const group = useId()
-  return (
-    <div role="radiogroup" aria-label={label} className="grid auto-rows-fr gap-2">
+  const cards = (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${group}-error` : undefined}
+      className="grid auto-rows-fr gap-2"
+    >
       {options.map(({ value: option, title, text, icon: Icon }) => {
         const id = `${group}-${option}`
         return (
@@ -114,6 +124,13 @@ export function FormChoiceCards<T extends string>({
           </label>
         )
       })}
+    </div>
+  )
+  if (!error) return cards
+  return (
+    <div className="grid gap-1.5">
+      {cards}
+      <FieldError id={`${group}-error`}>{error}</FieldError>
     </div>
   )
 }

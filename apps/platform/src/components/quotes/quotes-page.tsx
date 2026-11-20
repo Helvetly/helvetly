@@ -17,10 +17,14 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
-import { PageContextMenu } from '@/components/data/menus'
+import { dropdownKit, PageContextMenu, type MenuKit } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
+import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { ImportDrawer } from '@/components/import/import-drawer'
+import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PageHeader } from '@/components/shell/page-header'
@@ -79,6 +83,16 @@ export function QuotesPage() {
   // shortcut: the API returns every quote unpaged, so the search filters here; move it to the API with paging.
   const rows = searchQuotes(list.data ?? [], term)
   const active = VIEWS.findIndex((view) => view.status === status)
+  const importDrawer = useImportDrawer()
+  const aiLock = useFeatureLock('ai_import')
+  const canImport = canWrite && !aiLock
+  const dropping = useImportDrop('quotes', canImport && !creating && !openId)
+  const items = ({ Item }: MenuKit) =>
+    canWrite && (
+      <ImportItem Item={Item} onSelect={importDrawer.open}>
+        {translate('import')}
+      </ImportItem>
+    )
 
   const navigate = (change: Record<string, string | null>) => {
     const next = new URLSearchParams(query)
@@ -107,10 +121,20 @@ export function QuotesPage() {
         onSelect={(index) => navigate({ status: VIEWS[index]?.status ?? null })}
         primary={translate('newQuote2')}
         onPrimary={newQuote}
+        primaryMenu={
+          canWrite && (
+            <ImportItem Item={dropdownKit.Item} onSelect={importDrawer.open}>
+              {translate('importQuotes')}
+            </ImportItem>
+          )
+        }
       />
+      {importDrawer.isOpen && <ImportDrawer kind="quotes" onClose={importDrawer.close} />}
+      {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoQuotes')} />}
       <PageContextMenu
         title={translate('quotes')}
         primary={{ label: translate('newQuote2'), onSelect: newQuote }}
+        items={items}
         views={{
           tabs: VIEWS.map((view) => view.label),
           active,
@@ -177,9 +201,15 @@ export function QuotesPage() {
                 text={translate('offerYourWorkBeforeYouInvoiceItTheClient')}
                 action={
                   canWrite && (
-                    <Button size="sm" onClick={newQuote}>
-                      {translate('newQuote2')}
-                    </Button>
+                    <EmptyImportActions
+                      importLabel={translate('import')}
+                      hint={translate('orDropFilesAnywhereOnThisPage')}
+                      onImport={canImport ? importDrawer.open : undefined}
+                    >
+                      <Button size="sm" className="cursor-pointer" onClick={newQuote}>
+                        {translate('newQuote2')}
+                      </Button>
+                    </EmptyImportActions>
                   )
                 }
               />
