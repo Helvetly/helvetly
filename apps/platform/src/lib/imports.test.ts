@@ -101,6 +101,17 @@ test('an import from Documents sends the chosen ids as JSON', async () => {
   expect(JSON.parse(String(init?.body))).toEqual({ document_ids: ['doc_1', 'doc_2'] })
 })
 
+test('the list asks for one entry point: a kind, and the client of a client drawer', async () => {
+  const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ data: [] }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await importsApi.list('invoices')
+  await importsApi.list('invoices', 'cli_1')
+  const urls = fetchMock.mock.calls.map(([url]) => String(url))
+  expect(urls[0]).toMatch(/\/api\/v1\/imports\?kind=invoices$/)
+  expect(urls[1]).toMatch(/\/api\/v1\/imports\?kind=invoices&client_id=cli_1$/)
+})
+
 test('polls only while the files are still being read', () => {
   expect(pollInterval(batch({ status: 'extracting' }))).toBe(2000)
   expect(pollInterval(batch())).toBe(false)

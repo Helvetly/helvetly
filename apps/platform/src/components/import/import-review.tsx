@@ -135,6 +135,7 @@ export function FileReview({
         files={files}
         recordsPerFile={counts}
         existingPerFile={existing}
+        first={open.find((record) => Object.keys(record.issues).length > 0)?.file_id}
         header={
           open.length > 0 && (
             <>

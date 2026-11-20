@@ -89,7 +89,7 @@ export function ImportDrawer({
   const [conflicts, setConflicts] = useState<Conflict[]>([])
   useEffect(clearHandOff, [])
 
-  const list = useImportBatches(kind)
+  const list = useImportBatches(kind, client?.id)
   const batch = useImportBatch(batchId)
   const uploadFiles = useUploadImport(kind, client?.id)
   const fromDocuments = useImportDocuments()

@@ -174,6 +174,8 @@ export const InvoiceOpensInToPhone: Story = {
 /** The dialog as it opens with its draft in, for the visual suite. */
 export const InvoiceReady: Story = {
   parameters: {
+    // The dialog opens with focus in To; the baseline shows it that way.
+    visual: { keepFocus: true },
     msw: {
       handlers: [
         noClient,

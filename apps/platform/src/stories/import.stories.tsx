@@ -828,3 +828,62 @@ export const DiscardUnfinished: Story = {
   },
 }
 const discarded: string[] = []
+
+// One unfinished invoice import of the Invoices page; the API lists batches per entry point (kind, client).
+const asked: string[] = []
+/** Waits for the drawer of `title` and its list request, then lets the answer render before judging the banner. */
+async function next(title: string, query: string) {
+  await opened(title)
+  await waitFor(() => expect(asked).toContain(query))
+  await delay(100)
+}
+
+/** Imports never leak across entry points: an invoice import is offered on Invoices only, not on Engagements or a client. */
+export const UnfinishedOnlyInItsContext: Story = {
+  // Closing a drawer opens the next entry point's.
+  render: function Render() {
+    const [at, setAt] = useState(0)
+    const close = () => setAt(at + 1)
+    if (at === 0) return <ImportDrawer key={at} kind="engagements" onClose={close} />
+    if (at === 1) return <ImportDrawer key={at} kind="invoices" onClose={close} />
+    return (
+      <ImportDrawer
+        key={at}
+        kind="invoices"
+        client={{ id: 'cli_1', name: 'Kunde AG' }}
+        onClose={close}
+      />
+    )
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/imports', ({ request }) => {
+          const query = new URL(request.url).searchParams
+          asked.push(query.toString())
+          const own = query.get('kind') === 'invoices' && !query.has('client_id')
+          return HttpResponse.json({
+            data: own ? [summary({ kind: 'invoices', id: 'imp_invoices' })] : [],
+          })
+        }),
+      ],
+    },
+  },
+  beforeEach: () => {
+    asked.length = 0
+  },
+  play: async () => {
+    await next('Import engagements', 'kind=engagements')
+    await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()
+
+    await userEvent.click(body().getByRole('button', { name: 'Close' }))
+    await next('Import invoices', 'kind=invoices')
+    await expect(await body().findByText(/An unfinished import of invoices/)).toBeVisible()
+    await expect(body().getByRole('button', { name: 'Continue import' })).toBeVisible()
+
+    await userEvent.click(body().getByRole('button', { name: 'Close' }))
+    await next('Import invoices for Kunde AG', 'kind=invoices&client_id=cli_1')
+    await expect(body().queryByRole('button', { name: 'Continue import' })).toBeNull()
+  },
+}

@@ -709,8 +709,14 @@ export const importsApi = {
       }),
       isImportBatch,
     ),
-  list: async (kind: ImportTarget) =>
-    dataOf(await request<unknown>(`/imports?${new URLSearchParams({ kind })}`), isSummaries),
+  /** The batches of one entry point: a kind's page, or with `clientId` that client's drawer. */
+  list: async (kind: ImportTarget, clientId?: string) =>
+    dataOf(
+      await request<unknown>(
+        `/imports?${new URLSearchParams(clientId ? { kind, client_id: clientId } : { kind })}`,
+      ),
+      isSummaries,
+    ),
   get: async (id: string) => dataOf(await request<unknown>(path(id)), isImportBatch),
   patchRecord: async (id: string, recordId: string, data: RecordChanges) =>
     dataOf(
@@ -736,7 +742,11 @@ export const importFileUrl = (batchId: string, fileId: string) =>
   `/api/v1${path(batchId)}/files/${encodeURIComponent(fileId)}/content`
 
 export const importKeys = {
-  list: (kind: ImportTarget) => ['imports', 'list', kind] as const,
+  /** Without `clientId` it also prefixes every client's list of `kind`, for invalidation. */
+  list: (kind: ImportTarget, clientId?: string) =>
+    clientId
+      ? (['imports', 'list', kind, clientId] as const)
+      : (['imports', 'list', kind] as const),
   batch: (id: string) => ['imports', 'batch', id] as const,
 }
 
@@ -744,10 +754,10 @@ export const importKeys = {
 export const pollInterval = (batch: ImportBatch | undefined) =>
   batch?.status === 'extracting' ? 2000 : false
 
-export function useImportBatches(kind: ImportTarget) {
+export function useImportBatches(kind: ImportTarget, clientId?: string) {
   return useQuery({
-    queryKey: importKeys.list(kind),
-    queryFn: () => importsApi.list(kind),
+    queryKey: importKeys.list(kind, clientId),
+    queryFn: () => importsApi.list(kind, clientId),
     staleTime: 0,
   })
 }

@@ -90,7 +90,7 @@ func TestPreviewSuggestsAndStoresNothing(t *testing.T) {
 	if n := e.expenseCount("ws_a"); n != 0 || e.files.puts != 0 {
 		t.Errorf("stored: %d expenses, %d files", n, e.files.puts)
 	}
-	if batches, err := e.db.ImportBatches(t.Context(), "ws_a", "usr_a", "expenses"); err != nil || len(batches) != 0 {
+	if batches, err := e.db.ImportBatches(t.Context(), "ws_a", "usr_a", "expenses", nil); err != nil || len(batches) != 0 {
 		t.Errorf("batches %v %v", batches, err)
 	}
 }
