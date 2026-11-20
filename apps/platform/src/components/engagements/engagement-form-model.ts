@@ -1,4 +1,13 @@
 import {
+  choiceOf,
+  isCivilDate,
+  notAChoice,
+  notADate,
+  textOf,
+  UNIT_CHOICES,
+  type Choice,
+} from '@/components/import/form-import'
+import {
   billingOf,
   unpriced,
   type Engagement,
@@ -56,9 +65,13 @@ export const FIELD_ORDER: (keyof FormValues)[] = [
   'client_id',
   'title',
   'quantity',
+  'unit',
+  'recurrence',
   'start_date',
   'interval',
   'end_date',
+  'billing',
+  'price_basis',
   'unit_price',
   'overage_unit_price',
   'currency',
@@ -540,3 +553,68 @@ export function withClientHabits(
 /** What a saved engagement teaches: its choices and, for one-off work, its length. */
 export const habitValues = (values: FormValues) => ({ ...values, duration: durationOf(values) })
 export const ENGAGEMENT_HABIT_FIELDS = [...ENGAGEMENT_HABITS, 'duration'] as const
+
+// Import: an engagement record read from a document, as the form's values
+
+const BILLING_CHOICES: Choice<FormValues['billing']>[] = [
+  { value: 'advance', aliases: ['in advance', 'upfront', 'prepaid'] },
+  { value: 'arrears', aliases: ['in arrears', 'afterwards', 'postpaid'] },
+  { value: 'paid', aliases: ['paid separately', 'separately', 'separate'] },
+]
+const RECURRENCE_CHOICES: Choice<Recurrence>[] = [
+  { value: 'none', aliases: ['one-off', 'once', 'one time', 'no'] },
+  { value: 'weekly', aliases: ['week', 'every week'] },
+  { value: 'monthly', aliases: ['month', 'every month'] },
+  { value: 'quarterly', aliases: ['quarter', 'every quarter'] },
+  { value: 'yearly', aliases: ['year', 'annually', 'annual', 'every year'] },
+]
+const BASIS_CHOICES: Choice<FormValues['price_basis']>[] = [
+  { value: 'net', aliases: ['excl. vat', 'excluding vat'] },
+  { value: 'gross', aliases: ['incl. vat', 'including vat'] },
+]
+const CATEGORY_CHOICES: Choice<VatCategory>[] = VAT_CATEGORIES.map((c) => ({
+  value: c.value,
+  aliases: [c.label],
+}))
+
+/**
+ * An imported engagement record as the form's values, from a new form's defaults. A value the form has no choice
+ * for keeps the default and gets an error on its field, so the person picks one.
+ */
+export function valuesFromImport(
+  data: Record<string, unknown>,
+  defaults: Defaults,
+): { values: FormValues; errors: FieldErrors } {
+  const values = emptyValues(defaults, textOf(data.client_id), textOf(data.client_name))
+  const errors: FieldErrors = {}
+  const pick = <T extends string>(field: keyof FormValues, choices: readonly Choice<T>[]) => {
+    const choice = choiceOf(data[field], choices)
+    if (choice === null) errors[field] = notAChoice(data[field])
+    return choice ?? undefined
+  }
+  for (const field of ['title', 'description', 'quantity', 'unit_price', 'reference'] as const)
+    values[field] = textOf(data[field])
+  values.overage_unit_price = textOf(data.overage_unit_price)
+  values.currency = textOf(data.currency).toUpperCase() || values.currency
+  values.interval = textOf(data.interval) || values.interval
+  values.unit = pick('unit', UNIT_CHOICES) ?? values.unit
+  values.recurrence = pick('recurrence', RECURRENCE_CHOICES) ?? values.recurrence
+  values.price_basis = pick('price_basis', BASIS_CHOICES) ?? values.price_basis
+  values.vat_category = pick('vat_category', CATEGORY_CHOICES) ?? values.vat_category
+  if (values.vat_category !== 'S') values.vat_rate = '0'
+  else if (textOf(data.vat_rate)) values.vat_rate = textOf(data.vat_rate).replace(/\s*%$/, '')
+  // With a price and no word on billing, the work is invoiced; without a price it was paid elsewhere.
+  values.billing = textOf(data.unit_price) && Number(data.unit_price) !== 0 ? 'advance' : 'paid'
+  values.billing = pick('billing', BILLING_CHOICES) ?? values.billing
+  if (values.billing === 'advance' && textOf(data.unit_price) && Number(data.unit_price) === 0)
+    values.billing = 'paid'
+  for (const field of ['start_date', 'end_date'] as const) {
+    const text = textOf(data[field])
+    if (isCivilDate(text)) values[field] = text
+    else {
+      values[field] = ''
+      if (text) errors[field] = notADate(data[field])
+    }
+  }
+  return { values, errors }
+}

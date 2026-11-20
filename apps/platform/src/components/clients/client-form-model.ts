@@ -3,6 +3,7 @@ import { formatUid, isEmail, isValidUid, isWebsite } from '@helvetly/ui/lib/clie
 import { COUNTRIES, countryName } from '@helvetly/ui/lib/countries'
 import { PHONE_ERROR, phoneDraft, toE164, type CountryCode } from '@helvetly/ui/lib/phone'
 
+import { choiceOf, notAChoice, textOf, type Choice } from '@/components/import/form-import'
 import {
   isLeitwegId,
   LANGUAGES,
@@ -13,6 +14,7 @@ import {
   type Language,
 } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
+import type { ImportValue } from '@/lib/imports'
 
 /** What the form edits: every text as typed, plus the phone's country for national numbers. */
 export type FormValues = {
@@ -415,4 +417,60 @@ export const CLIENT_HABIT_OPTIONS = {
   language: (code: string) => LANGUAGE_OPTIONS.some((language) => language.code === code),
   currency: (code: string) => /^[A-Z]{3}$/.test(code),
   payment_terms_days: (days: string) => /^\d{1,3}$/.test(days),
+}
+
+// Import: a client read from a document, as the form's values
+
+const LANGUAGE_CHOICES: Choice<Language>[] = LANGUAGES.map((code) => ({
+  value: code,
+  aliases: [languageName(code)],
+}))
+
+function languageName(code: Language) {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+/**
+ * An imported client as the form's values, from a new client's. A language or country the form has no choice for
+ * keeps the default and gets an error on its field.
+ */
+export function valuesFromImport(data: Record<string, ImportValue>): {
+  values: FormValues
+  errors: FieldErrors
+} {
+  const values = emptyValues()
+  const errors: FieldErrors = {}
+  const strings = [
+    'name',
+    'preferred_name',
+    'email',
+    'billing_email',
+    'website',
+    'street',
+    'street_number',
+    'apt',
+    'zip',
+    'city',
+    'vat_number',
+    'registration_number',
+    'note',
+  ] as const
+  for (const field of strings) values[field] = textOf(data[field])
+  if (typeof data.is_company === 'boolean') values.is_company = data.is_company
+  const country = textOf(data.country).toUpperCase()
+  if (COUNTRIES.some((entry) => entry.code === country)) values.country = country
+  else if (country) errors.country = notAChoice(data.country)
+  const phone = phoneDraft(textOf(data.phone) || null, values.country)
+  values.phone = phone.phone
+  values.phone_country = phone.country
+  const language = choiceOf(data.language, LANGUAGE_CHOICES)
+  if (language) values.language = language
+  else if (language === null) errors.language = notAChoice(data.language)
+  values.currency = textOf(data.currency).toUpperCase() || values.currency
+  values.payment_terms_days = textOf(data.payment_terms_days) || values.payment_terms_days
+  return { values, errors }
 }

@@ -36,6 +36,7 @@ export function recordDetail(record: ImportRecord) {
     clients: [value('city'), value('email')],
     products: [money(value('unit_price'))],
     invoices: [value('client_name'), value('issue_date'), money(value('total'))],
+    quotes: [value('client_name'), value('issue_date'), money(value('total'))],
     engagements: [value('client_name'), value('start_date')],
     expenses: [value('document_date'), money(value('amount'))],
     payroll: [value('period_start'), money(value('gross'))],

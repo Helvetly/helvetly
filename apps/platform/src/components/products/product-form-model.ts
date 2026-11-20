@@ -1,6 +1,14 @@
+import {
+  choiceOf,
+  notAChoice,
+  textOf,
+  UNIT_CHOICES,
+  type Choice,
+} from '@/components/import/form-import'
 // The product form's state, checks and exact price preview (docs/products-contract.md).
 import { withHabits, type Habits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
+import type { ImportValue } from '@/lib/imports'
 import {
   fromCents,
   parseDecimalInput,
@@ -30,9 +38,11 @@ export type FieldErrors = Partial<Record<keyof FormValues, string>>
 
 /** Where errors are focused from, in form order. */
 export const FIELD_ORDER: (keyof FormValues)[] = [
+  'type',
   'name',
   'unit_price',
   'currency',
+  'price_basis',
   'vat_category',
   'vat_rate',
   'unit',
@@ -196,4 +206,46 @@ export function newValues(defaults: Defaults, habits: Habits): FormValues {
     ...values,
     vat_rate: values.vat_category === 'S' ? defaults.default_vat_rate : '0',
   }
+}
+
+// Import: a catalogue item read from a document, as the form's values
+
+const TYPE_CHOICES: Choice<FormValues['type']>[] = [
+  { value: 'product', aliases: ['goods', 'article', 'item'] },
+  { value: 'service', aliases: ['work', 'hours', 'subscription', 'fee'] },
+]
+const BASIS_CHOICES: Choice<FormValues['price_basis']>[] = [
+  { value: 'net', aliases: ['excl. vat', 'excluding vat'] },
+  { value: 'gross', aliases: ['incl. vat', 'including vat'] },
+]
+const CATEGORY_CHOICES: Choice<VatCategory>[] = VAT_CATEGORIES.map((c) => ({
+  value: c.value,
+  aliases: [c.label],
+}))
+
+/**
+ * An imported catalogue item as the form's values, from a new item's defaults. A value the form has no choice for
+ * keeps the default and gets an error on its field.
+ */
+export function valuesFromImport(
+  data: Record<string, ImportValue>,
+  defaults: Defaults,
+): { values: FormValues; errors: FieldErrors } {
+  const values = emptyValues(defaults)
+  const errors: FieldErrors = {}
+  const pick = <T extends string>(field: keyof FormValues, choices: readonly Choice<T>[]) => {
+    const choice = choiceOf(data[field], choices)
+    if (choice === null) errors[field] = notAChoice(data[field])
+    return choice ?? undefined
+  }
+  for (const field of ['name', 'description', 'sku', 'gtin', 'unit_price'] as const)
+    values[field] = textOf(data[field])
+  values.currency = textOf(data.currency).toUpperCase() || values.currency
+  values.type = pick('type', TYPE_CHOICES) ?? values.type
+  values.unit = pick('unit', UNIT_CHOICES) ?? values.unit
+  values.price_basis = pick('price_basis', BASIS_CHOICES) ?? values.price_basis
+  values.vat_category = pick('vat_category', CATEGORY_CHOICES) ?? values.vat_category
+  if (values.vat_category !== 'S') values.vat_rate = '0'
+  else if (textOf(data.vat_rate)) values.vat_rate = textOf(data.vat_rate).replace(/\s*%$/, '')
+  return { values, errors }
 }

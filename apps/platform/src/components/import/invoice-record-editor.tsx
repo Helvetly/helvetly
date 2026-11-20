@@ -26,7 +26,7 @@ import {
 import Image from 'next/image'
 import { useEffect, useState, type ReactNode } from 'react'
 
-import { inputClass } from '@/components/clients/fields'
+import { Combobox, inputClass } from '@/components/clients/fields'
 import { isBlankLine, newLine, type EditorLine } from '@/components/invoices/editor-model'
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { PdfView } from '@/components/invoices/pdf-view'
@@ -54,6 +54,7 @@ import {
   type VatCategory,
   type VatMode,
 } from '@/lib/invoices'
+import { QUOTE_STATUSES } from '@/lib/quotes'
 
 import { clientFromDocument, ImportClientField } from './import-client-field'
 import {
@@ -80,7 +81,14 @@ const SCALARS = [
   'issued_elsewhere',
   'paid_amount',
   'paid_on',
+  'valid_until',
+  'status',
 ]
+
+/** The statuses an imported quote can have (expired is worked out from its date). */
+const QUOTE_STATUS_OPTIONS = QUOTE_STATUSES.filter((entry) => entry.value !== 'expired').map(
+  (entry) => ({ value: entry.value, label: entry.label }),
+)
 
 /** `key` stays put while rows are added and removed; it is never sent. */
 type Instalment = { key: string; due_date: string; amount: string; paid: boolean; paid_on: string }
@@ -342,6 +350,8 @@ function InvoiceRecordForm({
   const labelOf = (field: string) => config.labels?.[field] ?? config.fields[field] ?? field
   const currency = values.currency ?? ''
   const issued = values.issued_elsewhere === translate('yes')
+  // A quote is read like an invoice; it has a status and a validity date instead of payments.
+  const quote = record.kind === 'quotes'
 
   const filled = lines.filter((line) => !isBlankLine(line))
   const input = useSettled<Partial<InvoiceInput> | null>(
@@ -568,30 +578,56 @@ function InvoiceRecordForm({
                 />
               </Block>
 
-              <Block
-                icon={FileText}
-                title={translate('importNounInvoice')}
-                description={translate('importSectionInvoiceText')}
-              >
-                <SwitchRow
-                  id={fieldId('issued_elsewhere')}
-                  label={labelOf('issued_elsewhere')}
-                  description={config.tips?.issued_elsewhere}
-                  checked={issued}
-                  onCheckedChange={(on) =>
-                    set('issued_elsewhere', on ? translate('yes') : translate('no4'))
-                  }
-                />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {textField('number')}
-                  {textField('reference')}
-                  {textField('contract_reference')}
-                  {dateField('issue_date')}
-                  {dateField('due_date')}
-                  {dateField('service_date')}
-                  {dateField('service_date_end')}
-                </div>
-              </Block>
+              {quote ? (
+                <Block
+                  icon={FileText}
+                  title={translate('importNounQuote')}
+                  description={translate('importSectionQuoteText')}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {textField('number')}
+                    {field(
+                      'status',
+                      <Combobox
+                        id={fieldId('status')}
+                        value={values.status ?? ''}
+                        options={QUOTE_STATUS_OPTIONS}
+                        placeholder={translate('importChooseStatus')}
+                        invalid={Boolean(record.issues.status)}
+                        onChange={(status) => set('status', status)}
+                      />,
+                    )}
+                    {textField('reference')}
+                    {dateField('issue_date')}
+                    {dateField('valid_until')}
+                  </div>
+                </Block>
+              ) : (
+                <Block
+                  icon={FileText}
+                  title={translate('importNounInvoice')}
+                  description={translate('importSectionInvoiceText')}
+                >
+                  <SwitchRow
+                    id={fieldId('issued_elsewhere')}
+                    label={labelOf('issued_elsewhere')}
+                    description={config.tips?.issued_elsewhere}
+                    checked={issued}
+                    onCheckedChange={(on) =>
+                      set('issued_elsewhere', on ? translate('yes') : translate('no4'))
+                    }
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {textField('number')}
+                    {textField('reference')}
+                    {textField('contract_reference')}
+                    {dateField('issue_date')}
+                    {dateField('due_date')}
+                    {dateField('service_date')}
+                    {dateField('service_date_end')}
+                  </div>
+                </Block>
+              )}
 
               <Block
                 icon={ListOrdered}
@@ -663,7 +699,9 @@ function InvoiceRecordForm({
               <Block
                 icon={Banknote}
                 title={translate('importSectionAmounts')}
-                description={translate('importSectionPaymentsText')}
+                description={translate(
+                  quote ? 'importSectionQuoteTotalText' : 'importSectionPaymentsText',
+                )}
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   {field(
@@ -700,7 +738,7 @@ function InvoiceRecordForm({
                     {suggested && ` ${translate('importDiscountExplains', { percent: suggested })}`}
                   </Callout>
                 )}
-                {instalments.length > 0 ? (
+                {quote ? null : instalments.length > 0 ? (
                   <p className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-body-sm">
                     <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                     {translate('importPaidByInstalments', {
@@ -733,18 +771,20 @@ function InvoiceRecordForm({
                 )}
               </Block>
 
-              <Block
-                icon={CalendarClock}
-                title={translate('importInstalments')}
-                description={translate('importSectionInstalmentsText')}
-              >
-                <InstalmentRows
-                  rows={instalments}
-                  currency={currency}
-                  error={record.issues.instalments}
-                  onChange={setInstalments}
-                />
-              </Block>
+              {!quote && (
+                <Block
+                  icon={CalendarClock}
+                  title={translate('importInstalments')}
+                  description={translate('importSectionInstalmentsText')}
+                >
+                  <InstalmentRows
+                    rows={instalments}
+                    currency={currency}
+                    error={record.issues.instalments}
+                    onChange={setInstalments}
+                  />
+                </Block>
+              )}
             </div>
           </div>
 

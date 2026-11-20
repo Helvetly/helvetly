@@ -325,7 +325,7 @@ func TestImportRequestWithFilesOffersTheImportFormWithoutTheModel(t *testing.T) 
 	grant(t, mux)
 	w := chat(t, mux, "import", "Please import these clients", "%PDF-1.7 list")
 	body := w.Body.String()
-	if w.Code != 200 || !strings.Contains(body, `"intent":"import"`) || !strings.Contains(body, `"options":["Clients","Engagements","Expenses","Invoices","Products \u0026 services"]`) || p.calls.Load() != 0 {
+	if w.Code != 200 || !strings.Contains(body, `"intent":"import"`) || !strings.Contains(body, `"options":["Clients","Engagements","Expenses","Invoices","Products \u0026 services","Quotes"]`) || p.calls.Load() != 0 {
 		t.Fatalf("import form: %d %s", w.Code, body)
 	}
 	if w := chat(t, mux, "import", "Import as: Clients"); w.Code != 200 || p.calls.Load() != 0 {

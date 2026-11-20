@@ -268,14 +268,20 @@ export const EditRecord: Story = {
   play: async () => {
     await continueImport()
     await userEvent.click(body().getByRole('button', { name: 'Edit Beta GmbH' }))
-    // A second drawer over the import one, not a view that replaces the list.
-    const editor = await body().findByRole('dialog', { name: 'Edit record' })
+    // The real client form in a second drawer over the import one, not a view that replaces the list.
+    const editor = await body().findByRole('dialog', { name: 'Edit record: Beta GmbH' })
+    await expect(within(editor).getByRole('heading', { name: 'Address' })).toBeVisible()
+    await expect(within(editor).getByRole('radio', { name: 'Company' })).toBeChecked()
+    // What an import cannot hold stays out of the form.
+    await expect(within(editor).queryByText('Client portal')).toBeNull()
     const email = await within(editor).findByRole('textbox', { name: 'Email' })
     await expect(email).toHaveAttribute('aria-invalid', 'true')
     await userEvent.clear(email)
     await userEvent.type(email, 'info@beta.ch')
     await userEvent.click(within(editor).getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Edit record' })).toBeNull())
+    await waitFor(() =>
+      expect(body().queryByRole('dialog', { name: 'Edit record: Beta GmbH' })).toBeNull(),
+    )
     await body().findByRole('table', { name: 'Records found' })
     await expect(body().queryByRole('button', { name: /Enter a valid email/ })).toBeNull()
     await expect(body().getByText('info@beta.ch')).toBeVisible()

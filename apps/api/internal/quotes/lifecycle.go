@@ -69,15 +69,21 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 				return err
 			}
 			year, _ := strconv.Atoi(t.IssueDate[:4])
-			seq, err := q.NextQuoteNumber(ctx, sess.Workspace.ID, year)
-			if err != nil {
-				return err
+			for t.Number == nil { // an imported quote may hold a number of the series already: take the next free one
+				seq, err := q.NextQuoteNumber(ctx, sess.Workspace.ID, year)
+				if err != nil {
+					return err
+				}
+				n, err := s.invoices.QuoteNumber(ctx, q, sess.Workspace.ID, t.IssueDate, seq)
+				if err != nil {
+					return err
+				}
+				if taken, err := q.SimilarQuote(ctx, sess.Workspace.ID, "", n); err != nil {
+					return err
+				} else if taken == nil {
+					t.Number = &n
+				}
 			}
-			n, err := s.invoices.QuoteNumber(ctx, q, sess.Workspace.ID, t.IssueDate, seq)
-			if err != nil {
-				return err
-			}
-			t.Number = &n
 		}
 		var m mail.Message
 		if email {

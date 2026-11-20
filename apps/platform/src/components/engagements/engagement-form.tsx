@@ -30,6 +30,8 @@ import { AIWrite } from '@/components/ai/ai-write'
 import { Combobox, CURRENCY_OPTIONS, inputClass } from '@/components/clients/fields'
 import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { useImportSubmit, type FormImport } from '@/components/import/form-import'
+import { clientFromDocument, ImportClientField } from '@/components/import/import-client-field'
 import { ClientSearch } from '@/components/invoices/client-search'
 import { ProductPicker } from '@/components/products/product-picker'
 import { PercentInput } from '@/components/shared/percent-input'
@@ -70,6 +72,7 @@ import {
   toInput,
   validate,
   valuesFromEngagement,
+  valuesFromImport,
   applyProduct,
   withClientHabits,
   type FieldErrors,
@@ -140,6 +143,7 @@ export function EngagementForm({
   engagement,
   clientId,
   title,
+  importing,
   onSaved,
 }: {
   open: boolean
@@ -148,6 +152,8 @@ export function EngagementForm({
   clientId?: string
   /** A new engagement's title, e.g. what was typed into a picker. */
   title?: string
+  /** An import record edited in this form: nothing is created, Save hands the values back to the import. */
+  importing?: FormImport
   onSaved?: (engagement: Engagement) => void
 }) {
   // Mounted only while open, so every opening starts from fresh values.
@@ -158,6 +164,7 @@ export function EngagementForm({
       engagement={engagement}
       clientId={clientId}
       title={title}
+      importing={importing}
       onSaved={onSaved}
     />
   )
@@ -168,6 +175,7 @@ type FormSheetProps = {
   engagement?: Engagement
   clientId?: string
   title?: string
+  importing?: FormImport
   onSaved?: (engagement: Engagement) => void
 }
 
@@ -183,6 +191,7 @@ function FormSheetBody({
   engagement,
   clientId,
   title: newTitle,
+  importing,
   onSaved,
 }: FormSheetProps) {
   const settings = useInvoiceSettings().data
@@ -192,13 +201,19 @@ function FormSheetBody({
     default_vat_rate: settings?.default_vat_rate ?? FALLBACK_DEFAULTS.default_vat_rate,
   }
   const { habits, remember } = useHabits()
+  const [fromImport] = useState(() => importing && valuesFromImport(importing.data, defaults))
   const [initial] = useState(() =>
     engagement
       ? valuesFromEngagement(engagement)
-      : { ...newValues(defaults, habits, clientId), ...(newTitle ? { title: newTitle } : {}) },
+      : (fromImport?.values ?? {
+          ...newValues(defaults, habits, clientId),
+          ...(newTitle ? { title: newTitle } : {}),
+        }),
   )
   const [values, setValues] = useState(initial)
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [errors, setErrors] = useState<FieldErrors>(() =>
+    importing ? { ...fromImport?.errors, ...serverFieldErrors({ fields: importing.issues }) } : {},
+  )
   const [discarding, setDiscarding] = useState(false)
   const [clientOpen, setClientOpen] = useState(false)
   const [invoiceId, setInvoiceId] = useState('')
@@ -278,13 +293,25 @@ function FormSheetBody({
     if (first) pendingFocus.current = fieldId(first)
   }
 
+  const sendImport = useImportSubmit(
+    importing,
+    (issues) => {
+      const left = serverFieldErrors({ fields: issues })
+      setErrors(left)
+      focusFirstError(left)
+    },
+    () => (submitting.current = false),
+  )
+  const pending = save.isPending || sendImport.isPending
+
   const submit = () => {
     if (submitting.current) return
     const found = validate(values, initial.description)
     setErrors(found)
     if (Object.keys(found).length) return focusFirstError(found)
     submitting.current = true
-    save.mutate()
+    if (importing) sendImport.mutate(toInput(values))
+    else save.mutate()
   }
 
   // ⌘Enter / Ctrl+Enter saves from anywhere in the form.
@@ -302,10 +329,13 @@ function FormSheetBody({
   const pickClient = (client: Client) => {
     if (client.id !== values.client_id) setInvoiceId('')
     setValues((v) => ({
-      ...(engagement ? v : withClientHabits(v, initial, defaults, habits, client.id)),
+      ...(engagement || importing ? v : withClientHabits(v, initial, defaults, habits, client.id)),
       client_id: client.id,
       client_name: client.name,
-      currency: !engagement && !v.product_id && client.currency ? client.currency : v.currency,
+      currency:
+        !engagement && !importing && !v.product_id && client.currency
+          ? client.currency
+          : v.currency,
     }))
     setErrors((current) =>
       Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'client_id')),
@@ -316,7 +346,7 @@ function FormSheetBody({
   // Closing mid-save would drop the answer: React Query skips a call's callbacks after unmount, so a
   // refusal (or the success toast) never shows and the typed data is gone.
   const requestClose = () => {
-    if (save.isPending) return
+    if (pending) return
     if (dirty) setDiscarding(true)
     else onClose()
   }
@@ -325,9 +355,11 @@ function FormSheetBody({
     'aria-invalid': errors[field] ? true : undefined,
     'aria-describedby': errors[field] ? `${fieldId(field)}-error` : undefined,
   })
-  const title = engagement
-    ? translate('edit5', { title: engagement.title })
-    : translate('newEngagement2')
+  const title = importing
+    ? `${translate('editRecord')}: ${importing.name}`
+    : engagement
+      ? translate('edit5', { title: engagement.title })
+      : translate('newEngagement2')
   const unit = UNITS.find((u) => u.value === values.unit)
   const extra = translate('dynamicExtra', {
     value1: unit?.label.toLowerCase() ?? translate('dynamicUnits'),
@@ -354,12 +386,15 @@ function FormSheetBody({
           <div className="flex shrink-0 flex-col gap-0.5 border-b px-5 py-4 md:px-8">
             <h2 className="truncate text-lg font-semibold">{title}</h2>
             <p className="text-[13px] text-muted-foreground">
-              {translate('workAgreedWithAClientTrackedAsItIs')}
+              {importing
+                ? translate('importEditFormText')
+                : translate('workAgreedWithAClientTrackedAsItIs')}
             </p>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
             <div className="min-w-0 flex-1 lg:overflow-y-auto">
+              {importing?.notice}
               <FormSection
                 icon={Handshake}
                 title={translate('clientService')}
@@ -372,35 +407,46 @@ function FormSheetBody({
                   />
                 }
               >
-                <FormField
-                  field="client_id"
-                  label={translate('client')}
-                  error={errors.client_id}
-                  required
-                >
-                  <Popover open={clientOpen} onOpenChange={setClientOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        {...describe('client_id')}
-                        className={cn(inputClass, 'flex items-center justify-between text-left')}
-                      >
-                        <span
-                          className={cn('truncate', !values.client_id && 'text-muted-foreground')}
+                {importing ? (
+                  <ImportClientField
+                    id={fieldId('client_id')}
+                    clientId={values.client_id}
+                    clientName={clientName}
+                    found={clientFromDocument(importing.data)}
+                    error={errors.client_id}
+                    onPick={pickClient}
+                  />
+                ) : (
+                  <FormField
+                    field="client_id"
+                    label={translate('client')}
+                    error={errors.client_id}
+                    required
+                  >
+                    <Popover open={clientOpen} onOpenChange={setClientOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          {...describe('client_id')}
+                          className={cn(inputClass, 'flex items-center justify-between text-left')}
                         >
-                          {clientName ||
-                            (values.client_id
-                              ? translate('selectedClient')
-                              : translate('chooseAClient'))}
-                        </span>
-                        <ChevronsUpDown className="size-4 text-muted-foreground" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
-                      <ClientSearch selectedId={values.client_id || null} onSelect={pickClient} />
-                    </PopoverContent>
-                  </Popover>
-                </FormField>
+                          <span
+                            className={cn('truncate', !values.client_id && 'text-muted-foreground')}
+                          >
+                            {clientName ||
+                              (values.client_id
+                                ? translate('selectedClient')
+                                : translate('chooseAClient'))}
+                          </span>
+                          <ChevronsUpDown className="size-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-[min(380px,calc(100vw-2rem))] p-0">
+                        <ClientSearch selectedId={values.client_id || null} onSelect={pickClient} />
+                      </PopoverContent>
+                    </Popover>
+                  </FormField>
+                )}
                 <FormField field="title" label={translate('title')} error={errors.title} required>
                   <input
                     {...describe('title')}
@@ -486,10 +532,11 @@ function FormSheetBody({
                       className={cn(inputClass, 'tabular-nums placeholder:text-placeholder')}
                     />
                   </FormField>
-                  <FormField field="unit" label={translate('unit')}>
+                  <FormField field="unit" label={translate('unit')} error={errors.unit}>
                     <Combobox
                       id={fieldId('unit')}
                       value={values.unit}
+                      invalid={Boolean(errors.unit)}
                       options={UNIT_OPTIONS}
                       placeholder={translate('noUnit')}
                       onChange={(code) =>
@@ -507,6 +554,7 @@ function FormSheetBody({
               >
                 <FormChoiceCards
                   label={translate('schedule')}
+                  error={errors.recurrence}
                   value={recurring ? 'recurring' : 'once'}
                   options={[...SCHEDULE_CHOICES]}
                   onChange={(kind) =>
@@ -602,11 +650,13 @@ function FormSheetBody({
               >
                 <FormChoiceCards
                   label={translate('billing')}
+                  error={errors.billing}
                   value={values.billing}
                   options={[...BILLING_CHOICES]}
                   onChange={(billing) => set('billing', billing)}
                 />
                 {!engagement &&
+                  !importing &&
                   values.client_id &&
                   canLinkInvoice &&
                   values.billing !== 'arrears' && (
@@ -630,7 +680,7 @@ function FormSheetBody({
                       label={
                         unit ? translate('pricePer', { short: unit.short }) : translate('unitPrice')
                       }
-                      error={errors.unit_price ?? errors.currency}
+                      error={errors.unit_price ?? errors.currency ?? errors.price_basis}
                       tip={translate('netVATIsAddedOnTopGrossVATIs')}
                       required
                     >
@@ -767,7 +817,7 @@ function FormSheetBody({
                   </>
                 )}
                 <div className="grid gap-2">
-                  {canRollOver(values) && (
+                  {!importing && canRollOver(values) && (
                     <SwitchRow
                       id="engagement-rollover"
                       label={translate('carryUnusedQuantityToTheNextPeriod')}
@@ -776,7 +826,7 @@ function FormSheetBody({
                       onCheckedChange={(on) => set('rollover', on)}
                     />
                   )}
-                  {!paid && (
+                  {!paid && !importing && (
                     <SwitchRow
                       id="engagement-auto-invoice"
                       label={translate('createInvoiceDraftsAutomatically')}
@@ -787,7 +837,7 @@ function FormSheetBody({
                   )}
                 </div>
 
-                {!paid && (
+                {!paid && !importing && (
                   <div className="grid gap-1.5">
                     <p className="text-[13px] font-medium">{translate('usageOnInvoices')}</p>
                     <Segmented
@@ -823,20 +873,22 @@ function FormSheetBody({
                       className={inputClass}
                     />
                   </FormField>
-                  <FormField
-                    field="document_id"
-                    label={translate('contractDocument')}
-                    error={errors.document_id}
-                    tip={translate('contractDocumentTip')}
-                  >
-                    <ContractDocumentField
-                      id={fieldId('document_id')}
-                      value={values.document_id}
-                      clientId={values.client_id}
-                      invalid={Boolean(errors.document_id)}
-                      onChange={(id) => set('document_id', id)}
-                    />
-                  </FormField>
+                  {!importing && (
+                    <FormField
+                      field="document_id"
+                      label={translate('contractDocument')}
+                      error={errors.document_id}
+                      tip={translate('contractDocumentTip')}
+                    >
+                      <ContractDocumentField
+                        id={fieldId('document_id')}
+                        value={values.document_id}
+                        clientId={values.client_id}
+                        invalid={Boolean(errors.document_id)}
+                        onChange={(id) => set('document_id', id)}
+                      />
+                    </FormField>
+                  )}
                 </div>
               </FormSection>
             </div>
@@ -851,12 +903,14 @@ function FormSheetBody({
             <Button type="button" variant="ghost" className="ml-auto" onClick={requestClose}>
               {translate('cancel')}
             </Button>
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending
+            <Button type="submit" disabled={pending}>
+              {pending
                 ? translate('saving')
-                : engagement
-                  ? translate('saveChanges')
-                  : translate('createEngagement')}
+                : importing
+                  ? translate('save2')
+                  : engagement
+                    ? translate('saveChanges')
+                    : translate('createEngagement')}
             </Button>
           </div>
 
