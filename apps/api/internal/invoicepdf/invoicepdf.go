@@ -112,7 +112,8 @@ func (r *renderer) widest(style string, size float64, lines ...string) float64 {
 
 const (
 	left, right, contentW = 20.0, 190.0, 170.0
-	bottom                = 272.0
+	pageBottom            = 272.0  // the body's lowest line without a footer text
+	footerH, footerMax    = 3.4, 8 // the footer text's line height and most lines: it must leave the body room
 )
 
 type renderer struct {
@@ -122,6 +123,8 @@ type renderer struct {
 	d   Document
 	// contact: the issuer's email and phone, one line in the footer of the invoice pages ("" prints none)
 	contact string
+	footer  []string // the document's footer text, wrapped, printed above the contact line on every invoice page
+	bottom  float64  // the body's lowest line: above the footer text
 }
 
 // Render returns the PDF; an error means the document could not be produced and must not be shipped.
@@ -166,7 +169,7 @@ func newRenderer(d Document, title string) (*renderer, *bool, error) {
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetTitle(title, true)
 	pdf.SetAuthor(d.Seller.Name, true)
-	r := &renderer{pdf: pdf, txt: pdffont.New(pdf), l: l, d: d}
+	r := &renderer{pdf: pdf, txt: pdffont.New(pdf), l: l, d: d, bottom: pageBottom}
 	onQRPage := new(bool)
 	pdf.SetFooterFunc(func() {
 		switch {
@@ -184,6 +187,7 @@ func newRenderer(d Document, title string) (*renderer, *bool, error) {
 			if r.contact != "" {
 				r.cell(left, 280, contentW, 4, r.contact, "C")
 			}
+			r.lines(left, r.footerTop(), contentW, footerH, r.footer, "C")
 			r.cell(left, 284, contentW, 4, fmt.Sprintf(l.Page, pdf.PageNo()), "C")
 			pdf.SetTextColor(0, 0, 0)
 		}
@@ -299,6 +303,7 @@ func (r *renderer) invoicePages() {
 	}
 	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
 	r.contact = contactLine(issuer.Email, phone)
+	r.setFooter(inv.Footer) // before any page closes: each page's footer prints it
 	y = r.parties(max(y+6, 45), issuer, recipient) + 6
 
 	var subtitles []string
@@ -528,7 +533,7 @@ func (r *renderer) table(y float64) float64 {
 	for _, ln := range r.d.Invoice.Lines {
 		r.set("", 9.5)
 		desc := r.wrap(ln.Description, cols[1].w-2)
-		if y+float64(len(desc))*h > bottom {
+		if y+float64(len(desc))*h > r.bottom {
 			y = r.tableHeader(cols, r.newPage())
 			r.set("", 9.5)
 		}
@@ -617,7 +622,7 @@ func (r *renderer) totals(y float64) float64 {
 	if inv.RoundingAmount != 0 {
 		rows = append(rows, row{l.Rounding, inv.RoundingAmount, false}, row{final, inv.Payable(), true})
 	}
-	if y+float64(len(rows))*5.4+4 > bottom {
+	if y+float64(len(rows))*5.4+4 > r.bottom {
 		y = r.newPage()
 	}
 	// labels bold and right-aligned beside their amounts; a full-width rule above the amount that counts
@@ -643,7 +648,7 @@ func (r *renderer) schedule(y float64) float64 {
 		return y
 	}
 	items, l, cur := r.d.Invoice.Instalments.Items, r.l, r.d.Invoice.Currency
-	if y+6+float64(len(items)+2)*5 > bottom {
+	if y+6+float64(len(items)+2)*5 > r.bottom {
 		y = r.newPage()
 	} else {
 		y += 6
@@ -710,6 +715,9 @@ func (r *renderer) closing(y float64) {
 		contract = append(contract, [2]string{l.ContractNumber, *inv.ContractReference})
 	}
 	if receivable[inv.Kind] {
+		if inv.Payment.IBAN != nil && r.d.Seller.Name != "" { // the payee a transfer names
+			payment = append(payment, [2]string{l.AccountHolder, r.d.Seller.Name})
+		}
 		if r.d.BankName != nil && *r.d.BankName != "" {
 			payment = append(payment, [2]string{l.BankName, *r.d.BankName})
 		}
@@ -723,33 +731,54 @@ func (r *renderer) closing(y float64) {
 			payment = append(payment, [2]string{l.PaymentReference, ref})
 		}
 	}
-	r.set("", 9)
-	labelW := 0.0 // one value column for both blocks
-	for _, p := range append(append([][2]string{}, contract...), payment...) {
-		labelW = max(labelW, r.txt.Width(p[0]+":"))
-	}
-	y = r.pairs(y, l.ContractDetails, contract, labelW+4)
-	y = r.pairs(y, l.PaymentDetails, payment, labelW+4)
+	y = r.pairs(y, l.ContractDetails, contract)
+	y = r.pairs(y, l.PaymentDetails, payment)
 	if inv.Kind == "credit_note" && r.d.Refund {
 		y = r.block(y, []string{"", l.Refunded})
 	}
 	if inv.Payment.RevolutURL != nil {
 		y = r.revolut(y+4, *inv.Payment.RevolutURL)
 	}
-	if inv.Footer != nil {
-		r.set("", 9)
-		r.block(y, append([]string{""}, r.wrap(*inv.Footer, contentW)...))
-	}
 }
 
-// pairs writes a bold heading and its rows (grey label, black value at labelW), kept together on one page;
-// nothing without rows. It returns the y below them.
-func (r *renderer) pairs(y float64, heading string, rows [][2]string, labelW float64) float64 {
+// setFooter wraps the footer text for the page footer (at most footerMax lines, the last one ending in "…" when
+// cut) and raises the body's bottom above it.
+func (r *renderer) setFooter(text *string) {
+	if text == nil || strings.TrimSpace(*text) == "" {
+		return
+	}
+	r.set("", 8)
+	r.footer = r.wrap(strings.TrimSpace(*text), contentW)
+	if len(r.footer) > footerMax {
+		r.footer = r.footer[:footerMax]
+		r.footer[footerMax-1] += " …"
+	}
+	r.bottom = min(pageBottom, r.footerTop()-3)
+}
+
+// footerTop: where the footer text starts, stacked above the contact line (280) and the page number (284).
+func (r *renderer) footerTop() float64 {
+	y := 284.0
+	if r.contact != "" {
+		y -= 4
+	}
+	return y - float64(len(r.footer))*footerH
+}
+
+// pairs writes a bold heading and its rows (grey label, black value beside the block's own longest label), kept
+// together on one page; nothing without rows. It returns the y below them.
+func (r *renderer) pairs(y float64, heading string, rows [][2]string) float64 {
 	const h = 4.4
 	if len(rows) == 0 {
 		return y
 	}
-	if y += 4; y+float64(len(rows)+1)*h > bottom {
+	r.set("", 9)
+	labelW := 0.0
+	for _, p := range rows {
+		labelW = max(labelW, r.txt.Width(p[0]+":"))
+	}
+	labelW += pairGap
+	if y += 4; y+float64(len(rows)+1)*h > r.bottom {
 		y = r.newPage()
 	}
 	r.set("B", 9)
@@ -765,6 +794,8 @@ func (r *renderer) pairs(y float64, heading string, rows [][2]string, labelW flo
 	}
 	return y
 }
+
+const pairGap = 4.0 // between a block's longest label and its values
 
 // paymentReference: the reference as printed, in blocks; "" without one.
 func paymentReference(refType string, ref *string) string {
@@ -782,7 +813,7 @@ func (r *renderer) block(y float64, block []string) float64 {
 	const h = 4.4
 	r.set("", 9)
 	for _, s := range block {
-		if y+h > bottom {
+		if y+h > r.bottom {
 			y = r.newPage()
 			r.set("", 9)
 		}
@@ -795,7 +826,7 @@ func (r *renderer) block(y float64, block []string) float64 {
 // amount and reference to enter, since the link itself carries neither.
 func (r *renderer) revolut(y float64, url string) float64 {
 	const size = 22.0
-	if y+size > bottom {
+	if y+size > r.bottom {
 		y = r.newPage()
 	}
 	if err := r.qrModules(url, left, y, size); err != nil {

@@ -131,10 +131,7 @@ export const AcceptWithNote: Story = {
     const dialog = body().getByRole('dialog', {
       name: `Accept quote ${first} for CHF 1’234.50?`,
     })
-    await userEvent.type(
-      within(dialog).getByLabelText('Note (optional)'),
-      'Please start on 1 December.',
-    )
+    await userEvent.type(within(dialog).getByLabelText('Note'), 'Please start on 1 December.')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Accept quote' }))
     await expect(await within(dialog).findByRole('button', { name: 'Accepting…' })).toBeDisabled()
     await expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()

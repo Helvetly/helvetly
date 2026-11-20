@@ -263,7 +263,7 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string
                   fullName(employee)
                 )}
                 {employee.employee_number && (
-                  <span className="ml-2 font-mono text-caption text-muted-foreground">
+                  <span className="font-code ml-2 text-caption text-muted-foreground">
                     {employee.employee_number}
                   </span>
                 )}

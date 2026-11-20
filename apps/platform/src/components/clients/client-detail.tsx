@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -397,9 +398,9 @@ function Detail({
                   >
                     {tab.label}
                     {Boolean(tab.count) && (
-                      <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground tabular-nums">
+                      <Badge size="sm" className="tabular-nums">
                         {tab.count}
-                      </span>
+                      </Badge>
                     )}
                   </TabsTrigger>
                 ))}
@@ -584,11 +585,7 @@ function Detail({
                 placeholder: translate('che123456789MWST'),
                 mono: true,
               })}
-              value={
-                client.vat_number && (
-                  <span className="font-mono text-[13px]">{client.vat_number}</span>
-                )
-              }
+              value={client.vat_number && <span className="font-code">{client.vat_number}</span>}
             />
             <Row
               icon={Send}

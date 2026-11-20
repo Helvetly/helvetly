@@ -405,7 +405,7 @@ export const folders = [
   folder('fld_sys_expenses', 'Expenses', 5, 'expenses'),
   folder('fld_sys_expenses_2025', '2025', 5, 'year', 'fld_sys_expenses'),
 ]
-const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
+export const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
   id,
   name,
   folder_id: null,

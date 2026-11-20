@@ -259,7 +259,9 @@ test('a valid promotion code discounts the plans it covers and goes with the che
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
   await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'launch20')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
-  expect(await screen.findByText('LAUNCH20 · −20% for 3 months')).toBeInTheDocument()
+  expect((await screen.findByText('LAUNCH20')).parentElement).toHaveTextContent(
+    'LAUNCH20 · −20% for 3 months',
+  )
   const pro = card('Pro')
   expect(pro).toHaveTextContent('CHF 39.20')
   expect(pro.querySelector('s')).toHaveTextContent('CHF 49')
@@ -316,7 +318,9 @@ test('an amount off takes the amount the API gives in the workspace currency', a
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
   await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'TENOFF')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
-  expect(await screen.findByText('TENOFF · −CHF 10 once')).toBeInTheDocument()
+  expect((await screen.findByText('TENOFF')).parentElement).toHaveTextContent(
+    'TENOFF · −CHF 10 once',
+  )
   expect(card('Pro')).toHaveTextContent('CHF 39')
   expect(card('Pro').querySelector('s')).toHaveTextContent('CHF 49')
 })

@@ -212,7 +212,7 @@ export const DiscardSection: Story = {
     await userEvent.click(numbering.getByRole('button', { name: /Number format/ }))
     const list = await within(document.body).findByRole('listbox')
     const options = within(list).getAllByRole('option')
-    const current = preview.querySelector('.font-mono')?.textContent ?? ''
+    const current = preview.querySelector('.font-code')?.textContent ?? ''
     const other = options.find((option) => !option.textContent?.startsWith(current))
     if (!other) throw new Error('Only one number format')
     await userEvent.click(other)

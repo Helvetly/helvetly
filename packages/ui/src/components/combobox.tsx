@@ -10,14 +10,14 @@ import {
   CommandList,
   CommandShortcut,
 } from '@helvetly/ui/components/command'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { useId, useRef, useState, type ReactNode } from 'react'
 
-export const inputClass =
-  'h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30'
+export { inputClass }
 
 /** `group` puts the option under that heading, in the order groups first appear. */
 export type Option = { value: string; label: string; hint?: string; group?: string }
@@ -87,7 +87,7 @@ export function Combobox({
           aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
           // Styled as a field, not a button: same border, background and shadow as inputClass.
           className={cn(
-            'w-full justify-between rounded-md border-input bg-card px-3 font-normal shadow-xs hover:border-input hover:bg-card aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive dark:bg-input/30',
+            'w-full min-w-0 justify-between rounded-md border-input bg-card px-3 font-normal shadow-xs hover:border-input hover:bg-card aria-expanded:border-ring aria-expanded:bg-card aria-invalid:border-destructive dark:bg-input/30',
             className,
           )}
         >
@@ -96,7 +96,13 @@ export function Combobox({
               {label}
             </span>
           )}
-          <span id={valueId} className={cn('truncate', !selected && 'text-muted-foreground')}>
+          <span
+            id={valueId}
+            className={cn(
+              'min-w-0 flex-1 truncate text-left',
+              !selected && 'text-muted-foreground',
+            )}
+          >
             {selected ? (renderValue?.(selected) ?? selected.label) : placeholder}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />

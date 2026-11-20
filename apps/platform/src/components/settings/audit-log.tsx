@@ -1,8 +1,8 @@
 'use client'
 import { languageTag, localizedHref } from '@helvetly/i18n'
+import { TONES, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
-import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
@@ -62,12 +62,12 @@ const TONE_BY_AREA: Record<string, Tone> = {
 /** The icon and tint of an event: by area, red for anything undone. */
 export function eventLook(kind: string): { Icon: LucideIcon; tone: Tone } {
   const area = kind.split('.')[0] ?? ''
-  if (kind === 'period.closed') return { Icon: Lock, tone: 'gray' }
-  if (kind === 'period.reopened') return { Icon: LockOpen, tone: 'gray' }
+  if (kind === 'period.closed') return { Icon: Lock, tone: 'neutral' }
+  if (kind === 'period.reopened') return { Icon: LockOpen, tone: 'neutral' }
   const undone = /\.(voided|deleted|cancelled)$/.test(kind)
   return {
     Icon: ICONS[area] ?? History,
-    tone: undone ? 'red' : (TONE_BY_AREA[area] ?? 'gray'),
+    tone: undone ? 'red' : (TONE_BY_AREA[area] ?? 'neutral'),
   }
 }
 

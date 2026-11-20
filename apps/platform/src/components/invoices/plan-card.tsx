@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -95,9 +96,7 @@ export function PlanCard({ planId, canManage }: { planId: string; canManage: boo
         <h3 className="text-[13px] font-medium text-muted-foreground">
           {translate('instalmentPlan2')}
         </h3>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[12px]">
-          {PLAN_STATUS_LABELS[plan.status]}
-        </span>
+        <Badge size="sm">{PLAN_STATUS_LABELS[plan.status]}</Badge>
         <span className="text-[13px] text-muted-foreground">
           {issued}
           {translate('of5')}

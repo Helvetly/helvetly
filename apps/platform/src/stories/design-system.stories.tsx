@@ -1,4 +1,3 @@
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { FormField, describedBy } from '@helvetly/ui/components/form-field'
@@ -9,7 +8,7 @@ import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { BellRing, DoorOpen, Plus, X } from 'lucide-react'
+import { ArrowRight, BellRing, DoorOpen, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
@@ -89,6 +88,64 @@ export const ButtonSizes: Story = {
         return expect(box.width).toBe(box.height)
       }),
     )
+  },
+}
+
+const VARIANTS = [
+  'default',
+  'secondary',
+  'outline',
+  'ghost',
+  'link',
+  'destructive',
+  'destructive-outline',
+  'destructive-ghost',
+] as const
+const SIZES = ['sm', 'default', 'lg'] as const
+
+/** Every role × size, with a leading and a trailing icon, icon-only and disabled: the one place to compare them. */
+export const ButtonMatrix: Story = {
+  render: () => (
+    <div className="grid gap-3">
+      {VARIANTS.map((variant) => (
+        <div key={variant} className="flex flex-wrap items-center gap-3">
+          <span className="w-36 text-xs text-muted-foreground">{variant}</span>
+          {SIZES.map((size) => (
+            <Button key={size} variant={variant} size={size}>
+              Button
+            </Button>
+          ))}
+          <Button variant={variant}>
+            <Plus data-icon="inline-start" />
+            Leading
+          </Button>
+          <Button variant={variant}>
+            Trailing
+            <ArrowRight data-icon="inline-end" />
+          </Button>
+          <Button variant={variant} size="icon" aria-label={`${variant} icon`}>
+            <Plus />
+          </Button>
+          <Button variant={variant} disabled aria-label={`${variant} disabled`}>
+            <Plus data-icon="inline-start" />
+            Disabled
+          </Button>
+        </div>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // A disabled primary is still the primary colour, only faded: never a grey chip.
+    const primary = canvas.getAllByRole('button', { name: 'Button' })[1]!
+    const disabled = canvas.getByRole('button', { name: 'default disabled' })
+    await expect(getComputedStyle(disabled).backgroundColor).toBe(
+      getComputedStyle(primary).backgroundColor,
+    )
+    await expect(Number(getComputedStyle(disabled).opacity)).toBeLessThan(1)
+    // Keyboard focus shows the ring on the first button.
+    await userEvent.tab()
+    await expect(canvas.getAllByRole('button', { name: 'Button' })[0]).toHaveFocus()
   },
 }
 
@@ -286,24 +343,6 @@ export const HelpByKeyboard: Story = {
     await expect(canvas.getByRole('button', { name: 'About Tax category' })).toHaveFocus()
     await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(
       'Choose the category for this transaction',
-    )
-  },
-}
-
-export const StatusBadges: Story = {
-  render: () => (
-    <div className="flex flex-wrap gap-2">
-      <Badge>Active</Badge>
-      <Badge variant="secondary">Draft</Badge>
-      <Badge variant="outline">Archived</Badge>
-      <Badge variant="destructive">Failed</Badge>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    await Promise.all(
-      ['Active', 'Draft', 'Archived', 'Failed'].map((text) =>
-        expect(within(canvasElement).getByText(text)).toBeVisible(),
-      ),
     )
   },
 }

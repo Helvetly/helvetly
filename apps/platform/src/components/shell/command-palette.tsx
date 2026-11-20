@@ -102,7 +102,7 @@ export function CommandPalette({
                     onSelect={run(() => openHref(`/clients?id=${encodeURIComponent(client.id)}`))}
                   >
                     <Building2 /> {client.name}
-                    <CommandShortcut className="tracking-normal tabular-nums">
+                    <CommandShortcut className="font-code tracking-normal">
                       #{client.number}
                     </CommandShortcut>
                   </CommandItem>

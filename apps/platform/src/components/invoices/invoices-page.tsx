@@ -155,7 +155,8 @@ const toggleIn = <T,>(list: T[], value: T) =>
 type ColumnDef = {
   id: string
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   align?: 'right'
   wide?: boolean
@@ -212,7 +213,6 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'client',
     label: translate('client'),
-    width: 'w-[30%]',
     sort: 'client',
     cell: (invoice) => (
       <span className="flex min-w-0 items-center gap-2.5">
@@ -921,10 +921,12 @@ function Filters({
                 {translate('client')}
               </legend>
               <div className="relative">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={() => setPicking(true)}
-                  className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 text-left text-sm shadow-xs hover:bg-muted/60"
+                  className="w-full justify-between px-3 font-normal"
                 >
                   <span className={cn('truncate', !params.client && 'text-muted-foreground')}>
                     {params.client
@@ -932,7 +934,7 @@ function Filters({
                       : translate('anyClient')}
                   </span>
                   {!params.client && <Search className="size-3.5 text-muted-foreground" />}
-                </button>
+                </Button>
                 {params.client && (
                   <button
                     type="button"

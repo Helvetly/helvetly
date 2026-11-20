@@ -1,5 +1,6 @@
 'use client'
 // Expenses, typed by hand from docs/expenses-contract.md.
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
   keepPreviousData,
   useMutation,
@@ -443,15 +444,17 @@ export const canManageExpenses = (role: string | undefined) => role === 'owner' 
 export function expenseState(
   expense: Pick<Expense, 'status' | 'is_complete' | 'payment_status' | 'is_overdue'>,
 ) {
-  if (expense.status === 'void') return { label: translate('void2'), tone: 'gray' } as const
+  if (expense.status === 'void')
+    return { label: translate('void2'), tone: STATUS_TONES.expense.void }
   if (expense.status === 'draft')
     return expense.is_complete
-      ? ({ label: translate('readyToBook'), tone: 'blue' } as const)
-      : ({ label: translate('incomplete'), tone: 'amber' } as const)
-  if (expense.payment_status === 'paid') return { label: translate('paid'), tone: 'green' } as const
+      ? { label: translate('readyToBook'), tone: STATUS_TONES.expense.ready }
+      : { label: translate('incomplete'), tone: STATUS_TONES.expense.incomplete }
+  if (expense.payment_status === 'paid')
+    return { label: translate('paid'), tone: STATUS_TONES.expense.paid }
   return expense.is_overdue
-    ? ({ label: translate('overdue3'), tone: 'red' } as const)
-    : ({ label: translate('unpaid'), tone: 'amber' } as const)
+    ? { label: translate('overdue3'), tone: STATUS_TONES.expense.overdue }
+    : { label: translate('unpaid'), tone: STATUS_TONES.expense.unpaid }
 }
 
 export const RECEIPT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic,.heif'

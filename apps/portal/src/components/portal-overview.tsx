@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { TONES, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { Loader } from '@helvetly/ui/components/loader'
-import { TONES, type Tone } from '@helvetly/ui/components/status-badge'
 import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
@@ -126,7 +126,7 @@ function Summary({
     {
       key: 'due',
       icon: Wallet,
-      tone: 'gray',
+      tone: 'neutral',
       label: translate('amountDue'),
       value: due.length > 0 ? moneyLines(due) : translate('nothingDue'),
       meta: next
@@ -164,7 +164,7 @@ function Summary({
     tiles.push({
       key: 'usage',
       icon: Gauge,
-      tone: usedShare(busiest) > 1 ? 'amber' : 'gray',
+      tone: usedShare(busiest) > 1 ? 'amber' : 'neutral',
       label: translate('engagementUsage'),
       value: translate('percentUsed', { percent: Math.round(usedShare(busiest) * 100) }),
       meta: busiest.name,

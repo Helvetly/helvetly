@@ -9160,7 +9160,7 @@
           },
           "message": {
             "type": ["string", "null"],
-            "maxLength": 5000,
+            "maxLength": 2500,
             "description": "Plain-text body. Default: a standard sentence in the invoice's language."
           },
           "email": {
@@ -10672,7 +10672,7 @@
           },
           "message": {
             "type": ["string", "null"],
-            "maxLength": 5000
+            "maxLength": 2500
           }
         },
         "required": [],
@@ -12257,7 +12257,7 @@
           },
           "message": {
             "type": "string",
-            "maxLength": 5000,
+            "maxLength": 2500,
             "description": "Plain-text body. Default: a short sentence in the quote's language."
           },
           "email": {

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/mail"
 )
@@ -126,5 +127,31 @@ func TestReportFallbacks(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "\x00S\x00t\x00d\x00.)") {
 		t.Fatal("unit in the row quantity")
+	}
+}
+
+func TestSendReportMessageLimit(t *testing.T) {
+	e, b, v, path := reportEnv(t)
+	e.svc.SetMailer(&fakeMailer{}, "https://x")
+	if _, err := e.pool.Exec(context.Background(), `UPDATE clients SET billing_email = 'bill@example.com'`); err != nil {
+		t.Fatal(err)
+	}
+	send := path + "/periods/" + e.periodList(b, v.ID)[0].ID + "/report/send"
+	for _, tc := range []struct {
+		name  string
+		runes int
+		ok    bool
+	}{
+		{"at the limit, counted in characters not bytes", emailtemplate.MaxMessage, true},
+		{"one over the limit", emailtemplate.MaxMessage + 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"message": strings.Repeat("é", tc.runes)}
+			if tc.ok {
+				e.do(b, "POST", send, body, http.StatusOK, nil)
+			} else {
+				e.fails(b, "POST", send, body, http.StatusUnprocessableEntity, "validation_failed", "message")
+			}
+		})
 	}
 }

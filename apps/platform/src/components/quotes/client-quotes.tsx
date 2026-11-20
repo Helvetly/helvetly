@@ -76,7 +76,9 @@ export function ClientQuotes({ clientId }: { clientId: string }) {
                 className="flex items-center gap-3 px-4 py-3 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-muted/40"
               >
                 <span className="grid min-w-0 flex-1 leading-tight">
-                  <span className="text-body tabular-nums">{quoteNumber(quote)}</span>
+                  <span className={quote.number ? 'font-code' : 'text-body'}>
+                    {quoteNumber(quote)}
+                  </span>
                   <span className="text-caption text-muted-foreground">
                     {formatDay(quote.issue_date)}
                     {translate('validUntil')}

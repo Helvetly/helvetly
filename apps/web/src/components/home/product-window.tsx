@@ -1,6 +1,8 @@
 import type { Locale } from '@helvetly/i18n'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
 import { LogoMark } from '@helvetly/ui/components/logo'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
   CalendarRange,
   FileSignature,
@@ -22,26 +24,26 @@ import { translatorFor } from '@/lib/i18n'
 // Monthly revenue in thousands, Jan–Dec.
 const BARS = [14, 18, 16, 22, 19, 25, 21, 27, 24, 30, 28, 34]
 
-const STATUS: Record<string, string> = {
-  Paid: 'bg-success-surface text-success',
-  Sent: 'bg-info-surface text-info',
-  Overdue: 'bg-warning-surface text-warning',
-}
+const TONE = {
+  Paid: STATUS_TONES.invoice.paid,
+  Sent: STATUS_TONES.invoice.open,
+  Overdue: STATUS_TONES.invoice.overdue,
+} as const satisfies Record<string, Tone>
 
-function Pill({ lang, status, className }: { lang: Locale; status: string; className?: string }) {
+type Status = keyof typeof TONE
+
+function Pill({ lang, status, className }: { lang: Locale; status: Status; className?: string }) {
   const translate = translatorFor(lang)
   return (
-    <span
-      className={cn('rounded-full px-2 py-0.5 text-caption font-medium', STATUS[status], className)}
-    >
+    <Badge size="sm" tone={TONE[status]} className={className}>
       {{ Paid: translate('paid'), Sent: translate('sent'), Overdue: translate('overdue') }[status]}
-    </span>
+    </Badge>
   )
 }
 
 export function ProductWindow({ lang }: { lang: Locale }) {
   const translate = translatorFor(lang)
-  const INVOICES = [
+  const INVOICES: { client: string; no: string; amount: string; status: Status | 'live' }[] = [
     { client: translate('alpenglHnGmbH'), no: '2026-0418', amount: '4’860.00', status: 'live' },
     { client: translate('studioLumen'), no: '2026-0417', amount: '1’250.00', status: 'Paid' },
     {

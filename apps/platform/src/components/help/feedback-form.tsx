@@ -181,10 +181,7 @@ export function FeedbackForm({
         </div>
 
         <div className="grid gap-2">
-          <span className="text-[13px] font-medium">
-            {translate('screenshots2')}
-            <span className="font-normal text-muted-foreground">{translate('optional2')}</span>
-          </span>
+          <span className="text-[13px] font-medium">{translate('screenshots2')}</span>
           <input
             ref={picker}
             id="feedback-screenshots"

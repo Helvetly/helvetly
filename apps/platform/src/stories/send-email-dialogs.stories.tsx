@@ -191,3 +191,56 @@ export const InvoiceReady: Story = {
     )
   },
 }
+
+/**
+ * The message box: Write with AI at its bottom left, the count at its bottom right, no resize grip, at most 2500
+ * characters; a message the API refuses shows its reason under the field.
+ */
+export const MessageBox: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        noClient,
+        http.get('/api/v1/invoices/:id/email', () => HttpResponse.json({ data: draft })),
+        http.post('/api/v1/invoices/:id/send', () =>
+          HttpResponse.json(
+            {
+              error: {
+                code: 'validation_failed',
+                message: 'Check the highlighted fields.',
+                details: { fields: { message: 'Enter a message of at most 2500 characters.' } },
+              },
+            },
+            { status: 422 },
+          ),
+        ),
+      ],
+    },
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'))
+    const field = dialog.getByRole('textbox', { name: /^Message/ })
+    await waitFor(() => expect(field).toHaveValue(draft.message))
+    const box = field.closest<HTMLElement>('[data-slot="textarea-box"]')
+    if (!box) throw new Error('The message is not in a textarea box')
+    const ai = within(box).getByRole('button', { name: 'Write with AI' })
+    const count = box.querySelector('[data-slot="textarea-count"]')
+    if (!count) throw new Error('The message box has no count')
+    await expect(ai.getBoundingClientRect().right).toBeLessThan(count.getBoundingClientRect().left)
+    await expect(getComputedStyle(field).resize).toBe('none')
+    await expect(getComputedStyle(box).resize).toBe('none')
+
+    await userEvent.clear(field)
+    field.focus()
+    await userEvent.paste('a'.repeat(2600))
+    await expect(field).toHaveValue('a'.repeat(2500))
+    await expect(count).toHaveTextContent('2500 / 2500')
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Send' }))
+    await expect(
+      await dialog.findByText('Enter a message of at most 2500 characters.'),
+    ).toBeVisible()
+    await expect(field).toHaveAttribute('aria-invalid', 'true')
+  },
+}

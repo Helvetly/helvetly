@@ -392,7 +392,7 @@ export function PortalProfile() {
               tip: translate('swissUIDLikeCHE123456789MWSTOr'),
               placeholder: translate('che123456789MWST'),
               format: formatUid,
-              inputClassName: 'font-mono text-body-sm',
+              inputClassName: 'font-code text-body-sm',
             })}
             {field('registration_number', {
               tip: translate('theLegalRegistrationNumberSeparatelyFromVATUsedFor'),

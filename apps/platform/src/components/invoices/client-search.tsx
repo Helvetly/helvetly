@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import {
   Command,
   CommandEmpty,
@@ -8,7 +9,6 @@ import {
   CommandItem,
   CommandList,
 } from '@helvetly/ui/components/command'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, Plus } from 'lucide-react'
 import { useState } from 'react'
@@ -55,12 +55,12 @@ export function ClientSearch({
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate">{client.name}</span>
                 <span className="truncate text-[12px] text-muted-foreground">
-                  #{client.number}
+                  <span className="font-code">#{client.number}</span>
                   {client.city && ` · ${client.city}`}
                   {client.currency && ` · ${client.currency}`}
                 </span>
               </span>
-              {client.is_draft && <StatusBadge tone="amber">{translate('draft')}</StatusBadge>}
+              {client.is_draft && <Badge tone="amber">{translate('draft')}</Badge>}
               <Check
                 className={cn('size-4', client.id === selectedId ? 'opacity-100' : 'opacity-0')}
               />

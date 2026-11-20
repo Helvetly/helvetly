@@ -1,4 +1,6 @@
 import type { Locale } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
   Bell,
   CalendarRange,
@@ -217,17 +219,27 @@ function VatArt({ lang }: { lang: Locale }) {
 function PortalArt({ lang }: { lang: Locale }) {
   const translate = translatorFor(lang)
   const rows = [
-    [translate('invoice20260418'), translate('chf486000'), translate('open')],
-    ['Service agreement.pdf', translate('shared0211'), translate('new')],
-    [translate('invoice20260377'), translate('chf210000'), translate('paid')],
-  ]
+    [
+      translate('invoice20260418'),
+      translate('chf486000'),
+      translate('open'),
+      STATUS_TONES.invoice.open,
+    ],
+    ['Service agreement.pdf', translate('shared0211'), translate('new'), STATUS_TONES.word.new],
+    [
+      translate('invoice20260377'),
+      translate('chf210000'),
+      translate('paid'),
+      STATUS_TONES.invoice.paid,
+    ],
+  ] as const
   return (
     <div aria-hidden className="w-full overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-caption text-muted-foreground">
         <span className="size-5 rounded-full bg-linear-to-br from-logo-from to-logo-to" />
         {translate('alpenglHnGmbHClientPortal')}
       </div>
-      {rows.map(([name, meta, status], i) => (
+      {rows.map(([name, meta, status, tone], i) => (
         <div
           key={name}
           className="pop flex items-center gap-3 px-3 py-2 text-body-sm"
@@ -235,18 +247,9 @@ function PortalArt({ lang }: { lang: Locale }) {
         >
           <span className="flex-1 truncate font-medium">{name}</span>
           <span className="text-caption text-muted-foreground tabular-nums">{meta}</span>
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-caption font-medium',
-              status === 'Paid'
-                ? 'bg-success-surface text-success'
-                : status === 'New'
-                  ? 'bg-info-surface text-info'
-                  : 'bg-warning-surface text-warning',
-            )}
-          >
+          <Badge size="sm" tone={tone}>
             {status}
-          </span>
+          </Badge>
         </div>
       ))}
     </div>

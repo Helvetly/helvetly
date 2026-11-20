@@ -789,17 +789,17 @@ function CompanyStep({
           id="onboarding-iban"
           label="IBAN"
           error={errors.iban}
-          hint={
-            iban.valid
-              ? iban.qr
-                ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
-                : translate('invoicesGetACreditorReferenceSCOR')
-              : translate('whereClientsPayYouPrintedOnTheQRBill')
+          hint={translate('whereClientsPayYouPrintedOnTheQRBill')}
+          status={
+            iban.valid &&
+            (iban.qr
+              ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
+              : translate('invoicesGetACreditorReferenceSCOR'))
           }
         >
           <input
             {...describedBy('onboarding-iban', errors.iban)}
-            className={cn(inputClass, 'font-mono tracking-wide')}
+            className={cn(inputClass, 'font-code tracking-wide')}
             placeholder={translate('ch9300762011623852957')}
             autoComplete="off"
             spellCheck={false}
@@ -863,9 +863,9 @@ function VatCard({
             error={error}
           >
             {swiss ? (
-              <InputGroup className="h-9 bg-card">
+              <InputGroup>
                 <InputGroupAddon>
-                  <InputGroupText className="font-mono text-foreground">
+                  <InputGroupText className="font-code text-foreground">
                     {translate('che2')}
                   </InputGroupText>
                 </InputGroupAddon>
@@ -874,7 +874,7 @@ function VatCard({
                   inputMode="numeric"
                   autoComplete="off"
                   placeholder="123.456.789"
-                  className="font-mono"
+                  className="font-code"
                   value={shown}
                   onChange={(event) => {
                     const typed = uidDigits(event.target.value)
@@ -884,13 +884,13 @@ function VatCard({
                   }}
                 />
                 <InputGroupAddon align="inline-end">
-                  <InputGroupText className="font-mono">{suffix}</InputGroupText>
+                  <InputGroupText className="font-code">{suffix}</InputGroupText>
                 </InputGroupAddon>
               </InputGroup>
             ) : (
               <input
                 {...describedBy('onboarding-vat_number', error)}
-                className={cn(inputClass, 'font-mono')}
+                className={cn(inputClass, 'font-code')}
                 autoComplete="off"
                 value={values.vat_number}
                 onChange={(event) => onChange({ vat_number: event.target.value })}
@@ -1047,7 +1047,7 @@ function PreferencesStep({
           id="onboarding-number-format"
           label={translate('numberFormat')}
           error={formatError}
-          hint={
+          status={
             !formatError &&
             translate('yourNextInvoiceNumber', { number: exampleNumber(numberFormat, today(), 1) })
           }

@@ -271,7 +271,7 @@ export function ClientForm({
               label={company ? translate('companyName') : translate('fullName')}
               error={errors.name}
               required
-              hint={
+              status={
                 filled && (
                   <output>
                     {filled.replaced.length
@@ -484,14 +484,14 @@ export function ClientForm({
             label={translate('vatUIDNumber')}
             error={errors.vat_number}
             tip={translate('swissUIDLikeCHE123456789MWSTOr')}
-            hint={uidToCheck(values.vat_number) && <RegisterCheckHint vat={values.vat_number} />}
+            status={uidToCheck(values.vat_number) && <RegisterCheckHint vat={values.vat_number} />}
           >
             <input
               {...describe('vat_number')}
               value={values.vat_number}
               onChange={(event) => set('vat_number', formatUid(event.target.value))}
               placeholder={translate('che123456789MWST')}
-              className={cn(inputClass, 'font-mono text-[13px]')}
+              className={cn(inputClass, 'font-code')}
             />
           </FormField>
           <FormField
@@ -653,7 +653,7 @@ export function ClientForm({
                   onChange={(event) => set('leitweg_id', event.target.value)}
                   placeholder="04011000-1234512345-06"
                   spellCheck={false}
-                  className={cn(inputClass, 'font-mono')}
+                  className={cn(inputClass, 'font-code')}
                 />
               </FormField>
             </div>

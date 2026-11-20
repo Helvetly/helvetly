@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
@@ -166,9 +167,9 @@ export function OrganizeDrawer({
           />
         </div>
         {isNew && (
-          <span className="shrink-0 rounded-full bg-heidi-soft px-2 py-0.5 text-caption font-medium text-heidi">
+          <Badge tone="violet" size="sm">
             {translate('organizeNewFolder')}
-          </span>
+          </Badge>
         )}
       </div>
       {pathLabel(row.folderInput) !== row.folderInput && (

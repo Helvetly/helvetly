@@ -1,5 +1,6 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -14,7 +15,6 @@ import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { countryName } from '@helvetly/ui/lib/countries'
@@ -175,9 +175,9 @@ function Detail({
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           {employee.employee_number && (
-            <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 font-mono text-caption text-muted-foreground">
+            <Badge size="sm" className="font-code ml-1">
               {employee.employee_number}
-            </span>
+            </Badge>
           )}
           <div className="ml-auto flex items-center gap-1">
             {hasMenu && hr.lockReason && (
@@ -281,13 +281,9 @@ function Detail({
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
             <EmployeeStatusBadge status={employee.status} />
-            {employee.legal_hold && (
-              <StatusBadge tone="amber">{translate('employeeLegalHold')}</StatusBadge>
-            )}
-            {employee.restricted && (
-              <StatusBadge tone="red">{translate('employeeRestricted')}</StatusBadge>
-            )}
-            {employee.erased_at && <StatusBadge>{translate('employeeErased')}</StatusBadge>}
+            {employee.legal_hold && <Badge tone="amber">{translate('employeeLegalHold')}</Badge>}
+            {employee.restricted && <Badge tone="red">{translate('employeeRestricted')}</Badge>}
+            {employee.erased_at && <Badge>{translate('employeeErased')}</Badge>}
             <span className="text-body-sm text-muted-foreground">
               {[employee.position, employee.department].filter(Boolean).join(' · ')}
             </span>
@@ -436,9 +432,7 @@ function EmploymentTab({ employee, hr }: { employee: Employee; hr: HrAccess }) {
             {employee.member_name ? (
               <>
                 {employee.member_name}
-                {!employee.member_active && (
-                  <StatusBadge>{translate('employeeNoLongerMember')}</StatusBadge>
-                )}
+                {!employee.member_active && <Badge>{translate('employeeNoLongerMember')}</Badge>}
               </>
             ) : (
               <span className="text-muted-foreground">{translate('employeeNotLinked')}</span>
@@ -525,7 +519,7 @@ function SwissPanel({ employee }: { employee: Employee }) {
 const RESOLUTION = {
   register_only: { tone: 'blue', label: translate('employeeResolutionRegister') },
   ambiguous: { tone: 'amber', label: translate('employeeResolutionAmbiguous') },
-  unsupported: { tone: 'gray', label: translate('employeeResolutionUnsupported') },
+  unsupported: { tone: 'neutral', label: translate('employeeResolutionUnsupported') },
 } as const
 
 function JurisdictionPanel({ id }: { id: string }) {
@@ -541,9 +535,9 @@ function JurisdictionPanel({ id }: { id: string }) {
       {resolution ? (
         <div className="grid gap-3 text-body">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone={RESOLUTION[resolution.status].tone}>
+            <Badge tone={RESOLUTION[resolution.status].tone}>
               {RESOLUTION[resolution.status].label}
-            </StatusBadge>
+            </Badge>
             <span className="text-muted-foreground">
               {resolution.country_name || resolution.jurisdiction}
             </span>
@@ -622,17 +616,17 @@ function ProtectedPanel({ employee, canReveal }: { employee: Employee; canReveal
       }
     >
       <Row label={translate('employeeRowBankAccount')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.bank_account : hint(employee.bank_account_hint)}
         </span>
       </Row>
       <Row label={translate('employeeTaxId')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.tax_id : hint(employee.tax_id_hint)}
         </span>
       </Row>
       <Row label={translate('employeeSocialSecurityNumber')}>
-        <span className="font-mono text-body-sm">
+        <span className="font-code text-body-sm">
           {shown ? shown.social_security_number : hint(employee.social_security_number_hint)}
         </span>
       </Row>

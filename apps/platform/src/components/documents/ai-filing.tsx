@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -95,12 +96,9 @@ export function TagChips({ tags, max = 3 }: { tags: string[]; max?: number }) {
   return (
     <span className="flex min-w-0 items-center gap-1 overflow-hidden">
       {tags.slice(0, max).map((tag) => (
-        <span
-          key={tag}
-          className="h-[18px] shrink-0 truncate rounded-sm bg-muted px-1.5 text-caption leading-[18px] text-foreground/80"
-        >
+        <Badge size="sm" className="truncate" key={tag}>
           {tag}
-        </span>
+        </Badge>
       ))}
       {rest > 0 && <span className="shrink-0 text-caption">+{rest}</span>}
     </span>

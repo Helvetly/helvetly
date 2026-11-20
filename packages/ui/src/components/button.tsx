@@ -8,9 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Disabled: a quiet outlined chip with readable text, not a faded dark block.
+        // The primary action. Disabled it stays primary at half strength (the base's opacity), so
+        // an inactive "Log" or "Save" still reads as the form's main action, not a grey chip.
         default:
-          'border-primary bg-primary bg-clip-border text-primary-foreground shadow-[0_1px_2px_rgb(29_79_209/0.3),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary/90 disabled:border-foreground/10 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none',
+          'border-primary bg-primary bg-clip-border text-primary-foreground shadow-[0_1px_2px_rgb(29_79_209/0.3),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary/90 active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:shadow-none',
         outline:
           // Hover is darker than the page background (#efeef1): plain muted vanishes on it.
           'border-foreground/12 bg-card hover:border-foreground/20 hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] hover:text-foreground aria-expanded:border-foreground/20 aria-expanded:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:shadow-none dark:hover:bg-input/50',

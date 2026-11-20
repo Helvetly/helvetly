@@ -1,7 +1,9 @@
 'use client'
 import { Combobox, type Option } from '@helvetly/ui/components/combobox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 
+import { FileIcon } from '@/components/import/import-files'
 import { type DocFile, useDoc, useDocList } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 
@@ -58,7 +60,7 @@ export function ContractDocumentField({
   const empty = recent.isSuccess && options.length === 1
 
   return (
-    <div className="grid gap-1.5">
+    <div className="grid min-w-0 gap-1.5">
       <Combobox
         id={id}
         value={value}
@@ -68,6 +70,22 @@ export function ContractDocumentField({
         invalid={invalid}
         disabled={empty}
         contentClassName="w-[min(26rem,calc(100vw-2rem))]"
+        renderValue={(picked) =>
+          picked.value ? (
+            // A long file name ends in an ellipsis inside the field; the whole name shows on hover.
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <FileIcon name={picked.label} className="size-3.5 shrink-0" />
+                  <span className="truncate">{picked.label}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{picked.label}</TooltipContent>
+            </Tooltip>
+          ) : (
+            picked.label
+          )
+        }
       />
       {empty && (
         <p className="text-xs text-muted-foreground">{translate('contractDocumentNoneYet')}</p>

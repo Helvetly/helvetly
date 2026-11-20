@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -64,13 +65,15 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
         </span>
       )}
       {unread > 0 && (
-        <span
+        <Badge
+          tone="green"
+          size="sm"
+          className="ml-auto min-w-5 justify-center tabular-nums group-data-[collapsible=icon]:hidden"
           aria-hidden
           data-testid="bell-count"
-          className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-success-surface px-1.5 text-[11px] leading-none font-semibold text-success tabular-nums group-data-[collapsible=icon]:hidden"
         >
           {countText(unread)}
-        </span>
+        </Badge>
       )}
       {unread > 0 && (
         // On the collapsed icon rail the count does not fit: a green dot on the bell.
@@ -175,7 +178,7 @@ function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => voi
           <Button
             variant="ghost"
             size="sm"
-            className="-mr-2 text-muted-foreground hover:text-foreground"
+            className="-mr-2 text-muted-foreground"
             disabled={unread === 0 || markAll.isPending}
             onClick={() => markAll.mutate()}
           >

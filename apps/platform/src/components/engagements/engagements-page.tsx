@@ -166,13 +166,13 @@ const TitleCell = ({ engagement }: { engagement: Engagement }) => (
   <span className="grid min-w-0 leading-snug">
     <span className="truncate text-[15px]">{engagement.title}</span>
     <span className="truncate text-[13px] text-muted-foreground">
-      {engagement.client.name} · #{engagement.number}
+      {engagement.client.name} · <span className="font-code">#{engagement.number}</span>
     </span>
   </span>
 )
 
 const HEADERS = [
-  [translate('engagement2'), 'w-[26%]'],
+  [translate('engagement2'), ''],
   [translate('period'), 'w-[17%]'],
   [translate('progress'), 'w-[20%]'],
   [translate('remaining'), 'w-[10%] text-right'],

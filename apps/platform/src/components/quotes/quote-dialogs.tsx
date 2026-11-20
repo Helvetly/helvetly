@@ -1,12 +1,14 @@
 'use client'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { MailX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { inputClass as fieldClass } from '@/components/clients/fields'
+import { EmailMessageField } from '@/components/email-message-field'
 import {
   emails,
   fieldErrors,
@@ -160,23 +162,21 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           className={fieldClass}
         />
       </FormField>
-      <FormField
+      <EmailMessageField
         id="quote-send-message"
-        label={translate('message')}
         required
         error={errors.message}
-      >
-        <TextareaBox
-          {...describedBy('quote-send-message', errors.message)}
-          rows={10}
-          maxLength={5000}
-          max={5000}
-          value={shownMessage}
-          disabled={draft.isPending}
-          onChange={(event) => setMessage(event.target.value)}
-          className="leading-relaxed"
-        />
-      </FormField>
+        value={shownMessage}
+        disabled={draft.isPending}
+        onChange={setMessage}
+        context={{
+          document: name,
+          client: quote.client.name,
+          amount: formatMoney(quote.total, quote.currency),
+          valid_until: formatDate(quote.valid_until),
+          subject: shownSubject,
+        }}
+      />
     </FormDialog>
   )
 }

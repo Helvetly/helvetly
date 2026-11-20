@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Disclosure } from '@helvetly/ui/components/disclosure'
 import {
@@ -20,7 +21,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -261,10 +261,10 @@ function CurrentReturn({
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-1.5 self-center">
           <ClosedBadge report={report} />
-          <StatusBadge tone="gray">
+          <Badge tone="neutral">
             {translate('due3')}
             {formatDate(dueBy(report.to))}
-          </StatusBadge>
+          </Badge>
         </span>
       </header>
       <Warnings report={report} />
@@ -343,12 +343,12 @@ function ClosedBadge({ report }: { report: VATReturn }) {
   const allClosed = report.closed_months === report.months
   return (
     <span className="flex items-center gap-1">
-      <StatusBadge tone={allClosed ? 'green' : 'amber'}>
+      <Badge tone={allClosed ? 'green' : 'amber'}>
         {report.closed_months}
         {translate('of5')}
         {report.months}
         {translate('monthsClosed')}
-      </StatusBadge>
+      </Badge>
       <HelpTip label={translate('aboutClosedMonths')}>
         {translate('closeTheMonthsOfThePeriodUnderBooksClosing')}
       </HelpTip>
@@ -459,14 +459,12 @@ function PeriodList({
                 <span className="col-start-2 row-span-2 row-start-1 grid justify-items-end gap-1 @2xl/sections:col-start-auto @2xl/sections:row-span-1 @2xl/sections:row-start-auto @2xl/sections:contents">
                   <span className="@2xl/sections:justify-self-start">
                     {report ? (
-                      <StatusBadge
-                        tone={report.closed_months === report.months ? 'green' : 'amber'}
-                      >
+                      <Badge tone={report.closed_months === report.months ? 'green' : 'amber'}>
                         {report.closed_months}
                         {translate('of5')}
                         {report.months}
                         {translate('closed4')}
-                      </StatusBadge>
+                      </Badge>
                     ) : null}
                   </span>
                   <span className="text-right text-body-sm tabular-nums">

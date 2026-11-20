@@ -251,7 +251,7 @@ export function QuotesPage() {
                           }}
                           className={cn(
                             'max-w-full truncate rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-                            !quote.number && 'text-muted-foreground',
+                            quote.number ? 'font-code' : 'text-muted-foreground',
                           )}
                         >
                           {quoteNumber(quote)}
@@ -320,7 +320,7 @@ function QuoteItem({ quote, onOpen }: { quote: Quote; onOpen: (id: string) => vo
         <span className="grid min-w-0 flex-1 leading-snug">
           <span className="truncate text-title-sm">{quote.client.name}</span>
           <span className="truncate text-body-sm text-muted-foreground">
-            {quoteNumber(quote)}
+            <span className={cn(quote.number && 'font-code')}>{quoteNumber(quote)}</span>
             {translate('validUntil')}
             {formatDay(quote.valid_until)}
           </span>

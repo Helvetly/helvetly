@@ -131,7 +131,7 @@ export function InlineTextEditor({
             }
             if (event.key === 'Escape') close()
           }}
-          className={cn('h-8', mono && 'font-mono text-body-sm')}
+          className={cn('h-8', mono && 'font-code text-body-sm')}
         />
       )}
       {multiline && maxLength && (

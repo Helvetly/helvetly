@@ -59,7 +59,7 @@ function PartyLines({
         </span>
       )}
       {party.vat_number && (
-        <span className="mt-0.5 font-mono text-caption text-muted-foreground">
+        <span className="font-code mt-0.5 text-caption text-muted-foreground">
           {party.vat_number}
         </span>
       )}

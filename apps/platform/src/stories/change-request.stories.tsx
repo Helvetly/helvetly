@@ -182,7 +182,7 @@ export const RejectWithReason: Story = {
       await body.findByRole('dialog', { name: 'Reject the requested changes?' }),
     )
     await userEvent.type(
-      confirm.getByLabelText('Reason for the client (optional)'),
+      confirm.getByLabelText('Reason for the client'),
       '  The VAT number belongs to another company. ',
     )
     await userEvent.click(confirm.getByRole('button', { name: 'Reject' }))

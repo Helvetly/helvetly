@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -93,7 +94,8 @@ type ColumnDef = {
   wide?: boolean
   id: ColumnId
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   /** Shown until switched off in Customize. */
   visible: boolean
@@ -107,12 +109,11 @@ const COLUMNS: ColumnDef[] = [
     width: 'w-[76px]',
     sort: 'number',
     visible: true,
-    cell: (client) => <span className="text-muted-foreground tabular-nums">#{client.number}</span>,
+    cell: (client) => <span className="font-code text-muted-foreground">#{client.number}</span>,
   },
   {
     id: 'name',
     label: translate('name'),
-    width: 'w-[30%]',
     sort: 'name',
     visible: true,
     cell: () => null,
@@ -163,12 +164,9 @@ const COLUMNS: ColumnDef[] = [
     cell: (client) => (
       <span className="flex gap-1 overflow-hidden">
         {client.tags.map((tag) => (
-          <span
-            key={tag}
-            className="h-5 shrink-0 rounded-[4px] px-1.5 text-[12px] leading-5 text-muted-foreground ring-1 ring-border ring-inset"
-          >
+          <Badge variant="outline" size="sm" key={tag}>
             {tag}
-          </span>
+          </Badge>
         ))}
       </span>
     ),
@@ -842,7 +840,7 @@ function ActiveFilters({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-body-sm font-normal text-muted-foreground"
+          className="text-body-sm font-normal text-muted-foreground"
           onClick={() =>
             onChange({
               ...(statusView(params.status) === null && { status: [] }),
@@ -1087,9 +1085,7 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="truncate text-[15px]">
               {client.name}{' '}
-              <span className="text-[13px] text-muted-foreground tabular-nums">
-                #{client.number}
-              </span>
+              <span className="font-code text-[13px] text-muted-foreground">#{client.number}</span>
             </span>
             <span className="truncate text-[13px] text-muted-foreground">
               {[client.email, client.city].filter(Boolean).join(' · ') ||

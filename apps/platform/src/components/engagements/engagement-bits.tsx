@@ -1,6 +1,7 @@
+import { Badge } from '@helvetly/ui/components/badge'
 import { Meter } from '@helvetly/ui/components/meter'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { Repeat } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -8,22 +9,22 @@ import { type Attention, type Engagement, type PeriodSummary } from '@/lib/engag
 import { translate } from '@/lib/i18n'
 import { UNITS } from '@/lib/invoices'
 
-const ATTENTION: Record<Attention, { label: string; tone: Tone }> = {
-  to_invoice: { label: translate('needsInvoicing'), tone: 'blue' },
-  overage: { label: translate('overage'), tone: 'red' },
-  under_pace: { label: translate('behindPace'), tone: 'amber' },
-  ending_soon: { label: translate('endingSoon'), tone: 'gray' },
+const ATTENTION: Record<Attention, string> = {
+  to_invoice: translate('needsInvoicing'),
+  overage: translate('overage'),
+  under_pace: translate('behindPace'),
+  ending_soon: translate('endingSoon'),
 }
 
-const STATUS: Record<Engagement['status'], { label: string; tone: Tone }> = {
-  scheduled: { label: translate('scheduled'), tone: 'gray' },
-  active: { label: translate('active'), tone: 'green' },
-  ended: { label: translate('ended'), tone: 'gray' },
-  cancelled: { label: translate('cancelled'), tone: 'red' },
+const STATUS: Record<Engagement['status'], string> = {
+  scheduled: translate('scheduled'),
+  active: translate('active'),
+  ended: translate('ended'),
+  cancelled: translate('cancelled'),
 }
 
 export function EngagementStatusBadge({ status }: { status: Engagement['status'] }) {
-  return <StatusBadge tone={STATUS[status].tone}>{STATUS[status].label}</StatusBadge>
+  return <Badge tone={STATUS_TONES.engagement[status]}>{STATUS[status]}</Badge>
 }
 
 export function AttentionBadges({ attention }: { attention: Engagement['attention'] }) {
@@ -31,9 +32,9 @@ export function AttentionBadges({ attention }: { attention: Engagement['attentio
   return (
     <span className="flex flex-wrap gap-1">
       {attention.map((item) => (
-        <StatusBadge key={item} tone={ATTENTION[item].tone}>
-          {ATTENTION[item].label}
-        </StatusBadge>
+        <Badge key={item} tone={STATUS_TONES.attention[item]}>
+          {ATTENTION[item]}
+        </Badge>
       ))}
     </span>
   )

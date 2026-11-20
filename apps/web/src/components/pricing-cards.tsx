@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
@@ -57,9 +58,9 @@ export function PricingCards() {
             />
             {value === 'month' ? translate('monthly') : translate('yearly')}
             {value === 'year' && (
-              <span className="ml-1.5 rounded-full bg-brand-surface px-1.5 py-0.5 text-caption text-brand">
+              <Badge tone="blue" size="sm" className="ml-1.5">
                 −{YEARLY_DISCOUNT_PERCENT}%
-              </span>
+              </Badge>
             )}
           </label>
         ))}

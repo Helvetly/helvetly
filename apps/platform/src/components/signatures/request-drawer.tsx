@@ -339,7 +339,7 @@ function Hash({ label, value }: { label: string; value: string }) {
         void navigator.clipboard.writeText(value)
         toast.success(translate('copied', { label: label }))
       }}
-      className="cursor-pointer truncate rounded-lg bg-muted/60 px-2.5 py-2 text-left font-mono text-[11.5px] text-muted-foreground hover:text-foreground"
+      className="font-code cursor-pointer truncate rounded-lg bg-muted/60 px-2.5 py-2 text-left text-[11.5px] text-muted-foreground hover:text-foreground"
     >
       {label} {value}
     </button>

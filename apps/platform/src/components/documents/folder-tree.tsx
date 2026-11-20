@@ -1,4 +1,6 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
+import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -178,15 +180,17 @@ export function FolderTree({
         <Label
           action={
             canWrite && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 aria-label={translate('newFolder')}
                 title={translate('newFolder')}
                 onClick={() => actions.newFolder(current)}
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-70 transition hover:bg-foreground/[0.06] hover:text-foreground hover:opacity-100"
+                className="text-muted-foreground"
               >
                 <Plus className="size-4 stroke-[1.5]" />
-              </button>
+              </Button>
             )
           }
         >
@@ -336,9 +340,12 @@ function Label({ children, action }: { children: string; action?: ReactNode }) {
 /** A count as a quiet pill right after a name; a bit stronger on the open row so it stays legible. */
 function Count({ children }: { children: number }) {
   return (
-    <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] leading-4 text-muted-foreground tabular-nums group-aria-[current=page]/row:bg-foreground/[0.08] group-data-current/row:bg-foreground/[0.08] dark:bg-foreground/[0.08] dark:group-aria-[current=page]/row:bg-foreground/[0.14] dark:group-data-current/row:bg-foreground/[0.14]">
+    <Badge
+      size="sm"
+      className="tabular-nums group-aria-[current=page]/row:bg-foreground/[0.08] group-data-current/row:bg-foreground/[0.08]"
+    >
       {children}
-    </span>
+    </Badge>
   )
 }
 

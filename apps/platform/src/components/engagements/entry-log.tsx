@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { HelpTip } from '@helvetly/ui/components/form-field'
@@ -11,7 +12,6 @@ import {
   InputGroupText,
 } from '@helvetly/ui/components/input-group'
 import { Panel } from '@helvetly/ui/components/panel'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -259,7 +259,6 @@ export function QuickLog({
               clear('performed_by')
               setBy(event.target.value)
             }}
-            className="h-8"
           >
             <option value="">{translate('me')}</option>
             {members.data
@@ -274,12 +273,12 @@ export function QuickLog({
         </div>
       </div>
       <div className="grid gap-1.5">
-        <label htmlFor={`${id}-note`} className={label}>
-          {translate('note')}{' '}
-          <span className="font-normal text-placeholder">
-            {translate('optionalShownOnPerEntryInvoiceLines')}
-          </span>
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={`${id}-note`} className={label}>
+            {translate('note')}
+          </label>
+          <HelpTip label={translate('note')}>{translate('shownOnPerEntryInvoiceLines')}</HelpTip>
+        </span>
         <Input
           id={`${id}-note`}
           aria-label={translate('note')}
@@ -295,12 +294,14 @@ export function QuickLog({
         {errorText('note')}
       </div>
       <div className="grid gap-1.5">
-        <label htmlFor={`${id}-performance`} className={label}>
-          {translate('clientPerformance')}{' '}
-          <span className="font-normal text-placeholder">
-            {translate('optionalTheClientSeesItInThePortal')}
-          </span>
-        </label>
+        <span className="flex items-center gap-1">
+          <label htmlFor={`${id}-performance`} className={label}>
+            {translate('clientPerformance')}
+          </label>
+          <HelpTip label={translate('clientPerformance')}>
+            {translate('clientSeesItInThePortal')}
+          </HelpTip>
+        </span>
         <Input
           id={`${id}-performance`}
           aria-label={translate('clientPerformance')}
@@ -342,7 +343,7 @@ export function QuickLog({
 
 /**
  * Whether the client performance is added to the entry's own invoice line. Only an engagement invoiced with a line per
- * entry has such a line, and only a written performance can go on it; otherwise the choice is off and the help says why.
+ * entry has such a line, so the choice is not shown otherwise; only a written performance can go on it.
  * A stored choice is kept as it is, since one period may still be invoiced per entry from the period menu.
  */
 function ShowOnInvoice({
@@ -356,21 +357,19 @@ function ShowOnInvoice({
   perEntry: boolean
   hasText: boolean
 }) {
-  const usable = perEntry && hasText
+  if (!perEntry) return null
   return (
     <span className="flex shrink-0 items-center gap-1.5 text-body-sm text-muted-foreground">
-      <label className={cn('flex items-center gap-2', !usable && 'opacity-60')}>
+      <label className={cn('flex items-center gap-2', !hasText && 'opacity-60')}>
         <Checkbox
-          checked={usable && checked}
-          disabled={!usable}
+          checked={hasText && checked}
+          disabled={!hasText}
           onCheckedChange={(on) => onChange(on === true)}
         />
         {translate('alsoPrintOnTheInvoiceLine')}
       </label>
       <HelpTip label={translate('alsoPrintOnTheInvoiceLine')}>
-        {perEntry
-          ? translate('theClientPerformanceIsAddedToThisEntrysInvoiceLine')
-          : translate('thisEngagementInvoicesOneSummaryLine')}
+        {translate('theClientPerformanceIsAddedToThisEntrysInvoiceLine')}
       </HelpTip>
     </span>
   )
@@ -521,7 +520,7 @@ function EntryRow({
               <span className="sr-only">:</span> {entry.client_performance}
               {perEntry && entry.client_performance_on_invoice && (
                 <span className="ml-1.5 inline-flex align-middle">
-                  <StatusBadge size="sm">{translate('onInvoice')}</StatusBadge>
+                  <Badge size="sm">{translate('onInvoice')}</Badge>
                 </span>
               )}
             </p>

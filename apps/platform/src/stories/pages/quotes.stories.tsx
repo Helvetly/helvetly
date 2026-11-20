@@ -132,7 +132,7 @@ export const ExpiredView: Story = {
     const body = page(context.canvasElement)
     await expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0)
     const badge = body.getAllByText('Expired').find((node) => node.closest('td'))
-    await expect(badge?.className).toContain('text-muted-foreground')
+    await expect(badge).toHaveAttribute('data-tone', 'neutral')
   },
 }
 

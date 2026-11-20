@@ -1,12 +1,12 @@
 'use client'
 
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField, HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -46,19 +46,17 @@ export function EntryStatus({ entry }: { entry: PayrollEntry }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {entry.status === 'approved' ? (
-        <StatusBadge tone="green">{translate('payrollApproved')}</StatusBadge>
+        <Badge tone="green">{translate('payrollApproved')}</Badge>
       ) : (
-        <StatusBadge>{translate('payrollDraft')}</StatusBadge>
+        <Badge>{translate('payrollDraft')}</Badge>
       )}
       {entry.status === 'approved' &&
         (entry.payment_status === 'paid' ? (
-          <StatusBadge tone="blue">{translate('payrollStatusPaid')}</StatusBadge>
+          <Badge tone="blue">{translate('payrollStatusPaid')}</Badge>
         ) : (
-          <StatusBadge tone="amber">{translate('payrollUnpaid')}</StatusBadge>
+          <Badge tone="amber">{translate('payrollUnpaid')}</Badge>
         ))}
-      {entry.superseded_by && (
-        <StatusBadge tone="gray">{translate('payrollCorrected')}</StatusBadge>
-      )}
+      {entry.superseded_by && <Badge tone="neutral">{translate('payrollCorrected')}</Badge>}
     </span>
   )
 }

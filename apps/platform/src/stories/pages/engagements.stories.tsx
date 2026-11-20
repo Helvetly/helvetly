@@ -7,7 +7,7 @@ import type { Entry, Period } from '@/lib/engagements'
 import { sampleSettings } from '@/test/invoice-api'
 
 import { sessionHandler } from '../screen-fixtures'
-import { engagements, page } from './api'
+import { engagements, file, page } from './api'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
@@ -115,7 +115,9 @@ export const NewFormRecurring: Story = {
     // The number and the unit fill their cell.
     const cell = every.closest<HTMLElement>('[data-slot=form-field]')!
     expect(Math.round(box(unit).right - box(every).left)).toBe(Math.round(box(cell).width))
-    expect(dialog.getByText('Leave empty to run until you cancel it.')).toBeVisible()
+    // How an open end works is behind the label's (?), not under the field, so the row stays level.
+    expect(dialog.queryByText('Leave empty to run until you cancel it.')).toBeNull()
+    expect(dialog.getByRole('button', { name: 'About Ends' })).toBeVisible()
     // Open-ended: three periods, "…", and new ones keep coming.
     const periods = dialog.getByRole('heading', { name: 'First periods' }).parentElement!
     expect(within(periods).getAllByRole('listitem')).toHaveLength(4)
@@ -181,6 +183,38 @@ export const NewFormContractDocument: Story = {
     await expect(picker).toHaveTextContent('Office lease 2026.pdf')
   },
 }
+
+const longName =
+  'PHOTO-2026-11-18-16-08-13 signed mandate agreement Alpenglow Treuhand AG final version.jpg'
+
+/** A long file name ends in an ellipsis inside the field (full name on hover); the field never widens its column. */
+export const NewFormContractLongName: Story = {
+  parameters: pageParameters('/engagements', { new: '1' }, [
+    settingsHandler,
+    http.get('/api/v1/documents', () =>
+      HttpResponse.json(page([file('doc_long', longName, 'image', 'image/jpeg')])),
+    ),
+  ]),
+  play: async () => {
+    const radios = await within(document.body).findAllByRole('radio')
+    const dialog = within(radios[0]!.closest<HTMLElement>('[role=dialog]')!)
+    const picker = dialog.getByRole('button', { name: /^Contract document/ })
+    const reference = dialog.getByRole('textbox', { name: /^Reference/ })
+    const before = picker.getBoundingClientRect().width
+    await waitFor(() => expect(picker).toBeEnabled())
+    await userEvent.click(picker)
+    await userEvent.click(await within(document.body).findByRole('option', { name: /^PHOTO-2026/ }))
+    await expect(picker).toHaveTextContent(longName)
+    const column = picker.closest<HTMLElement>('[data-slot=form-field]')!.getBoundingClientRect()
+    const field = picker.getBoundingClientRect()
+    await expect(field.width).toBe(before)
+    await expect(field.right).toBeLessThanOrEqual(column.right)
+    await expect(field.width).toBe(reference.getBoundingClientRect().width)
+    await userEvent.hover(within(picker).getByText(longName))
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(longName)
+  },
+}
+export const NewFormContractLongNameDark = dark(NewFormContractLongName)
 
 export const NewFormNoDocuments: Story = {
   parameters: pageParameters('/engagements', { new: '1' }, [
@@ -533,7 +567,7 @@ export const RowMenuLogDelivery: Story = {
 }
 export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
 
-/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is off and says why. */
+/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is not shown. */
 export const LogDeliverySummaryInvoice: Story = {
   play: async (context) => {
     await shows('Bookkeeping support')?.(context)
@@ -546,16 +580,12 @@ export const LogDeliverySummaryInvoice: Story = {
       'Well prepared',
     )
     await expect(
-      within(dialog).getByRole('checkbox', { name: 'Also print on the invoice line' }),
-    ).toBeDisabled()
-    await userEvent.hover(
-      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
-    )
-    await waitFor(() =>
-      expect(body.getByRole('tooltip')).toHaveTextContent(
-        'This engagement invoices one summary line',
-      ),
-    )
+      within(dialog).queryByRole('checkbox', { name: 'Also print on the invoice line' }),
+    ).toBeNull()
+    await expect(within(dialog).queryByText('Also print on the invoice line')).toBeNull()
+    await expect(
+      within(dialog).queryByRole('button', { name: 'About Also print on the invoice line' }),
+    ).toBeNull()
   },
 }
 

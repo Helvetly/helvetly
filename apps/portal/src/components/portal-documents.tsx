@@ -61,7 +61,7 @@ export function PortalDocuments() {
               placeholder={translate('searchDocuments')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="bg-card pl-8"
+              className="pl-8"
             />
           </div>
         )}

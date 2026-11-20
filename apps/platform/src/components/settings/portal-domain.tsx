@@ -1,11 +1,12 @@
 'use client'
+import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
-import { StatusBadge, type Tone } from '@helvetly/ui/components/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { BadgeCheck, Copy, Globe, Link2, Lock, RefreshCw, ShieldCheck, Timer } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -41,10 +42,13 @@ export function domainOf(input: string): string {
 }
 
 const STAGES: Record<DomainStage, { tone: Tone; label: string }> = {
-  dns: { tone: 'amber', label: translate('domainStageDns') },
-  certificate: { tone: 'blue', label: translate('domainStageCertificate') },
-  active: { tone: 'green', label: translate('domainStageActive') },
-  problem: { tone: 'red', label: translate('domainStageProblem') },
+  dns: { tone: STATUS_TONES.portalDomain.dns, label: translate('domainStageDns') },
+  certificate: {
+    tone: STATUS_TONES.portalDomain.certificate,
+    label: translate('domainStageCertificate'),
+  },
+  active: { tone: STATUS_TONES.portalDomain.active, label: translate('domainStageActive') },
+  problem: { tone: STATUS_TONES.portalDomain.problem, label: translate('domainStageProblem') },
 }
 
 const PROBLEMS: Record<DomainProblem, string> = {
@@ -213,7 +217,6 @@ function AddDomain() {
           <Input
             {...describedBy('portal-domain-input', error)}
             placeholder="portal.yourcompany.com"
-            className="bg-card"
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
@@ -259,7 +262,7 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
         ) : (
           <span className="min-w-0 truncate text-body font-medium">{domain.hostname}</span>
         )}
-        <StatusBadge tone={stage.tone}>{stage.label}</StatusBadge>
+        <Badge tone={stage.tone}>{stage.label}</Badge>
         {canEdit && (
           <span className="ml-auto flex gap-2">
             <Button
@@ -321,7 +324,7 @@ function RecordRow({ record }: { record: DomainRecord }) {
   return (
     <li className="grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-body-sm @md:grid-cols-[4rem_minmax(0,1fr)_minmax(0,1.4fr)] @md:items-center @md:gap-3">
       <Field label={translate('dnsRecordType')}>
-        <span className="font-mono">{record.type}</span>
+        <span className="font-code">{record.type}</span>
       </Field>
       <Field label={translate('dnsRecordName')}>
         <Copyable value={record.name} label={translate('copyDnsName')} />
@@ -350,7 +353,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Copyable({ value, label }: { value: string; label: string }) {
   return (
     <span className="flex min-w-0 items-center gap-1">
-      <span className="min-w-0 font-mono break-all">{value}</span>
+      <span className="font-code min-w-0 break-all">{value}</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

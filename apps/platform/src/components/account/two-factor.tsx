@@ -64,7 +64,7 @@ export function TwoFactor() {
             title={
               <>
                 {translate('authenticatorApp')}{' '}
-                <Badge variant={status.enabled ? 'default' : 'secondary'}>
+                <Badge tone={status.enabled ? 'green' : 'neutral'}>
                   {status.enabled ? translate('on') : translate('off')}
                 </Badge>
               </>
@@ -130,7 +130,7 @@ function EnableDialog({
               <DialogTitle>{translate('saveYourRecoveryCodes')}</DialogTitle>
               <DialogDescription>{translate('eachOneSignsYouInOnceIfYouLose')}</DialogDescription>
             </DialogHeader>
-            <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-lg bg-muted/60 p-4 font-mono text-body-sm">
+            <ul className="font-code grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-lg bg-muted/60 p-4 text-body-sm">
               {codes.map((recovery) => (
                 <li key={recovery}>{recovery}</li>
               ))}
@@ -172,7 +172,7 @@ function EnableDialog({
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
-                  className="max-w-40 font-mono tracking-[0.3em]"
+                  className="font-code max-w-40 tracking-[0.3em]"
                   value={code}
                   onChange={(event) => {
                     setCode(event.target.value.replace(/\D/g, ''))
@@ -228,7 +228,7 @@ function TotpSetup({ secret, url }: { secret: string; url: string }) {
           {translate('canTScanItEnterThisKeyInstead')}
         </p>
         <div className="flex items-center gap-1">
-          <code className="font-mono text-sm text-balance select-all">{groupSecret(secret)}</code>
+          <code className="font-code text-sm text-balance select-all">{groupSecret(secret)}</code>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -290,7 +290,7 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
             <Input
               {...describedBy('totp-off', error)}
               autoComplete="one-time-code"
-              className="max-w-56 font-mono"
+              className="font-code max-w-56"
               value={code}
               onChange={(event) => {
                 setCode(event.target.value)

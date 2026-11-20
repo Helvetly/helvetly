@@ -67,11 +67,7 @@ export function Sessions() {
                   title={
                     <>
                       {label}
-                      {session.current && (
-                        <Badge className="bg-success-surface text-success">
-                          {translate('thisDevice')}
-                        </Badge>
-                      )}
+                      {session.current && <Badge tone="green">{translate('thisDevice')}</Badge>}
                     </>
                   }
                   meta={[

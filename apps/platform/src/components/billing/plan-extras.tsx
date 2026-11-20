@@ -1,3 +1,4 @@
+import { Badge } from '@helvetly/ui/components/badge'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, InfinityIcon, Minus } from 'lucide-react'
@@ -90,9 +91,13 @@ export function PlanComparison({
                 >
                   {PLAN_NAMES[plan]}
                   {plan === current && (
-                    <span className="mx-auto mt-1 block w-fit rounded-full bg-brand-surface px-2 text-caption leading-5 font-medium text-brand sm:mt-0 sm:ml-1.5 sm:inline">
+                    <Badge
+                      tone="blue"
+                      size="sm"
+                      className="mx-auto mt-1 flex sm:mt-0 sm:ml-1.5 sm:inline-flex"
+                    >
                       {translate('current')}
-                    </span>
+                    </Badge>
                   )}
                 </th>
               ))}

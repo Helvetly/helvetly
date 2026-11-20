@@ -95,7 +95,8 @@ type ColumnId = 'name' | 'type' | 'sku' | 'unit' | 'price' | 'vat' | 'updated'
 type ColumnDef = {
   id: ColumnId
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   align?: 'right'
   /** Only from a wide panel (≥72rem), where there is room. */
@@ -110,7 +111,6 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'name',
     label: translate('name'),
-    width: 'w-[34%]',
     sort: 'name',
     visible: true,
     cell: () => null,
@@ -129,7 +129,7 @@ const COLUMNS: ColumnDef[] = [
     sort: 'sku',
     visible: true,
     cell: (product) =>
-      product.sku ? <span className="font-mono text-[13px] break-all">{product.sku}</span> : dash,
+      product.sku ? <span className="font-code break-all">{product.sku}</span> : dash,
   },
   {
     id: 'unit',
@@ -974,9 +974,13 @@ const ProductItem = memo(function ProductItem({ product, selected, bulk, access,
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="text-[15px] break-words">{product.name}</span>
             <span className="text-[13px] break-all text-muted-foreground">
-              {[product.type === 'product' ? 'Product' : 'Service', product.sku]
-                .filter(Boolean)
-                .join(' · ')}
+              {product.type === 'product' ? 'Product' : 'Service'}
+              {product.sku && (
+                <>
+                  {' · '}
+                  <span className="font-code">{product.sku}</span>
+                </>
+              )}
             </span>
           </span>
           <PriceCell product={product} />

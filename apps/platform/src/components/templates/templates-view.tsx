@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
@@ -9,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { Ellipsis, FileSignature, LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -89,12 +89,12 @@ export function TemplatesView({
               </span>
               <span className="max-md:hidden">
                 {template.signers.length > 0 ? (
-                  <StatusBadge tone="blue">
+                  <Badge tone="blue">
                     <FileSignature className="size-3" /> {template.signers.length}{' '}
                     {template.signers.length === 1 ? 'signer' : 'signers'}
-                  </StatusBadge>
+                  </Badge>
                 ) : (
-                  <StatusBadge tone="gray">{translate('noSignatures')}</StatusBadge>
+                  <Badge tone="neutral">{translate('noSignatures')}</Badge>
                 )}
               </span>
               <span className="text-[12.5px] text-muted-foreground max-md:hidden">

@@ -217,7 +217,7 @@ export function SettingsPreview({
       {items?.map((item) => (
         <span key={item.label} className="flex items-baseline gap-2">
           {item.label}
-          <span className="font-mono text-foreground tabular-nums">{item.value}</span>
+          <span className="font-code text-foreground">{item.value}</span>
         </span>
       ))}
       {children && <span className="text-pretty">{children}</span>}

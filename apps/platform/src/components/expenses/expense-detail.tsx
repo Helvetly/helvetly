@@ -1,4 +1,5 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import {
@@ -16,7 +17,6 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
-import { StatusBadge } from '@helvetly/ui/components/status-badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { BookCheck, Ban, Copy, Ellipsis, Pencil, Trash2, X } from 'lucide-react'
@@ -156,9 +156,9 @@ function Detail({
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-10 flex h-12 items-center gap-1 border-b border-border/60 bg-card/95 px-3 backdrop-blur">
-        <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground tabular-nums">
+        <Badge size="sm" className="font-code ml-1">
           #{expense.number}
-        </span>
+        </Badge>
         <span className="ml-1.5 text-[13px] text-muted-foreground">{translate('expense2')}</span>
         <div className="ml-auto flex items-center gap-1">
           <DropdownMenu>
@@ -242,9 +242,9 @@ function Detail({
       <div className="grid gap-7 px-6 pt-6 pb-8">
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
+            <Badge tone={badge.tone}>{badge.label}</Badge>
             {expense.paid_by_member && !expense.reimbursed_on && expense.status !== 'void' && (
-              <StatusBadge tone="blue">{translate('toReimburse')}</StatusBadge>
+              <Badge tone="blue">{translate('toReimburse')}</Badge>
             )}
           </div>
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
@@ -402,7 +402,7 @@ function Detail({
           {expense.supplier_vat_number && (
             <Row
               label={translate('supplierVATUID')}
-              value={<span className="font-mono text-[13px]">{expense.supplier_vat_number}</span>}
+              value={<span className="font-code">{expense.supplier_vat_number}</span>}
             />
           )}
           {expense.description && <Row label={translate('whatFor')} value={expense.description} />}

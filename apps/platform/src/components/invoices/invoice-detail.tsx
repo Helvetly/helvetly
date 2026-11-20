@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -25,6 +26,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   ArrowRightLeft,
   Check,
+  CircleHelp,
   Download,
   Ellipsis,
   FileCode2,
@@ -260,28 +262,52 @@ function Timeline({
       {steps.map((step, i) => {
         const done = Boolean(step.at)
         const skippable = step.optional && !done
+        const skippedAt = (j: number) =>
+          Boolean(steps[j]?.optional && !steps[j]?.at && steps.slice(j + 1).some((s) => s.at))
+        // An optional step the document went past without it: amber, with its lines to and from it.
+        const skipped = skippedAt(i)
         return (
           <li key={step.label} className="relative grid gap-1.5 pr-2">
             <span className="flex items-center">
-              <span
-                className={cn(
-                  'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
-                  done
-                    ? 'bg-success-solid text-white'
-                    : skippable
-                      ? 'border border-dashed border-muted-foreground/50 bg-card'
-                      : i === current
-                        ? 'bg-card ring-[1.5px] ring-brand-solid ring-inset'
-                        : 'bg-card ring-1 ring-border ring-inset',
-                )}
-              >
-                {done && <Check className="size-3" strokeWidth={3} />}
-              </span>
+              {skipped ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={translate('stepNotRecorded')}
+                      data-step-state="skipped"
+                      className="z-10 flex size-[18px] shrink-0 cursor-default items-center justify-center rounded-full border border-dashed border-warning-solid bg-warning-surface text-warning outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      <CircleHelp className="size-3" strokeWidth={2.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{translate('stepNotRecorded')}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <span
+                  className={cn(
+                    'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
+                    done
+                      ? 'bg-success-solid text-white'
+                      : skippable
+                        ? 'border border-dashed border-muted-foreground/50 bg-card'
+                        : i === current
+                          ? 'bg-card ring-[1.5px] ring-brand-solid ring-inset'
+                          : 'bg-card ring-1 ring-border ring-inset',
+                  )}
+                >
+                  {done && <Check className="size-3" strokeWidth={3} />}
+                </span>
+              )}
               {i < steps.length - 1 && (
                 <span
                   className={cn(
                     'h-px flex-1',
-                    done && steps[i + 1]?.at ? 'bg-success-solid' : 'bg-border',
+                    skipped || skippedAt(i + 1)
+                      ? 'bg-warning-solid'
+                      : done && steps[i + 1]?.at
+                        ? 'bg-success-solid'
+                        : 'bg-border',
                   )}
                 />
               )}
@@ -369,9 +395,9 @@ function Detail({
     <Tabs defaultValue="overview" className="min-h-full gap-0">
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
-          <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-muted-foreground tabular-nums">
+          <Badge size="sm" className={cn('ml-1 tabular-nums', invoice.number && 'font-code')}>
             {invoice.number ?? translate('draft')}
-          </span>
+          </Badge>
           <span className="ml-1.5 text-[13px] text-muted-foreground">
             {kindInfo(invoice.kind).label}
           </span>
@@ -519,9 +545,9 @@ function Detail({
                 >
                   {tab.label}
                   {Boolean(tab.count) && (
-                    <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground tabular-nums">
+                    <Badge size="sm" className="tabular-nums">
                       {tab.count}
-                    </span>
+                    </Badge>
                   )}
                 </TabsTrigger>
               ))}
@@ -648,13 +674,11 @@ function Detail({
                   : translate('creditorReference')
               }
             >
-              <span className="font-mono text-[13px]">
-                {groupReference(invoice.payment.reference)}
-              </span>
+              <span className="font-code">{groupReference(invoice.payment.reference)}</span>
             </Row>
           )}
           <Row label={translate('payTo')}>
-            <span className="font-mono text-[13px]">
+            <span className="font-code">
               {invoice.payment.iban ? formatIban(invoice.payment.iban) : '—'}
             </span>
           </Row>

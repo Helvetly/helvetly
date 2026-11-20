@@ -182,7 +182,7 @@ export function GeneralCard({
             label={translate('workspaceName')}
             width="md"
             error={form.errors.name}
-            hint={owner ? undefined : translate('onlyAnOwnerCanRenameTheWorkspace')}
+            status={owner ? undefined : translate('onlyAnOwnerCanRenameTheWorkspace')}
           >
             <Input
               {...describedBy('workspace-name', form.errors.name)}
@@ -200,7 +200,7 @@ export function GeneralCard({
             width="md"
             error={form.errors.timezone}
             tip={translate('usedForTodaySDateDueDatesEngagementPeriods')}
-            hint={canZone ? undefined : translate('onlyAnOwnerOrAdminCanChangeTheTime')}
+            status={canZone ? undefined : translate('onlyAnOwnerOrAdminCanChangeTheTime')}
           >
             {canZone ? (
               <Combobox

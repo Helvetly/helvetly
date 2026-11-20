@@ -322,7 +322,7 @@ function NeedsAttention() {
                   <span className="grid min-w-0 leading-tight">
                     <span className="truncate">{row.client.name}</span>
                     <span className="truncate text-[13px] text-muted-foreground">
-                      {row.number} ·{' '}
+                      <span className="font-code">{row.number}</span> ·{' '}
                       {isPositive(row.refund_due)
                         ? translate('toRefund')
                         : dueLabel(row.due_date).toLowerCase()}
