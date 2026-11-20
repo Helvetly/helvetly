@@ -6,6 +6,7 @@ import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-m
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { configure } from 'storybook/test'
 
 import { RecordDrawers } from '../src/components/record-drawers'
@@ -74,6 +75,8 @@ const preview: Preview = {
   beforeEach: (context) => {
     undefinedQueries = []
     window.history.replaceState(null, '', startUrl)
+    // sonner replays every toast still open when a Toaster mounts: the last story's toast would show in this one.
+    toast.dismiss()
     const root = document.documentElement
     root.classList.add(...fontClassName.split(' '))
     const previous = root.classList.contains('dark')

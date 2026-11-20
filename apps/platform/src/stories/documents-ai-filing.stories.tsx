@@ -1,6 +1,6 @@
 import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { useAIFilingToast } from '@/components/documents/ai-filing'
@@ -82,7 +82,9 @@ export const TagsAndSortedByAI: Story = {
           sent.tags.push(await request.json())
           return HttpResponse.json({ data: filed('doc_a') })
         }),
-        http.delete('/api/v1/documents/doc_a/filing', () => {
+        http.delete('/api/v1/documents/doc_a/filing', async () => {
+          // Slower than the play: a toast left over from the story before would pass its check without the request.
+          await delay(300)
           sent.undone.push('doc_a')
           return HttpResponse.json({ data: file('doc_a') })
         }),
