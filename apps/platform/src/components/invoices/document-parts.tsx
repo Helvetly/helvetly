@@ -23,8 +23,9 @@ import { ClientSearch } from './client-search'
 export const PARTY_LABEL =
   'text-caption font-medium tracking-[0.04em] text-muted-foreground uppercase'
 
+// The paper is its box: quiet like the meta values (`field-quiet`, e2e/visual/field-surface.spec.ts).
 export const proseInput =
-  'w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+  'field-quiet w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
 
 /** The paper's closing text: pinned to the bottom of the page, or after the content when that is longer. */
 export function PaperFooter({ children }: { children: ReactNode }) {

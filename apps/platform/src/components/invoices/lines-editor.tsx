@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -83,8 +84,9 @@ const keepFocus = (event: Event) => {
   if (active && active !== document.body && !active.closest('[role=menu]')) event.preventDefault()
 }
 
+// A cell of the document's line grid: quiet like the meta values (`field-quiet`), the grid is its box.
 const cellInput =
-  'h-8 w-full min-w-0 rounded-md bg-transparent px-2 text-[14px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/60 focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:bg-destructive/5 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
+  'field-quiet h-8 w-full min-w-0 rounded-md bg-transparent px-2 text-[14px] leading-5 tabular-nums outline-none transition-colors placeholder:text-placeholder hover:bg-muted/60 focus:bg-card focus:ring-2 focus:ring-ring/40 aria-invalid:bg-destructive/5 aria-invalid:ring-2 aria-invalid:ring-destructive/40'
 
 const VAT_SHORT: Record<string, string> = {
   Z: translate('zero'),
@@ -656,7 +658,7 @@ function VatPicker({
               }}
               placeholder={translate('otherRateEG19')}
               className="w-full"
-              inputClassName="h-7 w-full rounded-md border border-input bg-card px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              inputClassName={cn(inputClass, 'px-2')}
             />
           </div>
           <DropdownMenuSeparator />

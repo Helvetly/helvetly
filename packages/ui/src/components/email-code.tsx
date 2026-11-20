@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Field, FieldError, FieldLabel } from '@helvetly/ui/components/field'
 import { Input } from '@helvetly/ui/components/input'
 import { Logo } from '@helvetly/ui/components/logo'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { ApiError, errorMessage, type EmailCodeSent } from '@helvetly/ui/lib/http'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -110,7 +111,6 @@ export function EmailAddressForm({
           autoComplete={autoComplete}
           spellCheck={false}
           placeholder={translate('youCompanyCom')}
-          className="h-10"
           value={email}
           aria-invalid={!!error}
           onChange={(event) => setEmail(event.target.value)}
@@ -219,7 +219,8 @@ export function EmailCodeForm<Result>({
                 <div
                   key={i}
                   className={cn(
-                    'flex h-12 items-center justify-center rounded-lg border border-input bg-card text-xl font-medium tabular-nums shadow-xs transition-[border-color,box-shadow]',
+                    fieldSurface,
+                    'flex h-12 items-center justify-center text-xl font-medium tabular-nums',
                     error && 'border-destructive',
                     focused &&
                       i === Math.min(code.length, CODE_LENGTH - 1) &&
@@ -238,7 +239,8 @@ export function EmailCodeForm<Result>({
               autoComplete="one-time-code"
               pattern="[0-9]*"
               maxLength={CODE_LENGTH}
-              className="absolute inset-0 h-full border-0 bg-transparent text-transparent caret-transparent shadow-none selection:bg-transparent focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent"
+              // The six boxes above are the field; this one only takes the typing.
+              className="field-quiet absolute inset-0 h-full border-0 bg-transparent text-transparent caret-transparent shadow-none selection:bg-transparent focus-visible:ring-0 aria-invalid:ring-0 dark:bg-transparent"
               value={code}
               aria-invalid={!!error}
               onFocus={() => setFocused(true)}

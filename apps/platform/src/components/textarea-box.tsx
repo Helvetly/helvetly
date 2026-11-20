@@ -1,4 +1,5 @@
 'use client'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { cn } from '@helvetly/ui/lib/utils'
 import type { ComponentProps, ReactNode } from 'react'
 
@@ -26,7 +27,8 @@ export function TextareaBox({
     <div
       data-slot="textarea-box"
       className={cn(
-        'flex min-h-min min-w-0 flex-col overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-3 has-[textarea:focus-visible]:ring-ring/50 has-[textarea[aria-invalid=true]]:border-destructive has-[textarea[aria-invalid=true]]:ring-destructive/20 dark:bg-input/30',
+        fieldSurface,
+        'flex min-h-min min-w-0 flex-col overflow-hidden',
         resizable && 'resize-y',
       )}
     >

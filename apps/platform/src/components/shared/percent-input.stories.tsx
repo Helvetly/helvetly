@@ -19,7 +19,7 @@ function Field({ initial = '', cell = false }: { initial?: string; cell?: boolea
         placeholder="8.1"
         inputClassName={
           cell
-            ? 'h-8 w-full rounded-md bg-transparent px-2 text-right tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40'
+            ? 'field-quiet h-8 w-full rounded-md bg-transparent px-2 text-right tabular-nums outline-none focus:bg-card focus:ring-2 focus:ring-ring/40'
             : undefined
         }
       />

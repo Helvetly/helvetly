@@ -124,6 +124,7 @@ export function Composer({
       <label htmlFor="heidi-composer" className="sr-only">
         {translate('messageHeidi')}
       </label>
+      {/* Quiet: the composer card is its box (field-surface.spec.ts). */}
       <textarea
         id="heidi-composer"
         ref={textareaRef}
@@ -146,7 +147,7 @@ export function Composer({
             if (canSend) onSend()
           }
         }}
-        className="block field-sizing-content max-h-56 min-h-[52px] w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-placeholder @sm/heidi:text-[15px]"
+        className="field-quiet block field-sizing-content max-h-56 min-h-[52px] w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-placeholder @sm/heidi:text-[15px]"
       />
       <div className="flex items-center gap-1 px-2.5 pb-2.5">
         <input

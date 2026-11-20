@@ -1,5 +1,6 @@
 'use client'
 import { Combobox, inputClass, type Option } from '@helvetly/ui/components/combobox'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ChevronsUpDown, X } from 'lucide-react'
 import { useRef, useState, type ComponentProps, type FocusEvent, type KeyboardEvent } from 'react'
@@ -103,10 +104,8 @@ export function TagsInput({
   return (
     <div ref={root} className="grid gap-1.5">
       <div
-        className={cn(
-          'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-input bg-card px-1.5 py-1 shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30',
-          invalid && 'border-destructive',
-        )}
+        data-field-surface
+        className={cn(fieldSurface, 'flex min-h-9 flex-wrap items-center gap-1 px-1.5 py-0.5')}
       >
         {value.map((tag) => (
           <span
@@ -130,6 +129,7 @@ export function TagsInput({
         <input
           id={id}
           aria-label={label}
+          aria-invalid={invalid || undefined}
           value={draft}
           aria-describedby={error ? `${id}-error` : undefined}
           onChange={(event) => {

@@ -28,9 +28,10 @@ export function ListSearch({
   className?: string
 }) {
   return (
+    // Quiet: the toolbar row is its box (field-surface.spec.ts).
     <label
       className={cn(
-        'flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground',
+        'field-quiet flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground',
         className,
       )}
     >

@@ -178,7 +178,7 @@ export function InstalmentsSection({
                     onChange={(event) =>
                       reshape({ count: event.target.value.replace(/\D/g, '').slice(0, 2) })
                     }
-                    className={cn(inputClass, 'h-8 w-16 text-right tabular-nums')}
+                    className={cn(inputClass, 'w-16 text-right tabular-nums')}
                   />
                 </label>
                 <label className="grid gap-1 text-[12.5px] text-muted-foreground">
@@ -190,7 +190,7 @@ export function InstalmentsSection({
                       const picked = INTERVALS.find((entry) => entry.value === event.target.value)
                       if (picked) reshape({ interval: picked.value satisfies Interval })
                     }}
-                    className="h-8 w-44 text-[13px]"
+                    className="w-44"
                   >
                     {INTERVALS.map((entry) => (
                       <option key={entry.value} value={entry.value}>
@@ -243,7 +243,7 @@ export function InstalmentsSection({
                         inputMode="decimal"
                         value={row.amount}
                         onChange={(event) => editRow(i, { amount: event.target.value })}
-                        className={cn(inputClass, 'ml-auto h-8 w-32 text-right tabular-nums')}
+                        className={cn(inputClass, 'ml-auto w-32 text-right tabular-nums')}
                       />
                     </li>
                   )

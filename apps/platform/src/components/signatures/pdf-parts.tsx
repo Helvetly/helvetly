@@ -1,6 +1,8 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, FileText, Loader2, Search, Upload } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
@@ -59,7 +61,13 @@ export function PdfPicker({
   return (
     <section className="grid gap-2">
       <div className="flex items-center gap-2">
-        <label className="flex h-9 flex-1 items-center gap-2 rounded-lg bg-muted/60 px-2.5 text-muted-foreground focus-within:bg-card focus-within:ring-2 focus-within:ring-ring/30">
+        <label
+          data-field-surface
+          className={cn(
+            fieldSurface,
+            'flex h-9 flex-1 items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
+          )}
+        >
           <Search className="size-4 shrink-0 stroke-[1.5]" />
           <input
             type="search"

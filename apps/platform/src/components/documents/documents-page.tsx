@@ -23,6 +23,7 @@ import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -1051,7 +1052,13 @@ export function DocumentsPage() {
             )}
             {listing && (
               <>
-                <label className="mr-1 flex h-8 w-[clamp(140px,22vw,280px)] items-center gap-2 rounded-lg bg-muted/60 px-2.5 text-muted-foreground transition-colors focus-within:bg-card focus-within:text-foreground focus-within:ring-2 focus-within:ring-ring/30 hover:bg-muted">
+                <label
+                  data-field-surface
+                  className={cn(
+                    fieldSurface,
+                    'mr-1 flex h-9 w-[clamp(140px,22vw,280px)] items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
+                  )}
+                >
                   <Search className="size-4 shrink-0 stroke-[1.5]" />
                   <input
                     type="search"

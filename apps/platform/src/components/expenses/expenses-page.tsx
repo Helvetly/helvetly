@@ -3,6 +3,7 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
@@ -741,8 +742,7 @@ function Filters({
 }) {
   const categories = useExpenseCategories()
   const count = params.categories.length + (params.from || params.to ? 1 : 0)
-  const dateClass =
-    'h-8 w-full min-w-0 cursor-text rounded-md border border-input bg-card px-2 text-sm tabular-nums outline-none focus-visible:border-ring dark:bg-input/30'
+  const dateClass = cn(inputClass, 'cursor-text px-2 tabular-nums')
   return (
     <Popover>
       <PopoverTrigger asChild>

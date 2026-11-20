@@ -1,3 +1,4 @@
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { cn } from '@helvetly/ui/lib/utils'
 import type { ComponentProps } from 'react'
 
@@ -13,10 +14,8 @@ export function UnitInput({
   return (
     <div
       data-slot="unit-input"
-      className={cn(
-        'flex h-9 w-full min-w-0 items-center gap-2 rounded-md border border-input bg-card px-3 shadow-xs transition-[color,box-shadow] has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 dark:bg-input/30',
-        className,
-      )}
+      data-field-surface
+      className={cn(fieldSurface, 'flex h-9 w-full min-w-0 items-center gap-2 px-3', className)}
     >
       <input
         {...input}

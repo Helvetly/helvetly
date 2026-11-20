@@ -1,4 +1,5 @@
 import { Button } from '@helvetly/ui/components/button'
+import { Input } from '@helvetly/ui/components/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { Sparkle } from 'lucide-react'
@@ -15,7 +16,7 @@ function Host({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
   useShortcut('shortcuts', () => setOpen(true))
   return (
     <div className="grid max-w-sm gap-3 p-4">
-      <input aria-label="Note" className="h-9 rounded-md border px-2 text-body-sm" />
+      <Input aria-label="Note" />
       <div
         data-testid="rich-note"
         contentEditable

@@ -6,6 +6,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatAmount } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { CircleCheck, FileText, ListChecks, TriangleAlert, X } from 'lucide-react'
@@ -73,7 +74,8 @@ export function ImportDateField({
         invalid={Boolean(error)}
         onChange={onChange}
         className={cn(
-          'h-9 w-full border border-input bg-card px-3 text-sm shadow-xs data-invalid:border-destructive',
+          fieldSurface,
+          'h-9 w-full px-3 text-sm hover:bg-card data-invalid:border-destructive dark:hover:bg-input/30',
           value && 'pr-9',
         )}
       />

@@ -4,7 +4,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { Trash2, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from 'react'
 
-import { NativeSelect } from '@/components/clients/fields'
+import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { translate } from '@/lib/i18n'
 import {
@@ -426,7 +426,7 @@ export function Placement<K extends string>({
                   onChange={(event) =>
                     onFields(updateField(fields, current.key, { label: event.target.value }))
                   }
-                  className="h-8 rounded-md border bg-transparent px-2 text-[13.5px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className={cn(inputClass, 'text-foreground')}
                 />
               </label>
             )}
@@ -441,7 +441,7 @@ export function Placement<K extends string>({
                     )
                     onActive(Number(event.target.value))
                   }}
-                  className="h-8 text-[13.5px] text-foreground"
+                  className="text-foreground"
                 >
                   {movableTo.map((index) => (
                     <option key={index} value={index}>

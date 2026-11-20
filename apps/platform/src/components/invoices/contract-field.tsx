@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Link2, Search, X } from 'lucide-react'
@@ -110,7 +111,13 @@ export function ContractField({
             <TooltipContent>{translate('contractLinkDocument')}</TooltipContent>
           </Tooltip>
           <PopoverContent align="end" className="grid w-[min(360px,calc(100vw-2rem))] gap-2 p-2">
-            <label className="flex h-9 items-center gap-2 rounded-lg bg-muted/60 px-2.5 text-muted-foreground focus-within:bg-card focus-within:ring-2 focus-within:ring-ring/30">
+            <label
+              data-field-surface
+              className={cn(
+                fieldSurface,
+                'flex h-9 items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
+              )}
+            >
               <Search className="size-4 shrink-0 stroke-[1.5]" />
               <input
                 type="search"

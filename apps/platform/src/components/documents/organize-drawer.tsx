@@ -163,7 +163,7 @@ export function OrganizeDrawer({
             value={row.folderInput}
             placeholder={translate('organizeTopLevel')}
             onChange={(event) => setFolder(row.document_id, event.target.value)}
-            className={cn(inputClass, 'h-8 pl-8 text-body-sm')}
+            className={cn(inputClass, 'pl-8')}
           />
         </div>
         {isNew && (
