@@ -3,6 +3,7 @@ import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
 import { expectQuietConsole, guardConsole } from '@helvetly/vitest-config/console-guard'
+import { expectTypedFormButtons } from '@helvetly/vitest-config/form-buttons'
 import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -86,6 +87,7 @@ const preview: Preview = {
     ),
   ],
   afterEach: () => {
+    expectTypedFormButtons()
     expectAllHandled()
     expectQuietConsole()
   },

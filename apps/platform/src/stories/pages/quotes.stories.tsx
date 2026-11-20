@@ -1,3 +1,4 @@
+import { expectButtonsDoNotSubmit } from '@helvetly/vitest-config/form-buttons'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse, type RequestHandler } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
@@ -233,6 +234,19 @@ export const EditDraft: Story = {
   },
 }
 export const EditDraftDark = dark(EditDraft)
+
+/** Only Save saves: + Add line, the line menus, dates and discount controls leave the editor open and unsaved. */
+export const EditorButtonsDoNotSubmit: Story = {
+  parameters: quotes({ id: 'quo_draft' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Edit' }, wait))
+    const editor = await body.findByRole('form', { name: 'Edit draft quote' })
+    await expectButtonsDoNotSubmit(editor, { skip: /^(Close editor|Cancel)$/ })
+    await expect(body.getByRole('form', { name: 'Edit draft quote' })).toBeVisible()
+    await expect(body.queryByText('Quote saved.')).toBeNull()
+  },
+}
 
 /** Send checks the address; without email set up it says so, and marking it sent still works. */
 export const SendValidation: Story = {

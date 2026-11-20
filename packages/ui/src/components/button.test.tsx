@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import type { FormEvent } from 'react'
 
 import { Button } from './button'
 
@@ -29,4 +30,28 @@ test('the ai variant is an outline-sized button with the gradient edge', () => {
   const button = screen.getByRole('button', { name: 'Organize' })
   expect(button).toHaveAttribute('data-variant', 'ai')
   expect(button.className).toContain('ai-edge')
+})
+
+test('a button inside a form does not submit it unless it says type="submit"', () => {
+  const submit = vi.fn<(event: FormEvent) => void>((event) => event.preventDefault())
+  render(
+    <form onSubmit={submit}>
+      <Button>Add line</Button>
+      <Button type="submit">Save</Button>
+    </form>,
+  )
+  expect(screen.getByRole('button', { name: 'Add line' })).toHaveAttribute('type', 'button')
+  fireEvent.click(screen.getByRole('button', { name: 'Add line' }))
+  expect(submit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  expect(submit).toHaveBeenCalledOnce()
+})
+
+test('asChild keeps the child element its own semantics', () => {
+  render(
+    <Button asChild>
+      <a href="https://helvetly.com/">Helvetly</a>
+    </Button>,
+  )
+  expect(screen.getByRole('link', { name: 'Helvetly' })).not.toHaveAttribute('type')
 })

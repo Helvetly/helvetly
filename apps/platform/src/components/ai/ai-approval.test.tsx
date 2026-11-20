@@ -64,7 +64,11 @@ function setup(workspace = 'ws_a') {
   const answers: boolean[] = []
   function Action() {
     const { ensure } = useAIApproval()
-    return <button onClick={() => void ensure().then((ok) => answers.push(ok))}>Ask Heidi</button>
+    return (
+      <button type="button" onClick={() => void ensure().then((ok) => answers.push(ok))}>
+        Ask Heidi
+      </button>
+    )
   }
   render(
     <QueryClientProvider client={client}>
@@ -239,8 +243,12 @@ test('switching workspace while the approval check is still loading drops the ac
     const switchTo = useSwitchWorkspace()
     return (
       <>
-        <button onClick={() => void ensure().then((ok) => answers.push(ok))}>Ask Heidi</button>
-        <button onClick={() => switchTo.mutate('ws_b')}>Switch</button>
+        <button type="button" onClick={() => void ensure().then((ok) => answers.push(ok))}>
+          Ask Heidi
+        </button>
+        <button type="button" onClick={() => switchTo.mutate('ws_b')}>
+          Switch
+        </button>
       </>
     )
   }

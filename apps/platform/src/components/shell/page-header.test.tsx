@@ -101,7 +101,7 @@ test('a single tab shows no tab row, no "+" and no visible title, its controls w
           <PageHeader
             tabs={['Dashboard']}
             onSelect={() => {}}
-            actions={<button>This month</button>}
+            actions={<button type="button">This month</button>}
           />
         </SidebarProvider>
       </TooltipProvider>

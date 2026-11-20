@@ -17,6 +17,7 @@
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
+    "react/button-has-type": "error",
     "typescript/no-explicit-any": "error",
     "oxc/no-map-spread": "off",
     "typescript/consistent-type-imports": "error",

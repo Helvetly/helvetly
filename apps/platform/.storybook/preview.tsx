@@ -3,6 +3,7 @@ import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { fontClassName } from '@helvetly/ui/lib/fonts'
 import { cn } from '@helvetly/ui/lib/utils'
 import { expectQuietConsole, guardConsole } from '@helvetly/vitest-config/console-guard'
+import { expectTypedFormButtons } from '@helvetly/vitest-config/form-buttons'
 import { expectAllHandled, mswLoader } from '@helvetly/vitest-config/storybook-msw'
 import type { Preview } from '@storybook/nextjs-vite'
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -118,6 +119,7 @@ const preview: Preview = {
     ])
     const clipped = clippedRings(document)
     if (clipped.length > 0) throw new Error(`Focus ring cut off:\n${clipped.join('\n')}`)
+    expectTypedFormButtons()
     expectAllHandled()
     expectQuietConsole()
     if (undefinedQueries.length > 0)
