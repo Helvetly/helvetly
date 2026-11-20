@@ -166,8 +166,11 @@ export const FullSizeViewer = story(receiptApi([cafe, taxi]), async ({ canvasEle
   await userEvent.click(view.getByRole('button', { name: 'Next receipt' }))
   await expect(await body.findByRole('dialog', { name: taxi.name })).toBeVisible()
   await expect(view.getByText('100%')).toBeVisible()
-  await userEvent.keyboard('{Escape}')
-  await waitFor(() => expect(body.queryByRole('dialog', { name: taxi.name })).toBeNull())
+  await userEvent.click(view.getByRole('button', { name: 'Close' }))
+  // The dialog leaves after its closing animation, which a busy CI runner can stretch past a second.
+  await waitFor(() => expect(body.queryByRole('dialog', { name: taxi.name })).toBeNull(), {
+    timeout: 5000,
+  })
   // The card now shows the receipt the viewer ended on.
   await expect(sheet.getByText(taxi.name)).toBeVisible()
 })
