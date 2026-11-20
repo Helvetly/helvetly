@@ -92,7 +92,7 @@ test('the workspace menu adds a workspace and lands on its welcome', async () =>
   const dialog = await screen.findByRole('dialog', { name: 'Add workspace' })
   await userEvent.click(screen.getByRole('button', { name: 'Create workspace' }))
   expect(dialog).toHaveTextContent('Give the workspace a name')
-  await userEvent.type(screen.getByLabelText(/Name/), '  Side AG ')
+  await userEvent.type(screen.getByLabelText(/^Name/), '  Side AG ')
   await userEvent.click(screen.getByRole('button', { name: 'Create workspace' }))
   await waitFor(() => expect(replace).toHaveBeenCalledWith('/welcome'))
   expect(created).toMatchObject({ name: 'Side AG' })

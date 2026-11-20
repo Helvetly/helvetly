@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { FormField } from './form-field'
 import { Segmented } from './segmented'
+import { TooltipProvider } from './tooltip'
 
 test('a field labels its control and carries its grid width', () => {
   render(
@@ -50,4 +52,26 @@ test('each control sits in its own box, an empty child adds none, and the error 
     'P',
   ])
   expect(screen.getByText('Enter 0 to 365.')).toHaveAttribute('id', 'terms-error')
+})
+
+test('a hint goes behind the label’s (?) with the tip, and only a status stays under the control', async () => {
+  render(
+    <TooltipProvider>
+      <FormField
+        id="ends"
+        label="Ends"
+        tip="The last day of the engagement."
+        hint="Leave empty to run until you cancel it."
+        status="Runs until you cancel it."
+      >
+        <input id="ends" />
+      </FormField>
+    </TooltipProvider>,
+  )
+  expect(screen.queryByText('Leave empty to run until you cancel it.')).toBeNull()
+  expect(screen.getByText('Runs until you cancel it.')).toBeVisible()
+  await userEvent.hover(screen.getByRole('button', { name: 'About Ends' }))
+  const tip = await screen.findByRole('tooltip')
+  expect(tip).toHaveTextContent('The last day of the engagement.')
+  expect(tip).toHaveTextContent('Leave empty to run until you cancel it.')
 })

@@ -8,7 +8,9 @@ import { Children, type ReactNode } from 'react'
 
 /**
  * A label (red with an error, a red asterisk when required, help behind a (?)) over its control,
- * then the error or a hint. The control gets `id`; its error has the id `${id}-error`.
+ * then the error or a short status. `tip` and `hint` explain the field: both go behind the (?), so
+ * nothing explanatory pushes the form apart; `status` is live feedback that stays under the control
+ * (a check's result, a preview, an undo). The control gets `id`; its error has the id `${id}-error`.
  * `width` is the field's span in a settings form grid (settings.css); `group` labels a set of
  * controls (radios, a photo) rather than one input: a caption, as the controls name themselves
  * (a Segmented's legend).
@@ -20,6 +22,7 @@ export function FormField({
   label,
   error,
   hint,
+  status,
   required,
   tip,
   width,
@@ -31,6 +34,7 @@ export function FormField({
   label: string
   error?: string
   hint?: ReactNode
+  status?: ReactNode
   required?: boolean
   tip?: string
   width?: FieldWidth
@@ -56,7 +60,18 @@ export function FormField({
             </span>
           )}
         </Label>
-        {tip && <HelpTip label={label}>{tip}</HelpTip>}
+        {(tip || hint) && (
+          <HelpTip label={label}>
+            {tip && hint ? (
+              <span className="grid gap-1">
+                <span>{tip}</span>
+                <span>{hint}</span>
+              </span>
+            ) : (
+              (tip ?? hint)
+            )}
+          </HelpTip>
+        )}
       </span>
       {/* Each control in a gap-free box: a zero-size node a browser extension adds beside an input
           (a password manager's icon host) would otherwise become a grid row and push the rest down by the gap. */}
@@ -68,7 +83,7 @@ export function FormField({
       {error ? (
         <FieldError id={`${id}-error`}>{error}</FieldError>
       ) : (
-        hint && <p className="text-xs text-muted-foreground">{hint}</p>
+        status && <p className="text-xs text-muted-foreground">{status}</p>
       )}
     </div>
   )

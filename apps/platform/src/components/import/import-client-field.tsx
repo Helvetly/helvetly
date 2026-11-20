@@ -120,7 +120,7 @@ export function ImportClientField({
       <FormField
         id={id}
         label={translate('client')}
-        hint={locked ? translate('importClientLocked') : undefined}
+        status={locked ? translate('importClientLocked') : undefined}
         error={error}
         required
       >
