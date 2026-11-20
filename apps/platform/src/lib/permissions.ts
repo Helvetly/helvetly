@@ -288,6 +288,8 @@ const ROUTES: [string, Resource][] = [
   ['/settings/billing', 'billing'],
   ['/settings/company', 'invoice-settings'],
   ['/settings/invoices', 'invoice-settings'],
+  // Owners and admins only: the settings tabs also check the role (members can hold `*:*`).
+  ['/settings/approvals', 'workspace'],
   ['/settings/emails', 'invoice-settings'],
   ['/settings/audit-log', 'audit-log'],
   ['/employees/payroll', 'payroll'],

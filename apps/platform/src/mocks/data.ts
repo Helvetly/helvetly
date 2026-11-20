@@ -491,6 +491,7 @@ export const scheduledInvoice: ApiInvoice = {
   type_code: '380',
   number: '2026-042',
   status: 'open',
+  approval_state: null,
   is_overdue: false,
   client_id: 'cli_mock_1',
   client: { id: 'cli_mock_1', number: 7, name: 'Alpenglow Studio GmbH' },

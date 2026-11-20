@@ -1,6 +1,7 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRightLeft,
   Ban,
@@ -26,6 +27,7 @@ import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { MenuKit } from '@/components/data/menus'
 import { errorMessage } from '@/lib/api'
+import { approvalKeys, isApprovalRequired } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import {
   cannotIssueReasons,
@@ -150,6 +152,7 @@ const NOTHING: InvoiceCommand[] = []
 /** Runs invoice commands from anywhere: confirmations, dialogs and toasts included. */
 export function useInvoiceCommands(onOpen: (id: string) => void) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [pending, setPending] = useState<{
     command: InvoiceCommand
     invoice: InvoiceListItem
@@ -197,7 +200,13 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       onSuccess: (issued) => toast.success(translate('issued2', { value1: documentName(issued) })),
       onError: (error) => {
         const reasons = cannotIssueReasons(error)
-        if (reasons) setBlocked({ invoice, reasons })
+        if (isApprovalRequired(error)) {
+          toast.error(translate('approvalRequiredTitle'), {
+            description: translate('approvalRequiredBody'),
+          })
+          // The drawer shows the approval it now knows is needed.
+          void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(invoice.id) })
+        } else if (reasons) setBlocked({ invoice, reasons })
         else toast.error(errorMessage(error))
       },
     })

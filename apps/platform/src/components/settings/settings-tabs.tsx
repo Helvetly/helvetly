@@ -1,5 +1,6 @@
 'use client'
 import {
+  BadgeCheck,
   BriefcaseBusiness,
   Building2,
   CreditCard,
@@ -18,6 +19,7 @@ import { useLeaveGuard } from '@/components/section-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { translate } from '@/lib/i18n'
 import { canReadPath, useScopes } from '@/lib/permissions'
+import { useSession } from '@/lib/queries'
 
 export type Page = { label: string; href: string; icon: LucideIcon }
 
@@ -27,6 +29,7 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('company'), href: '/settings/company', icon: Store },
   { label: translate('account'), href: '/account', icon: UserRound },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
+  { label: translate('approvals'), href: '/settings/approvals', icon: BadgeCheck },
   { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
@@ -57,9 +60,13 @@ export function settingsPageAt(pathname: string, pages = SETTINGS_PAGES): Page |
 export function SettingsHeader({ actions }: { actions?: ReactNode }) {
   // Employment is not offered on a plan without employees (an owner with records still reaches it).
   const noEmployment = useEmployeesHidden()
-  const pages = noEmployment
-    ? SETTINGS_PAGES.filter((page) => page.href !== '/settings/employment')
-    : SETTINGS_PAGES
+  // Approvals are configured by owners and admins only; a member's full access is still a member's.
+  const manager = isManager(useSession().data?.role)
+  const pages = SETTINGS_PAGES.filter(
+    (page) =>
+      !(noEmployment && page.href === '/settings/employment') &&
+      (manager || page.href !== '/settings/approvals'),
+  )
   return <TabsHeader pages={pages} actions={actions} />
 }
 

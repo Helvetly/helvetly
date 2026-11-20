@@ -57,16 +57,38 @@ export function InvoiceStatusBadge({
   return <StatusBadge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>
 }
 
-/** A row's status, or "Refund due" while the customer is owed money back. */
+const APPROVAL_BADGES: Record<
+  NonNullable<Invoice['approval_state']>,
+  { tone: Tone; label: string }
+> = {
+  pending: { tone: 'amber', label: translate('approvalPending') },
+  approved: { tone: 'green', label: translate('approvalApproved') },
+  rejected: { tone: 'red', label: translate('approvalChangesRequested') },
+}
+
+/** A draft's approval: "Pending approval", "Approved", "Changes requested"; nothing without a request. */
+export function ApprovalBadge({ state }: { state: Invoice['approval_state'] }) {
+  if (!state) return null
+  const { tone, label } = APPROVAL_BADGES[state]
+  return <StatusBadge tone={tone}>{label}</StatusBadge>
+}
+
+/** A row's status, or "Refund due" while the customer is owed money back; a draft's approval beside it. */
 export function RowStatus({
   invoice,
 }: {
-  invoice: Pick<Invoice, 'kind' | 'status' | 'is_overdue' | 'refund_due' | 'amount_paid'>
+  invoice: Pick<
+    Invoice,
+    'kind' | 'status' | 'is_overdue' | 'refund_due' | 'amount_paid' | 'approval_state'
+  >
 }) {
   return isPositive(invoice.refund_due) ? (
     <StatusBadge tone="amber">{translate('refundDue')}</StatusBadge>
   ) : (
-    <InvoiceStatusBadge invoice={invoice} />
+    <>
+      <InvoiceStatusBadge invoice={invoice} />
+      {invoice.status === 'draft' && <ApprovalBadge state={invoice.approval_state} />}
+    </>
   )
 }
 
