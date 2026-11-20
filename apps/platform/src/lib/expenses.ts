@@ -370,7 +370,7 @@ export function useExpensePreview(input: string | null) {
 }
 
 /** After a write: this expense's cache, the lists and the figures. */
-function refresh(queryClient: QueryClient, expense?: Expense) {
+export function refreshExpenses(queryClient: QueryClient, expense?: Expense) {
   if (expense) queryClient.setQueryData(expenseKeys.detail(expense.id), expense)
   void queryClient.invalidateQueries({ queryKey: ['expenses', 'list'] })
   void queryClient.invalidateQueries({ queryKey: expenseKeys.summary })
@@ -382,7 +382,7 @@ export function useSaveExpense() {
   return useMutation<Expense, ApiError, { id?: string; input: Partial<ExpenseInput> }>({
     mutationFn: async ({ id, input }) =>
       (id ? await expensesApi.update(id, input) : await expensesApi.create(input)).data,
-    onSuccess: (expense) => refresh(queryClient, expense),
+    onSuccess: (expense) => refreshExpenses(queryClient, expense),
   })
 }
 
@@ -393,7 +393,7 @@ export function useExpenseAction<Variables>(
   const queryClient = useQueryClient()
   return useMutation<Expense, ApiError, Variables>({
     mutationFn: async (variables) => (await run(variables)).data,
-    onSuccess: (expense) => refresh(queryClient, expense),
+    onSuccess: (expense) => refreshExpenses(queryClient, expense),
   })
 }
 
@@ -403,7 +403,7 @@ export function useDeleteExpense() {
     mutationFn: expensesApi.remove,
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: expenseKeys.detail(id) })
-      refresh(queryClient)
+      refreshExpenses(queryClient)
     },
   })
 }
@@ -415,7 +415,7 @@ export function useBulkExpenses() {
       (await expensesApi.bulk(ids, action)).data,
     onSuccess: (_, { ids }) => {
       for (const id of ids) void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(id) })
-      refresh(queryClient)
+      refreshExpenses(queryClient)
     },
   })
 }
@@ -424,12 +424,18 @@ export function useDeleteReceipt(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (receiptId: string) => expensesApi.deleteReceipt(id, receiptId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: expenseKeys.receipts(id) })
-      void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(id), exact: true })
-      void queryClient.invalidateQueries({ queryKey: ['expenses', 'list'] })
-    },
+    onSuccess: () => receiptsChanged(queryClient, id),
   })
+}
+
+/**
+ * After receipts were added or removed: the receipt decides completeness, so the expense (status, missing fields,
+ * Book), the lists' badges and the figures are read again along with the receipts.
+ */
+export function receiptsChanged(queryClient: QueryClient, id: string) {
+  void queryClient.invalidateQueries({ queryKey: expenseKeys.receipts(id) })
+  void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(id), exact: true })
+  refreshExpenses(queryClient)
 }
 
 /** VAT charged outside Switzerland and Liechtenstein: not reclaimable as Swiss input tax. */

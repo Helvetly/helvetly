@@ -9,6 +9,8 @@ const screens: [App, string][] = [
   ['platform', 'pages-invoices--detail'],
   ['platform', 'invoices-send-email-dialogs--invoice-ready'],
   ['platform', 'pages-clients--detail'],
+  ['platform', 'expenses-receipts--several-receipts'],
+  ['platform', 'expenses-receipts--missing-receipt'],
   ['platform', 'pages-invoice-editor--draft-with-lines'],
   ['platform', 'pages-documents--folders-and-files'],
   ['platform', 'pages-documents--templates'],

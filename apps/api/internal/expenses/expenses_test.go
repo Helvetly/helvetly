@@ -832,3 +832,50 @@ func TestReimbursedNotifiesWhoPaid(t *testing.T) {
 		}
 	}
 }
+
+// TestReceiptCompleteness: the receipt rule follows the stored receipts on every read, so the expense, the list's
+// incomplete filter and booking agree after each upload and delete.
+func TestReceiptCompleteness(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	x := e.create(owner, complete(e.categories(owner)["6640"].ID))
+	second := append(append([]byte{}, pdf...), []byte("% second\n")...)
+
+	check := func(step string, wantCount int) {
+		t.Helper()
+		var got struct{ Data expense }
+		e.do(owner, "GET", "/api/v1/expenses/"+x.ID, nil, 200, &got)
+		missing := wantCount == 0
+		if got.Data.ReceiptsCount != wantCount || got.Data.IsComplete == missing || slices.Contains(got.Data.MissingFields, "receipt") != missing {
+			t.Fatalf("%s: %+v", step, got.Data)
+		}
+		var list struct{ Data []expense }
+		e.do(owner, "GET", "/api/v1/expenses?incomplete=true", nil, 200, &list)
+		if (len(list.Data) == 1) != missing {
+			t.Fatalf("%s: incomplete list %d", step, len(list.Data))
+		}
+	}
+	receipts := func() []struct{ ID string } {
+		var files struct{ Data []struct{ ID string } }
+		e.do(owner, "GET", "/api/v1/expenses/"+x.ID+"/receipts", nil, 200, &files)
+		return files.Data
+	}
+
+	for _, step := range []struct {
+		name  string
+		run   func()
+		count int
+	}{
+		{"none", func() {}, 0},
+		{"first upload", func() { e.upload(owner, x.ID, "a.pdf", pdf) }, 1},
+		{"another receipt", func() { e.upload(owner, x.ID, "b.pdf", second) }, 2},
+		{"one deleted", func() { e.do(owner, "DELETE", "/api/v1/expenses/"+x.ID+"/receipts/"+receipts()[0].ID, nil, 204, nil) }, 1},
+		{"last deleted", func() { e.do(owner, "DELETE", "/api/v1/expenses/"+x.ID+"/receipts/"+receipts()[0].ID, nil, 204, nil) }, 0},
+	} {
+		step.run()
+		check(step.name, step.count)
+	}
+	e.fails(owner, "POST", "/api/v1/expenses/"+x.ID+"/book", nil, 422, "cannot_book")
+	e.upload(owner, x.ID, "a.pdf", pdf)
+	e.do(owner, "POST", "/api/v1/expenses/"+x.ID+"/book", nil, 200, nil)
+}

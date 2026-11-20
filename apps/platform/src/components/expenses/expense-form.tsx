@@ -47,7 +47,9 @@ import {
   isForeignVat,
   isHeic,
   RATE_SOURCES,
+  receiptsChanged,
   recognizeReceipt,
+  refreshExpenses,
   uploadReceipts,
   useExpenseCategories,
   useExpensePreview,
@@ -317,6 +319,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           ),
         )
         saved = (await expensesApi.get(saved.id)).data
+        receiptsChanged(queryClient, saved.id)
       }
       if (book && !booked) {
         try {
@@ -333,6 +336,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               value2: reasons.join(' ') || errorMessage(error),
             }),
           )
+          refreshExpenses(queryClient, saved)
           onSaved(saved, !expense)
           return
         }
@@ -350,6 +354,8 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
             number: saved.duplicate_of.number,
           }),
         )
+      // The expense as it now is (receipts, booking), so its drawer opens on it and not on the first save.
+      refreshExpenses(queryClient, saved)
       onSaved(saved, !expense)
     } catch (error) {
       submitting.current = false
