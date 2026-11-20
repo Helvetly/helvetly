@@ -528,3 +528,70 @@ func TestAIImportEmailsStartOff(t *testing.T) {
 		}
 	}
 }
+
+func TestNeedsYouClassification(t *testing.T) {
+	for _, tc := range []struct {
+		event    string
+		needsYou bool
+		settled  string
+	}{
+		{"invoice.overdue", true, "invoice.paid"},
+		{"einvoice.delivery_failed", true, "einvoice.delivered"},
+		{"portal.domain_failed", true, "portal.domain_active"},
+		{"import.ready", true, ""},
+		{"client.change_requested", true, ""},
+		{"invoice.paid", false, ""},
+		{"member.joined", false, ""},
+		{"signature.signed", false, ""},
+	} {
+		if needsYou[tc.event] != tc.needsYou || settledBy[tc.event] != tc.settled {
+			t.Errorf("%s: needs you %v settled by %q", tc.event, needsYou[tc.event], settledBy[tc.event])
+		}
+	}
+	for name, by := range settledBy {
+		if _, ok := lookup(by); !ok || !needsYou[name] {
+			t.Errorf("%s settled by unknown %s or not needing you", name, by)
+		}
+	}
+	for name := range needsYou {
+		if _, ok := lookup(name); !ok {
+			t.Errorf("unknown event %s needs you", name)
+		}
+	}
+}
+
+func TestOverdueSettledByPayment(t *testing.T) {
+	e := newEnv(t)
+	ws := e.workspace()
+	admin := e.join(ws, "admin")
+	now := time.Now()
+	type item struct {
+		Event, Title, Action string
+		NeedsYou             bool `json:"needs_you"`
+		Resolved             *struct{ Title, Action string }
+	}
+	list := func() []item {
+		var p struct{ Data []item }
+		if err := json.Unmarshal(e.want(admin, "GET", "/api/v1/notifications", nil, 200), &p); err != nil {
+			t.Fatal(err)
+		}
+		return p.Data
+	}
+	e.notify(ws, "invoice.overdue", paid("1"), store.NotifyTo{Roles: Managers}, now)
+	e.notify(ws, "invoice.overdue", paid("2"), store.NotifyTo{Roles: Managers}, now)
+	if got := list(); len(got) != 2 || !got[0].NeedsYou || got[0].Resolved != nil || got[0].Action != "View invoice" {
+		t.Fatalf("before payment %+v", got)
+	}
+	// Invoice 1 is paid: its overdue item shows the payment; invoice 2 still needs you.
+	e.notify(ws, "invoice.paid", paid("1"), store.NotifyTo{Roles: Managers}, now)
+	got := list()
+	if len(got) != 3 || got[0].Event != "invoice.paid" || got[0].NeedsYou {
+		t.Fatalf("after payment %+v", got)
+	}
+	if got[1].Resolved != nil {
+		t.Fatalf("invoice 2 settled by another invoice's payment: %+v", got[1])
+	}
+	if r := got[2].Resolved; r == nil || r.Title != "Invoice RE-1 was paid" || r.Action != "View invoice" {
+		t.Fatalf("invoice 1 not settled: %+v", got[2])
+	}
+}
