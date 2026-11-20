@@ -207,6 +207,9 @@ export const ProductEditKeepsNet: Story = {
     const category = document.getElementById('product-vat_category')
     await expect(category?.getBoundingClientRect().top).toBe(rate.getBoundingClientRect().top)
     await expect(rate.getBoundingClientRect().width).toBeLessThan(120)
+    await userEvent.click(currency)
+    await expect(body.getByRole('dialog', { name: 'Currency' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
   },
 }
 
