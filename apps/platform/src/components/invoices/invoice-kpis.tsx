@@ -52,6 +52,7 @@ export function InvoiceKpis({ period }: { period?: SummaryPeriod }) {
             unit={summary.currency}
             value={formatWholeAmount(summary.overdue.amount)}
             note={`${summary.overdue.count} ${summary.overdue.count === 1 ? translate('invoice3') : translate('invoices3')}`}
+            tone="warning"
             chart={<TickGauge share={share(summary.overdue.amount, summary.outstanding.amount)} />}
           />
           <Kpi
@@ -64,6 +65,7 @@ export function InvoiceKpis({ period }: { period?: SummaryPeriod }) {
                 ? `${paidChange >= 0 ? '+' : '−'}${formatPercent(Math.abs(paidChange))}`
                 : undefined
             }
+            tone="success"
             chart={<Sparkline values={summary.monthly.map((month) => chartNumber(month.paid))} />}
           />
           {/* Only while someone is owed money back: it is a to-do, not a figure to watch. */}

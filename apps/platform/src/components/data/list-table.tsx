@@ -13,7 +13,7 @@ export const listTable = {
   table: 'w-full table-fixed text-[15px]',
   head: 'h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase',
   th: 'px-3 font-medium first:pl-5 last:pr-5',
-  row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-muted/50',
+  row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   td: 'truncate px-3 first:pl-5 last:pr-5',
   /** The leading checkbox column, head and body. */
   select: 'w-12 pl-5',
@@ -22,7 +22,7 @@ export const listTable = {
   numeric: 'text-right tabular-nums',
   /** The phone list that replaces the table on narrow screens. */
   list: 'divide-y divide-border/70',
-  item: 'flex items-center gap-3 px-4 py-3 data-selected:bg-muted/50',
+  item: 'flex items-center gap-3 px-4 py-3 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
 }
 
 type PageMeta = { page: number; page_size: number; total: number; total_pages: number }

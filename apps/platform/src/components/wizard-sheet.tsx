@@ -79,8 +79,8 @@ export function WizardSheet({
                   <span
                     className={cn(
                       'flex size-5 items-center justify-center rounded-full text-[11px] tabular-nums ring-1 ring-border',
-                      index < step && 'bg-foreground text-background ring-0',
-                      index === step && 'ring-foreground/40',
+                      index < step && 'bg-success-solid text-white ring-0',
+                      index === step && 'ring-brand-solid',
                     )}
                   >
                     {index < step ? <Check className="size-3" /> : index + 1}

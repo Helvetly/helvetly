@@ -198,10 +198,10 @@ function PortalNav({ pathname }: { pathname: string }) {
                 // click; the pill marks the active tab, and Tab still reaches every link.
                 onMouseDown={(event) => event.preventDefault()}
                 // Not cn(): tailwind-merge would drop the type-scale size for the colour.
-                className="group/tab flex flex-col items-center gap-0.5 rounded-md pt-1.5 pb-1.5 text-caption font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:h-9 md:flex-row md:gap-2 md:px-3 md:py-0 md:text-body md:hover:bg-sidebar-accent/60 data-active:text-sidebar-accent-foreground md:data-active:bg-sidebar-accent"
+                className="group/tab flex flex-col items-center gap-0.5 rounded-md pt-1.5 pb-1.5 text-caption font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:h-9 md:flex-row md:gap-2 md:px-3 md:py-0 md:text-body md:hover:bg-sidebar-accent/60 data-active:text-brand md:data-active:bg-brand-surface"
               >
                 {/* On phones the pill sits behind the icon only; from md up the whole tab is the pill. */}
-                <span className="grid h-7 w-12 place-items-center rounded-full transition-colors group-hover/tab:bg-sidebar-accent/60 group-data-active/tab:bg-sidebar-accent md:contents">
+                <span className="grid h-7 w-12 place-items-center rounded-full transition-colors group-hover/tab:bg-sidebar-accent/60 group-data-active/tab:bg-brand-surface md:contents">
                   <Icon aria-hidden className="size-5 stroke-[1.75] md:size-4 md:max-lg:hidden" />
                 </span>
                 {label}

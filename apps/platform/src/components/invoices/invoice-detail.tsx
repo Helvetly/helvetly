@@ -248,11 +248,11 @@ function Timeline({ invoice, canManage }: { invoice: Invoice; canManage: boolean
                 className={cn(
                   'z-10 flex size-[18px] shrink-0 items-center justify-center rounded-full',
                   done
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-success-solid text-white'
                     : skippable
                       ? 'border border-dashed border-muted-foreground/50 bg-card'
                       : i === current
-                        ? 'bg-card ring-[1.5px] ring-foreground/60 ring-inset'
+                        ? 'bg-card ring-[1.5px] ring-brand-solid ring-inset'
                         : 'bg-card ring-1 ring-border ring-inset',
                 )}
               >
@@ -262,7 +262,7 @@ function Timeline({ invoice, canManage }: { invoice: Invoice; canManage: boolean
                 <span
                   className={cn(
                     'h-px flex-1',
-                    done && steps[i + 1]?.at ? 'bg-primary' : 'bg-border',
+                    done && steps[i + 1]?.at ? 'bg-success-solid' : 'bg-border',
                   )}
                 />
               )}

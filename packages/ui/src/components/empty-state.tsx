@@ -3,7 +3,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-/** What a list shows when it has nothing yet: a neutral tile, one sentence and one action. */
+/** What a list shows when it has nothing yet: a soft brand tile, one sentence and one action. */
 export function EmptyState({
   icon,
   title,
@@ -25,7 +25,7 @@ export function EmptyState({
         className,
       )}
     >
-      <IconTile icon={icon} size="lg" />
+      <IconTile icon={icon} variant="section" size="lg" />
       <div className="grid max-w-sm gap-1">
         <p className="text-body font-medium">{title}</p>
         {description && <p className="text-body-sm text-muted-foreground">{description}</p>}
