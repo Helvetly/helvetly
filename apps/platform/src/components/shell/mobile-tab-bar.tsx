@@ -82,7 +82,7 @@ export function MobileTabBar() {
 }
 
 const tabClass =
-  'flex h-16 flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground transition-colors aria-[current=page]:text-foreground [&_svg]:size-[22px] [&_svg]:stroke-[1.5] aria-[current=page]:[&_svg]:stroke-2'
+  'flex h-16 flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground transition-colors aria-[current=page]:text-brand [&_svg]:size-[22px] [&_svg]:stroke-[1.5] aria-[current=page]:[&_svg]:stroke-2'
 
 function Tab({
   label,

@@ -44,6 +44,12 @@ export function KpiBand({ loading, children }: { loading: boolean; children: Rea
   )
 }
 
+const CHART_TONES = {
+  brand: 'text-brand-solid',
+  success: 'text-success-solid',
+  warning: 'text-warning-solid',
+}
+
 /** One figure: label (with a tiny arrow badge when it trends), the number, a small chart. */
 export function Kpi({
   label,
@@ -52,6 +58,7 @@ export function Kpi({
   note,
   trending = false,
   chart,
+  tone = 'brand',
 }: {
   label: string
   value: string
@@ -61,6 +68,8 @@ export function Kpi({
   note?: string
   trending?: boolean
   chart: ReactNode
+  /** The chart's colour: the brand blue, green for money in, amber for what needs attention. */
+  tone?: keyof typeof CHART_TONES
 }) {
   return (
     <div className="grid min-w-[62%] snap-start content-start gap-2.5 px-5 pt-5 pb-4 @xl:min-w-0">
@@ -85,7 +94,7 @@ export function Kpi({
           </span>
         )}
       </p>
-      <div className="mt-2 h-8 text-foreground">{chart}</div>
+      <div className={`mt-2 h-8 ${CHART_TONES[tone]}`}>{chart}</div>
     </div>
   )
 }

@@ -67,6 +67,7 @@ import { errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import {
+  displayStatus,
   addDays,
   canManageInvoices,
   daysBetween,
@@ -1034,6 +1035,7 @@ const InvoiceRow = memo(function InvoiceRow({
     <RowContextMenu menu={menu} bulk={bulk}>
       <tr
         data-selected={selected || undefined}
+        data-attention={displayStatus(invoice) === 'overdue' || undefined}
         onPointerEnter={() => act.prefetch(invoice.id)}
         data-open={isOpen || undefined}
         onClick={(event) => {
@@ -1092,6 +1094,7 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
     <RowContextMenu menu={menu} bulk={bulk}>
       <li
         data-selected={selected || undefined}
+        data-attention={displayStatus(invoice) === 'overdue' || undefined}
         onPointerEnter={() => act.prefetch(invoice.id)}
         className={listTable.item}
       >

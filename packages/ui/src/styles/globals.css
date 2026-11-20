@@ -167,21 +167,23 @@
   --card-foreground: #39393b;
   --popover: oklch(1 0 0);
   --popover-foreground: #39393b;
-  --primary: oklch(0.21 0.006 286);
-  --primary-foreground: oklch(0.985 0 0);
+  /* The action colour: a confident blue (white text on it is 5:1), the one fill for primary actions,
+     checked boxes and the selected item. */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.967 0.001 286);
   --secondary-foreground: oklch(0.21 0.006 286);
   --muted: #f2f2f2;
   --muted-foreground: #66656c;
   --placeholder: #c4c3c9;
-  /* The leading accent: a fresh teal from the logo's mountain, bluer than --toggle's and the
-     money states' green so the three never read as one. --brand (text, icons) is ≥ 5:1 on
-     --brand-surface, the background and white; --brand-solid (dots, bars, rings) is ≥ 3:1 on white. */
-  --brand: #0b7268;
-  --brand-solid: #0e9a86;
-  --brand-surface: #dcf4ee;
+  /* The leading accent: the action blue, for links, focus, the selected nav item, section icons and
+     progress. --brand (text, icons) is ≥ 5.8:1 on --brand-surface, the background and white;
+     --brand-solid (dots, bars, rings) is ≥ 4.5:1 on white. */
+  --brand: #1d4fd1;
+  --brand-solid: #2f6bed;
+  --brand-surface: #e8efff;
   --link: var(--brand);
-  /* The app icon's tile: the brand teal in both themes, so the white mark always reads. */
+  /* The app icon's tile: the logo's own teal in both themes, so the white mark always reads. */
   --logo-from: #0e9a86;
   --logo-to: #0b7268;
   /* Status tones. Text tokens are ≥ 4.9:1 (AA) on their surface, the background and white, in
@@ -212,7 +214,7 @@
   --border: #ebebed;
   --input: #e2e2e5;
   --ring: var(--brand-solid);
-  --chart-1: oklch(0.21 0.006 286);
+  --chart-1: var(--brand-solid);
   --chart-2: oklch(0.705 0.015 286);
   --chart-3: oklch(0.53 0.12 164);
   --chart-4: oklch(0.68 0.12 230);
@@ -235,8 +237,8 @@
     0 12px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.03);
   --sidebar: var(--background);
   --sidebar-foreground: #6d6b75;
-  --sidebar-primary: oklch(0.21 0.006 286);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: #e7e6eb;
   --sidebar-accent-foreground: #2a2a2d;
   --sidebar-border: #ebebed;
@@ -250,16 +252,16 @@
   --card-foreground: oklch(0.96 0.002 286);
   --popover: oklch(0.23 0.005 286);
   --popover-foreground: oklch(0.96 0.002 286);
-  --primary: oklch(0.94 0.004 286);
-  --primary-foreground: oklch(0.21 0.006 286);
+  --primary: #2f66e0;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.26 0.005 286);
   --secondary-foreground: oklch(0.96 0.002 286);
   --muted: oklch(0.25 0.005 286);
   --muted-foreground: oklch(0.7 0.012 286);
   --placeholder: oklch(0.45 0.01 286);
-  --brand: #5fe0c8;
-  --brand-solid: #22c3a9;
-  --brand-surface: #123a35;
+  --brand: #8fb3ff;
+  --brand-solid: #5b8cff;
+  --brand-surface: #1a2a4d;
   --link: var(--brand);
   --warning: oklch(0.85 0.12 70);
   --warning-solid: oklch(0.76 0.15 58);
@@ -283,7 +285,7 @@
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 14%);
   --ring: var(--brand-solid);
-  --chart-1: oklch(0.93 0.004 286);
+  --chart-1: var(--brand-solid);
   --chart-2: oklch(0.55 0.012 286);
   --chart-3: oklch(0.72 0.14 163);
   --chart-4: oklch(0.68 0.12 230);
@@ -301,8 +303,8 @@
   --panel: oklch(0.2 0.004 286);
   --sidebar: var(--background);
   --sidebar-foreground: oklch(0.82 0.004 286);
-  --sidebar-primary: oklch(0.94 0.004 286);
-  --sidebar-primary-foreground: oklch(0.21 0.006 286);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.24 0.005 286);
   --sidebar-accent-foreground: oklch(0.96 0.002 286);
   --sidebar-border: oklch(1 0 0 / 9%);
@@ -332,7 +334,7 @@
   letter-spacing: -0.02em;
 }
 
-/* Text painted with the brand's teal into Heidi's violet. */
+/* Text painted with the brand's blue into Heidi's violet. */
 /* Every page title's serif accent wears it too, as the home page's does. */
 .ink-gradient,
 h1 .accent {
