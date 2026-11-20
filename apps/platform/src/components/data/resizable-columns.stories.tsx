@@ -113,7 +113,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const header = (canvas: ReturnType<typeof within>, name: string) => {
-  const head = canvas.getByRole('columnheader', { name: new RegExp(`^${name}`) })
+  // The exact name: the handle inside the header does not add its value to it.
+  const head = canvas.getByRole('columnheader', { name })
   return { head, width: () => Math.round(head.getBoundingClientRect().width) }
 }
 

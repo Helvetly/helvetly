@@ -5,6 +5,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { RotateCcw } from 'lucide-react'
 import {
   useCallback,
+  useId,
   useState,
   useSyncExternalStore,
   type ComponentProps,
@@ -67,6 +68,7 @@ export function useResizableColumns(
   { flex, limits = {} }: { flex: string; limits?: Partial<Record<string, Limits>> },
 ) {
   const enabled = useWide()
+  const id = useId()
   const [widths, setWidths] = useState<ColumnWidths>(() => readColumnWidths(table, columns))
   const target = enabled && Object.keys(widths).length > 0 ? (widths[flex] ?? FLEX_MIN) : undefined
 
@@ -118,9 +120,12 @@ export function useResizableColumns(
       setWidths({})
       writeColumnWidths(table, columns, {})
     },
-    /** Props for a column's `<th>`: its dragged width, and where the handle finds it. */
+    /** The hidden label of a column, its header's name: not the handle's value with it. */
+    labelId: (column: string) => `${id}${column}`,
+    /** Props for a column's `<th>`: its dragged width, its name and where the handle finds it. */
     head: (column: string) => ({
       'data-column': column,
+      'aria-labelledby': enabled && columns.includes(column) ? `${id}${column}` : undefined,
       style:
         enabled && column !== flex && widths[column] !== undefined
           ? { width: widths[column] }
@@ -219,6 +224,9 @@ export function ColumnResizer({
       data-dragging={dragging || undefined}
       className="group/resizer absolute inset-y-0 -right-1.5 z-10 w-3"
     >
+      <span id={columns.labelId(column)} hidden>
+        {label}
+      </span>
       <input
         type="range"
         aria-label={translate('resizeColumn', { column: label })}
