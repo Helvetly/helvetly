@@ -234,6 +234,7 @@ export function ServiceField({
           />
           {start && (
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               className="text-muted-foreground"
