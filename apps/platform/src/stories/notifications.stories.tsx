@@ -202,7 +202,10 @@ export const BellPhone: Story = {
 
 export const BellError: Story = {
   render: () => bell(),
-  parameters: { msw: { handlers: [failing('/api/v1/notifications')] } },
+  // Only the list fails; the bell's preferences still answer.
+  parameters: {
+    msw: { handlers: [failing('/api/v1/notifications'), ...notificationHandlers] },
+  },
   play: async ({ canvasElement }) => {
     const bubble = await openBell(canvasElement)
     await expect(await bubble.findByRole('alert')).toHaveTextContent('Server down.')
