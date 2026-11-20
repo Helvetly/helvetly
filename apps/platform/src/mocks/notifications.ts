@@ -19,6 +19,9 @@ export const sampleNotifications = (): Notification[] => [
     created_at: ago(0),
     read: false,
     read_at: null,
+    needs_you: false,
+    action: 'View invoice',
+    resolved: null,
   },
   {
     id: 'ntf_5',
@@ -31,6 +34,9 @@ export const sampleNotifications = (): Notification[] => [
     created_at: ago(0),
     read: false,
     read_at: null,
+    needs_you: false,
+    action: 'View the request',
+    resolved: null,
   },
   {
     id: 'ntf_4',
@@ -44,6 +50,9 @@ export const sampleNotifications = (): Notification[] => [
     // Read a minute ago: still in the bubble.
     read: true,
     read_at: ago(1 / 60),
+    needs_you: true,
+    action: 'View invoice',
+    resolved: null,
   },
   {
     id: 'ntf_3',
@@ -56,6 +65,9 @@ export const sampleNotifications = (): Notification[] => [
     created_at: ago(26),
     read: true,
     read_at: ago(25),
+    needs_you: true,
+    action: 'Review the import',
+    resolved: null,
   },
   {
     id: 'ntf_2',
@@ -68,6 +80,9 @@ export const sampleNotifications = (): Notification[] => [
     created_at: ago(30),
     read: true,
     read_at: ago(29),
+    needs_you: true,
+    action: 'Review the request',
+    resolved: null,
   },
   {
     id: 'ntf_1',
@@ -80,6 +95,9 @@ export const sampleNotifications = (): Notification[] => [
     created_at: ago(24 * 9),
     read: true,
     read_at: ago(24 * 9),
+    needs_you: false,
+    action: 'View members',
+    resolved: null,
   },
 ]
 
@@ -104,6 +122,14 @@ const samplePrefs = (): NotificationPrefs => ({
 
 let notifications = sampleNotifications()
 let prefs = samplePrefs()
+
+/** What happens elsewhere: an item that needs you is settled (the overdue invoice was paid). */
+export function settleNotificationMock(
+  id: string,
+  resolved: NonNullable<Notification['resolved']>,
+) {
+  notifications = notifications.map((n) => (n.id === id ? { ...n, resolved } : n))
+}
 
 export function resetNotificationsMock(list = sampleNotifications()) {
   notifications = list

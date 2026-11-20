@@ -152,7 +152,7 @@
 1 text-px apps/platform/src/components/load-error.tsx
 6 text-px apps/platform/src/components/members/invite-dialog.tsx
 6 text-px apps/platform/src/components/members/member-bits.tsx
-3 text-px apps/platform/src/components/notifications/notifications-bell.tsx
+1 text-px apps/platform/src/components/notifications/notifications-bell.tsx
 5 text-px apps/platform/src/components/notifications/unsubscribe-page.tsx
 4 text-px apps/platform/src/components/onboarding/invoice-preview.tsx
 6 text-px apps/platform/src/components/onboarding/onboarding.tsx

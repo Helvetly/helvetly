@@ -1,4 +1,5 @@
 'use client'
+import { languageTag } from '@helvetly/i18n'
 // The person's notifications and their settings, typed by hand from docs/notifications-contract.md.
 // Served by Go; the handlers in src/mocks/notifications.ts are a test-only fake.
 import {
@@ -39,6 +40,12 @@ export type Notification = {
   created_at: string
   read: boolean
   read_at: string | null
+  /** The reader has something to do: the bell's "Needs you". */
+  needs_you: boolean
+  /** The button's label: what opening href does. */
+  action: string
+  /** What later settled one that needs you (the invoice was paid), shown in its place. */
+  resolved: { title: string; body: string | null; action: string; created_at: string } | null
 }
 export type NotificationPage = { data: Notification[]; unread: number; next: string | null }
 export type NotificationChoice = {
@@ -179,12 +186,17 @@ export function listQuery({
 
 const list = (query: URLSearchParams) => request<NotificationPage>(`/notifications?${query}`)
 
-/** The bell: unread notifications and those read in the last minutes, with the unread count, every minute. */
-export function useLatestNotifications() {
+/**
+ * The bell: unread notifications and those read in the last minutes, with the unread count, every minute; `live`
+ * (the open bubble) every 10 seconds, so what is settled elsewhere turns green in front of the reader. Coming back
+ * to the tab loads it again at once.
+ */
+export function useLatestNotifications({ live = false } = {}) {
   return useQuery({
     queryKey: bubbleKey,
-    queryFn: () => list(listQuery({ limit: 10, bubble: true })),
-    refetchInterval: 60_000,
+    queryFn: () => list(listQuery({ limit: 20, bubble: true })),
+    refetchInterval: live ? 10_000 : 60_000,
+    staleTime: 0,
   })
 }
 
@@ -317,4 +329,43 @@ export function byDay(items: Notification[], now = new Date()) {
     else days.push({ label, items: [item] })
   }
   return days
+}
+
+/** The bubble's filters: everything, what still needs the reader, the rest. */
+export type BellFilter = 'all' | 'needs' | 'updates'
+
+/** Still waiting for the reader: needs them and nothing settled it yet. */
+export const waiting = (n: Notification) => n.needs_you && !n.resolved
+
+/** How many of the items each filter holds; a settled one no longer counts as needing you. */
+export const bellCounts = (items: Notification[]): Record<BellFilter, number> => ({
+  all: items.length,
+  needs: items.filter(waiting).length,
+  updates: items.filter((n) => !n.needs_you).length,
+})
+
+/** The bubble's sections for a filter: what needs you (settled ones stay, to show what happened), then updates. */
+export function bellSections(items: Notification[], filter: BellFilter) {
+  const sections = [
+    {
+      key: 'needs' as const,
+      label: translate('needsYou'),
+      items: items.filter((n) => n.needs_you),
+    },
+    {
+      key: 'updates' as const,
+      label: translate('updates'),
+      items: items.filter((n) => !n.needs_you),
+    },
+  ]
+  return sections.filter((s) => s.items.length > 0 && (filter === 'all' || filter === s.key))
+}
+
+/** The bubble's time: "now" within a minute, the time today, else the day ("18 Nov"). */
+export function shortTime(iso: string, now = new Date()) {
+  const at = new Date(iso)
+  if (now.getTime() - at.getTime() < 60_000) return translate('now')
+  return at >= startOfDay(now)
+    ? at.toLocaleTimeString(languageTag, { hour: '2-digit', minute: '2-digit' })
+    : at.toLocaleDateString(languageTag, { day: 'numeric', month: 'short' })
 }

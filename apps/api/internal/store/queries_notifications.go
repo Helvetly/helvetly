@@ -91,6 +91,27 @@ func (q Q) Notifications(ctx context.Context, workspaceID, userID string, f Noti
 	return out, rows.Err()
 }
 
+// LaterNotifications: the person's bell notifications of these events after the id, oldest first.
+// shortcut: one whose bell the person turned off settles nothing; read every row when that matters (needs an index).
+func (q Q) LaterNotifications(ctx context.Context, workspaceID, userID string, after int64, events []string, limit int) ([]Notification, error) {
+	rows, err := q.db.Query(ctx, `SELECT id, event, data, created_at, read_at FROM notifications
+		WHERE user_id = $1 AND workspace_id = $2 AND in_app AND id > $3 AND event = ANY($4)
+		ORDER BY id LIMIT $5`, userID, workspaceID, after, events, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Notification{}
+	for rows.Next() {
+		n := Notification{WorkspaceID: workspaceID, UserID: userID}
+		if err := rows.Scan(&n.ID, &n.Event, &n.Data, &n.CreatedAt, &n.ReadAt); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
 func (q Q) UnreadNotifications(ctx context.Context, workspaceID, userID string) (int, error) {
 	var n int
 	err := q.db.QueryRow(ctx, `SELECT count(*) FROM notifications
