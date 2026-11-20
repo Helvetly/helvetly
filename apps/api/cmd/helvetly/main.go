@@ -145,11 +145,12 @@ func run() error {
 	var portalInviteMailer clients.Mailer
 	var feedbackMailer feedback.Mailer
 	var quoteMailer quotes.Mailer
+	var portalLinksMailer portal.Mailer
 	var businessMail *mail.Metered // counts business email against the workspace's allowances once billing is wired
 	if cfg.MailConfigured() {
 		sender := mail.NewSender(cfg.SMTP, cfg.PublicURL)
 		businessMail = &mail.Metered{Sender: sender}
-		inviteMailer, feedbackMailer = sender, sender                                                                                                                          // joining a workspace and feedback to Helvetly: no business limit
+		inviteMailer, feedbackMailer, portalLinksMailer = sender, sender, sender                                                                                               // joining a workspace and feedback to Helvetly: no business limit
 		mailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, quoteMailer = businessMail, businessMail, businessMail, businessMail, businessMail, businessMail // two vars: copying a nil interface between types is fine, a typed nil pointer is not
 	}
 	clientsSvc.SetMailer(portalInviteMailer, portalScopes)
@@ -272,6 +273,7 @@ func run() error {
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
+	portalSvc.SetMailer(portalLinksMailer)
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", server.Ready(db.Ping))

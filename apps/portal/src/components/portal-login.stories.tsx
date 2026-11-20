@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { accountChoice, portalHandlers, scopedPortal } from '@/mocks/portal'
+import { portalHandlers, scopedPortal } from '@/mocks/portal'
 
 import { PortalLogin } from './portal-login'
 
@@ -14,8 +14,9 @@ const signedOut = http.get('/api/v1/public/portal/session', () =>
 const meta = {
   title: 'Portal/Login',
   component: PortalLogin,
-  // Signed out by default: the sign-in page sends a signed-in client home instead.
-  parameters: { msw: { handlers: [signedOut, ...portalHandlers] } },
+  // Signed out at a workspace's own address by default: the sign-in page sends a signed-in client home instead, and
+  // the shared portal signs nobody in.
+  parameters: { msw: { handlers: [signedOut, scopedPortal(), ...portalHandlers] } },
 } satisfies Meta<typeof PortalLogin>
 export default meta
 type Story = StoryObj<typeof meta>
@@ -47,6 +48,7 @@ export const WrongCodeShowsTriesLeft: Story = {
             { status: 400 },
           ),
         ),
+        scopedPortal(),
         ...portalHandlers,
       ],
     },
@@ -61,7 +63,7 @@ export const WrongCodeShowsTriesLeft: Story = {
 }
 
 export const SignedInShowsNoForm: Story = {
-  parameters: { msw: { handlers: portalHandlers } },
+  parameters: { msw: { handlers: [scopedPortal(), ...portalHandlers] } },
   play: async ({ canvasElement }) => {
     // A client who is already signed in is sent home; the form never shows.
     await waitFor(() => expect(canvasElement.querySelector('[aria-busy]')).not.toBeNull())
@@ -77,6 +79,7 @@ export const ResendShowsAToast: Story = {
           HttpResponse.json({ resend_in: 0, expires_in: 600 }, { status: 202 }),
         ),
         signedOut,
+        scopedPortal(),
         ...portalHandlers,
       ],
     },
@@ -223,64 +226,92 @@ export const WorkspaceAddressPhone: Story = {
   },
 }
 
-/** On the shared portal an address with several clients chooses one right after its code. */
-export const CodeThenAccountChooser: Story = {
-  parameters: { msw: { handlers: [signedOut, ...accountChoice(), ...portalHandlers] } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
-    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
-    await userEvent.type(await canvas.findByLabelText('Code'), '123456')
-    await expect(await canvas.findByRole('heading', { name: 'Choose an account' })).toBeVisible()
-    await expect(
-      canvas.getByRole('button', { name: 'Müller Treuhand AG as Keller AG' }),
-    ).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Studio Berg as Anna Keller' })).toBeVisible()
-    await expect(canvas.getByText('anna@example.ch')).toBeVisible()
-    // Another address: back to the email step.
-    await userEvent.click(canvas.getByRole('button', { name: 'Use another email' }))
-    await expect(await canvas.findByLabelText('Email')).toBeVisible()
+let asked: string[] = []
+const recordLinks = http.post('/api/v1/public/portal/auth/links', async ({ request }) => {
+  asked.push(((await request.json()) as { email: string }).email)
+  return new HttpResponse(null, { status: 202 })
+})
+const sharedPortal = {
+  parameters: { msw: { handlers: [signedOut, recordLinks, ...portalHandlers] } },
+  beforeEach: () => {
+    asked = []
   },
 }
 
-let redeemed: string[] = []
-const ticketArrival = {
+/** The shared portal signs nobody in: it points to the supplier's own link and emails an address its links. */
+export const SharedPortal: Story = {
+  ...sharedPortal,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByRole('heading', { name: "Sign in through your supplier's portal link" }),
+    ).toBeVisible()
+    await expect(canvas.getByText(/invitation email/)).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: 'Continue' })).toBeNull()
+    // An address that is not one is refused before anything is sent.
+    await userEvent.type(canvas.getByLabelText('Email'), 'anna')
+    await userEvent.click(canvas.getByRole('button', { name: 'Email me my portal links' }))
+    await expect(await canvas.findByText(/Enter an email address/)).toBeVisible()
+    await expect(asked).toEqual([])
+    await userEvent.clear(canvas.getByLabelText('Email'))
+    await userEvent.type(canvas.getByLabelText('Email'), ' Anna@Example.ch ')
+    await userEvent.click(canvas.getByRole('button', { name: 'Email me my portal links' }))
+    await expect(await canvas.findByRole('heading', { name: 'Check your inbox' })).toBeVisible()
+    await expect(canvas.getByText(/If anna@example.ch can use a client portal/)).toBeVisible()
+    await expect(asked).toEqual(['anna@example.ch'])
+    // Another address: back to the form, empty.
+    await userEvent.click(canvas.getByRole('button', { name: 'Use another address' }))
+    await expect(canvas.getByLabelText('Email')).toHaveValue('')
+  },
+}
+
+export const SharedPortalDark: Story = {
+  ...sharedPortal,
+  parameters: { ...sharedPortal.parameters, dark: true },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole('heading', {
+        name: "Sign in through your supplier's portal link",
+      }),
+    ).toBeVisible()
+  },
+}
+
+export const SharedPortalPhone: Story = {
+  ...sharedPortal,
+  parameters: { ...sharedPortal.parameters, ...phone },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole('button', { name: 'Email me my portal links' }),
+    ).toBeVisible()
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+  },
+}
+
+/** Too many requests from this network: said where the form is, nothing else changes. */
+export const SharedPortalRateLimited: Story = {
   parameters: {
     msw: {
       handlers: [
         signedOut,
-        scopedPortal(),
-        http.post('/api/v1/public/portal/auth/ticket', async ({ request }) => {
-          redeemed.push(((await request.json()) as { ticket: string }).ticket)
-          return HttpResponse.json(
-            { error: { code: 'unauthenticated', message: 'Sign in to continue.' } },
-            { status: 401 },
-          )
-        }),
+        http.post('/api/v1/public/portal/auth/links', () =>
+          HttpResponse.json(
+            {
+              error: { code: 'rate_limited', message: 'Too many requests: try again in a minute.' },
+            },
+            { status: 429 },
+          ),
+        ),
         ...portalHandlers,
       ],
     },
   },
-  beforeEach: () => {
-    redeemed = []
-    const before = window.location.href
-    window.history.replaceState(
-      window.history.state,
-      '',
-      '/w/mueller-treuhand/login/#ticket=one-time',
-    )
-    return () => window.history.replaceState(window.history.state, '', before)
-  },
-}
-
-/** Arriving from the chooser: the ticket is taken off the address and spent once; a spent one asks to sign in again. */
-export const ArrivalWithASpentTicket: Story = {
-  ...ticketArrival,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('That sign-in has expired.')
-    await expect(redeemed).toEqual(['one-time'])
-    await expect(window.location.hash).toBe('')
-    await expect(canvas.getByLabelText('Email')).toBeVisible()
+    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Email me my portal links' }))
+    await expect(await canvas.findByText(/Too many requests/)).toBeVisible()
+    await expect(canvas.queryByRole('heading', { name: 'Check your inbox' })).toBeNull()
   },
 }

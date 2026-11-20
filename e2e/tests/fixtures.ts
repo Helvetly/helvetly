@@ -197,4 +197,18 @@ export async function openPage(page: Page, path: string, heading: string) {
   await expect(page.locator('main'), heading).toBeVisible()
 }
 
+export const portalURL = 'http://localhost:8009' // e2e/scripts/e2e-server.mjs
+
+/** The workspace's portal path, "/w/<slug>/", as its settings show it: clients sign in only there. */
+export async function portalPath(request: APIRequestContext) {
+  const res = await request.get('/api/v1/workspace/portal')
+  await expect(res).toBeOK()
+  const address = object(object(await res.json()).data)
+  expect(text(address.url)).toBe(`${portalURL}/w/${text(address.slug)}/`)
+  return `/w/${text(address.slug)}/`
+}
+
+/** The portal page at `path`, with or without its trailing slash (next dev drops it, the static export keeps it). */
+export const portalAt = (path: string) => new RegExp(`^${portalURL}${path.replace(/\/$/, '')}/?$`)
+
 export { expect }
