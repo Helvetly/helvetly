@@ -70,7 +70,7 @@ func (e *env) invoice(id, client, status string, number any, pdfKey any) {
 
 func (e *env) get(c *http.Cookie, path string) (*http.Response, string) {
 	e.t.Helper()
-	req, _ := http.NewRequest("GET", e.srv.URL+"/api/v1/public/portal"+path, nil)
+	req, _ := http.NewRequest("GET", e.srv.URL+"/w/studio/api/v1/public/portal"+path, nil)
 	req.AddCookie(c)
 	res, err := (&http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}).Do(req)
 	if err != nil {
@@ -222,7 +222,7 @@ func TestEngagementEntries(t *testing.T) {
 			t.Errorf("%s: %d %s", tc.name, res.StatusCode, body)
 		}
 	}
-	if res, _ := e.get(&http.Cookie{Name: sessionCookie, Value: "x"}, "/engagements/eng_live/entries"); res.StatusCode != 401 {
+	if res, _ := e.get(&http.Cookie{Name: sessionCookie + "_wsp_a", Value: "x"}, "/engagements/eng_live/entries"); res.StatusCode != 401 {
 		t.Errorf("signed out: %d", res.StatusCode)
 	}
 

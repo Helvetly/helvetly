@@ -7,33 +7,38 @@ import { expect, test } from '@playwright/test'
 
 import { signIn } from './fixtures'
 
+// The portal's shared address signs nobody in: its page points to the suppliers' own links.
 const languages = [
   {
     code: 'de',
     name: 'Deutsch',
     platform: 'Willkommen bei Helvetly',
-    portal: 'Kundenportal',
+    portal: 'Melden Sie sich über den Portal-Link Ihres Anbieters an',
     change: 'Sprache ändern',
   },
   {
     code: 'fr',
     name: 'Français',
     platform: 'Bienvenue sur Helvetly',
-    portal: 'Portail client',
+    portal: 'Connectez-vous via le lien du portail de votre fournisseur',
     change: 'Changer de langue',
   },
   {
     code: 'it',
     name: 'Italiano',
     platform: 'Benvenuto su Helvetly',
-    portal: 'Portale clienti',
+    portal: 'Accedi tramite il link al portale del tuo fornitore',
     change: 'Cambia lingua',
   },
 ]
 
 for (const app of [
   { origin: 'http://localhost:8008', title: 'Welcome to Helvetly', area: 'platform' },
-  { origin: 'http://localhost:8009', title: 'Client portal', area: 'portal' },
+  {
+    origin: 'http://localhost:8009',
+    title: "Sign in through your supplier's portal link",
+    area: 'portal',
+  },
 ]) {
   for (const language of languages) {
     test(`${app.area}: ${language.code} selection survives navigation and reload`, async ({

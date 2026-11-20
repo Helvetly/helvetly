@@ -47,16 +47,22 @@ type Service struct {
 	scopes URLs
 	// publicLimit caps the unauthenticated scope lookups per client address.
 	publicLimit *auth.RateLimiter
-	auth        Auth
-	files       Storage
-	cfg         Config
-	log         *slog.Logger
-	now         func() time.Time
+	// linksByIP and linksByEmail cap the portal-links emails per client address and per recipient.
+	linksByIP, linksByEmail *auth.RateLimiter
+	mail                    Mailer
+	// async runs the links email after the answer (go in production; tests wait for it).
+	async func(func())
+	auth  Auth
+	files Storage
+	cfg   Config
+	log   *slog.Logger
+	now   func() time.Time
 }
 
 func New(db *store.Store, a Auth, files Storage, scopes URLs, cfg Config, log *slog.Logger) *Service {
 	return &Service{db: db, auth: a, files: files, scopes: scopes, cfg: cfg, log: log, now: func() time.Time { return time.Now().UTC() },
-		publicLimit: auth.NewRateLimiter(120, time.Minute)}
+		publicLimit: auth.NewRateLimiter(120, time.Minute), linksByIP: auth.NewRateLimiter(10, time.Hour),
+		linksByEmail: auth.NewRateLimiter(3, time.Hour), async: func(f func()) { go f() }}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
@@ -64,8 +70,7 @@ type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/public/portal/auth/start", s.start)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/verify", s.verify)
-	mux.HandleFunc("POST /api/v1/public/portal/auth/choose", s.choose)
-	mux.HandleFunc("POST /api/v1/public/portal/auth/ticket", s.redeem)
+	mux.HandleFunc("POST /api/v1/public/portal/auth/links", s.emailLinks)
 	mux.HandleFunc("GET /api/v1/public/portal/scope", s.getScope)
 	mux.HandleFunc("GET /api/v1/public/portal/scope/logo", s.getScopeLogo)
 	handle := func(pattern string, h handler) {

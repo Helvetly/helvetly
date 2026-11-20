@@ -5,22 +5,30 @@ import { join } from 'node:path'
 
 import type { APIRequestContext, BrowserContext } from '@playwright/test'
 
-import { expect, object, test, text, uniqueName, type FinancialAPI } from './fixtures'
+import {
+  expect,
+  object,
+  portalAt,
+  portalPath,
+  portalURL,
+  test,
+  text,
+  uniqueName,
+  type FinancialAPI,
+} from './fixtures'
 
-const portalURL = 'http://localhost:8009' // e2e/scripts/e2e-server.mjs
-
-const code = async (request: APIRequestContext, email: string) => {
-  const sent = await request.post('/api/v1/public/portal/auth/start', { data: { email } })
+const code = async (request: APIRequestContext, path: string, email: string) => {
+  const sent = await request.post(`${path}api/v1/public/portal/auth/start`, { data: { email } })
   expect(sent.status()).toBe(202)
   const dev = await request.get(`/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`)
   await expect(dev).toBeOK()
   return text(object(await dev.json()).code)
 }
 
-/** Signs `email` in through the portal's login screen; the page ends on the overview. */
-async function signInToPortal(context: BrowserContext, email: string) {
+/** Signs `email` in through the login screen at `path` ("/w/<slug>/"); the page ends on the overview. */
+async function signInToPortal(context: BrowserContext, path: string, email: string) {
   const portal = await context.newPage()
-  await portal.goto('/login')
+  await portal.goto(`${path}login`)
   await portal.getByLabel('Email', { exact: true }).fill(email)
   await portal.getByRole('button', { name: 'Continue', exact: true }).click()
   await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()
@@ -28,7 +36,7 @@ async function signInToPortal(context: BrowserContext, email: string) {
     `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
   )
   await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
-  await expect(portal).toHaveURL(`${portalURL}/`)
+  await expect(portal).toHaveURL(portalAt(path))
   return portal
 }
 
@@ -40,9 +48,9 @@ async function issuedInvoice(api: FinancialAPI, client: Record<string, unknown>)
 test('a client signs in with its email, reads shared data, asks for a change and is cut off when the portal goes off', async ({
   api,
   playwright,
-  baseURL,
 }) => {
-  await api.settings()
+  await api.settings() // renames the workspace, so its portal address comes after
+  const w = await portalPath(api.request)
   const client = await api.client()
   const other = await api.client()
   const clientId = text(client.id)
@@ -69,46 +77,46 @@ test('a client signs in with its email, reads shared data, asks for a change and
   ).toBeOK()
 
   // Contact: its own cookie jar, no staff session.
-  const portal = await playwright.request.newContext({ baseURL })
+  const portal = await playwright.request.newContext({ baseURL: portalURL })
   try {
-    const unauthenticated = await portal.get('/api/v1/public/portal/invoices')
+    const unauthenticated = await portal.get(`${w}api/v1/public/portal/invoices`)
     expect(unauthenticated.status()).toBe(401)
 
-    const verified = await portal.post('/api/v1/public/portal/auth/verify', {
-      data: { email: contactEmail, code: await code(portal, contactEmail) },
+    const verified = await portal.post(`${w}api/v1/public/portal/auth/verify`, {
+      data: { email: contactEmail, code: await code(portal, w, contactEmail) },
     })
     expect(verified.status()).toBe(201)
     const csrf = text(object(await verified.json()).csrf_token)
 
-    const session = object(await (await portal.get('/api/v1/public/portal/session')).json())
+    const session = object(await (await portal.get(`${w}api/v1/public/portal/session`)).json())
     expect(object(session.client).id).toBe(clientId)
 
-    const invoices = object(await (await portal.get('/api/v1/public/portal/invoices')).json())
+    const invoices = object(await (await portal.get(`${w}api/v1/public/portal/invoices`)).json())
     expect(Array.isArray(invoices.data) ? invoices.data.map((i) => object(i).id) : []).toEqual([
       invoice.id,
     ])
-    const pdf = await portal.get(`/api/v1/public/portal/invoices/${text(invoice.id)}/pdf`)
+    const pdf = await portal.get(`${w}api/v1/public/portal/invoices/${text(invoice.id)}/pdf`)
     await expect(pdf).toBeOK()
     expect(pdf.headers()['content-type']).toContain('application/pdf')
     expect((await pdf.body()).subarray(0, 4).toString()).toBe('%PDF')
     // Another client's invoice does not exist for this contact.
     const foreign = await portal.get(
-      `/api/v1/public/portal/invoices/${text(foreignInvoice.id)}/pdf`,
+      `${w}api/v1/public/portal/invoices/${text(foreignInvoice.id)}/pdf`,
     )
     expect(foreign.status()).toBe(404)
 
-    const documents = object(await (await portal.get('/api/v1/public/portal/documents')).json())
+    const documents = object(await (await portal.get(`${w}api/v1/public/portal/documents`)).json())
     expect(Array.isArray(documents.data) ? documents.data.map((d) => object(d).id) : []).toEqual([
       document.id,
     ])
     const download = await portal.get(
-      `/api/v1/public/portal/documents/${text(document.id)}/download`,
+      `${w}api/v1/public/portal/documents/${text(document.id)}/download`,
       { maxRedirects: 0 },
     )
     expect(download.status()).toBe(302)
 
     // The contact asks for a new city; staff approves; the client shows it.
-    const asked = await portal.post('/api/v1/public/portal/profile/requests', {
+    const asked = await portal.post(`${w}api/v1/public/portal/profile/requests`, {
       data: { city: 'Bern' },
       headers: { 'X-CSRF-Token': csrf },
     })
@@ -126,8 +134,8 @@ test('a client signs in with its email, reads shared data, asks for a change and
 
     // Turning the portal off ends the session on the very next request.
     await api.save(`/clients/${clientId}`, { portal_enabled: false }, 'PATCH')
-    expect((await portal.get('/api/v1/public/portal/session')).status()).toBe(401)
-    expect((await portal.get('/api/v1/public/portal/invoices')).status()).toBe(401)
+    expect((await portal.get(`${w}api/v1/public/portal/session`)).status()).toBe(401)
+    expect((await portal.get(`${w}api/v1/public/portal/invoices`)).status()).toBe(401)
   } finally {
     await portal.dispose()
   }
@@ -138,7 +146,8 @@ test('portal screens in the browser: sign in, read, ask for a change, staff appr
   page,
   browser,
 }) => {
-  await api.settings()
+  await api.settings() // renames the workspace, so its portal address comes after
+  const w = await portalPath(api.request)
   const client = await api.client()
   const clientId = text(client.id)
   const contactEmail = `portal-ui-${randomUUID()}@example.test`
@@ -166,7 +175,7 @@ test('portal screens in the browser: sign in, read, ask for a change, staff appr
   const context = await browser.newContext({ baseURL: portalURL })
   try {
     const portal = await context.newPage()
-    await portal.goto('/')
+    await portal.goto(w)
     await expect(portal).toHaveURL(/\/login\/?$/)
     await portal.getByLabel('Email', { exact: true }).fill(contactEmail)
     await portal.getByRole('button', { name: 'Continue', exact: true }).click()
@@ -176,7 +185,7 @@ test('portal screens in the browser: sign in, read, ask for a change, staff appr
     )
     await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
 
-    await expect(portal).toHaveURL(`${portalURL}/`)
+    await expect(portal).toHaveURL(portalAt(w))
     await expect(portal.getByText('CHF 1’081.00').first()).toBeVisible()
     await portal.screenshot({ path: join(shots, 'portal-overview-desktop.png') })
     await portal.setViewportSize({ width: 390, height: 844 })
@@ -221,6 +230,7 @@ test('staff turns the portal on for a person with only an email: that email sign
   page,
   browser,
 }) => {
+  const w = await portalPath(api.request)
   const email = `john-${randomUUID()}@example.test`
   const contactEmail = `contact-${randomUUID()}@example.test`
   const client = await api.save('/clients', { name: uniqueName('John'), is_company: false, email })
@@ -242,7 +252,7 @@ test('staff turns the portal on for a person with only an email: that email sign
   expect((await api.read(`/clients/${clientId}`)).portal_enabled).toBe(true)
 
   // A contact's address gets no code.
-  const contactStart = await page.request.post('/api/v1/public/portal/auth/start', {
+  const contactStart = await page.request.post(`${portalURL}${w}api/v1/public/portal/auth/start`, {
     data: { email: contactEmail },
   })
   expect(contactStart.status()).toBe(202)
@@ -254,9 +264,9 @@ test('staff turns the portal on for a person with only an email: that email sign
   // The client's email signs in to the portal.
   const context = await browser.newContext({ baseURL: portalURL })
   try {
-    await signInToPortal(context, email)
+    await signInToPortal(context, w, email)
     const session = object(
-      await (await context.request.get('/api/v1/public/portal/session')).json(),
+      await (await context.request.get(`${w}api/v1/public/portal/session`)).json(),
     )
     expect(object(session.client).id).toBe(clientId)
   } finally {
@@ -274,16 +284,17 @@ test('a client uploads a photo, sees it in the account menu, replaces it with a 
   api,
   browser,
 }) => {
+  const w = await portalPath(api.request)
   const email = `photo-${randomUUID()}@example.test`
   const client = await api.save('/clients', { name: uniqueName('Photo'), is_company: false, email })
   await api.save(`/clients/${text(client.id)}`, { portal_enabled: true }, 'PATCH')
 
   const context = await browser.newContext({ baseURL: portalURL })
   try {
-    const portal = await signInToPortal(context, email)
+    const portal = await signInToPortal(context, w, email)
     const menuPhoto = portal.locator('header [data-slot="avatar-image"]').first()
     await expect(menuPhoto).toHaveCount(0)
-    await portal.goto('/profile')
+    await portal.goto(`${w}profile`)
     const photo = portal.getByRole('region', { name: 'Photo' })
     const input = portal.getByTestId('portal-photo-input')
 
@@ -291,9 +302,9 @@ test('a client uploads a photo, sees it in the account menu, replaces it with a 
     await expect(photo.getByRole('button', { name: 'Change photo' })).toBeVisible()
     await expect(menuPhoto).toBeVisible()
     const session = async () =>
-      object(await (await context.request.get('/api/v1/public/portal/session')).json())
+      object(await (await context.request.get(`${w}api/v1/public/portal/session`)).json())
     const first = text((await session()).avatar_url)
-    expect(first).toMatch(/^\/api\/v1\/public\/portal\/avatar\?v=[0-9a-f]{12}$/)
+    expect(first).toMatch(new RegExp(`^${w}api/v1/public/portal/avatar\\?v=[0-9a-f]{12}$`))
 
     // A large photo is shrunk to 512 px in the browser before it goes up.
     await input.evaluate(async (element) => {
@@ -326,7 +337,7 @@ test('a client uploads a photo, sees it in the account menu, replaces it with a 
     await expect(photo.getByRole('button', { name: 'Upload photo' })).toBeVisible()
     await expect(menuPhoto).toHaveCount(0)
     expect((await session()).avatar_url).toBe('')
-    expect((await context.request.get('/api/v1/public/portal/avatar')).status()).toBe(404)
+    expect((await context.request.get(`${w}api/v1/public/portal/avatar`)).status()).toBe(404)
   } finally {
     await context.close()
   }

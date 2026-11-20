@@ -199,7 +199,6 @@ var ExportExcluded = map[string]string{
 	"account_recovery_codes":   "sign-in secret (code hashes)",
 	"email_codes":              "sign-in secret (code hashes), minutes long",
 	"passkey_challenges":       "sign-in secret, minutes long",
-	"portal_sign_in_choices":   "sign-in secret (token and ticket hashes) of a portal sign-in, minutes long",
 	"transmission_credentials": "sealed e-invoice channel credentials",
 	"heidi_confirmations":      "pending confirmations of Heidi actions, minutes long; the conversation is in heidi_messages",
 	"digest_days":              "job bookkeeping: the days the engagements digest was sent",

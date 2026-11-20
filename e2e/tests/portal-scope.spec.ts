@@ -1,19 +1,18 @@
 import { randomUUID } from 'node:crypto'
 
-import type { APIRequestContext, BrowserContext } from '@playwright/test'
+import type { BrowserContext } from '@playwright/test'
 
-import { expect, object, signIn, test, text, uniqueName } from './fixtures'
-
-const portalURL = 'http://localhost:8009' // e2e/scripts/e2e-server.mjs
-
-/** The workspace's portal path, "/w/<slug>/", as its settings show it. */
-async function portalPath(request: APIRequestContext) {
-  const res = await request.get('/api/v1/workspace/portal')
-  await expect(res).toBeOK()
-  const address = object(object(await res.json()).data)
-  expect(text(address.url)).toBe(`${portalURL}/w/${text(address.slug)}/`)
-  return `/w/${text(address.slug)}/`
-}
+import {
+  expect,
+  object,
+  portalAt,
+  portalPath,
+  portalURL,
+  signIn,
+  test,
+  text,
+  uniqueName,
+} from './fixtures'
 
 /** Starts a portal sign-in under `prefix`, waiting out the per-address cooldown, and returns the code. */
 async function code(context: BrowserContext, prefix: string, email: string) {
@@ -35,8 +34,7 @@ async function code(context: BrowserContext, prefix: string, email: string) {
   return text(object(await dev.json()).code)
 }
 
-/** The portal page at `path`, with or without its trailing slash (next dev drops it, the static export keeps it). */
-const at = (path: string) => new RegExp(`^${portalURL}${path.replace(/\/$/, '')}/?$`)
+const at = portalAt
 
 const session = async (context: BrowserContext, prefix: string) =>
   context.request.get(`${prefix}api/v1/public/portal/session`)
@@ -166,13 +164,29 @@ test('one address, client of two workspaces, signs in on each address separately
   }
 })
 
-test('a client of two workspaces signs in on the shared portal, chooses the second and lands in its portal', async ({
+/** Signs `email` in through the login screen at `path` ("/w/<slug>/"); the page ends on that portal's overview. */
+async function signInAt(context: BrowserContext, path: string, email: string) {
+  const portal = await context.newPage()
+  await portal.goto(`${path}login/`)
+  await portal.getByLabel('Email', { exact: true }).fill(email)
+  await portal.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+  const dev = await context.request.get(
+    `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
+  )
+  await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
+  await expect(portal).toHaveURL(at(path))
+  return portal
+}
+
+test('the shared portal signs nobody in and emails the links; a client of two workspaces signs in at each address', async ({
   api,
   playwright,
   browser,
   baseURL,
 }) => {
-  const email = `choose-${randomUUID()}@example.test`
+  test.setTimeout(120_000) // the second sign-in waits out the per-address code cooldown
+  const email = `two-ui-${randomUUID()}@example.test`
   const firstName = uniqueName('First Treuhand')
   await api.save('/workspace', { name: firstName }, 'PATCH')
   const first = await api.save('/clients', { name: uniqueName('First'), is_company: false, email })
@@ -185,43 +199,58 @@ test('a client of two workspaces signs in on the shared portal, chooses the seco
     const other = await signIn(staff, `other-${randomUUID()}@example.test`)
     const secondName = uniqueName('Second Studio')
     await other.save('/workspace', { name: secondName }, 'PATCH')
-    const secondClient = uniqueName('Second')
-    const second = await other.save('/clients', { name: secondClient, is_company: false, email })
+    const second = await other.save('/clients', {
+      name: uniqueName('Second'),
+      is_company: false,
+      email,
+    })
     await other.save(`/clients/${text(second.id)}`, { portal_enabled: true }, 'PATCH')
     const secondPath = await portalPath(staff)
 
-    const portal = await context.newPage()
-    await portal.goto('/login/')
-    await portal.getByLabel('Email', { exact: true }).fill(email)
-    await portal.getByRole('button', { name: 'Continue', exact: true }).click()
-    await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()
-    const dev = await context.request.get(
-      `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
-    )
-    await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
-
-    // Both accounts, before any session: the choice opens nothing on the shared portal.
-    await expect(portal.getByRole('heading', { name: 'Choose an account' })).toBeVisible()
+    // The shared portal: no sign-in form, only the way to the suppliers' own links.
+    const shared = await context.newPage()
+    await shared.goto('/')
+    await expect(shared).toHaveURL(/\/login\/?$/)
     await expect(
-      portal.getByRole('button', { name: `${firstName} as ${text(first.name)}` }),
+      shared.getByRole('heading', { name: "Sign in through your supplier's portal link" }),
     ).toBeVisible()
-    const pick = portal.getByRole('button', { name: `${secondName} as ${secondClient}` })
-    await expect(pick).toBeVisible()
+    await shared.getByLabel('Email', { exact: true }).fill(email)
+    await shared.getByRole('button', { name: 'Email me my portal links' }).click()
+    await expect(shared.getByRole('heading', { name: 'Check your inbox' })).toBeVisible()
+    // The same answer for an address that is nobody's client, and no sign-in by API either.
+    const answers = await Promise.all(
+      [email, `nobody-${randomUUID()}@example.test`].map((address) =>
+        context.request.post('/api/v1/public/portal/auth/links', { data: { email: address } }),
+      ),
+    )
+    expect(answers.map((res) => res.status())).toEqual([202, 202])
+    expect(await Promise.all(answers.map((res) => res.text()))).toEqual(['', ''])
+    const refused = await Promise.all([
+      context.request.post('/api/v1/public/portal/auth/start', { data: { email } }),
+      context.request.post('/api/v1/public/portal/auth/verify', {
+        data: { email, code: '123456' },
+      }),
+    ])
+    expect(refused.map((res) => res.status())).toEqual([404, 404])
     expect((await session(context, '/')).status()).toBe(401)
 
-    await pick.click()
-    await expect(portal).toHaveURL(at(secondPath))
-    await expect(portal.locator('header').getByLabel(secondName, { exact: true })).toBeVisible()
-
-    // Signed in to the second workspace's portal only.
+    // Each address signs in on its own and opens only its own workspace.
+    const one = await signInAt(context, firstPath, email)
+    await expect(one.locator('header').getByLabel(firstName, { exact: true })).toBeVisible()
+    expect((await session(context, secondPath)).status()).toBe(401)
+    await code(context, secondPath, email) // waits out the address's cooldown; the screen then asks for a new code
+    const two = await signInAt(context, secondPath, email)
+    await expect(two.locator('header').getByLabel(secondName, { exact: true })).toBeVisible()
     const own = object(await (await session(context, secondPath)).json())
     expect(object(own.client).id).toBe(second.id)
-    expect(Array.isArray(own.clients) ? own.clients.length : 0).toBe(1)
-    expect((await session(context, firstPath)).status()).toBe(401)
-    expect((await session(context, '/')).status()).toBe(401)
-    expect((await context.request.get(`${firstPath}api/v1/public/portal/invoices`)).status()).toBe(
-      401,
+    // The account switcher offers this workspace's clients only.
+    expect(Array.isArray(own.clients) ? own.clients.map((c) => object(c).id) : []).toEqual([
+      second.id,
+    ])
+    expect(object(object(await (await session(context, firstPath)).json()).client).id).toBe(
+      first.id,
     )
+    expect((await session(context, '/')).status()).toBe(401)
   } finally {
     await context.close()
     await staff.dispose()
