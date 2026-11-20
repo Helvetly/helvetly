@@ -2,6 +2,7 @@
 import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import {
   InputGroup,
@@ -94,7 +95,10 @@ export function QuickLog({
   current,
   onLogged,
 }: {
-  engagement: Pick<Engagement, 'id' | 'unit' | 'start_date' | 'end_date' | 'cancelled_on'>
+  engagement: Pick<
+    Engagement,
+    'id' | 'unit' | 'start_date' | 'end_date' | 'cancelled_on' | 'invoice_detail'
+  >
   current: PeriodSummary | null
   /** Called after a save; without it the form stays for the next entry. */
   onLogged?: () => void
@@ -127,7 +131,7 @@ export function QuickLog({
         quantity,
         note: note.trim() || null,
         client_performance: performance.trim() || null,
-        client_performance_on_invoice: onInvoice,
+        client_performance_on_invoice: onInvoice && performance.trim() !== '',
         ...(by ? { performed_by: by } : {}),
       }),
     onSuccess: ({ data }) => {
@@ -291,15 +295,12 @@ export function QuickLog({
         {errorText('note')}
       </div>
       <div className="grid gap-1.5">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <label htmlFor={`${id}-performance`} className={label}>
-            {translate('clientPerformance')}{' '}
-            <span className="font-normal text-placeholder">
-              {translate('optionalTheClientSeesItInThePortal')}
-            </span>
-          </label>
-          <ShowOnInvoice checked={onInvoice} onChange={setOnInvoice} />
-        </div>
+        <label htmlFor={`${id}-performance`} className={label}>
+          {translate('clientPerformance')}{' '}
+          <span className="font-normal text-placeholder">
+            {translate('optionalTheClientSeesItInThePortal')}
+          </span>
+        </label>
         <Input
           id={`${id}-performance`}
           aria-label={translate('clientPerformance')}
@@ -309,6 +310,12 @@ export function QuickLog({
           onChange={(event) => setPerformance(event.target.value)}
         />
         {errorText('client_performance')}
+        <ShowOnInvoice
+          checked={onInvoice}
+          onChange={setOnInvoice}
+          perEntry={engagement.invoice_detail === 'per_entry'}
+          hasText={performance.trim() !== ''}
+        />
       </div>
       <div className="flex min-h-8 items-center gap-3">
         {over > 0 ? (
@@ -333,19 +340,39 @@ export function QuickLog({
   )
 }
 
-/** Whether the client performance goes on the entry's own invoice line; off unless chosen. */
+/**
+ * Whether the client performance is added to the entry's own invoice line. Only an engagement invoiced with a line per
+ * entry has such a line, and only a written performance can go on it; otherwise the choice is off and the help says why.
+ * A stored choice is kept as it is, since one period may still be invoiced per entry from the period menu.
+ */
 function ShowOnInvoice({
   checked,
   onChange,
+  perEntry,
+  hasText,
 }: {
   checked: boolean
   onChange: (on: boolean) => void
+  perEntry: boolean
+  hasText: boolean
 }) {
+  const usable = perEntry && hasText
   return (
-    <label className="flex shrink-0 items-center gap-2 text-body-sm text-muted-foreground">
-      <Checkbox checked={checked} onCheckedChange={(on) => onChange(on === true)} />
-      {translate('showOnInvoice')}
-    </label>
+    <span className="flex shrink-0 items-center gap-1.5 text-body-sm text-muted-foreground">
+      <label className={cn('flex items-center gap-2', !usable && 'opacity-60')}>
+        <Checkbox
+          checked={usable && checked}
+          disabled={!usable}
+          onCheckedChange={(on) => onChange(on === true)}
+        />
+        {translate('alsoPrintOnTheInvoiceLine')}
+      </label>
+      <HelpTip label={translate('alsoPrintOnTheInvoiceLine')}>
+        {perEntry
+          ? translate('theClientPerformanceIsAddedToThisEntrysInvoiceLine')
+          : translate('thisEngagementInvoicesOneSummaryLine')}
+      </HelpTip>
+    </span>
   )
 }
 
@@ -354,11 +381,13 @@ function EntryRow({
   entry,
   unit,
   writable,
+  perEntry,
 }: {
   engagementId: string
   entry: Entry
   unit: Engagement['unit']
   writable: boolean
+  perEntry: boolean
 }) {
   const refresh = useRefreshEngagement()
   const [editing, setEditing] = useState(false)
@@ -393,7 +422,8 @@ function EntryRow({
       quantity: draft.quantity,
       note: draft.note.trim() || null,
       client_performance: draft.client_performance.trim() || null,
-      client_performance_on_invoice: draft.client_performance_on_invoice,
+      client_performance_on_invoice:
+        draft.client_performance_on_invoice && draft.client_performance.trim() !== '',
     })
 
   if (editing)
@@ -461,6 +491,8 @@ function EntryRow({
             <ShowOnInvoice
               checked={draft.client_performance_on_invoice}
               onChange={(on) => setDraft({ ...draft, client_performance_on_invoice: on })}
+              perEntry={perEntry}
+              hasText={draft.client_performance.trim() !== ''}
             />
           </div>
         </form>
@@ -487,7 +519,7 @@ function EntryRow({
                 {translate('clientPerformance')}
               </span>
               <span className="sr-only">:</span> {entry.client_performance}
-              {entry.client_performance_on_invoice && (
+              {perEntry && entry.client_performance_on_invoice && (
                 <span className="ml-1.5 inline-flex align-middle">
                   <StatusBadge size="sm">{translate('onInvoice')}</StatusBadge>
                 </span>
@@ -572,12 +604,15 @@ export function EntriesPanel({
   periods,
   unit,
   writable,
+  perEntry,
 }: {
   engagementId: string
   entries: Entry[]
   periods: Period[]
   unit: Engagement['unit']
   writable: boolean
+  /** The engagement invoices a line per entry, the only lines a client performance can be printed on. */
+  perEntry: boolean
 }) {
   const groups = periods
     .map((period) => ({ period, rows: entries.filter((entry) => entry.period_id === period.id) }))
@@ -635,6 +670,7 @@ export function EntriesPanel({
                           entry={entry}
                           unit={unit}
                           writable={writable}
+                          perEntry={perEntry}
                         />
                       ))}
                     </ul>

@@ -246,6 +246,7 @@ describe('entries', () => {
 
 describe('entries panel', () => {
   it('groups entries by period with a count and total', async () => {
+    current = engagement({ invoice_detail: 'per_entry' })
     entries = [
       entry({ client_performance: 'On time', client_performance_on_invoice: true }),
       entry({ id: 'ent_2', quantity: '2.25', note: null }),
@@ -256,6 +257,14 @@ describe('entries panel', () => {
     expect(group).toHaveTextContent('No note')
     expect(group).toHaveTextContent('Client performance: On time')
     expect(within(group).getByText('on invoice')).toBeInTheDocument()
+  })
+
+  it('marks a performance "on invoice" only when the engagement invoices a line per entry', async () => {
+    entries = [entry({ client_performance: 'On time', client_performance_on_invoice: true })]
+    open()
+    const group = await screen.findByRole('region', { name: '1. Jan 2020 – 31. Dec 2099' })
+    expect(group).toHaveTextContent('Client performance: On time')
+    expect(within(group).queryByText('on invoice')).toBeNull()
   })
 
   it('says when nothing is logged and offers no export', async () => {

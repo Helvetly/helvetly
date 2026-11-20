@@ -331,8 +331,18 @@ const log: Entry[] = [
   entry('ent_2', 'epr_0', '2026-10-21', '6', 'Homepage layout'),
   entry('ent_1', 'epr_0', '2026-10-08', '5', 'Kick-off workshop'),
 ]
+// Invoiced with a line per entry, so an entry's performance chosen for the invoice shows "on invoice".
+const perEntry = engagements.map((one) =>
+  one.id === 'eng_1' ? { ...one, invoice_detail: 'per_entry' as const } : one,
+)
 const drawer = (entries: Entry[]) =>
   pageParameters('/engagements', { id: 'eng_1' }, [
+    http.get('/api/v1/engagements/:id', ({ params }) => {
+      const found = perEntry.find((one) => one.id === params.id)
+      // Anything else (the summary) falls through to the page's own handlers.
+      return found && HttpResponse.json({ data: found })
+    }),
+    http.get('/api/v1/engagements', () => HttpResponse.json(page(perEntry))),
     http.get('/api/v1/engagements/:id/periods', () => HttpResponse.json({ data: history })),
     http.get('/api/v1/engagements/:id/entries', () => HttpResponse.json({ data: entries })),
   ])
@@ -493,14 +503,23 @@ export const RowMenuLogDelivery: Story = {
     await expect(within(dialog).getByRole('button', { name: 'Log' })).toBeDisabled()
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Quantity' }), '1,5')
     await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Lesson 4')
-    // Client performance stays off the invoice unless chosen.
-    const onInvoice = within(dialog).getByRole('checkbox', { name: 'Show on invoice' })
+    // German lessons invoice a line per entry: the performance can go on it, once there is one, and only if chosen.
+    const onInvoice = within(dialog).getByRole('checkbox', {
+      name: 'Also print on the invoice line',
+    })
+    await expect(onInvoice).toBeDisabled()
+    const performance = within(dialog).getByRole('textbox', { name: 'Client performance' })
+    await userEvent.type(performance, 'Well prepared')
+    await expect(onInvoice).toBeEnabled()
     await expect(onInvoice).not.toBeChecked()
-    await userEvent.click(onInvoice)
-    await userEvent.type(
-      within(dialog).getByRole('textbox', { name: 'Client performance' }),
-      'Well prepared{Enter}',
+    await userEvent.hover(
+      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
     )
+    await waitFor(() =>
+      expect(body.getByRole('tooltip')).toHaveTextContent('20.11.2026 · Lesson · You did well'),
+    )
+    await userEvent.click(onInvoice)
+    await userEvent.type(performance, '{Enter}')
     await waitFor(() => expect(body.queryByRole('dialog', { name: 'Log delivery' })).toBeNull())
     await expect(logged).toMatchObject({
       quantity: '1.5',
@@ -513,6 +532,32 @@ export const RowMenuLogDelivery: Story = {
   },
 }
 export const RowMenuLogDeliveryDark = dark(RowMenuLogDelivery)
+
+/** An engagement invoiced as one summary line has no entry line to print the performance on: the choice is off and says why. */
+export const LogDeliverySummaryInvoice: Story = {
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const body = within(document.body)
+    await userEvent.click(body.getByRole('button', { name: 'Actions for Bookkeeping support' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Log delivery' }))
+    const dialog = await body.findByRole('dialog', { name: 'Log delivery' })
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: 'Client performance' }),
+      'Well prepared',
+    )
+    await expect(
+      within(dialog).getByRole('checkbox', { name: 'Also print on the invoice line' }),
+    ).toBeDisabled()
+    await userEvent.hover(
+      within(dialog).getByRole('button', { name: 'About Also print on the invoice line' }),
+    )
+    await waitFor(() =>
+      expect(body.getByRole('tooltip')).toHaveTextContent(
+        'This engagement invoices one summary line',
+      ),
+    )
+  },
+}
 
 // Design retainer as one recorded on 19 Nov 2026: its first period runs from then to the end of the year.
 const late = {

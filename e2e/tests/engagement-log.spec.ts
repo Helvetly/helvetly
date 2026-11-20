@@ -17,6 +17,8 @@ test('the detail logs a delivery, with client performance on the invoice, and po
     quantity: '10',
     unit: 'hour',
     billing: 'arrears',
+    // Only a line per entry can carry the client performance.
+    invoice_detail: 'per_entry',
     unit_price: '100',
     price_basis: 'net',
     currency: 'CHF',
@@ -46,7 +48,7 @@ test('the detail logs a delivery, with client performance on the invoice, and po
   await date.fill(today())
   await expect(date).not.toHaveAttribute('aria-invalid')
   await form.getByRole('textbox', { name: 'Client performance' }).fill('Well prepared')
-  await form.getByRole('checkbox', { name: 'Show on invoice' }).check()
+  await form.getByRole('checkbox', { name: 'Also print on the invoice line' }).check()
   await form.getByRole('button', { name: /^Log 1/ }).click()
   await expect(page.getByText(/Logged 1/)).toBeVisible()
   const list = await api.request.get(`/api/v1${entries}`)
