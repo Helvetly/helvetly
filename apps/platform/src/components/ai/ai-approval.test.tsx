@@ -54,6 +54,8 @@ const notYet = aiConsent(false)
 /** Renders the provider with a button that runs one AI action through ensure() and records each answer. */
 function setup(workspace = 'ws_a') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // the shell loaded the session already; the provider only reads it
+  client.setQueryDefaults(queryKeys.session, { staleTime: Infinity })
   client.setQueryData(queryKeys.session, {
     role: 'member',
     user: { id: 'usr_a' },
@@ -192,7 +194,8 @@ test('a late approval from the previous workspace neither answers a newer questi
   await run() // asked again in the new workspace
   await screen.findByRole('dialog')
   release()
-  await new Promise((resolve) => setTimeout(resolve, 50))
+  // the late answer lands (and settles its mutation) inside act
+  await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
   expect(answers).toEqual([false])
   expect(screen.getByRole('dialog')).toBeVisible()
 })
@@ -340,7 +343,7 @@ test('a notice that changed while shown is shown again and approved only when th
   const { answers, act: run } = setup()
   await run()
   const dialog = await screen.findByRole('dialog')
-  expect(dialog).toHaveAccessibleDescription('The earlier notice.')
+  await waitFor(() => expect(dialog).toHaveAccessibleDescription('The earlier notice.'))
   await userEvent.click(screen.getByRole('button', { name: 'Approve and continue' }))
   expect(await within(dialog).findByRole('status')).toHaveTextContent(
     'This notice has changed since it was shown',

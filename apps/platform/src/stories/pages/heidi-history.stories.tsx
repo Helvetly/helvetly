@@ -5,6 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import type { HeidiConversation } from '@/lib/heidi'
 
+import { attentionHandlers } from './api'
 import { dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 // Earlier today, at a share of the time since midnight: still today (and in order) when the story runs at 00:05.
@@ -59,6 +60,7 @@ const chats: HeidiConversation[] = [
 ]
 
 const handlers = (list: HeidiConversation[]) => [
+  ...attentionHandlers(),
   http.get('/api/v1/heidi/conversations', () => HttpResponse.json({ data: list })),
   http.get('/api/v1/heidi/conversations/:id', ({ params }) =>
     HttpResponse.json({

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { ExpensesPage } from '@/components/expenses/expenses-page'
 import type { Session } from '@/lib/api'
@@ -64,8 +64,17 @@ export const HeaderTabsFit: Story = {
 }
 
 const SCOPE_NOTICE = 'Input tax follows Swiss rules'
+const previewed = fn()
 const business = (country: string, who: Partial<Session> = {}) =>
   pageParameters('/expenses', {}, [
+    // The new expense form asks for its totals; an empty form has no amount yet, as the API says.
+    http.post('/api/v1/expenses/preview', () => {
+      previewed()
+      return HttpResponse.json(
+        { error: { code: 'validation_failed', message: 'Complete the amount.' } },
+        { status: 422 },
+      )
+    }),
     http.get('/api/v1/session', () =>
       HttpResponse.json({
         ...storySession,
@@ -99,6 +108,7 @@ export const SwissBusiness: Story = {
 export const ForeignBusiness: Story = {
   parameters: business('DE'),
   play: async (context) => {
+    previewed.mockClear()
     await shows('Swisscom (Schweiz) AG', SCOPE_NOTICE)?.(context)
     const body = within(document.body)
     const notice = body.getByText(SCOPE_NOTICE).closest('[data-slot="callout"]')
@@ -116,6 +126,7 @@ export const ForeignBusiness: Story = {
       () => expect(within(body.getByRole('dialog')).getByText(SCOPE_NOTICE)).toBeVisible(),
       { timeout: 8000 },
     )
+    await waitFor(() => expect(previewed).toHaveBeenCalled())
   },
 }
 export const ForeignBusinessDark = dark(ForeignBusiness)

@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/dashboard/dashboard'
 import { messageTime } from '@/components/heidi/message'
 import type { HeidiMessage } from '@/lib/heidi'
 
+import { attentionHandlers } from './api'
 import { dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const answeredAt = new Date().toISOString()
@@ -50,6 +51,7 @@ const meta = {
     return () => localStorage.removeItem('helvetly:heidi:panel')
   },
   parameters: pageParameters('/', {}, [
+    ...attentionHandlers(),
     http.get('/api/v1/heidi/conversations', () =>
       HttpResponse.json({
         data: [

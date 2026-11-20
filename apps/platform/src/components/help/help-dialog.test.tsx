@@ -17,7 +17,7 @@ const server = setupServer(
     return HttpResponse.json({ id: 'f1' }, { status: 201 })
   }),
 )
-beforeAll(() => server.listen())
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 

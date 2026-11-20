@@ -7,6 +7,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { InvoiceLinkField } from '@/components/engagements/invoice-link-field'
 import { EngagementLink } from '@/components/invoices/engagement-link'
 import { sampleSettings } from '@/test/invoice-api'
+import { sampleClient } from '@/test/invoice-fixtures'
 
 import { emptyPage } from './screen-fixtures'
 
@@ -29,6 +30,8 @@ const openable = async (canvas: HTMLElement, name: RegExp) => {
 }
 const page = (data: unknown[]) => HttpResponse.json({ ...emptyPage, data })
 const list = http.get('/api/v1/engagements', () => page(engagements))
+// The new engagement's form shows the invoice's client by name.
+const client = http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: sampleClient() }))
 const notLinked = http.get('/api/v1/invoices/:id/engagement', () =>
   HttpResponse.json({ data: null }),
 )
@@ -65,6 +68,7 @@ export const EditorNoCandidates: Story = {
       handlers: [
         http.get('/api/v1/engagements', () => page([])),
         notLinked,
+        client,
         http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
       ],
     },
@@ -77,7 +81,9 @@ export const EditorNoCandidates: Story = {
     // The loading frame is a dialog of the same name that the form's sheet replaces: wait for the form's field.
     const body = within(document.body)
     await expect(await body.findByRole('textbox', { name: /^Title/ })).toBeVisible()
-    await expect(body.getByRole('dialog', { name: /New engagement/ })).toBeVisible()
+    const dialog = body.getByRole('dialog', { name: /New engagement/ })
+    await expect(dialog).toBeVisible()
+    await expect(await within(dialog).findByText('Alpenglow Studio GmbH')).toBeVisible()
     // the accessibility check reads colours, so let the drawer finish fading in
     await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
   },
@@ -85,7 +91,7 @@ export const EditorNoCandidates: Story = {
 
 /** The picker's last row adds an engagement named after what was typed; Enter reaches it. */
 export const EditorAddFromPicker: Story = {
-  parameters: { msw: { handlers: [list, notLinked] } },
+  parameters: { msw: { handlers: [list, notLinked, client] } },
   render: () => <EditorRow clientId="cli_1" invoiceId="inv_1" />,
   play: async ({ canvasElement }) => {
     await userEvent.click(await openable(canvasElement, /Choose an engagement/))
@@ -98,6 +104,7 @@ export const EditorAddFromPicker: Story = {
     await waitFor(async () =>
       expect(await body.findByRole('textbox', { name: /^Title/ })).toHaveValue('Spanish lessons'),
     )
+    await expect(await body.findByText('Alpenglow Studio GmbH')).toBeVisible()
     await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
   },
 }

@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -74,13 +74,13 @@ test.each([
     const posted = open(kind)
     const draft = await draftOf(path)
     expect(field(/^Subject/)).toBeDisabled()
-    await vi.waitFor(() => expect(field(/^Subject/)).toHaveValue(draft.subject))
+    await waitFor(() => expect(field(/^Subject/)).toHaveValue(draft.subject))
     expect(field(/^Message/)).toHaveValue(draft.message)
     expect(field(/^Message/)).not.toHaveAttribute('placeholder')
     expect(field(/^To/)).toHaveValue(draft.to.join(', '))
     expect(field(/^Subject/)).toBeEnabled()
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
-    await vi.waitFor(() => expect(posted.body).not.toBeNull())
+    await waitFor(() => expect(posted.body).not.toBeNull())
     expect(posted.body).toEqual({ to: draft.to, subject: draft.subject, message: draft.message })
   },
 )
@@ -94,17 +94,16 @@ test('userEditsAreNotOverwrittenByRefetch', async () => {
       return HttpResponse.json({ data: { ...fakeDraft, subject: `Draft ${calls}` } })
     }),
   ])
-  await vi.waitFor(() => expect(field(/^Subject/)).toHaveValue('Draft 1'))
+  await waitFor(() => expect(field(/^Subject/)).toHaveValue('Draft 1'))
   await userEvent.clear(field(/^Subject/))
   await userEvent.type(field(/^Subject/), 'Mine')
   await userEvent.clear(field(/^To/))
   await userEvent.type(field(/^To/), 'me@x.ch')
-  void posted.queries.refetchQueries()
-  await vi.waitFor(() => expect(calls).toBeGreaterThan(1))
-  await delay(100)
+  await act(() => posted.queries.refetchQueries())
+  expect(calls).toBeGreaterThan(1)
   expect(field(/^Subject/)).toHaveValue('Mine')
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
-  await vi.waitFor(() => expect(posted.body).not.toBeNull())
+  await waitFor(() => expect(posted.body).not.toBeNull())
   expect(posted.body).toMatchObject({ to: ['me@x.ch'], subject: 'Mine' })
 })
 
@@ -117,7 +116,7 @@ test.each([
       HttpResponse.json({ error: { code: 'internal', message: 'No.' } }, { status: 500 }),
     ),
   ])
-  await vi.waitFor(() => expect(field(/^Subject/)).toBeEnabled())
+  await waitFor(() => expect(field(/^Subject/)).toBeEnabled())
   expect(field(/^Subject/)).toHaveValue('')
   expect(field(/^Message/)).toHaveValue('')
   await userEvent.type(field(/^To/), 'a@b.ch')
@@ -129,14 +128,14 @@ test.each([
   await userEvent.type(field(/^Subject/), 'Your invoice')
   await userEvent.type(field(/^Message/), 'Hello')
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
-  await vi.waitFor(() => expect(posted.body).not.toBeNull())
+  await waitFor(() => expect(posted.body).not.toBeNull())
   expect(posted.body).toEqual({ to: ['a@b.ch'], subject: 'Your invoice', message: 'Hello' })
 })
 
 test('marksTheInvoiceSentWithoutEmail', async () => {
   const posted = open('invoice')
   await userEvent.click(screen.getByRole('button', { name: 'Mark as sent' }))
-  await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
+  await waitFor(() => expect(posted.body).toEqual({ email: false }))
 })
 
 test('mailDownOffersMarkingSent', async () => {
@@ -150,11 +149,11 @@ test('mailDownOffersMarkingSent', async () => {
       )
     }),
   ])
-  await vi.waitFor(() => expect(field(/^To/)).toHaveValue(fakeDraft.to.join(', ')))
+  await waitFor(() => expect(field(/^To/)).toHaveValue(fakeDraft.to.join(', ')))
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
   expect(
     await screen.findByText(/Mark the invoice as sent, then send the PDF yourself/),
   ).toBeVisible()
   await userEvent.click(screen.getByRole('button', { name: 'Mark as sent' }))
-  await vi.waitFor(() => expect(posted.body).toEqual({ email: false }))
+  await waitFor(() => expect(posted.body).toEqual({ email: false }))
 })

@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -12,7 +12,7 @@ import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
-import { aiConsent } from '@/mocks/ai-notice'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
 import { Welcome } from './onboarding'
@@ -82,6 +82,12 @@ const server = setupServer(
   http.get('/api/v1/session', () => HttpResponse.json(session())),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing })),
   http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage)),
+  // the AI approval dialog reads the notice it shows
+  http.get('/api/v1/heidi/consent', () =>
+    HttpResponse.json({ data: aiConsent(false), notice: aiNotice }),
+  ),
+  // the import drawer lists earlier automatic imports: none in a new workspace
+  http.get('/api/v1/imports', () => HttpResponse.json({ data: [] })),
   http.post('/api/v1/imports', () => {
     uploads++
     return HttpResponse.json({ error: { code: 'x', message: 'x' } }, { status: 500 })
@@ -599,8 +605,10 @@ describe('the welcome', () => {
       // Raw events, not fireEvent: no render happens between the two, as with a fast double click.
       const submit = () =>
         form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-      submit()
-      submit()
+      act(() => {
+        submit()
+        submit()
+      })
       expect(await screen.findByRole('heading', { name: 'Your company' })).toBeInTheDocument()
       expect(named).toEqual([{ name: 'Anna' }])
       expect(renamed).toEqual([{ name: 'Muster' }])
@@ -956,7 +964,8 @@ describe('the import step', () => {
     const input = drawer.querySelector('input[type=file]') as HTMLInputElement
     await user.upload(input, new File(['a,b'], 'clients.csv', { type: 'text/csv' }))
     await user.click(within(drawer).getByRole('button', { name: 'Process with AI' }))
-    await user.click(await screen.findByRole('button', { name: 'Not now' }))
+    expect(await screen.findByRole('dialog', { name: aiNotice.title })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Not now' }))
     expect(await within(drawer).findByText('clients.csv')).toBeInTheDocument()
     expect(uploads).toBe(0)
   })

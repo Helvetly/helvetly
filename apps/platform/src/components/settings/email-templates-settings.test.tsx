@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { resetEmailTemplatesMock } from '@/mocks/email-templates'
 import { handlers } from '@/mocks/handlers'
 
@@ -30,7 +31,13 @@ const session = (role: string, scopes: string[]) =>
       csrf_token: 'x',
     }),
   )
-const server = setupServer(session('owner', ['*:*']), ...handlers)
+// The settings tabs read the plan (the Employees tab shows on Business).
+const billing = http.get('/api/v1/billing', () =>
+  HttpResponse.json({
+    data: billingFixture({ plan: 'business', status: 'active', locked: false }),
+  }),
+)
+const server = setupServer(session('owner', ['*:*']), billing, ...handlers)
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterAll(() => server.close())
 beforeEach(() => {

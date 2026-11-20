@@ -439,6 +439,8 @@ export const ClientsSelection: Story = {
             meta: { ...emptyPage.meta, total: 1, total_pages: 1 },
           }),
         ),
+        // Pointing at a row loads its client ahead of the click.
+        http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: sampleClient() })),
         ...screenHandlers,
       ],
     },
@@ -502,6 +504,8 @@ export const InvoiceSelection: Story = {
             meta: { ...emptyPage.meta, total: 1, total_pages: 1 },
           }),
         ),
+        // Pointing at a row loads its invoice ahead of the click.
+        http.get('/api/v1/invoices/inv_1', () => HttpResponse.json({ data: sampleInvoice() })),
         ...screenHandlers,
       ],
     },

@@ -1,6 +1,6 @@
 import { getCsrfToken } from '@helvetly/ui/lib/http'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import ReactGA from 'react-ga4'
@@ -175,6 +175,6 @@ test('alongside useSession, a later session refetch still keeps the CSRF token',
   // Analytics renders last, then the session is read again (a workspace switch invalidates it).
   token = 'second'
   view.rerender(tree(2))
-  await client.invalidateQueries({ queryKey: queryKeys.session })
+  await act(() => client.invalidateQueries({ queryKey: queryKeys.session }))
   await waitFor(() => expect(getCsrfToken()).toBe('second'))
 })

@@ -7,7 +7,13 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { useState } from 'react'
 
-import { editorApi, sampleSchedule, sampleSettings } from '@/test/invoice-api'
+import {
+  billingHandler,
+  editorApi,
+  noEngagementHandler,
+  sampleSchedule,
+  sampleSettings,
+} from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { scheduleBlocker, type EditorInstalments } from './editor-model'
@@ -34,6 +40,8 @@ const server = setupServer(
     HttpResponse.json({ data: [], meta: { page: 1, page_size: 50, total: 0, total_pages: 0 } }),
   ),
   ...editorApi(clients),
+  billingHandler(),
+  noEngagementHandler,
 )
 server.events.on('request:start', async ({ request }) => {
   if (request.method === 'GET') return
