@@ -131,9 +131,9 @@ export function localizedAlternates(path: string, language: Locale) {
     canonical: localizedHref(path, language),
     languages: {
       ...Object.fromEntries(
-        Object.entries(locales).map(([code, details]) => [
-          details.languageTag,
-          localizedHref(path, code),
+        Object.entries(locales).flatMap(([code, details]) => [
+          [code, localizedHref(path, code)],
+          [details.languageTag, localizedHref(path, code)],
         ]),
       ),
       'x-default': localizedHref(path, defaultLocale),
