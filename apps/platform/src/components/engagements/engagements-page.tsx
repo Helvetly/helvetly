@@ -43,6 +43,11 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -172,13 +177,14 @@ const TitleCell = ({ engagement }: { engagement: Engagement }) => (
 )
 
 const HEADERS = [
-  [translate('engagement2'), ''],
-  [translate('period'), 'w-[17%]'],
-  [translate('progress'), 'w-[20%]'],
-  [translate('remaining'), 'w-[10%] text-right'],
-  [translate('billing'), 'w-[10%]'],
-  [translate('attention'), 'w-[17%]'],
+  ['engagement', translate('engagement2'), ''],
+  ['period', translate('period'), 'w-[17%]'],
+  ['progress', translate('progress'), 'w-[20%]'],
+  ['remaining', translate('remaining'), 'w-[10%] text-right'],
+  ['billing', translate('billing'), 'w-[10%]'],
+  ['attention', translate('attention'), 'w-[17%]'],
 ] as const
+const RESIZABLE = HEADERS.map(([id]) => id)
 
 type Command = 'log' | 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
 type Access = { canWrite: boolean; canManage: boolean }
@@ -445,6 +451,7 @@ function useMenu(filters: EngagementQuery) {
 
 /** The work you committed to per client: server-side views, search and paging. */
 export function EngagementsPage() {
+  const widths = useResizableColumns('engagements', RESIZABLE, { flex: 'engagement' })
   const canWrite = useCan('write:engagements')
   const importDrawer = useImportDrawer()
   const pathname = usePathname()
@@ -712,7 +719,7 @@ export function EngagementsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
                     <th className={listTable.select}>
@@ -725,10 +732,14 @@ export function EngagementsPage() {
                         }
                       />
                     </th>
-                    {HEADERS.map(([label, width]) => (
-                      <th key={label} className={cn(listTable.th, width)}>
-                        {label}
-                      </th>
+                    {HEADERS.map(([id, label, width]) => (
+                      <ResizableHead
+                        key={id}
+                        columns={widths}
+                        column={id}
+                        label={label}
+                        className={cn(listTable.th, width)}
+                      />
                     ))}
                     <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
@@ -740,7 +751,7 @@ export function EngagementsPage() {
                     <EngagementRow key={engagement.id} {...rowProps(engagement)} />
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((engagement) => (

@@ -24,6 +24,11 @@ import {
 
 import { listTable } from '@/components/data/list-table'
 import {
+  ColumnResizer,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
+import {
   docQuery,
   formatSize,
   isRetained,
@@ -537,7 +542,10 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
 
 // ---- list ----
 
-type Column = { label: string; sort?: SortField; className: string }
+type Column = { id: string; label: string; sort?: SortField; className: string }
+
+/** Status and the menu keep their widths. */
+const RESIZABLE = ['name', 'location', 'uploaded', 'created', 'modified']
 
 function List(props: ItemsProps) {
   const keys = [
@@ -545,22 +553,26 @@ function List(props: ItemsProps) {
     ...props.files.map((file) => fileKey(file.id)),
   ]
   const picked = keys.filter((key) => props.selected.has(key)).length
+  const widths = useResizableColumns('documents', RESIZABLE, { flex: 'name' })
   const columns: Column[] = [
-    { label: translate('name'), sort: 'name', className: 'pl-1' },
-    ...(props.showLocation ? [{ label: translate('location'), className: 'w-[16%]' }] : []),
-    { label: translate('uploadedBy'), className: 'w-[18%] hidden @4xl:table-cell' },
+    { id: 'name', label: translate('name'), sort: 'name', className: 'pl-1' },
+    ...(props.showLocation
+      ? [{ id: 'location', label: translate('location'), className: 'w-[16%]' }]
+      : []),
+    { id: 'uploaded', label: translate('uploadedBy'), className: 'w-[18%] hidden @4xl:table-cell' },
     {
+      id: 'created',
       label: translate('created3'),
       sort: 'created_at',
       className: 'w-[12%] hidden @5xl:table-cell',
     },
-    { label: translate('modified'), sort: 'updated_at', className: 'w-[12%]' },
-    { label: translate('status'), className: 'w-[15%] hidden @3xl:table-cell' },
-    { label: '', className: 'w-12 pr-3' },
+    { id: 'modified', label: translate('modified'), sort: 'updated_at', className: 'w-[12%]' },
+    { id: 'status', label: translate('status'), className: 'w-[15%] hidden @3xl:table-cell' },
+    { id: 'menu', label: '', className: 'w-12 pr-3' },
   ]
   return (
     <div>
-      <table aria-label={translate('files')} className={listTable.table}>
+      <ResizableTable columns={widths} aria-label={translate('files')} className={listTable.table}>
         <thead>
           <tr className={listTable.head}>
             <th className={listTable.select}>
@@ -575,7 +587,8 @@ function List(props: ItemsProps) {
               const sorted = column.sort === props.sort
               return (
                 <th
-                  key={column.label || column.className}
+                  key={column.id}
+                  {...widths.head(column.id)}
                   aria-sort={sorted ? (props.desc ? 'descending' : 'ascending') : undefined}
                   className={cn(listTable.th, column.className)}
                 >
@@ -599,6 +612,9 @@ function List(props: ItemsProps) {
                   ) : (
                     column.label && <span>{column.label}</span>
                   )}
+                  {RESIZABLE.includes(column.id) && (
+                    <ColumnResizer columns={widths} column={column.id} label={column.label} />
+                  )}
                 </th>
               )
             })}
@@ -612,7 +628,7 @@ function List(props: ItemsProps) {
             <FileRow key={file.id} props={props} file={file} />
           ))}
         </tbody>
-      </table>
+      </ResizableTable>
     </div>
   )
 }

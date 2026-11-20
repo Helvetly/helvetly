@@ -29,6 +29,11 @@ import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
@@ -67,6 +72,7 @@ type Pending =
 
 /** The team list; the view, search and role filter live in the URL. */
 export function MembersPage() {
+  const widths = useResizableColumns('members', ['member', 'role', 'active'], { flex: 'member' })
   const router = useRouter()
   const pathname = usePathname()
   const query = useSearchParams()
@@ -213,14 +219,27 @@ export function MembersPage() {
             action={null}
           />
         ) : (
-          <table className={listTable.table}>
+          <ResizableTable columns={widths} className={listTable.table}>
             <thead>
               <tr className={listTable.head}>
-                <th className={cn(listTable.th, 'w-[34%]')}>{translate('member')}</th>
-                <th className={cn(listTable.th, 'w-[26%]')}>{translate('roleAndAccess')}</th>
-                <th className={cn(listTable.th, 'hidden w-[20%] @4xl:table-cell')}>
-                  {translate('lastActive')}
-                </th>
+                <ResizableHead
+                  columns={widths}
+                  column="member"
+                  label={translate('member')}
+                  className={cn(listTable.th, 'w-[34%]')}
+                />
+                <ResizableHead
+                  columns={widths}
+                  column="role"
+                  label={translate('roleAndAccess')}
+                  className={cn(listTable.th, 'w-[26%]')}
+                />
+                <ResizableHead
+                  columns={widths}
+                  column="active"
+                  label={translate('lastActive')}
+                  className={cn(listTable.th, 'hidden w-[20%] @4xl:table-cell')}
+                />
                 <th className={cn(listTable.th, 'w-[14%]')}>{translate('status')}</th>
                 <th className={listTable.menu}>
                   <span className="sr-only">{translate('actions')}</span>
@@ -294,7 +313,7 @@ export function MembersPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResizableTable>
         )}
         {alone && <InvitePanel onInvite={manager ? () => setInviting(true) : undefined} />}
       </div>

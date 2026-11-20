@@ -48,6 +48,12 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
+import {
+  ColumnResizer,
+  ResetColumnWidths,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { DetailsPopover } from '@/components/data/row-details'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
@@ -217,8 +223,12 @@ function useColumns() {
 const toggleIn = <T,>(list: T[], value: T) =>
   list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
+/** Status keeps its width: badges are short and the same everywhere. */
+const RESIZABLE = ['number', 'name', 'type', 'phone', 'city', 'tags', 'created']
+
 /** The clients list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ClientsPage() {
+  const widths = useResizableColumns('clients', RESIZABLE, { flex: 'name' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -439,6 +449,7 @@ export function ClientsPage() {
                     {column.label === 'No.' ? translate('number') : column.label}
                   </label>
                 ))}
+                <ResetColumnWidths columns={widths} />
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -507,7 +518,7 @@ export function ClientsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
                     <th className={listTable.select}>
@@ -525,6 +536,7 @@ export function ClientsPage() {
                       return (
                         <th
                           key={column.id}
+                          {...widths.head(column.id)}
                           aria-sort={
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
@@ -554,6 +566,13 @@ export function ClientsPage() {
                           ) : (
                             column.label
                           )}
+                          {RESIZABLE.includes(column.id) && (
+                            <ColumnResizer
+                              columns={widths}
+                              column={column.id}
+                              label={column.label}
+                            />
+                          )}
                         </th>
                       )
                     })}
@@ -575,7 +594,7 @@ export function ClientsPage() {
                     />
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((client) => (

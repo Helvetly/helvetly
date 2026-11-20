@@ -53,6 +53,11 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
+import {
+  ColumnResizer,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -274,8 +279,12 @@ const COLUMNS: ColumnDef[] = [
   },
 ]
 
+/** Status keeps its width: badges are short and the same everywhere. */
+const RESIZABLE = ['number', 'client', 'issued', 'due', 'total']
+
 /** The invoices list: server-side search, filters, sort and paging, all kept in the URL. */
 export function InvoicesPage() {
+  const widths = useResizableColumns('invoices', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
   const importDrawer = useImportDrawer()
   const pathname = usePathname()
@@ -569,7 +578,7 @@ export function InvoicesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
                     <th className={listTable.select}>
@@ -584,9 +593,11 @@ export function InvoicesPage() {
                     </th>
                     {COLUMNS.map((column) => {
                       const sorted = column.sort === params.sort
+                      const resizable = RESIZABLE.includes(column.id)
                       return (
                         <th
                           key={column.id}
+                          {...widths.head(column.id)}
                           aria-sort={
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
@@ -617,6 +628,13 @@ export function InvoicesPage() {
                           ) : (
                             column.label
                           )}
+                          {resizable && (
+                            <ColumnResizer
+                              columns={widths}
+                              column={column.id}
+                              label={column.label}
+                            />
+                          )}
                         </th>
                       )
                     })}
@@ -638,7 +656,7 @@ export function InvoicesPage() {
                     />
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((invoice) => (

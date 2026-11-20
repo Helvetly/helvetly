@@ -43,6 +43,12 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
+import {
+  ColumnResizer,
+  ResetColumnWidths,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
@@ -219,8 +225,12 @@ function bulkMessage(result: BulkResult, verb: string) {
     : done
 }
 
+/** Every column but the checkbox and the menu. */
+const RESIZABLE = ['name', 'type', 'sku', 'unit', 'price', 'vat', 'updated']
+
 /** The catalogue: server-side search, filters, sort and paging, all kept in the URL. */
 export function ProductsPage() {
+  const widths = useResizableColumns('products', RESIZABLE, { flex: 'name' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -467,6 +477,7 @@ export function ProductsPage() {
                     {column.label}
                   </label>
                 ))}
+                <ResetColumnWidths columns={widths} />
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -546,7 +557,7 @@ export function ProductsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <table className={cn(listTable.table, 'hidden @4xl:table')}>
+              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
                 <thead>
                   <tr className={listTable.head}>
                     <th className={listTable.select}>
@@ -564,6 +575,7 @@ export function ProductsPage() {
                       return (
                         <th
                           key={column.id}
+                          {...widths.head(column.id)}
                           aria-sort={
                             sorted ? (params.desc ? 'descending' : 'ascending') : undefined
                           }
@@ -594,6 +606,13 @@ export function ProductsPage() {
                           ) : (
                             column.label
                           )}
+                          {RESIZABLE.includes(column.id) && (
+                            <ColumnResizer
+                              columns={widths}
+                              column={column.id}
+                              label={column.label}
+                            />
+                          )}
                         </th>
                       )
                     })}
@@ -615,7 +634,7 @@ export function ProductsPage() {
                     />
                   ))}
                 </tbody>
-              </table>
+              </ResizableTable>
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((product) => (

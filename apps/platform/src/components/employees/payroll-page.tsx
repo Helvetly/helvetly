@@ -21,6 +21,11 @@ import { useState } from 'react'
 
 import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
+import {
+  ResizableHead,
+  ResizableTable,
+  useResizableColumns,
+} from '@/components/data/resizable-columns'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -263,15 +268,27 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
 }
 
 function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: string) => void }) {
+  // The amounts share what is left; the first of them keeps the room when the others grow.
+  const widths = useResizableColumns('payroll', ['employee', 'period'], { flex: AMOUNTS[0][0] })
   return (
     <>
-      <table className={cn(listTable.table, 'hidden lg:table')}>
+      <ResizableTable columns={widths} className={cn(listTable.table, 'hidden lg:table')}>
         <thead>
           <tr className={listTable.head}>
-            <th className={cn(listTable.th, 'w-[17%]')}>{translate('payrollColEmployee')}</th>
-            <th className={cn(listTable.th, 'w-[15%]')}>{translate('payrollColPeriod')}</th>
+            <ResizableHead
+              columns={widths}
+              column="employee"
+              label={translate('payrollColEmployee')}
+              className={cn(listTable.th, 'w-[17%]')}
+            />
+            <ResizableHead
+              columns={widths}
+              column="period"
+              label={translate('payrollColPeriod')}
+              className={cn(listTable.th, 'w-[15%]')}
+            />
             {AMOUNTS.map(([key, label]) => (
-              <th key={key} className={cn(listTable.th, listTable.numeric)}>
+              <th key={key} data-column={key} className={cn(listTable.th, listTable.numeric)}>
                 {label}
               </th>
             ))}
@@ -308,7 +325,7 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
             </tr>
           ))}
         </tbody>
-      </table>
+      </ResizableTable>
       <ul className={cn(listTable.list, 'lg:hidden')}>
         {entries.map((entry) => (
           <li key={entry.id}>
